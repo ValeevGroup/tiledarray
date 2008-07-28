@@ -103,23 +103,23 @@ class DenseArray : public AbstractArray<T, DIM>
 		typedef int									iterator_type;
 		typedef DenseArray<T,DIM>					collection_type;
 		typedef std::random_access_iterator_tag		iterator_category;  
-		typedef ElementType							value;
+		typedef T									value;
 		typedef value*								pointer;
 		typedef const value*						const_pointer;
 		typedef value&								reference;
 		typedef const value&						const_reference;
 	};
 
-	class ArrayIterator : public Iterator<TAIteratorSpec>
+	class ArrayIterator : public Iterator<ArrayIteratorSpec>
 	{
 
 	};
 
 public:
-	typedef	typename AbstractArray::ValueType	ValueType;
-	typedef typename AbstractArray::IndexType	IndexType;
-	typedef typename std::vector<T>				ArrayType;
-	typedef typename std::vector<T>::iterator	Iterator;
+	typedef	typename AbstractArray<T, DIM>::ValueType	ValueType;
+	typedef typename AbstractArray<T, DIM>::IndexType	IndexType;
+	typedef typename std::vector<T>						ArrayType;
+	typedef typename std::vector<T>::iterator			IteratorType;
 
 protected:
 	
@@ -128,15 +128,15 @@ protected:
 public:
 
 	DenseArray() :
-		AbstractArray()
+		AbstractArray<T, DIM>()
 	{}
 
 	DenseArray(const IndexType& dim, const ValueType& val = ValueType()) :
-		AbstractArray(dim, val), m_data(VectorOps<IndexType, DIM>::selfProduct(dim), val)
+		AbstractArray<T, DIM>(dim, val), m_data(VectorOps<IndexType, DIM>::selfProduct(dim), val)
 	{}
 
 	DenseArray(const IndexType& dim, const ValueType& (*func)(const IndexType&)) :
- 		AbstractArray(dim), m_data(VectorOps<IndexType, DIM>::selfProduct(dim))
+ 		AbstractArray<T, DIM>(dim), m_data(VectorOps<IndexType, DIM>::selfProduct(dim))
  	{
  		bool atEnd = false;
 		for(IndexType ItDim(0); !atEnd; atEnd = VectorOps<IndexType, DIM>::increment(ItDim))
@@ -159,7 +159,7 @@ public:
 	virtual void
 	Resize(const IndexType& newDim)
 	{
-		AbstractArray::Resize(newDim);
+		AbstractArray<T,DIM>::Resize(newDim);
 		this->m_data.resize(this->Size(), this->m_defaultValue);
 	}
 
@@ -185,10 +185,10 @@ template<typename T, unsigned int DIM>
 class SparceArray : public AbstractArray<T, DIM>
 {
 public:
-	typedef	typename AbstractArray::ValueType	ValueType;
-	typedef typename AbstractArray::IndexType	IndexType;
-	typedef typename std::map<Tuple<DIM>, T>	ArrayType;
-	typedef typename ArrayType::iterator		Iterator;
+	typedef	typename AbstractArray<T, DIM>::ValueType	ValueType;
+	typedef typename AbstractArray<T, DIM>::IndexType	IndexType;
+	typedef typename std::map<Tuple<DIM>, T>			ArrayType;
+	typedef typename ArrayType::iterator				Iterator;
 
 protected:
 
@@ -197,15 +197,15 @@ protected:
 public:
 
 	SparceArray() :
-		AbstractArray()
+		AbstractArray<T, DIM>()
 	{}
 
 	SparceArray(const IndexType& dim) :
-		AbstractArray(dim), m_data(VectorOps<IndexType, DIM>::selfProduct(dim))
+		AbstractArray<T, DIM>(dim), m_data(VectorOps<IndexType, DIM>::selfProduct(dim))
 	{}
 
 	SparceArray(const IndexType& dim, const ValueType& val) :
-		AbstractArray(dim), m_data(VectorOps<typename IndexType, DIM>::selfProduct(dim), val)
+		AbstractArray<T, DIM>(dim), m_data(VectorOps<IndexType, DIM>::selfProduct(dim), val)
 	{}
 
 	// Accessor

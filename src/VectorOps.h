@@ -211,10 +211,10 @@ public:
 	static inline bool
 	increment(const T& max, T &x)
 	{
-		assert(max[DIM - 1] > x[DIM - 1]);
+		assert(max[0] > x[0]);
 		assert(x[0] >= 0);
-		if(++x[DIM - 1] >= max[DIM - 1])
-			x[DIM - 1] = 0;
+		if(++x[0] >= max[0])
+			x[0] = 0;
 
 		return ((max[0] - 1) == x[0]);
 	}

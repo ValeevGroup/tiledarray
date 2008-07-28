@@ -4,12 +4,14 @@
 namespace TILED_ARRAY_NAMESPACE
 {
 
+template<typename T>
 class Allocator
 {
 
 }; // class Allocator
 
-class LocalAllocator : public Allocator
+template<typename T>
+class LocalAllocator : public Allocator<T>
 {
 
 }; // class LocalAllocator

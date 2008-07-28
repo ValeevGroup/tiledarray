@@ -73,7 +73,7 @@ class SerialProcess : public Process
 	}
 
 	virtual void
-	SerialProcess::finalize ()                    
+	finalize()                    
 	{ 
 //		Finalizable::finalizeAll();
 

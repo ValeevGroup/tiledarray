@@ -6,15 +6,14 @@
 namespace TILED_ARRAY_NAMESPACE
 {
 
-template<unsigned int DIM>
+
 class Structure
 {
 
 }; // class Structure
 
 
-template<typename T, unsigned int DIM, unsigned int LEVEL>
-class DenseStructure : public Structure<DIM>
+class DenseStructure : public Structure
 {
 
 }; // class DenseStructure

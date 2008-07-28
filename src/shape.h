@@ -52,7 +52,7 @@ namespace TILED_ARRAY_NAMESPACE
  *
  * Instances of Shape are immutable.
  */
-template <int DIM>
+template <unsigned int DIM>
 class Shape
 {
 
@@ -450,9 +450,9 @@ public:
 	 *           at index 0.
 	 */
 	inline const Triplet
-	operator[] (int dim) const 
+	operator[] (unsigned int dim) const 
 	{
-		assert(dim >= 0 && dim < DIM);
+		assert(dim < DIM);
 		return Triplet(this->m_low[dim], this->m_high[dim], this->m_size[dim], this->m_mod[dim]); 
 	}
   

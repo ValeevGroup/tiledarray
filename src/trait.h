@@ -43,21 +43,22 @@ namespace TILED_ARRAY_NAMESPACE
 
 
 /* serial HTA implementation */
-template <typename T, int DIM>
+template <typename T, unsigned int DIM>
 class LocalDenseTrait
 {
 	typedef T									ValueType;
+	typedef DenseStructure						StructType;
+
+	typedef DenseArray<T, DIM>					DataType;
+//	typedef DenseArray<T, DIM>::ArrayIterator	DataIterator;
+//	typedef DenseArray<T, DIM>					SubrefDataType;
+//	typedef DenseArray<T, DIM>::ArrayIterator	SubrefDataIterator;
+ 
+	typedef LocalAllocator<T>					AllocatorType;
+	typedef Math<T>								MathKernalType;
+
 	typedef LocalDenseTrait<T,DIM>				TraitType;
 	typedef TraitType							SubrefTrait;
-	typedef DenseStructure						StructureType;
-
- 	typedef DenseArray<T, DIM>					DataType;
-	typedef DenseArray<T, DIM>::ArrayIterator	DataIterator;
-	typedef DenseArray<T, DIM>					SubrefDataType;
-	typedef DenseArray<T, DIM>::ArrayIterator	SubrefDataIterator;
- 
-	typedef LocalAllocator<T>				AllocatorType;
-	typedef Math<T>							MathKernalType;
 };
 
 } // TILED_ARRAY_NAMESPACE
