@@ -50,7 +50,7 @@ public:
 	typedef typename TRAIT::StructType						StructType;
 	typedef typename TRAIT::DataIterator					ElementIterator;
 
-	Shape m_shape;
+	Shape<DIM> m_shape;
 	bool m_distributed;
 
 public:
@@ -72,8 +72,8 @@ public:
 	const ValueType&
 	operator [](const IndexType& index) const;
 
-	const Shape&
-	Shape() const;
+	const Shape<DIM>&
+	shape() const;
 
 	bool
 	IsDistributed() const;

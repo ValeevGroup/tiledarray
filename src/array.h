@@ -33,7 +33,6 @@
 #include <map>
 #include "tuple.h"
 #include "shape.h"
-#include "trait.h"
 #include "VectorOps.h"
 #include "iterator.h"
 
@@ -118,7 +117,7 @@ class DenseArray : public AbstractArray<T, DIM>
 public:
 	typedef	typename AbstractArray<T, DIM>::ValueType	ValueType;
 	typedef typename AbstractArray<T, DIM>::IndexType	IndexType;
-	typedef typename std::vector<T>						ArrayType;
+	typedef std::vector<T>						ArrayType;
 	typedef typename std::vector<T>::iterator			IteratorType;
 
 protected:
@@ -187,7 +186,7 @@ class SparceArray : public AbstractArray<T, DIM>
 public:
 	typedef	typename AbstractArray<T, DIM>::ValueType	ValueType;
 	typedef typename AbstractArray<T, DIM>::IndexType	IndexType;
-	typedef typename std::map<Tuple<DIM>, T>			ArrayType;
+	typedef std::map<Tuple<DIM>, T>			ArrayType;
 	typedef typename ArrayType::iterator				Iterator;
 
 protected:
@@ -212,7 +211,7 @@ public:
 	virtual inline ValueType&
 	At(const IndexType& index)
 	{
-		ArrayType::iterator it = this->m_data.find(index);
+		typename ArrayType::iterator it = this->m_data.find(index);
 		if(it == this->m_data.end())
 			return this->m_defaultValue;
 
@@ -222,7 +221,7 @@ public:
 	virtual inline const ValueType&
 	At(const IndexType& index) const
 	{
-		ArrayType::const_iterator it = this->m_data.find(index);
+		typename ArrayType::const_iterator it = this->m_data.find(index);
 		if(it == this->m_data.end())
 			return this->m_defaultValue;
 
