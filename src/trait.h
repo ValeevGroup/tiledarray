@@ -25,21 +25,8 @@
 * Authors: Ganesh Bikshandi, Christoph von Praun
 */
 
-#ifndef  __TRAITS_H__
-#define  __TRAITS_H__
-
-#include <streambuf>
-#include "mathkernel.h"
-#include "structure.h"
-#include "allocator.h"
-#include "array.h"
-
-
-namespace TILED_ARRAY_NAMESPACE
-{
-
-// forward declarations
-//template<typename T, int DIM, typename TRAIT> class HTA;
+#ifndef  __TRAITS_H__INCLUDED
+#define  __TRAITS_H__INCLUDED
 
 
 /* serial HTA implementation */
@@ -47,9 +34,10 @@ template <typename T, unsigned int DIM>
 class LocalDenseTrait
 {
 	typedef T									ValueType;
-	typedef DenseStructure						StructType;
+	typedef DensePredicate<DIM>					PredicateType;
+	typedef Shape<DIM, PredicateType>			ShapeType;
 
-	typedef DenseArray<T, DIM>					DataType;
+//	typedef DenseArray<T, DIM>					DataType;
 //	typedef DenseArray<T, DIM>::ArrayIterator	DataIterator;
 //	typedef DenseArray<T, DIM>					SubrefDataType;
 //	typedef DenseArray<T, DIM>::ArrayIterator	SubrefDataIterator;
@@ -61,7 +49,7 @@ class LocalDenseTrait
 	typedef TraitType							SubrefTrait;
 };
 
-} // TILED_ARRAY_NAMESPACE
 
-#endif /* __SERIAL_TRAIT_H__ */
+
+#endif // __SERIAL_TRAIT_H__INCLUDED
 

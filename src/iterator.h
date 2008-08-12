@@ -25,46 +25,34 @@
  * Authors: Christoph von Praun
  */
 
-/*
- * Updated: 7/18/2008
- * Author: Justus Calvin
- * 
- * Changes:
- * - Added Tiled Array namespace
- */
+#ifndef ITERATOR_H__INCLUDED
+#define ITERATOR_H__INCLUDED
 
-#ifndef ITERATOR_H_
-#define ITERATOR_H_
-
-#include <iterator>
-
-
-namespace TILED_ARRAY_NAMESPACE
-{
-
-template <typename _IteratorSpec>
+template <class ITERATORSPEC>
 class Iterator :
-	public std::iterator<typename _IteratorSpec::iterator_category,
-		typename _IteratorSpec::value, typename _IteratorSpec::iterator_type,
-		typename _IteratorSpec::pointer, typename _IteratorSpec::reference>
+	public ::std::iterator<typename ITERATORSPEC::iterator_category,
+		typename ITERATORSPEC::value, typename ITERATORSPEC::iterator_type,
+		typename ITERATORSPEC::pointer, typename ITERATORSPEC::reference>
 {
 
 public:
-	typedef typename _IteratorSpec::iterator_type iterator_type;
-	typedef int difference_type;
-	typedef typename _IteratorSpec::reference reference;
-	typedef typename _IteratorSpec::pointer pointer;
-	typedef typename _IteratorSpec::value value;
+	typedef typename ITERATORSPEC::collection_type	collection_type;
+	typedef typename ITERATORSPEC::iterator_type	iterator_type;
+	typedef int										difference_type;
+	typedef typename ITERATORSPEC::reference		reference;
+	typedef typename ITERATORSPEC::pointer			pointer;
+	typedef typename ITERATORSPEC::value			value;
 
 protected:
-	iterator_type current_;
+	iterator_type m_current;
 
 public:
-	const iterator_type& base() const {
-		return current_; 
-	}
+	const iterator_type&
+	base() const
+		{return this->m_current;}
 
-	explicit Iterator(iterator_type __x) : current_(__x)
+	explicit
+	Iterator(iterator_type it) : m_current(it)
 	{}
 
 	Iterator&
@@ -89,35 +77,35 @@ public:
 	}
   
 	Iterator
-	operator --(int)
+	operator --(int n)
 	{
 		assert(0); // not implemented
 		return *this;
 	}
   
 	Iterator
-	operator +(difference_type __n) const
+	operator +(difference_type n) const
 	{
 		assert(0); // not implemented
 		return *this;
 	}
 
 	Iterator&
-	operator +=(difference_type __n)
+	operator +=(difference_type n)
 	{
 		assert(0); // not implemented
 		return *this;
 	}
 
 	Iterator
-	operator -(difference_type __n) const
+	operator -(difference_type n) const
 	{
 		assert(0); // not implemented
 		return *this;
 	}
   
 	Iterator&
-	operator-=(difference_type __n)
+	operator -=(difference_type n)
 	{
 		assert(0); // not implemented
 		return *this;
@@ -126,71 +114,78 @@ public:
 	bool
 	operator !=(const Iterator& other)
 	{
-		return current_ != other.current_;
+		return this->m_current != other.m_current;
 	}
+	
+	template<typename _IteratorSpec>
+	friend inline typename Iterator<_IteratorSpec>::difference_type
+	operator -(const Iterator<_IteratorSpec>& lhs, const Iterator<_IteratorSpec>& rhs);
 
 };
 
 // forward iterator requirements
-template<typename _IteratorSpec>
+template<typename IteratorSpec>
 inline bool
-operator ==(const Iterator<_IteratorSpec>& lhs, const Iterator<_IteratorSpec>& rhs)
+operator ==(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
 {
 	return lhs.base() == rhs.base(); 
 }
 
-template<typename _IteratorSpec>
+template<typename IteratorSpec>
 inline bool
-operator !=(const Iterator<_IteratorSpec>& lhs, const Iterator<_IteratorSpec>& rhs)
+operator !=(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
 { 
 	return lhs.base() != rhs.base(); 
 }
 
 // random access iterator requirements
-template<typename _IteratorSpec>
+template<typename IteratorSpec>
 inline bool
-operator <(const Iterator<_IteratorSpec>& lhs, const Iterator<_IteratorSpec>& rhs)
+operator <(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
 {
 	return lhs.base() < rhs.base(); 
 }
 
-template<typename _IteratorSpec>
+template<typename IteratorSpec>
 inline bool
-operator >(const Iterator<_IteratorSpec>& __lhs, const Iterator<_IteratorSpec>& __rhs)
+operator >(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
 {
-	return __lhs.base() > __rhs.base(); 
+	return lhs.base() > rhs.base(); 
 }
 
-template<typename _IteratorSpec>
+template<typename IteratorSpec>
 inline bool
-operator <=(const Iterator<_IteratorSpec>& lhs, const Iterator<_IteratorSpec>& rhs)
+operator <=(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
 { 
 	return lhs.base() <= rhs.base(); 
 }
 
-template<typename _IteratorSpec>
+template<typename IteratorSpec>
 inline bool
-operator >=(const Iterator<_IteratorSpec>& lhs, const Iterator<_IteratorSpec>& rhs)
+operator >=(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
 { 
 	return lhs.base() >= rhs.base(); 
 }
 
-/*
-template<typename _IteratorSpec>
-inline typename Iterator<_IteratorSpec>::difference_type
-operator -(const Iterator<_IteratorSpec>& __lhs, const Iterator<_IteratorSpec>& __rhs)
+
+template<typename IteratorSpec>
+inline typename Iterator<IteratorSpec>::difference_type
+operator -(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
 { 
-   assert(0); // not implemented   
+//	assert(0); // not implemented
+	return (lhs.m_current - rhs.m_current);
 }
 
-template<typename _IteratorSpec>
-inline Iterator<_IteratorSpec>
-operator+(typename Iterator<_IteratorSpec>::difference_type n, const Iterator<_IteratorSpec>& i)
+template<typename IteratorSpec>
+inline Iterator<IteratorSpec>
+operator+(typename Iterator<IteratorSpec>::difference_type n, const Iterator<IteratorSpec>& i)
 { 
-	assert(0); // not implemented
+//	assert(0); // not implemented
+	Iterator<IteratorSpec> t;
+	t.m_current = i.m_current + n;
+	return  i;
 }
-*/
 
-} // TILED_ARRAY_NAMESPACE
 
-#endif /*ITERATOR_H_*/
+
+#endif // ITERATOR_H__INCLUDED

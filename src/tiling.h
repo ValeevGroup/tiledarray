@@ -1,4 +1,4 @@
-#ifndef TILING_H_
-#define TILING_H_
+#ifndef TILING_H__INCLUDED
+#define TILING_H__INCLUDED
 
 #endif // TILING_H_

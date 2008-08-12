@@ -26,10 +26,9 @@
  */
 
 
-#ifndef TRACING_H_
-#define TRACING_H_
+#ifndef TRACING_H__INCLUDED
+#define TRACING_H__INCLUDED
 
-#include <iostream>
 #include "process.h"
 
 #ifndef TA_DLEVEL
@@ -43,8 +42,6 @@
 #ifdef WIN32
 #define __attribute__(...)
 #endif
-
-namespace TILED_ARRAY_NAMESPACE {
 
 static int g_dlevel = TA_DLEVEL;
 static int g_wlevel = TA_WLEVEL;
@@ -66,11 +63,10 @@ wlevel(int l)
 	g_wlevel = l;
 }
 
-} // TILED_ARRAY_NAMESPACE 
 
 /* debugging */
 #if (TA_DLEVEL >= 0)
-#define TA_DEBUG(L,X)    { if (L <= g_dlevel) { std::cout << "DEBG[" << L << ", " << Process::myPlace() << "]  " << X << std::endl << std::flush; } }
+#define TA_DEBUG(L,X)    { if (L <= g_dlevel) { ::std::cout << "DEBG[" << L << ", " << Process::myPlace() << "]  " << X << ::std::endl << ::std::flush; } }
 #else
 #define TA_DEBUG(L,X)    { ; }
 #endif /* HTA_DLEVEL */
@@ -78,7 +74,7 @@ wlevel(int l)
 
 /* warnings */
 #if (TA_WLEVEL >= 0)
-#define TA_WARN(L,X)    { if (L <=  g_wlevel) { std::cout << "WARN[" << L << ", " << Process::myPlace() << "]  " << X << std::endl << std::flush; } }
+#define TA_WARN(L,X)    { if (L <=  g_wlevel) { ::std::cout << "WARN[" << L << ", " << Process::myPlace() << "]  " << X << ::std::endl << ::std::flush; } }
 #else
 #define TA_WARN(L,X)    { ; }
 #endif /* HTA_WLEVEL */
@@ -86,9 +82,9 @@ wlevel(int l)
 
 /* deprecation */
 #ifdef TA_REPORT_DEPRECATION
-#define HTA_DEPRECATED(X)    { std::cout << "DEPRECATED: " << X << std::endl << std::flush; }
+#define HTA_DEPRECATED(X)    { ::std::cout << "DEPRECATED: " << X << ::std::endl << ::std::flush; }
 #else
 #define HTA_DEPRECATED(X)    { ; }
 #endif /* HTA_REPORT_DEPRECATION */
 
-#endif // TRACING_H_
+#endif // TRACING_H__INCLUDED

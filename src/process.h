@@ -1,11 +1,9 @@
-#ifndef PROCESS_H_
-#define PROCESS_H_
+#ifndef PROCESS_H__INCLUDED
+#define PROCESS_H__INCLUDED
 
 /** 
  * Forward declaration of the functionality provided by the Default trait.
  */
-namespace TILED_ARRAY_NAMESPACE
-{
 
 class Process
 { 
@@ -93,9 +91,6 @@ class SerialProcess : public Process
 
 
 };
-
-
-} // TILED_ARRAY_NAMESPACE
 
 
 #endif // PROCESS_H_

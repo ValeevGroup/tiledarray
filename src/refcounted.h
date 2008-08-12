@@ -25,12 +25,9 @@
  * Authors: Ganesh Bikshandi, Christoph von Praun
  */
 
-#ifndef REF_COUNTED_H__
-#define REF_COUNTED_H__
+#ifndef REF_COUNTED_H__INCLUDED
+#define REF_COUNTED_H__INCLUDED
 
-
-namespace TILED_ARRAY_NAMESPACE
-{
 
 class RefCounted 
 {
@@ -88,6 +85,5 @@ protected:
 
 };
 
-}
 
-#endif // REF_COUNTED_H__
+#endif // REF_COUNTED_H__INCLUDED

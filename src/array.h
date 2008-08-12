@@ -25,21 +25,8 @@
  * Authors: Christoph von Praun
  */
 
-#ifndef  ARRAY_H__
-#define  ARRAY_H__
-
-#include <cassert>
-#include <vector>
-#include <map>
-#include "tuple.h"
-#include "shape.h"
-#include "VectorOps.h"
-#include "iterator.h"
-
-
-namespace TILED_ARRAY_NAMESPACE
-{
-
+#ifndef  ARRAY_H__INCLUDED
+#define  ARRAY_H__INCLUDED
 
 template<typename T, unsigned int DIM>
 class AbstractArray 
@@ -101,7 +88,7 @@ class DenseArray : public AbstractArray<T, DIM>
 	public:
 		typedef int									iterator_type;
 		typedef DenseArray<T,DIM>					collection_type;
-		typedef std::random_access_iterator_tag		iterator_category;  
+		typedef ::std::random_access_iterator_tag		iterator_category;  
 		typedef T									value;
 		typedef value*								pointer;
 		typedef const value*						const_pointer;
@@ -117,8 +104,8 @@ class DenseArray : public AbstractArray<T, DIM>
 public:
 	typedef	typename AbstractArray<T, DIM>::ValueType	ValueType;
 	typedef typename AbstractArray<T, DIM>::IndexType	IndexType;
-	typedef std::vector<T>						ArrayType;
-	typedef typename std::vector<T>::iterator			IteratorType;
+	typedef ::std::vector<T>						ArrayType;
+	typedef typename ::std::vector<T>::iterator			IteratorType;
 
 protected:
 	
@@ -186,7 +173,7 @@ class SparceArray : public AbstractArray<T, DIM>
 public:
 	typedef	typename AbstractArray<T, DIM>::ValueType	ValueType;
 	typedef typename AbstractArray<T, DIM>::IndexType	IndexType;
-	typedef std::map<Tuple<DIM>, T>			ArrayType;
+	typedef ::std::map<Tuple<DIM>, T>			ArrayType;
 	typedef typename ArrayType::iterator				Iterator;
 
 protected:
@@ -230,6 +217,5 @@ public:
 
 };
 
-} // TILED_ARRAY_NAMESPACE
 
-#endif // ARRAY_H__
+#endif // ARRAY_H__INCLUDED

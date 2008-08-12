@@ -25,18 +25,15 @@
 * Authors: Christoph von Praun
 */
 
-#ifndef  __MATH_KERNEL_H__
-#define  __MATH_KERNEL_H__
-#include <cassert>
+#ifndef  MATH_KERNEL_H__INCLUDED
+#define  MATH_KERNEL_H__INCLUDED
+
 /** 
 * Provides efficient implementations of 
 * math-kernels. This is an abstract shell -- 
 * the implementations corresponding to a specific 
 * numeric library are defined in subclasses.
 */
-
-namespace TILED_ARRAY_NAMESPACE
-{
 
 template<typename T>
 class Math
@@ -81,6 +78,5 @@ public:
 
 };
 
-}
 
-#endif /* __MATH KERNEL_H__ */
+#endif // __MATH KERNEL_H__INCLUDED

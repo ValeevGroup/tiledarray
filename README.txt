@@ -25,7 +25,7 @@ is a concrete implementation of AbstractArray described by TRAIT.
 Examples of TRAIT: SerialDense, SerialSparse, MPISerialDense, MPISerialSparse, etc.
 
 HTA<T,DIM,TRAIT>
-is a wrapper around Array<T,DIM,TRAIT>, with perhaps some extra functionality?
+is a wrapper around Array<T,DIM,TRAIT>, with math operators and functions added.
 
 -----------
 

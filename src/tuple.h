@@ -37,20 +37,8 @@
  * - Added Tiled Array namespace
  */
 
-#ifndef TUPLE_H_
-#define TUPLE_H_
-
-#include <cassert>
-#include <iostream>
-#include <vector>
-#include <algorithm>
-
-#include "tracing.h"
-#include "VectorOps.h"
-#include "operators.h"
-
-namespace TILED_ARRAY_NAMESPACE
-{
+#ifndef TUPLE_H__INCLUDED
+#define TUPLE_H__INCLUDED
 
 template <unsigned int DIM> 
 class Tuple
@@ -362,6 +350,5 @@ operator<<(std::ostream& output, const Tuple<DIM>& tup)
 	return output;
 };
 
-} // TILED_ARRAY_NAMESPACE
 
 #endif /*TUPLE_H_*/

@@ -35,16 +35,9 @@
  * - Removed seq
  */
 
-#ifndef TRIPLET_H_
-#define TRIPLET_H_
+#ifndef TRIPLET_H__INCLUDED
+#define TRIPLET_H__INCLUDED
 
-#include <iostream>
-#include <cassert>
-#include <cmath>
-
-
-namespace TILED_ARRAY_NAMESPACE
-{
 
 class Triplet {
 
@@ -207,6 +200,5 @@ operator <<(std::ostream& ost, const Triplet& trip)
 	return ost << "<" << trip.Low() << ":" << trip.Step() << ":" << trip.High() << ":" << trip.Mod() << ">";
 }
 
-} // TILED_ARRAY_NAMESPACE
 
-#endif /*TRIPLET_H_*/
+#endif // TRIPLET_H__INCLUDED

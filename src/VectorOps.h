@@ -9,13 +9,8 @@
  * Authors: Ganesh Bikshandi, Christoph von Praun, Basilio B Fraguela
  */
 
-#ifndef  VECTOR_OPS_H__
-#define  VECTOR_OPS_H__
-
-#include "Tuple.h"
-
-namespace TILED_ARRAY_NAMESPACE
-{
+#ifndef  VECTOR_OPS_H__INCLUDED
+#define  VECTOR_OPS_H__INCLUDED
 
 template <typename T, int DIM>
 class VectorOps
@@ -221,6 +216,5 @@ public:
 
 };
 
-}
 
-#endif /* VECTOR_OPS_H_ */
+#endif // VECTOR_OPS_H__INCLUDED

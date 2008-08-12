@@ -1,7 +1,16 @@
-#ifndef TILEDARRAY_H_
-#define TILEDARRAY_H_
+#ifndef TILEDARRAY_H__INCLUDED
+#define TILEDARRAY_H__INCLUDED
 
+#include <cassert>
 #include <vector>
+#include <map>
+#include <iostream>
+#include <algorithm>
+#include <cmath>
+#include <iterator>
+
+#include <boost/smart_ptr.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 
 #ifdef TA_DEBUG_LEVEL
 
@@ -24,21 +33,23 @@
 
 #define TA_FULL_DEBUG 3
 
-#define TILED_ARRAY_NAMESPACE TiledArray
+namespace TiledArray
+{
 
-// Forward Declaration
+#include "VectorOps.h"
 #include "tracing.h"
 #include "tuple.h"
-#include "triplet.h"
+#include "iterator.h"
 #include "shape.h"
 #include "operators.h"
 #include "array.h"
+#include "predicate.h"
+#include "allocator.h"
+#include "mathkernel.h"
 #include "trait.h"
 
-namespace TILED_ARRAY_NAMESPACE
-{
 
-template<typename T, unsigned int DIM, unsigned int LEVEL, class TRAIT = LocalDenseTrait<T,DIM> >
+template<typename T, unsigned int DIM, class TRAIT = LocalDenseTrait<T,DIM> >
 class TA
 {
 public:
@@ -46,11 +57,12 @@ public:
 	typedef T												ValueType;
 	typedef TRAIT											TraitType;
 	typedef typename TRAIT::SubrefTrait						SubtraitType;
-	typedef TA<ValueType, DIM, LEVEL - 1, SubtraitType>		ElementType;
+	typedef TA<ValueType, DIM,SubtraitType>					ElementType;
 	typedef typename TRAIT::StructType						StructType;
 	typedef typename TRAIT::DataIterator					ElementIterator;
+	typedef typename TRAIT::ShapeType						ShapeType;
 
-	Shape<DIM> m_shape;
+	::boost::shared_ptr<AbstractShape<DIM> > m_shape;
 	bool m_distributed;
 
 public:
@@ -72,8 +84,9 @@ public:
 	const ValueType&
 	operator [](const IndexType& index) const;
 
-	const Shape<DIM>&
-	shape() const;
+	const ShapeType&
+	shape() const
+	{return dynamic_cast<ShapeType>(m_shape);}
 
 	bool
 	IsDistributed() const;
@@ -81,13 +94,6 @@ public:
 
 }; // class TA
 
-template<typename T, unsigned int DIM, class TRAIT>
-class TA<T, DIM, 0, TRAIT>
-{
-public:
-	typedef T		ElementType;
-
-};
 
 } // TILED_ARRAY_NAMESPACE
 
@@ -99,4 +105,4 @@ public:
 #endif // REDEF_NDEBUG
 
 
-#endif // TILEDARRAY_H_
+#endif // TILEDARRAY_H__INCLUDED
