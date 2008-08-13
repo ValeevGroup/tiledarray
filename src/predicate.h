@@ -5,11 +5,18 @@ template<unsigned int DIM>
 class AbstractPrdicate
 {
 public:
+	virtual inline Tuple<DIM>&
+	increment(Tuple<DIM>& it, const Tuple<DIM>& high, const Tuple<DIM>& low)
+	{
+		assert(false);	// Not implemented
+		return it;
+	}
+	
 	inline bool
 	operator ()(const Tuple<DIM>& tup)
 		{return this->included(tup);}
 	
-	inline bool
+	virtual inline bool
 	included(const Tuple<DIM>& tup) = 0;
 };
 
@@ -17,22 +24,16 @@ template<unsigned int DIM>
 class DensePredicate
 {
 public:
+	virtual inline Tuple<DIM>&
+	increment(Tuple<DIM>& it, const Tuple<DIM>& high, const Tuple<DIM>& low)
+	{
+		return VectorOps<Tuple<DIM>, DIM>(it, high, low);
+	}
 	
-	inline bool
+	virtual inline bool
 	included(const Tuple<DIM>& tup)
 		{return true;}
 };
 
-template<unsigned int DIM>
-class DiagonalPredicate
-{
-public:
-	inline bool
-	included(const Tuple<DIM>& tup)
-	{
-		assert(DIM >= 2);
-		return (tup[0] == tup[1]);
-	}
-};
 
 #endif // PREDICATE_H__INCLUDED

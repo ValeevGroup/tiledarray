@@ -47,13 +47,23 @@ protected:
 	iterator_type m_current;
 
 public:
+	Iterator() :
+		m_current()
+	{}
+	
+	explicit
+	Iterator(const iterator_type& current) :
+		m_current(current)
+	{}
+
+	explicit
+	Iterator(const Iterator& it) :
+		m_current(it.m_current)
+	{}
+	
 	const iterator_type&
 	base() const
 		{return this->m_current;}
-
-	explicit
-	Iterator(iterator_type it) : m_current(it)
-	{}
 
 	Iterator&
 	operator ++()
@@ -116,10 +126,6 @@ public:
 	{
 		return this->m_current != other.m_current;
 	}
-	
-	template<typename _IteratorSpec>
-	friend inline typename Iterator<_IteratorSpec>::difference_type
-	operator -(const Iterator<_IteratorSpec>& lhs, const Iterator<_IteratorSpec>& rhs);
 
 };
 
@@ -173,7 +179,7 @@ inline typename Iterator<IteratorSpec>::difference_type
 operator -(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
 { 
 //	assert(0); // not implemented
-	return (lhs.m_current - rhs.m_current);
+	return (lhs.base() - rhs.base());
 }
 
 template<typename IteratorSpec>
@@ -182,8 +188,8 @@ operator+(typename Iterator<IteratorSpec>::difference_type n, const Iterator<Ite
 { 
 //	assert(0); // not implemented
 	Iterator<IteratorSpec> t;
-	t.m_current = i.m_current + n;
-	return  i;
+	t.m_current = i.base() + n;
+	return  t;
 }
 
 

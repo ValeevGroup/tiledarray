@@ -82,28 +82,28 @@ public:
     
     // Returns an interator to the first coordinate
     iterator
-    Begin()
+    begin()
     {
     	return this->m_values.begin();
     }
     
     // Returns a constant iterator to the first coordinate. 
     const_iterator
-    Begin() const
+    begin() const
     {
     	return this->m_values.begin();
     }
     
     // Returns an iterator to one element past the last coordinate.
     iterator
-    End()
+    end()
     {
     	return this->m_values.end();
     }
     
     // Returns a constant iterator to one element past the last coordinate.
     const_iterator
-    End() const
+    end() const
     {
     	return this->m_values.end();
     }
@@ -307,7 +307,7 @@ public:
     	// Ensure each index is present and listed only once.
     	int indexCount = 0;
     	for(unsigned int index = 0; index < this->m_values.size(); ++index)
-    		indexCount += std::count(perm.Begin(), perm.End(), index);
+    		indexCount += std::count(perm.begin(), perm.end(), index);
     	
     	// Incorrect permutation, do nothing.
     	assert(indexCount == DIM);

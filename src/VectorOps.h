@@ -105,18 +105,17 @@ public:
 	}
 
 	static inline bool
-	increment(const T& max, T &x)
+	increment(T &x, const T& high, const T& low)
 	{
-		assert(max[DIM - 1] > x[DIM - 1]);
-		assert(x[DIM - 1] >= 0);
+		assert((high[DIM - 1] > x[DIM - 1]) && (x[DIM - 1] >= low[DIM - 1]));
 		bool atEnd = false;
-		if(++x[DIM - 1] >= max[DIM - 1])
+		if(++x[DIM - 1] == high[DIM - 1])
 		{
-			x[DIM - 1] = 0;
-			atEnd = VectorOps<T, DIM-1>::increment(max, x);
+			x[DIM - 1] = low[DIM - 1];
+			atEnd = VectorOps<T, DIM-1>::increment(high, x);
 		}
 
-		return ((max[DIM - 1] - 1) == x[DIM - 1]) && atEnd;
+		return ((high[DIM - 1] - 1) == x[DIM - 1]) && atEnd;
 	}
 
 };

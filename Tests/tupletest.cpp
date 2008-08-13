@@ -38,7 +38,7 @@ TupleTest()
 	
 	// Tuple iterator test
 	std::cout << "Iteration tests: ";
-	for(TiledArray::Tuple<4>::iterator it = tuple4D.Begin(); it != tuple4D.End(); ++it)
+	for(TiledArray::Tuple<4>::iterator it = tuple4D.begin(); it != tuple4D.end(); ++it)
 	{
 		std::cout << *it << ", ";
 	}

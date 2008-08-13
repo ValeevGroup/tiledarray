@@ -51,7 +51,7 @@ public:
 };
 
 
-template <unsigned int DIM, class Predicate>
+template <unsigned int DIM, class PREDICATE>
 class Shape : public AbstractShape<DIM>
 {
 protected:
@@ -60,10 +60,7 @@ protected:
   	Tuple<DIM> m_size;					// Number of elements in each direction
   	Tuple<DIM> m_linear_step;			// the number of elements to skip in the linearized 
   										// array until the respective dimension increments
-  										// (unlike step, this is cumulative
-  	Tuple<DIM> m_local_step;			// the number of elements to be skipped in the local
-  										// co-ordinate system
-    boost::shared_ptr<Predicate> m_pred;// Shared pointer to predicate object, which defines
+    boost::shared_ptr<PREDICATE> m_pred;// Shared pointer to predicate object, which defines
     									// which elements are present.
 
 private:
@@ -72,7 +69,7 @@ private:
 	{
 	public:
 		typedef int							iterator_type;
-		typedef Shape<DIM, Predicate>		collection_type;
+		typedef Shape<DIM, PREDICATE>		collection_type;
 		typedef std::forward_iterator_tag	iterator_category;  
 		typedef Tuple<DIM>					value;
 		typedef value*						pointer;
@@ -84,45 +81,37 @@ private:
 
 	class ShapeIterator : public Iterator<ShapeIterator_spec>
 	{
+	public:
+		// Iterator typedef's
+		typedef typename Iterator<ShapeIterator_spec>::collection_type	collection_type;
+		typedef typename Iterator<ShapeIterator_spec>::iterator_type	iterator_type;
+		typedef typename Iterator<ShapeIterator_spec>::difference_type	difference_type;
+		typedef typename Iterator<ShapeIterator_spec>::reference		reference;
+		typedef typename Iterator<ShapeIterator_spec>::pointer			pointer;
+		typedef typename Iterator<ShapeIterator_spec>::value			value;
+
 	private:
 
-		// TODO: Update the types so ShapeIterator_spec is not used.
-		const typename ShapeIterator_spec::collection_type& m_coll;
-		bool m_valid;
-		int m_low;
-		typename ShapeIterator_spec::value m_current;
+		const collection_type& m_coll;	// Reference to the collection that will be iterated over
+		value m_value;					// current value of the iterator
+		bool m_valid;					// true if 0 >= m_current > m_coll.count()
+
 
 	public:
 
-		ShapeIterator(const typename ShapeIterator_spec::collection_type& coll, int cur) : 
+		ShapeIterator(const collection_type& coll, const iterator_type& cur) : 
 			Iterator<ShapeIterator_spec>(cur), 
 			m_coll(coll), 
-			m_valid(true),
-			m_current()
+			m_valid(true)
 		{ 
-			assert(cur >= 0 || cur == -1); 
-			Tuple<DIM> tmp_tuple;
-			int tmp = cur;
-
-			// compute the current tuple from cur, which  is the index 
-			// within the iteration space, 0 if m_currentTuple == m_coll.m_low.
-
-			for(int i = 0; i <  DIM - 1 ; i++)
-			{
-				tmp_tuple[i] = tmp / this->m_coll.m_linearStep[i];
-				tmp -= tmp_tuple[i] * this->m_coll.m_linearStep[i];
-			}
-			tmp_tuple[DIM-1] = tmp;
-
-			this->m_current = tmp_tuple + coll.m_low;
-			this->m_low = VectorOps<Tuple<DIM>, DIM>::dotProduct (this->m_coll.m_low, this->m_coll.m_linearStep);
+			assert(cur >= 0 || cur < this->m_coll.count() || cur == -1);
+			this->m_value = this->m_coll.coord() + this->m_coll.low();
 		}
 
-		ShapeIterator (const typename ShapeIterator_spec::iterator_type& it) :
-			Iterator<ShapeIterator_spec>(it), 
-			m_coll(it.coll_), 
-			m_current(it.m_current), 
-			m_valid(it.valid_)
+		ShapeIterator(const ShapeIterator& it) :
+			Iterator<ShapeIterator_spec>(it.m_current), 
+			m_coll(it.m_coll), 
+			m_valid(it.m_valid)
 		{}
 
 		/**
@@ -130,7 +119,7 @@ private:
 		 */
 		ShapeIterator& operator++() 
 		{     
-			this->Advance(1);
+			this->Advance();
 			return *this;
 		}
 
@@ -149,132 +138,116 @@ private:
 		/**
 		 * Postfix increment 
 		 */
-		  ShapeIterator
-			  operator --(int) 
-		  {
-			  assert(this->m_valid);
-			  ShapeIterator tmp(*this);
-			  this->Stepback(1);
-			  return tmp;
-		  }
+		ShapeIterator
+		operator --(int) 
+		{
+			assert(this->m_valid);
+			ShapeIterator tmp(*this);
+			this->Stepback(1);
+			return tmp;
+		}
 
-		  ShapeIterator&
-			  operator +=(int n)
-		  {
-			  this->Advance(n);
-			  return *this;
-		  }
+		ShapeIterator&
+		operator +=(int n)
+		{
+			this->Advance(n);
+			return *this;
+		}
 
-		  typename ShapeIterator_spec::value
-			  operator *() const 
-		  {
-			  assert(this->m_valid);
-			  return m_current;
-		  }
+		const value&
+		operator *() const 
+		{
+			assert(this->m_valid);
+			return this->m_value;
+		}
 
-		  typename ShapeIterator_spec::value
-			  operator[](int n) const 
-		  { 
-			  assert(this->m_valid);
-			  ShapeIterator tmp = *this;
-			  tmp.Advance(n);
-			  return *tmp;
-		  }
+		// TODO: What is the purpose of this function?
+		value
+		operator[](int n) const 
+		{ 
+			assert(this->m_valid);
+			ShapeIterator tmp(*this);
+			tmp.Advance(n);
+			return *tmp;
+		}
 
-		  int
-			  ord() const
-		  {
-			  assert(this->m_valid);
-			  return this->current_;
-		  }
+		const int
+		ord() const
+		{
+			assert(this->m_valid);
+			return this->m_current;
+		}
 
-		  /* This is for debugging only. Not doen in an overload of operator<<
+		/* This is for debugging only. Not doen in an overload of operator<<
 		  * because it seems that gcc 3.4 does not manage inner class declarations of 
 		  * template classes correctly */
-		  char Print(::std::ostream& ost) const
-		  {
-			  ost << "Shape<" << DIM << ">::iterator("
-				  << "current=" << this->current_ 
-				  << " currentTuple=" << this->m_currentTuple 
-				  << " valid=" << this->valid_ << ")";
-			  return '\0';
-		  }
+		char Print(std::ostream& ost) const
+		{
+			ost << "Shape<" << DIM << ">::iterator("
+				<< "current=" << this->m_current 
+				<< " currentTuple=" << this->m_value
+				<< " valid=" << this->m_valid << ")";
+			return '\0';
+		}
 
 	private:
-
-		void Advance(int n = 1) 
+		
+		void
+		Advance(int n = 1) 
 		{
-			int acc = 0;
-			bool step_done = false;
+			assert(this->m_valid);
+			assert(this->m_current != -1);
 
-			// least significant dimension is at DIM-1
-			for (int i = DIM-1; i >= 0; --i)
+			// Precalculate increment
+			this->m_current += n;
+			this->m_value[DIM - 1] += n;
+			
+			if(this->m_value[DIM - 1] >= this->m_coll.high()[DIM - 1])
 			{
-				if (!step_done) {
-					if (this->m_currentTuple[i] + (n * this->m_coll.step_[i]) > this->m_coll_.high_[i])
-					{
-						m_current[i] = this->m_coll.m_low[i];
-					}
-					else
-					{
-						this->m_currentTuple[i] += n * this->m_coll.m_step[i];
-						step_done = true;
-					}
+				// The least signifcant coordinate was exceeded, so recalculate
+				// value (the current tuple).
+				if(this->m_current < this->m_coll.count())
+				{
+					this->m_value = this->m_coll.coord(this->m_current) + this->m_coll.low();
 				}
-				acc += m_current[i] * m_coll.m_linear_step_[i];
+				else
+				{
+					// The end was reached.
+					this->current = -1;
+					this->m_valid = false;
+				}
 			}
 
-			if (!step_done) {
-				// iterator hit the end - make it look like "end()"
-				this->current_ = -1;
-				this->m_valid = false;
-			} else {
-				assert (acc > this->m_current);
-				this->m_current = acc - this->m_low;
-			}
 			HTA_DEBUG(3, "Shape::Iterator::advance this=" << this << 
-				" acc=" << acc << 
-				" current=" << this->current_ << 
-				" currentTuple=" << this->m_currentTuple  << 
-				" step_done=" << step_done);
+				" current=" << this->m_current << 
+				" current tuple=" << this->m_value);
 		}
 
 		void
 		Stepback(int n = 1) 
 		{
-			int acc = 0;
-			bool step_done = false;
+			assert(this->m_current != 0);
 
-			// least significant dimension is at DIM-1
-			for (int i = DIM-1; i >= 0; --i) {
-				if (!step_done) {
-					if (this->m_current[i] - (n * m_coll.step_[i]) < m_coll.m_low[i])
-					{
-						this->m_current[i] = m_coll.m_high[i];
-					}
-					else
-					{
-						this->m_current[i] -= n * m_coll.step_[i];
-						step_done = true;
-					}
+			// Precalculate increment
+			this->m_current -= n;
+			this->m_value[DIM - 1] -= n;
+			
+			if(this->m_value[DIM - 1] < this->m_coll.low()[DIM - 1])
+			{
+				// The least signifcant coordinate was exceeded, so recalculate
+				// value (the current tuple).
+				if(this->m_current < 0)
+				{
+					// The iterator is before the begining.
+					this->m_valid = false;
 				}
-				acc += this->m_current[i] * m_coll.linear_step_[i];
-			}
 
-			if (!step_done) {
-				// iterator hit the end - make it look like "end()"
-				this->m_current = -1;
-				this->m_valid = false;
-			} else {
-				//cout << acc << " " << this->current_ << endl;
-				assert (acc < this->current_);
-				this->current_ = acc - m_low;
+				this->m_value = this->m_coll.coord(this->m_current) + this->m_coll.low();
 			}
+			
 			HTA_DEBUG(3, "Shape::Iterator::advance this=" << this << 
-				" acc=" << acc << 
-				" current=" << this->current_ << 
-				" currentTuple=" << this->m_currentTuple  << 
-				" step_done=" << step_done);
+				" current=" << this->m_current << 
+				" current tuple=" << this->m_value);
 		}
 	};
 
@@ -292,8 +265,7 @@ public:
 		m_high(1),
 		m_low(),
 		m_size(1),
-		m_linear_step(),
-		m_local_step()
+		m_linear_step()
 	{
 		this->init();
 	}
@@ -308,8 +280,7 @@ public:
 		m_high(tup_high),
 		m_low(),
 		m_size(tup_high),
-		m_linear_step(),
-		m_local_step()
+		m_linear_step()
 	{
 		this->Init();
 	}
@@ -325,8 +296,7 @@ public:
 		m_high(high),
 		m_low(low),
 		m_size(high - low),
-		m_linear_step(),
-		m_local_step()
+		m_linear_step()
 	{
 		this->Init();
 	}
@@ -334,12 +304,11 @@ public:
 	/**
 	 * Copy constructor 
 	 */
-	Shape(const Shape<DIM, Predicate>& s) : 
+	Shape(const Shape<DIM, PREDICATE>& s) : 
 		m_high(s.m_high), 
 		m_low(s.m_low), 
 		m_size(s.m_size), 
-		m_linear_step (s.m_linear_step),
-		m_local_step(s.m_local_step)
+		m_linear_step (s.m_linear_step)
 	{ 
 		TA_DEBUG(2, "Shape::<init> this=" << this << " m_linearStep=" << this->m_linear_step << " high:" << this->m_high);
 	}
@@ -362,14 +331,10 @@ private:
 		// DIM-1 is the *least* significant dimension in row-major 
 		// (row is in dimension 0)
 
-		// compute cumulative m_linearStep and m_localStep
+		// compute cumulative m_linear_step
 		this->m_linear_step[DIM - 1] = 1;
-		this->m_local_step[DIM - 1] = 1;
 		for (int i = DIM - 1; i > 0; --i)
-		{
 			this->m_linear_step[i - 1] = (this->m_high[i] - this->m_low[i]) * this->m_linear_step[i];
-			this->m_local_step[i - 1] = this->m_size[i] * m_local_step[i];
-		}
 	}
 
 public:
@@ -405,20 +370,20 @@ public:
 		return ret;
 	}
 */
-	virtual const Shape<DIM, Predicate>*
+	virtual const Shape<DIM, PREDICATE>*
 	clone() const
 	{
 		assert (false);
 		return NULL;
 	}
 
-	virtual const Shape<DIM, Predicate>&
+	virtual const Shape<DIM, PREDICATE>&
 	operator [](const Tuple<DIM>& i) const
 	{
 		return *this;
 	}
 
-	virtual const Shape<DIM, Predicate>&
+	virtual const Shape<DIM, PREDICATE>&
 	shape_at(int i) const
 	{
 		return *this;
@@ -457,7 +422,7 @@ public:
 	 * @return       true if both shapes are conformable.
 	 */
 	static inline bool
-	conformable(const Shape<DIM, Predicate>& s1, const Shape<DIM, Predicate>& s2) 
+	conformable(const Shape<DIM, PREDICATE>& s1, const Shape<DIM, PREDICATE>& s2) 
 	{
 		if(&s1 == &s2)
 			return true;
@@ -472,7 +437,7 @@ public:
 	 *               the property is reflexive and transitive.
 	 */
 	static inline bool
-	iterator_conformable(const Shape<DIM, Predicate>& s1, const Shape<DIM, Predicate>& s2) 
+	iterator_conformable(const Shape<DIM, PREDICATE>& s1, const Shape<DIM, PREDICATE>& s2) 
 	{
 		if (&s1 == &s2)
 			return true;
@@ -486,7 +451,7 @@ public:
 	 * Equality operator
 	 */
 	inline bool
-	operator ==(const Shape<DIM, Predicate>& other) const 
+	operator ==(const Shape<DIM, PREDICATE>& other) const 
 	{  
 		if(&other == this)
 			return true;
@@ -500,7 +465,7 @@ public:
 	 * Inequality operator
 	 */
 	inline bool
-	operator!= (const Shape<DIM, Predicate>& other) const 
+	operator!= (const Shape<DIM, PREDICATE>& other) const 
 	{  
 		return ! (this->operator==(other));
 	}
@@ -583,43 +548,32 @@ public:
 	 * The ordinal value of low() is always 0.
 	 * The ordinal value of high() is always <= linearCard().
 	 */
-	inline int
-	ord(const Tuple<DIM>& in) const
+	inline unsigned int
+	ord(const Tuple<DIM>& coord) const
 	{
-		//
-		// TODO: optimize for m_mod == 0 (common case)
-		// 
-		// assert (contains(in)) could be too strong because 
-		// a call to ord_(5,5) should be allowed in a shape 
-		// (0..5:2,0..5:2), where (5,5) is not actually part 
-		// of the shape.
-		assert (in >= m_low && in <= m_high);
-
-		// assert (m_mod == Tuple<DIM>::zero); // current limitation
-
-		Tuple<DIM> tmp = (in - m_low) % (m_high - m_low + Tuple<DIM>::one);
-		int ret =  VectorOps<Tuple<DIM>, DIM>::dotProduct(tmp, m_linear_step); 
-		return ret;
-	}
-  
-	/* GB: coord is local coordinate */
-	inline Tuple<DIM>
-	coord(int index) const 
-	{
-		assert(index >= 0 && index < this->card());
-		Tuple<DIM> ret;
-
-		/* start with most significant dimension 0 */
-		for (int dim = 0; index > 0 && dim < DIM; ++dim)
-		{
-			ret[dim] = index / m_local_step[dim];
-			index -= ret[dim] * m_local_step[dim];
-		}
-
-		assert (index == 0);
-		return ret;
+		assert(coord >= m_low && coord <= m_high);
+		return VectorOps<Tuple<DIM>, DIM>::dotProduct((coord - m_low), m_linear_step);
 	}
    
+	/* GB: coord is local coordinate */
+	inline Tuple<DIM>&
+	coord(int index) const 
+	{
+		assert(index >= 0 && index < this->count());
+		Tuple<DIM> ret;
+
+		// start with most significant dimension 0.
+		for(int d = 0; index > 0 && d < DIM; ++d)
+		{
+			ret[d] = index / this->m_linear_step[d];
+			index -= ret[d] * this->m_linear_step[d];
+		}
+
+		assert(index == 0);
+		return ret;
+	}
+
+	
 	/**
 	 * Iterator factory
 	 */
@@ -658,7 +612,7 @@ public:
 	/**
 	 * Relocates and remaps.
 	 */
-	inline Shape<DIM, Predicate>
+	inline Shape<DIM, PREDICATE>
 	operator -(const Tuple<DIM>& dir) const
 	{
 		return (*this) + (-dir);
@@ -668,10 +622,10 @@ public:
 	/**
 	 * Relocates and remaps.
 	 */
-	inline Shape<DIM, Predicate>
+	inline Shape<DIM, PREDICATE>
 	operator +(const Tuple<DIM>& dir) const
 	{
-		Shape<DIM, Predicate> ret(*this);    
+		Shape<DIM, PREDICATE> ret(*this);    
 		Tuple<DIM> new_origin = m_low + dir;
 		ret.relocate(new_origin);
 		return ret;
