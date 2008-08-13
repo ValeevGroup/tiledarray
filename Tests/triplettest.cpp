@@ -6,6 +6,7 @@
 void
 TripletTest()
 {
+/*
 	std::cout << "Triplet Tests:" << std::endl;
 	
 	// Constructor tests
@@ -37,5 +38,5 @@ TripletTest()
 	std::cout << "Size: " << triplet4.Size() << std::endl;
 	
 	std::cout << "End Triplet Tests" << std::endl << std::endl;
-	
+*/
 }

@@ -63,7 +63,7 @@ protected:
   										// (unlike step, this is cumulative
   	Tuple<DIM> m_local_step;			// the number of elements to be skipped in the local
   										// co-ordinate system
-    ::boost::shared_ptr<Predicate> m_pred;// Shared pointer to predicate object, which defines
+    boost::shared_ptr<Predicate> m_pred;// Shared pointer to predicate object, which defines
     									// which elements are present.
 
 private:
@@ -73,7 +73,7 @@ private:
 	public:
 		typedef int							iterator_type;
 		typedef Shape<DIM, Predicate>		collection_type;
-		typedef ::std::forward_iterator_tag	iterator_category;  
+		typedef std::forward_iterator_tag	iterator_category;  
 		typedef Tuple<DIM>					value;
 		typedef value*						pointer;
 		typedef const value*				const_pointer;
@@ -86,7 +86,7 @@ private:
 	{
 	private:
 
-		// ToDo: Update the types so ShapeIterator_spec is not used.
+		// TODO: Update the types so ShapeIterator_spec is not used.
 		const typename ShapeIterator_spec::collection_type& m_coll;
 		bool m_valid;
 		int m_low;
@@ -377,7 +377,7 @@ public:
 	virtual bool 
 	included(const Tuple<DIM>& index) const
 	{
-		return this->m_pred->included(index);
+		return this->contains(index) && this->m_pred->included(index);
 	}
 
 	virtual size_t
@@ -390,12 +390,13 @@ public:
 		{
 			assert(index[dim] >= this->m_low[dim] && index[dim] < this->m_high[dim]);
 			n += index[dim] * m;
-			m *= this->m_dim[dim];
+			m *= this->m_size[dim];
 		}
 
 		return n;
 	}
 
+/*
 	Shape<DIM, Predicate>
 	set_linear_step(const Shape<DIM, Predicate>& s) const
 	{
@@ -403,7 +404,7 @@ public:
 		ret.m_linear_step = s.m_linear_step;
 		return ret;
 	}
-
+*/
 	virtual const Shape<DIM, Predicate>*
 	clone() const
 	{

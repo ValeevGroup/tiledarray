@@ -56,16 +56,14 @@ public:
 	typedef Tuple<DIM>										IndexType;
 	typedef T												ValueType;
 	typedef TRAIT											TraitType;
-	typedef typename TRAIT::SubrefTrait						SubtraitType;
-	typedef TA<ValueType, DIM,SubtraitType>					ElementType;
 	typedef typename TRAIT::StructType						StructType;
-	typedef typename TRAIT::DataIterator					ElementIterator;
 	typedef typename TRAIT::ShapeType						ShapeType;
 
 	::boost::shared_ptr<AbstractShape<DIM> > m_shape;
 	bool m_distributed;
 
 public:
+/*
 	ElementType&
 	operator ()(const IndexType& index);
 
@@ -77,7 +75,7 @@ public:
 
 	const ElementType&
 	operator ()(const IndexType* index, unsigned int level) const;
-
+*/
 	ValueType&
 	operator [](const IndexType& index);
 

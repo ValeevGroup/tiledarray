@@ -37,16 +37,10 @@ class LocalDenseTrait
 	typedef DensePredicate<DIM>					PredicateType;
 	typedef Shape<DIM, PredicateType>			ShapeType;
 
-//	typedef DenseArray<T, DIM>					DataType;
-//	typedef DenseArray<T, DIM>::ArrayIterator	DataIterator;
-//	typedef DenseArray<T, DIM>					SubrefDataType;
-//	typedef DenseArray<T, DIM>::ArrayIterator	SubrefDataIterator;
- 
 	typedef LocalAllocator<T>					AllocatorType;
 	typedef Math<T>								MathKernalType;
 
 	typedef LocalDenseTrait<T,DIM>				TraitType;
-	typedef TraitType							SubrefTrait;
 };
 
 

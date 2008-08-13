@@ -4,7 +4,7 @@ void
 ShapeTest()
 {
 	// Default Constructor
-	TiledArray::Shape<4, TiledArray::DensePredicate> shapeDefault;
+	TiledArray::Shape<4, TiledArray::DensePredicate<4> > shapeDefault;
 	
 	
 }
