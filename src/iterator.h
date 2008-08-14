@@ -61,6 +61,27 @@ public:
 		m_current(it.m_current)
 	{}
 	
+	Iterator&
+	operator =(const Iterator<ITERATORSPEC>& it)
+	{
+		assert(false); // not implemented
+		return *this;
+	}
+	
+	value
+	operator *()
+	{
+		assert(false); // Not implemented
+		return value();
+	}
+	
+	value
+	operator ->()
+	{
+		assert(false); // Not implemented
+		return value();
+	}
+
 	const iterator_type&
 	base() const
 		{return this->m_current;}
@@ -120,11 +141,19 @@ public:
 		assert(0); // not implemented
 		return *this;
 	}
- 
-	bool
-	operator !=(const Iterator& other)
+	
+	inline bool
+	operator ==(const Iterator& other) const
 	{
-		return this->m_current != other.m_current;
+		assert(false); // Not implemented
+		return false;
+	}
+ 
+	inline bool
+	operator !=(const Iterator& other) const
+	{
+		assert(false);
+		return false;
 	}
 
 };
