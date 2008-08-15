@@ -40,7 +40,9 @@ public:
 	typedef typename ITERATORSPEC::iterator_type	iterator_type;
 	typedef int										difference_type;
 	typedef typename ITERATORSPEC::reference		reference;
+	typedef typename ITERATORSPEC::const_reference	const_reference;
 	typedef typename ITERATORSPEC::pointer			pointer;
+	typedef typename ITERATORSPEC::const_pointer	const_pointer;
 	typedef typename ITERATORSPEC::value			value;
 
 protected:

@@ -41,6 +41,7 @@ namespace TiledArray
 #include "tuple.h"
 #include "iterator.h"
 #include "shape.h"
+#include "range.h"
 #include "operators.h"
 #include "array.h"
 #include "predicate.h"

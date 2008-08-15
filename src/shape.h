@@ -28,14 +28,6 @@
 #ifndef SHAPE_H__INCLUDED
 #define SHAPE_H__INCLUDED
 
-/**
- * Shape class that defines a multi-diimensional coordinate system and 
- * its mapping to an underlying dense, linearized representation.
- * The mapping to ordinals assumes that 0 is the least signifcant 
- * dimension.
- *
- * Instances of Shape are immutable.
- */
 
 template <unsigned int DIM>
 class AbstractShape
@@ -60,6 +52,15 @@ public:
 
 };
 
+// Shape class defines a multi-dimensional, rectilinear
+// coordinate system and its mapping to an underlying dense,
+// linearized representation. The mapping to ordinals assumes
+// that DIM-1 is the least signifcant dimension. Shape provides
+// an input iterator, which iterates an ordinal value and
+// tuple index simutaniously.
+//
+// Instances of Shape are immutable.
+//
 
 template <unsigned int DIM, class PREDICATE>
 class Shape : public AbstractShape<DIM>
@@ -219,8 +220,7 @@ public:
 	contains(const Shape<DIM, PREDICATE>* const s) const 
 	{
 		// current limitation 
-		return VectorOps<Tuple<DIM>, DIM>::greatereq(s->m_low, this->m_low) && 
-			VectorOps<Tuple<DIM>, DIM>::less(s->m_high, this->m_high);
+		return ((s->m_low >= this->m_low) && (s->m_high <= this->m_high));
 	}
 
 	/**
@@ -249,10 +249,8 @@ public:
 		if (&s1 == &s2)
 			return true;
 		else 
-			return (s1.m_linearStep == s2.m_linearStep);
+			return (s1.m_linear_step == s2.m_linear_step);
 	}
-
-
 
 	/**
 	 * Equality operator
@@ -264,8 +262,7 @@ public:
 			return true;
 		else 
 			return (other.m_low == this->m_low &&
-					other.m_high == this->m_high && 
-					other.m_step == this->m_step);
+					other.m_high == this->m_high);
 	}
 
 	/**
@@ -299,24 +296,6 @@ public:
 	count() const
 		{return VectorOps<Tuple<DIM>, DIM>::selfProduct(m_size);}
 
-/*
-	inline Tuple<DIM>& 
-	linear_step()
-		{return this->m_linear_step;}
-
-	inline Tuple<DIM>& 
-	step()
-		{return this->m_step;}
-
-	inline Tuple<DIM>&
-	high()
-		{return this->m_high;}
-
-	inline Tuple<DIM>&
-	low()
-		{return m_low;}
-*/
-	
 	/**
 	 * Ordinal value of Tuple. Ordinal value does not include offset
 	 * and does not consider step. If the shape starts at (5, 3), 
@@ -676,14 +655,14 @@ private:
 };
 
 
-template<int DIM, class Predicate>  ::std::ostream&
-operator <<(::std::ostream& out, const Shape<DIM, Predicate>& s) {  
+template<int DIM, class Predicate>  std::ostream&
+operator <<(std::ostream& out, const Shape<DIM, Predicate>& s) {  
 	out << "Shape<" << DIM << ">(" 
 		<< " @=" << &s
 		<< " low=" << s.low() 
 		<< " high=" << s.high()
 		<< " size=" << s.size() 
-		<< " linearStep=" << s.LinearStep()  << ")";
+		<< " linearStep=" << s.linear_step()  << ")";
 	return out;
 }
 
