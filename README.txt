@@ -31,9 +31,61 @@ is a wrapper around Array<T,DIM,TRAIT>, with math operators and functions added.
 
 New Classes:
 
-template <typename T, unsigned int DIM> TA {
+template <typename T, unsigned int DIM> AbstractTiledArray {
+}
+
+template <typename T, unsigned int DIM, class ArrayTrait> TiledArray {
+  public:
+  typedef ArrayTrait::Shape Shape;
+  
   private:
-  shared_ptr<AbstractShape> shape_;
+  shared_ptr<Shape> shape_;
+  shared_ptr<TileMap> tiles_;   // class that maps tiles of a shape to (potentially, distributed) memory
+}
+
+/// This class maps linearized tile indices to the nodes and memory locations
+/// distribution of tiles to nodes is done by hashing
+/// memory location can be determined for local tiles ONLY
+class TileMap {
+  public:
+  // need some data here?
+  TileMap() {}
+
+  virtual unsigned int node(size_t linear_tile_idx) =0;
+  virtual size_t offset(size_t linear_tile_idx) =0;
+  virtual void register(size_t linear_tile_idx, size_t offset) =0;
+  
+  // or
+#if 0
+  virtual shared_ptr<MemoryHandle> find(size_t linear_tile_idx) =0;
+  virtual void register(const shared_ptr<MemoryHandle>& tile) =0;
+#endif
+}
+
+class LocalTileMap {
+  public:
+  LocalTileMap() : TileMap() {}
+
+  unsigned int node(size_t linear_tile_idx) { return 0; }
+  size_t offset(size_t linear_tile_idx) {
+  }
+  
+  private:
+  /// maps linear_tile_idx to offset
+  std::map<size_t, size_t> offsets_;
+}
+
+class MemoryAllocator {
+  public:
+  /// allocate a chunk of s bytes
+  virtual size_t allocate(size_t s) =0;
+}
+
+class LocalMemoryAllocator {
+  public:
+  size_t allocate(size_t s) {
+    return static_cast<size_t,char*>(new char[s]);
+  }
 }
 
 template <unsigned int DIM> class AbstractShape {
