@@ -67,8 +67,7 @@ class Shape : public AbstractShape<DIM>
 {
 private:
 	// Iterator spec for ShapeIterator class.
-	class ShapeIteratorSpec;
-	class Shape<DIM, PREDICATE>::ShapeIteratorSpec
+	class ShapeIteratorSpec
 	{
 	public:
 		typedef int							iterator_type;
@@ -85,9 +84,7 @@ private:
 	// ShapeIterator is an input iterator that iterates over
 	// Shape. The iterator assumes row major access and DIM-1 is the least
 	// significant dimention.
-
-	template <unsigned int DIM, class PREDICATE>
-	class Shape<DIM, PREDICATE>::ShapeIterator : public Iterator<ShapeIteratorSpec>
+	class ShapeIterator : public Iterator<ShapeIteratorSpec>
 	{
 	public:
 		// Iterator typedef's
@@ -357,6 +354,26 @@ public:
 		m_high(high),
 		m_low(low),
 		m_size(high - low),
+		m_linear_step(),
+		m_pred(new predicate)
+	{
+		this->init();
+	}
+
+	Shape(const typename Orthotope<DIM>::tile& ortho_tile) :
+		m_high(ortho_tile.second),
+		m_low(ortho_tile.first),
+		m_size(ortho_tile.second - ortho_tile.first),
+		m_linear_step(),
+		m_pred(new predicate)
+	{
+		this->init();
+	}
+
+	Shape(const Orthotope<DIM>& ortho) :
+		m_high(ortho.high()),
+		m_low(ortho.low()),
+		m_size(ortho.size()),
 		m_linear_step(),
 		m_pred(new predicate)
 	{

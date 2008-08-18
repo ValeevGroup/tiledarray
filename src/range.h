@@ -116,9 +116,10 @@ private:
 		inline char
 		Print(std::ostream& ost) const
 		{
+			tile t = this->m_coll.get_tile(this->m_current);
 			ost << "Range::iterator("
-				<< "current=" << this->m_current <<
-				<< ", tuple=" << this->m_coll.get_tile(this->m_current) << ")";
+				<< "current=" << this->m_current
+				<< ", tile=[" << t.first << "," << t.second << ") )";
 			return '\0';
 		}
 
@@ -140,21 +141,22 @@ private:
 	// class data
 	std::vector<unsigned int> m_ranges;
 
-	// Validates the data in m_ranges meets the requirements of Range.
-	bool
-	valid() const
+	// Validates the data in rng meets the requirements of Range.
+	static bool
+	valid(std::vector<unsigned int>& rng)
 	{
 		// Check minimum number of elements
-		if(this->m_ranges.size() < 2)
+		if(rng.size() < 2)
 			return false;
 		
 		// Verify the requirement that a < b < c < ...
-		for(std::vector<unsigned int>::const_iterator it = this->m_ranges.begin() + 1; it != this->m_ranges.end(); ++it)
-			if(*it <= *(it - 1))
+		for(std::vector<unsigned int>::const_iterator it = rng.begin() + 1; it != rng.end(); ++it)
+			if(*it < *(it - 1))
 				return false;
 		
 		return true;
 	}
+
 public:
 	typedef RangeIterator	iterator;
 	
@@ -169,7 +171,7 @@ public:
 	Range(std::vector<unsigned int> ranges) :
 		m_ranges(ranges)
 	{
-		assert(this->valid());
+		assert(Range::valid(this->m_ranges));
 	}
 
 	// Construct range from a C-style array, ranges must have at least
@@ -177,13 +179,41 @@ public:
 	Range(unsigned int* ranges, size_t tiles) :
 		m_ranges(ranges, ranges + tiles)
 	{
-		assert(this->valid());
+		assert(Range::valid(this->m_ranges));
 	}
 
 	// Copy constructor
 	Range(const Range& rng) :
 		m_ranges(rng.m_ranges)
 	{}
+
+	// Assignment operator
+	inline Range&
+	operator =(const Range& rng)
+	{
+		this->m_ranges = rng.m_ranges;
+
+		return *this;
+	}
+
+// 	// Comparison operator ==
+// 	inline bool
+// 	operator ==(const Range& rng) const
+// 	{
+// 		if(this == &rng)
+// 			return true;
+// 		if(this->m_ranges.size() != rng.size())
+// 			return false;
+// 
+// 		return VectorOps<std::vector<unsigned int>, m_ranges.size()>::equal(m_ranges, rng);
+// 	}
+// 
+// 	// comparison operator !=
+// 	inline bool
+// 	operator !=(const Range& rng) const
+// 	{
+// 		return ! (this->operator ==(rng));
+// 	}
 
 	// Returns the number of tiles in the range.
 	inline size_t
@@ -193,11 +223,17 @@ public:
 	}
 
 	// Returns a pair that contains low and high of the tile.
-	inline const tile
+	inline tile
 	get_tile(const unsigned int index) const
 	{
 		assert(index < this->m_ranges.size() - 1);
 		return tile(this->m_ranges[index], this->m_ranges[index + 1]);
+	}
+
+	inline tile
+	operator [](const unsigned int index) const
+	{
+		return this->get_tile(index);
 	}
 
 	// Returns the low index of the tile
@@ -246,14 +282,14 @@ public:
 	}
 
 	// Returns an iterator to the first tile in the range.
-	iterator
+	inline iterator
 	begin() const
 	{
 		return iterator(*this, 0);
 	}
 
 	// Returns an iterator to the end of the range.
-	iterator
+	inline iterator
 	end() const
 	{
 		return iterator(*this, -1);

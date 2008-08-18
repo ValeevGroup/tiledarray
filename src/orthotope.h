@@ -22,7 +22,7 @@ public:
 		m_ranges(ranges, ranges + DIM - 1)
 	{
 #if TA_DLEVEL >= 1
-		for(int index = 0; index < DIM - 1; ++index)
+		for(int index = 0; index < DIM; ++index)
 			assert(ranges + index);
 #endif
 	}
@@ -110,7 +110,7 @@ public:
 		return tmp;
 	}
 
-	// Returnt the low index of each dimension of the tile at tile_index.
+	// Return the low index of each dimension of the tile at tile_index.
 	Tuple<DIM>
 	low(const Tuple<DIM>& tile_index)
 	{
