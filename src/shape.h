@@ -66,11 +66,241 @@ template <unsigned int DIM, class PREDICATE>
 class Shape : public AbstractShape<DIM>
 {
 private:
-	
-	// iterator class predeclariation
+	// Iterator spec for ShapeIterator class.
 	class ShapeIteratorSpec;
-	class ShapeIterator;
-	
+	class Shape<DIM, PREDICATE>::ShapeIteratorSpec
+	{
+	public:
+		typedef int							iterator_type;
+		typedef Shape<DIM, PREDICATE>		collection_type;
+		typedef std::input_iterator_tag		iterator_category;  
+		typedef Tuple<DIM>					value;
+		typedef value*						pointer;
+		typedef const value*				const_pointer;
+		typedef value&						reference;
+		typedef const value&				const_reference;
+	};
+
+
+	// ShapeIterator is an input iterator that iterates over
+	// Shape. The iterator assumes row major access and DIM-1 is the least
+	// significant dimention.
+
+	template <unsigned int DIM, class PREDICATE>
+	class Shape<DIM, PREDICATE>::ShapeIterator : public Iterator<ShapeIteratorSpec>
+	{
+	public:
+		// Iterator typedef's
+		typedef typename Iterator<ShapeIteratorSpec>::iterator_type		iterator_type;
+		typedef typename Iterator<ShapeIteratorSpec>::collection_type	collection_type;
+		typedef typename Iterator<ShapeIteratorSpec>::iterator_category	iterator_catagory;
+		typedef typename Iterator<ShapeIteratorSpec>::reference			reference;
+		typedef typename Iterator<ShapeIteratorSpec>::const_reference	const_reference;
+		typedef typename Iterator<ShapeIteratorSpec>::pointer			pointer;
+		typedef typename Iterator<ShapeIteratorSpec>::const_pointer		const_pointer;
+		typedef typename Iterator<ShapeIteratorSpec>::value				value;
+		typedef typename Iterator<ShapeIteratorSpec>::difference_type	difference_type;
+
+	private:
+
+		const collection_type& m_coll;	// Reference to the collection that will be iterated over
+		value m_value;					// current value of the iterator
+
+	public:
+
+		// Default construction not allowed (required by forward iterators)
+		ShapeIterator()
+		{assert(false);}
+
+		// Main constructor function
+		ShapeIterator(const collection_type& coll, const iterator_type& cur) : 
+		Iterator<ShapeIteratorSpec>(cur), 
+			m_coll(coll),
+			m_value(coll.coord(cur))
+		{}
+
+		// Copy constructor (required by all iterators)
+		ShapeIterator(const ShapeIterator& it) :
+		Iterator<ShapeIteratorSpec>(it.m_current), 
+			m_coll(it.m_coll),
+			m_value(it.m_value)
+		{}
+
+		// Prefix increment (required by all iterators)
+		ShapeIterator&
+			operator ++() 
+		{     
+			this->Advance();
+			return *this;
+		}
+
+
+		// Postfix increment (required by all iterators)
+		ShapeIterator
+			operator ++(int) 
+		{
+			assert(this->m_valid);
+			ShapeIterator tmp(*this);
+			this->Advance();
+			return tmp;
+		}
+
+		// Equality operator (required by input iterators)
+		inline bool
+			operator ==(const ShapeIterator& it) const
+		{
+			return this->m_current == it.m_current;
+		}
+
+		// Inequality operator (required by input iterators)
+		inline bool
+			operator !=(const ShapeIterator& it) const
+		{
+			return ! this->operator ==(it);
+		}
+
+		// Dereference operator (required by input iterators)
+		const value&
+			operator *() const 
+		{
+			assert(this->m_current != -1);
+			return this->m_value;
+		}
+
+		// Dereference operator (required by input iterators)
+		const value&
+			operator ->() const
+		{
+			assert(this->m_current != -1);
+			return this->m_value;
+		}
+
+		/*
+		// Assignment operator (required by output iterators)
+		value&
+		operator =(const value& data)
+		{
+		this->m_value = data;
+
+		return this->m_value;
+		}
+
+		// Prefix decrement (required by bidirectional iterators)
+		ShapeIterator&
+		operator --()
+		{
+		this->step_back();
+		return *this;
+		}
+
+		// Postfix decrement (required by bidirectional iterators)
+		ShapeIterator
+		operator --(int) 
+		{
+		assert(this->m_valid);
+		ShapeIterator tmp(*this);
+		this->step_back();
+		return tmp;
+		}
+
+		// addition assignment operator (required by random access iterators)
+		ShapeIterator&
+		operator +=(int n)
+		{
+		this->Advance(n);
+		return *this;
+		}
+
+		// Offset dereference operator (required by random access iterators)
+		value
+		operator[](int n) const 
+		{ 
+		assert(this->m_current != -1);
+		assert(this->m_current + n < this->m_coll.count());
+
+		return this->m_coll.coord(this->m_current + n) + this->m_coll.low();
+		}
+		*/
+
+		int
+			ord() const
+		{
+			assert(this->m_current != -1);
+			return this->m_current;
+		}
+
+		/* This is for debugging only. Not doen in an overload of operator<<
+		* because it seems that gcc 3.4 does not manage inner class declarations of 
+		* template classes correctly
+		*/
+		char
+			Print(std::ostream& ost) const
+		{
+			ost << "Shape<" << DIM << ">::iterator("
+				<< "current=" << this->m_current 
+				<< " currentTuple=" << this->m_value << ")";
+			return '\0';
+		}
+
+	private:
+
+		void
+			Advance(int n = 1) 
+		{
+			assert(this->m_current != -1);	// Don't increment if at the end the end.
+			assert(this->m_currnet + n <= this->m_coll.count()); // Don't increment past the end.
+
+			// Precalculate increment
+			this->m_current += n;
+			this->m_value[DIM - 1] += n;
+
+			if(this->m_value[DIM - 1] >= this->m_coll.high()[DIM - 1])
+			{
+				// The end ofleast signifcant coordinate was exceeded,
+				// so recalculate value (the current tuple).
+				if(this->m_current < this->m_coll.count())
+					this->m_value = this->m_coll.coord(this->m_current);
+				else
+					this->current = -1;	// The end was reached.
+			}
+
+			HTA_DEBUG(3, "Shape::Iterator::advance this=" << this << 
+				" current=" << this->m_current << 
+				" current tuple=" << this->m_value);
+		}
+
+		/*
+		// Decrement itertator
+		void
+		Stepback(int n = 1) 
+		{
+		assert(this->m_current != 0);		// Don't decrement if at the begining.
+		assert(this->m_current - n >= 0);	// Don't decrement past the begining.
+
+		// Precalculate increment
+		this->m_current -= n;
+		this->m_value[DIM - 1] -= n;
+
+		if(this->m_value[DIM - 1] < this->m_coll.low()[DIM - 1])
+		{
+		// The least signifcant coordinate was exceeded, so recalculate
+		// value (the current tuple).
+		if(this->m_current < 0)
+		{
+		// The iterator is before the begining.
+		this->m_valid = false;
+		}
+
+		this->m_value = this->m_coll.coord(this->m_current);
+		}
+
+		HTA_DEBUG(3, "Shape::Iterator::advance this=" << this << 
+		" current=" << this->m_current << 
+		" current tuple=" << this->m_value);
+		}
+		*/
+	};
+
 public:
 	// Shape typedef's
 	typedef	PREDICATE											predicate;
@@ -415,243 +645,6 @@ public:
 
 	template <unsigned int D, class P> friend ::std::ostream& operator << (::std::ostream& ost, const Shape<D, P>& s);  
 
-};
-
-
-// Iterator spec for ShapeIterator class.
-
-template <unsigned int DIM, class PREDICATE>
-class Shape<DIM, PREDICATE>::ShapeIteratorSpec
-{
-public:
-	typedef int							iterator_type;
-	typedef Shape<DIM, PREDICATE>		collection_type;
-	typedef std::input_iterator_tag		iterator_category;  
-	typedef Tuple<DIM>					value;
-	typedef value*						pointer;
-	typedef const value*				const_pointer;
-	typedef value&						reference;
-	typedef const value&				const_reference;
-};
-
-
-// ShapeIterator is an input iterator that iterates over
-// Shape. The iterator assumes row major access and DIM-1 is the least
-// significant dimention.
-
-template <unsigned int DIM, class PREDICATE>
-class Shape<DIM, PREDICATE>::ShapeIterator : public Iterator<ShapeIteratorSpec>
-{
-public:
-	// Iterator typedef's
-	typedef typename Iterator<ShapeIteratorSpec>::iterator_type		iterator_type;
-	typedef typename Iterator<ShapeIteratorSpec>::collection_type	collection_type;
-	typedef typename Iterator<ShapeIteratorSpec>::iterator_category	iterator_catagory;
-	typedef typename Iterator<ShapeIteratorSpec>::reference			reference;
-	typedef typename Iterator<ShapeIteratorSpec>::const_reference	const_reference;
-	typedef typename Iterator<ShapeIteratorSpec>::pointer			pointer;
-	typedef typename Iterator<ShapeIteratorSpec>::const_pointer		const_pointer;
-	typedef typename Iterator<ShapeIteratorSpec>::value				value;
-	typedef typename Iterator<ShapeIteratorSpec>::difference_type	difference_type;
-	
-private:
-
-	const collection_type& m_coll;	// Reference to the collection that will be iterated over
-	value m_value;					// current value of the iterator
-
-public:
-
-	// Default construction not allowed (required by forward iterators)
-	ShapeIterator()
-		{assert(false);}
-
-	// Main constructor function
-	ShapeIterator(const collection_type& coll, const iterator_type& cur) : 
-		Iterator<ShapeIteratorSpec>(cur), 
-		m_coll(coll),
-		m_value(coll.coord(cur))
-	{}
-
-	// Copy constructor (required by all iterators)
-	ShapeIterator(const ShapeIterator& it) :
-		Iterator<ShapeIteratorSpec>(it.m_current), 
-		m_coll(it.m_coll),
-		m_value(it.m_value)
-	{}
-
-	// Prefix increment (required by all iterators)
-	ShapeIterator&
-	operator ++() 
-	{     
-		this->Advance();
-		return *this;
-	}
-
-
-	// Postfix increment (required by all iterators)
-	ShapeIterator
-	operator ++(int) 
-	{
-		assert(this->m_valid);
-		ShapeIterator tmp(*this);
-		this->Advance();
-		return tmp;
-	}
-
-	// Equality operator (required by input iterators)
-	inline bool
-	operator ==(const ShapeIterator& it) const
-	{
-		return this->m_current == it.m_current;
-	}
-	
-	// Inequality operator (required by input iterators)
-	inline bool
-	operator !=(const ShapeIterator& it) const
-	{
-		return ! this->operator ==(it);
-	}
-
-	// Dereference operator (required by input iterators)
-	const value&
-	operator *() const 
-	{
-		assert(this->m_current != -1);
-		return this->m_value;
-	}
-
-	// Dereference operator (required by input iterators)
-	const value&
-	operator ->() const
-	{
-		assert(this->m_current != -1);
-		return this->m_value;
-	}
-
-/*
-	// Assignment operator (required by output iterators)
-	value&
-	operator =(const value& data)
-	{
-		this->m_value = data;
-
-		return this->m_value;
-	}
-
-	// Prefix decrement (required by bidirectional iterators)
-	ShapeIterator&
-	operator --()
-	{
-		this->step_back();
-		return *this;
-	}
-
-	// Postfix decrement (required by bidirectional iterators)
-	ShapeIterator
-	operator --(int) 
-	{
-		assert(this->m_valid);
-		ShapeIterator tmp(*this);
-		this->step_back();
-		return tmp;
-	}
-
-	// addition assignment operator (required by random access iterators)
-	ShapeIterator&
-	operator +=(int n)
-	{
-		this->Advance(n);
-		return *this;
-	}
-	
-	// Offset dereference operator (required by random access iterators)
-	value
-	operator[](int n) const 
-	{ 
-		assert(this->m_current != -1);
-		assert(this->m_current + n < this->m_coll.count());
-
-		return this->m_coll.coord(this->m_current + n) + this->m_coll.low();
-	}
-*/
-	
-	int
-	ord() const
-	{
-		assert(this->m_current != -1);
-		return this->m_current;
-	}
-
-	/* This is for debugging only. Not doen in an overload of operator<<
-	 * because it seems that gcc 3.4 does not manage inner class declarations of 
-	 * template classes correctly
-	 */
-	char
-	Print(std::ostream& ost) const
-	{
-		ost << "Shape<" << DIM << ">::iterator("
-			<< "current=" << this->m_current 
-			<< " currentTuple=" << this->m_value << ")";
-		return '\0';
-	}
-
-private:
-	
-	void
-	Advance(int n = 1) 
-	{
-		assert(this->m_current != -1);	// Don't increment if at the end the end.
-		assert(this->m_currnet + n <= this->m_coll.count()); // Don't increment past the end.
-
-		// Precalculate increment
-		this->m_current += n;
-		this->m_value[DIM - 1] += n;
-		
-		if(this->m_value[DIM - 1] >= this->m_coll.high()[DIM - 1])
-		{
-			// The end ofleast signifcant coordinate was exceeded,
-			// so recalculate value (the current tuple).
-			if(this->m_current < this->m_coll.count())
-				this->m_value = this->m_coll.coord(this->m_current);
-			else
-				this->current = -1;	// The end was reached.
-		}
-
-		HTA_DEBUG(3, "Shape::Iterator::advance this=" << this << 
-			" current=" << this->m_current << 
-			" current tuple=" << this->m_value);
-	}
-
-/*
- 	// Decrement itertator
-	void
-	Stepback(int n = 1) 
-	{
-		assert(this->m_current != 0);		// Don't decrement if at the begining.
-		assert(this->m_current - n >= 0);	// Don't decrement past the begining.
-
-		// Precalculate increment
-		this->m_current -= n;
-		this->m_value[DIM - 1] -= n;
-		
-		if(this->m_value[DIM - 1] < this->m_coll.low()[DIM - 1])
-		{
-			// The least signifcant coordinate was exceeded, so recalculate
-			// value (the current tuple).
-			if(this->m_current < 0)
-			{
-				// The iterator is before the begining.
-				this->m_valid = false;
-			}
-
-			this->m_value = this->m_coll.coord(this->m_current);
-		}
-		
-		HTA_DEBUG(3, "Shape::Iterator::advance this=" << this << 
-			" current=" << this->m_current << 
-			" current tuple=" << this->m_value);
-	}
-*/
 };
 
 

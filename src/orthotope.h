@@ -38,26 +38,26 @@ public:
 	{}
 
 	// Iterator factory functions
-	iterator
+	inline iterator
 	begin() const
 	{
 		return this->m_ranges.begin();
 	}
 
-	iterator
+	inline iterator
 	end() const
 	{
 		return this->m_ranges.end();
 	}
 
-	range_iterator
+	inline range_iterator
 	begin(const unsigned int index) const
 	{
 		assert(index < DIM);
 		return this->m_ranges[index].begin();
 	}
 
-	range_iterator
+	inline range_iterator
 	end(const unsigned int index) const
 	{
 		assert(index < DIM);
@@ -147,7 +147,7 @@ public:
 	}
 
 	// Return a tile at tile_index.
-	tile
+	inline tile
 	get_tile(const Tuple<DIM>& tile_index)
 	{
 		assert(tile_index < this->count());

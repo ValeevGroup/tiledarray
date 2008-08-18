@@ -27,10 +27,8 @@ private:
 		typedef const value&				const_reference;
 	};
 
-
 	// RangeIterator is an input iterator that iterates over the tiles
 	// of a range.
-
 	class RangeIterator : public Iterator<RangeIteratorSpec>
 	{
 	public:
@@ -97,7 +95,7 @@ private:
 		}
 
 		// Dereference operator (required by input iterators)
-		const value
+		inline const value
 		operator *() const 
 		{
 			assert(this->m_current != -1);
@@ -105,7 +103,7 @@ private:
 		}
 
 		// Dereference operator (required by input iterators)
-		const value
+		inline const value
 		operator ->() const
 		{
 			assert(this->m_current != -1);
@@ -115,11 +113,12 @@ private:
 		// This is for debugging only. Not doen in an overload of operator<<
 		// because it seems that gcc 3.4 does not manage inner class declarations of 
 		// template classes correctly
-		char
-			Print(std::ostream& ost) const
+		inline char
+		Print(std::ostream& ost) const
 		{
 			ost << "Range::iterator("
-				<< "current=" << this->m_current << ")";
+				<< "current=" << this->m_current <<
+				<< ", tuple=" << this->m_coll.get_tile(this->m_current) << ")";
 			return '\0';
 		}
 
