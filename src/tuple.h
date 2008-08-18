@@ -236,7 +236,7 @@ public:
     	return (*this);
 	}
   
-	inline const int
+	inline int
 	operator[] (int i) const 
 	{ 
 		return this->m_values[i]; 

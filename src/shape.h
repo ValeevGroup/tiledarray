@@ -292,7 +292,7 @@ public:
 	highs() const
 		{return this->m_high;}
 
-	inline const unsigned int
+	inline unsigned int
 	count() const
 		{return VectorOps<Tuple<DIM>, DIM>::selfProduct(m_size);}
 
@@ -575,7 +575,7 @@ public:
 	}
 */
 	
-	const int
+	int
 	ord() const
 	{
 		assert(this->m_current != -1);

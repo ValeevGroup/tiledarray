@@ -51,21 +51,15 @@ private:
 
 	public:
 
-// 		// Default construction not allowed (required by forward iterators)
-// 		RangeIterator() :
-// 			Iterator<RangeIteratorSpec>(),
-// 			m_coll(collection_type())
-// 		{assert(false);}
-
 		// Main constructor function
 		RangeIterator(const collection_type& coll, const iterator_type& cur = 0) : 
-		Iterator<RangeIteratorSpec>(cur), 
+			Iterator<RangeIteratorSpec>(cur), 
 			m_coll(coll)
 		{}
 
 		// Copy constructor (required by all iterators)
 		RangeIterator(const RangeIterator& it) :
-		Iterator<RangeIteratorSpec>(it.m_current), 
+			Iterator<RangeIteratorSpec>(it.m_current), 
 			m_coll(it.m_coll)
 		{}
 
@@ -118,10 +112,9 @@ private:
 			return this->m_coll.get_tile(this->m_current);
 		}
 
-		/* This is for debugging only. Not doen in an overload of operator<<
-		* because it seems that gcc 3.4 does not manage inner class declarations of 
-		* template classes correctly
-		*/
+		// This is for debugging only. Not doen in an overload of operator<<
+		// because it seems that gcc 3.4 does not manage inner class declarations of 
+		// template classes correctly
 		char
 			Print(std::ostream& ost) const
 		{
@@ -133,9 +126,13 @@ private:
 	private:
 
 		void
-			advance(int n = 1) 
+		advance(unsigned int n = 1) 
 		{
+			assert(this->m_current != -1);
+			assert(this->m_current + n < this->m_coll.size() - 1);
 
+			if((this->m_current += n) == this->m_coll.size() - 1)
+				this->m_current = -1;
 		}
 
 
@@ -160,9 +157,7 @@ private:
 		return true;
 	}
 public:
-	typedef RangeIterator							iterator;
-	typedef const RangeIterator						const_iterator;
-
+	typedef RangeIterator	iterator;
 	
 	// Default constructor, range with a single tile [0,1)
 	Range() :
@@ -181,7 +176,7 @@ public:
 	// Construct range from a C-style array, ranges must have at least
 	// tiles + 1 elements.
 	Range(unsigned int* ranges, size_t tiles) :
-		m_ranges(ranges, ranges + tiles + 1)
+		m_ranges(ranges, ranges + tiles)
 	{
 		assert(this->valid());
 	}
@@ -190,34 +185,15 @@ public:
 	Range(const Range& rng) :
 		m_ranges(rng.m_ranges)
 	{}
-	
-	inline unsigned int
-	tile_low(const unsigned int index) const
-	{
-		assert(index < this->m_ranges.size() - 1);
-		return this->m_ranges[index];
-	}
 
-	inline unsigned int
-	tile_high(const unsigned int index) const
-	{
-		assert(index < this->m_ranges.size() - 1);
-		return this->m_ranges[index - 1];
-	}
-	
-	inline const size_t
-	tile_size(const unsigned int index) const
-	{
-		assert(index < this->m_ranges.size() - 1);
-		return (this->m_ranges[index + 1] - this->m_ranges[index]);
-	}
-	
-	inline const size_t
-	tile_count() const
+	// Returns the number of tiles in the range.
+	inline size_t
+	count() const
 	{
 		return (this->m_ranges.size() - 1);
 	}
 
+	// Returns a pair that contains low and high of the tile.
 	inline const tile
 	get_tile(const unsigned int index) const
 	{
@@ -225,46 +201,63 @@ public:
 		return tile(this->m_ranges[index], this->m_ranges[index + 1]);
 	}
 
-	inline unsigned int
+	// Returns the low index of the tile
+	inline size_t
+	low(const unsigned int index) const
+	{
+		assert(index < this->m_ranges.size() - 1);
+		return this->m_ranges[index];
+	}
+
+	// Returns the high index of the tile.
+	inline size_t
+	high(const unsigned int index) const
+	{
+		assert(index < this->m_ranges.size() - 1);
+		return this->m_ranges[index - 1];
+	}
+
+	// Returns the number of elements in a tile.
+	inline size_t
+	size(const unsigned int index) const
+	{
+		assert(index < this->m_ranges.size() - 1);
+		return (this->m_ranges[index + 1] - this->m_ranges[index]);
+	}
+
+	// Returns the low index of the range.
+	inline size_t
 	low() const
 	{
 		return this->m_ranges[0];
 	}
 
-	inline unsigned int
+	// Returns the high index of the range.
+	inline size_t
 	high() const
 	{
 		return this->m_ranges[this->m_ranges.size() - 1];
 	}
 
-	inline unsigned int
+	// Returns the number of elements in the range.
+	inline size_t
 	size() const
 	{
 		return (this->high() - this->low());
 	}
 
+	// Returns an iterator to the first tile in the range.
 	iterator
-	begin()
-	{
-		return iterator(*this);
-	}
-	
-	const_iterator
 	begin() const
 	{
-		return const_iterator(*this);
+		return iterator(*this, 0);
 	}
 
+	// Returns an iterator to the end of the range.
 	iterator
-	end()
-	{
-		return iterator(*this, -1);
-	}
-
-	const_iterator
 	end() const
 	{
-		return const_iterator(*this, -1);
+		return iterator(*this, -1);
 	}
 
 }; // Range
