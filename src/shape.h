@@ -35,21 +35,16 @@ class AbstractShape
 public:
 	
 	virtual size_t
-	ord(const Tuple<DIM>& index) const = 0;
+	ord(const Tuple<DIM>& element_index) const = 0;
 	
 	virtual Tuple<DIM>
-	coord(unsigned int index) const = 0;
+	coord(size_t linear_index) const = 0;
 	
 	virtual bool
-	included(const Tuple<DIM>& tile_idx) const = 0;
+	included(const Tuple<DIM>& element_idx) const = 0;
 
-	virtual inline const AbstractShape<DIM>*
-	clone() const
-	{
-		assert (false);
-		return NULL;
-	}
-
+	virtual const Orthotope<DIM>*
+	orthotope() const = 0;
 };
 
 // Shape class defines a multi-dimensional, rectilinear
@@ -107,122 +102,79 @@ private:
 
 		// Default construction not allowed (required by forward iterators)
 		ShapeIterator()
-		{assert(false);}
+			{assert(false);}
 
 		// Main constructor function
 		ShapeIterator(const collection_type& coll, const iterator_type& cur) : 
-		Iterator<ShapeIteratorSpec>(cur), 
+			Iterator<ShapeIteratorSpec>(cur), 
 			m_coll(coll),
 			m_value(coll.coord(cur))
 		{}
 
 		// Copy constructor (required by all iterators)
 		ShapeIterator(const ShapeIterator& it) :
-		Iterator<ShapeIteratorSpec>(it.m_current), 
+			Iterator<ShapeIteratorSpec>(it.m_current), 
 			m_coll(it.m_coll),
 			m_value(it.m_value)
 		{}
 
 		// Prefix increment (required by all iterators)
 		ShapeIterator&
-			operator ++() 
+		operator ++() 
 		{     
-			this->Advance();
+			assert(this->m_current != -1);
+			this->advance();
 			return *this;
 		}
 
 
 		// Postfix increment (required by all iterators)
 		ShapeIterator
-			operator ++(int) 
+		operator ++(int) 
 		{
-			assert(this->m_valid);
+			assert(this->m_current != -1);
 			ShapeIterator tmp(*this);
-			this->Advance();
+			this->advance();
 			return tmp;
 		}
 
 		// Equality operator (required by input iterators)
 		inline bool
-			operator ==(const ShapeIterator& it) const
+		operator ==(const ShapeIterator& it) const
 		{
-			return this->m_current == it.m_current;
+			return (this->base() == it.base());
 		}
 
 		// Inequality operator (required by input iterators)
 		inline bool
-			operator !=(const ShapeIterator& it) const
+		operator !=(const ShapeIterator& it) const
 		{
-			return ! this->operator ==(it);
+			return ! (this->operator ==(it));
 		}
 
 		// Dereference operator (required by input iterators)
-		const value&
-			operator *() const 
+		inline const value&
+		operator *() const 
 		{
 			assert(this->m_current != -1);
+			assert(this->m_current < this->m_coll->orthotope()->count());
 			return this->m_value;
 		}
 
 		// Dereference operator (required by input iterators)
-		const value&
-			operator ->() const
+		inline const value&
+		operator ->() const
 		{
 			assert(this->m_current != -1);
+			assert(this->m_current < this->m_coll->orthotope()->count());
 			return this->m_value;
 		}
-
-		/*
-		// Assignment operator (required by output iterators)
-		value&
-		operator =(const value& data)
-		{
-		this->m_value = data;
-
-		return this->m_value;
-		}
-
-		// Prefix decrement (required by bidirectional iterators)
-		ShapeIterator&
-		operator --()
-		{
-		this->step_back();
-		return *this;
-		}
-
-		// Postfix decrement (required by bidirectional iterators)
-		ShapeIterator
-		operator --(int) 
-		{
-		assert(this->m_valid);
-		ShapeIterator tmp(*this);
-		this->step_back();
-		return tmp;
-		}
-
-		// addition assignment operator (required by random access iterators)
-		ShapeIterator&
-		operator +=(int n)
-		{
-		this->Advance(n);
-		return *this;
-		}
-
-		// Offset dereference operator (required by random access iterators)
-		value
-		operator[](int n) const 
-		{ 
-		assert(this->m_current != -1);
-		assert(this->m_current + n < this->m_coll.count());
-
-		return this->m_coll.coord(this->m_current + n) + this->m_coll.low();
-		}
-		*/
 
 		int
-			ord() const
+		ord() const
 		{
 			assert(this->m_current != -1);
+			assert(this->m_current < this->m_coll->orthotope()->count());
 			return this->m_current;
 		}
 
@@ -231,7 +183,7 @@ private:
 		* template classes correctly
 		*/
 		char
-			Print(std::ostream& ost) const
+		print(std::ostream& ost) const
 		{
 			ost << "Shape<" << DIM << ">::iterator("
 				<< "current=" << this->m_current 
@@ -242,342 +194,121 @@ private:
 	private:
 
 		void
-			Advance(int n = 1) 
+		advance(int n = 1) 
 		{
 			assert(this->m_current != -1);	// Don't increment if at the end the end.
-			assert(this->m_currnet + n <= this->m_coll.count()); // Don't increment past the end.
+			assert(this->m_current < this->m_coll.orthotope()->count());// Don't increment past the end.
 
 			// Precalculate increment
 			this->m_current += n;
 			this->m_value[DIM - 1] += n;
 
-			if(this->m_value[DIM - 1] >= this->m_coll.high()[DIM - 1])
+			if(this->m_value[DIM - 1] >= this->m_coll.orthotope()->high()[DIM - 1])
 			{
 				// The end ofleast signifcant coordinate was exceeded,
 				// so recalculate value (the current tuple).
-				if(this->m_current < this->m_coll.count())
+				if(this->m_current < this->m_coll.orthotope()->count())
 					this->m_value = this->m_coll.coord(this->m_current);
 				else
-					this->current = -1;	// The end was reached.
+					this->m_current = -1;	// The end was reached.
 			}
 
 			HTA_DEBUG(3, "Shape::Iterator::advance this=" << this << 
-				" current=" << this->m_current << 
-				" current tuple=" << this->m_value);
+				", current=" << this->m_current << 
+				", current tuple=" << this->m_value);
 		}
-
-		/*
-		// Decrement itertator
-		void
-		Stepback(int n = 1) 
-		{
-		assert(this->m_current != 0);		// Don't decrement if at the begining.
-		assert(this->m_current - n >= 0);	// Don't decrement past the begining.
-
-		// Precalculate increment
-		this->m_current -= n;
-		this->m_value[DIM - 1] -= n;
-
-		if(this->m_value[DIM - 1] < this->m_coll.low()[DIM - 1])
-		{
-		// The least signifcant coordinate was exceeded, so recalculate
-		// value (the current tuple).
-		if(this->m_current < 0)
-		{
-		// The iterator is before the begining.
-		this->m_valid = false;
-		}
-
-		this->m_value = this->m_coll.coord(this->m_current);
-		}
-
-		HTA_DEBUG(3, "Shape::Iterator::advance this=" << this << 
-		" current=" << this->m_current << 
-		" current tuple=" << this->m_value);
-		}
-		*/
 	};
 
 public:
 	// Shape typedef's
 	typedef	PREDICATE											predicate;
 	typedef boost::filter_iterator<predicate, ShapeIterator>	iterator;
-	
+
 protected:
-	Tuple<DIM> m_high;					// highest index in each dimension (not included)
-	Tuple<DIM> m_low;					// lowest index in each dimension (included)
-	Tuple<DIM> m_size;					// Number of elements in each direction
-	Tuple<DIM> m_linear_step;			// the number of elements to skip in the linearized 
-  										// array until the respective dimension increments
-	boost::shared_ptr<PREDICATE> m_pred;// Shared pointer to predicate object, which defines
+	Orthotope<DIM>* m_orthotope;		// Pointer to the orthotope described by shape.
+	boost::shared_ptr<predicate> m_pred;// Shared pointer to predicate object, which defines
     									// which elements are present.
-    
+
 public:
 
-	/** 
-	 * Default constructor
-	 */
-	Shape() :
-		m_high(1),
-		m_low(),
-		m_size(1),
-		m_linear_step(),
-		m_pred(new predicate)
+	// Default constructor not allowed.
+	Shape()
 	{
-		this->init();
+		assert(false);
 	}
 
-	/** 
-	 * Convenience constructor.
-	 *
-	 * @param  t upper coordinates of the shape - not included
-	 * @return shape with lower bound (0,0,..), step (1,1,..).
-	 */
-	Shape(const Tuple<DIM>& tup_high) :
-		m_high(tup_high),
-		m_low(),
-		m_size(tup_high),
-		m_linear_step(),
-		m_pred(new predicate)
-	{
-		this->init();
-	}
+	// Constructor
+	Shape(const Orthotope<DIM>* ortho, const boost::shared_ptr<predicate> pred) :
+		m_orthotope(ortho),
+		m_pred(pred)
+	{}
 
-	/** 
-	 * Convenience constructor.
-	 *
-	 * @param  begin lower coordinates of shape
-	 * @param  end   upper coordinates of the shape - not included
-	 * @return       shape with step (1,1,..).
-	 */
-	Shape(const Tuple<DIM>& low, const Tuple<DIM> &high) :
-		m_high(high),
-		m_low(low),
-		m_size(high - low),
-		m_linear_step(),
-		m_pred(new predicate)
-	{
-		this->init();
-	}
-
-	Shape(const typename Orthotope<DIM>::tile& ortho_tile) :
-		m_high(ortho_tile.second),
-		m_low(ortho_tile.first),
-		m_size(ortho_tile.second - ortho_tile.first),
-		m_linear_step(),
-		m_pred(new predicate)
-	{
-		this->init();
-	}
-
-	Shape(const Orthotope<DIM>& ortho) :
-		m_high(ortho.high()),
-		m_low(ortho.low()),
-		m_size(ortho.size()),
-		m_linear_step(),
-		m_pred(new predicate)
-	{
-		this->init();
-	}
-
-	/**
-	 * Copy constructor 
-	 */
-	Shape(const Shape<DIM, PREDICATE>& s) : 
-		m_high(s.m_high), 
-		m_low(s.m_low), 
-		m_size(s.m_size), 
-		m_linear_step(s.m_linear_step),
+	// Copy constructor
+	Shape(const Shape<DIM, PREDICATE>& s) :
+		m_orthotope(s.m_orthotope),
 		m_pred(s.m_pred)
-	{ 
-		TA_DEBUG(2, "Shape::<init> this=" << this << " m_linearStep=" << this->m_linear_step << " high:" << this->m_high);
-	}
-
+	{}
 
 	virtual
 	~Shape()
 	{}
 
-private:
-
-	/**
-	 * Initializer method
-	 * @param t  t[0] is the most significant dimension.
-	 */
-	void
-	init() 
+	// Assignment operator
+	inline Shape<DIM, PREDICATE>&
+	operator =(const Shape<DIM, PREDICATE>& s)
 	{
-		// memorize values that aid the linearization function
-		// DIM-1 is the *least* significant dimension in row-major 
-		// (row is in dimension 0)
+		this->m_orthotope = s.m_orthotope;
+		this->m_pred = s.m_pred;
 
-		// compute cumulative m_linear_step
-		this->m_linear_step[DIM - 1] = 1;
-		for (int i = DIM - 1; i > 0; --i)
-			this->m_linear_step[i - 1] = (this->m_high[i] - this->m_low[i]) * this->m_linear_step[i];
-	}
-
-public:
-
-	virtual bool 
-	included(const Tuple<DIM>& index) const
-	{
-		return this->contains(index) && this->m_pred->included(index);
-	}
-
-	virtual const Shape<DIM, PREDICATE>*
-	clone() const
-	{
-		assert (false);
-		return NULL;
-	}
-
-	virtual const Shape<DIM, PREDICATE>&
-	operator [](const Tuple<DIM>& i) const
-	{
 		return *this;
 	}
 
-	virtual const Shape<DIM, PREDICATE>&
-	shape_at(int i) const
+	// Returns a pointer to the orthotope described by this Shape.
+	virtual inline const Orthotope<DIM>*
+	orthotope() const
 	{
-		return *this;
+		return this->m_orthotope;
 	}
-  
 
-	/**
-	 * Test to see if tuple is contained within the shape. No check is done
-	 * to see if the data is present.
-	 * 
-	 * @return	true if tup is within the bounds of the shape.
-	 */
-	inline bool
-	contains(const Tuple<DIM>& tup) const 
+	virtual inline bool 
+	included(const Tuple<DIM>& element_index) const
 	{
-		return (tup >= m_low) && (tup < m_high);
+		return this->m_orthotope->contains(element_index) && this->m_pred->included(element_index);
 	}
 
-	/**
-	 * Test to see if shape s is contained within the shape. No check is done
-	 * to see if the data is present.
-	 * 
-	 * @return	true if tup is within the bounds of the shape.
-	 */
-	inline bool
-	contains(const Shape<DIM, PREDICATE>* const s) const 
-	{
-		// current limitation 
-		return ((s->m_low >= this->m_low) && (s->m_high <= this->m_high));
-	}
-
-	/**
-	 * @param  s1    shape
-	 * @param  s2    shape
-	 * @return       true if both shapes are conformable.
-	 */
-	static inline bool
-	conformable(const Shape<DIM, PREDICATE>& s1, const Shape<DIM, PREDICATE>& s2) 
-	{
-		if(&s1 == &s2)
-			return true;
-		else 
-			return (s1.m_size == s2.m_size);
-	}
-
-	/**
-	 * @param  s1    shape
-	 * @param  s2    shape
-	 * @return       true if both shapes can be accessed with the same non-linear iterator.
-	 *               the property is reflexive and transitive.
-	 */
-	static inline bool
-	iterator_conformable(const Shape<DIM, PREDICATE>& s1, const Shape<DIM, PREDICATE>& s2) 
-	{
-		if (&s1 == &s2)
-			return true;
-		else 
-			return (s1.m_linear_step == s2.m_linear_step);
-	}
-
-	/**
-	 * Equality operator
-	 */
-	inline bool
-	operator ==(const Shape<DIM, PREDICATE>& other) const 
-	{  
-		if(&other == this)
-			return true;
-		else 
-			return (other.m_low == this->m_low &&
-					other.m_high == this->m_high);
-	}
-
-	/**
-	 * Inequality operator
-	 */
-	inline bool
-	operator!= (const Shape<DIM, PREDICATE>& other) const 
-	{  
-		return ! (this->operator==(other));
-	}
-  
-	// Constant Accessors
-
-	inline const Tuple<DIM>&
-	linear_step() const
-		{return m_linear_step;}
-
-	inline const Tuple<DIM>&
-	size() const
-		{return this->m_size;}
-
-	inline const Tuple<DIM>&
-	lows() const
-		{return this->m_low;}
-  
-	inline const Tuple<DIM>&
-	highs() const
-		{return this->m_high;}
-
-	inline unsigned int
-	count() const
-		{return VectorOps<Tuple<DIM>, DIM>::selfProduct(m_size);}
-
-	/**
-	 * Ordinal value of Tuple. Ordinal value does not include offset
-	 * and does not consider step. If the shape starts at (5, 3), 
-	 * then (5, 4) has ord 1 on row-major. 
-	 * The ordinal value of low() is always 0.
-	 * The ordinal value of high() is always <= linearCard().
-	 */
+	// Ordinal value of Tuple. Ordinal value does not include offset
+	// and does not consider step. If the shape starts at (5, 3), 
+	// then (5, 4) has ord 1 on row-major. 
+	// The ordinal value of orthotope()->low() is always 0.
+	// The ordinal value of orthotope()->high() is always <= linearCard().
 	virtual inline size_t
 	ord(const Tuple<DIM>& coord) const
 	{
-		assert(coord >= m_low && coord <= m_high);
-		return static_cast<size_t>(VectorOps<Tuple<DIM>, DIM>::dotProduct((coord - m_low), m_linear_step));
+		assert(this->m_orthotope->contains(coord));
+		return static_cast<size_t>(VectorOps<Tuple<DIM>, DIM>::dotProduct((coord - this->m_orthotope->low()), this->m_orthotope->linear_step()));
 	}
    
-	/* GB: coord is local coordinate */
-	virtual inline Tuple<DIM>
-	coord(unsigned int index) const 
+	// Returns the element index of the element referred to by linear_index
+	virtual Tuple<DIM>
+	coord(size_t linear_index) const 
 	{
-		assert(index >= 0 && index < this->count());
+		assert(linear_index >= 0 && linear_index < this->m_orthotope->count());
 
-		Tuple<DIM> ret;
+		Tuple<DIM> element_index;
 
 		// start with most significant dimension 0.
-		for(unsigned int d = 0; index > 0 && d < DIM; ++d)
+		for(unsigned int dim = 0; linear_index > 0 && dim < DIM; ++dim)
 		{
-			ret[d] = index / this->m_linear_step[d];
-			index -= ret[d] * this->m_linear_step[d];
+			element_index[dim] = linear_index / this->m_orthotope->linear_step()[dim];
+			linear_index -= element_index[dim] * this->m_orthotope->linear_step()[dim];
 		}
 
-		assert(index == 0); // Sanity check
+		assert(linear_index == 0); // Sanity check
 
 		// Offset the value so it is inside shape.
-		ret += this->m_low;
+		element_index += this->m_orthotope->low();
 
-		return ret;
+		return element_index;
 	}
 
 	
@@ -598,70 +329,6 @@ public:
 	{
 		return iterator(*(this->m_pred), ShapeIterator(*this, -1), ShapeIterator(*this, -1));
 	}
-  
-public:
-  
-	/**
-	 * Relocates the coordinate system represented by 
-	 * this shape. The underlying mapping to linearized 
-	 * representation remains unchanged.
-	 *
-	 * @param origin    new low coordinate of the shape
-	 */
-	inline void
-	relocate(const Tuple<DIM>& origin) 
-	{
-		Tuple<DIM> dir(origin - this->m_low);
-		this->m_low = origin;
-		this->m_high += dir;
-	}
-  
-	/**
-	 * Relocates and remaps.
-	 */
-	inline Shape<DIM, PREDICATE>
-	operator -(const Tuple<DIM>& dir) const
-	{
-		return (*this) + (-dir);
-	}
-
-    
-	/**
-	 * Relocates and remaps.
-	 */
-	inline Shape<DIM, PREDICATE>
-	operator +(const Tuple<DIM>& dir) const
-	{
-		Shape<DIM, PREDICATE> ret(*this);    
-		Tuple<DIM> new_origin = this->m_low + dir;
-		ret.relocate(new_origin);
-		return ret;
-	}
-  
-	/**
-	 * Assignment-move operator 
-	 */
-	Shape&
-	operator +=(const Tuple<DIM>& dir)
-	{
-		Tuple<DIM> new_origin = this->m_low + dir;
-		relocate(new_origin);
-		return *this;
-	}
-  
-	/**
-	 * Assignment-move operator 
-	 */
-	Shape&
-	operator-=(const Tuple<DIM>& dir)
-	{
-		Tuple<DIM> new_origin = this->m_low - dir;
-		relocate(new_origin); 
-		return *this;
-	}
-
-	template <unsigned int D, class P> friend ::std::ostream& operator << (::std::ostream& ost, const Shape<D, P>& s);  
-
 };
 
 

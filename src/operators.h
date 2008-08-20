@@ -5,36 +5,49 @@
 template<typename T>
 class MathOp
 {
-	
+public:
 	static inline T
-	Negate(const T& data)
+	negate(const T& data)
 	{
 		 return -data;
 	}
 	
 	static inline T
-	Sum(const T& data1, const T& data2)
+	sum(const T& data1, const T& data2)
 	{
 		return (data1 + data2);
 	}
 
 	static inline T
-	Subtract(const T& data1, const T& data2)
+	subtract(const T& data1, const T& data2)
 	{
 		return (data1 - data2);
 	}
 
 	static inline T
-	Multiply(const T& data1, const T& data2)
+	multiply(const T& data1, const T& data2)
 	{
 		return (data1 * data2);
 	}
 	
 	static inline T
-	Divide(const T& data1, const T& data2)
+	divide(const T& data1, const T& data2)
 	{
 		return (data1 / data2);
 	}
+
+	static inline bool
+	equal(const T& data1, const T& data2)
+	{
+		return (data1 == data2);
+	}
+
+	static inline bool
+	not_equal(const T& data1, const T& data2)
+	{
+		return (data1 != data2);
+	}
+
 };
 
 #endif /*OPERATOR_H_*/

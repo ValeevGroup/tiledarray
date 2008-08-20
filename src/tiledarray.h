@@ -36,6 +36,7 @@
 namespace TiledArray
 {
 
+#include "operators.h"
 #include "VectorOps.h"
 #include "tracing.h"
 #include "tuple.h"
@@ -43,7 +44,6 @@ namespace TiledArray
 #include "range.h"
 #include "orthotope.h"
 #include "shape.h"
-#include "operators.h"
 #include "array.h"
 #include "predicate.h"
 #include "allocator.h"
