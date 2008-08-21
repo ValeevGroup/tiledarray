@@ -1,4 +1,5 @@
 #include "TiledArray.h"
+#include "shapetest.h"
 
 void
 ShapeTest()
