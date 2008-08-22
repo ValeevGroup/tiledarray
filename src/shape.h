@@ -331,9 +331,8 @@ public:
 	}
 };
 
-
-template<int DIM, class Predicate>  std::ostream&
-operator <<(std::ostream& out, const Shape<DIM, Predicate>& s) {  
+template<int DIM, class PREDICATE>  std::ostream&
+operator <<(std::ostream& out, const Shape<DIM, PREDICATE>& s) {  
 	out << "Shape<" << DIM << ">(" 
 		<< " @=" << &s
 		<< " low=" << s.low() 

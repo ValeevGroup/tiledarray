@@ -9,10 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define TEST_TUPLE
+//#define TEST_TUPLE
 #define TEST_RANGE
-#define TEST_ORTHOTOPE
-#define TEST_SHAPE
+//#define TEST_ORTHOTOPE
+//#define TEST_SHAPE
 
 #include "tiledarray.h"
 #include "tupletest.h"
