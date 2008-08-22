@@ -2,7 +2,7 @@
 #define PREDICATE_H__INCLUDED
 
 template<unsigned int DIM>
-class AbstractPrdicate
+class AbstractPredicate
 {
 public:
 	
