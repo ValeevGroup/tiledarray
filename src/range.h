@@ -1,18 +1,22 @@
 #ifndef RANGE_H__INCLUDED
 #define RANGE_H__INCLUDED
 
-// Range class defines the boundaries of tiles in a single dimension.
-// The tiling data is constructed with and stored in an array with
-// the format {a, b, c, ...}, where 0 <= a < b < c < ... Each tile is
-// defined by [a,b), [b,c), ... The number of tiles in the range is
-// defined as one less than the number of elements in the array.
+/** Range class defines a nonuniformly-tiled one-dimensional range.
+    The tiling data is constructed with and stored in an array with
+    the format {a, b, c, ...}, where 0 <= a < b < c < ... Each tile is
+    defined by [a,b), [b,c), ... The number of tiles in the range is
+    defined as one less than the number of elements in the array.
+  */
 class Range
 {
 private:
 
+    /// Represents a tile in a Range
 	class RangeTile
 	{
+	    /// the owner
 		const Range& m_range;
+		/// index in the owner
 		size_t m_current;
 
 	public:
@@ -21,7 +25,7 @@ private:
 			m_current(current)
 		{}
 
-		// Returns the tile value
+		/// Returns the index of this tile in the containing Range
 		inline size_t
 		index() const
 		{
@@ -50,7 +54,7 @@ private:
 			{this->m_current = current;}
 	};
 
-	// Iterator spec for RangeIterator class.
+	/// Iterator spec for RangeIterator class.
 	class RangeIteratorSpec
 	{
 	public:
@@ -64,8 +68,9 @@ private:
 		typedef const value&				const_reference;
 	};
 
-	// RangeIterator is an input iterator that iterates over the tiles
-	// of a range.
+	/** RangeIterator is an InputIterator that iterates over the tiles
+	    of a Range.
+	  */
 	class RangeIterator : public Iterator<RangeIteratorSpec>
 	{
 	public:
@@ -87,7 +92,7 @@ private:
 
 	public:
 
-		// Main constructor function
+		/// Main constructor function
 		RangeIterator(const collection_type& coll, const iterator_type& cur = 0) : 
 			Iterator<RangeIteratorSpec>(cur), 
 			m_coll(coll),
@@ -96,14 +101,14 @@ private:
 			assert(cur <= coll.tile_size());
 		}
 
-		// Copy constructor (required by all iterators)
+		/// Copy constructor (required by all iterators)
 		RangeIterator(const RangeIterator& it) :
 			Iterator<RangeIteratorSpec>(it.m_current), 
 			m_coll(it.m_coll),
 			m_value(it.m_coll, it.m_current)
 		{}
 
-		// Prefix increment (required by all iterators)
+		/// Prefix increment (required by all iterators)
 		RangeIterator&
 		operator ++() 
 		{     
@@ -112,7 +117,7 @@ private:
 		}
 
 
-		// Postfix increment (required by all iterators)
+		/// Postfix increment (required by all iterators)
 		RangeIterator
 		operator ++(int) 
 		{
@@ -122,37 +127,38 @@ private:
 			return tmp;
 		}
 
-		// Equality operator (required by input iterators)
+		/// Equality operator (required by input iterators)
 		inline bool
 		operator ==(const RangeIterator& it) const
 		{
 			return this->m_current == it.m_current;
 		}
 
-		// Inequality operator (required by input iterators)
+		/// Inequality operator (required by input iterators)
 		inline bool
 		operator !=(const RangeIterator& it) const
 		{
 			return ! (this->operator ==(it));
 		}
 
-		// Dereference operator (required by input iterators)
+		/// Dereference operator (required by input iterators)
 		inline const_reference
 		operator *() const 
 		{
 			return this->m_value;
 		}
 
-		// Dereference operator (required by input iterators)
+		/// Dereference operator (required by input iterators)
 		inline const_pointer
 		operator ->() const
 		{
 			return &(this->m_value);
 		}
 
-		// This is for debugging only. Not doen in an overload of operator<<
-		// because it seems that gcc 3.4 does not manage inner class declarations of 
-		// template classes correctly
+		/** This is for debugging only. Not done in an overload of operator<<
+		    because it seems that gcc 3.4 does not manage inner class declarations of 
+		    template classes correctly.
+		  */
 		inline char
 		print(std::ostream& ost) const
 		{
@@ -176,9 +182,10 @@ private:
 			this->m_current += n;
 			this->m_value.set_current(this->m_current);
 		}
-	}; // RangeIterator
+		
+	}; // end of RangeIterator
 	
-	// class data
+	/// Range data
 	std::vector<size_t> m_ranges;
 	std::vector<size_t> m_tile_index_map;
 
