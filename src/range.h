@@ -109,7 +109,6 @@ namespace TiledArray {
       }
       
     public:
-      typedef RangeTiles::iterator iterator;
       typedef RangeTiles::const_iterator const_iterator;
 
       // Default constructor, empty range
