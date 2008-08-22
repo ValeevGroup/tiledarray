@@ -7,7 +7,6 @@
 #define RUN_RANGE_TEST	{ ; }
 #endif
 
-void
-RangeTest();
+void RangeTest();
 
 #endif // RANGETEST_H__INCLUDED

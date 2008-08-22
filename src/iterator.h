@@ -28,207 +28,179 @@
 #ifndef ITERATOR_H__INCLUDED
 #define ITERATOR_H__INCLUDED
 
+#include <assert.h>
 #include <iterator>
 
-template <class ITERATORSPEC>
-class Iterator :
-	public std::iterator<typename ITERATORSPEC::iterator_category,
-		typename ITERATORSPEC::value, typename ITERATORSPEC::difference_type,
-		typename ITERATORSPEC::pointer, typename ITERATORSPEC::reference>
-{
-
-public:
+template <class ITERATORSPEC> class Iterator :
+    public std::iterator<typename ITERATORSPEC::iterator_category,
+    typename ITERATORSPEC::value, typename ITERATORSPEC::difference_type,
+    typename ITERATORSPEC::pointer, typename ITERATORSPEC::reference> {
+    
+  public:
     typedef std::iterator<typename ITERATORSPEC::iterator_category,
     typename ITERATORSPEC::value, typename ITERATORSPEC::distance_type,
     typename ITERATORSPEC::pointer, typename ITERATORSPEC::reference> base_type;
+
+    typedef typename base_type::collection_type collection_type;
+    typedef typename base_type::difference_type difference_type;
+    typedef typename base_type::reference reference;
+    typedef typename base_type::const_reference const_reference;
+    typedef typename base_type::pointer pointer;
+    typedef typename base_type::const_pointer const_pointer;
+    typedef typename base_type::value value;
+    typedef typename ITERATORSPEC::iterator_type iterator_type;
+
+  protected:
+    iterator_type m_current;
+
+  public:
+    Iterator() :
+      m_current() {
+    }
     
-	typedef typename base_type::collection_type     collection_type;
-	typedef typename base_type::difference_type     difference_type;
-	typedef typename base_type::reference           reference;
-	typedef typename base_type::const_reference     const_reference;
-	typedef typename base_type::pointer             pointer;
-	typedef typename base_type::const_pointer       const_pointer;
-	typedef typename base_type::value               value;
-	typedef typename ITERATORSPEC::iterator_type    iterator_type;
-
-protected:
-	iterator_type m_current;
-
-public:
-	Iterator() :
-		m_current()
-	{}
-	
-	explicit
-	Iterator(const iterator_type& current) :
-		m_current(current)
-	{}
-
-	explicit
-	Iterator(const Iterator& it) :
-		m_current(it.m_current)
-	{}
-	
-	Iterator&
-	operator =(const Iterator<ITERATORSPEC>& it)
-	{
-		assert(false); // not implemented
-		return *this;
-	}
-	
-	value
-	operator *()
-	{
-		assert(false); // Not implemented
-		return value();
-	}
-	
-	value
-	operator ->()
-	{
-		assert(false); // Not implemented
-		return value();
-	}
-
-	const iterator_type&
-	base() const
-		{return this->m_current;}
-
-	Iterator&
-	operator ++()
-	{
-		assert(0); // not implemented
-		return *this;
-	}
-  
-	Iterator
-	operator ++(int)
-	{
-		assert(0); // not implemented
-		return *this;
-	}
-
-	Iterator&
-	operator --()
-	{
-		assert(0); // not implemented
-		return *this;
-	}
-  
-	Iterator
-	operator --(int n)
-	{
-		assert(0); // not implemented
-		return *this;
-	}
-  
-	Iterator
-	operator +(difference_type n) const
-	{
-		assert(0); // not implemented
-		return *this;
-	}
-
-	Iterator&
-	operator +=(difference_type n)
-	{
-		assert(0); // not implemented
-		return *this;
-	}
-
-	Iterator
-	operator -(difference_type n) const
-	{
-		assert(0); // not implemented
-		return *this;
-	}
-  
-	Iterator&
-	operator -=(difference_type n)
-	{
-		assert(0); // not implemented
-		return *this;
-	}
-	
-	inline bool
-	operator ==(const Iterator& other) const
-	{
-		assert(false); // Not implemented
-		return false;
-	}
- 
-	inline bool
-	operator !=(const Iterator& other) const
-	{
-		assert(false);
-		return false;
-	}
-
+    explicit Iterator(const iterator_type& current) :
+      m_current(current) {
+    }
+    
+    explicit Iterator(const Iterator& it) :
+      m_current(it.m_current) {
+    }
+    
+    Iterator& operator =(const Iterator<ITERATORSPEC>& it) {
+      assert(false);
+      // not implemented
+      return *this;
+    }
+    
+    value operator *() {
+      assert(false);
+      // Not implemented
+      return value();
+    }
+    
+    value operator ->() {
+      assert(false);
+      // Not implemented
+      return value();
+    }
+    
+    const iterator_type& base() const {
+      return this->m_current;
+    }
+    
+    Iterator& operator ++() {
+      assert(0);
+      // not implemented
+      return *this;
+    }
+    
+    Iterator operator ++(int) {
+      assert(0);
+      // not implemented
+      return *this;
+    }
+    
+    Iterator& operator --() {
+      assert(0);
+      // not implemented
+      return *this;
+    }
+    
+    Iterator operator --(int n) {
+      assert(0);
+      // not implemented
+      return *this;
+    }
+    
+    Iterator operator +(difference_type n) const {
+      assert(0);
+      // not implemented
+      return *this;
+    }
+    
+    Iterator& operator +=(difference_type n) {
+      assert(0);
+      // not implemented
+      return *this;
+    }
+    
+    Iterator operator -(difference_type n) const {
+      assert(0);
+      // not implemented
+      return *this;
+    }
+    
+    Iterator& operator -=(difference_type n) {
+      assert(0);
+      // not implemented
+      return *this;
+    }
+    
+    inline bool operator ==(const Iterator& other) const {
+      assert(false);
+      // Not implemented
+      return false;
+    }
+    
+    inline bool operator !=(const Iterator& other) const {
+      assert(false);
+      return false;
+    }
+    
 };
 
 // forward iterator requirements
-template<typename IteratorSpec>
-inline bool
-operator ==(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
-{
-	return lhs.base() == rhs.base(); 
+template<typename IteratorSpec> inline bool operator ==(
+                                                        const Iterator<IteratorSpec>& lhs,
+                                                        const Iterator<IteratorSpec>& rhs) {
+  return lhs.base() == rhs.base();
 }
 
-template<typename IteratorSpec>
-inline bool
-operator !=(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
-{ 
-	return lhs.base() != rhs.base(); 
+template<typename IteratorSpec> inline bool operator !=(
+                                                        const Iterator<IteratorSpec>& lhs,
+                                                        const Iterator<IteratorSpec>& rhs) {
+  return lhs.base() != rhs.base();
 }
 
 // random access iterator requirements
-template<typename IteratorSpec>
-inline bool
-operator <(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
-{
-	return lhs.base() < rhs.base(); 
+template<typename IteratorSpec> inline bool operator <(
+                                                       const Iterator<IteratorSpec>& lhs,
+                                                       const Iterator<IteratorSpec>& rhs) {
+  return lhs.base() < rhs.base();
 }
 
-template<typename IteratorSpec>
-inline bool
-operator >(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
-{
-	return lhs.base() > rhs.base(); 
+template<typename IteratorSpec> inline bool operator>(
+                                                     const Iterator<IteratorSpec>& lhs,
+                                                     const Iterator<IteratorSpec>& rhs) {
+  return lhs.base() > rhs.base();
 }
 
-template<typename IteratorSpec>
-inline bool
-operator <=(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
-{ 
-	return lhs.base() <= rhs.base(); 
+template<typename IteratorSpec> inline bool operator <=(
+                                                        const Iterator<IteratorSpec>& lhs,
+                                                        const Iterator<IteratorSpec>& rhs) {
+  return lhs.base() <= rhs.base();
 }
 
-template<typename IteratorSpec>
-inline bool
-operator >=(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
-{ 
-	return lhs.base() >= rhs.base(); 
+template<typename IteratorSpec> inline bool operator >=(
+                                                        const Iterator<IteratorSpec>& lhs,
+                                                        const Iterator<IteratorSpec>& rhs) {
+  return lhs.base() >= rhs.base();
 }
 
-
-template<typename IteratorSpec>
-inline typename Iterator<IteratorSpec>::difference_type
-operator -(const Iterator<IteratorSpec>& lhs, const Iterator<IteratorSpec>& rhs)
-{ 
-//	assert(0); // not implemented
-	return (lhs.base() - rhs.base());
+template<typename IteratorSpec> inline typename Iterator<IteratorSpec>::difference_type operator -(
+                                                                                                  const Iterator<IteratorSpec>& lhs,
+                                                                                                  const Iterator<IteratorSpec>& rhs) {
+  //	assert(0); // not implemented
+  return (lhs.base() - rhs.base());
 }
 
-template<typename IteratorSpec>
-inline Iterator<IteratorSpec>
-operator+(typename Iterator<IteratorSpec>::difference_type n, const Iterator<IteratorSpec>& i)
-{ 
-//	assert(0); // not implemented
-	Iterator<IteratorSpec> t;
-	t.m_current = i.base() + n;
-	return  t;
+template<typename IteratorSpec> inline Iterator<IteratorSpec> operator+(
+                                                                       typename Iterator<IteratorSpec>::difference_type n,
+                                                                       const Iterator<IteratorSpec>& i) {
+  //	assert(0); // not implemented
+  Iterator<IteratorSpec> t;
+  t.m_current = i.base() + n;
+  return t;
 }
-
-
 
 #endif // ITERATOR_H__INCLUDED

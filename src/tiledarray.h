@@ -33,16 +33,14 @@
 
 #define TA_FULL_DEBUG 3
 
-namespace TiledArray
-{
+#include "range.h"
+#include "orthotope.h"
+#include "tuple.h"
 
 #include "operators.h"
 #include "VectorOps.h"
 #include "tracing.h"
-#include "tuple.h"
 #include "iterator.h"
-#include "range.h"
-#include "orthotope.h"
 #include "shape.h"
 #include "array.h"
 #include "predicate.h"
@@ -50,6 +48,7 @@ namespace TiledArray
 #include "mathkernel.h"
 #include "trait.h"
 
+namespace TiledArray {
 
 template<typename T, unsigned int DIM, class TRAIT = LocalDenseTrait<T,DIM> >
 class TA
