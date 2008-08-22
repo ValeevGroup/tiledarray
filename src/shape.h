@@ -59,8 +59,8 @@ namespace TiledArray {
   // Instances of Shape are immutable.
   //
 
-  template <unsigned int DIM, class PREDICATE> class Shape :
-      public AbstractShape<DIM> {
+  template <unsigned int DIM, class PREDICATE>
+  class Shape : public AbstractShape<DIM> {
     private:
       // Iterator spec for ShapeIterator class.
       class ShapeIteratorSpec {
@@ -81,21 +81,15 @@ namespace TiledArray {
       class ShapeIterator : public Iterator<ShapeIteratorSpec> {
         public:
           // Iterator typedef's
-          typedef typename Iterator<ShapeIteratorSpec>::iterator_type
-              iterator_type;
-          typedef typename Iterator<ShapeIteratorSpec>::collection_type
-              collection_type;
-          typedef typename Iterator<ShapeIteratorSpec>::iterator_category
-              iterator_catagory;
+          typedef typename Iterator<ShapeIteratorSpec>::iterator_type        iterator_type;
+          typedef typename Iterator<ShapeIteratorSpec>::collection_type      collection_type;
+          typedef typename Iterator<ShapeIteratorSpec>::iterator_category    iterator_catagory;
           typedef typename Iterator<ShapeIteratorSpec>::reference reference;
-          typedef typename Iterator<ShapeIteratorSpec>::const_reference
-              const_reference;
+          typedef typename Iterator<ShapeIteratorSpec>::const_reference      const_reference;
           typedef typename Iterator<ShapeIteratorSpec>::pointer pointer;
-          typedef typename Iterator<ShapeIteratorSpec>::const_pointer
-              const_pointer;
+          typedef typename Iterator<ShapeIteratorSpec>::const_pointer        const_pointer;
           typedef typename Iterator<ShapeIteratorSpec>::value value;
-          typedef typename Iterator<ShapeIteratorSpec>::difference_type
-              difference_type;
+          typedef typename Iterator<ShapeIteratorSpec>::difference_type      difference_type;
 
         private:
           
@@ -209,25 +203,41 @@ namespace TiledArray {
       typedef boost::filter_iterator<predicate, ShapeIterator> iterator;
 
     protected:
-      Orthotope<DIM>* m_orthotope; // Pointer to the orthotope described by shape.
-      boost::shared_ptr<predicate> m_pred;// Shared pointer to predicate object, which defines
-      // which elements are present.
+      /// Pointer to the orthotope described by shape.
+      Orthotope<DIM>* m_orthotope;
+      /// Shared pointer to predicate object; it defines which elements are present.
+      boost::shared_ptr<predicate> m_pred;
+      /// Linear step is used to calculate linear indices
+      Tuple<DIM> m_linear_step;
+
+    private:
+      void
+      init_linear_step_()
+      {
+    	Tuple<DIM> h = m_orthotope.high();
+    	Tuple<DIM> l = m_orthotope.low();
+        this->m_linear_step[DIM - 1] = 1;
+        for (int dim = DIM - 1; dim > 0; --dim)
+          this->m_linear_step[dim - 1] = (h[dim] - l[dim]) * this->m_linear_step[dim];
+      }
 
     public:
       
-      // Default constructor not allowed.
+      /// Default constructor not allowed.
       Shape() {
         assert(false);
       }
       
-      // Constructor
+      /// Constructor
       Shape(const Orthotope<DIM>* ortho, const boost::shared_ptr<predicate> pred) :
         m_orthotope(ortho), m_pred(pred) {
+    	init_linear_step_();
       }
       
-      // Copy constructor
+      /// Copy constructor
       Shape(const Shape<DIM, PREDICATE>& s) :
         m_orthotope(s.m_orthotope), m_pred(s.m_pred) {
+    	init_linear_step_();
       }
       
       virtual ~Shape() {
@@ -259,7 +269,7 @@ namespace TiledArray {
       virtual inline size_t ord(const Tuple<DIM>& coord) const {
         assert(this->m_orthotope->contains(coord));
         return static_cast<size_t>(VectorOps<Tuple<DIM>, DIM>::dotProduct((coord
-            - this->m_orthotope->low()), this->m_orthotope->linear_step()));
+            - this->m_orthotope->low()), this->m_linear_step));
       }
       
       // Returns the element index of the element referred to by linear_index
@@ -270,8 +280,8 @@ namespace TiledArray {
         
         // start with most significant dimension 0.
         for (unsigned int dim = 0; linear_index > 0 && dim < DIM; ++dim) {
-          element_index[dim] = linear_index / this->m_orthotope->linear_step()[dim];
-          linear_index -= element_index[dim] * this->m_orthotope->linear_step()[dim];
+          element_index[dim] = linear_index / this->m_linear_step[dim];
+          linear_index -= element_index[dim] * this->m_linear_step[dim];
         }
         
         assert(linear_index == 0);

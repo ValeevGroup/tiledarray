@@ -74,23 +74,31 @@ namespace TiledArray {
       // Range data
       /////////////
       /// set of tiles. This is the primary data, i.e. other data is always recomputed from this, not modified directly
-      std::vector<RangeTile> m_tiles;
+      RangeTiles m_tiles;
       /// maps element index to tile index (secondary data)
       std::vector<index_t> m_elem2tile_map;
 
+      /// Validates tile_boundaries
+      static bool valid_(const std::vector<index_t>& tile_boundaries) {
+        // Verify the requirement that a < b < c < ...
+        for (index_t index = 1; index < tile_boundaries.size(); ++index)
+          if (tile_boundaries[index - 1] >= tile_boundaries[index])
+            return false;
+        return true;
+      }
+
       /// Initialize tiles use a set of tile offsets
       void init_tiles_(const std::vector<index_t>& tile_boundaries) {
-        assert(valid(tile_boundaries));
+        assert(valid_(tile_boundaries));
         if (tile_boundaries.size() >=2) {
           for (index_t i=1; i<tile_boundaries.size(); ++i) {
-            m_tiles.push_back(RangeTile(tile_boundaries[i-1],
-                                        tile_boundaries[i]));
+            m_tiles.push_back(RangeTile(tile_boundaries[i-1], tile_boundaries[i]));
           }
         }
       }
       
       /// Initialize secondary data
-      void init_() {
+      void init_map_() {
         // init elem2tile map
         m_elem2tile_map.resize(size());
         index_t ii = 0;
@@ -98,40 +106,31 @@ namespace TiledArray {
           for (index_t i=0; i < m_tiles[t].size(); ++i, ++ii)
             m_elem2tile_map[ii] = t;
       }
-      
-      // Validates tile_boundaries
-      static bool valid(const std::vector<index_t>& tile_boundaries) {
-        // Verify the requirement that a < b < c < ...
-        for (index_t index = 1; index < tile_boundaries.size(); ++index)
-          if (tile_boundaries[index - 1] >= tile_boundaries[index])
-            return false;
-        return true;
-      }
-      
+            
     public:
       typedef RangeTiles::const_iterator const_iterator;
 
-      // Default constructor, empty range
+      /// Default constructor, range of 1 tile and element.
       Range() {
-        init_();
+    	std::vector<index_t> tile_boundaries(2, 0);
+    	tile_boundaries[1] = 1;
+    	init_tiles_(tile_boundaries);
+        init_map_();
       }
       
-      // Constructs range from a vector
+      /// Constructs range from a vector
       Range(std::vector<index_t> tile_boundaries) {
         init_tiles_(tile_boundaries);
-        init_();
+        init_map_();
       }
       
       /**
-       Construct range from a C-style array, ranges must have at least
-       ntiles + 1 elements.
+       * Construct range from a C-style array, ranges must have at least
+       * ntiles + 1 elements.
        */
-      Range(index_t* tile_boundaries, index_t ntiles) {
-        std::vector<index_t> tbounds(ntiles+1);
-        std::copy(tile_boundaries, tile_boundaries+ntiles+1, tbounds.begin());
-        
-        init_tiles_(tbounds);
-        init_();
+      Range(const index_t* tile_boundaries, index_t ntiles) {
+        init_tiles_(std::vector<index_t>(tile_boundaries, tile_boundaries+ntiles+1));
+        init_map_();
       }
       
       /// Copy constructor
@@ -165,11 +164,12 @@ namespace TiledArray {
 #endif
       }
       
-      // Returns the number of tiles in the range.
+      /// Returns the number of tiles in the range.
       index_t ntiles() const {
         return m_tiles.size();
       }
-      
+
+      /// Returns a pair containing high and low tile range.
       std::pair<index_t, index_t> tile_range() const {
         return std::pair<index_t,index_t>(0, ntiles());
       }
@@ -207,7 +207,7 @@ namespace TiledArray {
 #endif
       }
 
-      // Returns a pair that contains low and high of the tile.
+      /// Returns a pair that contains low and high of the tile.
       std::pair<index_t, index_t>
       range(index_t tile_index) const
       {
@@ -219,7 +219,7 @@ namespace TiledArray {
         return m_tiles.empty();
       }
 
-      // Returns the low element index of the range.
+      /// Returns the low element index of the range.
       index_t low() const
       {
         if (!empty())
@@ -228,7 +228,7 @@ namespace TiledArray {
         return 0;
       }
 
-      // Returns the high element index of the range.
+      /// Returns the high element index of the range.
       index_t
       high() const
       {
@@ -238,7 +238,7 @@ namespace TiledArray {
         return 0;
       }
 
-      // Returns the number of elements in the range.
+      /// Returns the number of elements in the range.
       indexdiff_t size() const
       {
         return high() - low();
@@ -250,14 +250,14 @@ namespace TiledArray {
         return std::make_pair(low(),high());
       }
 
-      // Returns an iterator to the first tile in the range.
+      /// Returns an iterator to the first tile in the range.
       const_iterator
       begin() const
       {
         return m_tiles.begin();
       }
 
-      // Returns an iterator to the end of the range.
+      /// Returns an iterator to the end of the range.
       const_iterator
       end() const
       {
@@ -273,6 +273,6 @@ namespace TiledArray {
       return out;
     }
 
-  }; // end of namespace TiledArray
+}; // end of namespace TiledArray
 
 #endif // RANGE_H__INCLUDED

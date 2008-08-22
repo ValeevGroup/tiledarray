@@ -11,7 +11,7 @@
 
 //#define TEST_TUPLE
 #define TEST_RANGE
-//#define TEST_ORTHOTOPE
+#define TEST_ORTHOTOPE
 //#define TEST_SHAPE
 
 #include "tiledarray.h"
