@@ -21,9 +21,8 @@ RangeTest()
 	// Test vector array constructor
 	std::cout << std::endl << "Vector array constructor:" << std::endl;
 	ranges[5] = 50;
-	size_t low_tile = 3;
-	std::vector<size_t> ranges_vector(ranges, ranges + tiles + 1);
-	Range rng2(ranges_vector, low_tile);
+	const std::vector<size_t> ranges_vector(ranges, ranges + tiles + 1);
+	Range rng2(ranges_vector);
 	std::cout << "rng2 = " << rng2 << std::endl;
 
 	// Test copy constructor
@@ -43,18 +42,10 @@ RangeTest()
 	std::cout << "(rng1 == rng3) = " << (rng1 == rng3) << std::endl;
 	std::cout << "(rng1 != rng3) = " << (rng1 != rng3) << std::endl;
 
-	// Test relocate
-	std::cout << std::endl << "Relocate:" << std::endl;
-	rng2.relocate(4);
-	std::cout << "rng2.relocate(4) = " << rng2 << std::endl;
-	rng2.relocate_tile(6);
-	std::cout << "rng2.relocate_tile(6) = " << rng2 << std::endl;
-
 	//Test iterator
 	std::cout << std::endl << "Iterator:" << std::endl << "Tiling for rng3" << std::endl;
-	for(Range::iterator it = rng3.begin(); it != rng3.end(); ++it)
+	for(Range::const_iterator it = rng3.begin(); it != rng3.end(); ++it)
 	{
-		it.print(std::cout);
 		std::cout << "[" << (*it).low() << ","<< it->high() << ")" << std::endl;
 	}
 

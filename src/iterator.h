@@ -28,22 +28,28 @@
 #ifndef ITERATOR_H__INCLUDED
 #define ITERATOR_H__INCLUDED
 
+#include <iterator>
+
 template <class ITERATORSPEC>
 class Iterator :
-	public ::std::iterator<typename ITERATORSPEC::iterator_category,
-		typename ITERATORSPEC::value, typename ITERATORSPEC::iterator_type,
+	public std::iterator<typename ITERATORSPEC::iterator_category,
+		typename ITERATORSPEC::value, typename ITERATORSPEC::difference_type,
 		typename ITERATORSPEC::pointer, typename ITERATORSPEC::reference>
 {
 
 public:
-	typedef typename ITERATORSPEC::collection_type	collection_type;
-	typedef typename ITERATORSPEC::iterator_type	iterator_type;
-	typedef int										difference_type;
-	typedef typename ITERATORSPEC::reference		reference;
-	typedef typename ITERATORSPEC::const_reference	const_reference;
-	typedef typename ITERATORSPEC::pointer			pointer;
-	typedef typename ITERATORSPEC::const_pointer	const_pointer;
-	typedef typename ITERATORSPEC::value			value;
+    typedef std::iterator<typename ITERATORSPEC::iterator_category,
+    typename ITERATORSPEC::value, typename ITERATORSPEC::distance_type,
+    typename ITERATORSPEC::pointer, typename ITERATORSPEC::reference> base_type;
+    
+	typedef typename base_type::collection_type     collection_type;
+	typedef typename base_type::difference_type     difference_type;
+	typedef typename base_type::reference           reference;
+	typedef typename base_type::const_reference     const_reference;
+	typedef typename base_type::pointer             pointer;
+	typedef typename base_type::const_pointer       const_pointer;
+	typedef typename base_type::value               value;
+	typedef typename ITERATORSPEC::iterator_type    iterator_type;
 
 protected:
 	iterator_type m_current;
