@@ -205,7 +205,7 @@ namespace TiledArray {
     protected:
       /// Pointer to the orthotope described by shape.
       Orthotope<DIM>* m_orthotope;
-      /// Shared pointer to predicate object; it defines which elements are present.
+      /// Shared pointer to predicate object; it defines which elements are present. TODO does it need to be a pointer?
       boost::shared_ptr<predicate> m_pred;
       /// Linear step is used to calculate linear indices
       Tuple<DIM> m_linear_step;
