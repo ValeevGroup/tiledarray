@@ -35,7 +35,7 @@ namespace TiledArray {
 
       /// number of tiles
       virtual size_t size() const =0;
-      /// number of tiles residing locally
+      /// number of tiles residing locally (do I really need this???)
       virtual size_t local_size() const =0;
       /// Hashes/maps tile to process
       virtual unsigned int proc(unsigned int idx) const =0;
