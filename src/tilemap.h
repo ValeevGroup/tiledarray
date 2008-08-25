@@ -9,6 +9,8 @@ namespace TiledArray {
 
   /// DistributedMemoryPointer = proc + offset
   template <typename Ptr> struct DistributedMemoryPointer {
+    typedef Ptr ptr_t;
+    
     /// offset=0 is invalid
     static DistributedMemoryPointer invalid;
     
@@ -28,17 +30,22 @@ namespace TiledArray {
     public:
       typedef DistributedMemoryPointer<size_t> MemoryHandle;
       
-      // need some data here?
       TileMap();
       virtual ~TileMap();
 
+      /// number of tiles
+      virtual size_t size() const =0;
+      /// number of tiles residing locally
+      virtual size_t local_size() const =0;
+      /// Hashes/maps tile to process
+      virtual unsigned int proc(unsigned int idx) const =0;
       /// Empties the tile map
       virtual void reset() =0;
       /// Returns the MemoryHandle corresponding to tile idx
       virtual MemoryHandle find(size_t idx) const =0;
       /// Registers tile idx with this map. Assumes that input tile has not been registered yet.
-      virtual void register_tile(size_t idx, const MemoryHandle& tilehndl) =0;
-      
+      virtual void register_tile(size_t idx, const MemoryHandle::ptr_t& tileptr) =0;
+
   };
   
   /** Maintains information about local tiles, i.e. all tiles are assumed local
@@ -51,21 +58,27 @@ namespace TiledArray {
 
       LocalTileMap();
       ~LocalTileMap();
-      
+
+      /// Implements TileMap::size
+      size_t size() const;
+      /// Implements TileMap::local_size()
+      size_t local_size() const;
+      /// Implements TileMap::proc
+      unsigned int proc(unsigned int idx) const { return me_; }
       /// Implements TileMap::reset()
       void reset();
       /// Implements TileMap::find
       MemoryHandle find(size_t idx) const;
       /// Implements TileMap::register_tile
-      void register_tile(size_t idx, const MemoryHandle& tilehndl);
+      void register_tile(size_t idx, const MemoryHandle::ptr_t& tileptr);
       
     private:
-      typedef std::map<size_t, size_t> Offsets;
+      typedef std::map<size_t, MemoryHandle::ptr_t> Offsets;
       /// maps linear_tile_idx to offset for local tiles
       Offsets offsets_;
-      
       /// this process rank
       unsigned int me_;
+      
   };
 
   /// Manages tiles distributed among procs
@@ -77,18 +90,27 @@ namespace TiledArray {
       DistributedTileMap();
       ~DistributedTileMap();
       
+      /// Implements TileMap::size
+      size_t size() const;
+      /// Implements TileMap::local_size()
+      size_t local_size() const;
+      /// Implements TileMap::proc
+      unsigned int proc(unsigned int idx) const { return idx % nproc_; }
       /// Implements TileMap::reset()
       void reset();
       /// Implements TileMap::find
       MemoryHandle find(size_t idx) const;
       /// Implements TileMap::register_tile
-      void register_tile(size_t idx, const MemoryHandle& tilehndl);
+      void register_tile(size_t idx, const MemoryHandle::ptr_t& tileptr);
       
     private:
       LocalTileMap localmap_;
       
+      /// number of processes
+      unsigned int nproc_;
       /// this process rank
       unsigned int me_;
+      
   };
 
 } // namespace TiledArray

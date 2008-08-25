@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 #include <tilemap.h>
 #include <env.h>
 
@@ -40,6 +41,14 @@ void LocalTileMap::reset() {
   offsets_.clear();
 }
 
+size_t LocalTileMap::size() const {
+  return local_size();
+}
+
+size_t LocalTileMap::local_size() const {
+  return offsets_.size();
+}
+
 TileMap::MemoryHandle LocalTileMap::find(size_t idx) const {
   const Offsets::const_iterator i = offsets_.find(idx);
   if (i != offsets_.end())
@@ -48,14 +57,14 @@ TileMap::MemoryHandle LocalTileMap::find(size_t idx) const {
     return MemoryHandle::invalid;
 }
 
-void LocalTileMap::register_tile(size_t idx, const MemoryHandle& tilehndl) {
-  offsets_[idx] = tilehndl.offset;
+void LocalTileMap::register_tile(size_t idx, const MemoryHandle::ptr_t& tileptr) {
+  offsets_[idx] = tileptr;
 }
 
 //////////////////////
 
 DistributedTileMap::DistributedTileMap() :
-  me_(RuntimeEnvironment::Instance().me()) {
+  nproc_(RuntimeEnvironment::Instance().nproc()), me_(RuntimeEnvironment::Instance().me()) {
 }
 
 DistributedTileMap::~DistributedTileMap() {
@@ -65,16 +74,31 @@ void DistributedTileMap::reset() {
   localmap_.reset();
 }
 
-TileMap::MemoryHandle DistributedTileMap::find(size_t idx) const {
-  // determine the node
-  // if node == me, use localmap_
-  // else return 0
+size_t DistributedTileMap::size() const {
   abort();
 }
 
-void DistributedTileMap::register_tile(size_t idx, const MemoryHandle& tilehndl) {
+size_t DistributedTileMap::local_size() const {
+  return localmap_.size();
+}
+
+TileMap::MemoryHandle DistributedTileMap::find(size_t idx) const {
   // determine the node
+  const unsigned int p = proc(idx);
   // if node == me, use localmap_
-  // else throw
-  abort();
+  if (p == me_)
+    return localmap_.find(idx);
+  else
+    return MemoryHandle(p, 0);
+}
+
+void DistributedTileMap::register_tile(size_t idx,
+                                       const MemoryHandle::ptr_t& tileptr) {
+  // determine the node
+  const unsigned int p = proc(idx);
+  // if node == me, use localmap_
+  if (p == me_)
+    localmap_.register_tile(idx, tileptr);
+  else
+    throw std::runtime_error("DistributedTileMap::register_tile -- cannot register nonlocal tile");
 }

@@ -39,6 +39,7 @@ TestRuntimeEnvironment::CreateInstance(unsigned int nproc, unsigned int me) {
 void
 TestRuntimeEnvironment::DestroyInstance() {
   delete instance_;
+  instance_ = 0;
 }
 
 unsigned int

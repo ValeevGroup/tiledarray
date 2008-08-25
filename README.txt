@@ -51,29 +51,20 @@ class TileMap {
   // need some data here?
   TileMap() {}
 
-  virtual unsigned int node(size_t linear_tile_idx) =0;
-  virtual size_t offset(size_t linear_tile_idx) =0;
-  virtual void register(size_t linear_tile_idx, size_t offset) =0;
-  
-  // or
-#if 0
-  virtual shared_ptr<MemoryHandle> find(size_t linear_tile_idx) =0;
-  virtual void register(const shared_ptr<MemoryHandle>& tile) =0;
-#endif
+  virtual MemoryHandle find(size_t linear_tile_idx) =0;
+  virtual void register_tile(size_t linear_tile_idx, ptr_t tile) =0;
 }
 
 class LocalTileMap {
   public:
   LocalTileMap() : TileMap() {}
-
-  unsigned int node(size_t linear_tile_idx) { return 0; }
-  size_t offset(size_t linear_tile_idx) {
-  }
   
   private:
   /// maps linear_tile_idx to offset
   std::map<size_t, size_t> offsets_;
 }
+
+class DistributedTileMap;
 
 class MemoryAllocator {
   public:
