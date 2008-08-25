@@ -92,9 +92,9 @@ void TupleTest() {
       TiledArray::Tuple<4> randPerm(values6);
       std::cout << "Permutation Tests:" << std::endl;
       std::cout << "Initial: " << comp1 << std::endl;
-      std::cout << "(1,2,3,4).Permute() = " << comp1.Permute() << std::endl;
-      std::cout << "(2,3,4,1).ReversePermute() = " << comp1.ReversePermute() << std::endl;
-      std::cout << "(5,6,7,8).Permute((1,3,0,2)) = " << tuple4D.Permute(randPerm) << std::endl;
+      std::cout << "(1,2,3,4).Permute() = " << comp1.permute() << std::endl;
+      std::cout << "(2,3,4,1).ReversePermute() = " << comp1.reverse_permute() << std::endl;
+      std::cout << "(5,6,7,8).Permute((1,3,0,2)) = " << tuple4D.permute(randPerm) << std::endl;
 
       std::cout << "End Tuple Test" << std::endl << std::endl;
 

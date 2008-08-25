@@ -218,14 +218,14 @@ namespace TiledArray {
        * @param dim    the dimension to mask
        * @param value  the value to put into the dimension
        */
-      Tuple<DIM> Mask(int dim, int value = 0) const {
+      Tuple<DIM> mask(int dim, int value = 0) const {
         Tuple<DIM> ret = *this;
         ret[dim] = value;
         return ret;
       }
       
       // Forward permutation of set by one.
-      Tuple<DIM>& Permute() {
+      Tuple<DIM>& permute() {
         int temp = this->m_values[0];
         
         for (unsigned int index = 0; index < this->m_values.size() - 1; ++index)
@@ -237,7 +237,7 @@ namespace TiledArray {
       }
       
       // Reverse permutation of set by one.
-      Tuple<DIM>& ReversePermute() {
+      Tuple<DIM>& reverse_permute() {
         int index = this->m_values.size() - 1;
         
         // Store the value of the last element
@@ -258,7 +258,7 @@ namespace TiledArray {
        *
        * @param perm - Tuple must include each index number (0, 1, ..., DIM-1) once and only once.
        */
-      Tuple<DIM>& Permute(const Tuple<DIM>& perm) {
+      Tuple<DIM>& permute(const Tuple<DIM>& perm) {
 #if (TA_DLEVEL >= 0)
         // Ensure each index is present and listed only once.
         int indexCount = 0;
