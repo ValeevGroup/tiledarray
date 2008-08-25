@@ -259,7 +259,7 @@ public:
 	}
 };
 
-template<int DIM, class Predicate>  std::ostream&
+template<unsigned int DIM>  std::ostream&
 operator <<(std::ostream& out, const Orthotope<DIM>& ortho) {  
 	out << "Orthotope<" << DIM << ">(" 
 		<< " @= " << &ortho
