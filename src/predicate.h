@@ -2,22 +2,28 @@
 #define PREDICATE_H__INCLUDED
 
 namespace TiledArray {
-  
-  template<unsigned int DIM> class AbstractPredicate {
+
+  /** Predicate that maps an DIM-tuple to a boolean.
+      The output is computed as f(P(T)), where T is the input tuple,
+      P is a permutation, and f is a predicate.
+   */
+  template<unsigned int DIM> class TupleFilter {
     public:
       
-      inline bool operator ()(const Tuple<DIM>& tup) {
-        return this->included(tup);
-      }
+      virtual bool operator ()(const Tuple<DIM>& T) =0;
+      virtual TupleFilter<DIM>& permute(const Tuple<DIM>& perm) =0;
       
-      virtual inline bool included(const Tuple<DIM>& tup) = 0;
   };
   
-  template<unsigned int DIM> class DensePredicate {
+  template<unsigned int DIM> class OffTupleFilter : public TupleFilter<DIM> {
     public:
       
-      virtual inline bool included(const Tuple<DIM>& tup) {
+      virtual bool operator ()(const Tuple<DIM>& tup) {
         return true;
+      }
+      
+      TupleFilter<DIM>& permute(const Tuple<DIM>& perm) {
+        return *this;
       }
   };
 

@@ -258,7 +258,7 @@ namespace TiledArray {
       
       virtual inline bool included(const Tuple<DIM>& element_index) const {
         return this->m_orthotope->contains(element_index)
-            && this->m_pred->included(element_index);
+            && (*m_pred)(element_index);
       }
       
       // Ordinal value of Tuple. Ordinal value does not include offset

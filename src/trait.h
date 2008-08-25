@@ -33,7 +33,7 @@ namespace TiledArray {
   /* serial HTA implementation */
   template <typename T, unsigned int DIM> class LocalDenseTrait {
       typedef T ValueType;
-      typedef DensePredicate<DIM> PredicateType;
+      typedef OffTupleFilter<DIM> PredicateType;
       typedef Shape<DIM, PredicateType> ShapeType;
 
       typedef LocalAllocator<T> AllocatorType;

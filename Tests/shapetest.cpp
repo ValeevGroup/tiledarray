@@ -2,8 +2,10 @@
 #include <shape.h>
 #include <predicate.h>
 
+using namespace TiledArray;
+
 void ShapeTest() {
   // Default Constructor
-  TiledArray::Shape<4, TiledArray::DensePredicate<4> > shapeDefault;
+  Shape<4, OffTupleFilter<4> > shapeDefault;
   
 }
