@@ -9,8 +9,15 @@ namespace TiledArray {
    * Predicate that maps an DIM-tuple to a boolean.
    * The output is computed as f(P(T)), where T is the input tuple,
    * P is a permutation, and f is a predicate.
+   * 
+   * All classes inherited from TupleFilter must define a default constructor,
+   * and the virtual operator() function. The operator() function should call
+   * translate(const Tuple<DIM>&) on the tuple passed to it if
+   * m_apply_permutation is true, to translate it to the current permutation of
+   * the shape.
    */
   template<unsigned int DIM> class TupleFilter {
+  protected:
     /// Current permutation of the TupleFilter
     Tuple<DIM> m_permutation;
     /// Used to determine if a transpose has been applied.

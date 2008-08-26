@@ -76,6 +76,7 @@ void DistributedTileMap::reset() {
 
 size_t DistributedTileMap::size() const {
   abort();
+  return 0;
 }
 
 size_t DistributedTileMap::local_size() const {

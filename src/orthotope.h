@@ -253,6 +253,11 @@ public:
 		return tmp;
 	}
 
+    inline Orthotope<DIM>& permute(const Tuple<DIM>& perm) {
+      TiledArray::permute(m_ranges, perm);
+      return *this;
+    }
+
 	// Equality operator
 	inline bool
 	operator ==(const Orthotope<DIM>& ortho) const 

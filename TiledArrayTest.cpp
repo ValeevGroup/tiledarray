@@ -6,11 +6,11 @@
 // Description : Hello World in C, Ansi-style
 //============================================================================
 
-#define TEST_TUPLE
-#define TEST_RANGE
-#define TEST_ORTHOTOPE
-//#define TEST_SHAPE
-#define TEST_TILEMAP
+//#define TEST_TUPLE
+//#define TEST_RANGE
+//#define TEST_ORTHOTOPE
+#define TEST_SHAPE
+//#define TEST_TILEMAP
 
 #include "tiledarray.h"
 #include "tupletest.h"

@@ -52,5 +52,7 @@ OrthotopeTest()
 	std::cout << "element = " << element << std::endl;
 	std::cout << "ortho2.tile(element) = " << ortho2.tile(element) << std::endl;
 	
-	std::cout << "End Orthotope Test" << std::endl << std::endl;
+  std::cout << "Permutation Test:" << std::endl;
+
+  std::cout << "End Orthotope Test" << std::endl << std::endl;
 }
