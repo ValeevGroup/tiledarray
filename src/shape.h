@@ -206,7 +206,7 @@ namespace TiledArray {
       /// Pointer to the orthotope described by shape.
       Orthotope<DIM>* m_orthotope;
       /// Shared pointer to predicate object; it defines which elements are present. TODO does it need to be a pointer?
-      boost::shared_ptr<predicate> m_pred;
+      predicate m_pred;
       /// Linear step is used to calculate linear indices
       Tuple<DIM> m_linear_step;
 
@@ -229,7 +229,7 @@ namespace TiledArray {
       }
       
       /// Constructor
-      Shape(const Orthotope<DIM>* ortho, const boost::shared_ptr<predicate> pred) :
+      Shape(const Orthotope<DIM>* ortho, const predicate& pred = predicate()) :
         m_orthotope(ortho), m_pred(pred) {
     	init_linear_step_();
       }
@@ -253,12 +253,12 @@ namespace TiledArray {
       
       // Returns a pointer to the orthotope described by this Shape.
       virtual inline const Orthotope<DIM>* orthotope() const {
-        return this->m_orthotope;
+        return m_orthotope;
       }
       
       virtual inline bool included(const Tuple<DIM>& element_index) const {
-        return this->m_orthotope->contains(element_index)
-            && (*m_pred)(element_index);
+        return m_orthotope->contains(element_index)
+            && m_pred(element_index);
       }
 
       /**
@@ -299,7 +299,7 @@ namespace TiledArray {
        * Iterator factory
        */
       inline iterator begin() const {
-        return iterator(*(this->m_pred), ShapeIterator(*this),
+        return iterator(m_pred, ShapeIterator(*this),
                         ShapeIterator(*this, -1));
       }
       
@@ -307,7 +307,7 @@ namespace TiledArray {
        * Iterator factory
        */
       inline iterator end() const {
-        return iterator(*(this->m_pred), ShapeIterator(*this, -1),
+        return iterator(m_pred, ShapeIterator(*this, -1),
                         ShapeIterator(*this, -1));
       }
   };

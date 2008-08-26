@@ -17,16 +17,23 @@ namespace TiledArray {
     bool m_apply_permutation;
 	  
   public:
-      
+
+	/// Default constrcutor
     TupleFilter() :
       m_apply_permutation(false)
     {
       for(unsigned int index = 0; index < DIM; ++index)
         m_permutation[index] = index;
     }
-    	
-    	
-    virtual bool operator ()(const Tuple<DIM>& T) =0;
+
+    /// Copy constructor
+    TupleFilter(const TupleFilter& tf) :
+      m_permutation(tf.m_permutation),
+      m_apply_permutation(tf.m_apply_permutation)
+    {}
+    
+    /// pure virtual predicate function
+    virtual bool operator ()(const Tuple<DIM>& T) const =0;
  
     // Forward permutation of set by one.
     inline Tuple<DIM>& permute() {
@@ -41,14 +48,15 @@ namespace TiledArray {
 
    	  return m_permutation.reverse_permute();
     }
-      
+
+    /// Arbitrary permutation
     inline Tuple<DIM>& permute(const Tuple<DIM>& trans) {
     	m_apply_permutation = true;
     	return m_permutation.permute(trans);
     }
 
     /// Reset the permutation to the default value of no permutation.
-    void reset_permutation() {
+    inline void reset_permutation() {
   	  m_apply_permutation = false;
       for(unsigned int index = 0; index < DIM; ++index)
         m_permutation[index] = index;
@@ -70,12 +78,22 @@ namespace TiledArray {
   template<unsigned int DIM> class OffTupleFilter : public TupleFilter<DIM> {
     public:
       
-      virtual bool operator ()(const Tuple<DIM>& tup) {
-        return true;
+      /// Default constructor
+      OffTupleFilter() : TupleFilter<DIM>() {}
+
+      /// Copy constructor
+      OffTupleFilter(const OffTupleFilter& otf) : TupleFilter<DIM>(otf) {}
+      
+      /// Assignment operator
+      OffTupleFilter& operator =(const OffTupleFilter& otf) {
+      	this->m_permutation = otf.m_permutation;
+      	this->m_apply_permutation = otf.m_apply_m_permutation;
+      	
+      	return *this;
       }
       
-      TupleFilter<DIM>& permute(const Tuple<DIM>& perm) {
-        return *this;
+      virtual bool operator ()(const Tuple<DIM>& tup) const {
+        return true;
       }
   };
 
