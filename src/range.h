@@ -36,36 +36,37 @@ namespace TiledArray {
           RangeTile() :
             m_low(0), m_high(0), m_size(0) {
           }
-          
+
           RangeTile(index_t first, index_t plast) :
             m_low(first), m_high(plast), m_size(plast-first) {
           }
-          
+
           RangeTile(const RangeTile& src) :
             m_low(src.m_low), m_high(src.m_high), m_size(src.m_size) {
           }
-          
+
           const RangeTile& operator=(const RangeTile& src) {
             m_low = src.m_low;
             m_high = src.m_high;
             m_size = src.m_size;
             return *this;
           }
-          
+
           bool operator==(const RangeTile& A) const {
             return m_low == A.m_low && m_high == A.m_high;
           }
-          
+
           index_t low() const {
             return m_low;
           }
+
           index_t high() const {
             return m_high;
           }
+
           indexdiff_t size() const {
             return m_size;
           }
-          
       };
 
       typedef std::vector<RangeTile> RangeTiles;

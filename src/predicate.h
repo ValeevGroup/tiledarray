@@ -1,6 +1,8 @@
 #ifndef PREDICATE_H__INCLUDED
 #define PREDICATE_H__INCLUDED
 
+#include <tuple.h>
+
 namespace TiledArray {
 
   /**

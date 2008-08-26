@@ -1,6 +1,7 @@
 #ifndef ORTHOTOPE_H__INCLUDED
 #define ORTHOTOPE_H__INCLUDED
 
+#include <iostream>
 #include <range.h>
 #include <tuple.h>
 
@@ -13,10 +14,11 @@ class Orthotope
 	std::vector<Range> m_ranges;	// Vector of range data for each dimention
 
 public:
-	// iterator typedefs
-	typedef Range::const_iterator				const_range_iterator;
-	typedef std::vector<Range>::const_iterator	const_iterator;
-	typedef std::vector<Range>::iterator		iterator;
+	// typedefs
+	typedef Range::index_t                      index_t;
+	typedef Range::const_iterator               const_range_iterator;
+	typedef std::vector<Range>::const_iterator  const_iterator;
+	typedef std::vector<Range>::iterator        iterator;
 // 	typedef std::pair<Tuple<DIM>, Tuple<DIM> >	tile;
 
 	// Default constructor
@@ -47,45 +49,42 @@ public:
 	}
 
 
-	// Constructor from a vector of ranges
+	/// Constructor from a vector of ranges
 	Orthotope(const std::vector<Range>& ranges) :
 		m_ranges(ranges)
 	{
 		assert(ranges.size() == DIM);
-
 	}
 
-	// Returns an iterator pointing to the first range.
+	/// Returns an iterator pointing to the first range.
 	inline iterator
 	begin()
 	{
 		return m_ranges.begin();
 	}
 
-	// Return an iterator pointing one past the last dimension.
+	/// Return an iterator pointing one past the last dimension.
 	inline iterator
 	end()
 	{
 		return m_ranges.end();
 	}
 
-	// Returns an iterator pointing to the first range.
+	/// Returns an iterator pointing to the first range.
 	inline const_iterator
 	begin() const
 	{
 		return m_ranges.begin();
 	}
 
-
-
-	// Return an iterator pointing one past the last dimension.
+	/// Return an iterator pointing one past the last dimension.
 	inline const_iterator
 	end() const
 	{
 		return m_ranges.end();
 	}
 
-	// Returns an iterator pointing to the element in the dim range.
+	/// Returns an iterator pointing to the element in the dim range.
 	inline const_range_iterator
 	begin(const unsigned int dim) const
 	{
@@ -93,6 +92,7 @@ public:
 		return m_ranges[dim].begin();
 	}
 
+	/// Returns an iterator pointing to the end of dim range.
 	inline const_range_iterator
 	end(const unsigned int dim) const
 	{
@@ -102,7 +102,7 @@ public:
 
 	// Accessor functions
 
-	// change one of the dimension ranges.
+	/// change one of the dimension ranges.
 	inline void
 	set_dim(const unsigned int dim, const Range& rng)
 	{
@@ -110,7 +110,7 @@ public:
 		m_ranges[dim] = rng;
 	}
 
-	// Return a reference to one of the dimension ranges.
+	/// Return a reference to one of the dimension ranges.
 	inline const Range&
 	get_dim(const unsigned int dim) const
 	{
@@ -118,19 +118,19 @@ public:
 		return m_ranges[dim];
 	}
 
-	// Return a reference to one of the dimension ranges.
+	/// Return a reference to one of the dimension ranges.
 	inline const Range&
 	operator [](const unsigned int dim)
 	{
 		return get_dim(dim);
 	}
 
-	// Returns true if element_index is within the bounds of the orthotope.
+	/// Returns true if element_index is within the bounds of the orthotope.
 	inline bool
 	contains(const Tuple<DIM>& element_index) const 
 		{return (element_index >= low()) && (element_index < high());}
 
-	// return tuple with lower bound for each dimension.
+	/// return tuple with lower bound for each dimension.
 	inline Tuple<DIM>
 	low() const
 	{
@@ -141,7 +141,7 @@ public:
 		return tmp;
 	}
 
-	// Return tuple with the upper bound for each dimension.
+	/// Return tuple with the upper bound for each dimension.
 	inline Tuple<DIM>
 	high() const
 	{
@@ -152,14 +152,40 @@ public:
 		return tmp;
 	}
 
-	// Returns a tuple with the number of elements in each dimension
+	/// Returns a tuple with the number of elements in each dimension
 	inline Tuple<DIM>
 	size() const
 	{
 		return high() - low();
 	}
 
-	// Return the range of elements in orthotope
+	/// Returns the number of tiles in each dimension.
+	inline Tuple<DIM>
+	tile_size() const
+	{
+		Tuple<DIM> tmp;
+
+		for(unsigned int dim = 0; dim < DIM; ++dim)
+			tmp[dim] = m_ranges[dim].ntiles();
+
+		return tmp;
+	}
+
+	/// Number of elements contained in the orthotope.
+	inline size_t
+	nelements() const
+	{
+		return VectorOps<Tuple<DIM>, DIM>::selfProduct(size());
+	}
+	
+	/// Returns the total number of tiles in the orthotope
+	inline size_t
+	ntiles() const
+	{
+		return VectorOps<Tuple<DIM>, DIM>::selfProduct(tile_size());
+	}
+
+	/// Return the range of elements in orthotope
 	inline std::pair<Tuple<DIM>, Tuple<DIM> >
 	range() const
 	{
@@ -173,34 +199,29 @@ public:
 		return VectorOps<Tuple<DIM>, DIM>::selfProduct(size());
 	}
 
-	// Return the low index of each dimension of the tile at tile_index.
+	/// Return the low index of each dimension of the tile at tile_index.
 	Tuple<DIM>
 	low(const Tuple<DIM>& tile_index) const
 	{
-		// TODO: add asserts back in once functions have been added to the class.
-//		assert(tile_index >= tile_low());
-//		assert(tile_index < tile_high());
 		Tuple<DIM> tmp;
-		for(int dim = 0; dim < DIM; ++dim)
+		for(unsigned int dim = 0; dim < DIM; ++dim)
 			tmp[dim] = m_ranges[dim].low(tile_index[dim]);
 
 		return tmp;
 	}
 
-	// return the high index of each dimension of the tile at tile_index.
+	/// return the high index of each dimension of the tile at tile_index.
 	Tuple<DIM>
 	high(const Tuple<DIM>& tile_index) const
 	{
-		// TODO: add asserts back in once the functions have been added to the class.
-//		assert(tile_index < tile_high());
 		Tuple<DIM> tmp;
-		for(int dim = 0; dim < DIM; ++dim)
+		for(unsigned int dim = 0; dim < DIM; ++dim)
 			tmp[dim] = m_ranges[dim].high(tile_index[dim]);
 
 		return tmp;
 	}
 
-	// return the number of elements in each dimension of the tile at tile_index.
+	/// return the number of elements in each dimension of the tile at tile_index.
 	inline Tuple<DIM>
 	size(const Tuple<DIM>& tile_index) const
 	{
@@ -213,32 +234,23 @@ public:
 		return std::pair<Tuple<DIM>, Tuple<DIM> >(low(tile_index), high(tile_index));
 	}
 
-	// Number of elements contained in the orthotope.
+	/// Number of elements contained in the tile.
 	inline size_t
-	count(const Tuple<DIM>& tile_index) const
+	nelements(const Tuple<DIM>& tile_index) const
 	{
 		return VectorOps<Tuple<DIM>, DIM>::selfProduct(size(tile_index));
 	}
-
-	// Return the tile that contains an element index.
+	
+	/// Return the tile that contains an element index.
 	inline Tuple<DIM>
 	tile(const Tuple<DIM>& element_index) const
 	{
-		assert(contains(element_index));
 		Tuple<DIM> tmp;
 
 		for(unsigned int dim = 0; dim < DIM; ++dim)
 			tmp[dim] = m_ranges[dim].tile(element_index[dim]);
 
 		return tmp;
-	}
-
-	// Return a tile at tile_index.
-	inline std::pair<Tuple<DIM>, Tuple<DIM> >
-	tile_range(const Tuple<DIM>& tile_index) const
-	{
-		assert(tile_index < count());
-		return std::pair<Tuple<DIM>, Tuple<DIM> >(low(tile_index), high(tile_index));
 	}
 
 	// Equality operator
@@ -266,12 +278,10 @@ operator <<(std::ostream& out, const Orthotope<DIM>& ortho) {
 		<< " low= " << ortho.low() 
 		<< " high= " << ortho.high()
 		<< " size= " << ortho.size()
-		<< " range= [" << ortho.range().first << "," << ortho.range().second << ")"
-		<< " linearStep= " << ortho.linear_step()
-		<< " tile_low= " << ortho.tile_low()
-		<< " tile_high= " << ortho.tile_high()
+		<< " range= [ " << ortho.range().first << "," << ortho.range().second << " )"
 		<< " tile_size= " << ortho.tile_size()
-		<< " tile_range= [" << ortho.tile_range().first << "," << ortho.tile_range().socond << ")" 
+		<< " nelements= " << ortho.nelements()
+		<< " ntiles= " << ortho.ntiles()
 		<< " )";
 	return out;
 }

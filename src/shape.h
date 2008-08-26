@@ -260,12 +260,14 @@ namespace TiledArray {
         return this->m_orthotope->contains(element_index)
             && (*m_pred)(element_index);
       }
-      
-      // Ordinal value of Tuple. Ordinal value does not include offset
-      // and does not consider step. If the shape starts at (5, 3), 
-      // then (5, 4) has ord 1 on row-major. 
-      // The ordinal value of orthotope()->low() is always 0.
-      // The ordinal value of orthotope()->high() is always <= linearCard().
+
+      /**
+       * Ordinal value of Tuple. Ordinal value does not include offset
+       * and does not consider step. If the shape starts at (5, 3), then (5, 4)
+       * has ord 1 on row-major. 
+       * The ordinal value of orthotope()->low() is always 0.
+       * The ordinal value of orthotope()->high() is always <= linearCard().
+       */
       virtual inline size_t ord(const Tuple<DIM>& coord) const {
         assert(this->m_orthotope->contains(coord));
         return static_cast<size_t>(VectorOps<Tuple<DIM>, DIM>::dotProduct((coord

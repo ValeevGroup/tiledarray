@@ -28,6 +28,11 @@
 #ifndef  __TRAITS_H__INCLUDED
 #define  __TRAITS_H__INCLUDED
 
+#include <predicate.h>
+#include <shape.h>
+#include <allocator.h>
+#include <mathkernel.h>
+
 namespace TiledArray {
   
   /* serial HTA implementation */

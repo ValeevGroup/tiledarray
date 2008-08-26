@@ -49,30 +49,34 @@
 namespace TiledArray {
   
   template <unsigned int DIM> class Tuple {
+  public:
+	  // Typedefs
+	  typedef int value_t;
+      typedef std::vector<value_t>::iterator iterator;
+      typedef std::vector<value_t>::const_iterator const_iterator;
       
-      typedef std::vector<int> vectortype;
+  private:
 
-      vectortype m_values; // vector of DIM-dimentional point
+	  /// vector of DIM-dimentional point
+	  std::vector<value_t> m_values;
 
-    public:
+  public:
       
-      // Iterator for dimentions
-      typedef std::vector<int>::iterator iterator;
-      typedef std::vector<int>::const_iterator const_iterator;
+
 
       inline explicit Tuple() :
         m_values(DIM, 0) {
       }
       
-      inline explicit Tuple(const int value) :
+      inline explicit Tuple(const value_t value) :
         m_values(DIM, value) {
       }
       
-      inline explicit Tuple(const int* values) :
+      inline explicit Tuple(const value_t* values) :
         m_values(values, values + DIM) {
       }
       
-      inline explicit Tuple(const std::vector<int>& values) :
+      inline explicit Tuple(const std::vector<value_t>& values) :
         m_values(DIM, values) {
       }
       
@@ -87,129 +91,137 @@ namespace TiledArray {
 
       // Returns an interator to the first coordinate
       iterator begin() {
-        return this->m_values.begin();
+        return m_values.begin();
       }
       
       // Returns a constant iterator to the first coordinate. 
       const_iterator begin() const {
-        return this->m_values.begin();
+        return m_values.begin();
       }
       
       // Returns an iterator to one element past the last coordinate.
       iterator end() {
-        return this->m_values.end();
+        return m_values.end();
       }
       
       // Returns a constant iterator to one element past the last coordinate.
       const_iterator end() const {
-        return this->m_values.end();
+        return m_values.end();
       }
       
       // Arithmatic operators
       inline Tuple<DIM> operator +(const Tuple<DIM>& tup) const {
         Tuple<DIM> ret;
-        VectorOps<vectortype, DIM>::add(ret.m_values, this->m_values,
+        VectorOps<std::vector<value_t>, DIM>::add(ret.m_values, m_values,
                                         tup.m_values);
         return ret;
       }
       
       inline Tuple<DIM>& operator +=(const Tuple<DIM>& tup) {
-        VectorOps<vectortype, DIM>::addIn(this->m_values, tup.m_values);
+        VectorOps<std::vector<value_t>, DIM>::addIn(m_values, tup.m_values);
         
         return (*this);
       }
       
       inline Tuple<DIM>& operator -=(const Tuple<DIM>& tup) {
-        VectorOps<vectortype, DIM>::subIn(this->m_values, tup.m_values);
+        VectorOps<std::vector<value_t>, DIM>::subIn(m_values, tup.m_values);
         
         return (*this);
       }
       
-      inline Tuple<DIM> operator +(int d) const {
-        Tuple<DIM> ret(d);
-        VectorOps<vectortype, DIM>::addIn(this->m_values, ret);
+      inline Tuple<DIM> operator +(const value_t val) const {
+        Tuple<DIM> ret(val);
+        VectorOps<std::vector<value_t>, DIM>::addIn(m_values, ret);
         return ret;
       }
       
       inline Tuple<DIM> operator -(const Tuple<DIM>& other) const {
         Tuple<DIM> ret;
-        VectorOps<vectortype, DIM>::sub(ret.m_values, this->m_values,
+        VectorOps<std::vector<value_t>, DIM>::sub(ret.m_values, m_values,
                                         other.m_values);
         return ret;
       }
       
-      inline Tuple<DIM> operator -(int d) const {
-        Tuple<DIM> ret(d);
-        VectorOps<vectortype, DIM>::subIn(this->m_values, ret);
+      inline Tuple<DIM> operator -(value_t val) const {
+        Tuple<DIM> ret(val);
+        VectorOps<std::vector<value_t>, DIM>::subIn(m_values, ret);
         return ret;
       }
       
       inline Tuple<DIM> operator -() const {
         Tuple<DIM> ret;
-        VectorOps<vectortype, DIM>::uminus(ret.m_values, this->m_values);
+        VectorOps<std::vector<value_t>, DIM>::uminus(ret.m_values, m_values);
         return ret;
       }
       
       inline Tuple<DIM> operator *(const Tuple<DIM>& other) const {
         Tuple<DIM> ret;
-        VectorOps<vectortype, DIM>::mult(ret.m_values, this->m_values,
+        VectorOps<std::vector<value_t>, DIM>::mult(ret.m_values, m_values,
                                          other.m_values);
         return ret;
       }
       
       inline Tuple<DIM> operator /(const Tuple<DIM>& other) const {
         Tuple<DIM> ret;
-        VectorOps<vectortype, DIM>::div(ret.m_values, this->m_values,
+        VectorOps<std::vector<value_t>, DIM>::div(ret.m_values, m_values,
                                         other.m_values);
         return ret;
       }
       
       inline Tuple<DIM> operator %(const Tuple<DIM>& tup) const {
         Tuple<DIM> ret;
-        VectorOps<vectortype, DIM>::mod(ret.m_values, this->m_values,
+        VectorOps<std::vector<value_t>, DIM>::mod(ret.m_values, m_values,
                                         tup.m_values);
         return ret;
       }
       
       // Comparison Operators
       inline bool operator ==(const Tuple<DIM>& tup) const {
-        return VectorOps<vectortype, DIM>::equal(this->m_values, tup.m_values);
+        return VectorOps<std::vector<value_t>, DIM>::equal(m_values, tup.m_values);
       }
       
       inline bool operator !=(const Tuple<DIM>& tup) const {
-        return !(this->operator ==(tup));
+        return !(operator ==(tup));
       }
       
       inline bool operator <(const Tuple<DIM>& tup) const {
-        return VectorOps<vectortype, DIM>::less(this->m_values, tup.m_values);
+        return VectorOps<std::vector<value_t>, DIM>::less(m_values, tup.m_values);
       }
       
       inline bool operator <=(const Tuple<DIM>& tup) const {
-        return (VectorOps<vectortype, DIM>::less(this->m_values, tup.m_values)
-            || VectorOps<vectortype, DIM>::equal(this->m_values, tup.m_values));
+        return (VectorOps<std::vector<value_t>, DIM>::less(m_values, tup.m_values)
+            || VectorOps<std::vector<value_t>, DIM>::equal(m_values, tup.m_values));
       }
       
       inline bool operator>(const Tuple<DIM>& tup) const {
-        return !(this->operator <=(tup));
+        return !(operator <=(tup));
       }
       
       inline bool operator >=(const Tuple<DIM>& tup) const {
-        return !(this->operator <(tup));
+        return !(operator <(tup));
       }
       
       inline Tuple<DIM>& operator =(const Tuple<DIM> & tup) {
-        std::copy(tup.m_coordinates.begin(), tup.m_coordinates.end(),
-                  this->m_coordinates.begin());
+        std::copy(tup.m_values.begin(), tup.m_values.end(),
+        		m_values.begin());
         
         return (*this);
       }
       
-      inline int operator[](int i) const {
-        return this->m_values[i];
+      inline const value_t& operator[](unsigned int dim) const {
+#ifdef NDEBUG
+    	return m_values.at(dim);
+#else
+        return m_values[dim];
+#endif
       }
       
-      inline int& operator[](int i) {
-        return this->m_values[i];
+      inline value_t& operator[](unsigned int dim) {
+#ifdef NDEBUG
+    	return m_values.at(dim);
+#else
+        return m_values[dim];
+#endif
       }
       
       /**
@@ -218,7 +230,7 @@ namespace TiledArray {
        * @param dim    the dimension to mask
        * @param value  the value to put into the dimension
        */
-      Tuple<DIM> mask(int dim, int value = 0) const {
+      Tuple<DIM> mask(unsigned int dim, value_t value = 0) const {
         Tuple<DIM> ret = *this;
         ret[dim] = value;
         return ret;
@@ -226,29 +238,29 @@ namespace TiledArray {
       
       // Forward permutation of set by one.
       Tuple<DIM>& permute() {
-        int temp = this->m_values[0];
+        value_t temp = m_values[0];
         
-        for (unsigned int index = 0; index < this->m_values.size() - 1; ++index)
-          this->m_values[index] = this->m_values[index + 1];
+        for (unsigned int dim = 0; dim < m_values.size() - 1; ++dim)
+          m_values[dim] = m_values[dim + 1];
         
-        this->m_values[this->m_values.size() - 1] = temp;
+        m_values[m_values.size() - 1] = temp;
         
         return (*this);
       }
       
       // Reverse permutation of set by one.
       Tuple<DIM>& reverse_permute() {
-        int index = this->m_values.size() - 1;
+        unsigned int dim = m_values.size() - 1;
         
         // Store the value of the last element
-        int temp = this->m_values[index];
+        value_t temp = m_values[dim];
         
         // shift all elements to the left
-        for (; index > 0; --index)
-          this->m_values[index] = this->m_values[index - 1];
+        for (; dim > 0; --dim)
+          m_values[dim] = m_values[dim - 1];
         
         // place the value of the last element in the first.
-        this->m_values[0] = temp;
+        m_values[0] = temp;
         
         return (*this);
       }
@@ -261,17 +273,17 @@ namespace TiledArray {
       Tuple<DIM>& permute(const Tuple<DIM>& perm) {
 #if (TA_DLEVEL >= 0)
         // Ensure each index is present and listed only once.
-        int indexCount = 0;
-        for (unsigned int index = 0; index < this->m_values.size(); ++index)
-          indexCount += std::count(perm.begin(), perm.end(), index);
+        unsigned int dim_count = 0;
+        for (unsigned int dim = 0; dim < m_values.size(); ++dim)
+          dim_count += std::count(perm.begin(), perm.end(), dim);
         
         // Incorrect permutation, do nothing.
-        assert(indexCount == DIM);
+        assert(dim_count == DIM);
 #endif
         
         Tuple<DIM> temp(*this);
-        for (unsigned int index = 0; index < DIM; ++index)
-          this->m_values[index] = temp.m_values[perm.m_values[index]];
+        for (unsigned int dim = 0; dim < DIM; ++dim)
+          m_values[dim] = temp.m_values[perm.m_values[dim]];
         
         return (*this);
       }
@@ -294,8 +306,8 @@ namespace TiledArray {
   template <unsigned int DIM> std::ostream& operator<<(std::ostream& output,
                                                        const Tuple<DIM>& tup) {
     output << "(";
-    for (unsigned int i=0; i < DIM - 1; i++)
-      output << tup[i] << ", ";
+    for (unsigned int dim = 0; dim < DIM - 1; ++dim)
+      output << tup[dim] << ", ";
     output << tup[DIM-1] << ")";
     return output;
   }
