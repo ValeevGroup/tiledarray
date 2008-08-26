@@ -271,7 +271,7 @@ namespace TiledArray {
        * @param perm - Tuple must include each index number (0, 1, ..., DIM-1) once and only once.
        */
       Tuple<DIM>& permute(const Tuple<DIM>& perm) {
-#if (TA_DLEVEL >= 0)
+#ifndef NDEBUG
         // Ensure each index is present and listed only once.
         unsigned int dim_count = 0;
         for (unsigned int dim = 0; dim < m_values.size(); ++dim)

@@ -35,28 +35,14 @@ namespace TiledArray {
     /// pure virtual predicate function
     virtual bool operator ()(const Tuple<DIM>& T) const =0;
  
-    // Forward permutation of set by one.
-    inline Tuple<DIM>& permute() {
-      m_apply_permutation = true;
-
-      return m_permutation.permute();
-    }
-
-    /// Reverse permutation of set by one.
-    inline Tuple<DIM>& reverse_permute() {
-      m_apply_permutation = true;
-
-   	  return m_permutation.reverse_permute();
-    }
-
-    /// Arbitrary permutation
-    inline Tuple<DIM>& permute(const Tuple<DIM>& trans) {
+    /// Apply permutation
+    Tuple<DIM>& permute(const Tuple<DIM>& trans) {
     	m_apply_permutation = true;
     	return m_permutation.permute(trans);
     }
 
     /// Reset the permutation to the default value of no permutation.
-    inline void reset_permutation() {
+    void reset() {
   	  m_apply_permutation = false;
       for(unsigned int index = 0; index < DIM; ++index)
         m_permutation[index] = index;

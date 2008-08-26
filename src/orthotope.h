@@ -127,7 +127,7 @@ public:
 
 	/// Returns true if element_index is within the bounds of the orthotope.
 	inline bool
-	contains(const Tuple<DIM>& element_index) const 
+	includes(const Tuple<DIM>& element_index) const 
 		{return (element_index >= low()) && (element_index < high());}
 
 	/// return tuple with lower bound for each dimension.
