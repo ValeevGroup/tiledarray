@@ -11,7 +11,7 @@ namespace TiledArray {
 template<unsigned int DIM>
 class Orthotope
 {
-	std::vector<Range> m_ranges;	// Vector of range data for each dimention
+	std::vector<Range> m_ranges;	// Vector of range data for each dimension
 
 public:
 	// typedefs
