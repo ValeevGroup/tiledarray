@@ -330,7 +330,7 @@ namespace TiledArray {
                                                                         std::ostream& out,
                                                                         const Shape<DIM, PREDICATE>& s) {
     out << "Shape<" << DIM << ">(" << " @=" << &s << " orth="
-        << *(s.orthotope()) << " )";
+        << *(s.orthotope()) << " pred=" << s.predicate() << " )";
     return out;
   }
 
