@@ -31,26 +31,31 @@
 #include <cstddef>
 #include <tuple.h>
 #include <orthotope.h>
+#include <predicate.h>
 #include <algorithm>
 #include <boost/smart_ptr.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
 namespace TiledArray {
-  
+
+  /**
+   * AbstractShape class defines a subspace of an Orthotope. AbstractShapeIterator can be used to iterate
+   * over AbstractShape.
+   */
   template <unsigned int DIM>
   class AbstractShape {
   public:
-      
+
+    /// Maps element to a linearized index ("ordinal"). Computation of the ordinal assumes that DIM-1 is the least significant dimension.
     virtual size_t ord(const Tuple<DIM>& element_index) const = 0;
     virtual Tuple<DIM> coord(size_t linear_index) const = 0;
     virtual bool includes(const Tuple<DIM>& element_idx) const = 0;
     virtual const Orthotope<DIM>* orthotope() const = 0;
+    virtual const TupleFilter<DIM>& predicate() const = 0;
   };
   
   /**
-   * Shape class defines a multi-dimensional, rectilinear coordinate system and
-   * its mapping to an underlying dense, linearized representation. The mapping
-   * to ordinals assumes that DIM-1 is the least significant dimension. Shape
+   * Shape is a templated implementation of AbstractShape. Shape
    * provides an input iterator, which iterates an ordinal value and tuple index
    * simultaneously.
    */
@@ -198,14 +203,13 @@ namespace TiledArray {
 
     public:
       // Shape typedef's
-      typedef PREDICATE predicate;
-      typedef boost::filter_iterator<predicate, ShapeIterator> iterator;
+      typedef boost::filter_iterator<PREDICATE, ShapeIterator> iterator;
 
     protected:
       /// Pointer to the orthotope described by shape.
       Orthotope<DIM>* m_orthotope;
       /// Predicate object; it defines which elements are present.
-      predicate m_pred;
+      PREDICATE m_pred;
       /// Linear step is a set of cached values used to calculate linear offsets.
       Tuple<DIM> m_linear_step;
 
@@ -226,7 +230,7 @@ namespace TiledArray {
     public:
       
       /// Constructor
-      Shape(Orthotope<DIM>* ortho, const predicate& pred = predicate()) :
+      Shape(Orthotope<DIM>* ortho, const PREDICATE& pred = PREDICATE()) :
         m_orthotope(ortho),
         m_pred(pred)
       {
@@ -255,6 +259,11 @@ namespace TiledArray {
       /// Returns a pointer to the orthotope that supports this Shape.
       const Orthotope<DIM>* orthotope() const {
         return m_orthotope;
+      }
+
+      /// Returns predicate
+      const TupleFilter<DIM>& predicate() const {
+        return m_pred;
       }
 
       /**
@@ -317,9 +326,11 @@ namespace TiledArray {
       }
   };
   
-  template<int DIM, class PREDICATE>
-  std::ostream& operator <<(std::ostream& out, const Shape<DIM, PREDICATE>& s) {
-    out << "Shape<" << DIM << ">(" << " @=" << &s << ")";
+  template<unsigned int DIM, class PREDICATE> std::ostream& operator <<(
+                                                                        std::ostream& out,
+                                                                        const Shape<DIM, PREDICATE>& s) {
+    out << "Shape<" << DIM << ">(" << " @=" << &s << " orth="
+        << *(s.orthotope()) << " )";
     return out;
   }
 

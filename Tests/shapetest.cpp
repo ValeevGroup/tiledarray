@@ -8,17 +8,27 @@ void ShapeTest() {
 
   std::cout << "Shape Tests:" << std::endl;
 
+  // Default Constructor, not allowed.
+  // Shape<3, OffTupleFilter<3> > shapeDefault;
+
   // Create an orthotope that will be used for shape tests.
   // Test with C-style Range Array constructor.
   Orthotope<3>::index_t dim0[] = {0,4,6};
-  Orthotope<3>::index_t tiles[3] = {2,2,2};
-  size_t* dim_set[3] = {dim0,dim0,dim0};
-  Orthotope<3> ortho4(const_cast<const size_t**>(dim_set), tiles);
+  Orthotope<3>::index_t dim1[] = {0,4,6,9};
+  Orthotope<3>::index_t dim2[] = {0,4,6,9,10};
+  Orthotope<3>::index_t tiles[3] = {2,3,4};
+  const size_t* dim_set[] = {dim0,dim1,dim2};
+  Orthotope<3> ortho3(dim_set, tiles);
 
   std::cout << "Orthotope used in shape tests." << std::endl;
-  std::cout << "ortho3 = " << ortho4 << std::endl;
-  // Default Constructor, not allowed.
-  // Shape<4, OffTupleFilter<4> > shapeDefault;
-
-  Shape<3, OffTupleFilter<3> > shp(&ortho4);
+  std::cout << "ortho3 = " << ortho3 << std::endl;
+  Shape<3, OffTupleFilter<3> > shp0(&ortho3);
+  std::cout << "Constructed shp0" << std::endl << "shp0 = " << shp0 << std::endl;
+  
+  const int pm0[] = {0,2,1};
+  Tuple<3> perm0(pm0);
+  shp0.permute(perm0);
+  std::cout << "Permuted shp0 with " << perm0 << std::endl;
+  std::cout << "shp0 = " << shp0 << std::endl;
+  
 }
