@@ -26,11 +26,11 @@ OrthotopeTest()
 
 	std::vector<Range> rng_vector(rng_set, rng_set + 4);
 
-	size_t* dim_set[4] = {dim0,dim1,dim2,dim3};
+	const size_t* dim_set[] = {dim0,dim1,dim2,dim3};
 
 	Orthotope<4> ortho2(rng_set);
 	Orthotope<4> ortho3(rng_vector);
-	Orthotope<4> ortho4(const_cast<const size_t**>(dim_set), tiles);
+	Orthotope<4> ortho4(dim_set, tiles);
 
 	if(ortho2 == ortho3 && ortho3 == ortho4 && ortho1.count() == 1)
 		std::cout << "PASSED" << std::endl;
