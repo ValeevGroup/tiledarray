@@ -17,21 +17,7 @@ namespace TiledArray {
    * the shape.
    */
   template<unsigned int DIM> class TupleFilter {
-  protected:
-    /// Current permutation of the TupleFilter
-    Tuple<DIM> m_permutation;
-    /// Used to determine if a transpose has been applied.
-    bool m_apply_permutation;
-	  
   public:
-
-	/// Default constrcutor
-    TupleFilter() :
-      m_apply_permutation(false)
-    {
-      for(unsigned int index = 0; index < DIM; ++index)
-        m_permutation[index] = index;
-    }
 
     /// Copy constructor
     TupleFilter(const TupleFilter& tf) :
@@ -56,6 +42,19 @@ namespace TiledArray {
     }
 
   protected:
+    /// Current permutation of the TupleFilter
+    Tuple<DIM> m_permutation;
+    /// Used to determine if a transpose has been applied.
+    bool m_apply_permutation;
+      
+    /// Default constructor
+    TupleFilter() :
+      m_apply_permutation(false)
+    {
+      for(unsigned int index = 0; index < DIM; ++index)
+        m_permutation[index] = index;
+    }
+
     /**
      * Translates index to the from the current permutation of the array
      * to the original shape of the array. m_apply_permutation should be
