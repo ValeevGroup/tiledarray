@@ -105,7 +105,6 @@ namespace TiledArray {
           o << "( perm=" << this->m_permutation << " )";
       }
   };
-
 }
 ; // end of namespace TiledArray
 
