@@ -45,7 +45,14 @@ namespace TiledArray {
   template <unsigned int DIM>
   class AbstractShape {
   public:
-
+    
+    /// Abstract interface to Shape::iterator
+    class Iterator {
+    public:
+      virtual ~Iterator();
+      virtual Iterator& operator++() =0;
+    };
+    
     /// Maps element to a linearized index ("ordinal"). Computation of the ordinal assumes that DIM-1 is the least significant dimension.
     virtual size_t ord(const Tuple<DIM>& element_index) const = 0;
     virtual Tuple<DIM> coord(size_t linear_index) const = 0;
@@ -54,6 +61,10 @@ namespace TiledArray {
     virtual const Orthotope<DIM>* orthotope() const = 0;
     virtual const TupleFilter<DIM>* const tile_pred() const = 0;
     virtual const TupleFilter<DIM>* const element_pred() const = 0;
+    
+    /// Abstract iterators must be returned via pointers (compare to Shape::begin())
+    /// TODO cannot be implemented yet because ShapeIterator doesn't compile
+    //virtual boost::shared_ptr<Iterator> abegin() const =0;
   };
   
   /**
@@ -268,6 +279,24 @@ namespace TiledArray {
       Tuple<DIM> m_linear_step;
 
     private:
+      
+      /// Wraps iterator for delivery via AbstractShape::Iterator
+      class AbstractIterator : public AbstractShape<DIM>::Iterator {
+        public:
+          typedef typename AbstractShape<DIM>::Iterator parent_type;
+          typedef typename Shape::tile_iterator wrapped_type;
+          
+          AbstractIterator(const wrapped_type& iter) : iter_(iter) {}
+          
+          /// Implementation of AbstractShape<DIM>::Iterator::operator++
+          parent_type& operator++() {
+            ++iter_;
+            return *this;
+          }
+          
+        private:
+          wrapped_type iter_;
+      };
 
       ///  Initialize linear step data.
       void init_linear_step_() {
@@ -393,7 +422,7 @@ namespace TiledArray {
       /// Tile iterator factory
       tile_iterator tile_begin() const {
         return tile_iterator(m_tpred, ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size()),
-        		ShapeIterator(Tuple<DIM>(0), m_orthotope->tiel_size(), -1));
+        		ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size(), -1));
       }
       
       /// Tile iterator factory
@@ -402,7 +431,7 @@ namespace TiledArray {
         		ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size(), -1));
       }
 
-      /// Elment Iterator factory
+      /// Element Iterator factory
       element_iterator begin() const {
         return element_iterator(m_tpred, ShapeIterator(m_orthotope->low(), m_orthotope->high()),
         		ShapeIterator(m_orthotope->low(), m_orthotope->high(), -1));
@@ -414,7 +443,7 @@ namespace TiledArray {
         		ShapeIterator(m_orthotope->low(), m_orthotope->high(), -1));
       }
 
-      /// Elment Iterator factory for a single tile
+      /// Element Iterator factory for a single tile
       element_iterator begin(const Tuple<DIM>& tile_index) const {
         return element_iterator(m_tpred, ShapeIterator(m_orthotope->low(tile_index), m_orthotope->high(tile_index)),
         		ShapeIterator(m_orthotope->low(tile_index), m_orthotope->high(tile_index), -1));
@@ -425,6 +454,17 @@ namespace TiledArray {
         return element_iterator(m_tpred, ShapeIterator(m_orthotope->low(tile_index), m_orthotope->high(tile_index), -1),
         		ShapeIterator(m_orthotope->low(tile_index), m_orthotope->high(tile_index), -1));
       }
+     
+     // currently doesn't compile because iterator is broken 
+#if 0
+      /// Implements AbstractShape::abegin()
+      boost::shared_ptr<typename AbstractShape<DIM>::Iterator> abegin() const {
+        return boost::shared_ptr<typename AbstractShape<DIM>::Iterator>(
+            new AbstractIterator(this->tile_begin())
+            );
+      }
+#endif
+      
   };
   
   template<unsigned int DIM, class PREDICATE>
