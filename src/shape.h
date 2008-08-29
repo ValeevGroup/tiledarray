@@ -56,11 +56,9 @@ namespace TiledArray {
     /// Maps element to a linearized index ("ordinal"). Computation of the ordinal assumes that DIM-1 is the least significant dimension.
     virtual size_t ord(const Tuple<DIM>& element_index) const = 0;
     virtual Tuple<DIM> coord(size_t linear_index) const = 0;
-    virtual bool includes_tile(const Tuple<DIM>& tile_index) const = 0;
-    virtual bool includes(const Tuple<DIM>& element_index) const = 0;
+    virtual bool includes(const Tuple<DIM>& tile_index) const = 0;
     virtual const Orthotope<DIM>* orthotope() const = 0;
-    virtual const TupleFilter<DIM>* const tile_pred() const = 0;
-    virtual const TupleFilter<DIM>* const element_pred() const = 0;
+    virtual const TupleFilter<DIM>* const pred() const = 0;
     
     /// Abstract iterators must be returned via pointers (compare to Shape::begin())
     /// TODO cannot be implemented yet because ShapeIterator doesn't compile
