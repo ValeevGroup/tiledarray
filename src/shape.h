@@ -72,20 +72,20 @@ namespace TiledArray {
    * provides an input iterator, which iterates an ordinal value and tuple index
    * simultaneously.
    */
-  template <unsigned int DIM, class TILE_PREDICATE = OffTupleFilter<DIM>, class ELEMENT_PREDICATE = OffTupleFilter<DIM> >
+  template <unsigned int DIM, class PREDICATE = OffTupleFilter<DIM> >
   class Shape : public AbstractShape<DIM> {
     private:
       /// Iterator spec for ShapeIterator class.
       class ShapeIteratorSpec {
         public:
-          typedef int                                             iterator_type;
-          typedef Shape<DIM, TILE_PREDICATE, ELEMENT_PREDICATE>   collection_type;
-          typedef std::input_iterator_tag                         iterator_category;
-          typedef Tuple<DIM>                                      value;
-          typedef value*                                          pointer;
-          typedef const value*                                    const_pointer;
-          typedef value&                                          reference;
-          typedef const value&                                    const_reference;
+          typedef int                     iterator_type;
+          typedef Shape<DIM, PREDICATE>   collection_type;
+          typedef std::input_iterator_tag iterator_category;
+          typedef Tuple<DIM>              value;
+          typedef value*                  pointer;
+          typedef const value*            const_pointer;
+          typedef value&                  reference;
+          typedef const value&            const_reference;
       };
 
       /** 
@@ -263,18 +263,14 @@ namespace TiledArray {
 
     public:
       // Shape typedef's
-      typedef TILE_PREDICATE tile_predicate;
-      typedef ELEMENT_PREDICATE element_predicate;
-      typedef boost::filter_iterator<tile_predicate, ShapeIterator> tile_iterator;
-      typedef boost::filter_iterator<element_predicate, ShapeIterator> element_iterator;
+      typedef PREDICATE predicate;
+      typedef boost::filter_iterator<predicate, ShapeIterator> iterator;
 
     protected:
       /// Pointer to the orthotope described by shape.
       Orthotope<DIM>* m_orthotope;
       /// Predicate object; it defines which tiles are present.
-      tile_predicate m_tpred;
-      /// Predicate object; it defines which elements are present.
-      element_predicate m_epred;
+      predicate m_pred;
       /// Linear step is a set of cached values used to calculate linear offsets.
       Tuple<DIM> m_linear_step;
 
@@ -313,20 +309,18 @@ namespace TiledArray {
     public:
       
       /// Constructor
-      Shape(Orthotope<DIM>* ortho, const tile_predicate& tpred = tile_predicate(), const element_predicate& epred = element_predicate()) :
+      Shape(Orthotope<DIM>* ortho, const predicate& pred = predicate()) :
         m_orthotope(ortho),
-        m_tpred(tpred),
-        m_epred(epred),
-        m_linear_step(0)
+        m_pred(pred),
+         m_linear_step(0)
       {
     	  init_linear_step_();
       }
       
       /// Copy constructor
-      Shape(const Shape<DIM, TILE_PREDICATE, ELEMENT_PREDICATE>& s) :
+      Shape(const Shape<DIM, PREDICATE>& s) :
         m_orthotope(s.m_orthotope),
-        m_tpred(s.m_tpred),
-        m_epred(s.m_epred),
+        m_pred(s.m_pred),
         m_linear_step(s.m_linear_step)
       {}
       
@@ -334,10 +328,9 @@ namespace TiledArray {
       }
       
       /// Assignment operator
-      Shape<DIM, TILE_PREDICATE, ELEMENT_PREDICATE>& operator =(const Shape<DIM, TILE_PREDICATE, ELEMENT_PREDICATE>& s) {
+      Shape<DIM, PREDICATE>& operator =(const Shape<DIM, PREDICATE>& s) {
         m_orthotope = s.m_orthotope;
-        m_tpred = s.m_tpred;
-        m_epred = s.m_epred;
+        m_pred = s.m_pred;
         m_linear_step = s.m_linear_step;
 
         return *this;
@@ -349,33 +342,17 @@ namespace TiledArray {
       }
 
       /// Returns a pointer to the tile predicate
-      virtual const TupleFilter<DIM>* const tile_pred() const {
-        return &m_tpred;
-      }
-
-      /// Returns a reference to the element predicate
-      virtual const TupleFilter<DIM>* const element_pred() const {
-    	  return &m_epred;
+      virtual const TupleFilter<DIM>* const pred() const {
+        return &m_pred;
       }
 
       /**
        * Returns true if the value at tile_index is non-zero and is contained
        * by the Shape.
        */
-      virtual bool includes_tile(const Tuple<DIM>& tile_index) const {
-        return (tile_index < m_orthotope->tile_size()) && m_tpred(tile_index);
+      virtual bool includes(const Tuple<DIM>& tile_index) const {
+        return (tile_index < m_orthotope->tile_size()) && m_pred(tile_index);
       }      
-
-      /**
-       * Returns true if the value at element_index is non-zero and is contained
-       * by the Shape.
-       */
-      virtual bool includes(const Tuple<DIM>& element_index) const {
-    	if(!includes_tile(m_orthotope->tile(element_index)))
-    		return false;
-
-        return m_orthotope->includes(element_index) && m_epred(element_index);
-      }
       
       /**
        * Ordinal value of Tuple. Ordinal value does not include offset
@@ -411,48 +388,23 @@ namespace TiledArray {
         return element_index;
       }
 
-      ///Permute shape
+      /// Permute shape
       void permute(const Tuple<DIM>& perm) {
-    	m_tpred.permute(perm);
-    	m_epred.permute(perm);
-    	m_orthotope->permute(perm);
+        m_pred.permute(perm);
+        m_orthotope->permute(perm);
     	init_linear_step_();
       }
 
       /// Tile iterator factory
-      tile_iterator tile_begin() const {
-        return tile_iterator(m_tpred, ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size()),
+      iterator begin() const {
+        return iterator(m_pred, ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size()),
         		ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size(), -1));
       }
       
       /// Tile iterator factory
-      tile_iterator tile_end() const {
-        return tile_iterator(m_tpred, ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size(), -1),
+      iterator end() const {
+        return iterator(m_pred, ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size(), -1),
         		ShapeIterator(Tuple<DIM>(0), m_orthotope->tile_size(), -1));
-      }
-
-      /// Element Iterator factory
-      element_iterator begin() const {
-        return element_iterator(m_tpred, ShapeIterator(m_orthotope->low(), m_orthotope->high()),
-        		ShapeIterator(m_orthotope->low(), m_orthotope->high(), -1));
-      }
-      
-      /// Iterator factory
-      element_iterator end() const {
-        return element_iterator(m_tpred, ShapeIterator(m_orthotope->low(), m_orthotope->high(), -1),
-        		ShapeIterator(m_orthotope->low(), m_orthotope->high(), -1));
-      }
-
-      /// Element Iterator factory for a single tile
-      element_iterator begin(const Tuple<DIM>& tile_index) const {
-        return element_iterator(m_tpred, ShapeIterator(m_orthotope->low(tile_index), m_orthotope->high(tile_index)),
-        		ShapeIterator(m_orthotope->low(tile_index), m_orthotope->high(tile_index), -1));
-      }
-      
-      /// Element iterator factory for a single tile
-      element_iterator end(const Tuple<DIM>& tile_index) const {
-        return element_iterator(m_tpred, ShapeIterator(m_orthotope->low(tile_index), m_orthotope->high(tile_index), -1),
-        		ShapeIterator(m_orthotope->low(tile_index), m_orthotope->high(tile_index), -1));
       }
      
      // currently doesn't compile because iterator is broken 
