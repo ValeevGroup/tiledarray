@@ -1,11 +1,14 @@
-CXX = /opt/local/bin/g++
-CXXFLAGS = -g -Wall -fmessage-length=0 -I./src -I./Tests -DTA_DLEVEL=3 -DTA_WLEVEL=3
+MADNESSROOT = $(HOME)/Development/MADNESS/install
+
+CXX = /opt/local/bin/mpicxx
+CXXFLAGS = -g -Wall -fmessage-length=0 -I./src -I./Tests -I$(MADNESSROOT)/include -DTA_DLEVEL=3 -DTA_WLEVEL=3
 
 OBJS = src/tilemap.o src/env.o \
 TiledArrayTest.o Tests/tupletest.o Tests/shapetest.o Tests/rangetest.o \
-Tests/orthotopetest.o Tests/tilemaptest.o
+Tests/orthotopetest.o Tests/tilemaptest.o Tests/arraytest.o
 
-LIBS =
+LIBDIR = -L$(MADNESSROOT)/lib
+LIBS = -lMADworld
 
 TARGET =	TiledArrayTest
 

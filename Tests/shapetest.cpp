@@ -22,13 +22,18 @@ void ShapeTest() {
 
   std::cout << "Orthotope used in shape tests." << std::endl;
   std::cout << "ortho3 = " << ortho3 << std::endl;
-  Shape<3, OffTupleFilter<3> > shp0(&ortho3);
+  typedef Shape<3, OffTupleFilter<3> > shape_t;
+  shape_t shp0(&ortho3);
   std::cout << "Constructed shp0" << std::endl << "shp0 = " << shp0 << std::endl;
+  
+  typedef shape_t::iterator shapeiter;
+  shapeiter i0 = shp0.begin();
   
   const int pm0[] = {0,2,1};
   Tuple<3> perm0(pm0);
   shp0.permute(perm0);
   std::cout << "Permuted shp0 with " << perm0 << std::endl;
   std::cout << "shp0 = " << shp0 << std::endl;
+  
   
 }

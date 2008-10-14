@@ -31,17 +31,40 @@ is a wrapper around Array<T,DIM,TRAIT>, with math operators and functions added.
 
 New Classes:
 
-template <typename T, unsigned int DIM> AbstractTiledArray {
+template <typename T, unsigned int DIM, typename ArrayPolicy = DefaultArrayPolicy > Array : public DistributedObject {
+public:
+  typedef ArrayPolicy Policy;
+  typedef Tuple<DIM> TileIndex;
+  typedef Tuple<DIM> ElementIndex;
+  typedef typename ArrayPolicy::Hash<TileIndex>::Result TileKey;
+  typedef typename Policy::Tile Tile;
+
+  /// array is defined by its shape
+  Array(const shared_ptr<AbstractShape>&);
+  /// assign each element to a
+  void assign(T a);
+  
+  /// where is tile k
+  unsigned int proc(const TileIndex& k);
+  /// access tile k
+  Future<Tile> tile(const TileIndex& k);
+
+  /// make new Array by applying permutation P
+  Array transpose(const Tuple<DIM>& P);
+
+  /// bind a string to this array to make operations look normal
+  /// e.g. R("ijcd") += T2("ijab") . V("abcd") or T2new("iajb") = T2("ijab")
+  /// runtime then can figure out how to implement operations
+  ArrayExpression operator()(const char*) const;
+  
+private:
+  shared_ptr<AbstractShape> shape_;
+  shared_ptr< DistributedContainer< TupleKey<DIM>, tile_t > > data_;
 }
 
-template <typename T, unsigned int DIM, class ArrayTrait> TiledArray {
-  public:
-  typedef ArrayTrait::Shape Shape;
-  
-  private:
-  shared_ptr<Shape> shape_;
-  shared_ptr<TileMap> tiles_;   // class that maps tiles of a shape to (potentially, distributed) memory
-}
+DistributedObject is an abstract distributed data structure and DistributedContainer
+is a distributed map that manages key->value pairs. DenseTile<T,DIM> is a linearized
+DIM-dimensional array.
 
 /// This class maps linearized tile indices to the nodes and memory locations
 /// distribution of tiles to nodes is done by hashing
