@@ -43,11 +43,12 @@ std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>&
   {
     public:
     typedef T Element;
-    typedef std::vector<Element>::iterator iterator;
-    typedef std::vector<Element>::const_iterator const_iterator;
+    typedef typename std::vector<Element>::iterator iterator;
+    typedef typename std::vector<Element>::const_iterator const_iterator;
     static const unsigned int DIM = D;
     
     LatticeCoordinate(const T& init_value = 0) : r_(D,init_value) {}
+    LatticeCoordinate(const T* init_values) : r_(D) { std::copy(init_values,init_values+D,r_.begin()); }
     ~LatticeCoordinate() {}
 
     /// Returns an interator to the first coordinate
@@ -74,14 +75,14 @@ std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>&
     LatticeCoordinate<T, D, Tag>& operator--() { --(*r_.rbegin()); }
     
     /// Add operator
-    LatticeCoordinate<T, D, Tag>& operator+=(const LatticeCoordinate& c) const {
+    LatticeCoordinate<T, D, Tag>& operator+=(const LatticeCoordinate& c) {
       for(unsigned int d = 0; d < DIM; ++d)
         r_[d] += c.r_[d];
       return *this;
     }
 
     /// Subtract operator
-    LatticeCoordinate<T, D, Tag> operator-=(const LatticeCoordinate& c) const {
+    LatticeCoordinate<T, D, Tag> operator-=(const LatticeCoordinate& c) {
       for(unsigned int d = 0; d < DIM; ++d)
         r_[d] -= c.r_[d];
       return *this;
@@ -90,11 +91,20 @@ std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>&
     LatticeCoordinate<T, D, Tag> operator -() const {
       LatticeCoordinate<T, D, Tag> ret;
       for(unsigned int d = 0; d < DIM; ++d)
-        ret[d] = -r_[d];
+        ret.r_[d] = -r_[d];
       return ret;
     }
 
     const T& operator[](size_t d) const
+    {
+#ifdef NDEBUG
+      return r_[d]; 
+#else
+      return r_.at(d);
+#endif
+    }
+
+    T& operator[](size_t d)
     {
 #ifdef NDEBUG
       return r_[d]; 
@@ -139,6 +149,6 @@ std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>&
   }
 
 
-};
+}
 
 #endif /*NUMERIC_H_*/
