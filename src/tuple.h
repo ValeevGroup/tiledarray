@@ -215,7 +215,7 @@ namespace TiledArray {
 
     inline const value_t& operator[](unsigned int dim) const {
 #ifdef NDEBUG
-  	return m_values.at(dim);
+      return m_values.at(dim);
 #else
       return m_values[dim];
 #endif
