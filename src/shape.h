@@ -309,70 +309,12 @@ namespace TiledArray {
           }
       }; // end of ShapeIterator
 #endif
-    public:
-      
-      /// used to implement Shape::iterator and Shape::const_iterator
-      template <typename Value>
-      class Iterator : public boost::iterator_facade<
-         Iterator<Value>,
-         Value,
-         std::input_iterator_tag
-        >, public AbstractShape<DIM>::template IteratorImpl<Value>
-      {
-        public:
-          typedef typename AbstractShape<DIM>::template IteratorImpl<Value> Base;
-          typedef Orthotope<DIM> Container;
-          
-          Iterator(const Iterator& other) : container_(other.container_), current_(other.current_) {}
-          ~Iterator() {}
-          
-          /// Implementation of Base::clone()
-          Base* clone() const {
-            return new Iterator<Value>(*this);
-          }
-          
-        private:
-          friend class boost::iterator_core_access;
-          friend class Shape<DIM,PREDICATE>;
-          Iterator(const Value& cur, const Container* container) : container_(container), current_(cur) {}
-          
-          bool equal(Iterator<Value> const& other) const
-          {
-            return current_ == other.current_;
-          }
-
-          void increment() {
-            // increment least significant
-            int lsdim = DIM-1;
-            int lsindex = ++(current_[lsdim]);
-            // if necessary, carry over
-            const Tuple<DIM> low = container_->low();
-            const Tuple<DIM> high = container_->high();
-            while (lsindex >= high[lsdim]) {
-              current_[lsdim] = low[lsdim];
-              --lsdim;
-              // if ran out of dimensions break out of the loop
-              if (lsdim >= 0)
-                lsindex = ++(current_[lsdim]);
-              else
-                break;
-            }
-          }
-
-          Value& dereference() const { return const_cast<Value&>(current_); }
-
-          Iterator();
-          
-          const Container* container_;
-          Value current_;
-      };
-
 
     public:
       // Shape typedef's
       typedef PREDICATE predicate;
-      typedef Iterator<Tuple<DIM> > _iterator;
-      typedef boost::filter_iterator<predicate,_iterator> iterator;
+      typedef typename Orthotope<DIM>::tile_iterator oiterator;
+      typedef boost::filter_iterator<predicate,oiterator> iterator;
 
     protected:
       /// Pointer to the orthotope described by shape.
@@ -510,33 +452,18 @@ namespace TiledArray {
     	init_linear_step_();
       }
 
-#define HAVE_ORTHOTOPE_TILE_ITERATORS 0
       /// Tile iterator factory
       iterator begin() const {
-#if HAVE_ORTHOTOPE_TILE_ITERATORS
-        const Tuple<DIM> _begin = *(orthotope()->begin());
-        const Tuple<DIM> _end = *(orthotope()->end());
-#else
-        const Tuple<DIM> _begin = Tuple<DIM>(0);
-        const Tuple<DIM> _end = Tuple<DIM>(0);
-        throw std::runtime_error("Orthotope tile iterators not yet implemented");
-#endif
         return iterator(m_pred,
-                        _iterator(_begin, orthotope()),
-                        _iterator(_end, orthotope()));
+                        orthotope()->begin(),
+                        orthotope()->end());
       }
       
       /// Tile iterator factory
       iterator end() const {
-#if HAVE_ORTHOTOPE_TILE_ITERATORS
-        const Tuple<DIM> _end = *(orthotope()->end());
-#else
-        const Tuple<DIM> _end = Tuple<DIM>(0);
-        throw std::runtime_error("Orthotope tile iterators not yet implemented");
-#endif
         return iterator(m_pred,
-                        _iterator(_end, orthotope()),
-                        _iterator(_end, orthotope()));
+                        orthotope()->end(),
+                        orthotope()->end());
       }
      
      // currently doesn't compile because iterator is broken 

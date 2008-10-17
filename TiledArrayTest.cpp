@@ -11,9 +11,8 @@
 #define TEST_ORTHOTOPE
 #define TEST_SHAPE
 #define TEST_TILEMAP
-#define TEST_ARRAY
+//#define TEST_ARRAY
 
-#include "array.h"
 #include "tupletest.h"
 #include "rangetest.h"
 #include "orthotopetest.h"
@@ -21,6 +20,7 @@
 #include "tilemaptest.h"
 #include "arraytest.h"
 
+namespace TiledArray { };
 using namespace TiledArray;
 
 int main(int argc, char* argv[]) {

@@ -1,35 +1,38 @@
+Design philosophy:
 
-Old htalib Classes:
+There are 2 fundamental reasons for tiling: physics and performance. Both of these
+may require multiple levels of tiling hierarchy. Unfortunately, it may not be trivial to decouple or overlap
+the two hierarchies. Thus we eschew the arbitrarily-deep tiling hierarchy in favor of a single level of tiling.
+This is driven by the following considerations:
+1) end user should not worry about tiling for performance, the interface should be focused on the needs of
+domain application (quantum physics).
+2) tiling in quantum physics corresponds to spatial/energetic locality (outside local domains interactions
+are classical and do not require operator matrices).
+3) the problem of tiling for performance is challenging and has been only solved for simple cases and regular memory
+hierarchies (e.g. BLAS). We must reuse on external libraries and should optimize only at a high level and without
+impact on interface (e.g. tile fusion, etc. to construct data representation most suitable for performance).
+4) item 2 also suggests that nonuniform(irregular) tiling must be allowed to provide the necessary flexibility for physics.
 
-Tuple<DIM>
-DIM-dimensional vector if integers
+With single level of tiling Array interface must explicitly deal with elements AND tiles (compare to HTA, where
+tiles are the elements at a given level).
 
-Triplet
-represents a range of indices, e.g. Triplet(l,h,s,m) represents a range
-of indices from l to h-1 with stride s
-        
-Shape<DIM>
-describes a shape of a DIM-dimensional array as a sequence of tile indices.
-In htalib Shape represented a rectangular dense shape (with complex striding patterns).
-We'd like to have a more general Shape. It must provide means to iterate over elements.
+/// coordinate in a DIM-dimensional space
+class Tuple<DIM>;
 
-MemMapping<DIM>
-represents mapping of a set of tiles to memory locations
+class ElementCoordinate<DIM> : public Tuple<DIM> {
+}
 
-AbstractArray<T,DIM>
-is an abstract interface to an DIM-dimensional array. It has a shape (Shape<DIM>),
-a memory map (MemMapping<DIM>) and allows random access to tiles and scalars.
+class TileCoordinate<DIM> : public Tuple<DIM> {
+}
 
-Array<T,DIM,TRAIT>
-is a concrete implementation of AbstractArray described by TRAIT.
-Examples of TRAIT: SerialDense, SerialSparse, MPISerialDense, MPISerialSparse, etc.
+/// 1-d nonuniformly-tiled range
+class Range {
+}
 
-HTA<T,DIM,TRAIT>
-is a wrapper around Array<T,DIM,TRAIT>, with math operators and functions added.
-
------------
-
-New Classes:
+/// rectangular box in a DIM-dimensional space is defined by DIM Ranges
+class Orthotope<DIM> {
+  /// 
+}
 
 template <typename T, unsigned int DIM, typename ArrayPolicy = DefaultArrayPolicy > Array : public DistributedObject {
 public:
@@ -49,9 +52,15 @@ public:
   /// access tile k
   Future<Tile> tile(const TileIndex& k);
 
+  /// Low-level interface will only allow permutations and efficient direct contractions
+  /// it should be sufficient to use with an optimizing array expression compiler
+
   /// make new Array by applying permutation P
   Array transpose(const Tuple<DIM>& P);
 
+  /// Higher-level interface will be be easier to use but necessarily less efficient since it will allow more complex operations
+  /// implemented in terms of permutations and contractions by a runtime
+  
   /// bind a string to this array to make operations look normal
   /// e.g. R("ijcd") += T2("ijab") . V("abcd") or T2new("iajb") = T2("ijab")
   /// runtime then can figure out how to implement operations

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <range.h>
 #include <tuple.h>
+#include <boost/iterator/filter_iterator.hpp>
 
 namespace TiledArray {
 
@@ -16,10 +17,63 @@ class Orthotope
 public:
 	// typedefs
 	typedef Range::index_t                      index_t;
-	typedef Range::const_iterator               const_range_iterator;
-	typedef std::vector<Range>::const_iterator  const_iterator;
-	typedef std::vector<Range>::iterator        iterator;
-// 	typedef std::pair<Tuple<DIM>, Tuple<DIM> >	tile;
+	typedef Tuple<DIM> tile_index;
+    typedef Tuple<DIM> element_index;
+	
+    /// used to implement Shape::iterator and Shape::const_iterator
+    template <typename Value>
+    class Iterator : public boost::iterator_facade<
+       Iterator<Value>,
+       Value,
+       std::input_iterator_tag
+      >
+    {
+      public:
+        typedef Orthotope<DIM> Container;
+        
+        Iterator(const Iterator& other) : container_(other.container_), current_(other.current_) {}
+        ~Iterator() {}
+        
+      private:
+        friend class boost::iterator_core_access;
+        friend class Orthotope<DIM>;
+        Iterator(const Value& cur, const Container* container) : container_(container), current_(cur) {}
+        
+        bool equal(Iterator<Value> const& other) const
+        {
+          return current_ == other.current_;
+        }
+
+        void increment() {
+          // increment least significant
+          int lsdim = DIM-1;
+          int lsindex = ++(current_[lsdim]);
+          // if necessary, carry over
+          const Tuple<DIM> low = container_->low();
+          const Tuple<DIM> high = container_->high();
+          while (lsindex >= high[lsdim]) {
+            current_[lsdim] = low[lsdim];
+            --lsdim;
+            // if ran out of dimensions break out of the loop
+            if (lsdim >= 0)
+              lsindex = ++(current_[lsdim]);
+            else
+              break;
+          }
+        }
+
+        Value& dereference() const { return const_cast<Value&>(current_); }
+
+        Iterator();
+        
+        const Container* container_;
+        Value current_;
+    };
+    
+    // ready to declare iterators
+    typedef std::vector<Range>::const_iterator range_iterator;
+    typedef Iterator< tile_index > tile_iterator;
+    typedef Iterator< element_index > iterator;
 
 	// Default constructor
 	Orthotope() : 
@@ -57,35 +111,37 @@ public:
 	}
 
 	/// Returns an iterator pointing to the first range.
-	inline iterator
-	begin()
-	{
-		return m_ranges.begin();
-	}
-
-	/// Return an iterator pointing one past the last dimension.
-	inline iterator
-	end()
-	{
-		return m_ranges.end();
-	}
-
-	/// Returns an iterator pointing to the first range.
-	inline const_iterator
+	inline tile_iterator
 	begin() const
 	{
-		return m_ranges.begin();
+	  return tile_iterator(tile_index(),this);
 	}
 
 	/// Return an iterator pointing one past the last dimension.
-	inline const_iterator
+	inline tile_iterator
 	end() const
 	{
-		return m_ranges.end();
+	  tile_index _end;
+	  _end[DIM-1] = m_ranges[DIM-1].ntiles();
+      return tile_iterator(_end,this);
 	}
 
+    /// Returns an iterator pointing to the first range.
+    inline range_iterator
+    begin_range() const
+    {
+      return m_ranges.begin();
+    }
+
+    /// Return an iterator pointing one past the last dimension.
+    inline range_iterator
+    end_range() const
+    {
+      return m_ranges.end();
+    }
+
 	/// Returns an iterator pointing to the element in the dim range.
-	inline const_range_iterator
+	inline Range::const_iterator
 	begin(const unsigned int dim) const
 	{
 		assert(dim < DIM);
@@ -93,7 +149,7 @@ public:
 	}
 
 	/// Returns an iterator pointing to the end of dim range.
-	inline const_range_iterator
+	inline Range::const_iterator
 	end(const unsigned int dim) const
 	{
 		assert(dim < DIM);
@@ -130,6 +186,7 @@ public:
 	includes(const Tuple<DIM>& element_index) const 
 		{return (element_index >= low()) && (element_index < high());}
 
+#if 0
 	/// return tuple with lower bound for each dimension.
 	inline Tuple<DIM>
 	low() const
@@ -158,7 +215,8 @@ public:
 	{
 		return high() - low();
 	}
-
+#endif
+	
 	/// Returns the number of tiles in each dimension.
 	inline Tuple<DIM>
 	tile_size() const
@@ -262,17 +320,17 @@ public:
 	inline bool
 	operator ==(const Orthotope<DIM>& ortho) const 
 	{  
-		if(&ortho == this)
-			return true;
-		else 
-			return std::equal(begin(), end(), ortho.begin());
+	  if(&ortho == this)
+	    return true;
+      else 
+        return std::equal(begin_range(), end_range(), ortho.begin_range());
 	}
 
 	// Inequality operator
 	inline bool
 	operator!= (const Orthotope<DIM>& ortho) const 
 	{  
-		return !(operator ==(ortho));
+	  return !(operator ==(ortho));
 	}
 };
 
