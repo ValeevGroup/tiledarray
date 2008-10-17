@@ -18,7 +18,12 @@ namespace TiledArray {
    */
   class Range {
     public:
-      typedef size_t index_t;
+      struct ElementIndex {
+        index_t value;
+      };
+      struct TileIndex {
+        index_t value;
+      };
       typedef size_t indexdiff_t;
 
       /// Represents a tile which is an interval [low,high)
@@ -263,6 +268,17 @@ namespace TiledArray {
       end() const
       {
         return m_tiles.end();
+      }
+      
+      /// contains this element?
+      bool
+      contains(const ElementIndex& a) {
+        return a < high() && a >= low();
+      }
+      /// contains this tile?
+      bool
+      contains(const TileIndex& a) {
+        return a < high() && a >= low();
       }
 
     }; // end of Range
