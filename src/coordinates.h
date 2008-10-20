@@ -9,31 +9,31 @@ using namespace boost;
 namespace TiledArray {
 
 template <typename T, unsigned int D, typename Tag>
-class LatticeCoordinate;
+class ArrayCoordinate;
 
 template <typename T, unsigned int D, typename Tag>
-bool operator<(const LatticeCoordinate<T,D,Tag>&, const LatticeCoordinate<T,D,Tag>&);
+bool operator<(const ArrayCoordinate<T,D,Tag>&, const ArrayCoordinate<T,D,Tag>&);
 
 template <typename T, unsigned int D, typename Tag>
-bool operator==(const LatticeCoordinate<T,D,Tag>& c1, const LatticeCoordinate<T,D,Tag>& c2);
+bool operator==(const ArrayCoordinate<T,D,Tag>& c1, const ArrayCoordinate<T,D,Tag>& c2);
 
 template <typename T, unsigned int D, typename Tag>
-std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>& c);
+std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c);
 
 
-  /// LatticeCoordinate represents coordinates of a point in a DIM-dimensional lattice.
+  /// ArrayCoordinate represents coordinates of a point in a DIM-dimensional lattice.
   ///
   /// The purpose of Tag is to create multiple instances of the class
   /// with identical mathematical behavior but distinct types to allow
   /// overloading in classes using LatticePoint.
   template <typename T, unsigned int D, typename Tag>
-  class LatticeCoordinate :
-      boost::addable< LatticeCoordinate<T,D,Tag>,          // point + point
-      boost::subtractable< LatticeCoordinate<T,D,Tag>,    // point - point
-      boost::less_than_comparable1< LatticeCoordinate<T,D,Tag>,  // point < point
-      boost::equality_comparable1< LatticeCoordinate<T,D,Tag>  // point == point
-//      boost:incrementable< LatticeCoordinate<T,D,Tag>,        // ++point
-//      boost ::decrementable< LatticeCoordinate<T,D,Tag>     // --point
+  class ArrayCoordinate :
+      boost::addable< ArrayCoordinate<T,D,Tag>,          // point + point
+      boost::subtractable< ArrayCoordinate<T,D,Tag>,    // point - point
+      boost::less_than_comparable1< ArrayCoordinate<T,D,Tag>,  // point < point
+      boost::equality_comparable1< ArrayCoordinate<T,D,Tag>  // point == point
+//      boost:incrementable< ArrayCoordinate<T,D,Tag>,        // ++point
+//      boost ::decrementable< ArrayCoordinate<T,D,Tag>     // --point
 //      >
 //      >
       >
@@ -47,9 +47,9 @@ std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>&
     typedef typename std::vector<Element>::const_iterator const_iterator;
     static const unsigned int DIM = D;
     
-    LatticeCoordinate(const T& init_value = 0) : r_(D,init_value) {}
-    LatticeCoordinate(const T* init_values) : r_(D) { std::copy(init_values,init_values+D,r_.begin()); }
-    ~LatticeCoordinate() {}
+    ArrayCoordinate(const T& init_value = 0) : r_(D,init_value) {}
+    ArrayCoordinate(const T* init_values) : r_(D) { std::copy(init_values,init_values+D,r_.begin()); }
+    ~ArrayCoordinate() {}
 
     /// Returns an interator to the first coordinate
     iterator begin() {
@@ -71,25 +71,33 @@ std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>&
       return r_.end();
     }
 
-    LatticeCoordinate<T, D, Tag>& operator++() { ++(*r_.rbegin()); }
-    LatticeCoordinate<T, D, Tag>& operator--() { --(*r_.rbegin()); }
+    ArrayCoordinate<T, D, Tag>& operator++() {
+      T& least_significant = *r_.rbegin();
+      ++least_significant;
+      return *this;
+    }
+    ArrayCoordinate<T, D, Tag>& operator--() {
+      T& least_significant = *r_.rbegin();
+      --least_significant;
+      return *this;
+    }
     
     /// Add operator
-    LatticeCoordinate<T, D, Tag>& operator+=(const LatticeCoordinate& c) {
+    ArrayCoordinate<T, D, Tag>& operator+=(const ArrayCoordinate& c) {
       for(unsigned int d = 0; d < DIM; ++d)
         r_[d] += c.r_[d];
       return *this;
     }
 
     /// Subtract operator
-    LatticeCoordinate<T, D, Tag> operator-=(const LatticeCoordinate& c) {
+    ArrayCoordinate<T, D, Tag> operator-=(const ArrayCoordinate& c) {
       for(unsigned int d = 0; d < DIM; ++d)
         r_[d] -= c.r_[d];
       return *this;
     }
 
-    LatticeCoordinate<T, D, Tag> operator -() const {
-      LatticeCoordinate<T, D, Tag> ret;
+    ArrayCoordinate<T, D, Tag> operator -() const {
+      ArrayCoordinate<T, D, Tag> ret;
       for(unsigned int d = 0; d < DIM; ++d)
         ret.r_[d] = -r_[d];
       return ret;
@@ -113,9 +121,9 @@ std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>&
 #endif
     }
 
-    friend bool operator < <>(const LatticeCoordinate<T,D,Tag>&, const LatticeCoordinate<T,D,Tag>&);
-    friend bool operator == <>(const LatticeCoordinate<T,D,Tag>&, const LatticeCoordinate<T,D,Tag>&);
-    friend std::ostream& operator << <>(std::ostream&, const LatticeCoordinate<T,D,Tag>&);
+    friend bool operator < <>(const ArrayCoordinate<T,D,Tag>&, const ArrayCoordinate<T,D,Tag>&);
+    friend bool operator == <>(const ArrayCoordinate<T,D,Tag>&, const ArrayCoordinate<T,D,Tag>&);
+    friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate<T,D,Tag>&);
     
   private:
     /// last dimension is least significant
@@ -124,23 +132,31 @@ std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>&
   };
   
   template <typename T, unsigned int D, typename Tag>
-  bool operator<(const LatticeCoordinate<T,D,Tag>& c1, const LatticeCoordinate<T,D,Tag>& c2) {
+  bool operator<(const ArrayCoordinate<T,D,Tag>& c1, const ArrayCoordinate<T,D,Tag>& c2) {
     unsigned int d = 0;
     bool result = true;
     // compare starting with the most significant dimension
     while(result && d < D) {
-      result = result && (c1.r_[d] < c2.r_[d]);
+      if (c1.r_[d] > c2.r_[d]) {
+        result = false;
+      }
+      else {
+        if (c1.r_[d] < c2.r_[d])
+          d = D;
+        else
+          ++d;
+      }          
     }
     return result;
   }
 
   template <typename T, unsigned int D, typename Tag>
-  bool operator==(const LatticeCoordinate<T,D,Tag>& c1, const LatticeCoordinate<T,D,Tag>& c2) {
+  bool operator==(const ArrayCoordinate<T,D,Tag>& c1, const ArrayCoordinate<T,D,Tag>& c2) {
     return c1.r_ == c2.r_;
   }
 
   template <typename T, unsigned int D, typename Tag>
-  std::ostream& operator<<(std::ostream& output, const LatticeCoordinate<T,D,Tag>& c) {
+  std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c) {
     output << "{";
     for(unsigned int dim = 0; dim < D - 1; ++dim)
       output << c[dim] << ", ";

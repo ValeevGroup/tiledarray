@@ -6,7 +6,7 @@
 // Description : Hello World in C, Ansi-style
 //============================================================================
 
-#define TEST_TUPLE
+//#define TEST_TUPLE
 #define TEST_COORDINATES
 //#define TEST_RANGE
 //#define TEST_ORTHOTOPE
