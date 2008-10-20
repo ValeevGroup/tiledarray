@@ -137,14 +137,7 @@ std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c
   
   template <typename T, unsigned int D, typename Tag>
   bool operator<(const ArrayCoordinate<T,D,Tag>& c1, const ArrayCoordinate<T,D,Tag>& c2) {
-    // compare starting with the most significant dimension
-    for(unsigned int d=0; d<D; ++d) {
-      if (c1.r_[d] > c2.r_[d])
-        return false;
-      if (c1.r_[d] < c2.r_[d])
-        return true;
-    }
-    return false;
+    return c1.r_ < c2.r_;
   }
 
   template <typename T, unsigned int D, typename Tag>
