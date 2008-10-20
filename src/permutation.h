@@ -1,10 +1,10 @@
 #ifndef PERMUTATION_H_
 #define PERMUTATION_H_
 
-#include <vector>
 #include <cassert>
 #include <iostream>
 #include <algorithm>
+#include <boost/array.hpp>
 
 namespace TiledArray {
 
@@ -22,15 +22,16 @@ namespace TiledArray {
   {
     public:
     typedef size_t Index;
+    typedef boost::array<Index,D> Array;
     static const unsigned int DIM = D;
 
     static const Permutation& unit() { return unit_permutation; }
     
-    Permutation(const Index* source) : p_(DIM) {
+    Permutation(const Index* source) {
       std::copy(source,source+D,p_.begin());
       assert(valid_permutation());
     }
-    Permutation(const std::vector<Index>& source) : p_(source) {
+    Permutation(const Array& source) : p_(source) {
       assert(valid_permutation());
     }
     ~Permutation() {}
@@ -42,10 +43,11 @@ namespace TiledArray {
     Permutation& operator=(const Permutation& other) { p_ = other.p_; return *this; }
     /// return *this * other
     Permutation operator^(const Permutation& other) const {
-      std::vector<typename Permutation<D>::Index > _result(D);
+      Array _result;
       for(unsigned int d=0; d<D; ++d)
         _result[d] = p_[other[d]];
-      return Permutation(_result);
+      Permutation result(_result);
+      return result;
     }
     
     friend bool operator== <> (const Permutation<D>& p1, const Permutation<D>& p2);
@@ -57,7 +59,7 @@ namespace TiledArray {
 
     // return false if this is not a valid permutation
     bool valid_permutation() {
-      std::vector<unsigned int> count(D,0);
+      Array count; count.assign(0);
       for(unsigned int d=0; d<D; ++d) {
         const Index& i = p_[d];
         if (i>=D) return false;
@@ -67,7 +69,7 @@ namespace TiledArray {
       return true;
     }
     
-    std::vector<Index> p_;
+    Array p_;
   };
 
   namespace {

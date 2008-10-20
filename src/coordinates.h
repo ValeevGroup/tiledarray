@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <boost/operators.hpp>
+#include <boost/array.hpp>
 
 #include <permutation.h>
 
@@ -45,13 +46,14 @@ std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c
   {
     public:
     typedef T Element;
-    typedef typename std::vector<Element>::iterator iterator;
-    typedef typename std::vector<Element>::const_iterator const_iterator;
+    typedef boost::array<Element,D> Array;
+    typedef typename Array::iterator iterator;
+    typedef typename Array::const_iterator const_iterator;
     static const unsigned int DIM = D;
     
-    ArrayCoordinate(const T& init_value = 0) : r_(D,init_value) {}
-    ArrayCoordinate(const T* init_values) : r_(D) { std::copy(init_values,init_values+D,r_.begin()); }
-    ArrayCoordinate(const std::vector<T>& init_values) : r_(init_values) { assert(init_values.size() == D); }
+    ArrayCoordinate(const T& init_value = 0) { r_.assign(init_value); }
+    ArrayCoordinate(const T* init_values) { std::copy(init_values,init_values+D,r_.begin()); }
+    ArrayCoordinate(const Array& init_values) : r_(init_values) { }
     ~ArrayCoordinate() {}
 
     /// Returns an interator to the first coordinate
@@ -130,8 +132,7 @@ std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c
     
   private:
     /// last dimension is least significant
-    /// default is to use standard vector
-    std::vector<T> r_;
+    Array r_;
   };
   
   template <typename T, unsigned int D, typename Tag>
@@ -163,10 +164,11 @@ std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c
   /// apply permutation P to coordinate C
   template <typename T, unsigned int D, typename Tag>
   ArrayCoordinate<T,D,Tag> operator^(const Permutation<D>& P, const ArrayCoordinate<T,D,Tag>& C) {
-    std::vector<typename ArrayCoordinate<T,D,Tag>::Element > _result(D);
+    typename ArrayCoordinate<T,D,Tag>::Array _result;
     for(unsigned int d=0; d<D; ++d)
       _result[ P[d] ] = C[d];
-    return ArrayCoordinate<T,D,Tag>(_result);
+    ArrayCoordinate<T,D,Tag> result(_result);
+    return result;
   }
 
 }

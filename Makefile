@@ -5,7 +5,8 @@ CXX = /opt/local/bin/mpicxx
 CXXFLAGS = -g -Wall -fmessage-length=0 -I./src -I./Tests -DTA_DLEVEL=3 -DTA_WLEVEL=3
 
 OBJS = src/tilemap.o src/env.o \
-TiledArrayTest.o Tests/tupletest.o Tests/coordinatestest.o
+TiledArrayTest.o Tests/tupletest.o Tests/coordinatestest.o \
+Tests/rangetest.o
 
 #LIBDIR = -L$(MADNESSROOT)/lib
 #LIBS = -lMADworld

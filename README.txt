@@ -17,13 +17,10 @@ With single level of tiling Array interface must explicitly deal with elements A
 tiles are the elements at a given level).
 
 /// coordinate in a DIM-dimensional space
-class Tuple<DIM>;
+class ArrayCoordinate<T,DIM,Tag>
 
-class ElementCoordinate<DIM> : public Tuple<DIM> {
-}
-
-class TileCoordinate<DIM> : public Tuple<DIM> {
-}
+typedef ArrayCoordinate<uint,DIM,ElementTag> ElementIndex<DIM>;
+typedef ArrayCoordinate<uint,DIM,TileTag> TileIndex<DIM>;
 
 /// 1-d nonuniformly-tiled range
 class Range {

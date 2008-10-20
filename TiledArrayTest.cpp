@@ -8,7 +8,7 @@
 
 //#define TEST_TUPLE
 #define TEST_COORDINATES
-//#define TEST_RANGE
+#define TEST_RANGE
 //#define TEST_ORTHOTOPE
 //#define TEST_SHAPE
 //#define TEST_TILEMAP
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 	
 	RUN_TUPLE_TEST
 	RUN_COORDINATES_TEST
-//	RUN_RANGE_TEST
+	RUN_RANGE_TEST
 	RUN_ORTHOTOPE_TEST
 	RUN_SHAPE_TEST
     RUN_TILEMAP_TEST
