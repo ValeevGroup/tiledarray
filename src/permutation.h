@@ -2,6 +2,7 @@
 #define PERMUTATION_H_
 
 #include <vector>
+#include <cassert>
 #include <iostream>
 #include <algorithm>
 
@@ -25,12 +26,27 @@ namespace TiledArray {
 
     static const Permutation& unit() { return unit_permutation; }
     
-    Permutation(const Index* source) : p_(DIM) { std::copy(source,source+D,p_.begin()); }
-    Permutation(const std::vector<Index>& source) : p_(source) {}
+    Permutation(const Index* source) : p_(DIM) {
+      std::copy(source,source+D,p_.begin());
+      assert(valid_permutation());
+    }
+    Permutation(const std::vector<Index>& source) : p_(source) {
+      assert(valid_permutation());
+    }
     ~Permutation() {}
     
+    const Index& operator[](unsigned int i) const {
+      return p_[i];
+    }
+    
     Permutation& operator=(const Permutation& other) { p_ = other.p_; return *this; }
-    Permutation operator^(const Permutation& other) const;
+    /// return *this * other
+    Permutation operator^(const Permutation& other) const {
+      std::vector<typename Permutation<D>::Index > _result(D);
+      for(unsigned int d=0; d<D; ++d)
+        _result[d] = p_[other[d]];
+      return Permutation(_result);
+    }
     
     friend bool operator== <> (const Permutation<D>& p1, const Permutation<D>& p2);
     friend std::ostream& operator<< <> (std::ostream& output, const Permutation& p);
@@ -38,6 +54,18 @@ namespace TiledArray {
     private:
     Permutation();
     static Permutation unit_permutation;
+
+    // return false if this is not a valid permutation
+    bool valid_permutation() {
+      std::vector<unsigned int> count(D,0);
+      for(unsigned int d=0; d<D; ++d) {
+        const Index& i = p_[d];
+        if (i>=D) return false;
+        if (count[i] > 0) return false;
+        ++count[i];
+      }
+      return true;
+    }
     
     std::vector<Index> p_;
   };

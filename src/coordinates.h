@@ -4,6 +4,8 @@
 #include <vector>
 #include <boost/operators.hpp>
 
+#include <permutation.h>
+
 using namespace boost;
 
 namespace TiledArray {
@@ -49,6 +51,7 @@ std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c
     
     ArrayCoordinate(const T& init_value = 0) : r_(D,init_value) {}
     ArrayCoordinate(const T* init_values) : r_(D) { std::copy(init_values,init_values+D,r_.begin()); }
+    ArrayCoordinate(const std::vector<T>& init_values) : r_(init_values) { assert(init_values.size() == D); }
     ~ArrayCoordinate() {}
 
     /// Returns an interator to the first coordinate
@@ -133,21 +136,14 @@ std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c
   
   template <typename T, unsigned int D, typename Tag>
   bool operator<(const ArrayCoordinate<T,D,Tag>& c1, const ArrayCoordinate<T,D,Tag>& c2) {
-    unsigned int d = 0;
-    bool result = true;
     // compare starting with the most significant dimension
-    while(result && d < D) {
-      if (c1.r_[d] > c2.r_[d]) {
-        result = false;
-      }
-      else {
-        if (c1.r_[d] < c2.r_[d])
-          d = D;
-        else
-          ++d;
-      }          
+    for(unsigned int d=0; d<D; ++d) {
+      if (c1.r_[d] > c2.r_[d])
+        return false;
+      if (c1.r_[d] < c2.r_[d])
+        return true;
     }
-    return result;
+    return false;
   }
 
   template <typename T, unsigned int D, typename Tag>
@@ -164,6 +160,14 @@ std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag>& c
     return output;
   }
 
+  /// apply permutation P to coordinate C
+  template <typename T, unsigned int D, typename Tag>
+  ArrayCoordinate<T,D,Tag> operator^(const Permutation<D>& P, const ArrayCoordinate<T,D,Tag>& C) {
+    std::vector<typename ArrayCoordinate<T,D,Tag>::Element > _result(D);
+    for(unsigned int d=0; d<D; ++d)
+      _result[ P[d] ] = C[d];
+    return ArrayCoordinate<T,D,Tag>(_result);
+  }
 
 }
 

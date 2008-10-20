@@ -98,9 +98,16 @@ void CoordinatesTest() {
   
   // permutation
   Permutation<3> perm3 = Permutation<3>::unit();
-  std::cout << "Permutation: " << perm3 << std::endl;
-  Permutation<4>::Index _perm4[] = {1,2,3,4};
+  std::cout << "Unit Permutation: " << perm3 << std::endl;
+  Permutation<4>::Index _perm4[] = {0,2,1,3};
   Permutation<4> perm4(_perm4);
   std::cout << "Permutation: " << perm4 << std::endl;
-      
+  std::cout << "Applying Permutation " << perm4 << " to Point " << comp3 << " = " << (perm4^comp3) << std::endl;
+  {
+    Permutation<4>::Index _p1[] = {2,1,0,3};
+    Permutation<4> p1(_p1);
+    Permutation<4>::Index _p2[] = {1,3,2,0};
+    Permutation<4> p2(_p2);
+    std::cout << "Product of " << p1 << " and " << p2 << " = " << (p1^p2) << std::endl;
+  }
 }
