@@ -1,289 +1,283 @@
 #ifndef RANGE_H__INCLUDED
 #define RANGE_H__INCLUDED
 
-#include <vector>
-#include <algorithm>
-#include <cstddef>
-#include <cassert>
 #include <iostream>
+
+#include <boost/array.hpp>
+#include <boost/operators.hpp>
+#include <boost/iterator/filter_iterator.hpp>
+
+#include <range1.h>
+#include <coordinates.h>
 
 namespace TiledArray {
   
-  /** Range class defines a nonuniformly-tiled one-dimensional range.
-   The tiling data is constructed with and stored in an array with
-   the format {a, b, c, ...}, where 0 <= a < b < c < ... Each tile is
-   defined by [a,b), [b,c), ... The number of tiles in the range is
-   defined as one less than the number of elements in the array.
-   */
-  class Range {
-    public:
-      typedef size_t element_index;
-      typedef size_t tile_index;
+  // Range is a tiled DIM-dimensional range
+  template<unsigned int DIM> class Range :
+      boost::equality_comparable1< Range<DIM> > {
+      
+      typedef Range1::element_index index_t;
+      struct ElementTag {
+      };
+      struct TileTag {
+      };
 
-      /// Represents a tile which is an interval [low,high)
-      class RangeTile {
-          typedef Range::element_index element_index;
-          typedef Range::tile_index tile_index;
+      typedef boost::array<Range1,DIM> Ranges;
+      Ranges ranges_; // Vector of range data for each dimension
+
+    public:
+      // typedefs
+      typedef ArrayCoordinate<index_t,DIM,ElementTag> tile_index;
+      typedef ArrayCoordinate<index_t,DIM,TileTag> element_index;
+      typedef size_t ordinal_index;
+
+      /// used to implement Shape::iterator and Shape::const_iterator
+      template <typename Value> class Iterator : public boost::iterator_facade<
+      Iterator<Value>,
+      Value,
+      std::input_iterator_tag> {
+        public:
+          typedef Range<DIM> Container;
+
+          Iterator(const Iterator& other) :
+            container_(other.container_), current_(other.current_) {
+          }
+          ~Iterator() {
+          }
+          
+        private:
+          friend class boost::iterator_core_access;
+          friend class Range<DIM>;
+          Iterator(const Value& cur, const Container* container) :
+            container_(container), current_(cur) {
+          }
+          
+          bool equal(Iterator<Value> const& other) const {
+            return current_ == other.current_;
+          }
+          
+#if 0
+          void increment() {
+            // increment least significant -- see ArrayCoordinate
+            ++current_;
+            // if necessary, carry over
+            const Tuple<DIM> low = container_->low();
+            const Tuple<DIM> high = container_->high();
+            while (lsindex >= high[lsdim]) {
+              current_[lsdim] = low[lsdim];
+              --lsdim;
+              // if ran out of dimensions break out of the loop
+              if (lsdim >= 0)
+              lsindex = ++(current_[lsdim]);
+              else
+              break;
+            }
+          }
+#endif
+          
+          Value& dereference() const {
+            return const_cast<Value&>(current_);
+          }
+          
+          Iterator();
+
+          const Container* container_;
+          Value current_;
+      };
+
+      /// A DIM-dimensional tile
+      class Tile : boost::equality_comparable1<Tile> {
+          typedef typename Range::element_index element_index;
+          typedef typename Range::tile_index tile_index;
           /// first index
-          element_index m_low;
-          /// plast index, i.e. last + 1
-          element_index m_high;
-          /// size
-          element_index m_size;
+          element_index start_;
+          /// past-last index, i.e. last + 1
+          element_index finish_;
 
         public:
-          RangeTile() :
-            m_low(0), m_high(0), m_size(0) {
+          Tile() {
           }
-
-          RangeTile(element_index first, element_index plast) :
-            m_low(first), m_high(plast), m_size(plast-first) {
+          
+          Tile(element_index start, element_index finish) :
+            start_(start), finish_(finish) {
           }
-
-          RangeTile(const RangeTile& src) :
-            m_low(src.m_low), m_high(src.m_high), m_size(src.m_size) {
+          
+          Tile(const Tile& src) :
+            start_(src.start_), finish_(src.finish_) {
           }
-
-          const RangeTile& operator=(const RangeTile& src) {
-            m_low = src.m_low;
-            m_high = src.m_high;
-            m_size = src.m_size;
+          
+          const Tile& operator=(const Tile& src) {
+            start_ = src.start_;
+            finish_ = src.finish_;
             return *this;
           }
-
-          bool operator==(const RangeTile& A) const {
-            return m_low == A.m_low && m_high == A.m_high;
+          
+          bool operator==(const Tile& A) const {
+            return start_ == A.start_ && finish_ == A.finish_;
           }
-
-          element_index low() const {
-            return m_low;
+          
+          element_index start() const {
+            return start_;
           }
-
-          element_index high() const {
-            return m_high;
+          
+          element_index finish() const {
+            return finish_;
           }
-
-          element_index size() const {
-            return m_size;
+          
+          typename element_index::volume size() const {
+            element_index d = finish_ - start_;
+            --d;
+            typedef typename element_index::volume volume_type;
+            volume_type vol = volume(d);
+            return vol;
           }
       };
 
-      typedef std::vector<RangeTile> RangeTiles;
+      // ready to declare iterators
+      typedef typename Ranges::const_iterator range_iterator;
+      typedef Iterator< tile_index> tile_iterator;
+      typedef Iterator< element_index> iterator;
 
-      /////////////
-      // Range data
-      /////////////
-      /// set of tiles. This is the primary data, i.e. other data is always recomputed from this, not modified directly
-      RangeTiles m_tiles;
-      /// maps element index to tile index (secondary data)
-      std::vector<tile_index> m_elem2tile_map;
-
-      /// Validates tile_boundaries
-      static bool valid_(const std::vector<element_index>& tile_boundaries) {
-        // Verify the requirement that a < b < c < ...
-        for (size_t index = 1; index < tile_boundaries.size(); ++index)
-          if (tile_boundaries[index - 1] >= tile_boundaries[index])
-            return false;
-        return true;
+      // Default constructor
+      Range() {
       }
-
-      /// Initialize tiles use a set of tile offsets
-      void init_tiles_(const std::vector<element_index>& tile_boundaries) {
-        assert(valid_(tile_boundaries));
-        if (tile_boundaries.size() >=2) {
-          for (size_t i=1; i<tile_boundaries.size(); ++i) {
-            m_tiles.push_back(RangeTile(tile_boundaries[i-1], tile_boundaries[i]));
-          }
+      
+      // Constructed with an array of ranges
+      Range(const Range1* ranges) {
+        std::copy(ranges, ranges+DIM, ranges_.begin());
+      }
+      
+#if 0
+      // Construct from a set arrays
+      Range(const size_t** ranges, const size_t tiles[DIM]) :
+      ranges_(DIM, Range1())
+      {
+        for(unsigned int dim = 0; dim < DIM; ++dim)
+        {
+          assert(ranges[dim]);
+          ranges_[dim] = Range1(ranges[dim], tiles[dim]);
         }
       }
+#endif
       
-      /// Initialize secondary data
-      void init_map_() {
-        // init elem2tile map
-        m_elem2tile_map.resize(size());
-        size_t ii = 0;
-        for (tile_index t=0; t < m_tiles.size(); ++t)
-          for (element_index i=0; i < m_tiles[t].size(); ++i, ++ii)
-            m_elem2tile_map[ii] = t;
-      }
-            
-    public:
-      typedef RangeTiles::const_iterator const_iterator;
-
-      /// Default constructor, range of 1 tile and element.
-      Range() {
-    	std::vector<element_index> tile_boundaries(2, 0);
-    	tile_boundaries[1] = 1;
-    	init_tiles_(tile_boundaries);
-        init_map_();
+      /// Constructor from an iterator range of Range1
+      template <typename RangeIterator> Range(
+                                              const RangeIterator& ranges_begin,
+                                              const RangeIterator& ranges_end) {
+        std::copy(ranges_begin, ranges_end, ranges_.begin());
       }
       
-      /// Constructs range from a vector
-      Range(std::vector<element_index> tile_boundaries) {
-        init_tiles_(tile_boundaries);
-        init_map_();
+      /// Returns an iterator pointing to the first range.
+      iterator begin() const {
+        return element_iterator(tile_index(), this);
       }
       
-      /**
-       * Construct range from a C-style array, ranges must have at least
-       * ntiles + 1 elements.
-       */
-      Range(const element_index* tile_boundaries, tile_index ntiles) {
-        init_tiles_(std::vector<element_index>(tile_boundaries, tile_boundaries+ntiles+1));
-        init_map_();
+      /// Return an iterator pointing one past the last dimension.
+      iterator end() const {
+        tile_index _end;
+        _end[DIM-1] = ranges_[DIM-1].ntiles();
+        return tile_iterator(_end, this);
       }
       
-      /// Copy constructor
-      Range(const Range& rng) :
-        m_tiles(rng.m_tiles), m_elem2tile_map(rng.m_elem2tile_map) {
+      /// Returns an iterator pointing to the first range.
+      tile_iterator begin_tile() const {
+        return tile_iterator(tile_index(), this);
       }
       
-      /// Assignment operator
-      Range& operator =(const Range& rng) {
-        m_tiles = rng.m_tiles;
-        m_elem2tile_map = rng.m_elem2tile_map;
+      /// Return an iterator pointing one past the last dimension.
+      tile_iterator end_tile() const {
+        tile_index _end;
+        _end[DIM-1] = ranges_[DIM-1].ntiles();
+        return tile_iterator(_end, this);
+      }
+      
+      /// Returns an iterator pointing to the first range.
+      range_iterator begin_range() const {
+        return ranges_.begin();
+      }
+      
+      /// Return an iterator pointing one past the last dimension.
+      range_iterator end_range() const {
+        return ranges_.end();
+      }
+      
+      /// return element with the smallest indices in each dimension
+      element_index start() const {
+        
+      }
+      /// return element past the one with the largest indices in each dimension
+      element_index finish() const {
+        
+      }
+      
+      /// return tile with the smallest indices in each dimension
+      tile_index start_tile() const {
+        
+      }
+      /// return tile past the one with the largest indices in each dimension
+      tile_index finish_tile() const {
+        
+      }
+      
+      /// number of elements
+      element_index size() const {
+        
+      }
+      /// number of tiles
+      element_index ntiles() const {
+        
+      }
+      
+      /// Returns true if element_index is within the range
+      bool includes(const element_index& e) const {
+        return (e >= start()) && (e < finish());
+      }
+      
+      /// Return the tile that contains an element index.
+      tile_index find(const element_index e) const {
+        tile_index tmp;
+        
+        for (unsigned int dim = 0; dim < DIM; ++dim)
+          tmp[dim] = ranges_[dim].find(e[dim]);
+        
+        return tmp;
+      }
+      
+      Range<DIM>& permute(const Permutation<DIM>& perm) {
+        operator^(perm, ranges_);
         return *this;
       }
       
-      /// Equality operator
-      bool operator ==(const Range& rng) const {
-        return m_tiles == rng.m_tiles;
-      }
-      
-      /// Inequality operator
-      bool operator !=(const Range& rng) const {
-        return !(*this == rng);
-      }
-      
-      /// Return tile index associated with element_index
-      tile_index tile(element_index element) const {
-#ifdef NDEBUG
-        return m_elem2tile_map[element - low()];
-#else
-        return m_elem2tile_map.at(element - low());
-#endif
-      }
-      
-      /// Returns the number of tiles in the range.
-      tile_index ntiles() const {
-        return m_tiles.size();
-      }
-
-      /// Returns a pair containing high and low tile range.
-      std::pair<tile_index, tile_index> tile_range() const {
-        return std::pair<tile_index,tile_index>(0, ntiles());
-      }
-
-      /// Returns the first index of the tile
-      element_index
-      low(tile_index tile_index) const
-      {
-#ifdef NDEBUG
-        return m_tiles[tile_index].low();
-#else
-        return m_tiles.at(tile_index).low();
-#endif
-      }
-
-      /// Returns the plast index of the tile
-      element_index
-      high(tile_index tile_index) const
-      {
-#ifdef NDEBUG
-        return m_tiles[tile_index].high();
-#else
-        return m_tiles.at(tile_index).high();
-#endif
-      }
-
-      /// Returns the number of elements in a tile.
-      element_index
-      size(tile_index tile_index) const
-      {
-#ifdef NDEBUG
-        return m_tiles[tile_index].size();
-#else
-        return m_tiles.at(tile_index).size();
-#endif
-      }
-
-      /// Returns a pair that contains low and high of the tile.
-      std::pair<element_index, element_index>
-      range(tile_index tile_index) const
-      {
-        return std::make_pair(low(tile_index),high(tile_index));
-      }
-
-      bool
-      empty() const {
-        return m_tiles.empty();
-      }
-
-      /// Returns the low element index of the range.
-      element_index low() const
-      {
-        if (!empty())
-        return m_tiles.begin()->low();
+      // Equality operator
+      bool operator ==(const Range<DIM>& ortho) const {
+        if (&ortho == this)
+          return true;
         else
-        return 0;
-      }
-
-      /// Returns the high element index of the range.
-      element_index
-      high() const
-      {
-        if (!empty())
-        return m_tiles.rbegin()->high();
-        else
-        return 0;
-      }
-
-      /// Returns the number of elements in the range.
-      element_index size() const
-      {
-        return high() - low();
-      }
-
-      std::pair<element_index, element_index>
-      range() const
-      {
-        return std::make_pair(low(),high());
-      }
-
-      /// Returns an iterator to the first tile in the range.
-      const_iterator
-      begin() const
-      {
-        return m_tiles.begin();
-      }
-
-      /// Returns an iterator to the end of the range.
-      const_iterator
-      end() const
-      {
-        return m_tiles.end();
+          return std::equal(begin_range(), end_range(), ortho.begin_range());
       }
       
-      /// contains this element?
-      bool
-      contains(const element_index& a) {
-        return a < high() && a >= low();
+      /// computes an ordinal index for a given element_index
+      static ordinal_index ordinal(const element_index& t) {
+        
       }
-      /// contains this tile?
-      bool
-      contains_tile(const tile_index& a) {
-        return a < ntiles() && a >= 0;
+      /// computes an ordinal index for a given tile_index
+      static ordinal_index ordinal(const tile_index& t) {
+        
       }
+      
+  };
+  
+  template<unsigned int DIM> std::ostream& operator <<(std::ostream& out,
+                                                       const Range<DIM>& rng) {
+    out << "Range<" << DIM << ">(" << " @= " << &rng << " low= " << rng.low()
+        << " high= " << rng.high() << " size= " << rng.size() << " range= [ "
+        << rng.range().first << "," << rng.range().second << " )" << " tile_size= " << rng.tile_size() << " nelements= "
+        << rng.nelements() << " ntiles= " << rng.ntiles() << " )";
+    return out;
+  }
 
-    }; // end of Range
+}
+; // end of namespace TiledArray
 
-    inline std::ostream& operator <<(std::ostream& out, const Range& rng) {
-      out << "Range(" << "low=" << rng.low() << ", high=" << rng.high()
-      << ", size=" << rng.size() << ", range= [" << rng.range().first << "," << rng.range().second << ")" << ", ntiles= " << rng.ntiles() << ", tile_range= ["
-      << rng.tile_range().first << "," << rng.tile_range().second << ") )";
-      return out;
-    }
-
-}; // end of namespace TiledArray
 
 #endif // RANGE_H__INCLUDED

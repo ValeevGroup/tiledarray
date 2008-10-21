@@ -99,6 +99,15 @@ namespace TiledArray {
     return output;
   }
 
+  /// permute an array
+  template<unsigned int DIM, typename T>
+  boost::array<T,DIM> operator^(const Permutation<DIM>& P, const boost::array<T,DIM>& orig) {
+    boost::array<T,DIM> result;
+    for(unsigned int dim = 0; dim < DIM; ++dim)
+      result[P[dim]] = orig[dim];
+    return result;
+  }
+
 }
 
 #endif /*PERMUTATION_H_*/

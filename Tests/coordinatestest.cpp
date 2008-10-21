@@ -15,6 +15,7 @@ void CoordinatesTest() {
   typedef ArrayCoordinate<int, 2, ElementTag> Point2;
   typedef ArrayCoordinate<int, 3, ElementTag> Point3;
   typedef ArrayCoordinate<int, 4, ElementTag> Point4;
+  typedef ArrayCoordinate<int, 4, ElementTag, TiledArray::detail::Fortran_CoordinateSystem> FPoint4;
 
   // Default constuctor
   Point1 p1D;
@@ -94,6 +95,14 @@ void CoordinatesTest() {
   std::cout << "++" << comp1 << " = "; std::cout << ++comp1 << std::endl;
   std::cout << "--" << comp2 << " = "; std::cout << --comp2 << std::endl;
 
+  std::cout << "Testing Fortran-style Point:" << std::endl;
+  FPoint4 fpt1(values1);
+  FPoint4 fpt2(values2);
+  std::cout << "++" << fpt1 << " = "; std::cout << ++fpt1 << std::endl;
+  std::cout << "--" << fpt2 << " = "; std::cout << --fpt2 << std::endl;
+
+  std::cout << "volume(" << comp2 << ") = " << volume(comp2) << std::endl;
+  
   std::cout << "End Point Test" << std::endl << std::endl;
   
   // permutation

@@ -1,58 +1,59 @@
 #include <iostream>
 #include <range.h>
-#include <rangetest.h>
+#include "rangetest.h"
 
 using namespace TiledArray;
 
-void RangeTest() {
-  // Test Default constructor
-  std::cout << "Default Constructor:" << std::endl;
-  Range rngDefault;
-  std::cout << "rngDefault = " << rngDefault << std::endl;
-  
-  // Test c-style array constructor
-  std::cout << std::endl << "C-style array constructor:" << std::endl;
-  size_t ranges[] = { 0, 3, 7, 10, 20, 100 };
-  size_t tiles = 5;
-  Range rng1(ranges, tiles);
-  std::cout << "rng1 = " << rng1 << std::endl;
-  
-  // Test vector array constructor
-  std::cout << std::endl << "Vector array constructor:" << std::endl;
-  ranges[5] = 50;
-  const std::vector<size_t> ranges_vector(ranges, ranges + tiles + 1);
-  Range rng2(ranges_vector);
-  std::cout << "rng2 = " << rng2 << std::endl;
-  
-  // Test copy constructor
-  std::cout << std::endl << "Copy constructor:" << std::endl;
-  Range rng3(rng2);
-  std::cout << "rng3 = " << rng3 << std::endl;
-  
-  // Test assignment operator
-  std::cout << std::endl << "Assignment operator:" << std::endl;
-  rngDefault = rng3;
-  std::cout << "rngDefault = rng3 = " << rngDefault << std::endl;
-  
-  // Test comparison operators
-  std::cout << std::endl << "Comparison operator:" << std::endl;
-  std::cout << "(rngDefault == rng3) = " << (rngDefault == rng3) << std::endl;
-  std::cout << "(rngDefault != rng3) = " << (rngDefault != rng3) << std::endl;
-  std::cout << "(rng1 == rng3) = " << (rng1 == rng3) << std::endl;
-  std::cout << "(rng1 != rng3) = " << (rng1 != rng3) << std::endl;
-  
-  //Test iterator
-  std::cout << std::endl << "Iterator:" << std::endl << "Tiling for rng3"
-      << std::endl;
-  for (Range::const_iterator it = rng3.begin(); it != rng3.end(); ++it) {
-    std::cout << "[" << (*it).low() << ","<< it->high() << ")" << std::endl;
-  }
-  
-  // Test tile index map
-  std::cout << std::endl << "Tile index map for rng2:" << std::endl;
-  for (size_t index = rng2.low(); index < rng2.high(); ++index)
-    std::cout << "element_index= " << index << " tile_index= "
-        << rng2.tile(index) << std::endl;
-  
-  std::cout << "End Range Tests" << std::endl << std::endl;
+void
+RangeTest()
+{
+	std::cout << "Range Tests:" << std::endl;
+
+	std::cout << "Constructor tests: ";
+	// Test default constructor.
+	Range<4> ortho1;
+
+	// Test with C-style Range Array constructor.
+	Range<4>::index_t dim0[] = {0,10,20,30};
+	Range<4>::index_t dim1[] = {0,5,10,15,20};
+	Range<4>::index_t dim2[] = {0,3,6,9,12,15};
+	Range<4>::index_t dim3[] = {0,2,4,6,8,10,12};
+	Range<4>::index_t tiles[4] = {3, 4, 5, 6};
+
+	Range rng_set[4] = {Range(dim0, tiles[0]),
+						Range(dim1, tiles[1]),
+						Range(dim2, tiles[2]),
+						Range(dim3, tiles[3])};
+
+	std::vector<Range> rng_vector(rng_set, rng_set + 4);
+
+	const size_t* dim_set[] = {dim0,dim1,dim2,dim3};
+
+	Range<4> ortho2(rng_set);
+	Range<4> ortho3(rng_vector);
+	Range<4> ortho4(dim_set, tiles);
+
+	if(ortho2 == ortho3 && ortho3 == ortho4 && ortho1.count() == 1)
+		std::cout << "PASSED" << std::endl;
+
+	std::cout << "Tile accessor tests:" << std::endl;
+	Tuple<4>::value_t tile_data[] = {0, 2, 4, 1};
+	Tuple<4> tile(tile_data);
+	std::cout << "ortho2 = " << ortho2 << std::endl;
+	std::cout << "Tile data for tile = " << tile << std::endl
+		<< " low(tile)= " << ortho2.low(tile)
+		<< " high(tile)= " << ortho2.high(tile)
+		<< " size(tile)= " << ortho2.size(tile)
+		<< " range(tile)= [ " << ortho2.range(tile).first << "," << ortho2.range(tile).second << " ]"
+		<< " count(tile)= " << ortho2.nelements(tile)
+		<< std::endl;
+	
+	Tuple<4>::value_t element_data[] = {0, 5, 7, 7};
+	Tuple<4> element(element_data);
+	std::cout << "element = " << element << std::endl;
+	std::cout << "ortho2.tile(element) = " << ortho2.tile(element) << std::endl;
+	
+  std::cout << "Permutation Test:" << std::endl;
+
+  std::cout << "End Range Test" << std::endl << std::endl;
 }

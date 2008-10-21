@@ -1,5 +1,5 @@
-#ifndef RANGETEST_H__INCLUDED
-#define RANGETEST_H__INCLUDED
+#ifndef RANGETEST_H_
+#define RANGETEST_H_
 
 #ifdef TEST_RANGE
 #define RUN_RANGE_TEST	{ RangeTest(); }
@@ -7,6 +7,7 @@
 #define RUN_RANGE_TEST	{ ; }
 #endif
 
-void RangeTest();
+void
+RangeTest();
 
-#endif // RANGETEST_H__INCLUDED
+#endif /*RANGETEST_H_*/
