@@ -15,7 +15,7 @@ void CoordinatesTest() {
   typedef ArrayCoordinate<int, 2, ElementTag> Point2;
   typedef ArrayCoordinate<int, 3, ElementTag> Point3;
   typedef ArrayCoordinate<int, 4, ElementTag> Point4;
-  typedef ArrayCoordinate<int, 4, ElementTag, TiledArray::detail::Fortran_CoordinateSystem> FPoint4;
+  typedef ArrayCoordinate<int, 4, ElementTag, CoordinateSystem<4,TiledArray::detail::decreasing_dimension_order> > FPoint4;
 
   // Default constuctor
   Point1 p1D;

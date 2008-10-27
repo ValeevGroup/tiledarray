@@ -10,35 +10,49 @@
 #include <boost/operators.hpp>
 #include <boost/limits.hpp>
 
+#include <iterator.h>
+
 namespace TiledArray {
   
-  /** Range1 class defines a nonuniformly-tiled one-dimensional range.
+  /** Range1 class defines a nonuniformly-tiled continuous one-dimensional range.
    The tiling data is constructed with and stored in an array with
    the format {a, b, c, ...}, where 0 <= a < b < c < ... Each tile is
    defined by [a,b), [b,c), ... The number of tiles in the range is
    defined as one less than the number of elements in the array.
    */
   class Range1 : boost::equality_comparable1<Range1> {
+      typedef Range1 my_type;
     public:
       typedef size_t element_index;
       typedef size_t tile_index;
 
-      /// A tile is an interval [start,finish)
+      /// Tile is an interval [start,finish)
       class Tile :
       boost::equality_comparable1<Tile>
       {
           typedef Range1::element_index element_index;
           typedef Range1::tile_index tile_index;
+          typedef Tile my_type;
+          
           /// first index
           element_index start_;
           /// past-last index, i.e. last + 1
           element_index finish_;
 
+          element_index start() const {
+            return start_;
+          }
+
+          element_index finish() const {
+            return finish_;
+          }
+          
         public:
           Tile() :
             start_(std::numeric_limits<element_index>::min()), finish_(std::numeric_limits<element_index>::min()) {
           }
 
+          /// Tile is an interval [start,finish)
           Tile(element_index start, element_index finish) :
             start_(start), finish_(finish) {
           }
@@ -57,19 +71,25 @@ namespace TiledArray {
             return start_ == A.start_ && finish_ == A.finish_;
           }
 
-          element_index start() const {
-            return start_;
-          }
-
-          element_index finish() const {
-            return finish_;
-          }
-
           element_index size() const {
             return finish_ - start_;
           }
+
+          typedef detail::IndexIterator<element_index,my_type> element_iterator;
+          element_iterator begin() const {
+            element_iterator result(start(),*this);
+            return result;
+          }
+          element_iterator end() const {
+            element_iterator result(finish(),*this);
+            return result;
+          }
+          void increment(element_index& i) const {
+            ++i;
+          }
       };
 
+    private:
       /////////////
       // Range1 data
       /////////////
@@ -107,10 +127,46 @@ namespace TiledArray {
           for (element_index i=0; i < tiles_[t].size(); ++i, ++ii)
             elem2tile_[ii] = t;
       }
-            
-    public:
-      typedef Tiles::const_iterator const_iterator;
 
+      /// Returns the low element index of the range.
+      element_index start() const
+      {
+        if (!empty())
+          return *(tiles_.begin()->begin());
+        else
+          return std::numeric_limits<element_index>::min();
+      }
+
+      /// Returns the high element index of the range.
+      element_index finish() const
+      {
+        if (!empty())
+          return *(tiles_.rbegin()->end());
+        else
+          return std::numeric_limits<element_index>::min();
+      }
+
+      /// Returns the low tile index of the range.
+      tile_index start_tile() const
+      {
+        if (!empty())
+          return 0;
+        else
+          return std::numeric_limits<tile_index>::min();
+      }
+
+      /// Returns the high tile index of the range.
+      tile_index finish_tile() const
+      {
+        if (!empty())
+          return tiles_.size();
+        else
+          return std::numeric_limits<tile_index>::min();
+      }
+      
+      friend std::ostream& operator <<(std::ostream& out, const Range1& rng);
+
+    public:
       /// Default constructor, range of 1 tile and element.
       Range1() : tiles_() {
         init_map_();
@@ -148,16 +204,52 @@ namespace TiledArray {
         return tiles_ == rng.tiles_;
       }
       
-      /// Return tile index associated with element_index
-      tile_index find(element_index element) const {
-#ifdef NDEBUG
-        return elem2tile_[element - start()];
-#else
-        return elem2tile_.at(element - start());
-#endif
+      /// iterates over tile indices
+      typedef detail::IndexIterator<tile_index,my_type> tile_iterator;
+      /// Returns an iterator to the first tile in the range.
+      tile_iterator begin_tile() const
+      {
+        tile_iterator result(0,*this);
+        return result;
+      }
+      /// Returns an iterator to the end of the range.
+      tile_iterator end_tile() const
+      {
+        tile_iterator result(ntiles(),*this);
+        return result;
+      }
+      /// how tile_index is incremented
+      void increment(tile_index& t) const {
+        ++t;
       }
       
-      /// Return tile t
+      /// Return tile index associated with element_index
+      tile_iterator find(element_index element) {
+        element_index relindex = element - start();
+        if (relindex >= size())
+          return end_tile();
+#ifdef NDEBUG
+        tile_iterator result(elem2tile_[relindex],*this);
+#else
+        tile_iterator result(elem2tile_.at(relindex),*this);
+#endif
+        return result;
+      }
+
+      typedef detail::IndexIterator<element_index,my_type> element_iterator;
+      element_iterator begin() const {
+        element_iterator result(start(),*this);
+        return result;
+      }
+      element_iterator end() const {
+        element_iterator result(finish(),*this);
+        return result;
+      }
+      /// since element_index and tile_index are the same type, they are incremented by the same function
+      //void increment(element_index& i) const { ++i; }
+
+      
+      /// Return Tile corresponding to tile index t
       const Tile& tile(tile_index t) const {
 #ifdef NDEBUG
         return tiles_[t];
@@ -166,30 +258,8 @@ namespace TiledArray {
 #endif
       }
 
-#if 0   // not sure if need this
-      /// contains this tile?
-      bool
-      contains(const Tile& t) {
-        return a < ntiles() && a >= 0;
-      }
-#endif
-
-      /// Returns an iterator to the first tile in the range.
-      const_iterator
-      begin_tile() const
-      {
-        return tiles_.begin();
-      }
-
-      /// Returns an iterator to the end of the range.
-      const_iterator
-      end_tile() const
-      {
-        return tiles_.end();
-      }
-      
       /// Returns the number of tiles in the range.
-      tile_index ntiles() const {
+      size_t ntiles() const {
         return tiles_.size();
       }
 
@@ -205,39 +275,27 @@ namespace TiledArray {
         return tiles_.empty();
       }
 
-      /// Returns the low element index of the range.
-      element_index start() const
-      {
-        if (!empty())
-          return tiles_.begin()->start();
-        else
-          return std::numeric_limits<element_index>::min();
-      }
-
-      /// Returns the high element index of the range.
-      element_index finish() const
-      {
-        if (!empty())
-          return tiles_.rbegin()->finish();
-        else
-          return std::numeric_limits<element_index>::min();
-      }
-
       /// Returns the number of elements in the range.
-      element_index size() const
+      size_t size() const
       {
         return finish() - start();
       }
 
       /// contains this element?
       bool
-      contains(const element_index& a) {
+      includes(const element_index& a) const {
         return a < finish() && a >= start();
       }
-      
+
+      /// contains this tile?
+      bool
+      includes_tile(const tile_index& a) const {
+        return a < finish_tile() && a >= start_tile();
+      }
+
     }; // end of Range1
 
-    std::ostream& operator <<(std::ostream& out, const Range1& rng) {
+    inline std::ostream& operator <<(std::ostream& out, const Range1& rng) {
       out << "Range1(" << "[" << rng.start() << "," << rng.finish() << ") "
       << " size=" << rng.size() << " ntiles= " << rng.ntiles() << " )" << std::endl;
       return out;

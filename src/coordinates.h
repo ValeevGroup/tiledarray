@@ -27,16 +27,82 @@ std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag,CS>
 template <typename T, unsigned int D, typename Tag, typename CS>
 ArrayCoordinate<T,D,Tag,CS> operator^(const Permutation<D>& P, const ArrayCoordinate<T,D,Tag,CS>& C);
 
+namespace {
+  // sort dimensions by their order
+  struct DimOrderPair {
+    unsigned int dim, order;
+    DimOrderPair(unsigned int d = 0,unsigned int o = 0) : dim(d), order(o) {}
+    /// compare by order
+    bool operator<(const DimOrderPair& other) const {
+      return order < other.order;
+    }
+  };
+};
+
 namespace detail {
-  typedef enum {c_dimension_order, fortran_dimension_order} DimensionOrder;
-  struct Fortran_CoordinateSystem {
-    static const DimensionOrder dimension_order = fortran_dimension_order;
+  
+  typedef enum {decreasing_dimension_order, increasing_dimension_order, general_dimension_order} DimensionOrderType;
+  template <unsigned int D>
+  class DimensionOrder {
+    typedef boost::array<unsigned int,D> IntArray;
+  public:
+    typedef typename IntArray::const_iterator const_iterator;
+    typedef typename IntArray::const_reverse_iterator const_reverse_iterator;
+    DimensionOrder(const DimensionOrderType& order) {
+      // map dimensions to their importance order
+      switch (order) {
+        case increasing_dimension_order:
+        for(unsigned int d=0; d<D; ++d)
+          ord_[d] = d;
+        break;
+        
+        case decreasing_dimension_order:
+        for(unsigned int d=0; d<D; ++d)
+          ord_[d] = D-d-1;
+        break;
+        
+        case general_dimension_order:
+        throw std::runtime_error("general dimension ordering is not supported");
+        break;
+      }
+
+      std::vector<DimOrderPair> sorted_by_order(D);
+      for(unsigned int d=0; d<D; ++d)
+        sorted_by_order[d] = DimOrderPair(d,ord_[d]);
+      sort(sorted_by_order.begin(),sorted_by_order.end());
+
+      // construct the order->dimension map
+      for(unsigned int d=0; d<D; ++d)
+        dim_[d] = sorted_by_order[d].dim;
+    }
+    unsigned int dim2order(unsigned int d) const { return ord_[d]; }
+    unsigned int order2dim(unsigned int o) const { return dim_[o]; }
+    /// use this to start iteration over dimensions in increasing order of their significance
+    const_iterator begin_order() const { return dim_.begin(); }
+    /// use this to end iteration over dimensions in increasing order of their significance
+    const_iterator end_order() const { return dim_.end(); }
+    /// use this to start iteration over dimensions in decreasing order of their significance
+    const_reverse_iterator rbegin_order() const { return dim_.rbegin(); }
+    /// use this to end iteration over dimensions in decreasing order of their significance
+    const_reverse_iterator rend_order() const { return dim_.rend(); }
+  private:
+    /// maps dimension to its order
+    boost::array<unsigned int,D> ord_;
+    /// maps order to dimension -- inverse of ord_
+    boost::array<unsigned int,D> dim_;
   };
-  struct C_CoordinateSystem {
-    static const DimensionOrder dimension_order = c_dimension_order;
+}; // namespace detail
+
+  
+  template <unsigned int D, detail::DimensionOrderType Order = detail::decreasing_dimension_order>
+  class CoordinateSystem {
+    public:
+      static const detail::DimensionOrder<D>& ordering() { return ordering_; }
+      static const detail::DimensionOrderType dimension_order = Order;
+    private:
+      static detail::DimensionOrder<D> ordering_;
   };
-}
-typedef detail::C_CoordinateSystem DefaultCoordinateSystem;
+  template <unsigned int D, detail::DimensionOrderType Order> detail::DimensionOrder<D> CoordinateSystem<D,Order>::ordering_(Order);
 
   /// ArrayCoordinate represents coordinates of a point in a DIM-dimensional orthogonal lattice).
   ///
@@ -46,14 +112,14 @@ typedef detail::C_CoordinateSystem DefaultCoordinateSystem;
   /// The purpose of Tag is to create multiple instances of the class
   /// with identical mathematical behavior but distinct types to allow
   /// overloading in end-user classes.
-  template <typename T, unsigned int D, typename Tag, typename CoordinateSystem = DefaultCoordinateSystem>
+  template <typename T, unsigned int D, typename Tag, typename CS = CoordinateSystem<D> >
   class ArrayCoordinate :
-      boost::addable< ArrayCoordinate<T,D,Tag,CoordinateSystem>,          // point + point
-      boost::subtractable< ArrayCoordinate<T,D,Tag,CoordinateSystem>,    // point - point
-      boost::less_than_comparable1< ArrayCoordinate<T,D,Tag,CoordinateSystem>,  // point < point
-      boost::equality_comparable1< ArrayCoordinate<T,D,Tag,CoordinateSystem>  // point == point
-//      boost:incrementable< ArrayCoordinate<T,D,Tag,CoordinateSystem>,        // ++point
-//      boost ::decrementable< ArrayCoordinate<T,D,Tag,CoordinateSystem>     // --point
+      boost::addable< ArrayCoordinate<T,D,Tag,CS>,          // point + point
+      boost::subtractable< ArrayCoordinate<T,D,Tag,CS>,    // point - point
+      boost::less_than_comparable1< ArrayCoordinate<T,D,Tag,CS>,  // point < point
+      boost::equality_comparable1< ArrayCoordinate<T,D,Tag,CS>  // point == point
+//      boost:incrementable< ArrayCoordinate<T,D,Tag,CS>,        // ++point
+//      boost ::decrementable< ArrayCoordinate<T,D,Tag,CS>     // --point
 //      >
 //      >
       >
@@ -62,10 +128,10 @@ typedef detail::C_CoordinateSystem DefaultCoordinateSystem;
       >
   {
     public:
-    typedef T element;
+    typedef T index;
     typedef T volume;
-    typedef CoordinateSystem CS;
-    typedef boost::array<element,D> Array;
+    typedef CS CoordinateSystem;
+    typedef boost::array<index,D> Array;
     typedef typename Array::iterator iterator;
     typedef typename Array::const_iterator const_iterator;
     static const unsigned int DIM = D;
@@ -96,28 +162,16 @@ typedef detail::C_CoordinateSystem DefaultCoordinateSystem;
     }
 
     ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator++() {
-      if (CoordinateSystem::dimension_order == detail::c_dimension_order) {
-        T& least_significant = *r_.rbegin();
-        ++least_significant;
-        return *this;
-      }
-      if (CoordinateSystem::dimension_order == detail::fortran_dimension_order) {
-        T& least_significant = *r_.begin();
-        ++least_significant;
-        return *this;
-      }
+      const unsigned int lsdim = *CoordinateSystem::ordering().begin_order();
+      T& least_significant = r_[lsdim];
+      ++least_significant;
+      return *this;
     }
     ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator--() {
-      if (CoordinateSystem::dimension_order == detail::c_dimension_order) {
-        T& least_significant = *r_.rbegin();
-        --least_significant;
-        return *this;
-      }
-      if (CoordinateSystem::dimension_order == detail::fortran_dimension_order) {
-        T& least_significant = *r_.begin();
-        --least_significant;
-        return *this;
-      }
+      const unsigned int lsdim = *CoordinateSystem::ordering().begin_order();
+      T& least_significant = r_[lsdim];
+      --least_significant;
+      return *this;
     }
     
     /// Add operator
@@ -158,6 +212,10 @@ typedef detail::C_CoordinateSystem DefaultCoordinateSystem;
       return r_.at(d);
 #endif
     }
+    
+    const Array& r() const {
+      return r_;
+    }
 
     friend bool operator < <>(const ArrayCoordinate<T,D,Tag,CoordinateSystem>&, const ArrayCoordinate<T,D,Tag,CoordinateSystem>&);
     friend bool operator == <>(const ArrayCoordinate<T,D,Tag,CoordinateSystem>&, const ArrayCoordinate<T,D,Tag,CoordinateSystem>&);
@@ -169,12 +227,13 @@ typedef detail::C_CoordinateSystem DefaultCoordinateSystem;
     Array r_;
   };
   
+  // TODO how to recast this without using dimension_order
   template <typename T, unsigned int D, typename Tag, typename CS>
   bool operator<(const ArrayCoordinate<T,D,Tag,CS>& c1, const ArrayCoordinate<T,D,Tag,CS>& c2) {
-    if (CS::dimension_order == detail::c_dimension_order) {
+    if (CS::dimension_order == detail::decreasing_dimension_order) {
       return std::lexicographical_compare(c1.r_.begin(),c1.r_.end(),c2.r_.begin(),c2.r_.end());
     }
-    if (CS::dimension_order == detail::fortran_dimension_order) {
+    if (CS::dimension_order == detail::increasing_dimension_order) {
       return std::lexicographical_compare(c1.r_.rbegin(),c1.r_.rend(),c2.r_.rbegin(),c2.r_.rend());
     }
   }
@@ -206,7 +265,16 @@ typedef detail::C_CoordinateSystem DefaultCoordinateSystem;
   typename ArrayCoordinate<T,D,Tag,CS>::volume volume(const ArrayCoordinate<T,D,Tag,CS>& C) {
     typename ArrayCoordinate<T,D,Tag,CS>::volume result = 1;
     for(unsigned int dim = 0; dim < D; ++dim)
-      result *= std::abs(C[dim]);
+      result *= std::abs(static_cast<long int>(C[dim]));
+    return result;
+  }
+
+  /// compute dot product between 2 arrays
+  template <typename T, unsigned int D>
+  T dot_product(const boost::array<T,D>& A, const boost::array<T,D>& B) {
+    T result = 0;
+    for(unsigned int dim = 0; dim < D; ++dim)
+      result += A[dim] * B[dim];
     return result;
   }
 

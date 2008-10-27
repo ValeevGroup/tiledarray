@@ -44,15 +44,16 @@ void Range1Test() {
   //Test iterator
   std::cout << std::endl << "Iterator:" << std::endl << "Tiling for rng3"
       << std::endl;
-  for (Range1::const_iterator it = rng3.begin_tile(); it != rng3.end_tile(); ++it) {
-    std::cout << "[" << it->start() << ","<< it->finish() << ")" << std::endl;
+  for (Range1::tile_iterator it = rng3.begin_tile(); it != rng3.end_tile(); ++it) {
+    std::cout << "[" << *(rng3.tile(*it).begin()) << ","<< *(rng3.tile(*it).end()) << ")" << std::endl;
   }
   
   // Test tile index map
   std::cout << std::endl << "Tile index map for rng2:" << std::endl;
-  for (size_t index = rng2.start(); index < rng2.finish(); ++index)
-    std::cout << "element_index= " << index << " tile_index= "
-        << rng2.find(index) << std::endl;
+  for (Range1::element_iterator it = rng2.begin(); it != rng2.end(); ++it) {
+    std::cout << "element_index= " << *it << " tile_index= "
+        << *(rng2.find(*it)) << std::endl;
+  }
   
   std::cout << "End Range1 Tests" << std::endl << std::endl;
 }
