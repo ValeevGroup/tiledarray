@@ -47,6 +47,11 @@ namespace TiledArray {
             return finish_;
           }
           
+          void throw_if_invalid() {
+            if (finish() < start())
+              abort();
+          }
+          
         public:
           Tile() :
             start_(std::numeric_limits<element_index>::min()), finish_(std::numeric_limits<element_index>::min()) {
@@ -55,6 +60,7 @@ namespace TiledArray {
           /// Tile is an interval [start,finish)
           Tile(element_index start, element_index finish) :
             start_(start), finish_(finish) {
+            throw_if_invalid();
           }
 
           Tile(const Tile& src) :
@@ -272,7 +278,7 @@ namespace TiledArray {
       
       bool
       empty() const {
-        return tiles_.empty();
+        return size() == 0;
       }
 
       /// Returns the number of elements in the range.

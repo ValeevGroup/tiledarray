@@ -19,7 +19,7 @@ namespace TiledArray {
                                                                    const Range<DIM,CS>& rng);
 
   
-  /// Range is a tiled DIM-dimensional range
+  /// Range is a tiled DIM-dimensional range. It is immutable, to simplify API.
   template<unsigned int DIM, typename CS = CoordinateSystem<DIM> > class Range :
       boost::equality_comparable1< Range<DIM,CS> > {
       
@@ -96,6 +96,7 @@ namespace TiledArray {
       
       /// A DIM-dimensional tile
       class Tile : boost::equality_comparable1<Tile> {
+          typedef Tile my_type;
           typedef typename Range::element_index element_index;
           typedef typename Range::tile_index tile_index;
           /// first index
@@ -126,10 +127,9 @@ namespace TiledArray {
             typename element_index::iterator start_iterator = start_.begin();
             typename element_index::iterator finish_iterator = finish_.begin();
             for(Tile1ContainerIterator d=tbegin; d!=tend; ++d, ++start_iterator, ++finish_iterator) {
-              *start_iterator = d->start();
-              *finish_iterator = d->finish()-1;
+              *start_iterator = * d->begin();
+              *finish_iterator = * d->end();
             }
-            ++finish_;
           }
           
           Tile(const Tile& src) :
@@ -147,7 +147,7 @@ namespace TiledArray {
           }
           
           typename element_index::volume size() const {
-            element_index d = finish_ - start_;
+            element_index d = finish() - start();
             --d;
             typedef typename element_index::volume volume_type;
             volume_type vol = volume(d);
@@ -158,6 +158,20 @@ namespace TiledArray {
             out << "Range<" << DIM << ">::Tile(@= " << this;
             out << " start=" << start() << " finish=" << finish()
             << " size=" << size() << " )";
+          }
+          
+          typedef detail::IndexIterator<element_index,my_type> element_iterator;
+          element_iterator begin() const {
+            element_iterator result(start(),*this);
+            return result;
+          }
+          element_iterator end() const {
+            element_iterator result(finish(),*this);
+            return result;
+          }
+          void increment(element_index& i) const {
+            // TODO implemented iterator over Range<D>::Tile
+            abort();
           }
       };
 
@@ -189,14 +203,12 @@ namespace TiledArray {
       
       /// Returns an iterator pointing to the first element
       element_iterator begin() const {
-        element_iterator result(element_index(), *this);
+        element_iterator result(start_, *this);
         return result;
       }
       /// Return an iterator pointing to the one past the last element
       element_iterator end() const {
-        element_index _end;
-        _end[DIM-1] = ranges_[DIM-1].size();
-        element_iterator result(_end, *this);
+        element_iterator result(finish_, *this);
         return result;
       }
       
@@ -222,13 +234,13 @@ namespace TiledArray {
         unsigned int lsdim = *order_iter;
         typename tile_index::index& least_significant = t[lsdim];
         ++least_significant;
-        Range1::tile_index bound = ranges_[lsdim].finish();
+        Range1::tile_index bound = * ranges_[lsdim].end();
         while (least_significant == bound && ++order_iter != end_iter) {
-          least_significant = ranges_[lsdim].start();
+          least_significant = * ranges_[lsdim].begin();
           lsdim = *order_iter;
           least_significant = t[lsdim];
           ++least_significant;
-          bound = ranges_[lsdim].finish();
+          bound = * ranges_[lsdim].end();
         }
       }
       
@@ -275,7 +287,7 @@ namespace TiledArray {
           tmp[dim] = *(ranges_[dim].find(e[dim]));
 
         if (this->includes(tmp)) {
-          tile_iterator result(tmp,this);
+          tile_iterator result(tmp,*this);
           return result;
         }
         else
@@ -342,6 +354,15 @@ namespace TiledArray {
             }
             nelems_ = element_weight;
           }
+          {
+            // first element is easy ...
+            for(unsigned int d=0; d<DIM; ++d)
+              start_[d] = * ranges_[d].begin();
+            // last element is tricky: 
+            for(unsigned int d=0; d<DIM; ++d)
+              finish_[d] = * ranges_[d].end();
+            ++result;
+          }
         }
 
         /// to compute ordinal dot tile_index with this.
@@ -350,6 +371,9 @@ namespace TiledArray {
         boost::array<ordinal_index,DIM> element_ordinal_weights_;
         ordinal_index ntiles_;
         ordinal_index nelems_;
+        element_index start_;
+        element_index finish_;
+        tile_index tile_finish_;
 
         friend std::ostream& operator << <>(std::ostream&, const Range& rng);
 
@@ -392,8 +416,8 @@ namespace TiledArray {
   template<unsigned int DIM, typename CS> std::ostream& operator<<(std::ostream& out,
                                                                    const Range<DIM,CS>& rng) {
     out << "Range<" << DIM << ">(" << " @= " << &rng
-        << " start=" << rng.start() << " finish=" << rng.finish()
-        << " start_tile=" << rng.start_tile() << " finish_tile=" << rng.finish_tile()
+        << " *begin=" << (*rng.begin()) << " *end=" << (*rng.end())
+        << " *begin_tile=" << (*rng.begin_tile()) << " *end_tile=" << (*rng.end_tile())
         << " size=" << rng.size() << " ntiles=" << rng.ntiles() << " )";
     return out;
   }
