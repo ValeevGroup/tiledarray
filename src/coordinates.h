@@ -42,7 +42,7 @@ namespace {
 };
 
 namespace detail {
-  
+
   typedef enum {decreasing_dimension_order, increasing_dimension_order, general_dimension_order} DimensionOrderType;
   template <unsigned int D>
   class DimensionOrder {
@@ -57,12 +57,12 @@ namespace detail {
         for(unsigned int d=0; d<D; ++d)
           ord_[d] = d;
         break;
-        
+
         case decreasing_dimension_order:
         for(unsigned int d=0; d<D; ++d)
           ord_[d] = D-d-1;
         break;
-        
+
         case general_dimension_order:
         throw std::runtime_error("general dimension ordering is not supported");
         break;
@@ -95,7 +95,7 @@ namespace detail {
   };
 }; // namespace detail
 
-  
+
   template <unsigned int D, detail::DimensionOrderType Order = detail::decreasing_dimension_order>
   class CoordinateSystem {
     public:
@@ -137,7 +137,7 @@ namespace detail {
     typedef typename Array::iterator iterator;
     typedef typename Array::const_iterator const_iterator;
     static const unsigned int DIM = D;
-    
+
     ArrayCoordinate(const T& init_value = 0) { r_.assign(init_value); }
     ArrayCoordinate(const T* init_values) { std::copy(init_values,init_values+D,r_.begin()); }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { }
@@ -148,7 +148,7 @@ namespace detail {
       return r_.begin();
     }
 
-    /// Returns a constant iterator to the first coordinate. 
+    /// Returns a constant iterator to the first coordinate.
     const_iterator begin() const {
       return r_.begin();
     }
@@ -157,17 +157,17 @@ namespace detail {
     iterator end() {
       return r_.end();
     }
-      
+
     /// Returns a constant iterator to one element past the last coordinate.
     const_iterator end() const {
       return r_.end();
     }
-    
+
     /// Assignment operator
-    LatticeCoordinate<T, D, Tag>&
-    operator =(const LatticeCoordinate<T, D, Tag>& c) {
+    ArrayCoordinate<T, D, Tag, CoordinateSystem>&
+    operator =(const ArrayCoordinate<T, D, Tag, CoordinateSystem>& c) {
       std::copy(c.r_.begin(), c.r_.end(), r_.begin());
-      
+
       return (*this);
     }
 
@@ -183,7 +183,7 @@ namespace detail {
       --least_significant;
       return *this;
     }
-    
+
     /// Add operator
     ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator+=(const ArrayCoordinate& c) {
       for(unsigned int d = 0; d < DIM; ++d)
@@ -208,7 +208,7 @@ namespace detail {
     const T& operator[](size_t d) const
     {
 #ifdef NDEBUG
-      return r_[d]; 
+      return r_[d];
 #else
       return r_.at(d);
 #endif
@@ -217,12 +217,12 @@ namespace detail {
     T& operator[](size_t d)
     {
 #ifdef NDEBUG
-      return r_[d]; 
+      return r_[d];
 #else
       return r_.at(d);
 #endif
     }
-    
+
     const Array& r() const {
       return r_;
     }
@@ -231,12 +231,12 @@ namespace detail {
     friend bool operator == <>(const ArrayCoordinate<T,D,Tag,CoordinateSystem>&, const ArrayCoordinate<T,D,Tag,CoordinateSystem>&);
     friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate<T,D,Tag,CoordinateSystem>&);
     friend ArrayCoordinate<T,D,Tag,CS> operator^ <> (const Permutation<D>& P, const ArrayCoordinate<T,D,Tag,CS>& C);
-    
+
   private:
     /// last dimension is least significant
     Array r_;
   };
-  
+
   // TODO how to recast this without using dimension_order
   template <typename T, unsigned int D, typename Tag, typename CS>
   bool operator<(const ArrayCoordinate<T,D,Tag,CS>& c1, const ArrayCoordinate<T,D,Tag,CS>& c2) {
