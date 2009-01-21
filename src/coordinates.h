@@ -1,6 +1,8 @@
 #ifndef NUMERIC_H_
 #define NUMERIC_H_
 
+#include <assert.h>
+#include <iostream>
 #include <vector>
 #include <cmath>
 #include <boost/operators.hpp>
@@ -159,6 +161,14 @@ namespace detail {
     /// Returns a constant iterator to one element past the last coordinate.
     const_iterator end() const {
       return r_.end();
+    }
+    
+    /// Assignment operator
+    LatticeCoordinate<T, D, Tag>&
+    operator =(const LatticeCoordinate<T, D, Tag>& c) {
+      std::copy(c.r_.begin(), c.r_.end(), r_.begin());
+      
+      return (*this);
     }
 
     ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator++() {
