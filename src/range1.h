@@ -278,7 +278,7 @@ namespace TiledArray {
       
       bool
       empty() const {
-        return size() == 0;
+        return tiles_.empty();
       }
 
       /// Returns the number of elements in the range.

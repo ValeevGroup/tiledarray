@@ -345,6 +345,7 @@ namespace TiledArray {
             }
             ntiles_ = tile_weight;
           }
+          // init ordinal weights for elements
           {
             ordinal_index element_weight = 1;
             for(citer d=dimorder.begin_order(); d!=dimorder.end_order(); ++d) {
@@ -354,6 +355,7 @@ namespace TiledArray {
             }
             nelems_ = element_weight;
           }
+          // init start & finish
           {
             // first element is easy ...
             for(unsigned int d=0; d<DIM; ++d)
@@ -361,7 +363,8 @@ namespace TiledArray {
             // last element is tricky: 
             for(unsigned int d=0; d<DIM; ++d)
               finish_[d] = * ranges_[d].end();
-            ++result;
+            ++finish_;
+            abort();
           }
         }
 
