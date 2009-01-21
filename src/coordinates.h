@@ -96,6 +96,7 @@ namespace detail {
 }; // namespace detail
 
 
+  /// Specifies the details of a D-dimensional coordinate system. The default is for the last dimension to be least significant.
   template <unsigned int D, detail::DimensionOrderType Order = detail::decreasing_dimension_order>
   class CoordinateSystem {
     public:
@@ -246,6 +247,7 @@ namespace detail {
     if (CS::dimension_order == detail::increasing_dimension_order) {
       return std::lexicographical_compare(c1.r_.rbegin(),c1.r_.rend(),c2.r_.rbegin(),c2.r_.rend());
     }
+    abort();
   }
 
   template <typename T, unsigned int D, typename Tag, typename CS>
