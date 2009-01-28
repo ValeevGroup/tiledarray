@@ -6,7 +6,7 @@
 using namespace TiledArray;
 
 struct ElementTag{};
-struct TileTag{};  
+struct TileTag{};
 
 void CoordinatesTest() {
   std::cout << "Coordinates Tests:" << std::endl;
@@ -15,28 +15,28 @@ void CoordinatesTest() {
   typedef ArrayCoordinate<int, 2, ElementTag> Point2;
   typedef ArrayCoordinate<int, 3, ElementTag> Point3;
   typedef ArrayCoordinate<int, 4, ElementTag> Point4;
-  typedef ArrayCoordinate<int, 4, ElementTag, CoordinateSystem<4,TiledArray::detail::decreasing_dimension_order> > FPoint4;
+  typedef ArrayCoordinate<int, 4, ElementTag, CoordinateSystem<4,TiledArray::detail::increasing_dimension_order> > FPoint4;
 
-  // Default constuctor
+  // Default constructor
   Point1 p1D;
   std::cout << "1D Point with default constructor: " << p1D << std::endl;
-  
+
   // Constructor with specified value for all elements
   Point2 p2D(1);
   std::cout << "2D Point with single value specified: " << p2D << std::endl;
-  
+
   // Copy constructor test
   Point3 p3D(2);
   Point3 p3Dcopy(p3D);
   std::cout << "3D Point created with copy constructor: Original: " << p3D
       << " Copy: " << p3Dcopy << std::endl;
-  
+
   // Multiple values specified
   int values1[] = { 1, 2, 3, 4 };
   Point4 p4D(values1);
   std::cout << "4D Point with values specified for each element: " << p4D
       << std::endl;
-  
+
   // Element accessor
   p4D[0] = 5;
   p4D[1] = 6;
@@ -44,14 +44,14 @@ void CoordinatesTest() {
   p4D[3] = 8;
   std::cout << "Point element accessor, set 4D Point to (5, 6, 7, 8): "
       << p4D << std::endl;
-  
+
   // Point iterator test
   std::cout << "Iteration tests: ";
   for (Point4::iterator it = p4D.begin(); it != p4D.end(); ++it) {
     std::cout << *it << ", ";
   }
   std::cout << std::endl;
-  
+
   // Arithmetic tests
   std::cout << "Arithmetic Tests:" << std::endl;
   std::cout << "(2,2,2) + (1,1,1) = " << Point3(2) + Point3(1) << std::endl;
@@ -102,9 +102,9 @@ void CoordinatesTest() {
   std::cout << "--" << fpt2 << " = "; std::cout << --fpt2 << std::endl;
 
   std::cout << "volume(" << comp2 << ") = " << volume(comp2) << std::endl;
-  
+
   std::cout << "End Point Test" << std::endl << std::endl;
-  
+
   // permutation
   Permutation<3> perm3 = Permutation<3>::unit();
   std::cout << "Unit Permutation: " << perm3 << std::endl;
