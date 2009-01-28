@@ -126,8 +126,8 @@ namespace detail {
       boost::subtractable< ArrayCoordinate<T,D,Tag,CS>,           // point - point
       boost::less_than_comparable1< ArrayCoordinate<T,D,Tag,CS>,  // point < point
       boost::equality_comparable1< ArrayCoordinate<T,D,Tag,CS>,   // point == point
-      boost::incrementable< ArrayCoordinate<T,D,Tag,CS>,          // ++point
-      boost::decrementable< ArrayCoordinate<T,D,Tag,CS>           // --point
+      boost::incrementable< ArrayCoordinate<T,D,Tag,CS>,          // point++
+      boost::decrementable< ArrayCoordinate<T,D,Tag,CS>           // point--
       > > > > > >
   {
   public:
