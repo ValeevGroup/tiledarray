@@ -10,7 +10,7 @@
 
 #include <permutation.h>
 
-using namespace boost;
+//using namespace boost; // Do not use "using namespace" in lib headers.
 
 namespace TiledArray {
 
@@ -54,28 +54,34 @@ namespace detail {
       // map dimensions to their importance order
       switch (order) {
         case increasing_dimension_order:
-        for(unsigned int d=0; d<D; ++d)
+        for(unsigned int d = 0; d < D; ++d) {
           ord_[d] = d;
+          dim_[d] = d;
+        }
         break;
 
         case decreasing_dimension_order:
-        for(unsigned int d=0; d<D; ++d)
+        for(unsigned int d = 0; d < D; ++d) {
           ord_[d] = D-d-1;
+          dim_[d] = d;
+        }
         break;
 
         case general_dimension_order:
         throw std::runtime_error("general dimension ordering is not supported");
+/*
+        std::vector<DimOrderPair> sorted_by_order(D);
+        for(unsigned int d=0; d<D; ++d)
+          sorted_by_order[d] = DimOrderPair(d,ord_[d]);
+        sort(sorted_by_order.begin(),sorted_by_order.end());
+
+        // construct the order->dimension map
+        for(unsigned int d=0; d<D; ++d)
+          dim_[d] = sorted_by_order[d].dim;
+*/
         break;
       }
 
-      std::vector<DimOrderPair> sorted_by_order(D);
-      for(unsigned int d=0; d<D; ++d)
-        sorted_by_order[d] = DimOrderPair(d,ord_[d]);
-      sort(sorted_by_order.begin(),sorted_by_order.end());
-
-      // construct the order->dimension map
-      for(unsigned int d=0; d<D; ++d)
-        dim_[d] = sorted_by_order[d].dim;
     }
     unsigned int dim2order(unsigned int d) const { return ord_[d]; }
     unsigned int order2dim(unsigned int o) const { return dim_[o]; }
@@ -117,20 +123,15 @@ namespace detail {
   /// overloading in end-user classes.
   template <typename T, unsigned int D, typename Tag, typename CS = CoordinateSystem<D> >
   class ArrayCoordinate :
-      boost::addable< ArrayCoordinate<T,D,Tag,CS>,          // point + point
-      boost::subtractable< ArrayCoordinate<T,D,Tag,CS>,    // point - point
+      boost::addable< ArrayCoordinate<T,D,Tag,CS>,                // point + point
+      boost::subtractable< ArrayCoordinate<T,D,Tag,CS>,           // point - point
       boost::less_than_comparable1< ArrayCoordinate<T,D,Tag,CS>,  // point < point
-      boost::equality_comparable1< ArrayCoordinate<T,D,Tag,CS>  // point == point
-//      boost:incrementable< ArrayCoordinate<T,D,Tag,CS>,        // ++point
-//      boost ::decrementable< ArrayCoordinate<T,D,Tag,CS>     // --point
-//      >
-//      >
-      >
-      >
-      >
-      >
+      boost::equality_comparable1< ArrayCoordinate<T,D,Tag,CS>,   // point == point
+      boost::incrementable< ArrayCoordinate<T,D,Tag,CS>,          // ++point
+      boost::decrementable< ArrayCoordinate<T,D,Tag,CS>           // --point
+      > > > > > >
   {
-    public:
+  public:
     typedef T index;
     typedef T volume;
     typedef CS CoordinateSystem;
@@ -178,6 +179,7 @@ namespace detail {
       ++least_significant;
       return *this;
     }
+
     ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator--() {
       const unsigned int lsdim = *CoordinateSystem::ordering().begin_order();
       T& least_significant = r_[lsdim];
@@ -224,7 +226,7 @@ namespace detail {
 #endif
     }
 
-    const Array& r() const {
+    const Array& data() const {
       return r_;
     }
 
