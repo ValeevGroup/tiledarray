@@ -56,31 +56,30 @@ namespace detail {
         case increasing_dimension_order:
         for(unsigned int d = 0; d < D; ++d) {
           ord_[d] = d;
-          dim_[d] = d;
         }
         break;
 
         case decreasing_dimension_order:
         for(unsigned int d = 0; d < D; ++d) {
           ord_[d] = D-d-1;
-          dim_[d] = d;
         }
         break;
 
         case general_dimension_order:
         throw std::runtime_error("general dimension ordering is not supported");
-/*
-        std::vector<DimOrderPair> sorted_by_order(D);
-        for(unsigned int d=0; d<D; ++d)
-          sorted_by_order[d] = DimOrderPair(d,ord_[d]);
-        sort(sorted_by_order.begin(),sorted_by_order.end());
-
-        // construct the order->dimension map
-        for(unsigned int d=0; d<D; ++d)
-          dim_[d] = sorted_by_order[d].dim;
-*/
         break;
       }
+
+      //
+      // compute dim_ by inverting ord_ map
+      //
+      std::vector<DimOrderPair> sorted_by_order(D);
+      for(unsigned int d=0; d<D; ++d)
+        sorted_by_order[d] = DimOrderPair(d,ord_[d]);
+      std::sort(sorted_by_order.begin(),sorted_by_order.end());
+      // construct the order->dimension map
+      for(unsigned int d=0; d<D; ++d)
+        dim_[d] = sorted_by_order[d].dim;
 
     }
     unsigned int dim2order(unsigned int d) const { return ord_[d]; }
