@@ -10,8 +10,6 @@
 
 #include <permutation.h>
 
-//using namespace boost; // Do not use "using namespace" in lib headers.
-
 namespace TiledArray {
 
 template <typename T, unsigned int D, typename Tag, typename CS>
