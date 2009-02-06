@@ -103,8 +103,6 @@ void CoordinatesTest() {
 
   std::cout << "volume(" << comp2 << ") = " << volume(comp2) << std::endl;
 
-  std::cout << "End Point Test" << std::endl << std::endl;
-
   // permutation
   Permutation<3> perm3 = Permutation<3>::unit();
   std::cout << "Unit Permutation: " << perm3 << std::endl;
@@ -119,4 +117,6 @@ void CoordinatesTest() {
     Permutation<4> p2(_p2);
     std::cout << "Product of " << p1 << " and " << p2 << " = " << (p1^p2) << std::endl;
   }
+
+  std::cout << "End Point Test" << std::endl << std::endl;
 }

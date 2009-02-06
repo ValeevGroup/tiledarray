@@ -234,13 +234,13 @@ namespace TiledArray {
         unsigned int lsdim = *order_iter;
         typename tile_index::index& least_significant = t[lsdim];
         ++least_significant;
-        Range1::tile_index bound = * ranges_[lsdim].end();
+        Range1::tile_index bound = * ranges_[lsdim].end_element();
         while (least_significant == bound && ++order_iter != end_iter) {
-          least_significant = * ranges_[lsdim].begin();
+          least_significant = * ranges_[lsdim].begin_element();
           lsdim = *order_iter;
           least_significant = t[lsdim];
           ++least_significant;
-          bound = * ranges_[lsdim].end();
+          bound = * ranges_[lsdim].end_element();
         }
       }
 
@@ -266,7 +266,7 @@ namespace TiledArray {
       /// Returns true if element_index is within the range
       bool includes(const element_index& e) const {
         for(unsigned int d=0; d<DIM; ++d)
-          if ( !ranges_[d].includes(e[d]) )
+          if ( !ranges_[d].includes_element(e[d]) )
             return false;
         return true;
       }
@@ -284,7 +284,7 @@ namespace TiledArray {
         tile_index tmp;
 
         for (unsigned int dim = 0; dim < DIM; ++dim)
-          tmp[dim] = *(ranges_[dim].find(e[dim]));
+          tmp[dim] = ranges_[dim].find(e[dim])->index();
 
         if (this->includes(tmp)) {
           tile_iterator result(tmp,*this);
@@ -359,10 +359,10 @@ namespace TiledArray {
           {
             // first element is easy ...
             for(unsigned int d=0; d<DIM; ++d)
-              start_[d] = * ranges_[d].begin();
+              start_[d] = * ranges_[d].begin_element();
             // last element is tricky:
             for(unsigned int d=0; d<DIM; ++d)
-              finish_[d] = * ranges_[d].end();
+              finish_[d] = * ranges_[d].end_element();
             ++finish_;
             abort();
           }
