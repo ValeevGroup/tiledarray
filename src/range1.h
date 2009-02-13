@@ -152,38 +152,6 @@ namespace TiledArray {
           elem2tile_[ii] = t;
     }
 
-    /// Returns the low element index of the range.
-    element_index start_element() const {
-      if (!empty())
-        return tiles_.begin()->start();
-      else
-        return std::numeric_limits<element_index>::min();
-    }
-
-    /// Returns the high element index of the range.
-    element_index finish_element() const {
-      if (!empty())
-        return tiles_.rbegin()->finish();
-      else
-        return std::numeric_limits<element_index>::min();
-    }
-
-    /// Returns the low tile index of the range.
-    tile_index start_tile() const {
-      if(!empty())
-        return tiles_.begin()->index();
-      else
-        return std::numeric_limits<tile_index>::min();
-    }
-
-    /// Returns the high tile index of the range.
-    tile_index finish_tile() const {
-      if(!empty())
-        return tiles_.rbegin()->index() + 1;
-      else
-        return std::numeric_limits<tile_index>::min();
-    }
-
     friend std::ostream& operator <<(std::ostream& out, const Range1& rng);
 
   public:
@@ -219,6 +187,38 @@ namespace TiledArray {
         tiles_(first, last)
     {
       init_map_();
+    }
+
+    /// Returns the low element index of the range.
+    element_index start_element() const {
+      if (!empty())
+        return tiles_.begin()->start();
+      else
+        return std::numeric_limits<element_index>::min();
+    }
+
+    /// Returns the high element index of the range.
+    element_index finish_element() const {
+      if (!empty())
+        return tiles_.rbegin()->finish();
+      else
+        return std::numeric_limits<element_index>::min();
+    }
+
+    /// Returns the low tile index of the range.
+    tile_index start_tile() const {
+      if(!empty())
+        return tiles_.begin()->index();
+      else
+        return std::numeric_limits<tile_index>::min();
+    }
+
+    /// Returns the high tile index of the range.
+    tile_index finish_tile() const {
+      if(!empty())
+        return tiles_.rbegin()->index() + 1;
+      else
+        return std::numeric_limits<tile_index>::min();
     }
 
     /// Assignment operator

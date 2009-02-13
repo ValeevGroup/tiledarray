@@ -80,16 +80,17 @@ namespace detail {
         dim_[d] = sorted_by_order[d].dim;
 
     }
+
     unsigned int dim2order(unsigned int d) const { return ord_[d]; }
     unsigned int order2dim(unsigned int o) const { return dim_[o]; }
     /// use this to start iteration over dimensions in increasing order of their significance
-    const_iterator begin_order() const { return dim_.begin(); }
+    const_iterator begin() const { return dim_.begin(); }
     /// use this to end iteration over dimensions in increasing order of their significance
-    const_iterator end_order() const { return dim_.end(); }
+    const_iterator end() const { return dim_.end(); }
     /// use this to start iteration over dimensions in decreasing order of their significance
-    const_reverse_iterator rbegin_order() const { return dim_.rbegin(); }
+    const_reverse_iterator rbegin() const { return dim_.rbegin(); }
     /// use this to end iteration over dimensions in decreasing order of their significance
-    const_reverse_iterator rend_order() const { return dim_.rend(); }
+    const_reverse_iterator rend() const { return dim_.rend(); }
   private:
     /// maps dimension to its order
     boost::array<unsigned int,D> ord_;
@@ -171,16 +172,14 @@ namespace detail {
     }
 
     ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator++() {
-      const unsigned int lsdim = *CoordinateSystem::ordering().begin_order();
-      T& least_significant = r_[lsdim];
-      ++least_significant;
+      const unsigned int lsdim = *CoordinateSystem::ordering().begin();
+      ++(r_[lsdim]);
       return *this;
     }
 
     ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator--() {
-      const unsigned int lsdim = *CoordinateSystem::ordering().begin_order();
-      T& least_significant = r_[lsdim];
-      --least_significant;
+      const unsigned int lsdim = *CoordinateSystem::ordering().begin();
+      --(r_[lsdim]);
       return *this;
     }
 
