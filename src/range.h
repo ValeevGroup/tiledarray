@@ -353,7 +353,7 @@ namespace TiledArray {
       void init_() {
         // Get dim ordering iterator
         const detail::DimensionOrder<DIM>& dimorder = CoordinateSystem::ordering();
-        detail::DimensionOrder<DIM>::const_iterator d;
+        typename detail::DimensionOrder<DIM>::const_iterator d;
 
         ordinal_index tile_weight = 1;
         ordinal_index element_weight = 1;
@@ -410,8 +410,8 @@ namespace TiledArray {
   template<unsigned int DIM, typename CS> std::ostream& operator<<(std::ostream& out,
                                                                    const Range<DIM,CS>& rng) {
     out << "Range<" << DIM << ">(" << " @= " << &rng
-        << " *begin=" << (*rng.begin()) << " *end=" << (*rng.end())
         << " *begin_tile=" << (*rng.begin_tile()) << " *end_tile=" << (*rng.end_tile())
+        << " *begin_element=" << (*rng.begin_element()) << " *end_element=" << (*rng.end_element())
         << " size=" << rng.size() << " ntiles=" << rng.ntiles() << " )";
     return out;
   }
