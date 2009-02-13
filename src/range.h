@@ -193,15 +193,15 @@ namespace TiledArray {
       }
 
       // Constructed with an array of ranges
-      Range(const Range1* ranges) :
-        ranges_(ranges, ranges + DIM) {
+      Range(const Range1* ranges) {
+        std::copy(ranges, ranges+DIM, ranges_.begin());
         init_();
       }
 
       /// Constructor from an iterator range of Range1
-      template <typename RangeIterator>
-      Range(const RangeIterator& ranges_begin, const RangeIterator& ranges_end) :
-        ranges_(ranges_begin, ranges_end) {
+      template <typename RangeIterator> Range(const RangeIterator& ranges_begin,
+                                              const RangeIterator& ranges_end) {
+        std::copy(ranges_begin, ranges_end, ranges_.begin());
         init_();
       }
 
