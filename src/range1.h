@@ -108,7 +108,7 @@ namespace TiledArray {
     /// Iterates over element indices
     typedef detail::IndexIterator<element_index,my_type> element_iterator;
     /// iterates over tile indices
-    typedef detail::IndexIterator<Tile,my_type> tile_iterator;
+    typedef detail::IndexIterator<tile_index,my_type> tile_iterator;
 
   private:
     /////////////
