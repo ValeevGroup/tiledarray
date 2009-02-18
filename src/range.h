@@ -45,7 +45,7 @@ namespace TiledArray {
       typedef detail::IndexIterator< tile_index, my_type > tile_iterator;
       /// iterates over tile indices
       typedef detail::IndexIterator< element_index, my_type > element_iterator;
-
+/*
       /// A DIM-dimensional tile
       class Tile : boost::equality_comparable1<Tile> {
           typedef Tile my_type;
@@ -138,7 +138,7 @@ namespace TiledArray {
             abort();
           }
       };
-
+*/
       // Default constructor
       Range() {
         init_();
