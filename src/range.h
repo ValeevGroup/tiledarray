@@ -180,6 +180,7 @@ namespace TiledArray {
 
       /// Increment tile index.
       void increment(tile_index& t) const {
+        assert(t >= start_tile() && t < finish_tile());
         // Get order iterators.
         typename detail::DimensionOrder<DIM>::const_iterator order_iter = CoordinateSystem::ordering().begin();
         const typename detail::DimensionOrder<DIM>::const_iterator end_iter = CoordinateSystem::ordering().end();
@@ -201,6 +202,8 @@ namespace TiledArray {
 
       /// Increment element index.
       void increment(element_index& e) const {
+        assert(e >= start_element() && e < finish_element());
+        // Get order iterators.
         typename detail::DimensionOrder<DIM>::const_iterator order_iter = CoordinateSystem::ordering().begin();
         const typename detail::DimensionOrder<DIM>::const_iterator end_iter = CoordinateSystem::ordering().end();
 
