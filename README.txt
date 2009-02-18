@@ -52,7 +52,7 @@ public:
   };
 
   /// array is defined by its shape
-  Array(const shared_ptr<AbstractShape>&);
+  Array(const shared_ptr<Shape>&);
   /// assign each element to a
   void assign(T a);
   
@@ -76,7 +76,7 @@ public:
   ArrayExpression operator()(const char*) const;
   
 private:
-  shared_ptr<AbstractShape> shape_;
+  shared_ptr<Shape> shape_;
   shared_ptr< DistributedContainer< TupleKey<DIM>, tile_t > > data_;
 }
 
@@ -116,31 +116,24 @@ class LocalMemoryAllocator {
   }
 }
 
-template <unsigned int DIM> class AbstractShape {
-  virtual size_t linear_idx(const Tuple<DIM>& tile_idx) const =0;
+template <unsigned int DIM> class ShapeIterator {
   virtual bool includes(const Tuple<DIM>& tile_idx) const =0;
+  virtual const ShapeIterator& operator++() =0;
+  
+  protected:
+    Range<DIM>* range_;
+    Range<DIM>::tile_iterator current_idx_;
 }
 
-template <unsigned int DIM> class AbstractShapeIterator {
-  const AbstractShapeIterator& operator++() {
+template <unsigned int DIM, class Predicate> class PredShapeIterator : public ShapeIterator<DIM> {
+  const ShapeIterator& operator++() {
     ++current_idx_;
-    while(! shape_->includes(current_idx_) ) {
+    while(! includes(current_idx_) ) {
       ++current_idx_;
     }
     return *this;
   }
-  
-  private:
-    AbstractShape<DIM>* shape_;
-    Tuple<DIM> current_idx_;
-}
-
-
-template <unsigned int DIM, class Predicate> class Shape : public AbstractShape<DIM> {
   bool includes(const Tuple<DIM>& tile_idx) {
     return pred_->includes(tile_idx);
   }
-  
-  private:
-    shared_ptr<Predicate> pred_;
 }
