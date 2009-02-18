@@ -20,13 +20,6 @@ void Range1Test() {
   Range1 rng1(ranges, tiles);
   std::cout << "rng1 = " << rng1 << std::endl;
 
-  // Test iterator constructor.
-  std::cout << "Iterator constructor: " << std::endl;
-  Range1::tile_iterator first = rng1.find(1);
-  Range1::tile_iterator last = rng1.find(3);
-  Range1 subRng1(first, last);
-  std::cout << "subRng1 = " << subRng1 << std::endl;
-
   // Test vector array constructor
   std::cout << std::endl << "Vector array constructor:" << std::endl;
   ranges[5] = 50;
@@ -66,21 +59,16 @@ void Range1Test() {
   std::cout << std::endl << "Iterator:" << std::endl << "Tiling for rng3"
       << std::endl;
   for(Range1::tile_iterator it = rng3.begin_tile(); it != rng3.end_tile(); ++it) {
-    std::cout << "[" << it->start() << ","<< (*it).finish() << ")" << std::endl;
+    std::cout << "[" << rng3.start_element(*it) << ","<< rng3.finish_element(*it) << ")" << std::endl;
   }
 
   // Test tile index map
   std::cout << std::endl << "Tile index map for rng2:" << std::endl;
   for(Range1::element_iterator it = rng2.begin_element(); it != rng2.end_element(); ++it) {
     std::cout << "element_index= " << *it << " tile_index= "
-        << rng2.find(*it)->index() << std::endl;
+        << *(rng2.find(*it)) << std::endl;
   }
 
-  // Test Tile iteration
-  std::cout << std::endl << "Tile iteration for tile 2 of rng2:" << std::endl;
-  const Range1::Tile& t2 = rng2.tile(2);
-  for(Range1::Tile::iterator it = t2.begin(); it != t2.end(); ++it)
-	  std::cout << *it << std::endl;
 
   std::cout << "End Range1 Tests" << std::endl << std::endl;
 }

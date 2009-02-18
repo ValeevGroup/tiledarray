@@ -25,6 +25,10 @@ namespace TiledArray {
   public:
     typedef size_t element_index;
     typedef size_t tile_index;
+    /// Iterates over element indices
+    typedef detail::IndexIterator<element_index,my_type> element_iterator;
+    /// iterates over tile indices
+    typedef detail::IndexIterator<tile_index,my_type> tile_iterator;
 
     /// Tile is an interval [start,finish)
     class Tile : boost::equality_comparable1<Tile> {
@@ -105,11 +109,6 @@ namespace TiledArray {
       }
     }; // Tile
 
-    /// Iterates over element indices
-    typedef detail::IndexIterator<element_index,my_type> element_iterator;
-    /// iterates over tile indices
-    typedef detail::IndexIterator<tile_index,my_type> tile_iterator;
-
   private:
     /////////////
     // Range1 data
@@ -125,7 +124,9 @@ namespace TiledArray {
    	  // Verify at least 2 elements are present if the vector is not empty.
       if(tile_boundaries.size() == 1)
         return false;
-      // Verify the requirement that a < b < c < ...
+      // Verify the requirement that 0 <= a < b < c < ...
+      if(tile_boundaries[0] < 0)
+        return false;
       for (size_t index = 1; index < tile_boundaries.size(); ++index)
         if (tile_boundaries[index - 1] >= tile_boundaries[index])
           return false;
@@ -133,10 +134,10 @@ namespace TiledArray {
     }
 
     /// Initialize tiles use a set of tile offsets
-    void init_tiles_(const std::vector<element_index>& tile_boundaries) {
+    void init_tiles_(const std::vector<element_index>& tile_boundaries, const tile_index start_tile) {
       assert(valid_(tile_boundaries));
       for (size_t i = 1; i < tile_boundaries.size(); ++i)
-        tiles_.push_back(Tile(tile_boundaries[i - 1], tile_boundaries[i], static_cast<tile_index>(i - 1)));
+        tiles_.push_back(Tile(tile_boundaries[i - 1], tile_boundaries[i], start_tile + i - 1));
     }
 
     /// Initialize secondary data
@@ -147,8 +148,8 @@ namespace TiledArray {
       // initialize elem2tile map
       elem2tile_.resize(size());
       size_t ii = 0;
-      for(tile_index t = tiles_[0].index(); t < tiles_.size() + tiles_[0].index(); ++t)
-        for(element_index i = 0; i < tiles_[t].size(); ++i, ++ii)
+      for(tile_index t = start_tile(); t < finish_tile(); ++t)
+        for(element_index i = 0; i < size(t); ++i, ++ii)
           elem2tile_[ii] = t;
     }
 
@@ -163,8 +164,8 @@ namespace TiledArray {
     }
 
     /// Constructs range from a vector
-    Range1(std::vector<element_index> tile_boundaries) {
-      init_tiles_(tile_boundaries);
+    Range1(std::vector<element_index> tile_boundaries, tile_index start_t = 0) {
+      init_tiles_(tile_boundaries, start_t);
       init_map_();
     }
 
@@ -172,37 +173,14 @@ namespace TiledArray {
      * Construct range from a C-style array, ranges must have at least
      * ntiles + 1 elements.
      */
-    Range1(const element_index* tile_boundaries, tile_index ntiles) {
-      init_tiles_(std::vector<element_index>(tile_boundaries, tile_boundaries+ntiles+1));
+    Range1(const element_index* tile_boundaries, tile_index ntiles, tile_index start_t = 0) {
+      init_tiles_(std::vector<element_index>(tile_boundaries, tile_boundaries+ntiles+1), start_t);
       init_map_();
     }
 
     /// Copy constructor
     Range1(const Range1& rng) :
       tiles_(rng.tiles_), elem2tile_(rng.elem2tile_) {
-    }
-
-    /// Iterator constructor
-    Range1(const tile_iterator& first, const tile_iterator& last) :
-        tiles_(first, last)
-    {
-      init_map_();
-    }
-
-    /// Returns the low element index of the range.
-    element_index start_element() const {
-      if (!empty())
-        return tiles_.begin()->start();
-      else
-        return std::numeric_limits<element_index>::min();
-    }
-
-    /// Returns the high element index of the range.
-    element_index finish_element() const {
-      if (!empty())
-        return tiles_.rbegin()->finish();
-      else
-        return std::numeric_limits<element_index>::min();
     }
 
     /// Returns the low tile index of the range.
@@ -221,6 +199,40 @@ namespace TiledArray {
         return std::numeric_limits<tile_index>::min();
     }
 
+    /// Returns the low element index of the range.
+    element_index start_element() const {
+      if (!empty())
+        return tiles_.begin()->start();
+      else
+        return std::numeric_limits<element_index>::min();
+    }
+
+    /// Returns the high element index of the range.
+    element_index finish_element() const {
+      if (!empty())
+        return tiles_.rbegin()->finish();
+      else
+        return std::numeric_limits<element_index>::min();
+    }
+
+    /// Returns the low element index of the given tile.
+    element_index start_element(tile_index t) const {
+#ifdef NDEBUG
+      return tiles_.at(t - start_tile()).start();
+#else
+      return tiles_[t - start_tile()].start();
+#endif
+    }
+
+    /// Returns the low element index of the given tile.
+    element_index finish_element(tile_index t) const {
+#ifdef NDEBUG
+      return tiles_.at(t - start_tile()).finish();
+#else
+      return tiles_[t - start_tile()].finish();
+#endif
+    }
+
     /// Assignment operator
     Range1& operator =(const Range1& rng) {
       tiles_ = rng.tiles_;
@@ -235,29 +247,20 @@ namespace TiledArray {
 
     /// Returns an iterator to the end of the range.
     tile_iterator end_tile() const {
-      return tile_iterator(Tile(finish_element(), finish_element(), ntiles()),*this);
+      return tile_iterator(finish_tile(),*this);
     }
 
     /// Returns an iterator to the first tile in the range.
     tile_iterator begin_tile() const {
       if(!tiles_.empty())
-        return tile_iterator(*(tiles_.begin()),*this);
+        return tile_iterator(start_tile(),*this);
       else
         return end_tile();
     }
 
     /// how tile_index is incremented
-    void increment(Tile& t) const {
-      tile_index i = t.index();
-      if(++i < ntiles()) {
-#ifdef NDEBUG
-        t = tiles_[i];
-#else
-        t = tiles_.at(i);
-#endif
-      } else {
-      	t = *end_tile();
-      }
+    void increment(tile_index& t) const {
+      ++t;
     }
 
     /// Return tile iterator associated with element_index
@@ -266,9 +269,9 @@ namespace TiledArray {
       if(relindex >= size())
         return end_tile();
 #ifdef NDEBUG
-      return tile_iterator(tiles_[elem2tile_[relindex]],*this);
+      return tile_iterator(tiles_[elem2tile_[relindex]].index(),*this);
 #else
-      return tile_iterator(tiles_.at(elem2tile_.at(relindex)),*this);
+      return tile_iterator(tiles_.at(elem2tile_.at(relindex)).index(),*this);
 #endif
     }
 
@@ -281,21 +284,12 @@ namespace TiledArray {
       element_iterator result(finish_element(),*this);
       return result;
     }
-
+/*
     /// increment element index
     void increment(element_index& i) const {
       ++i;
     }
-
-    /// Return Tile corresponding to tile index t
-    const Tile& tile(tile_index t) const {
-#ifdef NDEBUG
-      return tiles_[t];
-#else
-      return tiles_.at(t);
-#endif
-    }
-
+*/
     /// Returns the number of tiles in the range.
     size_t ntiles() const {
       return tiles_.size();
