@@ -1,109 +1,123 @@
 #ifndef PREDICATE_H__INCLUDED
 #define PREDICATE_H__INCLUDED
 
-#include <tuple.h>
+#include <coordinates.h>
+#include <permutation.h>
+#include <range.h>
 
 namespace TiledArray {
-  
+
   /**
    * Predicate that maps an DIM-tuple to a boolean.
    * The output is computed as f(P(T)), where T is the input tuple,
    * P is a permutation, and f is a predicate.
-   * 
+   *
    * All classes inherited from TupleFilter must define a default constructor,
    * and the virtual operator() function. The operator() function should call
    * translate(const Tuple<DIM>&) on the tuple passed to it if
    * m_apply_permutation is true, to translate it to the current permutation of
    * the shape.
    */
-  template<unsigned int DIM> class TupleFilter {
+  template<unsigned int DIM> class AbstractPred {
     public:
-      
+
+      /// Default constructor
+      AbstractPred() :
+        perm_(Permutation<DIM>::unit()),
+        apply_perm_(false)
+      { }
+
       /// Copy constructor
-      TupleFilter(const TupleFilter& tf) :
-        m_permutation(tf.m_permutation),
-            m_apply_permutation(tf.m_apply_permutation) {
-      }
-      
+      AbstractPred(const AbstractPred& pred) :
+        perm_(pred.m_permutation),
+        apply_perm_(pred.m_apply_permutation)
+      { }
+
       /// pure virtual predicate function
-      virtual bool operator ()(const Tuple<DIM>& T) const =0;
+      template <typename T, typename Tag, typename CS>
+      virtual bool includes(const ArrayCoordinate<T,DIM,Tag,CS>& index) const =0;
+
+      /// predicate function
+      template <typename T, typename Tag, typename CS>
+      bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+        return this->includes(index);
+      }
 
       /// Apply permutation
-      Tuple<DIM>& permute(const Tuple<DIM>& trans) {
-        m_apply_permutation = true;
-        return m_permutation.permute(trans);
+      void permute(const Permutation<DIM>& perm) {
+        apply_perm_ = true;
+        perm_ = perm;
       }
-      
+
       /// Reset the permutation to the default value of no permutation.
       void reset() {
-        m_apply_permutation = false;
-        for (unsigned int index = 0; index < DIM; ++index)
-          m_permutation[index] = index;
+        apply_perm_ = false;
+        perm_ = Permutation<DIM>::unit();
       }
-      
-      virtual void print(std::ostream& o) const =0;
+
+//      virtual void print(std::ostream& o) const =0;
 
     protected:
       /// Current permutation of the TupleFilter
-      Tuple<DIM> m_permutation;
+      Permutation<DIM> perm_;
       /// Used to determine if a transpose has been applied.
-      bool m_apply_permutation;
+      bool apply_perm_;
 
-      /// Default constructor
-      TupleFilter() :
-        m_apply_permutation(false) {
-        for (unsigned int index = 0; index < DIM; ++index)
-          m_permutation[index] = index;
-      }
-      
       /**
        * Translates index to the from the current permutation of the array
-       * to the original shape of the array. m_apply_permutation should be
-       * checked before calling this function.
+       * to the original shape of the array.
        */
-      Tuple<DIM> translate(const Tuple<DIM>& index) const {
-        Tuple<DIM> tmp(index);
-        return tmp.permute(tmp);
+      template <typename T, typename Tag, typename CS>
+      ArrayCoordinate<T,DIM,Tag,CS> translate(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+    	if(apply_perm_)
+          return perm_ ^ index;
+    	else
+          return index;
       }
-      
+
   };
-  
+
+/*
   template<unsigned int DIM> std::ostream& operator<<(std::ostream& o,
-                                                      const TupleFilter<DIM>& f) {
+                                                      const AbstractPred<DIM>& f) {
     f.print(o);
     return o;
   }
-  
-  template<unsigned int DIM> class OffTupleFilter : public TupleFilter<DIM> {
+*/
+
+  template<unsigned int DIM> class DensePred : public AbstractPred<DIM> {
     public:
-      
+
       /// Default constructor
-      OffTupleFilter() :
-        TupleFilter<DIM>() {
+      DensePred() :
+          AbstractPred<DIM>() {
       }
-      
+
       /// Copy constructor
-      OffTupleFilter(const OffTupleFilter& otf) :
-        TupleFilter<DIM>(otf) {
-      }
-      
+      DensePred(const DensePred& pred) :
+    	  AbstractPred<DIM>(pred)
+      { }
+
       /// Assignment operator
-      OffTupleFilter& operator =(const OffTupleFilter& otf) {
-        this->m_permutation = otf.m_permutation;
-        this->m_apply_permutation = otf.m_apply_m_permutation;
-        
+      AbstractPred& operator =(const AbstractPred& pred) {
+        perm_ = pred.perm_;
+        apply_perm_ = pred.apply_perm_;
+
         return *this;
       }
-      
-      bool operator ()(const Tuple<DIM>& tup) const {
+
+      /// pure virtual predicate function
+      template <typename T, typename Tag, typename CS>
+      virtual bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
         return true;
       }
-      
+/*
       void print(std::ostream& o) const {
         o << "OffTupleFilter";
-        if (this->m_apply_permutation)
-          o << "( perm=" << this->m_permutation << " )";
+        if (this->apply_perm_)
+          o << "( perm=" << this->perm_ << " )";
       }
+*/
   };
 }
 ; // end of namespace TiledArray

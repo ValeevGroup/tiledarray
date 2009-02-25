@@ -3,8 +3,8 @@
 
 #include <cstddef>
 #include <stdexcept>
-#include <tuple.h>
-#include <orthotope.h>
+#include <coordinates.h>
+#include <range.h>
 #include <predicate.h>
 #include <algorithm>
 #include <boost/smart_ptr.hpp>
@@ -12,6 +12,40 @@
 
 namespace TiledArray {
 
+  template <unsigned int DIM, typename VALUE, typename CS = CoordinateSystem<DIM> >
+  class ShapeIterator : public boost::iterator_facade<
+      ShapeIterator<DIM, VALUE, RANGE<DIM, CS> >, VALUE, std::input_iterator_tag >
+  {
+  public:
+    typedef ShapeIterator<DIM, VALUE, CONTAINER> my_type;
+
+    ShapeIterator(const Range<DIM>* rng) : range_(rng)
+    { }
+
+  protected:
+    virtual bool equal(my_type const& other) const =0;
+
+    virtual void increment() =0;
+
+    virtual VALUE& dereference() const =0;
+
+    virtual bool includes(const VALUE& index) const =0;
+
+    const Range<DIM, CS>* range_;
+  }; // class ShapeIterator
+
+  template <unsigned int DIM, typename VALUE, typename CONTAINER, typename PREDICATE>
+  class PredShapeIterator : public ShapeIterator<DIM> {
+  public:
+    bool includes(const Tuple<DIM>& tile_idx) {
+      return pred_->includes(tile_idx);
+    }
+
+  protected:
+
+  }; // PredShapeIterator
+
+#if 0
   /**
    * AbstractShape class defines a subspace of an Orthotope. AbstractShapeIterator can be used to iterate
    * over AbstractShape.
@@ -19,7 +53,7 @@ namespace TiledArray {
   template <unsigned int DIM>
   class AbstractShape {
   public:
-    
+
     /// Abstract interface to iterators of Shape
     template <typename Value>
     class IteratorImpl {
@@ -27,7 +61,7 @@ namespace TiledArray {
         virtual ~IteratorImpl() {}
         virtual IteratorImpl* clone() const =0;
     };
-    
+
     /// Interface to Shape::iterator, abstracted via the standard Pimpl idiom
     template <typename Value>
     class Iterator : public boost::iterator_facade<
@@ -53,10 +87,10 @@ namespace TiledArray {
         const Value& dereference() const { return pimpl_->dereference(); }
 
         Iterator();
-        
+
         IteratorImpl<Value>* pimpl_;
     };
-    
+
     /// Maps element to a linearized index ("ordinal"). Computation of the ordinal assumes that DIM-1 is the least significant dimension.
     virtual size_t ord(const Tuple<DIM>& tile_index) const = 0;
     virtual Tuple<DIM> coord(size_t linear_index) const = 0;
@@ -66,12 +100,12 @@ namespace TiledArray {
 
     /// returns pointer to a copy not managed by smart ptrs yet, better encapsulate to shared_ptr right away
     virtual AbstractShape* clone() const =0;
-    
+
     /// print
     virtual void print(std::ostream& os) const =0;
-    
+
     // TODO this code can't compile yet since Iterators are not complete
-    
+
     /// Abstract iterators must be returned via pointers (compare to Shape::begin())
     //virtual Iterator begin() const =0;
     //virtual Iterator end() const =0;
@@ -79,13 +113,13 @@ namespace TiledArray {
     //virtual Iterator begin_at(const Tuple<DIM>& tile_index) const =0;
     //virtual Iterator end_at(const Tuple<DIM>& tile_index) const =0;
   };
-  
+
   template<unsigned int DIM>
   std::ostream& operator <<(std::ostream& out,const AbstractShape<DIM>& s) {
     s.print(out);
     return out;
   }
-  
+
   /**
    * Shape is a templated implementation of AbstractShape. Shape
    * provides an input iterator, which iterates an ordinal value and tuple index
@@ -94,7 +128,7 @@ namespace TiledArray {
   template <unsigned int DIM, class PREDICATE = OffTupleFilter<DIM> >
   class Shape : public AbstractShape<DIM> {
     private:
-      
+
 #if 0
       /// Iterator spec for ShapeIterator class.
       class ShapeIteratorSpec {
@@ -109,7 +143,7 @@ namespace TiledArray {
           typedef const value&            const_reference;
       };
 
-      /** 
+      /**
        * ShapeIterator is an input iterator that iterates over Shape. The
        * iterator assumes row major access and DIM-1 is the least
        * significant dimension.
@@ -145,30 +179,30 @@ namespace TiledArray {
 
           /// Default construction not allowed (required by forward iterators)
           ShapeIterator();
-          
+
           ///  Initialize linear step data.
           void init_linear_step_() {
             m_linear_step[DIM - 1] = 1;
             for (int dim = DIM - 1; dim > 0; --dim)
               m_linear_step[dim - 1] = (m_high[dim] - m_low[dim]) * m_linear_step[dim];
-          }         
+          }
 
           /// Returns the element index of the element referred to by linear_index
           void calc_coord_() const {
             iterator_type linear_index = this->m_current;
-            
+
             // start with most significant dimension 0.
             for (unsigned int dim = 0; linear_index > 0 && dim < DIM; ++dim) {
               m_value[dim] = linear_index / m_linear_step[dim];
               linear_index -= m_value[dim] * m_linear_step[dim];
             }
-            
+
             // Sanity check
             assert(linear_index == 0);
-            
+
             // Offset the value so it is inside shape.
             m_value += m_low;
-            
+
             // flag value as calculated.
             m_calc_value = false;
           }
@@ -183,7 +217,7 @@ namespace TiledArray {
             // Precalculate increment
             this->m_current += n;
             m_value[DIM - 1] += n;
-            
+
             if (m_value[DIM - 1] >= m_high[DIM - 1]) {
               // The end ofleast signifcant coordinate was exceeded,
               // so flag m_value to be recalculated.
@@ -194,7 +228,7 @@ namespace TiledArray {
           }
 
         public:
-          
+
           /// Main constructor function
           ShapeIterator(const Tuple<DIM>& low, const Tuple<DIM>& high, const iterator_type& cur) :
             Iterator<ShapeIteratorSpec>(cur),
@@ -207,9 +241,9 @@ namespace TiledArray {
             m_calc_value(false)
           {
         	init_linear_step_();
-        	calc_coord_(); 
+        	calc_coord_();
           }
-          
+
           /// Copy constructor (required by all iterators)
           ShapeIterator(const ShapeIterator& it) :
             Iterator<ShapeIteratorSpec>(it.m_current),
@@ -221,14 +255,14 @@ namespace TiledArray {
             m_value(it.m_value),
             m_calc_value(it.m_calc_value)
           {}
-          
+
           /// Prefix increment (required by all iterators)
           ShapeIterator& operator ++() {
             assert(this->m_current != -1);
             advance_();
             return *this;
           }
-          
+
           /// Postfix increment (required by all iterators)
           ShapeIterator operator ++(int) {
             assert(this->m_current != -1);
@@ -236,40 +270,40 @@ namespace TiledArray {
             advance_();
             return tmp;
           }
-          
+
           /// Equality operator (required by input iterators)
           bool operator ==(const ShapeIterator& it) const {
             return (this->base() == it.base());
           }
-          
+
           /// Inequality operator (required by input iterators)
           bool operator !=(const ShapeIterator& it) const {
             return ! (this->operator ==(it));
           }
-          
+
           /// Dereference operator (required by input iterators)
           const value& operator *() const {
             assert(this->m_current != -1);
             assert(this->m_current < m_nelements);
-               
+
             // Check to se if m_value needs to be calculated
             if(m_calc_value)
               calc_coord_();
- 
+
             return m_value;
           }
-          
+
           /// Dereference operator (required by input iterators)
           const value& operator ->() const {
             return (operator *());
           }
-          
+
           typename Orthotope<DIM>::index_t ord() const {
             assert(this->m_current != -1);
             assert(this->m_current < m_nelements);
             return static_cast<typename Orthotope<DIM>::index_t>(this->m_current);
           }
-          
+
           /**
            * This is for debugging only. Not done in an overload of operator<<
            * because it seems that gcc 3.4 does not manage inner class
@@ -305,20 +339,20 @@ namespace TiledArray {
         public:
           typedef typename AbstractShape<DIM>::Iterator parent_type;
           typedef typename Shape::tile_iterator wrapped_type;
-          
+
           AbstractIterator(const wrapped_type& iter) : iter_(iter) {}
-          
+
           /// Implementation of AbstractShape<DIM>::Iterator::operator++
           parent_type& operator++() {
             ++iter_;
             return *this;
           }
-          
+
         private:
           wrapped_type iter_;
       };
 #endif
-      
+
       ///  Initialize linear step data.
       void init_linear_step_() {
     	Tuple<DIM> h = m_orthotope->high();
@@ -327,12 +361,12 @@ namespace TiledArray {
         for (int dim = DIM - 1; dim > 0; --dim)
           m_linear_step[dim - 1] = (h[dim] - l[dim]) * m_linear_step[dim];
       }
-      
+
       /// Default constructor not allowed
       Shape();
 
     public:
-      
+
       /// Constructor
       Shape(Orthotope<DIM>* ortho, const predicate& pred = predicate()) :
         m_orthotope(ortho),
@@ -341,17 +375,17 @@ namespace TiledArray {
       {
     	  init_linear_step_();
       }
-      
+
       /// Copy constructor
       Shape(const Shape<DIM, PREDICATE>& s) :
         m_orthotope(s.m_orthotope),
         m_pred(s.m_pred),
         m_linear_step(s.m_linear_step)
       {}
-      
+
       ~Shape() {
       }
-      
+
       /// Assignment operator
       Shape<DIM, PREDICATE>& operator =(const Shape<DIM, PREDICATE>& s) {
         m_orthotope = s.m_orthotope;
@@ -360,12 +394,12 @@ namespace TiledArray {
 
         return *this;
       }
-      
+
       /// implements AbstractShape::clone
       AbstractShape<DIM>* clone() const {
         return new Shape<DIM, PREDICATE>(*this);
       }
-      
+
       /// Returns a pointer to the orthotope that supports this Shape.
       virtual const Orthotope<DIM>* orthotope() const {
         return m_orthotope;
@@ -382,12 +416,12 @@ namespace TiledArray {
        */
       virtual bool includes(const Tuple<DIM>& tile_index) const {
         return (tile_index < m_orthotope->tile_size()) && m_pred(tile_index);
-      }      
-      
+      }
+
       /**
        * Ordinal value of Tuple. Ordinal value does not include offset
        * and does not consider step. If the shape starts at (5, 3), then (5, 4)
-       * has ord 1 on row-major. 
+       * has ord 1 on row-major.
        * The ordinal value of orthotope()->low() is always 0.
        * The ordinal value of orthotope()->high() is always <= linearCard().
        */
@@ -396,25 +430,25 @@ namespace TiledArray {
         return static_cast<size_t>(VectorOps<Tuple<DIM>, DIM>::dotProduct((coord
             - m_orthotope->low()), m_linear_step));
       }
-      
+
       /// Returns the element index of the element referred to by linear_index
       virtual Tuple<DIM> coord(size_t linear_index) const {
         assert(linear_index >= 0 && linear_index < m_orthotope->nelements());
-        
+
         Tuple<DIM> element_index;
-        
+
         // start with most significant dimension 0.
         for (unsigned int dim = 0; linear_index > 0 && dim < DIM; ++dim) {
           element_index[dim] = linear_index / m_linear_step[dim];
           linear_index -= element_index[dim] * m_linear_step[dim];
         }
-        
+
         assert(linear_index == 0);
         // Sanity check
 
         // Offset the value so it is inside shape.
         element_index += this->m_orthotope->low();
-        
+
         return element_index;
       }
 
@@ -431,15 +465,15 @@ namespace TiledArray {
                         orthotope()->begin(),
                         orthotope()->end());
       }
-      
+
       /// Tile iterator factory
       iterator end() const {
         return iterator(m_pred,
                         orthotope()->end(),
                         orthotope()->end());
       }
-     
-     // currently doesn't compile because iterator is broken 
+
+     // currently doesn't compile because iterator is broken
 #if 0
       /// Implements AbstractShape::abegin()
       typename AbstractShape<DIM>::Iterator abegin() const {
@@ -454,16 +488,15 @@ namespace TiledArray {
         out << "Shape<" << DIM << ">(" << " @=" << this << " orth="
             << *(orthotope()) << " )";
       }
-      
+
   };
-  
+
   template<unsigned int DIM, class PREDICATE>
   std::ostream& operator <<(std::ostream& out,const Shape<DIM, PREDICATE>& s) {
     s.print(out);
     return out;
   }
-
-}
-; // end of namespace TiledArray
+#endif
+} // namespace TiledArray
 
 #endif // SHAPE_H__INCLUDED

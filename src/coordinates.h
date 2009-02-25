@@ -288,6 +288,6 @@ namespace detail {
     return result;
   }
 
-}
+} // namespace TiledArray
 
 #endif /*NUMERIC_H_*/

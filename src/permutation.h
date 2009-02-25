@@ -20,13 +20,13 @@ namespace TiledArray {
   template <unsigned int D>
   class Permutation
   {
-    public:
+  public:
     typedef size_t Index;
     typedef boost::array<Index,D> Array;
     static const unsigned int DIM = D;
 
     static const Permutation& unit() { return unit_permutation; }
-    
+
     Permutation(const Index* source) {
       std::copy(source,source+D,p_.begin());
       assert(valid_permutation());
@@ -35,11 +35,11 @@ namespace TiledArray {
       assert(valid_permutation());
     }
     ~Permutation() {}
-    
+
     const Index& operator[](unsigned int i) const {
       return p_[i];
     }
-    
+
     Permutation& operator=(const Permutation& other) { p_ = other.p_; return *this; }
     /// return *this * other
     Permutation operator^(const Permutation& other) const {
@@ -49,11 +49,11 @@ namespace TiledArray {
       Permutation result(_result);
       return result;
     }
-    
+
     friend bool operator== <> (const Permutation<D>& p1, const Permutation<D>& p2);
     friend std::ostream& operator<< <> (std::ostream& output, const Permutation& p);
-    
-    private:
+
+  private:
     Permutation();
     static Permutation unit_permutation;
 
@@ -68,7 +68,7 @@ namespace TiledArray {
       }
       return true;
     }
-    
+
     Array p_;
   };
 
@@ -81,10 +81,10 @@ namespace TiledArray {
       return Permutation<D>(_result);
     }
   }
-  
+
   template <unsigned int D>
   Permutation<D> Permutation<D>::unit_permutation = make_unit_permutation<D>();
-  
+
   template <unsigned int D>
   bool operator==(const Permutation<D>& p1, const Permutation<D>& p2) {
     return p1.p_ == p2.p_;
