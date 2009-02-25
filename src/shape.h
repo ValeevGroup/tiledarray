@@ -5,13 +5,65 @@
 #include <stdexcept>
 #include <coordinates.h>
 #include <range.h>
-#include <predicate.h>
+//#include <predicate.h>
 #include <algorithm>
 #include <boost/smart_ptr.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
 namespace TiledArray {
 
+  /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is Range::tile_iterator.
+  template <typename RangeIterator>
+  class ShapeIterator : public boost::iterator_adaptor<
+    ShapeIterator<RangeIterator>,
+    RangeIterator> {
+      public:
+        typedef typename RangeIterator::value_type value_type;
+
+        // no default constructor for iterators over Range, does it even make sense to have one?
+        //ShapeIterator() : ShapeIterator::iterator_adaptor_() {}
+
+        ShapeIterator(const RangeIterator& i) : ShapeIterator::iterator_adaptor_(i) {}
+
+        // if this index included in the shape?
+        virtual bool includes(const value_type& index) const =0;
+  };
+
+  /// Concrete ShapeIterator whose iteration domain is determined by Predicate
+  template <typename RangeIterator, typename Predicate>
+  class PredShapeIterator : public ShapeIterator<RangeIterator> {
+      public:
+        typedef ShapeIterator<RangeIterator> Base;
+        typedef typename Base::value_type value_type;
+
+        PredShapeIterator(const RangeIterator& i) : Base(i) {
+          // make sure the iterator is valid
+          // TODO what to do if it's not?
+          assert ( this->includes(*i) );
+        }
+
+        bool includes(const value_type& index) const {
+          return pred_.includes(index);
+        }
+
+      private:
+        Predicate pred_;
+
+        friend class boost::iterator_core_access;
+        // implements iterator_adaptor::increment
+        void increment() {
+          // TODO figure out how to stop iteration? Compare to Range::end_tile()?
+          this->base_reference() = this->base()->next();
+          while (!includes(*this)) {
+            this->base_reference() = this->base()->next();
+          }
+        }
+
+  };
+
+
+  // Justus' ShapeIterator
+#if 0
   template <unsigned int DIM, typename VALUE, typename CS = CoordinateSystem<DIM> >
   class ShapeIterator : public boost::iterator_facade<
       ShapeIterator<DIM, VALUE, RANGE<DIM, CS> >, VALUE, std::input_iterator_tag >
@@ -44,6 +96,7 @@ namespace TiledArray {
   protected:
 
   }; // PredShapeIterator
+#endif
 
 #if 0
   /**

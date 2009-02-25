@@ -6,7 +6,7 @@ CXXFLAGS = -g -Wall -fmessage-length=0 -I./src -I./Tests -DTA_DLEVEL=3 -DTA_WLEV
 
 OBJS = src/tilemap.o src/env.o \
 TiledArrayTest.o Tests/coordinatestest.o \
-Tests/range1test.o Tests/rangetest.o
+Tests/range1test.o Tests/rangetest.o Tests/shapetest.o
 
 #LIBDIR = -L$(MADNESSROOT)/lib
 #LIBS = -lMADworld

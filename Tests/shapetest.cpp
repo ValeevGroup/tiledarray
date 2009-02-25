@@ -1,39 +1,40 @@
 #include <shapetest.h>
 #include <shape.h>
-#include <predicate.h>
 
 using namespace TiledArray;
 
+class DummyPredicate {
+  public:
+  DummyPredicate() {}
+  bool includes(const Range<4>::tile_index& t) const { return true; }
+};
+
 void ShapeTest() {
 
-  std::cout << "Shape Tests:" << std::endl;
+  // Construct a Range
+  typedef Range<4>::element_index::index eindex;
+  typedef Range<4>::tile_index::index tindex;
+  eindex dim0[] = {0,10,20,30};
+  eindex dim1[] = {0,5,10,15,20};
+  eindex dim2[] = {0,3,6,9,12,15};
+  eindex dim3[] = {0,2,4,6,8,10,12};
+  tindex tiles[4] = {3, 4, 5, 6};
+  Range1 rng_set[4] = {Range1(dim0, tiles[0]),
+                       Range1(dim1, tiles[1]),
+                       Range1(dim2, tiles[2]),
+                       Range1(dim3, tiles[3])};
+  std::vector<Range1> rng_vector(rng_set, rng_set + 4);
+  Range<4> rng0(rng_vector.begin(),rng_vector.end());
 
-  // Default Constructor, not allowed.
-  // Shape<3, OffTupleFilter<3> > shapeDefault;
+  std::cout << "ShapeIterator Tests:" << std::endl;
 
-  // Create an orthotope that will be used for shape tests.
-  // Test with C-style Range Array constructor.
-  Orthotope<3>::index_t dim0[] = {0,4,6};
-  Orthotope<3>::index_t dim1[] = {0,4,6,9};
-  Orthotope<3>::index_t dim2[] = {0,4,6,9,10};
-  Orthotope<3>::index_t tiles[3] = {2,3,4};
-  const size_t* dim_set[] = {dim0,dim1,dim2};
-  Orthotope<3> ortho3(dim_set, tiles);
+  typedef Range<4>::tile_iterator RangeIterator;
 
-  std::cout << "Orthotope used in shape tests." << std::endl;
-  std::cout << "ortho3 = " << ortho3 << std::endl;
-  typedef Shape<3, OffTupleFilter<3> > shape_t;
-  shape_t shp0(&ortho3);
-  std::cout << "Constructed shp0" << std::endl << "shp0 = " << shp0 << std::endl;
-  
-  typedef shape_t::iterator shapeiter;
-  shapeiter i0 = shp0.begin();
-  
-  const int pm0[] = {0,2,1};
-  Tuple<3> perm0(pm0);
-  shp0.permute(perm0);
-  std::cout << "Permuted shp0 with " << perm0 << std::endl;
-  std::cout << "shp0 = " << shp0 << std::endl;
-  
-  
+  PredShapeIterator<RangeIterator,DummyPredicate> shp0(rng0.begin_tile());
+
+  std::cout << "*shp0 = " << *shp0 << std::endl;
+  ++shp0;
+  std::cout << "*(++shp0) = " << *shp0 << std::endl;
+  // TODO don't know yet how to finish iteration
+
 }
