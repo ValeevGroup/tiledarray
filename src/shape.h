@@ -68,6 +68,10 @@ namespace TiledArray {
       return pred_(index);
     }
 
+    bool operator==(const RangeIterator& other) const {
+      return this->base() == other;
+    }
+
   private:
     Predicate pred_;
     RangeIterator end_;
@@ -81,27 +85,21 @@ namespace TiledArray {
         ++it;
     }
 
-    friend bool operator ==<RangeIterator, Predicate>(const PredShapeIterator<RangeIterator, Predicate>&, const RangeIterator&);
   };
 
   template <typename RangeIterator, typename Predicate>
-  bool operator ==(const PredShapeIterator<RangeIterator, Predicate>& PredIt, const RangeIterator& It) {
-    return PredIt.base() == It;
-  }
-
-  template <typename RangeIterator, typename Predicate>
   bool operator !=(const PredShapeIterator<RangeIterator, Predicate>& PredIt, const RangeIterator& It) {
-    return ! operator ==<RangeIterator, Predicate>(PredIt, It);
+    return ! (PredIt == It);
   }
 
   template <typename RangeIterator, typename Predicate>
   bool operator ==(const RangeIterator& It, const PredShapeIterator<RangeIterator, Predicate>& PredIt) {
-    return operator ==<RangeIterator, Predicate>(PredIt, It);
+    return PredIt == It;
   }
 
   template <typename RangeIterator, typename Predicate>
   bool operator !=(const RangeIterator& It, const PredShapeIterator<RangeIterator, Predicate>& PredIt) {
-    return ! operator ==<RangeIterator, Predicate>(PredIt, It);
+    return PredIt != It;
   }
 
 

@@ -22,11 +22,17 @@ namespace TiledArray {
       }
 
       IndexIterator(const Value& cur, const Container& container) :
-        container_(container), current_(cur) {
+        container_(&container), current_(cur) {
+      }
+
+      IndexIterator& operator=(const IndexIterator& other) {
+        this->container_ = other.container_;
+        this->current_ = other.current_;
+        return *this;
       }
 
       const Container& container() const {
-    	  return container_;
+    	  return *container_;
       }
 
     private:
@@ -39,7 +45,7 @@ namespace TiledArray {
       // user must provide container_->increment(current_) function
       // void increment(index& current) const;
       void increment() {
-        container_.increment(current_);
+        container_->increment(current_);
       }
 
       Value& dereference() const {
@@ -48,7 +54,7 @@ namespace TiledArray {
 
       IndexIterator();
 
-      const Container& container_;
+      const Container* container_;
       Value current_;
   };
 

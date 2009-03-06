@@ -37,7 +37,7 @@ void ShapeTest() {
   for(; !(tile_it == rng.end_tile()); ++tile_it)
     std::cout << *tile_it << std::endl;
 
-  DenseShape3_tile_iterator elem_it(rng.begin_element(), rng.end_element());
+  DenseShape3_elem_iterator elem_it(rng.begin_element(), rng.end_element());
 
    std::cout << "iterate over tiles:" << std::endl;
 
