@@ -25,12 +25,6 @@ namespace TiledArray {
         container_(&container), current_(cur) {
       }
 
-      IndexIterator& operator=(const IndexIterator& other) {
-        this->container_ = other.container_;
-        this->current_ = other.current_;
-        return *this;
-      }
-
       const Container& container() const {
     	  return *container_;
       }
