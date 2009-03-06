@@ -7,119 +7,116 @@
 
 namespace TiledArray {
 
-  /**
-   * Predicate that maps an DIM-tuple to a boolean.
-   * The output is computed as f(P(T)), where T is the input tuple,
-   * P is a permutation, and f is a predicate.
-   *
-   * All classes inherited from TupleFilter must define a default constructor,
-   * and the virtual operator() function. The operator() function should call
-   * translate(const Tuple<DIM>&) on the tuple passed to it if
-   * m_apply_permutation is true, to translate it to the current permutation of
-   * the shape.
+  /*
+   * The Predicates must be Assignable, Copy Constructible, and
+   * the expression p(x) must be valid where p is an object of type
+   * Predicate, x is an object of type iterator_traits<Iterator>::value_type,
+   * and where the type of p(x) must be convertible to bool.
    */
-  template<unsigned int DIM> class AbstractPred {
+
+  template<unsigned int DIM>
+  class DensePred {
     public:
 
       /// Default constructor
-      AbstractPred() :
-        perm_(Permutation<DIM>::unit()),
-        apply_perm_(false)
+      DensePred()
       { }
 
       /// Copy constructor
-      AbstractPred(const AbstractPred& pred) :
-        perm_(pred.m_permutation),
-        apply_perm_(pred.m_apply_permutation)
+      DensePred(const DensePred& pred)
       { }
 
-      /// pure virtual predicate function
-      template <typename T, typename Tag, typename CS>
-      virtual bool includes(const ArrayCoordinate<T,DIM,Tag,CS>& index) const =0;
-
-      /// predicate function
-      template <typename T, typename Tag, typename CS>
-      bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
-        return this->includes(index);
-      }
-
-      /// Apply permutation
-      void permute(const Permutation<DIM>& perm) {
-        apply_perm_ = true;
-        perm_ = perm;
-      }
-
-      /// Reset the permutation to the default value of no permutation.
-      void reset() {
-        apply_perm_ = false;
-        perm_ = Permutation<DIM>::unit();
-      }
-
-//      virtual void print(std::ostream& o) const =0;
-
-    protected:
-      /// Current permutation of the TupleFilter
-      Permutation<DIM> perm_;
-      /// Used to determine if a transpose has been applied.
-      bool apply_perm_;
-
-      /**
-       * Translates index to the from the current permutation of the array
-       * to the original shape of the array.
-       */
-      template <typename T, typename Tag, typename CS>
-      ArrayCoordinate<T,DIM,Tag,CS> translate(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
-    	if(apply_perm_)
-          return perm_ ^ index;
-    	else
-          return index;
-      }
-
-  };
-
-/*
-  template<unsigned int DIM> std::ostream& operator<<(std::ostream& o,
-                                                      const AbstractPred<DIM>& f) {
-    f.print(o);
-    return o;
-  }
-*/
-
-  template<unsigned int DIM> class DensePred : public AbstractPred<DIM> {
-    public:
-
-      /// Default constructor
-      DensePred() :
-          AbstractPred<DIM>() {
-      }
-
-      /// Copy constructor
-      DensePred(const DensePred& pred) :
-    	  AbstractPred<DIM>(pred)
-      { }
-
-      /// Assignment operator
-      AbstractPred& operator =(const AbstractPred& pred) {
-        perm_ = pred.perm_;
-        apply_perm_ = pred.apply_perm_;
+      DensePred<DIM>& operator =(const DensePred<DIM>& pred) {
 
         return *this;
       }
 
       /// pure virtual predicate function
       template <typename T, typename Tag, typename CS>
-      virtual bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
-        return true;
+      bool includes(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+    	  return true;
       }
-/*
-      void print(std::ostream& o) const {
-        o << "OffTupleFilter";
-        if (this->apply_perm_)
-          o << "( perm=" << this->perm_ << " )";
+
+      /// predicate function
+      template <typename T, typename Tag, typename CS>
+      bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+        return includes(index);
       }
-*/
-  };
-}
-; // end of namespace TiledArray
+
+  }; // class DensePred
+
+
+  template <unsigned int DIM>
+  class LowerTrianglePred {
+  public:
+    // Default constructor
+    LowerTrianglePred()
+    { }
+
+    /// Copy constructor
+	LowerTrianglePred(const LowerTrianglePred<DIM>& pred) :
+        apply_perm_(pred.apply_perm_),
+        perm_(pred.perm_)
+    { }
+
+    /// Assignment operator
+    LowerTrianglePred<DIM>& operator =(const LowerTrianglePred<DIM>& pred) {
+      apply_perm_ = pred.apply_perm_;
+      perm_ = pred.perm_;
+
+      return *this;
+	}
+
+    /// Returns true if index is included in the shape.
+    template <typename T, typename Tag, typename CS>
+    bool includes(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+      const ArrayCoordinate<T,DIM,Tag,CS> perm_index = translate(index);
+
+      for(unsigned int d = 1; d <= DIM; ++d)
+        if(perm_index[d - 1] > perm_index[d])
+          return false;
+
+  	  return true;
+    }
+
+    /// predicate function
+    template <typename T, typename Tag, typename CS>
+    bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+      return includes(index);
+    }
+
+    /// Apply permutation
+    void permute(const Permutation<DIM>& perm) {
+      apply_perm_ = true;
+      perm_ = perm;
+    }
+
+    /// Reset the permutation to the default value of no permutation.
+    void reset() {
+      apply_perm_ = false;
+      perm_ = Permutation<DIM>::unit();
+    }
+
+  protected:
+    /// Current permutation of the TupleFilter
+    Permutation<DIM> perm_;
+    /// Used to determine if a transpose has been applied.
+    bool apply_perm_;
+
+    /**
+     * Translates index to the from the current permutation of the array
+     * to the original shape of the array.
+     */
+    template <typename T, typename Tag, typename CS>
+    ArrayCoordinate<T,DIM,Tag,CS> translate(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+  	  if(apply_perm_)
+        return perm_ ^ index;
+      else
+        return index;
+    }
+
+  }; // class LowerTrianglePred
+
+} // namespace TiledArray
 
 #endif // PREDICATE_H__INCLUDED

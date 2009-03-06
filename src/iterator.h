@@ -15,7 +15,7 @@ namespace TiledArray {
       typedef IndexIterator<Value,Container> my_type;
     public:
       IndexIterator(const IndexIterator& other) :
-        container_(other.container_), current_(other.current_) {
+         container_(other.container_), current_(other.current_) {
       }
 
       ~IndexIterator() {
@@ -23,6 +23,10 @@ namespace TiledArray {
 
       IndexIterator(const Value& cur, const Container& container) :
         container_(container), current_(cur) {
+      }
+
+      const Container& container() const {
+    	  return container_;
       }
 
     private:
@@ -48,8 +52,8 @@ namespace TiledArray {
       Value current_;
   };
 
-  }; // namespace detail
+  } // namespace detail
 
-}; // namespace TiledArray
+} // namespace TiledArray
 
 #endif /*ITERATOR_H_*/
