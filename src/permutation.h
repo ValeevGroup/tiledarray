@@ -27,6 +27,10 @@ namespace TiledArray {
 
     static const Permutation& unit() { return unit_permutation; }
 
+    Permutation() {
+      p_ = unit_permutation.p_;
+    }
+
     Permutation(const Index* source) {
       std::copy(source,source+D,p_.begin());
       assert(valid_permutation());
@@ -54,7 +58,6 @@ namespace TiledArray {
     friend std::ostream& operator<< <> (std::ostream& output, const Permutation& p);
 
   private:
-    Permutation();
     static Permutation unit_permutation;
 
     // return false if this is not a valid permutation

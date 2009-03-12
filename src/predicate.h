@@ -50,13 +50,15 @@ namespace TiledArray {
   class LowerTrianglePred {
   public:
     // Default constructor
-    LowerTrianglePred()
+    LowerTrianglePred() :
+      perm_(),
+      apply_perm_(false)
     { }
 
     /// Copy constructor
 	LowerTrianglePred(const LowerTrianglePred<DIM>& pred) :
-        apply_perm_(pred.apply_perm_),
-        perm_(pred.perm_)
+        perm_(pred.perm_),
+        apply_perm_(pred.apply_perm_)
     { }
 
     /// Assignment operator
