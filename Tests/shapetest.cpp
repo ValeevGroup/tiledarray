@@ -27,27 +27,33 @@ void ShapeTest() {
 
   std::cout << "Start ShapeIterator tests: " << std::endl;
 
-  typedef PredShapeIterator<Range<3>::tile_iterator, DensePred<3> > DenseShape3_tile_iterator;
-  typedef PredShapeIterator<Range<3>::element_iterator, DensePred<3> > DenseShape3_elem_iterator;
-  typedef PredShapeIterator<Range<3>::tile_iterator, LowerTrianglePred<3> > LowerTriShape3_tile_iterator;
-
+  typedef Shape< Range<3> > Shape3;
+  typedef PredShape<Range<3>, DensePred<3> > DenseShape3;
+  typedef PredShape<Range<3>, LowerTrianglePred<3> > LowerTriShape3;
+  Shape3* shp1 = new DenseShape3(rng);
+  Shape3* shp2 = new LowerTriShape3(rng);
+  DenseShape3 dshp(rng);
+  LowerTriShape3 tshp(rng);
 
   std::cout << "Dense Predicate Iterator" << std::endl << "iterate over tiles:" << std::endl;
 
-  DenseShape3_tile_iterator tile_it(rng.begin_tile(), rng.end_tile());
-  for(; !(tile_it == rng.end_tile()); ++tile_it)
+  DenseShape3::Iterator tile_it = dshp.begin();
+  for(; !(tile_it == dshp.end()); ++tile_it)
     std::cout << *tile_it << std::endl;
 
-  std::cout << "iterate over elements:" << std::endl;
+  std::cout << "LowerTriange Predicate Iterator" << std::endl << "iterator over tiles" << std::endl;
 
-  DenseShape3_elem_iterator elem_it(rng.begin_element(), rng.end_element());
-  for(; elem_it != rng.end_element(); ++elem_it)
-    std::cout << *elem_it << std::endl;
-
-  std::cout << "LowerTriangel Predicate Iterator" << std::endl << "iterator over tiles" << std::endl;
-
-  LowerTriShape3_tile_iterator tri_it(rng.begin_tile(), rng.end_tile());
-  for(; tri_it != rng.end_tile(); ++tri_it)
+  LowerTriShape3::Iterator tri_it = tshp.begin();
+  for(; tri_it != tshp.end(); ++tri_it)
     std::cout << *tri_it << std::endl;
+
+  std::cout << "Dense Abstract Predicate Iterator" << std::endl << "iterate over tiles:" << std::endl;
+  for(Shape3::Iterator it = shp1->begin(); it != shp1->end(); ++it)
+    std::cout << *it << std::endl;
+
+  std::cout << "LowerTriangle Abstract Predicate Iterator" << std::endl << "iterate over tiles:" << std::endl;
+  for(Shape3::Iterator it = shp2->begin(); it != shp2->end(); ++it)
+    std::cout << *it << std::endl;
+
 
 }

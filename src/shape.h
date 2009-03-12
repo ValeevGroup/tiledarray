@@ -3,111 +3,87 @@
 
 #include <cstddef>
 #include <stdexcept>
+#include <algorithm>
 #include <coordinates.h>
 #include <range.h>
-//#include <predicate.h>
-#include <algorithm>
-#include <boost/iterator/iterator_adaptor.hpp>
-//#include <boost/smart_ptr.hpp>
-//#include <boost/iterator/filter_iterator.hpp>
+#include <iterator.h>
+#include <predicate.h>
 
 namespace TiledArray {
 
   /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is Range::tile_iterator.
-  template <typename RangeIterator>
-  class ShapeIterator : public boost::iterator_adaptor<
-    ShapeIterator<RangeIterator>,
-    RangeIterator> {
+  template <typename Range>
+  class Shape {
   public:
-    typedef typename RangeIterator::value_type value_type;
+    typedef detail::IndexIterator<typename Range::tile_index,Shape> Iterator;
+    Shape(const Range& range) : range_(&range) {}
+    Shape(const Shape& other) : range_(other.range_) {}
+    virtual ~Shape() {}
 
-    // no default constructor for iterators over Range, does it even make sense to have one?
-    //ShapeIterator() : ShapeIterator::iterator_adaptor_() {}
+    const Range* range() const { return range_; }
 
-    ShapeIterator(const RangeIterator& i) : ShapeIterator::iterator_adaptor_(i) {}
-
-    virtual ~ShapeIterator() {}
+    virtual Iterator begin() const =0;
+    virtual Iterator end() const =0;
 
     // if this index included in the shape?
-    virtual bool includes(const value_type& index) const =0;
+    virtual bool includes(const typename Iterator::value_type& index) const =0;
+    virtual void increment(typename Iterator::value_type& it) const =0;
 
   private:
-	friend class boost::iterator_core_access;
+    const Range* range_;
 
-    virtual void increment() =0;
   };
 
 
   /// Concrete ShapeIterator whose iteration domain is determined by Predicate
-  template <typename RangeIterator, typename Predicate>
-  class PredShapeIterator : public ShapeIterator<RangeIterator> {
+  template <typename Range, typename Predicate>
+  class PredShape : public Shape<Range> {
   public:
-    typedef ShapeIterator<RangeIterator> base_type;
-    typedef typename base_type::value_type value_type;
+    typedef Shape<Range> Shape;
+    typedef typename Shape::Iterator Iterator;
 
     /// Iterator main constructor
-    PredShapeIterator(RangeIterator it, RangeIterator end, Predicate pred = Predicate()) :
-        base_type(it), pred_(pred), end_(end)
-    {
-      if(!pred_(* this->base_reference()))
-        this->base_reference() = end_;
-    }
+    PredShape(const Range& range, Predicate pred = Predicate()) :
+        Shape(range), pred_(pred) {}
 
     /// Copy constructor
-    PredShapeIterator(const PredShapeIterator& it) :
-        base_type(it.base()), pred_(it.pred_), end_(it.end_)
-    { }
+    PredShape(const PredShape& other) :
+        Shape(other), pred_(other.pred_) {}
 
-    virtual ~PredShapeIterator() {}
+    ~PredShape() {}
 
     /// Predicate accessor function
     const Predicate& predicate() const {
       return pred_;
     }
 
+    /// Begin accessor function
+    Iterator begin() const {
+      Iterator result(this->range()->start_tile(), *this);
+      if (!includes(*result) ) {
+        this->increment(*result);
+      }
+      return result;
+    }
     /// End accessor function
-    const RangeIterator& end() const {
-      return end_;
+    Iterator end() const {
+      return Iterator(this->range()->finish_tile(), *this);
     }
 
-    virtual bool includes(const value_type& index) const {
+    bool includes(const typename Iterator::value_type& index) const {
       return pred_(index);
-    }
-
-    bool operator==(const RangeIterator& other) const {
-      return this->base() == other;
     }
 
   private:
     Predicate pred_;
-    RangeIterator end_;
 
-    friend class boost::iterator_core_access;
-    // implements iterator_adaptor::increment
-    virtual void increment() {
-      RangeIterator& it = this->base_reference();
-      ++it;
-      while( !pred_(*it) && it != end_ )
-        ++it;
+    void increment(typename Iterator::value_type& index) const {
+      this->range()->increment(index);
+      while( !includes(index) && index != this->range()->finish_tile() )
+        this->range()->increment(index);
     }
 
   };
-
-  template <typename RangeIterator, typename Predicate>
-  bool operator !=(const PredShapeIterator<RangeIterator, Predicate>& PredIt, const RangeIterator& It) {
-    return ! (PredIt == It);
-  }
-
-  template <typename RangeIterator, typename Predicate>
-  bool operator ==(const RangeIterator& It, const PredShapeIterator<RangeIterator, Predicate>& PredIt) {
-    return PredIt == It;
-  }
-
-  template <typename RangeIterator, typename Predicate>
-  bool operator !=(const RangeIterator& It, const PredShapeIterator<RangeIterator, Predicate>& PredIt) {
-    return PredIt != It;
-  }
-
 
 } // namespace TiledArray
 

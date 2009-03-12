@@ -33,8 +33,68 @@ class Range<DIM> {
   class Tile;
 }
 
-/// The main player.
+/// The main player: Array
+/// Serves as base to various implementations (local, replicatd, distributed)
 ///
+template <typename T, unsigned int DIM> Array {
+public:
+  typedef Range<DIM> Range;
+  typedef typename Range::TileIterator RangeIterator;
+  typedef Shape<Range> Shape;
+  typedef ShapeIterator<RangeIterator> ShapeIterator;
+  // ElementIndex, TileIndex, etc.
+
+  /// Tile is implemented in terms of boost::multi_array
+  /// it provides reshaping, iterators, etc., and supports direct access to the raw pointer.
+  /// array layout must match that given by CoordinateSystem (i.e. both C, or both Fortran)
+  class Tile : public boost::multi_array<T,DIM> {
+  };
+
+  class Iterator : public boost::iterator_facade {
+  public:
+    Iterator(const shared_ptr<ShapeIterator>& i) : current_index_(i) {}
+    const Tile& operator*() const;
+  private:
+    shared_ptr<ShapeIterator> current_index_;
+  };
+  Iterator begin() const {
+    shared_ptr<ShapeIterator> si_begin( shape_->begin() );
+    return Iterator(si_begin);
+  }
+  Iterator end() const {
+    shared_ptr<ShapeIterator> si_end( shape_->end() );
+    return Iterator(si_end);
+  }
+  
+  /// array is defined by its shape
+  Array(const shared_ptr<Shape>&);
+  
+  /// assign each element to a
+  virtual void assign(T a) =0;
+  
+  /// where is tile k
+  virtual unsigned int proc(const TileIndex& k) =0;
+  /// access tile k
+  virtual Future<Tile> tile(const TileIndex& k) =0;
+
+  /// Low-level interface will only allow permutations and efficient direct contractions
+  /// it should be sufficient to use with an optimizing array expression compiler
+
+  /// make new Array by applying permutation P
+  virtual Array transpose(const Permutation<DIM>& P) =0;
+
+  /// Higher-level interface will be be easier to use but necessarily less efficient since it will allow more complex operations
+  /// implemented in terms of permutations and contractions by a runtime
+  
+  /// bind a string to this array to make operations look normal
+  /// e.g. R("ijcd") += T2("ijab") . V("abcd") or T2new("iajb") = T2("ijab")
+  /// runtime then can figure out how to implement operations
+  // ArrayExpression operator()(const char*) const;
+  
+private:
+  shared_ptr<Shape> shape_;
+}
+
 /// DistributedObject is an abstract distributed data structure and DistributedContainer
 /// is a distributed map that manages key->value pairs. DenseTile<T,DIM> is a linearized
 /// DIM-dimensional array.
@@ -116,24 +176,36 @@ class LocalMemoryAllocator {
   }
 }
 
-template <unsigned int DIM> class ShapeIterator {
-  virtual bool includes(const Tuple<DIM>& tile_idx) const =0;
-  virtual const ShapeIterator& operator++() =0;
-  
-  protected:
-    Range<DIM>* range_;
-    Range<DIM>::tile_iterator current_idx_;
+template <typename Range> class Shape {
+  public:
+    typedef class IndexIterator<Range::tile_iterator, Shape> Iterator;
+    
+    virtual bool includes(const Tuple<DIM>& tile_idx) const =0;
+
+    virtual void increment(ShapeIterator&) =0;
+    virtual Iterator begin() const =0;
+    virtual Iterator end() const =0;
+    
 }
 
-template <unsigned int DIM, class Predicate> class PredShapeIterator : public ShapeIterator<DIM> {
-  const ShapeIterator& operator++() {
-    ++current_idx_;
-    while(! includes(current_idx_) ) {
-      ++current_idx_;
+template <typename Range, class Predicate> class PredShape : public Shape<Range> {
+  public:
+    PredShape(const Predicate& pred) : pred_(pred) {}
+    bool includes(const Tuple<DIM>& tile_idx) {
+      return pred_->includes(tile_idx);
     }
-    return *this;
-  }
-  bool includes(const Tuple<DIM>& tile_idx) {
-    return pred_->includes(tile_idx);
-  }
+    
+    shared_ptr<ShapeIterator> begin() const {
+      
+    }
+
+    void increment(ShapeIterator& i) {
+      ++i.current_idx_;
+      while(! pred_.includes(i.current_idx_) ) {
+        ++i.current_idx_;
+      }
+    }
+    
+  private:
+    Predicate pred_;
 }
