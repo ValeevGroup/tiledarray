@@ -33,6 +33,8 @@ namespace TiledArray {
 
   private:
 	friend class boost::iterator_core_access;
+
+    virtual void increment() =0;
   };
 
 
@@ -82,7 +84,7 @@ namespace TiledArray {
 
     friend class boost::iterator_core_access;
     // implements iterator_adaptor::increment
-    void increment() {
+    virtual void increment() {
       RangeIterator& it = this->base_reference();
       ++it;
       while( !pred_(*it) && it != end_ )
