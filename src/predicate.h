@@ -74,7 +74,7 @@ namespace TiledArray {
     bool includes(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
       const ArrayCoordinate<T,DIM,Tag,CS> perm_index = translate(index);
 
-      for(unsigned int d = 1; d <= DIM; ++d)
+      for(unsigned int d = 1; d < DIM; ++d)
         if(perm_index[d - 1] > perm_index[d])
           return false;
 

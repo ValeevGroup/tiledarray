@@ -17,7 +17,7 @@ void ShapeTest() {
   eindex dim0[] = {0, 2, 4, 6};
   eindex dim1[] = {0, 2, 4, 6};
   eindex dim2[] = {0, 2, 4, 6};
-  tindex tiles[3] = {2, 2, 2};
+  tindex tiles[3] = {3, 3, 3};
 
   Range1 rng_set[3] = {Range1(dim0, tiles[0]),
                        Range1(dim1, tiles[1]),
@@ -46,8 +46,8 @@ void ShapeTest() {
 
   std::cout << "LowerTriangel Predicate Iterator" << std::endl << "iterator over tiles" << std::endl;
 
-  LowerTriShape3_tile_iterator tri_tile_it(rng.begin_tile(), rng.end_tile());
-  for(; tri_tile_it != rng.end_tile(); ++tri_tile_it)
-    std::cout << *tri_tile_it << std::endl;
+  LowerTriShape3_tile_iterator tri_it(rng.begin_tile(), rng.end_tile());
+  for(; tri_it != rng.end_tile(); ++tri_it)
+    std::cout << *tri_it << std::endl;
 
 }

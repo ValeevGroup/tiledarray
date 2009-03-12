@@ -7,8 +7,9 @@
 #include <range.h>
 //#include <predicate.h>
 #include <algorithm>
-#include <boost/smart_ptr.hpp>
-#include <boost/iterator/filter_iterator.hpp>
+#include <boost/iterator/iterator_adaptor.hpp>
+//#include <boost/smart_ptr.hpp>
+//#include <boost/iterator/filter_iterator.hpp>
 
 namespace TiledArray {
 
@@ -29,6 +30,9 @@ namespace TiledArray {
 
     // if this index included in the shape?
     virtual bool includes(const value_type& index) const =0;
+
+  private:
+	friend class boost::iterator_core_access;
   };
 
 
