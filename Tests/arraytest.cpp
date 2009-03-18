@@ -1,30 +1,32 @@
 #include <iostream>
+#include <range.h>
+#include <shape.h>
+#include <boost/smart_ptr.hpp>
 #include <array.h>
 
 using namespace TiledArray;
 
-void ArrayTest(int argc, char* argv[]) {
-  
-  // Create an orthotope that will be used for shape tests.
+void ArrayTest() {
+
+  typedef Range<4>::element_index::index eindex;
+  typedef Range<4>::tile_index::index tindex;
+  typedef Shape< Range<3> > Shape3;
+  typedef PredShape<Range<3>, DensePred<3> > DenseShape3;
+
+  // Create a Range for use with Array.
+
   // Test with C-style Range Array constructor.
-  Orthotope<3>::index_t dim0[] = {0,4,6};
-  Orthotope<3>::index_t dim1[] = {0,4,6,9};
-  Orthotope<3>::index_t dim2[] = {0,4,6,9,10};
-  Orthotope<3>::index_t tiles[3] = {2,3,4};
-  const size_t* dim_set[] = {dim0,dim1,dim2};
-  Orthotope<3> ortho3(dim_set, tiles);
-  boost::shared_ptr< AbstractShape<3> > shp0(new Shape<3, OffTupleFilter<3> >(&ortho3));
-  
-  std::cout << "Orthotope used in shape tests." << std::endl;
-  std::cout << "ortho3 = " << ortho3 << std::endl;
-  std::cout << "Constructed shp" << std::endl << "shp = " << *shp0 << std::endl;
-  
-  MPI::Init(argc, argv);
-  DistributedRuntime runtime(MPI::COMM_WORLD);
-  Array<double,3> a(runtime,shp0);
-  std::cout << "Constructed a = Array<double,3>" << std::endl;
-  
-  
-  MPI::Finalize();
-  
+  eindex dim0[] = {0, 2, 4, 6};
+  eindex dim1[] = {0, 2, 4, 6};
+  eindex dim2[] = {0, 2, 4, 6};
+  tindex tiles[3] = {3, 3, 3};
+
+  Range1 rng_set[3] = {Range1(dim0, tiles[0]),
+                       Range1(dim1, tiles[1]),
+                       Range1(dim2, tiles[2]) };
+
+  Range<3> rng(rng_set);
+  DenseShape3 shp(rng);
+
+  Array<double, 3> a1(boost::shared_ptr<Shape3>(&shp));
 }

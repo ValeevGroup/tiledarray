@@ -15,7 +15,7 @@ namespace TiledArray {
   template <typename Range>
   class Shape {
   public:
-    typedef detail::IndexIterator<typename Range::tile_index,Shape> Iterator;
+    typedef detail::IndexIterator<typename Range::tile_index, Shape> Iterator;
     Shape(const Range& range) : range_(&range) {}
     Shape(const Shape& other) : range_(other.range_) {}
     virtual ~Shape() {}

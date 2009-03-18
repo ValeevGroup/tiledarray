@@ -9,9 +9,9 @@
 //#define TEST_COORDINATES
 //#define TEST_RANGE1
 //#define TEST_RANGE
-#define TEST_SHAPE
+//#define TEST_SHAPE
 //#define TEST_TILEMAP
-//#define TEST_ARRAY
+#define TEST_ARRAY
 
 #include "coordinatestest.h"
 #include "range1test.h"

@@ -55,5 +55,6 @@ void ShapeTest() {
   for(Shape3::Iterator it = shp2->begin(); it != shp2->end(); ++it)
     std::cout << *it << std::endl;
 
+  Shape3::Iterator::value_type x;
 
 }
