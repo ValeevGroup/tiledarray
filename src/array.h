@@ -37,16 +37,17 @@ namespace TiledArray {
       typedef boost::iterator_facade<Iterator, Tile, std::output_iterator_tag > iterator_facade_;
     public:
 
-      Iterator(const boost::shared_ptr<ShapeIterator>& it) :
-          current_index_(it)
+      Iterator(const boost::shared_ptr<ShapeIterator>& it, const Array<T,DIM,CS>& a) :
+          current_index_(it), array_ref_(a)
       {}
 
       Iterator(const Iterator& other) :
-        current_index_(other.current_index_)
+        current_index_(other.current_index_), array_ref_(other.array_ref_)
       {}
 
       Iterator& operator =(const Iterator& other) {
         current_index_ = other.current_index_;
+        array_ref_ = other.array_ref_;
         return *this;
       }
 
@@ -56,10 +57,12 @@ namespace TiledArray {
       Iterator();
 
       void increment() { ++(*current_index_); }
-      bool equal(Iterator const& other) const { return * current_index_ == * other.current_index_; }
-      value_type& dereference() const { return at( *current_index_ ); }
+      bool equal(Iterator const& other) const {
+    	  return (*current_index_ == * other.current_index_) && (array_ref_ == other.array_ref_); }
+      value_type& dereference() const { return array_ref_.at( *current_index_ ); }
 
       boost::shared_ptr<ShapeIterator> current_index_;
+      const Array& array_ref_;
 
     };
 
@@ -79,6 +82,11 @@ namespace TiledArray {
 
     /// access a tile
     virtual Tile& at(const index_t& i) { return dummy_; }
+
+    bool operator ==(const my_type& other) const {
+      // TODO: add comparison code.
+      return false;
+    }
 
     /// assign each element to a
 //    virtual void assign(T a) =0;
