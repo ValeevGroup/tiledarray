@@ -2,6 +2,7 @@
 #define ARRAY_H__INCLUDED
 
 #include <cassert>
+#include <map>
 #include <boost/shared_ptr.hpp>
 #include <boost/multi_array.hpp>
 #include <boost/iterator/iterator_facade.hpp>
@@ -17,27 +18,33 @@ namespace TiledArray {
   ///
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Array {
-    typedef Array<T, DIM, CS> my_type;
-    typedef Range<DIM, CS> Range;
-    typedef typename Range::tile_iterator RangeIterator;
-    typedef Shape<Range> Shape;
-    typedef typename Shape::Iterator ShapeIterator;
+    typedef Array<T, DIM, CS> Array_;
+    typedef Range<DIM, CS> range;
+    typedef typename range::tile_iterator range_iterator;
+    typedef Shape<range> shape;
+    typedef typename shape::iterator shape_iterator;
 
   public:
     typedef T value_type;
-    typedef CS CoordinateSystem;
-    typedef typename Range::tile_index index_t;
+    typedef CS coordinate_system;
+    typedef typename range::ordinal_index ordinal_index;
+    typedef typename range::tile_index tile_index;
+    typedef typename range::element_index element_index;
 
     /// Tile is implemented in terms of boost::multi_array
     /// it provides reshaping, iterators, etc., and supports direct access to the raw pointer.
     /// array layout must match that given by CoordinateSystem (i.e. both C, or both Fortran)
     class Tile : public boost::multi_array<value_type,DIM> { };
 
+  private:
+    typedef std::map<tile_index, Tile> array_map;
+
+  public:
     class Iterator : public boost::iterator_facade<Iterator, Tile, std::output_iterator_tag > {
       typedef boost::iterator_facade<Iterator, Tile, std::output_iterator_tag > iterator_facade_;
     public:
 
-      Iterator(const boost::shared_ptr<ShapeIterator>& it, const Array<T,DIM,CS>& a) :
+      Iterator(const boost::shared_ptr<shape_iterator>& it, const Array<T,DIM,CS>& a) :
           current_index_(it), array_ref_(a)
       {}
 
@@ -61,39 +68,41 @@ namespace TiledArray {
     	  return (*current_index_ == * other.current_index_) && (array_ref_ == other.array_ref_); }
       value_type& dereference() const { return array_ref_.at( *current_index_ ); }
 
-      boost::shared_ptr<ShapeIterator> current_index_;
+      boost::shared_ptr<shape_iterator> current_index_;
       const Array& array_ref_;
 
     };
 
     Iterator begin() const {
-      return Iterator( boost::shared_ptr<ShapeIterator>( shape_->begin() ) );
+      return Iterator( boost::shared_ptr<shape_iterator>( shape_->begin() ) );
     }
 
     Iterator end() const {
-      return Iterator( boost::shared_ptr<ShapeIterator>( shape_->end() ) );
+      return Iterator( boost::shared_ptr<shape_iterator>( shape_->end() ) );
     }
 
     /// array is defined by its shape
-    Array(const boost::shared_ptr<Shape>& shp) : shape_(shp)
+    Array(const boost::shared_ptr<shape>& shp) : shape_(shp)
     {}
 
     virtual ~Array() {}
 
-    /// access a tile
-    virtual Tile& at(const index_t& i) { return dummy_; }
+    /// Returns the number of dimentions in the array.
+    unsigned int dim() const { return DIM; }
 
-    bool operator ==(const my_type& other) const {
-      // TODO: add comparison code.
-      return false;
-    }
+    /// Returns the number of elements contained in the array.
+    ordinal_index nelements() const { return shape_->range()->size(); }
+    ordinal_index ntiles() const { return shape_->range()->ntiles(); }
+    const element_index& origin() const { return shape_->range()->start_element(); }
+
 
     /// assign each element to a
-//    virtual void assign(T a) =0;
+    virtual void assign(const value_type& val) =0;
+    virtual void assign(const element_index& e_idx, const value_type& val) =0;
 
     /// where is tile k
-//    virtual unsigned int proc(const index& k) const =0;
-//    virtual bool local(const index_t& k) const =0;
+    virtual unsigned int proc(const tile_index& k) const =0;
+    virtual bool local(const tile_index& k) const =0;
 
 
     /// Low-level interface will only allow permutations and efficient direct contractions
@@ -102,19 +111,34 @@ namespace TiledArray {
     /// make new Array by applying permutation P
 //    virtual Array transpose(const Permutation<DIM>& P) =0;
 
-    /// Higher-level interface will be be easier to use but necessarily less efficient since it will allow more complex operations
-    /// implemented in terms of permutations and contractions by a runtime
+    /// Higher-level interface will be be easier to use but necessarily less efficient
+    /// since it will allow more complex operations implemented in terms of permutations
+    /// and contractions by a runtime
 
     /// bind a string to this array to make operations look normal
     /// e.g. R("ijcd") += T2("ijab") . V("abcd") or T2new("iajb") = T2("ijab")
     /// runtime then can figure out how to implement operations
     // ArrayExpression operator()(const char*) const;
 
-  private:
+  protected:
 
-	// TODO: dummy_ is here for testing purposes, it needs to be removed once tile access has been implemented.
-    Tile dummy_;
-    boost::shared_ptr<Shape> shape_;
+    tile_index get_tile_index(const element_index& e_idx) const {
+      assert(includes(e_idx));
+      return * this->shape_->range()->find(e_idx);
+    }
+
+	bool includes(const tile_index& t_idx) const {
+      return this->shape_->includes(t_idx);
+	}
+
+	bool includes(const element_index& e_idx) const {
+      return this->shape_->range()->includes(e_idx);
+	}
+
+    /// Map that stores all local tiles.
+    array_map data_;
+    /// Shape pointer.
+    boost::shared_ptr<shape> shape_;
   };
 
 };

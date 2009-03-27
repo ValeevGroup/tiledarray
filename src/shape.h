@@ -15,19 +15,19 @@ namespace TiledArray {
   template <typename Range>
   class Shape {
   public:
-    typedef detail::IndexIterator<typename Range::tile_index, Shape> Iterator;
+    typedef detail::IndexIterator<typename Range::tile_index, Shape> iterator;
     Shape(const Range& range) : range_(&range) {}
     Shape(const Shape& other) : range_(other.range_) {}
     virtual ~Shape() {}
 
     const Range* range() const { return range_; }
 
-    virtual Iterator begin() const =0;
-    virtual Iterator end() const =0;
+    virtual iterator begin() const =0;
+    virtual iterator end() const =0;
 
     // if this index included in the shape?
-    virtual bool includes(const typename Iterator::value_type& index) const =0;
-    virtual void increment(typename Iterator::value_type& it) const =0;
+    virtual bool includes(const typename iterator::value_type& index) const =0;
+    virtual void increment(typename iterator::value_type& it) const =0;
 
   private:
     const Range* range_;
@@ -39,16 +39,15 @@ namespace TiledArray {
   template <typename Range, typename Predicate>
   class PredShape : public Shape<Range> {
   public:
-    typedef Shape<Range> Shape;
-    typedef typename Shape::Iterator Iterator;
+    typedef typename Shape<Range>::iterator iterator;
 
     /// Iterator main constructor
     PredShape(const Range& range, Predicate pred = Predicate()) :
-        Shape(range), pred_(pred) {}
+        Shape<Range>(range), pred_(pred) {}
 
     /// Copy constructor
     PredShape(const PredShape& other) :
-        Shape(other), pred_(other.pred_) {}
+        Shape<Range>(other), pred_(other.pred_) {}
 
     ~PredShape() {}
 
@@ -58,26 +57,26 @@ namespace TiledArray {
     }
 
     /// Begin accessor function
-    Iterator begin() const {
-      Iterator result(this->range()->start_tile(), *this);
+    iterator begin() const {
+      iterator result(this->range()->start_tile(), *this);
       if (!includes(*result) ) {
         this->increment(*result);
       }
       return result;
     }
     /// End accessor function
-    Iterator end() const {
-      return Iterator(this->range()->finish_tile(), *this);
+    iterator end() const {
+      return iterator(this->range()->finish_tile(), *this);
     }
 
-    bool includes(const typename Iterator::value_type& index) const {
-      return pred_(index);
+    bool includes(const typename iterator::value_type& index) const {
+      return pred_(index) && this->range()->includes(index);
     }
 
   private:
     Predicate pred_;
 
-    void increment(typename Iterator::value_type& index) const {
+    void increment(typename iterator::value_type& index) const {
       this->range()->increment(index);
       while( !includes(index) && index != this->range()->finish_tile() )
         this->range()->increment(index);

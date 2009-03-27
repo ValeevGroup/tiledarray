@@ -6,10 +6,10 @@
 // Description : Hello World in C, Ansi-style
 //============================================================================
 
-//#define TEST_COORDINATES
-//#define TEST_RANGE1
-//#define TEST_RANGE
-//#define TEST_SHAPE
+#define TEST_COORDINATES
+#define TEST_RANGE1
+#define TEST_RANGE
+#define TEST_SHAPE
 //#define TEST_TILEMAP
 #define TEST_ARRAY
 

@@ -3,6 +3,7 @@
 #include <shape.h>
 #include <boost/smart_ptr.hpp>
 #include <array.h>
+#include <local_array.h>
 
 using namespace TiledArray;
 
@@ -28,5 +29,5 @@ void ArrayTest() {
   Range<3> rng(rng_set);
   DenseShape3 shp(rng);
 
-  Array<double, 3> a1(boost::shared_ptr<Shape3>(&shp));
+  LocalArray<double, 3> a1(boost::shared_ptr<Shape3>(&shp));
 }
