@@ -18,58 +18,53 @@ namespace TiledArray {
   ///
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Array {
-    typedef Array<T, DIM, CS> Array_;
-    typedef Range<DIM, CS> range;
-    typedef typename range::tile_iterator range_iterator;
-    typedef Shape<range> shape;
-    typedef typename shape::iterator shape_iterator;
-
   public:
+    typedef Array this_type;
+    typedef Range<DIM, CS> range_type;
+    typedef typename range_type::tile_iterator range_iterator;
+    typedef Shape<range_type> shape_type;
+    typedef typename shape_type::iterator shape_iterator;
+    typedef typename range_type::ordinal_index ordinal_index;
+    typedef typename range_type::tile_index tile_index;
+    typedef typename range_type::element_index element_index;
     typedef T value_type;
     typedef CS coordinate_system;
-    typedef typename range::ordinal_index ordinal_index;
-    typedef typename range::tile_index tile_index;
-    typedef typename range::element_index element_index;
 
     /// Tile is implemented in terms of boost::multi_array
     /// it provides reshaping, iterators, etc., and supports direct access to the raw pointer.
     /// array layout must match that given by CoordinateSystem (i.e. both C, or both Fortran)
-    class Tile : public boost::multi_array<value_type,DIM> { };
+    typedef boost::multi_array<value_type,DIM> Tile;
 
-  private:
-    typedef std::map<tile_index, Tile> array_map;
-
-  public:
     class Iterator : public boost::iterator_facade<Iterator, Tile, std::output_iterator_tag > {
-      typedef boost::iterator_facade<Iterator, Tile, std::output_iterator_tag > iterator_facade_;
-    public:
+        typedef boost::iterator_facade<Iterator, Tile, std::output_iterator_tag > iterator_facade_;
+      public:
 
-      Iterator(const boost::shared_ptr<shape_iterator>& it, const Array<T,DIM,CS>& a) :
+        Iterator(const boost::shared_ptr<shape_iterator>& it, const Array& a) :
           current_index_(it), array_ref_(a)
-      {}
+          {}
 
-      Iterator(const Iterator& other) :
-        current_index_(other.current_index_), array_ref_(other.array_ref_)
-      {}
+        Iterator(const Iterator& other) :
+          current_index_(other.current_index_), array_ref_(other.array_ref_)
+          {}
 
-      Iterator& operator =(const Iterator& other) {
-        current_index_ = other.current_index_;
-        array_ref_ = other.array_ref_;
-        return *this;
-      }
+        Iterator& operator =(const Iterator& other) {
+          current_index_ = other.current_index_;
+          array_ref_ = other.array_ref_;
+          return *this;
+        }
 
-    private:
-      friend class boost::iterator_core_access;
+      private:
+        friend class boost::iterator_core_access;
 
-      Iterator();
+        Iterator();
 
-      void increment() { ++(*current_index_); }
-      bool equal(Iterator const& other) const {
-    	  return (*current_index_ == * other.current_index_) && (array_ref_ == other.array_ref_); }
-      value_type& dereference() const { return array_ref_.at( *current_index_ ); }
+        void increment() { ++(*current_index_); }
+        bool equal(Iterator const& other) const {
+          return (*current_index_ == * other.current_index_) && (array_ref_ == other.array_ref_); }
+        value_type& dereference() const { return array_ref_.at( *current_index_ ); }
 
-      boost::shared_ptr<shape_iterator> current_index_;
-      const Array& array_ref_;
+        boost::shared_ptr<shape_iterator> current_index_;
+        const Array& array_ref_;
 
     };
 
@@ -82,23 +77,26 @@ namespace TiledArray {
     }
 
     /// array is defined by its shape
-    Array(const boost::shared_ptr<shape>& shp) : shape_(shp)
-    {}
-
+    Array(const boost::shared_ptr<shape_type>& shp) : shape_(shp) {}
+    Array(const Array& other) : shape_(other.shape_) {}
     virtual ~Array() {}
+    virtual boost::shared_ptr<this_type> clone() const =0;
 
-    /// Returns the number of dimentions in the array.
-    unsigned int dim() const { return DIM; }
+    const boost::shared_ptr<shape_type>& shape() const { return shape_; }
 
-    /// Returns the number of elements contained in the array.
-    ordinal_index nelements() const { return shape_->range()->size(); }
-    ordinal_index ntiles() const { return shape_->range()->ntiles(); }
-    const element_index& origin() const { return shape_->range()->start_element(); }
+    /// Returns the number of dimensions in the array.
+    unsigned int ndim() const { return DIM; }
+
+    // WARNING I don't think these can be implemented correctly in principle
+    // Returns the number of elements contained in the array.
+    //ordinal_index nelements() const { return shape_->range()->size(); }
+    //ordinal_index ntiles() const { return shape_->range()->ntiles(); }
+    //const element_index& origin() const { return shape_->range()->start_element(); }
 
 
     /// assign each element to a
     virtual void assign(const value_type& val) =0;
-    virtual void assign(const element_index& e_idx, const value_type& val) =0;
+    //virtual void assign(const element_index& e_idx, const value_type& val) =0;
 
     /// where is tile k
     virtual unsigned int proc(const tile_index& k) const =0;
@@ -135,10 +133,29 @@ namespace TiledArray {
       return this->shape_->range()->includes(e_idx);
 	}
 
-    /// Map that stores all local tiles.
-    array_map data_;
+	/// given a tile index, create a boost::array object containg its extents in each dimension
+	boost::array<typename Tile::index, DIM> tile_extent(const tile_index& t) const {
+	  typedef boost::array<typename Tile::index, DIM> result_type;
+	  result_type extents;
+
+	  const range_type& rng = *(shape_->range());
+	  unsigned int dim=0;
+	  for(typename range_type::range_iterator rng1=rng.begin_range();
+	      rng1 != rng.end_range();
+	      ++rng1, ++dim) {
+	    extents[dim] = rng1->size( t[dim] );
+	  }
+
+	  return extents;
+	}
+
+  private:
+
+    // no default constructor
+    Array();
+
     /// Shape pointer.
-    boost::shared_ptr<shape> shape_;
+    boost::shared_ptr<shape_type> shape_;
   };
 
 };

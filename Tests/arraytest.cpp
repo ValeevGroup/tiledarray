@@ -9,6 +9,8 @@ using namespace TiledArray;
 
 void ArrayTest() {
 
+  std::cout << "Array Tests:" << std::endl;
+
   typedef Range<4>::element_index::index eindex;
   typedef Range<4>::tile_index::index tindex;
   typedef Shape< Range<3> > Shape3;
@@ -27,7 +29,11 @@ void ArrayTest() {
                        Range1(dim2, tiles[2]) };
 
   Range<3> rng(rng_set);
-  DenseShape3 shp(rng);
+  boost::shared_ptr<DenseShape3> shp( new DenseShape3(rng));
 
-  LocalArray<double, 3> a1(boost::shared_ptr<Shape3>(&shp));
+  typedef LocalArray<double, 3> LArray3;
+  boost::shared_ptr<LArray3> a1(new LArray3(shp));
+  a1->assign(1.0);
+
+  std::cout << "End Array Tests" << std::endl << std::endl;
 }

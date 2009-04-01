@@ -11,57 +11,65 @@ namespace TiledArray {
   /// Tiled Array with all data stored locally.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class LocalArray : public Array<T, DIM, CS> {
-  protected:
-	typedef Array<T, DIM, CS> Array_;
-    typedef LocalArray<T, DIM, CS> LocalArray_;
-    typedef typename Array_::range range;
-    typedef typename Array_::range_iterator range_iterator;
-    typedef typename Array_::shape shape;
-    typedef typename Array_::shape_iterator shape_iterator;
-
   public:
+    typedef Array<T, DIM, CS> base_type;
+    typedef LocalArray<T, DIM, CS> this_type;
+    typedef typename base_type::range_type range_type;
+    typedef typename base_type::range_iterator range_iterator;
+    typedef typename base_type::shape_type shape_type;
+    typedef typename base_type::shape_iterator shape_iterator;
+    typedef typename base_type::tile_index tile_index;
+    typedef typename base_type::element_index element_index;
+    typedef typename base_type::Tile Tile;
+    typedef boost::shared_ptr<Tile> TilePtr;
     typedef T value_type;
     typedef CS coordinate_system;
-	typedef typename Array_::tile_index tile_index;
-	typedef typename Array_::element_index element_index;
-	typedef typename Array_::Tile tile;
 
-  protected:
-    typedef typename Array_::array_map array_map;
-
-  public:
-    LocalArray(const boost::shared_ptr<shape>& shp) : Array_(shp) {
+    LocalArray(const boost::shared_ptr<shape_type>& shp) : base_type(shp) {
       // Fill data_ with tiles.
-      for(shape_iterator it = this->shape_->begin(); it != this->shape_->end(); ++it)
-        this->data_.insert(typename array_map::value_type(*it, tile()));
+      for(shape_iterator it = this->shape()->begin();
+          it != this->shape()->end();
+          ++it) {
+        // make TilePtr
+        TilePtr tile_ptr(new Tile(this->tile_extent(*it)));
+
+        // insert into tile map
+        this->data_.insert(typename array_map::value_type(*it, tile_ptr));
+      }
     }
 
-    LocalArray_& clone(const LocalArray_& other) {
-      this->range_ = other.range_;
-      this->data_ = other.data_;
-
-      return *this;
+    LocalArray(const LocalArray& other) :
+      base_type(other), data_(other.data_)
+    {
     }
 
-    tile& at(const tile_index& index) {
+    Tile& at(const tile_index& index) {
       assert(includes(index));
       return this->data_[index];
     }
 
-    const tile& at(const tile_index& index) const {
+    const Tile& at(const tile_index& index) const {
       assert(includes(index));
       return this->data_[index];
     }
 
     /// assign val to each element
-    virtual void assign(const value_type& val) {
-      for(typename array_map::iterator tile_it = this->shape_->begin(); tile_it != this->shape->end(); ++tile_it)
-        for(typename tile::iterator element_it = tile_it->begin(); element_it != tile_it->end(); ++element_it)
-          *element_it = val;
+    void assign(const value_type& val) {
+      // TODO can figure out when can memset?
+      for(typename array_map::iterator tile_it = data().begin();
+          tile_it != data().end();
+          ++tile_it) {
+        TilePtr& tileptr = (*tile_it).second;
+        const size_t size = tileptr->size();
+        value_type* data = tileptr->data();
+        // TODO why can't I seem to be able to use multi_array::begin() here???
+        std::fill(data,data+size,val);
+      }
     }
 
+#if 0
     /// assign val to index
-    virtual value_type& assign(const element_index& e_idx, const value_type& val) {
+    value_type& assign(const element_index& e_idx, const value_type& val) {
       tile_index t_idx = get_tile_index(e_idx);
       assert(includes(t_idx));
       typename array_map::iterator t_it = this->data_.find(t_idx);
@@ -70,20 +78,29 @@ namespace TiledArray {
 
       return *t_it;
     }
+#endif
 
     /// where is tile k
-    virtual unsigned int proc(const tile_index& index) const {
+    unsigned int proc(const tile_index& index) const {
       // TODO: this should return the current process always.
       return 0;
     }
 
-    virtual bool local(const tile_index& index) const {
+    bool local(const tile_index& index) const {
       return includes(index);
     }
 
   private:
-	LocalArray();
-	LocalArray(const LocalArray_&);
+
+    boost::shared_ptr<base_type> clone() const {
+      return boost::shared_ptr<base_type>(new LocalArray(*this));
+    }
+
+    /// Map that stores all local tiles.
+    typedef std::map<tile_index, TilePtr> array_map;
+    array_map data_;
+    array_map& data() { return data_; }
+    const array_map& data() const { return data_; }
 
   }; // class LocalArray
 

@@ -71,5 +71,5 @@ RangeTest()
       std::cout << "t = " << *t << std::endl;
     }
 
-    std::cout << "End Range Test" << std::endl << std::endl;
+    std::cout << "End Range Tests" << std::endl << std::endl;
 }
