@@ -21,7 +21,7 @@ namespace TiledArray {
     typedef CS coordinate_system;
 	typedef typename Array_::tile_index tile_index;
 	typedef typename Array_::element_index element_index;
-	typedef typename Array_::Tile tile;
+	typedef typename Array_::tile tile;
 
   protected:
     typedef typename Array_::array_map array_map;

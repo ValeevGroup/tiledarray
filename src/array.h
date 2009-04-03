@@ -18,11 +18,11 @@ namespace TiledArray {
   ///
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Array {
-  public:
-    typedef Array this_type;
+   public:
+    typedef Array<T,DIM,CS> Array_;
     typedef Range<DIM, CS> range_type;
     typedef typename range_type::tile_iterator range_iterator;
-    typedef Shape<range_type> shape_type;
+    typedef Shape<DIM, CS> shape_type;
     typedef typename shape_type::iterator shape_iterator;
     typedef typename range_type::ordinal_index ordinal_index;
     typedef typename range_type::tile_index tile_index;
@@ -33,70 +33,92 @@ namespace TiledArray {
     /// Tile is implemented in terms of boost::multi_array
     /// it provides reshaping, iterators, etc., and supports direct access to the raw pointer.
     /// array layout must match that given by CoordinateSystem (i.e. both C, or both Fortran)
-    typedef boost::multi_array<value_type,DIM> Tile;
+    typedef boost::multi_array<value_type,DIM> tile;
+    typedef boost::shared_ptr<tile> tile_ptr;
 
-    class Iterator : public boost::iterator_facade<Iterator, Tile, std::output_iterator_tag > {
-        typedef boost::iterator_facade<Iterator, Tile, std::output_iterator_tag > iterator_facade_;
-      public:
+  public:
 
-        Iterator(const boost::shared_ptr<shape_iterator>& it, const Array& a) :
-          current_index_(it), array_ref_(a)
-          {}
+    class iterator : public boost::iterator_facade<iterator, tile, std::output_iterator_tag > {
 
-        Iterator(const Iterator& other) :
-          current_index_(other.current_index_), array_ref_(other.array_ref_)
-          {}
+      /// Default construction not allowed. Access to the array is required for proper operation.
+      iterator();
 
-        Iterator& operator =(const Iterator& other) {
-          current_index_ = other.current_index_;
-          array_ref_ = other.array_ref_;
-          return *this;
-        }
+    public:
 
-      private:
-        friend class boost::iterator_core_access;
+      /// Standard constructor used by Array class to create new iterators.
+      iterator(const boost::shared_ptr<shape_iterator>& it, const Array_& a) :
+        current_index_(it), array_ref_(a)
+      {}
 
-        Iterator();
+      /// copy constructor for iterator.
+      iterator(const iterator& other) :
+        current_index_(other.current_index_), array_ref_(other.array_ref_)
+      {}
 
-        void increment() { ++(*current_index_); }
-        bool equal(Iterator const& other) const {
-          return (*current_index_ == * other.current_index_) && (array_ref_ == other.array_ref_); }
-        value_type& dereference() const { return array_ref_.at( *current_index_ ); }
+      /// Assignment operator.
+      iterator& operator =(const iterator& other) {
+        current_index_ = other.current_index_;
+        array_ref_ = other.array_ref_;
+        return *this;
+      }
 
-        boost::shared_ptr<shape_iterator> current_index_;
-        const Array& array_ref_;
+    private:
+      friend class boost::iterator_core_access;
+
+      /// Increment the iterator.
+      void increment() { ++(*current_index_); }
+
+      /// Compare with another iterator for equality.
+      bool equal(iterator const& other) const {
+        return (*current_index_ == * other.current_index_) && (array_ref_ == other.array_ref_);
+      }
+
+      /// Dereference tile to an iterator.
+      value_type& dereference() const { return array_ref_.at( *current_index_ ); }
+
+      boost::shared_ptr<shape_iterator> current_index_;
+      const Array& array_ref_;
 
     };
 
-    Iterator begin() const {
-      return Iterator( boost::shared_ptr<shape_iterator>( shape_->begin() ) );
+    iterator begin() const {
+      return iterator( boost::shared_ptr<shape_iterator>( shape_->begin() ) );
     }
 
-    Iterator end() const {
-      return Iterator( boost::shared_ptr<shape_iterator>( shape_->end() ) );
+    iterator end() const {
+      return iterator( boost::shared_ptr<shape_iterator>( shape_->end() ) );
     }
 
     /// array is defined by its shape
     Array(const boost::shared_ptr<shape_type>& shp) : shape_(shp) {}
-    Array(const Array& other) : shape_(other.shape_) {}
-    virtual ~Array() {}
-    virtual boost::shared_ptr<this_type> clone() const =0;
 
+    /// array copy constructor
+    Array(const Array& other) : data_(other.data_), shape_(other.shape_) {}
+
+    virtual ~Array() {}
+
+    /// Access array shape.
     const boost::shared_ptr<shape_type>& shape() const { return shape_; }
 
-    /// Returns the number of dimensions in the array.
-    unsigned int ndim() const { return DIM; }
+    /// Returns the number of dimentions in the array.
+    unsigned int dim() const { return DIM; }
 
-    // WARNING I don't think these can be implemented correctly in principle
-    // Returns the number of elements contained in the array.
-    //ordinal_index nelements() const { return shape_->range()->size(); }
-    //ordinal_index ntiles() const { return shape_->range()->ntiles(); }
-    //const element_index& origin() const { return shape_->range()->start_element(); }
+    /// Returns the number of elements contained in the array.
+    ordinal_index nelements() const { return shape_->range()->size(); }
 
+    /// Returns the number of tiles contained in the array.
+    ordinal_index ntiles() const { return shape_->range()->ntiles(); }
+
+    /// Returns an element index that contains the lower limit of each dimension.
+    const element_index& origin() const { return shape_->range()->start_element(); }
+
+    // Array virtual functions
+
+	/// Clone array
+    virtual boost::shared_ptr<Array_> clone() const =0;
 
     /// assign each element to a
     virtual void assign(const value_type& val) =0;
-    //virtual void assign(const element_index& e_idx, const value_type& val) =0;
 
     /// where is tile k
     virtual unsigned int proc(const tile_index& k) const =0;
@@ -120,22 +142,26 @@ namespace TiledArray {
 
   protected:
 
+    /// Returns the tile index that contains the element index e_idx.
     tile_index get_tile_index(const element_index& e_idx) const {
       assert(includes(e_idx));
       return * this->shape_->range()->find(e_idx);
     }
 
+    /// Returns true when the tile is included in the shape.
 	bool includes(const tile_index& t_idx) const {
       return this->shape_->includes(t_idx);
 	}
 
+	/// Returns true when the element is included in the range.
+	/// It may or may not be included in the shape.
 	bool includes(const element_index& e_idx) const {
       return this->shape_->range()->includes(e_idx);
 	}
 
 	/// given a tile index, create a boost::array object containg its extents in each dimension
-	boost::array<typename Tile::index, DIM> tile_extent(const tile_index& t) const {
-	  typedef boost::array<typename Tile::index, DIM> result_type;
+	boost::array<typename tile::index, DIM> tile_extent(const tile_index& t) const {
+	  typedef boost::array<typename tile::index, DIM> result_type;
 	  result_type extents;
 
 	  const range_type& rng = *(shape_->range());
@@ -149,13 +175,19 @@ namespace TiledArray {
 	  return extents;
 	}
 
+    /// Map that stores all tiles that are stored locally by the array.
+    typedef std::map<tile_index, tile_ptr> array_map;
+    array_map data_;
+    array_map& local_data() { return data_; }
+    const array_map& local_data() const { return data_; }
+
   private:
+    /// Shape pointer to a shape object.
+    boost::shared_ptr<shape_type> shape_;
 
     // no default constructor
     Array();
 
-    /// Shape pointer.
-    boost::shared_ptr<shape_type> shape_;
   };
 
 };

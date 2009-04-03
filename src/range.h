@@ -299,7 +299,7 @@ namespace TiledArray {
   }
 
   template<unsigned int DIM, typename CS> std::ostream& print(std::ostream& out,
-                                                              const typename Range<DIM>::Tile& tile) {
+                                                              const typename Range<DIM>::tile& tile) {
     tile.print(out);
     return out;
   }
