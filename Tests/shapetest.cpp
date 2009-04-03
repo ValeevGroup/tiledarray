@@ -27,13 +27,13 @@ void ShapeTest() {
 
   std::cout << "Start ShapeIterator tests: " << std::endl;
 
-  typedef Shape< Range<3> > Shape3;
-  typedef PredShape<Range<3>, DensePred<3> > DenseShape3;
-  typedef PredShape<Range<3>, LowerTrianglePred<3> > LowerTriShape3;
-  Shape3* shp1 = new DenseShape3(rng);
-  Shape3* shp2 = new LowerTriShape3(rng);
-  DenseShape3 dshp(rng);
-  LowerTriShape3 tshp(rng);
+  typedef Shape<3> Shape3;
+  typedef PredShape<3> DenseShape3;
+  typedef PredShape<3, LowerTrianglePred<3> > LowerTriShape3;
+  Shape3* shp1 = new DenseShape3(&rng);
+  Shape3* shp2 = new LowerTriShape3(&rng);
+  DenseShape3 dshp(&rng);
+  LowerTriShape3 tshp(&rng);
 
   std::cout << "Dense Predicate Iterator" << std::endl << "iterate over tiles:" << std::endl;
 
