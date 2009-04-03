@@ -132,11 +132,11 @@ namespace detail {
   public:
     typedef T index;
     typedef T volume;
-    typedef CS CoordinateSystem;
+    typedef CS coordinate_system;
     typedef boost::array<index,D> Array;
     typedef typename Array::iterator iterator;
     typedef typename Array::const_iterator const_iterator;
-    static const unsigned int DIM = D;
+    static const unsigned int dim() { return D; }
 
     ArrayCoordinate(const T& init_value = 0) { r_.assign(init_value); }
     ArrayCoordinate(const T* init_values) { std::copy(init_values,init_values+D,r_.begin()); }
@@ -164,42 +164,42 @@ namespace detail {
     }
 
     /// Assignment operator
-    ArrayCoordinate<T, D, Tag, CoordinateSystem>&
-    operator =(const ArrayCoordinate<T, D, Tag, CoordinateSystem>& c) {
+    ArrayCoordinate<T, D, Tag, coordinate_system>&
+    operator =(const ArrayCoordinate<T, D, Tag, coordinate_system>& c) {
       std::copy(c.r_.begin(), c.r_.end(), r_.begin());
 
       return (*this);
     }
 
-    ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator++() {
-      const unsigned int lsdim = *CoordinateSystem::ordering().begin();
+    ArrayCoordinate<T, D, Tag, coordinate_system>& operator++() {
+      const unsigned int lsdim = *coordinate_system::ordering().begin();
       ++(r_[lsdim]);
       return *this;
     }
 
-    ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator--() {
-      const unsigned int lsdim = *CoordinateSystem::ordering().begin();
+    ArrayCoordinate<T, D, Tag, coordinate_system>& operator--() {
+      const unsigned int lsdim = *coordinate_system::ordering().begin();
       --(r_[lsdim]);
       return *this;
     }
 
     /// Add operator
-    ArrayCoordinate<T, D, Tag, CoordinateSystem>& operator+=(const ArrayCoordinate& c) {
-      for(unsigned int d = 0; d < DIM; ++d)
+    ArrayCoordinate<T, D, Tag, coordinate_system>& operator+=(const ArrayCoordinate& c) {
+      for(unsigned int d = 0; d < dim(); ++d)
         r_[d] += c.r_[d];
       return *this;
     }
 
     /// Subtract operator
-    ArrayCoordinate<T, D, Tag, CoordinateSystem> operator-=(const ArrayCoordinate& c) {
-      for(unsigned int d = 0; d < DIM; ++d)
+    ArrayCoordinate<T, D, Tag, coordinate_system> operator-=(const ArrayCoordinate& c) {
+      for(unsigned int d = 0; d < dim(); ++d)
         r_[d] -= c.r_[d];
       return *this;
     }
 
-    ArrayCoordinate<T, D, Tag, CoordinateSystem> operator -() const {
+    ArrayCoordinate<T, D, Tag, coordinate_system> operator -() const {
       ArrayCoordinate<T, D, Tag> ret;
-      for(unsigned int d = 0; d < DIM; ++d)
+      for(unsigned int d = 0; d < dim(); ++d)
         ret.r_[d] = -r_[d];
       return ret;
     }
@@ -226,9 +226,9 @@ namespace detail {
       return r_;
     }
 
-    friend bool operator < <>(const ArrayCoordinate<T,D,Tag,CoordinateSystem>&, const ArrayCoordinate<T,D,Tag,CoordinateSystem>&);
-    friend bool operator == <>(const ArrayCoordinate<T,D,Tag,CoordinateSystem>&, const ArrayCoordinate<T,D,Tag,CoordinateSystem>&);
-    friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate<T,D,Tag,CoordinateSystem>&);
+    friend bool operator < <>(const ArrayCoordinate<T,D,Tag,coordinate_system>&, const ArrayCoordinate<T,D,Tag,coordinate_system>&);
+    friend bool operator == <>(const ArrayCoordinate<T,D,Tag,coordinate_system>&, const ArrayCoordinate<T,D,Tag,coordinate_system>&);
+    friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate<T,D,Tag,coordinate_system>&);
     friend ArrayCoordinate<T,D,Tag,CS> operator^ <> (const Permutation<D>& P, const ArrayCoordinate<T,D,Tag,CS>& C);
 
   private:
