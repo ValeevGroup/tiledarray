@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <algorithm>
+#include <boost/shared_ptr.hpp>
 #include <coordinates.h>
 #include <range.h>
 #include <iterator.h>
@@ -12,58 +13,74 @@
 namespace TiledArray {
 
   /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is Range::tile_iterator.
-  template <typename Range>
+  template <unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Shape {
   public:
-    typedef detail::IndexIterator<typename Range::tile_index, Shape> iterator;
-    Shape(const Range& range) : range_(&range) {}
+    typedef Shape<DIM,CS> Shape_;
+    typedef Range<DIM,CS> range_base;
+    typedef CS coordinate_system;
+    typedef detail::IndexIterator<typename range_base::tile_index, Shape> iterator;
+
+    unsigned int dim() const { return DIM; }
+
+    Shape(const range_base* range) : range_(const_cast<range_base*>(range)) {}
     Shape(const Shape& other) : range_(other.range_) {}
     virtual ~Shape() {}
 
-    const Range* range() const { return range_; }
+    const boost::shared_ptr<range_base>& range() const { return range_; }
 
     virtual iterator begin() const =0;
     virtual iterator end() const =0;
 
     // if this index included in the shape?
     virtual bool includes(const typename iterator::value_type& index) const =0;
-    virtual void increment(typename iterator::value_type& it) const =0;
+
+    // Friend the iterator class so it has access to the increment function.
+    friend class detail::IndexIterator<typename range_base::tile_index, Shape>;
+
+  protected:
+
+    virtual void increment(typename iterator::value_type& index) const =0;
 
   private:
-    const Range* range_;
-
+    const boost::shared_ptr<range_base> range_;
   };
 
 
   /// Concrete ShapeIterator whose iteration domain is determined by Predicate
-  template <typename Range, typename Predicate>
-  class PredShape : public Shape<Range> {
+  template <unsigned int DIM, typename Predicate = DensePred<DIM>, typename CS = CoordinateSystem<DIM> >
+  class PredShape : public Shape<DIM,CS> {
   public:
-    typedef typename Shape<Range>::iterator iterator;
+    typedef Predicate pred;
+    typedef CS coordinate_system;
+    typedef PredShape<DIM,Predicate,CS> PredShape_;
+    typedef typename Shape<DIM,CS>::range_base range_base;
+    typedef typename Shape<DIM,CS>::iterator iterator;
 
     /// Iterator main constructor
-    PredShape(const Range& range, Predicate pred = Predicate()) :
-        Shape<Range>(range), pred_(pred) {}
+    PredShape(const range_base* range, pred pred = pred()) :
+        Shape<DIM, CS>(range), pred_(pred) {}
 
     /// Copy constructor
     PredShape(const PredShape& other) :
-        Shape<Range>(other), pred_(other.pred_) {}
+        Shape<DIM, CS>(other), pred_(other.pred_) {}
 
     ~PredShape() {}
 
     /// Predicate accessor function
-    const Predicate& predicate() const {
+    const pred& predicate() const {
       return pred_;
     }
 
     /// Begin accessor function
     iterator begin() const {
       iterator result(this->range()->start_tile(), *this);
-      if (!includes(*result) ) {
+      if (! this->includes(*result) )
         this->increment(*result);
-      }
+
       return result;
     }
+
     /// End accessor function
     iterator end() const {
       return iterator(this->range()->finish_tile(), *this);
@@ -73,14 +90,15 @@ namespace TiledArray {
       return pred_(index) && this->range()->includes(index);
     }
 
-  private:
-    Predicate pred_;
-
-    void increment(typename iterator::value_type& index) const {
-      this->range()->increment(index);
+  protected:
+    virtual void increment(typename iterator::value_type& index) const {
+      detail::IncrementCoordinate<DIM,typename range_base::tile_index,CS>(index, this->range()->start_tile(), this->range()->finish_tile());
       while( !includes(index) && index != this->range()->finish_tile() )
-        this->range()->increment(index);
+        detail::IncrementCoordinate<DIM,typename range_base::tile_index,CS>(index, this->range()->start_tile(), this->range()->finish_tile());
     }
+
+  private:
+    pred pred_;
 
   };
 
