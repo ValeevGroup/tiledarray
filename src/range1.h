@@ -21,23 +21,22 @@ namespace TiledArray {
    defined as one less than the number of elements in the array.
    */
   class Range1 : boost::equality_comparable1<Range1> {
-    typedef Range1 my_type;
+    typedef Range1 Range1_;
   public:
     typedef size_t element_index;
     typedef size_t tile_index;
     /// Iterates over element indices
-    typedef detail::IndexIterator<element_index,my_type> element_iterator;
+    typedef detail::IndexIterator<element_index,Range1_> element_iterator;
     /// iterates over tile indices
-    typedef detail::IndexIterator<tile_index,my_type> tile_iterator;
+    typedef detail::IndexIterator<tile_index,Range1_> tile_iterator;
 
     /// Tile is an interval [start,finish)
     class Tile : boost::equality_comparable1<Tile> {
       typedef Range1::element_index element_index;
       typedef Range1::tile_index tile_index;
-      typedef Tile my_type;
     public:
       /// Element iterator for current tile
-      typedef detail::IndexIterator<element_index,my_type> iterator;
+      typedef detail::IndexIterator<element_index,Tile> iterator;
 
     private:
       /// first index
@@ -264,7 +263,7 @@ namespace TiledArray {
     }
 
     /// Return tile iterator associated with element_index
-    tile_iterator find(element_index element) {
+    tile_iterator find(element_index element) const {
       element_index relindex = element - start_element();
       if(relindex >= size())
         return end_tile();
