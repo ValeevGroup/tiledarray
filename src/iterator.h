@@ -2,6 +2,7 @@
 #define ITERATOR_H_
 
 #include <boost/iterator/iterator_facade.hpp>
+#include <coordinates.h>
 
 namespace TiledArray {
 
@@ -51,6 +52,29 @@ namespace TiledArray {
       const Container* container_;
       Value current_;
   };
+
+  template<unsigned int DIM, typename Coord, typename CS>
+  void IncrementCoordinate(Coord& current, const Coord& start, const Coord& finish) {
+    assert(current >= start && current < finish);
+    // Get order iterators.
+    typename DimensionOrder<DIM>::const_iterator order_iter = CS::ordering().begin();
+    const typename DimensionOrder<DIM>::const_iterator end_iter = CS::ordering().end();
+
+    // increment least significant, and check to see if the iterator has reached the end
+    for(; order_iter != end_iter; ++order_iter) {
+      // increment and break if done.
+      if( (++(current[*order_iter]) ) < finish[*order_iter])
+        return;
+
+      // Reset current index to start value.
+      current[*order_iter] = start[*order_iter];
+    }
+
+    // Check for end (i.e. current was reset to start)
+    if(current == start)
+      current = finish;
+
+  }
 
   } // namespace detail
 
