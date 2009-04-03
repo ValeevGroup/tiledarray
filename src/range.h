@@ -23,28 +23,34 @@ namespace TiledArray {
   template<unsigned int DIM, typename CS = CoordinateSystem<DIM> > class Range :
       boost::equality_comparable1< Range<DIM,CS> > {
 
-      typedef Range<DIM,CS> my_type;
+      typedef Range<DIM,CS> Range_;
       typedef boost::array<Range1,DIM> Ranges;
       typedef Range1::element_index index_t;
-      struct ElementTag {
-      };
-      struct TileTag {
-      };
+
+      template<unsigned int Level>
+      struct LevelTag { };
 
     public:
       // typedefs
-      typedef CS CoordinateSystem;
-      typedef ArrayCoordinate<index_t,DIM,TileTag,CoordinateSystem> tile_index;
-      typedef ArrayCoordinate<index_t,DIM,ElementTag,CoordinateSystem> element_index;
+      typedef CS coordinate_system;
+      typedef ArrayCoordinate<index_t,DIM,LevelTag<1>,coordinate_system> tile_index;
+      typedef ArrayCoordinate<index_t,DIM,LevelTag<0>,coordinate_system> element_index;
       typedef size_t ordinal_index;
 
       // ready to declare iterators
       /// iterates over Range1
       typedef typename Ranges::const_iterator range_iterator;
       /// iterates over tile indices
-      typedef detail::IndexIterator< tile_index, my_type > tile_iterator;
+      typedef detail::IndexIterator< tile_index, Range_ > tile_iterator;
       /// iterates over tile indices
-      typedef detail::IndexIterator< element_index, my_type > element_iterator;
+      typedef detail::IndexIterator< element_index, Range_ > element_iterator;
+
+      // Friend these classes so they have access to increment functions.
+      friend class detail::IndexIterator< tile_index, Range_ >;
+      friend class detail::IndexIterator< element_index, Range_ >;
+
+      /// Returns the number of dimensions
+      static unsigned int dim() { return DIM; }
 
       // Default constructor
       Range() {
@@ -83,50 +89,6 @@ namespace TiledArray {
       /// Return an iterator pointing one past the last dimension.
       tile_iterator end_tile() const {
         return tile_iterator(finish_tile(), *this);
-      }
-
-      /// Increment tile index.
-      void increment(tile_index& t) const {
-        assert(t >= start_tile() && t < finish_tile());
-        // Get order iterators.
-        typename detail::DimensionOrder<DIM>::const_iterator order_iter = CoordinateSystem::ordering().begin();
-        const typename detail::DimensionOrder<DIM>::const_iterator end_iter = CoordinateSystem::ordering().end();
-
-        // increment least significant, and check to see if the iterator has reached the end
-    	for(; order_iter != end_iter; ++order_iter) {
-          // increment and break if done.
-          if( (++(t[*order_iter]) ) < finish_tile()[*order_iter])
-            return;
-
-          // Reset current index to start value.
-          t[*order_iter] = start_tile()[*order_iter];
-        }
-
-    	// Check for end (i.e. t was reset to start)
-    	if(t == start_tile())
-          t = finish_tile();
-      }
-
-      /// Increment element index.
-      void increment(element_index& e) const {
-        assert(e >= start_element() && e < finish_element());
-        // Get order iterators.
-        typename detail::DimensionOrder<DIM>::const_iterator order_iter = CoordinateSystem::ordering().begin();
-        const typename detail::DimensionOrder<DIM>::const_iterator end_iter = CoordinateSystem::ordering().end();
-
-        // increment least significant, and check to see if the iterator has reached the end
-    	for(; order_iter != end_iter; ++order_iter) {
-          // increment and break if done.
-          if( (++(e[*order_iter]) ) < finish_element()[*order_iter])
-            return;
-
-          // Reset current index to start value.
-          e[*order_iter] = start_element()[*order_iter];
-        }
-
-    	// Check for end (i.e. t was reset to start)
-    	if(e == start_element())
-          e = finish_element();
       }
 
       /// Returns an iterator pointing to the first range.
@@ -175,7 +137,7 @@ namespace TiledArray {
       }
 
       /// Return the tile that contains an element index.
-      tile_iterator find(const element_index e) {
+      tile_iterator find(const element_index e) const {
         tile_index tmp;
 
         for (unsigned int dim = 0; dim < DIM; ++dim)
@@ -252,14 +214,13 @@ namespace TiledArray {
         return finish_tile_;
       }
 
-
     private:
       Ranges ranges_; // Vector of range data for each dimension
 
       /// precomputes useful data listed below
       void init_() {
         // Get dim ordering iterator
-        const detail::DimensionOrder<DIM>& dimorder = CoordinateSystem::ordering();
+        const detail::DimensionOrder<DIM>& dimorder = coordinate_system::ordering();
         typename detail::DimensionOrder<DIM>::const_iterator d;
 
         ordinal_index tile_weight = 1;
@@ -301,6 +262,16 @@ namespace TiledArray {
         tile_index relative_index = t - start_tile();
         ordinal_index result = dot_product(relative_index.data(),tile_ordinal_weights_);
         return result;
+      }
+
+      /// Increment tile index.
+      void increment(tile_index& t) const {
+        detail::IncrementCoordinate<DIM,tile_index,coordinate_system>(t, start_tile(), finish_tile());
+      }
+
+      /// Increment element index.
+      void increment(element_index& e) const {
+        detail::IncrementCoordinate<DIM,element_index,coordinate_system>(e, start_element(), finish_element());
       }
 
       /// to compute ordinal dot tile_index with this.
