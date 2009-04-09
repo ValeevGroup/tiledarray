@@ -43,11 +43,11 @@ namespace TiledArray {
       /// iterates over tile indices
       typedef detail::IndexIterator< tile_index, Range_ > tile_iterator;
       /// iterates over tile indices
-      typedef detail::IndexIterator< element_index, Range_ > element_iterator;
+      //typedef detail::IndexIterator< element_index, Range_ > element_iterator;
 
       // Friend these classes so they have access to increment functions.
       friend class detail::IndexIterator< tile_index, Range_ >;
-      friend class detail::IndexIterator< element_index, Range_ >;
+      //friend class detail::IndexIterator< element_index, Range_ >;
 
       /// Returns the number of dimensions
       static unsigned int dim() { return DIM; }
@@ -70,44 +70,24 @@ namespace TiledArray {
         init_();
       }
 
-      /// Returns an iterator pointing to the first element
-      element_iterator begin_element() const {
-        return element_iterator(start_element(), *this);
-      }
-
-      /// Return an iterator pointing to the one past the last element
-      element_iterator end_element() const {
-        return element_iterator(finish_element(), *this);
-      }
-
       /// Returns an iterator pointing to the first range.
-      tile_iterator begin_tile() const {
+      tile_iterator begin() const {
         tile_iterator result(start_tile(), *this);
         return result;
       }
 
       /// Return an iterator pointing one past the last dimension.
-      tile_iterator end_tile() const {
+      tile_iterator end() const {
         return tile_iterator(finish_tile(), *this);
       }
 
-      /// Returns an iterator pointing to the first range.
-      range_iterator begin_range() const {
-        return ranges_.begin();
-      }
-
-      /// Return an iterator pointing one past the last dimension.
-      range_iterator end_range() const {
-        return ranges_.end();
-      }
-
       /// number of elements
-      ordinal_index size() const {
+      ordinal_index nelements() const {
         return nelems_;
       }
 
       /// number of elements of tile
-      ordinal_index size(const tile_index& t) const {
+      ordinal_index nelements(const tile_index& t) const {
     	  ordinal_index n = 1;
     	  for(size_t d = 0; d < DIM; ++d)
             n *= ranges_[d].size(t[d]);
@@ -148,19 +128,8 @@ namespace TiledArray {
           return result;
         }
         else
-          return end_tile();
+          return end();
       }
-
-/*
-      /// Returns Tile for the given tile_index t. Assumes that includes(t) is true.
-      Tile tile(const tile_index& t) const {
-        boost::array<Range1::Tile,DIM> tiles1;
-        for(unsigned int d=0; d<DIM; ++d)
-          tiles1[d] = ranges_[d].tile(t[d]);
-        Tile result(tiles1.begin(),tiles1.end());
-        return result;
-      }
-*/
 
       Range<DIM>& permute(const Permutation<DIM>& perm) {
         operator^(perm, ranges_);
@@ -173,7 +142,7 @@ namespace TiledArray {
         if(&rng == this)
           return true;
         else
-          return std::equal(begin_range(), end_range(), rng.begin_range());
+          return std::equal(ranges_.begin(), ranges_.end(), rng.ranges_.begin());
       }
 
       /// return element with the smallest indices in each dimension
@@ -212,6 +181,19 @@ namespace TiledArray {
       /// return tile past the one with the largest indices in each dimension
       tile_index finish_tile() const {
         return finish_tile_;
+      }
+
+
+      /// given a tile index, return a tile_index::Array (boost::array) object containing its extents in each dimension
+      typename tile_index::Array size(const tile_index& t) const {
+        element_index extents = finish_element(t) - start_element(t);
+        return extents.data();
+      }
+
+      /// return a tile_index::Array (boost::array) object containing its extents in each dimension
+      typename tile_index::Array size() const {
+        element_index extents = finish_element() - start_element();
+        return extents.data();
       }
 
     private:
@@ -292,9 +274,9 @@ namespace TiledArray {
   template<unsigned int DIM, typename CS> std::ostream& operator<<(std::ostream& out,
                                                                    const Range<DIM,CS>& rng) {
     out << "Range<" << DIM << ">(" << " @= " << &rng
-        << " *begin_tile=" << (*rng.begin_tile()) << " *end_tile=" << (*rng.end_tile())
-        << " *begin_element=" << (*rng.begin_element()) << " *end_element=" << (*rng.end_element())
-        << " size=" << rng.size() << " ntiles=" << rng.ntiles() << " )";
+        << " *begin_tile=" << (*rng.begin()) << " *end_tile=" << (*rng.end())
+        << " start_element=" << rng.start_element() << " finish_element=" << rng.finish_element()
+        << " nelements=" << rng.nelements() << " ntiles=" << rng.ntiles() << " )";
     return out;
   }
 

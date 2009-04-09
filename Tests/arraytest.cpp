@@ -28,8 +28,8 @@ void ArrayTest() {
                        Range1(dim1, tiles[1]),
                        Range1(dim2, tiles[2]) };
 
-  Range<3> rng(rng_set);
-  boost::shared_ptr<DenseShape3> shp( new DenseShape3(&rng));
+  boost::shared_ptr<Range<3> > rng(new Range<3>(rng_set));
+  boost::shared_ptr<DenseShape3> shp( new DenseShape3(rng));
 
 
   typedef LocalArray<double, 3> LArray3;

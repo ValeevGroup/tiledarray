@@ -17,17 +17,17 @@ namespace TiledArray {
   class Shape {
   public:
     typedef Shape<DIM,CS> Shape_;
-    typedef Range<DIM,CS> range_base;
+    typedef Range<DIM,CS> range_type;
     typedef CS coordinate_system;
-    typedef detail::IndexIterator<typename range_base::tile_index, Shape> iterator;
+    typedef detail::IndexIterator<typename range_type::tile_index, Shape> iterator;
 
     unsigned int dim() const { return DIM; }
 
-    Shape(const range_base* range) : range_(const_cast<range_base*>(range)) {}
+    Shape(const boost::shared_ptr<range_type>& range) : range_(range) {}
     Shape(const Shape& other) : range_(other.range_) {}
     virtual ~Shape() {}
 
-    const boost::shared_ptr<range_base>& range() const { return range_; }
+    const boost::shared_ptr<range_type>& range() const { return range_; }
 
     virtual iterator begin() const =0;
     virtual iterator end() const =0;
@@ -36,14 +36,14 @@ namespace TiledArray {
     virtual bool includes(const typename iterator::value_type& index) const =0;
 
     // Friend the iterator class so it has access to the increment function.
-    friend class detail::IndexIterator<typename range_base::tile_index, Shape>;
+    friend class detail::IndexIterator<typename range_type::tile_index, Shape>;
 
   protected:
 
     virtual void increment(typename iterator::value_type& index) const =0;
 
   private:
-    const boost::shared_ptr<range_base> range_;
+    const boost::shared_ptr<range_type> range_;
   };
 
 
@@ -51,14 +51,14 @@ namespace TiledArray {
   template <unsigned int DIM, typename Predicate = DensePred<DIM>, typename CS = CoordinateSystem<DIM> >
   class PredShape : public Shape<DIM,CS> {
   public:
-    typedef Predicate pred;
+    typedef Predicate pred_type;
     typedef CS coordinate_system;
     typedef PredShape<DIM,Predicate,CS> PredShape_;
-    typedef typename Shape<DIM,CS>::range_base range_base;
+    typedef typename Shape<DIM,CS>::range_type range_type;
     typedef typename Shape<DIM,CS>::iterator iterator;
 
     /// Iterator main constructor
-    PredShape(const range_base* range, pred pred = pred()) :
+    PredShape(const boost::shared_ptr<range_type>& range, pred_type pred = pred_type()) :
         Shape<DIM, CS>(range), pred_(pred) {}
 
     /// Copy constructor
@@ -68,7 +68,7 @@ namespace TiledArray {
     ~PredShape() {}
 
     /// Predicate accessor function
-    const pred& predicate() const {
+    const pred_type& predicate() const {
       return pred_;
     }
 
@@ -92,13 +92,13 @@ namespace TiledArray {
 
   protected:
     virtual void increment(typename iterator::value_type& index) const {
-      detail::IncrementCoordinate<DIM,typename range_base::tile_index,CS>(index, this->range()->start_tile(), this->range()->finish_tile());
+      detail::IncrementCoordinate<DIM,typename range_type::tile_index,CS>(index, this->range()->start_tile(), this->range()->finish_tile());
       while( !includes(index) && index != this->range()->finish_tile() )
-        detail::IncrementCoordinate<DIM,typename range_base::tile_index,CS>(index, this->range()->start_tile(), this->range()->finish_tile());
+        detail::IncrementCoordinate<DIM,typename range_type::tile_index,CS>(index, this->range()->start_tile(), this->range()->finish_tile());
     }
 
   private:
-    pred pred_;
+    pred_type pred_;
 
   };
 

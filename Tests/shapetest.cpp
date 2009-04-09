@@ -23,17 +23,17 @@ void ShapeTest() {
                        Range1(dim1, tiles[1]),
                        Range1(dim2, tiles[2]) };
 
-  Range<3> rng(rng_set);
+  boost::shared_ptr<Range<3> > rng(new Range<3>(rng_set));
 
   std::cout << "Start ShapeIterator tests: " << std::endl;
 
   typedef Shape<3> Shape3;
   typedef PredShape<3> DenseShape3;
   typedef PredShape<3, LowerTrianglePred<3> > LowerTriShape3;
-  Shape3* shp1 = new DenseShape3(&rng);
-  Shape3* shp2 = new LowerTriShape3(&rng);
-  DenseShape3 dshp(&rng);
-  LowerTriShape3 tshp(&rng);
+  Shape3* shp1 = new DenseShape3(rng);
+  Shape3* shp2 = new LowerTriShape3(rng);
+  DenseShape3 dshp(rng);
+  LowerTriShape3 tshp(rng);
 
   std::cout << "Dense Predicate Iterator" << std::endl << "iterate over tiles:" << std::endl;
 

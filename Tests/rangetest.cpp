@@ -67,7 +67,7 @@ RangeTest()
     std::cout << "ortho2.find(e2) = " << *(ortho2.find(e2)) << std::endl;
 
     std::cout << "tile iterator tests: " << std::endl;
-    for(Range<4>::tile_iterator t=ortho2.begin_tile(); t!=ortho2.end_tile(); ++t) {
+    for(Range<4>::tile_iterator t=ortho2.begin(); t!=ortho2.end(); ++t) {
       std::cout << "t = " << *t << std::endl;
     }
 

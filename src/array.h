@@ -17,7 +17,7 @@ namespace TiledArray {
   /// Serves as base to various implementations (local, replicatd, distributed)
   ///
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
-  class Array {
+  class Array : private boost::noncopyable{
    public:
     typedef Array<T,DIM,CS> Array_;
     typedef Range<DIM, CS> range_type;
@@ -34,7 +34,6 @@ namespace TiledArray {
     /// it provides reshaping, iterators, etc., and supports direct access to the raw pointer.
     /// array layout must match that given by CoordinateSystem (i.e. both C, or both Fortran)
     typedef boost::multi_array<value_type,DIM> tile;
-    typedef boost::shared_ptr<tile> tile_ptr;
 
   public:
 
@@ -92,22 +91,16 @@ namespace TiledArray {
     /// array is defined by its shape
     Array(const boost::shared_ptr<shape_type>& shp) : shape_(shp) {}
 
-    /// array copy constructor
-    Array(const Array& other) : data_(other.data_), shape_(other.shape_) {}
-
     virtual ~Array() {}
 
     /// Access array shape.
     const boost::shared_ptr<shape_type>& shape() const { return shape_; }
 
+    /// Access array range.
+    const boost::shared_ptr<range_type>& range() const { return shape_->range(); }
+
     /// Returns the number of dimentions in the array.
     unsigned int dim() const { return DIM; }
-
-    /// Returns the number of elements contained in the array.
-    ordinal_index nelements() const { return shape_->range()->size(); }
-
-    /// Returns the number of tiles contained in the array.
-    ordinal_index ntiles() const { return shape_->range()->ntiles(); }
 
     /// Returns an element index that contains the lower limit of each dimension.
     const element_index& origin() const { return shape_->range()->start_element(); }
@@ -159,34 +152,9 @@ namespace TiledArray {
       return this->shape_->range()->includes(e_idx);
 	}
 
-	/// given a tile index, create a boost::array object containg its extents in each dimension
-	boost::array<typename tile::index, DIM> tile_extent(const tile_index& t) const {
-	  typedef boost::array<typename tile::index, DIM> result_type;
-	  result_type extents;
-
-	  const range_type& rng = *(shape_->range());
-	  unsigned int dim=0;
-	  for(typename range_type::range_iterator rng1=rng.begin_range();
-	      rng1 != rng.end_range();
-	      ++rng1, ++dim) {
-	    extents[dim] = rng1->size( t[dim] );
-	  }
-
-	  return extents;
-	}
-
-    /// Map that stores all tiles that are stored locally by the array.
-    typedef std::map<tile_index, tile_ptr> array_map;
-    array_map data_;
-    array_map& local_data() { return data_; }
-    const array_map& local_data() const { return data_; }
-
   private:
     /// Shape pointer to a shape object.
     boost::shared_ptr<shape_type> shape_;
-
-    // no default constructor
-    Array();
 
   };
 

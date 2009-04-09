@@ -21,12 +21,9 @@ namespace TiledArray {
     typedef typename Array_::tile_index tile_index;
     typedef typename Array_::element_index element_index;
     typedef typename Array_::tile tile;
-    typedef typename Array_::tile_ptr tile_ptr;
+    typedef boost::shared_ptr<tile> tile_ptr;
     typedef T value_type;
     typedef CS coordinate_system;
-
-  protected:
-    typedef typename Array_::array_map array_map;
 
   public:
     LocalArray(const boost::shared_ptr<shape_type>& shp) : Array_(shp) {
@@ -35,16 +32,12 @@ namespace TiledArray {
           it != this->shape()->end();
           ++it) {
         // make TilePtr
-        tile_ptr tileptr(new tile(this->tile_extent(*it)));
+        tile_ptr tileptr(new tile(this->range()->size(*it)));
 
         // insert into tile map
         this->data_.insert(typename array_map::value_type(*it, tileptr));
       }
     }
-
-    LocalArray(const LocalArray& other) :
-      Array_(other)
-    { }
 
     tile& at(const tile_index& index) {
       assert(includes(index));
@@ -59,8 +52,8 @@ namespace TiledArray {
     /// assign val to each element
     void assign(const value_type& val) {
       // TODO can figure out when can memset?
-      for(typename array_map::iterator tile_it = this->local_data().begin();
-          tile_it != this->local_data().end();
+      for(typename array_map::iterator tile_it = data().begin();
+          tile_it != data().end();
           ++tile_it) {
         tile_ptr& tileptr = (*tile_it).second;
         const size_t size = tileptr->size();
@@ -82,10 +75,16 @@ namespace TiledArray {
 
   private:
 	LocalArray();
-//	LocalArray(const LocalArray_&);
+
+    /// Map that stores all tiles that are stored locally by the array.
+    typedef std::map<tile_index, tile_ptr> array_map;
+    array_map data_;
+    array_map& data() { return data_; }
+    const array_map& data() const { return data_; }
 
     boost::shared_ptr<Array_> clone() const {
-      return boost::shared_ptr<Array_>(new LocalArray(*this));
+      boost::shared_ptr<Array_> array_clone(new LocalArray(this->shape()));
+      return array_clone;
     }
 
 
