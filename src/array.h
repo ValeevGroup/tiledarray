@@ -14,10 +14,11 @@
 namespace TiledArray {
 
   /// The main player: Array
-  /// Serves as base to various implementations (local, replicatd, distributed)
+  /// Serves as base to various implementations (local, replicated, distributed)
   ///
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
-  class Array : private boost::noncopyable{
+  class Array : private boost::noncopyable // we don't allow copy constructors, et al. May need in the future.
+  {
    public:
     typedef Array<T,DIM,CS> Array_;
     typedef Range<DIM, CS> range_type;
