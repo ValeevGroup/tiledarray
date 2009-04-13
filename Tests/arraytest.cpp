@@ -4,6 +4,7 @@
 #include <boost/smart_ptr.hpp>
 #include <array.h>
 #include <local_array.h>
+#include <distributed_array.h>
 
 using namespace TiledArray;
 
@@ -35,6 +36,9 @@ void ArrayTest() {
   typedef LocalArray<double, 3> LArray3;
   boost::shared_ptr<LArray3> a1(new LArray3(shp));
   a1->assign(1.0);
+
+  //typedef DistributedArray<double, 3> DArray3;
+  //boost::shared_ptr<DArray3> a2(new DArray3(shp));
 
   std::cout << "End Array Tests" << std::endl << std::endl;
 }

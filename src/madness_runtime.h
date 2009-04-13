@@ -1,11 +1,20 @@
 #ifndef _tiledarray_madnessruntime_h_
 #define _tiledarray_madnessruntime_h_
 
-#include <world/worldobj.h>
-#include <world/worlddc.h>
-#include <world/worldtypes.h>
+#ifdef SEEK_SET
+#  undef SEEK_SET
+#endif
+#ifdef SEEK_CUR
+#  undef SEEK_CUR
+#endif
+#ifdef SEEK_END
+#  undef SEEK_END
+#endif
+
+#include <world/world.h>
 
 namespace TiledArray {
+//#define Future madness::Future
 #define DistributedRuntime madness::World
 #define DistributedObject madness::WorldObject
 #define DistributedContainer madness::WorldContainer
