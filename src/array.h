@@ -13,6 +13,70 @@
 
 namespace TiledArray {
 
+  template<typename T, unsigned int DIM, typename INDEX, typename CS = CoordinateSystem<DIM> >
+  class Tile
+  {
+  public:
+    typedef T value_type;
+    typedef INDEX index_type;
+    typedef typename index_type::Array size_array;
+    typedef CS coordinate_system;
+    typedef size_t ordinal_type;
+
+    static const unsigned int dim() { return DIM; }
+
+    Tile(const size_array& size, const value_type val = 0) {
+      size_ = size;
+
+      init_();
+      data_ = new value_type[n_];
+
+      for(unsigned int i = 0; i < n_; ++i)
+        data_[i] = val;
+    }
+
+    ~Tile() {
+      delete[] data_;
+    }
+
+  private:
+
+    void init_() {
+
+
+      // Get dim ordering iterator
+      const detail::DimensionOrder<DIM>& dimorder = coordinate_system::ordering();
+      typename detail::DimensionOrder<DIM>::const_iterator d;
+
+      ordinal_type weight = 1;
+      for(d = dimorder.begin(); d != dimorder.end(); ++d) {
+        // Init ordinal weights.
+        weights_[*d] = weight;
+        weight *= size_[*d];
+      }
+      n_ = weight;
+
+    }
+
+    bool includes_(const index_type& i) const{
+      index_type origin(0);
+      return (i >= origin) && (i.data() < size_);
+    }
+
+    /// computes an ordinal index for a given index_type
+    ordinal_type ordinal_(const index_type& i) const {
+      assert(includes_(i));
+      ordinal_type result = dot_product(i.data(), weights_);
+      return result;
+    }
+
+    ordinal_type n_;
+	size_array weights_;
+	size_array size_;
+	size_array origin_;
+    value_type* data_;
+  };
+
   /// The main player: Array
   /// Serves as base to various implementations (local, replicated, distributed)
   ///
@@ -34,7 +98,7 @@ namespace TiledArray {
     /// Tile is implemented in terms of boost::multi_array
     /// it provides reshaping, iterators, etc., and supports direct access to the raw pointer.
     /// array layout must match that given by CoordinateSystem (i.e. both C, or both Fortran)
-    typedef boost::multi_array<value_type,DIM> tile;
+    typedef Tile<value_type, DIM, element_index, coordinate_system> tile;
 
   public:
 
@@ -100,7 +164,7 @@ namespace TiledArray {
     /// Access array range.
     const boost::shared_ptr<range_type>& range() const { return shape_->range(); }
 
-    /// Returns the number of dimentions in the array.
+    /// Returns the number of dimensions in the array.
     unsigned int dim() const { return DIM; }
 
     /// Returns an element index that contains the lower limit of each dimension.

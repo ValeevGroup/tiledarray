@@ -56,11 +56,13 @@ namespace TiledArray {
           tile_it != data().end();
           ++tile_it) {
         tile_ptr& tileptr = (*tile_it).second;
-        const size_t size = tileptr->size();
-        value_type* data = tileptr->data();
+        // TODO: FINISH TILE
+//        const size_t size = tileptr->size();
+//        value_type* data = tileptr->data();
         // TODO why can't I seem to be able to use multi_array::begin() here???
-        std::fill(data,data+size,val);
+//        std::fill(data,data+size,val);
       }
+
     }
 
     /// where is tile k
