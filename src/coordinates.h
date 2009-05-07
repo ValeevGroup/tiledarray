@@ -270,13 +270,19 @@ namespace detail {
     return result;
   }
 
+  /// compute the volume of the orthotope bounded by the origin and a
+  template <typename T, unsigned int D>
+  T volume(const boost::array<T,D>& a) {
+    T result = 1;
+    for(unsigned int dim = 0; dim < D; ++dim)
+      result *= std::abs(static_cast<long int>(a[dim]));
+    return result;
+  }
+
   /// compute the volume of the orthotope bounded by the origin and C
   template <typename T, unsigned int D, typename Tag, typename CS>
   typename ArrayCoordinate<T,D,Tag,CS>::volume volume(const ArrayCoordinate<T,D,Tag,CS>& C) {
-    typename ArrayCoordinate<T,D,Tag,CS>::volume result = 1;
-    for(unsigned int dim = 0; dim < D; ++dim)
-      result *= std::abs(static_cast<long int>(C[dim]));
-    return result;
+    return volume<T,D>(C.data());
   }
 
   /// compute dot product between 2 arrays
