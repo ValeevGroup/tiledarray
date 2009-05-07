@@ -65,7 +65,7 @@ namespace TiledArray {
   public:
 	typedef ArrayIterator<Value, Container, std::input_iterator_tag> ArrayIterator_;
     IndexIterator(const Value& cur, const Container* container) :
-       ArrayIterator_(cur, container)
+      ArrayIterator_(cur, container)
     {}
   private:
     friend class boost::iterator_core_access;
@@ -78,10 +78,10 @@ namespace TiledArray {
   class ElementIterator : public ArrayIterator<Value, Container, std::output_iterator_tag>
   {
   public:
-	typedef ArrayIterator<Value, Container, std::input_iterator_tag> ArrayIterator_;
+	typedef ArrayIterator<Value, Container, std::output_iterator_tag> ArrayIterator_;
 
 	ElementIterator(const Value& cur, const Container* container) :
-       ArrayIterator_(cur, container)
+	  ArrayIterator_(cur, container)
     {}
 
 	template<typename OtherValue>
