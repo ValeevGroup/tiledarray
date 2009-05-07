@@ -1,14 +1,12 @@
-#MADNESSROOT = $(HOME)/Development/MADNESS/install
-MADNESSDIR = $(HOME)/Development/workspace/MADNESS-install
-BOOSTDIR = $(HOME)/Development/boost/trunk
+include Make.path
 
-CXX = g++
-CXXFLAGS = -g -Wall -fmessage-length=0 -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -DTA_DLEVEL=3 -DTA_WLEVEL=3
+CXX = $(MPICXX)
+CXXFLAGS = -g -Wall -fmessage-length=0 -I$(BOOSTDIR) -I./src -I./Tests
 
 OBJS = src/tilemap.o src/env.o TiledArrayTest.o Tests/coordinatestest.o Tests/range1test.o  \
-  Tests/rangetest.o Tests/shapetest.o Tests/arraytest.o
+  Tests/rangetest.o Tests/shapetest.o Tests/tiletest.o Tests/arraytest.o
 
-LIBDIR = -L$(MADNESSDIR)/lib
+INCDIR = -I$(BOOSTDIR) -I./src -I./Tests
 LIBS = -lMADworld
 
 TARGET =	TiledArrayTest

@@ -21,14 +21,15 @@ namespace TiledArray {
    defined as one less than the number of elements in the array.
    */
   class Range1 : boost::equality_comparable1<Range1> {
-    typedef Range1 Range1_;
   public:
     typedef size_t element_index;
     typedef size_t tile_index;
     /// Iterates over element indices
-    typedef detail::IndexIterator<element_index,Range1_> element_iterator;
+    typedef detail::IndexIterator<element_index, Range1> element_iterator;
+    INDEX_ITERATOR_FRIENDSHIP( element_index , Range1);
     /// iterates over tile indices
-    typedef detail::IndexIterator<tile_index,Range1_> tile_iterator;
+    typedef detail::IndexIterator<tile_index, Range1> tile_iterator;
+//    INDEX_ITERATOR_FRIENDSHIP( tile_index, Range1);
 
     /// Tile is an interval [start,finish)
     class Tile : boost::equality_comparable1<Tile> {
@@ -37,6 +38,7 @@ namespace TiledArray {
     public:
       /// Element iterator for current tile
       typedef detail::IndexIterator<element_index,Tile> iterator;
+      INDEX_ITERATOR_FRIENDSHIP(iterator, Tile);
 
     private:
       /// first index
@@ -96,12 +98,14 @@ namespace TiledArray {
       }
 
       iterator begin() const {
-        return iterator(start(),*this);
+        return iterator(start(), this);
       }
 
       iterator end() const {
-        return iterator(finish(),*this);
+        return iterator(finish(), this);
       }
+
+    private:
 
       void increment(element_index& i) const {
         ++i;
@@ -246,20 +250,15 @@ namespace TiledArray {
 
     /// Returns an iterator to the end of the range.
     tile_iterator end_tile() const {
-      return tile_iterator(finish_tile(),*this);
+      return tile_iterator(finish_tile(), this);
     }
 
     /// Returns an iterator to the first tile in the range.
     tile_iterator begin_tile() const {
       if(!tiles_.empty())
-        return tile_iterator(start_tile(),*this);
+        return tile_iterator(start_tile(), this);
       else
         return end_tile();
-    }
-
-    /// how tile_index is incremented
-    void increment(tile_index& t) const {
-      ++t;
     }
 
     /// Return tile iterator associated with element_index
@@ -270,17 +269,17 @@ namespace TiledArray {
 #ifdef NDEBUG
       return tile_iterator(tiles_[elem2tile_[relindex]].index(),*this);
 #else
-      return tile_iterator(tiles_.at(elem2tile_.at(relindex)).index(),*this);
+      return tile_iterator(tiles_.at(elem2tile_.at(relindex)).index(), this);
 #endif
     }
 
     element_iterator begin_element() const {
-      element_iterator result(start_element(),*this);
+      element_iterator result(start_element(), this);
       return result;
     }
 
     element_iterator end_element() const {
-      element_iterator result(finish_element(),*this);
+      element_iterator result(finish_element(), this);
       return result;
     }
 /*
@@ -329,6 +328,13 @@ namespace TiledArray {
     bool
     includes_tile(const tile_index& a) const {
       return a < finish_tile() && a >= start_tile();
+    }
+
+  private:
+
+    /// how tile_index is incremented
+    void increment(tile_index& t) const {
+      ++t;
     }
 
   }; // Range1

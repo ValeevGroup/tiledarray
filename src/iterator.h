@@ -1,60 +1,107 @@
-#ifndef ITERATOR_H_
-#define ITERATOR_H_
+#ifndef ITERATOR_H__INCLUDED
+#define ITERATOR_H__INCLUDED
 
 #include <boost/iterator/iterator_facade.hpp>
 #include <coordinates.h>
+
+#define INDEX_ITERATOR_FRIENDSHIP(V, C) friend class detail::ArrayIterator< V, C, std::input_iterator_tag>
+#define ELEMENT_ITERATOR_FRIENDSHIP(V, C) friend class detail::ArrayIterator< V, C, std::output_iterator_tag>
 
 namespace TiledArray {
 
   namespace detail {
 
-  /// iterates over indices to a container
-  template <typename Value, typename Container>
-  class IndexIterator : public boost::iterator_facade<
-    IndexIterator<Value,Container>, Value, std::input_iterator_tag >
+  /// iterates over an array container
+  template <typename Value, typename Container, typename CategoryOrTraversal>
+  class ArrayIterator : public boost::iterator_facade<
+    ArrayIterator<Value,Container,CategoryOrTraversal>, Value, CategoryOrTraversal >
   {
-      typedef IndexIterator<Value,Container> my_type;
-    public:
-      IndexIterator(const IndexIterator& other) :
-         container_(other.container_), current_(other.current_) {
-      }
+    typedef ArrayIterator<Value,Container,CategoryOrTraversal> ArrayIterator_;
+    typedef boost::iterator_facade<ArrayIterator<Value,Container,CategoryOrTraversal>, Value, CategoryOrTraversal > iterator_facade_;
 
-      ~IndexIterator() {
-      }
+  public:
 
-      IndexIterator(const Value& cur, const Container& container) :
-        container_(&container), current_(cur) {
-      }
+    ArrayIterator(const ArrayIterator_& other) :
+       container_(other.container_), current_(other.current_) {
+    }
 
-      const Container& container() const {
-    	  return *container_;
-      }
+    ~ArrayIterator() {}
 
-    private:
-      friend class boost::iterator_core_access;
+    ArrayIterator(const Value& cur, const Container* container) :
+      container_(container), current_(cur) {
+    }
 
-      bool equal(my_type const& other) const {
-        return current_ == other.current_ && container_ == other.container_;
-      }
+    const Container& container() const {
+      return *container_;
+    }
 
-      // user must provide container_->increment(current_) function
-      // void increment(index& current) const;
-      void increment() {
-        container_->increment(current_);
-      }
+  protected:
+    friend class boost::iterator_core_access;
 
-      Value& dereference() const {
-        return const_cast<Value&>(current_);
-      }
+    bool equal(const ArrayIterator_ & other) const {
+      return current_ == other.current_ && container_ == other.container_;
+    }
 
-      IndexIterator();
+    // user must provide void Container::increment(index& current) const;
+    void increment() {
+      container_->increment(current_);
+    }
 
-      const Container* container_;
-      Value current_;
-  };
+    Value& dereference() const {
+      return const_cast<Value&>(current_);
+    }
 
-  template<unsigned int DIM, typename Coord, typename CS>
-  void IncrementCoordinate(Coord& current, const Coord& start, const Coord& finish) {
+  private:
+    ArrayIterator();
+
+    const Container* container_;
+    Value current_;
+  }; // class ArrayIterator
+
+  /// Array input iterator.
+  template <typename Value, typename Container>
+  class IndexIterator : public ArrayIterator<Value, Container, std::input_iterator_tag>
+  {
+  public:
+	typedef ArrayIterator<Value, Container, std::input_iterator_tag> ArrayIterator_;
+    IndexIterator(const Value& cur, const Container* container) :
+       ArrayIterator_(cur, container)
+    {}
+  private:
+    friend class boost::iterator_core_access;
+
+    IndexIterator();
+  }; // class IndexIterator
+
+  /// Array output iterator.
+  template <typename Value, typename Container>
+  class ElementIterator : public ArrayIterator<Value, Container, std::output_iterator_tag>
+  {
+  public:
+	typedef ArrayIterator<Value, Container, std::input_iterator_tag> ArrayIterator_;
+
+	ElementIterator(const Value& cur, const Container* container) :
+       ArrayIterator_(cur, container)
+    {}
+
+	template<typename OtherValue>
+	ElementIterator(const ElementIterator<OtherValue, Container>& other) :
+		ArrayIterator_(other.current_, other.container_)
+    {}
+
+  private:
+    friend class boost::iterator_core_access;
+
+    template<typename OtherValue>
+    bool equal(const ElementIterator<OtherValue, Container>& other) {
+      return this->current_ == other.current_ && this->container_ == other.container_;
+    }
+    ElementIterator();
+  }; // class ElementIterator
+
+
+  template<unsigned int DIM, typename INDEX, typename CS>
+  void IncrementCoordinate(INDEX& current, const INDEX& start, const INDEX& finish) {
     assert(current >= start && current < finish);
     // Get order iterators.
     typename DimensionOrder<DIM>::const_iterator order_iter = CS::ordering().begin();
@@ -80,4 +127,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif /*ITERATOR_H_*/
+#endif // ITERATOR_H__INCLUDED

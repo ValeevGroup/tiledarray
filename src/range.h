@@ -41,13 +41,8 @@ namespace TiledArray {
       /// iterates over Range1
       typedef typename Ranges::const_iterator range_iterator;
       /// iterates over tile indices
-      typedef detail::IndexIterator< tile_index, Range_ > tile_iterator;
-      /// iterates over tile indices
-      //typedef detail::IndexIterator< element_index, Range_ > element_iterator;
-
-      // Friend these classes so they have access to increment functions.
-      friend class detail::IndexIterator< tile_index, Range_ >;
-      //friend class detail::IndexIterator< element_index, Range_ >;
+      typedef detail::IndexIterator< tile_index, Range_> tile_iterator;
+      INDEX_ITERATOR_FRIENDSHIP(tile_index, Range_);
 
       /// Returns the number of dimensions
       static unsigned int dim() { return DIM; }
@@ -72,13 +67,13 @@ namespace TiledArray {
 
       /// Returns an iterator pointing to the first range.
       tile_iterator begin() const {
-        tile_iterator result(start_tile(), *this);
+        tile_iterator result(start_tile(), this);
         return result;
       }
 
       /// Return an iterator pointing one past the last dimension.
       tile_iterator end() const {
-        return tile_iterator(finish_tile(), *this);
+        return tile_iterator(finish_tile(), this);
       }
 
       /// number of elements
@@ -124,7 +119,7 @@ namespace TiledArray {
           tmp[dim] = *( ranges_[dim].find(e[dim]) );
 
         if (includes(tmp)) {
-          tile_iterator result(tmp,*this);
+          tile_iterator result(tmp, this);
           return result;
         }
         else

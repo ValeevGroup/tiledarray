@@ -19,7 +19,8 @@ namespace TiledArray {
     typedef Shape<DIM,CS> Shape_;
     typedef Range<DIM,CS> range_type;
     typedef CS coordinate_system;
-    typedef detail::IndexIterator<typename range_type::tile_index, Shape> iterator;
+    typedef detail::IndexIterator<typename range_type::tile_index, Shape_> iterator;
+    INDEX_ITERATOR_FRIENDSHIP(typename range_type::tile_index, Shape_);
 
     unsigned int dim() const { return DIM; }
 
@@ -35,9 +36,6 @@ namespace TiledArray {
     // if this index included in the shape?
     virtual bool includes(const typename iterator::value_type& index) const =0;
 
-    // Friend the iterator class so it has access to the increment function.
-    friend class detail::IndexIterator<typename range_type::tile_index, Shape>;
-
   protected:
 
     virtual void increment(typename iterator::value_type& index) const =0;
@@ -51,11 +49,13 @@ namespace TiledArray {
   template <unsigned int DIM, typename Predicate = DensePred<DIM>, typename CS = CoordinateSystem<DIM> >
   class PredShape : public Shape<DIM,CS> {
   public:
+	typedef PredShape<DIM,Predicate,CS> PredShape_;
+    typedef Shape<DIM,CS> Shape_;
     typedef Predicate pred_type;
     typedef CS coordinate_system;
-    typedef PredShape<DIM,Predicate,CS> PredShape_;
     typedef typename Shape<DIM,CS>::range_type range_type;
     typedef typename Shape<DIM,CS>::iterator iterator;
+    INDEX_ITERATOR_FRIENDSHIP(typename range_type::tile_index, Shape_);
 
     /// Iterator main constructor
     PredShape(const boost::shared_ptr<range_type>& range, pred_type pred = pred_type()) :
@@ -74,7 +74,7 @@ namespace TiledArray {
 
     /// Begin accessor function
     iterator begin() const {
-      iterator result(this->range()->start_tile(), *this);
+      iterator result(this->range()->start_tile(), this);
       if (! this->includes(*result) )
         this->increment(*result);
 
@@ -83,7 +83,7 @@ namespace TiledArray {
 
     /// End accessor function
     iterator end() const {
-      return iterator(this->range()->finish_tile(), *this);
+      return iterator(this->range()->finish_tile(), this);
     }
 
     bool includes(const typename iterator::value_type& index) const {

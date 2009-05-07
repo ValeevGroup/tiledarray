@@ -11,6 +11,7 @@
 #define TEST_RANGE
 #define TEST_SHAPE
 //#define TEST_TILEMAP
+#define TEST_TILE
 #define TEST_ARRAY
 
 #include "coordinatestest.h"
@@ -18,6 +19,7 @@
 #include "rangetest.h"
 #include "shapetest.h"
 #include "tilemaptest.h"
+#include "tiletest.h"
 #include "arraytest.h"
 
 namespace TiledArray { };
@@ -30,6 +32,7 @@ int main(int argc, char* argv[]) {
 	RUN_RANGE_TEST
 	RUN_SHAPE_TEST
     RUN_TILEMAP_TEST
+    RUN_TILE_TEST
     RUN_ARRAY_TEST
 
 	return 0;

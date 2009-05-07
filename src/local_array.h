@@ -32,10 +32,10 @@ namespace TiledArray {
           it != this->shape()->end();
           ++it) {
         // make TilePtr
-        tile_ptr tileptr(new tile(this->range()->size(*it)));
+//        tile_ptr tileptr(new tile(this->range()->size(*it)));
 
         // insert into tile map
-        this->data_.insert(typename array_map::value_type(*it, tileptr));
+//        this->data_.insert(typename array_map::value_type(*it, tileptr));
       }
     }
 
@@ -55,7 +55,7 @@ namespace TiledArray {
       for(typename array_map::iterator tile_it = data().begin();
           tile_it != data().end();
           ++tile_it) {
-        tile_ptr& tileptr = (*tile_it).second;
+//        tile_ptr& tileptr = (*tile_it).second;
         // TODO: FINISH TILE
 //        const size_t size = tileptr->size();
 //        value_type* data = tileptr->data();
