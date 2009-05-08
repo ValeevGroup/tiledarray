@@ -2,9 +2,12 @@
 #include <range.h>
 #include <shape.h>
 #include <boost/smart_ptr.hpp>
+#include <boost/make_shared.hpp>
 #include <array.h>
 #include <local_array.h>
 #include <distributed_array.h>
+
+#include "arraytest.h"
 
 using namespace TiledArray;
 
@@ -29,12 +32,12 @@ void ArrayTest() {
                        Range1(dim1, tiles[1]),
                        Range1(dim2, tiles[2]) };
 
-  boost::shared_ptr<Range<3> > rng(new Range<3>(rng_set));
-  boost::shared_ptr<DenseShape3> shp( new DenseShape3(rng));
+  boost::shared_ptr<Range<3> > rng = boost::make_shared< Range<3> >(rng_set);
+  boost::shared_ptr<DenseShape3> shp = boost::make_shared<DenseShape3 >(rng);
 
 
   typedef LocalArray<double, 3> LArray3;
-  boost::shared_ptr<LArray3> a1(new LArray3(shp));
+  boost::shared_ptr<LArray3> a1 = boost::make_shared<LArray3>(shp);
   a1->assign(1.0);
 
   //typedef DistributedArray<double, 3> DArray3;

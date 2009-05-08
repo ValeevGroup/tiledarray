@@ -111,6 +111,10 @@ namespace detail {
   };
   template <unsigned int D, detail::DimensionOrderType Order> detail::DimensionOrder<D> CoordinateSystem<D,Order>::ordering_(Order);
 
+  /// Array Coordinate Tag strut: It is used to ensure type safety between different tiling domains.
+  template<unsigned int Level>
+  struct LevelTag { };
+
   /// ArrayCoordinate represents coordinates of a point in a DIM-dimensional orthogonal lattice).
   ///
   /// CoordinateSystem is a policy class that specifies e.g. the order of significance of dimension.
@@ -265,16 +269,16 @@ namespace detail {
   /// apply permutation P to coordinate C
   template <typename T, unsigned int D, typename Tag, typename CS>
   ArrayCoordinate<T,D,Tag,CS> operator^(const Permutation<D>& P, const ArrayCoordinate<T,D,Tag,CS>& C) {
-    const typename ArrayCoordinate<T,D,Tag,CS>::Array& _result = operator^<D,T>(P,C.r_);
+    const typename ArrayCoordinate<T,D,Tag,CS>::Array& _result = operator^<D,T>(P,C.data());
     ArrayCoordinate<T,D,Tag,CS> result(_result);
     return result;
   }
 
   /// compute the volume of the orthotope bounded by the origin and a
-  template <typename T, unsigned int D>
+  template <typename T, unsigned long int D>
   T volume(const boost::array<T,D>& a) {
     T result = 1;
-    for(unsigned int dim = 0; dim < D; ++dim)
+    for(unsigned long int dim = 0; dim < D; ++dim)
       result *= std::abs(static_cast<long int>(a[dim]));
     return result;
   }
@@ -286,7 +290,7 @@ namespace detail {
   }
 
   /// compute dot product between 2 arrays
-  template <typename T, unsigned int D>
+  template <typename T, unsigned long int D>
   T dot_product(const boost::array<T,D>& A, const boost::array<T,D>& B) {
     T result = 0;
     for(unsigned int dim = 0; dim < D; ++dim)

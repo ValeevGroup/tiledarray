@@ -4,41 +4,36 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <coordinates.h>
 
-#define INDEX_ITERATOR_FRIENDSHIP(V, C) friend class detail::ArrayIterator< V, C, std::input_iterator_tag>
-#define ELEMENT_ITERATOR_FRIENDSHIP(V, C) friend class detail::ArrayIterator< V, C, std::output_iterator_tag>
+#define INDEX_ITERATOR_FRIENDSHIP(V, C) friend class detail::IndexIterator< V , C >
+#define ELEMENT_ITERATOR_FRIENDSHIP(V, I, C) friend class detail::ElementIterator< V , I , C >
 
 namespace TiledArray {
 
   namespace detail {
 
-  /// iterates over an array container
-  template <typename Value, typename Container, typename CategoryOrTraversal>
-  class ArrayIterator : public boost::iterator_facade<
-    ArrayIterator<Value,Container,CategoryOrTraversal>, Value, CategoryOrTraversal >
+  /// Input iterator used to iterate over multidimensional indices
+  template <typename Value, typename Container>
+  class IndexIterator : public boost::iterator_facade<
+    IndexIterator<Value,Container>, Value, std::input_iterator_tag >
   {
-    typedef ArrayIterator<Value,Container,CategoryOrTraversal> ArrayIterator_;
-    typedef boost::iterator_facade<ArrayIterator<Value,Container,CategoryOrTraversal>, Value, CategoryOrTraversal > iterator_facade_;
-
   public:
+    typedef IndexIterator<Value,Container> IndexIterator_;
+    typedef boost::iterator_facade<IndexIterator_, Value, std::input_iterator_tag > iterator_facade_;
 
-    ArrayIterator(const ArrayIterator_& other) :
-       container_(other.container_), current_(other.current_) {
+    IndexIterator(const IndexIterator_& other) :
+      container_(other.container_), current_(other.current_) {
     }
 
-    ~ArrayIterator() {}
+    ~IndexIterator() {}
 
-    ArrayIterator(const Value& cur, const Container* container) :
+    IndexIterator(const Value& cur, const Container* container) :
       container_(container), current_(cur) {
-    }
-
-    const Container& container() const {
-      return *container_;
     }
 
   protected:
     friend class boost::iterator_core_access;
 
-    bool equal(const ArrayIterator_ & other) const {
+    bool equal(const IndexIterator_ & other) const {
       return current_ == other.current_ && container_ == other.container_;
     }
 
@@ -52,51 +47,69 @@ namespace TiledArray {
     }
 
   private:
-    ArrayIterator();
+	  IndexIterator();
 
     const Container* container_;
     Value current_;
-  }; // class ArrayIterator
-
-  /// Array input iterator.
-  template <typename Value, typename Container>
-  class IndexIterator : public ArrayIterator<Value, Container, std::input_iterator_tag>
-  {
-  public:
-	typedef ArrayIterator<Value, Container, std::input_iterator_tag> ArrayIterator_;
-    IndexIterator(const Value& cur, const Container* container) :
-      ArrayIterator_(cur, container)
-    {}
-  private:
-    friend class boost::iterator_core_access;
-
-    IndexIterator();
   }; // class IndexIterator
 
-  /// Array output iterator.
-  template <typename Value, typename Container>
-  class ElementIterator : public ArrayIterator<Value, Container, std::output_iterator_tag>
+  /// Element Iterator used to iterate over elements of dense arrays.
+  template <typename Value, typename Index, typename Container>
+  class ElementIterator : public boost::iterator_facade<
+      ElementIterator<Value, Index, Container>, Value, std::input_iterator_tag>
   {
   public:
-	typedef ArrayIterator<Value, Container, std::output_iterator_tag> ArrayIterator_;
+    typedef ElementIterator<Value, Index, Container> ElementIterator_;
+    typedef boost::iterator_facade<ElementIterator_, Value, std::input_iterator_tag> iterator_facade_;
 
-	ElementIterator(const Value& cur, const Container* container) :
-	  ArrayIterator_(cur, container)
+    /// Primary constructor
+    ElementIterator(const Index& cur, Container* container) :
+      container_(container), current_(cur)
     {}
 
-	template<typename OtherValue>
-	ElementIterator(const ElementIterator<OtherValue, Container>& other) :
-		ArrayIterator_(other.current_, other.container_)
+    /// Copy constructor
+    ElementIterator(const ElementIterator_& other) :
+      container_(other.container_), current_(other.current_)
     {}
+
+    /// Copy constructor for iterators of other types (i.e. const_iterator to iterator).
+    template<typename OtherValue>
+	ElementIterator(const ElementIterator<OtherValue, Index, Container>& other) :
+      container_(other.container_), current_(other.current_)
+    {}
+
+    ~ElementIterator() {}
+
+    Index const& index() const {
+      return current_;
+    }
 
   private:
     friend class boost::iterator_core_access;
 
+    ElementIterator();
+
+    bool equal(const ElementIterator_ & other) const {
+      return current_ == other.current_ && container_ == other.container_;
+    }
+
+    // user must provide void Container::increment(index& current) const;
+    void increment() {
+      container_->increment(current_);
+    }
+
+    Value& dereference() const {
+      return container_->operator[](current_);
+    }
+
     template<typename OtherValue>
-    bool equal(const ElementIterator<OtherValue, Container>& other) {
+    bool equal(const ElementIterator<OtherValue, Index, Container>& other) {
       return this->current_ == other.current_ && this->container_ == other.container_;
     }
-    ElementIterator();
+
+    Container* container_;
+    Index current_;
+
   }; // class ElementIterator
 
 

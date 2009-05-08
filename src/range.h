@@ -27,9 +27,6 @@ namespace TiledArray {
       typedef boost::array<Range1,DIM> Ranges;
       typedef Range1::element_index index_t;
 
-      template<unsigned int Level>
-      struct LevelTag { };
-
     public:
       // typedefs
       typedef CS coordinate_system;
@@ -262,12 +259,12 @@ namespace TiledArray {
       tile_index start_tile_;
       tile_index finish_tile_;
 
-      friend std::ostream& operator << <>(std::ostream&, const Range& rng);
+      friend std::ostream& operator << <>(std::ostream&, const Range&);
 
   };
 
-  template<unsigned int DIM, typename CS> std::ostream& operator<<(std::ostream& out,
-                                                                   const Range<DIM,CS>& rng) {
+  template<unsigned int DIM, typename CS>
+  std::ostream& operator<<(std::ostream& out, const Range<DIM,CS>& rng) {
     out << "Range<" << DIM << ">(" << " @= " << &rng
         << " *begin_tile=" << (*rng.begin()) << " *end_tile=" << (*rng.end())
         << " start_element=" << rng.start_element() << " finish_element=" << rng.finish_element()

@@ -22,7 +22,7 @@
 #include "tiletest.h"
 #include "arraytest.h"
 
-namespace TiledArray { };
+namespace TiledArray { }
 using namespace TiledArray;
 
 int main(int argc, char* argv[]) {

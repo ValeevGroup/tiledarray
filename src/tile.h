@@ -11,7 +11,7 @@
 namespace TiledArray {
 
   /// Tile is a multidimensional dense array, the dimensions of the tile are constant.
-  template<typename T, unsigned int DIM, typename Index, typename CS = CoordinateSystem<DIM> >
+  template<typename T, unsigned int DIM, typename Index = ArrayCoordinate<size_t, 3, LevelTag<0> >, typename CS = CoordinateSystem<DIM> >
   class Tile
   {
   public:
@@ -24,12 +24,10 @@ namespace TiledArray {
     typedef CS coordinate_system;
     typedef size_t ordinal_type;
 
-    typedef std::pair<const index_type, reference_type> iterator_value;
-    typedef std::pair<const index_type, const_reference_type> iterator_const_value;
-    typedef detail::ElementIterator<iterator_value, Tile_ > iterator;
-    typedef detail::ElementIterator<iterator_const_value, Tile_ > const_iterator;
-    ELEMENT_ITERATOR_FRIENDSHIP( iterator_value, Tile_ );
-    ELEMENT_ITERATOR_FRIENDSHIP( iterator_const_value, Tile_ );
+    typedef detail::ElementIterator<value_type, index_type, Tile_ > iterator;
+    typedef detail::ElementIterator<value_type const, index_type, const Tile_ > const_iterator;
+    ELEMENT_ITERATOR_FRIENDSHIP( value_type, index_type, Tile_ );
+    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, index_type, const Tile_ );
 
     static const unsigned int dim() { return DIM; }
 
@@ -39,6 +37,7 @@ namespace TiledArray {
         sizes_(sizes), origin_(origin), data_(n_, val)
     {}
 
+    /// Copy constructor
     Tile(const Tile& t) :
         n_(t.n_), weights_(t.weights_), sizes_(t.sizes_), origin_(t.origin_), data_(t.data_)
     {}
@@ -48,19 +47,19 @@ namespace TiledArray {
     // iterator factory functions
 
     iterator begin() {
-      return iterator(std::make_pair(origin_, * data_.begin()), this);
+      return iterator(origin_, this);
     }
 
     const_iterator begin() const {
-      return const_iterator(std::make_pair(origin_, * data_.begin()), this);
+      return const_iterator(origin_, this);
     }
 
     iterator end() {
-      return iterator(std::make_pair(origin_ + sizes_, * data_.end()), this);
+      return iterator(origin_ + sizes_, this);
     }
 
     const_iterator end() const {
-      return const_iterator(std::make_pair(origin_ + sizes_, * data_.end()), this);
+      return const_iterator(origin_ + sizes_, this);
     }
 
     /// Element access using the ordinal index with error checking
@@ -104,23 +103,49 @@ namespace TiledArray {
     /// Element access using the element index without error checking
     reference_type operator[](const index_type& i) {
 #ifdef NDEBUG
-      return data_[ordinal_(i)];
+      return data_[ordinal(i)];
 #else
-      return data_.at(ordinal_(i));
+      return data_.at(ordinal(i));
 #endif
     }
 
     /// Element access using the element index without error checking
-    reference_type operator[](const index_type& i) const {
+    const_reference_type operator[](const index_type& i) const {
 #ifdef NDEBUG
-      retrun data_[ordinal_(i)];
+      retrun data_[ordinal(i)];
 #else
-      return data_.at(ordinal_(i));
+      return data_.at(ordinal(i));
 #endif
     }
 
+    /// Returns an array with the size of each dimension.
     const size_array& size() const {
       return sizes_.data();
+    }
+
+    /// Returns the number of elements contained in the array.
+    ordinal_type nelements() const {
+      return data_.size();
+    }
+
+    /// Assigns a value to the specified range of element in tile.
+    /// *iterator = gen(index_type&)
+    template <typename Generator>
+    Tile_& assign(const_iterator& first, const_iterator& last, Generator& gen) {
+      for(iterator it = first; it != last; ++it)
+        *it = gen(it.index());
+
+      return *this;
+    }
+
+    /// Assigns a value to each element in tile.
+    /// *iterator = gen(index_type&)
+    template <typename Generator>
+    Tile_& assign(Generator& gen) {
+        for(iterator it = begin(); it != end(); ++it)
+          *it = gen(it.index());
+
+        return *this;
     }
 
   private:
@@ -157,9 +182,8 @@ namespace TiledArray {
       return result;
     }
 
-    void increment(iterator_value& val) const {
-      detail::IncrementCoordinate<DIM,index_type,coordinate_system>(val.first, origin_, origin_ + sizes_);
-      val.second = at(val.first);
+    void increment(index_type& i) const {
+      detail::IncrementCoordinate<DIM,index_type,coordinate_system>(i, origin_, origin_ + sizes_);
     }
 
     ordinal_type n_;                // Number of elements
@@ -167,13 +191,58 @@ namespace TiledArray {
 	index_type sizes_;              // Dimension sizes
 	index_type origin_;             // Tile origin
     std::vector<value_type> data_;  // element data
+
+    // ToDo: Why dees this not work in gcc? It worked for shape.
+//    friend std::ostream& operator<< <> (std::ostream& , const Tile&);
+
   };
 
+  /// Permute the tile given a permutation.
+  template<typename T, unsigned int DIM, typename Index, typename CS>
+  Tile<T,DIM,Index,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,Index,CS>& t) {
+    Tile<T,DIM,Index,CS> result(t.size());
+    for(typename Tile<T,DIM,Index,CS>::const_iterator it = t.begin(); it != t.end(); ++it)
+      result[p ^ it.index()] = *it;
+
+//      weights_ = p ^ weights_;
+//      sizes_ = p ^ sizes_;
+//      origin_ = p ^ origin_;
+
+    return result;
+  }
+
+  /// ostream output orperator.
   template<typename T, unsigned int DIM, typename Index, typename CS>
   std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,Index,CS>& t) {
+    typedef Tile<T,DIM,Index,CS> tile_type;
+    const detail::DimensionOrder<DIM>& dimorder = CS::ordering();
+    typename detail::DimensionOrder<DIM>::const_iterator d;
+
+    // ToDo: remove this code when the function is made a friend of tile,
+    // so we don't have to recalculate weights.
+    typename tile_type::ordinal_type weight = 1;
+    typename tile_type::size_array weights;
+    for(d = dimorder.begin(); d != dimorder.end(); ++d) {
+      // calc ordinal weights.
+      weights[*d] = weight;
+      weight *= t.size()[*d];
+    }
+
     out << "{ ";
-    for(typename Tile<T,DIM,Index,CS>::const_iterator i = t.begin(); i != t.end(); ++i)
-      out << ", " << i->second;
+    for(typename tile_type::ordinal_type i = 0; i < t.nelements(); ++i) {
+      for(d = dimorder.begin(), ++d; d != dimorder.end(); ++d) {
+        if((i % weights[*d]) == 0)
+          out << "{ ";
+      }
+
+      out << " " << t[i];
+
+
+      for(d = dimorder.begin(), ++d; d != dimorder.end(); ++d) {
+        if(((i + 1) % weights[*d]) == 0)
+          out << " }";
+      }
+    }
     out << " }";
     return out;
   }

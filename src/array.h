@@ -36,8 +36,10 @@ namespace TiledArray {
     /// array layout must match that given by CoordinateSystem (i.e. both C, or both Fortran)
     typedef Tile<value_type, DIM, element_index, coordinate_system> tile;
 
-	typedef detail::ElementIterator<std::pair<const shape_iterator&, value_type&>, Array_ > iterator;
-	typedef detail::ElementIterator<std::pair<const shape_iterator&, value_type const&>, Array_ > const_iterator;
+	typedef detail::ElementIterator<value_type, element_index, Array_ > iterator;
+	typedef detail::ElementIterator<value_type const, element_index, Array_ > const_iterator;
+    ELEMENT_ITERATOR_FRIENDSHIP( value_type, element_index, Array_ );
+    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, element_index, Array_ );
 
     iterator begin() const {
       return iterator( boost::shared_ptr<shape_iterator>( shape_->begin() ) );
