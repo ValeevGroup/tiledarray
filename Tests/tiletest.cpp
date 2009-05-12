@@ -1,4 +1,5 @@
 #include <iostream>
+#include <math.h>
 #include <boost/array.hpp>
 #include <tile.h>
 #include "tiletest.h"
@@ -7,14 +8,16 @@
 template<typename T, typename Index>
 class gen {
 public:
-  gen() : c(0) {}
+  const T operator ()(const Index& i) {
+	typename Index::index result = 0;
+    typename Index::index e = 0;
+    for(unsigned int d = 0; d < Index::dim(); ++d) {
+      e = i[d] * std::pow(10, d);
+      result += e;
+    }
 
-  const T& operator ()(const Index& i) {
-    ++c;
-    return c;
+    return result;
   }
-
-  T c;
 };
 
 using namespace TiledArray;
@@ -25,8 +28,10 @@ void TileTest() {
 
   typedef Tile<double, 3 > Tile3;
 
+  Tile3 defTile;
+
   Tile3::size_array sizes = { { 3, 3, 3 } };
-  Tile3 t(sizes);
+  Tile3 t(sizes, Tile3::index_type(1));
 
   std::cout << t << std::endl;
 
@@ -45,9 +50,10 @@ void TileTest() {
 
   Tile3 t2(sizes);
 
-//  t2 = p ^ t;
-
-//  std::cout << t2 << std::endl;
+  t2 = p ^ t;
+  t ^= p;
+  std::cout << t2 << std::endl;
+  std::cout << t << std::endl;
 
   std::cout << "End Tile Tests" << std::endl << std::endl;
 }

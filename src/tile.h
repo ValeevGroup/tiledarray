@@ -39,6 +39,12 @@ namespace TiledArray {
 
     static const unsigned int dim() { return DIM; }
 
+    /// Default constructor
+    Tile() : n_(0), sizes_(0ul), start_(0ul), finish_(0ul), data_(0) {
+      for(unsigned int i = 0; i < Tile_::dim(); ++i)
+        weights_[i] = 0;
+    }
+
     /// Primary constructor
     Tile(const size_array& sizes, const index_type& origin = index_type(), const value_type val = value_type()) :
         n_(volume<typename index_type::volume, DIM>(sizes)), weights_(calc_weights(sizes)),
@@ -64,11 +70,11 @@ namespace TiledArray {
     }
 
     iterator end() {
-      return iterator(start_ + sizes_, this);
+      return iterator(finish_, this);
     }
 
     const_iterator end() const {
-      return const_iterator(start_ + sizes_, this);
+      return const_iterator(finish_, this);
     }
 
     /// Element access using the ordinal index with error checking
@@ -83,12 +89,12 @@ namespace TiledArray {
 
     /// Element access using the element index with error checking
     reference_type at(const index_type& i){
-      return data_.at(ordinal_(i));
+      return data_.at(ordinal(i));
     }
 
     /// Element access using the element index with error checking
     const_reference_type at(const index_type& i) const {
-      return data_.at(ordinal_(i));
+      return data_.at(ordinal(i));
     }
 
     /// Element access using the ordinal index without error checking
@@ -149,7 +155,7 @@ namespace TiledArray {
     /// Assigns a value to the specified range of element in tile.
     /// *iterator = gen(index_type&)
     template <typename Generator>
-    Tile_& assign(const_iterator& first, const_iterator& last, Generator& gen) {
+    Tile_& assign(const_iterator& first, const_iterator& last, Generator gen) {
       for(iterator it = first; it != last; ++it)
         *it = gen(it.index());
 
@@ -159,16 +165,50 @@ namespace TiledArray {
     /// Assigns a value to each element in tile.
     /// *iterator = gen(index_type&)
     template <typename Generator>
-    Tile_& assign(Generator& gen) {
-        for(iterator it = begin(); it != end(); ++it)
-          *it = gen(it.index());
+    Tile_& assign(Generator gen) {
+      for(iterator it = begin(); it != end(); ++it)
+        *it = gen(it.index());
 
-        return *this;
+      return *this;
+    }
+
+    /// Resize the tile.
+    void resize(const size_array& sizes, const value_type& val = value_type()) {
+      sizes_ = sizes;
+      finish_ = start_ + sizes;
+      n_ = volume<typename index_type::volume, DIM>(sizes);
+      weights_ = calc_weights(sizes);
+      data_.resize(n_, val);
+    }
+
+    void set_origin(const index_type& origin) {
+      start_ = origin;
+      finish_ = origin + sizes_;
+    }
+
+    /// Permute the tile given a permutation.
+    Tile_& operator ^=(const Permutation<DIM>& p) {
+      // copy data needed for iteration.
+      index_type temp_index(start_);
+      const index_type temp_start(start_);
+      const index_type temp_finish(finish_);
+  	  const std::vector<value_type> temp_data(data_);
+
+  	  // Permute support data.
+  	  start_ ^= p;
+  	  finish_ ^= p;
+  	  sizes_ = p ^ sizes_;
+  	  weights_ = calc_weights(sizes_.data());
+
+      // Permute the tile data.
+      for(typename std::vector<value_type>::const_iterator it = temp_data.begin(); it != temp_data.end(); ++it) {
+        data_[ordinal(p ^ temp_index)] = *it;
+        detail::IncrementCoordinate<DIM,index_type,coordinate_system>(temp_index, temp_start, temp_finish);
+      }
+      return *this;
     }
 
   private:
-
-    Tile();
 
     static size_array calc_weights(const size_array& sizes) {
       size_array result;
@@ -196,12 +236,13 @@ namespace TiledArray {
     /// computes an ordinal index for a given index_type
     ordinal_type ordinal(const index_type& i) const {
       assert(includes(i));
-      ordinal_type result = dot_product(i.data(), weights_);
+      index_type relative_index = i - start_;
+      ordinal_type result = dot_product(relative_index.data(), weights_);
       return result;
     }
 
     void increment(index_type& i) const {
-      detail::IncrementCoordinate<DIM,index_type,coordinate_system>(i, start_, start_ + sizes_);
+      detail::IncrementCoordinate<DIM,index_type,coordinate_system>(i, start_, finish_);
     }
 
     ordinal_type n_;                // Number of elements
@@ -219,14 +260,9 @@ namespace TiledArray {
   /// Permute the tile given a permutation.
   template<typename T, unsigned int DIM, typename Index, typename CS>
   Tile<T,DIM,Index,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,Index,CS>& t) {
-	Index origin = p ^ t.start();
-	Index size = (p ^ t.size());
-    Tile<T,DIM,Index,CS> result(size.data(), origin);
+    Tile<T,DIM,Index,CS> result(t);
 
-    for(typename Tile<T,DIM,Index,CS>::const_iterator it = t.begin(); it != t.end(); ++it)
-      result[p ^ it.index()] = *it;
-
-    return result;
+    return result ^= p;
   }
 
   /// ostream output orperator.

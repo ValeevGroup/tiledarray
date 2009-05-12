@@ -120,6 +120,41 @@ namespace TiledArray {
 
   }; // class LowerTrianglePred
 
+  /// This predicate combines two predicates to act as a single predicate
+  /// ComboPred::includes(i) returns true when both Pred1::includes(i) and
+  /// Pred2::includes(i) returns true.
+  template<unsigned int DIM, typename Pred1, typename Pred2>
+  class ComboPred {
+  public:
+
+    /// Default constructor
+	ComboPred() : p1_(), p2_() { }
+
+	/// Primary constructor which accepts two initialized predicates.
+    ComboPred(const Pred1& p1, const Pred2& p2) : p1_(p1), p2_(p2) { }
+
+    /// Copy constructor
+    ComboPred(const ComboPred<DIM,Pred1,Pred2>& other) :
+        p1_(other.p1_), p2_(other.p2) { }
+
+    /// predicate function
+    template <typename T, typename Tag, typename CS>
+    bool includes(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+      return p1_.includes(index) && p2_.includes(index);
+    }
+
+    /// predicate operator
+    template <typename T, typename Tag, typename CS>
+    bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+      return includes(index);
+    }
+
+  private:
+    Pred1 p1_;
+    Pred2 p2_;
+  }; // class DensePred
+
+
 
 } // namespace TiledArray
 

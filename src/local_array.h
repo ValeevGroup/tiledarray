@@ -2,8 +2,10 @@
 #define LOCAL_ARRAY_H__INCLUDED
 
 #include <map>
+#include <utility>
 #include <boost/shared_ptr.hpp>
 #include <shape.h>
+#include <tile.h>
 #include <array.h>
 
 namespace TiledArray {
@@ -20,22 +22,24 @@ namespace TiledArray {
     typedef typename Array_::shape_iterator shape_iterator;
     typedef typename Array_::tile_index tile_index;
     typedef typename Array_::element_index element_index;
+    typedef typename Array_::iterator iterator;
+    typedef typename Array_::const_iterator const_iterator;
     typedef typename Array_::tile tile;
     typedef boost::shared_ptr<tile> tile_ptr;
+    typedef std::map<tile_index, tile_ptr> array_map;
     typedef T value_type;
     typedef CS coordinate_system;
 
   public:
-    LocalArray(const boost::shared_ptr<shape_type>& shp) : Array_(shp) {
+    LocalArray(const boost::shared_ptr<shape_type>& shp, const value_type& val = value_type()) : Array_(shp) {
       // Fill data_ with tiles.
-      for(shape_iterator it = this->shape()->begin();
-          it != this->shape()->end();
-          ++it) {
+      for(shape_iterator it = this->shape()->begin(); it != this->shape()->end(); ++it) {
         // make TilePtr
-//        tile_ptr tileptr(new tile(this->range()->size(*it)));
+        tile_ptr tileptr = boost::make_shared<tile>(this->range()->size(*it),
+            this->range()->start_element(*it), val);
 
         // insert into tile map
-//        this->data_.insert(typename array_map::value_type(*it, tileptr));
+        this->data_.insert(std::make_pair(*it, tileptr));
       }
     }
 
@@ -50,19 +54,33 @@ namespace TiledArray {
     }
 
     /// assign val to each element
-    void assign(const value_type& val) {
-      // TODO can figure out when can memset?
-      for(typename array_map::iterator tile_it = data().begin();
-          tile_it != data().end();
-          ++tile_it) {
-//        tile_ptr& tileptr = (*tile_it).second;
-        // TODO: FINISH TILE
-//        const size_t size = tileptr->size();
-//        value_type* data = tileptr->data();
-        // TODO why can't I seem to be able to use multi_array::begin() here???
-//        std::fill(data,data+size,val);
+    LocalArray_& assign(const value_type& val) {
+      for(typename array_map::iterator it = data().begin(); it != data().end(); ++it) {
+        tile_ptr& tileptr = it->second;
+        std::fill(tileptr->begin(),tileptr->end(),val);
       }
 
+      return *this;
+    }
+
+    template <typename Generator>
+    LocalArray_& assign(Generator gen) {
+      for(typename array_map::iterator it = data().begin(); it != data().end(); ++it) {
+        tile_ptr& tileptr = it->second;
+        tileptr->assign(gen);
+      }
+
+      return *this;
+    }
+
+    template <typename Generator>
+    LocalArray_& assign(Generator gen) {
+      for(typename array_map::iterator it = data().begin(); it != data().end(); ++it) {
+        tile_ptr& tileptr = it->second;
+        tileptr->assign(gen);
+      }
+
+      return *this;
     }
 
     /// where is tile k
@@ -72,14 +90,14 @@ namespace TiledArray {
     }
 
     bool local(const tile_index& index) const {
-      return includes(index);
+      assert(includes(index));
+      return true;
     }
 
   private:
 	LocalArray();
 
     /// Map that stores all tiles that are stored locally by the array.
-    typedef std::map<tile_index, tile_ptr> array_map;
     array_map data_;
     array_map& data() { return data_; }
     const array_map& data() const { return data_; }

@@ -134,6 +134,7 @@ namespace detail {
       > > > > > >
   {
   public:
+	typedef ArrayCoordinate<T,D,Tag,CS> ArrayCoordinate_;
     typedef T index;
     typedef T volume;
     typedef CS coordinate_system;
@@ -143,21 +144,37 @@ namespace detail {
     static const unsigned int dim() { return D; }
 
     // Constructors/Destructor
-    ArrayCoordinate(const T& init_value = 0) { r_.assign(init_value); }
-    ArrayCoordinate(const T* init_values) { std::copy(init_values,init_values+D,r_.begin()); }
+    ArrayCoordinate(const index& init_value = 0) { r_.assign(init_value); }
+    template <typename InIter>
+    ArrayCoordinate(InIter start, InIter finish) { std::copy(start,finish,r_.begin()); }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { }
-    ArrayCoordinate(const T c0, const T c1, ...) {
+    /// Variable argument list constructor.
+    ArrayCoordinate(const index c0, const index c1, ...) {
       va_list ap;
       va_start(ap, c1);
 
       r_[0] = c0;
       r_[1] = c1;
-      for(unsigned int i = 2; i < D; ++i)
-        r_[i] = va_arg(ap, T);
+      for(unsigned int i = 2; i < dim(); ++i)
+        r_[i] = va_arg(ap, index);
 
       va_end(ap);
     }
     ~ArrayCoordinate() {}
+
+    static ArrayCoordinate_ make(const index c0, ...) {
+      ArrayCoordinate_ result;
+      va_list ap;
+      va_start(ap, c0);
+
+      result.r_[0] = c0;
+      for(unsigned int i = 1; i < dim(); ++i)
+        result.r_[i] = va_arg(ap, index);
+
+      va_end(ap);
+
+      return result;
+    }
 
     /// Returns an iterator to the first coordinate
     iterator begin() {
@@ -180,41 +197,41 @@ namespace detail {
     }
 
     /// Assignment operator
-    ArrayCoordinate<T, D, Tag, coordinate_system>&
-    operator =(const ArrayCoordinate<T, D, Tag, coordinate_system>& c) {
+    ArrayCoordinate_&
+    operator =(const ArrayCoordinate_& c) {
       std::copy(c.r_.begin(), c.r_.end(), r_.begin());
 
       return (*this);
     }
 
-    ArrayCoordinate<T, D, Tag, coordinate_system>& operator++() {
+    ArrayCoordinate_& operator++() {
       const unsigned int lsdim = *coordinate_system::ordering().begin();
       ++(r_[lsdim]);
       return *this;
     }
 
-    ArrayCoordinate<T, D, Tag, coordinate_system>& operator--() {
+    ArrayCoordinate_& operator--() {
       const unsigned int lsdim = *coordinate_system::ordering().begin();
       --(r_[lsdim]);
       return *this;
     }
 
     /// Add operator
-    ArrayCoordinate<T, D, Tag, coordinate_system>& operator+=(const ArrayCoordinate& c) {
+    ArrayCoordinate_& operator+=(const ArrayCoordinate_& c) {
       for(unsigned int d = 0; d < dim(); ++d)
         r_[d] += c.r_[d];
       return *this;
     }
 
     /// Subtract operator
-    ArrayCoordinate<T, D, Tag, coordinate_system> operator-=(const ArrayCoordinate& c) {
+    ArrayCoordinate_ operator-=(const ArrayCoordinate_& c) {
       for(unsigned int d = 0; d < dim(); ++d)
         r_[d] -= c.r_[d];
       return *this;
     }
 
-    ArrayCoordinate<T, D, Tag, coordinate_system> operator -() const {
-      ArrayCoordinate<T, D, Tag> ret;
+    ArrayCoordinate_ operator -() const {
+      ArrayCoordinate_ ret;
       for(unsigned int d = 0; d < dim(); ++d)
         ret.r_[d] = -r_[d];
       return ret;
@@ -242,20 +259,34 @@ namespace detail {
       return r_;
     }
 
-    const ArrayCoordinate<T,D,Tag,CS> operator ^= (const Permutation<D>& p) {
+    const ArrayCoordinate_ operator ^= (const Permutation<D>& p) {
       r_ = p ^ r_;
       return *this;
     }
 
-    friend bool operator < <>(const ArrayCoordinate<T,D,Tag,CS>&, const ArrayCoordinate<T,D,Tag,CS>&);
-    friend bool operator == <>(const ArrayCoordinate<T,D,Tag,coordinate_system>&, const ArrayCoordinate<T,D,Tag,coordinate_system>&);
-    friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate<T,D,Tag,coordinate_system>&);
+    friend bool operator < <>(const ArrayCoordinate_&, const ArrayCoordinate_&);
+    friend bool operator == <>(const ArrayCoordinate_&, const ArrayCoordinate_&);
+    friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate_&);
 
   private:
     /// last dimension is least significant
     Array r_;
   };
 
+  template <typename Coord>
+  Coord make_coord(const typename Coord::index c0, ...) {
+    Coord result;
+    va_list ap;
+    va_start(ap, c0);
+
+    result[0] = c0;
+    for(unsigned int i = 1; i < Coord::dim(); ++i)
+      result[i] = va_arg(ap, typename Coord::index);
+
+    va_end(ap);
+
+    return result;
+  }
   // TODO how to recast this without using dimension_order
   template <typename T, unsigned int D, typename Tag, typename CS>
   bool operator<(const ArrayCoordinate<T,D,Tag,CS>& c1, const ArrayCoordinate<T,D,Tag,CS>& c2) {

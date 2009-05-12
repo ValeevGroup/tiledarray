@@ -51,12 +51,9 @@ RangeTest()
     std::cout << "ordinal tests: " << std::endl;
     typedef Range<4>::element_index element_index;
     typedef Range<4>::tile_index tile_index;
-    tile_index::index _t1[] = {0, 2, 4, 1};
-    tile_index t1(_t1);
-    element_index::index _e1[] = {1, 3, 3, 2};
-    element_index e1(_e1);
-    element_index::index _e2[] = {29, 19, 14, 12};
-    element_index e2(_e2);
+    tile_index t1(0, 2, 4, 1);
+    element_index e1(1, 3, 3, 2);
+    element_index e2(29, 19, 14, 12);
     std::cout << "tile_index: t1=" << t1 << std::endl;
     std::cout << "ortho2.includes(t1) = " << ortho2.includes(t1) << std::endl;
     std::cout << "element_index: e1=" << e1 << std::endl;

@@ -32,9 +32,6 @@ namespace TiledArray {
     typedef T value_type;
     typedef CS coordinate_system;
 
-    /// Tile is implemented in terms of boost::multi_array
-    /// it provides reshaping, iterators, etc., and supports direct access to the raw pointer.
-    /// array layout must match that given by CoordinateSystem (i.e. both C, or both Fortran)
     typedef Tile<value_type, DIM, element_index, coordinate_system> tile;
 
 	typedef detail::ElementIterator<value_type, element_index, Array_ > iterator;

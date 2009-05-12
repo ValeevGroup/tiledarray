@@ -30,7 +30,7 @@ void PermutationTest() {
   Permutation<3>::Array a2 = { {0, 2, 1} };
   Permutation<3> p2(a2);
 
-  typedef ArrayCoordinate<size_t, 3, LevelTag<0> > Index;
+  typedef ArrayCoordinate<size_t, 3, LevelTag<0> > Index3;
 
   std::cout << "unit = " << unit << std::endl << "p0 = " << p0 << std::endl;
   std::cout << "p1 = " << p1 << std::endl << "p2 = " << p2 << std::endl;
@@ -44,8 +44,8 @@ void PermutationTest() {
   std::cout << "atest = " << atest << std::endl;
   std::cout << "aresult = " << aresult << std::endl;
 
-  ArrayCoordinate<size_t,3,LevelTag<0> > ctest(4,5,6);
-  ArrayCoordinate<size_t,3,LevelTag<0> > cresult = p1 ^ ctest;
+  Index3 ctest(4,5,6);
+  Index3 cresult = p1 ^ ctest;
   std::cout << "ctest = " << ctest << std::endl;
   std::cout << "cresult = " << cresult << std::endl;
 
