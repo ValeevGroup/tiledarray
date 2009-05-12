@@ -3,11 +3,10 @@
 
 #include <coordinates.h>
 #include <permutation.h>
-#include <range.h>
 
 namespace TiledArray {
 
-  /*
+  /**
    * The Predicates must be Assignable, Copy Constructible, and
    * the expression p(x) must be valid where p is an object of type
    * Predicate, x is an object of type iterator_traits<Iterator>::value_type,
@@ -31,13 +30,13 @@ namespace TiledArray {
         return *this;
       }
 
-      /// pure virtual predicate function
+      /// predicate function
       template <typename T, typename Tag, typename CS>
       bool includes(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
     	  return true;
       }
 
-      /// predicate function
+      /// predicate operator
       template <typename T, typename Tag, typename CS>
       bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
         return includes(index);
@@ -88,13 +87,15 @@ namespace TiledArray {
     }
 
     /// Apply permutation
-    void permute(const Permutation<DIM>& perm) {
+    void operator ^=(const Permutation<DIM>& perm) {
       apply_perm_ = true;
       perm_ = perm;
+
+      return *this;
     }
 
     /// Reset the permutation to the default value of no permutation.
-    void reset() {
+    void reset_perm() {
       apply_perm_ = false;
       perm_ = Permutation<DIM>::unit();
     }
@@ -118,6 +119,7 @@ namespace TiledArray {
     }
 
   }; // class LowerTrianglePred
+
 
 } // namespace TiledArray
 

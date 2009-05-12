@@ -1,9 +1,9 @@
 #include <iostream>
 #include <boost/array.hpp>
 #include <tile.h>
-
 #include "tiletest.h"
 
+// Element Generation object test.
 template<typename T, typename Index>
 class gen {
 public:
@@ -45,9 +45,9 @@ void TileTest() {
 
   Tile3 t2(sizes);
 
-  t2 = p ^ t;
+//  t2 = p ^ t;
 
-  std::cout << t2 << std::endl;
+//  std::cout << t2 << std::endl;
 
   std::cout << "End Tile Tests" << std::endl << std::endl;
 }

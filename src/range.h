@@ -10,6 +10,7 @@
 #include <range1.h>
 #include <coordinates.h>
 #include <iterator.h>
+#include <permutation.h>
 
 namespace TiledArray {
 
@@ -20,8 +21,8 @@ namespace TiledArray {
 
 
   /// Range is a tiled DIM-dimensional range. It is immutable, to simplify API.
-  template<unsigned int DIM, typename CS = CoordinateSystem<DIM> > class Range :
-      boost::equality_comparable1< Range<DIM,CS> > {
+  template<unsigned int DIM, typename CS = CoordinateSystem<DIM> >
+  class Range : boost::equality_comparable1< Range<DIM,CS> > {
 
       typedef Range<DIM,CS> Range_;
       typedef boost::array<Range1,DIM> Ranges;
@@ -123,8 +124,8 @@ namespace TiledArray {
           return end();
       }
 
-      Range<DIM>& permute(const Permutation<DIM>& perm) {
-        operator^(perm, ranges_);
+      Range<DIM>& operator ^=(const Permutation<DIM>& perm) {
+        ranges_ = perm ^ ranges_;
         init_();
         return *this;
       }
@@ -189,8 +190,6 @@ namespace TiledArray {
       }
 
     private:
-      Ranges ranges_; // Vector of range data for each dimension
-
       /// precomputes useful data listed below
       void init_() {
         // Get dim ordering iterator
@@ -258,8 +257,7 @@ namespace TiledArray {
       element_index finish_element_;
       tile_index start_tile_;
       tile_index finish_tile_;
-
-      friend std::ostream& operator << <>(std::ostream&, const Range&);
+      Ranges ranges_; // Vector of range data for each dimension
 
   };
 

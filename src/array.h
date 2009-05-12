@@ -5,6 +5,7 @@
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
+
 #include <coordinates.h>
 #include <permutation.h>
 #include <range.h>

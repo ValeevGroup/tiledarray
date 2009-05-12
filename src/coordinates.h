@@ -142,12 +142,24 @@ namespace detail {
     typedef typename Array::const_iterator const_iterator;
     static const unsigned int dim() { return D; }
 
+    // Constructors/Destructor
     ArrayCoordinate(const T& init_value = 0) { r_.assign(init_value); }
     ArrayCoordinate(const T* init_values) { std::copy(init_values,init_values+D,r_.begin()); }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { }
+    ArrayCoordinate(const T c0, const T c1, ...) {
+      va_list ap;
+      va_start(ap, c1);
+
+      r_[0] = c0;
+      r_[1] = c1;
+      for(unsigned int i = 2; i < D; ++i)
+        r_[i] = va_arg(ap, T);
+
+      va_end(ap);
+    }
     ~ArrayCoordinate() {}
 
-    /// Returns an interator to the first coordinate
+    /// Returns an iterator to the first coordinate
     iterator begin() {
       return r_.begin();
     }
@@ -230,10 +242,14 @@ namespace detail {
       return r_;
     }
 
-    friend bool operator < <>(const ArrayCoordinate<T,D,Tag,coordinate_system>&, const ArrayCoordinate<T,D,Tag,coordinate_system>&);
+    const ArrayCoordinate<T,D,Tag,CS> operator ^= (const Permutation<D>& p) {
+      r_ = p ^ r_;
+      return *this;
+    }
+
+    friend bool operator < <>(const ArrayCoordinate<T,D,Tag,CS>&, const ArrayCoordinate<T,D,Tag,CS>&);
     friend bool operator == <>(const ArrayCoordinate<T,D,Tag,coordinate_system>&, const ArrayCoordinate<T,D,Tag,coordinate_system>&);
     friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate<T,D,Tag,coordinate_system>&);
-    friend ArrayCoordinate<T,D,Tag,CS> operator^ <> (const Permutation<D>& P, const ArrayCoordinate<T,D,Tag,CS>& C);
 
   private:
     /// last dimension is least significant
@@ -257,6 +273,13 @@ namespace detail {
     return c1.r_ == c2.r_;
   }
 
+  /// Permute an ArrayCoordinate
+  template <typename T, unsigned int D, typename Tag, typename CS>
+  ArrayCoordinate<T,D,Tag,CS> operator ^(const Permutation<D>& perm, const ArrayCoordinate<T,D,Tag,CS>& c) {
+    ArrayCoordinate<T,D,Tag,CS> result(c);
+    return result ^= perm;
+  }
+
   template <typename T, unsigned int D, typename Tag, typename CS>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag,CS>& c) {
     output << "{";
@@ -264,14 +287,6 @@ namespace detail {
       output << c[dim] << ", ";
     output << c[D - 1] << "}";
     return output;
-  }
-
-  /// apply permutation P to coordinate C
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  ArrayCoordinate<T,D,Tag,CS> operator^(const Permutation<D>& P, const ArrayCoordinate<T,D,Tag,CS>& C) {
-    const typename ArrayCoordinate<T,D,Tag,CS>::Array& _result = operator^<D,T>(P,C.data());
-    ArrayCoordinate<T,D,Tag,CS> result(_result);
-    return result;
   }
 
   /// compute the volume of the orthotope bounded by the origin and a

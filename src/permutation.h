@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include <algorithm>
+#include <stdarg.h>
 #include <boost/array.hpp>
 
 namespace TiledArray {
@@ -35,13 +36,32 @@ namespace TiledArray {
       std::copy(source,source+D,p_.begin());
       assert(valid_permutation());
     }
+
     Permutation(const Array& source) : p_(source) {
       assert(valid_permutation());
     }
+
+    Permutation(const Index p0, ...) {
+      va_list ap;
+      va_start(ap, p0);
+
+      p_[0] = p0;
+      for(unsigned int i = 1; i < D; ++i)
+        p_[i] = va_arg(ap, Index);
+
+      va_end(ap);
+
+      assert(valid_permutation());
+    }
+
     ~Permutation() {}
 
     const Index& operator[](unsigned int i) const {
+#ifdef NDEBUG
       return p_[i];
+#else
+      return p_.at(i);
+#endif
     }
 
     Permutation& operator=(const Permutation& other) { p_ = other.p_; return *this; }
@@ -62,11 +82,12 @@ namespace TiledArray {
 
     // return false if this is not a valid permutation
     bool valid_permutation() {
-      Array count; count.assign(0);
-      for(unsigned int d=0; d<D; ++d) {
+      Array count;
+      count.assign(0);
+      for(unsigned int d=0; d < D; ++d) {
         const Index& i = p_[d];
-        if (i>=D) return false;
-        if (count[i] > 0) return false;
+        if(i >= D) return false;
+        if(count[i] > 0) return false;
         ++count[i];
       }
       return true;
@@ -94,6 +115,11 @@ namespace TiledArray {
   }
 
   template <unsigned int D>
+  bool operator!=(const Permutation<D>& p1, const Permutation<D>& p2) {
+    return ! operator==(p1, p2);
+  }
+
+  template <unsigned int D>
   std::ostream& operator<<(std::ostream& output, const Permutation<D>& p) {
     output << "{";
     for (unsigned int dim = 0; dim < D-1; ++dim)
@@ -103,12 +129,19 @@ namespace TiledArray {
   }
 
   /// permute an array
-  template<unsigned int DIM, typename T>
-  boost::array<T,DIM> operator^(const Permutation<DIM>& P, const boost::array<T,DIM>& orig) {
+  template <unsigned int DIM, typename T>
+  boost::array<T,DIM> operator^(const Permutation<DIM>& perm, const boost::array<T, static_cast<std::size_t>(DIM) >& orig) {
     boost::array<T,DIM> result;
     for(unsigned int dim = 0; dim < DIM; ++dim)
-      result[P[dim]] = orig[dim];
+      result[perm[dim]] = orig[dim];
     return result;
+  }
+
+  /// Permute obj
+  template <unsigned int DIM, typename Object>
+  Object operator ^(const Permutation<DIM>& perm, const Object& obj) {
+    Object result(obj);
+    return result ^= perm;
   }
 
 }
