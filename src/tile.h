@@ -19,7 +19,7 @@ namespace TiledArray {
   std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,Index,CS>& t);
 
   /// Tile is a multidimensional dense array, the dimensions of the tile are constant.
-  template<typename T, unsigned int DIM, typename Index = ArrayCoordinate<size_t, 3, LevelTag<0> >, typename CS = CoordinateSystem<DIM> >
+  template<typename T, unsigned int DIM, typename Index = ArrayCoordinate<size_t, DIM, LevelTag<0> >, typename CS = CoordinateSystem<DIM> >
   class Tile
   {
   public:
