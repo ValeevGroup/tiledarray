@@ -35,7 +35,7 @@ namespace TiledArray {
     typedef Tile<value_type, DIM, element_index, coordinate_system> tile;
 
 	typedef detail::ElementIterator<tile, shape_iterator, Array_ > iterator;
-	typedef detail::ElementIterator<tile const, shape_iterator, Array_ > const_iterator;
+	typedef detail::ElementIterator<tile const, shape_iterator, Array_ const> const_iterator;
 //    ELEMENT_ITERATOR_FRIENDSHIP( value_type, shape_iterator, Array_ );
 //    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, shape_iterator, Array_ );
 
