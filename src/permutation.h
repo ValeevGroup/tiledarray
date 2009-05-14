@@ -137,6 +137,11 @@ namespace TiledArray {
     return result;
   }
 
+  template <unsigned int DIM, typename T>
+  boost::array<T,DIM> operator ^=(boost::array<T, static_cast<std::size_t>(DIM) >& a, const Permutation<DIM>& perm) {
+    return (a = perm ^ a);
+  }
+
   /// Permute obj
   template <unsigned int DIM, typename Object>
   Object operator ^(const Permutation<DIM>& perm, const Object& obj) {

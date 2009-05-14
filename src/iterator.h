@@ -5,7 +5,7 @@
 #include <coordinates.h>
 
 #define INDEX_ITERATOR_FRIENDSHIP(V, C) friend class detail::IndexIterator< V , C >
-#define ELEMENT_ITERATOR_FRIENDSHIP(V, I, C) friend class detail::ElementIterator< V , I , C >
+//#define ELEMENT_ITERATOR_FRIENDSHIP(V, I, C) friend class detail::ElementIterator< V , I , C >
 
 namespace TiledArray {
 
@@ -54,17 +54,17 @@ namespace TiledArray {
   }; // class IndexIterator
 
   /// Element Iterator used to iterate over elements of dense arrays.
-  template <typename Value, typename Index, typename Container>
+  template <typename Value, typename IndexIt, typename Container>
   class ElementIterator : public boost::iterator_facade<
-      ElementIterator<Value, Index, Container>, Value, std::input_iterator_tag>
+      ElementIterator<Value, IndexIt, Container>, Value, std::output_iterator_tag>
   {
   public:
-    typedef ElementIterator<Value, Index, Container> ElementIterator_;
+    typedef ElementIterator<Value, IndexIt, Container> ElementIterator_;
     typedef boost::iterator_facade<ElementIterator_, Value, std::input_iterator_tag> iterator_facade_;
 
     /// Primary constructor
-    ElementIterator(const Index& cur, Container* container) :
-      container_(container), current_(cur)
+    ElementIterator(const IndexIt& it, Container* container) :
+      container_(container), current_(it)
     {}
 
     /// Copy constructor
@@ -74,14 +74,14 @@ namespace TiledArray {
 
     /// Copy constructor for iterators of other types (i.e. const_iterator to iterator).
     template<typename OtherValue>
-	ElementIterator(const ElementIterator<OtherValue, Index, Container>& other) :
+	ElementIterator(const ElementIterator<OtherValue, IndexIt, Container>& other) :
       container_(other.container_), current_(other.current_)
     {}
 
     ~ElementIterator() {}
 
-    Index const& index() const {
-      return current_;
+    typename IndexIt::value_type const& index() const {
+      return *current_;
     }
 
   private:
@@ -95,20 +95,20 @@ namespace TiledArray {
 
     // user must provide void Container::increment(index& current) const;
     void increment() {
-      container_->increment(current_);
+      ++current_;
     }
 
     Value& dereference() const {
-      return container_->operator[](current_);
+      return container_->operator[](index());
     }
 
     template<typename OtherValue>
-    bool equal(const ElementIterator<OtherValue, Index, Container>& other) {
+    bool equal(const ElementIterator<OtherValue, IndexIt, Container>& other) {
       return this->current_ == other.current_ && this->container_ == other.container_;
     }
 
     Container* container_;
-    Index current_;
+    IndexIt current_;
 
   }; // class ElementIterator
 

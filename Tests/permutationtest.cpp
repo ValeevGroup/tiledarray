@@ -40,7 +40,9 @@ void PermutationTest() {
   std::cout << "Constructors: " << (p1 == p2 ? "Pass" : "Fail") << std::endl;
 
   boost::array<int, 3> atest = {{4,5,6}};
-  boost::array<int, 3> aresult = p1 ^ atest;
+  boost::array<int, 3> aresult;
+  aresult = p1 ^ atest;
+  atest ^= p1;
   std::cout << "atest = " << atest << std::endl;
   std::cout << "aresult = " << aresult << std::endl;
 

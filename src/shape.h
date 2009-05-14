@@ -89,9 +89,9 @@ namespace TiledArray {
       return pred_(index) && range()->includes(index);
     }
 
-    PredShape_ operator ^=(const Permutation<DIM>& perm) {
+    PredShape_& operator ^=(const Permutation<DIM>& perm) {
       pred_ ^= perm;
-      range_ = perm ^ range_;
+      *range_ ^= perm;
       return *this;
     }
 

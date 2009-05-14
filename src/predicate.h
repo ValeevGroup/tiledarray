@@ -42,6 +42,9 @@ namespace TiledArray {
         return includes(index);
       }
 
+      /// Permute the predicate
+      DensePred& operator ^=(const Permutation<DIM>& perd) { return *this; }
+
   }; // class DensePred
 
 
@@ -147,6 +150,13 @@ namespace TiledArray {
     template <typename T, typename Tag, typename CS>
     bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
       return includes(index);
+    }
+
+    /// Permute the predicate
+    ComboPred<DIM,Pred1,Pred2>& operator ^=(const Permutation<DIM>& pred) {
+      p1_ ^= pred;
+      p2_ ^= pred;
+      return *this;
     }
 
   private:

@@ -32,10 +32,14 @@ namespace TiledArray {
     typedef CS coordinate_system;
     typedef size_t ordinal_type;
 
-    typedef detail::ElementIterator<value_type, index_type, Tile_ > iterator;
-    typedef detail::ElementIterator<value_type const, index_type, const Tile_ > const_iterator;
-    ELEMENT_ITERATOR_FRIENDSHIP( value_type, index_type, Tile_ );
-    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, index_type, const Tile_ );
+  private:
+    typedef detail::IndexIterator<index_type, Tile_> index_iterator;
+    INDEX_ITERATOR_FRIENDSHIP(index_type, Tile_);
+  public:
+    typedef detail::ElementIterator<value_type, index_iterator, Tile_ > iterator;
+    typedef detail::ElementIterator<value_type const, index_iterator, const Tile_ > const_iterator;
+//    ELEMENT_ITERATOR_FRIENDSHIP( value_type, index_iterator, Tile_ );
+//    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, index_iterator, const Tile_ );
 
     static const unsigned int dim() { return DIM; }
 
@@ -62,19 +66,19 @@ namespace TiledArray {
     // iterator factory functions
 
     iterator begin() {
-      return iterator(start_, this);
+      return iterator(index_iterator(start_, this), this);
     }
 
     const_iterator begin() const {
-      return const_iterator(start_, this);
+      return const_iterator(index_iterator(start_, this), this);
     }
 
     iterator end() {
-      return iterator(finish_, this);
+      return iterator(index_iterator(finish_, this), this);
     }
 
     const_iterator end() const {
-      return const_iterator(finish_, this);
+      return const_iterator(index_iterator(finish_, this), this);
     }
 
     /// Element access using the ordinal index with error checking

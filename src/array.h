@@ -34,17 +34,25 @@ namespace TiledArray {
 
     typedef Tile<value_type, DIM, element_index, coordinate_system> tile;
 
-	typedef detail::ElementIterator<value_type, element_index, Array_ > iterator;
-	typedef detail::ElementIterator<value_type const, element_index, Array_ > const_iterator;
-    ELEMENT_ITERATOR_FRIENDSHIP( value_type, element_index, Array_ );
-    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, element_index, Array_ );
+	typedef detail::ElementIterator<value_type, shape_iterator, Array_ > iterator;
+	typedef detail::ElementIterator<value_type const, shape_iterator, Array_ > const_iterator;
+//    ELEMENT_ITERATOR_FRIENDSHIP( value_type, shape_iterator, Array_ );
+//    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, shape_iterator, Array_ );
 
-    iterator begin() const {
-      return iterator( boost::shared_ptr<shape_iterator>( shape_->begin() ) );
+	iterator begin() {
+	  return iterator(shape_->begin(), this);
+	}
+
+    const_iterator begin() const {
+      return const_iterator(shape_->begin(), this);
     }
 
-    iterator end() const {
-      return iterator( boost::shared_ptr<shape_iterator>( shape_->end() ) );
+    iterator end() {
+      return iterator(shape_->end(), this);
+    }
+
+    const_iterator end() const {
+      return const_iterator(shape_->end(), this);
     }
 
     /// array is defined by its shape
@@ -62,7 +70,7 @@ namespace TiledArray {
     unsigned int dim() const { return DIM; }
 
     /// Returns an element index that contains the lower limit of each dimension.
-    const element_index& origin() const { return shape_->range()->start_element(); }
+    const element_index& origin() const { return range()->start_element(); }
 
     // Array virtual functions
 
@@ -70,18 +78,22 @@ namespace TiledArray {
     virtual boost::shared_ptr<Array_> clone() const =0;
 
     /// assign each element to a
-    virtual void assign(const value_type& val) =0;
+    virtual Array_& assign(const value_type& val) =0;
 
     /// where is tile k
     virtual unsigned int proc(const tile_index& k) const =0;
     virtual bool local(const tile_index& k) const =0;
 
+    // Tile access funcions
+//    tile& at(const tile_index& index) =0;
+//    const tile& at(const tile_index& index) const =0;
+//    tile& operator[](const tile_index& i) =0;
+//    const tile& operator[](const tile_index& i) const =0;
 
     /// Low-level interface will only allow permutations and efficient direct contractions
     /// it should be sufficient to use with an optimizing array expression compiler
 
     /// make new Array by applying permutation P
-//    virtual Array transpose(const Permutation<DIM>& P) =0;
 
     /// Higher-level interface will be be easier to use but necessarily less efficient
     /// since it will allow more complex operations implemented in terms of permutations
@@ -93,6 +105,10 @@ namespace TiledArray {
     // ArrayExpression operator()(const char*) const;
 
   protected:
+
+    void permute(const Permutation<DIM>& p) {
+      *shape_ ^= p;
+    }
 
     /// Returns the tile index that contains the element index e_idx.
     tile_index get_tile_index(const element_index& e_idx) const {

@@ -39,7 +39,7 @@ namespace TiledArray {
             this->range()->start_element(*it), val);
 
         // insert into tile map
-        this->data_.insert(std::make_pair(*it, tileptr));
+        data_.insert(std::make_pair(*it, tileptr));
       }
     }
 
@@ -49,6 +49,16 @@ namespace TiledArray {
     }
 
     const tile& at(const tile_index& index) const {
+      assert(includes(index));
+      return this->data_[index];
+    }
+
+    tile& operator [](const tile_index& index) {
+      assert(includes(index));
+      return this->data_[index];
+    }
+
+    const tile& operator [](const tile_index& index) const {
       assert(includes(index));
       return this->data_[index];
     }
@@ -73,12 +83,20 @@ namespace TiledArray {
       return *this;
     }
 
-    template <typename Generator>
-    LocalArray_& assign(Generator gen) {
-      for(typename array_map::iterator it = data().begin(); it != data().end(); ++it) {
-        tile_ptr& tileptr = it->second;
-        tileptr->assign(gen);
+    LocalArray_& operator ^=(const Permutation<DIM>& perm) {
+
+      array_map temp;
+      for(shape_iterator it = this->shape()->begin(); it != this->shape()->end(); ++it) {
+        // make TilePtr
+        tile_ptr tileptr = boost::make_shared<tile>(this->range()->size(*it) ^ perm,
+            this->range()->start_element(*it) ^ perm, data_[*it]);
+
+        // insert into tile map
+        temp.insert(std::make_pair(*it ^ perm, tileptr));
       }
+
+      data_ = temp;
+      permute(perm);
 
       return *this;
     }

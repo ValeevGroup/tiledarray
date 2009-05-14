@@ -125,7 +125,7 @@ namespace TiledArray {
       }
 
       Range<DIM>& operator ^=(const Permutation<DIM>& perm) {
-        ranges_ = perm ^ ranges_;
+        ranges_ ^= perm;
         init_();
         return *this;
       }
