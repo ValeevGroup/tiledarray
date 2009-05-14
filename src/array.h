@@ -84,11 +84,11 @@ namespace TiledArray {
     virtual unsigned int proc(const tile_index& k) const =0;
     virtual bool local(const tile_index& k) const =0;
 
-    // Tile access funcions
-//    tile& at(const tile_index& index) =0;
-//    const tile& at(const tile_index& index) const =0;
-//    tile& operator[](const tile_index& i) =0;
-//    const tile& operator[](const tile_index& i) const =0;
+    /// Tile access funcions
+    virtual tile& at(const tile_index& index) =0;
+    virtual const tile& at(const tile_index& index) const =0;
+    virtual tile& operator[](const tile_index& i) =0;
+    virtual const tile& operator[](const tile_index& i) const =0;
 
     /// Low-level interface will only allow permutations and efficient direct contractions
     /// it should be sufficient to use with an optimizing array expression compiler

@@ -45,22 +45,22 @@ namespace TiledArray {
 
     tile& at(const tile_index& index) {
       assert(includes(index));
-      return this->data_[index];
+      return *( this->data_.find(index)->second );
     }
 
     const tile& at(const tile_index& index) const {
       assert(includes(index));
-      return this->data_[index];
+      return *( this->data_.find(index)->second );
     }
 
     tile& operator [](const tile_index& index) {
       assert(includes(index));
-      return this->data_[index];
+      return *( this->data_.find(index)->second );
     }
 
     const tile& operator [](const tile_index& index) const {
       assert(includes(index));
-      return this->data_[index];
+      return *( this->data_.find(index)->second );
     }
 
     /// assign val to each element

@@ -12,7 +12,7 @@ public:
 	typename Index::index result = 0;
     typename Index::index e = 0;
     for(unsigned int d = 0; d < Index::dim(); ++d) {
-      e = i[d] * std::pow(10, d);
+      e = i[d] * std::pow(10, Index::dim()-d-1);
       result += e;
     }
 

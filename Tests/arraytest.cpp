@@ -39,6 +39,7 @@ void ArrayTest() {
   typedef LocalArray<double, 3> LArray3;
   boost::shared_ptr<LArray3> a1 = boost::make_shared<LArray3>(shp);
   a1->assign(1.0);
+  std::cout << *(a1->begin()) << std::endl;
 
   //typedef DistributedArray<double, 3> DArray3;
   //boost::shared_ptr<DArray3> a2(new DArray3(shp));

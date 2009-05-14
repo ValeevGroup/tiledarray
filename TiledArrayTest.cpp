@@ -13,7 +13,7 @@
 //#define TEST_SHAPE
 //#define TEST_TILEMAP
 #define TEST_TILE
-//#define TEST_ARRAY
+#define TEST_ARRAY
 
 #include "coordinatestest.h"
 #include "permutationtest.h"
