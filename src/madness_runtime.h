@@ -14,7 +14,7 @@
 #include <world/world.h>
 
 namespace TiledArray {
-//#define Future madness::Future
+#define Future madness::Future
 #define DistributedRuntime madness::World
 #define DistributedObject madness::WorldObject
 #define DistributedContainer madness::WorldContainer

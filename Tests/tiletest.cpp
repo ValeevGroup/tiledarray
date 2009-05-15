@@ -9,10 +9,11 @@ template<typename T, typename Index>
 class gen {
 public:
   const T operator ()(const Index& i) {
-	typename Index::index result = 0;
-    typename Index::index e = 0;
+    typedef typename Index::index index_t;
+	index_t result = 0;
+    index_t e = 0;
     for(unsigned int d = 0; d < Index::dim(); ++d) {
-      e = i[d] * std::pow(10, Index::dim()-d-1);
+      e = i[d] * static_cast<index_t>(std::pow(10.0, static_cast<int>(Index::dim()-d-1)));
       result += e;
     }
 
