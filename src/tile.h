@@ -8,6 +8,8 @@
 #include <coordinates.h>
 #include <permutation.h>
 #include <iterator.h>
+#include <madness_runtime.h>
+#include <world/archive.h>
 
 namespace TiledArray {
 
@@ -212,6 +214,11 @@ namespace TiledArray {
       return *this;
     }
 
+    template <typename Archive>
+    void serialize(const Archive& ar) {
+      ar & data_ & n_ & weights_ & sizes_ & start_ & finish_;
+    }
+
   private:
 
     static size_array calc_weights(const size_array& sizes) {
@@ -295,7 +302,28 @@ namespace TiledArray {
     return out;
   }
 
-
 } // namespace TiledArray
+
+namespace madness {
+  namespace archive {
+    template <class Archive, typename T, unsigned int DIM, typename Index>
+     struct ArchiveLoadImpl<Archive,TiledArray::Tile<T,DIM,Index>*> {
+         typedef TiledArray::Tile<T,DIM,Index> Tile;
+         static inline void load(const Archive& ar, Tile*& tileptr) {
+           tileptr = new Tile;
+           ar & wrap(tileptr,1);
+         }
+     };
+
+     template <class Archive, typename T, unsigned int DIM, typename Index>
+     struct ArchiveStoreImpl<Archive,TiledArray::Tile<T,DIM,Index>*> {
+         typedef TiledArray::Tile<T,DIM,Index> Tile;
+         static inline void store(const Archive& ar, Tile* const& tileptr) {
+           ar & wrap(tileptr,1);
+         }
+     };
+
+  }
+}
 
 #endif // TILE_H__INCLUDED

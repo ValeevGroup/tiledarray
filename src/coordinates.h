@@ -264,6 +264,11 @@ namespace detail {
       return *this;
     }
 
+    template <typename Archive>
+    void serialize(const Archive& ar) {
+      ar & r_;
+    }
+
     friend bool operator < <>(const ArrayCoordinate_&, const ArrayCoordinate_&);
     friend bool operator == <>(const ArrayCoordinate_&, const ArrayCoordinate_&);
     friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate_&);

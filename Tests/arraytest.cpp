@@ -11,7 +11,7 @@
 
 using namespace TiledArray;
 
-void ArrayTest() {
+void ArrayTest(DistributedWorld& world) {
 
   std::cout << "Array Tests:" << std::endl;
 
@@ -47,8 +47,10 @@ void ArrayTest() {
   assert(tfut0.probe() == true);  // OK since the Future is assigned, hence result is available immediately
   std::cout << tfut0.get() << std::endl;   // Future::get() returns the value
 
-  //typedef DistributedArray<double, 3> DArray3;
-  //boost::shared_ptr<DArray3> a2(new DArray3(shp));
+  typedef DistributedArray<double, 3> DArray3;
+  boost::shared_ptr<DArray3> a2(new DArray3(world,shp));
+  a2->assign(2.0);
+  std::cout << *(a2->begin()) << std::endl;
 
   std::cout << "End Array Tests" << std::endl << std::endl;
 }

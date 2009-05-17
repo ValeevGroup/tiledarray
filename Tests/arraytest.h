@@ -1,12 +1,14 @@
 #ifndef ARRAYTEST_H__INCLUDED
 #define ARRAYTEST_H__INCLUDED
 
+#include <madness_runtime.h>
+
 #ifdef TEST_ARRAY
-#define RUN_ARRAY_TEST	{ ArrayTest(); }
+#define RUN_ARRAY_TEST	{ ArrayTest(world); }
 #else
 #define RUN_ARRAY_TEST	{ ; }
 #endif
 
-void ArrayTest();
+extern void ArrayTest(DistributedWorld& world);
 
 #endif // ARRAYTEST_H__INCLUDED

@@ -189,6 +189,14 @@ namespace TiledArray {
         return extents.data();
       }
 
+      /// computes an ordinal index for a given tile_index
+      ordinal_index ordinal(const tile_index& t) const {
+        assert(includes(t));
+        tile_index relative_index = t - start_tile();
+        ordinal_index result = dot_product(relative_index.data(),tile_ordinal_weights_);
+        return result;
+      }
+
     private:
       /// precomputes useful data listed below
       void init_() {
@@ -222,18 +230,10 @@ namespace TiledArray {
       }
 
       /// computes an ordinal index for a given tile_index
-      ordinal_index ordinal(const element_index& e) {
+      ordinal_index ordinal(const element_index& e) const {
     	assert(includes(e));
     	element_index relative_index = e - start_element();
         ordinal_index result = dot_product(relative_index.data(),element_ordinal_weights_);
-        return result;
-      }
-
-      /// computes an ordinal index for a given tile_index
-      ordinal_index ordinal(const tile_index& t) {
-        assert(includes(t));
-        tile_index relative_index = t - start_tile();
-        ordinal_index result = dot_product(relative_index.data(),tile_ordinal_weights_);
         return result;
       }
 
