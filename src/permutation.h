@@ -10,21 +10,21 @@
 namespace TiledArray {
 
   // weirdly necessary forward declarations
-  template <unsigned int D>
+  template <unsigned int DIM>
   class Permutation;
-  template <unsigned int D>
-  bool operator==(const Permutation<D>& p1, const Permutation<D>& p2);
-  template <unsigned int D>
-  std::ostream& operator<<(std::ostream& output, const Permutation<D>& p);
+  template <unsigned int DIM>
+  bool operator==(const Permutation<DIM>& p1, const Permutation<DIM>& p2);
+  template <unsigned int DIM>
+  std::ostream& operator<<(std::ostream& output, const Permutation<DIM>& p);
 
   /// Permutation
-  template <unsigned int D>
+  template <unsigned int DIM>
   class Permutation
   {
   public:
     typedef size_t Index;
-    typedef boost::array<Index,D> Array;
-    static const unsigned int DIM = D;
+    typedef boost::array<Index,DIM> Array;
+    static const unsigned int dim() { return DIM; }
 
     static const Permutation& unit() { return unit_permutation; }
 
@@ -33,7 +33,7 @@ namespace TiledArray {
     }
 
     Permutation(const Index* source) {
-      std::copy(source,source+D,p_.begin());
+      std::copy(source,source+DIM,p_.begin());
       assert(valid_permutation());
     }
 
@@ -46,7 +46,7 @@ namespace TiledArray {
       va_start(ap, p0);
 
       p_[0] = p0;
-      for(unsigned int i = 1; i < D; ++i)
+      for(unsigned int i = 1; i < DIM; ++i)
         p_[i] = va_arg(ap, Index);
 
       va_end(ap);
@@ -64,17 +64,22 @@ namespace TiledArray {
 #endif
     }
 
-    Permutation& operator=(const Permutation& other) { p_ = other.p_; return *this; }
+    Permutation<DIM>& operator=(const Permutation<DIM>& other) { p_ = other.p_; return *this; }
     /// return *this * other
-    Permutation operator^(const Permutation& other) const {
-      Array _result;
-      for(unsigned int d=0; d<D; ++d)
-        _result[d] = p_[other[d]];
-      Permutation result(_result);
-      return result;
+    Permutation<DIM>& operator^=(const Permutation<DIM>& other) {
+      p_ ^= other;
+      return *this;
     }
 
-    friend bool operator== <> (const Permutation<D>& p1, const Permutation<D>& p2);
+    /// Returns the reverse permutation and will satisfy the following conditions.
+    /// (p ^ -p) = unit_permutation
+    /// given c2 = p ^ c1
+    /// c1 == ((-p) ^ c2);
+    Permutation<DIM> operator -() const {
+      return *this ^ unit();
+    }
+
+    friend bool operator== <> (const Permutation<DIM>& p1, const Permutation<DIM>& p2);
     friend std::ostream& operator<< <> (std::ostream& output, const Permutation& p);
 
   private:
@@ -84,9 +89,9 @@ namespace TiledArray {
     bool valid_permutation() {
       Array count;
       count.assign(0);
-      for(unsigned int d=0; d < D; ++d) {
+      for(unsigned int d=0; d < DIM; ++d) {
         const Index& i = p_[d];
-        if(i >= D) return false;
+        if(i >= DIM) return false;
         if(count[i] > 0) return false;
         ++count[i];
       }
@@ -97,34 +102,34 @@ namespace TiledArray {
   };
 
   namespace {
-    template <unsigned int D>
-    Permutation<D>
+    template <unsigned int DIM>
+    Permutation<DIM>
     make_unit_permutation() {
-      typename Permutation<D>::Index _result[D];
-      for(unsigned int d=0; d<D; ++d) _result[d] = d;
-      return Permutation<D>(_result);
+      typename Permutation<DIM>::Index _result[DIM];
+      for(unsigned int d=0; d<DIM; ++d) _result[d] = d;
+      return Permutation<DIM>(_result);
     }
   }
 
-  template <unsigned int D>
-  Permutation<D> Permutation<D>::unit_permutation = make_unit_permutation<D>();
+  template <unsigned int DIM>
+  Permutation<DIM> Permutation<DIM>::unit_permutation = make_unit_permutation<DIM>();
 
-  template <unsigned int D>
-  bool operator==(const Permutation<D>& p1, const Permutation<D>& p2) {
+  template <unsigned int DIM>
+  bool operator==(const Permutation<DIM>& p1, const Permutation<DIM>& p2) {
     return p1.p_ == p2.p_;
   }
 
-  template <unsigned int D>
-  bool operator!=(const Permutation<D>& p1, const Permutation<D>& p2) {
+  template <unsigned int DIM>
+  bool operator!=(const Permutation<DIM>& p1, const Permutation<DIM>& p2) {
     return ! operator==(p1, p2);
   }
 
-  template <unsigned int D>
-  std::ostream& operator<<(std::ostream& output, const Permutation<D>& p) {
+  template <unsigned int DIM>
+  std::ostream& operator<<(std::ostream& output, const Permutation<DIM>& p) {
     output << "{";
-    for (unsigned int dim = 0; dim < D-1; ++dim)
+    for (unsigned int dim = 0; dim < DIM-1; ++dim)
       output << dim << "->" << p.p_[dim] << ", ";
-    output << D-1 << "->" << p.p_[D-1] << "}";
+    output << DIM-1 << "->" << p.p_[DIM-1] << "}";
     return output;
   }
 
