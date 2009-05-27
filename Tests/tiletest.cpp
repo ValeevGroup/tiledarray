@@ -1,8 +1,12 @@
-#include <iostream>
-#include <math.h>
-#include <boost/array.hpp>
+#include <coordinates.h>
+#include <permutation.h>
 #include <tile.h>
 #include "tiletest.h"
+#include <iostream>
+#include <math.h>
+#include <utility>
+#define WORLD_INSTANTIATE_STATIC_TEMPLATES
+#include <world/world.h>
 
 // Element Generation object test.
 template<typename T, typename Index>

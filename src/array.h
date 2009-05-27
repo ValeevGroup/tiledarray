@@ -1,18 +1,22 @@
 #ifndef ARRAY_H__INCLUDED
 #define ARRAY_H__INCLUDED
 
+#include <madness_runtime.h>
+
 #include <cassert>
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 
-#include <coordinates.h>
-#include <permutation.h>
-#include <range.h>
-#include <shape.h>
-#include <tile.h>
-
 namespace TiledArray {
+
+  // Forward declaration of TiledArray Permutation.
+  template <unsigned int DIM, typename CS>
+  class Range;
+  template <unsigned int DIM, typename CS>
+  class Shape;
+  template<typename T, unsigned int DIM, typename CS>
+  class Tile;
 
   /// The main player: Array
   /// Serves as base to various implementations (local, replicated, distributed)
@@ -23,7 +27,7 @@ namespace TiledArray {
   public:
     typedef Array<T,DIM,CS> Array_;
     typedef Range<DIM, CS> range_type;
-    typedef typename range_type::tile_iterator range_iterator;
+    typedef typename range_type::iterator range_iterator;
     typedef Shape<DIM, CS> shape_type;
     typedef typename shape_type::iterator shape_iterator;
     typedef typename range_type::ordinal_index ordinal_index;
@@ -32,12 +36,12 @@ namespace TiledArray {
     typedef T value_type;
     typedef CS coordinate_system;
 
-    typedef Tile<value_type, DIM, element_index, coordinate_system> tile;
+    typedef Tile<value_type, DIM, coordinate_system> tile;
+    typedef boost::shared_ptr<tile> tile_ptr;
+    typedef madness::Future<tile> future_tile;
 
 	typedef detail::ElementIterator<tile, shape_iterator, Array_ > iterator;
 	typedef detail::ElementIterator<tile const, shape_iterator, Array_ const> const_iterator;
-//    ELEMENT_ITERATOR_FRIENDSHIP( value_type, shape_iterator, Array_ );
-//    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, shape_iterator, Array_ );
 
 	iterator begin() {
 	  return iterator(shape_->begin(), this);

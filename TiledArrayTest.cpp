@@ -6,7 +6,7 @@
 // Description : Hello World in C, Ansi-style
 //============================================================================
 
-//#define TEST_COORDINATES
+#define TEST_COORDINATES
 //#define TEST_PERMUTATION
 //#define TEST_RANGE1
 //#define TEST_RANGE
@@ -24,6 +24,7 @@
 #include "tiletest.h"
 #include "arraytest.h"
 #include <madness_runtime.h>
+#include <world/world.h>
 
 namespace TiledArray { }
 using namespace TiledArray;
@@ -35,8 +36,8 @@ int main(int argc, char* argv[]) {
   MPI::Init(argc, argv);
   ThreadPool::begin();
   RMI::begin();
-  DistributedWorld world(MPI::COMM_WORLD);
-  //redirectio(world);
+  madness::World world(MPI::COMM_WORLD);
+  redirectio(world);
   world.gop.fence();
 
   RUN_COORDINATES_TEST

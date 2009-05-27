@@ -1,17 +1,19 @@
-#include <iostream>
 #include <range.h>
 #include <shape.h>
-#include <boost/smart_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <array.h>
 #include <local_array.h>
 #include <distributed_array.h>
 
 #include "arraytest.h"
+#include <boost/smart_ptr.hpp>
+#include <boost/make_shared.hpp>
+#include <world/world.h>
+#include <iostream>
 
+//using namespace madness;
 using namespace TiledArray;
 
-void ArrayTest(DistributedWorld& world) {
+
+void ArrayTest(madness::World& world) {
 
   std::cout << "Array Tests:" << std::endl;
 
@@ -43,7 +45,7 @@ void ArrayTest(DistributedWorld& world) {
 
   // make an initialized Future<Tile>
   typedef LArray3::tile Tile;
-  Future<Tile> tfut0( *(a1->begin()) );
+  madness::Future<Tile> tfut0( *(a1->begin()) );
   assert(tfut0.probe() == true);  // OK since the Future is assigned, hence result is available immediately
   std::cout << tfut0.get() << std::endl;   // Future::get() returns the value
 

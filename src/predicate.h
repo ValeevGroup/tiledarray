@@ -1,10 +1,13 @@
 #ifndef PREDICATE_H__INCLUDED
 #define PREDICATE_H__INCLUDED
 
-#include <coordinates.h>
 #include <permutation.h>
 
 namespace TiledArray {
+
+  // Forward declaration of TiledArray components.
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  class ArrayCoordinate;
 
   /**
    * The Predicates must be Assignable, Copy Constructible, and
@@ -123,10 +126,40 @@ namespace TiledArray {
 
   }; // class LowerTrianglePred
 
+
+  template <typename Container>
+  class LocalPred {
+  public:
+    LocalPred(const Container* c) : cont_(c) {}
+    ~LocalPred() {}
+
+    /// predicate function
+    template <typename T, unsigned int DIM, typename Tag, typename CS>
+    bool includes(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+      return cont_->local(index);
+    }
+
+    /// predicate operator
+    template <typename T, unsigned int DIM, typename Tag, typename CS>
+    bool operator ()(const ArrayCoordinate<T,DIM,Tag,CS>& index) const {
+      return includes(index);
+    }
+
+    /// Permute the predicate
+    template <unsigned int DIM>
+    LocalPred<Container>& operator ^=(const Permutation<DIM>& pred) {
+      return *this;
+    }
+
+  private:
+    const Container* cont_;
+
+  }; // class LocalPred
+
   /// This predicate combines two predicates to act as a single predicate
   /// ComboPred::includes(i) returns true when both Pred1::includes(i) and
   /// Pred2::includes(i) returns true.
-  template<unsigned int DIM, typename Pred1, typename Pred2>
+  template <unsigned int DIM, typename Pred1, typename Pred2>
   class ComboPred {
   public:
 
@@ -138,7 +171,7 @@ namespace TiledArray {
 
     /// Copy constructor
     ComboPred(const ComboPred<DIM,Pred1,Pred2>& other) :
-        p1_(other.p1_), p2_(other.p2) { }
+        p1_(other.p1_), p2_(other.p2_) { }
 
     /// predicate function
     template <typename T, typename Tag, typename CS>

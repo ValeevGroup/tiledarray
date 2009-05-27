@@ -1,18 +1,21 @@
 	#ifndef RANGE_H__INCLUDED
 #define RANGE_H__INCLUDED
 
-#include <iostream>
-
-#include <boost/array.hpp>
-#include <boost/operators.hpp>
-#include <boost/iterator/filter_iterator.hpp>
-
 #include <range1.h>
 #include <coordinates.h>
 #include <iterator.h>
-#include <permutation.h>
+#include <block.h>
+#include <iosfwd>
+#include <boost/array.hpp>
+#include <boost/operators.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
 
 namespace TiledArray {
+
+  // Forward declaration of TiledArray Permutation.
+  template <unsigned int DIM>
+  class Permutation;
 
   // need these forward declarations
   template<unsigned int DIM, typename CS> class Range;
@@ -24,22 +27,27 @@ namespace TiledArray {
   template<unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Range : boost::equality_comparable1< Range<DIM,CS> > {
 
-      typedef Range<DIM,CS> Range_;
       typedef boost::array<Range1,DIM> Ranges;
-      typedef Range1::element_index index_t;
 
     public:
       // typedefs
+      typedef Range<DIM,CS> Range_;
       typedef CS coordinate_system;
-      typedef ArrayCoordinate<index_t,DIM,LevelTag<1>,coordinate_system> tile_index;
-      typedef ArrayCoordinate<index_t,DIM,LevelTag<0>,coordinate_system> element_index;
       typedef size_t ordinal_index;
+      typedef ArrayCoordinate<ordinal_index,DIM,LevelTag<1>,coordinate_system> tile_index;
+      typedef ArrayCoordinate<ordinal_index,DIM,LevelTag<0>,coordinate_system> element_index;
+      typedef Block<ordinal_index,DIM,LevelTag<1>,coordinate_system> tile_block_type;
+      typedef Block<ordinal_index,DIM,LevelTag<0>,coordinate_system> element_block_type;
+      typedef boost::shared_ptr<tile_block_type> tile_block_ptr;
+      typedef boost::shared_ptr<element_block_type> element_block_ptr;
+
+
 
       // ready to declare iterators
       /// iterates over Range1
       typedef typename Ranges::const_iterator range_iterator;
       /// iterates over tile indices
-      typedef detail::IndexIterator< tile_index, Range_> tile_iterator;
+      typedef detail::IndexIterator< tile_index, Range_> iterator;
       INDEX_ITERATOR_FRIENDSHIP(tile_index, Range_);
 
       /// Returns the number of dimensions
@@ -64,14 +72,14 @@ namespace TiledArray {
       }
 
       /// Returns an iterator pointing to the first range.
-      tile_iterator begin() const {
-        tile_iterator result(start_tile(), this);
+      iterator begin() const {
+        iterator result(start_tile(), this);
         return result;
       }
 
       /// Return an iterator pointing one past the last dimension.
-      tile_iterator end() const {
-        return tile_iterator(finish_tile(), this);
+      iterator end() const {
+        return iterator(finish_tile(), this);
       }
 
       /// number of elements
@@ -110,14 +118,14 @@ namespace TiledArray {
       }
 
       /// Return the tile that contains an element index.
-      tile_iterator find(const element_index e) const {
+      iterator find(const element_index e) const {
         tile_index tmp;
 
         for (unsigned int dim = 0; dim < DIM; ++dim)
           tmp[dim] = *( ranges_[dim].find(e[dim]) );
 
         if (includes(tmp)) {
-          tile_iterator result(tmp, this);
+          iterator result(tmp, this);
           return result;
         }
         else

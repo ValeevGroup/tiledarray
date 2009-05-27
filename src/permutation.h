@@ -2,7 +2,7 @@
 #define PERMUTATION_H_
 
 #include <cassert>
-#include <iostream>
+#include <iosfwd>
 #include <algorithm>
 #include <stdarg.h>
 #include <boost/array.hpp>
@@ -16,6 +16,8 @@ namespace TiledArray {
   bool operator==(const Permutation<DIM>& p1, const Permutation<DIM>& p2);
   template <unsigned int DIM>
   std::ostream& operator<<(std::ostream& output, const Permutation<DIM>& p);
+
+  // Boost forward declaration
 
   /// Permutation
   template <unsigned int DIM>
@@ -32,8 +34,9 @@ namespace TiledArray {
       p_ = unit_permutation.p_;
     }
 
-    Permutation(const Index* source) {
-      std::copy(source,source+DIM,p_.begin());
+    template <typename InIter>
+    Permutation(InIter first, InIter last) {
+      std::copy(first,last,p_.begin());
       assert(valid_permutation());
     }
 
@@ -107,7 +110,7 @@ namespace TiledArray {
     make_unit_permutation() {
       typename Permutation<DIM>::Index _result[DIM];
       for(unsigned int d=0; d<DIM; ++d) _result[d] = d;
-      return Permutation<DIM>(_result);
+      return Permutation<DIM>(_result, _result + DIM);
     }
   }
 

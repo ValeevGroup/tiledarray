@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cassert>
-#include <iostream>
+#include <iosfwd>
 
 #include <boost/operators.hpp>
 #include <boost/limits.hpp>

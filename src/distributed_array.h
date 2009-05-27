@@ -1,17 +1,15 @@
 #ifndef DISTRIBUTED_ARRAY_H__INCLUDED
 #define DISTRIBUTED_ARRAY_H__INCLUDED
 
-#include <boost/shared_ptr.hpp>
-
 #include <array.h>
-#include <madness_runtime.h>
+#include <world/world.h>
 
 namespace TiledArray {
 
   /// Tiled Array with data distributed across many nodes.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class DistributedArray : public Array<T, DIM, CS>,
-                           public DistributedObject< DistributedArray<T,DIM,CS> > {
+                           public madness::WorldObject< DistributedArray<T,DIM,CS> > {
 
   public:
     typedef Array<T, DIM, CS> Array_;
@@ -32,10 +30,10 @@ namespace TiledArray {
 
     /// creates an array living in world and described by shape. Optional
     /// val specifies the default value of every element
-    DistributedArray(DistributedWorld& world,
+    DistributedArray(madness::World& world,
                      const boost::shared_ptr<shape_type>& shp,
                      const value_type& val = value_type()) :
-      Array_(shp), DistributedObject<DistributedArray_>(world), tiles_(world) {
+      Array_(shp), madness::WorldObject<DistributedArray_>(world), tiles_(world) {
 
       this->process_pending();
 
@@ -44,8 +42,7 @@ namespace TiledArray {
 
         const tile_index& t = *it;
         const ordinal_index ot = this->range()->ordinal(t);
-        const bool local = tiles_.is_local( ot );
-        if (!local)
+        if (!tiles_.is_local( ot ))
           continue;
 
         // make TilePtr
@@ -72,6 +69,7 @@ namespace TiledArray {
       return static_cast<unsigned int>(tiles_.owner( this->range()->ordinal(index) ));
     }
 
+    /// Returns true if the tile specified by index is stored locally.
     bool local(const tile_index& index) const {
       assert(includes(index));
       return tiles_.is_local(this->range()->ordinal(index));
@@ -99,7 +97,7 @@ namespace TiledArray {
 
 
   private:
-    typedef DistributedContainer<ordinal_index,tile*> tile_container;
+    typedef madness::WorldContainer<ordinal_index,tile*> tile_container;
     tile_container tiles_;
 
     boost::shared_ptr<Array_> clone() const {

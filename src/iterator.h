@@ -1,8 +1,8 @@
 #ifndef ITERATOR_H__INCLUDED
 #define ITERATOR_H__INCLUDED
 
+#include <coordinate_system.h>
 #include <boost/iterator/iterator_facade.hpp>
-#include <coordinates.h>
 
 #define INDEX_ITERATOR_FRIENDSHIP(V, C) friend class detail::IndexIterator< V , C >
 //#define ELEMENT_ITERATOR_FRIENDSHIP(V, I, C) friend class detail::ElementIterator< V , I , C >

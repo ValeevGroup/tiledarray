@@ -1,6 +1,6 @@
-#include <iostream>
 #include <range1.h>
-#include <range1test.h>
+#include <iostream>
+#include "range1test.h"
 
 using namespace TiledArray;
 

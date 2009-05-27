@@ -1,12 +1,13 @@
 #ifndef LOCAL_ARRAY_H__INCLUDED
 #define LOCAL_ARRAY_H__INCLUDED
 
-#include <map>
-#include <utility>
-#include <boost/shared_ptr.hpp>
 #include <shape.h>
 #include <tile.h>
 #include <array.h>
+#include <map>
+#include <utility>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
 
 namespace TiledArray {
 

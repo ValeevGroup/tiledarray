@@ -1,86 +1,103 @@
 #ifndef TILE_H__INCLUDED
 #define TILE_H__INCLUDED
 
-#include <vector>
-#include <utility>
-#include <iostream>
-
-#include <coordinates.h>
-#include <permutation.h>
-#include <iterator.h>
+#include <coordinate_system.h>
+#include <block.h>
 #include <madness_runtime.h>
-#include <world/archive.h>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+//#include <world/archive.h>
+#include <vector>
+#include <iosfwd>
 
 namespace TiledArray {
 
-  template<typename T, unsigned int DIM, typename Index, typename CS>
+  // Forward declaration of TiledArray components.
+  template <unsigned int DIM>
+  class Permutation;
+
+  template<typename T, unsigned int DIM, typename CS>
   class Tile;
-  template<typename T, unsigned int DIM, typename Index, typename CS>
-  Tile<T,DIM,Index,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,Index,CS>& t);
-  template<typename T, unsigned int DIM, typename Index, typename CS>
-  std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,Index,CS>& t);
+  template<typename T, unsigned int DIM, typename CS>
+  Tile<T,DIM,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,CS>& t);
+  template<typename T, unsigned int DIM, typename CS>
+  std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,CS>& t);
 
   /// Tile is a multidimensional dense array, the dimensions of the tile are constant.
-  template<typename T, unsigned int DIM, typename Index = ArrayCoordinate<size_t, DIM, LevelTag<0> >, typename CS = CoordinateSystem<DIM> >
+  template<typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Tile
   {
   public:
-	typedef Tile<T, DIM, Index, CS> Tile_;
+	typedef Tile<T, DIM, CS> Tile_;
     typedef T value_type;
     typedef T& reference_type;
-    typedef T const & const_reference_type;
-    typedef Index index_type;
-    typedef typename index_type::Array size_array;
+    typedef const T & const_reference_type;
     typedef CS coordinate_system;
     typedef size_t ordinal_type;
-
-  private:
-    typedef detail::IndexIterator<index_type, Tile_> index_iterator;
-    INDEX_ITERATOR_FRIENDSHIP(index_type, Tile_);
-  public:
-    typedef detail::ElementIterator<value_type, index_iterator, Tile_ > iterator;
-    typedef detail::ElementIterator<value_type const, index_iterator, const Tile_ > const_iterator;
-//    ELEMENT_ITERATOR_FRIENDSHIP( value_type, index_iterator, Tile_ );
-//    ELEMENT_ITERATOR_FRIENDSHIP( value_type const, index_iterator, const Tile_ );
+    typedef ArrayCoordinate<ordinal_type, DIM, LevelTag<0>, coordinate_system> index_type;
+    typedef typename index_type::Array size_array;
+    typedef Block<ordinal_type, DIM, LevelTag<0>, coordinate_system > block_type;
+    typedef boost::shared_ptr<block_type> block_ptr;
+    typedef boost::shared_ptr<const block_type> const_block_ptr;
+    typedef std::vector<value_type> data_container;
+    typedef typename data_container::const_iterator const_iterator;
+    typedef typename data_container::iterator iterator;
 
     static const unsigned int dim() { return DIM; }
 
     /// Default constructor
-    Tile() : n_(0), sizes_(0ul), start_(0ul), finish_(0ul), data_(0) {
-      for(unsigned int i = 0; i < Tile_::dim(); ++i)
-        weights_[i] = 0;
+    Tile() : block_(), data_(0) {
+      block_ = boost::make_shared<block_type>();
     }
 
-    /// Primary constructor
+    /// Primary constructor. The block pointer must point to a properly
+    /// initialized Block<>.
+    Tile(const block_ptr& block, const value_type val = value_type()) : block_(block), data_(block_->volume(), val)
+    { }
+
+    template <typename InIter>
+    Tile(const block_ptr& block, InIter first, InIter last) : block_(block), data_(first, last) {
+      data_.resize(block->volume());
+    }
+
+
+    /// Constructs a tile given the dimensions of the tile.
     Tile(const size_array& sizes, const index_type& origin = index_type(), const value_type val = value_type()) :
-        n_(volume<typename index_type::volume, DIM>(sizes)), weights_(calc_weights(sizes)),
-        sizes_(sizes), start_(origin), finish_(origin + sizes), data_(n_, val)
-    {}
+        data_(0) {
+      block_ = boost::make_shared<block_type>(sizes, origin);
+      data_.resize(block_->volume(), val);
+    }
+
+    template <typename InIter>
+    Tile(const size_array& sizes, const index_type& origin, InIter first, InIter last) :
+        data_(first, last) {
+      block_ = boost::make_shared<block_type>(sizes, origin);
+      data_.resize(block_->volume());
+    }
 
     /// Copy constructor
-    Tile(const Tile& t) :
-        n_(t.n_), weights_(t.weights_), sizes_(t.sizes_),
-        start_(t.start_), finish_(t.finish_), data_(t.data_)
-    {}
+    Tile(const Tile& t) : block_(), data_(t.data_) {
+      block_ = boost::make_shared<block_type>(* t.block_);
+    }
 
     ~Tile() {}
 
     // iterator factory functions
 
     iterator begin() {
-      return iterator(index_iterator(start_, this), this);
+      return data_.begin();
     }
 
     const_iterator begin() const {
-      return const_iterator(index_iterator(start_, this), this);
+      return data_.begin();
     }
 
     iterator end() {
-      return iterator(index_iterator(finish_, this), this);
+      return data_.end();
     }
 
     const_iterator end() const {
-      return const_iterator(index_iterator(finish_, this), this);
+      return data_.end();
     }
 
     /// Element access using the ordinal index with error checking
@@ -124,46 +141,33 @@ namespace TiledArray {
     /// Element access using the element index without error checking
     reference_type operator[](const index_type& i) {
 #ifdef NDEBUG
-      return data_[ordinal(i)];
+      return data_[block_->ordinal(i)];
 #else
-      return data_.at(ordinal(i));
+      return data_.at(block_->ordinal(i));
 #endif
     }
 
     /// Element access using the element index without error checking
     const_reference_type operator[](const index_type& i) const {
 #ifdef NDEBUG
-      retrun data_[ordinal(i)];
+      retrun data_[block_->ordinal(i)];
 #else
-      return data_.at(ordinal(i));
+      return data_.at(block_->ordinal(i));
 #endif
     }
 
-    /// Returns an array with the size of each dimension.
-    const size_array& size() const {
-      return sizes_.data();
-    }
-
-    /// Returns the lower bound of the tile
-    const index_type& start() const {
-      return start_;
-    }
-
-    const index_type& finish() const {
-      return finish_;
-    }
-
-    /// Returns the number of elements contained in the array.
-    ordinal_type nelements() const {
-      return data_.size();
-    }
+    /// Returns a constant pointer to the tile block definition.
+    block_ptr block() const { return block_; }
 
     /// Assigns a value to the specified range of element in tile.
     /// *iterator = gen(index_type&)
     template <typename Generator>
     Tile_& assign(const_iterator& first, const_iterator& last, Generator gen) {
+      assert(last >= first);
+      typename block_type::const_iterator b_it = block_->begin();
+      for(iterator it = begin(); it != first; ++it, ++b_it);
       for(iterator it = first; it != last; ++it)
-        *it = gen(it.index());
+        *it = gen(*b_it);
 
       return *this;
     }
@@ -172,129 +176,102 @@ namespace TiledArray {
     /// *iterator = gen(index_type&)
     template <typename Generator>
     Tile_& assign(Generator gen) {
-      for(iterator it = begin(); it != end(); ++it)
-        *it = gen(it.index());
+      typename block_type::const_iterator b_it = block_->begin();
+      for(iterator it = begin(); it != end(); ++it, ++b_it)
+        *it = gen(*b_it);
 
       return *this;
     }
 
     /// Resize the tile.
     void resize(const size_array& sizes, const value_type& val = value_type()) {
-      sizes_ = sizes;
-      finish_ = start_ + sizes;
-      n_ = volume<typename index_type::volume, DIM>(sizes);
-      weights_ = calc_weights(sizes);
-      data_.resize(n_, val);
+      block_->resize(sizes);
+      data_.resize(block_->volume(), val);
     }
 
     void set_origin(const index_type& origin) {
-      start_ = origin;
-      finish_ = origin + sizes_;
+      block_->set_origin(origin);
     }
 
     /// Permute the tile given a permutation.
     Tile_& operator ^=(const Permutation<DIM>& p) {
       // copy data needed for iteration.
-      index_type temp_index(start_);
-      const index_type temp_start(start_);
-      const index_type temp_finish(finish_);
-  	  const std::vector<value_type> temp_data(data_);
+      const block_type temp_block(*block_);
+      const data_container temp_data(data_);
 
   	  // Permute support data.
-  	  start_ ^= p;
-  	  finish_ ^= p;
-  	  sizes_ = p ^ sizes_;
-  	  weights_ = calc_weights(sizes_.data());
+      *block_ ^= p;
 
       // Permute the tile data.
-      for(typename std::vector<value_type>::const_iterator it = temp_data.begin(); it != temp_data.end(); ++it) {
-        data_[ordinal(p ^ temp_index)] = *it;
-        detail::IncrementCoordinate<DIM,index_type,coordinate_system>(temp_index, temp_start, temp_finish);
+      const_iterator data_it = temp_data.begin();
+      typename block_type::const_iterator index_it = temp_block.begin();
+      for(; data_it != temp_data.end(); ++data_it, ++index_it) {
+        data_[block_->ordinal(p ^ *index_it)] = *data_it;
       }
       return *this;
     }
 
     template <typename Archive>
     void serialize(const Archive& ar) {
-      ar & data_ & n_ & weights_ & sizes_ & start_ & finish_;
+      ar & (*block_) & data_;
     }
 
   private:
 
-    static size_array calc_weights(const size_array& sizes) {
-      size_array result;
-
-      // Get dim ordering iterator
-      const detail::DimensionOrder<DIM>& dimorder = coordinate_system::ordering();
-      typename detail::DimensionOrder<DIM>::const_iterator d;
-
-      ordinal_type weight = 1;
-      for(d = dimorder.begin(); d != dimorder.end(); ++d) {
-        // calc ordinal weights.
-        result[*d] = weight;
-        weight *= sizes[*d];
-      }
-
-      return result;
-    }
-
-    /// Check the coordinate to make sure it is within the tile range
-    bool includes(const index_type& i) const{
-
-      return (i >= start()) && (i < finish());
-    }
-
-    /// computes an ordinal index for a given index_type
-    ordinal_type ordinal(const index_type& i) const {
-      assert(includes(i));
-      index_type relative_index = i - start_;
-      ordinal_type result = dot_product(relative_index.data(), weights_);
-      return result;
-    }
-
-    void increment(index_type& i) const {
-      detail::IncrementCoordinate<DIM,index_type,coordinate_system>(i, start_, finish_);
-    }
-
-    ordinal_type n_;                // Number of elements
-	size_array weights_;            // Index weights used for calculating ordinal indices
-	index_type sizes_;              // Dimension sizes
-	index_type start_;              // Tile origin
-	index_type finish_;              // Tile upper bound
-    std::vector<value_type> data_;  // element data
+    block_ptr block_;
+    data_container data_;  // element data
 
     friend std::ostream& operator<< <>(std::ostream& , const Tile&);
-//    friend Tile_& operator^ <>(const Permutation<DIM>&, const Tile_&);
+    friend Tile_ operator^ <>(const Permutation<DIM>& p, const Tile_& t);
 
   };
 
   /// Permute the tile given a permutation.
-  template<typename T, unsigned int DIM, typename Index, typename CS>
-  Tile<T,DIM,Index,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,Index,CS>& t) {
-    Tile<T,DIM,Index,CS> result(t);
-
-    return result ^= p;
+  template<typename T, unsigned int DIM, typename CS>
+  Tile<T,DIM,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,CS>& t) {
+    Tile<T,DIM,CS> result;
+    return result;
   }
 
+  /// Permute the tile given a permutation.
+  template<typename T, unsigned int DIM, typename CS>
+  Tile<T,DIM,CS> operator +(const Tile<T,DIM,CS>& t1, const Tile<T,DIM,CS>& t2) {
+    assert( t1.size() == t2.size() );
+    Tile<T,DIM,CS> result(* t1.block());
+    typename Tile<T,DIM,CS>::const_iterator it1 = t1.begin();
+    typename Tile<T,DIM,CS>::const_iterator it2 = t2.begin();
+    for(typename Tile<T,DIM,CS>::iterator itr = result.begin(); itr != result.end(); ++itr) {
+      *itr = *it1 + *it2;
+      ++it1;
+      ++it2;
+    }
+
+
+    return result;
+  }
+
+
   /// ostream output orperator.
-  template<typename T, unsigned int DIM, typename Index, typename CS>
-  std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,Index,CS>& t) {
-    typedef Tile<T,DIM,Index,CS> tile_type;
-    const detail::DimensionOrder<DIM>& dimorder = CS::ordering();
-    typename detail::DimensionOrder<DIM>::const_iterator d;
+  template<typename T, unsigned int DIM, typename CS>
+  std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,CS>& t) {
+    typedef  detail::DimensionOrder<DIM> DimOrder;
+    DimOrder order = CS::ordering();
+    typedef Tile<T,DIM,CS> tile_type;
 
     out << "{ ";
-    for(typename tile_type::ordinal_type i = 0; i < t.nelements(); ++i) {
-      for(d = dimorder.begin(), ++d; d != dimorder.end(); ++d) {
-        if((i % t.weights_[*d]) == 0)
+    typename DimOrder::const_iterator d ;
+    typename tile_type::ordinal_type i = 0;
+    for(typename tile_type::const_iterator it = t.begin(); it != t.end(); ++it, ++i) {
+      for(d = order.begin(), ++d; d != order.end(); ++d) {
+        if((i % t.block()->weights()[*d]) == 0)
           out << "{ ";
       }
 
-      out << " " << t[i];
+      out << " " << *it;
 
 
-      for(d = dimorder.begin(), ++d; d != dimorder.end(); ++d) {
-        if(((i + 1) % t.weights_[*d]) == 0)
+      for(d = order.begin(), ++d; d != order.end(); ++d) {
+        if(((i + 1) % t.block()->weights()[*d]) == 0)
           out << " }";
       }
     }
@@ -307,21 +284,21 @@ namespace TiledArray {
 namespace madness {
   namespace archive {
     template <class Archive, typename T, unsigned int DIM, typename Index>
-     struct ArchiveLoadImpl<Archive,TiledArray::Tile<T,DIM,Index>*> {
-         typedef TiledArray::Tile<T,DIM,Index> Tile;
-         static inline void load(const Archive& ar, Tile*& tileptr) {
-           tileptr = new Tile;
-           ar & wrap(tileptr,1);
-         }
-     };
+    struct ArchiveLoadImpl<Archive,TiledArray::Tile<T,DIM,Index>*> {
+      typedef TiledArray::Tile<T,DIM,Index> Tile;
+      static inline void load(const Archive& ar, Tile*& tileptr) {
+        tileptr = new Tile;
+        ar & wrap(tileptr,1);
+      }
+    };
 
-     template <class Archive, typename T, unsigned int DIM, typename Index>
-     struct ArchiveStoreImpl<Archive,TiledArray::Tile<T,DIM,Index>*> {
-         typedef TiledArray::Tile<T,DIM,Index> Tile;
-         static inline void store(const Archive& ar, Tile* const& tileptr) {
-           ar & wrap(tileptr,1);
-         }
-     };
+    template <class Archive, typename T, unsigned int DIM, typename Index>
+    struct ArchiveStoreImpl<Archive,TiledArray::Tile<T,DIM,Index>*> {
+      typedef TiledArray::Tile<T,DIM,Index> Tile;
+      static inline void store(const Archive& ar, Tile* const& tileptr) {
+        ar & wrap(tileptr,1);
+      }
+    };
 
   }
 }

@@ -1,10 +1,14 @@
-#include <shapetest.h>
 #include <range1.h>
 #include <range.h>
 #include <shape.h>
-#include <predicate.h>
+#include <iostream>
+#include "shapetest.h"
 
 using namespace TiledArray;
+
+// Forward declaration of TiledArray Permutation.
+template <unsigned int DIM>
+class Permutation;
 
 void ShapeTest() {
 

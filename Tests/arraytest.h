@@ -9,6 +9,6 @@
 #define RUN_ARRAY_TEST	{ ; }
 #endif
 
-extern void ArrayTest(DistributedWorld& world);
+extern void ArrayTest(madness::World& world);
 
 #endif // ARRAYTEST_H__INCLUDED

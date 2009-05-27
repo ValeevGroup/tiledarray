@@ -8,9 +8,12 @@
 #include <range.h>
 #include <iterator.h>
 #include <predicate.h>
-#include <permutation.h>
 
 namespace TiledArray {
+
+// Forward declaration of TiledArray Permutation.
+template <unsigned int DIM>
+class Permutation;
 
   /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is Range::tile_iterator.
   template <unsigned int DIM, typename CS = CoordinateSystem<DIM> >

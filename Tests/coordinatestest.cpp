@@ -1,7 +1,7 @@
-#include <iostream>
-#include <coordinatestest.h>
 #include <coordinates.h>
 #include <permutation.h>
+#include <iostream>
+#include "coordinatestest.h"
 
 using namespace TiledArray;
 
@@ -94,20 +94,18 @@ void CoordinatesTest() {
   std::cout << "++" << fpt1 << " = "; std::cout << ++fpt1 << std::endl;
   std::cout << "--" << fpt2 << " = "; std::cout << --fpt2 << std::endl;
 
-  std::cout << "volume(" << comp2 << ") = " << volume(comp2) << std::endl;
+//  std::cout << "volume(" << comp2 << ") = " << volume(comp2) << std::endl;
 
   // permutation
   Permutation<3> perm3 = Permutation<3>::unit();
   std::cout << "Unit Permutation: " << perm3 << std::endl;
   Permutation<4>::Index _perm4[] = {0,2,1,3};
-  Permutation<4> perm4(_perm4);
+  Permutation<4> perm4(_perm4, _perm4 + 4);
   std::cout << "Permutation: " << perm4 << std::endl;
   std::cout << "Applying Permutation " << perm4 << " to Point " << comp3 << " = " << (perm4^comp3) << std::endl;
   {
-    Permutation<4>::Index _p1[] = {2,1,0,3};
-    Permutation<4> p1(_p1);
-    Permutation<4>::Index _p2[] = {1,3,2,0};
-    Permutation<4> p2(_p2);
+    Permutation<4> p1(2,1,0,3);
+    Permutation<4> p2(1,3,2,0);
     std::cout << "Product of " << p1 << " and " << p2 << " = " << (p1^p2) << std::endl;
   }
 

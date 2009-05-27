@@ -1,9 +1,7 @@
-#include <iostream>
-#include <boost/array.hpp>
-
 #include <permutation.h>
 #include <coordinates.h>
-
+#include <iostream>
+#include <boost/array.hpp>
 #include "permutationtest.h"
 
 using namespace TiledArray;
