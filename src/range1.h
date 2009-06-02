@@ -25,11 +25,11 @@ namespace TiledArray {
     { TA_ASSERT(start <= finish);}
   };
 
-  bool operator ==(const Tile1& t1, const Tile1& t2) {
+  inline bool operator ==(const Tile1& t1, const Tile1& t2) {
     return (t1.index == t2.index) && (t1.start == t2.start) && (t1.finish == t2.finish);
   }
 
-  bool operator !=(const Tile1& t1, const Tile1& t2) { return ! operator ==(t1, t2); }
+  inline bool operator !=(const Tile1& t1, const Tile1& t2) { return ! operator ==(t1, t2); }
 
   /** Range1 class defines a nonuniformly-tiled continuous one-dimensional range.
    The tiling data is constructed with and stored in an array with
