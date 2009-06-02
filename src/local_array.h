@@ -21,8 +21,8 @@ namespace TiledArray {
     typedef typename Array_::range_iterator range_iterator;
     typedef typename Array_::shape_type shape_type;
     typedef typename Array_::shape_iterator shape_iterator;
-    typedef typename Array_::tile_index tile_index;
-    typedef typename Array_::element_index element_index;
+    typedef typename Array_::index_type tile_index;
+    typedef typename Array_::tile_index_type tile_index_type;
     typedef typename Array_::iterator iterator;
     typedef typename Array_::const_iterator const_iterator;
     typedef typename Array_::tile tile;
@@ -108,7 +108,7 @@ namespace TiledArray {
       return 0;
     }
 
-    bool local(const tile_index& index) const {
+    bool is_local(const tile_index& index) const {
       assert(includes(index));
       return true;
     }
@@ -121,9 +121,10 @@ namespace TiledArray {
     array_map& data() { return data_; }
     const array_map& data() const { return data_; }
 
+    // TODO: Implement a working clone function.
     boost::shared_ptr<Array_> clone() const {
-      boost::shared_ptr<Array_> array_clone(new LocalArray(this->shape()));
-      return array_clone;
+//      boost::shared_ptr<Array_> array_clone();
+//      return array_clone;
     }
 
 

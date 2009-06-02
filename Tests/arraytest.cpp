@@ -6,6 +6,7 @@
 #include "arraytest.h"
 #include <boost/smart_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 #include <world/world.h>
 #include <iostream>
 
@@ -17,10 +18,11 @@ void ArrayTest(madness::World& world) {
 
   std::cout << "Array Tests:" << std::endl;
 
-  typedef Range<4>::element_index::index eindex;
-  typedef Range<4>::tile_index::index tindex;
+  typedef Range<4>::tile_index_type::index eindex;
+  typedef Range<4>::index_type::index tindex;
   typedef Shape<3> Shape3;
-  typedef PredShape<3> DenseShape3;
+  typedef DensePred<3,Shape3::index_type> DPred;
+  typedef PredShape<3,DPred> DenseShape3;
 
   // Create a Range for use with Array.
 
@@ -34,8 +36,8 @@ void ArrayTest(madness::World& world) {
                        Range1(dim1, tiles[1]),
                        Range1(dim2, tiles[2]) };
 
-  boost::shared_ptr<Range<3> > rng = boost::make_shared< Range<3> >(rng_set);
-  boost::shared_ptr<DenseShape3> shp = boost::make_shared<DenseShape3 >(rng);
+  boost::shared_ptr<Range<3> > rng = boost::make_shared< Range<3> >(& rng_set[0], & rng_set[0] + 3);
+  boost::shared_ptr<DenseShape3> shp = boost::make_shared<DenseShape3>(rng);
 
 
   typedef LocalArray<double, 3> LArray3;
@@ -52,6 +54,7 @@ void ArrayTest(madness::World& world) {
   typedef DistributedArray<double, 3> DArray3;
   boost::shared_ptr<DArray3> a2(new DArray3(world,shp));
   a2->assign(2.0);
+  std::cout << std::endl;
   std::cout << *(a2->begin()) << std::endl;
 
   std::cout << "End Array Tests" << std::endl << std::endl;

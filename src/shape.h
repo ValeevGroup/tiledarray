@@ -1,19 +1,20 @@
 #ifndef SHAPE_H__INCLUDED
 #define SHAPE_H__INCLUDED
 
-#include <cstddef>
-#include <stdexcept>
-#include <algorithm>
-#include <boost/shared_ptr.hpp>
 #include <range.h>
 #include <iterator.h>
 #include <predicate.h>
+#include <cstddef>
+//#include <stdexcept>
+#include <algorithm>
+#include <boost/shared_ptr.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 
 namespace TiledArray {
 
-// Forward declaration of TiledArray Permutation.
-template <unsigned int DIM>
-class Permutation;
+  // Forward declaration of TiledArray Permutation.
+  template <unsigned int DIM>
+  class Permutation;
 
   /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is Range::tile_iterator.
   template <unsigned int DIM, typename CS = CoordinateSystem<DIM> >
@@ -22,29 +23,29 @@ class Permutation;
     typedef Shape<DIM,CS> Shape_;
     typedef Range<DIM,CS> range_type;
     typedef CS coordinate_system;
-    typedef detail::IndexIterator<typename range_type::tile_index, Shape_> iterator;
-    INDEX_ITERATOR_FRIENDSHIP(typename range_type::tile_index, Shape_);
+    typedef typename range_type::index_type index_type;
+    typedef detail::IndexIterator<index_type, Shape_> const_iterator;
+    INDEX_ITERATOR_FRIENDSHIP(index_type, Shape_);
 
     static unsigned int dim() { return DIM; }
 
+    virtual boost::shared_ptr<const range_type> range() const =0;
 
-    virtual const boost::shared_ptr<range_type>& range() const =0;
-
-    virtual iterator begin() const =0;
-    virtual iterator end() const =0;
+    virtual const_iterator begin() const =0;
+    virtual const_iterator end() const =0;
 
     // if this index included in the shape?
-    virtual bool includes(const typename iterator::value_type& index) const =0;
+    virtual bool includes(const index_type&) const =0;
 
   protected:
 
-    virtual void increment(typename iterator::value_type& index) const =0;
+    virtual void increment(index_type&) const =0;
 
   };
 
 
   /// Concrete ShapeIterator whose iteration domain is determined by Predicate
-  template <unsigned int DIM, typename Predicate = DensePred<DIM>, typename CS = CoordinateSystem<DIM> >
+  template <unsigned int DIM, typename Predicate, typename CS = CoordinateSystem<DIM> >
   class PredShape : public Shape<DIM,CS> {
   public:
 	typedef PredShape<DIM,Predicate,CS> PredShape_;
@@ -52,12 +53,13 @@ class Permutation;
     typedef Predicate pred_type;
     typedef CS coordinate_system;
     typedef typename Shape<DIM,CS>::range_type range_type;
-    typedef typename Shape<DIM,CS>::iterator iterator;
-    INDEX_ITERATOR_FRIENDSHIP(typename range_type::tile_index, Shape_);
+    typedef typename Shape<DIM,CS>::index_type index_type;
+    typedef typename Shape<DIM,CS>::const_iterator const_iterator;
+    INDEX_ITERATOR_FRIENDSHIP(index_type, Shape_);
 
     /// Iterator main constructor
     PredShape(const boost::shared_ptr<range_type>& range, pred_type pred = pred_type()) :
-    	pred_(pred),  range_(range) {}
+    	pred_(pred), range_(range) {}
 
     /// Copy constructor
     PredShape(const PredShape& other) :
@@ -65,8 +67,9 @@ class Permutation;
 
     ~PredShape() {}
 
-    const boost::shared_ptr<range_type>& range() const {
-      return range_;
+    boost::shared_ptr<const range_type> range() const {
+      boost::shared_ptr<const range_type> result = boost::const_pointer_cast<const range_type>(range_);
+      return result;
     }
 
     /// Predicate accessor function
@@ -75,37 +78,44 @@ class Permutation;
     }
 
     /// Begin accessor function
-    iterator begin() const {
-      iterator result(range()->start_tile(), this);
-      if (! this->includes(*result) )
-        this->increment(*result);
+    const_iterator begin() const {
+      index_type first(range_->start_tile());
+      if(! this->includes(first))
+        this->increment(first);
 
+      const_iterator result(first, this);
       return result;
     }
 
     /// End accessor function
-    iterator end() const {
-      return iterator(range()->finish_tile(), this);
+    const_iterator end() const {
+      index_type last(range_->finish_tile());
+      const_iterator result(last, this);
+      return result;
     }
 
-    bool includes(const typename iterator::value_type& index) const {
-      return pred_(index) && range()->includes(index);
+    bool includes(const index_type& index) const {
+      return pred_(index) && range_->includes(index);
     }
 
+    /// Permutes range
     PredShape_& operator ^=(const Permutation<DIM>& perm) {
       pred_ ^= perm;
-      *range_ ^= perm;
       return *this;
     }
 
   protected:
-    virtual void increment(typename iterator::value_type& index) const {
-      detail::IncrementCoordinate<DIM,typename range_type::tile_index,CS>(index, range()->start_tile(), range()->finish_tile());
-      while( !includes(index) && index != this->range()->finish_tile() )
-        detail::IncrementCoordinate<DIM,typename range_type::tile_index,CS>(index, range()->start_tile(), range()->finish_tile());
+    virtual void increment(index_type& i) const {
+      do {
+        detail::IncrementCoordinate<DIM,typename range_type::index_type,CS>(i, range_->start_tile(), range_->finish_tile());
+      } while( !includes(i) && i != range_->finish_tile() );
     }
 
   private:
+    // Default construction and assignment is not allowed because a pointer to range is required.
+	PredShape();
+	PredShape& operator =(const PredShape&);
+
     pred_type pred_;
     boost::shared_ptr<range_type> range_;
 

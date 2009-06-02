@@ -20,8 +20,8 @@ namespace TiledArray {
     typedef typename Array_::range_iterator range_iterator;
     typedef typename Array_::shape_type shape_type;
     typedef typename Array_::shape_iterator shape_iterator;
-    typedef typename Array_::tile_index tile_index;
-    typedef typename Array_::element_index element_index;
+    typedef typename Array_::index_type index_type;
+    typedef typename Array_::tile_index_type tile_index_type;
     typedef typename Array_::iterator iterator;
     typedef typename Array_::const_iterator const_iterator;
     typedef typename Array_::tile tile;
@@ -40,10 +40,10 @@ namespace TiledArray {
       // Create local tiles.
       for(shape_iterator it = this->shape()->begin(); it != this->shape()->end(); ++it) {
 
-        const tile_index& t = *it;
-        const ordinal_index ot = this->range()->ordinal(t);
-        if (!tiles_.is_local( ot ))
-          continue;
+        const index_type& t = *it;
+//        const ordinal_index ot = this->range()->ordinal(t);
+//        if (!tiles_.is_local( ot ))
+//          continue;
 
         // make TilePtr
         tile* tileptr = new tile(this->range()->size(t),
@@ -51,7 +51,7 @@ namespace TiledArray {
                                  val);
 
         // insert into tile map
-        tiles_.replace(std::make_pair(ot, tileptr));
+//        tiles_.replace(std::make_pair(ot, tileptr));
       }
     }
 
@@ -65,34 +65,34 @@ namespace TiledArray {
     }
 
     /// where is tile k
-    unsigned int proc(const tile_index& index) const {
-      return static_cast<unsigned int>(tiles_.owner( this->range()->ordinal(index) ));
+    unsigned int proc(const index_type& index) const {
+//      return static_cast<unsigned int>(tiles_.owner( this->range()->ordinal(index) ));
     }
 
     /// Returns true if the tile specified by index is stored locally.
-    bool local(const tile_index& index) const {
+    bool is_local(const index_type& index) const {
       assert(includes(index));
-      return tiles_.is_local(this->range()->ordinal(index));
+//      return tiles_.is_local(this->range()->ordinal(index));
     }
 
-    tile& at(const tile_index& index) {
+    tile& at(const index_type& index) {
       assert(includes(index));
-      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+//      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
     }
 
-    const tile& at(const tile_index& index) const {
+    const tile& at(const index_type& index) const {
       assert(includes(index));
-      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+//      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
     }
 
-    tile& operator [](const tile_index& index) {
+    tile& operator [](const index_type& index) {
       assert(includes(index));
-      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+//      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
     }
 
-    const tile& operator [](const tile_index& index) const {
+    const tile& operator [](const index_type& index) const {
       assert(includes(index));
-      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+//      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
     }
 
 
@@ -101,9 +101,9 @@ namespace TiledArray {
     tile_container tiles_;
 
     boost::shared_ptr<Array_> clone() const {
-      boost::shared_ptr<Array_> array_clone(new DistributedArray(this->get_world(),
-                                                                 this->shape()));
-      return array_clone;
+//      boost::shared_ptr<Array_> array_clone(new DistributedArray(this->get_world(),
+//                                                                 this->shape()));
+//      return array_clone;
     }
 
   }; // class DistributedArray

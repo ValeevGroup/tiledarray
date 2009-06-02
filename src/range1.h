@@ -1,18 +1,35 @@
 #ifndef RANGE1_H__INCLUDED
 #define RANGE1_H__INCLUDED
 
+#include <debug.h>
 #include <vector>
 #include <algorithm>
 #include <cstddef>
 #include <cassert>
 #include <iosfwd>
-
 #include <boost/operators.hpp>
 #include <boost/limits.hpp>
 
-#include <iterator.h>
-
 namespace TiledArray {
+
+  /// Tile is used to store an interval [start,finish)
+  struct Tile1 {
+    std::size_t index;
+    std::size_t start;
+    std::size_t finish;
+    std::size_t size;
+
+    Tile1() : index(0), start(0), finish(0), size(0) { }
+    Tile1(std::size_t s, std::size_t f, std::size_t i) :
+        index(i), start(s), finish(f), size(f - s)
+    { TA_ASSERT(start <= finish);}
+  };
+
+  bool operator ==(const Tile1& t1, const Tile1& t2) {
+    return (t1.index == t2.index) && (t1.start == t2.start) && (t1.finish == t2.finish);
+  }
+
+  bool operator !=(const Tile1& t1, const Tile1& t2) { return ! operator ==(t1, t2); }
 
   /** Range1 class defines a nonuniformly-tiled continuous one-dimensional range.
    The tiling data is constructed with and stored in an array with
@@ -22,101 +39,17 @@ namespace TiledArray {
    */
   class Range1 : boost::equality_comparable1<Range1> {
   public:
+
     typedef size_t element_index;
     typedef size_t tile_index;
-    /// Iterates over element indices
-    typedef detail::IndexIterator<element_index, Range1> element_iterator;
-    INDEX_ITERATOR_FRIENDSHIP( element_index , Range1);
-    /// iterates over tile indices
-    typedef detail::IndexIterator<tile_index, Range1> tile_iterator;
-//    INDEX_ITERATOR_FRIENDSHIP( tile_index, Range1);
-
-    /// Tile is an interval [start,finish)
-    class Tile : boost::equality_comparable1<Tile> {
-      typedef Range1::element_index element_index;
-      typedef Range1::tile_index tile_index;
-    public:
-      /// Element iterator for current tile
-      typedef detail::IndexIterator<element_index,Tile> iterator;
-      INDEX_ITERATOR_FRIENDSHIP(iterator, Tile);
-
-    private:
-      /// first index
-      element_index start_;
-      /// past-last index, i.e. last + 1
-      element_index finish_;
-      /// index of tile with range1
-      tile_index index_;
-
-      void throw_if_invalid() {
-        if (finish() < start() )
-          abort();
-      }
-
-    public:
-      Tile() :
-        start_(std::numeric_limits<element_index>::min()),
-        finish_(std::numeric_limits<element_index>::min()),
-        index_(std::numeric_limits<tile_index>::min())
-      { }
-
-      /// Tile is an interval [start,finish)
-      Tile(element_index start, element_index finish, tile_index idx) :
-        start_(start), finish_(finish), index_(idx) {
-        throw_if_invalid();
-      }
-
-      Tile(const Tile& src) :
-        start_(src.start_), finish_(src.finish_), index_(src.index_) {
-      }
-
-      const Tile& operator=(const Tile& src) {
-        start_ = src.start_;
-        finish_ = src.finish_;
-        index_ = src.index_;
-        return *this;
-      }
-
-      bool operator==(const Tile& A) const {
-        return start_ == A.start_ && finish_ == A.finish_ && index_ == A.index_;
-      }
-
-      element_index start() const {
-        return start_;
-      }
-
-      element_index finish() const {
-        return finish_;
-      }
-
-      tile_index index() const {
-        return index_;
-      }
-
-      element_index size() const {
-        return finish_ - start_;
-      }
-
-      iterator begin() const {
-        return iterator(start(), this);
-      }
-
-      iterator end() const {
-        return iterator(finish(), this);
-      }
-
-    private:
-
-      void increment(element_index& i) const {
-        ++i;
-      }
-    }; // Tile
+    typedef std::vector<Tile1> Tiles;
+    typedef Tiles::const_iterator const_iterator;
 
   private:
     /////////////
     // Range1 data
     /////////////
-    typedef std::vector<Tile> Tiles;
+
     /// set of tiles. This is the primary data, i.e. other data is always recomputed from this, not modified directly
     Tiles tiles_;
     /// maps element index to tile index (secondary data)
@@ -140,7 +73,7 @@ namespace TiledArray {
     void init_tiles_(const std::vector<element_index>& tile_boundaries, const tile_index start_tile) {
       assert(valid_(tile_boundaries));
       for (size_t i = 1; i < tile_boundaries.size(); ++i)
-        tiles_.push_back(Tile(tile_boundaries[i - 1], tile_boundaries[i], start_tile + i - 1));
+        tiles_.push_back(Tile1(tile_boundaries[i - 1], tile_boundaries[i], start_tile + i - 1));
     }
 
     /// Initialize secondary data
@@ -189,7 +122,7 @@ namespace TiledArray {
     /// Returns the low tile index of the range.
     tile_index start_tile() const {
       if(!empty())
-        return tiles_.begin()->index();
+        return tiles_.begin()->index;
       else
         return std::numeric_limits<tile_index>::min();
     }
@@ -197,7 +130,7 @@ namespace TiledArray {
     /// Returns the high tile index of the range.
     tile_index finish_tile() const {
       if(!empty())
-        return tiles_.rbegin()->index() + 1;
+        return tiles_.rbegin()->index + 1;
       else
         return std::numeric_limits<tile_index>::min();
     }
@@ -205,7 +138,7 @@ namespace TiledArray {
     /// Returns the low element index of the range.
     element_index start_element() const {
       if (!empty())
-        return tiles_.begin()->start();
+        return tiles_.begin()->start;
       else
         return std::numeric_limits<element_index>::min();
     }
@@ -213,7 +146,7 @@ namespace TiledArray {
     /// Returns the high element index of the range.
     element_index finish_element() const {
       if (!empty())
-        return tiles_.rbegin()->finish();
+        return tiles_.rbegin()->finish;
       else
         return std::numeric_limits<element_index>::min();
     }
@@ -221,18 +154,18 @@ namespace TiledArray {
     /// Returns the low element index of the given tile.
     element_index start_element(tile_index t) const {
 #ifdef NDEBUG
-      return tiles_.at(t - start_tile()).start();
+      return tiles_.at(t - start_tile()).start;
 #else
-      return tiles_[t - start_tile()].start();
+      return tiles_[t - start_tile()].start;
 #endif
     }
 
     /// Returns the low element index of the given tile.
     element_index finish_element(tile_index t) const {
 #ifdef NDEBUG
-      return tiles_.at(t - start_tile()).finish();
+      return tiles_.at(t - start_tile()).finish;
 #else
-      return tiles_[t - start_tile()].finish();
+      return tiles_[t - start_tile()].finish;
 #endif
     }
 
@@ -249,39 +182,26 @@ namespace TiledArray {
     }
 
     /// Returns an iterator to the end of the range.
-    tile_iterator end_tile() const {
-      return tile_iterator(finish_tile(), this);
+    const_iterator end() const {
+      return tiles_.end();
     }
 
     /// Returns an iterator to the first tile in the range.
-    tile_iterator begin_tile() const {
-      if(!tiles_.empty())
-        return tile_iterator(start_tile(), this);
-      else
-        return end_tile();
+    const_iterator begin() const {
+        return tiles_.begin();
     }
 
     /// Return tile iterator associated with element_index
-    tile_iterator find(element_index element) const {
+    const Tile1& find(element_index element) const {
+      TA_ASSERT(includes_element(element));
       element_index relindex = element - start_element();
-      if(relindex >= size())
-        return end_tile();
 #ifdef NDEBUG
-      return tile_iterator(tiles_[elem2tile_[relindex]].index(),*this);
+      return tiles_[ elem2tile_[relindex] ];
 #else
-      return tile_iterator(tiles_.at(elem2tile_.at(relindex)).index(), this);
+      return tiles_.at(elem2tile_.at(relindex));
 #endif
     }
 
-    element_iterator begin_element() const {
-      element_iterator result(start_element(), this);
-      return result;
-    }
-
-    element_iterator end_element() const {
-      element_iterator result(finish_element(), this);
-      return result;
-    }
 /*
     /// increment element index
     void increment(element_index& i) const {
@@ -314,7 +234,7 @@ namespace TiledArray {
 #ifdef NDEBUG
       return tiles_[t].size();
 #else
-      return tiles_.at(t).size();
+      return tiles_.at(t).size;
 #endif
     }
 
@@ -330,13 +250,6 @@ namespace TiledArray {
       return a < finish_tile() && a >= start_tile();
     }
 
-  private:
-
-    /// how tile_index is incremented
-    void increment(tile_index& t) const {
-      ++t;
-    }
-
   }; // Range1
 
   inline std::ostream& operator <<(std::ostream& out, const Range1& rng) {
@@ -346,8 +259,8 @@ namespace TiledArray {
     return out;
   }
 
-  inline std::ostream& operator <<(std::ostream& out, const Range1::Tile& t) {
-	  out << "Tile( range= [" << t.start() << "," << t.finish() << "), size= " << t.size() << " )";
+  inline std::ostream& operator <<(std::ostream& out, const Tile1& t) {
+	  out << "Tile( range[" << t.index << "] = [" << t.start << "," << t.finish << "), size= " << t.size << " )";
 	  return out;
   }
 

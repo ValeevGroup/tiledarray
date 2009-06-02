@@ -27,12 +27,12 @@ namespace TiledArray {
   public:
     typedef Array<T,DIM,CS> Array_;
     typedef Range<DIM, CS> range_type;
-    typedef typename range_type::iterator range_iterator;
+    typedef typename range_type::const_iterator range_iterator;
     typedef Shape<DIM, CS> shape_type;
-    typedef typename shape_type::iterator shape_iterator;
+    typedef typename shape_type::const_iterator shape_iterator;
     typedef typename range_type::ordinal_index ordinal_index;
-    typedef typename range_type::tile_index tile_index;
-    typedef typename range_type::element_index element_index;
+    typedef typename range_type::index_type index_type;
+    typedef typename range_type::tile_index_type tile_index_type;
     typedef T value_type;
     typedef CS coordinate_system;
 
@@ -41,7 +41,7 @@ namespace TiledArray {
     typedef madness::Future<tile> future_tile;
 
 	typedef detail::ElementIterator<tile, shape_iterator, Array_ > iterator;
-	typedef detail::ElementIterator<tile const, shape_iterator, Array_ const> const_iterator;
+	typedef detail::ElementIterator<const tile, shape_iterator, Array_ const> const_iterator;
 
 	iterator begin() {
 	  return iterator(shape_->begin(), this);
@@ -65,16 +65,19 @@ namespace TiledArray {
     virtual ~Array() {}
 
     /// Access array shape.
-    const boost::shared_ptr<shape_type>& shape() const { return shape_; }
+    const boost::shared_ptr<const shape_type> shape() const {
+      boost::shared_ptr<const shape_type> result = boost::const_pointer_cast<const shape_type>(shape_);
+      return result;
+    }
 
     /// Access array range.
-    const boost::shared_ptr<range_type>& range() const { return shape_->range(); }
+    boost::shared_ptr<const range_type> range() const { return shape_->range(); }
 
     /// Returns the number of dimensions in the array.
     unsigned int dim() const { return DIM; }
 
     /// Returns an element index that contains the lower limit of each dimension.
-    const element_index& origin() const { return range()->start_element(); }
+    const tile_index_type& origin() const { return range()->start_element(); }
 
     // Array virtual functions
 
@@ -85,14 +88,14 @@ namespace TiledArray {
     virtual Array_& assign(const value_type& val) =0;
 
     /// where is tile k
-    virtual unsigned int proc(const tile_index& k) const =0;
-    virtual bool local(const tile_index& k) const =0;
+    virtual unsigned int proc(const index_type& k) const =0;
+    virtual bool is_local(const index_type& k) const =0;
 
     /// Tile access funcions
-    virtual tile& at(const tile_index& index) =0;
-    virtual const tile& at(const tile_index& index) const =0;
-    virtual tile& operator[](const tile_index& i) =0;
-    virtual const tile& operator[](const tile_index& i) const =0;
+    virtual tile& at(const index_type& index) =0;
+    virtual const tile& at(const index_type& index) const =0;
+    virtual tile& operator[](const index_type& i) =0;
+    virtual const tile& operator[](const index_type& i) const =0;
 
     /// Low-level interface will only allow permutations and efficient direct contractions
     /// it should be sufficient to use with an optimizing array expression compiler
@@ -115,19 +118,19 @@ namespace TiledArray {
     }
 
     /// Returns the tile index that contains the element index e_idx.
-    tile_index get_tile_index(const element_index& e_idx) const {
+    index_type get_tile_index(const tile_index_type& e_idx) const {
       assert(includes(e_idx));
       return * this->shape_->range()->find(e_idx);
     }
 
     /// Returns true when the tile is included in the shape.
-	bool includes(const tile_index& t_idx) const {
+	bool includes(const index_type& t_idx) const {
       return this->shape_->includes(t_idx);
 	}
 
 	/// Returns true when the element is included in the range.
 	/// It may or may not be included in the shape.
-	bool includes(const element_index& e_idx) const {
+	bool includes(const tile_index_type& e_idx) const {
       return this->shape_->range()->includes(e_idx);
 	}
 

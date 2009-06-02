@@ -25,10 +25,14 @@ Tests/tilemaptest.o: Tests/tilemaptest.h src/tilemap.h src/tilemap.o
 Tests/arraytest.o: Tests/arraytest.h src/array.h
 Tests/tiletest.o: Tests/tiletest.h src/tile.h
 
+src/debug.h:
+src/coordinate_system.h:
 src/permutation.h: 
-src/coordinates.h:
 src/iterator.h: src/coordinates.h
-src/range1.h: src/iterator.h
+src/coordinates.h: src/coordinate_system.h
+src/block.h: src/debug.h src/coordinate_system.h src/iterator.h
+src/array_storage.h: src/coordinate_system.h src/debug.h
+src/range1.h:
 src/range.h: src/range1.h src/iterator.h src/coordinates.h
 src/predicate.h: src/coordinates.h src/permutation.h
 src/shape.h: src/range.h src/iterator.h src/predicate.h

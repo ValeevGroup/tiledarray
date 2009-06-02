@@ -66,7 +66,8 @@ namespace TiledArray {
     ArrayCoordinate(const index& init_value = 0) { r_.assign(init_value); }
     template <typename InIter>
     ArrayCoordinate(InIter start, InIter finish) { std::copy(start,finish,r_.begin()); }
-    ArrayCoordinate(const Array& init_values) : r_(init_values) { }
+    ArrayCoordinate(const Array& init_values) : r_(init_values) { } // no throw
+    ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { } // no throw
     /// Variable argument list constructor.
     ArrayCoordinate(const index c0, const index c1, ...) {
       va_list ap;
@@ -178,6 +179,10 @@ namespace TiledArray {
       return r_;
     }
 
+    Array& data() {
+      return r_;
+    }
+
     const ArrayCoordinate_ operator ^= (const Permutation<D>& p) {
       r_ = p ^ r_;
       return *this;
@@ -211,6 +216,13 @@ namespace TiledArray {
 
     return result;
   }
+
+  /// Swap the data of c1 with c2.
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  void swap(ArrayCoordinate<T,DIM,Tag,CS>& c1, ArrayCoordinate<T,DIM,Tag,CS>& c2) { // no throw
+    boost::swap(c1.data(), c2.data());
+  }
+
   // TODO how to recast this without using dimension_order
   template <typename T, unsigned int D, typename Tag, typename CS>
   bool operator<(const ArrayCoordinate<T,D,Tag,CS>& c1, const ArrayCoordinate<T,D,Tag,CS>& c2) {

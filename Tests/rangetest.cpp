@@ -7,8 +7,8 @@ using namespace TiledArray;
 void
 RangeTest()
 {
-  typedef Range<4>::element_index::index eindex;
-  typedef Range<4>::tile_index::index tindex;
+  typedef Range<4>::tile_index_type::index eindex;
+  typedef Range<4>::index_type::index tindex;
 
 	std::cout << "Range Tests:" << std::endl;
 
@@ -30,7 +30,7 @@ RangeTest()
 
 	std::vector<Range1> rng_vector(rng_set, rng_set + 4);
 
-	Range<4> ortho2(rng_set);
+	Range<4> ortho2(rng_set, rng_set + 4);
 	Range<4> ortho3(rng_vector.begin(),rng_vector.end());
 
 	std::cout << "PASSED" << std::endl;
@@ -49,11 +49,11 @@ RangeTest()
     std::cout << "ortho2 != ortho3: " << (ortho2!=ortho3 ? "true" : "false") << std::endl;
 
     std::cout << "ordinal tests: " << std::endl;
-    typedef Range<4>::element_index element_index;
-    typedef Range<4>::tile_index tile_index;
-    tile_index t1(0, 2, 4, 1);
-    element_index e1(1, 3, 3, 2);
-    element_index e2(29, 19, 14, 12);
+    typedef Range<4>::tile_index_type tile_index_type;
+    typedef Range<4>::index_type index_type;
+    index_type t1(0, 2, 4, 1);
+    tile_index_type e1(1, 3, 3, 2);
+    tile_index_type e2(29, 19, 14, 12);
     std::cout << "tile_index: t1=" << t1 << std::endl;
     std::cout << "ortho2.includes(t1) = " << ortho2.includes(t1) << std::endl;
     std::cout << "element_index: e1=" << e1 << std::endl;
@@ -64,7 +64,7 @@ RangeTest()
     std::cout << "ortho2.find(e2) = " << *(ortho2.find(e2)) << std::endl;
 
     std::cout << "tile iterator tests: " << std::endl;
-    for(Range<4>::iterator t=ortho2.begin(); t!=ortho2.end(); ++t) {
+    for(Range<4>::const_iterator t=ortho2.begin(); t!=ortho2.end(); ++t) {
       std::cout << "t = " << *t << std::endl;
     }
 
