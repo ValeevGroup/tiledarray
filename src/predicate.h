@@ -6,6 +6,12 @@
 
 namespace TiledArray {
 
+  // Forward declarations
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  class ArrayCoordinate;
+  template <unsigned int Level>
+  class LevelTag;
+
   /**
    * The Predicates must be Assignable, Copy Constructible, and
    * the expression p(x) must be valid where p is an object of type
@@ -13,7 +19,7 @@ namespace TiledArray {
    * and where the type of p(x) must be convertible to bool.
    */
 
-  template<unsigned int DIM, typename Index>
+  template<unsigned int DIM, typename Tag = LevelTag<1> >
   class DensePred {
     public:
 
@@ -31,12 +37,14 @@ namespace TiledArray {
       }
 
       /// predicate function
-      bool includes(const Index& i) const { /* throw() */
+      template <typename I, typename CS>
+      bool includes(const ArrayCoordinate<I,DIM,Tag,CS>& i) const { /* throw() */
     	  return true;
       }
 
       /// predicate operator
-      bool operator ()(const Index& i) const { /* throw() */
+      template <typename I, typename CS>
+      bool operator ()(const ArrayCoordinate<I,DIM,Tag,CS>& i) const { /* throw() */
         return includes(i);
       }
 
@@ -50,7 +58,7 @@ namespace TiledArray {
   }; // class DensePred
 
 
-  template <unsigned int DIM, typename Index>
+  template <unsigned int DIM, typename Tag = LevelTag<1> >
   class LowerTrianglePred {
   public:
     // Default constructor
@@ -60,7 +68,8 @@ namespace TiledArray {
     { }
 
     /// Copy constructor
-	LowerTrianglePred(const LowerTrianglePred<DIM,Index>& pred) :
+    template <typename I, typename CS>
+	LowerTrianglePred(const LowerTrianglePred<DIM,ArrayCoordinate<I,DIM,Tag,CS> >& pred) :
         perm_(pred.perm_),
         apply_perm_(pred.apply_perm_)
     { }
@@ -74,8 +83,9 @@ namespace TiledArray {
 	}
 
     /// Returns true if index is included in the shape.
-    bool includes(const Index& i) const {
-      const Index perm_index = (apply_perm_ ? perm_ ^ i : i );
+    template <typename I, typename CS>
+    bool includes(const ArrayCoordinate<I,DIM,Tag,CS>& i) const {
+      const ArrayCoordinate<I,DIM,Tag,CS> perm_index = (apply_perm_ ? perm_ ^ i : i );
 
       for(unsigned int d = 1; d < DIM; ++d)
         if(perm_index[d - 1] > perm_index[d])
@@ -85,7 +95,8 @@ namespace TiledArray {
     }
 
     /// predicate function
-    bool operator ()(const Index& i) const {
+    template <typename I, typename CS>
+    bool operator ()(const ArrayCoordinate<I,DIM,Tag,CS>& i) const {
       return includes(i);
     }
 
@@ -115,19 +126,21 @@ namespace TiledArray {
   /// Predicate which tests to see if an element of the container at an Index
   /// is stored locally. The container must have a function with the following
   /// Signature Container::is_local(Index) const.
-  template <typename Container, typename Index>
+  template <typename Container>
   class LocalPred {
   public:
+    typedef typename Container::index_type index_type;
+
     LocalPred(const boost::weak_ptr<Container> c) : cont_(c) {}
     ~LocalPred() {}
 
     /// predicate function
-    bool includes(const Index& i) const {
+    bool includes(const index_type& i) const {
       return cont_->is_local(i);
     }
 
     /// predicate operator
-    bool operator ()(const Index& i) const {
+    bool operator ()(const index_type& i) const {
       return includes(i);
     }
 
@@ -138,14 +151,14 @@ namespace TiledArray {
     }
 
   private:
-    const boost::weak_ptr<Container> cont_;
+    const Container * cont_;
 
   }; // class LocalPred
 
   /// This predicate combines two predicates to act as a single predicate
   /// ComboPred::includes(i) returns true when both Pred1::includes(i) and
   /// Pred2::includes(i) returns true.
-  template <typename Pred1, typename Pred2, typename Index>
+  template <typename Pred1, typename Pred2, unsigned int DIM, typename Tag = LevelTag<1> >
   class ComboPred {
   public:
 
@@ -160,17 +173,18 @@ namespace TiledArray {
         p1_(other.p1_), p2_(other.p2_) { }
 
     /// predicate function
-    bool includes(const Index& i) const {
+    template <typename I, typename CS>
+    bool includes(const ArrayCoordinate<I,DIM,Tag,CS>& i) const {
       return p1_.includes(i) && p2_.includes(i);
     }
 
     /// predicate operator
-    bool operator ()(const Index& i) const {
+    template <typename I, typename CS>
+    bool operator ()(const ArrayCoordinate<I,DIM,Tag,CS>& i) const {
       return includes(i);
     }
 
     /// Permute the predicate
-    template <unsigned int DIM>
     ComboPred& operator ^=(const Permutation<DIM>& pred) {
       p1_ ^= pred;
       p2_ ^= pred;

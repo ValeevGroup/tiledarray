@@ -86,7 +86,7 @@ namespace TiledArray {
 
     /// assign each element to a
     virtual Array_& assign(const value_type& val) =0;
-
+/*
     /// where is tile k
     virtual unsigned int proc(const index_type& k) const =0;
     virtual bool is_local(const index_type& k) const =0;
@@ -96,7 +96,7 @@ namespace TiledArray {
     virtual const tile& at(const index_type& index) const =0;
     virtual tile& operator[](const index_type& i) =0;
     virtual const tile& operator[](const index_type& i) const =0;
-
+*/
     /// Low-level interface will only allow permutations and efficient direct contractions
     /// it should be sufficient to use with an optimizing array expression compiler
 
@@ -134,7 +134,7 @@ namespace TiledArray {
       return this->shape_->range()->includes(e_idx);
 	}
 
-  private:
+  protected:
     /// Shape pointer to a shape object.
     boost::shared_ptr<shape_type> shape_;
 

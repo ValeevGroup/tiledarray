@@ -1,6 +1,7 @@
-#include <range1.h>
-#include <range.h>
 #include <shape.h>
+#include <range.h>
+#include <range1.h>
+#include <predicate.h>
 #include <iostream>
 #include <boost/make_shared.hpp>
 #include "shapetest.h"
@@ -24,18 +25,18 @@ void ShapeTest() {
   eindex dim2[] = {0, 2, 4, 6};
   tindex tiles[3] = {3, 3, 3};
 
-  Range1 rng_set[3] = {Range1(dim0, tiles[0]),
-                       Range1(dim1, tiles[1]),
-                       Range1(dim2, tiles[2]) };
+  Range1 rng_set[3] = {Range1(dim0, dim0 + tiles[0]),
+                       Range1(dim1, dim1 + tiles[1]),
+                       Range1(dim2, dim2 + tiles[2]) };
 
   boost::shared_ptr<Range<3> > rng = boost::make_shared<Range<3> >(& rng_set[0], & rng_set[0] + 3);
 
   std::cout << "Start ShapeIterator tests: " << std::endl;
 
   typedef Shape<3> Shape3;
-  typedef DensePred<3, Shape3::index_type> DPred;
+  typedef DensePred<3> DPred;
   typedef PredShape<3, DPred> DenseShape3;
-  typedef PredShape<3, LowerTrianglePred<3,Shape3::index_type> > LowerTriShape3;
+  typedef PredShape<3, LowerTrianglePred<3> > LowerTriShape3;
   Shape3* shp1 = new DenseShape3(rng);
   Shape3* shp2 = new LowerTriShape3(rng);
   DenseShape3 dshp(rng);

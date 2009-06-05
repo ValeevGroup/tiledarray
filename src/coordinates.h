@@ -2,9 +2,9 @@
 #define NUMERIC_H_
 
 #include <coordinate_system.h>
-#include <assert.h>
 #include <iosfwd>
 #include <cmath>
+#include <functional>
 #include <boost/operators.hpp>
 #include <boost/array.hpp>
 
@@ -223,16 +223,66 @@ namespace TiledArray {
     boost::swap(c1.data(), c2.data());
   }
 
-  // TODO how to recast this without using dimension_order
-  template <typename T, unsigned int D, typename Tag, typename CS>
+  namespace detail {
+    /// Compare each element in the array to make sure it is
+    template <typename T, unsigned int D, typename CS, typename L = std::less<T> >
+    struct Less {
+      bool operator ()(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
+        L l;
+        for(unsigned int i = 0; i < D; ++i)
+          if(! l(a1[i], a2[i]))
+            return false;
+        return true; // all members of c1 are less than c2
+      }
+    }; // struct less
+
+    template <typename T, unsigned int D, typename CS>
+    bool less(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
+      Less<T,D,CS> l;
+      return l(a1, a2);
+    }
+
+    template <typename T, unsigned int D, typename CS, typename L>
+    bool less(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
+      Less<T,D,CS,L> l;
+      return l(a1, a2);
+    }
+
+    /// Compare ArrayCoordinates Lexicographically.
+    template <typename T, unsigned int D, typename CS, typename L = std::less<T> >
+    struct LexLess {
+      bool operator ()(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
+        // Get order iterators.
+        typename CS::const_iterator it = CS::ordering().begin();
+        const typename CS::const_iterator end = CS::ordering().end();
+        L l;
+        for(; it != end; ++it) {
+          if(l(a2[*it], a1[*it]))
+            return false;
+          else if(l(a1[*it], a2[*it]))
+            return true;
+        }
+        return false; // all elements were equal
+      }
+    }; // struct LexLess
+
+    template <typename T, unsigned int D, typename CS>
+    bool lex_less(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
+      LexLess<T,D,CS> l;
+      return l(a1, a2);
+    }
+
+    template <typename T, unsigned int D, typename CS, typename L>
+    bool lex_less(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
+      LexLess<T,D,CS, L> l;
+      return l(a1, a2);
+    }
+  } // namespace detail
+
+  /// Compare ArrayCoordinates Lexicographically.
+  template <typename T, unsigned int D, typename Tag, typename CS >
   bool operator<(const ArrayCoordinate<T,D,Tag,CS>& c1, const ArrayCoordinate<T,D,Tag,CS>& c2) {
-    if (CS::dimension_order == detail::decreasing_dimension_order) {
-      return std::lexicographical_compare(c1.r_.begin(),c1.r_.end(),c2.r_.begin(),c2.r_.end());
-    }
-    if (CS::dimension_order == detail::increasing_dimension_order) {
-      return std::lexicographical_compare(c1.r_.rbegin(),c1.r_.rend(),c2.r_.rbegin(),c2.r_.rend());
-    }
-    abort();
+    return detail::lex_less<T,D,CS>(c1.data(),c2.data());
   }
 
   template <typename T, unsigned int D, typename Tag, typename CS>

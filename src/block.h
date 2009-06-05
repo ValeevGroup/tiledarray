@@ -1,8 +1,7 @@
 #ifndef BLOCK_H__INCLUDED
 #define BLOCK_H__INCLUDED
 
-#include <debug.h>
-#include <coordinate_system.h>
+#include <cassert>
 #include <iterator.h>
 #include <boost/array.hpp>
 #include <cassert>
@@ -10,8 +9,17 @@
 namespace TiledArray {
 
   // Forward declaration of TiledArray components.
+  template <unsigned int>
+  class LevelTag;
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   class ArrayCoordinate;
+  template <unsigned int DIM>
+  class Permutation;
+  namespace detail {
+    template <typename T, unsigned int DIM, typename CS>
+    bool less(boost::array<T,DIM> &, boost::array<T,DIM>&);
+  }
+
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   void swap(ArrayCoordinate<T,DIM,Tag,CS>& c1, ArrayCoordinate<T,DIM,Tag,CS>& c2);
 
@@ -25,8 +33,8 @@ namespace TiledArray {
   public:
     typedef Block<T,DIM,Tag,CS> Block_;
     typedef ArrayCoordinate<T,DIM,Tag,CS> index_type;
-    typedef typename index_type::index ordinal_type;
-    typedef typename index_type::volume volume_type;
+    typedef std::size_t ordinal_type;
+    typedef std::size_t volume_type;
     typedef typename index_type::Array size_array;
     typedef CS coordinate_system;
 
@@ -43,13 +51,18 @@ namespace TiledArray {
     /// Construct a block of size with the origin of the block set at 0 for all dimensions.
     Block(const size_array& size, const index_type& start = index_type(0)) :
         start_(start), finish_(start + size), size_(size)
-    { TA_ASSERT( finish_ >= start_); }
+    {
+#ifndef TA_DEBUG
+      bool valid = detail::less<T,DIM,CS> (start_.data(), finish_.data());
+      assert( valid );
+#endif
+    }
 
     /// Constructor defined by an upper and lower bound. All elements of
     /// finish must be greater than or equal to those of start.
     Block(const index_type& start, const index_type& finish) :
         start_(start), finish_(finish), size_(finish - start)
-    { TA_ASSERT( finish_ >= start_); }
+    { /*assert( detal::less<T,DIM,CS>(start_.data(), finish_.data());*/ }
 
     /// Copy Constructor
     Block(const Block_& other) : // no throw
@@ -70,6 +83,14 @@ namespace TiledArray {
 
     /// Returns an array with the size of each dimension.
     const size_array& size() const { return size_.data(); }
+
+    /// Returns the number of elements in the block.
+    volume_type volume() const {
+      volume_type result = 1;
+      for(unsigned int d = 0; d < DIM; ++d)
+        result *= ( size_[d] < 0 ? -size_[d] : size_[d] );
+      return result;
+    }
 
     /// Check the coordinate to make sure it is within the block range
     bool includes(const index_type& i) const {

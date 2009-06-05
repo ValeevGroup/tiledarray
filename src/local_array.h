@@ -36,8 +36,8 @@ namespace TiledArray {
       // Fill data_ with tiles.
       for(shape_iterator it = this->shape()->begin(); it != this->shape()->end(); ++it) {
         // make TilePtr
-        tile_ptr tileptr = boost::make_shared<tile>(this->range()->size(*it),
-            this->range()->start_element(*it), val);
+        tile_ptr tileptr = boost::make_shared<tile>(this->range()->tile(*it).size(),
+            this->range()->tile(*it).start(), val);
 
         // insert into tile map
         data_.insert(std::make_pair(*it, tileptr));
@@ -123,8 +123,8 @@ namespace TiledArray {
 
     // TODO: Implement a working clone function.
     boost::shared_ptr<Array_> clone() const {
-//      boost::shared_ptr<Array_> array_clone();
-//      return array_clone;
+      boost::shared_ptr<Array_> array_clone(new LocalArray);
+      return array_clone;
     }
 
 

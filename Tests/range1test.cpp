@@ -17,14 +17,14 @@ void Range1Test() {
   std::cout << std::endl << "C-style array constructor:" << std::endl;
   size_t ranges[] = { 0, 3, 7, 10, 20, 100 };
   size_t tiles = 5;
-  Range1 rng1(ranges, tiles);
+  Range1 rng1(& ranges[0], (& ranges[0]) + 5);
   std::cout << "rng1 = " << rng1 << std::endl;
 
   // Test vector array constructor
   std::cout << std::endl << "Vector array constructor:" << std::endl;
   ranges[5] = 50;
   const std::vector<size_t> ranges_vector(ranges, ranges + tiles + 1);
-  Range1 rng2(ranges_vector);
+  Range1 rng2(ranges_vector.begin(), ranges_vector.end());
   std::cout << "rng2 = " << rng2 << std::endl;
 
   // Test copy constructor
@@ -34,12 +34,10 @@ void Range1Test() {
 
   // Accessor functions
   std::cout << std::endl << "Accessor fuctions:" << std::endl;
-  std::cout << "rngDefault.empty() = " << rngDefault.empty() << std::endl;
-  std::cout << "rng1.empty() = " << rng1.empty() << std::endl;
-  std::cout << "rng1.size() = " << rng1.size() << std::endl;
-  std::cout << "rng1.size(1) = " << rng1.size(1) << std::endl;
-  std::cout << "rng1.includes_tile(1) = " << rng1.includes_tile(1) << std::endl;
-  std::cout << "rng1.includes_tile(5) = " << rng1.includes_tile(5) << std::endl;
+  std::cout << "rng1.size() = " << rng1.size_element() << std::endl;
+  std::cout << "rng1.size(1) = " << rng1.size_element(1) << std::endl;
+  std::cout << "rng1.includes_tile(1) = " << rng1.includes(1) << std::endl;
+  std::cout << "rng1.includes_tile(5) = " << rng1.includes(5) << std::endl;
   std::cout << "rng1.includes_element(1) = " << rng1.includes_element(1) << std::endl;
   std::cout << "rng1.includes_element(100) = " << rng1.includes_element(100) << std::endl;
 
@@ -62,7 +60,7 @@ void Range1Test() {
     std::cout << "[" << rng3.start_element(it->index) << ","<< rng3.finish_element(it->index) << ")" << std::endl;
   }
 
-  std::cout << rng3.find(3) << std::endl;
+  std::cout << * rng3.find(3) << std::endl;
 
   std::cout << "End Range1 Tests" << std::endl << std::endl;
 }

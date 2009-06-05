@@ -34,7 +34,7 @@ namespace TiledArray {
                      const boost::shared_ptr<shape_type>& shp,
                      const value_type& val = value_type()) :
       Array_(shp), madness::WorldObject<DistributedArray_>(world), tiles_(world) {
-
+/*
       this->process_pending();
 
       // Create local tiles.
@@ -53,6 +53,7 @@ namespace TiledArray {
         // insert into tile map
 //        tiles_.replace(std::make_pair(ot, tileptr));
       }
+*/
     }
 
     /// assign val to each element
@@ -63,47 +64,47 @@ namespace TiledArray {
       }
       return *this;
     }
-
+/*
     /// where is tile k
     unsigned int proc(const index_type& index) const {
-//      return static_cast<unsigned int>(tiles_.owner( this->range()->ordinal(index) ));
+      return static_cast<unsigned int>(tiles_.owner( this->range()->ordinal(index) ));
     }
 
     /// Returns true if the tile specified by index is stored locally.
     bool is_local(const index_type& index) const {
       assert(includes(index));
-//      return tiles_.is_local(this->range()->ordinal(index));
+      return tiles_.is_local(this->range()->ordinal(index));
     }
 
     tile& at(const index_type& index) {
       assert(includes(index));
-//      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
     }
 
     const tile& at(const index_type& index) const {
       assert(includes(index));
-//      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
     }
 
     tile& operator [](const index_type& index) {
       assert(includes(index));
-//      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
     }
 
     const tile& operator [](const index_type& index) const {
       assert(includes(index));
-//      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
     }
-
+*/
 
   private:
     typedef madness::WorldContainer<ordinal_index,tile*> tile_container;
     tile_container tiles_;
 
     boost::shared_ptr<Array_> clone() const {
-//      boost::shared_ptr<Array_> array_clone(new DistributedArray(this->get_world(),
-//                                                                 this->shape()));
-//      return array_clone;
+      boost::shared_ptr<Array_> array_clone(new DistributedArray(this->get_world(),
+                                                                 this->shape_));
+      return array_clone;
     }
 
   }; // class DistributedArray

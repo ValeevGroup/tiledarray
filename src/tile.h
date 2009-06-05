@@ -1,10 +1,7 @@
 #ifndef TILE_H__INCLUDED
 #define TILE_H__INCLUDED
 
-#include <coordinate_system.h>
-#include <block.h>
 #include <array_storage.h>
-#include <madness_runtime.h>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 //#include <world/archive.h>
@@ -41,6 +38,7 @@ namespace TiledArray {
     typedef Block<ordinal_type, DIM, LevelTag<0>, coordinate_system > block_type;
     typedef typename block_type::index_type index_type;
     typedef typename block_type::size_array size_array;
+    typedef typename block_type::const_iterator block_iterator;
     typedef boost::shared_ptr<block_type> block_ptr;
     typedef boost::shared_ptr<const block_type> const_block_ptr;
     typedef boost::shared_ptr<data_container> data_ptr;
@@ -154,10 +152,9 @@ namespace TiledArray {
     /// Assigns a value to the specified range of element in tile.
     /// *iterator = gen(index_type&)
     template <typename Generator>
-    Tile_& assign(const block_type& b, Generator gen) {
-      assert(block_->start() <= b.start() && block_->finish() >= b.finish());
-      for(const_iterator b_it = b.begin(); b_it != b.end(); ++b_it)
-        data_.at(*b_it) = gen(*b_it);
+    Tile_& assign(block_iterator first, block_iterator last, Generator gen) {
+      for(; first != last; ++first)
+        data_[ *first ] = gen( *first );
 
       return *this;
     }

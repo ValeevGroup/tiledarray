@@ -1,7 +1,9 @@
-#include <range.h>
-#include <shape.h>
 #include <local_array.h>
 #include <distributed_array.h>
+#include <shape.h>
+#include <range.h>
+#include <range1.h>
+#include <predicate.h>
 
 #include "arraytest.h"
 #include <boost/smart_ptr.hpp>
@@ -21,7 +23,7 @@ void ArrayTest(madness::World& world) {
   typedef Range<4>::tile_index_type::index eindex;
   typedef Range<4>::index_type::index tindex;
   typedef Shape<3> Shape3;
-  typedef DensePred<3,Shape3::index_type> DPred;
+  typedef DensePred<3> DPred;
   typedef PredShape<3,DPred> DenseShape3;
 
   // Create a Range for use with Array.
@@ -32,9 +34,9 @@ void ArrayTest(madness::World& world) {
   eindex dim2[] = {0, 2, 4, 6};
   tindex tiles[3] = {3, 3, 3};
 
-  Range1 rng_set[3] = {Range1(dim0, tiles[0]),
-                       Range1(dim1, tiles[1]),
-                       Range1(dim2, tiles[2]) };
+  Range1 rng_set[3] = {Range1(dim0, dim0 + tiles[0]),
+                       Range1(dim1, dim1 + tiles[1]),
+                       Range1(dim2, dim2 + tiles[2]) };
 
   boost::shared_ptr<Range<3> > rng = boost::make_shared< Range<3> >(& rng_set[0], & rng_set[0] + 3);
   boost::shared_ptr<DenseShape3> shp = boost::make_shared<DenseShape3>(rng);

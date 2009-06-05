@@ -1,4 +1,5 @@
 #include <range.h>
+#include <range1.h>
 #include <iostream>
 #include "rangetest.h"
 
@@ -23,10 +24,10 @@ RangeTest()
 	eindex dim3[] = {0,2,4,6,8,10,12};
 	tindex tiles[4] = {3, 4, 5, 6};
 
-	Range1 rng_set[4] = {Range1(dim0, tiles[0]),
-	                     Range1(dim1, tiles[1]),
-	                     Range1(dim2, tiles[2]),
-	                     Range1(dim3, tiles[3])};
+	Range1 rng_set[4] = {Range1(dim0, dim0 + tiles[0]),
+	                     Range1(dim1, dim1 + tiles[1]),
+	                     Range1(dim2, dim2 + tiles[2]),
+	                     Range1(dim3, dim3 + tiles[3])};
 
 	std::vector<Range1> rng_vector(rng_set, rng_set + 4);
 
@@ -55,16 +56,16 @@ RangeTest()
     tile_index_type e1(1, 3, 3, 2);
     tile_index_type e2(29, 19, 14, 12);
     std::cout << "tile_index: t1=" << t1 << std::endl;
-    std::cout << "ortho2.includes(t1) = " << ortho2.includes(t1) << std::endl;
+    std::cout << "ortho2.includes(t1) = " << ortho2.tiles().includes(t1) << std::endl;
     std::cout << "element_index: e1=" << e1 << std::endl;
-    std::cout << "ortho2.includes(e1) = " << ortho2.includes(e1) << std::endl;
-    std::cout << "ortho2.find(e1) = " << *(ortho2.find(e1)) << std::endl;
+    std::cout << "ortho2.includes(e1) = " << ortho2.elements().includes(e1) << std::endl;
+    std::cout << "ortho2.find(e1) = " << * ortho2.find(e1) << std::endl;
     std::cout << "element_index: e2=" << e2 << std::endl;
-    std::cout << "ortho2.includes(e2) = " << ortho2.includes(e2) << std::endl;
-    std::cout << "ortho2.find(e2) = " << *(ortho2.find(e2)) << std::endl;
+    std::cout << "ortho2.includes(e2) = " << ortho2.elements().includes(e2) << std::endl;
+    std::cout << "ortho2.find(e2) = " << * ortho2.find(e2) << std::endl;
 
     std::cout << "tile iterator tests: " << std::endl;
-    for(Range<4>::const_iterator t=ortho2.begin(); t!=ortho2.end(); ++t) {
+    for(Range<4>::block_type::const_iterator t=ortho2.tiles().begin(); t!=ortho2.tiles().end(); ++t) {
       std::cout << "t = " << *t << std::endl;
     }
 

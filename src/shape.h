@@ -1,11 +1,8 @@
 #ifndef SHAPE_H__INCLUDED
 #define SHAPE_H__INCLUDED
 
-#include <range.h>
 #include <iterator.h>
-#include <predicate.h>
 #include <cstddef>
-//#include <stdexcept>
 #include <algorithm>
 #include <boost/shared_ptr.hpp>
 #include <boost/iterator/filter_iterator.hpp>
@@ -15,6 +12,9 @@ namespace TiledArray {
   // Forward declaration of TiledArray Permutation.
   template <unsigned int DIM>
   class Permutation;
+  template <unsigned int DIM, typename CS>
+  class Range;
+
 
   /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is Range::tile_iterator.
   template <unsigned int DIM, typename CS = CoordinateSystem<DIM> >
@@ -79,7 +79,7 @@ namespace TiledArray {
 
     /// Begin accessor function
     const_iterator begin() const {
-      index_type first(range_->start_tile());
+      index_type first(range_->tiles().start());
       if(! this->includes(first))
         this->increment(first);
 
@@ -89,13 +89,13 @@ namespace TiledArray {
 
     /// End accessor function
     const_iterator end() const {
-      index_type last(range_->finish_tile());
+      index_type last(range_->tiles().finish());
       const_iterator result(last, this);
       return result;
     }
 
     bool includes(const index_type& index) const {
-      return pred_(index) && range_->includes(index);
+      return pred_(index) && range_->tiles().includes(index);
     }
 
     /// Permutes range
@@ -107,8 +107,8 @@ namespace TiledArray {
   protected:
     virtual void increment(index_type& i) const {
       do {
-        detail::IncrementCoordinate<DIM,typename range_type::index_type,CS>(i, range_->start_tile(), range_->finish_tile());
-      } while( !includes(i) && i != range_->finish_tile() );
+        detail::IncrementCoordinate<DIM,typename range_type::index_type,CS>(i, range_->tiles().start(), range_->tiles().finish());
+      } while( !includes(i) && i != range_->tiles().finish() );
     }
 
   private:
