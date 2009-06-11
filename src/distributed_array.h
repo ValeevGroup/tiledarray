@@ -1,104 +1,105 @@
 #ifndef DISTRIBUTED_ARRAY_H__INCLUDED
 #define DISTRIBUTED_ARRAY_H__INCLUDED
-
+#if 0
 #include <array.h>
+#include <array_storage.h>
+#include <range.h>
 #include <world/world.h>
 
 namespace TiledArray {
 
   /// Tiled Array with data distributed across many nodes.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
-  class DistributedArray : public Array<T, DIM, CS>,
-                           public madness::WorldObject< DistributedArray<T,DIM,CS> > {
-
+  class Array : public madness::WorldObject< DistributedArray<T,DIM,CS> > {
   public:
     typedef Array<T, DIM, CS> Array_;
     typedef T value_type;
     typedef CS coordinate_system;
-    typedef DistributedArray<T, DIM, CS> DistributedArray_;
-    typedef typename Array_::range_type range_type;
-    typedef typename Array_::range_iterator range_iterator;
-    typedef typename Array_::shape_type shape_type;
-    typedef typename Array_::shape_iterator shape_iterator;
-    typedef typename Array_::index_type index_type;
-    typedef typename Array_::tile_index_type tile_index_type;
-    typedef typename Array_::iterator iterator;
-    typedef typename Array_::const_iterator const_iterator;
-    typedef typename Array_::tile tile;
-    typedef boost::shared_ptr<tile> tile_ptr;
+    typedef Tile<value_type, DIM, coordinate_system> tile;
+    typedef Range<DIM, CS> range_type;
+    typedef Shape<DIM, CS> shape_type;
     typedef typename range_type::ordinal_index ordinal_index;
+    typedef typename range_type::index_type index_type;
+    typedef typename range_type::tile_index_type tile_index_type;
+
+  private:
+    typedef DistributedArrayStorage<tile, DIM, LevelTag<1>, coordinate_system > tile_container;
+
+  public:
+    typedef typename range_type::const_iterator range_iterator;
+    typedef typename shape_type::const_iterator shape_iterator;
+    typedef typename tile_container::iterator iterator;
+    typedef typename tile_container::const_iterator const_iterator;
+
 
     /// creates an array living in world and described by shape. Optional
     /// val specifies the default value of every element
-    DistributedArray(madness::World& world,
-                     const boost::shared_ptr<shape_type>& shp,
-                     const value_type& val = value_type()) :
-      Array_(shp), madness::WorldObject<DistributedArray_>(world), tiles_(world) {
-/*
+    Array(madness::World& world, const boost::shared_ptr<shape_type>& shp, value_type val = value_type()) :
+        madness::WorldObject<DistributedArray_>(world), shape_(shp),
+        range_(shp->range()) tiles_(world, shp->range()->tiles().size())
+    {
       this->process_pending();
 
       // Create local tiles.
       for(shape_iterator it = this->shape()->begin(); it != this->shape()->end(); ++it) {
-
-        const index_type& t = *it;
-//        const ordinal_index ot = this->range()->ordinal(t);
-//        if (!tiles_.is_local( ot ))
-//          continue;
-
-        // make TilePtr
-        tile* tileptr = new tile(this->range()->size(t),
-                                 this->range()->start_element(t),
-                                 val);
-
-        // insert into tile map
-//        tiles_.replace(std::make_pair(ot, tileptr));
+        if(tiles_.is_local( *it )) {
+          tiles_[ *it ] = tile(this->range()->tile( *it ), val);
+        }
       }
-*/
+
+      this->world.gop.fence(); // make sure everyone is done creating tiles.
     }
+
+    iterator begin() { return tiles_.begin(); }
+    const_iterator begin() const { return tiles_.begin(); }
+    iterator end() { return tiles_.end(); }
+    const_iterator end() const { return tiles_.end(); }
 
     /// assign val to each element
     DistributedArray_& assign(const value_type& val) {
-      for(typename tile_container::iterator it = tiles_.begin(); it != tiles_.end(); ++it) {
-        tile* tileptr = it->second;
-        std::fill(tileptr->begin(),tileptr->end(),val);
-      }
+      for(iterator it = begin(); it != end(); ++it)
+        std::fill(it->second.begin(), it->second.end(), val);
+
+      this->world.gop.fence(); // make sure everyone is done writing data.
       return *this;
-    }
-/*
-    /// where is tile k
-    unsigned int proc(const index_type& index) const {
-      return static_cast<unsigned int>(tiles_.owner( this->range()->ordinal(index) ));
     }
 
     /// Returns true if the tile specified by index is stored locally.
     bool is_local(const index_type& index) const {
-      assert(includes(index));
-      return tiles_.is_local(this->range()->ordinal(index));
+      assert(shape_->includes(index));
+      return tiles_.is_local(index);
     }
 
-    tile& at(const index_type& index) {
-      assert(includes(index));
-      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+    tile& at(const index_type& i) {
+      assert(shape_->includes(i));
+      return tiles_.at(i);
     }
 
-    const tile& at(const index_type& index) const {
-      assert(includes(index));
-      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+    const tile& at(const index_type& i) const {
+      assert(shape_->includes(i));
+      return tiles_.at(i);
     }
 
-    tile& operator [](const index_type& index) {
-      assert(includes(index));
-      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+    tile& operator [](const index_type& i) {
+      assert(shape_->includes(i));
+      return tiles_[i];
     }
 
-    const tile& operator [](const index_type& index) const {
-      assert(includes(index));
-      return * (tiles_.find( this->range()->ordinal(index) ).get()->second);
+    const tile& operator [](const index_type& i) const {
+      assert(shape_->includes(i));
+      return tiles_[i];
     }
-*/
 
   private:
-    typedef madness::WorldContainer<ordinal_index,tile*> tile_container;
+
+    /// Returns the tile index that contains the element index e_idx.
+    index_type get_tile_index(const tile_index_type& e_idx) const {
+      assert(includes(e_idx));
+      return * range_->find(e_idx);
+    }
+
+    boost::shared_ptr<shape_type> shape_;
+    boost::shared_ptr<range_type> range_;
     tile_container tiles_;
 
     boost::shared_ptr<Array_> clone() const {
@@ -107,8 +108,8 @@ namespace TiledArray {
       return array_clone;
     }
 
-  }; // class DistributedArray
+  }; // class Array
 
 } // namespace TiledArray
-
+#endif
 #endif // DISTRIBUTED_ARRAY_H__INCLUDED

@@ -1,10 +1,8 @@
-#include <local_array.h>
-#include <distributed_array.h>
+#include <array.h>
 #include <shape.h>
-#include <range.h>
 #include <range1.h>
 #include <predicate.h>
-
+#include <coordinate_system.h>
 #include "arraytest.h"
 #include <boost/smart_ptr.hpp>
 #include <boost/make_shared.hpp>
@@ -42,22 +40,16 @@ void ArrayTest(madness::World& world) {
   boost::shared_ptr<DenseShape3> shp = boost::make_shared<DenseShape3>(rng);
 
 
-  typedef LocalArray<double, 3> LArray3;
-  boost::shared_ptr<LArray3> a1 = boost::make_shared<LArray3>(shp);
-  a1->assign(1.0);
-  std::cout << *(a1->begin()) << std::endl;
+  typedef Array<double, 3> LArray3;
+  LArray3 a1(world, shp);
+  a1.assign(1.0);
+  std::cout << a1.begin()->second << std::endl;
 
   // make an initialized Future<Tile>
   typedef LArray3::tile Tile;
-  madness::Future<Tile> tfut0( *(a1->begin()) );
+  madness::Future<Tile> tfut0( a1.begin()->second );
   assert(tfut0.probe() == true);  // OK since the Future is assigned, hence result is available immediately
   std::cout << tfut0.get() << std::endl;   // Future::get() returns the value
-
-  typedef DistributedArray<double, 3> DArray3;
-  boost::shared_ptr<DArray3> a2(new DArray3(world,shp));
-  a2->assign(2.0);
-  std::cout << std::endl;
-  std::cout << *(a2->begin()) << std::endl;
 
   std::cout << "End Array Tests" << std::endl << std::endl;
 }

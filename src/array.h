@@ -1,10 +1,11 @@
 #ifndef ARRAY_H__INCLUDED
 #define ARRAY_H__INCLUDED
 
-#include <madness_runtime.h>
+#include <array_storage.h>
+#include <range.h>
+#include <tile.h>
 
 #include <cassert>
-#include <map>
 #include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 
@@ -18,127 +19,105 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename CS>
   class Tile;
 
-  /// The main player: Array
-  /// Serves as base to various implementations (local, replicated, distributed)
-  ///
+  /// Tiled Array with data distributed across many nodes.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
-  class Array : private boost::noncopyable // we don't allow copy constructors, et al. May need in the future.
-  {
+  class Array : public madness::WorldObject< Array<T,DIM,CS> > {
   public:
-    typedef Array<T,DIM,CS> Array_;
+    typedef Array<T, DIM, CS> Array_;
+    typedef T value_type;
+    typedef CS coordinate_system;
+    typedef Tile<value_type, DIM, coordinate_system> tile;
     typedef Range<DIM, CS> range_type;
-    typedef typename range_type::const_iterator range_iterator;
     typedef Shape<DIM, CS> shape_type;
-    typedef typename shape_type::const_iterator shape_iterator;
     typedef typename range_type::ordinal_index ordinal_index;
     typedef typename range_type::index_type index_type;
     typedef typename range_type::tile_index_type tile_index_type;
-    typedef T value_type;
-    typedef CS coordinate_system;
 
-    typedef Tile<value_type, DIM, coordinate_system> tile;
-    typedef boost::shared_ptr<tile> tile_ptr;
-    typedef madness::Future<tile> future_tile;
+  private:
+    typedef DistributedArrayStorage<tile, DIM, LevelTag<1>, coordinate_system > tile_container;
 
-	typedef detail::ElementIterator<tile, shape_iterator, Array_ > iterator;
-	typedef detail::ElementIterator<const tile, shape_iterator, Array_ const> const_iterator;
+  public:
+    typedef typename range_type::const_iterator range_iterator;
+    typedef typename shape_type::const_iterator shape_iterator;
+    typedef typename tile_container::iterator iterator;
+    typedef typename tile_container::const_iterator const_iterator;
 
-	iterator begin() {
-	  return iterator(shape_->begin(), this);
-	}
 
-    const_iterator begin() const {
-      return const_iterator(shape_->begin(), this);
+    /// creates an array living in world and described by shape. Optional
+    /// val specifies the default value of every element
+    template <typename S>
+    Array(madness::World& world, const boost::shared_ptr<S>& shp, value_type val = value_type()) :
+        madness::WorldObject<Array>(world), shape_(),
+        range_(), tiles_(world, shp->range()->tiles().size())
+    {
+      this->process_pending();
+
+      shape_ = boost::dynamic_pointer_cast<shape_type>(shp);
+      range_ = boost::const_pointer_cast<range_type>(shape_->range());
+      // Create local tiles.
+      for(shape_iterator it = shape_->begin(); it != shape_->end(); ++it) {
+        if(tiles_.is_local( *it )) {
+          tiles_[ *it ] = tile(range_->tile( *it ), val);
+        }
+      }
+
+      this->world.gop.fence(); // make sure everyone is done creating tiles.
     }
 
-    iterator end() {
-      return iterator(shape_->end(), this);
+    iterator begin() { return tiles_.begin(); }
+    const_iterator begin() const { return tiles_.begin(); }
+    iterator end() { return tiles_.end(); }
+    const_iterator end() const { return tiles_.end(); }
+
+    /// assign val to each element
+    Array_& assign(const value_type& val) {
+      for(iterator it = begin(); it != end(); ++it)
+        std::fill(it->second.begin(), it->second.end(), val);
+
+      this->world.gop.fence(); // make sure everyone is done writing data.
+      return *this;
     }
 
-    const_iterator end() const {
-      return const_iterator(shape_->end(), this);
+    /// Returns true if the tile specified by index is stored locally.
+    bool is_local(const index_type& index) const {
+      assert(shape_->includes(index));
+      return tiles_.is_local(index);
     }
 
-    /// array is defined by its shape
-    Array(const boost::shared_ptr<shape_type>& shp) : shape_(shp) {}
-
-    virtual ~Array() {}
-
-    /// Access array shape.
-    const boost::shared_ptr<const shape_type> shape() const {
-      boost::shared_ptr<const shape_type> result = boost::const_pointer_cast<const shape_type>(shape_);
-      return result;
+    tile& at(const index_type& i) {
+      assert(shape_->includes(i));
+      return tiles_.at(i);
     }
 
-    /// Access array range.
-    boost::shared_ptr<const range_type> range() const { return shape_->range(); }
-
-    /// Returns the number of dimensions in the array.
-    unsigned int dim() const { return DIM; }
-
-    /// Returns an element index that contains the lower limit of each dimension.
-    const tile_index_type& origin() const { return range()->start_element(); }
-
-    // Array virtual functions
-
-	/// Clone array
-    virtual boost::shared_ptr<Array_> clone() const =0;
-
-    /// assign each element to a
-    virtual Array_& assign(const value_type& val) =0;
-/*
-    /// where is tile k
-    virtual unsigned int proc(const index_type& k) const =0;
-    virtual bool is_local(const index_type& k) const =0;
-
-    /// Tile access funcions
-    virtual tile& at(const index_type& index) =0;
-    virtual const tile& at(const index_type& index) const =0;
-    virtual tile& operator[](const index_type& i) =0;
-    virtual const tile& operator[](const index_type& i) const =0;
-*/
-    /// Low-level interface will only allow permutations and efficient direct contractions
-    /// it should be sufficient to use with an optimizing array expression compiler
-
-    /// make new Array by applying permutation P
-
-    /// Higher-level interface will be be easier to use but necessarily less efficient
-    /// since it will allow more complex operations implemented in terms of permutations
-    /// and contractions by a runtime
-
-    /// bind a string to this array to make operations look normal
-    /// e.g. R("ijcd") += T2("ijab") . V("abcd") or T2new("iajb") = T2("ijab")
-    /// runtime then can figure out how to implement operations
-    // ArrayExpression operator()(const char*) const;
-
-  protected:
-
-    void permute(const Permutation<DIM>& p) {
-      *shape_ ^= p;
+    const tile& at(const index_type& i) const {
+      assert(shape_->includes(i));
+      return tiles_.at(i);
     }
 
+    tile& operator [](const index_type& i) {
+      assert(shape_->includes(i));
+      return tiles_[i];
+    }
+
+    const tile& operator [](const index_type& i) const {
+      assert(shape_->includes(i));
+      return tiles_[i];
+    }
+
+  private:
+
+	Array();
     /// Returns the tile index that contains the element index e_idx.
     index_type get_tile_index(const tile_index_type& e_idx) const {
       assert(includes(e_idx));
-      return * this->shape_->range()->find(e_idx);
+      return * range_->find(e_idx);
     }
 
-    /// Returns true when the tile is included in the shape.
-	bool includes(const index_type& t_idx) const {
-      return this->shape_->includes(t_idx);
-	}
-
-	/// Returns true when the element is included in the range.
-	/// It may or may not be included in the shape.
-	bool includes(const tile_index_type& e_idx) const {
-      return this->shape_->range()->includes(e_idx);
-	}
-
-  protected:
-    /// Shape pointer to a shape object.
     boost::shared_ptr<shape_type> shape_;
+    boost::shared_ptr<range_type> range_;
+    tile_container tiles_;
+  }; // class Array
 
-  };
 
 };
 

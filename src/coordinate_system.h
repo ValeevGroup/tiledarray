@@ -2,20 +2,9 @@
 #define COORDINATE_SYSTEM_H__INCLUDED
 
 #include <boost/array.hpp>
+#include <algorithm>
 
 namespace TiledArray {
-
-  namespace {
-    // sort dimensions by their order
-    struct DimOrderPair {
-      unsigned int dim, order;
-      DimOrderPair(unsigned int d = 0,unsigned int o = 0) : dim(d), order(o) {}
-      /// compare by order
-      bool operator<(const DimOrderPair& other) const {
-        return order < other.order;
-      }
-    };
-  };
 
   namespace detail {
 
@@ -27,6 +16,7 @@ namespace TiledArray {
 
     template <unsigned int DIM>
     class DimensionOrder {
+      typedef std::pair<unsigned int, unsigned int> DimOrderPair;
       typedef boost::array<unsigned int,DIM> IntArray;
     public:
       typedef typename IntArray::const_iterator const_iterator;
@@ -45,20 +35,19 @@ namespace TiledArray {
           break;
 
           case general_dimension_order:
-            throw std::runtime_error("general dimension ordering is not supported");
+            throw std::runtime_error("general dimension ordering must be specified");
           break;
         }
 
-        //
-        // compute dim_ by inverting ord_ map
-        //
-        boost::array<DimOrderPair,DIM> sorted_by_order;
-        for(unsigned int d=0; d<DIM; ++d)
-          sorted_by_order[d] = DimOrderPair(d,ord_[d]);
-        std::sort(sorted_by_order.begin(),sorted_by_order.end());
-        // construct the order->dimension map
-        for(unsigned int d=0; d<DIM; ++d)
-          dim_[d] = sorted_by_order[d].dim;
+        init_(ord_.begin(), ord_.end());
+      }
+
+      template <typename RandIter>
+      DimensionOrder(RandIter first, RandIter last) {
+        assert(valid_(first, last));
+        std::copy(first, last, ord_.begin());
+
+        init_(ord_.begin(), ord_.end());
       }
 
       unsigned int dim2order(unsigned int d) const { return ord_[d]; }
@@ -72,6 +61,37 @@ namespace TiledArray {
       /// use this to end iteration over dimensions in decreasing order of their significance
       const_reverse_iterator rend() const { return dim_.rend(); }
     private:
+
+      static bool less_order_(const DimOrderPair& a, const DimOrderPair& b) {
+        return a.second < b.second;
+      }
+
+      /// compute dim_ by inverting ord_ map
+      template <typename RandIter>
+      void init_(RandIter first, RandIter last) {
+        boost::array<DimOrderPair,DIM> sorted_by_order;
+        for(unsigned int d=0; d<DIM; ++d)
+          sorted_by_order[d] = DimOrderPair(d,ord_[d]);
+        std::sort(sorted_by_order.begin(),sorted_by_order.end(), less_order_);
+        // construct the order->dimension map
+        for(unsigned int d=0; d<DIM; ++d)
+          dim_[d] = sorted_by_order[d].first;
+      }
+
+      template <typename RandIter>
+      bool valid_(RandIter first, RandIter last) {
+        if((last - first) == DIM)
+          return false;
+        boost::array<int,DIM> count;
+        count.assign(0);
+        for(; first < DIM; ++first) {
+          if( ((*first) >= DIM) || (count[ *first ] > 0) )
+            return false;
+          ++count[ *first ];
+        }
+        return true;
+      }
+
       /// maps dimension to its order
       boost::array<unsigned int,DIM> ord_;
       /// maps order to dimension -- inverse of ord_

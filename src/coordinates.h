@@ -125,13 +125,13 @@ namespace TiledArray {
     }
 
     ArrayCoordinate_& operator++() {
-      const unsigned int lsdim = *coordinate_system::ordering().begin();
+      const unsigned int lsdim = * coordinate_system::begin();
       ++(r_[lsdim]);
       return *this;
     }
 
     ArrayCoordinate_& operator--() {
-      const unsigned int lsdim = *coordinate_system::ordering().begin();
+      const unsigned int lsdim = * coordinate_system::begin();
       --(r_[lsdim]);
       return *this;
     }
@@ -253,8 +253,8 @@ namespace TiledArray {
     struct LexLess {
       bool operator ()(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
         // Get order iterators.
-        typename CS::const_iterator it = CS::ordering().begin();
-        const typename CS::const_iterator end = CS::ordering().end();
+        typename CS::const_iterator it = CS::begin();
+        const typename CS::const_iterator end = CS::end();
         L l;
         for(; it != end; ++it) {
           if(l(a2[*it], a1[*it]))

@@ -1,6 +1,6 @@
 #ifndef REPLICATED_ARRAY_H__INCLUDED
 #define REPLICATED_ARRAY_H__INCLUDED
-
+#if 0
 #include <array.h>
 
 namespace TiledArray {
@@ -29,5 +29,5 @@ namespace TiledArray {
   }; // class ReplicatedArray
 
 } // namespace TiledArray
-
+#endif
 #endif // REPLICATED_ARRAY_H__INCLUDED

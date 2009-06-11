@@ -1,6 +1,6 @@
 #ifndef LOCAL_ARRAY_H__INCLUDED
 #define LOCAL_ARRAY_H__INCLUDED
-
+#if 0
 #include <shape.h>
 #include <tile.h>
 #include <array.h>
@@ -36,8 +36,7 @@ namespace TiledArray {
       // Fill data_ with tiles.
       for(shape_iterator it = this->shape()->begin(); it != this->shape()->end(); ++it) {
         // make TilePtr
-        tile_ptr tileptr = boost::make_shared<tile>(this->range()->tile(*it).size(),
-            this->range()->tile(*it).start(), val);
+        tile_ptr tileptr = boost::make_shared<tile>(this->range()->tile(*it), val);
 
         // insert into tile map
         data_.insert(std::make_pair(*it, tileptr));
@@ -131,5 +130,5 @@ namespace TiledArray {
   }; // class LocalArray
 
 } // namespace TiledArray
-
+#endif
 #endif // LOCAL_ARRAY_H__INCLUDED

@@ -1,7 +1,6 @@
 #ifndef BLOCK_H__INCLUDED
 #define BLOCK_H__INCLUDED
 
-#include <cassert>
 #include <iterator.h>
 #include <boost/array.hpp>
 #include <cassert>
@@ -15,11 +14,6 @@ namespace TiledArray {
   class ArrayCoordinate;
   template <unsigned int DIM>
   class Permutation;
-  namespace detail {
-    template <typename T, unsigned int DIM, typename CS>
-    bool less(boost::array<T,DIM> &, boost::array<T,DIM>&);
-  }
-
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   void swap(ArrayCoordinate<T,DIM,Tag,CS>& c1, ArrayCoordinate<T,DIM,Tag,CS>& c2);
 
@@ -27,6 +21,11 @@ namespace TiledArray {
   boost::array<T,DIM> calc_weights(const boost::array<T,DIM>&);
   template <typename T, std::size_t DIM>
   T volume(const boost::array<T,DIM>&);
+
+  namespace detail {
+    template <typename T, unsigned int DIM, typename CS>
+    bool less(const boost::array<T,DIM>&, const boost::array<T,DIM>&);
+  }
 
   template <typename T, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
   class Block {
@@ -52,8 +51,8 @@ namespace TiledArray {
     Block(const size_array& size, const index_type& start = index_type(0)) :
         start_(start), finish_(start + size), size_(size)
     {
-#ifndef TA_DEBUG
-      bool valid = detail::less<T,DIM,CS> (start_.data(), finish_.data());
+#ifndef NDEBUG
+      bool valid = detail::less<T,DIM,CS>(start_.data(), finish_.data());
       assert( valid );
 #endif
     }
@@ -62,7 +61,12 @@ namespace TiledArray {
     /// finish must be greater than or equal to those of start.
     Block(const index_type& start, const index_type& finish) :
         start_(start), finish_(finish), size_(finish - start)
-    { /*assert( detal::less<T,DIM,CS>(start_.data(), finish_.data());*/ }
+    {
+#ifndef NDEBUG
+      bool valid = detail::less<T,DIM,CS>(start_.data(), finish_.data());
+      assert( valid );
+#endif
+    }
 
     /// Copy Constructor
     Block(const Block_& other) : // no throw
@@ -94,7 +98,8 @@ namespace TiledArray {
 
     /// Check the coordinate to make sure it is within the block range
     bool includes(const index_type& i) const {
-      return (i >= start()) && (i < finish());
+      return (! detail::less<T,DIM,CS>(i.data(), start_.data()))
+          && detail::less<T,DIM,CS>(i.data(), finish_.data());
     }
 
     /// Assignment Operator.
@@ -136,23 +141,7 @@ namespace TiledArray {
   private:
 
     void increment(index_type& i) const {
-      // increment least significant, and check to see if the iterator has
-      // reached the end of that dimension
-      for(typename coordinate_system::const_iterator order_it = coordinate_system::begin();
-          order_it != coordinate_system::end(); ++order_it) {
-        // increment and break if done.
-        if( (++( i[ *order_it ] ) ) < finish_[ *order_it ] )
-          return;
-
-        // The iterator is at the end of the dimension, set it to the lower bound.
-        i[*order_it] = start_[*order_it];
-
-        // Increment the next higher bound.
-      }
-
-      // Check for end (i.e. i was reset to start)
-      if(i == start_)
-        i = finish_;
+      detail::IncrementCoordinate<index_type,coordinate_system>(i, start_, finish_);
     }
 
     index_type start_;              // Tile origin

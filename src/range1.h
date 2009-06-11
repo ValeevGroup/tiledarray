@@ -39,8 +39,8 @@ namespace TiledArray {
   /// equal to one less than the number of elements in the array.
   class Range1 {
   public:
-    typedef size_t tile_index_type;
-    typedef size_t index_type;
+    typedef std::size_t tile_index_type;
+    typedef std::size_t index_type;
     typedef std::vector<detail::Tile1>::const_iterator const_iterator;
 
     /// Default constructor, range of 0 tiles and elements.
@@ -49,7 +49,12 @@ namespace TiledArray {
     /// Constructs a range with the boundaries provided by [first, last).
     /// Start_tile_index is the index of the first tile.
     template <typename RandIter>
-    Range1(RandIter first, RandIter last, const index_type start_tile_index = 0);
+    Range1(RandIter first, RandIter last, const index_type start_tile_index = 0) :
+        tiles_(), elem2tile_()
+    {
+      init_tiles_(first, last, start_tile_index);
+      init_map_();
+    }
 
     /// Copy constructor
     Range1(const Range1& rng);
@@ -109,11 +114,27 @@ namespace TiledArray {
 
     /// Validates tile_boundaries
     template <typename RandIter>
-    static bool valid_(RandIter first, RandIter last);
+    static bool valid_(RandIter first, RandIter last) {
+      // Verify at least 2 elements are present if the vector is not empty.
+      if((last - first) == 2)
+        return false;
+      // Verify the requirement that 0 <= a0
+      if(*first < 0)
+        return false;
+      // Verify the requirement that a0 < a1 < a2 < ...
+      for (; first != (last - 1); ++first)
+        if(*first >= *(first + 1))
+          return false;
+      return true;
+    }
 
     /// Initialize tiles use a set of tile offsets
     template <typename RandIter>
-    void init_tiles_(RandIter first, RandIter last, index_type start_tile_index);
+    void init_tiles_(RandIter first, RandIter last, index_type start_tile_index) {
+      assert(valid_(first, last));
+      for (; first != (last - 1); ++first)
+        tiles_.push_back(detail::Tile1(*first, *(first + 1), start_tile_index++));
+    }
 
     /// Initialize secondary data
     void init_map_();

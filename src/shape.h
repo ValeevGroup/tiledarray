@@ -24,8 +24,8 @@ namespace TiledArray {
     typedef Range<DIM,CS> range_type;
     typedef CS coordinate_system;
     typedef typename range_type::index_type index_type;
-    typedef detail::IndexIterator<index_type, Shape_> const_iterator;
-    INDEX_ITERATOR_FRIENDSHIP(index_type, Shape_);
+    typedef detail::IndexIterator<index_type, Shape> const_iterator;
+    friend class detail::IndexIterator< index_type , Shape>;
 
     static unsigned int dim() { return DIM; }
 
@@ -55,7 +55,7 @@ namespace TiledArray {
     typedef typename Shape<DIM,CS>::range_type range_type;
     typedef typename Shape<DIM,CS>::index_type index_type;
     typedef typename Shape<DIM,CS>::const_iterator const_iterator;
-    INDEX_ITERATOR_FRIENDSHIP(index_type, Shape_);
+    friend class detail::IndexIterator< index_type , Shape_ >;
 
     /// Iterator main constructor
     PredShape(const boost::shared_ptr<range_type>& range, pred_type pred = pred_type()) :
@@ -107,7 +107,7 @@ namespace TiledArray {
   protected:
     virtual void increment(index_type& i) const {
       do {
-        detail::IncrementCoordinate<DIM,typename range_type::index_type,CS>(i, range_->tiles().start(), range_->tiles().finish());
+        detail::IncrementCoordinate<index_type,coordinate_system>(i, range_->tiles().start(), range_->tiles().finish());
       } while( !includes(i) && i != range_->tiles().finish() );
     }
 

@@ -241,16 +241,14 @@ namespace TiledArray {
   /// ostream output orperator.
   template<typename T, unsigned int DIM, typename CS>
   std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,CS>& t) {
-    typedef  detail::DimensionOrder<DIM> DimOrder;
     typedef Tile<T,DIM,CS> tile_type;
-    DimOrder order = CS::ordering();
     typename tile_type::size_array weight = t.data_->weight();
 
     out << "{ ";
-    typename DimOrder::const_iterator d ;
+    typename CS::const_iterator d ;
     typename tile_type::ordinal_type i = 0;
     for(typename tile_type::const_iterator it = t.begin(); it != t.end(); ++it, ++i) {
-      for(d = order.begin(), ++d; d != order.end(); ++d) {
+      for(d =  CS::begin(), ++d; d != CS::end(); ++d) {
         if((i % weight[*d]) == 0)
           out << "{ ";
       }
@@ -258,7 +256,7 @@ namespace TiledArray {
       out << " " << *it;
 
 
-      for(d = order.begin(), ++d; d != order.end(); ++d) {
+      for(d = CS::begin(), ++d; d != CS::end(); ++d) {
         if(((i + 1) % weight[*d]) == 0)
           out << " }";
       }

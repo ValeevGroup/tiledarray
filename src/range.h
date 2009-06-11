@@ -105,8 +105,8 @@ namespace TiledArray {
       }
 
       /// Access the block information on the elements contained by tile t.
-      const tile_block_type& tile(const index_type& t) const {
-        return * tile_blocks_[t];
+      boost::shared_ptr<tile_block_type> tile(const index_type& t) const {
+        return tile_blocks_[t];
       }
 
     private:
