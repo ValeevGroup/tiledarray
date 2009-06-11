@@ -8,14 +8,14 @@ using namespace TiledArray;
 void
 RangeTest()
 {
-  typedef Range<4>::tile_index_type::index eindex;
-  typedef Range<4>::index_type::index tindex;
+  typedef Range<std::size_t, 4>::tile_index_type::index eindex;
+  typedef Range<std::size_t, 4>::index_type::index tindex;
 
 	std::cout << "Range Tests:" << std::endl;
 
 	std::cout << "Constructor tests: ";
 	// Test default constructor.
-	Range<4> ortho1;
+	Range<std::size_t, 4> ortho1;
 
 	// Test with C-style Range Array constructor.
 	eindex dim0[] = {0,10,20,30};
@@ -31,8 +31,8 @@ RangeTest()
 
 	std::vector<Range1> rng_vector(rng_set, rng_set + 4);
 
-	Range<4> ortho2(rng_set, rng_set + 4);
-	Range<4> ortho3(rng_vector.begin(),rng_vector.end());
+	Range<std::size_t, 4> ortho2(rng_set, rng_set + 4);
+	Range<std::size_t, 4> ortho3(rng_vector.begin(),rng_vector.end());
 
 	std::cout << "PASSED" << std::endl;
 
@@ -50,8 +50,8 @@ RangeTest()
     std::cout << "ortho2 != ortho3: " << (ortho2!=ortho3 ? "true" : "false") << std::endl;
 
     std::cout << "ordinal tests: " << std::endl;
-    typedef Range<4>::tile_index_type tile_index_type;
-    typedef Range<4>::index_type index_type;
+    typedef Range<std::size_t, 4>::tile_index_type tile_index_type;
+    typedef Range<std::size_t, 4>::index_type index_type;
     index_type t1(0, 2, 4, 1);
     tile_index_type e1(1, 3, 3, 2);
     tile_index_type e2(29, 19, 14, 12);
@@ -65,7 +65,7 @@ RangeTest()
     std::cout << "ortho2.find(e2) = " << * ortho2.find(e2) << std::endl;
 
     std::cout << "tile iterator tests: " << std::endl;
-    for(Range<4>::block_type::const_iterator t=ortho2.tiles().begin(); t!=ortho2.tiles().end(); ++t) {
+    for(Range<std::size_t, 4>::block_type::const_iterator t=ortho2.tiles().begin(); t!=ortho2.tiles().end(); ++t) {
       std::cout << "t = " << *t << std::endl;
     }
 

@@ -12,9 +12,9 @@
 namespace TiledArray {
 
   // Forward declaration of TiledArray Permutation.
-  template <unsigned int DIM, typename CS>
+  template <typename I, unsigned int DIM, typename CS>
   class Range;
-  template <unsigned int DIM, typename CS>
+  template <typename I, unsigned int DIM, typename CS>
   class Shape;
   template<typename T, unsigned int DIM, typename CS>
   class Tile;
@@ -27,18 +27,18 @@ namespace TiledArray {
     typedef T value_type;
     typedef CS coordinate_system;
     typedef Tile<value_type, DIM, coordinate_system> tile;
-    typedef Range<DIM, CS> range_type;
-    typedef Shape<DIM, CS> shape_type;
-    typedef typename range_type::ordinal_index ordinal_index;
-    typedef typename range_type::index_type index_type;
-    typedef typename range_type::tile_index_type tile_index_type;
 
   private:
     typedef DistributedArrayStorage<tile, DIM, LevelTag<1>, coordinate_system > tile_container;
 
   public:
-    typedef typename range_type::const_iterator range_iterator;
-    typedef typename shape_type::const_iterator shape_iterator;
+	typedef typename tile_container::ordinal_type ordinal_type;
+    typedef Range<ordinal_type, DIM, CS> range_type;
+    typedef Shape<ordinal_type, DIM, CS> shape_type;
+    typedef typename range_type::index_type index_type;
+    typedef typename tile::index_type tile_index_type;
+    typedef typename range_type::size_array size_array;
+
     typedef typename tile_container::iterator iterator;
     typedef typename tile_container::const_iterator const_iterator;
 
@@ -55,7 +55,7 @@ namespace TiledArray {
       shape_ = boost::dynamic_pointer_cast<shape_type>(shp);
       range_ = boost::const_pointer_cast<range_type>(shape_->range());
       // Create local tiles.
-      for(shape_iterator it = shape_->begin(); it != shape_->end(); ++it) {
+      for(typename shape_type::const_iterator it = shape_->begin(); it != shape_->end(); ++it) {
         if(tiles_.is_local( *it )) {
           tiles_[ *it ] = tile(range_->tile( *it ), val);
         }
@@ -70,7 +70,7 @@ namespace TiledArray {
     const_iterator end() const { return tiles_.end(); }
 
     /// assign val to each element
-    Array_& assign(const value_type& val) {
+    Array& assign(const value_type& val) {
       for(iterator it = begin(); it != end(); ++it)
         std::fill(it->second.begin(), it->second.end(), val);
 
@@ -78,10 +78,57 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Assign data to tiles with the function object gen over all elements.
+
+    /// This function will assign data to each local element in the indices
+    /// definded by [first,last). The input iterator (type InIter) must
+    /// dereference to tile_index_type type. gen must be a function object or
+    /// function that accepts a single tile_index_type as its parameter and
+    /// returns a value_type (i.e. it must have the following signature
+    /// value_type gen(const tile_index_type&).
+    template <typename G>
+    Array& assign(G gen) {
+      for(iterator it = begin(); it != end(); ++it)
+        it->second.assign(gen);
+
+      this->world.gop.fence(); // make sure everyone is done writing data.
+      return *this;
+    }
+
+    /// Assign data to tiles with the function object gen over [first,last) tiles.
+
+    /// This function will assign data to each local tile in the indices
+    /// definded by [first,last). The input iterator (type InIter) must
+    /// dereference to index_type type. gen must be a function object or
+    /// function that accepts a single tile_index_type as its parameter and
+    /// returns a value_type (i.e. it must have the following signature
+    /// value_type gen(const tile_index_type&).
+    template <typename InIter, typename G>
+    Array& assign(InIter first, InIter last, G gen) {
+      for(; first != last; ++first)
+        if(tiles_.is_local(*first))
+          tiles_[*first].assign(gen);
+
+      this->world.gop.fence(); // make sure everyone is done writing data.
+      return *this;
+    }
+
+    Array& operator ^=(const Permutation<DIM>& p) {
+      tiles_ ^= p; // move the tiles to the correct location
+      shape_ ^= p; // shape will permute range_
+      for(iterator it = begin(); it != end(); ++it) {
+
+      }
+    }
+
     /// Returns true if the tile specified by index is stored locally.
-    bool is_local(const index_type& index) const {
-      assert(shape_->includes(index));
-      return tiles_.is_local(index);
+    bool is_local(const index_type& i) const {
+      assert(shape_->includes(i));
+      return tiles_.is_local(i);
+    }
+
+    bool includes(const index_type& i) const {
+      return shape_->includes(i);
     }
 
     tile& at(const index_type& i) {

@@ -18,20 +18,20 @@ namespace TiledArray {
   template <unsigned int DIM, typename T>
   boost::array<T,DIM> operator ^=(boost::array<T, static_cast<std::size_t>(DIM) >&, const Permutation<DIM>&);
 
-  template <typename T, unsigned int D, typename Tag, typename CS>
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
   class ArrayCoordinate;
 
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  bool operator<(const ArrayCoordinate<T,D,Tag,CS>&, const ArrayCoordinate<T,D,Tag,CS>&);
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  bool operator<(const ArrayCoordinate<T,DIM,Tag,CS>&, const ArrayCoordinate<T,DIM,Tag,CS>&);
 
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  bool operator==(const ArrayCoordinate<T,D,Tag,CS>& c1, const ArrayCoordinate<T,D,Tag,CS>& c2);
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  bool operator==(const ArrayCoordinate<T,DIM,Tag,CS>& c1, const ArrayCoordinate<T,DIM,Tag,CS>& c2);
 
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag,CS>& c);
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,DIM,Tag,CS>& c);
 
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  ArrayCoordinate<T,D,Tag,CS> operator^(const Permutation<D>& P, const ArrayCoordinate<T,D,Tag,CS>& C);
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<T,DIM,Tag,CS> operator^(const Permutation<DIM>& P, const ArrayCoordinate<T,DIM,Tag,CS>& C);
 
   /// Array Coordinate Tag strut: It is used to ensure type safety between different tiling domains.
   template<unsigned int Level>
@@ -42,25 +42,25 @@ namespace TiledArray {
   /// The purpose of Tag is to create multiple instances of the class
   /// with identical mathematical behavior but distinct types to allow
   /// overloading in end-user classes.
-  template <typename T, unsigned int D, typename Tag, typename CS = CoordinateSystem<D> >
+  template <typename I, unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
   class ArrayCoordinate :
-      boost::addable< ArrayCoordinate<T,D,Tag,CS>,                // point + point
-      boost::subtractable< ArrayCoordinate<T,D,Tag,CS>,           // point - point
-      boost::less_than_comparable1< ArrayCoordinate<T,D,Tag,CS>,  // point < point
-      boost::equality_comparable1< ArrayCoordinate<T,D,Tag,CS>,   // point == point
-      boost::incrementable< ArrayCoordinate<T,D,Tag,CS>,          // point++
-      boost::decrementable< ArrayCoordinate<T,D,Tag,CS>           // point--
+      boost::addable< ArrayCoordinate<I,DIM,Tag,CS>,                // point + point
+      boost::subtractable< ArrayCoordinate<I,DIM,Tag,CS>,           // point - point
+      boost::less_than_comparable1< ArrayCoordinate<I,DIM,Tag,CS>,  // point < point
+      boost::equality_comparable1< ArrayCoordinate<I,DIM,Tag,CS>,   // point == point
+      boost::incrementable< ArrayCoordinate<I,DIM,Tag,CS>,          // point++
+      boost::decrementable< ArrayCoordinate<I,DIM,Tag,CS>           // point--
       > > > > > >
   {
   public:
-	typedef ArrayCoordinate<T,D,Tag,CS> ArrayCoordinate_;
-    typedef T index;
-    typedef T volume;
+	typedef ArrayCoordinate<I,DIM,Tag,CS> ArrayCoordinate_;
+    typedef I index;
+    typedef I volume;
     typedef CS coordinate_system;
-    typedef boost::array<index,D> Array;
+    typedef boost::array<index,DIM> Array;
     typedef typename Array::iterator iterator;
     typedef typename Array::const_iterator const_iterator;
-    static const unsigned int dim() { return D; }
+    static const unsigned int dim() { return DIM; }
 
     // Constructors/Destructor
     ArrayCoordinate(const index& init_value = 0) { r_.assign(init_value); }
@@ -157,7 +157,7 @@ namespace TiledArray {
       return ret;
     }
 
-    const T& operator[](size_t d) const
+    const index& operator[](size_t d) const
     {
 #ifdef NDEBUG
       return r_[d];
@@ -166,7 +166,7 @@ namespace TiledArray {
 #endif
     }
 
-    T& operator[](size_t d)
+    index& operator[](size_t d)
     {
 #ifdef NDEBUG
       return r_[d];
@@ -183,7 +183,7 @@ namespace TiledArray {
       return r_;
     }
 
-    const ArrayCoordinate_ operator ^= (const Permutation<D>& p) {
+    const ArrayCoordinate_ operator ^= (const Permutation<DIM>& p) {
       r_ = p ^ r_;
       return *this;
     }
@@ -225,33 +225,33 @@ namespace TiledArray {
 
   namespace detail {
     /// Compare each element in the array to make sure it is
-    template <typename T, unsigned int D, typename CS, typename L = std::less<T> >
+    template <typename T, unsigned int DIM, typename CS, typename L = std::less<T> >
     struct Less {
-      bool operator ()(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
+      bool operator ()(const boost::array<T,DIM>& a1, const boost::array<T,DIM>& a2) {
         L l;
-        for(unsigned int i = 0; i < D; ++i)
+        for(unsigned int i = 0; i < DIM; ++i)
           if(! l(a1[i], a2[i]))
             return false;
         return true; // all members of c1 are less than c2
       }
     }; // struct less
 
-    template <typename T, unsigned int D, typename CS>
-    bool less(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
-      Less<T,D,CS> l;
+    template <typename T, unsigned int DIM, typename CS>
+    bool less(const boost::array<T,DIM>& a1, const boost::array<T,DIM>& a2) {
+      Less<T,DIM,CS> l;
       return l(a1, a2);
     }
 
-    template <typename T, unsigned int D, typename CS, typename L>
-    bool less(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
-      Less<T,D,CS,L> l;
+    template <typename T, unsigned int DIM, typename CS, typename L>
+    bool less(const boost::array<T,DIM>& a1, const boost::array<T,DIM>& a2) {
+      Less<T,DIM,CS,L> l;
       return l(a1, a2);
     }
 
     /// Compare ArrayCoordinates Lexicographically.
-    template <typename T, unsigned int D, typename CS, typename L = std::less<T> >
+    template <typename T, unsigned int DIM, typename CS, typename L = std::less<T> >
     struct LexLess {
-      bool operator ()(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
+      bool operator ()(const boost::array<T,DIM>& a1, const boost::array<T,DIM>& a2) {
         // Get order iterators.
         typename CS::const_iterator it = CS::begin();
         const typename CS::const_iterator end = CS::end();
@@ -266,59 +266,59 @@ namespace TiledArray {
       }
     }; // struct LexLess
 
-    template <typename T, unsigned int D, typename CS>
-    bool lex_less(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
-      LexLess<T,D,CS> l;
+    template <typename T, unsigned int DIM, typename CS>
+    bool lex_less(const boost::array<T,DIM>& a1, const boost::array<T,DIM>& a2) {
+      LexLess<T,DIM,CS> l;
       return l(a1, a2);
     }
 
-    template <typename T, unsigned int D, typename CS, typename L>
-    bool lex_less(const boost::array<T,D>& a1, const boost::array<T,D>& a2) {
-      LexLess<T,D,CS, L> l;
+    template <typename T, unsigned int DIM, typename CS, typename L>
+    bool lex_less(const boost::array<T,DIM>& a1, const boost::array<T,DIM>& a2) {
+      LexLess<T,DIM,CS, L> l;
       return l(a1, a2);
     }
   } // namespace detail
 
   /// Compare ArrayCoordinates Lexicographically.
-  template <typename T, unsigned int D, typename Tag, typename CS >
-  bool operator<(const ArrayCoordinate<T,D,Tag,CS>& c1, const ArrayCoordinate<T,D,Tag,CS>& c2) {
-    return detail::lex_less<T,D,CS>(c1.data(),c2.data());
+  template <typename T, unsigned int DIM, typename Tag, typename CS >
+  bool operator<(const ArrayCoordinate<T,DIM,Tag,CS>& c1, const ArrayCoordinate<T,DIM,Tag,CS>& c2) {
+    return detail::lex_less<T,DIM,CS>(c1.data(),c2.data());
   }
 
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  bool operator==(const ArrayCoordinate<T,D,Tag,CS>& c1, const ArrayCoordinate<T,D,Tag,CS>& c2) {
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  bool operator==(const ArrayCoordinate<T,DIM,Tag,CS>& c1, const ArrayCoordinate<T,DIM,Tag,CS>& c2) {
     return c1.r_ == c2.r_;
   }
 
   /// Permute an ArrayCoordinate
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  ArrayCoordinate<T,D,Tag,CS> operator ^(const Permutation<D>& perm, const ArrayCoordinate<T,D,Tag,CS>& c) {
-    ArrayCoordinate<T,D,Tag,CS> result(c);
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& perm, const ArrayCoordinate<T,DIM,Tag,CS>& c) {
+    ArrayCoordinate<T,DIM,Tag,CS> result(c);
     return result ^= perm;
   }
 
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,D,Tag,CS>& c) {
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<I,DIM,Tag,CS>& c) {
     output << "{";
-    for(unsigned int dim = 0; dim < D - 1; ++dim)
+    for(unsigned int dim = 0; dim < DIM - 1; ++dim)
       output << c[dim] << ", ";
-    output << c[D - 1] << "}";
+    output << c[DIM - 1] << "}";
     return output;
   }
 
 
 /*
   /// compute the volume of the orthotope bounded by the origin and C
-  template <typename T, unsigned int D, typename Tag, typename CS>
-  typename ArrayCoordinate<T,D,Tag,CS>::volume volume(const ArrayCoordinate<T,D,Tag,CS>& C) {
-    return volume<T,D>(C.data());
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  typename ArrayCoordinate<T,DIM,Tag,CS>::volume volume(const ArrayCoordinate<T,DIM,Tag,CS>& C) {
+    return volume<T,DIM>(C.data());
   }
 */
   /// compute dot product between 2 arrays
-  template <typename T, unsigned long int D>
-  T dot_product(const boost::array<T,D>& A, const boost::array<T,D>& B) {
-    T result = 0;
-    for(unsigned int dim = 0; dim < D; ++dim)
+  template <typename I, unsigned long int DIM>
+  I dot_product(const boost::array<I,DIM>& A, const boost::array<I,DIM>& B) {
+    I result = 0;
+    for(unsigned int dim = 0; dim < DIM; ++dim)
       result += A[dim] * B[dim];
     return result;
   }

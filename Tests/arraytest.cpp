@@ -18,11 +18,11 @@ void ArrayTest(madness::World& world) {
 
   std::cout << "Array Tests:" << std::endl;
 
-  typedef Range<4>::tile_index_type::index eindex;
-  typedef Range<4>::index_type::index tindex;
-  typedef Shape<3> Shape3;
+  typedef Range<std::size_t, 4>::tile_index_type::index eindex;
+  typedef Range<std::size_t, 4>::index_type::index tindex;
+  typedef Shape<std::size_t, 3> Shape3;
   typedef DensePred<3> DPred;
-  typedef PredShape<3,DPred> DenseShape3;
+  typedef PredShape<std::size_t, 3,DPred> DenseShape3;
 
   // Create a Range for use with Array.
 
@@ -36,7 +36,7 @@ void ArrayTest(madness::World& world) {
                        Range1(dim1, dim1 + tiles[1]),
                        Range1(dim2, dim2 + tiles[2]) };
 
-  boost::shared_ptr<Range<3> > rng = boost::make_shared< Range<3> >(& rng_set[0], & rng_set[0] + 3);
+  boost::shared_ptr<Range<std::size_t, 3> > rng = boost::make_shared< Range<std::size_t, 3> >(& rng_set[0], & rng_set[0] + 3);
   boost::shared_ptr<DenseShape3> shp = boost::make_shared<DenseShape3>(rng);
 
 

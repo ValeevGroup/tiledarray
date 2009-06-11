@@ -12,16 +12,16 @@ namespace TiledArray {
   // Forward declaration of TiledArray Permutation.
   template <unsigned int DIM>
   class Permutation;
-  template <unsigned int DIM, typename CS>
+  template <typename I, unsigned int DIM, typename CS>
   class Range;
 
 
   /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is Range::tile_iterator.
-  template <unsigned int DIM, typename CS = CoordinateSystem<DIM> >
+  template <typename I, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Shape {
   public:
-    typedef Shape<DIM,CS> Shape_;
-    typedef Range<DIM,CS> range_type;
+    typedef Shape<I,DIM,CS> Shape_;
+    typedef Range<I,DIM,CS> range_type;
     typedef CS coordinate_system;
     typedef typename range_type::index_type index_type;
     typedef detail::IndexIterator<index_type, Shape> const_iterator;
@@ -45,16 +45,16 @@ namespace TiledArray {
 
 
   /// Concrete ShapeIterator whose iteration domain is determined by Predicate
-  template <unsigned int DIM, typename Predicate, typename CS = CoordinateSystem<DIM> >
-  class PredShape : public Shape<DIM,CS> {
+  template <typename I, unsigned int DIM, typename Predicate, typename CS = CoordinateSystem<DIM> >
+  class PredShape : public Shape<I,DIM,CS> {
   public:
-	typedef PredShape<DIM,Predicate,CS> PredShape_;
-    typedef Shape<DIM,CS> Shape_;
+	typedef PredShape<I,DIM,Predicate,CS> PredShape_;
+    typedef Shape<I,DIM,CS> Shape_;
     typedef Predicate pred_type;
     typedef CS coordinate_system;
-    typedef typename Shape<DIM,CS>::range_type range_type;
-    typedef typename Shape<DIM,CS>::index_type index_type;
-    typedef typename Shape<DIM,CS>::const_iterator const_iterator;
+    typedef typename Shape<I,DIM,CS>::range_type range_type;
+    typedef typename Shape<I,DIM,CS>::index_type index_type;
+    typedef typename Shape<I,DIM,CS>::const_iterator const_iterator;
     friend class detail::IndexIterator< index_type , Shape_ >;
 
     /// Iterator main constructor
@@ -101,6 +101,7 @@ namespace TiledArray {
     /// Permutes range
     PredShape_& operator ^=(const Permutation<DIM>& perm) {
       pred_ ^= perm;
+      *range_ ^= perm;
       return *this;
     }
 

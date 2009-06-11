@@ -14,8 +14,8 @@ class Permutation;
 
 void ShapeTest() {
 
-  typedef Range<4>::tile_index_type::index eindex;
-  typedef Range<4>::index_type::index tindex;
+  typedef Range<std::size_t, 4>::tile_index_type::index eindex;
+  typedef Range<std::size_t, 4>::index_type::index tindex;
 
   // Create a range for use with ShapeIterator.
 
@@ -29,14 +29,14 @@ void ShapeTest() {
                        Range1(dim1, dim1 + tiles[1]),
                        Range1(dim2, dim2 + tiles[2]) };
 
-  boost::shared_ptr<Range<3> > rng = boost::make_shared<Range<3> >(& rng_set[0], & rng_set[0] + 3);
+  boost::shared_ptr<Range<std::size_t, 3> > rng = boost::make_shared<Range<std::size_t, 3> >(& rng_set[0], & rng_set[0] + 3);
 
   std::cout << "Start ShapeIterator tests: " << std::endl;
 
-  typedef Shape<3> Shape3;
+  typedef Shape<std::size_t, 3> Shape3;
   typedef DensePred<3> DPred;
-  typedef PredShape<3, DPred> DenseShape3;
-  typedef PredShape<3, LowerTrianglePred<3> > LowerTriShape3;
+  typedef PredShape<std::size_t, 3, DPred> DenseShape3;
+  typedef PredShape<std::size_t, 3, LowerTrianglePred<3> > LowerTriShape3;
   Shape3* shp1 = new DenseShape3(rng);
   Shape3* shp2 = new LowerTriShape3(rng);
   DenseShape3 dshp(rng);

@@ -10,30 +10,29 @@ namespace TiledArray {
   // Forward declaration of TiledArray components.
   template <unsigned int>
   class LevelTag;
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
   class ArrayCoordinate;
   template <unsigned int DIM>
   class Permutation;
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  void swap(ArrayCoordinate<T,DIM,Tag,CS>& c1, ArrayCoordinate<T,DIM,Tag,CS>& c2);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  void swap(ArrayCoordinate<I,DIM,Tag,CS>& c1, ArrayCoordinate<I,DIM,Tag,CS>& c2);
 
-  template <typename T, std::size_t DIM, typename CS>
-  boost::array<T,DIM> calc_weights(const boost::array<T,DIM>&);
-  template <typename T, std::size_t DIM>
-  T volume(const boost::array<T,DIM>&);
+  template <typename I, std::size_t DIM, typename CS>
+  boost::array<I,DIM> calc_weights(const boost::array<I,DIM>&);
+  template <typename I, std::size_t DIM>
+  I volume(const boost::array<I,DIM>&);
 
   namespace detail {
     template <typename T, unsigned int DIM, typename CS>
     bool less(const boost::array<T,DIM>&, const boost::array<T,DIM>&);
   }
 
-  template <typename T, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
+  template <typename I, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
   class Block {
   public:
-    typedef Block<T,DIM,Tag,CS> Block_;
-    typedef ArrayCoordinate<T,DIM,Tag,CS> index_type;
-    typedef std::size_t ordinal_type;
-    typedef std::size_t volume_type;
+    typedef Block<I,DIM,Tag,CS> Block_;
+    typedef ArrayCoordinate<I,DIM,Tag,CS> index_type;
+    typedef I volume_type;
     typedef typename index_type::Array size_array;
     typedef CS coordinate_system;
 
@@ -52,7 +51,7 @@ namespace TiledArray {
         start_(start), finish_(start + size), size_(size)
     {
 #ifndef NDEBUG
-      bool valid = detail::less<T,DIM,CS>(start_.data(), finish_.data());
+      bool valid = detail::less<I,DIM,CS>(start_.data(), finish_.data());
       assert( valid );
 #endif
     }
@@ -63,7 +62,7 @@ namespace TiledArray {
         start_(start), finish_(finish), size_(finish - start)
     {
 #ifndef NDEBUG
-      bool valid = detail::less<T,DIM,CS>(start_.data(), finish_.data());
+      bool valid = detail::less<I,DIM,CS>(start_.data(), finish_.data());
       assert( valid );
 #endif
     }
@@ -98,8 +97,8 @@ namespace TiledArray {
 
     /// Check the coordinate to make sure it is within the block range
     bool includes(const index_type& i) const {
-      return (! detail::less<T,DIM,CS>(i.data(), start_.data()))
-          && detail::less<T,DIM,CS>(i.data(), finish_.data());
+      return (! detail::less<I,DIM,CS>(i.data(), start_.data()))
+          && detail::less<I,DIM,CS>(i.data(), finish_.data());
     }
 
     /// Assignment Operator.
@@ -185,20 +184,20 @@ namespace TiledArray {
   }
 
   /// Returns true if the start and finish are equal.
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  bool operator ==(const Block<T,DIM,Tag,CS>& b1, const Block<T,DIM,Tag,CS>& b2) {
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  bool operator ==(const Block<I,DIM,Tag,CS>& b1, const Block<I,DIM,Tag,CS>& b2) {
     return ( b1.start() == b2.start() ) && ( b1.finish() == b2.finish() );
   }
 
   /// Returns true if the start and finish are not equal.
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  bool operator !=(const Block<T,DIM,Tag,CS>& b1, const Block<T,DIM,Tag,CS>& b2) {
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  bool operator !=(const Block<I,DIM,Tag,CS>& b1, const Block<I,DIM,Tag,CS>& b2) {
     return ( b1.start() != b2.start() ) || ( b1.finish() != b2.finish() );
   }
 
   /// ostream output orperator.
-  template<typename T, unsigned int DIM, typename Tag, typename CS>
-  std::ostream& operator<<(std::ostream& out, const Block<T,DIM,Tag,CS>& blk) {
+  template<typename I, unsigned int DIM, typename Tag, typename CS>
+  std::ostream& operator<<(std::ostream& out, const Block<I,DIM,Tag,CS>& blk) {
     out << "[ " << blk.start() << " , " << blk.finish() << " )";
     return out;
   }

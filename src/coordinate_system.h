@@ -35,7 +35,7 @@ namespace TiledArray {
           break;
 
           case general_dimension_order:
-            throw std::runtime_error("general dimension ordering must be specified");
+            throw std::runtime_error("General dimension ordering must be specified using the template<typename RandIterator> DimensionOrder::DimensionOrder(RandIter,RandIter) constructor.");
           break;
         }
 

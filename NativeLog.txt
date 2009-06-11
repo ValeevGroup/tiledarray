@@ -1,0 +1,144 @@
+---------------------------------------------------------------------
+BD Software STL Message Decryptor v3.10 for gcc 2/3/4
+---------------------------------------------------------------------
+Command line: '/hdr:m /cand:s /iter:L -width:160 -banner:N -iter:S -break:D -cbreak:A -hdr:L'
+banner = N
+break_algorithm = D
+comma_wrap = A
+close_wrap = Y
+output_width = 160
+tabsize = 4
+advise_re_policy_opts = 1
+reformat_linenumbers = 0
+wrap_own_msgs = 0
+header_policy = L
+with_policy = S
+headers_to_show = 1
+candidate_policy = S
+pathname_policy = S
+show_backtraces = Y
+---------------------------------------------------------------------
+Native input follows:
+---------------------------------------------------------------------
+
+Raw unprocessed input line:
+./src/array.h:23: error: expected '{' before '>' token
+
+
+
+The line at the point of the error was:
+./src/array.h:23: error: expected '{' before '>' token
+
+                                              ^
+
+Nesting key: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1
+
+STL Decryptor ERROR: the char '>' (position 46) DOESN'T MATCH DELIMITER '{'!
+./src/array.h:23: error: expected unqualified-id before '>' token
+Tests/arraytest.cpp: In function 'void ArrayTest(madness::World&)':
+Tests/arraytest.cpp:46: error: invalid use of incomplete type 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+./src/array.h:23: error: declaration of 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+Tests/arraytest.cpp:47: error: invalid use of incomplete type 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+./src/array.h:23: error: declaration of 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+Tests/arraytest.cpp:50: error: 'tile' in class 'ArrayTest(madness::World&)::LArray3' does not name a type
+Tests/arraytest.cpp:51: error: type/value mismatch at argument 1 in template parameter list for 'template<class T> class madness::Future'
+Tests/arraytest.cpp:51: error:   expected a type, got 'Tile'
+Tests/arraytest.cpp:51: error: invalid type in declaration before '(' token
+Tests/arraytest.cpp:51: error: invalid use of incomplete type 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+./src/array.h:23: error: declaration of 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+Tests/arraytest.cpp:52: error: request for member 'probe' in 'tfut0', which is of non-class type 'int'
+Tests/arraytest.cpp:53: error: request for member 'get' in 'tfut0', which is of non-class type 'int'
+Tests/arraytest.cpp:55: error: expected initializer before '<' token
+Tests/arraytest.cpp:56: error: 'DArray3' was not declared in this scope
+Tests/arraytest.cpp:56: error: template argument 1 is invalid
+Tests/arraytest.cpp:56: error: invalid type in declaration before '(' token
+Tests/arraytest.cpp:56: error: expected type-specifier before 'DArray3'
+Tests/arraytest.cpp:56: error: expected ')' before 'DArray3'
+Tests/arraytest.cpp:56: error: invalid conversion from 'int*' to 'int'
+Tests/arraytest.cpp:57: error: base operand of '->' is not a pointer
+Tests/arraytest.cpp:59: error: base operand of '->' is not a pointer
+In file included from /usr/local/include/boost/make_shared.hpp:15,
+                 from ./src/array_storage.h:10,
+                 from ./src/array.h:4,
+                 from Tests/arraytest.cpp:1:
+/usr/local/include/boost/smart_ptr/make_shared.hpp: At global scope:
+/usr/local/include/boost/smart_ptr/make_shared.hpp: In instantiation of 'boost::detail::sp_ms_deleter<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >':
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/smart_ptr/make_shared.hpp:41: error: invalid application of 'sizeof' to incomplete type 'TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >' 
+In file included from /usr/local/include/boost/type_traits/type_with_alignment.hpp:17,
+                 from /usr/local/include/boost/smart_ptr/make_shared.hpp:17,
+                 from /usr/local/include/boost/make_shared.hpp:15,
+                 from ./src/array_storage.h:10,
+                 from ./src/array.h:4,
+                 from Tests/arraytest.cpp:1:
+/usr/local/include/boost/type_traits/alignment_of.hpp: In instantiation of 'const size_t boost::detail::alignment_of_impl<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >::value':
+/usr/local/include/boost/type_traits/alignment_of.hpp:89:   instantiated from 'boost::alignment_of<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:41:   instantiated from 'boost::detail::sp_ms_deleter<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/type_traits/alignment_of.hpp:83: error: invalid application of '__alignof__' to incomplete type 'TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >' 
+In file included from /usr/local/include/boost/make_shared.hpp:15,
+                 from ./src/array_storage.h:10,
+                 from ./src/array.h:4,
+                 from Tests/arraytest.cpp:1:
+/usr/local/include/boost/smart_ptr/make_shared.hpp: In instantiation of 'boost::detail::sp_ms_deleter<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >':
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/smart_ptr/make_shared.hpp:44: error: invalid application of 'sizeof' to incomplete type 'TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >' 
+In file included from /usr/local/include/boost/smart_ptr/make_shared.hpp:17,
+                 from /usr/local/include/boost/make_shared.hpp:15,
+                 from ./src/array_storage.h:10,
+                 from ./src/array.h:4,
+                 from Tests/arraytest.cpp:1:
+/usr/local/include/boost/type_traits/type_with_alignment.hpp: In instantiation of 'const bool boost::detail::is_aligned<1ul, 0ul>::value':
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:202:   instantiated from 'boost::detail::type_with_alignment_imp<0ul>'
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:218:   instantiated from 'boost::type_with_alignment<0ul>'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:33:   instantiated from 'boost::detail::sp_aligned_storage<0ul, 0ul>::type'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:44:   instantiated from 'boost::detail::sp_ms_deleter<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:164: error: 'boost::detail::is_aligned<1ul, 0ul>::value' cannot be initialized by a non-constant expression when being declared
+/usr/local/include/boost/type_traits/type_with_alignment.hpp: In instantiation of 'boost::detail::type_with_alignment_imp<0ul>':
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:218:   instantiated from 'boost::type_with_alignment<0ul>'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:33:   instantiated from 'boost::detail::sp_aligned_storage<0ul, 0ul>::type'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:44:   instantiated from 'boost::detail::sp_ms_deleter<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:202: error: '((1ul % 0ul) == 0ul)' is not a valid template argument for type 'bool' because it is a non-constant expression
+/usr/local/include/boost/type_traits/type_with_alignment.hpp: In instantiation of 'const size_t boost::detail::type_with_alignment_imp<0ul>::found':
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:206:   instantiated from 'boost::detail::type_with_alignment_imp<0ul>'
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:218:   instantiated from 'boost::type_with_alignment<0ul>'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:33:   instantiated from 'boost::detail::sp_aligned_storage<0ul, 0ul>::type'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:44:   instantiated from 'boost::detail::sp_ms_deleter<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:204: error: '((1ul % 0ul) == 0ul)' is not a valid template argument for type 'bool' because it is a non-constant expression
+/usr/local/include/boost/type_traits/type_with_alignment.hpp: In instantiation of 'boost::detail::type_with_alignment_imp<0ul>':
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:218:   instantiated from 'boost::type_with_alignment<0ul>'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:33:   instantiated from 'boost::detail::sp_aligned_storage<0ul, 0ul>::type'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:44:   instantiated from 'boost::detail::sp_ms_deleter<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:207: error: '((((long unsigned int)boost::detail::type_with_alignment_imp<0ul>::found) % 0ul) == 0ul)' is not a valid template argument for type 'bool' because it is a non-constant expression
+/usr/local/include/boost/type_traits/type_with_alignment.hpp: In instantiation of 'boost::detail::type_with_alignment_imp<0ul>':
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:218:   instantiated from 'boost::type_with_alignment<0ul>'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:33:   instantiated from 'boost::detail::sp_aligned_storage<0ul, 0ul>::type'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:44:   instantiated from 'boost::detail::sp_ms_deleter<TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/type_traits/type_with_alignment.hpp:210: error: '((1ul % 0ul) == 0ul)' is not a valid template argument for type 'bool' because it is a non-constant expression
+In file included from /usr/local/include/boost/make_shared.hpp:15,
+                 from ./src/array_storage.h:10,
+                 from ./src/array.h:4,
+                 from Tests/arraytest.cpp:1:
+/usr/local/include/boost/smart_ptr/make_shared.hpp: In function 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]':
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/smart_ptr/make_shared.hpp:185: error: invalid use of incomplete type 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+./src/array.h:23: error: declaration of 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+/usr/local/include/boost/smart_ptr/make_shared.hpp: In member function 'void boost::detail::sp_ms_deleter<T>::destroy() [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >]':
+/usr/local/include/boost/smart_ptr/make_shared.hpp:70:   instantiated from 'boost::detail::sp_ms_deleter<T>::~sp_ms_deleter() [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >]'
+/usr/local/include/boost/smart_ptr/make_shared.hpp:179:   instantiated from 'boost::shared_ptr<X> boost::make_shared(const A1&) [with T = TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >, A1 = boost::shared_ptr<TiledArray::PredShape<3u, TiledArray::DensePred<3u, TiledArray::LevelTag<1u> >, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> > >]'
+Tests/arraytest.cpp:45:   instantiated from here
+/usr/local/include/boost/smart_ptr/make_shared.hpp:52: error: invalid use of incomplete type 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
+./src/array.h:23: error: declaration of 'class TiledArray::Array<double, 3u, TiledArray::CoordinateSystem<3u, (TiledArray::detail::DimensionOrderType)0u> >'
