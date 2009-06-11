@@ -5,8 +5,8 @@ INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests
 LIBS = -lMADworld
 CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR)
 
-OBJS = src/tilemap.o src/env.o src/range1.o TiledArrayTest.o Tests/coordinatestest.o Tests/permutationtest.o \
-  Tests/range1test.o Tests/rangetest.o Tests/shapetest.o Tests/tilemaptest.o Tests/tiletest.o \
+OBJS = src/range1.o TiledArrayTest.o Tests/coordinatestest.o Tests/permutationtest.o \
+  Tests/range1test.o Tests/rangetest.o Tests/shapetest.o Tests/tiletest.o \
   Tests/arraytest.o
 
 TARGET =	TiledArrayTest
@@ -14,15 +14,12 @@ TARGET =	TiledArrayTest
 $(TARGET):	$(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
 
-src/tilemap.o: src/tilemap.h
-src/env.o: src/env.h
 src/range1.o: src/range1.h
 Tests/coordinatestest.o: Tests/coordinatestest.h src/coordinates.h
 Tests/permutationtest.o: Tests/permutationtest.h src/permutation.h src/coordinates.h
 Tests/range1test.o: Tests/range1test.h src/range1.h
 Tests/rangetest.o: Tests/rangetest.h src/range.h src/range1.h
 Tests/shapetest.o: Tests/shapetest.h src/shape.h src/predicate.h src/range.h src/range1.h
-Tests/tilemaptest.o: Tests/tilemaptest.h src/tilemap.h src/tilemap.o
 Tests/arraytest.o: Tests/arraytest.h src/array.h
 Tests/tiletest.o: Tests/tiletest.h src/tile.h
 

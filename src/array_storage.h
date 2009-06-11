@@ -34,9 +34,11 @@ namespace TiledArray {
   } // namespace detail
 
 
-  /// Array Storage is a base class for other array storage classes. ArrayStorage
-  /// stores array dimensions and is used to calculate ordinal values. It contains
-  /// no actual array information; that is for the derived classes to implement.
+  /// ArrayStorage is the base class for other storage classes.
+
+  /// ArrayStorage stores array dimensions and is used to calculate ordinal
+  /// values. It contains no actual array information; that is for the derived
+  /// classes to implement.
   template <unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
   class ArrayStorage {
   public:

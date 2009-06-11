@@ -27,6 +27,10 @@ namespace TiledArray {
     bool less(const boost::array<T,DIM>&, const boost::array<T,DIM>&);
   }
 
+  /// Block stores dimension information for a block of tiles or elements.
+
+  /// Block is used to obtain and/or store start, finish, size, and volume
+  /// information. It also provides index iteration over its range.
   template <typename I, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
   class Block {
   public:

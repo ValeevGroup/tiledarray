@@ -115,10 +115,9 @@ namespace TiledArray {
 
     Array& operator ^=(const Permutation<DIM>& p) {
       tiles_ ^= p; // move the tiles to the correct location
-      shape_ ^= p; // shape will permute range_
-      for(iterator it = begin(); it != end(); ++it) {
-
-      }
+      shape_ ^= p; // shape_ will permute range_
+      for(iterator it = begin(); it != end(); ++it)
+        *it ^= p; // permute the individual tile
     }
 
     /// Returns true if the tile specified by index is stored locally.

@@ -33,7 +33,7 @@ namespace TiledArray {
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<T,DIM,Tag,CS> operator^(const Permutation<DIM>& P, const ArrayCoordinate<T,DIM,Tag,CS>& C);
 
-  /// Array Coordinate Tag strut: It is used to ensure type safety between different tiling domains.
+  /// ArrayCoordinate Tag strut: It is used to ensure type safety between different tiling domains.
   template<unsigned int Level>
   struct LevelTag { };
 
