@@ -22,7 +22,7 @@ RangeTest()
 	eindex dim1[] = {0,5,10,15,20};
 	eindex dim2[] = {0,3,6,9,12,15};
 	eindex dim3[] = {0,2,4,6,8,10,12};
-	tindex tiles[4] = {3, 4, 5, 6};
+	tindex tiles[4] = {4, 5, 6, 7};
 
 	Range1 rng_set[4] = {Range1(dim0, dim0 + tiles[0]),
 	                     Range1(dim1, dim1 + tiles[1]),

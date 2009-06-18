@@ -23,7 +23,7 @@ void ShapeTest() {
   eindex dim0[] = {0, 2, 4, 6};
   eindex dim1[] = {0, 2, 4, 6};
   eindex dim2[] = {0, 2, 4, 6};
-  tindex tiles[3] = {3, 3, 3};
+  tindex tiles[3] = {4, 4, 4};
 
   Range1 rng_set[3] = {Range1(dim0, dim0 + tiles[0]),
                        Range1(dim1, dim1 + tiles[1]),

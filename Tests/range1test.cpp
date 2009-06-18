@@ -17,7 +17,7 @@ void Range1Test() {
   std::cout << std::endl << "C-style array constructor:" << std::endl;
   size_t ranges[] = { 0, 3, 7, 10, 20, 100 };
   size_t tiles = 5;
-  Range1 rng1(& ranges[0], (& ranges[0]) + 5);
+  Range1 rng1(& ranges[0], (& ranges[0]) + 6);
   std::cout << "rng1 = " << rng1 << std::endl;
 
   // Test vector array constructor

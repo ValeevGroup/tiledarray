@@ -1,113 +1,302 @@
 #include <coordinates.h>
 #include <permutation.h>
-#include <iostream>
-#include "coordinatestest.h"
+#include <boost/test/unit_test.hpp>
+#include <boost/test/output_test_stream.hpp>
 
 using namespace TiledArray;
 
-struct ElementTag{};
-struct TileTag{};
-
-void CoordinatesTest() {
-  std::cout << "Coordinates Tests:" << std::endl;
-
-  typedef ArrayCoordinate<int, 1, ElementTag> Point1;
-  typedef ArrayCoordinate<int, 2, ElementTag> Point2;
-  typedef ArrayCoordinate<int, 3, ElementTag> Point3;
-  typedef ArrayCoordinate<int, 4, ElementTag> Point4;
-  typedef ArrayCoordinate<int, 4, ElementTag, CoordinateSystem<4,TiledArray::detail::increasing_dimension_order> > FPoint4;
-
-  // Default constructor
-  Point1 p1D;
-  std::cout << "1D Point with default constructor: " << p1D << std::endl;
-
-  // Constructor with specified value for all elements
-  Point2 p2D(1);
-  std::cout << "2D Point with single value specified: " << p2D << std::endl;
-
-  // Copy constructor test
-  Point3 p3D(2);
-  Point3 p3Dcopy(p3D);
-  std::cout << "3D Point created with copy constructor: Original: " << p3D
-      << " Copy: " << p3Dcopy << std::endl;
-
-  // Multiple values specified
-  int values4[4] = {1, 2, 3, 5};
-  Point4 comp1(1,2,3,4);
-  Point4 comp2 = Point4::make(2, 3, 4, 5);
-  Point4 comp3 = make_coord<Point4>(2, 3, 4, 5);
-  Point4 comp4(values4, values4 + 4);
-  Point4 comp5(comp1);
-  std::cout << "comp1(1,2,3,4) = " << comp1 << std::endl;
-  std::cout << "comp2 = Point4::make(2, 3, 4, 5): " << comp2 << std::endl;
-  std::cout << "comp3 = make_coord<Point4>(2, 3, 4, 5): " << comp2 << std::endl;
-  std::cout << "comp4(values4, values4 + 4): " << comp4 << std::endl;
-  std::cout << "comp5(comp1): " << comp5 << std::endl;
-
-  // Element accessor
-  comp5[3] = 3;
-  std::cout << "Point element accessor, comp5[3] = 3: "
-      << comp5 << std::endl;
-
-  // Point iterator test
-  std::cout << "Iteration tests comp1: ";
-  for (Point4::iterator it = comp1.begin(); it != comp1.end(); ++it) {
-    std::cout << *it << ", ";
+struct ArrayCoordinateFixture {
+  typedef ArrayCoordinate<std::size_t, 3, LevelTag<0> > Point3;
+  typedef ArrayCoordinate<std::size_t, 3, LevelTag<0>,
+      CoordinateSystem<2, detail::increasing_dimension_order> > FPoint3;
+  ArrayCoordinateFixture() : p(1,2,3) {
+    a[0] = 1;
+    a[1] = 2;
+    a[2] = 3;
   }
-  std::cout << std::endl;
+  ~ArrayCoordinateFixture() {}
 
-  // Arithmetic tests
-  std::cout << "Arithmetic Tests:" << std::endl;
-  std::cout << "(2,2,2) + (1,1,1) = " << Point3(2) + Point3(1) << std::endl;
-  std::cout << "(3,3,3) - (1,1,1) = " << Point3(3) - Point3(1) << std::endl;
-  std::cout << "(1,1,1) - (3,3,3) = " << Point3(1) - Point3(3) << std::endl;
-  std::cout << "-(4,4,4) = " << -(Point3(4)) << std::endl;
-  std::cout << "(2,2,2) += (1,1,1) = " << (Point3(2) += Point3(1)) << std::endl;
-  std::cout << "(3,3,3) -= (1,1,1) = " << (Point3(3) -= Point3(1)) << std::endl;
+  boost::array<Point3::index, 3> a;
+  Point3 p;
+};
 
-  std::cout << "Comparision Tests:" << std::endl;
-  std::cout << "(1,2,3,4) < (2,3,4,5) = " << (comp1 < comp2) << std::endl;
-  std::cout << "(1,2,3,4) > (2,3,4,5) = " << (comp1 > comp2) << std::endl;
-  std::cout << "(1,2,3,4) <= (2,3,4,5) = " << (comp1 <= comp2) << std::endl;
-  std::cout << "(1,2,3,4) >= (2,3,4,5) = " << (comp1 >= comp2) << std::endl;
-  std::cout << "(1,2,3,4) == (2,3,4,5) = " << (comp1 == comp2) << std::endl;
-  std::cout << "(1,2,3,4) != (2,3,4,5) = " << (comp1 != comp2) << std::endl;
+BOOST_FIXTURE_TEST_SUITE( array_coordinate_suit, ArrayCoordinateFixture )
 
-  std::cout << "(1,2,3,4) < (4,3,2,1) = " << (comp1 < comp3) << std::endl;
-  std::cout << "(1,2,3,4) > (4,3,2,1) = " << (comp1 > comp3) << std::endl;
-  std::cout << "(1,2,3,4) <= (4,3,2,1) = " << (comp1 <= comp3) << std::endl;
-  std::cout << "(1,2,3,4) >= (4,3,2,1) = " << (comp1 >= comp3) << std::endl;
-  std::cout << "(1,2,3,4) == (4,3,2,1) = " << (comp1 == comp3) << std::endl;
-  std::cout << "(1,2,3,4) != (4,3,2,1) = " << (comp1 != comp3) << std::endl;
+BOOST_AUTO_TEST_CASE( constructors )
+{
+  typedef ArrayCoordinate<std::size_t, 3, LevelTag<0> > Point3;
+  BOOST_CHECK_NO_THROW( Point3 p1() );     // construct without exception
 
-  std::cout << "(1,2,3,4) == (1,2,3,4) = " << (comp1 == comp1) << std::endl;
-  std::cout << "(1,2,3,4) == (1,2,3,5) = " << (comp1 == comp4) << std::endl;
-  std::cout << "(1,2,3,4) == (1,2,3,3) = " << (comp1 == comp5) << std::endl;
+  Point3 p2;                               // default construction
+  BOOST_TEST_MESSAGE("Default Construction");
+  BOOST_CHECK_EQUAL( p2.data().size(), 3); // correct size
+  BOOST_CHECK_EQUAL( p2.data()[0], 0);     // correct element initialization
+  BOOST_CHECK_EQUAL( p2.data()[1], 0);
+  BOOST_CHECK_EQUAL( p2.data()[2], 0);
 
-  std::cout << "Iteration Tests:" << std::endl;
-  std::cout << "++" << comp1 << " = "; std::cout << ++comp1 << std::endl;
-  std::cout << "--" << comp2 << " = "; std::cout << --comp2 << std::endl;
+  Point3 p3(a.begin(), a.end());
+  BOOST_TEST_MESSAGE("Iterator Constructor");
+  BOOST_CHECK_EQUAL_COLLECTIONS(p3.data().begin(), p3.data().end(), a.begin(), a.end());
 
-  std::cout << "Testing Fortran-style Point:" << std::endl;
-  FPoint4 fpt1(1,2,3,4);
-  FPoint4 fpt2(2,3,4,5);
-  std::cout << "++" << fpt1 << " = "; std::cout << ++fpt1 << std::endl;
-  std::cout << "--" << fpt2 << " = "; std::cout << --fpt2 << std::endl;
+  Point3 p4(a);
+  BOOST_TEST_MESSAGE("boost::array Constructor");
+  BOOST_CHECK_EQUAL_COLLECTIONS(p3.data().begin(), p3.data().end(), a.begin(), a.end());
 
-//  std::cout << "volume(" << comp2 << ") = " << volume(comp2) << std::endl;
+  Point3 p5(p);
+  BOOST_TEST_MESSAGE("Copy Constructor");
+  BOOST_CHECK_EQUAL_COLLECTIONS(p5.data().begin(), p5.data().end(), a.begin(), a.end());
 
-  // permutation
-  Permutation<3> perm3 = Permutation<3>::unit();
-  std::cout << "Unit Permutation: " << perm3 << std::endl;
-  Permutation<4>::Index _perm4[] = {0,2,1,3};
-  Permutation<4> perm4(_perm4, _perm4 + 4);
-  std::cout << "Permutation: " << perm4 << std::endl;
-  std::cout << "Applying Permutation " << perm4 << " to Point " << comp3 << " = " << (perm4^comp3) << std::endl;
-  {
-    Permutation<4> p1(2,1,0,3);
-    Permutation<4> p2(1,3,2,0);
-    std::cout << "Product of " << p1 << " and " << p2 << " = " << (p1^p2) << std::endl;
-  }
+  Point3 p6(1);
+  BOOST_TEST_MESSAGE("Assignment Constructor");
+  BOOST_CHECK_EQUAL( p6.data()[0], 1);     // correct element initialization
+  BOOST_CHECK_EQUAL( p6.data()[1], 1);
+  BOOST_CHECK_EQUAL( p6.data()[2], 1);
 
-  std::cout << "End Point Test" << std::endl << std::endl;
+  Point3 p7(1,2,3);
+  BOOST_TEST_MESSAGE("Variable Argument List Constructor");
+  BOOST_CHECK_EQUAL_COLLECTIONS(p7.data().begin(), p7.data().end(), a.begin(), a.end());
 }
+
+BOOST_AUTO_TEST_CASE( make_functions )
+{
+  Point3 p1 = Point3::make(1,2,3);
+  BOOST_TEST_MESSAGE("Class Make Function");
+  BOOST_CHECK_EQUAL_COLLECTIONS(p1.data().begin(), p1.data().end(), a.begin(), a.end());
+
+  Point3 p2 = make_coord<Point3>(1,2,3);
+  BOOST_TEST_MESSAGE("Free Make Function");
+  BOOST_CHECK_EQUAL_COLLECTIONS(p2.data().begin(), p2.data().end(), a.begin(), a.end());
+}
+
+BOOST_AUTO_TEST_CASE( element_access )
+{
+  BOOST_CHECK_EQUAL( p[0], 1);            // correct element access
+  BOOST_CHECK_EQUAL( p[1], 2);
+  BOOST_CHECK_EQUAL( p[2], 3);
+  BOOST_CHECK_EQUAL( p.at(0), 1);         // correct element access
+  BOOST_CHECK_EQUAL( p.at(1), 2);
+  BOOST_CHECK_EQUAL( p.at(2), 3);
+#ifdef NEDBUG
+  BOOST_CHECK_NO_TRHOW( p[3] );
+#endif
+  BOOST_CHECK_THROW( p.at(3), std::out_of_range);
+}
+
+BOOST_AUTO_TEST_CASE( iteration )
+{
+  BOOST_TEST_MESSAGE("iterator begin, end, and dereferenc");
+  std::size_t i = 1;
+  for(Point3::iterator it = p.begin(); it != p.end(); ++it, ++i) {
+    BOOST_CHECK_EQUAL( *it, i);
+  }
+
+  Point3 p1(p);
+  i = 3;
+  BOOST_TEST_MESSAGE("Iterator dereference assignment");
+  for(Point3::iterator it = p1.begin(); it != p1.end(); ++it, ++i) {
+    *it = i;
+    BOOST_CHECK_EQUAL(*it, i);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( assignment )
+{
+  Point3 p1;
+  p1 = p;
+  BOOST_CHECK_EQUAL_COLLECTIONS( p.begin(), p.end(), p1.begin(), p1.end());
+  p1[0] = 4;
+  BOOST_CHECK_EQUAL( p1[0], 4);
+  p1.at(1) = 5;
+  BOOST_CHECK_EQUAL( p1.at(1), 5);
+}
+
+BOOST_AUTO_TEST_CASE( ostream )
+{
+  boost::test_tools::output_test_stream output;
+  output << p;
+  BOOST_CHECK( !output.is_empty( false ) );
+  BOOST_CHECK( output.check_length( 9, false ) );
+  BOOST_CHECK( output.is_equal( "(1, 2, 3)" ) );
+}
+
+BOOST_AUTO_TEST_CASE( c_comparisons )
+{
+  // TODO: How do we remove the requirement of appending ul to the indices in a
+  // 2D coordinate constructor?
+  typedef ArrayCoordinate<std::size_t, 2, LevelTag<0> > Point2;
+  Point2 p0(0ul,0ul);
+  Point2 p1(0ul,1ul);
+  Point2 p2(0ul,2ul);
+  Point2 p3(1ul,0ul);
+  Point2 p4(1ul,1ul);
+  Point2 p5(1ul,2ul);
+  Point2 p6(2ul,0ul);
+  Point2 p7(2ul,1ul);
+  Point2 p8(2ul,2ul);
+  Point2 pp(1ul,1ul);
+
+  BOOST_CHECK_LT(p0, pp);
+  BOOST_CHECK_LT(p1, pp);
+  BOOST_CHECK_LT(p2, pp);
+  BOOST_CHECK_LT(p3, pp);
+  BOOST_CHECK_LE(p3, pp);
+  BOOST_CHECK_LE(p4, pp);
+  BOOST_CHECK_EQUAL(p4, pp);
+  BOOST_CHECK_GE(p4, pp);
+  BOOST_CHECK_GE(p5, pp);
+  BOOST_CHECK_GT(p5, pp);
+  BOOST_CHECK_GT(p6, pp);
+  BOOST_CHECK_GT(p7, pp);
+  BOOST_CHECK_GT(p8, pp);
+  BOOST_CHECK_NE(p1, pp);
+
+  BOOST_CHECK( ! (p0 > pp) );
+  BOOST_CHECK( ! (p1 > pp) );
+  BOOST_CHECK( ! (p2 > pp) );
+  BOOST_CHECK( ! (p3 > pp) );
+  BOOST_CHECK( ! (p3 >= pp) );
+  BOOST_CHECK( ! (p4 != pp) );
+  BOOST_CHECK( ! (p5 <= pp) );
+  BOOST_CHECK( ! (p5 < pp) );
+  BOOST_CHECK( ! (p6 < pp) );
+  BOOST_CHECK( ! (p7 < pp) );
+  BOOST_CHECK( ! (p8 < pp) );
+  BOOST_CHECK( ! (p8 == pp) );
+}
+
+BOOST_AUTO_TEST_CASE( fortran_comparisons )
+{
+  typedef ArrayCoordinate<std::size_t, 2, LevelTag<0>,
+      CoordinateSystem<2, detail::increasing_dimension_order> > FPoint2;
+  FPoint2 p0(0ul,0ul);
+  FPoint2 p1(1ul,0ul);
+  FPoint2 p2(2ul,0ul);
+  FPoint2 p3(0ul,1ul);
+  FPoint2 p4(1ul,1ul);
+  FPoint2 p5(2ul,1ul);
+  FPoint2 p6(0ul,2ul);
+  FPoint2 p7(1ul,2ul);
+  FPoint2 p8(2ul,2ul);
+  FPoint2 pp(1ul,1ul);
+
+  BOOST_CHECK_LT(p0, pp);
+  BOOST_CHECK_LT(p1, pp);
+  BOOST_CHECK_LT(p2, pp);
+  BOOST_CHECK_LT(p3, pp);
+  BOOST_CHECK_LE(p3, pp);
+  BOOST_CHECK_LE(p4, pp);
+  BOOST_CHECK_EQUAL(p4, pp);
+  BOOST_CHECK_GE(p4, pp);
+  BOOST_CHECK_GE(p5, pp);
+  BOOST_CHECK_GT(p5, pp);
+  BOOST_CHECK_GT(p6, pp);
+  BOOST_CHECK_GT(p7, pp);
+  BOOST_CHECK_GT(p8, pp);
+  BOOST_CHECK_NE(p1, pp);
+
+  BOOST_CHECK( ! (p0 > pp) );
+  BOOST_CHECK( ! (p1 > pp) );
+  BOOST_CHECK( ! (p2 > pp) );
+  BOOST_CHECK( ! (p3 > pp) );
+  BOOST_CHECK( ! (p3 >= pp) );
+  BOOST_CHECK( ! (p4 != pp) );
+  BOOST_CHECK( ! (p5 <= pp) );
+  BOOST_CHECK( ! (p5 < pp) );
+  BOOST_CHECK( ! (p6 < pp) );
+  BOOST_CHECK( ! (p7 < pp) );
+  BOOST_CHECK( ! (p8 < pp) );
+  BOOST_CHECK( ! (p8 == pp) );
+}
+
+BOOST_AUTO_TEST_CASE( math )
+{
+  Point3 p1(1);
+  Point3 p2(2);
+  Point3 p3(3);
+  Point3 pa(p1);
+
+  BOOST_CHECK_EQUAL( p1 + p2, p3 );
+  BOOST_CHECK_EQUAL( p3 - p1, p2 );
+  BOOST_CHECK_EQUAL( pa += p2, p3 );
+  BOOST_CHECK_EQUAL( pa -= p2, p1 );
+}
+
+BOOST_AUTO_TEST_CASE( c_incrmentation )
+{
+  Point3 p1(1);
+  Point3 pa(p1);
+  ++pa;
+  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 2 );
+
+  BOOST_CHECK_EQUAL( (--pa), p1 );
+  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 1 );
+
+  BOOST_CHECK_EQUAL( (pa++), p1 );
+  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 2 );
+
+  --pa;
+  --pa;
+  BOOST_CHECK_EQUAL( (++pa), p1);
+  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 1 );
+
+  BOOST_CHECK_EQUAL( (pa--), p1);
+  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 0 );
+}
+
+BOOST_AUTO_TEST_CASE( fortran_incrmentation )
+{
+  FPoint3 p1(1);
+  FPoint3 pa(p1);
+
+  ++pa;
+  BOOST_CHECK_EQUAL( pa[0], 2 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 1 );
+
+  BOOST_CHECK_EQUAL( (--pa), p1 );
+  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 1 );
+
+  BOOST_CHECK_EQUAL( (pa++), p1 );
+  BOOST_CHECK_EQUAL( pa[0], 2 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 1 );
+
+  --pa;
+  --pa;
+  BOOST_CHECK_EQUAL( (++pa), p1);
+  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 1 );
+
+  BOOST_CHECK_EQUAL( (pa--), p1);
+  BOOST_CHECK_EQUAL( pa[0], 0 );
+  BOOST_CHECK_EQUAL( pa[1], 1 );
+  BOOST_CHECK_EQUAL( pa[2], 1 );
+}
+
+BOOST_AUTO_TEST_CASE( permutation )
+{
+  Permutation<3> perm(2, 0, 1);
+  Point3 p1(p);
+  Point3 p2(p);
+  Point3 pr(2,3,1);
+  BOOST_CHECK_EQUAL(p1 ^= perm, pr); // check in-place permutation
+  BOOST_CHECK_EQUAL(p1, pr);
+  BOOST_CHECK_EQUAL(perm ^ p2, pr); // check permutation
+  BOOST_CHECK_EQUAL(p2, p);         // check that p2 is not modified
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+

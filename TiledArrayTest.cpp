@@ -6,27 +6,12 @@
 // Description : Hello World in C, Ansi-style
 //============================================================================
 
-#define TEST_COORDINATES
-//#define TEST_PERMUTATION
-//#define TEST_RANGE1
-//#define TEST_RANGE
-//#define TEST_SHAPE
-//#define TEST_TILE
-#define TEST_ARRAY
+#define BOOST_TEST_MAIN Tiled Array Tests
+#include <boost/test/included/unit_test.hpp>
 
-#include "coordinatestest.h"
-#include "permutationtest.h"
-#include "range1test.h"
-#include "rangetest.h"
-#include "shapetest.h"
-#include "tiletest.h"
-#include "arraytest.h"
+/* boost will define the main function
 #include <madness_runtime.h>
 #include <world/world.h>
-
-namespace TiledArray { }
-using namespace TiledArray;
-using namespace madness;
 
 int main(int argc, char* argv[]) {
 
@@ -38,13 +23,7 @@ int main(int argc, char* argv[]) {
   redirectio(world);
   world.gop.fence();
 
-  RUN_COORDINATES_TEST
-  RUN_PERMUTATION_TEST
-  RUN_RANGE1_TEST
-  RUN_RANGE_TEST
-  RUN_SHAPE_TEST
-  RUN_TILE_TEST
-  RUN_ARRAY_TEST
+
 
   world.gop.fence();
   RMI::end();
@@ -52,3 +31,4 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+*/

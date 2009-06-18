@@ -42,7 +42,9 @@ void ArrayTest(madness::World& world) {
 
   typedef Array<double, 3> LArray3;
   LArray3 a1(world, shp);
+  LArray3 a2(world, shp);
   a1.assign(1.0);
+  a2.assign(2.0);
   std::cout << a1.begin()->second << std::endl;
 
   // make an initialized Future<Tile>
