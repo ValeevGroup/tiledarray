@@ -1,6 +1,7 @@
 #ifndef BLOCK_H__INCLUDED
 #define BLOCK_H__INCLUDED
 
+#include <coordinates.h>
 #include <iterator.h>
 #include <boost/array.hpp>
 #include <cassert>
@@ -10,8 +11,6 @@ namespace TiledArray {
   // Forward declaration of TiledArray components.
   template <unsigned int>
   class LevelTag;
-  template <typename I, unsigned int DIM, typename Tag, typename CS>
-  class ArrayCoordinate;
   template <unsigned int DIM>
   class Permutation;
   template <typename I, unsigned int DIM, typename Tag, typename CS>
@@ -21,11 +20,6 @@ namespace TiledArray {
   boost::array<I,DIM> calc_weights(const boost::array<I,DIM>&);
   template <typename I, std::size_t DIM>
   I volume(const boost::array<I,DIM>&);
-
-  namespace detail {
-    template <typename T, unsigned int DIM, typename CS>
-    bool less(const boost::array<T,DIM>&, const boost::array<T,DIM>&);
-  }
 
   /// Block stores dimension information for a block of tiles or elements.
 
@@ -37,7 +31,7 @@ namespace TiledArray {
     typedef Block<I,DIM,Tag,CS> Block_;
     typedef ArrayCoordinate<I,DIM,Tag,CS> index_type;
     typedef I volume_type;
-    typedef typename index_type::Array size_array;
+    typedef boost::array<I,DIM> size_array;
     typedef CS coordinate_system;
 
     typedef detail::IndexIterator<index_type, Block_> const_iterator;
@@ -55,7 +49,7 @@ namespace TiledArray {
         start_(start), finish_(start + size), size_(size)
     {
 #ifndef NDEBUG
-      bool valid = detail::less<I,DIM,CS>(start_.data(), finish_.data());
+      bool valid = ! detail::less<I,DIM,CS>(finish_.data(), start_.data());
       assert( valid );
 #endif
     }
@@ -66,7 +60,7 @@ namespace TiledArray {
         start_(start), finish_(finish), size_(finish - start)
     {
 #ifndef NDEBUG
-      bool valid = detail::less<I,DIM,CS>(start_.data(), finish_.data());
+      bool valid = ! detail::less<I,DIM,CS>(finish_.data(), start_.data());
       assert( valid );
 #endif
     }
@@ -101,8 +95,9 @@ namespace TiledArray {
 
     /// Check the coordinate to make sure it is within the block range
     bool includes(const index_type& i) const {
-      return (! detail::less<I,DIM,CS>(i.data(), start_.data()))
-          && detail::less<I,DIM,CS>(i.data(), finish_.data());
+      detail::Less<I,DIM,CS> l;
+      detail::LessEq<I,DIM,CS> le;
+      return (le(start_.data(), i.data()) && l(i.data(), finish_.data()));
     }
 
     /// Assignment Operator.
@@ -126,6 +121,13 @@ namespace TiledArray {
     /// Change the dimensions of the block.
     Block& resize(const index_type& start, const index_type& finish) {
       Block temp(start, finish);
+      swap(temp);
+      return *this;
+    }
+
+    /// Change the dimensions of the block.
+    Block& resize(const size_array& size) {
+      Block temp(size, start_);
       swap(temp);
       return *this;
     }
@@ -164,27 +166,37 @@ namespace TiledArray {
 
   /// Return the union of two block (i.e. the overlap). If the blocks do not
   /// overlap, then a 0 size block will be returned.
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  Block<T,DIM,Tag,CS> operator &(const Block<T,DIM,Tag,CS>& b1, const Block<T,DIM,Tag,CS>& b2) {
-    // check for no overlap
-    if( ( b1.finish() >= b2.start() ) || ( b2.finish() >= b1.start() ) )
-      return Block<T,DIM,Tag,CS>();
-
-    typename Block<T,DIM,Tag,CS>::index_type start;
-    typename Block<T,DIM,Tag,CS>::index_type finish;
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  Block<I,DIM,Tag,CS> operator &(const Block<I,DIM,Tag,CS>& b1, const Block<I,DIM,Tag,CS>& b2) {
+    Block<I,DIM,Tag,CS> result;
+    typename Block<I,DIM,Tag,CS>::index_type start, finish;
+    register typename Block<I,DIM,Tag,CS>::index_type::index s1, s2, f1, f2;
     for(unsigned int d = 0; d < DIM; ++d) {
-      start[d] = (b1.start()[d] < b2.start()[d] ? b2.start()[d] : b1.start()[d]);
-      finish[d] = (b1.finish()[d] < b2.finish()[d] ? b1.finish()[d] : b2.finish()[d]);
+      s1 = b1.start()[d];
+      f1 = b1.finish()[d];
+      s2 = b2.start()[d];
+      f2 = b2.finish()[d];
+      // check for overlap
+      if( (s2 < f1 && s2 >= s1) || (f2 < f1 && f2 >= s1) ||
+          (s1 < f2 && s1 >= s2) || (f1 < f2 && f1 >= s2) )
+      {
+        start[d] = std::max(s1, s2);
+        finish[d] = std::min(f1, f2);
+      } else {
+        return result; // no overlap for this index
+      }
     }
-    Block<T,DIM,Tag,CS> result(start, finish);
-
+    result.resize(start, finish);
     return result;
   }
 
   /// Returns a permuted block.
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   Block<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& perm, const Block<T,DIM,Tag,CS>& b) {
-    return Block<T,DIM,Tag,CS>(perm ^ b.start(), perm ^ b.finish());
+    const typename Block<T,DIM,Tag,CS>::index_type s = perm ^ b.start();
+    const typename Block<T,DIM,Tag,CS>::index_type f = perm ^ b.finish();
+    Block<T,DIM,Tag,CS> result(s, f);
+    return result;
   }
 
   /// Returns true if the start and finish are equal.
@@ -202,8 +214,9 @@ namespace TiledArray {
   /// ostream output orperator.
   template<typename I, unsigned int DIM, typename Tag, typename CS>
   std::ostream& operator<<(std::ostream& out, const Block<I,DIM,Tag,CS>& blk) {
-    out << "[ " << blk.start() << " , " << blk.finish() << " )";
+    out << "[ " << blk.start() << ", " << blk.finish() << " )";
     return out;
   }
+
 } // namespace TiledArray
 #endif // BLOCK_H__INCLUDED

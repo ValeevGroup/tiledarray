@@ -30,6 +30,7 @@ namespace TiledArray {
 
   private:
     typedef DistributedArrayStorage<tile, DIM, LevelTag<1>, coordinate_system > tile_container;
+    typedef typename tile_container::data_container::pairT pair_type;
 
   public:
 	typedef typename tile_container::ordinal_type ordinal_type;
@@ -120,6 +121,14 @@ namespace TiledArray {
         *it ^= p; // permute the individual tile
     }
 
+    Array& operator +=(const Array& other) {
+      for(const_iterator it = begin(); it != end(); ++it) {
+        madness::Future<const_iterator> t2 = other.tiles_.find(it->first);
+        madness::Future<pair_type> t = task(it->first, &add, it, t2);
+        task(it->first, &write, t);
+      }
+    }
+
     /// Returns true if the tile specified by index is stored locally.
     bool is_local(const index_type& i) const {
       assert(shape_->includes(i));
@@ -153,6 +162,19 @@ namespace TiledArray {
   private:
 
 	Array();
+
+	pair_type add(const_iterator t1, const_iterator t2) {
+	  assert(t1->first == t2->first);
+	  pair_type result(t1->first, t1->second);
+	  result.second += t2->second;
+	  return result;
+	}
+
+	void write(const pair_type& t) {
+	  assert(tiles_.is_local(t.first));
+      tiles_[t.first] = t.second;
+	}
+
     /// Returns the tile index that contains the element index e_idx.
     index_type get_tile_index(const tile_index_type& e_idx) const {
       assert(includes(e_idx));

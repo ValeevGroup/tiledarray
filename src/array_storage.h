@@ -29,6 +29,8 @@ namespace TiledArray {
     boost::array<I,DIM> calc_weight(const boost::array<I,DIM>&);
     template <typename I, std::size_t DIM>
     I volume(const boost::array<I,DIM>& a);
+    template <typename I, unsigned long int DIM>
+    I dot_product(const boost::array<I,DIM>& A, const boost::array<I,DIM>& B);
     template <typename I, unsigned int DIM, typename CS>
     bool less(const boost::array<I,DIM>&, const boost::array<I,DIM>&);
   } // namespace detail
@@ -92,8 +94,13 @@ namespace TiledArray {
     /// computes an ordinal index for a given an index_type
     ordinal_type ordinal(const index_type& i) const { // no throw for non-debug
       assert(includes(i));
-      ordinal_type result = dot_product(i.data(), weight_);
+      ordinal_type result = detail::dot_product(i.data(), weight_);
       return result;
+    }
+
+    void resize(const size_array& s) {
+      ArrayStorage temp(s);
+      swap_(temp);
     }
 
   protected:
@@ -142,17 +149,21 @@ namespace TiledArray {
 
     static const unsigned int dim() { return DIM; }
 
-    /// Default constructor. Constructs an empty array.
+    /// Default constructor.
+
+    /// Constructs an empty array. You must call
+    /// DenseArrayStorage::resize(const size_array&) before the array can be
+    /// used.
     DenseArrayStorage() : ArrayStorage_(), data_(NULL), alloc_() { }
 
     /// Constructs an array with dimensions of size and fill it with val.
     DenseArrayStorage(const size_array& size, const value_type& val = value_type()) :
         ArrayStorage_(size), data_(NULL), alloc_()
     {
-      data_ = alloc_.allocate(this->n_);
-      for(ordinal_type i = 0; i < this->n_; ++i)
-        alloc_.construct(data_ + i, val);
+      create(val);
     }
+
+    /// Construct the array with the given data.
 
     /// Constructs an array of size and fills it with the data indicated by
     /// the first and last input iterators. The range of data [first, last)
@@ -163,31 +174,19 @@ namespace TiledArray {
     DenseArrayStorage(const size_array& size, InIter first, InIter last) :
         ArrayStorage_(size), data_(NULL), alloc_()
     {
-      data_ = alloc_.allocate(this->n_);
-      for(ordinal_type i = 0; i < this->n_; ++i, ++first) {
-        assert(first != last);
-        alloc_.construct(data_ + i, *first);
-      }
+      create(first, last);
     }
 
     /// Copy constructor
     DenseArrayStorage(const DenseArrayStorage& other) :
         ArrayStorage_(other), data_(NULL), alloc_(other.alloc_)
     {
-      data_ = alloc_.allocate(this->n_);
-      const_iterator it = other.begin();
-      for(ordinal_type i = 0; i < this->n_; ++i, ++it) {
-        alloc_.construct(data_ + i, *it);
-      }
+      create(other.begin(), other.end());
     }
 
     /// Destructor
     ~DenseArrayStorage() {
-      value_type* d = data_;
-      for(ordinal_type i = 0; i < this->n_; ++i, ++d)
-        alloc_.destroy(d);
-
-      alloc_.deallocate(data_, this->n_);
+      destroy();
     }
 
     DenseArrayStorage& operator =(const DenseArrayStorage& other) {
@@ -213,15 +212,16 @@ namespace TiledArray {
     /// Resize the array. The current data common to both block is maintained.
     /// Any new elements added have uninitialized data.
     DenseArrayStorage& resize(const size_array& size) {
-      typedef Block<ordinal_type, DIM, Tag, coordinate_system > block_type;
-      block_type block_temp(size);
-      block_type block_curr(this->size_);
-      block_type block_common = block_temp & block_curr;
       DenseArrayStorage temp(size);
+      if(data_ != NULL) {
+        typedef Block<ordinal_type, DIM, Tag, coordinate_system > block_type;
+        block_type block_temp(size);
+        block_type block_curr(this->size_);
+        block_type block_common = block_temp & block_curr;
 
-      for(typename block_type::const_iterator it = block_common.begin(); it != block_common.end(); ++it)
-        temp[ *it ] = (*this)[ *it ];
-
+        for(typename block_type::const_iterator it = block_common.begin(); it != block_common.end(); ++it)
+          temp[ *it ] = (*this)[ *it ];
+      }
       swap(temp);
       return *this;
     }
@@ -312,6 +312,7 @@ namespace TiledArray {
     template <typename Index>
     reference_type operator[](const Index& i) { // no throw for non-debug
 #ifdef NDEBUG
+      assert(data_);
       const ordinal_type i_ord = ord_(i);
       return * (data_ + i_ord);
 #else
@@ -323,6 +324,7 @@ namespace TiledArray {
     template <typename Index>
     const_reference_type operator[](const Index& i) const { // no throw for non-debug
 #ifdef NDEBUG
+      assert(data_);
       const ordinal_type i_ord = ord_(i);
       return * (data_ + i_ord);
 #else
@@ -338,6 +340,35 @@ namespace TiledArray {
     }
 
   private:
+    /// Allocate and initialize the array.
+    void create(const value_type val) {
+      data_ = alloc_.allocate(this->n_);
+      for(ordinal_type i = 0; i < this->n_; ++i)
+        alloc_.construct(data_ + i, val);
+    }
+
+    template <typename InIter>
+    void create(InIter first, InIter last) {
+      value_type val;
+      data_ = alloc_.allocate(this->n_);
+      for(ordinal_type i = 0; i < this->n_; ++i) {
+        if(first != last) {
+          alloc_.construct(data_ + i, *first);
+          ++first;
+        } else {
+          alloc_.construct(data_ + i, val);
+        }
+      }
+    }
+
+    /// Destroy the array
+    void destroy() {
+      for(ordinal_type i = 0; i < this->n_; ++i)
+        alloc_.destroy(data_ + i);
+
+      alloc_.deallocate(data_, this->n_);
+      data_ = NULL;
+    }
 
     value_type * data_;
     Allocator alloc_;
@@ -405,10 +436,11 @@ namespace TiledArray {
       for(; first != last; ++first) {
         i_ord = ord(first->first);
         if( data_.is_local(i_ord) )
-          data_.replace(i_ord, first->second);
+          data_.replace(i_ord, first->second); // no communication
       }
 
-      data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
+      data_.get_world().gop.barrier(); // Make sure everyone is done writing
+                                       // before proceeding.
     }
 
     /// Copy constructor. This is a shallow copy of the data with no communication.
@@ -450,16 +482,20 @@ namespace TiledArray {
       // location is not local).
       for(typename block_type::const_iterator it = b.begin(); it != b.end(); ++it) {
         typename data_container::const_accessor a;
-        if( data_.find(a, ordinal( *it )))
+        if( data_.find(a, ordinal( *it ))) {
           temp.data_.replace(temp.ordinal( p ^ *it ), a->second);
+                                // Will communicate if destination is not local.
+          data_.erase( ordinal(*it)); // The data is in the communication queue
+                                      // and we will not need it again. This
+                                      // should help reduce total memory
+                                      // requirements during this operation.
+        }
       }
 
-      data_.get_world().gop.fence(); // it is now safe to write.
+      data_.get_world().gop.fence(); // Make sure everyone is done moving data.
       data_ = temp.data_; // write all data, i.e do a shallow copy.
 
-      // TODO: We may be able to eliminate this since the above assignment does
-      // not communicate and should take no time
-      data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
+      data_.get_world().gop.barrier(); // Make sure write is complete before proceeding.
       return *this;
     }
 
@@ -543,7 +579,12 @@ namespace TiledArray {
       if(! data_.is_local(i_ord))
         throw std::range_error("template <typename Index> DistributedArrayStorage::at(const Index&): Element is not stored locally.");
       typename data_container::accessor t;
-      data_.find(t, i_ord);
+      if(data_.find(t, i_ord)) {
+        data_.replace(i_ord,value_type());
+        if(data_.find(t, i_ord))
+          throw std::runtime_error("template <typename Index> DistributedArrayStorage::at(const Index&): Unable to create element.");
+      }
+
       return t->second;
     }
 
@@ -692,8 +733,15 @@ namespace TiledArray {
       return result;
     }
 
+    /// compute dot product between 2 arrays
+    template <typename I, unsigned long int DIM>
+    I dot_product(const boost::array<I,DIM>& A, const boost::array<I,DIM>& B) {
+      I result = 0;
+      for(unsigned int dim = 0; dim < DIM; ++dim)
+        result += A[dim] * B[dim];
+      return result;
+    }
   } // namespace detail
-
 } // namespace TiledArray
 
 
@@ -709,9 +757,9 @@ namespace madness {
         typename DAS::size_array size;
         ar & size;
         std::size_t n = TiledArray::detail::volume(size);
-        boost::scoped_array<value_type> data = new value_type[n];
-        ar & wrap(data,n);
-        DAS temp(size, data, data + n);
+        boost::scoped_array<value_type> data(new value_type[n]);
+        ar & wrap(data.get(),n);
+        DAS temp(size, data.get(), data.get() + n);
 
         s.swap(temp);
       }

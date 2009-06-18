@@ -2,6 +2,7 @@
 #define RANGE_H__INCLUDED
 
 #include <coordinates.h>
+#include <range1.h>
 #include <array_storage.h>
 #include <iosfwd>
 #include <boost/array.hpp>
@@ -153,10 +154,11 @@ namespace TiledArray {
       index_type element2tile(const tile_index_type& e) const {
         index_type result;
         if(elements().includes(e)) {
-          for(unsigned int d = 0; d < DIM; ++d)
+          for(unsigned int d = 0; d < DIM; ++d) {
             result[d] = ranges_[d].find(e[d])->index;
+          }
         } else {
-          result = block_.finish();
+          result = block_.finish().data();
         }
 
         return result;

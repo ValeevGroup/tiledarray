@@ -170,9 +170,18 @@ namespace TiledArray {
       return *this;
     }
 
+    Tile& operator +=(const Tile& other) {
+      assert(this->size_ == other.size_);
+      const_iterator other_it = other.begin();
+      for(iterator it = begin(); it != end(); ++it, ++other_it)
+        *it += other_it;
+
+      return *this;
+    }
+
     template <typename Archive>
     void serialize(const Archive& ar) {
-      ar & (*block_) & data_;
+      ar & block_ & data_;
     }
 
     void swap(Tile& other) {
@@ -200,7 +209,7 @@ namespace TiledArray {
     return result;
   }
 
-  /// Permute the tile given a permutation.
+  /// sum two tiles
   template<typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS> operator +(const Tile<T,DIM,CS>& t1, const Tile<T,DIM,CS>& t2) {
     assert( t1.size() == t2.size() );

@@ -20,12 +20,20 @@ namespace TiledArray {
   // Boost forward declaration
 
   /// Permutation
+
+  /// Permutation class is used as an argument in all permutation operations on
+  /// other objects. Permutations are performed with the following syntax:
+  ///
+  ///   b = p ^ a; // assign permeation of a into b given the permutation p.
+  ///   a ^= p;    // permute a given the permutation p.
   template <unsigned int DIM>
   class Permutation
   {
   public:
-    typedef size_t Index;
-    typedef boost::array<Index,DIM> Array;
+    typedef std::size_t index_type;
+    typedef boost::array<index_type,DIM> Array;
+    typedef typename Array::const_iterator const_iterator;
+
     static const unsigned int dim() { return DIM; }
 
     static const Permutation& unit() { return unit_permutation; }
@@ -36,7 +44,11 @@ namespace TiledArray {
 
     template <typename InIter>
     Permutation(InIter first, InIter last) {
-      std::copy(first,last,p_.begin());
+      for(typename Array::iterator it = p_.begin(); it != p_.end(); ++it, ++first) {
+        assert(first != last);
+        *it = *first;
+      }
+
       assert(valid_permutation());
     }
 
@@ -44,13 +56,13 @@ namespace TiledArray {
       assert(valid_permutation());
     }
 
-    Permutation(const Index p0, ...) {
+    Permutation(const index_type p0, ...) {
       va_list ap;
       va_start(ap, p0);
 
       p_[0] = p0;
       for(unsigned int i = 1; i < DIM; ++i)
-        p_[i] = va_arg(ap, Index);
+        p_[i] = va_arg(ap, index_type);
 
       va_end(ap);
 
@@ -59,7 +71,10 @@ namespace TiledArray {
 
     ~Permutation() {}
 
-    const Index& operator[](unsigned int i) const {
+    const_iterator begin() const { return p_.begin(); }
+    const_iterator end() { return p_.end(); }
+
+    const index_type& operator[](unsigned int i) const {
 #ifdef NDEBUG
       return p_[i];
 #else
@@ -75,12 +90,15 @@ namespace TiledArray {
     }
 
     /// Returns the reverse permutation and will satisfy the following conditions.
-    /// (p ^ -p) = unit_permutation
     /// given c2 = p ^ c1
     /// c1 == ((-p) ^ c2);
-    Permutation<DIM> operator -() const {
+    Permutation operator -() const {
       return *this ^ unit();
     }
+
+    /// Return a reference to the array that represents the permutation.
+    Array& data() { return p_; }
+    const Array& data() const { return p_; }
 
     friend bool operator== <> (const Permutation<DIM>& p1, const Permutation<DIM>& p2);
     friend std::ostream& operator<< <> (std::ostream& output, const Permutation& p);
@@ -93,7 +111,7 @@ namespace TiledArray {
       Array count;
       count.assign(0);
       for(unsigned int d=0; d < DIM; ++d) {
-        const Index& i = p_[d];
+        const index_type& i = p_[d];
         if(i >= DIM) return false;
         if(count[i] > 0) return false;
         ++count[i];
@@ -108,7 +126,7 @@ namespace TiledArray {
     template <unsigned int DIM>
     Permutation<DIM>
     make_unit_permutation() {
-      typename Permutation<DIM>::Index _result[DIM];
+      typename Permutation<DIM>::index_type _result[DIM];
       for(unsigned int d=0; d<DIM; ++d) _result[d] = d;
       return Permutation<DIM>(_result, _result + DIM);
     }

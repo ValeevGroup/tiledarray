@@ -85,7 +85,8 @@ namespace TiledArray {
   Range1::const_iterator Range1::find(tile_index_type element) const {
     assert(includes_element(element));
     std::size_t relindex = element - start_element();
-    const_iterator result = tiles_.begin() + relindex;
+    const_iterator result = tiles_.begin();
+    result += elem2tile_[relindex];
     return result;
   }
 
@@ -134,7 +135,7 @@ namespace TiledArray {
     elem2tile_.resize(tiles_.back().finish - tiles_.front().start);
     size_t ii = 0;
     for(const_iterator it = begin(); it != end(); ++it)
-      for(tile_index_type i = 0; i < it->size; ++i, ++ii)
+      for(tile_index_type i = it->start; i < it->finish; ++i, ++ii)
         elem2tile_[ii] = it->index;
   }
 
