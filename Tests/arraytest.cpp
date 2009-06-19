@@ -3,7 +3,6 @@
 #include <range1.h>
 #include <predicate.h>
 #include <coordinate_system.h>
-#include "arraytest.h"
 #include <boost/smart_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/iterator/filter_iterator.hpp>
@@ -18,8 +17,10 @@ void ArrayTest(madness::World& world) {
 
   std::cout << "Array Tests:" << std::endl;
 
-  typedef Range<std::size_t, 4>::tile_index_type::index eindex;
-  typedef Range<std::size_t, 4>::index_type::index tindex;
+  typedef Range<std::size_t, 3> Range3;
+  typedef Range<std::size_t, 4> Range4;
+  typedef Range4::tile_index_type::index eindex;
+  typedef Range4::index_type::index tindex;
   typedef Shape<std::size_t, 3> Shape3;
   typedef DensePred<3> DPred;
   typedef PredShape<std::size_t, 3,DPred> DenseShape3;
@@ -32,11 +33,11 @@ void ArrayTest(madness::World& world) {
   eindex dim2[] = {0, 2, 4, 6};
   tindex tiles[3] = {3, 3, 3};
 
-  Range1 rng_set[3] = {Range1(dim0, dim0 + tiles[0]),
-                       Range1(dim1, dim1 + tiles[1]),
-                       Range1(dim2, dim2 + tiles[2]) };
+  Range3::range1_type rng_set[3] = {Range3::range1_type(dim0, dim0 + tiles[0]),
+      Range3::range1_type(dim1, dim1 + tiles[1]),
+      Range3::range1_type(dim2, dim2 + tiles[2]) };
 
-  boost::shared_ptr<Range<std::size_t, 3> > rng = boost::make_shared< Range<std::size_t, 3> >(& rng_set[0], & rng_set[0] + 3);
+  boost::shared_ptr<Range3 > rng = boost::make_shared< Range3 >(& rng_set[0], & rng_set[0] + 3);
   boost::shared_ptr<DenseShape3> shp = boost::make_shared<DenseShape3>(rng);
 
 

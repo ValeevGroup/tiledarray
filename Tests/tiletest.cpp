@@ -2,7 +2,6 @@
 #include <array_storage.h>
 #include <coordinates.h>
 #include <permutation.h>
-#include "tiletest.h"
 #include <iostream>
 #include <math.h>
 #include <utility>

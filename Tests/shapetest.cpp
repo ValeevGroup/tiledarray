@@ -4,7 +4,6 @@
 #include <predicate.h>
 #include <iostream>
 #include <boost/make_shared.hpp>
-#include "shapetest.h"
 
 using namespace TiledArray;
 
@@ -14,8 +13,9 @@ class Permutation;
 
 void ShapeTest() {
 
-  typedef Range<std::size_t, 4>::tile_index_type::index eindex;
-  typedef Range<std::size_t, 4>::index_type::index tindex;
+  typedef Shape<std::size_t, 4> Shape4;
+  typedef Shape4::range_type::tile_index_type::index eindex;
+  typedef Shape4::range_type::index_type::index tindex;
 
   // Create a range for use with ShapeIterator.
 
@@ -25,9 +25,10 @@ void ShapeTest() {
   eindex dim2[] = {0, 2, 4, 6};
   tindex tiles[3] = {4, 4, 4};
 
-  Range1 rng_set[3] = {Range1(dim0, dim0 + tiles[0]),
-                       Range1(dim1, dim1 + tiles[1]),
-                       Range1(dim2, dim2 + tiles[2]) };
+  Shape<std::size_t, 3>::range_type::range1_type rng_set[3] =
+      { Shape<std::size_t, 3>::range_type::range1_type(dim0, dim0 + tiles[0]),
+        Shape<std::size_t, 3>::range_type::range1_type(dim1, dim1 + tiles[1]),
+        Shape<std::size_t, 3>::range_type::range1_type(dim2, dim2 + tiles[2]) };
 
   boost::shared_ptr<Range<std::size_t, 3> > rng = boost::make_shared<Range<std::size_t, 3> >(& rng_set[0], & rng_set[0] + 3);
 

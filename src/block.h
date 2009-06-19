@@ -1,10 +1,10 @@
 #ifndef BLOCK_H__INCLUDED
 #define BLOCK_H__INCLUDED
 
+#include <error.h>
 #include <coordinates.h>
 #include <iterator.h>
 #include <boost/array.hpp>
-#include <cassert>
 
 namespace TiledArray {
 
@@ -48,10 +48,8 @@ namespace TiledArray {
     Block(const size_array& size, const index_type& start = index_type(0)) :
         start_(start), finish_(start + size), size_(size)
     {
-#ifndef NDEBUG
-      bool valid = ! detail::less<I,DIM,CS>(finish_.data(), start_.data());
-      assert( valid );
-#endif
+      TA_ASSERT( (! detail::less<I,DIM,CS>(finish_.data(), start_.data())) ,
+          std::runtime_error("Block::Block(...): finish is less than start.") );
     }
 
     /// Constructor defined by an upper and lower bound. All elements of
@@ -59,10 +57,8 @@ namespace TiledArray {
     Block(const index_type& start, const index_type& finish) :
         start_(start), finish_(finish), size_(finish - start)
     {
-#ifndef NDEBUG
-      bool valid = ! detail::less<I,DIM,CS>(finish_.data(), start_.data());
-      assert( valid );
-#endif
+      TA_ASSERT( (! detail::less<I,DIM,CS>(finish_.data(), start_.data())) ,
+          std::runtime_error("Block::Block(...): finish is less than start.") );
     }
 
     /// Copy Constructor
@@ -202,7 +198,12 @@ namespace TiledArray {
   /// Returns true if the start and finish are equal.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   bool operator ==(const Block<I,DIM,Tag,CS>& b1, const Block<I,DIM,Tag,CS>& b2) {
+#ifdef NDEBUG
     return ( b1.start() == b2.start() ) && ( b1.finish() == b2.finish() );
+#else
+    return ( b1.start() == b2.start() ) && ( b1.finish() == b2.finish() ) &&
+        (b1.size() == b2.size()); // do an extra size check to catch bugs.
+#endif
   }
 
   /// Returns true if the start and finish are not equal.
@@ -236,7 +237,8 @@ namespace TiledArray {
     Block(const index_type& start, const index_type& finish) :
         start_(start), finish_(finish), size_(finish - start)
     {
-      assert( finish_ >= start_ );
+      TA_ASSERT( finish_ >= start_,
+          std::runtime_error("Block::Block(...): finish is less than start") );
     }
 
     /// Copy Constructor

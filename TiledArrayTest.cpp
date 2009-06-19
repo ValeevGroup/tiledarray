@@ -6,6 +6,7 @@
 // Description : Hello World in C, Ansi-style
 //============================================================================
 
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MAIN Tiled Array Tests
 #include <boost/test/included/unit_test.hpp>
 

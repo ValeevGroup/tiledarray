@@ -1,7 +1,10 @@
+#define BOOST_TEST_DYN_LINK
+
 #include <coordinates.h>
 #include <permutation.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
+#include "iterationtest.h"
 
 using namespace TiledArray;
 
@@ -20,7 +23,7 @@ struct ArrayCoordinateFixture {
   Point3 p;
 };
 
-BOOST_FIXTURE_TEST_SUITE( array_coordinate_suit, ArrayCoordinateFixture )
+BOOST_FIXTURE_TEST_SUITE( array_coordinate_suite, ArrayCoordinateFixture )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
@@ -85,13 +88,11 @@ BOOST_AUTO_TEST_CASE( element_access )
 BOOST_AUTO_TEST_CASE( iteration )
 {
   BOOST_TEST_MESSAGE("iterator begin, end, and dereferenc");
-  std::size_t i = 1;
-  for(Point3::iterator it = p.begin(); it != p.end(); ++it, ++i) {
-    BOOST_CHECK_EQUAL( *it, i);
-  }
+  boost::array<std::size_t, 3> a = {{1, 2, 3}};
+  BOOST_CHECK_EQUAL( const_iteration_test(p, a.begin(), a.end()), 3);
 
   Point3 p1(p);
-  i = 3;
+  std::size_t i = 3;
   BOOST_TEST_MESSAGE("Iterator dereference assignment");
   for(Point3::iterator it = p1.begin(); it != p1.end(); ++it, ++i) {
     *it = i;

@@ -1,7 +1,7 @@
 #ifndef PERMUTATION_H_
 #define PERMUTATION_H_
 
-#include <cassert>
+#include <error.h>
 #include <iosfwd>
 #include <algorithm>
 #include <stdarg.h>
@@ -30,6 +30,7 @@ namespace TiledArray {
   class Permutation
   {
   public:
+    typedef Permutation<DIM> Permutation_;
     typedef std::size_t index_type;
     typedef boost::array<index_type,DIM> Array;
     typedef typename Array::const_iterator const_iterator;
@@ -44,17 +45,21 @@ namespace TiledArray {
 
     template <typename InIter>
     Permutation(InIter first, InIter last) {
+      TA_ASSERT( valid_(first, last) ,
+          std::runtime_error("Permutation::Permutation(...): invalid permutation supplied") );
       for(typename Array::iterator it = p_.begin(); it != p_.end(); ++it, ++first) {
-        assert(first != last);
+        TA_ASSERT( (first != last),
+            std::runtime_error("Permutation::Permutation(...): iterator range [first, last) is too short") );
         *it = *first;
       }
-
-      assert(valid_permutation());
     }
 
     Permutation(const Array& source) : p_(source) {
-      assert(valid_permutation());
+      TA_ASSERT( valid_(source.begin(), source.end()) ,
+          std::runtime_error("Permutation::Permutation(...): invalid permutation supplied") );
     }
+
+    Permutation(const Permutation& other) : p_(other.p_) { }
 
     Permutation(const index_type p0, ...) {
       va_list ap;
@@ -66,7 +71,8 @@ namespace TiledArray {
 
       va_end(ap);
 
-      assert(valid_permutation());
+      TA_ASSERT( valid_(begin(), end()) ,
+          std::runtime_error("Permutation::Permutation(...): invalid permutation supplied") );
     }
 
     ~Permutation() {}
@@ -107,11 +113,12 @@ namespace TiledArray {
     static Permutation unit_permutation;
 
     // return false if this is not a valid permutation
-    bool valid_permutation() {
+    template <typename InIter>
+    bool valid_(InIter first, InIter last) {
       Array count;
       count.assign(0);
-      for(unsigned int d=0; d < DIM; ++d) {
-        const index_type& i = p_[d];
+      for(; first != last; ++first) {
+        const index_type& i = *first;
         if(i >= DIM) return false;
         if(count[i] > 0) return false;
         ++count[i];

@@ -47,6 +47,14 @@ namespace TiledArray {
       init_map_();
     }
 
+    template <std::size_t N>
+    Range1(const boost::array<index_type, N>& a, const index_type start_tile_index = 0) :
+        block_(), element_block_(), tile_blocks_(), elem2tile_()
+    {
+      init_tiles_(a.begin(), a.end(), start_tile_index);
+      init_map_();
+    }
+
     /// Copy constructor
     Range1(const Range1& rng) : block_(rng.block_), element_block_(rng.element_block_),
       tile_blocks_(rng.tile_blocks_), elem2tile_(rng.elem2tile_)
@@ -59,14 +67,23 @@ namespace TiledArray {
       return *this;
     }
 
+    template <typename RandIter>
+    Range1& set(RandIter first, RandIter last, const index_type start_tile_index = 0) {
+      Range1 temp(first, last, start_tile_index);
+      swap(temp);
+      return *this;
+    }
+
     /// Returns an iterator to the first tile in the range.
-    const_iterator begin() const { return tile_blocks_.end(); }
+    const_iterator begin() const { return tile_blocks_.begin(); }
 
     /// Returns an iterator to the end of the range.
-    const_iterator end() const { return tile_blocks_.begin(); }
+    const_iterator end() const { return tile_blocks_.end(); }
 
     /// Return tile iterator associated with tile_index_type
     const_iterator find(const tile_index_type& e) const{
+      if(! element_block_.includes(e))
+        return tile_blocks_.end();
       const_iterator result = tile_blocks_.begin();
       result += element2tile(e);
       return result;
@@ -75,11 +92,7 @@ namespace TiledArray {
     const block_type& tiles() const { return block_; }
     const element_block_type& elements() const { return element_block_; }
     const tile_block_type& tile(const index_type& i) {
-#ifdef NDEBUG
-      return tile_blocks_[i - block_.start()];
-#else
       return tile_blocks_.at(i - block_.start());
-#endif
     }
 
     /// Swap the data of this range with another.
@@ -91,7 +104,8 @@ namespace TiledArray {
     }
 
     const index_type& element2tile(const tile_index_type& e) const {
-      assert(element_block_.includes(e));
+      TA_ASSERT( element_block_.includes(e) ,
+          std::out_of_range("Range1<...>::element2tile(...): element index is out of range.") );
       std::size_t i = e - element_block_.start();
       return elem2tile_[i];
     }
@@ -117,7 +131,10 @@ namespace TiledArray {
     /// Initialize tiles use a set of tile offsets
     template <typename RandIter>
     void init_tiles_(RandIter first, RandIter last, index_type start_tile_index) {
-      assert(valid_(first, last));
+      TA_ASSERT( valid_(first, last) ,
+          std::runtime_error("Range1<...>::init_tiles_(...): tile boundaries do not have the expected structure.") );
+      block_.resize(start_tile_index, start_tile_index + last - first - 1);
+      element_block_.resize(*first, *(last - 1));
       for (; first != (last - 1); ++first)
         tile_blocks_.push_back(tile_block_type(*first, *(first + 1)));
     }
@@ -137,23 +154,19 @@ namespace TiledArray {
 
     friend std::ostream& operator << <>(std::ostream&, const Range1&);
 
-    /////////////
     // Range1 data
-    /////////////
-
-    block_type block_;
-    element_block_type element_block_;
-    /// set of tiles. This is the primary data, i.e. other data is always recomputed from this, not modified directly
-    std::vector<tile_block_type> tile_blocks_;
-    /// maps element index to tile index (secondary data)
-    std::vector<index_type> elem2tile_;
+    block_type block_; ///< stores the overall dimensions of the tiles.
+    element_block_type element_block_; ///< stores overall element dimensions.
+    std::vector<tile_block_type> tile_blocks_; ///< stores the dimensions of each tile.
+    std::vector<index_type> elem2tile_; ///< maps element index to tile index (secondary data).
 
   }; // class Range1
 
   /// Equality operator
   template <typename I>
   bool operator ==(const Range1<I>& r1, const Range1<I>& r2) {
-    return std::equal(r1.begin(), r1.end(), r2.begin());
+    return std::equal(r1.begin(), r1.end(), r2.begin()) &&
+        (r1.tiles() == r2.tiles()) && (r1.elements() == r2.elements());
   }
 
   /// Inequality operator

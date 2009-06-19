@@ -1,8 +1,11 @@
+#define BOOST_TEST_DYN_LINK
+
 #include <block.h>
 #include <permutation.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
 #include <vector>
+#include "iterationtest.h"
 
 using namespace TiledArray;
 
@@ -14,7 +17,9 @@ struct BlockFixture {
   typedef Block3::index_type index_type;
   typedef Block3::volume_type volume_type;
 
-  BlockFixture() {
+  BlockFixture() : p000(0,0,0), p111(1,1,1), p222(2,2,2), p333(3,3,3),
+      p444(4,4,4), p555(5,5,5), p666(6,6,6)
+  {
     size[0] = 1;
     size[1] = 2;
     size[2] = 3;
@@ -22,16 +27,22 @@ struct BlockFixture {
     f = size;
     v = 6;
   }
-  ~BlockFixture() {
-
-  }
+  ~BlockFixture() { }
 
   Block3 b;
   size_array size;
   index_type s;
   index_type f;
   volume_type v;
+  const index_type p000;
+  const index_type p111;
+  const index_type p222;
+  const index_type p333;
+  const index_type p444;
+  const index_type p555;
+  const index_type p666;
 };
+
 
 BOOST_FIXTURE_TEST_SUITE( block_suite, BlockFixture )
 
@@ -46,7 +57,7 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
 BOOST_AUTO_TEST_CASE( constructors )
 {
   BOOST_TEST_MESSAGE("Default Constructor");
-  BOOST_REQUIRE_NO_THROW(Block3 def_block);
+  BOOST_REQUIRE_NO_THROW(Block3 b0);
   Block3 b0;
   BOOST_CHECK_EQUAL(b0.start(), s);
   BOOST_CHECK_EQUAL(b0.finish(), s);
@@ -54,8 +65,7 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(b0.volume(), 0);
 
   BOOST_TEST_MESSAGE("Size Constructor");
-  index_type s1(2,2,2);
-  BOOST_REQUIRE_NO_THROW(Block3 size_block(size, s1));
+  BOOST_REQUIRE_NO_THROW(Block3 b1(size, p222));
   Block3 b1(size);
   BOOST_CHECK_EQUAL(b1.start(), s);
   BOOST_CHECK_EQUAL(b1.finish(), f);
@@ -63,16 +73,15 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(b1.volume(), v);
 
   BOOST_TEST_MESSAGE("Start/Finish Constructor");
-  index_type f2 = s1 + f;
-  BOOST_REQUIRE_NO_THROW(Block3 sf_block(s1, f2));
-  Block3 b2(s1, f2);
-  BOOST_CHECK_EQUAL(b2.start(), s1);
-  BOOST_CHECK_EQUAL(b2.finish(), f2);
+  BOOST_REQUIRE_NO_THROW(Block3 b2(p222, p222 + f));
+  Block3 b2(p222, p222 + f);
+  BOOST_CHECK_EQUAL(b2.start(), p222);
+  BOOST_CHECK_EQUAL(b2.finish(), p222 + f);
   BOOST_CHECK_EQUAL(b2.size(), size);
   BOOST_CHECK_EQUAL(b2.volume(), v);
 
   BOOST_TEST_MESSAGE("Copy Constructor");
-  BOOST_REQUIRE_NO_THROW(Block3 copy_block(b));
+  BOOST_REQUIRE_NO_THROW(Block3 b4(b));
   Block3 b4(b);
   BOOST_CHECK_EQUAL(b4.start(), s);
   BOOST_CHECK_EQUAL(b4.finish(), f);
@@ -80,10 +89,10 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(b4.volume(), v);
 
   BOOST_TEST_MESSAGE("Zero Size Construction");
-  BOOST_REQUIRE_NO_THROW(Block3 zero_block(s1, s1));
-  Block3 b5(s1, s1);
-  BOOST_CHECK_EQUAL(b5.start(), s1);
-  BOOST_CHECK_EQUAL(b5.finish(), s1);
+  BOOST_REQUIRE_NO_THROW(Block3 b5(p222, p222));
+  Block3 b5(p222, p222);
+  BOOST_CHECK_EQUAL(b5.start(), p222);
+  BOOST_CHECK_EQUAL(b5.finish(), p222);
   BOOST_CHECK_EQUAL(b5.size(), s.data());
   BOOST_CHECK_EQUAL(b5.volume(), 0);
 }
@@ -100,14 +109,11 @@ BOOST_AUTO_TEST_CASE( ostream )
 BOOST_AUTO_TEST_CASE( comparision )
 {
   Block3 b1(b);
-  index_type p0(0, 0, 0);
-  index_type p1(1, 1, 1);
-  Block3 b2(p0, p1);
+  Block3 b2(p000, p111);
   BOOST_CHECK(b1 == b); // check operator==
   BOOST_CHECK( ! (b2 == b) );
   BOOST_CHECK(b2 != b); // check operator!=
   BOOST_CHECK( ! (b1 != b) );
-
 }
 
 BOOST_AUTO_TEST_CASE( assignment )
@@ -148,9 +154,7 @@ BOOST_AUTO_TEST_CASE( permutation )
 
 BOOST_AUTO_TEST_CASE( include )
 {
-  index_type p1(1,1,1);
-  index_type p5(5,5,5);
-  Block3 b1(p1, p5);
+  Block3 b1(p111, p555);
   index_type t1(0,3,3);
   index_type t2(1,3,3);
   index_type t3(2,3,3);
@@ -196,29 +200,25 @@ BOOST_AUTO_TEST_CASE( include )
 
 BOOST_AUTO_TEST_CASE( unions )
 {
-  index_type p1(1,1,1);
-  index_type p2(2,2,2);
-  index_type p3(3,3,3);
-  index_type p4(4,4,4);
-  Block3 b1(p1, p3);
-  Block3 b2(p2, p4);
+  Block3 b1(p111, p333);
+  Block3 b2(p222, p444);
 
   Block3 bu1 = b1 & b2;
   Block3 bu2 = b2 & b1;
 
-  BOOST_CHECK_EQUAL(bu1.start(), p2);  // check with b2 start inside b1
-  BOOST_CHECK_EQUAL(bu1.finish(), p3);
+  BOOST_CHECK_EQUAL(bu1.start(), p222);  // check with b2 start inside b1
+  BOOST_CHECK_EQUAL(bu1.finish(), p333);
   BOOST_CHECK_EQUAL(bu1, bu2);         // and vis versa
 
-  Block3 b3(p1, p2);
-  Block3 b4(p3, p4);
+  Block3 b3(p111, p222);
+  Block3 b4(p333, p444);
   Block3 bu3 = b3 & b4;
   BOOST_CHECK_EQUAL(bu3.start(), s);  // no over lap
   BOOST_CHECK_EQUAL(bu3.finish(), s);
   BOOST_CHECK_EQUAL(bu3.volume(), 0);
 
-  Block3 b5(p1, p4);
-  Block3 b6(p2, p3);
+  Block3 b5(p111, p444);
+  Block3 b6(p222, p333);
   Block3 bu4 = b5 & b6;
   Block3 bu5 = b6 & b5;
   BOOST_CHECK_EQUAL(bu4, b6); // check contained block
@@ -256,8 +256,6 @@ BOOST_AUTO_TEST_CASE( unions )
 
 BOOST_AUTO_TEST_CASE( c_iteration )
 {
-  index_type p1(1,1,1);
-  index_type p3(3,3,3);
   std::vector<index_type> t(8);
   t[0] = index_type(1,1,1);
   t[1] = index_type(1,1,2);
@@ -268,11 +266,9 @@ BOOST_AUTO_TEST_CASE( c_iteration )
   t[6] = index_type(2,2,1);
   t[7] = index_type(2,2,2);
 
-  Block3 b1(p1,p3);
-  int i = 0;
-  for(Block3::const_iterator it = b1.begin(); it != b1.end(); ++it, ++i)
-    BOOST_CHECK_EQUAL(*it, t[i]);  // check basic iteration operation
-  BOOST_CHECK_EQUAL(i, 8);
+  Block3 b1(p111,p333);
+  BOOST_CHECK_EQUAL(const_iteration_test(b1, t.begin(), t.end()), 8);
+                                              // check basic iteration operation
 }
 
 BOOST_AUTO_TEST_CASE( fortran_iteration )
@@ -290,9 +286,7 @@ BOOST_AUTO_TEST_CASE( fortran_iteration )
   t[7] = FBlock3::index_type(2,2,2);
 
   FBlock3 b1(p1,p3);
-  int i = 0;
-  for(FBlock3::const_iterator it = b1.begin(); it != b1.end(); ++it, ++i)
-    BOOST_CHECK_EQUAL(*it, t[i]); // check basic iteration operations
-  BOOST_CHECK_EQUAL(i, 8);
+  BOOST_CHECK_EQUAL(const_iteration_test(b1, t.begin(), t.end()), 8);
+                              // check basic fortran ordered iteration operation
 }
 BOOST_AUTO_TEST_SUITE_END()

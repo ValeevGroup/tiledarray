@@ -1,66 +1,153 @@
 #include <range1.h>
 #include <iostream>
-#include "range1test.h"
+#include <boost/array.hpp>
+#include <boost/test/unit_test.hpp>
+#include <boost/test/output_test_stream.hpp>
+#include "iterationtest.h"
 
 using namespace TiledArray;
 
-void Range1Test() {
+struct Range1BaseFixture {
 
-  std::cout << "Range1 Tests:" << std::endl;
-
-  // Test Default constructor
-  std::cout << "Default Constructor:" << std::endl;
-  Range1 rngDefault;
-  std::cout << "rngDefault = " << rngDefault << std::endl;
-
-  // Test c-style array constructor
-  std::cout << std::endl << "C-style array constructor:" << std::endl;
-  size_t ranges[] = { 0, 3, 7, 10, 20, 100 };
-  size_t tiles = 5;
-  Range1 rng1(& ranges[0], (& ranges[0]) + 6);
-  std::cout << "rng1 = " << rng1 << std::endl;
-
-  // Test vector array constructor
-  std::cout << std::endl << "Vector array constructor:" << std::endl;
-  ranges[5] = 50;
-  const std::vector<size_t> ranges_vector(ranges, ranges + tiles + 1);
-  Range1 rng2(ranges_vector.begin(), ranges_vector.end());
-  std::cout << "rng2 = " << rng2 << std::endl;
-
-  // Test copy constructor
-  std::cout << std::endl << "Copy constructor:" << std::endl;
-  Range1 rng3(rng2);
-  std::cout << "rng3 = " << rng3 << std::endl;
-
-  // Accessor functions
-  std::cout << std::endl << "Accessor fuctions:" << std::endl;
-  std::cout << "rng1.size() = " << rng1.size_element() << std::endl;
-  std::cout << "rng1.size(1) = " << rng1.size_element(1) << std::endl;
-  std::cout << "rng1.includes_tile(1) = " << rng1.includes(1) << std::endl;
-  std::cout << "rng1.includes_tile(5) = " << rng1.includes(5) << std::endl;
-  std::cout << "rng1.includes_element(1) = " << rng1.includes_element(1) << std::endl;
-  std::cout << "rng1.includes_element(100) = " << rng1.includes_element(100) << std::endl;
-
-  // Test assignment operator
-  std::cout << std::endl << "Assignment operator:" << std::endl;
-  rngDefault = rng3;
-  std::cout << "rngDefault = rng3 = " << rngDefault << std::endl;
-
-  // Test comparison operators
-  std::cout << std::endl << "Comparison operator:" << std::endl;
-  std::cout << "(rngDefault == rng3) = " << (rngDefault == rng3) << std::endl;
-  std::cout << "(rngDefault != rng3) = " << (rngDefault != rng3) << std::endl;
-  std::cout << "(rng1 == rng3) = " << (rng1 == rng3) << std::endl;
-  std::cout << "(rng1 != rng3) = " << (rng1 != rng3) << std::endl;
-
-  //Test iterator
-  std::cout << std::endl << "Iterator:" << std::endl << "Tiling for rng3"
-      << std::endl;
-  for(Range1::const_iterator it = rng3.begin(); it != rng3.end(); ++it) {
-    std::cout << "[" << rng3.start_element(it->index) << ","<< rng3.finish_element(it->index) << ")" << std::endl;
+  Range1BaseFixture() {
+    a[0] = 0;
+    a[1] = 3;
+    a[2] = 7;
+    a[3] = 10;
+    a[4] = 20;
+    a[5] = 50;
   }
+  ~Range1BaseFixture() { }
 
-  std::cout << * rng3.find(3) << std::endl;
+  boost::array<std::size_t, 6> a;
+};
 
-  std::cout << "End Range1 Tests" << std::endl << std::endl;
+struct Range1Fixture : public Range1BaseFixture {
+  typedef Range1<std::size_t> range1_type;
+  Range1Fixture() : Range1BaseFixture(), r(a.begin(), a.end()), tiles(0,5),
+      elements(0,50)
+  {
+    std::copy(r.begin(), r.end(), tile.begin());
+  }
+  ~Range1Fixture() { }
+
+  range1_type r;
+  range1_type::block_type tiles;
+  range1_type::element_block_type elements;
+  boost::array<range1_type::tile_block_type, 5> tile;
+};
+
+BOOST_FIXTURE_TEST_SUITE( range1_suite, Range1Fixture )
+
+BOOST_AUTO_TEST_CASE( block_accessor )
+{
+  BOOST_CHECK_EQUAL(r.tiles(), tiles);
+  BOOST_CHECK_EQUAL(r.elements(), elements);
+  BOOST_CHECK_EQUAL(r.tile(0), tile[0]);
+  BOOST_CHECK_EQUAL(r.tile(1), tile[1]);
+  BOOST_CHECK_EQUAL(r.tile(2), tile[2]);
+  BOOST_CHECK_EQUAL(r.tile(3), tile[3]);
+  BOOST_CHECK_EQUAL(r.tile(4), tile[4]);
+  BOOST_CHECK_THROW(r.tile(5), std::out_of_range);
 }
+
+BOOST_AUTO_TEST_CASE( block_info )
+{
+  BOOST_CHECK_EQUAL(r.tiles().size(), 5);
+  BOOST_CHECK_EQUAL(r.tiles().start(), 0);
+  BOOST_CHECK_EQUAL(r.tiles().finish(), 5);
+  BOOST_CHECK_EQUAL(r.elements().size(), 50);
+  BOOST_CHECK_EQUAL(r.elements().start(), 0);
+  BOOST_CHECK_EQUAL(r.elements().finish(), 50);
+  BOOST_CHECK_EQUAL(r.tile(0).size(), 3);
+  BOOST_CHECK_EQUAL(r.tile(0).start(), 0);
+  BOOST_CHECK_EQUAL(r.tile(0).finish(), 3);
+}
+
+BOOST_AUTO_TEST_CASE( constructor )
+{
+  BOOST_REQUIRE_NO_THROW(range1_type r0);// check default construction and range info.
+  range1_type r0;
+  BOOST_CHECK_EQUAL(r0.tiles(), range1_type::block_type(0,0));
+  BOOST_CHECK_EQUAL(r0.elements(), range1_type::element_block_type(0,0));
+  BOOST_CHECK_EQUAL(r0.tile(0), range1_type::tile_block_type(0,0));
+
+
+  BOOST_REQUIRE_NO_THROW(range1_type r1(a.begin(), a.end()));
+  range1_type r1(a.begin(), a.end());        // check construction with a
+  BOOST_CHECK_EQUAL(r1.tiles(), tiles);      // iterators and the range info.
+  BOOST_CHECK_EQUAL(r1.elements(), elements);
+  BOOST_CHECK_EQUAL_COLLECTIONS(r1.begin(), r1.end(), tile.begin(), tile.end());
+
+  BOOST_REQUIRE_NO_THROW(range1_type r2(r));
+  range1_type r2(r);                         // check construction with a
+  BOOST_CHECK_EQUAL(r1.tiles(), tiles);      // boost::array and the range info.
+  BOOST_CHECK_EQUAL(r1.elements(), elements);
+  BOOST_CHECK_EQUAL_COLLECTIONS(r1.begin(), r1.end(), tile.begin(), tile.end());
+
+  BOOST_REQUIRE_NO_THROW(range1_type r3(a));
+  range1_type r3(a);                         // check construction with a
+  BOOST_CHECK_EQUAL(r3.tiles(), tiles);      // boost::array and the range info.
+  BOOST_CHECK_EQUAL(r3.elements(), elements);
+  BOOST_CHECK_EQUAL_COLLECTIONS(r3.begin(), r3.end(), tile.begin(), tile.end());
+}
+
+BOOST_AUTO_TEST_CASE( ostream )
+{
+  boost::test_tools::output_test_stream output;
+  output << r;
+  BOOST_CHECK( !output.is_empty( false ) );
+  BOOST_CHECK( output.check_length( 42, false ) );
+  BOOST_CHECK( output.is_equal( "( tiles = [ 0, 5 ), elements = [ 0, 50 ) )" ) );
+}
+
+BOOST_AUTO_TEST_CASE( comparision )
+{
+  range1_type r1(r);
+  boost::array<std::size_t, 3> a2 = {{0, 3, 7}};
+  range1_type r2(a2.begin(), a2.end());
+
+  BOOST_CHECK( r1 == r );     // check operator==
+  BOOST_CHECK( ! (r2 == r) );
+  BOOST_CHECK( r2 != r );     // check operator!=
+  BOOST_CHECK( ! (r1 != r));
+}
+
+BOOST_AUTO_TEST_CASE( iteration )
+{
+  BOOST_CHECK_EQUAL(const_iteration_test(r, tile.begin(), tile.end()), 5);
+                                    // check for proper iteration functionality.
+  BOOST_CHECK_EQUAL( * r.find(11), tile[3]); // check that find returns an
+                                             // iterator to the correct tile.
+
+  BOOST_CHECK( r.find(55) == r.end()); // check that the iterator points to
+                           // the end() iterator if the element is out of range.
+}
+
+BOOST_AUTO_TEST_CASE( assignment )
+{
+  range1_type r1;
+  BOOST_CHECK_NE( r1, r);
+  BOOST_CHECK_EQUAL((r1 = r), r); // check operator=
+  BOOST_CHECK_EQUAL(r1, r);
+
+  range1_type r2;
+  BOOST_CHECK_EQUAL(r2.set(a.begin(), a.end(), 0), r); // check retiling function
+  BOOST_CHECK_EQUAL(r2, r);
+}
+
+BOOST_AUTO_TEST_CASE( element2tile )
+{
+  boost::array<std::size_t, 50> e = {{0,0,0,1,1,1,1,2,2,2,3,3,3,3,3,3,3,3,3,3,
+      4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4}};
+  boost::array<std::size_t, 50> c;
+
+  for(std::size_t i = 0; i < 50; ++i)
+    c[i] = r.element2tile(i);
+
+  BOOST_CHECK_EQUAL_COLLECTIONS(c.begin(), c.end(), e.begin(), e.end());
+}
+
+
+
+BOOST_AUTO_TEST_SUITE_END()
