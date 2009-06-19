@@ -211,6 +211,146 @@ namespace TiledArray {
     return ( b1.start() != b2.start() ) || ( b1.finish() != b2.finish() );
   }
 
+  // 1D block specialization
+  template <typename I, typename Tag, typename CS >
+  class Block<I,1,Tag,CS> {
+  public:
+    typedef Block<I,1,Tag,CS> Block_;
+    typedef I index_type;
+    typedef I volume_type;
+    typedef I size_array;
+    typedef CS coordinate_system;
+
+    typedef detail::IndexIterator<index_type, Block> const_iterator;
+    friend class detail::IndexIterator< index_type , Block >;
+
+    static const unsigned int dim() { return 1; }
+
+    /// Default constructor. The block has 0 size and the origin is set at 0.
+    Block() :
+        start_(0), finish_(0), size_(0)
+    {}
+
+    /// Constructor defined by an upper and lower bound. All elements of
+    /// finish must be greater than or equal to those of start.
+    Block(const index_type& start, const index_type& finish) :
+        start_(start), finish_(finish), size_(finish - start)
+    {
+      assert( finish_ >= start_ );
+    }
+
+    /// Copy Constructor
+    Block(const Block_& other) : // no throw
+        start_(other.start_), finish_(other.finish_), size_(other.size_)
+    {}
+
+    ~Block() {}
+
+    // iterator factory functions
+    const_iterator begin() const { return const_iterator(start_, this); }
+    const_iterator end() const { return const_iterator(finish_, this); }
+
+    /// Returns the lower bound of the block
+    const index_type& start() const { return start_; }
+
+    /// Returns the upper bound of the block
+    const index_type& finish() const { return finish_; }
+
+    /// Returns an array with the size of each dimension.
+    const size_array& size() const { return size_; }
+
+    /// Returns the number of elements in the block.
+    volume_type volume() const {
+      return size_;
+    }
+
+    /// Check the coordinate to make sure it is within the block range
+    bool includes(const index_type& i) const {
+      return ((start_ <= i) && (i < finish_));
+    }
+
+    /// Assignment Operator.
+    Block& operator =(const Block& other) {
+      start_ = other.start_;
+      finish_ = other.finish_;
+      size_ = other.size_;
+      return *this;
+    }
+
+    /// Permute the tile given a permutation.
+    Block& operator ^=(const Permutation<1>& p) {
+      return *this;
+    }
+
+    /// Change the dimensions of the block.
+    Block& resize(const index_type& start, const index_type& finish) {
+      start_ = start;
+      finish_ = finish;
+      size_ = finish - start;
+      return *this;
+    }
+
+    /// Change the dimensions of the block.
+    Block& resize(const size_array& size) {
+      finish_ = start_ + size_;
+      size_ = size;
+      return *this;
+    }
+
+    template <typename Archive>
+    void serialize(const Archive& ar) {
+      ar & start_ & finish_ & size_;
+    }
+
+    void swap(Block& other) { // no throw
+      std::swap(start_, other.start_);
+      std::swap(finish_, other.finish_);
+      std::swap(size_, other.size_);
+    }
+
+  private:
+
+    void increment(index_type& i) const {
+      ++i;
+    }
+
+    index_type start_;              // Tile origin
+    index_type finish_;             // Tile upper bound
+    index_type size_;               // Dimension sizes
+
+  }; // class Block
+
+  /// Return the union of two block (i.e. the overlap). If the blocks do not
+  /// overlap, then a 0 size block will be returned.
+  template <typename I, typename Tag, typename CS>
+  Block<I,1,Tag,CS> operator &(const Block<I,1,Tag,CS>& b1, const Block<I,1,Tag,CS>& b2) {
+    Block<I,1,Tag,CS> result;
+    typename Block<I,1,Tag,CS>::index_type start, finish;
+    typename Block<I,1,Tag,CS>::index_type s1, s2, f1, f2;
+    s1 = b1.start();
+    f1 = b1.finish();
+    s2 = b2.start();
+    f2 = b2.finish();
+    // check for overlap
+    if( (s2 < f1 && s2 >= s1) || (f2 < f1 && f2 >= s1) ||
+        (s1 < f2 && s1 >= s2) || (f1 < f2 && f1 >= s2) )
+    {
+      start = std::max(s1, s2);
+      finish = std::min(f1, f2);
+    } else {
+      return result; // no overlap for this index
+    }
+
+    result.resize(start, finish);
+    return result;
+  }
+
+  /// Returns a permuted block.
+  template <typename T, typename Tag, typename CS>
+  Block<T,1,Tag,CS> operator ^(const Permutation<1>& perm, const Block<T,1,Tag,CS>& b) {
+    return b;
+  }
+
   /// ostream output orperator.
   template<typename I, unsigned int DIM, typename Tag, typename CS>
   std::ostream& operator<<(std::ostream& out, const Block<I,DIM,Tag,CS>& blk) {

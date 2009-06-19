@@ -15,6 +15,7 @@ namespace TiledArray {
   // Forward declaration of TiledArray Permutation.
   template <unsigned int DIM>
   class Permutation;
+  template <typename I>
   class Range1;
 
   // need these forward declarations
@@ -31,6 +32,7 @@ namespace TiledArray {
       // typedefs
       typedef Range<I,DIM,CS> Range_;
       typedef CS coordinate_system;
+      typedef Range1<I> range1_type;
       typedef Block<I,DIM,LevelTag<1>,coordinate_system> block_type;
       typedef Block<I,DIM,LevelTag<0>,coordinate_system> element_block_type;
       typedef element_block_type tile_block_type;
@@ -47,7 +49,7 @@ namespace TiledArray {
       // Default constructor
       Range() : block_(), element_block_(), tile_blocks_(), ranges_() { }
 
-      // Constructed with an array of ranges
+      // Constructed with a set of ranges pointed to by [ first, last ).
       template <typename InIter>
       Range(InIter first, InIter last) {
         assert( (last - first) == DIM);
@@ -124,11 +126,11 @@ namespace TiledArray {
 
         // Find the start and finish of the over all tiles and element blocks.
         for(unsigned int d=0; d < DIM; ++d) {
-          start[d] = ranges_[d].start();
-          finish[d] = ranges_[d].finish();
+          start[d] = ranges_[d].tiles().start();
+          finish[d] = ranges_[d].tiles().finish();
 
-          start_element[d] = ranges_[d].start_element();
-          finish_element[d] = ranges_[d].finish_element();
+          start_element[d] = ranges_[d].elements().start();
+          finish_element[d] = ranges_[d].elements().finish();
         }
         block_.resize(start, finish);
         element_block_.resize(start_element, finish_element);
@@ -141,8 +143,8 @@ namespace TiledArray {
         for(typename block_type::const_iterator it = block_.begin(); it != block_.end(); ++it) {
           // Determine the start and finish of each tile.
           for(unsigned int d = 0; d < DIM; ++d) {
-            start_tile[d] = ranges_[d].start_element( (*it)[d] );
-            finish_tile[d] = ranges_[d].finish_element( (*it)[d] );
+            start_tile[d] = ranges_[d].tile( (*it)[d] ).start();
+            finish_tile[d] = ranges_[d].tile( (*it)[d] ).finish();
           }
 
           // Create and store the tile block.
@@ -155,7 +157,7 @@ namespace TiledArray {
         index_type result;
         if(elements().includes(e)) {
           for(unsigned int d = 0; d < DIM; ++d) {
-            result[d] = ranges_[d].find(e[d])->index;
+            result[d] = ranges_[d].element2tile(e[d]);
           }
         } else {
           result = block_.finish().data();
@@ -173,7 +175,7 @@ namespace TiledArray {
       /// Stores a indexing information for each tile in the range.
       tile_container tile_blocks_;
       /// Stores tile boundaries for each dimension.
-      typedef boost::array<Range1,DIM> Ranges;
+      typedef boost::array<range1_type,DIM> Ranges;
       Ranges ranges_;
 
   };
