@@ -13,15 +13,15 @@ namespace TiledArray {
   template <unsigned int DIM>
   class Permutation;
   template <typename I, unsigned int DIM, typename CS>
-  class Range;
+  class TiledRange;
 
 
-  /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is Range::tile_iterator.
+  /// Abstract Iterator over a subset of RangeIterator's domain. Example of RangeIterator is TiledRange::tile_iterator.
   template <typename I, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Shape {
   public:
     typedef Shape<I,DIM,CS> Shape_;
-    typedef Range<I,DIM,CS> range_type;
+    typedef TiledRange<I,DIM,CS> range_type;
     typedef CS coordinate_system;
     typedef typename range_type::index_type index_type;
     typedef detail::IndexIterator<index_type, Shape> const_iterator;

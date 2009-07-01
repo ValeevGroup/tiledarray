@@ -16,7 +16,7 @@ namespace TiledArray {
     typedef T value_type;
     typedef CS coordinate_system;
     typedef Tile<value_type, DIM, coordinate_system> tile;
-    typedef Range<DIM, CS> range_type;
+    typedef TiledRange<DIM, CS> range_type;
     typedef Shape<DIM, CS> shape_type;
     typedef typename range_type::ordinal_index ordinal_index;
     typedef typename range_type::index_type index_type;

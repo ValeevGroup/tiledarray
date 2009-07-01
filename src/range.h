@@ -19,18 +19,18 @@ namespace TiledArray {
   class Range1;
 
   // need these forward declarations
-  template<typename I, unsigned int DIM, typename CS> class Range;
+  template<typename I, unsigned int DIM, typename CS> class TiledRange;
   template<typename I, unsigned int DIM, typename CS>
-  Range<I,DIM,CS> operator ^(const Permutation<DIM>&, const Range<I,DIM,CS>&);
+  TiledRange<I,DIM,CS> operator ^(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
   template<typename I, unsigned int DIM, typename CS>
-  std::ostream& operator<<(std::ostream& out, const Range<I,DIM,CS>& rng);
+  std::ostream& operator<<(std::ostream& out, const TiledRange<I,DIM,CS>& rng);
 
-  /// Range is a tiled DIM-dimensional range. It is immutable, to simplify API.
+  /// TiledRange is a tiled DIM-dimensional range. It is immutable, to simplify API.
   template<typename I, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
-  class Range : boost::equality_comparable1< Range<I,DIM,CS> > {
+  class TiledRange : boost::equality_comparable1< TiledRange<I,DIM,CS> > {
 	public:
       // typedefs
-      typedef Range<I,DIM,CS> Range_;
+      typedef TiledRange<I,DIM,CS> Range_;
       typedef CS coordinate_system;
       typedef Range1<I> range1_type;
       typedef Block<I,DIM,LevelTag<1>,coordinate_system> block_type;
@@ -47,11 +47,11 @@ namespace TiledArray {
       static unsigned int dim() { return DIM; }
 
       // Default constructor
-      Range() : block_(), element_block_(), tile_blocks_(), ranges_() { }
+      TiledRange() : block_(), element_block_(), tile_blocks_(), ranges_() { }
 
       // Constructed with a set of ranges pointed to by [ first, last ).
       template <typename InIter>
-      Range(InIter first, InIter last) {
+      TiledRange(InIter first, InIter last) {
         for(typename Ranges::iterator it = ranges_.begin(); it != ranges_.end(); ++it) {
           TA_ASSERT( (first != last),
               std::runtime_error("Range<...>::Range(...): iterator unexpectedly reached the end of the range.") );
@@ -60,7 +60,7 @@ namespace TiledArray {
         init_();
       }
 
-      Range(const Range& other) :
+      TiledRange(const TiledRange& other) :
           block_(other.block_), element_block_(other.element_block_),
           tile_blocks_(other.tile_blocks_), ranges_(other.ranges_)
       { }
@@ -82,8 +82,8 @@ namespace TiledArray {
       /// This function will permute the range. Note: only tiles that are not
       /// being used by other objects will be permuted. The owner of those
       /// objects are
-      Range& operator ^=(const Permutation<DIM>& perm) {
-        Range temp(*this);
+      TiledRange& operator ^=(const Permutation<DIM>& perm) {
+        TiledRange temp(*this);
         temp.ranges_ ^= perm;
         temp.block_ ^= perm;
         temp.element_block_ ^= perm;
@@ -98,9 +98,9 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Range assignment operator
-      Range& operator =(const Range& other) {
-        Range temp(other);
+      /// TiledRange assignment operator
+      TiledRange& operator =(const TiledRange& other) {
+        TiledRange temp(other);
         swap(temp);
         return *this;
       }
@@ -108,14 +108,14 @@ namespace TiledArray {
       /// Resize the range to the set of dimensions in [first, last) input
       /// iterators.
       template <typename InIter>
-      Range& resize(InIter first, InIter last) {
-        Range temp(first, last);
+      TiledRange& resize(InIter first, InIter last) {
+        TiledRange temp(first, last);
         swap(temp);
         return *this;
       }
 
       /// Equality operator
-      bool operator ==(const Range& rng) const {
+      bool operator ==(const TiledRange& rng) const {
         return std::equal(ranges_.begin(), ranges_.end(), rng.ranges_.begin());
       }
 
@@ -134,7 +134,7 @@ namespace TiledArray {
         return tile_blocks_[t];
       }
 
-      void swap(Range& other) {
+      void swap(TiledRange& other) {
         block_.swap(other.block_);
         element_block_.swap(other.element_block_);
         std::swap(tile_blocks_, other.tile_blocks_);
@@ -192,7 +192,7 @@ namespace TiledArray {
         return result;
       }
 
-      friend Range operator ^ <>(const Permutation<DIM>&, const Range<I,DIM,CS>&);
+      friend TiledRange operator ^ <>(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
 
       /// Stores information on tile indexing for the range.
       block_type block_;
@@ -206,26 +206,26 @@ namespace TiledArray {
 
   };
 
-  /// Range permutation operator.
+  /// TiledRange permutation operator.
 
   /// This function will permute the range. Note: only tiles that are not
   /// being used by other objects will be permuted. The owner of those
   /// objects are
   template<typename I, unsigned int DIM, typename CS>
-  Range<I,DIM,CS> operator ^(const Permutation<DIM>& perm, const Range<I,DIM,CS>& r) {
-    Range<I,DIM,CS> result(r);
+  TiledRange<I,DIM,CS> operator ^(const Permutation<DIM>& perm, const TiledRange<I,DIM,CS>& r) {
+    TiledRange<I,DIM,CS> result(r);
     result.ranges_ ^= perm;
     result.block_ ^= perm;
     result.element_block_ ^= perm;
     result.tile_blocks_ ^= perm;
-    for(typename Range<I,DIM,CS>::iterator it = r.tiles().begin(); it != r.tiles().end(); ++it)
+    for(typename TiledRange<I,DIM,CS>::iterator it = r.tiles().begin(); it != r.tiles().end(); ++it)
       result.tile_blocks_[ *it ] ^= perm;
 
     return result;
   }
 
   template<typename I, unsigned int DIM, typename CS>
-  std::ostream& operator<<(std::ostream& out, const Range<I,DIM,CS>& rng) {
+  std::ostream& operator<<(std::ostream& out, const TiledRange<I,DIM,CS>& rng) {
     out << "Range<" << DIM << ">(" << " @= " << &rng
         << " *begin_tile=" << (rng.tiles().start()) << " *end_tile=" << (rng.tiles().finish())
         << " start_element=" << rng.elements().start() << " finish_element=" << rng.elements().finish()

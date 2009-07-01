@@ -13,7 +13,7 @@ namespace TiledArray {
 
   // Forward declaration of TiledArray Permutation.
   template <typename I, unsigned int DIM, typename CS>
-  class Range;
+  class TiledRange;
   template <typename I, unsigned int DIM, typename CS>
   class Shape;
   template<typename T, unsigned int DIM, typename CS>
@@ -34,7 +34,7 @@ namespace TiledArray {
 
   public:
 	typedef typename tile_container::ordinal_type ordinal_type;
-    typedef Range<ordinal_type, DIM, CS> range_type;
+    typedef TiledRange<ordinal_type, DIM, CS> range_type;
     typedef Shape<ordinal_type, DIM, CS> shape_type;
     typedef typename range_type::index_type index_type;
     typedef typename tile::index_type tile_index_type;
