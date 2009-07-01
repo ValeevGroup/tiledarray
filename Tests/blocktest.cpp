@@ -66,12 +66,20 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(b0.volume(), 0);
 
   BOOST_TEST_MESSAGE("Size Constructor");
-  BOOST_REQUIRE_NO_THROW(Block3 b1(size, p222));
+  BOOST_REQUIRE_NO_THROW(Block3 b1(size));
   Block3 b1(size);
   BOOST_CHECK_EQUAL(b1.start(), s);
   BOOST_CHECK_EQUAL(b1.finish(), f);
   BOOST_CHECK_EQUAL(b1.size(), size);
   BOOST_CHECK_EQUAL(b1.volume(), v);
+
+  BOOST_TEST_MESSAGE("Size Constructor (with offset)");
+  BOOST_REQUIRE_NO_THROW(Block3 b10(size, p222));
+  Block3 b10(size, p222);
+  BOOST_CHECK_EQUAL(b10.start(), p222);
+  BOOST_CHECK_EQUAL(b10.finish(), size + p222);
+  BOOST_CHECK_EQUAL(b10.size(), size);
+  BOOST_CHECK_EQUAL(b10.volume(), v);
 
   BOOST_TEST_MESSAGE("Start/Finish Constructor");
   BOOST_REQUIRE_NO_THROW(Block3 b2(p222, p222 + f));
