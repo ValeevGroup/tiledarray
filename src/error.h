@@ -7,7 +7,7 @@
 #warning "TA_EXCPETION_ERROR supersedes TA_ASSERT_ERROR"
 #endif
 #include <stdexcept>
-#define TA_ASSERT( a , e )  if(! a ) { throw e ; }
+#define TA_ASSERT( a , e )  if(! ( a ) ) { throw e ; }
 #endif
 
 #ifdef TA_ASSERT_ERROR

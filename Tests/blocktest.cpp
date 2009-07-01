@@ -27,6 +27,7 @@ struct BlockFixture {
     f = size;
     v = 6;
   }
+
   ~BlockFixture() { }
 
   Block3 b;

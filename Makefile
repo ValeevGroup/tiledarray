@@ -7,8 +7,8 @@ LIBS = -lMADworld
 CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR)
 
 OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/blocktest.o \
-  Tests/range1test.o Tests/rangetest.o Tests/shapetest.o Tests/tiletest.o \
-  Tests/arraytest.o TiledArrayTest.o
+  Tests/range1test.o Tests/arraystoragetest.o Tests/rangetest.o Tests/shapetest.o \
+  Tests/tiletest.o Tests/arraytest.o TiledArrayTest.o
 
 TARGET =	TiledArrayTest
 
@@ -18,25 +18,26 @@ $(TARGET):	$(OBJS)
 
 permutationtest.o: permutation.h coordinates.h
 coordinatestest.o: coordinates.h coordinate_system.h permutation.h
-blocktest.o: block.h permutation.h coordinates.h iterator.h
-range1test.o: range1.h block.h coordinates.h
+blocktest.o: block.h permutation.h coordinates.h iterator.h error.h
+range1test.o: range1.h block.h coordinates.h error.h
+arraystoragetest.o: block.h array_storage.h error.h
 rangetest.o: range.h range1.h array_storage.h
 shapetest.o: shape.h predicate.h range.h range1.h
 arraytest.o: array.h array_storage.h
 tiletest.o: tile.h array_storage.h
 
-array_storage.h:
-array.h:
-block.h:
-coordinate_system.h:
-iterator.h:
-madness_runtime.h:
-permutation.h:
-predicate.h:
-range.h:
-range1.h:
-shape.h:
-tile.h:
+src/array_storage.h:
+src/array.h:
+src/block.h:
+src/coordinate_system.h:
+src/iterator.h:
+src/madness_runtime.h:
+src/permutation.h:
+src/predicate.h:
+src/range.h:
+src/range1.h:
+src/shape.h:
+src/tile.h:
 
 all:	$(TARGET)
 

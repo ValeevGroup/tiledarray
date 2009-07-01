@@ -215,51 +215,52 @@ namespace TiledArray {
   }
 
   namespace detail {
-    /// Compare each element in the array to make sure it is
-    template <typename I, unsigned int DIM, typename CS, typename L = std::less<I> >
-    struct Less {
+    /// Compare each element in the array.
+    template <typename I, unsigned int DIM, typename C >
+    struct Compare {
       bool operator ()(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-        L l;
+        C c;
         for(unsigned int i = 0; i < DIM; ++i)
-          if(! l(a1[i], a2[i]))
+          if(! c(a1[i], a2[i]))
             return false;
         return true; // all members of c1 are less than c2
       }
-    }; // struct Less
+    }; // struct Compare
 
-    template <typename I, unsigned int DIM, typename CS, typename L = std::less<I> >
-    struct LessEq {
-      bool operator ()(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-        L l;
-        for(unsigned int i = 0; i < DIM; ++i)
-          if(l(a2[i], a1[i]))
-            return false;
-        return true; // all members of c1 are less than c2
-      }
-    }; // struct LessEq
-
-    template <typename I, unsigned int DIM, typename CS>
+    template <typename I, unsigned int DIM>
     bool less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      Less<I,DIM,CS> l;
+      Compare<I, DIM, std::less<I> > l;
       return l(a1, a2);
     }
 
-    template <typename I, unsigned int DIM, typename CS, typename L>
-    bool less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      Less<I,DIM,CS,L> l;
-      return l(a1, a2);
+    template <typename I, unsigned int DIM>
+    bool less_eq(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
+      Compare<I, DIM, std::less_equal<I> > le;
+      return le(a1, a2);
+    }
+
+    template <typename I, unsigned int DIM>
+    bool greater(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
+      Compare<I, DIM, std::greater<I> > g;
+      return g(a1, a2);
+    }
+
+    template <typename I, unsigned int DIM>
+    bool greater_eq(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
+      Compare<I, DIM, std::greater_equal<I> > g;
+      return g(a1, a2);
     }
 
     /// Compare ArrayCoordinates Lexicographically.
-    template <typename I, unsigned int DIM, typename CS, typename L = std::less<I> >
-    struct LexLess {
+    template <typename I, unsigned int DIM, typename CS, typename C >
+    struct LexCompare {
       bool operator ()(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
         // Get order iterators.
-        L l;
+        C c;
         for(typename CS::const_reverse_iterator it = CS::rbegin(); it != CS::rend(); ++it) {
-          if(l(a2[*it], a1[*it]))
+          if(c(a2[*it], a1[*it]))
             return false;
-          else if(l(a1[*it], a2[*it]))
+          else if(c(a1[*it], a2[*it]))
             return true;
         }
         return false; // all elements were equal
@@ -268,22 +269,16 @@ namespace TiledArray {
 
     template <typename I, unsigned int DIM, typename CS>
     bool lex_less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      LexLess<I,DIM,CS> ll;
+      LexCompare<I,DIM,CS, std::less<I> > ll;
       return ll(a1, a2);
     }
 
-    template <typename I, unsigned int DIM, typename CS, typename L>
-    bool lex_less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      LexLess<I,DIM,CS, L> ll;
-      return ll(a1, a2);
-    }
   } // namespace detail
 
   /// Compare ArrayCoordinates Lexicographically.
   template <typename I, unsigned int DIM, typename Tag, typename CS >
   bool operator<(const ArrayCoordinate<I,DIM,Tag,CS>& c1, const ArrayCoordinate<I,DIM,Tag,CS>& c2) {
-    detail::LexLess<I,DIM,CS> ll;
-    return ll(c1.data(), c2.data());
+    return detail::lex_less<I,DIM,CS>(c1.data(), c2.data());
   }
 
   template <typename I, unsigned int DIM, typename Tag, typename CS>

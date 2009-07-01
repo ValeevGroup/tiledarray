@@ -148,6 +148,4 @@ BOOST_AUTO_TEST_CASE( element2tile )
   BOOST_CHECK_EQUAL_COLLECTIONS(c.begin(), c.end(), e.begin(), e.end());
 }
 
-
-
 BOOST_AUTO_TEST_SUITE_END()

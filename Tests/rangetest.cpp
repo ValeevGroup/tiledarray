@@ -1,9 +1,45 @@
 #include <range.h>
-#include <range1.h>
-#include <iostream>
+#include <boost/test/unit_test.hpp>
+#include <boost/test/output_test_stream.hpp>
+#include "iterationtest.h"
 
 using namespace TiledArray;
+/*
+struct RangeFixture {
+  typedef Range<std::size_t, 3> Range3;
+  typedef Range3::index_type index_type;
 
+  RangeFixture() {
+    d0[0] = 0; d0[1] = 10; d0[2] = 20; d0[3] = 30;
+    d1[0] = 0; d1[1] = 5; d1[2] = 10; d1[3] = 15; d1[4] = 20;
+    d2[0] = 0; d2[1] = 3; d2[2] = 6; d2[3] = 9; d2[4] = 12; d2[5] = 15;
+    dims[0] = Range3::range1_type(d0);
+    dims[1] = Range3::range1_type(d1);
+    dims[2] = Range3::range1_type(d2);
+
+    r.resize(dims.begin(), dims.end());
+  }
+  ~RangeFixture() { }
+
+  boost::array<std::size_t, 4> d0;
+  boost::array<std::size_t, 5> d1;
+  boost::array<std::size_t, 6> d2;
+  boost::array<Range3::range1_type, 3 > dims;
+  Range3 r;
+};
+
+
+BOOST_FIXTURE_TEST_SUITE( range_suite, RangeFixture )
+
+BOOST_AUTO_TEST_CASE( constructor )
+{
+
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+*/
+
+/*
 void
 RangeTest()
 {
@@ -71,3 +107,4 @@ RangeTest()
 
   std::cout << "End Range Tests" << std::endl << std::endl;
 }
+*/

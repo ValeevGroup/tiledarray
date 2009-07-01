@@ -26,7 +26,7 @@ public:
 };
 
 using namespace TiledArray;
-
+/*
 void TileTest() {
 
   std::cout << "Tile Tests:" << std::endl;
@@ -62,3 +62,4 @@ void TileTest() {
 
   std::cout << "End Tile Tests" << std::endl << std::endl;
 }
+*/

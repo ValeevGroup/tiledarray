@@ -48,8 +48,8 @@ namespace TiledArray {
     Block(const size_array& size, const index_type& start = index_type(0)) :
         start_(start), finish_(start + size), size_(size)
     {
-      TA_ASSERT( (! detail::less<I,DIM,CS>(finish_.data(), start_.data())) ,
-          std::runtime_error("Block::Block(...): finish is less than start.") );
+      TA_ASSERT( (detail::less_eq<I,DIM>(start_.data(), finish_.data())) ,
+          std::runtime_error("Block::Block(size): finish is less than start.") );
     }
 
     /// Constructor defined by an upper and lower bound. All elements of
@@ -57,8 +57,8 @@ namespace TiledArray {
     Block(const index_type& start, const index_type& finish) :
         start_(start), finish_(finish), size_(finish - start)
     {
-      TA_ASSERT( (! detail::less<I,DIM,CS>(finish_.data(), start_.data())) ,
-          std::runtime_error("Block::Block(...): finish is less than start.") );
+      TA_ASSERT( (detail::less_eq<I,DIM>(start_.data(), finish.data())) ,
+          std::runtime_error("Block::Block(start, finish): finish is less than start.") );
     }
 
     /// Copy Constructor
@@ -91,9 +91,8 @@ namespace TiledArray {
 
     /// Check the coordinate to make sure it is within the block range
     bool includes(const index_type& i) const {
-      detail::Less<I,DIM,CS> l;
-      detail::LessEq<I,DIM,CS> le;
-      return (le(start_.data(), i.data()) && l(i.data(), finish_.data()));
+      return (detail::less_eq<I,DIM>(start_.data(), i.data()) &&
+          detail::less<I,DIM>(i.data(), finish_.data()));
     }
 
     /// Assignment Operator.
@@ -237,8 +236,8 @@ namespace TiledArray {
     Block(const index_type& start, const index_type& finish) :
         start_(start), finish_(finish), size_(finish - start)
     {
-      TA_ASSERT( finish_ >= start_,
-          std::runtime_error("Block::Block(...): finish is less than start") );
+      TA_ASSERT( (start_ <= finish_),
+          std::runtime_error("Block<I,1>::Block(start, finish): finish is less than start") );
     }
 
     /// Copy Constructor

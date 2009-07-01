@@ -52,8 +52,11 @@ namespace TiledArray {
       // Constructed with a set of ranges pointed to by [ first, last ).
       template <typename InIter>
       Range(InIter first, InIter last) {
-        assert( (last - first) == DIM);
-        std::copy(first, last, ranges_.begin());
+        for(typename Ranges::iterator it = ranges_.begin(); it != ranges_.end(); ++it) {
+          TA_ASSERT( (first != last),
+              std::runtime_error("Range<...>::Range(...): iterator unexpectedly reached the end of the range.") );
+          *it = *first;
+        }
         init_();
       }
 
@@ -95,7 +98,23 @@ namespace TiledArray {
         return *this;
       }
 
-      // Equality operator
+      /// Range assignment operator
+      Range& operator =(const Range& other) {
+        Range temp(other);
+        swap(temp);
+        return *this;
+      }
+
+      /// Resize the range to the set of dimensions in [first, last) input
+      /// iterators.
+      template <typename InIter>
+      Range& resize(InIter first, InIter last) {
+        Range temp(first, last);
+        swap(temp);
+        return *this;
+      }
+
+      /// Equality operator
       bool operator ==(const Range& rng) const {
         return std::equal(ranges_.begin(), ranges_.end(), rng.ranges_.begin());
       }
@@ -113,6 +132,13 @@ namespace TiledArray {
       /// Access the block information on the elements contained by tile t.
       const tile_block_type& tile(const index_type& t) const {
         return tile_blocks_[t];
+      }
+
+      void swap(Range& other) {
+        block_.swap(other.block_);
+        element_block_.swap(other.element_block_);
+        std::swap(tile_blocks_, other.tile_blocks_);
+        std::swap(ranges_, other.ranges_);
       }
 
     private:

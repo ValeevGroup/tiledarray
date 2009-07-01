@@ -10,7 +10,7 @@ using namespace TiledArray;
 // Forward declaration of TiledArray Permutation.
 template <unsigned int DIM>
 class Permutation;
-
+/*
 void ShapeTest() {
 
   typedef Shape<std::size_t, 4> Shape4;
@@ -66,3 +66,4 @@ void ShapeTest() {
   Shape3::const_iterator::value_type x;
 
 }
+*/
