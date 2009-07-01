@@ -35,12 +35,12 @@ namespace TiledArray {
     typedef CS coordinate_system;
 	typedef DenseArrayStorage<value_type, DIM, LevelTag<0>, coordinate_system > data_container;
     typedef typename data_container::ordinal_type ordinal_type;
-    typedef Block<ordinal_type, DIM, LevelTag<0>, coordinate_system > block_type;
-    typedef typename block_type::index_type index_type;
-    typedef typename block_type::size_array size_array;
-    typedef typename block_type::const_iterator index_iterator;
-    typedef boost::shared_ptr<block_type> block_ptr;
-    typedef boost::shared_ptr<const block_type> const_block_ptr;
+    typedef Range<ordinal_type, DIM, LevelTag<0>, coordinate_system > range_type;
+    typedef typename range_type::index_type index_type;
+    typedef typename range_type::size_array size_array;
+    typedef typename range_type::const_iterator index_iterator;
+    typedef boost::shared_ptr<range_type> block_ptr;
+    typedef boost::shared_ptr<const range_type> const_range_ptr;
     typedef boost::shared_ptr<data_container> data_ptr;
     typedef typename data_container::const_iterator const_iterator;
     typedef typename data_container::iterator iterator;
@@ -52,14 +52,14 @@ namespace TiledArray {
 
     /// Construct a tile given a block definition and initialize the data to
     /// equal val.
-    Tile(const block_type& block, const value_type val = value_type()) :
+    Tile(const range_type& block, const value_type val = value_type()) :
         block_(block), data_(block.size(), val)
     { }
 
     /// Construct a tile given a block definition and initialize the data to
     /// the values contained in the range [first, last).
     template <typename InIter>
-    Tile(const block_type& block, InIter first, InIter last) :
+    Tile(const range_type& block, InIter first, InIter last) :
     	block_(block), data_(block.size(), first, last)
     { }
 
@@ -89,7 +89,7 @@ namespace TiledArray {
     const index_type& start() const { return block_->start(); }
     const index_type& finish() const { return block_->finish(); }
     const size_array& size() const { return block_->size(); }
-    const typename block_type::volume_type volume() const { return block_->volume(); }
+    const typename range_type::volume_type volume() const { return block_->volume(); }
     bool includes(const index_type& i) const { return block_->includes(i); }
 
     /// Element access with range checking
@@ -146,7 +146,7 @@ namespace TiledArray {
     /// *iterator = gen(index_type&)
     template <typename Generator>
     Tile& assign(Generator gen) {
-      typename block_type::const_iterator b_it = block_.begin();
+      typename range_type::const_iterator b_it = block_.begin();
       for(iterator it = begin(); it != end(); ++it, ++b_it)
         *it = gen(*b_it);
 
@@ -191,7 +191,7 @@ namespace TiledArray {
 
   private:
 
-    block_type block_;
+    range_type block_;
     data_container data_;  // element data
 
     friend std::ostream& operator<< <>(std::ostream& , const Tile&);

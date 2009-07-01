@@ -6,8 +6,8 @@ INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -DTA_EXCEPTION_
 LIBS = -lMADworld
 CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR)
 
-OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/blocktest.o \
-  Tests/range1test.o Tests/arraystoragetest.o Tests/rangetest.o Tests/shapetest.o \
+OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/rangetest.o \
+  Tests/tiledrange1test.o Tests/arraystoragetest.o Tests/tiledrangetest.o Tests/shapetest.o \
   Tests/tiletest.o Tests/arraytest.o TiledArrayTest.o
 
 TARGET =	TiledArrayTest
@@ -16,15 +16,15 @@ $(TARGET):	$(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
 	./TiledArrayTest
 
-permutationtest.o: permutation.h coordinates.h
-coordinatestest.o: coordinates.h coordinate_system.h permutation.h
-blocktest.o: block.h permutation.h coordinates.h iterator.h error.h
-range1test.o: range1.h block.h coordinates.h error.h
-arraystoragetest.o: block.h array_storage.h error.h
-rangetest.o: range.h range1.h array_storage.h
-shapetest.o: shape.h predicate.h range.h range1.h
-arraytest.o: array.h array_storage.h
-tiletest.o: tile.h array_storage.h
+permutationtest.o: src/permutation.h src/coordinates.h
+coordinatestest.o: src/coordinates.h src/coordinate_system.h src/permutation.h
+blocktest.o: src/range.h src/permutation.h src/coordinates.h src/iterator.h src/error.h
+range1test.o: src/tiled_range1.h src/range.h src/coordinates.h src/error.h
+arraystoragetest.o: src/range.h src/array_storage.h src/error.h
+rangetest.o: src/tiled_range.h src/tiled_range1.h src/array_storage.h
+shapetest.o: src/shape.h src/predicate.h src/tiled_range.h src/tiled_range1.h
+arraytest.o: src/array.h src/array_storage.h
+tiletest.o: src/tile.h src/array_storage.h
 
 src/array_storage.h:
 src/array.h:

@@ -45,8 +45,8 @@ BOOST_AUTO_TEST_CASE( access )
 
 BOOST_AUTO_TEST_CASE( includes )
 {
-  Block<std::size_t, 3> b(s);
-  for(Block<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
+  Range<std::size_t, 3> b(s);
+  for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
     BOOST_CHECK(a.includes( *it )); // check that all the expected indexes are
                                      // included.
 
@@ -85,9 +85,9 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( ordinal )
 {
-  Block<std::size_t, 3> b(s);
+  Range<std::size_t, 3> b(s);
   ArrayStorage3::ordinal_type o = 0;
-  for(Block<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it, ++o)
+  for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it, ++o)
     BOOST_CHECK_EQUAL(a.ordinal( *it ), o); // check ordinal calculation and order
 
 #ifdef TA_EXCEPTION_ERROR
@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE( ordinal )
 BOOST_AUTO_TEST_CASE( ordinal_fortran )
 {
   typedef ArrayStorage<3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > FArrayStorage3;
-  typedef Block<std::size_t, 3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > block_type;
+  typedef Range<std::size_t, 3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > block_type;
 
   FArrayStorage3 a1(s);
   block_type b(s);
@@ -173,8 +173,8 @@ BOOST_AUTO_TEST_CASE( accessor )
   BOOST_CHECK_THROW(da.at(v), std::out_of_range);
 #endif
 
-  Block<std::size_t, 3> b(s);
-  for(Block<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
+  Range<std::size_t, 3> b(s);
+  for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
     BOOST_CHECK_EQUAL(da.at(* it), 1);        // check index access
 
   DAS3 a1(s, 1);
@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE( accessor )
 #ifdef NDEBUG // operator() calls at() when debugging so we don't need to run this test in that case.
   for(DAS3::ordinal_type i = 0; i < v; ++i)
     BOOST_CHECK_EQUAL(da.[i], 1);        // check ordinal access
-  for(Block<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
+  for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
     BOOST_CHECK_EQUAL(da.[* it], 1);     // check index access
 
   DAS3 a2(s, 1);

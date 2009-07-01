@@ -2,7 +2,7 @@
 #define ARRAY_STORAGE_H__INCLUDED
 
 #include <error.h>
-#include <block.h>
+#include <range.h>
 #include <madness_runtime.h>
 #include <boost/array.hpp>
 #include <boost/iterator/filter_iterator.hpp>
@@ -218,7 +218,7 @@ namespace TiledArray {
     DenseArrayStorage& resize(const size_array& size, value_type val = value_type()) {
       DenseArrayStorage temp(size, val);
       if(data_ != NULL) {
-        typedef Block<ordinal_type, DIM, Tag, coordinate_system > block_type;
+        typedef Range<ordinal_type, DIM, Tag, coordinate_system > block_type;
         block_type block_temp(size);
         block_type block_curr(this->size_);
         block_type block_common = block_temp & block_curr;
@@ -446,7 +446,7 @@ namespace TiledArray {
     /// Therefore, if the data in each element of the array also needs to be
     /// permuted, it's up to the array owner to permute the data.
     DistributedArrayStorage& operator ^=(const Permutation<DIM>& p) {
-      typedef Block<ordinal_type, DIM, Tag, coordinate_system> block_type;
+      typedef Range<ordinal_type, DIM, Tag, coordinate_system> block_type;
       typedef typename block_type::const_iterator index_iterator;
 
       /// Construct temporary container.
@@ -483,7 +483,7 @@ namespace TiledArray {
     /// non-blocking communication will likely occur. Any new elements added
     /// have uninitialized data.
     DistributedArrayStorage& resize(const size_array& size) {
-      typedef Block<ordinal_type, DIM, Tag, coordinate_system> block_type;
+      typedef Range<ordinal_type, DIM, Tag, coordinate_system> block_type;
       typedef typename block_type::const_iterator index_iterator;
 
       /// Construct temporary container.
@@ -644,7 +644,7 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   DenseArrayStorage<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& p, const DenseArrayStorage<T,DIM,Tag,CS>& s) {
-    typedef Block<typename DenseArrayStorage<T,DIM,Tag,CS>::ordinal_type,DIM,Tag,CS> block_type;
+    typedef Range<typename DenseArrayStorage<T,DIM,Tag,CS>::ordinal_type,DIM,Tag,CS> block_type;
     block_type b(s.size());
     DenseArrayStorage<T,DIM,Tag,CS> result(p ^ s.size());
 
@@ -664,7 +664,7 @@ namespace TiledArray {
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   DistributedArrayStorage<T,DIM,Tag,CS>& operator ^(const Permutation<DIM>& p, const DistributedArrayStorage<T,DIM,Tag,CS>& s) {
     typedef DistributedArrayStorage<T,DIM,Tag,CS> Store;
-    typedef Block<typename Store::ordinal_type, DIM, Tag, CS> block_type;
+    typedef Range<typename Store::ordinal_type, DIM, Tag, CS> block_type;
     typedef typename block_type::const_iterator index_iterator;
 
     /// Construct temporary container.

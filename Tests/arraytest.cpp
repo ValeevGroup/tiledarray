@@ -1,6 +1,6 @@
 #include <array.h>
 #include <shape.h>
-#include <range1.h>
+#include <tiled_range1.h>
 #include <predicate.h>
 #include <coordinate_system.h>
 #include <boost/smart_ptr.hpp>
@@ -17,8 +17,8 @@ void ArrayTest(madness::World& world) {
 
   std::cout << "Array Tests:" << std::endl;
 
-  typedef Range<std::size_t, 3> Range3;
-  typedef Range<std::size_t, 4> Range4;
+  typedef TiledRange<std::size_t, 3> Range3;
+  typedef TiledRange<std::size_t, 4> Range4;
   typedef Range4::tile_index_type::index eindex;
   typedef Range4::index_type::index tindex;
   typedef Shape<std::size_t, 3> Shape3;

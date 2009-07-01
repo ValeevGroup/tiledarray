@@ -2,7 +2,7 @@
 #define ARRAY_H__INCLUDED
 
 #include <array_storage.h>
-#include <range.h>
+#include <tiled_range.h>
 #include <tile.h>
 
 #include <cassert>
@@ -34,11 +34,11 @@ namespace TiledArray {
 
   public:
 	typedef typename tile_container::ordinal_type ordinal_type;
-    typedef TiledRange<ordinal_type, DIM, CS> range_type;
+    typedef TiledRange<ordinal_type, DIM, CS> tiled_range_type;
     typedef Shape<ordinal_type, DIM, CS> shape_type;
-    typedef typename range_type::index_type index_type;
+    typedef typename tiled_range_type::index_type index_type;
     typedef typename tile::index_type tile_index_type;
-    typedef typename range_type::size_array size_array;
+    typedef typename tiled_range_type::size_array size_array;
 
     typedef typename tile_container::iterator iterator;
     typedef typename tile_container::const_iterator const_iterator;
@@ -54,7 +54,7 @@ namespace TiledArray {
       this->process_pending();
 
       shape_ = boost::dynamic_pointer_cast<shape_type>(shp);
-      range_ = boost::const_pointer_cast<range_type>(shape_->range());
+      range_ = boost::const_pointer_cast<tiled_range_type>(shape_->range());
       // Create local tiles.
       for(typename shape_type::const_iterator it = shape_->begin(); it != shape_->end(); ++it) {
         if(tiles_.is_local( *it )) {
@@ -182,7 +182,7 @@ namespace TiledArray {
     }
 
     boost::shared_ptr<shape_type> shape_;
-    boost::shared_ptr<range_type> range_;
+    boost::shared_ptr<tiled_range_type> range_;
     tile_container tiles_;
   }; // class Array
 

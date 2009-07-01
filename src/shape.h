@@ -21,15 +21,15 @@ namespace TiledArray {
   class Shape {
   public:
     typedef Shape<I,DIM,CS> Shape_;
-    typedef TiledRange<I,DIM,CS> range_type;
+    typedef TiledRange<I,DIM,CS> tiled_range_type;
     typedef CS coordinate_system;
-    typedef typename range_type::index_type index_type;
+    typedef typename tiled_range_type::index_type index_type;
     typedef detail::IndexIterator<index_type, Shape> const_iterator;
     friend class detail::IndexIterator< index_type , Shape>;
 
     static unsigned int dim() { return DIM; }
 
-    virtual boost::shared_ptr<const range_type> range() const =0;
+    virtual boost::shared_ptr<const tiled_range_type> range() const =0;
 
     virtual const_iterator begin() const =0;
     virtual const_iterator end() const =0;
@@ -52,13 +52,13 @@ namespace TiledArray {
     typedef Shape<I,DIM,CS> Shape_;
     typedef Predicate pred_type;
     typedef CS coordinate_system;
-    typedef typename Shape<I,DIM,CS>::range_type range_type;
+    typedef typename Shape<I,DIM,CS>::tiled_range_type tiled_range_type;
     typedef typename Shape<I,DIM,CS>::index_type index_type;
     typedef typename Shape<I,DIM,CS>::const_iterator const_iterator;
     friend class detail::IndexIterator< index_type , Shape_ >;
 
     /// Iterator main constructor
-    PredShape(const boost::shared_ptr<range_type>& range, pred_type pred = pred_type()) :
+    PredShape(const boost::shared_ptr<tiled_range_type>& range, pred_type pred = pred_type()) :
     	pred_(pred), range_(range) {}
 
     /// Copy constructor
@@ -67,8 +67,8 @@ namespace TiledArray {
 
     ~PredShape() {}
 
-    boost::shared_ptr<const range_type> range() const {
-      boost::shared_ptr<const range_type> result = boost::const_pointer_cast<const range_type>(range_);
+    boost::shared_ptr<const tiled_range_type> range() const {
+      boost::shared_ptr<const tiled_range_type> result = boost::const_pointer_cast<const tiled_range_type>(range_);
       return result;
     }
 
@@ -118,7 +118,7 @@ namespace TiledArray {
 	PredShape& operator =(const PredShape&);
 
     pred_type pred_;
-    boost::shared_ptr<range_type> range_;
+    boost::shared_ptr<tiled_range_type> range_;
 
   };
 

@@ -1,4 +1,4 @@
-#include <range1.h>
+#include <tiled_range1.h>
 #include <iostream>
 #include <boost/array.hpp>
 #include <boost/test/unit_test.hpp>
@@ -23,7 +23,7 @@ struct Range1BaseFixture {
 };
 
 struct Range1Fixture : public Range1BaseFixture {
-  typedef Range1<std::size_t> range1_type;
+  typedef TiledRange1<std::size_t> range1_type;
   Range1Fixture() : Range1BaseFixture(), r(a.begin(), a.end()), tiles(0,5),
       elements(0,50)
   {
@@ -32,9 +32,9 @@ struct Range1Fixture : public Range1BaseFixture {
   ~Range1Fixture() { }
 
   range1_type r;
-  range1_type::block_type tiles;
-  range1_type::element_block_type elements;
-  boost::array<range1_type::tile_block_type, 5> tile;
+  range1_type::range_type tiles;
+  range1_type::element_range_type elements;
+  boost::array<range1_type::tile_range_type, 5> tile;
 };
 
 BOOST_FIXTURE_TEST_SUITE( range1_suite, Range1Fixture )
@@ -68,9 +68,9 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(range1_type r0);// check default construction and range info.
   range1_type r0;
-  BOOST_CHECK_EQUAL(r0.tiles(), range1_type::block_type(0,0));
-  BOOST_CHECK_EQUAL(r0.elements(), range1_type::element_block_type(0,0));
-  BOOST_CHECK_EQUAL(r0.tile(0), range1_type::tile_block_type(0,0));
+  BOOST_CHECK_EQUAL(r0.tiles(), range1_type::range_type(0,0));
+  BOOST_CHECK_EQUAL(r0.elements(), range1_type::element_range_type(0,0));
+  BOOST_CHECK_EQUAL(r0.tile(0), range1_type::tile_range_type(0,0));
 
 
   BOOST_REQUIRE_NO_THROW(range1_type r1(a.begin(), a.end()));
