@@ -35,112 +35,112 @@ namespace TiledArray {
     bool less(const boost::array<I,DIM>&, const boost::array<I,DIM>&);
   } // namespace detail
 
+  namespace detail {
 
-  /// ArrayStorage is the base class for other storage classes.
+    /// ArrayStorage is the base class for other storage classes.
 
-  /// ArrayStorage stores array dimensions and is used to calculate ordinal
-  /// values. It contains no actual array data; that is for the derived
-  /// classes to implement. The array origin is always zero for all dimensions.
-  template <unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
-  class ArrayStorage {
-  public:
-    typedef std::size_t ordinal_type;
-    typedef CS coordinate_system;
-    typedef ArrayCoordinate<ordinal_type, DIM, Tag, coordinate_system> index_type;
-    typedef boost::array<ordinal_type,DIM> size_array;
+    /// ArrayStorage stores array dimensions and is used to calculate ordinal
+    /// values. It contains no actual array data; that is for the derived
+    /// classes to implement. The array origin is always zero for all dimensions.
+    template <unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
+    class ArrayDim {
+    public:
+      typedef std::size_t ordinal_type;
+      typedef CS coordinate_system;
+      typedef ArrayCoordinate<ordinal_type, DIM, Tag, coordinate_system> index_type;
+      typedef boost::array<ordinal_type,DIM> size_array;
 
-    static const unsigned int dim() { return DIM; }
+      static const unsigned int dim() { return DIM; }
 
-    /// Default constructor. Constructs a 0 dimension array.
-    ArrayStorage() : size_(), weight_(), n_(0) { // no throw
-      for(unsigned int d = 0; d < DIM; ++d) {
-        size_[d] = 0;
-        weight_[d] = 0;
+      /// Default constructor. Constructs a 0 dimension array.
+      ArrayDim() : size_(), weight_(), n_(0) { // no throw
+        for(unsigned int d = 0; d < DIM; ++d) {
+          size_[d] = 0;
+          weight_[d] = 0;
+        }
       }
-    }
 
-    /// Constructs an array with dimensions of size.
-    ArrayStorage(const size_array& size) : // no throw
-        size_(size), weight_(calc_weight_(size)), n_(detail::volume(size))
-    { }
+      /// Constructs an array with dimensions of size.
+      ArrayDim(const size_array& size) : // no throw
+          size_(size), weight_(calc_weight(size)), n_(detail::volume(size))
+      { }
 
-    /// Copy constructor
-    ArrayStorage(const ArrayStorage& other) : // no throw
-        size_(other.size_), weight_(other.weight_), n_(other.n_)
-    { }
+      /// Copy constructor
+      ArrayDim(const ArrayDim& other) : // no throw
+          size_(other.size_), weight_(other.weight_), n_(other.n_)
+      { }
 
-    /// Destructor
-    ~ArrayStorage() { } // no throw
+      /// Destructor
+      ~ArrayDim() { } // no throw
 
-    /// Returns the size of the array.
-    size_array size() const { return size_; }
+      /// Returns the size of the array.
+      const size_array& size() const { return size_; } // no throw
 
-    /// Returns the number of elements in the array.
-    ordinal_type volume() const { return n_; } // no throw
+      /// Returns the number of elements in the array.
+      ordinal_type volume() const { return n_; } // no throw
 
-    /// Returns the dimension weights for the array.
-    const size_array& weight() const { return weight_; } // no throw
-
-
-    /// Returns true if i is less than the number of elements in the array.
-    bool includes(const ordinal_type i) const { // no throw
-      return i < n_;
-    }
-
-    bool includes(const index_type& i) const { // no throw
-      return detail::less<ordinal_type, DIM>(i.data(), size_);
-    }
-
-    /// computes an ordinal index for a given an index_type
-    ordinal_type ordinal(const index_type& i) const {
-      TA_ASSERT(includes(i),
-          std::out_of_range("ArrayStorage<...>::ordinal(...): Index is not included in the array range."));
-      ordinal_type result = detail::dot_product(i.data(), weight_);
-      return result;
-    }
-
-    void resize(const size_array& s) {
-      ArrayStorage temp(s);
-      swap_(temp);
-    }
-
-  protected:
-
-    /// Helper functions that allow member template function to always work with
-    /// ordinal_types
-    ordinal_type ord_(const index_type& i) const { return ordinal(i); }
-    ordinal_type ord_(const ordinal_type i) const { return i; } // no throw
+      /// Returns the dimension weights for the array.
+      const size_array& weight() const { return weight_; } // no throw
 
 
-    /// Exchange the content of a DenseArrayStorage with this.
-    void swap_(ArrayStorage& other) { // no throw
-      boost::swap(size_, other.size_);
-      boost::swap(weight_, other.weight_);
-      std::swap(n_, other.n_);
-    }
+      /// Returns true if i is less than the number of elements in the array.
+      bool includes(const ordinal_type i) const { // no throw
+        return i < n_;
+      }
 
-    /// Class wrapper function for detail::calc_weight() function.
-    static size_array calc_weight_(const size_array& sizes) { // no throw
-      return detail::calc_weight<ordinal_type, static_cast<std::size_t>(DIM), coordinate_system>(sizes);
-    }
+      bool includes(const index_type& i) const { // no throw
+        return detail::less<ordinal_type, DIM>(i.data(), size_);
+      }
 
-    size_array size_;
-    size_array weight_;
-    ordinal_type n_;
-  }; // class ArrayStorage
+      /// computes an ordinal index for a given an index_type
+      ordinal_type ordinal(const index_type& i) const {
+        TA_ASSERT(includes(i),
+            std::out_of_range("ArrayDim<...>::ordinal(...): Index is not included in the array range."));
+        ordinal_type result = detail::dot_product(i.data(), weight_);
+        return result;
+      }
 
+      void resize(const size_array& s) {
+        ArrayDim temp(s);
+        swap(temp);
+      }
+
+      /// Helper functions that allow member template function to always work with
+      /// ordinal_types
+      ordinal_type ord(const index_type& i) const { return ordinal(i); }
+      ordinal_type ord(const ordinal_type i) const { return i; } // no throw
+
+
+      /// Exchange the content of a DenseArrayStorage with this.
+      void swap(ArrayDim& other) { // no throw
+        boost::swap(size_, other.size_);
+        boost::swap(weight_, other.weight_);
+        std::swap(n_, other.n_);
+      }
+
+      /// Class wrapper function for detail::calc_weight() function.
+      static size_array calc_weight(const size_array& sizes) { // no throw
+        return detail::calc_weight<ordinal_type, static_cast<std::size_t>(DIM), coordinate_system>(sizes);
+      }
+
+      size_array size_;
+      size_array weight_;
+      ordinal_type n_;
+    }; // class ArrayDim
+
+  } // namespace detail
 
   /// DenseArrayStorage stores data for a dense N-dimensional Array. Data is
   /// stored in order in the order specified by the coordinate system template
   /// parameter. The default allocator used by array storage is std::allocator.
   /// All data is allocated and stored locally.
   template <typename T, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM>, typename Allocator = std::allocator<T> >
-  class DenseArrayStorage : public ArrayStorage<DIM, Tag, CS> {
+  class DenseArrayStorage {
   public:
-    typedef ArrayStorage<DIM, Tag, CS> ArrayStorage_;
-    typedef typename ArrayStorage_::index_type index_type;
-    typedef typename ArrayStorage_::ordinal_type ordinal_type;
-    typedef typename ArrayStorage_::size_array size_array;
+    typedef detail::ArrayDim<DIM, Tag, CS> array_dim_type;
+    typedef typename array_dim_type::index_type index_type;
+    typedef typename array_dim_type::ordinal_type ordinal_type;
+    typedef typename array_dim_type::size_array size_array;
     typedef T value_type;
     typedef CS coordinate_system;
     typedef T * iterator;
@@ -155,11 +155,11 @@ namespace TiledArray {
     /// Constructs an empty array. You must call
     /// DenseArrayStorage::resize(const size_array&) before the array can be
     /// used.
-    DenseArrayStorage() : ArrayStorage_(), data_(NULL), alloc_() { }
+    DenseArrayStorage() : dim_(), data_(NULL), alloc_() { }
 
     /// Constructs an array with dimensions of size and fill it with val.
     DenseArrayStorage(const size_array& size, const value_type& val = value_type()) :
-        ArrayStorage_(size), data_(NULL), alloc_()
+        dim_(size), data_(NULL), alloc_()
     {
       create(val);
     }
@@ -173,7 +173,7 @@ namespace TiledArray {
     /// throw an assertion error.
     template <typename InIter>
     DenseArrayStorage(const size_array& size, InIter first, InIter last) :
-        ArrayStorage_(size), data_(NULL), alloc_()
+        dim_(size), data_(NULL), alloc_()
     {
       create(first, last);
     }
@@ -182,7 +182,7 @@ namespace TiledArray {
 
     /// The copy constructor performs a deep copy of the data.
     DenseArrayStorage(const DenseArrayStorage& other) :
-        ArrayStorage_(other), data_(NULL), alloc_(other.alloc_)
+        dim_(other.dim_), data_(NULL), alloc_(other.alloc_)
     {
       create(other.begin(), other.end());
     }
@@ -218,40 +218,41 @@ namespace TiledArray {
     DenseArrayStorage& resize(const size_array& size, value_type val = value_type()) {
       DenseArrayStorage temp(size, val);
       if(data_ != NULL) {
-        typedef Range<ordinal_type, DIM, Tag, coordinate_system > block_type;
-        block_type block_temp(size);
-        block_type block_curr(this->size_);
-        block_type block_common = block_temp & block_curr;
+        typedef Range<ordinal_type, DIM, Tag, coordinate_system > range_type;
+        range_type range_temp(size);
+        range_type range_curr(dim_.size_);
+        range_type range_common = range_temp & range_curr;
 
-        for(typename block_type::const_iterator it = block_common.begin(); it != block_common.end(); ++it)
-          temp[ *it ] = (*this)[ *it ]; // copy common data.
+        for(typename range_type::const_iterator it = range_common.begin(); it != range_common.end(); ++it)
+          temp[ *it ] = operator[]( *it ); // copy common data.
       }
       swap(temp);
       return *this;
     }
 
     // Iterator factory functions.
-    iterator begin() { // no throw for non-debug
+    iterator begin() {
       TA_ASSERT(data_ != NULL,
           std::runtime_error("DenseArrayStorage<...>::begin(...): Data is not initialized.") );
       return data_;
     }
 
-    iterator end() { // no throw for non-debug
+    iterator end() {
       TA_ASSERT(data_ != NULL,
           std::runtime_error("DenseArrayStorage<...>::end(...): Data is not initialized.") );
-      return data_ + this->n_;
+      return data_ + dim_.n_;
     }
 
-    const_iterator begin() const { // no throw for non-debug
+    const_iterator begin() const {
       TA_ASSERT(data_ != NULL,
           std::runtime_error("DenseArrayStorage<...>::begin(...) const: Data is not initialized.") );
       return data_;
     }
-    const_iterator end() const { // no throw for non-debug
+
+    const_iterator end() const {
       TA_ASSERT(data_ != NULL,
           std::runtime_error("DenseArrayStorage<...>::end(...) const: Data is not initialized.") );
-      return data_ + this->n_;
+      return data_ + dim_.n_;
     }
 
     /// Returns a reference to element i (range checking is performed).
@@ -263,9 +264,9 @@ namespace TiledArray {
     reference_type at(const Index& i) {
       TA_ASSERT(data_ != NULL,
           std::runtime_error("DenseArrayStorage<...>::at(...): Data is not initialized.") );
-      const ordinal_type i_ord = ord_(i);
-      TA_ASSERT( includes(i_ord),
-          std::out_of_range("DenseArrayStorage<...>::at(...): Element is not in range.") );
+      const ordinal_type i_ord = dim_.ord(i);
+      if(! dim_.includes(i_ord))
+        throw std::out_of_range("DenseArrayStorage<...>::at(...): Element is not in range.");
 
       return * (data_ + i_ord);
     }
@@ -279,9 +280,9 @@ namespace TiledArray {
     const_reference_type at(const Index& i) const {
       TA_ASSERT(data_ != NULL,
           std::runtime_error("DenseArrayStorage<...>::at(...) const: Data is not initialized.") );
-      const ordinal_type i_ord = ord_(i);
-      TA_ASSERT( includes(i_ord),
-          std::out_of_range("DenseArrayStorage<...>::at(...) const: Element is not in range.") );
+      const ordinal_type i_ord = dim_.ord(i);
+      if(! dim_.includes(i_ord))
+        throw std::out_of_range("DenseArrayStorage<...>::at(...) const: Element is not in range.");
 
       return * (data_ + i_ord);
     }
@@ -292,7 +293,7 @@ namespace TiledArray {
     template <typename Index>
     reference_type operator[](const Index& i) { // no throw for non-debug
 #ifdef NDEBUG
-      const ordinal_type i_ord = ord_(i);
+      const ordinal_type i_ord = dim_.ord(i);
       return * (data_ + i_ord);
 #else
       return at(i);
@@ -303,7 +304,7 @@ namespace TiledArray {
     template <typename Index>
     const_reference_type operator[](const Index& i) const { // no throw for non-debug
 #ifdef NDEBUG
-      const ordinal_type i_ord = ord_(i);
+      const ordinal_type i_ord = dim_.ord(i);
       return * (data_ + i_ord);
 #else
       return at(i);
@@ -312,24 +313,31 @@ namespace TiledArray {
 
     /// Exchange the content of a DenseArrayStorage with this.
     void swap(DenseArrayStorage& other) { // no throw
-      ArrayStorage_::swap_(other);
+      dim_.swap(other.dim_);
       std::swap(data_, other.data_);
       std::swap(alloc_, other.alloc_);
     }
 
+    const size_array& size() const { return dim_.size(); }
+    const size_array& weight() const { return dim_.weight(); }
+    ordinal_type volume() const { return dim_.volume(); }
+    bool includes(const index_type& i) const { return dim_.includes(i); }
+    bool includes(const ordinal_type& i) const { return dim_.includes(i); }
+    ordinal_type ordinal(const index_type& i) const { return dim_.ordinal(i); }
+
   private:
     /// Allocate and initialize the array.
     void create(const value_type val) {
-      data_ = alloc_.allocate(this->n_);
-      for(ordinal_type i = 0; i < this->n_; ++i)
+      data_ = alloc_.allocate(dim_.n_);
+      for(ordinal_type i = 0; i < dim_.n_; ++i)
         alloc_.construct(data_ + i, val);
     }
 
     template <typename InIter>
     void create(InIter first, InIter last) {
       value_type val;
-      data_ = alloc_.allocate(this->n_);
-      for(ordinal_type i = 0; i < this->n_; ++i) {
+      data_ = alloc_.allocate(dim_.n_);
+      for(ordinal_type i = 0; i < dim_.n_; ++i) {
         if(first != last) {
           alloc_.construct(data_ + i, *first);
           ++first;
@@ -341,13 +349,14 @@ namespace TiledArray {
 
     /// Destroy the array
     void destroy() {
-      for(ordinal_type i = 0; i < this->n_; ++i)
+      for(ordinal_type i = 0; i < dim_.n_; ++i)
         alloc_.destroy(data_ + i);
 
-      alloc_.deallocate(data_, this->n_);
+      alloc_.deallocate(data_, dim_.n_);
       data_ = NULL;
     }
 
+    array_dim_type dim_;
     value_type * data_;
     Allocator alloc_;
   }; // class DenseArrayStorage
@@ -362,12 +371,12 @@ namespace TiledArray {
   /// data. If we were to allow iteration over all data, all data would be sent
   /// to the local node.
   template <typename T, unsigned int DIM, typename Tag = LevelTag<1>, typename CS = CoordinateSystem<DIM> >
-  class DistributedArrayStorage : public ArrayStorage<DIM, Tag, CS> {
+  class DistributedArrayStorage : public detail::ArrayDim<DIM, Tag, CS> {
   public:
-    typedef ArrayStorage<DIM, Tag, CS> ArrayStorage_;
-    typedef typename ArrayStorage_::index_type index_type;
-    typedef typename ArrayStorage_::ordinal_type ordinal_type;
-    typedef typename ArrayStorage_::size_array size_array;
+    typedef detail::ArrayDim<DIM, Tag, CS> ArrayDim_;
+    typedef typename ArrayDim_::index_type index_type;
+    typedef typename ArrayDim_::ordinal_type ordinal_type;
+    typedef typename ArrayDim_::size_array size_array;
     typedef CS coordinate_system;
     typedef T value_type;
     typedef ordinal_type key_type;
@@ -384,7 +393,7 @@ namespace TiledArray {
     /// Construct an array with a definite size. All data elements are
     /// uninitialized. No communication occurs.
     DistributedArrayStorage(madness::World& world, const size_array& size) :
-        ArrayStorage_(size), data_(world)
+        ArrayDim_(size), data_(world)
     { }
 
     /// Construct an array with a definite size and initializes the data.
@@ -408,7 +417,7 @@ namespace TiledArray {
     /// predict which one will be the final value.
     template <typename InIter>
     DistributedArrayStorage(madness::World& world, const size_array& size, InIter first, InIter last) :
-        ArrayStorage_(size), data_(world)
+        ArrayDim_(size), data_(world)
     {
       ordinal_type i_ord = 0;
       for(; first != last; ++first) {
@@ -423,7 +432,7 @@ namespace TiledArray {
 
     /// Copy constructor. This is a shallow copy of the data with no communication.
     DistributedArrayStorage(const DistributedArrayStorage& other) :
-        ArrayStorage_(other), data_(other.data_)
+        ArrayDim_(other), data_(other.data_)
     { }
 
     ~DistributedArrayStorage() { }
@@ -446,11 +455,11 @@ namespace TiledArray {
     /// Therefore, if the data in each element of the array also needs to be
     /// permuted, it's up to the array owner to permute the data.
     DistributedArrayStorage& operator ^=(const Permutation<DIM>& p) {
-      typedef Range<ordinal_type, DIM, Tag, coordinate_system> block_type;
-      typedef typename block_type::const_iterator index_iterator;
+      typedef Range<ordinal_type, DIM, Tag, coordinate_system> range_type;
+      typedef typename range_type::const_iterator index_iterator;
 
       /// Construct temporary container.
-      block_type b(this->size_);
+      range_type b(this->size_);
       DistributedArrayStorage temp(data_.get_world(), p ^ (this->size_));
 
       // Iterate over all indices in the array. For each element data_.find() is
@@ -458,7 +467,7 @@ namespace TiledArray {
       // element is written into the temp array, otherwise it is skipped. When
       // the data is written, non-blocking communication may occur (when the new
       // location is not local).
-      for(typename block_type::const_iterator it = b.begin(); it != b.end(); ++it) {
+      for(typename range_type::const_iterator it = b.begin(); it != b.end(); ++it) {
         typename data_container::const_accessor a;
         if( data_.find(a, ordinal( *it ))) {
           temp.data_.replace(temp.ordinal( p ^ *it ), a->second);
@@ -483,13 +492,13 @@ namespace TiledArray {
     /// non-blocking communication will likely occur. Any new elements added
     /// have uninitialized data.
     DistributedArrayStorage& resize(const size_array& size) {
-      typedef Range<ordinal_type, DIM, Tag, coordinate_system> block_type;
-      typedef typename block_type::const_iterator index_iterator;
+      typedef Range<ordinal_type, DIM, Tag, coordinate_system> range_type;
+      typedef typename range_type::const_iterator index_iterator;
 
       /// Construct temporary container.
-      block_type original_blk(this->size_);
-      block_type new_blk(size);
-      block_type common_blk( new_blk & original_blk);
+      range_type original_blk(this->size_);
+      range_type new_blk(size);
+      range_type common_blk( new_blk & original_blk);
       DistributedArrayStorage temp(data_.get_world(), size);
 
       // Iterate over all indices in the array. For each element data_.find() is
@@ -497,7 +506,7 @@ namespace TiledArray {
       // element is written into the temp array, otherwise it is skipped. When
       // the data is written, non-blocking communication may occur (when the new
       // location is not local).
-      for(typename block_type::const_iterator it = common_blk.begin(); it != common_blk.end(); ++it) {
+      for(typename range_type::const_iterator it = common_blk.begin(); it != common_blk.end(); ++it) {
         typename data_container::const_accessor a;
         if( data_.find(a, ordinal( *it )))
           temp.data_.replace(temp.ordinal( *it ), a->second);
@@ -551,7 +560,7 @@ namespace TiledArray {
     /// index_type.
     template <typename Index>
     reference_type at(const Index& i) {
-      const ordinal_type i_ord = ord_(i);
+      const ordinal_type i_ord = ord(i);
       if(! includes(i_ord))
         throw std::out_of_range("template <typename Index> DistributedArrayStorage::at(const Index&): Element is not in range.");
       if(! data_.is_local(i_ord))
@@ -622,12 +631,12 @@ namespace TiledArray {
 
     template <typename Index>
     bool is_local(const Index& i) const {
-      ordinal_type i_ord = ord_(i);
+      ordinal_type i_ord = ord(i);
       return data_.is_local(i_ord);
     }
 
     void swap(DistributedArrayStorage& other) {
-      ArrayStorage_::swap(other);
+      ArrayDim_::swap(other);
       data_container temp(data_);
       data_ = other.data_;
       other.data_ = temp;
@@ -644,11 +653,11 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   DenseArrayStorage<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& p, const DenseArrayStorage<T,DIM,Tag,CS>& s) {
-    typedef Range<typename DenseArrayStorage<T,DIM,Tag,CS>::ordinal_type,DIM,Tag,CS> block_type;
-    block_type b(s.size());
+    typedef Range<typename DenseArrayStorage<T,DIM,Tag,CS>::ordinal_type,DIM,Tag,CS> range_type;
+    range_type b(s.size());
     DenseArrayStorage<T,DIM,Tag,CS> result(p ^ s.size());
 
-    for(typename block_type::const_iterator it = b.begin(); it != b.end(); ++it) {
+    for(typename range_type::const_iterator it = b.begin(); it != b.end(); ++it) {
       result[p ^ *it] = s[ *it ];
     }
 
@@ -664,11 +673,11 @@ namespace TiledArray {
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   DistributedArrayStorage<T,DIM,Tag,CS>& operator ^(const Permutation<DIM>& p, const DistributedArrayStorage<T,DIM,Tag,CS>& s) {
     typedef DistributedArrayStorage<T,DIM,Tag,CS> Store;
-    typedef Range<typename Store::ordinal_type, DIM, Tag, CS> block_type;
-    typedef typename block_type::const_iterator index_iterator;
+    typedef Range<typename Store::ordinal_type, DIM, Tag, CS> range_type;
+    typedef typename range_type::const_iterator index_iterator;
 
     /// Construct temporary container.
-    block_type b(s.size_);
+    range_type b(s.size_);
     Store result(s.data_.get_world(), p ^ (s.size_));
 
     // Iterate over all indices in the array. For each element data_.find() is
@@ -676,7 +685,7 @@ namespace TiledArray {
     // element is written into the temp array, otherwise it is skipped. When
     // the data is written, non-blocking communication may occur (when the new
     // location is not local).
-    for(typename block_type::const_iterator it = b.begin(); it != b.end(); ++it) {
+    for(typename range_type::const_iterator it = b.begin(); it != b.end(); ++it) {
       typename Store::data_container::const_accessor a;
       if( s.data_.find(a, s.ordinal( *it )))
         result.data_.replace(result.ordinal( p ^ *it ), a->second);

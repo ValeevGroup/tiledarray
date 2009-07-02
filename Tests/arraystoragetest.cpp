@@ -7,12 +7,12 @@
 
 using namespace TiledArray;
 
-struct ArrayStorageFixture {
-  typedef ArrayStorage<3, LevelTag<0> > ArrayStorage3;
-  typedef ArrayStorage3::index_type index_type;
-  typedef ArrayStorage3::size_array size_array;
+struct ArrayDimFixture {
+  typedef detail::ArrayDim<3, LevelTag<0> > ArrayDim3;
+  typedef ArrayDim3::index_type index_type;
+  typedef ArrayDim3::size_array size_array;
 
-  ArrayStorageFixture() {
+  ArrayDimFixture() {
     s[0] = 2;
     s[1] = 3;
     s[2] = 4;
@@ -25,16 +25,16 @@ struct ArrayStorageFixture {
 
     a.resize(s);
   }
-  ~ArrayStorageFixture() { }
+  ~ArrayDimFixture() { }
 
   size_array s;
   size_array w;
   std::size_t v;
-  ArrayStorage3 a;
+  ArrayDim3 a;
 };
 
 
-BOOST_FIXTURE_TEST_SUITE( array_storage_suite, ArrayStorageFixture )
+BOOST_FIXTURE_TEST_SUITE( array_dim_suite, ArrayDimFixture )
 
 BOOST_AUTO_TEST_CASE( access )
 {
@@ -63,21 +63,21 @@ BOOST_AUTO_TEST_CASE( includes )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(ArrayStorage3 a0); // Check default construction
-  ArrayStorage3 a0;
+  BOOST_REQUIRE_NO_THROW(ArrayDim3 a0); // Check default construction
+  ArrayDim3 a0;
   BOOST_CHECK_EQUAL(a0.volume(), 0);        // check for zero size with default
-  ArrayStorage3::size_array s0 = {{0,0,0}}; // construction.
+  ArrayDim3::size_array s0 = {{0,0,0}}; // construction.
   BOOST_CHECK_EQUAL(a0.size(), s0);
   BOOST_CHECK_EQUAL(a0.weight(), s0);
 
-  BOOST_REQUIRE_NO_THROW(ArrayStorage3 a1(s)); // check size constructor
-  ArrayStorage3 a1(s);
+  BOOST_REQUIRE_NO_THROW(ArrayDim3 a1(s)); // check size constructor
+  ArrayDim3 a1(s);
   BOOST_CHECK_EQUAL(a1.volume(), v);  // check that a has correct va
   BOOST_CHECK_EQUAL(a1.size(), s);
   BOOST_CHECK_EQUAL(a1.weight(), w);
 
-  BOOST_REQUIRE_NO_THROW(ArrayStorage3 a2(a));
-  ArrayStorage3 a2(a);
+  BOOST_REQUIRE_NO_THROW(ArrayDim3 a2(a));
+  ArrayDim3 a2(a);
   BOOST_CHECK_EQUAL(a2.volume(), a.volume());
   BOOST_CHECK_EQUAL(a2.size(), a.size());
   BOOST_CHECK_EQUAL(a2.weight(), a.weight());
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 BOOST_AUTO_TEST_CASE( ordinal )
 {
   Range<std::size_t, 3> b(s);
-  ArrayStorage3::ordinal_type o = 0;
+  ArrayDim3::ordinal_type o = 0;
   for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it, ++o)
     BOOST_CHECK_EQUAL(a.ordinal( *it ), o); // check ordinal calculation and order
 
@@ -99,20 +99,20 @@ BOOST_AUTO_TEST_CASE( ordinal )
 
 BOOST_AUTO_TEST_CASE( ordinal_fortran )
 {
-  typedef ArrayStorage<3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > FArrayStorage3;
-  typedef Range<std::size_t, 3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > block_type;
+  typedef detail::ArrayDim<3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > FArrayDim3;
+  typedef Range<std::size_t, 3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > range_type;
 
-  FArrayStorage3 a1(s);
-  block_type b(s);
-  FArrayStorage3::ordinal_type o = 0;
-  for(block_type::const_iterator it = b.begin(); it != b.end(); ++it, ++o)
+  FArrayDim3 a1(s);
+  range_type r(s);
+  FArrayDim3::ordinal_type o = 0;
+  for(range_type::const_iterator it = r.begin(); it != r.end(); ++it, ++o)
     BOOST_CHECK_EQUAL(a1.ordinal( *it ), o); // check ordinal calculation and
                                              // order for fortran ordering.
 }
 
 BOOST_AUTO_TEST_CASE( resize )
 {
-  ArrayStorage3 a1;
+  ArrayDim3 a1;
   a1.resize(s);
   BOOST_CHECK_EQUAL(a1.volume(), v); // check for correct resizing.
   BOOST_CHECK_EQUAL(a1.size(), s);
@@ -121,9 +121,9 @@ BOOST_AUTO_TEST_CASE( resize )
 
 BOOST_AUTO_TEST_SUITE_END()
 
-struct DenseArrayStorageFixture : public ArrayStorageFixture {
+struct DenseArrayStorageFixture : public ArrayDimFixture {
   typedef DenseArrayStorage<int, 3> DAS3;
-  DenseArrayStorageFixture() : ArrayStorageFixture(), da(s, 1)  {
+  DenseArrayStorageFixture() : ArrayDimFixture(), da(s, 1)  {
 
   }
 

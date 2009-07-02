@@ -9,7 +9,7 @@
 
 using namespace TiledArray;
 
-struct BlockFixture {
+struct RangeFixture {
   typedef Range<std::size_t, 3> Range3;
   typedef Range<std::size_t, 3, LevelTag<1>,
       CoordinateSystem<3, detail::increasing_dimension_order> > FRange3;
@@ -17,7 +17,7 @@ struct BlockFixture {
   typedef Range3::index_type index_type;
   typedef Range3::volume_type volume_type;
 
-  BlockFixture() : p000(0,0,0), p111(1,1,1), p222(2,2,2), p333(3,3,3),
+  RangeFixture() : p000(0,0,0), p111(1,1,1), p222(2,2,2), p333(3,3,3),
       p444(4,4,4), p555(5,5,5), p666(6,6,6)
   {
     size[0] = 1;
@@ -28,7 +28,7 @@ struct BlockFixture {
     v = 6;
   }
 
-  ~BlockFixture() { }
+  ~RangeFixture() { }
 
   Range3 r;
   size_array size;
@@ -45,7 +45,7 @@ struct BlockFixture {
 };
 
 
-BOOST_FIXTURE_TEST_SUITE( block_suite, BlockFixture )
+BOOST_FIXTURE_TEST_SUITE( block_suite, RangeFixture )
 
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
