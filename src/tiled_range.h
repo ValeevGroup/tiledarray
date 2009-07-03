@@ -23,6 +23,8 @@ namespace TiledArray {
   template<typename I, unsigned int DIM, typename CS>
   TiledRange<I,DIM,CS> operator ^(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
   template<typename I, unsigned int DIM, typename CS>
+  bool operator ==(const TiledRange<I,DIM,CS>&, const TiledRange<I,DIM,CS>&);
+  template<typename I, unsigned int DIM, typename CS>
   std::ostream& operator<<(std::ostream& out, const TiledRange<I,DIM,CS>& rng);
 
   /// TiledRange is a tiled DIM-dimensional range. It is immutable, to simplify API.
@@ -32,12 +34,14 @@ namespace TiledArray {
       // typedefs
       typedef TiledRange<I,DIM,CS> TiledRange_;
       typedef CS coordinate_system;
-      typedef TiledRange1<I> range1_type;
+      typedef TiledRange1<I> tiled_range1_type;
       typedef Range<I,DIM,LevelTag<1>,coordinate_system> range_type;
       typedef Range<I,DIM,LevelTag<0>,coordinate_system> element_range_type;
       typedef element_range_type tile_range_type;
       typedef typename range_type::size_array size_array;
       typedef typename range_type::index_type index_type;
+      typedef typename range_type::volume_type volume_type;
+      typedef typename tile_range_type::index_type element_index_type;
       typedef typename tile_range_type::index_type tile_index_type;
       typedef DenseArrayStorage<tile_range_type, DIM, LevelTag<1>, coordinate_system > tile_container;
       typedef typename tile_container::iterator iterator;
@@ -52,29 +56,35 @@ namespace TiledArray {
       // Constructed with a set of ranges pointed to by [ first, last ).
       template <typename InIter>
       TiledRange(InIter first, InIter last) {
-        for(typename Ranges::iterator it = ranges_.begin(); it != ranges_.end(); ++it) {
+        for(typename Ranges::iterator it = ranges_.begin(); it != ranges_.end(); ++it, ++first) {
           TA_ASSERT( (first != last),
-              std::runtime_error("Range<...>::Range(...): iterator unexpectedly reached the end of the range.") );
+              std::runtime_error("TiledRange<...>::TiledRange(...): iterator unexpectedly reached the end of the range.") );
           *it = *first;
         }
         init_();
       }
 
+      /// Copy constructor
       TiledRange(const TiledRange& other) :
           block_(other.block_), element_block_(other.element_block_),
           tile_blocks_(other.tile_blocks_), ranges_(other.ranges_)
       { }
 
-      /// Return iterator to the tile that contains an element index.
+      /// Returns a const_iterator to the first tile range in TiledRange.
+      const_iterator begin() const { return tile_blocks_.begin(); }
+      /// Return a const_iterator to the end of the tile range.
+      const_iterator end() const { return tile_blocks_.end(); }
+
+      /// Return iterator to the tile range that contains the element index.
       const_iterator find(const tile_index_type e) const {
+        const_iterator result;
         if(element_block_.includes(e)) {
-          index_type t = element2tile(e);
-          const_iterator result = tile_blocks_.find(t);
-          return result;
+          index_type t = element2tile_(e);
+          result = tile_blocks_.begin() + tile_blocks_.ordinal(t);
         } else {
-          const_iterator result = tile_blocks_.end();
-          return result;
+          result = tile_blocks_.end();
         }
+        return result;
       }
 
       /// In place permutation of range.
@@ -82,19 +92,9 @@ namespace TiledArray {
       /// This function will permute the range. Note: only tiles that are not
       /// being used by other objects will be permuted. The owner of those
       /// objects are
-      TiledRange& operator ^=(const Permutation<DIM>& perm) {
-        TiledRange temp(*this);
-        temp.ranges_ ^= perm;
-        temp.block_ ^= perm;
-        temp.element_block_ ^= perm;
-        iterator temp_it = temp.tiles().begin();
-        for(iterator it = tiles().begin(); it != tiles().end(); ++it, ++temp_it) {
-          if(it->unique())
-            (* temp.tile_blocks_[ *it ]) ^= perm;
-          else
-            *temp_it = *it; // someone else is using this pointer, so we want to save its link.
-        }
-        temp.tile_blocks_ ^= perm;
+      TiledRange& operator ^=(const Permutation<DIM>& p) {
+        TiledRange temp = p ^ *this;
+        swap(temp);
         return *this;
       }
 
@@ -106,17 +106,12 @@ namespace TiledArray {
       }
 
       /// Resize the range to the set of dimensions in [first, last) input
-      /// iterators.
+      /// iterators. The iterators must dereference to a tiled_range1_type.
       template <typename InIter>
       TiledRange& resize(InIter first, InIter last) {
         TiledRange temp(first, last);
         swap(temp);
         return *this;
-      }
-
-      /// Equality operator
-      bool operator ==(const TiledRange& rng) const {
-        return std::equal(ranges_.begin(), ranges_.end(), rng.ranges_.begin());
       }
 
       /// Access the block information on the tiles contained by the range.
@@ -131,14 +126,16 @@ namespace TiledArray {
 
       /// Access the block information on the elements contained by tile t.
       const tile_range_type& tile(const index_type& t) const {
-        return tile_blocks_[t];
+        TA_ASSERT( tile_blocks_.includes(t),
+            std::out_of_range("TiledRange<...>::tile(...) const: Tile index is out of range."));
+        return tile_blocks_[t - block_.start()];
       }
 
       void swap(TiledRange& other) {
         block_.swap(other.block_);
         element_block_.swap(other.element_block_);
-        std::swap(tile_blocks_, other.tile_blocks_);
-        std::swap(ranges_, other.ranges_);
+        tile_blocks_.swap(other.tile_blocks_);
+        boost::swap(ranges_, other.ranges_);
       }
 
     private:
@@ -162,7 +159,6 @@ namespace TiledArray {
         element_block_.resize(start_element, finish_element);
 
         // Find the dimensions of each tile and store its block information.
-        boost::shared_ptr<tile_range_type> tile_block;
         tile_index_type start_tile;
         tile_index_type finish_tile;
         tile_blocks_.resize(block_.size());
@@ -174,12 +170,12 @@ namespace TiledArray {
           }
 
           // Create and store the tile block.
-          tile_blocks_[ *it ] = tile_range_type(start_tile, finish_tile);
-          tile_block.reset();
+          tile_blocks_[ *it - block_.start()] = tile_range_type(start_tile, finish_tile);
         }
       }
 
-      index_type element2tile(const tile_index_type& e) const {
+      /// Returns the tile index of the tile that contains the given element index.
+      index_type element2tile_(const tile_index_type& e) const {
         index_type result;
         if(elements().includes(e)) {
           for(unsigned int d = 0; d < DIM; ++d) {
@@ -193,16 +189,13 @@ namespace TiledArray {
       }
 
       friend TiledRange operator ^ <>(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
+      friend bool operator == <>(const TiledRange&, const TiledRange&);
 
-      /// Stores information on tile indexing for the range.
-      range_type block_;
-      /// Stores information on element indexing for the range.
-      element_range_type element_block_;
-      /// Stores a indexing information for each tile in the range.
-      tile_container tile_blocks_;
-      /// Stores tile boundaries for each dimension.
-      typedef boost::array<range1_type,DIM> Ranges;
-      Ranges ranges_;
+      range_type block_; ///< Stores information on tile indexing for the range.
+      element_range_type element_block_; ///< Stores information on element indexing for the range.
+      tile_container tile_blocks_; ///< Stores a indexing information for each tile in the range.
+      typedef boost::array<tiled_range1_type,DIM> Ranges;
+      Ranges ranges_; ///< Stores tile boundaries for each dimension.
 
   };
 
@@ -212,24 +205,41 @@ namespace TiledArray {
   /// being used by other objects will be permuted. The owner of those
   /// objects are
   template<typename I, unsigned int DIM, typename CS>
-  TiledRange<I,DIM,CS> operator ^(const Permutation<DIM>& perm, const TiledRange<I,DIM,CS>& r) {
+  TiledRange<I,DIM,CS> operator ^(const Permutation<DIM>& p, const TiledRange<I,DIM,CS>& r) {
     TiledRange<I,DIM,CS> result(r);
-    result.ranges_ ^= perm;
-    result.block_ ^= perm;
-    result.element_block_ ^= perm;
-    result.tile_blocks_ ^= perm;
-    for(typename TiledRange<I,DIM,CS>::iterator it = r.tiles().begin(); it != r.tiles().end(); ++it)
-      result.tile_blocks_[ *it ] ^= perm;
+    result.ranges_ ^= p;
+    result.block_ ^= p;
+    result.element_block_ ^= p;
+    result.tile_blocks_ ^= p;
+    for(typename TiledRange<I,DIM,CS>::range_type::const_iterator it = r.tiles().begin(); it != r.tiles().end(); ++it)
+      result.tile_blocks_[ p ^ *it ] ^= p;
 
     return result;
   }
 
+  /// Returns true when all tile and element ranges are the same.
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator ==(const TiledRange<I, DIM, CS>& r1, const TiledRange<I, DIM, CS>& r2) {
+    return
+#ifndef NDEBUG
+        // Do some extra equality checking while debugging. If everything is
+        // working properly, the block data will be consistent with the data in
+        // ranges.
+        (r1.block_ == r2.block_) && (r1.element_block_ == r2.element_block_) &&
+        std::equal(r1.tile_blocks_.begin(), r1.tile_blocks_.end(), r2.tile_blocks_.begin()) &&
+#endif
+        std::equal(r1.ranges_.begin(), r1.ranges_.end(), r2.ranges_.begin());
+  }
+
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator !=(const TiledRange<I, DIM, CS>& r1, const TiledRange<I, DIM, CS>& r2) {
+    return ! operator ==(r1, r2);
+  }
+
   template<typename I, unsigned int DIM, typename CS>
   std::ostream& operator<<(std::ostream& out, const TiledRange<I,DIM,CS>& rng) {
-    out << "Range<" << DIM << ">(" << " @= " << &rng
-        << " *begin_tile=" << (rng.tiles().start()) << " *end_tile=" << (rng.tiles().finish())
-        << " start_element=" << rng.elements().start() << " finish_element=" << rng.elements().finish()
-        << " nelements=" << rng.elements().volume() << " ntiles=" << rng.tiles().volume() << " )";
+    out << "(" << " tiles = " << rng.tiles()
+        << " elements = " << rng.elements() << " )";
     return out;
   }
 

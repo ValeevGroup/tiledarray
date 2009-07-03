@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(DAS3 a0); // check default constructor
   DAS3 a0;
   BOOST_CHECK_EQUAL(a0.volume(), 0); // check for zero size.
-  BOOST_CHECK_THROW(a0.at(0), std::runtime_error); // check for data access error.
+  BOOST_CHECK_THROW(a0.at(0), std::out_of_range); // check for data access error.
 
   BOOST_REQUIRE_NO_THROW(DAS3 a1(s, 1)); // check size constructor w/ initial value.
   DAS3 a1(s, 1);

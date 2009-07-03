@@ -88,6 +88,7 @@ namespace TiledArray {
         return i < n_;
       }
 
+      /// Returns true if i is less than the number of elements in the array.
       bool includes(const index_type& i) const { // no throw
         return detail::less<ordinal_type, DIM>(i.data(), size_);
       }
@@ -100,18 +101,27 @@ namespace TiledArray {
         return result;
       }
 
+      /// Sets the size of object to the given size.
       void resize(const size_array& s) {
         ArrayDim temp(s);
         swap(temp);
       }
 
-      /// Helper functions that allow member template function to always work with
-      /// ordinal_types
-      ordinal_type ord(const index_type& i) const { return ordinal(i); }
+      /// Helper functions that converts index_type to ordinal_type indexes.
+
+      /// This function is overloaded so it can be called by template functions.
+      /// No range checking is done. This function will not throw.
+      ordinal_type ord(const index_type& i) const { // no throw
+        return detail::dot_product(i.data(), weight_);
+      }
+
       ordinal_type ord(const ordinal_type i) const { return i; } // no throw
 
 
       /// Exchange the content of a DenseArrayStorage with this.
+
+      /// Swap will exchange the data of the calling object with the function
+      /// argument. This function does not throw.
       void swap(ArrayDim& other) { // no throw
         boost::swap(size_, other.size_);
         boost::swap(weight_, other.weight_);
@@ -133,7 +143,9 @@ namespace TiledArray {
   /// DenseArrayStorage stores data for a dense N-dimensional Array. Data is
   /// stored in order in the order specified by the coordinate system template
   /// parameter. The default allocator used by array storage is std::allocator.
-  /// All data is allocated and stored locally.
+  /// All data is allocated and stored locally. Type T must be default-
+  /// Constructible and copy-constructible. You may work around the default
+  /// constructor requirement by specifying default values in
   template <typename T, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM>, typename Allocator = std::allocator<T> >
   class DenseArrayStorage {
   public:
@@ -206,9 +218,10 @@ namespace TiledArray {
     /// Therefore, if the data in each element of the array also needs to be
     /// permuted, it's up to the array owner to permute the data.
     DenseArrayStorage& operator ^=(const Permutation<DIM>& p) {
-      assert(data_);
-      DenseArrayStorage temp = p ^ (*this);
-      swap(temp);
+      if(data_ != NULL) {
+        DenseArrayStorage temp = p ^ (*this);
+        swap(temp);
+      }
       return *this;
     }
 
@@ -231,27 +244,19 @@ namespace TiledArray {
     }
 
     // Iterator factory functions.
-    iterator begin() {
-      TA_ASSERT(data_ != NULL,
-          std::runtime_error("DenseArrayStorage<...>::begin(...): Data is not initialized.") );
+    iterator begin() { // no throw
       return data_;
     }
 
-    iterator end() {
-      TA_ASSERT(data_ != NULL,
-          std::runtime_error("DenseArrayStorage<...>::end(...): Data is not initialized.") );
+    iterator end() { // no throw
       return data_ + dim_.n_;
     }
 
-    const_iterator begin() const {
-      TA_ASSERT(data_ != NULL,
-          std::runtime_error("DenseArrayStorage<...>::begin(...) const: Data is not initialized.") );
+    const_iterator begin() const { // no throw
       return data_;
     }
 
-    const_iterator end() const {
-      TA_ASSERT(data_ != NULL,
-          std::runtime_error("DenseArrayStorage<...>::end(...) const: Data is not initialized.") );
+    const_iterator end() const { // no throw
       return data_ + dim_.n_;
     }
 
@@ -262,13 +267,10 @@ namespace TiledArray {
     /// thrown. Valid types for Index are ordinal_type and index_type.
     template <typename Index>
     reference_type at(const Index& i) {
-      TA_ASSERT(data_ != NULL,
-          std::runtime_error("DenseArrayStorage<...>::at(...): Data is not initialized.") );
-      const ordinal_type i_ord = dim_.ord(i);
-      if(! dim_.includes(i_ord))
+      if(! dim_.includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...): Element is not in range.");
 
-      return * (data_ + i_ord);
+      return * (data_ + dim_.ord(i));
     }
 
     /// Returns a constant reference to element i (range checking is performed).
@@ -278,13 +280,10 @@ namespace TiledArray {
     /// thrown. Valid types for Index are ordinal_type and index_type.
     template <typename Index>
     const_reference_type at(const Index& i) const {
-      TA_ASSERT(data_ != NULL,
-          std::runtime_error("DenseArrayStorage<...>::at(...) const: Data is not initialized.") );
-      const ordinal_type i_ord = dim_.ord(i);
-      if(! dim_.includes(i_ord))
+      if(! dim_.includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...) const: Element is not in range.");
 
-      return * (data_ + i_ord);
+      return * (data_ + dim_.ord(i));
     }
 
     /// Returns a reference to the element at i.
@@ -293,8 +292,7 @@ namespace TiledArray {
     template <typename Index>
     reference_type operator[](const Index& i) { // no throw for non-debug
 #ifdef NDEBUG
-      const ordinal_type i_ord = dim_.ord(i);
-      return * (data_ + i_ord);
+      return * (data_ + dim_.ord(i));
 #else
       return at(i);
 #endif
@@ -304,8 +302,7 @@ namespace TiledArray {
     template <typename Index>
     const_reference_type operator[](const Index& i) const { // no throw for non-debug
 #ifdef NDEBUG
-      const ordinal_type i_ord = dim_.ord(i);
-      return * (data_ + i_ord);
+      return * (data_ + dim_.ord(i));
 #else
       return at(i);
 #endif
@@ -318,21 +315,44 @@ namespace TiledArray {
       std::swap(alloc_, other.alloc_);
     }
 
+    /// Return the sizes of each dimension.
     const size_array& size() const { return dim_.size(); }
+
+    /// Returns the dimension weights.
+
+    /// The dimension weights are used to calculate ordinal values and is useful
+    /// for determining array boundaries.
     const size_array& weight() const { return dim_.weight(); }
+
+    /// Returns the number of elements in the array.
     ordinal_type volume() const { return dim_.volume(); }
+
+    /// Returns true if the given index is included in the array.
     bool includes(const index_type& i) const { return dim_.includes(i); }
+
+    /// Returns true if the given index is included in the array.
     bool includes(const ordinal_type& i) const { return dim_.includes(i); }
+
+    /// Returns the ordinal (linearized) index for the given index.
+
+    /// If the given index is not included in the
     ordinal_type ordinal(const index_type& i) const { return dim_.ordinal(i); }
 
   private:
     /// Allocate and initialize the array.
+
+    /// All elements will contain the given value.
     void create(const value_type val) {
       data_ = alloc_.allocate(dim_.n_);
       for(ordinal_type i = 0; i < dim_.n_; ++i)
         alloc_.construct(data_ + i, val);
     }
 
+    /// Allocate and initialize the array.
+
+    /// All elements will be initialized to the values given by the iterators.
+    /// If the iterator range does not contain enough elements to fill the array,
+    /// the remaining elements will be initialized with the default constructor.
     template <typename InIter>
     void create(InIter first, InIter last) {
       value_type val;

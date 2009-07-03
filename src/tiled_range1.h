@@ -47,14 +47,6 @@ namespace TiledArray {
       init_map_();
     }
 
-    template <std::size_t N>
-    TiledRange1(const boost::array<index_type, N>& a, const index_type start_tile_index = 0) :
-        block_(), element_block_(), tile_blocks_(), elem2tile_()
-    {
-      init_tiles_(a.begin(), a.end(), start_tile_index);
-      init_map_();
-    }
-
     /// Copy constructor
     TiledRange1(const TiledRange1& rng) : block_(rng.block_), element_block_(rng.element_block_),
       tile_blocks_(rng.tile_blocks_), elem2tile_(rng.elem2tile_)
@@ -68,7 +60,7 @@ namespace TiledArray {
     }
 
     template <typename RandIter>
-    TiledRange1& set(RandIter first, RandIter last, const index_type start_tile_index = 0) {
+    TiledRange1& resize(RandIter first, RandIter last, const index_type start_tile_index = 0) {
       TiledRange1 temp(first, last, start_tile_index);
       swap(temp);
       return *this;

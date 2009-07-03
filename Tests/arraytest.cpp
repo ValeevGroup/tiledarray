@@ -17,10 +17,10 @@ void ArrayTest(madness::World& world) {
 
   std::cout << "Array Tests:" << std::endl;
 
-  typedef TiledRange<std::size_t, 3> Range3;
-  typedef TiledRange<std::size_t, 4> Range4;
-  typedef Range4::tile_index_type::index eindex;
-  typedef Range4::index_type::index tindex;
+  typedef TiledRange<std::size_t, 3> TRange3;
+  typedef TiledRange<std::size_t, 4> TRange4;
+  typedef TRange4::tile_index_type::index eindex;
+  typedef TRange4::index_type::index tindex;
   typedef Shape<std::size_t, 3> Shape3;
   typedef DensePred<3> DPred;
   typedef PredShape<std::size_t, 3,DPred> DenseShape3;
@@ -33,11 +33,12 @@ void ArrayTest(madness::World& world) {
   eindex dim2[] = {0, 2, 4, 6};
   tindex tiles[3] = {3, 3, 3};
 
-  Range3::range1_type rng_set[3] = {Range3::range1_type(dim0, dim0 + tiles[0]),
-      Range3::range1_type(dim1, dim1 + tiles[1]),
-      Range3::range1_type(dim2, dim2 + tiles[2]) };
+  TRange3::tiled_range1_type rng_set[3] = {
+      TRange3::tiled_range1_type(dim0, dim0 + tiles[0]),
+      TRange3::tiled_range1_type(dim1, dim1 + tiles[1]),
+      TRange3::tiled_range1_type(dim2, dim2 + tiles[2]) };
 
-  boost::shared_ptr<Range3 > rng = boost::make_shared< Range3 >(& rng_set[0], & rng_set[0] + 3);
+  boost::shared_ptr<TRange3> rng = boost::make_shared<TRange3>(& rng_set[0], & rng_set[0] + 3);
   boost::shared_ptr<DenseShape3> shp = boost::make_shared<DenseShape3>(rng);
 
 
