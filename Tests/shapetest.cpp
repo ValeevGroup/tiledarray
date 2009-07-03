@@ -1,69 +1,129 @@
 #include <shape.h>
-#include <range.h>
-#include <tiled_range1.h>
+#include <tiled_range.h>
 #include <predicate.h>
-#include <iostream>
-#include <boost/make_shared.hpp>
+#include <permutation.h>
+#include <boost/test/unit_test.hpp>
+#include <boost/test/output_test_stream.hpp>
+#include <map>
+#include "iterationtest.h"
 
 using namespace TiledArray;
 
-// Forward declaration of TiledArray Permutation.
-template <unsigned int DIM>
-class Permutation;
-/*
-void ShapeTest() {
-
-  typedef Shape<std::size_t, 4> Shape4;
-  typedef Shape4::range_type::tile_index_type::index eindex;
-  typedef Shape4::range_type::index_type::index tindex;
-
-  // Create a range for use with ShapeIterator.
-
-  // Test with C-style Range Array constructor.
-  eindex dim0[] = {0, 2, 4, 6};
-  eindex dim1[] = {0, 2, 4, 6};
-  eindex dim2[] = {0, 2, 4, 6};
-  tindex tiles[3] = {4, 4, 4};
-
-  Shape<std::size_t, 3>::range_type::range1_type rng_set[3] =
-      { Shape<std::size_t, 3>::range_type::range1_type(dim0, dim0 + tiles[0]),
-        Shape<std::size_t, 3>::range_type::range1_type(dim1, dim1 + tiles[1]),
-        Shape<std::size_t, 3>::range_type::range1_type(dim2, dim2 + tiles[2]) };
-
-  boost::shared_ptr<Range<std::size_t, 3> > rng = boost::make_shared<Range<std::size_t, 3> >(& rng_set[0], & rng_set[0] + 3);
-
-  std::cout << "Start ShapeIterator tests: " << std::endl;
-
+struct ShapeFixture {
   typedef Shape<std::size_t, 3> Shape3;
-  typedef DensePred<3> DPred;
-  typedef PredShape<std::size_t, 3, DPred> DenseShape3;
-  typedef PredShape<std::size_t, 3, LowerTrianglePred<3> > LowerTriShape3;
-  Shape3* shp1 = new DenseShape3(rng);
-  Shape3* shp2 = new LowerTriShape3(rng);
-  DenseShape3 dshp(rng);
-  LowerTriShape3 tshp(rng);
+  typedef PredShape<std::size_t, 3, LowerTrianglePred<3> > PShape3;
+  typedef PShape3::tiled_range_type TRange3;
+  typedef PShape3::index_type index_type;
 
-  std::cout << "Dense Predicate Iterator" << std::endl << "iterate over tiles:" << std::endl;
+  ShapeFixture() {
+    d0[0] = 0; d0[1] = 10; d0[2] = 20; d0[3] = 30;
+    d1[0] = 0; d1[1] = 5; d1[2] = 10; d1[3] = 15; d1[4] = 20;
+    d2[0] = 0; d2[1] = 3; d2[2] = 6; d2[3] = 9; d2[4] = 12; d2[5] = 15;
+    dims[0] = TRange3::tiled_range1_type(d0.begin(), d0.end());
+    dims[1] = TRange3::tiled_range1_type(d1.begin(), d1.end());
+    dims[2] = TRange3::tiled_range1_type(d2.begin(), d2.end());
 
-  DenseShape3::const_iterator tile_it = dshp.begin();
-  for(; !(tile_it == dshp.end()); ++tile_it)
-    std::cout << *tile_it << std::endl;
+    r.resize(dims.begin(), dims.end());
+    s = new PShape3(boost::make_shared<TRange3>(dims.begin(), dims.end()));
+  }
+  ~ShapeFixture() {
+    delete s;
+  }
 
-  std::cout << "LowerTriange Predicate Iterator" << std::endl << "iterator over tiles" << std::endl;
+  boost::array<std::size_t, 4> d0;
+  boost::array<std::size_t, 5> d1;
+  boost::array<std::size_t, 6> d2;
+  boost::array<TRange3::tiled_range1_type, 3> dims;
+  Shape3* s;
+  TRange3 r;
+};
 
-  LowerTriShape3::const_iterator tri_it = tshp.begin();
-  for(; tri_it != tshp.end(); ++tri_it)
-    std::cout << *tri_it << std::endl;
+// Note: Since we plan use Shape<> pointers to access all shapes and constructing
+// PredShape on the stack is a little awkward and tricky, all tests will be done
+// via a Shape<> pointer.
 
-  std::cout << "Dense Abstract Predicate Iterator" << std::endl << "iterate over tiles:" << std::endl;
-  for(Shape3::const_iterator it = shp1->begin(); it != shp1->end(); ++it)
-    std::cout << *it << std::endl;
+BOOST_FIXTURE_TEST_SUITE( shape_suite, ShapeFixture )
 
-  std::cout << "LowerTriangle Abstract Predicate Iterator" << std::endl << "iterate over tiles:" << std::endl;
-  for(Shape3::const_iterator it = shp2->begin(); it != shp2->end(); ++it)
-    std::cout << *it << std::endl;
-
-  Shape3::const_iterator::value_type x;
-
+BOOST_AUTO_TEST_CASE( range_access )
+{
+  BOOST_CHECK_EQUAL(* (s->range()), r);
 }
-*/
+
+BOOST_AUTO_TEST_CASE( constructor )
+{
+  Shape3* s1 = NULL;
+  BOOST_REQUIRE_NO_THROW(s1 = new PShape3(boost::make_shared<TRange3>(dims.begin(), dims.end())));
+  BOOST_CHECK_EQUAL(* (s1->range()), r);           // Check primary constructor.
+
+  Shape3* s2 = NULL;
+  BOOST_REQUIRE_NO_THROW( (s2 = new PShape3(* dynamic_cast<PShape3*>(s))) );       // check copy constructor.
+  BOOST_CHECK_EQUAL(*(s2->range()), *(s->range()));
+  BOOST_CHECK_NE(s2->range().get(), s->range().get());// check for deep copy.
+
+  Shape3* s3 = NULL;
+  BOOST_REQUIRE_NO_THROW( (s3 = new PShape3(s)) );     // check Shape<>* constructor.
+  BOOST_CHECK_EQUAL(*(s3->range()), *(s->range()));
+  BOOST_CHECK_NE(s3->range().get(), s->range().get());// check for deep copy.
+
+  delete s1;
+  delete s2;
+  delete s3;
+}
+
+BOOST_AUTO_TEST_CASE( includes )
+{
+  BOOST_CHECK( (s->range()->tiles().includes(Shape3::index_type(1,2,3))) );
+  BOOST_CHECK( (dynamic_cast<PShape3*>(s)->predicate().includes(Shape3::index_type(1,2,3))) );
+  BOOST_CHECK( (s->includes(Shape3::index_type(1,2,3))) );  // check index included by predicate and range.
+
+  BOOST_CHECK( (s->range()->tiles().includes(Shape3::index_type(2,1,0))) );
+  BOOST_CHECK( (! dynamic_cast<PShape3*>(s)->predicate().includes(Shape3::index_type(2,1,0))) );
+  BOOST_CHECK( (! s->includes(Shape3::index_type(2,1,0))) );// check index excluded by predicate only.
+
+  BOOST_CHECK( (! s->range()->tiles().includes(Shape3::index_type(4,5,6))) );
+  BOOST_CHECK( (dynamic_cast<PShape3*>(s)->predicate().includes(Shape3::index_type(4,5,6))) );
+  BOOST_CHECK( (! s->includes(Shape3::index_type(4,5,6))) );  // check index included by predicate and excluded by range.
+
+  BOOST_CHECK( (! s->range()->tiles().includes(Shape3::index_type(6,5,4))) );
+  BOOST_CHECK( (! dynamic_cast<PShape3*>(s)->predicate().includes(Shape3::index_type(6,5,4))) );
+  BOOST_CHECK( (! s->includes(Shape3::index_type(6,5,4))) );  // check index included by predicate and excluded by range.
+
+  std::map<Shape3::index_type, bool> m;
+  Shape3::tiled_range_type::range_type::const_iterator it = s->range()->tiles().begin();
+  bool includes;
+  for(; it != s->range()->tiles().end(); ++it) {
+    includes = true;
+    for(unsigned int d = 1; d < s->dim(); ++d)
+      if((*it)[d - 1] > (*it)[d])
+        includes = false;
+
+    m.insert(std::make_pair(*it, includes));
+  }
+
+  for(std::map<Shape3::index_type, bool>::const_iterator it = m.begin(); it != m.end(); ++it)
+    BOOST_CHECK_EQUAL(s->includes(it->first), it->second); // check to make sure the expected values are included/excluded.
+}
+
+BOOST_AUTO_TEST_CASE( iteration )
+{
+  for(Shape3::const_iterator it = s->begin(); it != s->end(); ++it) {
+    for(unsigned int d = 1; d < s->dim(); ++d)
+      BOOST_CHECK((*it)[d - 1] <= (*it)[d]);    // check that only indexes included by the predicate are found.
+
+    BOOST_CHECK(s->range()->tiles().includes( *it )); // check that all tiles are included.
+  }
+}
+
+BOOST_AUTO_TEST_CASE( permutation )
+{
+  Permutation<3> p(2,0,1);
+  Shape3* s1(s);
+  Shape3::index_type i(1,2,3);
+
+  BOOST_CHECK_EQUAL((s1 ^= p), s1); // check that the permutation returns the pointer.
+  BOOST_CHECK(! dynamic_cast<PShape3*>(s)->predicate().includes(i)); // check that it is not included in the original.
+  BOOST_CHECK(s1->includes(p ^ i));  // check that it is included after the permutation.
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+

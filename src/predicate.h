@@ -85,7 +85,7 @@ namespace TiledArray {
     /// Returns true if index is included in the shape.
     template <typename I, typename CS>
     bool includes(const ArrayCoordinate<I,DIM,Tag,CS>& i) const {
-      const ArrayCoordinate<I,DIM,Tag,CS> perm_index = (apply_perm_ ? perm_ ^ i : i );
+      const ArrayCoordinate<I,DIM,Tag,CS> perm_index = (apply_perm_ ? (-perm_) ^ i : i );
 
       for(unsigned int d = 1; d < DIM; ++d)
         if(perm_index[d - 1] > perm_index[d])
@@ -101,9 +101,9 @@ namespace TiledArray {
     }
 
     /// Apply permutation
-    void operator ^=(const Permutation<DIM>& perm) {
+    LowerTrianglePred& operator ^=(const Permutation<DIM>& p) {
       apply_perm_ = true;
-      perm_ = perm;
+      perm_ = p;
 
       return *this;
     }

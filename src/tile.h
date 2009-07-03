@@ -174,7 +174,7 @@ namespace TiledArray {
       assert(this->size_ == other.size_);
       const_iterator other_it = other.begin();
       for(iterator it = begin(); it != end(); ++it, ++other_it)
-        *it += other_it;
+        *it += *other_it;
 
       return *this;
     }
@@ -216,12 +216,9 @@ namespace TiledArray {
     Tile<T,DIM,CS> result(* t1.block());
     typename Tile<T,DIM,CS>::const_iterator it1 = t1.begin();
     typename Tile<T,DIM,CS>::const_iterator it2 = t2.begin();
-    for(typename Tile<T,DIM,CS>::iterator itr = result.begin(); itr != result.end(); ++itr) {
+    for(typename Tile<T,DIM,CS>::iterator itr = result.begin(); itr != result.end(); ++itr, ++it1, ++it2) {
       *itr = *it1 + *it2;
-      ++it1;
-      ++it2;
     }
-
 
     return result;
   }
