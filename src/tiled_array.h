@@ -5,8 +5,8 @@
 #include <coordinates.h>
 #include <predicate.h>
 #include <iterator.h>
-#include <block.h>
 #include <range.h>
+#include <tiled_range.h>
 #include <shape.h>
 #include <tile.h>
 #include <local_array.h>

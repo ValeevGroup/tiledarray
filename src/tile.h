@@ -1,5 +1,5 @@
-#ifndef TILE_H__INCLUDED
-#define TILE_H__INCLUDED
+#ifndef TILEDARRAY_TILE_H__INCLUDED
+#define TILEDARRAY_TILE_H__INCLUDED
 
 #include <array_storage.h>
 #include <boost/shared_ptr.hpp>
@@ -39,7 +39,7 @@ namespace TiledArray {
     typedef typename range_type::index_type index_type;
     typedef typename range_type::size_array size_array;
     typedef typename range_type::const_iterator index_iterator;
-    typedef boost::shared_ptr<range_type> block_ptr;
+    typedef boost::shared_ptr<range_type> range_ptr;
     typedef boost::shared_ptr<const range_type> const_range_ptr;
     typedef boost::shared_ptr<data_container> data_ptr;
     typedef typename data_container::const_iterator const_iterator;
@@ -48,34 +48,34 @@ namespace TiledArray {
     static const unsigned int dim() { return DIM; }
 
     /// Default constructor, constructs an empty array.
-    Tile() : block_(), data_() { }
+    Tile() : range_(), data_() { }
 
-    /// Construct a tile given a block definition and initialize the data to
+    /// Construct a tile given a range definition and initialize the data to
     /// equal val.
-    Tile(const range_type& block, const value_type val = value_type()) :
-        block_(block), data_(block.size(), val)
+    Tile(const range_type& range, const value_type val = value_type()) :
+        range_(range), data_(range.size(), val)
     { }
 
-    /// Construct a tile given a block definition and initialize the data to
+    /// Construct a tile given a range definition and initialize the data to
     /// the values contained in the range [first, last).
     template <typename InIter>
-    Tile(const range_type& block, InIter first, InIter last) :
-    	block_(block), data_(block.size(), first, last)
+    Tile(const range_type& range, InIter first, InIter last) :
+    	range_(range), data_(range.size(), first, last)
     { }
 
 
     /// Constructs a tile given the dimensions of the tile.
     Tile(const size_array& size, const index_type& origin = index_type(), const value_type val = value_type()) :
-        block_(size, origin), data_(size, val)
+        range_(size, origin), data_(size, val)
     { }
 
     template <typename InIter>
     Tile(const size_array& size, const index_type& origin, InIter first, InIter last) :
-        block_(size, origin), data_(size, first, last)
+        range_(size, origin), data_(size, first, last)
     { }
 
     /// Copy constructor
-    Tile(const Tile& t) : block_(t.block_), data_(t.data_) { }
+    Tile(const Tile& t) : range_(t.range_), data_(t.data_) { }
 
     ~Tile() { }
 
@@ -85,12 +85,12 @@ namespace TiledArray {
     iterator end() { return data_.end(); } // no throw
     const_iterator end() const { return data_.end(); } // no throw
 
-    /// Returns the block information about this tile.
-    const index_type& start() const { return block_->start(); }
-    const index_type& finish() const { return block_->finish(); }
-    const size_array& size() const { return block_->size(); }
-    const typename range_type::volume_type volume() const { return block_->volume(); }
-    bool includes(const index_type& i) const { return block_->includes(i); }
+    /// Returns the range information about this tile.
+    const index_type& start() const { return range_->start(); }
+    const index_type& finish() const { return range_->finish(); }
+    const size_array& size() const { return range_->size(); }
+    const typename range_type::volume_type volume() const { return range_->volume(); }
+    bool includes(const index_type& i) const { return range_->includes(i); }
 
     /// Element access with range checking
     reference_type at(const ordinal_type& i) { return data_.at(i); }
@@ -146,7 +146,7 @@ namespace TiledArray {
     /// *iterator = gen(index_type&)
     template <typename Generator>
     Tile& assign(Generator gen) {
-      typename range_type::const_iterator b_it = block_.begin();
+      typename range_type::const_iterator b_it = range_.begin();
       for(iterator it = begin(); it != end(); ++it, ++b_it)
         *it = gen(*b_it);
 
@@ -155,12 +155,12 @@ namespace TiledArray {
 
     /// Resize the tile.
     void resize(const size_array& sizes, const value_type& val = value_type()) {
-      block_->resize(sizes);
-      data_->resize(block_->volume(), val);
+      range_->resize(sizes);
+      data_->resize(range_->volume(), val);
     }
 
     void set_origin(const index_type& origin) {
-      block_->set_origin(origin);
+      range_->set_origin(origin);
     }
 
     /// Permute the tile given a permutation.
@@ -181,17 +181,17 @@ namespace TiledArray {
 
     template <typename Archive>
     void serialize(const Archive& ar) {
-      ar & block_ & data_;
+      ar & range_ & data_;
     }
 
     void swap(Tile& other) {
-      block_.swap(other.block_);
+      range_.swap(other.range_);
       data_.swap(other.data_);
     }
 
   private:
 
-    range_type block_;
+    range_type range_;
     data_container data_;  // element data
 
     friend std::ostream& operator<< <>(std::ostream& , const Tile&);
@@ -203,7 +203,7 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,CS>& t) {
     Tile<T,DIM,CS> result(t);
-    result.block_ ^= p;
+    result.range_ ^= p;
     result.data_ ^= p;
 
     return result;
@@ -213,7 +213,7 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS> operator +(const Tile<T,DIM,CS>& t1, const Tile<T,DIM,CS>& t2) {
     assert( t1.size() == t2.size() );
-    Tile<T,DIM,CS> result(* t1.block());
+    Tile<T,DIM,CS> result(* t1.range());
     typename Tile<T,DIM,CS>::const_iterator it1 = t1.begin();
     typename Tile<T,DIM,CS>::const_iterator it2 = t2.begin();
     for(typename Tile<T,DIM,CS>::iterator itr = result.begin(); itr != result.end(); ++itr, ++it1, ++it2) {
@@ -275,4 +275,4 @@ namespace madness {
   }
 }
 
-#endif // TILE_H__INCLUDED
+#endif // TILEDARRAY_TILE_H__INCLUDED

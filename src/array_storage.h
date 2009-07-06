@@ -225,7 +225,7 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Resize the array. The current data common to both block is maintained.
+    /// Resize the array. The current data common to both arrays is maintained.
     /// Any new elements added have be assigned a value of val. If val is not
     /// specified, the default constructor will be used for new elements.
     DenseArrayStorage& resize(const size_array& size, value_type val = value_type()) {
@@ -508,7 +508,7 @@ namespace TiledArray {
 
     /// Resize the array.
 
-    /// This resize will maintain the data common to both block. Some
+    /// This resize will maintain the data common to both arrays. Some
     /// non-blocking communication will likely occur. Any new elements added
     /// have uninitialized data.
     DistributedArrayStorage& resize(const size_array& size) {

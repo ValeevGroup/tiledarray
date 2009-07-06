@@ -31,8 +31,8 @@ namespace TiledArray {
     typedef typename std::vector<element_range_type>::const_iterator const_iterator;
 
     /// Default constructor, range of 0 tiles and elements.
-    TiledRange1() : block_(0,0), element_block_(0,0),
-        tile_blocks_(1, tile_range_type(0,0)), elem2tile_(1, 0)
+    TiledRange1() : range_(0,0), element_range_(0,0),
+        tile_ranges_(1, tile_range_type(0,0)), elem2tile_(1, 0)
     {
       init_map_();
     }
@@ -41,15 +41,15 @@ namespace TiledArray {
     /// Start_tile_index is the index of the first tile.
     template <typename RandIter>
     TiledRange1(RandIter first, RandIter last, const index_type start_tile_index = 0) :
-        block_(), element_block_(), tile_blocks_(), elem2tile_()
+        range_(), element_range_(), tile_ranges_(), elem2tile_()
     {
       init_tiles_(first, last, start_tile_index);
       init_map_();
     }
 
     /// Copy constructor
-    TiledRange1(const TiledRange1& rng) : block_(rng.block_), element_block_(rng.element_block_),
-      tile_blocks_(rng.tile_blocks_), elem2tile_(rng.elem2tile_)
+    TiledRange1(const TiledRange1& rng) : range_(rng.range_), element_range_(rng.element_range_),
+      tile_ranges_(rng.tile_ranges_), elem2tile_(rng.elem2tile_)
     { }
 
     /// Assignment operator
@@ -67,38 +67,38 @@ namespace TiledArray {
     }
 
     /// Returns an iterator to the first tile in the range.
-    const_iterator begin() const { return tile_blocks_.begin(); }
+    const_iterator begin() const { return tile_ranges_.begin(); }
 
     /// Returns an iterator to the end of the range.
-    const_iterator end() const { return tile_blocks_.end(); }
+    const_iterator end() const { return tile_ranges_.end(); }
 
     /// Return tile iterator associated with tile_index_type
     const_iterator find(const tile_index_type& e) const{
-      if(! element_block_.includes(e))
-        return tile_blocks_.end();
-      const_iterator result = tile_blocks_.begin();
+      if(! element_range_.includes(e))
+        return tile_ranges_.end();
+      const_iterator result = tile_ranges_.begin();
       result += element2tile(e);
       return result;
     }
 
-    const range_type& tiles() const { return block_; }
-    const element_range_type& elements() const { return element_block_; }
+    const range_type& tiles() const { return range_; }
+    const element_range_type& elements() const { return element_range_; }
     const tile_range_type& tile(const index_type& i) {
-      return tile_blocks_.at(i - block_.start());
+      return tile_ranges_.at(i - range_.start());
     }
 
     /// Swap the data of this range with another.
     void swap(TiledRange1& other) { // no throw
-      block_.swap(other.block_);
-      element_block_.swap(other.element_block_);
-      std::swap(tile_blocks_, other.tile_blocks_);
+      range_.swap(other.range_);
+      element_range_.swap(other.element_range_);
+      std::swap(tile_ranges_, other.tile_ranges_);
       std::swap(elem2tile_, other.elem2tile_);
     }
 
     const index_type& element2tile(const tile_index_type& e) const {
-      TA_ASSERT( element_block_.includes(e) ,
+      TA_ASSERT( element_range_.includes(e) ,
           std::out_of_range("Range1<...>::element2tile(...): element index is out of range.") );
-      std::size_t i = e - element_block_.start();
+      std::size_t i = e - element_range_.start();
       return elem2tile_[i];
     }
 
@@ -125,31 +125,31 @@ namespace TiledArray {
     void init_tiles_(RandIter first, RandIter last, index_type start_tile_index) {
       TA_ASSERT( valid_(first, last) ,
           std::runtime_error("Range1<...>::init_tiles_(...): tile boundaries do not have the expected structure.") );
-      block_.resize(start_tile_index, start_tile_index + last - first - 1);
-      element_block_.resize(*first, *(last - 1));
+      range_.resize(start_tile_index, start_tile_index + last - first - 1);
+      element_range_.resize(*first, *(last - 1));
       for (; first != (last - 1); ++first)
-        tile_blocks_.push_back(tile_range_type(*first, *(first + 1)));
+        tile_ranges_.push_back(tile_range_type(*first, *(first + 1)));
     }
 
     /// Initialize secondary data
     void init_map_() {
       // check for 0 size range.
-      if(element_block_.size() == 0)
+      if(element_range_.size() == 0)
         return;
 
       // initialize elem2tile map
-      elem2tile_.resize(element_block_.size());
-      for(index_type t = 0; t < block_.size(); ++t)
-        for(tile_index_type e = tile_blocks_[t].start(); e < tile_blocks_[t].finish(); ++e)
-          elem2tile_[e - element_block_.start()] = t + block_.start();
+      elem2tile_.resize(element_range_.size());
+      for(index_type t = 0; t < range_.size(); ++t)
+        for(tile_index_type e = tile_ranges_[t].start(); e < tile_ranges_[t].finish(); ++e)
+          elem2tile_[e - element_range_.start()] = t + range_.start();
     }
 
     friend std::ostream& operator << <>(std::ostream&, const TiledRange1&);
 
     // TiledRange1 data
-    range_type block_; ///< stores the overall dimensions of the tiles.
-    element_range_type element_block_; ///< stores overall element dimensions.
-    std::vector<tile_range_type> tile_blocks_; ///< stores the dimensions of each tile.
+    range_type range_; ///< stores the overall dimensions of the tiles.
+    element_range_type element_range_; ///< stores overall element dimensions.
+    std::vector<tile_range_type> tile_ranges_; ///< stores the dimensions of each tile.
     std::vector<index_type> elem2tile_; ///< maps element index to tile index (secondary data).
 
   }; // class TiledRange1

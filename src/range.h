@@ -1,5 +1,5 @@
-#ifndef BLOCK_H__INCLUDED
-#define BLOCK_H__INCLUDED
+#ifndef TILEDARRAY_RANGE_H__INCLUDED
+#define TILEDARRAY_RANGE_H__INCLUDED
 
 #include <error.h>
 #include <coordinates.h>
@@ -21,30 +21,30 @@ namespace TiledArray {
   template <typename I, std::size_t DIM>
   I volume(const boost::array<I,DIM>&);
 
-  /// Block stores dimension information for a block of tiles or elements.
+  /// Range stores dimension information for a block of tiles or elements.
 
-  /// Block is used to obtain and/or store start, finish, size, and volume
+  /// Range is used to obtain and/or store start, finish, size, and volume
   /// information. It also provides index iteration over its range.
   template <typename I, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
   class Range {
   public:
-    typedef Range<I,DIM,Tag,CS> Block_;
+    typedef Range<I,DIM,Tag,CS> Range_;
     typedef ArrayCoordinate<I,DIM,Tag,CS> index_type;
     typedef I volume_type;
     typedef boost::array<I,DIM> size_array;
     typedef CS coordinate_system;
 
-    typedef detail::IndexIterator<index_type, Block_> const_iterator;
-    friend class detail::IndexIterator< index_type , Block_ >;
+    typedef detail::IndexIterator<index_type, Range_> const_iterator;
+    friend class detail::IndexIterator< index_type , Range_ >;
 
     static const unsigned int dim() { return DIM; }
 
-    /// Default constructor. The block has 0 size and the origin is set at 0.
+    /// Default constructor. The range has 0 size and the origin is set at 0.
     Range() :
         start_(0), finish_(0), size_(0)
     {}
 
-    /// Construct a block of size with the origin of the block set at 0 for all dimensions.
+    /// Construct a range of size with the origin set at 0 for all dimensions.
     Range(const size_array& size, const index_type& start = index_type(0)) :
         start_(start), finish_(start + size), size_(size)
     {
@@ -62,7 +62,7 @@ namespace TiledArray {
     }
 
     /// Copy Constructor
-    Range(const Block_& other) : // no throw
+    Range(const Range_& other) : // no throw
         start_(other.start_), finish_(other.finish_), size_(other.size_)
     {}
 
@@ -72,16 +72,16 @@ namespace TiledArray {
     const_iterator begin() const { return const_iterator(start_, this); }
     const_iterator end() const { return const_iterator(finish_, this); }
 
-    /// Returns the lower bound of the block
+    /// Returns the lower bound of the range
     const index_type& start() const { return start_; }
 
-    /// Returns the upper bound of the block
+    /// Returns the upper bound of the range
     const index_type& finish() const { return finish_; }
 
     /// Returns an array with the size of each dimension.
     const size_array& size() const { return size_.data(); }
 
-    /// Returns the number of elements in the block.
+    /// Returns the number of elements in the range.
     volume_type volume() const {
       volume_type result = 1;
       for(unsigned int d = 0; d < DIM; ++d)
@@ -89,22 +89,22 @@ namespace TiledArray {
       return result;
     }
 
-    /// Check the coordinate to make sure it is within the block range
+    /// Check the coordinate to make sure it is within the range.
     bool includes(const index_type& i) const {
       return (detail::less_eq<I,DIM>(start_.data(), i.data()) &&
           detail::less<I,DIM>(i.data(), finish_.data()));
     }
 
     /// Assignment Operator.
-    Block_& operator =(const Block_& other) {
-      Range temp(other);
+    Range_& operator =(const Range_& other) {
+      Range_ temp(other);
       swap(temp);
       return *this;
     }
 
     /// Permute the tile given a permutation.
-    Block_& operator ^=(const Permutation<DIM>& p) {
-      Range temp(*this);
+    Range_& operator ^=(const Permutation<DIM>& p) {
+      Range_ temp(*this);
   	  temp.start_ ^= p;
   	  temp.finish_ ^= p;
   	  temp.size_ ^= p;
@@ -113,16 +113,16 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Change the dimensions of the block.
-    Range& resize(const index_type& start, const index_type& finish) {
-      Range temp(start, finish);
+    /// Change the dimensions of the range.
+    Range_& resize(const index_type& start, const index_type& finish) {
+      Range_ temp(start, finish);
       swap(temp);
       return *this;
     }
 
-    /// Change the dimensions of the block.
-    Range& resize(const size_array& size) {
-      Range temp(size, start_);
+    /// Change the dimensions of the range.
+    Range_& resize(const size_array& size) {
+      Range_ temp(size, start_);
       swap(temp);
       return *this;
     }
@@ -132,7 +132,7 @@ namespace TiledArray {
       ar & start_ & finish_ & size_;
     }
 
-    void swap(Range& other) { // no throw
+    void swap(Range_& other) { // no throw
       ::TiledArray::swap(start_, other.start_);
       ::TiledArray::swap(finish_, other.finish_);
       ::TiledArray::swap(size_, other.size_);
@@ -159,8 +159,8 @@ namespace TiledArray {
     return result;
   }
 
-  /// Return the union of two block (i.e. the overlap). If the blocks do not
-  /// overlap, then a 0 size block will be returned.
+  /// Return the union of two range (i.e. the overlap). If the ranges do not
+  /// overlap, then a 0 size range will be returned.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   Range<I,DIM,Tag,CS> operator &(const Range<I,DIM,Tag,CS>& b1, const Range<I,DIM,Tag,CS>& b2) {
     Range<I,DIM,Tag,CS> result;
@@ -185,7 +185,7 @@ namespace TiledArray {
     return result;
   }
 
-  /// Returns a permuted block.
+  /// Returns a permuted range.
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   Range<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& perm, const Range<T,DIM,Tag,CS>& b) {
     const typename Range<T,DIM,Tag,CS>::index_type s = perm ^ b.start();
@@ -211,22 +211,22 @@ namespace TiledArray {
     return ( b1.start() != b2.start() ) || ( b1.finish() != b2.finish() );
   }
 
-  // 1D block specialization
+  // 1D range specialization
   template <typename I, typename Tag, typename CS >
   class Range<I,1,Tag,CS> {
   public:
-    typedef Range<I,1,Tag,CS> Block_;
+    typedef Range<I,1,Tag,CS> Range_;
     typedef I index_type;
     typedef I volume_type;
     typedef I size_array;
     typedef CS coordinate_system;
 
-    typedef detail::IndexIterator<index_type, Range> const_iterator;
-    friend class detail::IndexIterator< index_type , Range >;
+    typedef detail::IndexIterator<index_type, Range_> const_iterator;
+    friend class detail::IndexIterator< index_type , Range_ >;
 
     static const unsigned int dim() { return 1; }
 
-    /// Default constructor. The block has 0 size and the origin is set at 0.
+    /// Default constructor. The range has 0 size and the origin is set at 0.
     Range() :
         start_(0), finish_(0), size_(0)
     {}
@@ -241,7 +241,7 @@ namespace TiledArray {
     }
 
     /// Copy Constructor
-    Range(const Block_& other) : // no throw
+    Range(const Range_& other) : // no throw
         start_(other.start_), finish_(other.finish_), size_(other.size_)
     {}
 
@@ -251,27 +251,27 @@ namespace TiledArray {
     const_iterator begin() const { return const_iterator(start_, this); }
     const_iterator end() const { return const_iterator(finish_, this); }
 
-    /// Returns the lower bound of the block
+    /// Returns the lower bound of the range
     const index_type& start() const { return start_; }
 
-    /// Returns the upper bound of the block
+    /// Returns the upper bound of the range
     const index_type& finish() const { return finish_; }
 
     /// Returns an array with the size of each dimension.
     const size_array& size() const { return size_; }
 
-    /// Returns the number of elements in the block.
+    /// Returns the number of elements in the range.
     volume_type volume() const {
       return size_;
     }
 
-    /// Check the coordinate to make sure it is within the block range
+    /// Check the coordinate to make sure it is within the range range
     bool includes(const index_type& i) const {
       return ((start_ <= i) && (i < finish_));
     }
 
     /// Assignment Operator.
-    Range& operator =(const Range& other) {
+    Range_& operator =(const Range_& other) {
       start_ = other.start_;
       finish_ = other.finish_;
       size_ = other.size_;
@@ -279,20 +279,20 @@ namespace TiledArray {
     }
 
     /// Permute the tile given a permutation.
-    Range& operator ^=(const Permutation<1>& p) {
+    Range_& operator ^=(const Permutation<1>& p) {
       return *this;
     }
 
-    /// Change the dimensions of the block.
-    Range& resize(const index_type& start, const index_type& finish) {
+    /// Change the dimensions of the range.
+    Range_& resize(const index_type& start, const index_type& finish) {
       start_ = start;
       finish_ = finish;
       size_ = finish - start;
       return *this;
     }
 
-    /// Change the dimensions of the block.
-    Range& resize(const size_array& size) {
+    /// Change the dimensions of the range.
+    Range_& resize(const size_array& size) {
       finish_ = start_ + size_;
       size_ = size;
       return *this;
@@ -303,7 +303,7 @@ namespace TiledArray {
       ar & start_ & finish_ & size_;
     }
 
-    void swap(Range& other) { // no throw
+    void swap(Range_& other) { // no throw
       std::swap(start_, other.start_);
       std::swap(finish_, other.finish_);
       std::swap(size_, other.size_);
@@ -321,8 +321,8 @@ namespace TiledArray {
 
   }; // class Range
 
-  /// Return the union of two block (i.e. the overlap). If the blocks do not
-  /// overlap, then a 0 size block will be returned.
+  /// Return the union of two ranges (i.e. the overlap). If the ranges do not
+  /// overlap, then a 0 size range will be returned.
   template <typename I, typename Tag, typename CS>
   Range<I,1,Tag,CS> operator &(const Range<I,1,Tag,CS>& b1, const Range<I,1,Tag,CS>& b2) {
     Range<I,1,Tag,CS> result;
@@ -346,7 +346,7 @@ namespace TiledArray {
     return result;
   }
 
-  /// Returns a permuted block.
+  /// Returns a permuted range.
   template <typename T, typename Tag, typename CS>
   Range<T,1,Tag,CS> operator ^(const Permutation<1>& perm, const Range<T,1,Tag,CS>& b) {
     return b;
@@ -360,4 +360,4 @@ namespace TiledArray {
   }
 
 } // namespace TiledArray
-#endif // BLOCK_H__INCLUDED
+#endif // TILEDARRAY_RANGE_H__INCLUDED
