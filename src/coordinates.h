@@ -53,7 +53,7 @@ namespace TiledArray {
       > > > > > >
   {
   public:
-	typedef ArrayCoordinate<I,DIM,Tag,CS> ArrayCoordinate_;
+    typedef ArrayCoordinate<I,DIM,Tag,CS> ArrayCoordinate_;
     typedef I index;
     typedef I volume;
     typedef CS coordinate_system;
@@ -68,7 +68,14 @@ namespace TiledArray {
     ArrayCoordinate(InIter start, InIter finish) { std::copy(start,finish,r_.begin()); }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { } // no throw
     ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { } // no throw
-    /// Variable argument list constructor.
+    /// Constant index constructor.
+
+    /// Constructs an ArrayCoordinate with the specified constants. For example,
+    /// ArrayCoordinate<std::size_t, 4, p(0, 1, 2, 3); would construct a point with the
+    /// coordinates (0, 1, 2, 3).
+    /// Note: The compiler gets confused when constructing a 2D array coordinate
+    /// with this function. To work around this problem specify constant type.
+    /// For example
     ArrayCoordinate(const index c0, const index c1, ...) {
       va_list ap;
       va_start(ap, c1);

@@ -64,11 +64,11 @@ BOOST_AUTO_TEST_CASE( make_functions )
 {
   Point3 p1 = Point3::make(1,2,3);
   BOOST_TEST_MESSAGE("Class Make Function");
-  BOOST_CHECK_EQUAL_COLLECTIONS(p1.data().begin(), p1.data().end(), a.begin(), a.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(p1.data().begin(), p1.data().end(), a.begin(), a.end()); // check for correct creation of point
 
   Point3 p2 = make_coord<Point3>(1,2,3);
   BOOST_TEST_MESSAGE("Free Make Function");
-  BOOST_CHECK_EQUAL_COLLECTIONS(p2.data().begin(), p2.data().end(), a.begin(), a.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(p2.data().begin(), p2.data().end(), a.begin(), a.end()); // check for correct creation of point
 }
 
 BOOST_AUTO_TEST_CASE( element_access )
@@ -89,14 +89,14 @@ BOOST_AUTO_TEST_CASE( iteration )
 {
   BOOST_TEST_MESSAGE("iterator begin, end, and dereferenc");
   boost::array<std::size_t, 3> a = {{1, 2, 3}};
-  BOOST_CHECK_EQUAL( const_iteration_test(p, a.begin(), a.end()), 3);
+  BOOST_CHECK_EQUAL( const_iteration_test(p, a.begin(), a.end()), 3); // check for basic iteration functionality
 
   Point3 p1(p);
   std::size_t i = 3;
   BOOST_TEST_MESSAGE("Iterator dereference assignment");
   for(Point3::iterator it = p1.begin(); it != p1.end(); ++it, ++i) {
     *it = i;
-    BOOST_CHECK_EQUAL(*it, i);
+    BOOST_CHECK_EQUAL(*it, i); // check iterator assignment.
   }
 }
 
@@ -104,20 +104,20 @@ BOOST_AUTO_TEST_CASE( assignment )
 {
   Point3 p1;
   p1 = p;
-  BOOST_CHECK_EQUAL_COLLECTIONS( p.begin(), p.end(), p1.begin(), p1.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS( p.begin(), p.end(), p1.begin(), p1.end()); // check for equality
   p1[0] = 4;
-  BOOST_CHECK_EQUAL( p1[0], 4);
+  BOOST_CHECK_EQUAL( p1[0], 4); // check individual element assignment.
   p1.at(1) = 5;
-  BOOST_CHECK_EQUAL( p1.at(1), 5);
+  BOOST_CHECK_EQUAL( p1.at(1), 5); // check individual element assignment with range checking.
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
 {
   boost::test_tools::output_test_stream output;
   output << p;
-  BOOST_CHECK( !output.is_empty( false ) );
-  BOOST_CHECK( output.check_length( 9, false ) );
-  BOOST_CHECK( output.is_equal( "(1, 2, 3)" ) );
+  BOOST_CHECK( !output.is_empty( false ) );       // check that the string was assigned.
+  BOOST_CHECK( output.check_length( 9, false ) ); // check for correct length.
+  BOOST_CHECK( output.is_equal( "(1, 2, 3)" ) );  // check for correct output.
 }
 
 BOOST_AUTO_TEST_CASE( c_comparisons )
@@ -136,22 +136,22 @@ BOOST_AUTO_TEST_CASE( c_comparisons )
   Point2 p8(2ul,2ul);
   Point2 pp(1ul,1ul);
 
-  BOOST_CHECK_LT(p0, pp);
-  BOOST_CHECK_LT(p1, pp);
-  BOOST_CHECK_LT(p2, pp);
-  BOOST_CHECK_LT(p3, pp);
-  BOOST_CHECK_LE(p3, pp);
-  BOOST_CHECK_LE(p4, pp);
-  BOOST_CHECK_EQUAL(p4, pp);
-  BOOST_CHECK_GE(p4, pp);
-  BOOST_CHECK_GE(p5, pp);
-  BOOST_CHECK_GT(p5, pp);
-  BOOST_CHECK_GT(p6, pp);
-  BOOST_CHECK_GT(p7, pp);
-  BOOST_CHECK_GT(p8, pp);
-  BOOST_CHECK_NE(p1, pp);
+  BOOST_CHECK(p0 < pp);  // check comparison operators for success.
+  BOOST_CHECK(p1 < pp);  // check for correct lexicographical comparison order.
+  BOOST_CHECK(p2 < pp);
+  BOOST_CHECK(p3 < pp);
+  BOOST_CHECK(p3 < pp);
+  BOOST_CHECK(p4 <= pp);
+  BOOST_CHECK(p4 == pp);
+  BOOST_CHECK(p4 >= pp);
+  BOOST_CHECK(p5 > pp);
+  BOOST_CHECK(p5 > pp);
+  BOOST_CHECK(p6 > pp);
+  BOOST_CHECK(p7 > pp);
+  BOOST_CHECK(p8 > pp);
+  BOOST_CHECK(p1 != pp);
 
-  BOOST_CHECK( ! (p0 > pp) );
+  BOOST_CHECK( ! (p0 > pp) ); // check for comparison failures.
   BOOST_CHECK( ! (p1 > pp) );
   BOOST_CHECK( ! (p2 > pp) );
   BOOST_CHECK( ! (p3 > pp) );
@@ -180,8 +180,8 @@ BOOST_AUTO_TEST_CASE( fortran_comparisons )
   FPoint2 p8(2ul,2ul);
   FPoint2 pp(1ul,1ul);
 
-  BOOST_CHECK_LT(p0, pp);
-  BOOST_CHECK_LT(p1, pp);
+  BOOST_CHECK_LT(p0, pp);    // check for correct lexicographical comparisons
+  BOOST_CHECK_LT(p1, pp);    // for fortran ordering.
   BOOST_CHECK_LT(p2, pp);
   BOOST_CHECK_LT(p3, pp);
   BOOST_CHECK_LE(p3, pp);
@@ -216,10 +216,10 @@ BOOST_AUTO_TEST_CASE( math )
   Point3 p3(3);
   Point3 pa(p1);
 
-  BOOST_CHECK_EQUAL( p1 + p2, p3 );
-  BOOST_CHECK_EQUAL( p3 - p1, p2 );
-  BOOST_CHECK_EQUAL( pa += p2, p3 );
-  BOOST_CHECK_EQUAL( pa -= p2, p1 );
+  BOOST_CHECK_EQUAL( p1 + p2, p3 );  // check addition operator
+  BOOST_CHECK_EQUAL( p3 - p1, p2 );  // check subtraction operator
+  BOOST_CHECK_EQUAL( pa += p2, p3 ); // check addition assignment operator
+  BOOST_CHECK_EQUAL( pa -= p2, p1 ); // check subtraction assignment operator
 }
 
 BOOST_AUTO_TEST_CASE( c_incrmentation )
@@ -227,29 +227,29 @@ BOOST_AUTO_TEST_CASE( c_incrmentation )
   Point3 p1(1);
   Point3 pa(p1);
   ++pa;
-  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( pa[0], 1 );  // check that the point was incremented
   BOOST_CHECK_EQUAL( pa[1], 1 );
   BOOST_CHECK_EQUAL( pa[2], 2 );
 
-  BOOST_CHECK_EQUAL( (--pa), p1 );
-  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( (--pa), p1 ); // check that decrement returns the decremented object.
+  BOOST_CHECK_EQUAL( pa[0], 1 );   // check that the point was decremented.
   BOOST_CHECK_EQUAL( pa[1], 1 );
   BOOST_CHECK_EQUAL( pa[2], 1 );
 
-  BOOST_CHECK_EQUAL( (pa++), p1 );
-  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( (pa++), p1 ); // check that increment returns the initial value.
+  BOOST_CHECK_EQUAL( pa[0], 1 );   // check that the point was incremented.
   BOOST_CHECK_EQUAL( pa[1], 1 );
   BOOST_CHECK_EQUAL( pa[2], 2 );
 
   --pa;
   --pa;
-  BOOST_CHECK_EQUAL( (++pa), p1);
-  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( (++pa), p1); // check that increment returns the incremented object.
+  BOOST_CHECK_EQUAL( pa[0], 1 );  // check that the
   BOOST_CHECK_EQUAL( pa[1], 1 );
   BOOST_CHECK_EQUAL( pa[2], 1 );
 
-  BOOST_CHECK_EQUAL( (pa--), p1);
-  BOOST_CHECK_EQUAL( pa[0], 1 );
+  BOOST_CHECK_EQUAL( (pa--), p1); // check that decrement returns the initial value.
+  BOOST_CHECK_EQUAL( pa[0], 1 );  // check that the point was decremented.
   BOOST_CHECK_EQUAL( pa[1], 1 );
   BOOST_CHECK_EQUAL( pa[2], 0 );
 }

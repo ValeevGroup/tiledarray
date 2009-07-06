@@ -5,8 +5,10 @@
 #include <iostream>
 #include <math.h>
 #include <utility>
-#define WORLD_INSTANTIATE_STATIC_TEMPLATES
-#include <world/world.h>
+#include <boost/test/unit_test.hpp>
+#include <boost/test/output_test_stream.hpp>
+
+using namespace TiledArray;
 
 // Element Generation object test.
 template<typename T, typename Index>
@@ -25,7 +27,53 @@ public:
   }
 };
 
-using namespace TiledArray;
+struct TileFixture {
+  typedef Tile<double, 3> Tile3;
+  typedef Tile3::size_array size_array;
+  TileFixture() {
+    s[0] = s[1] = s[2] = 10;
+    t.resize(s, 1);
+
+  }
+
+  ~TileFixture() { }
+
+  Tile3 t;
+  size_array s;
+};
+
+Tile<double, 3> add(Tile<double, 3>& t, int s) {
+  Tile<double, 3> result(t);
+  for(Tile<double, 3>::iterator it = t.begin(); it != t.end(); ++it)
+    *it += s;
+
+  return result;
+}
+
+BOOST_FIXTURE_TEST_SUITE( tile_suite , TileFixture )
+
+BOOST_AUTO_TEST_CASE( math_time_1 )
+{
+  Tile3 t1(s, 0);
+  int s = 1;
+  for(unsigned int i = 0; i < 1000; ++i) {
+    t1 = add(t, s);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( math_time_2 )
+{
+  Tile3 t1(s, 0);
+  int s = 1;
+  for(unsigned int i = 0; i < 1000; ++i) {
+    t1 = t + s;
+  }
+}
+
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
 /*
 void TileTest() {
 

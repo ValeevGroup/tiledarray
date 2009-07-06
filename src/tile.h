@@ -4,8 +4,10 @@
 #include <array_storage.h>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 //#include <world/archive.h>
 #include <iosfwd>
+#include <functional>
 #include <cstddef>
 
 namespace TiledArray {
@@ -23,25 +25,22 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename CS>
   std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,CS>& t);
 
-  /// Tile is a multidimensional dense array, the dimensions of the tile are constant.
+  /// Tile is a multi-dimensional dense array.
   template<typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Tile
   {
+    typedef DenseArrayStorage<T, DIM, LevelTag<0>, CS > data_container;
   public:
-	typedef Tile<T, DIM, CS> Tile_;
+    typedef Tile<T, DIM, CS> Tile_;
     typedef T value_type;
-    typedef T& reference_type;
+    typedef T & reference_type;
     typedef const T & const_reference_type;
     typedef CS coordinate_system;
-	typedef DenseArrayStorage<value_type, DIM, LevelTag<0>, coordinate_system > data_container;
     typedef typename data_container::ordinal_type ordinal_type;
     typedef Range<ordinal_type, DIM, LevelTag<0>, coordinate_system > range_type;
     typedef typename range_type::index_type index_type;
     typedef typename range_type::size_array size_array;
     typedef typename range_type::const_iterator index_iterator;
-    typedef boost::shared_ptr<range_type> range_ptr;
-    typedef boost::shared_ptr<const range_type> const_range_ptr;
-    typedef boost::shared_ptr<data_container> data_ptr;
     typedef typename data_container::const_iterator const_iterator;
     typedef typename data_container::iterator iterator;
 
@@ -52,8 +51,21 @@ namespace TiledArray {
 
     /// Construct a tile given a range definition and initialize the data to
     /// equal val.
-    Tile(const range_type& range, const value_type val = value_type()) :
+    Tile(const range_type& range) :
+        range_(range), data_(range.size(), value_type())
+    { }
+
+    /// Construct a tile given a range definition and initialize the data to
+    /// equal val.
+    Tile(const range_type& range, const value_type val) :
         range_(range), data_(range.size(), val)
+    { }
+
+    /// Construct a tile given a range definition and initialize the data to
+    /// equal val.
+    template<typename U>
+    Tile(const range_type& range, const U val) :
+        range_(range), data_(range.size(), static_cast<T>(val))
     { }
 
     /// Construct a tile given a range definition and initialize the data to
@@ -65,7 +77,7 @@ namespace TiledArray {
 
 
     /// Constructs a tile given the dimensions of the tile.
-    Tile(const size_array& size, const index_type& origin = index_type(), const value_type val = value_type()) :
+    Tile(const size_array& size, const index_type& origin, const value_type val) :
         range_(size, origin), data_(size, val)
     { }
 
@@ -92,73 +104,40 @@ namespace TiledArray {
     const typename range_type::volume_type volume() const { return range_->volume(); }
     bool includes(const index_type& i) const { return range_->includes(i); }
 
+    /// return a constant reference to the tile range.
+    const range_type& range() const { return range_; }
+
+    // The at() functions do error checking, but we do not need to implement it
+    // here because the data container already does that. There is no need to do
+    // it twice.
     /// Element access with range checking
     reference_type at(const ordinal_type& i) { return data_.at(i); }
+    /// Element access with range checking
     const_reference_type at(const ordinal_type& i) const { return data_.at(i); }
+    /// Element access with range checking
     reference_type at(const index_type& i){ return data_.at(i); }
+    /// Element access with range checking
     const_reference_type at(const index_type& i) const { return data_.at(i); }
 
     /// Element access without error checking
-    reference_type operator [](const ordinal_type& i) {
-#ifdef NDEBUG
-      return data_[i];
-#else
-      return data_.at(i);
-#endif
+    reference_type operator [](const ordinal_type& i) { return data_[i]; }
+    /// Element access without error checking
+    const_reference_type operator [](const ordinal_type& i) const { return data_[i]; }
+    /// Element access without error checking
+    reference_type operator [](const index_type& i) { return data_[i]; }
+    /// Element access without error checking
+    const_reference_type operator [](const index_type& i) const { return data_[i]; }
+
+    /// Resize the tile. Any new elements added to the array will be initialized
+    /// with val. If val is not specified, new elements will be initialized with
+    /// the default constructor.
+    void resize(const size_array& size, const value_type& val = value_type()) {
+      range_.resize(size);
+      data_.resize(size, val);
     }
 
-    const_reference_type operator [](const ordinal_type& i) const {
-#ifdef NDEBUG
-      return data_[i];
-#else
-      return data_.at(i);
-#endif
-    }
-
-    reference_type operator [](const index_type& i) {
-#ifdef NDEBUG
-      return data_[i];
-#else
-      return data_.at(i);
-#endif
-    }
-
-    /// Element access using the element index without error checking
-    const_reference_type operator [](const index_type& i) const {
-#ifdef NDEBUG
-      retrun data_[i];
-#else
-      return data_.at(i);
-#endif
-    }
-
-    /// Assigns a value to the specified range of element in tile.
-    /// *iterator = gen(index_type&)
-    template <typename Generator>
-    Tile& assign(index_iterator first, index_iterator last, Generator gen) {
-      for(; first != last; ++first)
-        data_[ *first ] = gen( *first );
-
-      return *this;
-    }
-
-    /// Assigns a value to each element in tile.
-    /// *iterator = gen(index_type&)
-    template <typename Generator>
-    Tile& assign(Generator gen) {
-      typename range_type::const_iterator b_it = range_.begin();
-      for(iterator it = begin(); it != end(); ++it, ++b_it)
-        *it = gen(*b_it);
-
-      return *this;
-    }
-
-    /// Resize the tile.
-    void resize(const size_array& sizes, const value_type& val = value_type()) {
-      range_->resize(sizes);
-      data_->resize(range_->volume(), val);
-    }
-
+    /// Move the origin of the tile to the given index. The overall size and
+    /// data are unaffected.
     void set_origin(const index_type& origin) {
       range_->set_origin(origin);
     }
@@ -199,6 +178,29 @@ namespace TiledArray {
 
   }; // class Tile
 
+  namespace detail {
+    /// Tile-Tile operation
+    template<typename T, unsigned int DIM, typename CS, typename Op>
+    struct TileOp : std::binary_function<Tile<T,DIM,CS>, Tile<T,DIM,CS>, Tile<T,DIM,CS> > {
+      Tile<T,DIM,CS> operator ()(const Tile<T,DIM,CS>& t1, const Tile<T,DIM,CS>& t2) {
+        Tile<T,DIM,CS> result(* t1.range());
+        std::transform(t1.begin(), t1.end(), t2.begin(), result.begin(), Op());
+
+        return result;
+      }
+    };
+
+    /// Tile-Tile operation
+    template<typename S, typename T, unsigned int DIM, typename CS, typename Op>
+    struct TileScalerOp : std::binary_function<Tile<T,DIM,CS>, Tile<T,DIM,CS>, Tile<T,DIM,CS> > {
+      Tile<T,DIM,CS> operator ()(const Tile<T,DIM,CS>& t, S s) {
+        return Tile<T,DIM,CS>(t.range(),
+            boost::make_transform_iterator(t.begin(), std::bind2nd<Op,T>(Op(), s)),
+            boost::make_transform_iterator(t.end(), std::bind2nd<Op,T>(Op(), s)));
+      }
+    };
+  }
+
   /// Permute the tile given a permutation.
   template<typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,CS>& t) {
@@ -212,17 +214,46 @@ namespace TiledArray {
   /// sum two tiles
   template<typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS> operator +(const Tile<T,DIM,CS>& t1, const Tile<T,DIM,CS>& t2) {
-    assert( t1.size() == t2.size() );
-    Tile<T,DIM,CS> result(* t1.range());
-    typename Tile<T,DIM,CS>::const_iterator it1 = t1.begin();
-    typename Tile<T,DIM,CS>::const_iterator it2 = t2.begin();
-    for(typename Tile<T,DIM,CS>::iterator itr = result.begin(); itr != result.end(); ++itr, ++it1, ++it2) {
-      *itr = *it1 + *it2;
-    }
-
-    return result;
+    TA_ASSERT( t1.size() == t2.size() ,
+        std::runtime_error("operator+(const Tile<T,DIM,CS>&, const Tile<T,DIM,CS>&): Tile dimensions do not match.") );
+    detail::TileOp<T,DIM,CS,std::plus<T> > p;
+    return p(t1,t2);
   }
 
+  /// add a scaler to each tile element.
+  template<typename T, unsigned int DIM, typename CS, typename S>
+  Tile<T,DIM,CS> operator +(const Tile<T,DIM,CS>& t, S s) {
+    detail::TileScalerOp<S,T,DIM,CS,std::plus<T> > op;
+    return op(t,s);
+  }
+
+  /// add a scaler to each tile element.
+  template<typename T, unsigned int DIM, typename CS, typename S>
+  Tile<T,DIM,CS> operator -(const Tile<T,DIM,CS>& t, S s) {
+    detail::TileScalerOp<S,T,DIM,CS,std::minus<T> > op;
+    return op(t,s);
+  }
+
+  /// add a scaler to each tile element.
+  template<typename T, unsigned int DIM, typename CS, typename S>
+  Tile<T,DIM,CS> operator *(const Tile<T,DIM,CS>& t, S s) {
+    detail::TileScalerOp<S,T,DIM,CS,std::plus<T> > op;
+    return op(t,s);
+  }
+
+  /// add a scaler to each tile element.
+  template<typename T, unsigned int DIM, typename CS, typename S>
+  Tile<T,DIM,CS> operator *(S s, const Tile<T,DIM,CS>& t) {
+    detail::TileScalerOp<S,T,DIM,CS,std::plus<T> > op;
+    return op(t,s);
+  }
+
+  /// add a scaler to each tile element.
+  template<typename T, unsigned int DIM, typename CS>
+  Tile<T,DIM,CS> operator -(const Tile<T,DIM,CS>& t) {
+    detail::TileScalerOp<T,T,DIM,CS,std::multiplies<T> > op;
+    return op(t,-1);
+  }
 
   /// ostream output orperator.
   template<typename T, unsigned int DIM, typename CS>
@@ -249,6 +280,57 @@ namespace TiledArray {
     }
     out << " }";
     return out;
+  }
+
+  /// Assigns a value to the specified range of element in tile with a generator function.
+
+  /// \arg \c res The results of \c gen()  will be placed in this tile.
+  /// \arg \c first, \c last input iterators, which point to a list of indexes.
+  /// \arg \c gen Function or functor object used to generate the data.
+  ///
+  /// This function assigns values to \c res for the given index
+  /// list ( specified by \c InIter \c first and \c InIter \c last ) with
+  /// \c Generator \c gen. /c first and /c last may dereference to
+  /// \c Tile<T,DIM,CS>::index_type or \c Tile<T,DIM,CS>::ordinal_type. The
+  /// function or functor object \c gen must accept a single argument of
+  /// \c InIter::value_type and have a return type of \c Tile<T,DIM,CS>::value_type.
+  /// Elements are assigned in the following manner:
+  /// \code
+  /// for(; first != last; ++first)
+  ///   t[ *first ] = gen( *first );
+  /// \endcode
+  /// Note: Range<> may be used to define a specific of indexes and create the
+  /// index iterators.
+  template<typename T, unsigned int DIM, typename CS, typename InIter, typename Generator>
+  Tile<T, DIM, CS>& generate(Tile<T, DIM, CS>& res, InIter first, InIter last, Generator gen) {
+    for(; first != last; ++first)
+      res[ *first ] = gen( *first );
+
+    return res;
+  }
+
+  /// Assigns a value to the specified range of element in tile with a generator function.
+
+  /// \arg \c res The results of \c gen()  will be placed in this tile.
+  /// \arg \c gen Function or functor object used to generate the data.
+  ///
+  /// This function assigns values to all elements of \c res with \c Generator
+  /// \c gen.  The function or functor object \c gen must
+  /// accept a single argument of \c Tile<T,DIM,CS>::::index_type and have a
+  /// return type of \c Tile<T,DIM,CS>::value_type. Elements are assigned in
+  /// the following manner:
+  /// \code
+  /// typename Tile<T, DIM, CS>::range_type::const_iterator r_it = res.range().begin();
+  /// for(typename Tile<T, DIM, CS>::iterator it = res.begin(); it != res.end(); ++it, ++r_it)
+  ///   *it = gen(*r_it);
+  /// \endcode
+  template<typename T, unsigned int DIM, typename CS, typename Generator>
+  Tile<T, DIM, CS>& generate(Tile<T, DIM, CS>& res, Generator gen) {
+    typename Tile<T, DIM, CS>::range_type::const_iterator r_it = res.range().begin();
+    for(typename Tile<T, DIM, CS>::iterator it = res.begin(); it != res.end(); ++it, ++r_it)
+      *it = gen(*r_it);
+
+    return res;
   }
 
 } // namespace TiledArray

@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <algorithm>
 #include <memory>
+#include <numeric>
 #include <stdexcept>
 
 namespace TiledArray {
@@ -29,8 +30,8 @@ namespace TiledArray {
     boost::array<I,DIM> calc_weight(const boost::array<I,DIM>&);
     template <typename I, std::size_t DIM>
     I volume(const boost::array<I,DIM>& a);
-    template <typename I, unsigned long int DIM>
-    I dot_product(const boost::array<I,DIM>& A, const boost::array<I,DIM>& B);
+/*    template <typename I, unsigned long int DIM>
+    I dot_product(const boost::array<I,DIM>& A, const boost::array<I,DIM>& B);*/
     template <typename I, unsigned int DIM, typename CS>
     bool less(const boost::array<I,DIM>&, const boost::array<I,DIM>&);
   } // namespace detail
@@ -97,8 +98,8 @@ namespace TiledArray {
       ordinal_type ordinal(const index_type& i) const {
         TA_ASSERT(includes(i),
             std::out_of_range("ArrayDim<...>::ordinal(...): Index is not included in the array range."));
-        ordinal_type result = detail::dot_product(i.data(), weight_);
-        return result;
+        const typename index_type::index init = 0;
+        return std::inner_product(i.data().begin(), i.data().end(), weight_.begin(), init);
       }
 
       /// Sets the size of object to the given size.
@@ -112,7 +113,8 @@ namespace TiledArray {
       /// This function is overloaded so it can be called by template functions.
       /// No range checking is done. This function will not throw.
       ordinal_type ord(const index_type& i) const { // no throw
-        return detail::dot_product(i.data(), weight_);
+        const typename index_type::index init = 0;
+        return std::inner_product(i.data().begin(), i.data().end(), weight_.begin(), init);
       }
 
       ordinal_type ord(const ordinal_type i) const { return i; } // no throw
@@ -739,7 +741,7 @@ namespace TiledArray {
         result *= ( a[d] < 0 ? -a[d] : a[d] );
       return result;
     }
-
+/*
     /// compute dot product between 2 arrays
     template <typename I, unsigned long int DIM>
     I dot_product(const boost::array<I,DIM>& A, const boost::array<I,DIM>& B) {
@@ -748,6 +750,7 @@ namespace TiledArray {
         result += A[dim] * B[dim];
       return result;
     }
+*/
   } // namespace detail
 } // namespace TiledArray
 

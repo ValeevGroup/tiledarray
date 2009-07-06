@@ -4,7 +4,7 @@ VPATH = src:Tests
 CXX = $(MPICXX)
 INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -DTA_EXCEPTION_ERROR
 LIBS = -lMADworld
-CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR)
+CXXFLAGS = -O3 -Wall -fmessage-length=0 $(INCDIR)
 
 OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/rangetest.o \
   Tests/tiledrange1test.o Tests/arraystoragetest.o Tests/tiledrangetest.o Tests/shapetest.o \
@@ -56,5 +56,6 @@ check_block:
 check_range1:
 	./TiledArrayTest --log_level=test_suite --run_test=range1_suite
 
+.PHONY: clean
 clean:
 	rm -f $(OBJS) $(TARGET)
