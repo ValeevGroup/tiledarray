@@ -4,7 +4,7 @@ VPATH = src:Tests
 CXX = $(MPICXX)
 INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -DTA_EXCEPTION_ERROR
 LIBS = -lMADworld
-CXXFLAGS = -O3 -Wall -fmessage-length=0 $(INCDIR)
+CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR)
 
 OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/rangetest.o \
   Tests/tiledrange1test.o Tests/arraystoragetest.o Tests/tiledrangetest.o Tests/shapetest.o \

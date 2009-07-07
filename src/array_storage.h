@@ -357,14 +357,13 @@ namespace TiledArray {
     /// the remaining elements will be initialized with the default constructor.
     template <typename InIter>
     void create(InIter first, InIter last) {
-      value_type val;
       data_ = alloc_.allocate(dim_.n_);
       for(ordinal_type i = 0; i < dim_.n_; ++i) {
         if(first != last) {
           alloc_.construct(data_ + i, *first);
           ++first;
         } else {
-          alloc_.construct(data_ + i, val);
+          alloc_.construct(data_ + i, value_type());
         }
       }
     }

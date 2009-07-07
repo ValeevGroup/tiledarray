@@ -162,6 +162,14 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(a3.volume(), v);
   for(DAS3::ordinal_type i = 0; i < v; ++i)
     BOOST_CHECK_EQUAL(a3.at(i), 1); // check for expected values.
+
+  BOOST_REQUIRE_NO_THROW(DAS3 a4(s, val.begin(), val.end() - 1)); // check size constructor w/ short initialization list.
+  DAS3 a4(s, val.begin(), val.end() - 3);
+  int v4 = 0;
+  for(DAS3::ordinal_type i = 0; i < v - 3; ++i, ++v4)
+    BOOST_CHECK_EQUAL(a4.at(i), v4);
+  for(DAS3::ordinal_type i = v - 3; i < v; ++i)
+    BOOST_CHECK_EQUAL(a4.at(i), int());
 }
 
 BOOST_AUTO_TEST_CASE( accessor )

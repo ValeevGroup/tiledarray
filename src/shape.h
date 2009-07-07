@@ -87,7 +87,7 @@ namespace TiledArray {
       range_ = boost::make_shared<tiled_range_type>(* other.range_);
     }
 
-    ~PredShape() {}
+    virtual ~PredShape() {}
 
     boost::shared_ptr<const tiled_range_type> range() const {
       boost::shared_ptr<const tiled_range_type> result = boost::const_pointer_cast<const tiled_range_type>(range_);
