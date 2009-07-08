@@ -14,7 +14,7 @@ OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/rangetest.o \
 TARGET =	TiledArrayTest
 
 $(TARGET):	$(OBJS)
-	$(CXX) -v -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
+	$(CXX) -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
 	./TiledArrayTest
 
 permutationtest.o: src/permutation.h src/coordinates.h

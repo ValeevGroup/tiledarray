@@ -319,6 +319,16 @@ namespace TiledArray {
     return p(t1,t2);
   }
 
+  /// Sum two tiles (double specialization with blas)
+  template<unsigned int DIM, typename CS>
+  Tile<double,DIM,CS> operator +(const Tile<double,DIM,CS>& t1, const Tile<double,DIM,CS>& t2) {
+    TA_ASSERT( t1.size() == t2.size() ,
+        std::runtime_error("operator+(const Tile<T,DIM,CS>&, const Tile<T,DIM,CS>&): Tile dimensions do not match.") );
+    Tile<double,DIM,CS> result(t1);
+    cblas_daxpy(result.volume(), 1.0, t2.begin(), 1, result.begin(), 1);
+    return result;
+  }
+
   /// Subtract two tiles
   template<typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS> operator -(const Tile<T,DIM,CS>& t1, const Tile<T,DIM,CS>& t2) {
@@ -326,6 +336,16 @@ namespace TiledArray {
         std::runtime_error("operator+(const Tile<T,DIM,CS>&, const Tile<T,DIM,CS>&): Tile dimensions do not match.") );
     detail::TileOp<T,DIM,CS,detail::Binary2Unary<T, std::minus<T> > > p;
     return p(t1,t2);
+  }
+
+  /// Subtract two tiles (double specialization with blas)
+  template<unsigned int DIM, typename CS>
+  Tile<double,DIM,CS> operator -(const Tile<double,DIM,CS>& t1, const Tile<double,DIM,CS>& t2) {
+    TA_ASSERT( t1.size() == t2.size() ,
+        std::runtime_error("operator+(const Tile<T,DIM,CS>&, const Tile<T,DIM,CS>&): Tile dimensions do not match.") );
+    Tile<double,DIM,CS> result(t1);
+    cblas_daxpy(result.volume(), -1.0, t2.begin(), 1, result.begin(), 1);
+    return result;
   }
 
   /// In-place tile addition
@@ -336,6 +356,16 @@ namespace TiledArray {
     typename Tile<T,DIM,CS>::const_iterator a_it = ta.begin();
     for(typename Tile<T,DIM,CS>::iterator r_it = tr.begin(); r_it != tr.end(); ++r_it, ++a_it)
       *r_it += *a_it;
+
+    return tr;
+  }
+
+  /// In-place tile addition (double specialization with blas)
+  template<unsigned int DIM, typename CS>
+  Tile<double,DIM,CS>& operator +=(Tile<double,DIM,CS>& tr, const Tile<double,DIM,CS>& ta) {
+    TA_ASSERT( (tr.size() == ta.size()) ,
+        std::runtime_error("operator+=(Tile<T,DIM,CS>&, const Tile<T,DIM,CS>&): Tile dimensions do not match.") );
+    cblas_daxpy(tr.volume(), 1.0, ta.begin(), 1, tr.begin(), 1);
 
     return tr;
   }
@@ -379,7 +409,7 @@ namespace TiledArray {
     return tr;
   }
 
-  /// In-place tile-scalar multiplication
+  /// In-place tile-scalar multiplication (double specialization with blas)
   template<typename S, unsigned int DIM, typename CS>
   Tile<double,DIM,CS>& operator *=(Tile<double,DIM,CS>& tr, const S& s) {
     cblas_dscal(tr.volume(), s, tr.begin(), 1);
