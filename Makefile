@@ -2,9 +2,10 @@ include Make.path
 
 VPATH = src:Tests
 CXX = $(MPICXX)
-INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -DTA_EXCEPTION_ERROR
-LIBS = -lMADworld
-CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR)
+INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests
+LIBDIR = 
+LIBS = -lMADworld -lcblas -lblas
+CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR
 
 OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/rangetest.o \
   Tests/tiledrange1test.o Tests/arraystoragetest.o Tests/tiledrangetest.o Tests/shapetest.o \
@@ -13,7 +14,7 @@ OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/rangetest.o \
 TARGET =	TiledArrayTest
 
 $(TARGET):	$(OBJS)
-	$(CXX) -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
+	$(CXX) -v -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
 	./TiledArrayTest
 
 permutationtest.o: src/permutation.h src/coordinates.h

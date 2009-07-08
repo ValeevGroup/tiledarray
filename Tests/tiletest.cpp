@@ -37,7 +37,7 @@ struct TileFixture {
   TileFixture() {
 
     r.resize(index_type(0,0,0), index_type(5,5,5));
-    t.resize(r.size(), 1);
+    t.resize(r.size(), 1.0);
 
   }
 
@@ -48,9 +48,9 @@ struct TileFixture {
 };
 
 template<typename InIter, typename T>
-bool check_val(InIter first, InIter last, const T& v) {
+bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001) {
   for(; first != last; ++first)
-    if(*first != v)
+    if(*first > v + tol || *first < v - tol)
       return false;
 
   return true;
@@ -70,14 +70,14 @@ BOOST_AUTO_TEST_CASE( accessor )
 
 BOOST_AUTO_TEST_CASE( element_access )
 {
-  BOOST_CHECK_EQUAL(t.at(index_type(0,0,0)), 1); // check at() with array coordinate index
-  BOOST_CHECK_EQUAL(t.at(index_type(4,4,4)), 1);
-  BOOST_CHECK_EQUAL(t[index_type(0,0,0)], 1);    // check operator[] with array coordinate index
-  BOOST_CHECK_EQUAL(t[index_type(4,4,4)], 1);
-  BOOST_CHECK_EQUAL(t.at(0), 1);                 // check at() with ordinal index
-  BOOST_CHECK_EQUAL(t.at(r.volume() - 1), 1);
-  BOOST_CHECK_EQUAL(t[0], 1);                    // check operator[] with ordinal index
-  BOOST_CHECK_EQUAL(t[r.volume() - 1], 1);
+  BOOST_CHECK_CLOSE(t.at(index_type(0,0,0)), 1.0, 0.000001); // check at() with array coordinate index
+  BOOST_CHECK_CLOSE(t.at(index_type(4,4,4)), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t[index_type(0,0,0)], 1.0, 0.000001);    // check operator[] with array coordinate index
+  BOOST_CHECK_CLOSE(t[index_type(4,4,4)], 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t.at(0), 1.0, 0.000001);                 // check at() with ordinal index
+  BOOST_CHECK_CLOSE(t.at(r.volume() - 1), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t[0], 1.0, 0.000001);                    // check operator[] with ordinal index
+  BOOST_CHECK_CLOSE(t[r.volume() - 1], 1.0, 0.000001);
   BOOST_CHECK_THROW(t.at(r.finish()), std::out_of_range); // check out of range error
   BOOST_CHECK_THROW(t.at(r.volume()), std::out_of_range);
 #ifndef NDEBUG
@@ -89,13 +89,13 @@ BOOST_AUTO_TEST_CASE( element_access )
 BOOST_AUTO_TEST_CASE( iteration )
 {
   for(Tile3::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 1);
+    BOOST_CHECK_CLOSE(*it, 1.0, 0.000001);
 
   Tile3 t1(t);
   Tile3::iterator it1 = t1.begin();
-  *it1 = 2;
-  BOOST_CHECK_EQUAL(*it1, 2); // check iterator assignment
-  BOOST_CHECK_EQUAL(t1.at(0), 2);
+  *it1 = 2.0;
+  BOOST_CHECK_CLOSE(*it1, 2.0, 0.000001); // check iterator assignment
+  BOOST_CHECK_CLOSE(t1.at(0), 2.0, 0.000001);
   Tile3 t2;
   BOOST_CHECK_EQUAL(t2.begin(), t2.end());
 }
@@ -110,86 +110,80 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(Tile3 tc(t)); // check copy constructor
   Tile3 tc(t);
   BOOST_CHECK_EQUAL(tc.range(), t.range());
-  BOOST_CHECK(check_val(tc.begin(), tc.end(), 1));
+  BOOST_CHECK(check_val(tc.begin(), tc.end(), 1.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t1(r)); // check constructing with a range
   Tile3 t1(r);
   BOOST_CHECK_EQUAL(t1.range(), t.range());
-  BOOST_CHECK(check_val(t1.begin(), t1.end(), 0));
+  BOOST_CHECK(check_val(t1.begin(), t1.end(), 0.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t2(r, 1)); // check constructing with a range and initial value.
   Tile3 t2(r, 1);
   BOOST_CHECK_EQUAL(t2.range(), t.range());
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), 1));
+  BOOST_CHECK(check_val(t2.begin(), t2.end(), 1.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t3(r, t.begin(), t.end())); // check constructing with range and iterators.
   Tile3 t3(r, t.begin(), t.end());
   BOOST_CHECK_EQUAL(t3.range(), t.range());
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 1));
+  BOOST_CHECK(check_val(t3.begin(), t3.end(), 1.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t4(r.size())); // check constructing with a size.
   Tile3 t4(r.size());
   BOOST_CHECK_EQUAL(t4.range(), t.range());
-  BOOST_CHECK(check_val(t4.begin(), t4.end(), 0));
+  BOOST_CHECK(check_val(t4.begin(), t4.end(), 0.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t5(r.size(), index_type(1,1,1))); // check constructing with a size and origin
   Tile3 t5(r.size(), index_type(1,1,1));
   BOOST_CHECK_EQUAL(t5.range(), range_type(index_type(1,1,1), index_type(6,6,6)));
-  BOOST_CHECK(check_val(t5.begin(), t5.end(), 0));
+  BOOST_CHECK(check_val(t5.begin(), t5.end(), 0.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t6(r.size(), index_type(1,1,1), 1)); // check constructing with size, origin, and an initial value.
   Tile3 t6(r.size(), index_type(1,1,1), 1);
   BOOST_CHECK_EQUAL(t6.range(), range_type(index_type(1,1,1), index_type(6,6,6)));
-  BOOST_CHECK(check_val(t6.begin(), t6.end(), 1));;
+  BOOST_CHECK(check_val(t6.begin(), t6.end(), 1.0));;
 
   BOOST_REQUIRE_NO_THROW(Tile3 t7(r.size(), index_type(1,1,1), t.begin(), t.end())); // check constructing with size, origin, and iterators.
   Tile3 t7(r.size(), index_type(1,1,1), t.begin(), t.end());
   BOOST_CHECK_EQUAL(t7.range(), range_type(index_type(1,1,1), index_type(6,6,6)));
-  BOOST_CHECK(check_val(t7.begin(), t7.end(), 1));
+  BOOST_CHECK(check_val(t7.begin(), t7.end(), 1.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t8(r.start(), r.finish())); // check constructing with start and finish.
   Tile3 t8(r.start(), r.finish());
-  BOOST_CHECK(check_val(t8.begin(), t8.end(), 0));
+  BOOST_CHECK(check_val(t8.begin(), t8.end(), 0.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t9(r.start(), r.finish(), 1)); // check constructing with start and finish, and an initial value.
   Tile3 t9(r.start(), r.finish(), 1);
-  BOOST_CHECK(check_val(t9.begin(), t9.end(), 1));
+  BOOST_CHECK(check_val(t9.begin(), t9.end(), 1.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t10(r.start(), r.finish(), t.begin(), t.end())); // check constructing with start and finish, and iterators.
   Tile3 t10(r.start(), r.finish(), t.begin(), t.end());
-  BOOST_CHECK(check_val(t10.begin(), t10.end(), 1));;
+  BOOST_CHECK(check_val(t10.begin(), t10.end(), 1.0));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t11(r, t.begin(), t.end() - 3)); // check constructing with iterators that do not cover the range.
   Tile3 t11(r, t.begin(), t.end() - 3);
-  for(Tile3::ordinal_type i = 0; i < t11.volume() - 3; ++i)
-    BOOST_CHECK_EQUAL(t11.at(i), 1);
-  for(Tile3::ordinal_type i = t11.volume() - 3; i < t11.volume(); ++i)
-    BOOST_CHECK_EQUAL(t11.at(i), double());
+  BOOST_CHECK(check_val(t11.begin(), t11.end() - 3, 1.0));
+  BOOST_CHECK(check_val(t11.end() - 3, t11.end(), double()));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t12(r.size(), index_type(1,1,1), t.begin(), t.end())); // check constructing with size, origin, and iterators.
   Tile3 t12(r.size(), index_type(1,1,1), t.begin(), t.end() - 3);
-  for(Tile3::ordinal_type i = 0; i < t12.volume() - 3; ++i)
-    BOOST_CHECK_EQUAL(t12.at(i), 1);
-  for(Tile3::ordinal_type i = t12.volume() - 3; i < t12.volume(); ++i)
-    BOOST_CHECK_EQUAL(t12.at(i), double());
+  BOOST_CHECK(check_val(t12.begin(), t12.end() - 3, 1.0));
+  BOOST_CHECK(check_val(t12.end() - 3, t12.end(), double()));
 
   BOOST_REQUIRE_NO_THROW(Tile3 t13(r.start(), r.finish(), t.begin(), t.end())); // check constructing with start and finish, and iterators.
   Tile3 t13(r.start(), r.finish(), t.begin(), t.end() - 3);
-  for(Tile3::ordinal_type i = 0; i < t13.volume() - 3; ++i)
-    BOOST_CHECK_EQUAL(t13.at(i), 1);
-  for(Tile3::ordinal_type i = t13.volume() - 3; i < t13.volume(); ++i)
-    BOOST_CHECK_EQUAL(t13.at(i), double());
+  BOOST_CHECK(check_val(t13.begin(), t13.end() - 3, 1.0));
+  BOOST_CHECK(check_val(t13.end() - 3, t13.end(), double()));
 }
 
 BOOST_AUTO_TEST_CASE( element_assignment )
 {
   Tile3 t1(r);
-  BOOST_CHECK_NE(t1.at(0), 1);        // verify preassignment conditions
-  BOOST_CHECK_EQUAL(t1.at(0) = 1, 1); // check that assignment returns itself.
-  BOOST_CHECK_EQUAL(t1.at(0), 1);     // check for correct assignment.
-  BOOST_CHECK_NE(t1[1], 1);           // verify preassignment conditions
-  BOOST_CHECK_EQUAL(t1[1] = 1, 1) ;   // check that assignment returns itself.
-  BOOST_CHECK_EQUAL(t1[1], 1);        // check for correct assignment.
+  BOOST_CHECK_NE(t1.at(0), 1.0);                    // verify preassignment conditions
+  BOOST_CHECK_CLOSE(t1.at(0) = 1.0, 1.0, 0.000001); // check that assignment returns itself.
+  BOOST_CHECK_CLOSE(t1.at(0), 1.0, 0.000001);       // check for correct assignment.
+  BOOST_CHECK_NE(t1[1], 1.0);                       // verify preassignment conditions
+  BOOST_CHECK_CLOSE(t1[1] = 1.0, 1.0, 0.000001) ;   // check that assignment returns itself.
+  BOOST_CHECK_CLOSE(t1[1], 1.0, 0.000001);          // check for correct assignment.
 }
 
 BOOST_AUTO_TEST_CASE( resize )
@@ -202,26 +196,26 @@ BOOST_AUTO_TEST_CASE( resize )
   Tile3 t2;
   t2.resize(r.size(), 1);
   BOOST_CHECK_EQUAL(t2.range(), r);
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), 1)); // check for new element initialization
+  BOOST_CHECK(check_val(t2.begin(), t2.end(), 1.0)); // check for new element initialization
 
   size_array s = {{6,6,6}};
   t2.resize(s, 0);
   BOOST_CHECK_EQUAL(t2.size(), s); // check new dimensions
-  BOOST_CHECK_EQUAL(t2.at(index_type(0,0,0)), 1); // check that previous values are maintained.
-  BOOST_CHECK_EQUAL(t2.at(index_type(4,0,0)), 1);
-  BOOST_CHECK_EQUAL(t2.at(index_type(0,4,0)), 1);
-  BOOST_CHECK_EQUAL(t2.at(index_type(4,4,0)), 1);
-  BOOST_CHECK_EQUAL(t2.at(index_type(0,0,4)), 1);
-  BOOST_CHECK_EQUAL(t2.at(index_type(4,0,4)), 1);
-  BOOST_CHECK_EQUAL(t2.at(index_type(0,4,4)), 1);
-  BOOST_CHECK_EQUAL(t2.at(index_type(4,4,4)), 1);
-  BOOST_CHECK_EQUAL(t2.at(index_type(5,0,0)), 0); // check that previous values are maintained.
-  BOOST_CHECK_EQUAL(t2.at(index_type(0,5,0)), 0);
-  BOOST_CHECK_EQUAL(t2.at(index_type(5,5,0)), 0);
-  BOOST_CHECK_EQUAL(t2.at(index_type(0,0,5)), 0);
-  BOOST_CHECK_EQUAL(t2.at(index_type(5,0,5)), 0);
-  BOOST_CHECK_EQUAL(t2.at(index_type(0,5,5)), 0);
-  BOOST_CHECK_EQUAL(t2.at(index_type(5,5,5)), 0);
+  BOOST_CHECK_CLOSE(t2.at(index_type(0,0,0)), 1.0, 0.000001); // check that previous values are maintained.
+  BOOST_CHECK_CLOSE(t2.at(index_type(4,0,0)), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(0,4,0)), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(4,4,0)), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(0,0,4)), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(4,0,4)), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(0,4,4)), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(4,4,4)), 1.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(5,0,0)), 0.0, 0.000001); // check that previous values are maintained.
+  BOOST_CHECK_CLOSE(t2.at(index_type(0,5,0)), 0.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(5,5,0)), 0.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(0,0,5)), 0.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(5,0,5)), 0.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(0,5,5)), 0.0, 0.000001);
+  BOOST_CHECK_CLOSE(t2.at(index_type(5,5,5)), 0.0, 0.000001);
 }
 
 BOOST_AUTO_TEST_CASE( set_origin )
@@ -257,11 +251,11 @@ BOOST_AUTO_TEST_CASE( addition )
   Tile3 t1(t);
   Tile3 t2(t.range(), 2);
   Tile3 t3 = t1 + t2;
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3.0));//  check that the values were added correctly.
 
   Tile3 t4(t);
   t4 += t2;
-  BOOST_CHECK(check_val(t4.begin(), t4.end(), 3));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t4.begin(), t4.end(), 3.0));//  check that the values were added correctly.
 }
 
 BOOST_AUTO_TEST_CASE( subtract )
@@ -269,52 +263,52 @@ BOOST_AUTO_TEST_CASE( subtract )
   Tile3 t1(t);
   Tile3 t2(t.range(), 2);
   Tile3 t3 = t2 - t1;
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 1));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t3.begin(), t3.end(), 1.0));//  check that the values were added correctly.
 
   Tile3 t4(t2);
   t4 -= t1;
-  BOOST_CHECK(check_val(t4.begin(), t4.end(), 1));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t4.begin(), t4.end(), 1.0));//  check that the values were added correctly.
 }
 
 BOOST_AUTO_TEST_CASE( addition_scalar )
 {
   Tile3 t1(t);
   Tile3 t2 = t1 + 2;
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), 3));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t2.begin(), t2.end(), 3.0));//  check that the values were added correctly.
 
   Tile3 t3(t);
   t3 += 2;
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3.0));//  check that the values were added correctly.
 }
 
 BOOST_AUTO_TEST_CASE( subtract_scalar )
 {
   Tile3 t1(r, 2);
   Tile3 t2 = t1 - 1;
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), 1));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t2.begin(), t2.end(), 1.0));//  check that the values were added correctly.
 
   Tile3 t3(r, 2);
   t3 -= 1;
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 1));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t3.begin(), t3.end(), 1.0));//  check that the values were added correctly.
 }
 
 BOOST_AUTO_TEST_CASE( multiply_scalar )
 {
   Tile3 t1(r, 1);
   Tile3 t2 = t1 * 3;
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), 3));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t2.begin(), t2.end(), 3.0));//  check that the values were added correctly.
   Tile3 t3 = 3 * t1;
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3));
+  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3.0));
 
   Tile3 t4(r, 1);
   t4 *= 3;
-  BOOST_CHECK(check_val(t4.begin(), t4.end(), 3));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t4.begin(), t4.end(), 3.0));//  check that the values were added correctly.
 }
 
 BOOST_AUTO_TEST_CASE( negate )
 {
   Tile3 t1(r, 1);
   Tile3 t2 = -t1;
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), -1));//  check that the values were added correctly.
+  BOOST_CHECK(check_val(t2.begin(), t2.end(), -1.0));//  check that the values were added correctly.
 }
 BOOST_AUTO_TEST_SUITE_END()

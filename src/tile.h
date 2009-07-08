@@ -11,6 +11,9 @@
 #include <iosfwd>
 #include <functional>
 #include <cstddef>
+extern "C" {
+#include <cblas.h>
+};
 
 namespace TiledArray {
 
@@ -372,6 +375,14 @@ namespace TiledArray {
   Tile<T,DIM,CS>& operator *=(Tile<T,DIM,CS>& tr, const S& s) {
     for(typename Tile<T,DIM,CS>::iterator r_it = tr.begin(); r_it != tr.end(); ++r_it)
       *r_it *= s;
+
+    return tr;
+  }
+
+  /// In-place tile-scalar multiplication
+  template<typename S, unsigned int DIM, typename CS>
+  Tile<double,DIM,CS>& operator *=(Tile<double,DIM,CS>& tr, const S& s) {
+    cblas_dscal(tr.volume(), s, tr.begin(), 1);
 
     return tr;
   }
