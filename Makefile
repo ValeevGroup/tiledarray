@@ -2,43 +2,26 @@ include Make.path
 
 VPATH = src:Tests
 CXX = $(MPICXX)
-INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests
+INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -I$(BLASINCLUDEDIR)
 LIBDIR = 
 LIBS = -lMADworld -lcblas -lblas
 CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR
+CXXSUF = cpp
+OBJSUF = o
+CXXDEPEND = $(CXX)
+CXXDEPENDSUF = none
+CXXDEPENDFLAGS = -M
 
-OBJS = Tests/permutationtest.o Tests/coordinatestest.o Tests/rangetest.o \
-  Tests/tiledrange1test.o Tests/arraystoragetest.o Tests/tiledrangetest.o Tests/shapetest.o \
-  Tests/tiletest.o Tests/arraytest.o TiledArrayTest.o
+TESTSRC = permutationtest.cpp coordinatestest.cpp rangetest.cpp \
+  tiledrange1test.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
+  tiletest.cpp arraytest.cpp TiledArrayTest.cpp
+OBJS = $(TESTSRC:%.cpp=%.$(OBJSUF))
 
 TARGET =	TiledArrayTest
 
 $(TARGET):	$(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
 	./TiledArrayTest
-
-permutationtest.o: src/permutation.h src/coordinates.h
-coordinatestest.o: src/coordinates.h src/coordinate_system.h src/permutation.h
-rangetest.o: src/range.h src/permutation.h src/coordinates.h src/iterator.h src/error.h
-tiledrange1test.o: src/tiled_range1.h src/range.h src/coordinates.h src/error.h
-arraystoragetest.o: src/range.h src/array_storage.h src/error.h
-tiledrangetest.o: src/tiled_range.h src/tiled_range1.h src/array_storage.h
-shapetest.o: src/shape.h src/predicate.h src/tiled_range.h src/tiled_range1.h
-arraytest.o: src/array.h src/array_storage.h
-tiletest.o: src/tile.h src/array_storage.h
-
-src/array_storage.h:
-src/array.h:
-src/range.h:
-src/coordinate_system.h:
-src/iterator.h:
-src/madness_runtime.h:
-src/permutation.h:
-src/predicate.h:
-src/tiled_range.h:
-src/tiled_range1.h:
-src/shape.h:
-src/tile.h:
 
 all:	$(TARGET)
 
@@ -57,6 +40,24 @@ check_block:
 check_range1:
 	./TiledArrayTest --log_level=test_suite --run_test=range1_suite
 
-.PHONY: clean
+.PHONY: clean dclean
 clean:
-	rm -f $(OBJS) $(TARGET)
+	-rm -f $(OBJS) $(TARGET)
+
+dclean:
+	-rm -f *.d
+
+ifneq ($(CXXDEPENDSUF),none)
+%.d: %.$(CXXSUF)
+	$(CXXDEPEND) $(CXXDEPENDFLAGS) -c $(CPPFLAGS) $(CXXFLAGS) $< > /dev/null
+	sed 's/^$*.o/$*.$(OBJSUF) $*.d/g' < $(*F).$(CXXDEPENDSUF) > $(@F)
+	/bin/rm -f $(*F).$(CXXDEPENDSUF)
+else
+%.d: %.$(CXXSUF)
+	$(CXXDEPEND) $(CXXDEPENDFLAGS) -c $(CPPFLAGS) $(CXXFLAGS) $< | sed 's/^$*.o/$*.$(OBJSUF) $*.d/g' > $(@F)
+endif
+
+ifneq ($(DODEPEND),no)
+include $(OBJS:%.o=%.d)
+endif
+	
