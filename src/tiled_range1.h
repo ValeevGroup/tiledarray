@@ -84,7 +84,7 @@ namespace TiledArray {
     const range_type& tiles() const { return range_; }
     const element_range_type& elements() const { return element_range_; }
     const tile_range_type& tile(const index_type& i) {
-      return tile_ranges_.at(i - range_.start());
+      return tile_ranges_.at(i - range_.start()[0]);
     }
 
     /// Swap the data of this range with another.
@@ -98,7 +98,7 @@ namespace TiledArray {
     const index_type& element2tile(const tile_index_type& e) const {
       TA_ASSERT( element_range_.includes(e) ,
           std::out_of_range("Range1<...>::element2tile(...): element index is out of range.") );
-      std::size_t i = e - element_range_.start();
+      std::size_t i = e - element_range_.start()[0];
       return elem2tile_[i];
     }
 
@@ -134,14 +134,14 @@ namespace TiledArray {
     /// Initialize secondary data
     void init_map_() {
       // check for 0 size range.
-      if(element_range_.size() == 0)
+      if(element_range_.size()[0] == 0)
         return;
 
       // initialize elem2tile map
-      elem2tile_.resize(element_range_.size());
-      for(index_type t = 0; t < range_.size(); ++t)
-        for(tile_index_type e = tile_ranges_[t].start(); e < tile_ranges_[t].finish(); ++e)
-          elem2tile_[e - element_range_.start()] = t + range_.start();
+      elem2tile_.resize(element_range_.size()[0]);
+      for(index_type t = 0; t < range_.size()[0]; ++t)
+        for(tile_index_type e = tile_ranges_[t].start()[0]; e < tile_ranges_[t].finish()[0]; ++e)
+          elem2tile_[e - element_range_.start()[0]] = t + range_.start()[0];
     }
 
     friend std::ostream& operator << <>(std::ostream&, const TiledRange1&);
@@ -170,7 +170,8 @@ namespace TiledArray {
   /// TiledRange1 ostream operator
   template <typename I>
   std::ostream& operator <<(std::ostream& out, const TiledRange1<I>& rng) {
-    out << "( tiles = " << rng.tiles() << ", elements = " << rng.elements() << " )";
+    out << "( tiles = [ " << rng.tiles().start()[0] << ", " << rng.tiles().finish()[0]
+        << " ), elements = [ " << rng.elements().start()[0] << ", " << rng.elements().finish()[0] << " ) )";
     return out;
   }
 

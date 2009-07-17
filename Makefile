@@ -5,7 +5,7 @@ CXX = $(MPICXX)
 INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -I$(BLASINCLUDEDIR)
 LIBDIR = 
 LIBS = -lMADworld -lcblas -lblas
-CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR
+CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=gnu++0x
 CXXSUF = cpp
 OBJSUF = o
 CXXDEPEND = $(CXX)

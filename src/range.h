@@ -9,17 +9,10 @@
 namespace TiledArray {
 
   // Forward declaration of TiledArray components.
-  template <unsigned int>
-  class LevelTag;
   template <unsigned int DIM>
   class Permutation;
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   void swap(ArrayCoordinate<I,DIM,Tag,CS>& c1, ArrayCoordinate<I,DIM,Tag,CS>& c2);
-
-  template <typename I, std::size_t DIM, typename CS>
-  boost::array<I,DIM> calc_weights(const boost::array<I,DIM>&);
-  template <typename I, std::size_t DIM>
-  I volume(const boost::array<I,DIM>&);
 
   /// Range stores dimension information for a block of tiles or elements.
 
@@ -66,6 +59,13 @@ namespace TiledArray {
         start_(other.start_), finish_(other.finish_), size_(other.size_)
     {}
 
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// Move Constructor
+    Range(Range_&& other) : // no throw
+        start_(std::move(other.start_)), finish_(std::move(other.finish_)), size_(std::move(other.size_))
+    {}
+#endif // __GXX_EXPERIMENTAL_CXX0X__
+
     ~Range() {}
 
     // iterator factory functions
@@ -101,6 +101,17 @@ namespace TiledArray {
       swap(temp);
       return *this;
     }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// Assignment Operator.
+    Range_& operator =(Range_&& other) {
+      start_ = std::move(other.start_);
+      finish_ = std::move(other.finish_);
+      size_ = std::move(other.size_);
+
+      return *this;
+    }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Permute the tile given a permutation.
     Range_& operator ^=(const Permutation<DIM>& p) {
@@ -196,154 +207,19 @@ namespace TiledArray {
 
   /// Returns true if the start and finish are equal.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
-  bool operator ==(const Range<I,DIM,Tag,CS>& b1, const Range<I,DIM,Tag,CS>& b2) {
+  bool operator ==(const Range<I,DIM,Tag,CS>& r1, const Range<I,DIM,Tag,CS>& r2) {
 #ifdef NDEBUG
-    return ( b1.start() == b2.start() ) && ( b1.finish() == b2.finish() );
+    return ( r1.start() == r2.start() ) && ( r1.finish() == r2.finish() );
 #else
-    return ( b1.start() == b2.start() ) && ( b1.finish() == b2.finish() ) &&
-        (b1.size() == b2.size()); // do an extra size check to catch bugs.
+    return ( r1.start() == r2.start() ) && ( r1.finish() == r2.finish() ) &&
+        (r1.size() == r2.size()); // do an extra size check to catch bugs.
 #endif
   }
 
   /// Returns true if the start and finish are not equal.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
-  bool operator !=(const Range<I,DIM,Tag,CS>& b1, const Range<I,DIM,Tag,CS>& b2) {
-    return ( b1.start() != b2.start() ) || ( b1.finish() != b2.finish() );
-  }
-
-  // 1D range specialization
-  template <typename I, typename Tag, typename CS >
-  class Range<I,1,Tag,CS> {
-  public:
-    typedef Range<I,1,Tag,CS> Range_;
-    typedef I index_type;
-    typedef I volume_type;
-    typedef I size_array;
-    typedef CS coordinate_system;
-
-    typedef detail::IndexIterator<index_type, Range_> const_iterator;
-    friend class detail::IndexIterator< index_type , Range_ >;
-
-    static const unsigned int dim() { return 1; }
-
-    /// Default constructor. The range has 0 size and the origin is set at 0.
-    Range() :
-        start_(0), finish_(0), size_(0)
-    {}
-
-    /// Constructor defined by an upper and lower bound. All elements of
-    /// finish must be greater than or equal to those of start.
-    Range(const index_type& start, const index_type& finish) :
-        start_(start), finish_(finish), size_(finish - start)
-    {
-      TA_ASSERT( (start_ <= finish_),
-          std::runtime_error("Range<I,1>::Range(start, finish): finish is less than start") );
-    }
-
-    /// Copy Constructor
-    Range(const Range_& other) : // no throw
-        start_(other.start_), finish_(other.finish_), size_(other.size_)
-    {}
-
-    ~Range() {}
-
-    // iterator factory functions
-    const_iterator begin() const { return const_iterator(start_, this); }
-    const_iterator end() const { return const_iterator(finish_, this); }
-
-    /// Returns the lower bound of the range
-    const index_type& start() const { return start_; }
-
-    /// Returns the upper bound of the range
-    const index_type& finish() const { return finish_; }
-
-    /// Returns an array with the size of each dimension.
-    const size_array& size() const { return size_; }
-
-    /// Returns the number of elements in the range.
-    volume_type volume() const {
-      return size_;
-    }
-
-    /// Check the coordinate to make sure it is within the range range
-    bool includes(const index_type& i) const {
-      return ((start_ <= i) && (i < finish_));
-    }
-
-    /// Assignment Operator.
-    Range_& operator =(const Range_& other) {
-      start_ = other.start_;
-      finish_ = other.finish_;
-      size_ = other.size_;
-      return *this;
-    }
-
-    /// Permute the tile given a permutation.
-    Range_& operator ^=(const Permutation<1>& p) {
-      return *this;
-    }
-
-    /// Change the dimensions of the range.
-    Range_& resize(const index_type& start, const index_type& finish) {
-      start_ = start;
-      finish_ = finish;
-      size_ = finish - start;
-      return *this;
-    }
-
-    /// Change the dimensions of the range.
-    Range_& resize(const size_array& size) {
-      finish_ = start_ + size_;
-      size_ = size;
-      return *this;
-    }
-
-    template <typename Archive>
-    void serialize(const Archive& ar) {
-      ar & start_ & finish_ & size_;
-    }
-
-    void swap(Range_& other) { // no throw
-      std::swap(start_, other.start_);
-      std::swap(finish_, other.finish_);
-      std::swap(size_, other.size_);
-    }
-
-  private:
-
-    void increment(index_type& i) const {
-      ++i;
-    }
-
-    index_type start_;              // Tile origin
-    index_type finish_;             // Tile upper bound
-    index_type size_;               // Dimension sizes
-
-  }; // class Range
-
-  /// Return the union of two ranges (i.e. the overlap). If the ranges do not
-  /// overlap, then a 0 size range will be returned.
-  template <typename I, typename Tag, typename CS>
-  Range<I,1,Tag,CS> operator &(const Range<I,1,Tag,CS>& b1, const Range<I,1,Tag,CS>& b2) {
-    Range<I,1,Tag,CS> result;
-    typename Range<I,1,Tag,CS>::index_type start, finish;
-    typename Range<I,1,Tag,CS>::index_type s1, s2, f1, f2;
-    s1 = b1.start();
-    f1 = b1.finish();
-    s2 = b2.start();
-    f2 = b2.finish();
-    // check for overlap
-    if( (s2 < f1 && s2 >= s1) || (f2 < f1 && f2 >= s1) ||
-        (s1 < f2 && s1 >= s2) || (f1 < f2 && f1 >= s2) )
-    {
-      start = std::max(s1, s2);
-      finish = std::min(f1, f2);
-    } else {
-      return result; // no overlap for this index
-    }
-
-    result.resize(start, finish);
-    return result;
+  bool operator !=(const Range<I,DIM,Tag,CS>& r1, const Range<I,DIM,Tag,CS>& r2) {
+    return ! operator ==(r1, r2);
   }
 
   /// Returns a permuted range.

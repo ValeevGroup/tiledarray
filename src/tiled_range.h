@@ -149,11 +149,11 @@ namespace TiledArray {
 
         // Find the start and finish of the over all tiles and element ranges.
         for(unsigned int d=0; d < DIM; ++d) {
-          start[d] = ranges_[d].tiles().start();
-          finish[d] = ranges_[d].tiles().finish();
+          start[d] = ranges_[d].tiles().start()[0];
+          finish[d] = ranges_[d].tiles().finish()[0];
 
-          start_element[d] = ranges_[d].elements().start();
-          finish_element[d] = ranges_[d].elements().finish();
+          start_element[d] = ranges_[d].elements().start()[0];
+          finish_element[d] = ranges_[d].elements().finish()[0];
         }
         range_.resize(start, finish);
         element_range_.resize(start_element, finish_element);
@@ -165,8 +165,8 @@ namespace TiledArray {
         for(typename range_type::const_iterator it = range_.begin(); it != range_.end(); ++it) {
           // Determine the start and finish of each tile.
           for(unsigned int d = 0; d < DIM; ++d) {
-            start_tile[d] = ranges_[d].tile( (*it)[d] ).start();
-            finish_tile[d] = ranges_[d].tile( (*it)[d] ).finish();
+            start_tile[d] = ranges_[d].tile( (*it)[d] ).start()[0];
+            finish_tile[d] = ranges_[d].tile( (*it)[d] ).finish()[0];
           }
 
           // Create and store the tile range.

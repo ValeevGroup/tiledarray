@@ -1,3 +1,4 @@
+#include <coordinates.h>
 #include <tiled_range1.h>
 #include <iostream>
 #include <boost/array.hpp>
@@ -53,15 +54,18 @@ BOOST_AUTO_TEST_CASE( block_accessor )
 
 BOOST_AUTO_TEST_CASE( block_info )
 {
-  BOOST_CHECK_EQUAL(r.tiles().size(), 5);
-  BOOST_CHECK_EQUAL(r.tiles().start(), 0);
-  BOOST_CHECK_EQUAL(r.tiles().finish(), 5);
-  BOOST_CHECK_EQUAL(r.elements().size(), 50);
-  BOOST_CHECK_EQUAL(r.elements().start(), 0);
-  BOOST_CHECK_EQUAL(r.elements().finish(), 50);
-  BOOST_CHECK_EQUAL(r.tile(0).size(), 3);
-  BOOST_CHECK_EQUAL(r.tile(0).start(), 0);
-  BOOST_CHECK_EQUAL(r.tile(0).finish(), 3);
+  boost::array<std::size_t, 1> s1 = {{ 5 }};
+  boost::array<std::size_t, 1> s2 = {{ 50 }};
+  boost::array<std::size_t, 1> s3 = {{ 3 }};
+  BOOST_CHECK_EQUAL(r.tiles().size(), s1);
+  BOOST_CHECK_EQUAL(r.tiles().start(), 0ul);
+  BOOST_CHECK_EQUAL(r.tiles().finish(), 5ul);
+  BOOST_CHECK_EQUAL(r.elements().size(), s2);
+  BOOST_CHECK_EQUAL(r.elements().start(), 0ul);
+  BOOST_CHECK_EQUAL(r.elements().finish(), 50ul);
+  BOOST_CHECK_EQUAL(r.tile(0).size(), s3);
+  BOOST_CHECK_EQUAL(r.tile(0).start(), 0ul);
+  BOOST_CHECK_EQUAL(r.tile(0).finish(), 3ul);
 }
 
 BOOST_AUTO_TEST_CASE( constructor )

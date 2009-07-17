@@ -2,15 +2,20 @@
 #define TILEDARRAY_TILE_H__INCLUDED
 
 #include <array_storage.h>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+#include <iterator.h>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
-//#include <world/archive.h>
 #include <iosfwd>
 #include <functional>
+
 #include <cstddef>
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+#include <tr1/tuple>
+#else
+#include <tuple>
+#endif
+
 extern "C" {
 #include <cblas.h>
 };
@@ -25,6 +30,8 @@ namespace TiledArray {
 
   template<typename T, unsigned int DIM, typename CS>
   class Tile;
+  template<class T>
+  class TileSlice;
   template<typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,CS>& t);
   template<typename T, unsigned int DIM, typename CS>
@@ -68,6 +75,11 @@ namespace TiledArray {
     /// Copy constructor
     Tile(const Tile_& t) : range_(t.range_), data_(t.data_) { }
 
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// Copy constructor
+    Tile(Tile_&& t) : range_(std::move(t.range_)), data_(std::move(t.data_)) { }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
+
     /// Construct a tile with a specific dimensions and initialize value.
 
     /// The tile will have the dimensions specified by \c range, and all elements
@@ -94,66 +106,19 @@ namespace TiledArray {
     	  range_(range), data_(range.size(), first, last)
     { }
 
-    /// Construct a tile with a specific size and initialize value.
+    /// Creates a new tile from a TileSlice
 
-    /// The tile will have the size specified by \c size and the tile lower bound
-    /// will be set to \c origin. All elements will be initialized to \c val.
-    /// If \c val is not specified, the data elements will be initialized using
-    /// the default \c value_type constructor.
-    /// \arg \c size Specifies the tile dimension sizes.
-    /// \arg \c origin Specifies the start of the tile (optional).
-    /// \arg \c val Specifies the initial value of data elements (optional).
-    Tile(const size_array& size, const index_type& origin = index_type(), const value_type val = value_type()) :
-        range_(size, origin), data_(range_.size(), val)
-    { }
-
-    /// Construct a tile with a specific size and initialize values.
-
-    /// The tile will have the size specified by \c size and the tile lower bound
-    /// will be set to \c origin. Elements are initialized with the data
-    /// contained by [\c first, \c last ). If there are more elements in the
-    /// tile than specified by the initializer list, then the remaining elements
-    /// will be initialized with the default constructor. The initializer list
-    /// must dereference to a type that is implicitly convertible to
-    /// \c value_type.
-    /// \arg \c size Specifies the tile dimension sizes.
-    /// \arg \c origin Specifies the start of the tile.
-    /// \arg \c first, \c last Input iterators, which point to a list of initial values.
-    template <typename InIter>
-    Tile(const size_array& size, const index_type& origin, InIter first, InIter last) :
-        range_(size, origin), data_(range_.size(), first, last)
-    { }
-
-    /// Construct a tile with a specific start and finish, and initialize value.
-
-    /// The tile will have the dimensions given by \c start and \c finish. All
-    /// elements will be initialized to \c val. If \c val is not specified, the
-    /// data elements will be initialized using the default \c value_type
-    /// constructor.
-    /// \arg \c start Specifies the lower bound of the tile.
-    /// \arg \c finish Specifies the upper bound of the tile.
-    /// \arg \c val Specifies the initial value of data elements (optional).
-    Tile(const index_type& start, const index_type& finish, const value_type val = value_type()) :
-        range_(start, finish), data_(range_.size(), val)
-    { }
-
-    /// Construct a tile with a specific start and finish, and initialize values.
-
-    /// The tile will have the dimensions given by \c start and \c finish.
-    /// Elements are initialized with the data contained by [\c first, \c last ).
-    /// If there are more elements in the tile than specified by the initializer
-    /// list, then the remaining elements will be initialized with the default
-    /// constructor. The initializer list must dereference to a type that is
-    /// implicitly convertible to \c value_type.
-    /// \arg \c start Specifies the lower bound of the tile.
-    /// \arg \c finish Specifies the upper bound of the tile.
-    /// \arg \c first, \c last Input iterators, which point to a list of initial values.
-    template <typename InIter>
-    Tile(const index_type& start, const index_type& finish, InIter first, InIter last) :
-        range_(start, finish), data_(range_.size(), first, last)
+    /// A deep copy of the slice data is done here.
+    Tile(const TileSlice<Tile_>& s) :
+        range_(s.range()), data_(s.size(), s.begin(), s.end())
     { }
 
     ~Tile() { }
+
+    /// Returns a raw pointer to the element data.
+    value_type* data() { return data_.data(); }
+    /// Returns a constant raw pointer to the element data.
+    const value_type* data() const { return data_.data(); }
 
     /// Returns an iterator to the first element of the tile.
     iterator begin() { return data_.begin(); } // no throw
@@ -174,6 +139,8 @@ namespace TiledArray {
     const size_array& size() const { return range_.size(); }
     /// Returns the number of elements in the volume.
     const volume_type volume() const { return range_.volume(); }
+    /// Returns the dimension weights.
+    const size_array weight() const { return data_.weight(); }
 
     /// Returns true when \i is in the tile range.
 
@@ -201,6 +168,13 @@ namespace TiledArray {
     /// Element access without error checking
     const_reference_type operator [](const index_type& i) const { return data_[i]; }
 
+    /// Returns a slice of the tile given a sub-range.
+
+    /// The range \c r must be completely contained by the tile.
+    TileSlice<Tile_> slice(const range_type& r) {
+      return TileSlice<Tile_>(*this, r); // Note: The range checks are done by the constructor.
+    }
+
     /// Resize the tile. Any new elements added to the array will be initialized
     /// with val. If val is not specified, new elements will be initialized with
     /// the default constructor.
@@ -224,16 +198,34 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Serializes the tile data for communication with other nodes.
-    template <typename Archive>
-    void serialize(const Archive& ar) {
-      ar & range_ & data_;
+    /// Assignment operator
+    Tile_& operator =(const Tile_& other) {
+      range_ = other.range_;
+      data_ = other.data_;
+
+      return *this;
     }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// Move assignment operator
+    Tile_& operator =(Tile_&& other) {
+      range_ = std::move(other.range_);
+      data_ = std::move(other.data_);
+
+      return *this;
+    }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Exchange calling tile's data with that of \c other.
     void swap(Tile_& other) {
       range_.swap(other.range_);
       data_.swap(other.data_);
+    }
+
+    /// Serializes the tile data for communication with other nodes.
+    template <typename Archive>
+    void serialize(const Archive& ar) {
+      ar & range_ & data_;
     }
 
   private:
@@ -245,6 +237,141 @@ namespace TiledArray {
     friend Tile_ operator^ <>(const Permutation<DIM>&, const Tile_&);
 
   }; // class Tile
+
+  /// Sub-range of a tile
+
+  /// \c TileSlice represents an arbitrary sub-range of a tile. \c TileSlice
+  /// does not contain any element data. The primary use of \c TileSlice is to
+  /// provide the ability to iterate over
+  template<class T>
+  class TileSlice
+  {
+  public:
+    typedef TileSlice<T> TileSlice_;
+    typedef T tile_type;
+    typedef typename tile_type::value_type value_type;
+    typedef typename tile_type::reference_type reference_type;
+    typedef typename tile_type::const_reference_type const_reference_type;
+    typedef typename tile_type::coordinate_system coordinate_system;
+    typedef typename tile_type::ordinal_type ordinal_type;
+    typedef typename tile_type::range_type range_type;
+    typedef typename tile_type::index_type index_type;
+    typedef typename tile_type::size_array size_array;
+    typedef typename tile_type::volume_type volume_type;
+    typedef typename tile_type::index_iterator index_iterator;
+    typedef detail::ElementIterator<const value_type, index_type, TileSlice_> const_iterator;
+    typedef detail::ElementIterator<const value_type, index_type, TileSlice_> iterator;
+
+    static const unsigned int dim() { return tile_type::dim(); }
+
+    /// Slice constructor.
+
+    /// Constructs a slice of tile \c t given a sub range. The range \c r must
+    /// be completely contained by the tile range.
+    /// \arg \c t is the tile which the slice will reference.
+    /// \arg \c r is the range which defines the slice.
+    ///
+    /// Warning: Iteration and element access for a slice are more expensive
+    /// operations than the equivalent tile operations. If you need to iterate
+    /// over a slice in a time critical loop, you may want to copy the slice
+    /// into a new tile object.
+    TileSlice(const tile_type& t, range_type& r) : r_(r),
+        w_(detail::calc_weight<coordinate_system>(r.size())), t_(t)
+    {
+      TA_ASSERT( (detail::greater_eq(r.start(), t.start()) && detail::less(r.start(), t.finish()) &&
+          detail::greater(r.finish(), t.start()) && detail::less_eq(r.finish(), t.finish()) ) ,
+          std::runtime_error("TileSlice<...>::TileSlice(...): range slice is not contained by the range of the original tile."));
+    }
+
+    /// Copy constructor
+    TileSlice(const TileSlice_& other) : r_(other.r_), w_(other.w_), t_(other.t_) { }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// Move constructor
+    TileSlice(TileSlice&& other) : r_(std::move(other.r_)), w_(std::move(other.w_)), t_(std::move(other.t_)) { }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
+
+    ~TileSlice() { }
+
+    /// Returns an iterator to the first element of the tile.
+    iterator begin() { return iterator(r_.start(), *this); } // no throw
+    /// Returns a constant iterator to the first element of the tile.
+    const_iterator begin() const { return const_iterator(r_.start(), *this); } // no throw
+    /// Returns an iterator that points to the end of the tile.
+    iterator end() { return iterator(r_.finish(), *this); } // no throw
+    /// Returns a constant iterator that points to the end of the tile.
+    const_iterator end() const { return const_iterator(r_.finish(), *this); } // no throw
+
+    /// return a constant reference to the tile \c Range<> object.
+    const range_type& range() const { return r_; }
+    /// Returns the tile range start.
+    const index_type& start() const { return r_.start(); }
+    /// Returns the tile range finish.
+    const index_type& finish() const { return r_.finish(); }
+    /// Returns the tile range size.
+    const size_array& size() const { return r_.size(); }
+    /// Returns the number of elements in the volume.
+    const volume_type volume() const { return r_.volume(); }
+    /// Returns the dimension weights.
+    const size_array weight() const { return w_; }
+    /// Returns true when \i is in the tile range.
+
+    /// \arg \c i Element index.
+    bool includes(const index_type& i) const { return r_.includes(i); }
+
+    // The at() functions do error checking, but we do not need to implement it
+    // here because the data container already does that. There is no need to do
+    // it twice.
+    /// Element access with range checking
+    reference_type at(const ordinal_type& i) { return t_.at(tile_ord_(i)); }
+    /// Element access with range checking
+    const_reference_type at(const ordinal_type& i) const { return t_.at(tile_ord_(i)); }
+    /// Element access with range checking
+    reference_type at(const index_type& i){ return t_.at(i); }
+    /// Element access with range checking
+    const_reference_type at(const index_type& i) const { return t_.at(i); }
+
+    /// Element access without error checking
+    reference_type operator [](const ordinal_type& i) { return t_[tile_ord_(i)]; }
+    /// Element access without error checking
+    const_reference_type operator [](const ordinal_type& i) const { return t_[tile_ord_(i)]; }
+    /// Element access without error checking
+    reference_type operator [](const index_type& i) { return t_[i]; }
+    /// Element access without error checking
+    const_reference_type operator [](const index_type& i) const { return t_[i]; }
+
+    /// Exchange calling tile's data with that of \c other.
+    void swap(TileSlice_& other) {
+      r_.swap(other.r_);
+      std::swap(t_, other.t_);
+    }
+
+  private:
+
+    TileSlice(); ///< No default construction allowed.
+
+    /// Converts the TileSlice ordinal index to Tile index.
+    index_type tile_ord_(ordinal_type i) const {
+      index_type result;
+      register unsigned int c = 0;
+      for(typename coordinate_system::const_reverse_iterator it = coordinate_system::rbegin(); it != coordinate_system::end();++it) {
+        c = *it;
+        result[c] = i % w_[c];
+        i -= result[c] * w_[c];
+      }
+
+      return result;
+    }
+
+    void increment(const index_type& i) const {
+      return detail::IncrementCoordinate(i, r_.start(), r_.finish());
+    }
+
+    range_type r_;  ///< tile slice dimension information
+    size_array w_;  ///< slice dimension weight
+    tile_type& t_;  ///< element data
+
+  }; // class TileSlice
 
   namespace detail {
 
@@ -391,6 +518,16 @@ namespace TiledArray {
     return tr;
   }
 
+  /// In-place tile subtraction (double specialization with blas)
+  template<unsigned int DIM, typename CS>
+  Tile<double,DIM,CS>& operator -=(Tile<double,DIM,CS>& tr, const Tile<double,DIM,CS>& ta) {
+    TA_ASSERT( (tr.size() == ta.size()) ,
+        std::runtime_error("operator-=(Tile<double,DIM,CS>&, const Tile<double,DIM,CS>&): Tile dimensions do not match.") );
+    cblas_daxpy(tr.volume(), -1.0, ta.begin(), 1, tr.begin(), 1);
+
+    return tr;
+  }
+
   /// In-place tile-scalar subtraction
   template<typename S, typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS>& operator -=(Tile<T,DIM,CS>& tr, const S& s) {
@@ -452,30 +589,164 @@ namespace TiledArray {
     return op(t,-1);
   }
 
+  namespace detail {
+
+    template<char V>
+    class IndexVar {
+      const static char value;
+    };
+
+    template<char V>
+    const char IndexVar<V>::value = V;
+
+    template<class... V>
+    class VarList {
+    public:
+      typedef std::tuple<V...> var_list;
+      V var;
+
+      template<unsigned int NN>
+      char get() {
+        return next::get<NN>();
+      }
+
+      template<>
+      char get<N>() {
+        return var;
+      }
+    };
+
+    template<class V>
+    class VarList {
+
+    };
+
+    /// Contraction of two rank 3 tensors.
+    /// r[a,b,c,d] = t0[a,i,c] * t1[b,i,d]
+    template<typename T, detail::DimensionOrderType Order>
+    void contract_aic_x_bid(const Tile<T,3,CoordinateSystem<3,Order> >& t0, const Tile<T,3,CoordinateSystem<3,Order> >& t1, Tile<T,4,CoordinateSystem<4,Order> >& tr) {
+      typedef Tile<T,3,CoordinateSystem<3,Order> > Tile3;
+      typedef Tile<T,4,CoordinateSystem<4,Order> > Tile4;
+      typedef Eigen::Matrix< T , Eigen::Dynamic , Eigen::Dynamic, (Order == decreasing_dimension_order ? Eigen::RowMajor : Eigen::ColMajor) | Eigen::AutoAlign > matrix_type;
+      TA_ASSERT(t0.size()[1] == t1.size()[1],
+          std::runtime_error("void contract(const contraction_pair<T,3>& t0, const contraction_pair<T,3>& t1, contraction_pair<T,4>& tr): t0[1] != t1[1]."));
+
+      const unsigned int i0 = Tile3::coordinate_system::ordering().order2dim(0);
+      const unsigned int i1 = Tile3::coordinate_system::ordering().order2dim(1);
+      const unsigned int i2 = Tile3::coordinate_system::ordering().order2dim(2);
+
+      typename Tile4::size_array s;
+      typename Tile4::coordinate_system::const_reverse_iterator it = Tile4::coordinate_system::rbegin();
+      s[*it++] = t0.size()[i2];
+      s[*it++] = t1.size()[i2];
+      s[*it++] = t0.size()[i0];
+      s[*it] = t1.size()[i0];
+
+      if(tr.size() != s)
+        tr.resize(s);
+
+      const typename Tile3::ordinal_type step0 = t0.weight()[i2];
+      const typename Tile3::ordinal_type step1 = t1.weight()[i2];
+      const typename Tile4::ordinal_type stepr = t0.size()[i0] * t1.size()[i0];
+      const typename Tile3::value_type* p0_begin = NULL;
+      const typename Tile3::value_type* p0_end = t0.data() + step0 * t0.size()[i2];
+      const typename Tile3::value_type* p1_begin = NULL;
+      const typename Tile3::value_type* p1_end = t1.data() + step1 * t1.size()[i2];
+      typename Tile4::value_type* pr = tr.data();
+
+      for(p0_begin = t0.data(); p0_begin != p0_end; p0_begin += step0) {
+        Eigen::Map<matrix_type> m0(p0_begin, t0.size()[i1], t0.size()[i0]);
+        for(p1_begin = t1.begin(); p1_begin != p1_end; p1_begin += step1, pr += stepr) {
+          Eigen::Map<matrix_type> mr(pr, t0.size()[i0], t1.size()[i0]);
+          Eigen::Map<matrix_type> m1(p1_begin, t0.size()[i1], t1.size()[i0]);
+
+          mr = m0.transpose() * m1;
+        }
+      }
+    }
+
+    /// Contraction of a rank 3 and rank 2 tensor.
+    /// r[a,b,c] = t0[a,i,b] * t1[i,c]
+    template<typename T, detail::DimensionOrderType Order>
+    void contract_aib_x_ic(const Tile<T,3,CoordinateSystem<3,Order> >& t0, const Tile<T,3,CoordinateSystem<3,Order> >& t1, Tile<T,3,CoordinateSystem<4,Order> >& tr) {
+      typedef Tile<T,3,CoordinateSystem<3,Order> > Tile3;
+      typedef Tile<T,4,CoordinateSystem<4,Order> > Tile4;
+      typedef Eigen::Matrix< T , Eigen::Dynamic , Eigen::Dynamic, (Order == decreasing_dimension_order ? Eigen::RowMajor : Eigen::ColMajor) | Eigen::AutoAlign > matrix_type;
+      TA_ASSERT(t0.size()[1] == t1.size()[1],
+          std::runtime_error("void contract(const contraction_pair<T,3>& t0, const contraction_pair<T,3>& t1, contraction_pair<T,4>& tr): t0[1] != t1[1]."));
+
+      const unsigned int i0 = Tile3::coordinate_system::ordering().order2dim(0);
+      const unsigned int i1 = Tile3::coordinate_system::ordering().order2dim(1);
+      const unsigned int i2 = Tile3::coordinate_system::ordering().order2dim(2);
+
+      typename Tile4::size_array s;
+      typename Tile4::coordinate_system::const_reverse_iterator it = Tile4::coordinate_system::rbegin();
+      s[*it++] = t0.size()[i2];
+      s[*it++] = t1.size()[i2];
+      s[*it++] = t0.size()[i0];
+      s[*it] = t1.size()[i0];
+
+      if(tr.size() != s)
+        tr.resize(s);
+
+      const typename Tile3::ordinal_type step0 = t0.weight()[i2];
+      const typename Tile3::ordinal_type step1 = t1.weight()[i2];
+      const typename Tile4::ordinal_type stepr = t0.size()[i0] * t1.size()[i0];
+      const typename Tile3::value_type* p0_begin = NULL;
+      const typename Tile3::value_type* p0_end = t0.data() + step0 * t0.size()[i2];
+      const typename Tile3::value_type* p1_begin = NULL;
+      const typename Tile3::value_type* p1_end = t1.data() + step1 * t1.size()[i2];
+      typename Tile4::value_type* pr = tr.data();
+
+      for(p0_begin = t0.data(); p0_begin != p0_end; p0_begin += step0) {
+        Eigen::Map<matrix_type> m0(p0_begin, t0.size()[i1], t0.size()[i0]);
+        for(p1_begin = t1.begin(); p1_begin != p1_end; p1_begin += step1, pr += stepr) {
+          Eigen::Map<matrix_type> mr(pr, t0.size()[i0], t1.size()[i0]);
+          Eigen::Map<matrix_type> m1(p1_begin, t0.size()[i1], t1.size()[i0]);
+
+          mr = m0.transpose() * m1;
+        }
+      }
+    }
+
+    /// Contraction of two 3D arrays.
+    /// r = t0[i] * t1[i]
+    template<typename T, typename CS>
+    void contract(const Tile<T,1,CS>& t0, const Tile<T,1,CS>& t1, T& tr) {
+      TA_ASSERT(t0.volume() == t1.volume(),
+          std::runtime_error("void contract(const contraction_pair<T,1>& t0, const contraction_pair<T,1>& t1, T& tr): t0[0] != t1[0]."));
+
+      tr = 0;
+      for(std::size_t i = 0; i < t0.volume(); ++i)
+        tr += t0[i] * t1[i];
+    }
+
+  } // namespace detail
+
   /// ostream output orperator.
   template<typename T, unsigned int DIM, typename CS>
   std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,CS>& t) {
     typedef Tile<T,DIM,CS> tile_type;
-    typename tile_type::size_array weight = t.data_.weight();
+    const typename tile_type::size_array& weight = t.data_.weight();
 
-    out << "{ ";
+    out << "{";
     typename CS::const_iterator d ;
     typename tile_type::ordinal_type i = 0;
     for(typename tile_type::const_iterator it = t.begin(); it != t.end(); ++it, ++i) {
       for(d =  CS::begin(), ++d; d != CS::end(); ++d) {
         if((i % weight[*d]) == 0)
-          out << "{ ";
+          out << "{";
       }
 
-      out << " " << *it;
+      out << *it << " ";
 
 
       for(d = CS::begin(), ++d; d != CS::end(); ++d) {
         if(((i + 1) % weight[*d]) == 0)
-          out << " }";
+          out << "}";
       }
     }
-    out << " }";
+    out << "}";
     return out;
   }
 
@@ -529,27 +800,5 @@ namespace TiledArray {
   }
 
 } // namespace TiledArray
-
-namespace madness {
-  namespace archive {
-    template <class Archive, typename T, unsigned int DIM, typename Index>
-    struct ArchiveLoadImpl<Archive,TiledArray::Tile<T,DIM,Index>*> {
-      typedef TiledArray::Tile<T,DIM,Index> Tile;
-      static inline void load(const Archive& ar, Tile*& tileptr) {
-        tileptr = new Tile;
-        ar & wrap(tileptr,1);
-      }
-    };
-
-    template <class Archive, typename T, unsigned int DIM, typename Index>
-    struct ArchiveStoreImpl<Archive,TiledArray::Tile<T,DIM,Index>*> {
-      typedef TiledArray::Tile<T,DIM,Index> Tile;
-      static inline void store(const Archive& ar, Tile* const& tileptr) {
-        ar & wrap(tileptr,1);
-      }
-    };
-
-  }
-}
 
 #endif // TILEDARRAY_TILE_H__INCLUDED

@@ -9,9 +9,8 @@ namespace TiledArray {
   namespace detail {
 
     typedef enum {
-      decreasing_dimension_order,
-      increasing_dimension_order,
-      general_dimension_order
+      decreasing_dimension_order, // c-style
+      increasing_dimension_order  // fortran
     } DimensionOrderType;
 
     template <unsigned int DIM>
@@ -34,18 +33,10 @@ namespace TiledArray {
               ord_[d] = DIM-d-1;
           break;
 
-          case general_dimension_order:
+          default:
             throw std::runtime_error("General dimension ordering must be specified using the template<typename RandIterator> DimensionOrder::DimensionOrder(RandIter,RandIter) constructor.");
           break;
         }
-
-        init_(ord_.begin(), ord_.end());
-      }
-
-      template <typename RandIter>
-      DimensionOrder(RandIter first, RandIter last) {
-        assert(valid_(first, last));
-        std::copy(first, last, ord_.begin());
 
         init_(ord_.begin(), ord_.end());
       }

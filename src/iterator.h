@@ -71,7 +71,7 @@ namespace TiledArray {
 
       /// Copy constructor for iterators of other types (i.e. const_iterator to iterator).
       template<typename OtherValue>
-	  ElementIterator(const ElementIterator<OtherValue, IndexIt, Container>& other) :
+      ElementIterator(const ElementIterator<OtherValue, IndexIt, Container>& other) :
         container_(other.container_), current_(other.current_)
       {}
 
@@ -101,7 +101,7 @@ namespace TiledArray {
 
       template<typename OtherValue>
       bool equal(const ElementIterator<OtherValue, IndexIt, Container>& other) {
-        return this->current_ == other.current_ && this->container_ == other.container_;
+        return current_ == other.current_ && container_ == other.container_;
       }
 
       Container* container_;

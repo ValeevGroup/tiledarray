@@ -132,8 +132,8 @@ BOOST_AUTO_TEST_CASE( iteration ) {
   for(TRange3::const_iterator it = r.begin(); it != r.end(); ++it, ++t_it) {
     // check that the basic iteration functionality works, that is begin,  end, and increment.
     for(unsigned int d = 0; d < 3; ++d) {
-      s[d] = dims[d].tile((*t_it)[d]).start();
-      f[d] = dims[d].tile((*t_it)[d]).finish();
+      s[d] = dims[d].tile((*t_it)[d]).start()[0];
+      f[d] = dims[d].tile((*t_it)[d]).finish()[0];
     }
 
     tr.resize(s, f);

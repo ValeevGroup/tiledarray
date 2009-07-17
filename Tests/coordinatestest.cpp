@@ -180,20 +180,20 @@ BOOST_AUTO_TEST_CASE( fortran_comparisons )
   FPoint2 p8(2ul,2ul);
   FPoint2 pp(1ul,1ul);
 
-  BOOST_CHECK_LT(p0, pp);    // check for correct lexicographical comparisons
-  BOOST_CHECK_LT(p1, pp);    // for fortran ordering.
-  BOOST_CHECK_LT(p2, pp);
-  BOOST_CHECK_LT(p3, pp);
-  BOOST_CHECK_LE(p3, pp);
-  BOOST_CHECK_LE(p4, pp);
-  BOOST_CHECK_EQUAL(p4, pp);
-  BOOST_CHECK_GE(p4, pp);
-  BOOST_CHECK_GE(p5, pp);
-  BOOST_CHECK_GT(p5, pp);
-  BOOST_CHECK_GT(p6, pp);
-  BOOST_CHECK_GT(p7, pp);
-  BOOST_CHECK_GT(p8, pp);
-  BOOST_CHECK_NE(p1, pp);
+  BOOST_CHECK(p0 < pp);    // check for correct lexicographical comparisons
+  BOOST_CHECK(p1 < pp);    // for fortran ordering.
+  BOOST_CHECK(p2 < pp);
+  BOOST_CHECK(p3 < pp);
+  BOOST_CHECK(p3 <= pp);
+  BOOST_CHECK(p4 <= pp);
+  BOOST_CHECK(p4 == pp);
+  BOOST_CHECK(p4 >= pp);
+  BOOST_CHECK(p5 >= pp);
+  BOOST_CHECK(p5 > pp);
+  BOOST_CHECK(p6 > pp);
+  BOOST_CHECK(p7 > pp);
+  BOOST_CHECK(p8 > pp);
+  BOOST_CHECK(p1 != pp);
 
   BOOST_CHECK( ! (p0 > pp) );
   BOOST_CHECK( ! (p1 > pp) );

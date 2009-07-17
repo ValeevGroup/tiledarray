@@ -26,7 +26,8 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   bool operator==(const ArrayCoordinate<T,DIM,Tag,CS>& c1, const ArrayCoordinate<T,DIM,Tag,CS>& c2);
-
+  template <typename I, typename Tag, typename CS>
+  bool operator==(const ArrayCoordinate<I,1,Tag,CS>&, const I&);
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,DIM,Tag,CS>& c);
 
@@ -68,6 +69,9 @@ namespace TiledArray {
     ArrayCoordinate(InIter start, InIter finish) { std::copy(start,finish,r_.begin()); }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { } // no throw
     ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { } // no throw
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    ArrayCoordinate(ArrayCoordinate&& a) : r_(std::move(a.r_)) { } // no throw
+#endif // __GXX_EXPERIMENTAL_CXX0X__
     /// Constant index constructor.
 
     /// Constructs an ArrayCoordinate with the specified constants. For example,
@@ -126,10 +130,20 @@ namespace TiledArray {
     /// Assignment operator
     ArrayCoordinate_&
     operator =(const ArrayCoordinate_& c) {
-      std::copy(c.r_.begin(), c.r_.end(), r_.begin());
+      r_ = c.r_;
 
       return (*this);
     }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// Move assignment operator
+    ArrayCoordinate_&
+    operator =(ArrayCoordinate_&& c) {
+      r_ = std::move(c.r_);
+
+      return (*this);
+    }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     ArrayCoordinate_& operator++() {
       const unsigned int lsdim = * coordinate_system::begin();
@@ -190,10 +204,6 @@ namespace TiledArray {
     void serialize(const Archive& ar) {
       ar & r_;
     }
-
-    friend bool operator < <>(const ArrayCoordinate_&, const ArrayCoordinate_&);
-    friend bool operator == <>(const ArrayCoordinate_&, const ArrayCoordinate_&);
-    friend std::ostream& operator << <>(std::ostream&, const ArrayCoordinate_&);
 
   private:
     /// last dimension is least significant
@@ -274,9 +284,9 @@ namespace TiledArray {
       }
     }; // struct LexLess
 
-    template <typename I, unsigned int DIM, typename CS>
+    template <typename CS, typename I, unsigned int DIM>
     bool lex_less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      LexCompare<I,DIM,CS, std::less<I> > ll;
+      LexCompare<I, DIM, CS, std::less<I> > ll;
       return ll(a1, a2);
     }
 
@@ -285,12 +295,42 @@ namespace TiledArray {
   /// Compare ArrayCoordinates Lexicographically.
   template <typename I, unsigned int DIM, typename Tag, typename CS >
   bool operator<(const ArrayCoordinate<I,DIM,Tag,CS>& c1, const ArrayCoordinate<I,DIM,Tag,CS>& c2) {
-    return detail::lex_less<I,DIM,CS>(c1.data(), c2.data());
+    return detail::lex_less<CS, I, DIM>(c1.data(), c2.data());
   }
 
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   bool operator==(const ArrayCoordinate<I,DIM,Tag,CS>& c1, const ArrayCoordinate<I,DIM,Tag,CS>& c2) {
-    return c1.r_ == c2.r_;
+    return c1.data() == c2.data();
+  }
+
+  template <typename I>
+  bool operator==(const boost::array<I,1>& a, const I& i) {
+    return a[0] == i;
+  }
+
+  template <typename I>
+  bool operator==(const I& i, const boost::array<I,1>& a) {
+    return a[0] == i;
+  }
+
+  template <typename I, typename Tag, typename CS>
+  bool operator==(const ArrayCoordinate<I,1,Tag,CS>& c, const I& i) {
+    return c[0] == i;
+  }
+
+  template <typename I, typename Tag, typename CS>
+  bool operator==(const I& i, const ArrayCoordinate<I,1,Tag,CS>& c) {
+    return operator==(c[0], i);
+  }
+
+  template <typename I, typename Tag, typename CS>
+  bool operator!=(const ArrayCoordinate<I,1,Tag,CS>& c, const I& i) {
+    return ! operator==(c[0], i);
+  }
+
+  template <typename I, typename Tag, typename CS>
+  bool operator!=(const I& i, const ArrayCoordinate<I,1,Tag,CS>& c) {
+    return ! operator==(c[0], i);
   }
 
   /// Permute an ArrayCoordinate

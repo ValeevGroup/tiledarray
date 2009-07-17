@@ -127,52 +127,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(t3.range(), t.range());
   BOOST_CHECK(check_val(t3.begin(), t3.end(), 1.0));
 
-  BOOST_REQUIRE_NO_THROW(Tile3 t4(r.size())); // check constructing with a size.
-  Tile3 t4(r.size());
-  BOOST_CHECK_EQUAL(t4.range(), t.range());
-  BOOST_CHECK(check_val(t4.begin(), t4.end(), 0.0));
-
-  BOOST_REQUIRE_NO_THROW(Tile3 t5(r.size(), index_type(1,1,1))); // check constructing with a size and origin
-  Tile3 t5(r.size(), index_type(1,1,1));
-  BOOST_CHECK_EQUAL(t5.range(), range_type(index_type(1,1,1), index_type(6,6,6)));
-  BOOST_CHECK(check_val(t5.begin(), t5.end(), 0.0));
-
-  BOOST_REQUIRE_NO_THROW(Tile3 t6(r.size(), index_type(1,1,1), 1)); // check constructing with size, origin, and an initial value.
-  Tile3 t6(r.size(), index_type(1,1,1), 1);
-  BOOST_CHECK_EQUAL(t6.range(), range_type(index_type(1,1,1), index_type(6,6,6)));
-  BOOST_CHECK(check_val(t6.begin(), t6.end(), 1.0));;
-
-  BOOST_REQUIRE_NO_THROW(Tile3 t7(r.size(), index_type(1,1,1), t.begin(), t.end())); // check constructing with size, origin, and iterators.
-  Tile3 t7(r.size(), index_type(1,1,1), t.begin(), t.end());
-  BOOST_CHECK_EQUAL(t7.range(), range_type(index_type(1,1,1), index_type(6,6,6)));
-  BOOST_CHECK(check_val(t7.begin(), t7.end(), 1.0));
-
-  BOOST_REQUIRE_NO_THROW(Tile3 t8(r.start(), r.finish())); // check constructing with start and finish.
-  Tile3 t8(r.start(), r.finish());
-  BOOST_CHECK(check_val(t8.begin(), t8.end(), 0.0));
-
-  BOOST_REQUIRE_NO_THROW(Tile3 t9(r.start(), r.finish(), 1)); // check constructing with start and finish, and an initial value.
-  Tile3 t9(r.start(), r.finish(), 1);
-  BOOST_CHECK(check_val(t9.begin(), t9.end(), 1.0));
-
-  BOOST_REQUIRE_NO_THROW(Tile3 t10(r.start(), r.finish(), t.begin(), t.end())); // check constructing with start and finish, and iterators.
-  Tile3 t10(r.start(), r.finish(), t.begin(), t.end());
-  BOOST_CHECK(check_val(t10.begin(), t10.end(), 1.0));
-
   BOOST_REQUIRE_NO_THROW(Tile3 t11(r, t.begin(), t.end() - 3)); // check constructing with iterators that do not cover the range.
   Tile3 t11(r, t.begin(), t.end() - 3);
   BOOST_CHECK(check_val(t11.begin(), t11.end() - 3, 1.0));
   BOOST_CHECK(check_val(t11.end() - 3, t11.end(), double()));
-
-  BOOST_REQUIRE_NO_THROW(Tile3 t12(r.size(), index_type(1,1,1), t.begin(), t.end())); // check constructing with size, origin, and iterators.
-  Tile3 t12(r.size(), index_type(1,1,1), t.begin(), t.end() - 3);
-  BOOST_CHECK(check_val(t12.begin(), t12.end() - 3, 1.0));
-  BOOST_CHECK(check_val(t12.end() - 3, t12.end(), double()));
-
-  BOOST_REQUIRE_NO_THROW(Tile3 t13(r.start(), r.finish(), t.begin(), t.end())); // check constructing with start and finish, and iterators.
-  Tile3 t13(r.start(), r.finish(), t.begin(), t.end() - 3);
-  BOOST_CHECK(check_val(t13.begin(), t13.end() - 3, 1.0));
-  BOOST_CHECK(check_val(t13.end() - 3, t13.end(), double()));
 }
 
 BOOST_AUTO_TEST_CASE( element_assignment )
@@ -246,6 +204,16 @@ BOOST_AUTO_TEST_CASE( permutation )
   BOOST_CHECK_EQUAL_COLLECTIONS(t3.begin(), t3.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
 }
 
+BOOST_AUTO_TEST_CASE( ostream )
+{
+  Tile3 t1(range_type(index_type(0,0,0), index_type(3,3,3)), 1);
+  boost::test_tools::output_test_stream output;
+  output << t1;
+  BOOST_CHECK( !output.is_empty( false ) ); // check for correct output.
+  BOOST_CHECK( output.check_length( 80, false ) );
+  BOOST_CHECK( output.is_equal("{{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}}") );
+}
+
 BOOST_AUTO_TEST_CASE( addition )
 {
   Tile3 t1(t);
@@ -311,4 +279,26 @@ BOOST_AUTO_TEST_CASE( negate )
   Tile3 t2 = -t1;
   BOOST_CHECK(check_val(t2.begin(), t2.end(), -1.0));//  check that the values were added correctly.
 }
+
+
+BOOST_AUTO_TEST_CASE( contract_1x1 )
+{
+  Tile<double,1>::range_type r1(0,5);
+  Tile<double,1> t1(r1, 3.0);
+  Tile<double,1> t2(r1, 2.0);
+  double tr = 0.0;
+  detail::contract(t1, t2, tr);
+  BOOST_CHECK_EQUAL(tr, 30.0);
+}
+
+BOOST_AUTO_TEST_CASE( contract_3x3 )
+{
+  Tile3 t1(r, 3);
+  Tile3 t2(r, 2);
+  Tile<double,4>::range_type rr(Tile<double,4>::index_type(0,0,0,0), Tile<double,4>::index_type(5,5,5,5));
+  Tile<double,4> tr(rr, 0.0);
+  detail::contract_aic_x_bid(t1, t2, tr);
+  BOOST_CHECK(check_val(tr.begin(), tr.end(), 30.0));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
