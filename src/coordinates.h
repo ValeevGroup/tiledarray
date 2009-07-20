@@ -64,9 +64,9 @@ namespace TiledArray {
     static const unsigned int dim() { return DIM; }
 
     // Constructors/Destructor
-    ArrayCoordinate(const index& init_value = 0) { r_.assign(init_value); }
+    explicit ArrayCoordinate(const index& init_value = 0) { r_.assign(init_value); }
     template <typename InIter>
-    ArrayCoordinate(InIter start, InIter finish) { std::copy(start,finish,r_.begin()); }
+    explicit ArrayCoordinate(InIter start, InIter finish) { std::copy(start,finish,r_.begin()); }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { } // no throw
     ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { } // no throw
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
@@ -231,9 +231,41 @@ namespace TiledArray {
     boost::swap(c1.data(), c2.data());
   }
 
+  /// Add operator
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<I,DIM,Tag,CS>& operator +=(ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s) {
+    for(typename ArrayCoordinate<I,DIM,Tag,CS>::iterator it = c.begin(); it != c.end(); ++it)
+      *it += s;
+    return c;
+  }
+
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<I,DIM,Tag,CS> operator +(const ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s) {
+    ArrayCoordinate<I,DIM,Tag,CS> result(c);
+    for(typename ArrayCoordinate<I,DIM,Tag,CS>::iterator it = result.begin(); it != result.end(); ++it)
+      *it += s;
+    return result;
+  }
+
+  /// Subtract operator
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<I,DIM,Tag,CS>& operator -=(ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s) {
+    for(typename ArrayCoordinate<I,DIM,Tag,CS>::iterator it = c.begin(); it != c.end(); ++it)
+      *it -= s;
+    return c;
+  }
+
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<I,DIM,Tag,CS> operator -(const ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s) {
+    ArrayCoordinate<I,DIM,Tag,CS> result(c);
+    for(typename ArrayCoordinate<I,DIM,Tag,CS>::iterator it = result.begin(); it != result.end(); ++it)
+      *it -= s;
+    return result;
+  }
+
   namespace detail {
     /// Compare each element in the array.
-    template <typename I, unsigned int DIM, typename C >
+    template <typename I, std::size_t DIM, typename C >
     struct Compare {
       bool operator ()(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
         C c;
@@ -244,32 +276,32 @@ namespace TiledArray {
       }
     }; // struct Compare
 
-    template <typename I, unsigned int DIM>
+    template <typename I, std::size_t DIM>
     bool less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
       Compare<I, DIM, std::less<I> > l;
       return l(a1, a2);
     }
 
-    template <typename I, unsigned int DIM>
+    template <typename I, std::size_t DIM>
     bool less_eq(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
       Compare<I, DIM, std::less_equal<I> > le;
       return le(a1, a2);
     }
 
-    template <typename I, unsigned int DIM>
+    template <typename I, std::size_t DIM>
     bool greater(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
       Compare<I, DIM, std::greater<I> > g;
       return g(a1, a2);
     }
 
-    template <typename I, unsigned int DIM>
+    template <typename I, std::size_t DIM>
     bool greater_eq(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
       Compare<I, DIM, std::greater_equal<I> > g;
       return g(a1, a2);
     }
 
     /// Compare ArrayCoordinates Lexicographically.
-    template <typename I, unsigned int DIM, typename CS, typename C >
+    template <typename I, std::size_t DIM, typename CS, typename C >
     struct LexCompare {
       bool operator ()(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
         // Get order iterators.
@@ -284,7 +316,7 @@ namespace TiledArray {
       }
     }; // struct LexLess
 
-    template <typename CS, typename I, unsigned int DIM>
+    template <typename CS, typename I, std::size_t DIM>
     bool lex_less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
       LexCompare<I, DIM, CS, std::less<I> > ll;
       return ll(a1, a2);

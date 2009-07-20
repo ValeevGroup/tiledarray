@@ -1,7 +1,6 @@
 #ifndef ARRAY_STORAGE_H__INCLUDED
 #define ARRAY_STORAGE_H__INCLUDED
 
-#include <error.h>
 #include <range.h>
 #include <madness_runtime.h>
 #include <Eigen/core>
@@ -45,6 +44,7 @@ namespace TiledArray {
     template <unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
     class ArrayDim {
     public:
+      typedef ArrayDim<DIM, Tag, CS> ArrayDim_;
       typedef std::size_t ordinal_type;
       typedef CS coordinate_system;
       typedef ArrayCoordinate<ordinal_type, DIM, Tag, coordinate_system> index_type;
@@ -79,6 +79,26 @@ namespace TiledArray {
 
       /// Destructor
       ~ArrayDim() { } // no throw
+
+      /// Assignment operator
+      ArrayDim_& operator =(const ArrayDim_& other) {
+        size_ = other.size_;
+        weight_ = other.weight_;
+        n_ = other.n_;
+
+        return *this;
+      }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+      /// Assignment operator
+      ArrayDim_& operator =(ArrayDim_&& other) {
+        size_ = std::move(other.size_);
+        weight_ = std::move(other.weight_);
+        n_ = other.n_;
+
+        return *this;
+      }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
       /// Returns the size of the array.
       const size_array& size() const { return size_; } // no throw

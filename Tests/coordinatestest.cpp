@@ -27,37 +27,42 @@ BOOST_FIXTURE_TEST_SUITE( array_coordinate_suite, ArrayCoordinateFixture )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
-  typedef ArrayCoordinate<std::size_t, 3, LevelTag<0> > Point3;
-  BOOST_CHECK_NO_THROW( Point3 p1() );     // construct without exception
-
+  BOOST_REQUIRE_NO_THROW( Point3 p1() );     // construct without exception
   Point3 p2;                               // default construction
-  BOOST_TEST_MESSAGE("Default Construction");
   BOOST_CHECK_EQUAL( p2.data().size(), 3); // correct size
   BOOST_CHECK_EQUAL( p2.data()[0], 0);     // correct element initialization
   BOOST_CHECK_EQUAL( p2.data()[1], 0);
   BOOST_CHECK_EQUAL( p2.data()[2], 0);
 
+  BOOST_REQUIRE_NO_THROW(Point3 p3(a.begin(), a.end())); // Iterator Constructor
   Point3 p3(a.begin(), a.end());
-  BOOST_TEST_MESSAGE("Iterator Constructor");
   BOOST_CHECK_EQUAL_COLLECTIONS(p3.data().begin(), p3.data().end(), a.begin(), a.end());
 
+  BOOST_REQUIRE_NO_THROW(Point3 p4(a)); // Boost array constructor
   Point3 p4(a);
-  BOOST_TEST_MESSAGE("boost::array Constructor");
   BOOST_CHECK_EQUAL_COLLECTIONS(p3.data().begin(), p3.data().end(), a.begin(), a.end());
 
+  BOOST_REQUIRE_NO_THROW(Point3 p5(p));  // Copy constructor
   Point3 p5(p);
-  BOOST_TEST_MESSAGE("Copy Constructor");
   BOOST_CHECK_EQUAL_COLLECTIONS(p5.data().begin(), p5.data().end(), a.begin(), a.end());
 
+  BOOST_REQUIRE_NO_THROW(Point3 p6(1));  // Assign constant constuctor
   Point3 p6(1);
-  BOOST_TEST_MESSAGE("Assignment Constructor");
   BOOST_CHECK_EQUAL( p6.data()[0], 1);     // correct element initialization
   BOOST_CHECK_EQUAL( p6.data()[1], 1);
   BOOST_CHECK_EQUAL( p6.data()[2], 1);
 
+  BOOST_REQUIRE_NO_THROW(Point3 p7(1,2,3)); // variable argument list constructor
   Point3 p7(1,2,3);
-  BOOST_TEST_MESSAGE("Variable Argument List Constructor");
   BOOST_CHECK_EQUAL_COLLECTIONS(p7.data().begin(), p7.data().end(), a.begin(), a.end());
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+  BOOST_REQUIRE_NO_THROW(Point3 p8(std::forward<Point3>(Point3(1)))); // Move constructor.
+  Point3 p8(Point3(1));
+  BOOST_CHECK_EQUAL( p8.data()[0], 1);     // correct element initialization
+  BOOST_CHECK_EQUAL( p8.data()[1], 1);
+  BOOST_CHECK_EQUAL( p8.data()[2], 1);
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( make_functions )
@@ -109,6 +114,11 @@ BOOST_AUTO_TEST_CASE( assignment )
   BOOST_CHECK_EQUAL( p1[0], 4); // check individual element assignment.
   p1.at(1) = 5;
   BOOST_CHECK_EQUAL( p1.at(1), 5); // check individual element assignment with range checking.
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+  Point3 p2;
+  p2 = Point3(1,2,3); // check move assignment.
+  BOOST_CHECK_EQUAL_COLLECTIONS( p.begin(), p.end(), p2.begin(), p2.end()); // check for equality
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
@@ -207,6 +217,17 @@ BOOST_AUTO_TEST_CASE( fortran_comparisons )
   BOOST_CHECK( ! (p7 < pp) );
   BOOST_CHECK( ! (p8 < pp) );
   BOOST_CHECK( ! (p8 == pp) );
+}
+
+BOOST_AUTO_TEST_CASE( comparison_functions )
+{
+  Point3 p111(1,1,1);
+  Point3 p222(2,2,2);
+  Point3 p123(1,2,3);
+  Point3 p012(0,1,2);
+  Point3 p002(0,0,2);
+
+  BOOST_CHECK(detail::less(p111.data(),p222.data()));
 }
 
 BOOST_AUTO_TEST_CASE( math )

@@ -3,6 +3,7 @@
 
 #include <range.h>
 #include <coordinates.h>
+
 #include <cassert>
 #include <vector>
 #include <cstddef>
@@ -12,6 +13,10 @@ namespace TiledArray {
 
   template <typename I>
   class TiledRange1;
+  template<typename I>
+  Range<I, 1, LevelTag<1>, CoordinateSystem<1> > make_range1(const I&, const I&);
+  template<typename I>
+  Range<I, 1, LevelTag<0>, CoordinateSystem<1> > make_tile_range1(const I&, const I&);
   template <typename I>
   std::ostream& operator <<(std::ostream& out, const TiledRange1<I>& rng);
 
@@ -23,16 +28,20 @@ namespace TiledArray {
   template <typename I>
   class TiledRange1 {
   public:
-    typedef I tile_index_type;
+    typedef Range<I, 1, LevelTag<1>, CoordinateSystem<1> > range_type;
+    typedef Range<I, 1, LevelTag<0>,  CoordinateSystem<1> > tile_range_type;
     typedef I index_type;
-    typedef Range<I,1, LevelTag<1>, CoordinateSystem<1> > range_type;
-    typedef Range<I,1,LevelTag<0>,  CoordinateSystem<1> > element_range_type;
-    typedef element_range_type tile_range_type;
-    typedef typename std::vector<element_range_type>::const_iterator const_iterator;
+    typedef I tile_index_type;
+    typedef typename std::vector<tile_range_type>::const_iterator const_iterator;
 
+  private:
+    typedef typename range_type::index_type range_index;
+    typedef typename tile_range_type::index_type tile_range_index;
+
+  public:
     /// Default constructor, range of 0 tiles and elements.
-    TiledRange1() : range_(0,0), element_range_(0,0),
-        tile_ranges_(1, tile_range_type(0,0)), elem2tile_(1, 0)
+    TiledRange1() : range_(make_range1<index_type>(0,0)), element_range_(make_tile_range1<index_type>(0,0)),
+        tile_ranges_(1, make_tile_range1<index_type>(0,0)), elem2tile_(1, 0)
     {
       init_map_();
     }
@@ -74,7 +83,7 @@ namespace TiledArray {
 
     /// Return tile iterator associated with tile_index_type
     const_iterator find(const tile_index_type& e) const{
-      if(! element_range_.includes(e))
+      if(! element_range_.includes(tile_range_index(e)))
         return tile_ranges_.end();
       const_iterator result = tile_ranges_.begin();
       result += element2tile(e);
@@ -82,7 +91,7 @@ namespace TiledArray {
     }
 
     const range_type& tiles() const { return range_; }
-    const element_range_type& elements() const { return element_range_; }
+    const tile_range_type& elements() const { return element_range_; }
     const tile_range_type& tile(const index_type& i) {
       return tile_ranges_.at(i - range_.start()[0]);
     }
@@ -96,7 +105,7 @@ namespace TiledArray {
     }
 
     const index_type& element2tile(const tile_index_type& e) const {
-      TA_ASSERT( element_range_.includes(e) ,
+      TA_ASSERT( element_range_.includes(tile_range_index(e)) ,
           std::out_of_range("Range1<...>::element2tile(...): element index is out of range.") );
       std::size_t i = e - element_range_.start()[0];
       return elem2tile_[i];
@@ -125,10 +134,10 @@ namespace TiledArray {
     void init_tiles_(RandIter first, RandIter last, index_type start_tile_index) {
       TA_ASSERT( valid_(first, last) ,
           std::runtime_error("Range1<...>::init_tiles_(...): tile boundaries do not have the expected structure.") );
-      range_.resize(start_tile_index, start_tile_index + last - first - 1);
-      element_range_.resize(*first, *(last - 1));
+      range_.resize(range_index(start_tile_index), range_index(start_tile_index + last - first - 1));
+      element_range_.resize(tile_range_index(*first), tile_range_index(*(last - 1)));
       for (; first != (last - 1); ++first)
-        tile_ranges_.push_back(tile_range_type(*first, *(first + 1)));
+        tile_ranges_.push_back(make_tile_range1<I>(*first, *(first + 1)));
     }
 
     /// Initialize secondary data
@@ -148,7 +157,7 @@ namespace TiledArray {
 
     // TiledRange1 data
     range_type range_; ///< stores the overall dimensions of the tiles.
-    element_range_type element_range_; ///< stores overall element dimensions.
+    tile_range_type element_range_; ///< stores overall element dimensions.
     std::vector<tile_range_type> tile_ranges_; ///< stores the dimensions of each tile.
     std::vector<index_type> elem2tile_; ///< maps element index to tile index (secondary data).
 
@@ -165,6 +174,22 @@ namespace TiledArray {
   template <typename I>
   bool operator !=(const TiledRange1<I>& r1, const TiledRange1<I>& r2){
     return ! operator ==(r1, r2);
+  }
+
+  template<typename I>
+  Range<I, 1, LevelTag<1>, CoordinateSystem<1> > make_range1(const I& s, const I& f) {
+    typedef Range<I, 1, LevelTag<1>, CoordinateSystem<1> > range_type;
+    typedef typename range_type::index_type index_type;
+
+    return range_type(index_type(s), index_type(f));
+  }
+
+  template<typename I>
+  Range<I, 1, LevelTag<0>, CoordinateSystem<1> > make_tile_range1(const I& s, const I& f) {
+    typedef Range<I, 1, LevelTag<0>, CoordinateSystem<1> > range_type;
+    typedef typename range_type::index_type index_type;
+
+    return range_type(index_type(s), index_type(f));
   }
 
   /// TiledRange1 ostream operator

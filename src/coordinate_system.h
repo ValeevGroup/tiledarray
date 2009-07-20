@@ -34,7 +34,7 @@ namespace TiledArray {
           break;
 
           default:
-            throw std::runtime_error("General dimension ordering must be specified using the template<typename RandIterator> DimensionOrder::DimensionOrder(RandIter,RandIter) constructor.");
+            throw std::runtime_error("Unknown dimension ordering. decreasing_dimension_order and increasing_dimension_order are allowed.");
           break;
         }
 

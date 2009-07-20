@@ -57,53 +57,56 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
-  BOOST_TEST_MESSAGE("Default Constructor");
-  BOOST_REQUIRE_NO_THROW(Range3 r0);
+  BOOST_REQUIRE_NO_THROW(Range3 r0); // Default Constructor
   Range3 r0;
   BOOST_CHECK_EQUAL(r0.start(), s);
   BOOST_CHECK_EQUAL(r0.finish(), s);
   BOOST_CHECK_EQUAL(r0.size(), s.data());
   BOOST_CHECK_EQUAL(r0.volume(), 0);
 
-  BOOST_TEST_MESSAGE("Size Constructor");
-  BOOST_REQUIRE_NO_THROW(Range3 b1(size));
+  BOOST_REQUIRE_NO_THROW(Range3 b1(size)); // Size Constructor
   Range3 r1(size);
   BOOST_CHECK_EQUAL(r1.start(), s);
   BOOST_CHECK_EQUAL(r1.finish(), f);
   BOOST_CHECK_EQUAL(r1.size(), size);
   BOOST_CHECK_EQUAL(r1.volume(), v);
 
-  BOOST_TEST_MESSAGE("Size Constructor (with offset)");
-  BOOST_REQUIRE_NO_THROW(Range3 r10(size, p222));
+  BOOST_REQUIRE_NO_THROW(Range3 r10(size, p222)); // Size Constructor (with offset)
   Range3 r10(size, p222);
   BOOST_CHECK_EQUAL(r10.start(), p222);
   BOOST_CHECK_EQUAL(r10.finish(), p222 + size);
   BOOST_CHECK_EQUAL(r10.size(), size);
   BOOST_CHECK_EQUAL(r10.volume(), v);
 
-  BOOST_TEST_MESSAGE("Start/Finish Constructor");
-  BOOST_REQUIRE_NO_THROW(Range3 r2(p222, p222 + f));
+  BOOST_REQUIRE_NO_THROW(Range3 r2(p222, p222 + f)); // Start/Finish Constructor
   Range3 r2(p222, p222 + f);
   BOOST_CHECK_EQUAL(r2.start(), p222);
   BOOST_CHECK_EQUAL(r2.finish(), p222 + f);
   BOOST_CHECK_EQUAL(r2.size(), size);
   BOOST_CHECK_EQUAL(r2.volume(), v);
 
-  BOOST_TEST_MESSAGE("Copy Constructor");
-  BOOST_REQUIRE_NO_THROW(Range3 r4(r));
+  BOOST_REQUIRE_NO_THROW(Range3 r4(r)); // Copy Constructor
   Range3 r4(r);
   BOOST_CHECK_EQUAL(r4.start(), s);
   BOOST_CHECK_EQUAL(r4.finish(), f);
   BOOST_CHECK_EQUAL(r4.size(), size);
   BOOST_CHECK_EQUAL(r4.volume(), v);
 
-  BOOST_TEST_MESSAGE("Zero Size Construction");
-  BOOST_REQUIRE_NO_THROW(Range3 r5(p222, p222));
+  BOOST_REQUIRE_NO_THROW(Range3 r5(p222, p222)); // Zero Size Construction
   Range3 r5(p222, p222);
   BOOST_CHECK_EQUAL(r5.start(), p222);
   BOOST_CHECK_EQUAL(r5.finish(), p222);
   BOOST_CHECK_EQUAL(r5.size(), s.data());
   BOOST_CHECK_EQUAL(r5.volume(), 0);
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+  BOOST_REQUIRE_NO_THROW(Range3 r6(std::forward<Range3>(Range3(size)))); // move constructor
+  Range3 r6(std::forward<Range3>(Range3(size)));
+  BOOST_CHECK_EQUAL(r6.start(), s);
+  BOOST_CHECK_EQUAL(r6.finish(), f);
+  BOOST_CHECK_EQUAL(r6.size(), size);
+  BOOST_CHECK_EQUAL(r6.volume(), v);
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
@@ -120,9 +123,9 @@ BOOST_AUTO_TEST_CASE( comparision )
   Range3 r1(r);
   Range3 r2(p000, p111);
   BOOST_CHECK(r1 == r); // check operator==
-  BOOST_CHECK( ! (r2 == r) );
+  BOOST_CHECK( ! (r2 == r) ); // check for failure
   BOOST_CHECK(r2 != r); // check operator!=
-  BOOST_CHECK( ! (r1 != r) );
+  BOOST_CHECK( ! (r1 != r) ); // check for failure
 }
 
 BOOST_AUTO_TEST_CASE( assignment )
@@ -133,6 +136,12 @@ BOOST_AUTO_TEST_CASE( assignment )
 
   Range3 r2 = r;
   BOOST_CHECK_EQUAL(r2, r); // check construction assignment.
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+  Range3 r3;
+  r3 = Range3(size);
+  BOOST_CHECK_EQUAL(r3, r); // check move assignment.
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( resize )

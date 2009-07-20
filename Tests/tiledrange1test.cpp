@@ -25,8 +25,11 @@ struct Range1BaseFixture {
 
 struct Range1Fixture : public Range1BaseFixture {
   typedef TiledRange1<std::size_t> range1_type;
-  Range1Fixture() : Range1BaseFixture(), r(a.begin(), a.end()), tiles(0,5),
-      elements(0,50)
+  typedef range1_type::index_type index_type;
+  typedef range1_type::tile_index_type tile_index_type;
+  Range1Fixture() : Range1BaseFixture(), r(a.begin(), a.end()),
+      tiles(make_range1<std::size_t>(0,5)),
+      elements(make_tile_range1<std::size_t>(0,50))
   {
     std::copy(r.begin(), r.end(), tile.begin());
   }
@@ -34,7 +37,7 @@ struct Range1Fixture : public Range1BaseFixture {
 
   range1_type r;
   range1_type::range_type tiles;
-  range1_type::element_range_type elements;
+  range1_type::tile_range_type elements;
   boost::array<range1_type::tile_range_type, 5> tile;
 };
 
@@ -72,9 +75,9 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(range1_type r0);
   range1_type r0;                  // check default construction and range info.
-  BOOST_CHECK_EQUAL(r0.tiles(), range1_type::range_type(0,0));
-  BOOST_CHECK_EQUAL(r0.elements(), range1_type::element_range_type(0,0));
-  BOOST_CHECK_EQUAL(r0.tile(0), range1_type::tile_range_type(0,0));
+  BOOST_CHECK_EQUAL(r0.tiles(), make_range1<std::size_t>(0,0));
+  BOOST_CHECK_EQUAL(r0.elements(), make_tile_range1<std::size_t>(0,0));
+  BOOST_CHECK_EQUAL(r0.tile(index_type(0)), make_tile_range1<std::size_t>(0,0));
 
   BOOST_REQUIRE_NO_THROW(range1_type r1(a.begin(), a.end()));
   range1_type r1(a.begin(), a.end());           // check construction with a
@@ -90,14 +93,14 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_REQUIRE_NO_THROW(range1_type r3(a.begin(), a.end(), 2));
   range1_type r3(a.begin(), a.end(), 2);// check construction with a with a tile offset.
-  BOOST_CHECK_EQUAL(r3.tiles(), range1_type::range_type(2,7));
+  BOOST_CHECK_EQUAL(r3.tiles(), make_range1<std::size_t>(2,7));
   BOOST_CHECK_EQUAL(r3.elements(), elements);
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.begin(), r3.end(), tile.begin(), tile.end());
 
   BOOST_REQUIRE_NO_THROW(range1_type r4(a.begin() + 1, a.end()));
   range1_type r4(a.begin() + 1, a.end());// check construction with a with a element offset.
-  BOOST_CHECK_EQUAL(r4.tiles(), range1_type::range_type(0,4));
-  BOOST_CHECK_EQUAL(r4.elements(), range1_type::tile_range_type(3,50));
+  BOOST_CHECK_EQUAL(r4.tiles(), make_range1<std::size_t>(0,4));
+  BOOST_CHECK_EQUAL(r4.elements(), make_tile_range1<std::size_t>(3,50));
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.begin(), r4.end(), tile.begin() + 1, tile.end());
 }
 

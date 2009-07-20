@@ -51,16 +51,17 @@ namespace TiledArray {
     }; // class IndexIterator
 
     /// Element Iterator used to iterate over elements of dense arrays.
-    template <typename Value, typename IndexIt, typename Container>
+    template <typename Value, typename IndexIt, typename Container, typename Reference = Value& >
     class ElementIterator : public boost::iterator_facade<
-        ElementIterator<Value, IndexIt, Container>, Value, std::output_iterator_tag>
+        ElementIterator<Value, IndexIt, Container>, Value, std::output_iterator_tag, Reference>
     {
     public:
       typedef ElementIterator<Value, IndexIt, Container> ElementIterator_;
-      typedef boost::iterator_facade<ElementIterator_, Value, std::input_iterator_tag> iterator_facade_;
+      typedef typename IndexIt::value_type index_type;
+      typedef Container container_type;
 
       /// Primary constructor
-      ElementIterator(const IndexIt& it, Container* container) :
+      ElementIterator(const IndexIt& it, container_type * const container) :
         container_(container), current_(it)
       {}
 
@@ -77,7 +78,7 @@ namespace TiledArray {
 
       ~ElementIterator() {}
 
-      typename IndexIt::value_type const& index() const {
+      const index_type & index() const {
         return *current_;
       }
 
@@ -90,13 +91,12 @@ namespace TiledArray {
         return current_ == other.current_ && container_ == other.container_;
       }
 
-      // user must provide void Container::increment(index& current) const;
       void increment() {
         ++current_;
       }
 
-      Value& dereference() const {
-        return container_->operator[](index());
+      Reference dereference() const {
+        return container_->operator[](*current_);
       }
 
       template<typename OtherValue>
@@ -104,7 +104,7 @@ namespace TiledArray {
         return current_ == other.current_ && container_ == other.container_;
       }
 
-      Container* container_;
+      container_type * container_;
       IndexIt current_;
 
     }; // class ElementIterator
