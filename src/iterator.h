@@ -1,5 +1,5 @@
-#ifndef ITERATOR_H__INCLUDED
-#define ITERATOR_H__INCLUDED
+#ifndef TILEDARRAY_ITERATOR_H__INCLUDED
+#define TILEDARRAY_ITERATOR_H__INCLUDED
 
 #include <coordinate_system.h>
 #include <boost/iterator/iterator_facade.hpp>
@@ -58,7 +58,7 @@ namespace TiledArray {
     public:
       typedef ElementIterator<Value, IndexIt, Container> ElementIterator_;
       typedef typename IndexIt::value_type index_type;
-      typedef Container container_type;
+      typedef typename boost::remove_const<Container>::type container_type;
 
       /// Primary constructor
       ElementIterator(const IndexIt& it, container_type * const container) :
@@ -109,7 +109,6 @@ namespace TiledArray {
 
     }; // class ElementIterator
 
-
     template<typename INDEX, typename CS>
     void IncrementCoordinate(INDEX& current, const INDEX& start, const INDEX& finish) {
       assert(current >= start && current < finish);
@@ -137,4 +136,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif // ITERATOR_H__INCLUDED
+#endif // TILEDARRAY_ITERATOR_H__INCLUDED

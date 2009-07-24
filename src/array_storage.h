@@ -1,5 +1,5 @@
-#ifndef ARRAY_STORAGE_H__INCLUDED
-#define ARRAY_STORAGE_H__INCLUDED
+#ifndef TILEDARRAY_ARRAY_STORAGE_H__INCLUDED
+#define TILEDARRAY_ARRAY_STORAGE_H__INCLUDED
 
 #include <range.h>
 #include <madness_runtime.h>
@@ -845,4 +845,4 @@ namespace madness {
 
   }
 }
-#endif // ARRAY_STORAGE_H__INCLUDED
+#endif // TILEDARRAY_ARRAY_STORAGE_H__INCLUDED

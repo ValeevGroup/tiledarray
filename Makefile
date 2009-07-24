@@ -2,7 +2,7 @@ include Make.path
 
 VPATH = src:Tests
 CXX = $(MPICXX)
-INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -I$(BLASINCLUDEDIR)
+INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -I$(BLASINCLUDEDIR) -I$(EIGENDIR)
 LIBDIR = 
 LIBS = -lMADworld -lcblas -lblas
 CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=gnu++0x
@@ -14,7 +14,8 @@ CXXDEPENDFLAGS = -M
 
 TESTSRC = permutationtest.cpp coordinatestest.cpp rangetest.cpp \
   tiledrange1test.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
-  tiletest.cpp arraytest.cpp TiledArrayTest.cpp
+  variablelisttest.cpp tiletest.cpp tileslicetest.cpp mathtest.cpp arraytest.cpp \
+  TiledArrayTest.cpp
 OBJS = $(TESTSRC:%.cpp=%.$(OBJSUF))
 
 TARGET =	TiledArrayTest

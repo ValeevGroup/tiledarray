@@ -1,5 +1,5 @@
-#ifndef COORDINATE_SYSTEM_H__INCLUDED
-#define COORDINATE_SYSTEM_H__INCLUDED
+#ifndef TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
+#define TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 
 #include <boost/array.hpp>
 #include <algorithm>
@@ -119,4 +119,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif // COORDINATE_SYSTEM_H__INCLUDED
+#endif // TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED

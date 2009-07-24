@@ -1,4 +1,5 @@
 #include <tile.h>
+#include <tile_math.h>
 #include <array_storage.h>
 #include <tiled_range1.h>
 #include <coordinates.h>
@@ -221,26 +222,28 @@ BOOST_AUTO_TEST_CASE( addition )
 {
   Tile3 t1(t);
   Tile3 t2(t.range(), 2);
-  Tile3 t3 = t1 + t2;
+  Tile3 t3;
+  t3("a,b,c") = t1("a,b,c") + t2("a,b,c");
   BOOST_CHECK(check_val(t3.begin(), t3.end(), 3.0));//  check that the values were added correctly.
 
-  Tile3 t4(t);
-  t4 += t2;
-  BOOST_CHECK(check_val(t4.begin(), t4.end(), 3.0));//  check that the values were added correctly.
+//  Tile3 t4(t);
+//  t4("a,b,c") += t2("a,b,c");
+//  BOOST_CHECK(check_val(t4.begin(), t4.end(), 3.0));//  check that the values were added correctly.
 }
 
 BOOST_AUTO_TEST_CASE( subtract )
 {
   Tile3 t1(t);
   Tile3 t2(t.range(), 2);
-  Tile3 t3 = t2 - t1;
+  Tile3 t3;
+  t3("a,b,c") = t2("a,b,c") - t1("a,b,c");
   BOOST_CHECK(check_val(t3.begin(), t3.end(), 1.0));//  check that the values were added correctly.
 
-  Tile3 t4(t2);
-  t4 -= t1;
-  BOOST_CHECK(check_val(t4.begin(), t4.end(), 1.0));//  check that the values were added correctly.
+//  Tile3 t4(t2);
+//  t4("a,b,c") -= t1("a,b,c");
+//  BOOST_CHECK(check_val(t4.begin(), t4.end(), 1.0));//  check that the values were added correctly.
 }
-
+/*
 BOOST_AUTO_TEST_CASE( addition_scalar )
 {
   Tile3 t1(t);
@@ -304,145 +307,18 @@ BOOST_AUTO_TEST_CASE( contract_3x3 )
   BOOST_CHECK(check_val(tr.begin(), tr.end(), 30.0));
 }
 
+BOOST_AUTO_TEST_CASE( variable_list )
+{
+  detail::AnnotatedTile<Tile3> t1 = t("a,b,c");
+  BOOST_CHECK_EQUAL_COLLECTIONS(t1.tile().begin(), t1.tile().end(), t.begin(), t.end());
+  BOOST_CHECK_EQUAL(t1.vars().get(0), "a");
+  BOOST_CHECK_EQUAL(t1.vars().get(1), "b");
+  BOOST_CHECK_EQUAL(t1.vars().get(2), "c");
+
+  BOOST_CHECK_THROW(t("a,b,c,d"), std::runtime_error);
+  BOOST_CHECK_THROW(t("a,b"), std::runtime_error);
+
+}
+*/
 BOOST_AUTO_TEST_SUITE_END()
 
-struct TileSliceFixture : public TileFixture {
-  typedef TileSlice<TileFixture::Tile3> TileSlice3;
-
-  TileSliceFixture() : ts(t, rs) {
-
-  }
-
-  ~TileSliceFixture() { }
-
-  TileSlice3 ts;
-};
-
-BOOST_FIXTURE_TEST_SUITE( tile_slice_suite , TileSliceFixture )
-
-BOOST_AUTO_TEST_CASE( accessors )
-{
-  size_array ws = {{5,1,1}};
-  BOOST_CHECK_EQUAL(ts.range(), rs);
-  BOOST_CHECK_EQUAL(ts.start(), rs.start());
-  BOOST_CHECK_EQUAL(ts.finish(), rs.finish());
-  BOOST_CHECK_EQUAL(ts.size(), rs.size());
-  BOOST_CHECK_EQUAL(ts.volume(), rs.volume());
-  BOOST_CHECK_EQUAL(ts.weight(), ws);
-
-  BOOST_CHECK_NE(ts.range(), t.range());
-}
-
-BOOST_AUTO_TEST_CASE( constructor )
-{
-  range_type rs(index_type(0,0,0), index_type(5,5,1));
-  size_array ws = {{5,1,1}};
-  BOOST_REQUIRE_NO_THROW(TileSlice3 ts1(t,rs)); // primary constructor
-  TileSlice3 ts1(t,rs);
-  BOOST_CHECK_EQUAL(ts1.range(), rs);
-  BOOST_CHECK_EQUAL(ts1.weight(), ws);
-  BOOST_CHECK_CLOSE(ts1.at(index_type(0,0,0)), 1.0, 0.000001);
-
-  BOOST_REQUIRE_NO_THROW(TileSlice3 ts2(ts1)); // copy constructor
-  TileSlice3 ts2(ts1);
-  BOOST_CHECK_EQUAL(ts2.range(), rs);
-  BOOST_CHECK_EQUAL(ts2.weight(), ws);
-  BOOST_CHECK_CLOSE(ts2.at(index_type(0,0,0)), 1.0, 0.000001);
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(TileSlice3 ts3(std::forward<TileSlice3>(TileSlice3(t,rs)))); // move constructor
-  TileSlice3 ts3(std::forward<TileSlice3>(TileSlice3(t,rs)));
-  BOOST_CHECK_EQUAL(ts3.range(), rs);
-  BOOST_CHECK_EQUAL(ts3.weight(), ws);
-  BOOST_CHECK_CLOSE(ts3.at(index_type(0,0,0)), 1.0, 0.000001);
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-
-  const Tile3 tc(r, 1.0);
-  BOOST_REQUIRE_NO_THROW(TileSlice<const Tile3> ts4(tc,rs)); // primary constructor w/ const tile
-  TileSlice<const Tile3> ts4(tc,rs);
-  BOOST_CHECK_EQUAL(ts4.range(), rs);
-  BOOST_CHECK_EQUAL(ts4.weight(), ws);
-  BOOST_CHECK_CLOSE(ts4.at(index_type(0,0,0)), 1.0, 0.000001);
-}
-
-BOOST_AUTO_TEST_CASE( includes )
-{
-  BOOST_CHECK(t.includes(index_type(3,3,3)));   // check a point that is in tile and not in slice.
-  BOOST_CHECK(! ts.includes(index_type(3,3,3)));
-  BOOST_CHECK(t.includes(index_type(3,3,0)));   // check a point that is in both tile and slice.
-  BOOST_CHECK(ts.includes(index_type(3,3,0)));
-}
-
-BOOST_AUTO_TEST_CASE( assignment )
-{
-  Tile3 t1(r, 0.0);
-  TileSlice3 ts1(t1, rs);
-  ts1 = ts;
-  BOOST_CHECK(std::equal(ts1.begin(), ts1.end(), ts.begin()));
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  TileSlice3 ts2(t1, rs);
-  ts2 = TileSlice3(t,rs);
-  BOOST_CHECK(std::equal(ts2.begin(), ts2.end(), ts.begin()));
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-}
-
-BOOST_AUTO_TEST_CASE( iteration )
-{
-  for(TileSlice3::iterator it = ts.begin(); it != ts.end(); ++it) { // check iteration
-    BOOST_CHECK_CLOSE(*it, t.at(it.index()), 0.000001); // check for correct value
-    BOOST_CHECK_EQUAL(&(*it), &(t.at(it.index()))); // check that the slice element is referencing the same place in memory
-  }
-
-  Tile3 t1(t);
-  TileSlice3 ts1(t1, rs);
-  TileSlice3::iterator it1 = ts1.begin();
-  BOOST_CHECK_CLOSE(*it1, 1.0, 0.000001);
-  *it1 = 5.0;
-  BOOST_CHECK_CLOSE(*it1, 5.0, 0.000001);
-
-  const TileSlice3& ts2 = ts;
-  for(TileSlice3::const_iterator it = ts2.begin(); it != ts2.end(); ++it) { // check const iteration
-    BOOST_CHECK_CLOSE(*it, t.at(it.index()), 0.000001); // check for the correct value
-    BOOST_CHECK_EQUAL(&(*it), &(t.at(it.index()))); // check that the slice element is referencing the same place in memory
-  }
-}
-
-BOOST_AUTO_TEST_CASE( element_access )
-{
-  Tile3 t1(r);
-  double d = 0.0;
-  for(Tile3::iterator it = t1.begin(); it != t1.end(); ++it)
-    *it = d++;
-
-  range_type rs1 = range_type(index_type(1,0,0), index_type(2,5,5));
-  TileSlice3 ts1(t1,rs1);
-  Tile3::iterator t1_begin = t1.begin() + 25;
-  Tile3::iterator t1_end = t1.end() - (3 * 25);
-  BOOST_CHECK_EQUAL_COLLECTIONS(ts1.begin(), ts1.end(), t1_begin, t1_end);
-
-  for(range_type::const_iterator it = ts1.range().begin(); it != ts1.range().end(); ++it) {
-    BOOST_CHECK_CLOSE(ts1.at(*it), t1.at(*it), 0.000001);  // check that the values for the same index are the same w/ at()
-    BOOST_CHECK_CLOSE(ts1[*it], t1[*it], 0.000001);        // and with operator []()
-  }
-
-  BOOST_CHECK_CLOSE(ts1.at(index_type(1,3,3)), 43.0, 0.000001);
-  ts1.at(index_type(1,3,3)) = 500.0; // check at write access
-  BOOST_CHECK_CLOSE(ts1.at(index_type(1,3,3)), 500.0, 0.000001);
-  BOOST_CHECK_CLOSE(t1.at(index_type(1,3,3)), 500.0, 0.000001);
-  ts1[index_type(1,3,3)] = 200.0; // check operator []() write access
-  BOOST_CHECK_CLOSE(ts1.at(index_type(1,3,3)), 200.0, 0.000001);
-  BOOST_CHECK_CLOSE(t1.at(index_type(1,3,3)), 200.0, 0.000001);
-
-  const TileSlice3& ts2 = ts1;
-  BOOST_CHECK_CLOSE(ts2.at(index_type(1,0,0)), 25.0, 0.000001); // check at() const
-  BOOST_CHECK_CLOSE(ts2[index_type(1,0,0)], 25.0, 0.000001);    // check operator[] const
-
-  const Tile3 t2(r, 1.0);
-  TileSlice<const Tile3> ts3(t, rs);
-  BOOST_CHECK_CLOSE(ts3.at(index_type(1,0,0)), 1.0, 0.000001);  // check const tile access for at()
-  BOOST_CHECK_CLOSE(ts3[index_type(1,0,0)], 1.0, 0.000001);     // check const tile access for operator[]()
-}
-
-BOOST_AUTO_TEST_SUITE_END()
