@@ -82,10 +82,15 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 
   const Tile6 ct(r, 1.0);
-//  BOOST_REQUIRE_NO_THROW( (PackedConstTile3 pt4(ct, b.begin(), b.end())) ); // primary constructor w/ const tile
+  BOOST_REQUIRE_NO_THROW( PackedConstTile3 pt4(ct, b.begin(), b.end()) ); // primary constructor w/ const tile
   PackedConstTile3 pt4(ct, b.begin(), b.end());
   BOOST_CHECK_EQUAL(pt4.range(), pr);
   BOOST_CHECK_CLOSE(pt4.at(index3_type(0,0,0)), 1.0, 0.000001);
+
+  BOOST_REQUIRE_NO_THROW(PackedTile3 pt5(t, b.begin(), b.end(), index3_type(1,1,1))); // primary constructor w/ origin offset
+  PackedTile3 pt5(t, b.begin(), b.end(), index3_type(1,1,1));
+  BOOST_CHECK_EQUAL(pt5.range(), range3_type(index3_type(1,1,1), index3_type(10,10,10)));
+  BOOST_CHECK_CLOSE(pt5.at(index3_type(0,0,0)), 1.0, 0.000001);
 }
 
 BOOST_AUTO_TEST_CASE( includes )
