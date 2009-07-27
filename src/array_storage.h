@@ -124,8 +124,7 @@ namespace TiledArray {
       ordinal_type ordinal(const index_type& i) const {
         TA_ASSERT(includes(i),
             std::out_of_range("ArrayDim<...>::ordinal(...): Index is not included in the array range."));
-        const typename index_type::index init = 0;
-        return std::inner_product(i.data().begin(), i.data().end(), weight_.begin(), init);
+        return ord(i);
       }
 
       /// Sets the size of object to the given size.
@@ -798,16 +797,7 @@ namespace TiledArray {
         result *= ( a[d] < 0 ? -a[d] : a[d] );
       return result;
     }
-/*
-    /// compute dot product between 2 arrays
-    template <typename I, unsigned long int DIM>
-    I dot_product(const boost::array<I,DIM>& A, const boost::array<I,DIM>& B) {
-      I result = 0;
-      for(unsigned int dim = 0; dim < DIM; ++dim)
-        result += A[dim] * B[dim];
-      return result;
-    }
-*/
+
   } // namespace detail
 } // namespace TiledArray
 

@@ -3,17 +3,12 @@
 
 #include <iterator.h>
 #include <range.h>
+#include <type_traits.h>
 #include <boost/type_traits.hpp>
 
 
 namespace TiledArray {
 
-  namespace detail {
-
-    template <typename T, typename V>
-    struct mirror_const;
-
-  } // namespace detail
 
   /// \c TileSlice represents an arbitrary sub-range of a tile. \c TileSlice
   /// does not contain any element data. The primary use of \c TileSlice is to
@@ -159,26 +154,6 @@ namespace TiledArray {
     T& t_;          ///< element data
 
   }; // class TileSlice
-
-  namespace detail {
-
-    template <typename T, typename V>
-    struct mirror_const {
-      typedef T type;
-      typedef V value;
-      typedef V& reference;
-      typedef V* pointer;
-    };
-
-    template <typename T, typename V>
-    struct mirror_const<const T, V> {
-      typedef const T type;
-      typedef const V value;
-      typedef const V& reference;
-      typedef const V* pointer;
-    };
-
-  } // namespace detail
 
 } // namespace TiledArray
 
