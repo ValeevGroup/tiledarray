@@ -8,6 +8,160 @@ namespace TiledArray {
 
   namespace detail {
 
+    template<typename T>
+    struct diff_type {
+      typedef typename T::difference_type difference_type;
+    };
+
+    template<typename T>
+    struct diff_type<T*> {
+      typedef std::size_t difference_type;
+    };
+
+    /// Step iterator
+
+    /// This iterator will iterate in steps through a container. The base
+    /// iterator must be a random access iterator or pointer.
+    template<typename RandIter>
+    class StepIterator : public boost::iterator_facade< StepIterator<RandIter>,
+        typename RandIter::value_type, std::random_access_iterator_tag,
+        typename RandIter::reference, typename diff_type<RandIter>::difference_type >
+    {
+    private:
+      typedef boost::iterator_facade< StepIterator<RandIter>,
+      typename RandIter::value_type, std::random_access_iterator_tag,
+      typename RandIter::reference, typename diff_type<RandIter>::difference_type >
+      base_type;
+    public:
+      typedef StepIterator<RandIter> StepIterator_;
+      typedef RandIter base_iterator;
+      typedef typename base_type::difference_type difference_type;
+
+      /// Primary constructor
+
+      /// \arg \c it is a \c base_iterator that identifies the current position
+      /// of the iterator.
+      /// \arg \c step is the step size for iterator increment.
+      StepIterator(base_iterator it, const difference_type step) :
+        i_(it), s_(step) { }
+
+      StepIterator(const StepIterator_& other) : i_(other.i_), s_(other.s_) { }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+      /// Move constructor
+      StepIterator(StepIterator_&& other) : i_(std::move(other.i_)), s_(other.s_) { }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
+
+      StepIterator_& operator =(const StepIterator_& other) {
+        i_ = other.i_;
+        s_ = other.s_;
+
+        return *this;
+      }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+      StepIterator_& operator =(StepIterator_&& other) {
+        i_ = std::move(other.i_);
+        s_ = std::move(other.s_);
+
+        return *this;
+      }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
+
+      /// Returns a reference to the base iterator.
+      base_iterator& base() { return i_; }
+      /// Returns a constant reference to the base iterator.
+      const base_iterator& base() const { return i_; }
+
+    private:
+      friend class boost::iterator_core_access;
+
+      /// No default construction allowed.
+      StepIterator();
+
+      /// Returns a reference to the the element pointed to by
+      typename base_type::reference dereference() const { return *i_; }
+
+      /// Returns true if the base iterators are equal. Throws std::runtime_error
+      /// if the step sizes are not equal.
+      bool equal(const StepIterator_& other) const {
+        TA_ASSERT(s_ == other.s_,
+            std::runtime_error("StepIterator<...>::equal(...): The step sizes are not equal."));
+        return i_ == other.i_;
+      }
+
+      /// advances the base iterator by step.
+      void increment() { i_ += s_; }
+
+      /// reverse advance the base iterator by step.
+      void decrement() { i_ -= s_; }
+
+      /// advances the base iterator by step * n.
+      void advance(const difference_type n) { i_ += n * s_; }
+
+      /// Returns the difference between this iterator and the other iterator
+      /// divided by step. Throws if the step sizes of this and the other
+      /// iterator are different or if the other base iterator does not fall
+      /// on a step boundary of the this base iterator.
+      difference_type distance_to(const StepIterator_& other) const {
+        TA_ASSERT(s_ == other.s_,
+            std::runtime_error("StepIterator<...>::distance_to(...): The step sizes are not equal."));
+        TA_ASSERT((((other.i_ -  i_) % s_) == 0),
+            std::runtime_error("StepIterator<...>::distance_to(...): The other iterator is not on a valid "));
+
+        return (other.i_ -  i_) / s_;
+      }
+
+      base_iterator i_;
+      difference_type s_;
+    };
+
+    /// Tile math expression
+    template <typename T0, typename T1, typename TR, typename Op>
+    struct TileExp : public std::binary_function<detail::AnnotatedTile<T0>,
+        detail::AnnotatedTile<T1>, detail::AnnotatedTile<TR> >
+    {
+      typedef std::binary_function<detail::AnnotatedTile<T0>,
+          detail::AnnotatedTile<T1>, detail::AnnotatedTile<TR> > func_type;
+      typedef typename func_type::first_argument_type first_argument_type;
+      typedef typename func_type::second_argument_type second_argument_type;
+      typedef typename func_type::result_type result_type;
+
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /// Applies a unary operation to the base iterator when it is dereferenced.
 
     /// When this iterator is dereferenced, the base iterator is dereferenced

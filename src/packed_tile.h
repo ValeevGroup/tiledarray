@@ -12,7 +12,11 @@ namespace TiledArray {
   /// Cartesian packed tile
 
   /// PackedTile is a Cartesian packed tile reference to another, n-dimensional,
-  /// tile.
+  /// tile. Packed tile does not contain element data. Instead, it forwards all
+  /// function calls to the original tile when accessing the element data.
+  /// Modifying packed tile data will modify the original tile's data. All other
+  /// functions that reference tile dimensions are translated to the packed tile
+  /// dimensions.
   template<typename T, unsigned int DIM>
   class PackedTile {
   public:
@@ -31,8 +35,19 @@ namespace TiledArray {
     typedef typename detail::mirror_const<T,value_type>::reference reference_type;
     typedef const value_type & const_reference_type;
 
-    static const unsigned int dim() { return tile_type::dim(); }
+    static const unsigned int dim() { return DIM; }
 
+    /// Primary constructor.
+
+    /// The packed tile is constructed with an existing tile and dimension
+    /// boundaries. The boundaries are given with input iterators containing the
+    /// boundaries. The boundaries must be in the form { b0, b1, ..., bn }, where
+    /// 0 == b0 < b1 < ... < bn, n == DIM + 1, and DIM == the packed tile
+    /// dimension.
+    ///
+    /// \arg \c t is the existing tile to be packed.
+    /// \arg \c first, \c last are the dimension boundaries list.
+    /// \arg \c origin is the offset of the packed tile (optional).
     template<typename InIter>
     PackedTile(T& t, InIter first, InIter last, const index_type& origin = index_type(0)) : r_(), w_(), t_(t)
     {
@@ -96,17 +111,17 @@ namespace TiledArray {
     const_iterator end() const { return t_.end(); } // no throw
 
     /// return a constant reference to the tile \c Range<> object.
-    const range_type& range() const { return r_; }
+    const range_type& range() const { return r_; } // no throw
     /// Returns the tile range start.
-    const index_type& start() const { return r_.start(); }
+    const index_type& start() const { return r_.start(); } // no throw
     /// Returns the tile range finish.
-    const index_type& finish() const { return r_.finish(); }
+    const index_type& finish() const { return r_.finish(); } // no throw
     /// Returns the tile range size.
-    const size_array& size() const { return r_.size(); }
+    const size_array& size() const { return r_.size(); } // no throw
     /// Returns the number of elements in the volume.
-    const volume_type volume() const { return r_.volume(); }
+    const volume_type volume() const { return r_.volume(); } // no throw
     /// Returns the precomputed dimension weights.
-    const size_array& weight() const { return w_; }
+    const size_array& weight() const { return w_; } // no throw
 
     /// Returns true when index \c i is included in the tile.
     /// \arg \c i Element index.

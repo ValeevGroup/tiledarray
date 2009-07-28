@@ -2,24 +2,15 @@
 #define TILEDARRAY_TILE_H__INCLUDED
 
 #include <array_storage.h>
-#include <variable_list.h>
-#include <boost/iterator/transform_iterator.hpp>
-#include <boost/iterator/zip_iterator.hpp>
-#include <boost/tuple/tuple.hpp>
+#include <annotated_tile.h>
+#include <tile_slice.h>
 #include <iosfwd>
 #include <functional>
-#include <cstddef>
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-#include <tr1/tuple>
-#else
-#include <tuple>
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
+/*
 extern "C" {
 #include <cblas.h>
 };
-
+*/
 namespace TiledArray {
 
   // Forward declaration of TiledArray components.
@@ -36,11 +27,6 @@ namespace TiledArray {
   Tile<T,DIM,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,CS>& t);
   template<typename T, unsigned int DIM, typename CS>
   std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,CS>& t);
-
-  namespace detail {
-    template<typename T>
-    class AnnotatedTile;
-  } // namespace detail
 
   /// Tile is a dense, multi-dimensional array.
 
@@ -118,6 +104,36 @@ namespace TiledArray {
         range_(s.range()), data_(s.size(), s.begin(), s.end())
     { }
 
+    /// AnnotatedTile copy constructor
+
+    /// The constructor will throw when the dimensions of the annotated tile do
+    /// not match the dimensions of the tile.
+    template<typename U>
+    Tile(const detail::AnnotatedTile<U>& atile) :
+        range_(make_size_(atile.size().begin(), atile.size().end())),
+        data_(range_.size(), atile.begin(), atile.end())
+    {
+      TA_ASSERT((atile.dim() == DIM),
+          std::runtime_error("Tile<...>::Tile(const AnnotatedTile&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+    }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// AnnotatedTile assignment operator
+    Tile(detail::AnnotatedTile<value_type>&& atile) :
+        range_(make_size_(atile.size().begin(), atile.size().end())), data_()
+    {
+      TA_ASSERT((atile.dim() == DIM),
+          std::runtime_error("Tile<...>::Tile(AnnotatedTile&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+      if(atile.owner_) {
+        data_.move(range_.size(), atile.data());
+        atile.owner_ = false;
+      } else {
+        data_container temp(range_.size(), atile.begin(), atile.end());
+        data_.swap(temp);
+      }
+    }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
+
     ~Tile() { }
 
     /// Assignment operator
@@ -138,6 +154,32 @@ namespace TiledArray {
     }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
+    /// AnnotatedTile assignment operator
+    template<typename U>
+    Tile_& operator =(const detail::AnnotatedTile<U>& atile) {
+      TA_ASSERT((atile.dim() == DIM),
+          std::runtime_error("Tile<...>::operator=(const AnnotatedTile&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+      size_array size;
+      std::copy(atile.size().begin(), atile.size().end(), size.begin());
+      range_.resize(size);
+      std::copy(atile.begin(), atile.end(), data_.begin());
+
+      return *this;
+    }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// AnnotatedTile assignment operator
+    Tile_& operator =(detail::AnnotatedTile<value_type>&& atile) {
+      TA_ASSERT((atile.dim() == DIM),
+          std::runtime_error("Tile<...>::operator=(AnnotatedTile&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+      range_.resize(make_size(atile.size().begin(), atile.size().end()));
+      data_.move(size, atile.data());
+      atile.owner_ = false;
+
+      return *this;
+    }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
+
     /// Returns a raw pointer to the element data.
     value_type* data() { return data_.data(); }
     /// Returns a constant raw pointer to the element data.
@@ -153,17 +195,17 @@ namespace TiledArray {
     const_iterator end() const { return data_.end(); } // no throw
 
     /// return a constant reference to the tile \c Range<> object.
-    const range_type& range() const { return range_; }
+    const range_type& range() const { return range_; } // no throw
     /// Returns the tile range start.
-    const index_type& start() const { return range_.start(); }
+    const index_type& start() const { return range_.start(); } // no throw
     /// Returns the tile range finish.
-    const index_type& finish() const { return range_.finish(); }
+    const index_type& finish() const { return range_.finish(); } // no throw
     /// Returns the tile range size.
-    const size_array& size() const { return range_.size(); }
+    const size_array& size() const { return range_.size(); } // no throw
     /// Returns the number of elements in the volume.
-    const volume_type volume() const { return range_.volume(); }
+    const volume_type volume() const { return range_.volume(); } // no throw
     /// Returns the dimension weights.
-    const size_array weight() const { return data_.weight(); }
+    const size_array weight() const { return data_.weight(); } // no throw
 
     /// Returns true when \i is in the tile range.
 
@@ -226,12 +268,12 @@ namespace TiledArray {
       return *this;
     }
 
-    detail::AnnotatedTile<Tile_> operator ()(const std::string& v) {
-      return detail::AnnotatedTile<Tile_>(this, detail::VariableList(v));
+    detail::AnnotatedTile<value_type> operator ()(const std::string& v) {
+      return detail::AnnotatedTile<value_type>(*this, detail::VariableList(v));
     }
 
-    detail::AnnotatedTile<const Tile_> operator ()(const std::string& v) const {
-      return detail::AnnotatedTile<const Tile_>(this, detail::VariableList(v));
+    detail::AnnotatedTile<const value_type> operator ()(const std::string& v) const {
+      return detail::AnnotatedTile<const value_type>(*this, detail::VariableList(v));
     }
 
     /// Exchange calling tile's data with that of \c other.
@@ -248,6 +290,13 @@ namespace TiledArray {
 
   private:
 
+    template<typename InIter>
+    static size_array make_size_(InIter first, InIter last) {
+      size_array result;
+      std::copy(first, last, result.begin());
+      return result;
+    }
+
     range_type range_;     ///< tile dimension information
     data_container data_;  ///< element data
 
@@ -255,68 +304,6 @@ namespace TiledArray {
     friend Tile_ operator^ <>(const Permutation<DIM>&, const Tile_&);
 
   }; // class Tile
-
-  namespace detail {
-
-    /// Annotated tile.
-    template<typename T>
-    class AnnotatedTile {
-    public:
-      typedef typename boost::remove_const<T>::type tile_type;
-      typedef typename tile_type::iterator iterator;
-      typedef typename tile_type::const_iterator const_iterator;
-      typedef typename tile_type::value_type value_type;
-
-      AnnotatedTile(T* t, const detail::VariableList& vl) :
-          t_(t), vl_(vl)
-      {
-        TA_ASSERT( tile_type::dim() == vl_.count() ,
-            std::runtime_error("AnnotatedTile<...>::AnnotatedTile(...): The number of variables in the variable list does not match the tile dimensions."));
-      }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      AnnotatedTile(T* t, detail::VariableList&& vl) :
-          t_(t), vl_(std::move(vl))
-      {
-        TA_ASSERT( tile_type::dim() == vl_.count() ,
-            std::runtime_error("AnnotatedTile<...>::AnnotatedTile(...): The number of variables in the variable list does not match the tile dimensions."));
-      }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-      template<typename Exp>
-      T operator =(const Exp& e) {
-        TA_ASSERT( vl_ == e.vars(),
-            std::runtime_error("operator=<T,Exp>(AnnotatedTile<T>&, const Exp&): variable lists are not equal."));
-
-        typename Exp::const_iterator eit = e.begin();
-        for(iterator tit = t_->begin(); tit != t_->end() && eit != e.end(); ++tit, ++eit)
-          *tit = *eit;
-
-        return *t_;
-      }
-
-      iterator begin() { return t_->begin(); }
-      const_iterator begin() const { return t_->begin(); }
-      iterator end() { return t_->end(); }
-      const_iterator end() const { return t_->end(); }
-
-      T& tile() const {
-        return *t_;
-      }
-
-      const detail::VariableList& vars() const {
-        return vl_;
-      }
-
-    private:
-      T* t_;
-      const detail::VariableList vl_;
-    };
-
-
-  } // namespace detail
-  /// Sub-range of a tile
-
 
   /// Permute the tile given a permutation.
   template<typename T, unsigned int DIM, typename CS>

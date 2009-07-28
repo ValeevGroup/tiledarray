@@ -168,5 +168,11 @@ BOOST_AUTO_TEST_CASE( element_access )
   BOOST_CHECK_CLOSE(pt3[index3_type(1,0,0)], 1.0, 0.000001);     // check const tile access for operator[]()
 }
 
+BOOST_AUTO_TEST_CASE( origin )
+{
+  PackedTile3 pt1(pt);
+  pt1.set_origin(index3_type(1,1,1));
+  BOOST_CHECK_EQUAL(pt1.range(), range3_type(index3_type(1,1,1), index3_type(10,10,10)));
+}
 
 BOOST_AUTO_TEST_SUITE_END()

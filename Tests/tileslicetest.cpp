@@ -72,12 +72,16 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_CLOSE(ts3.at(index_type(0,0,0)), 1.0, 0.000001);
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
-
   const Tile3 tc(r, 1.0);
   BOOST_REQUIRE_NO_THROW(TileSlice<const Tile3> ts4(tc,rs)); // primary constructor w/ const tile
   TileSlice<const Tile3> ts4(tc,rs);
   BOOST_CHECK_EQUAL(ts4.range(), rs);
   BOOST_CHECK_CLOSE(ts4.at(index_type(0,0,0)), 1.0, 0.000001);
+
+  BOOST_REQUIRE_NO_THROW(TileSlice3 ts5 = t.slice(rs)); // copy constructor
+  TileSlice3 ts5 = t.slice(rs);
+  BOOST_CHECK_EQUAL(ts5.range(), rs);
+  BOOST_CHECK_CLOSE(ts5.at(index_type(0,0,0)), 1.0, 0.000001);
 }
 
 BOOST_AUTO_TEST_CASE( includes )

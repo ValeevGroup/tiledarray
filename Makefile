@@ -14,7 +14,8 @@ CXXDEPENDFLAGS = -M
 
 TESTSRC = permutationtest.cpp coordinatestest.cpp rangetest.cpp \
  	tiledrange1test.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
-	variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp mathtest.cpp arraytest.cpp TiledArrayTest.cpp
+	variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp \
+	mathtest.cpp arraytest.cpp TiledArrayTest.cpp
 OBJS = $(TESTSRC:%.cpp=%.$(OBJSUF))
 
 TARGET =	TiledArrayTest

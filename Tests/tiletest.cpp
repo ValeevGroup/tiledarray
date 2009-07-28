@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE( ostream )
   BOOST_CHECK( output.check_length( 80, false ) );
   BOOST_CHECK( output.is_equal("{{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}}") );
 }
-
+/*
 BOOST_AUTO_TEST_CASE( addition )
 {
   Tile3 t1(t);
@@ -243,7 +243,7 @@ BOOST_AUTO_TEST_CASE( subtract )
 //  t4("a,b,c") -= t1("a,b,c");
 //  BOOST_CHECK(check_val(t4.begin(), t4.end(), 1.0));//  check that the values were added correctly.
 }
-/*
+
 BOOST_AUTO_TEST_CASE( addition_scalar )
 {
   Tile3 t1(t);

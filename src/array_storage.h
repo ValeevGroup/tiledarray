@@ -54,10 +54,8 @@ namespace TiledArray {
 
       /// Default constructor. Constructs a 0 dimension array.
       ArrayDim() : size_(), weight_(), n_(0) { // no throw
-        for(unsigned int d = 0; d < DIM; ++d) {
-          size_[d] = 0;
-          weight_[d] = 0;
-        }
+        size_.assign(0);
+        weight_.assign(0);
       }
 
       /// Constructs an array with dimensions of size.
@@ -129,8 +127,9 @@ namespace TiledArray {
 
       /// Sets the size of object to the given size.
       void resize(const size_array& s) {
-        ArrayDim temp(s);
-        swap(temp);
+        size_ = s;
+        weight_ = calc_weight(s);
+        n_ = detail::volume(s);
       }
 
       /// Helper functions that converts index_type to ordinal_type indexes.
@@ -172,10 +171,12 @@ namespace TiledArray {
   /// All data is allocated and stored locally. Type T must be default-
   /// Constructible and copy-constructible. You may work around the default
   /// constructor requirement by specifying default values in
-  template <typename T, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM>, typename Allocator = Eigen::aligned_allocator<T> >
+  template <typename T, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
   class DenseArrayStorage {
+  private:
+    typedef Eigen::aligned_allocator<T> alloc_type;
   public:
-    typedef DenseArrayStorage<T,DIM,Tag,CS,Allocator> DenseArrayStorage_;
+    typedef DenseArrayStorage<T,DIM,Tag,CS> DenseArrayStorage_;
     typedef detail::ArrayDim<DIM, Tag, CS> array_dim_type;
     typedef typename array_dim_type::index_type index_type;
     typedef typename array_dim_type::ordinal_type ordinal_type;
@@ -221,7 +222,7 @@ namespace TiledArray {
 
     /// The copy constructor performs a deep copy of the data.
     DenseArrayStorage(const DenseArrayStorage_& other) :
-        dim_(other.dim_), d_(NULL), alloc_(other.alloc_)
+        dim_(other.dim_), d_(NULL), alloc_()
     {
       create_(other.begin(), other.end());
     }
@@ -229,7 +230,7 @@ namespace TiledArray {
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// Move constructor
     DenseArrayStorage(DenseArrayStorage_&& other) : dim_(std::move(other.dim_)),
-        d_(other.d_), alloc_(std::move(other.alloc_))
+        d_(other.d_), alloc_()
     {
       other.d_ = NULL;
     }
@@ -254,7 +255,6 @@ namespace TiledArray {
         destroy_();
         d_ = other.d_;
         other.d_ = NULL;
-        alloc_ = std::move(other.alloc_);
       }
       return *this;
     }
@@ -369,7 +369,6 @@ namespace TiledArray {
     void swap(DenseArrayStorage_& other) { // no throw
       dim_.swap(other.dim_);
       std::swap(d_, other.d_);
-      std::swap(alloc_, other.alloc_);
     }
 
     /// Return the sizes of each dimension.
@@ -395,11 +394,25 @@ namespace TiledArray {
     /// If the given index is not included in the
     ordinal_type ordinal(const index_type& i) const { return dim_.ordinal(i); }
 
+    /// Move data pointer to this array. This operation assumes data is the same
+    /// size as the current array.
+    DenseArrayStorage_& move(const size_array& size, value_type* data) {
+      destroy_();
+      if(d_ != data) {
+        d_ = data;
+      }
+
+      if(size != dim_.size())
+        dim_.resize(size);
+    }
+
   private:
     /// Allocate and initialize the array.
 
     /// All elements will contain the given value.
     void create_(const value_type val) {
+      TA_ASSERT(d_ == NULL,
+          std::runtime_error("DenseArrayStorage<...>::create_(...): Cannot allocate data to a non-NULL pointer."));
       d_ = alloc_.allocate(dim_.n_);
       for(ordinal_type i = 0; i < dim_.n_; ++i)
         alloc_.construct(d_ + i, val);
@@ -412,6 +425,8 @@ namespace TiledArray {
     /// the remaining elements will be initialized with the default constructor.
     template <typename InIter>
     void create_(InIter first, InIter last) {
+      TA_ASSERT(d_ == NULL,
+          std::runtime_error("DenseArrayStorage<...>::create_(...): Cannot allocate data to a non-NULL pointer."));
       d_ = alloc_.allocate(dim_.n_);
       for(ordinal_type i = 0; i < dim_.n_; ++i) {
         if(first != last) {
@@ -425,18 +440,20 @@ namespace TiledArray {
 
     /// Destroy the array
     void destroy_() {
-      value_type* d = d_;
-      const value_type* const e = d_ + dim_.n_;
-      for(; d != e; ++d)
-        alloc_.destroy(d);
+      if(d_ != NULL) {
+        value_type* d = d_;
+        const value_type* const e = d_ + dim_.n_;
+        for(; d != e; ++d)
+          alloc_.destroy(d);
 
-      alloc_.deallocate(d_, dim_.n_);
-      d_ = NULL;
+        alloc_.deallocate(d_, dim_.n_);
+        d_ = NULL;
+      }
     }
 
     array_dim_type dim_;
     value_type* d_;
-    Allocator alloc_;
+    alloc_type alloc_;
   }; // class DenseArrayStorage
 
   /// Stores an n-dimensional array across many nodes.

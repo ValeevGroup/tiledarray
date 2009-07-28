@@ -6,9 +6,7 @@
 #include <type_traits.h>
 #include <boost/type_traits.hpp>
 
-
 namespace TiledArray {
-
 
   /// \c TileSlice represents an arbitrary sub-range of a tile. \c TileSlice
   /// does not contain any element data. The primary use of \c TileSlice is to
@@ -53,7 +51,7 @@ namespace TiledArray {
     /// operations than the equivalent tile operations. If you need to iterate
     /// over a slice in a time critical loop, you may want to copy the slice
     /// into a new tile object.
-    TileSlice(T& t, range_type& r) : r_(r), t_(t)
+    TileSlice(T& t, const range_type& r) : r_(r), t_(t)
     {
       TA_ASSERT( ( valid_range_(r, t) ) ,
           std::runtime_error("TileSlice<...>::TileSlice(...): Range slice is not contained by the range of the original tile."));

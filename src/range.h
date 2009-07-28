@@ -5,6 +5,7 @@
 #include <coordinates.h>
 #include <iterator.h>
 #include <boost/array.hpp>
+#include <numeric>
 
 namespace TiledArray {
 
@@ -73,26 +74,23 @@ namespace TiledArray {
     const_iterator end() const { return const_iterator(finish_, this); }
 
     /// Returns the lower bound of the range
-    const index_type& start() const { return start_; }
+    const index_type& start() const { return start_; } // no throw
 
     /// Returns the upper bound of the range
-    const index_type& finish() const { return finish_; }
+    const index_type& finish() const { return finish_; } // no throw
 
     /// Returns an array with the size of each dimension.
-    const size_array& size() const { return size_.data(); }
+    const size_array& size() const { return size_.data(); } // no throw
 
     /// Returns the number of elements in the range.
     volume_type volume() const {
-      volume_type result = 1;
-      for(unsigned int d = 0; d < DIM; ++d)
-        result *= ( size_[d] < 0 ? -size_[d] : size_[d] );
-      return result;
+      return std::accumulate(size_.begin(), size_.end(), volume_type(1), std::multiplies<volume_type>());
     }
 
     /// Check the coordinate to make sure it is within the range.
     bool includes(const index_type& i) const {
-      return (detail::less_eq<I,DIM>(start_.data(), i.data()) &&
-          detail::less<I,DIM>(i.data(), finish_.data()));
+      return (detail::less_eq(start_.data(), i.data()) &&
+          detail::less(i.data(), finish_.data()));
     }
 
     /// Assignment Operator.
