@@ -251,8 +251,8 @@ namespace TiledArray {
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     DenseArrayStorage_& operator =(DenseArrayStorage_&& other) {
       if(this != &other) {
-        dim_ = std::move(other.dim_);
         destroy_();
+        dim_ = std::move(other.dim_);
         d_ = other.d_;
         other.d_ = NULL;
       }
