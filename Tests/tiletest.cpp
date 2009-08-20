@@ -1,6 +1,4 @@
 #include <tile.h>
-#include <tile_math.h>
-#include <array_storage.h>
 #include <tiled_range1.h>
 #include <coordinates.h>
 #include <permutation.h>

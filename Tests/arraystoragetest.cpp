@@ -8,7 +8,7 @@
 using namespace TiledArray;
 
 struct ArrayDimFixture {
-  typedef detail::ArrayDim<3, LevelTag<0> > ArrayDim3;
+  typedef detail::ArrayDim<std::size_t, 3, LevelTag<0> > ArrayDim3;
   typedef ArrayDim3::index_type index_type;
   typedef ArrayDim3::size_array size_array;
 
@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE( ordinal )
 
 BOOST_AUTO_TEST_CASE( ordinal_fortran )
 {
-  typedef detail::ArrayDim<3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > FArrayDim3;
+  typedef detail::ArrayDim<std::size_t, 3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > FArrayDim3;
   typedef Range<std::size_t, 3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > range_type;
 
   FArrayDim3 a1(s);
