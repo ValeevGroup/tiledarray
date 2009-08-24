@@ -2,15 +2,27 @@
 #define TILEDARRAY_VARIABLE_LIST_H__INCLUDED
 
 #include <error.h>
-#include <coordinate_system.h>
-#include <vector>
-#include <string>
-#include <map>
+//#include <coordinate_system.h>
 #include <boost/iterator/transform_iterator.hpp>
+#include <vector>
+//#include <string>
+#include <map>
+//#include <iosfwd>
 
 namespace TiledArray {
 
-  namespace detail {
+  template <unsigned int DIM>
+  class Permutation;
+  template <unsigned int DIM, typename T>
+  std::vector<T> operator^(const Permutation<DIM>&, const std::vector<T>&);
+  template <unsigned int DIM, typename T>
+  std::vector<T> operator^=(std::vector<T>&, const Permutation<DIM>&);
+
+  namespace math {
+
+    class VariableList;
+    template<unsigned int DIM>
+    VariableList operator ^(const ::TiledArray::Permutation<DIM>&, const VariableList&);
 
     /// Variable list manages a list variable strings.
 
@@ -26,12 +38,13 @@ namespace TiledArray {
 
       /// constructs a variable lists
       explicit VariableList(const std::string& vars) {
-        init_(vars);
+        if(vars.size() != 0)
+          init_(vars);
       }
 
       template<typename InIter>
       VariableList(InIter first, InIter last) {
-        TA_ASSERT( unique(first, last),
+        TA_ASSERT( unique_(first, last),
             std::runtime_error("VariableList::VariableList(...): Duplicate variable names not allowed."));
 
         for(; first != last; ++first)
@@ -64,6 +77,14 @@ namespace TiledArray {
         return *this;
       }
 
+      template<unsigned int DIM>
+      VariableList& operator ^=(const ::TiledArray::Permutation<DIM>& p) {
+        TA_ASSERT(DIM == dim(),
+            std::runtime_error("VariableList::operator^=(...): The permutation dimensions are not equal to the variable list dimensions."));
+        vars_ ^= p;
+        return *this;
+      }
+
       /// Returns an iterator to the first variable.
       const_iterator begin() const { return vars_.begin(); }
 
@@ -71,11 +92,19 @@ namespace TiledArray {
       const_iterator end() const { return vars_.end(); }
 
       /// Returns the n-th string in the variable list.
-      const std::string& get(const std::size_t n) const { return vars_.at(n); }
+      const std::string& at(const std::size_t n) const { return vars_.at(n); }
+
+      /// Returns the n-th string in the variable list.
+      const std::string& operator [](const std::size_t n) const { return vars_[n]; }
 
       /// Returns the number of strings in the variable list.
-      std::size_t count() const { return vars_.size(); }
+      unsigned int dim() const { return vars_.size(); }
 
+      const std::vector<std::string>& data() const { return vars_; }
+
+      void swap(VariableList& other) {
+        std::swap(vars_, other.vars_);
+      }
 
     private:
 
@@ -92,19 +121,22 @@ namespace TiledArray {
         }
         vars_.push_back(trim_spaces_(start, finish));
 
-        TA_ASSERT( (unique(vars_.begin(), vars_.end())),
-                  std::runtime_error("VariableList::init_(...): Duplicate variables not allowed in variable list.") );
+        TA_ASSERT( (unique_(vars_.begin(), vars_.end())),
+            std::runtime_error("VariableList::init_(...): Duplicate variables not allowed in variable list.") );
       }
 
       /// Returns a string with all the spaces ( ' ' ) removed from the string
       /// defined by the start and finish iterators.
-      static std::string trim_spaces_(std::string::const_iterator start, std::string::const_iterator finish) {
-        TA_ASSERT( (start != finish),
+      static std::string trim_spaces_(std::string::const_iterator first, std::string::const_iterator last) {
+        TA_ASSERT( (first != last),
             std::runtime_error("VariableList::trim_spaces_(...): Zero length variable string not allowed.") );
         std::string result = "";
-        for(;start != finish; ++start)
-          if(*start != ' ')
-            result.append(1, *start);
+        for(;first != last; ++first) {
+          TA_ASSERT( valid_char_(*first),
+              std::runtime_error("VariableList::trim_spaces_(...): Variable names may only contain letters and numbers.") );
+          if(*first != ' ' && *first != '\0')
+            result.append(1, *first);
+        }
 
         TA_ASSERT( (result.length() != 0) ,
             std::runtime_error("VariableList::trim_spaces_(...): Blank variable string not allowed.") );
@@ -114,18 +146,26 @@ namespace TiledArray {
 
       /// Returns true if all vars contained by the list are unique.
       template<typename InIter>
-      bool unique(InIter first, InIter last) const {
-        for(InIter it1 = first; it1 != last; ++it1) {
-          InIter it2 = it1;
+      bool unique_(InIter first, InIter last) const {
+        for(; first != last; ++first) {
+          InIter it2 = first;
           for(++it2; it2 != last; ++it2)
-            if(*it1 == *it2)
+            if(first->compare(*it2) == 0)
               return false;
         }
 
         return true;
       }
 
+      static bool valid_char_(char c) {
+        return (c >= 'a' && c < 'z') || (c >= 'A' && c < 'Z') ||
+            (c >= '0' && c < '9') || (c == ' ') || (c == ',') || (c == '\0');
+      }
+
       std::vector<std::string> vars_;
+
+      template<unsigned int DIM>
+      friend VariableList operator ^(const ::TiledArray::Permutation<DIM>&, const VariableList&);
 
     }; // class VariableList
 
@@ -145,7 +185,7 @@ namespace TiledArray {
       }
       common1.first = first1;
       first2 = common2.first;
-      while(*first1 == *last1 && first1 != last1 && first2 != last2) {
+      while((first1->compare(*first2) == 0) && (first1 != last1) && (first2 != last2)) {
         ++first1;
         ++first2;
       }
@@ -154,7 +194,7 @@ namespace TiledArray {
     }
 
     inline bool operator ==(const VariableList& v0, const VariableList& v1) {
-      return (v0.count() == v1.count()) && std::equal(v0.begin(), v0.end(), v1.begin());
+      return (v0.dim() == v1.dim()) && std::equal(v0.begin(), v0.end(), v1.begin());
     }
 
     inline bool operator !=(const VariableList& v0, const VariableList& v1) {
@@ -162,16 +202,41 @@ namespace TiledArray {
     }
 
     template<typename T, typename U>
-    const U& pair_second(const std::pair<T,U>& p) {
-      return p.second;
-    }
+    struct pair_second : public std::unary_function<std::pair<T,U>, U> {
+      const U& operator ()(const std::pair<T,U>& p) const {
+        return p.second;
+      }
+    };
 
     template<typename T, typename U>
-    const T& pair_first(const std::pair<T,U>& p) {
-      return p.first;
+    struct pair_first : public std::unary_function<std::pair<T,U>, T> {
+      const T& operator ()(const std::pair<T,U>& p) const {
+        return p.first;
+      }
+    };
+
+    template<unsigned int DIM>
+    VariableList operator ^(const ::TiledArray::Permutation<DIM>& p, const VariableList& v) {
+      VariableList result;
+      result.vars_ = p ^ v.vars_;
+
+      return result;
     }
 
-  } // namespace detail
+    /// ostream VariableList output orperator.
+    inline std::ostream& operator <<(std::ostream& out, const VariableList& v) {
+      out << "(";
+      std::size_t d;
+      std::size_t n = v.dim() - 1;
+      for(d = 0; d < n; ++d) {
+        out << v[d] << ", ";
+      }
+      out << v[d];
+      out << ")";
+      return out;
+    }
+
+  } // namespace math
 
 } // namespace TiledArray
 
@@ -179,39 +244,86 @@ namespace TiledArray {
 namespace std {
 
   template<>
-  struct multiplies< ::TiledArray::detail::VariableList> : binary_function <
-      ::TiledArray::detail::VariableList,::TiledArray::detail::VariableList,
-      ::TiledArray::detail::VariableList>
+  struct plus< ::TiledArray::math::VariableList> : binary_function <
+      ::TiledArray::math::VariableList,::TiledArray::math::VariableList,
+      ::TiledArray::math::VariableList>
   {
-    const ::TiledArray::detail::VariableList operator() (
-        const ::TiledArray::detail::VariableList& v0,
-        const ::TiledArray::detail::VariableList& v1) const
+    const ::TiledArray::math::VariableList& operator() (
+        const ::TiledArray::math::VariableList& v0,
+        const ::TiledArray::math::VariableList& v1) const
     {
-      typedef ::TiledArray::detail::VariableList::const_iterator iterator;
+      TA_ASSERT(v0 == v1,
+          std::runtime_error("std::plus<TiledArray::detail::VariableList>::operator(...): variable lists must be identical for addition operations."));
+
+      return v0;
+    }
+  };
+
+  template<>
+  struct minus< ::TiledArray::math::VariableList> : binary_function <
+      ::TiledArray::math::VariableList,::TiledArray::math::VariableList,
+      ::TiledArray::math::VariableList>
+  {
+    const ::TiledArray::math::VariableList& operator() (
+        const ::TiledArray::math::VariableList& v0,
+        const ::TiledArray::math::VariableList& v1) const
+    {
+      TA_ASSERT(v0 == v1,
+          std::runtime_error("std::plus<TiledArray::detail::VariableList>::operator(...): variable lists must be identical for addition operations."));
+
+      return v0;
+    }
+  };
+
+  template<>
+  struct multiplies< ::TiledArray::math::VariableList> : binary_function <
+      ::TiledArray::math::VariableList,::TiledArray::math::VariableList,
+      ::TiledArray::math::VariableList>
+  {
+    const ::TiledArray::math::VariableList operator() (
+        const ::TiledArray::math::VariableList& v0,
+        const ::TiledArray::math::VariableList& v1) const
+    {
+      typedef ::TiledArray::math::VariableList::const_iterator iterator;
       typedef std::pair<iterator, iterator> it_pair;
 
       it_pair c0(v0.end(), v0.end());
       it_pair c1(v1.end(), v1.end());
-      ::TiledArray::detail::find_common(v0.begin(), v0.end(), v1.begin(), v1.end(), c0, c1);
+      ::TiledArray::math::find_common(v0.begin(), v0.end(), v1.begin(), v1.end(), c0, c1);
 
-      double n0 = v0.count() + 0.5;
-      double n1 = v1.count();
+      std::size_t n0 = 2 * v0.dim() + 1;
+      std::size_t n1 = 2 * v1.dim();
 
-      std::map<double, std::string> v;
-      for(iterator it = v0.begin(); it != c0.first; ++it, n0 -= 1.0)
-        v.insert(std::make_pair(n0, *it));
-      for(iterator it = v1.begin(); it != c1.first; ++it, n1 -= 1.0)
-        v.insert(std::make_pair(n1, *it));
-      n0 -= c0.second - c0.first;
-      n1 -= c1.second - c1.first;
-      for(iterator it = c0.second; it != v0.end(); ++it, n0 -= 1.0)
-        v.insert(std::make_pair(n0, *it));
-      for(iterator it = c1.second; it != v1.end(); ++it, n1 -= 1.0)
-        v.insert(std::make_pair(n1, *it));
+      std::map<std::size_t, std::string> v;
+      std::pair<std::size_t, std::string> p;
+      for(iterator it = v0.begin(); it != c0.first; ++it, n0 -= 2) {
+        p.first = n0;
+        p.second = *it;
+        v.insert(p);
+      }
+      for(iterator it = v1.begin(); it != c1.first; ++it, n1 -= 2) {
+        p.first = n1;
+        p.second = *it;
+        v.insert(p);
+      }
+      n0 -= 2 * (c0.second - c0.first);
+      n1 -= 2 * (c1.second - c1.first);
+      for(iterator it = c0.second; it != v0.end(); ++it, n0 -= 2) {
+        p.first = n0;
+        p.second = *it;
+        v.insert(p);
+      }
+      for(iterator it = c1.second; it != v1.end(); ++it, n1 -= 2) {
+        p.first = n1;
+        p.second = *it;
+        v.insert(p);
+      }
 
-      return ::TiledArray::detail::VariableList(
-          boost::make_transform_iterator(v.rbegin(), ::TiledArray::detail::pair_second<double,std::string>),
-          boost::make_transform_iterator(v.rend(), ::TiledArray::detail::pair_second<double,std::string>));
+      return ::TiledArray::math::VariableList(
+          boost::make_transform_iterator(v.rbegin(),
+              ::TiledArray::math::pair_second<double,std::string>()),
+          boost::make_transform_iterator(v.rend(),
+              ::TiledArray::math::pair_second<double,std::string>()));
     }
   };
 

@@ -1,8 +1,5 @@
-#define BOOST_TEST_DYN_LINK
-
-#include <permutation.h>
-#include <coordinates.h> // for boost array output
-#include <boost/array.hpp>
+#include "permutation.h"
+#include "coordinates.h" // for boost array output
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
 

@@ -1,8 +1,8 @@
-#include <annotated_tile.h>
-#include <tile.h>
-#include <tiled_range1.h>
-#include <coordinates.h>
-#include <permutation.h>
+#include "annotated_tile.h"
+#include "tile.h"
+#include "tiled_range1.h"
+#include "coordinates.h"
+#include "permutation.h"
 #include <iostream>
 #include <math.h>
 #include <utility>
@@ -10,8 +10,8 @@
 //#include <boost/test/output_test_stream.hpp>
 
 using namespace TiledArray;
-using TiledArray::detail::VariableList;
-using TiledArray::detail::AnnotatedTile;
+using TiledArray::math::VariableList;
+using TiledArray::math::AnnotatedTile;
 
 struct TileFixture {
   typedef Tile<double, 3> Tile3;

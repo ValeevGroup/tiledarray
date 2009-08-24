@@ -2,10 +2,10 @@
 #define TILEDARRAY_PACKED_TILE_H__INCLUDED
 
 #include <range.h>
-#include <array_storage.h>
+#include <array_util.h>
 #include <type_traits.h>
+//#include <boost/type_traits.hpp>
 #include <numeric>
-#include <boost/type_traits.hpp>
 
 namespace TiledArray {
 
@@ -68,7 +68,7 @@ namespace TiledArray {
           std::runtime_error("PackedTile<...>::PackedTile(...): Packing list does not include the all dimensions of the original tile."));
 
       r_.resize(origin, origin + s);
-      w_ = detail::calc_weight<coordinate_system>(r_.size());
+      w_ = calc_weight_(r_.size());
     }
 
     /// Copy constructor
@@ -198,6 +198,14 @@ namespace TiledArray {
         return false;
 
       return true;
+    }
+
+    /// Class wrapper function for detail::calc_weight() function.
+    static size_array calc_weight_(const size_array& size) { // no throw
+      size_array result;
+      detail::calc_weight(coordinate_system::begin(size), coordinate_system::end(size),
+          coordinate_system::begin(result));
+      return result;
     }
 
     range_type r_;   ///< Packed tile range information

@@ -3,14 +3,11 @@
 
 #include <array_storage.h>
 #include <annotated_tile.h>
+#include <tile_math.h>
 #include <tile_slice.h>
-#include <iosfwd>
-#include <functional>
-/*
-extern "C" {
-#include <cblas.h>
-};
-*/
+//#include <iosfwd>
+//#include <functional>
+
 namespace TiledArray {
 
   // Forward declaration of TiledArray components.
@@ -108,8 +105,8 @@ namespace TiledArray {
 
     /// The constructor will throw when the dimensions of the annotated tile do
     /// not match the dimensions of the tile.
-    template<typename U>
-    Tile(const detail::AnnotatedTile<U>& atile) :
+    template<typename U, detail::DimensionOrderType O>
+    Tile(const math::AnnotatedTile<U, O>& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())),
         data_(range_.size(), atile.begin(), atile.end())
     {
@@ -119,7 +116,8 @@ namespace TiledArray {
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedTile assignment operator
-    Tile(detail::AnnotatedTile<value_type>&& atile) :
+    template<typename U, detail::DimensionOrderType O>
+    Tile(math::AnnotatedTile<U, O>&& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())), data_()
     {
       TA_ASSERT((atile.dim() == DIM),
@@ -155,26 +153,30 @@ namespace TiledArray {
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// AnnotatedTile assignment operator
-    template<typename U>
-    Tile_& operator =(const detail::AnnotatedTile<U>& atile) {
-      TA_ASSERT((atile.dim() == DIM),
+    template<typename Exp0, typename Exp1, template<typename> class Op>
+    Tile_& operator =(const math::BinaryTileExp<Exp0, Exp1, Op>& e) {
+      typename math::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
+      TA_ASSERT((eval.dim() == DIM),
           std::runtime_error("Tile<...>::operator=(const AnnotatedTile&): The dimensions of the annotated tile do not match the dimensions of the tile."));
       size_array size;
-      std::copy(atile.size().begin(), atile.size().end(), size.begin());
+      std::copy(eval.size().begin(), eval.size().end(), size.begin());
       range_.resize(size);
-      std::copy(atile.begin(), atile.end(), data_.begin());
+      std::copy(eval.begin(), eval.end(), data_.begin());
 
       return *this;
     }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedTile assignment operator
-    Tile_& operator =(detail::AnnotatedTile<value_type>&& atile) {
-      TA_ASSERT((atile.dim() == DIM),
+    template<typename Exp0, typename Exp1, template<typename> class Op>
+    Tile_& operator =(math::BinaryTileExp<Exp0, Exp1, Op>&& e) {
+      typename math::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
+      TA_ASSERT((eval.dim() == DIM),
           std::runtime_error("Tile<...>::operator=(AnnotatedTile&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
-      range_.resize(make_size(atile.size().begin(), atile.size().end()));
-      data_.move(size, atile.data());
-      atile.owner_ = false;
+      size_array size = make_size_(eval.size().begin(), eval.size().end());
+      range_.resize(size);
+      data_container data(size, eval.begin(), eval.end());
+      data_.swap(data);
 
       return *this;
     }
@@ -205,7 +207,7 @@ namespace TiledArray {
     /// Returns the number of elements in the volume.
     const volume_type volume() const { return range_.volume(); } // no throw
     /// Returns the dimension weights.
-    const size_array weight() const { return data_.weight(); } // no throw
+    const size_array& weight() const { return data_.weight(); } // no throw
 
     /// Returns true when \i is in the tile range.
 
@@ -220,7 +222,7 @@ namespace TiledArray {
     /// Element access with range checking
     const_reference_type at(const ordinal_type& i) const { return data_.at(i); }
     /// Element access with range checking
-    reference_type at(const index_type& i){ return data_.at(i); }
+    reference_type at(const index_type& i) { return data_.at(i); }
     /// Element access with range checking
     const_reference_type at(const index_type& i) const { return data_.at(i); }
 
@@ -268,12 +270,15 @@ namespace TiledArray {
       return *this;
     }
 
-    detail::AnnotatedTile<value_type> operator ()(const std::string& v) {
-      return detail::AnnotatedTile<value_type>(*this, detail::VariableList(v));
+
+    math::AnnotatedTile<value_type, coordinate_system::dimension_order>
+    operator ()(const std::string& v) {
+      return math::AnnotatedTile<value_type, coordinate_system::dimension_order>(*this, math::VariableList(v));
     }
 
-    detail::AnnotatedTile<const value_type> operator ()(const std::string& v) const {
-      return detail::AnnotatedTile<const value_type>(*this, detail::VariableList(v));
+    math::AnnotatedTile<const value_type, coordinate_system::dimension_order>
+    operator ()(const std::string& v) const {
+      return math::AnnotatedTile<const value_type, coordinate_system::dimension_order>(*this, math::VariableList(v));
     }
 
     /// Exchange calling tile's data with that of \c other.

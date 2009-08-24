@@ -1,5 +1,5 @@
-#include "coordinates.h"
 #include "array_storage.h"
+#include "coordinates.h"
 #include "iterationtest.h"
 #include "permutation.h"
 #include <boost/test/unit_test.hpp>

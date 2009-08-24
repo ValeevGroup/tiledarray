@@ -1,8 +1,5 @@
-#include <tile.h>
-#include <tiled_range1.h>
-#include <coordinates.h>
-#include <permutation.h>
-#include <iostream>
+#include "tile.h"
+#include "permutation.h"
 #include <math.h>
 #include <utility>
 #include <boost/test/unit_test.hpp>

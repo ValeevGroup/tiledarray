@@ -2,12 +2,11 @@
 #define RANGE1_H__INCLUDED
 
 #include <range.h>
-#include <coordinates.h>
-
-#include <cassert>
+//#include <coordinates.h>
+//#include <cassert>
 #include <vector>
-#include <cstddef>
-#include <iosfwd>
+//#include <cstddef>
+//#include <iosfwd>
 
 namespace TiledArray {
 

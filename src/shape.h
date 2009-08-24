@@ -2,11 +2,11 @@
 #define SHAPE_H__INCLUDED
 
 #include <iterator.h>
-#include <cstddef>
-#include <algorithm>
-#include <boost/shared_ptr.hpp>
+//#include <cstddef>
+//#include <algorithm>
+//#include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
-#include <boost/iterator/filter_iterator.hpp>
+//#include <boost/iterator/filter_iterator.hpp>
 
 namespace TiledArray {
 

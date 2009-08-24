@@ -2,9 +2,11 @@
 #define PERMUTATION_H_
 
 #include <error.h>
-#include <iosfwd>
-#include <algorithm>
-#include <stdarg.h>
+//#include <iosfwd>
+//#include <algorithm>
+#include <vector>
+//#include <stdarg.h>
+//#include <iterator>
 #include <boost/array.hpp>
 
 namespace TiledArray {
@@ -27,8 +29,7 @@ namespace TiledArray {
   ///   b = p ^ a; // assign permeation of a into b given the permutation p.
   ///   a ^= p;    // permute a given the permutation p.
   template <unsigned int DIM>
-  class Permutation
-  {
+  class Permutation {
   public:
     typedef Permutation<DIM> Permutation_;
     typedef std::size_t index_type;
@@ -47,11 +48,10 @@ namespace TiledArray {
     Permutation(InIter first, InIter last) {
       TA_ASSERT( valid_(first, last) ,
           std::runtime_error("Permutation::Permutation(...): invalid permutation supplied") );
-      for(typename Array::iterator it = p_.begin(); it != p_.end(); ++it, ++first) {
-        TA_ASSERT( (first != last),
-            std::runtime_error("Permutation::Permutation(...): iterator range [first, last) is too short") );
+      TA_ASSERT( std::distance(first, last),
+          std::runtime_error("Permutation::Permutation(...): iterator range [first, last) is too short") );
+      for(typename Array::iterator it = p_.begin(); it != p_.end(); ++it, ++first)
         *it = *first;
-      }
     }
 
     Permutation(const Array& source) : p_(source) {
@@ -170,18 +170,35 @@ namespace TiledArray {
     return result;
   }
 
+  /// permute an array
+  template <unsigned int DIM, typename T>
+  std::vector<T> operator^(const Permutation<DIM>& perm, const std::vector<T>& orig) {
+    TA_ASSERT((orig.size() == DIM),
+        std::runtime_error("operator^(const Permutation<DIM>&, const std::vector<T>&): The permutation dimension is not equal to the vector size."));
+    std::vector<T> result(DIM);
+    for(unsigned int dim = 0; dim < DIM; ++dim)
+      result[perm[dim]] = orig[dim];
+    return result;
+  }
+
+  template <unsigned int DIM, typename T>
+  std::vector<T> operator^=(std::vector<T>& orig, const Permutation<DIM>& perm) {
+    orig = perm ^ orig;
+
+    return orig;
+  }
+
+  template<unsigned int DIM>
+  Permutation<DIM> operator ^(const Permutation<DIM>& perm, const Permutation<DIM>& p) {
+    Permutation<DIM> result(perm ^ p.data());
+    return result;
+  }
+
   template <unsigned int DIM, typename T>
   boost::array<T,DIM> operator ^=(boost::array<T, static_cast<std::size_t>(DIM) >& a, const Permutation<DIM>& perm) {
     return (a = perm ^ a);
   }
 
-  /// Permute obj
-  template <unsigned int DIM, typename Object>
-  Object operator ^(const Permutation<DIM>& perm, const Object& obj) {
-    Object result(obj);
-    return result ^= perm;
-  }
-
-}
+} // namespace TiledArray
 
 #endif /*PERMUTATION_H_*/

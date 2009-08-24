@@ -3,10 +3,8 @@
 
 #include <coordinate_system.h>
 #include <iosfwd>
-#include <cmath>
-#include <functional>
 #include <boost/operators.hpp>
-#include <boost/array.hpp>
+//#include <boost/array.hpp>
 
 namespace TiledArray {
 

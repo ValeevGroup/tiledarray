@@ -1,10 +1,7 @@
-#define BOOST_TEST_DYN_LINK
-
 #include "range.h"
-#include <permutation.h>
+#include "permutation.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
-#include <vector>
 #include "iterationtest.h"
 
 using namespace TiledArray;

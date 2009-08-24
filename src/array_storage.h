@@ -3,17 +3,19 @@
 
 #include <range.h>
 #include <madness_runtime.h>
+#include <array_util.h>
 #include <Eigen/core>
-#include <boost/array.hpp>
-#include <boost/iterator/filter_iterator.hpp>
+//#include <boost/array.hpp>
+//#include <boost/iterator/filter_iterator.hpp>
 #include <boost/scoped_array.hpp>
-#include <boost/shared_ptr.hpp>
+//#include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
-#include <cstddef>
-#include <algorithm>
-#include <memory>
+//#include <cstddef>
+//#include <algorithm>
+//#include <memory>
 #include <numeric>
-#include <stdexcept>
+//#include <iterator>
+//#include <stdexcept>
 
 namespace TiledArray {
 
@@ -26,11 +28,7 @@ namespace TiledArray {
   class Permutation;
 
   namespace detail {
-    template <typename CS, typename I, std::size_t DIM>
-    boost::array<I,DIM> calc_weight(const boost::array<I,DIM>&);
-    template <typename I, std::size_t DIM>
-    I volume(const boost::array<I,DIM>& a);
-    template <typename I, unsigned int DIM, typename CS>
+    template<typename I, unsigned int DIM, typename CS>
     bool less(const boost::array<I,DIM>&, const boost::array<I,DIM>&);
   } // namespace detail
 
@@ -41,11 +39,11 @@ namespace TiledArray {
     /// ArrayStorage stores array dimensions and is used to calculate ordinal
     /// values. It contains no actual array data; that is for the derived
     /// classes to implement. The array origin is always zero for all dimensions.
-    template <unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
+    template <typename I, unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
     class ArrayDim {
     public:
-      typedef ArrayDim<DIM, Tag, CS> ArrayDim_;
-      typedef std::size_t ordinal_type;
+      typedef ArrayDim<I, DIM, Tag, CS> ArrayDim_;
+      typedef I ordinal_type;
       typedef CS coordinate_system;
       typedef ArrayCoordinate<ordinal_type, DIM, Tag, coordinate_system> index_type;
       typedef boost::array<ordinal_type,DIM> size_array;
@@ -60,7 +58,7 @@ namespace TiledArray {
 
       /// Constructs an array with dimensions of size.
       ArrayDim(const size_array& size) : // no throw
-          size_(size), weight_(calc_weight(size)), n_(detail::volume(size))
+          size_(size), weight_(calc_weight_(size)), n_(detail::volume(size))
       { }
 
       /// Copy constructor
@@ -128,7 +126,7 @@ namespace TiledArray {
       /// Sets the size of object to the given size.
       void resize(const size_array& s) {
         size_ = s;
-        weight_ = calc_weight(s);
+        weight_ = calc_weight_(s);
         n_ = detail::volume(s);
       }
 
@@ -137,7 +135,7 @@ namespace TiledArray {
       /// This function is overloaded so it can be called by template functions.
       /// No range checking is done. This function will not throw.
       ordinal_type ord(const index_type& i) const { // no throw
-        return std::inner_product(i.data().begin(), i.data().end(), weight_.begin(), typename index_type::index(0));
+        return std::inner_product(i.begin(), i.end(), weight_.begin(), typename index_type::index(0));
       }
 
       ordinal_type ord(const ordinal_type i) const { return i; } // no throw
@@ -154,8 +152,11 @@ namespace TiledArray {
       }
 
       /// Class wrapper function for detail::calc_weight() function.
-      static size_array calc_weight(const size_array& sizes) { // no throw
-        return detail::calc_weight<coordinate_system>(sizes);
+      static size_array calc_weight_(const size_array& size) { // no throw
+        size_array result;
+        calc_weight(coordinate_system::begin(size), coordinate_system::end(size),
+            coordinate_system::begin(result));
+        return result;
       }
 
       size_array size_;
@@ -177,7 +178,7 @@ namespace TiledArray {
     typedef Eigen::aligned_allocator<T> alloc_type;
   public:
     typedef DenseArrayStorage<T,DIM,Tag,CS> DenseArrayStorage_;
-    typedef detail::ArrayDim<DIM, Tag, CS> array_dim_type;
+    typedef detail::ArrayDim<std::size_t, DIM, Tag, CS> array_dim_type;
     typedef typename array_dim_type::index_type index_type;
     typedef typename array_dim_type::ordinal_type ordinal_type;
     typedef typename array_dim_type::size_array size_array;
@@ -394,18 +395,6 @@ namespace TiledArray {
     /// If the given index is not included in the
     ordinal_type ordinal(const index_type& i) const { return dim_.ordinal(i); }
 
-    /// Move data pointer to this array. This operation assumes data is the same
-    /// size as the current array.
-    DenseArrayStorage_& move(const size_array& size, value_type* data) {
-      destroy_();
-      if(d_ != data) {
-        d_ = data;
-      }
-
-      if(size != dim_.size())
-        dim_.resize(size);
-    }
-
   private:
     /// Allocate and initialize the array.
 
@@ -428,14 +417,11 @@ namespace TiledArray {
       TA_ASSERT(d_ == NULL,
           std::runtime_error("DenseArrayStorage<...>::create_(...): Cannot allocate data to a non-NULL pointer."));
       d_ = alloc_.allocate(dim_.n_);
-      for(ordinal_type i = 0; i < dim_.n_; ++i) {
-        if(first != last) {
-          alloc_.construct(d_ + i, *first);
-          ++first;
-        } else {
-          alloc_.construct(d_ + i, value_type());
-        }
-      }
+      ordinal_type i = 0;
+      for(;first != last; ++first, ++i)
+        alloc_.construct(d_ + i, *first);
+      for(; i < dim_.n_; ++i)
+        alloc_.construct(d_ + i, value_type());
     }
 
     /// Destroy the array
@@ -466,9 +452,9 @@ namespace TiledArray {
   /// data. If we were to allow iteration over all data, all data would be sent
   /// to the local node.
   template <typename T, unsigned int DIM, typename Tag = LevelTag<1>, typename CS = CoordinateSystem<DIM> >
-  class DistributedArrayStorage : public detail::ArrayDim<DIM, Tag, CS> {
+  class DistributedArrayStorage : public detail::ArrayDim<std::size_t, DIM, Tag, CS> {
   public:
-    typedef detail::ArrayDim<DIM, Tag, CS> ArrayDim_;
+    typedef detail::ArrayDim<std::size_t, DIM, Tag, CS> ArrayDim_;
     typedef typename ArrayDim_::index_type index_type;
     typedef typename ArrayDim_::ordinal_type ordinal_type;
     typedef typename ArrayDim_::size_array size_array;
@@ -791,31 +777,6 @@ namespace TiledArray {
     return result;
   }
 
-  namespace detail {
-    template < typename CS, typename T, std::size_t DIM>
-    boost::array<T,DIM> calc_weight(const boost::array<T,DIM>& sizes) { // no throw when T is a standard type
-      boost::array<T,DIM> result;
-      T weight = 1;
-
-      for(typename CS::const_iterator d = CS::begin(); d != CS::end(); ++d) {
-        // calc ordinal weights.
-        result[*d] = weight;
-        weight *= sizes[*d];
-      }
-
-      return result;
-    }
-
-    /// Calculate the volume of an N-dimensional orthogonal.
-    template <typename T, std::size_t DIM>
-    T volume(const boost::array<T,DIM>& a) { // no throw when T is a standard type
-      T result = 1;
-      for(std::size_t d = 0; d < DIM; ++d)
-        result *= ( a[d] < 0 ? -a[d] : a[d] );
-      return result;
-    }
-
-  } // namespace detail
 } // namespace TiledArray
 
 

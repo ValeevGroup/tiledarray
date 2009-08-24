@@ -1,14 +1,12 @@
 #ifndef RANGE_H__INCLUDED
 #define RANGE_H__INCLUDED
 
-#include <coordinates.h>
+//#include <coordinates.h>
 #include <tiled_range1.h>
 #include <array_storage.h>
-#include <iosfwd>
-#include <boost/array.hpp>
-#include <boost/operators.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+//#include <iosfwd>
+//#include <boost/array.hpp>
+//#include <boost/operators.hpp>
 
 namespace TiledArray {
 

@@ -4,7 +4,7 @@
 #include <boost/test/output_test_stream.hpp>
 
 //using namespace TiledArray;
-using namespace TiledArray::detail;
+using namespace TiledArray::math;
 using TiledArray::Permutation;
 
 struct VariableListFixture {
@@ -74,6 +74,9 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(v7.at(7), "h");
   BOOST_CHECK_EQUAL(v7.at(8), "i");
 
+  BOOST_REQUIRE_NO_THROW(VariableList v11("")); // Check default constructor
+  VariableList v11("");
+  BOOST_CHECK_EQUAL(v11.dim(), 0);
 }
 
 BOOST_AUTO_TEST_CASE( iterator )
@@ -85,6 +88,17 @@ BOOST_AUTO_TEST_CASE( iterator )
   for(VariableList::const_iterator it = v.begin(); it != v.end(); ++it, ++it_a) // check basic iterator functionality.
     BOOST_CHECK_EQUAL(*it, *it_a);
 
+}
+
+BOOST_AUTO_TEST_CASE( comparison )
+{
+  VariableList v1("a,b,c,d");
+  VariableList v2("d,b,c,a");
+
+  BOOST_CHECK(v1 == v);    // check variable list comparison operators
+  BOOST_CHECK(!(v2 == v));
+  BOOST_CHECK(v2 != v);
+  BOOST_CHECK(!(v1 != v));
 }
 
 BOOST_AUTO_TEST_CASE( assignment )
@@ -120,6 +134,77 @@ BOOST_AUTO_TEST_CASE( ostream )
   BOOST_CHECK( !output.is_empty( false ) ); // check for correct output.
   BOOST_CHECK( output.check_length( 12, false ) );
   BOOST_CHECK( output.is_equal("(a, b, c, d)") );
+}
+
+BOOST_AUTO_TEST_CASE( common )
+{
+  const VariableList v_aib("a,i,b");
+  const VariableList v_xiy("x,i,y");
+  const VariableList v_ai("a,i");
+  const VariableList v_xi("x,i");
+  const VariableList v_ia("i,a");
+  const VariableList v_ix("i,x");
+  const VariableList v_i("i");
+  const VariableList v_0("");
+
+  std::pair<VariableList::const_iterator, VariableList::const_iterator> p1;
+  std::pair<VariableList::const_iterator, VariableList::const_iterator> p2;
+
+//  find_common(v_aib.begin(), v_aib.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
+//  find_common(v_aib.begin(), v_aib.end(), v_xi.begin(), v_xi.end(), p1, p2);
+//  find_common(v_aib.begin(), v_aib.end(), v_ix.begin(), v_ix.end(), p1, p2);
+//  find_common(v_aib.begin(), v_aib.end(), v_i.begin(), v_i.end(), p1, p2);
+//  find_common(v_ai.begin(), v_ai.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
+//  find_common(v_ai.begin(), v_ai.end(), v_xi.begin(), v_xi.end(), p1, p2);
+}
+
+BOOST_AUTO_TEST_CASE( math_functors ) {
+  VariableList v1("a,b,c,d");
+  std::plus<VariableList> plus_op;
+  std::minus<VariableList> minus_op;
+  std::multiplies<VariableList> multiplies_op;
+  VariableList vr1 = plus_op(v, v1);  // check std::plus functor
+  BOOST_CHECK(vr1 == v1);
+  BOOST_CHECK(vr1 == v);
+
+  VariableList vr2 = minus_op(v, v1); // check std::minus functor
+  BOOST_CHECK(vr2 == v1);
+  BOOST_CHECK(vr2 == v);
+
+
+  VariableList vr3;
+  vr3 = multiplies_op(VariableList("a,i,b"), VariableList("c,i,d")); // check std::multiplies functor
+  BOOST_CHECK(vr3 == VariableList("a,c,b,d"));
+  vr3 = multiplies_op(VariableList("a,i,b"), VariableList("c,i"));
+  BOOST_CHECK(vr3 == VariableList("a,c,b"));
+  vr3 = multiplies_op(VariableList("a,i,b"), VariableList("i,c"));
+  BOOST_CHECK(vr3 == VariableList("a,b,c"));
+  vr3 = multiplies_op(VariableList("a,i,b"), VariableList("i"));
+  BOOST_CHECK(vr3 == VariableList("a,b"));
+  vr3 = multiplies_op(VariableList("a,i"), VariableList("b,i,c"));
+  BOOST_CHECK(vr3 == VariableList("b,a,c"));
+  vr3 = multiplies_op(VariableList("a,i"), VariableList("b,i"));
+  BOOST_CHECK(vr3 == VariableList("a,b"));
+  vr3 = multiplies_op(VariableList("a,i"), VariableList("i,b"));
+  BOOST_CHECK(vr3 == VariableList("a,b"));
+  vr3 = multiplies_op(VariableList("a,i"), VariableList("i"));
+  BOOST_CHECK(vr3 == VariableList("a"));
+  vr3 = multiplies_op(VariableList("i,a"), VariableList("b,i,c"));
+  BOOST_CHECK(vr3 == VariableList("b,a,c"));
+  vr3 = multiplies_op(VariableList("i,a"), VariableList("b,i"));
+  BOOST_CHECK(vr3 == VariableList("b,a"));
+  vr3 = multiplies_op(VariableList("i,a"), VariableList("i,b"));
+  BOOST_CHECK(vr3 == VariableList("a,b"));
+  vr3 = multiplies_op(VariableList("i,a"), VariableList("i"));
+  BOOST_CHECK(vr3 == VariableList("a"));
+  vr3 = multiplies_op(VariableList("i"), VariableList("a,i,b"));
+  BOOST_CHECK(vr3 == VariableList("a,b"));
+  vr3 = multiplies_op(VariableList("i"), VariableList("a,i"));
+  BOOST_CHECK(vr3 == VariableList("a"));
+  vr3 = multiplies_op(VariableList("i"), VariableList("i,a"));
+  BOOST_CHECK(vr3 == VariableList("a"));
+  vr3 = multiplies_op(VariableList("i"), VariableList("i"));
+  BOOST_CHECK(vr3 == VariableList(""));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -2,7 +2,6 @@
 #define TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 
 #include <boost/array.hpp>
-#include <algorithm>
 
 namespace TiledArray {
 
@@ -89,6 +88,38 @@ namespace TiledArray {
       boost::array<unsigned int,DIM> dim_;
     }; // class DimensionOrder
 
+    template<typename C, detail::DimensionOrderType O>
+    struct CoordIterator {
+      typedef typename C::iterator iterator;
+
+      static iterator begin(C& c) { return c.begin(); }
+      static iterator end(C& c) { return c.end(); }
+    };
+
+    template<typename C, detail::DimensionOrderType O>
+    struct CoordIterator<const C, O> {
+      typedef typename C::const_iterator iterator;
+
+      static iterator begin(const C& c) { return c.begin(); }
+      static iterator end(const C& c) { return c.end(); }
+    };
+
+    template<typename C>
+    struct CoordIterator<C, decreasing_dimension_order> {
+      typedef typename C::reverse_iterator iterator;
+
+      static iterator begin(C& c) { return c.rbegin(); }
+      static iterator end(C& c) { return c.rend(); }
+    };
+
+    template<typename C>
+    struct CoordIterator<const C, decreasing_dimension_order> {
+      typedef typename C::const_reverse_iterator iterator;
+
+      static iterator begin(const C& c) { return c.rbegin(); }
+      static iterator end(const C& c) { return c.rend(); }
+    };
+
   }; // namespace detail
 
   /// CoordinateSystem is a policy class that specifies e.g. the order of significance of dimension.
@@ -108,6 +139,16 @@ namespace TiledArray {
     static const_iterator end() { return ordering_.end(); }
     static const_reverse_iterator rend() { return ordering_.rend(); }
 
+    template<typename C>
+    static typename detail::CoordIterator<C, Order>::iterator begin(C& c) {
+      return detail::CoordIterator<C, Order>::begin(c);
+    }
+
+    template<typename C>
+    static typename detail::CoordIterator<C, Order>::iterator end(C& c) {
+      return detail::CoordIterator<C, Order>::end(c);
+    }
+
     static const detail::DimensionOrderType dimension_order = Order;
   private:
     static detail::DimensionOrder<DIM> ordering_;
@@ -115,7 +156,6 @@ namespace TiledArray {
 
   template <unsigned int DIM, detail::DimensionOrderType Order>
   detail::DimensionOrder<DIM> CoordinateSystem<DIM,Order>::ordering_(Order);
-
 
 } // namespace TiledArray
 

@@ -3,9 +3,10 @@
 
 #include <error.h>
 #include <coordinates.h>
+#include <array_util.h>
 #include <iterator.h>
-#include <boost/array.hpp>
-#include <numeric>
+//#include <boost/array.hpp>
+
 
 namespace TiledArray {
 
@@ -84,7 +85,7 @@ namespace TiledArray {
 
     /// Returns the number of elements in the range.
     volume_type volume() const {
-      return std::accumulate(size_.begin(), size_.end(), volume_type(1), std::multiplies<volume_type>());
+      return detail::volume(size_.data());
     }
 
     /// Check the coordinate to make sure it is within the range.

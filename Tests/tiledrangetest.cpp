@@ -1,5 +1,5 @@
-#include <tiled_range.h>
-#include <permutation.h>
+#include "tiled_range.h"
+#include "permutation.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
 #include "iterationtest.h"
