@@ -22,7 +22,7 @@ TARGET =	TiledArrayTest
 
 $(TARGET):	$(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
-#	./TiledArrayTest
+	./TiledArrayTest
 
 all:	$(TARGET)
 
@@ -40,6 +40,9 @@ check_block:
 
 check_range1:
 	./TiledArrayTest --log_level=test_suite --run_test=range1_suite
+
+check_variable_list:
+	./TiledArrayTest --log_level=test_suite --run_test=variable_list_suite
 
 .PHONY: clean dclean
 clean:

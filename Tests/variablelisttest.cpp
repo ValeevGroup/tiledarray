@@ -8,9 +8,18 @@ using namespace TiledArray::math;
 using TiledArray::Permutation;
 
 struct VariableListFixture {
-  VariableListFixture() : v("a,b,c,d") { }
+  VariableListFixture() : v("a,b,c,d"), v_aib("a,i,b"), v_xiy("x,i,y"),
+      v_ai("a,i"), v_xi("x,i"), v_ia("i,a"), v_ix("i,x"), v_i("i"), v_0("") { }
 
   VariableList v;
+  const VariableList v_aib;
+  const VariableList v_xiy;
+  const VariableList v_ai;
+  const VariableList v_xi;
+  const VariableList v_ia;
+  const VariableList v_ix;
+  const VariableList v_i;
+  const VariableList v_0;
 };
 
 BOOST_FIXTURE_TEST_SUITE( variable_list_suite , VariableListFixture )
@@ -138,73 +147,147 @@ BOOST_AUTO_TEST_CASE( ostream )
 
 BOOST_AUTO_TEST_CASE( common )
 {
-  const VariableList v_aib("a,i,b");
-  const VariableList v_xiy("x,i,y");
-  const VariableList v_ai("a,i");
-  const VariableList v_xi("x,i");
-  const VariableList v_ia("i,a");
-  const VariableList v_ix("i,x");
-  const VariableList v_i("i");
-  const VariableList v_0("");
-
   std::pair<VariableList::const_iterator, VariableList::const_iterator> p1;
   std::pair<VariableList::const_iterator, VariableList::const_iterator> p2;
 
-//  find_common(v_aib.begin(), v_aib.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
-//  find_common(v_aib.begin(), v_aib.end(), v_xi.begin(), v_xi.end(), p1, p2);
-//  find_common(v_aib.begin(), v_aib.end(), v_ix.begin(), v_ix.end(), p1, p2);
-//  find_common(v_aib.begin(), v_aib.end(), v_i.begin(), v_i.end(), p1, p2);
-//  find_common(v_ai.begin(), v_ai.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
-//  find_common(v_ai.begin(), v_ai.end(), v_xi.begin(), v_xi.end(), p1, p2);
+  find_common(v_aib.begin(), v_aib.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_aib.begin() + 1);
+  BOOST_CHECK(p1.second == v_aib.begin() + 2);
+  BOOST_CHECK(p2.first == v_xiy.begin() + 1);
+  BOOST_CHECK(p2.second == v_xiy.begin() + 2);
+  find_common(v_aib.begin(), v_aib.end(), v_xi.begin(), v_xi.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_aib.begin() + 1);
+  BOOST_CHECK(p1.second == v_aib.begin() + 2);
+  BOOST_CHECK(p2.first == v_xi.begin() + 1);
+  BOOST_CHECK(p2.second == v_xi.begin() + 2);
+  find_common(v_aib.begin(), v_aib.end(), v_ix.begin(), v_ix.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_aib.begin() + 1);
+  BOOST_CHECK(p1.second == v_aib.begin() + 2);
+  BOOST_CHECK(p2.first == v_ix.begin());
+  BOOST_CHECK(p2.second == v_ix.begin() + 1);
+  find_common(v_aib.begin(), v_aib.end(), v_i.begin(), v_i.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_aib.begin() + 1);
+  BOOST_CHECK(p1.second == v_aib.begin() + 2);
+  BOOST_CHECK(p2.first == v_i.begin());
+  BOOST_CHECK(p2.second == v_i.begin() + 1);
+  find_common(v_ai.begin(), v_ai.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_ai.begin() + 1);
+  BOOST_CHECK(p1.second == v_ai.begin() + 2);
+  BOOST_CHECK(p2.first == v_xiy.begin() + 1);
+  BOOST_CHECK(p2.second == v_xiy.begin() + 2);
+  find_common(v_ai.begin(), v_ai.end(), v_xi.begin(), v_xi.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_ai.begin() + 1);
+  BOOST_CHECK(p1.second == v_ai.begin() + 2);
+  BOOST_CHECK(p2.first == v_xi.begin() + 1);
+  BOOST_CHECK(p2.second == v_xi.begin() + 2);
+  find_common(v_ai.begin(), v_ai.end(), v_ix.begin(), v_ix.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_ai.begin() + 1);
+  BOOST_CHECK(p1.second == v_ai.begin() + 2);
+  BOOST_CHECK(p2.first == v_ix.begin());
+  BOOST_CHECK(p2.second == v_ix.begin() + 1);
+  find_common(v_ai.begin(), v_ai.end(), v_i.begin(), v_i.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_ai.begin() + 1);
+  BOOST_CHECK(p1.second == v_ai.begin() + 2);
+  BOOST_CHECK(p2.first == v_i.begin());
+  BOOST_CHECK(p2.second == v_i.begin() + 1);
+  find_common(v_ia.begin(), v_ia.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_ia.begin());
+  BOOST_CHECK(p1.second == v_ia.begin() + 1);
+  BOOST_CHECK(p2.first == v_xiy.begin() + 1);
+  BOOST_CHECK(p2.second == v_xiy.begin() + 2);
+  find_common(v_ia.begin(), v_ia.end(), v_xi.begin(), v_xi.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_ia.begin());
+  BOOST_CHECK(p1.second == v_ia.begin() + 1);
+  BOOST_CHECK(p2.first == v_xi.begin() + 1);
+  BOOST_CHECK(p2.second == v_xi.begin() + 2);
+  find_common(v_ia.begin(), v_ia.end(), v_ix.begin(), v_ix.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_ia.begin());
+  BOOST_CHECK(p1.second == v_ia.begin() + 1);
+  BOOST_CHECK(p2.first == v_ix.begin());
+  BOOST_CHECK(p2.second == v_ix.begin() + 1);
+  find_common(v_ia.begin(), v_ia.end(), v_i.begin(), v_i.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_ia.begin());
+  BOOST_CHECK(p1.second == v_ia.begin() + 1);
+  BOOST_CHECK(p2.first == v_i.begin());
+  BOOST_CHECK(p2.second == v_i.begin() + 1);
+  find_common(v_i.begin(), v_i.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_i.begin());
+  BOOST_CHECK(p1.second == v_i.begin() + 1);
+  BOOST_CHECK(p2.first == v_xiy.begin() + 1);
+  BOOST_CHECK(p2.second == v_xiy.begin() + 2);
+  find_common(v_i.begin(), v_i.end(), v_xi.begin(), v_xi.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_i.begin());
+  BOOST_CHECK(p1.second == v_i.begin() + 1);
+  BOOST_CHECK(p2.first == v_xi.begin() + 1);
+  BOOST_CHECK(p2.second == v_xi.begin() + 2);
+  find_common(v_i.begin(), v_i.end(), v_ix.begin(), v_ix.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_i.begin());
+  BOOST_CHECK(p1.second == v_i.begin() + 1);
+  BOOST_CHECK(p2.first == v_ix.begin());
+  BOOST_CHECK(p2.second == v_ix.begin() + 1);
+  find_common(v_i.begin(), v_i.end(), v_i.begin(), v_i.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_i.begin());
+  BOOST_CHECK(p1.second == v_i.begin() + 1);
+  BOOST_CHECK(p2.first == v_i.begin());
+  BOOST_CHECK(p2.second == v_i.begin() + 1);
+  find_common(v_0.begin(), v_0.end(), v_i.begin(), v_i.end(), p1, p2);
+  BOOST_CHECK(p1.first == v_0.end());
+  BOOST_CHECK(p1.second == v_0.end());
+  BOOST_CHECK(p2.first == v_i.end());
+  BOOST_CHECK(p2.second == v_i.end());
 }
 
 BOOST_AUTO_TEST_CASE( math_functors ) {
   VariableList v1("a,b,c,d");
+
   std::plus<VariableList> plus_op;
   std::minus<VariableList> minus_op;
   std::multiplies<VariableList> multiplies_op;
   VariableList vr1 = plus_op(v, v1);  // check std::plus functor
-  BOOST_CHECK(vr1 == v1);
-  BOOST_CHECK(vr1 == v);
+  BOOST_CHECK_EQUAL(vr1, v1);
+  BOOST_CHECK_EQUAL(vr1, v);
 
   VariableList vr2 = minus_op(v, v1); // check std::minus functor
-  BOOST_CHECK(vr2 == v1);
-  BOOST_CHECK(vr2 == v);
-
+  BOOST_CHECK_EQUAL(vr2, v1);
+  BOOST_CHECK_EQUAL(vr2, v);
 
   VariableList vr3;
-  vr3 = multiplies_op(VariableList("a,i,b"), VariableList("c,i,d")); // check std::multiplies functor
-  BOOST_CHECK(vr3 == VariableList("a,c,b,d"));
-  vr3 = multiplies_op(VariableList("a,i,b"), VariableList("c,i"));
-  BOOST_CHECK(vr3 == VariableList("a,c,b"));
-  vr3 = multiplies_op(VariableList("a,i,b"), VariableList("i,c"));
-  BOOST_CHECK(vr3 == VariableList("a,b,c"));
-  vr3 = multiplies_op(VariableList("a,i,b"), VariableList("i"));
-  BOOST_CHECK(vr3 == VariableList("a,b"));
-  vr3 = multiplies_op(VariableList("a,i"), VariableList("b,i,c"));
-  BOOST_CHECK(vr3 == VariableList("b,a,c"));
-  vr3 = multiplies_op(VariableList("a,i"), VariableList("b,i"));
-  BOOST_CHECK(vr3 == VariableList("a,b"));
-  vr3 = multiplies_op(VariableList("a,i"), VariableList("i,b"));
-  BOOST_CHECK(vr3 == VariableList("a,b"));
-  vr3 = multiplies_op(VariableList("a,i"), VariableList("i"));
-  BOOST_CHECK(vr3 == VariableList("a"));
-  vr3 = multiplies_op(VariableList("i,a"), VariableList("b,i,c"));
-  BOOST_CHECK(vr3 == VariableList("b,a,c"));
-  vr3 = multiplies_op(VariableList("i,a"), VariableList("b,i"));
-  BOOST_CHECK(vr3 == VariableList("b,a"));
-  vr3 = multiplies_op(VariableList("i,a"), VariableList("i,b"));
-  BOOST_CHECK(vr3 == VariableList("a,b"));
-  vr3 = multiplies_op(VariableList("i,a"), VariableList("i"));
-  BOOST_CHECK(vr3 == VariableList("a"));
-  vr3 = multiplies_op(VariableList("i"), VariableList("a,i,b"));
-  BOOST_CHECK(vr3 == VariableList("a,b"));
-  vr3 = multiplies_op(VariableList("i"), VariableList("a,i"));
-  BOOST_CHECK(vr3 == VariableList("a"));
-  vr3 = multiplies_op(VariableList("i"), VariableList("i,a"));
-  BOOST_CHECK(vr3 == VariableList("a"));
-  vr3 = multiplies_op(VariableList("i"), VariableList("i"));
-  BOOST_CHECK(vr3 == VariableList(""));
+  vr3 = multiplies_op(v_aib, v_xiy); // check std::multiplies functor
+  BOOST_CHECK_EQUAL(vr3, VariableList("a,x,b,y"));
+  vr3 = multiplies_op(v_aib, v_xi);
+  BOOST_CHECK_EQUAL(vr3, VariableList("a,x,b"));
+  vr3 = multiplies_op(v_aib, v_ix);
+  BOOST_CHECK_EQUAL(vr3, VariableList("a,b,x"));
+  vr3 = multiplies_op(v_aib, v_i);
+  BOOST_CHECK_EQUAL(vr3, VariableList("a,b"));
+  vr3 = multiplies_op(v_aib, v_0);
+  BOOST_CHECK_EQUAL(vr3, v_aib);
+  vr3 = multiplies_op(v_ai, v_xiy);
+  BOOST_CHECK_EQUAL(vr3, VariableList("x,a,y"));
+  vr3 = multiplies_op(v_ai, v_xi);
+  BOOST_CHECK_EQUAL(vr3, VariableList("a,x"));
+  vr3 = multiplies_op(v_ai, v_ix);
+  BOOST_CHECK_EQUAL(vr3, VariableList("a,x"));
+  vr3 = multiplies_op(v_ai, v_i);
+  BOOST_CHECK_EQUAL(vr3, VariableList("a"));
+  vr3 = multiplies_op(v_ia, v_xiy);
+  BOOST_CHECK_EQUAL(vr3, VariableList("x,a,y"));
+  vr3 = multiplies_op(v_ia, v_xi);
+  BOOST_CHECK_EQUAL(vr3, VariableList("x,a"));
+  vr3 = multiplies_op(v_ia, v_ix);
+  BOOST_CHECK_EQUAL(vr3, VariableList("a,x"));
+  vr3 = multiplies_op(v_ia, v_i);
+  BOOST_CHECK_EQUAL(vr3, VariableList("a"));
+  vr3 = multiplies_op(v_ia, v_0);
+  BOOST_CHECK_EQUAL(vr3, VariableList("i,a"));
+  vr3 = multiplies_op(v_i, v_xiy);
+  BOOST_CHECK_EQUAL(vr3, VariableList("x,y"));
+  vr3 = multiplies_op(v_i, v_xi);
+  BOOST_CHECK_EQUAL(vr3, VariableList("x"));
+  vr3 = multiplies_op(v_i, v_ix);
+  BOOST_CHECK_EQUAL(vr3, VariableList("x"));
+  vr3 = multiplies_op(v_i, v_i);
+  BOOST_CHECK_EQUAL(vr3, v_0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

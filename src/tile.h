@@ -171,7 +171,7 @@ namespace TiledArray {
     template<typename Exp0, typename Exp1, template<typename> class Op>
     Tile_& operator =(math::BinaryTileExp<Exp0, Exp1, Op>&& e) {
       typename math::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
-      TA_ASSERT((eval.dim() == DIM),
+      TA_ASSERT((eval.dim() == DIM) || (eval.dim() == 0 && DIM == 1 && range_.size()[0] == 1),
           std::runtime_error("Tile<...>::operator=(AnnotatedTile&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
       size_array size = make_size_(eval.size().begin(), eval.size().end());
       range_.resize(size);

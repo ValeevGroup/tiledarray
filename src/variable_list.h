@@ -3,11 +3,12 @@
 
 #include <error.h>
 //#include <coordinate_system.h>
-#include <boost/iterator/transform_iterator.hpp>
+//#include <boost/iterator/transform_iterator.hpp>
 #include <vector>
-//#include <string>
+#include <string>
 #include <map>
-//#include <iosfwd>
+#include <algorithm>
+#include <iostream>
 
 namespace TiledArray {
 
@@ -185,7 +186,9 @@ namespace TiledArray {
       }
       common1.first = first1;
       first2 = common2.first;
-      while((first1->compare(*first2) == 0) && (first1 != last1) && (first2 != last2)) {
+      while((first1 != last1) && (first2 != last2)) {
+        if(!std::equal(first1->begin(), first1->end(), first2->begin()))
+          break;
         ++first1;
         ++first2;
       }
@@ -319,11 +322,11 @@ namespace std {
         v.insert(p);
       }
 
-      return ::TiledArray::math::VariableList(
-          boost::make_transform_iterator(v.rbegin(),
-              ::TiledArray::math::pair_second<double,std::string>()),
-          boost::make_transform_iterator(v.rend(),
-              ::TiledArray::math::pair_second<double,std::string>()));
+      std::vector<std::string> result;
+      for(std::map<std::size_t, std::string>::const_reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
+        result.push_back(it->second);
+
+      return ::TiledArray::math::VariableList(result.begin(), result.end());
     }
   };
 

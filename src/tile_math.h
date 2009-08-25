@@ -4,7 +4,7 @@
 #include <variable_list.h>
 #include <coordinate_system.h>
 #include <Eigen/core>
-//#include <boost/iterator/transform_iterator.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 //#include <boost/tuple/tuple.hpp>
 //#include <functional>
@@ -20,7 +20,7 @@ namespace TiledArray {
   namespace detail {
 
     /// Contract a and b, and place the results into c.
-    /// c[m,p,n,o] = a[m,i,n] * b[p,i,o]
+    /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
     template<typename T, DimensionOrderType D>
     void contract(const std::size_t m, const std::size_t n, const std::size_t o,
         const std::size_t p, const std::size_t i, const T* a, const T* b, T* c)
@@ -29,7 +29,7 @@ namespace TiledArray {
           (D == decreasing_dimension_order ? Eigen::RowMajor : Eigen::ColMajor) | Eigen::AutoAlign > matrix_type;
 
       const std::size_t ma1 = ( D == increasing_dimension_order ? m : n );
-      const std::size_t mb1 = ( D == increasing_dimension_order ? p : o );
+      const std::size_t mb1 = ( D == increasing_dimension_order ? o : p );
       const std::size_t a_step = i * ma1;
       const std::size_t b_step = i * mb1;
       const std::size_t c_step = ma1 * mb1;
@@ -39,7 +39,7 @@ namespace TiledArray {
       const T* b_begin = NULL;
       T* c_begin = c;
       const T* const a_end = a + (m * i * n);
-      const T* const b_end = b + (p * i * n);
+      const T* const b_end = b + (o * i * p);
 //      const T* const c_end = c + (m * n * o * p);
 
       for(a_begin = a; a_begin != a_end; a_begin += a_step) {
@@ -89,7 +89,7 @@ namespace TiledArray {
 
     template<typename Exp0, typename Exp1, template<typename> class Op>
     struct ExpType<BinaryTileExp<Exp0, Exp1, Op> > {
-      typedef BinaryTileExp<Exp0, Exp1, Op> type;
+      typedef typename BinaryTileExp<Exp0, Exp1, Op>::result_type type;
       typedef typename BinaryTileExp<Exp0, Exp1, Op>::value_type value_type;
     };
 
@@ -167,12 +167,12 @@ namespace TiledArray {
             e1.vars().end(), e0_common, e1_common);
 
         // find dimensions of the result tile
-        typename result_type::size_array size;
+        typename result_type::size_array size(vars.dim(), 1);
         typename result_type::size_array::iterator it = size.begin();
         VariableList::const_iterator v_it = vars.begin();
         VariableList::const_iterator e_it;
         for(; it != size.end(); ++it, ++v_it) {
-          if((e_it = std::find(e0.vars().begin(), e0.vars().end(), *v_it)) != vars.end()) {
+          if((e_it = std::find(e0.vars().begin(), e0.vars().end(), *v_it)) != e0.vars().end()) {
             *it = e0.size()[std::distance(e0.vars().begin(), e_it)];
           } else {
             e_it = std::find(e1.vars().begin(), e1.vars().end(), *v_it);
@@ -186,17 +186,17 @@ namespace TiledArray {
             std::distance(e0.vars().begin(), e0_common.first), init,
             std::multiplies<std::size_t>());
         const std::size_t n = std::accumulate(e0.size().begin() +
-            std::distance(e0_common.second, e0.vars().end()), e0.size().end(),
+            std::distance(e0.vars().begin(), e0_common.second), e0.size().end(),
             init, std::multiplies<std::size_t>());
         const std::size_t o = std::accumulate(e1.size().begin(), e1.size().begin() +
             std::distance(e1.vars().begin(), e1_common.first), init,
             std::multiplies<std::size_t>());
         const std::size_t p = std::accumulate(e1.size().begin() +
-            std::distance(e1_common.second, e1.vars().end()), e1.size().end(),
+            std::distance(e1.vars().begin(), e1_common.second), e1.size().end(),
             init, std::multiplies<std::size_t>());
         const std::size_t i = std::accumulate(e0.size().begin() +
             std::distance(e0.vars().begin(), e0_common.first), e0.size().begin()
-            + std::distance(e0_common.second, e0.vars().end()), init,
+            + std::distance(e0.vars().begin(), e0_common.second), init,
             std::multiplies<std::size_t>());
 
         // construct result tile
@@ -290,9 +290,10 @@ namespace TiledArray {
     struct BinaryTileExp {
       typedef typename ExpType<Exp0>::type exp0_type;
       typedef typename ExpType<Exp1>::type exp1_type;
-      typedef typename ExpPair<Exp0, Exp1>::result_type result_type;
-      typedef typename ExpPair<Exp0, Exp1>::value_type value_type;
+      typedef typename ExpPair<exp0_type, exp1_type>::result_type result_type;
+      typedef typename ExpPair<exp0_type, exp1_type>::value_type value_type;
       typedef TileOp<exp0_type, exp1_type, result_type, Op> op_type;
+      typedef typename result_type::const_iterator const_iterator;
 
       static const TiledArray::detail::DimensionOrderType order;
 
