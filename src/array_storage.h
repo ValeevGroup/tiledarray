@@ -48,7 +48,7 @@ namespace TiledArray {
       typedef ArrayCoordinate<ordinal_type, DIM, Tag, coordinate_system> index_type;
       typedef boost::array<ordinal_type,DIM> size_array;
 
-      static const unsigned int dim() { return DIM; }
+      static unsigned int dim() { return DIM; }
 
       /// Default constructor. Constructs a 0 dimension array.
       ArrayDim() : size_(), weight_(), n_(0) { // no throw
@@ -189,7 +189,7 @@ namespace TiledArray {
     typedef T & reference_type;
     typedef const T & const_reference_type;
 
-    static const unsigned int dim() { return DIM; }
+    static unsigned int dim() { return DIM; }
 
     /// Default constructor.
 
@@ -469,7 +469,7 @@ namespace TiledArray {
     typedef T & reference_type;
     typedef const T & const_reference_type;
 
-    static const unsigned int dim() { return DIM; }
+    static unsigned int dim() { return DIM; }
 
     /// Construct an array with a definite size. All data elements are
     /// uninitialized. No communication occurs.

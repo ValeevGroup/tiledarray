@@ -36,7 +36,7 @@ namespace TiledArray {
     typedef boost::array<index_type,DIM> Array;
     typedef typename Array::const_iterator const_iterator;
 
-    static const unsigned int dim() { return DIM; }
+    static unsigned int dim() { return DIM; }
 
     static const Permutation& unit() { return unit_permutation; }
 

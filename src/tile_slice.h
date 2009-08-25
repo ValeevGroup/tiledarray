@@ -35,7 +35,7 @@ namespace TiledArray {
     typedef detail::ElementIterator<value_type, typename range_type::const_iterator, TileSlice_> iterator;
     typedef detail::ElementIterator<const value_type, typename range_type::const_iterator, TileSlice_> const_iterator;
 
-    static const unsigned int dim() { return tile_type::dim(); }
+    static unsigned int dim() { return tile_type::dim(); }
 
     /// Slice constructor.
 
@@ -58,7 +58,7 @@ namespace TiledArray {
     }
 
     /// Copy constructor
-    TileSlice(TileSlice_& other) : r_(other.r_), t_(other.t_) { }
+    TileSlice(const TileSlice_& other) : r_(other.r_), t_(other.t_) { }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// Move constructor

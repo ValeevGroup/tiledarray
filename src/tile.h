@@ -51,7 +51,7 @@ namespace TiledArray {
     typedef typename data_container::const_iterator const_iterator;
     typedef typename data_container::iterator iterator;
 
-    static const unsigned int dim() { return DIM; }
+    static unsigned int dim() { return DIM; }
 
     /// Default constructor
 

@@ -118,9 +118,6 @@ namespace TiledArray {
       // Verify at least 2 elements are present if the vector is not empty.
       if((last - first) == 2)
         return false;
-      // Verify the requirement that 0 <= a0
-      if(*first < 0)
-        return false;
       // Verify the requirement that a0 < a1 < a2 < ...
       for (; first != (last - 1); ++first)
         if(*first >= *(first + 1))

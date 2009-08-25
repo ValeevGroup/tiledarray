@@ -32,7 +32,7 @@ namespace TiledArray {
     typedef detail::IndexIterator<index_type, Range_> const_iterator;
     friend class detail::IndexIterator< index_type , Range_ >;
 
-    static const unsigned int dim() { return DIM; }
+    static unsigned int dim() { return DIM; }
 
     /// Default constructor. The range has 0 size and the origin is set at 0.
     Range() :

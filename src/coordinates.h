@@ -59,7 +59,7 @@ namespace TiledArray {
     typedef boost::array<index,DIM> Array;
     typedef typename Array::iterator iterator;
     typedef typename Array::const_iterator const_iterator;
-    static const unsigned int dim() { return DIM; }
+    static unsigned int dim() { return DIM; }
 
     // Constructors/Destructor
     explicit ArrayCoordinate(const index& init_value = 0) { r_.assign(init_value); }

@@ -35,7 +35,7 @@ namespace TiledArray {
     typedef typename detail::mirror_const<T,value_type>::reference reference_type;
     typedef const value_type & const_reference_type;
 
-    static const unsigned int dim() { return DIM; }
+    static unsigned int dim() { return DIM; }
 
     /// Primary constructor.
 
@@ -72,7 +72,7 @@ namespace TiledArray {
     }
 
     /// Copy constructor
-    PackedTile(PackedTile_& other) : r_(other.r_), w_(other.w_), t_(other.t_) { }
+    PackedTile(const PackedTile_& other) : r_(other.r_), w_(other.w_), t_(other.t_) { }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// Move constructor

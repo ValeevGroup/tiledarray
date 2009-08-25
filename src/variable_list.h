@@ -323,7 +323,7 @@ namespace std {
       }
 
       std::vector<std::string> result;
-      for(std::map<std::size_t, std::string>::const_reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
+      for(std::map<std::size_t, std::string>::reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
         result.push_back(it->second);
 
       return ::TiledArray::math::VariableList(result.begin(), result.end());
