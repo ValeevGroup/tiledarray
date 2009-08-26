@@ -10,8 +10,8 @@
 //#include <boost/test/output_test_stream.hpp>
 
 using namespace TiledArray;
-using TiledArray::math::VariableList;
-using TiledArray::math::AnnotatedTile;
+using TiledArray::expressions::VariableList;
+using TiledArray::expressions::AnnotatedTile;
 
 struct TileFixture {
   typedef Tile<double, 3> Tile3;

@@ -5,6 +5,7 @@
 #include <boost/test/output_test_stream.hpp>
 
 using namespace TiledArray;
+using TiledArray::math::contract;
 
 struct TileMathFixture {
   typedef Tile<double, 0> Tile0;
@@ -16,7 +17,7 @@ struct TileMathFixture {
   typedef Tile3::volume_type volume_type;
   typedef Tile3::size_array size_array;
   typedef Tile3::range_type range_type;
-  typedef math::AnnotatedTile<double, detail::decreasing_dimension_order> ATile;
+  typedef expressions::AnnotatedTile<double, detail::decreasing_dimension_order> ATile;
 
   TileMathFixture() {
 
@@ -74,47 +75,47 @@ BOOST_AUTO_TEST_CASE( contraction_func )
 
 
   // c[5,5] = a[5,5]T * b[5,5]
-  detail::contract<double, detail::decreasing_dimension_order>(5, 5, 5, 5, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(5, 5, 5, 5, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 625, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[25,5] = a[5,25]T * b[5,5]
-  detail::contract<double, detail::decreasing_dimension_order>(1, 25, 5, 5, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(1, 25, 5, 5, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 625, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[25,25] = a[5,25]T * b[5,25]
-  detail::contract<double, detail::decreasing_dimension_order>(1, 25, 1, 25, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(1, 25, 1, 25, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 625, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[25,1] = a[5,25]T * b[5,1]
-  detail::contract<double, detail::decreasing_dimension_order>(1, 25, 25, 1, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(1, 25, 25, 1, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 625, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[1,5] = a[5,1]T * b[5,5]
-  detail::contract<double, detail::decreasing_dimension_order>(25, 1, 5, 5, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(25, 1, 5, 5, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 625, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[1,25] = a[5,1]T * b[5,25]
-  detail::contract<double, detail::decreasing_dimension_order>(25, 1, 1, 25, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(25, 1, 1, 25, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 625, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[1,1] = a[5,1]T * b[5,1]
-  detail::contract<double, detail::decreasing_dimension_order>(25, 1, 25, 1, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(25, 1, 25, 1, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 625, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[1,5] = a[5,1]T * b[5,5]
-  detail::contract<double, detail::decreasing_dimension_order>(1, 1, 5, 5, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(1, 1, 5, 5, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 25, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[1,25] = a[5,1]T * b[5,25]
-  detail::contract<double, detail::decreasing_dimension_order>(1, 1, 1, 25, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(1, 1, 1, 25, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 25, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[1,25] = a[5,1]T * b[5,25]
-  detail::contract<double, detail::decreasing_dimension_order>(1, 1, 25, 1, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(1, 1, 25, 1, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 25, 30.0));
   std::fill(c, c + 625, 0.0);
   // c[1,1] = a[5,1]T * b[5,1]
-  detail::contract<double, detail::decreasing_dimension_order>(1, 1, 1, 1, 5, a, b, c);
+  contract<double, detail::decreasing_dimension_order>(1, 1, 1, 1, 5, a, b, c);
   BOOST_CHECK(check_val(c, c + 1, 30.0));
   std::fill(c, c + 625, 0.0);
 
@@ -136,8 +137,8 @@ BOOST_AUTO_TEST_CASE( contraction_func )
 BOOST_AUTO_TEST_CASE( value_exp )
 {
   double d = 1.0;
-  BOOST_REQUIRE_NO_THROW(math::ValueExp<double> ve(d));
-  math::ValueExp<double> ve(d);
+  BOOST_REQUIRE_NO_THROW(expressions::ValueExp<double> ve(d));
+  expressions::ValueExp<double> ve(d);
   BOOST_CHECK_CLOSE(ve.eval(), 1.0, 0.000001);
 }
 
@@ -147,7 +148,7 @@ BOOST_AUTO_TEST_CASE( zip_op )
       boost::make_tuple(t1.at(0), t2.at(0));
 
   math::ZipOp<ATile::value_type, ATile::value_type, ATile::value_type,
-      std::plus> op;
+      std::plus<double> > op;
 
   BOOST_CHECK_CLOSE(op(tup_it), 3.0, 0.000001);
 
@@ -155,7 +156,7 @@ BOOST_AUTO_TEST_CASE( zip_op )
 
 BOOST_AUTO_TEST_CASE( tile_op )
 {
-  math::TileOp<ATile, ATile, ATile, std::plus> op;
+  math::BinaryTileOp<ATile, ATile, ATile, std::plus<double> > op;
 
   ATile result = op(t1("a,b,c"), t2("a,b,c"));
   BOOST_CHECK(check_val(result.begin(), result.end(), 3.0));
@@ -210,40 +211,28 @@ BOOST_AUTO_TEST_CASE( contraction )
   tr4 = t2("a,i,b") * t3("x,i,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
+  tr4 = t2("a,i,b") * t3("x,y,i");
+  BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
+  std::fill(tr4.begin(), tr4.end(), 0.0);
+  tr4 = t2("a,i,b") * t3("i,x,y");
+  BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
+  std::fill(tr4.begin(), tr4.end(), 0.0);
   tr4 = t2("a,b,i") * t3("x,i,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
   tr4 = t2("a,b,i") * t3("x,y,i");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("a,b,i") * t3("i,c,d");
+  tr4 = t2("a,b,i") * t3("i,x,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
+  tr4 = t2("i,a,b") * t3("x,i,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
+  tr4 = t2("i,a,b") * t3("x,y,i");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
-  BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
-  std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
-  BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
-  std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
-  BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
-  std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
-  BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
-  std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
-  BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
-  std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
-  BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
-  std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("c,d,i");
+  tr4 = t2("i,a,b") * t3("i,x,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
   tr0 = t2("i,j,k") * t3("i,j,k");

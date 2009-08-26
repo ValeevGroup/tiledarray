@@ -106,7 +106,7 @@ namespace TiledArray {
     /// The constructor will throw when the dimensions of the annotated tile do
     /// not match the dimensions of the tile.
     template<typename U, detail::DimensionOrderType O>
-    Tile(const math::AnnotatedTile<U, O>& atile) :
+    Tile(const expressions::AnnotatedTile<U, O>& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())),
         data_(range_.size(), atile.begin(), atile.end())
     {
@@ -117,7 +117,7 @@ namespace TiledArray {
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedTile assignment operator
     template<typename U, detail::DimensionOrderType O>
-    Tile(math::AnnotatedTile<U, O>&& atile) :
+    Tile(expressions::AnnotatedTile<U, O>&& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())), data_()
     {
       TA_ASSERT((atile.dim() == DIM),
@@ -153,11 +153,11 @@ namespace TiledArray {
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// AnnotatedTile assignment operator
-    template<typename Exp0, typename Exp1, template<typename> class Op>
-    Tile_& operator =(const math::BinaryTileExp<Exp0, Exp1, Op>& e) {
-      typename math::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
+    template<typename Exp0, typename Exp1, typename Op>
+    Tile_& operator =(const expressions::BinaryTileExp<Exp0, Exp1, Op>& e) {
+      typename expressions::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
       TA_ASSERT((eval.dim() == DIM),
-          std::runtime_error("Tile<...>::operator=(const AnnotatedTile&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+          std::runtime_error("Tile<...>::operator=(const math::BinaryTileExp<Exp0, Exp1, Op>&): The dimensions of the annotated tile do not match the dimensions of the tile."));
       size_array size;
       std::copy(eval.size().begin(), eval.size().end(), size.begin());
       range_.resize(size);
@@ -168,11 +168,41 @@ namespace TiledArray {
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedTile assignment operator
-    template<typename Exp0, typename Exp1, template<typename> class Op>
-    Tile_& operator =(math::BinaryTileExp<Exp0, Exp1, Op>&& e) {
-      typename math::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
+    template<typename Exp0, typename Exp1, typename Op>
+    Tile_& operator =(expressions::BinaryTileExp<Exp0, Exp1, Op>&& e) {
+      typename expressions::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
       TA_ASSERT((eval.dim() == DIM) || (eval.dim() == 0 && DIM == 1 && range_.size()[0] == 1),
-          std::runtime_error("Tile<...>::operator=(AnnotatedTile&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+          std::runtime_error("Tile<...>::operator=(math::BinaryTileExp<Exp0, Exp1, Op>&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+      size_array size = make_size_(eval.size().begin(), eval.size().end());
+      range_.resize(size);
+      data_container data(size, eval.begin(), eval.end());
+      data_.swap(data);
+
+      return *this;
+    }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
+
+    /// AnnotatedTile assignment operator
+    template<typename Exp, typename Op>
+    Tile_& operator =(const expressions::UnaryTileExp<Exp, Op>& e) {
+      typename expressions::UnaryTileExp<Exp, Op>::result_type eval = e.eval();
+      TA_ASSERT((eval.dim() == DIM),
+          std::runtime_error("Tile<...>::operator=(const math::UnaryTileExp<Exp, Op>&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+      size_array size;
+      std::copy(eval.size().begin(), eval.size().end(), size.begin());
+      range_.resize(size);
+      std::copy(eval.begin(), eval.end(), data_.begin());
+
+      return *this;
+    }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// AnnotatedTile assignment operator
+    template<typename Exp, typename Op>
+    Tile_& operator =(expressions::UnaryTileExp<Exp, Op>&& e) {
+      typename expressions::UnaryTileExp<Exp, Op>::result_type eval = e.eval();
+      TA_ASSERT((eval.dim() == DIM) || (eval.dim() == 0 && DIM == 1 && range_.size()[0] == 1),
+          std::runtime_error("Tile<...>::operator=(math::UnaryTileExp<Exp, Op>&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
       size_array size = make_size_(eval.size().begin(), eval.size().end());
       range_.resize(size);
       data_container data(size, eval.begin(), eval.end());
@@ -271,14 +301,14 @@ namespace TiledArray {
     }
 
 
-    math::AnnotatedTile<value_type, coordinate_system::dimension_order>
+    expressions::AnnotatedTile<value_type, coordinate_system::dimension_order>
     operator ()(const std::string& v) {
-      return math::AnnotatedTile<value_type, coordinate_system::dimension_order>(*this, math::VariableList(v));
+      return expressions::AnnotatedTile<value_type, coordinate_system::dimension_order>(*this, expressions::VariableList(v));
     }
 
-    math::AnnotatedTile<const value_type, coordinate_system::dimension_order>
+    expressions::AnnotatedTile<const value_type, coordinate_system::dimension_order>
     operator ()(const std::string& v) const {
-      return math::AnnotatedTile<const value_type, coordinate_system::dimension_order>(*this, math::VariableList(v));
+      return expressions::AnnotatedTile<const value_type, coordinate_system::dimension_order>(*this, expressions::VariableList(v));
     }
 
     /// Exchange calling tile's data with that of \c other.

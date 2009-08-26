@@ -4,8 +4,9 @@
 #include <boost/test/output_test_stream.hpp>
 
 //using namespace TiledArray;
-using namespace TiledArray::math;
 using TiledArray::Permutation;
+using TiledArray::expressions::VariableList;
+using TiledArray::expressions::find_common;
 
 struct VariableListFixture {
   VariableListFixture() : v("a,b,c,d"), v_aib("a,i,b"), v_xiy("x,i,y"),

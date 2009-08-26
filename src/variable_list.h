@@ -19,7 +19,7 @@ namespace TiledArray {
   template <unsigned int DIM, typename T>
   std::vector<T> operator^=(std::vector<T>&, const Permutation<DIM>&);
 
-  namespace math {
+  namespace expressions {
 
     class VariableList;
     template<unsigned int DIM>
@@ -239,7 +239,7 @@ namespace TiledArray {
       return out;
     }
 
-  } // namespace math
+  } // namespace expressions
 
 } // namespace TiledArray
 
@@ -247,13 +247,13 @@ namespace TiledArray {
 namespace std {
 
   template<>
-  struct plus< ::TiledArray::math::VariableList> : binary_function <
-      ::TiledArray::math::VariableList,::TiledArray::math::VariableList,
-      ::TiledArray::math::VariableList>
+  struct plus< ::TiledArray::expressions::VariableList> : binary_function <
+      ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
+      ::TiledArray::expressions::VariableList>
   {
-    const ::TiledArray::math::VariableList& operator() (
-        const ::TiledArray::math::VariableList& v0,
-        const ::TiledArray::math::VariableList& v1) const
+    const ::TiledArray::expressions::VariableList& operator() (
+        const ::TiledArray::expressions::VariableList& v0,
+        const ::TiledArray::expressions::VariableList& v1) const
     {
       TA_ASSERT(v0 == v1,
           std::runtime_error("std::plus<TiledArray::detail::VariableList>::operator(...): variable lists must be identical for addition operations."));
@@ -263,13 +263,13 @@ namespace std {
   };
 
   template<>
-  struct minus< ::TiledArray::math::VariableList> : binary_function <
-      ::TiledArray::math::VariableList,::TiledArray::math::VariableList,
-      ::TiledArray::math::VariableList>
+  struct minus< ::TiledArray::expressions::VariableList> : binary_function <
+      ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
+      ::TiledArray::expressions::VariableList>
   {
-    const ::TiledArray::math::VariableList& operator() (
-        const ::TiledArray::math::VariableList& v0,
-        const ::TiledArray::math::VariableList& v1) const
+    const ::TiledArray::expressions::VariableList& operator() (
+        const ::TiledArray::expressions::VariableList& v0,
+        const ::TiledArray::expressions::VariableList& v1) const
     {
       TA_ASSERT(v0 == v1,
           std::runtime_error("std::plus<TiledArray::detail::VariableList>::operator(...): variable lists must be identical for addition operations."));
@@ -279,20 +279,20 @@ namespace std {
   };
 
   template<>
-  struct multiplies< ::TiledArray::math::VariableList> : binary_function <
-      ::TiledArray::math::VariableList,::TiledArray::math::VariableList,
-      ::TiledArray::math::VariableList>
+  struct multiplies< ::TiledArray::expressions::VariableList> : binary_function <
+      ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
+      ::TiledArray::expressions::VariableList>
   {
-    const ::TiledArray::math::VariableList operator() (
-        const ::TiledArray::math::VariableList& v0,
-        const ::TiledArray::math::VariableList& v1) const
+    const ::TiledArray::expressions::VariableList operator() (
+        const ::TiledArray::expressions::VariableList& v0,
+        const ::TiledArray::expressions::VariableList& v1) const
     {
-      typedef ::TiledArray::math::VariableList::const_iterator iterator;
+      typedef ::TiledArray::expressions::VariableList::const_iterator iterator;
       typedef std::pair<iterator, iterator> it_pair;
 
       it_pair c0(v0.end(), v0.end());
       it_pair c1(v1.end(), v1.end());
-      ::TiledArray::math::find_common(v0.begin(), v0.end(), v1.begin(), v1.end(), c0, c1);
+      ::TiledArray::expressions::find_common(v0.begin(), v0.end(), v1.begin(), v1.end(), c0, c1);
 
       std::size_t n0 = 2 * v0.dim() + 1;
       std::size_t n1 = 2 * v1.dim();
@@ -326,7 +326,7 @@ namespace std {
       for(std::map<std::size_t, std::string>::reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
         result.push_back(it->second);
 
-      return ::TiledArray::math::VariableList(result.begin(), result.end());
+      return ::TiledArray::expressions::VariableList(result.begin(), result.end());
     }
   };
 

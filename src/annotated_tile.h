@@ -27,7 +27,7 @@ namespace TiledArray {
   } // namespace detail
 
 
-  namespace math {
+  namespace expressions {
 
     /// Annotated tile.
     template<typename T, TiledArray::detail::DimensionOrderType O>
@@ -375,6 +375,6 @@ namespace TiledArray {
       return result;
     }
 
-  } // namespace math
+  } // namespace expressions
 } // namespace TiledArray
 #endif // TILEDARRAY_ANNOTATED_TILE_H__INCLUDED
