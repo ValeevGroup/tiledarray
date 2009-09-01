@@ -2,6 +2,7 @@
 #define TILEDARRAY_VARIABLE_LIST_H__INCLUDED
 
 #include <error.h>
+#include <permutation.h>
 //#include <coordinate_system.h>
 //#include <boost/iterator/transform_iterator.hpp>
 #include <vector>
@@ -12,7 +13,7 @@
 
 namespace TiledArray {
 
-  template <unsigned int DIM>
+  template<unsigned int DIM>
   class Permutation;
   template <unsigned int DIM, typename T>
   std::vector<T> operator^(const Permutation<DIM>&, const std::vector<T>&);
@@ -79,7 +80,7 @@ namespace TiledArray {
       }
 
       template<unsigned int DIM>
-      VariableList& operator ^=(const ::TiledArray::Permutation<DIM>& p) {
+      VariableList& operator ^=(const Permutation<DIM>& p) {
         TA_ASSERT(DIM == dim(),
             std::runtime_error("VariableList::operator^=(...): The permutation dimensions are not equal to the variable list dimensions."));
         vars_ ^= p;
@@ -105,6 +106,22 @@ namespace TiledArray {
 
       void swap(VariableList& other) {
         std::swap(vars_, other.vars_);
+      }
+
+      std::vector<std::size_t> permutation(const VariableList& other) {
+        TA_ASSERT(dim() == other.dim(),
+            std::runtime_error("ariableList::permutation(...): The variable list dimensions are not equal."));
+        std::vector<std::size_t> p(dim(), 0);
+        const_iterator other_it;
+        const_iterator this_it = begin();
+        for(std::vector<std::size_t>::iterator it = p.begin(); it != p.end(); ++it, ++this_it) {
+          other_it = std::find(other.begin(), other.end(), *this_it);
+          TA_ASSERT(other_it != other.end(),
+              std::runtime_error("VariableList::permutation(...): Variable name not found in other variable list."));
+          *it = std::distance(other.begin(), other_it);
+        }
+
+        return p;
       }
 
     private:

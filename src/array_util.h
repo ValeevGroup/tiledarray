@@ -1,6 +1,7 @@
 #ifndef TA_ARRAY_UTIL_H__INCLUDED
 #define TA_ARRAY_UTIL_H__INCLUDED
 
+#include <boost/array.hpp>
 //#include <numeric>
 
 namespace TiledArray {

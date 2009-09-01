@@ -40,6 +40,10 @@ struct MadnessFixture : public MpiFixture {
 
 BOOST_GLOBAL_FIXTURE( MadnessFixture );
 
+BOOST_AUTO_TEST_SUITE( dummy_suite )
+BOOST_AUTO_TEST_CASE( nothing ) {}
+BOOST_AUTO_TEST_SUITE_END()
+
 /*
 int main(int argc, char* argv[]) {
 

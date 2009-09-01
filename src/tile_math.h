@@ -368,7 +368,7 @@ namespace TiledArray {
     /// must have the same storage order. When constructed, the expression stores
     /// a reference to the two expressions it will operate on. The expression
     /// does a lazy evaluation, i.e. it is only evaluated when the eval()
-    /// function is explicitly called. If one of the expressions is another
+    /// function is explicitly called. If one of the arguments is another
     /// expression, it will be evaluated before this expression.
     template<typename Exp0, typename Exp1, typename Op>
     struct BinaryTileExp {
@@ -396,18 +396,15 @@ namespace TiledArray {
       Op op_;
     }; // struct BinaryTileExp
 
-    /// Binary Tile Expression
+    /// Unary Tile Expression
 
-    /// This structure represents a binary tile math expression. The Op type
-    /// represents the basic math operation that will be performed on a pair of
-    /// elements (one from each tile). The expression types may be annotated
-    /// tiles, fundamental types, or other tile expressions. They may be combined
-    /// in any combination (except two fundamental types). Both expression types
-    /// must have the same storage order. When constructed, the expression stores
-    /// a reference to the two expressions it will operate on. The expression
-    /// does a lazy evaluation, i.e. it is only evaluated when the eval()
-    /// function is explicitly called. If one of the expressions is another
-    /// expression, it will be evaluated before this expression.
+    /// This structure represents a unary tile math expression. The Op type
+    /// represents the basic math operation that will be performed on each
+    /// element. The expression types may be annotated tiles, fundamental types,
+    /// or other tile expressions. The expression does a lazy evaluation, i.e.
+    /// it is only evaluated when the eval() function is explicitly called. If
+    /// the argument is another expression, it will be evaluated before this
+    /// expression.
     template<typename Exp, typename Op>
     struct UnaryTileExp {
       typedef typename ExpType<Exp>::result_type exp_type;
@@ -429,7 +426,7 @@ namespace TiledArray {
 
       const Exp& e_;
       Op op_;
-    }; // struct BinaryTileExp
+    }; // struct UnaryTileExp
 
     template<typename Exp0, typename Exp1, template<typename> class Op>
     struct ExpConstruct {

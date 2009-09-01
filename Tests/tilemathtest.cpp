@@ -52,12 +52,7 @@ bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001) {
 
 }
 
-BOOST_FIXTURE_TEST_SUITE( tile_math_test , TileMathFixture )
-
-BOOST_AUTO_TEST_CASE( blank )
-{
-
-}
+BOOST_FIXTURE_TEST_SUITE( tile_math_suite , TileMathFixture )
 
 BOOST_AUTO_TEST_CASE( contraction_func )
 {
@@ -165,37 +160,37 @@ BOOST_AUTO_TEST_CASE( tile_op )
 
 BOOST_AUTO_TEST_CASE( addition )
 {
-  tr = t1("a,b,c") + t2("a,b,c");
+  tr("a,b,c") = t1("a,b,c") + t2("a,b,c");
   BOOST_CHECK(check_val(tr.begin(), tr.end(), 3.0));
 }
 
 BOOST_AUTO_TEST_CASE( scalar_addition )
 {
-  tr = t1("a,b,c") + 2.0;
+  tr("a,b,c") = t1("a,b,c") + 2.0;
   BOOST_CHECK(check_val(tr.begin(), tr.end(), 3.0));
 }
 
 BOOST_AUTO_TEST_CASE( subraction )
 {
-  tr = t3("a,b,c") - t2("a,b,c");
+  tr("a,b,c") = t3("a,b,c") - t2("a,b,c");
   BOOST_CHECK(check_val(tr.begin(), tr.end(), 1.0));
 }
 
 BOOST_AUTO_TEST_CASE( scalar_subraction )
 {
-  tr = t3("a,b,c") - 2.0;
+  tr("a,b,c") = t3("a,b,c") - 2.0;
   BOOST_CHECK(check_val(tr.begin(), tr.end(), 1.0));
 }
 
 BOOST_AUTO_TEST_CASE( scalar_multiplication )
 {
-  tr = t2("a,b,c") * 3.0;
+  tr("a,b,c") = t2("a,b,c") * 3.0;
   BOOST_CHECK(check_val(tr.begin(), tr.end(), 6.0));
 }
 
 BOOST_AUTO_TEST_CASE( negate )
 {
-  tr = -t2("i,j,k");
+  tr("i,j,k") = -t2("i,j,k");
   BOOST_CHECK(check_val(tr.begin(), tr.end(), -2.0));
 }
 
@@ -208,34 +203,34 @@ BOOST_AUTO_TEST_CASE( contraction )
   Tile0 tr0(r0);
 
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("a,i,b") * t3("x,i,y");
+  tr4("a,x,b,y") = t2("a,i,b") * t3("x,i,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("a,i,b") * t3("x,y,i");
+  tr4("a,x,y,b") = t2("a,i,b") * t3("x,y,i");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("a,i,b") * t3("i,x,y");
+  tr4("a,x,b,y") = t2("a,i,b") * t3("i,x,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("a,b,i") * t3("x,i,y");
+  tr4("a,x,b,y") = t2("a,b,i") * t3("x,i,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("a,b,i") * t3("x,y,i");
+  tr4("a,x,b,y") = t2("a,b,i") * t3("x,y,i");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("a,b,i") * t3("i,x,y");
+  tr4("a,b,x,y") = t2("a,b,i") * t3("i,x,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("x,i,y");
+  tr4("x,a,b,y") = t2("i,a,b") * t3("x,i,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("x,y,i");
+  tr4("x,a,y,b") = t2("i,a,b") * t3("x,y,i");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr4 = t2("i,a,b") * t3("i,x,y");
+  tr4("a,x,b,y") = t2("i,a,b") * t3("i,x,y");
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 30.0));
   std::fill(tr4.begin(), tr4.end(), 0.0);
-  tr0 = t2("i,j,k") * t3("i,j,k");
+  tr0("") = t2("i,j,k") * t3("i,j,k");
   BOOST_CHECK(check_val(tr0.begin(), tr0.end(), 750.0));
 }
 
@@ -244,7 +239,7 @@ BOOST_AUTO_TEST_CASE( chain_expressions )
   Tile4::range_type r4(Tile4::index_type(0,0,0,0), Tile4::index_type(5,5,5,5));
   Tile4 tr4(r4);
 
-  tr4 = 6.0 * t2("a,i,b") * t3("c,i,d") + t3("a,i,b") * t4("c,i,d") - 1.0;
+  tr4("a,c,b,d") = 6.0 * t2("a,i,b") * t3("c,i,d") + t3("a,i,b") * t4("c,i,d") - 1.0;
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 239.0));
 }
 

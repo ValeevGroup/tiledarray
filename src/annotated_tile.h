@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_ANNOTATED_TILE_H__INCLUDED
 #define TILEDARRAY_ANNOTATED_TILE_H__INCLUDED
 
+#include <error.h>
 #include <variable_list.h>
 #include <range.h>
 #include <type_traits.h>
@@ -28,6 +29,11 @@ namespace TiledArray {
 
 
   namespace expressions {
+
+    template<typename Exp0, typename Exp1, typename Op>
+    struct BinaryTileExp;
+    template<typename Exp, typename Op>
+    struct UnaryTileExp;
 
     /// Annotated tile.
     template<typename T, TiledArray::detail::DimensionOrderType O>
@@ -137,13 +143,23 @@ namespace TiledArray {
       /// Annotated tile assignment operator.
       AnnotatedTile_& operator =(const AnnotatedTile_& other) {
         if(this != &other) {
-          destroy_();
-          data_ = other.data_;
-          size_ = other.size_;
-          weight_ = other.weight_;
-          n_ = other.n_;
-          var_ = other.var_;
+          if(owner_) {
+            destroy_();
+            data_ = other.data_;
+            size_ = other.size_;
+            weight_ = other.weight_;
+            n_ = other.n_;
+          } else {
+            TA_ASSERT(size_ == other.size_,
+                std::runtime_error("AnnotatedTile<...>::operator=(const AnnotatedTile&): Right-hand tile dimensions do not match the dimensions of the referenced tile."));
+            std::copy(other.begin(), other.end(), data_);
+          }
+
           alloc_ = other.alloc_;
+
+          if(var_ != other.var_) {
+
+          }
         }
 
         return *this;
@@ -151,23 +167,47 @@ namespace TiledArray {
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
       /// Annotated tile move assignment operator.
-      AnnotatedTile& operator =(AnnotatedTile&& other) {
+      AnnotatedTile_& operator =(AnnotatedTile_&& other) {
         if(this != &other) {
-          destroy_();
-          data_ = other.data_;
-          owner_ = other.owner_;
-          other.data_ = NULL;
-          other.owner_ = false;
-          size_ = std::move(other.size_);
-          weight_ = std::move(other.weight_);
-          n_ = other.n_;
-          var_ = std::move(other.var_);
-          alloc_ = std::move(other.alloc_);
+          if(var_ != other.var_) {
+            std::vector<std::size_t> p = var_.permutation(other.var_);
+
+
+          }
+          if(owner_) {
+            swap(other);
+          } else {
+
+            TA_ASSERT(size_ == other.size_,
+                std::runtime_error("AnnotatedTile<...>::operator=(const AnnotatedTile&): Right-hand tile dimensions do not match the dimensions of the referenced tile."));
+            std::copy(other.begin(), other.end(), data_);
+
+            alloc_ = std::move(other.alloc_);
+          }
+
+
         }
+
 
         return *this;
       }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
+
+      /// AnnotatedTile assignment operator
+      template<typename Exp0, typename Exp1, typename Op>
+      AnnotatedTile_& operator =(const BinaryTileExp<Exp0, Exp1, Op>& e) {
+        *this = e.eval();
+
+        return *this;
+      }
+
+      /// AnnotatedTile assignment operator
+      template<typename Exp, typename Op>
+      AnnotatedTile_& operator =(const UnaryTileExp<Exp, Op>& e) {
+        *this = e.eval();
+
+        return *this;
+      }
 
       iterator begin() { return data_; }
       const_iterator begin() const { return data_; }

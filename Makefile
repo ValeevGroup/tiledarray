@@ -4,7 +4,7 @@ VPATH = src:Tests
 CXX = $(MPICXX)
 INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -I$(BLASINCLUDEDIR) -I$(EIGENDIR)
 LIBDIR = -L$(MADNESSDIR)/lib
-LIBS = -lMADworld -lcblas -lblas
+LIBS = -lMADworld -lcblas -lblas -lmpi
 CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=gnu++0x
 CXXSUF = cpp
 OBJSUF = o
@@ -22,7 +22,7 @@ TARGET =	TiledArrayTest
 
 $(TARGET):	$(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS) $(LIBDIR) $(LIBS) $(DEBUGLEVEL)
-	./TiledArrayTest
+#	./TiledArrayTest
 
 all:	$(TARGET)
 

@@ -152,66 +152,6 @@ namespace TiledArray {
     }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
-    /// AnnotatedTile assignment operator
-    template<typename Exp0, typename Exp1, typename Op>
-    Tile_& operator =(const expressions::BinaryTileExp<Exp0, Exp1, Op>& e) {
-      typename expressions::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
-      TA_ASSERT((eval.dim() == DIM),
-          std::runtime_error("Tile<...>::operator=(const math::BinaryTileExp<Exp0, Exp1, Op>&): The dimensions of the annotated tile do not match the dimensions of the tile."));
-      size_array size;
-      std::copy(eval.size().begin(), eval.size().end(), size.begin());
-      range_.resize(size);
-      std::copy(eval.begin(), eval.end(), data_.begin());
-
-      return *this;
-    }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// AnnotatedTile assignment operator
-    template<typename Exp0, typename Exp1, typename Op>
-    Tile_& operator =(expressions::BinaryTileExp<Exp0, Exp1, Op>&& e) {
-      typename expressions::BinaryTileExp<Exp0, Exp1, Op>::result_type eval = e.eval();
-      TA_ASSERT((eval.dim() == DIM) || (eval.dim() == 0 && DIM == 1 && range_.size()[0] == 1),
-          std::runtime_error("Tile<...>::operator=(math::BinaryTileExp<Exp0, Exp1, Op>&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
-      size_array size = make_size_(eval.size().begin(), eval.size().end());
-      range_.resize(size);
-      data_container data(size, eval.begin(), eval.end());
-      data_.swap(data);
-
-      return *this;
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-    /// AnnotatedTile assignment operator
-    template<typename Exp, typename Op>
-    Tile_& operator =(const expressions::UnaryTileExp<Exp, Op>& e) {
-      typename expressions::UnaryTileExp<Exp, Op>::result_type eval = e.eval();
-      TA_ASSERT((eval.dim() == DIM),
-          std::runtime_error("Tile<...>::operator=(const math::UnaryTileExp<Exp, Op>&): The dimensions of the annotated tile do not match the dimensions of the tile."));
-      size_array size;
-      std::copy(eval.size().begin(), eval.size().end(), size.begin());
-      range_.resize(size);
-      std::copy(eval.begin(), eval.end(), data_.begin());
-
-      return *this;
-    }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// AnnotatedTile assignment operator
-    template<typename Exp, typename Op>
-    Tile_& operator =(expressions::UnaryTileExp<Exp, Op>&& e) {
-      typename expressions::UnaryTileExp<Exp, Op>::result_type eval = e.eval();
-      TA_ASSERT((eval.dim() == DIM) || (eval.dim() == 0 && DIM == 1 && range_.size()[0] == 1),
-          std::runtime_error("Tile<...>::operator=(math::UnaryTileExp<Exp, Op>&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
-      size_array size = make_size_(eval.size().begin(), eval.size().end());
-      range_.resize(size);
-      data_container data(size, eval.begin(), eval.end());
-      data_.swap(data);
-
-      return *this;
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
     /// Returns a raw pointer to the element data.
     value_type* data() { return data_.data(); }
     /// Returns a constant raw pointer to the element data.

@@ -2,6 +2,7 @@
 #define PERMUTATION_H_
 
 #include <error.h>
+#include <array_util.h>
 //#include <iosfwd>
 //#include <algorithm>
 #include <vector>
@@ -78,7 +79,7 @@ namespace TiledArray {
     ~Permutation() {}
 
     const_iterator begin() const { return p_.begin(); }
-    const_iterator end() { return p_.end(); }
+    const_iterator end() const { return p_.end(); }
 
     const index_type& operator[](unsigned int i) const {
 #ifdef NDEBUG
@@ -161,13 +162,93 @@ namespace TiledArray {
     return output;
   }
 
+  namespace detail {
+
+    template <typename InIter0, typename InIter1, typename Cont>
+    Cont& permute(InIter0 first_p, InIter0 last_p, InIter1 first_o, InIter1 last_o, Cont& result) {
+      for(; first_p != last_p && first_o != last_o; ++first_p, ++first_o) {
+        result[*first_p] = *first_o;
+      }
+
+      return result;
+    }
+
+    template<typename T, typename D = std::size_t>
+    class perm_range {
+    public:
+      typedef T value_type;
+      typedef D diff_type;
+
+      perm_range(const diff_type step, const value_type end) :
+          step_(step), end_(end) { }
+
+      void initialize(const value_type start) { current_ = start; }
+      value_type current() const { return current_; }
+      bool end() const { return current_ < end_; }
+      void increment() { current_ += step_; }
+
+    private:
+      perm_range();
+      perm_range(const perm_range&);
+
+      const diff_type step_;
+      const value_type end_;
+      value_type current_;
+    }; // class perm_range
+
+    template<typename T, typename D>
+    class perm_iterator {
+      typedef T value_type;
+      typedef D diff_type;
+      typedef perm_range<T,D> range_type;
+
+      template<typename InIterS, typename InIterP>
+      perm_iterator(InIterS first_s, InIterS last_s, InIterP first_p, InIterP last_p, const value_type start) :
+          start_(start), current_(std::distance(first_s, last_s) - 1)
+      {
+        std::vector<diff_type> weight(std::distance(first_s, last_s));
+        calc_weight(first_s, last_s, weight.begin());
+
+        std::vector<diff_type> size_p(weight.size());
+        permute(first_s, last_s, first_p, last_p, size_p);
+
+        std::vector<diff_type> weight_p(weight.size());
+        permute(weight.begin(), weight.end(), first_p, last_p, weight_p);
+
+        typename std::vector<diff_type>::const_iterator w_it = weight_p.begin();
+        typename std::vector<diff_type>::const_iterator s_it = size_p.begin();
+        for(; s_it != size_p.end(); ++s_it, ++w_it)
+          ranges_.push_back(range_type(*w_it, start + (*w_it) * (*s_it)));
+      }
+
+      void initialize() {
+        for(typename std::vector<range_type>::iterator it = ranges_.begin(); it != ranges_.end(); ++it)
+          *it->initialize(start_);
+      }
+
+      value_type current() { return ranges_.back().current(); }
+
+      bool end() const {
+        return ranges_.front().end();
+      }
+
+      void increment() {
+
+      }
+
+    private:
+      std::vector<range_type> ranges_;
+      const value_type start_;
+      std::size_t current_;
+    };
+
+  } // namespace detail
+
   /// permute an array
   template <unsigned int DIM, typename T>
   boost::array<T,DIM> operator^(const Permutation<DIM>& perm, const boost::array<T, static_cast<std::size_t>(DIM) >& orig) {
     boost::array<T,DIM> result;
-    for(unsigned int dim = 0; dim < DIM; ++dim)
-      result[perm[dim]] = orig[dim];
-    return result;
+    return detail::permute(perm.begin(), perm.end(), orig.begin(), orig.end(), result);
   }
 
   /// permute an array
@@ -176,9 +257,7 @@ namespace TiledArray {
     TA_ASSERT((orig.size() == DIM),
         std::runtime_error("operator^(const Permutation<DIM>&, const std::vector<T>&): The permutation dimension is not equal to the vector size."));
     std::vector<T> result(DIM);
-    for(unsigned int dim = 0; dim < DIM; ++dim)
-      result[perm[dim]] = orig[dim];
-    return result;
+    return detail::permute(perm.begin(), perm.end(), orig.begin(), orig.end(), result);
   }
 
   template <unsigned int DIM, typename T>

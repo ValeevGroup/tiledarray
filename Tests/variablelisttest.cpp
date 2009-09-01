@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(v2.at(3), "d");
 
   boost::array<std::string, 4> a10 = {{"a", "b", "c", "d"}};
-  BOOST_REQUIRE_NO_THROW(VariableList v10(a10.begin(), a10.end())); // check string constructor
+  BOOST_REQUIRE_NO_THROW(VariableList v10(a10.begin(), a10.end())); // check iterator constructor
   VariableList v10(a10.begin(), a10.end());
   BOOST_CHECK_EQUAL(v10.dim(), 4);
   BOOST_CHECK_EQUAL(v10.at(0), "a");  // check for corret data
@@ -66,6 +66,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(v10.at(2), "c");
   BOOST_CHECK_EQUAL(v10.at(3), "d");
 
+  // Todo: Find the Segmentation fault in this section of code
   BOOST_CHECK_THROW(VariableList v3(",a,b,c"), std::runtime_error); // check invalid input
   BOOST_CHECK_THROW(VariableList v4("a,,b,c"), std::runtime_error);
   BOOST_CHECK_THROW(VariableList v5(" ,a,b"), std::runtime_error);
@@ -84,9 +85,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(v7.at(7), "h");
   BOOST_CHECK_EQUAL(v7.at(8), "i");
 
-  BOOST_REQUIRE_NO_THROW(VariableList v11("")); // Check default constructor
+  BOOST_REQUIRE_NO_THROW(VariableList v11("")); // Check zero length constructor
   VariableList v11("");
   BOOST_CHECK_EQUAL(v11.dim(), 0);
+
 }
 
 BOOST_AUTO_TEST_CASE( iterator )
@@ -135,6 +137,15 @@ BOOST_AUTO_TEST_CASE( permutation )
   VariableList v3(v);
   v3 ^= p;
   BOOST_CHECK_EQUAL_COLLECTIONS(v3.begin(), v3.end(), v2.begin(), v2.end());
+}
+
+BOOST_AUTO_TEST_CASE( implicit_permutation )
+{
+  Permutation<4> p1(1,2,3,0);
+  VariableList v1 = p1 ^ v;
+  std::vector<std::size_t> p = v.permutation(v1);
+
+  BOOST_CHECK_EQUAL_COLLECTIONS(p.begin(), p.end(), p1.begin(), p1.end());
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
