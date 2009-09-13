@@ -26,6 +26,14 @@ namespace TiledArray {
   class LevelTag;
   template <unsigned int DIM>
   class Permutation;
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  class DenseArrayStorage;
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  class DistributedArrayStorage;
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  DenseArrayStorage<T,DIM,Tag,CS> operator ^(const Permutation<DIM>&, const DenseArrayStorage<T,DIM,Tag,CS>&);
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  DistributedArrayStorage<T,DIM,Tag,CS>& operator ^(const Permutation<DIM>&, const DistributedArrayStorage<T,DIM,Tag,CS>&);
 
   namespace detail {
     template<typename I, unsigned int DIM, typename CS>

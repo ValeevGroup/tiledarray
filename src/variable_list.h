@@ -25,6 +25,9 @@ namespace TiledArray {
     class VariableList;
     template<unsigned int DIM>
     VariableList operator ^(const ::TiledArray::Permutation<DIM>&, const VariableList&);
+    template<typename InIter1, typename InIter2>
+    void find_common(InIter1, const InIter1, InIter2, const InIter2,
+        std::pair<InIter1, InIter1>&, std::pair<InIter2, InIter2>&);
 
     /// Variable list manages a list variable strings.
 
@@ -264,7 +267,7 @@ namespace TiledArray {
 namespace std {
 
   template<>
-  struct plus< ::TiledArray::expressions::VariableList> : binary_function <
+  struct plus< ::TiledArray::expressions::VariableList> : public binary_function <
       ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
       ::TiledArray::expressions::VariableList>
   {
@@ -280,7 +283,7 @@ namespace std {
   };
 
   template<>
-  struct minus< ::TiledArray::expressions::VariableList> : binary_function <
+  struct minus< ::TiledArray::expressions::VariableList> : public binary_function <
       ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
       ::TiledArray::expressions::VariableList>
   {
@@ -296,7 +299,7 @@ namespace std {
   };
 
   template<>
-  struct multiplies< ::TiledArray::expressions::VariableList> : binary_function <
+  struct multiplies< ::TiledArray::expressions::VariableList> : public binary_function <
       ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
       ::TiledArray::expressions::VariableList>
   {

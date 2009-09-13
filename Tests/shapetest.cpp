@@ -88,15 +88,17 @@ BOOST_AUTO_TEST_CASE( includes )
   BOOST_CHECK( (! s->includes(Shape3::index_type(6,5,4))) );  // check index included by predicate and excluded by range.
 
   std::map<Shape3::index_type, bool> m;
-  Shape3::tiled_range_type::range_type::const_iterator it = s->range()->tiles().begin();
-  bool includes;
-  for(; it != s->range()->tiles().end(); ++it) {
-    includes = true;
-    for(unsigned int d = 1; d < s->dim(); ++d)
-      if((*it)[d - 1] > (*it)[d])
-        includes = false;
+  {
+    Shape3::tiled_range_type::range_type::const_iterator it = s->range()->tiles().begin();
+    bool includes;
+    for(; it != s->range()->tiles().end(); ++it) {
+      includes = true;
+      for(unsigned int d = 1; d < s->dim(); ++d)
+        if((*it)[d - 1] > (*it)[d])
+          includes = false;
 
-    m.insert(std::make_pair(*it, includes));
+      m.insert(std::make_pair(*it, includes));
+    }
   }
 
   for(std::map<Shape3::index_type, bool>::const_iterator it = m.begin(); it != m.end(); ++it)

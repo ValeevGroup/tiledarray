@@ -21,6 +21,12 @@ namespace TiledArray {
   class Permutation;
   template <unsigned int DIM>
   class LevelTag;
+  namespace expressions {
+    template<typename T>
+    class AnnotatedTile;
+    template <unsigned int DIM, typename T>
+    AnnotatedTile<T> operator ^(const Permutation<DIM>&, const AnnotatedTile<T>&);
+  }
 
   namespace detail {
     template<typename InIter, typename OutIter>
@@ -36,10 +42,10 @@ namespace TiledArray {
     struct UnaryTileExp;
 
     /// Annotated tile.
-    template<typename T, TiledArray::detail::DimensionOrderType O>
+    template<typename T>
     class AnnotatedTile {
     public:
-      typedef AnnotatedTile<T, O> AnnotatedTile_;
+      typedef AnnotatedTile<T> AnnotatedTile_;
       typedef std::size_t ordinal_type;
       typedef typename boost::remove_const<T>::type value_type;
       typedef typename TiledArray::detail::mirror_const<T, value_type>::reference reference_type;
@@ -53,13 +59,11 @@ namespace TiledArray {
       typedef Eigen::aligned_allocator<value_type> alloc_type;
     public:
 
-      static const TiledArray::detail::DimensionOrderType order;
-
       /// Default constructor
 
       /// Creates an annotated tile with no size or dimensions.
       AnnotatedTile() : data_(NULL), size_(), weight_(), n_(0), var_(),
-          owner_(false), alloc_()
+          order_(detail::decreasing_dimension_order), owner_(false), alloc_()
       { }
 
       /// Create an annotated tile from a tile.
@@ -69,11 +73,11 @@ namespace TiledArray {
       /// data and will not free any memory.
       /// \var \c t is the tile to be annotated.
       /// \var \c var is the variable annotation.
-      template<unsigned int DIM>
-      AnnotatedTile(const Tile<value_type,DIM,CoordinateSystem<DIM, O> >& t, const VariableList& var) :
+      template<unsigned int DIM, detail::DimensionOrderType O>
+      AnnotatedTile(const Tile<value_type, DIM, CoordinateSystem<DIM, O> >& t, const VariableList& var) :
           data_(const_cast<T*>(t.data())), size_(t.size().begin(), t.size().end()),
           weight_(t.weight().begin(), t.weight().end()), n_(t.volume()),
-          var_(var), owner_(false), alloc_()
+          var_(var), order_(O), owner_(false), alloc_()
       {
         TA_ASSERT( t.dim() == var_.dim() ,
             std::runtime_error("AnnotatedTile<...>::AnnotatedTile(...): The number of variables in the variable list does not match the tile dimensions."));
@@ -87,10 +91,14 @@ namespace TiledArray {
       /// \var \c size is the size of each dimension.
       /// \var \c var is the variable annotation.
       /// \var \c val is the initial value of elements in the tile (optional).
-      AnnotatedTile(const size_array& size, const VariableList& var, value_type val = value_type()) :
-          data_(NULL), size_(size), weight_(calc_weight_(size)),
+      AnnotatedTile(const size_array& size, const VariableList& var,
+          value_type val = value_type(), detail::DimensionOrderType o =
+          detail::decreasing_dimension_order) :
+          data_(NULL), size_(size), weight_((o == detail::decreasing_dimension_order ?
+          calc_weight_<detail::decreasing_dimension_order>(size) :
+          calc_weight_<detail::increasing_dimension_order>(size))),
           n_(std::accumulate(size.begin(), size.end(), std::size_t(1), std::multiplies<std::size_t>())),
-          var_(var), owner_(false), alloc_()
+          var_(var), order_(o), owner_(false), alloc_()
       {
         create_(val);
       }
@@ -105,10 +113,13 @@ namespace TiledArray {
       /// \var \c var is the variable annotation.
       /// \var \c first, \c last is the tile data initialization list.
       template<typename InIter>
-      AnnotatedTile(const size_array& size, const VariableList& var, InIter first, InIter last) :
-          data_(NULL), size_(size), weight_(calc_weight_(size)),
+      AnnotatedTile(const size_array& size, const VariableList& var, InIter first, InIter last,
+          TiledArray::detail::DimensionOrderType o = TiledArray::detail::decreasing_dimension_order) :
+          data_(NULL), size_(size), weight_((o == TiledArray::detail::decreasing_dimension_order ?
+              calc_weight_<TiledArray::detail::decreasing_dimension_order>(size) :
+              calc_weight_<TiledArray::detail::increasing_dimension_order>(size))),
           n_(std::accumulate(size.begin(), size.end(), std::size_t(1), std::multiplies<std::size_t>())),
-          var_(var), owner_(false), alloc_()
+          var_(var), order_(o), owner_(false), alloc_()
       {
         create_(first, last);
       }
@@ -119,7 +130,8 @@ namespace TiledArray {
       /// \var \c other is the tile to be copied.
       AnnotatedTile(const AnnotatedTile_& other) :
           data_(other.data_), size_(other.size_), weight_(other.weight_),
-          n_(other.n_), var_(other.var_), owner_(false), alloc_(other.alloc_)
+          n_(other.n_), var_(other.var_), order_(other.order_), owner_(false),
+          alloc_(other.alloc_)
       { }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
@@ -129,9 +141,8 @@ namespace TiledArray {
       /// \var \c other is the tile to be moved.
       AnnotatedTile(AnnotatedTile_&& other) :
           data_(other.data_), size_(std::move(other.size_)),
-          weight_(std::move(other.weight_)), n_(other.n_),
-          var_(std::move(other.var_)), owner_(other.owner_),
-          alloc_(std::move(other.alloc_))
+          weight_(std::move(other.weight_)), n_(other.n_), var_(std::move(other.var_)),
+          order_(other.order_), owner_(other.owner_), alloc_(std::move(other.alloc_))
       {
         other.data_ = NULL;
         other.owner_ = false;
@@ -149,9 +160,12 @@ namespace TiledArray {
             size_ = other.size_;
             weight_ = other.weight_;
             n_ = other.n_;
+            order_ = other.order_;
           } else {
             TA_ASSERT(size_ == other.size_,
                 std::runtime_error("AnnotatedTile<...>::operator=(const AnnotatedTile&): Right-hand tile dimensions do not match the dimensions of the referenced tile."));
+            TA_ASSERT(order_ == other.order_,
+                std::runtime_error("AnnotatedTile<...>::operator=(const AnnotatedTile&): Tile orders do not match."));
             std::copy(other.begin(), other.end(), data_);
           }
 
@@ -177,17 +191,15 @@ namespace TiledArray {
           if(owner_) {
             swap(other);
           } else {
-
             TA_ASSERT(size_ == other.size_,
-                std::runtime_error("AnnotatedTile<...>::operator=(const AnnotatedTile&): Right-hand tile dimensions do not match the dimensions of the referenced tile."));
+                std::runtime_error("AnnotatedTile<...>::operator=(AnnotatedTile&&): Right-hand tile dimensions do not match the dimensions of the referenced tile."));
+            TA_ASSERT(order_ == other.order_,
+                std::runtime_error("AnnotatedTile<...>::operator=(AnnotatedTile&&): Tile orders do not match."));
             std::copy(other.begin(), other.end(), data_);
 
             alloc_ = std::move(other.alloc_);
           }
-
-
         }
-
 
         return *this;
       }
@@ -231,6 +243,8 @@ namespace TiledArray {
       const VariableList& vars() const { return var_; }
       /// Returns the number of dimensions of the tile.
       unsigned int dim() const { return var_.dim(); }
+      /// Return the array storage order
+      TiledArray::detail::DimensionOrderType order() const { return order_; }
 
       /// Returns a reference to element i (range checking is performed).
 
@@ -281,10 +295,12 @@ namespace TiledArray {
       }
 
       /// Returns true if the index \c i is included by the tile.
-      template<typename I, unsigned int DIM, typename Tag>
+      template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O>
       bool includes(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) const {
         TA_ASSERT(dim() == DIM,
             std::runtime_error("AnnotatedTile<...>::includes(...): Coordinate dimension is not equal to tile dimension."));
+        TA_ASSERT(order() == O,
+            std::runtime_error("AnnotatedTile<...>::includes(...): Coordinate order does not match tile order."));
         for(unsigned int d = 0; d < dim(); ++d)
           if(size_[d] <= i[d])
             return false;
@@ -313,6 +329,7 @@ namespace TiledArray {
         std::swap(weight_, other.weight_);
         std::swap(n_, other.n_);
         var_.swap(other.var_);
+        std::swap(order_, other.order_);
         std::swap(owner_, other.owner_);
         std::swap(alloc_, other.alloc_);
       }
@@ -320,14 +337,14 @@ namespace TiledArray {
     private:
 
       /// Returns the ordinal index for the given index.
-      template<typename I, unsigned int DIM, typename Tag>
+      template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O>
       ordinal_type ord_(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) const {
         const typename ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >::index init = 0;
         return std::inner_product(i.begin(), i.end(), weight_.begin(), init);
       }
 
       /// Returns the given ordinal index.
-      const ordinal_type ord_(const ordinal_type i) const { return i; }
+      ordinal_type ord_(const ordinal_type i) const { return i; }
 
       /// Allocate and initialize the array w/ a constant value.
 
@@ -370,6 +387,7 @@ namespace TiledArray {
       }
 
       /// Class wrapper function for detail::calc_weight() function.
+      template<TiledArray::detail::DimensionOrderType O>
       static size_array calc_weight_(const size_array& size) { // no throw
         size_array result(size.size(), 0);
         TiledArray::detail::calc_weight(
@@ -384,18 +402,16 @@ namespace TiledArray {
       size_array weight_;       ///< dimension weights
       std::size_t n_;           ///< tile volume
       VariableList var_;        ///< variable list
-      bool owner_;              ///< true when tile data is owned by this object.
+      TiledArray::detail::DimensionOrderType order_; ///< Array order
+      bool owner_;              ///< true when tile data is owned by this object
       alloc_type alloc_;        ///< allocator
 
     }; // class AnnotatedTile
 
-    template<typename T, TiledArray::detail::DimensionOrderType O>
-    const TiledArray::detail::DimensionOrderType AnnotatedTile<T,O>::order = O;
-
-
-    template <unsigned int DIM, typename T, TiledArray::detail::DimensionOrderType O>
-    AnnotatedTile<T, O> operator ^(const Permutation<DIM>& p, const AnnotatedTile<T, O>& t) {
-      typedef typename AnnotatedTile<T, O>::ordinal_type ordinal_type;
+/*
+    template <typename P, typename T>
+    AnnotatedTile<T> operator ^(const P& p, const AnnotatedTile<T>& t) {
+      typedef typename AnnotatedTile<T>::ordinal_type ordinal_type;
       typedef CoordinateSystem<DIM, O> CS;
       typedef LevelTag<0> Tag;
       typedef Range<ordinal_type, DIM, Tag, CS> range_type;
@@ -406,15 +422,15 @@ namespace TiledArray {
       typename range_type::size_array s;
       std::copy(t.size().begin(), t.size().end(), s.begin());
       range_type r(s);
-      typename AnnotatedTile<T, O>::size_array as = p ^ t.size();
+      typename AnnotatedTile<T>::size_array as = p ^ t.size();
       VariableList av = p ^ t.vars();
-      AnnotatedTile<T, O> result(as, av);
+      AnnotatedTile<T> result(as, av);
       for(typename range_type::const_iterator it = r.begin(); it != r.end(); ++it)
         result[p ^ *it] = t[*it];
 
       return result;
     }
-
+*/
   } // namespace expressions
 } // namespace TiledArray
 #endif // TILEDARRAY_ANNOTATED_TILE_H__INCLUDED

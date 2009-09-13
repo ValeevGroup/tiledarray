@@ -14,7 +14,23 @@ namespace TiledArray {
   template <unsigned int DIM>
   class Permutation;
   template <typename I, unsigned int DIM, typename Tag, typename CS>
+  class Range;
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
   void swap(ArrayCoordinate<I,DIM,Tag,CS>& c1, ArrayCoordinate<I,DIM,Tag,CS>& c2);
+  template <typename T, std::size_t DIM>
+  T volume(const boost::array<T,DIM>&);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  Range<I,DIM,Tag,CS> operator &(const Range<I,DIM,Tag,CS>&, const Range<I,DIM,Tag,CS>&);
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  Range<T,DIM,Tag,CS> operator ^(const Permutation<DIM>&, const Range<T,DIM,Tag,CS>&);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  bool operator ==(const Range<I,DIM,Tag,CS>&, const Range<I,DIM,Tag,CS>&);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  bool operator !=(const Range<I,DIM,Tag,CS>&, const Range<I,DIM,Tag,CS>&);
+  template <typename T, typename Tag, typename CS>
+  Range<T,1,Tag,CS> operator ^(const Permutation<1>&, const Range<T,1,Tag,CS>&);
+  template<typename I, unsigned int DIM, typename Tag, typename CS>
+  std::ostream& operator<<(std::ostream&, const Range<I,DIM,Tag,CS>&);
 
   /// Range stores dimension information for a block of tiles or elements.
 

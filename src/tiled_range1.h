@@ -17,7 +17,15 @@ namespace TiledArray {
   template<typename I>
   Range<I, 1, LevelTag<0>, CoordinateSystem<1> > make_tile_range1(const I&, const I&);
   template <typename I>
-  std::ostream& operator <<(std::ostream& out, const TiledRange1<I>& rng);
+  bool operator ==(const TiledRange1<I>&, const TiledRange1<I>&);
+  template <typename I>
+  bool operator !=(const TiledRange1<I>&, const TiledRange1<I>&);
+  template<typename I>
+  Range<I, 1, LevelTag<1>, CoordinateSystem<1> > make_range1(const I&, const I&);
+  template<typename I>
+  Range<I, 1, LevelTag<0>, CoordinateSystem<1> > make_tile_range1(const I&, const I&);
+  template <typename I>
+  std::ostream& operator <<(std::ostream&, const TiledRange1<I>&);
 
   /// TiledRange1 class defines a non-uniformly-tiled, continuous, one-dimensional
   /// range. The tiling data is constructed with and stored in an array with
@@ -196,6 +204,6 @@ namespace TiledArray {
     return out;
   }
 
-}; // end of namespace TiledArray
+} // namespace TiledArray
 
 #endif // RANGE1_H__INCLUDED

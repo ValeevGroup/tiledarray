@@ -2,6 +2,7 @@
 #include "permutation.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
+#include <iostream>
 #include "iterationtest.h"
 
 using namespace TiledArray;
@@ -42,7 +43,7 @@ BOOST_AUTO_TEST_CASE( constructors )
 
   BOOST_REQUIRE_NO_THROW(Point3 p5(p));  // Copy constructor
   Point3 p5(p);
-  BOOST_CHECK_EQUAL_COLLECTIONS(p5.data().begin(), p5.data().end(), a.begin(), a.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(p5.data().begin(), p5.data().end(), p.begin(), p.end());
 
   BOOST_REQUIRE_NO_THROW(Point3 p6(1));  // Assign constant constuctor
   Point3 p6(1);

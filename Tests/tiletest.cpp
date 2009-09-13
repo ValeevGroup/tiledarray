@@ -7,6 +7,9 @@
 
 using namespace TiledArray;
 
+template<typename InIter, typename T>
+bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001);
+
 // Element Generation object test.
 template<typename T, typename Index>
 class gen {
@@ -47,7 +50,7 @@ struct TileFixture {
 };
 
 template<typename InIter, typename T>
-bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001) {
+bool check_val(InIter first, InIter last, const T& v, const T& tol) {
   for(; first != last; ++first)
     if(*first > v + tol || *first < v - tol)
       return false;
@@ -212,108 +215,6 @@ BOOST_AUTO_TEST_CASE( ostream )
   BOOST_CHECK( output.check_length( 80, false ) );
   BOOST_CHECK( output.is_equal("{{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}}") );
 }
-/*
-BOOST_AUTO_TEST_CASE( addition )
-{
-  Tile3 t1(t);
-  Tile3 t2(t.range(), 2);
-  Tile3 t3;
-  t3("a,b,c") = t1("a,b,c") + t2("a,b,c");
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3.0));//  check that the values were added correctly.
 
-//  Tile3 t4(t);
-//  t4("a,b,c") += t2("a,b,c");
-//  BOOST_CHECK(check_val(t4.begin(), t4.end(), 3.0));//  check that the values were added correctly.
-}
-
-BOOST_AUTO_TEST_CASE( subtract )
-{
-  Tile3 t1(t);
-  Tile3 t2(t.range(), 2);
-  Tile3 t3;
-  t3("a,b,c") = t2("a,b,c") - t1("a,b,c");
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 1.0));//  check that the values were added correctly.
-
-//  Tile3 t4(t2);
-//  t4("a,b,c") -= t1("a,b,c");
-//  BOOST_CHECK(check_val(t4.begin(), t4.end(), 1.0));//  check that the values were added correctly.
-}
-
-BOOST_AUTO_TEST_CASE( addition_scalar )
-{
-  Tile3 t1(t);
-  Tile3 t2 = t1 + 2;
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), 3.0));//  check that the values were added correctly.
-
-  Tile3 t3(t);
-  t3 += 2;
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3.0));//  check that the values were added correctly.
-}
-
-BOOST_AUTO_TEST_CASE( subtract_scalar )
-{
-  Tile3 t1(r, 2);
-  Tile3 t2 = t1 - 1;
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), 1.0));//  check that the values were added correctly.
-
-  Tile3 t3(r, 2);
-  t3 -= 1;
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 1.0));//  check that the values were added correctly.
-}
-
-BOOST_AUTO_TEST_CASE( multiply_scalar )
-{
-  Tile3 t1(r, 1);
-  Tile3 t2 = t1 * 3;
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), 3.0));//  check that the values were added correctly.
-  Tile3 t3 = 3 * t1;
-  BOOST_CHECK(check_val(t3.begin(), t3.end(), 3.0));
-
-  Tile3 t4(r, 1);
-  t4 *= 3;
-  BOOST_CHECK(check_val(t4.begin(), t4.end(), 3.0));//  check that the values were added correctly.
-}
-
-BOOST_AUTO_TEST_CASE( negate )
-{
-  Tile3 t1(r, 1);
-  Tile3 t2 = -t1;
-  BOOST_CHECK(check_val(t2.begin(), t2.end(), -1.0));//  check that the values were added correctly.
-}
-
-
-BOOST_AUTO_TEST_CASE( contract_1x1 )
-{
-  Tile<double,1>::range_type r1(make_tile_range1<std::size_t>(0,5));
-  Tile<double,1> t1(r1, 3.0);
-  Tile<double,1> t2(r1, 2.0);
-  double tr = 0.0;
-  detail::contract(t1, t2, tr);
-  BOOST_CHECK_EQUAL(tr, 30.0);
-}
-
-BOOST_AUTO_TEST_CASE( contract_3x3 )
-{
-  Tile3 t1(r, 3);
-  Tile3 t2(r, 2);
-  Tile<double,4>::range_type rr(Tile<double,4>::index_type(0,0,0,0), Tile<double,4>::index_type(5,5,5,5));
-  Tile<double,4> tr(rr, 0.0);
-  detail::contract_aic_x_bid(t1, t2, tr);
-  BOOST_CHECK(check_val(tr.begin(), tr.end(), 30.0));
-}
-
-BOOST_AUTO_TEST_CASE( variable_list )
-{
-  detail::AnnotatedTile<Tile3> t1 = t("a,b,c");
-  BOOST_CHECK_EQUAL_COLLECTIONS(t1.tile().begin(), t1.tile().end(), t.begin(), t.end());
-  BOOST_CHECK_EQUAL(t1.vars().get(0), "a");
-  BOOST_CHECK_EQUAL(t1.vars().get(1), "b");
-  BOOST_CHECK_EQUAL(t1.vars().get(2), "c");
-
-  BOOST_CHECK_THROW(t("a,b,c,d"), std::runtime_error);
-  BOOST_CHECK_THROW(t("a,b"), std::runtime_error);
-
-}
-*/
 BOOST_AUTO_TEST_SUITE_END()
 

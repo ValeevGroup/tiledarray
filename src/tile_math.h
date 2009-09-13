@@ -18,11 +18,31 @@ extern "C" {
 namespace TiledArray {
 
   namespace expressions {
-    template<typename T, TiledArray::detail::DimensionOrderType O>
+    template<typename T>
     class AnnotatedTile;
+    template<typename Exp0, typename Exp1, template<typename> class Op >
+    struct Expression;
+    template<typename Exp, typename Op>
+    struct UnaryTileExp;
+    template<typename Exp0, typename Exp1>
+    typename Expression<Exp0, Exp1, std::plus>::exp_type
+    operator +(const Exp0& e0, const Exp1& e1);
+    template<typename Exp0, typename Exp1>
+    typename Expression<Exp0, Exp1, std::minus>::exp_type
+    operator -(const Exp0& e0, const Exp1& e1);
+    template<typename Exp0, typename Exp1>
+    typename Expression<Exp0, Exp1, std::multiplies>::exp_type
+    operator *(const Exp0& e0, const Exp1& e1);
+    template<typename Exp>
+    UnaryTileExp<Exp, std::negate<typename Exp::value_type> >
+    operator -(const Exp& e);
   } // namespace expressions
 
   namespace math {
+
+    template<typename T, detail::DimensionOrderType D>
+    void contract(const std::size_t, const std::size_t, const std::size_t,
+        const std::size_t, const std::size_t, const T*, const T*, T*);
 
     /// Contract a and b, and place the results into c.
     /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
@@ -129,12 +149,12 @@ namespace TiledArray {
     /// This specialization of the tile operation performs a contraction between
     /// two tiles. If more than one index will be contracted, all contracted
     /// indexes must be adjacent.
-    template<typename T, typename U, TiledArray::detail::DimensionOrderType O, typename Res>
-    struct BinaryTileOp<expressions::AnnotatedTile<T,O>, expressions::AnnotatedTile<U,O>,
+    template<typename T, typename U, typename Res>
+    struct BinaryTileOp<expressions::AnnotatedTile<T>, expressions::AnnotatedTile<U>,
         Res, std::multiplies<typename Res::value_type> >
     {
-      typedef expressions::AnnotatedTile<T,O> exp0_type;
-      typedef expressions::AnnotatedTile<U,O> exp1_type;
+      typedef expressions::AnnotatedTile<T> exp0_type;
+      typedef expressions::AnnotatedTile<U> exp1_type;
       typedef Res result_type;
       typedef typename Res::value_type value_type;
       typedef ZipOp< typename exp0_type::const_iterator,
@@ -193,7 +213,10 @@ namespace TiledArray {
 
         // construct result tile
         result_type result(size, vars);
-        contract<value_type, O>(m, n, o, p, i, e0.data(), e1.data(), result.data());
+        if(e0.order() == TiledArray::detail::decreasing_dimension_order)
+          contract<value_type, TiledArray::detail::decreasing_dimension_order>(m, n, o, p, i, e0.data(), e1.data(), result.data());
+        else
+          contract<value_type, TiledArray::detail::increasing_dimension_order>(m, n, o, p, i, e0.data(), e1.data(), result.data());
 
         return result;
       }
@@ -276,11 +299,11 @@ namespace TiledArray {
     /// Expression Type for annotated tiles.
 
     /// This class is used to determine the type of the tile and the element type.
-    template<typename T, TiledArray::detail::DimensionOrderType O>
-    struct ExpType<AnnotatedTile<T,O> > {
-      typedef AnnotatedTile<T,O> type;
-      typedef AnnotatedTile<T,O> result_type;
-      typedef typename AnnotatedTile<T,O>::value_type value_type;
+    template<typename T>
+    struct ExpType<AnnotatedTile<T> > {
+      typedef AnnotatedTile<T> type;
+      typedef AnnotatedTile<T> result_type;
+      typedef typename AnnotatedTile<T>::value_type value_type;
     }; // struct ExpType<AnnotatedTile<T,O> >
 
     /// Expression Type for Binary Expressions.
@@ -312,7 +335,7 @@ namespace TiledArray {
     template<typename Exp0, typename Exp1>
     struct ExpPair {
       typedef typename ExpType<Exp0>::value_type value_type;
-      typedef AnnotatedTile<value_type, ExpType<Exp0>::result_type::order > result_type;
+      typedef AnnotatedTile<value_type> result_type;
     }; // ExpPair
 
     /// Expression pair, constant value first argument specialization
@@ -322,7 +345,7 @@ namespace TiledArray {
     template<typename T, typename Exp1>
     struct ExpPair<ValueExp<T>, Exp1> {
       typedef typename ExpType<Exp1>::value_type value_type;
-      typedef AnnotatedTile<value_type, ExpType<Exp1>::result_type::order > result_type;
+      typedef AnnotatedTile<value_type> result_type;
     }; // struct ExpPair<ValueExp<T>, Exp1>
 
     /// Expression pair, constant value second argument specialization
@@ -332,7 +355,7 @@ namespace TiledArray {
     template<typename Exp0, typename T>
     struct ExpPair<Exp0, ValueExp<T> > {
       typedef typename ExpType<Exp0>::value_type value_type;
-      typedef AnnotatedTile<value_type, ExpType<Exp0>::result_type::order > result_type;
+      typedef AnnotatedTile<value_type> result_type;
     }; // struct ExpPair<Exp0, ValueExp<T> >
 
     /// Expression evaluation
@@ -354,8 +377,8 @@ namespace TiledArray {
       template<typename T>
       static ValueExp<T> eval(const T& e) { return ValueExp<T>(e); }
 
-      template<typename T, TiledArray::detail::DimensionOrderType O>
-      static AnnotatedTile<T, O> eval(const AnnotatedTile<T, O>& e) { return e; }
+      template<typename T>
+      static AnnotatedTile<T> eval(const AnnotatedTile<T>& e) { return e; }
     }; // struct ExpEval
 
     /// Binary Tile Expression

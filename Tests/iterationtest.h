@@ -4,6 +4,13 @@
 /// Tests basic iteration functionality and compares the elements in the container
 /// with expected values. It returns the number of values that were equal.
 template<typename Container, typename InIter>
+unsigned int iteration_test(Container&, InIter, InIter);
+template<typename Container, typename InIter>
+unsigned int const_iteration_test(const Container&, InIter, InIter);
+
+/// Tests basic iteration functionality and compares the elements in the container
+/// with expected values. It returns the number of values that were equal.
+template<typename Container, typename InIter>
 unsigned int iteration_test(Container& c, InIter first, InIter last) {
   unsigned int result = 0;
   for(typename Container::iterator it = c.begin(); it != c.end() && first != last; ++it, ++first )

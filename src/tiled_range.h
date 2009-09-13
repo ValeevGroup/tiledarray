@@ -23,11 +23,13 @@ namespace TiledArray {
   template<typename I, unsigned int DIM, typename CS>
   bool operator ==(const TiledRange<I,DIM,CS>&, const TiledRange<I,DIM,CS>&);
   template<typename I, unsigned int DIM, typename CS>
+  bool operator !=(const TiledRange<I, DIM, CS>&, const TiledRange<I, DIM, CS>&);
+  template<typename I, unsigned int DIM, typename CS>
   std::ostream& operator<<(std::ostream& out, const TiledRange<I,DIM,CS>& rng);
 
   /// TiledRange is a tiled DIM-dimensional range. It is immutable, to simplify API.
   template<typename I, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
-  class TiledRange : boost::equality_comparable1< TiledRange<I,DIM,CS> > {
+  class TiledRange : public boost::equality_comparable1< TiledRange<I,DIM,CS> > {
 	public:
       // typedefs
       typedef TiledRange<I,DIM,CS> TiledRange_;
@@ -242,8 +244,7 @@ namespace TiledArray {
   }
 
 
-}
-; // end of namespace TiledArray
+} // namespace TiledArray
 
 
 #endif // RANGE_H__INCLUDED

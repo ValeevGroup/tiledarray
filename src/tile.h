@@ -24,6 +24,10 @@ namespace TiledArray {
   Tile<T,DIM,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,CS>& t);
   template<typename T, unsigned int DIM, typename CS>
   std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,CS>& t);
+  template<typename T, unsigned int DIM, typename CS, typename InIter, typename Generator>
+  Tile<T, DIM, CS>& generate(Tile<T, DIM, CS>&, InIter, InIter, Generator);
+  template<typename T, unsigned int DIM, typename CS, typename Generator>
+  Tile<T, DIM, CS>& generate(Tile<T, DIM, CS>&, Generator);
 
   /// Tile is a dense, multi-dimensional array.
 
@@ -105,8 +109,8 @@ namespace TiledArray {
 
     /// The constructor will throw when the dimensions of the annotated tile do
     /// not match the dimensions of the tile.
-    template<typename U, detail::DimensionOrderType O>
-    Tile(const expressions::AnnotatedTile<U, O>& atile) :
+    template<typename U>
+    Tile(const expressions::AnnotatedTile<U>& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())),
         data_(range_.size(), atile.begin(), atile.end())
     {
@@ -116,8 +120,8 @@ namespace TiledArray {
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedTile assignment operator
-    template<typename U, detail::DimensionOrderType O>
-    Tile(expressions::AnnotatedTile<U, O>&& atile) :
+    template<typename U>
+    Tile(expressions::AnnotatedTile<U>&& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())), data_()
     {
       TA_ASSERT((atile.dim() == DIM),
@@ -241,14 +245,13 @@ namespace TiledArray {
     }
 
 
-    expressions::AnnotatedTile<value_type, coordinate_system::dimension_order>
-    operator ()(const std::string& v) {
-      return expressions::AnnotatedTile<value_type, coordinate_system::dimension_order>(*this, expressions::VariableList(v));
+    expressions::AnnotatedTile<value_type> operator ()(const std::string& v) {
+      expressions::AnnotatedTile<value_type> result(*this, expressions::VariableList(v));
+      return result;
     }
 
-    expressions::AnnotatedTile<const value_type, coordinate_system::dimension_order>
-    operator ()(const std::string& v) const {
-      return expressions::AnnotatedTile<const value_type, coordinate_system::dimension_order>(*this, expressions::VariableList(v));
+    expressions::AnnotatedTile<const value_type> operator ()(const std::string& v) const {
+      return expressions::AnnotatedTile<const value_type>(*this, expressions::VariableList(v));
     }
 
     /// Exchange calling tile's data with that of \c other.

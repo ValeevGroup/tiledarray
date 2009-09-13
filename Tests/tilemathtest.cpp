@@ -7,6 +7,9 @@
 using namespace TiledArray;
 using TiledArray::math::contract;
 
+template<typename InIter, typename T>
+bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001);
+
 struct TileMathFixture {
   typedef Tile<double, 0> Tile0;
   typedef Tile<double, 1> Tile1;
@@ -17,7 +20,7 @@ struct TileMathFixture {
   typedef Tile3::volume_type volume_type;
   typedef Tile3::size_array size_array;
   typedef Tile3::range_type range_type;
-  typedef expressions::AnnotatedTile<double, detail::decreasing_dimension_order> ATile;
+  typedef expressions::AnnotatedTile<double> ATile;
 
   TileMathFixture() {
 
@@ -43,7 +46,7 @@ struct TileMathFixture {
 };
 
 template<typename InIter, typename T>
-bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001) {
+bool check_val(InIter first, InIter last, const T& v, const T& tol) {
   for(; first != last; ++first)
     if((*first > (v + tol)) || (*first < (v - tol)))
       return false;

@@ -4,7 +4,12 @@
 #include <coordinate_system.h>
 #include <iosfwd>
 #include <boost/operators.hpp>
-//#include <boost/array.hpp>
+#include <boost/array.hpp>
+
+namespace boost {
+  template <typename T, std::size_t D>
+  std::ostream& operator<<(std::ostream&, const boost::array<T,D>&);
+} // namespace boost
 
 namespace TiledArray {
 
@@ -18,19 +23,52 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   class ArrayCoordinate;
-
+  template <typename Coord>
+  Coord make_coord(const typename Coord::index, ...);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  void swap(ArrayCoordinate<I,DIM,Tag,CS>&, ArrayCoordinate<I,DIM,Tag,CS>&);
+  /// Add operator
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<I,DIM,Tag,CS>& operator +=(ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<I,DIM,Tag,CS> operator +(const ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<I,DIM,Tag,CS>& operator -=(ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  ArrayCoordinate<I,DIM,Tag,CS> operator -(const ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s);
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   bool operator<(const ArrayCoordinate<T,DIM,Tag,CS>&, const ArrayCoordinate<T,DIM,Tag,CS>&);
-
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   bool operator==(const ArrayCoordinate<T,DIM,Tag,CS>& c1, const ArrayCoordinate<T,DIM,Tag,CS>& c2);
   template <typename I, typename Tag, typename CS>
   bool operator==(const ArrayCoordinate<I,1,Tag,CS>&, const I&);
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<T,DIM,Tag,CS>& c);
-
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<T,DIM,Tag,CS> operator^(const Permutation<DIM>& P, const ArrayCoordinate<T,DIM,Tag,CS>& C);
+  template <typename I>
+  bool operator==(const boost::array<I,1>&, const I&);
+  template <typename I>
+  bool operator==(const I&, const boost::array<I,1>&);
+  template <typename I, typename Tag, typename CS>
+  bool operator==(const I&, const ArrayCoordinate<I,1,Tag,CS>&);
+  template <typename I, typename Tag, typename CS>
+  bool operator!=(const ArrayCoordinate<I,1,Tag,CS>&, const I&);
+  template <typename I, typename Tag, typename CS>
+  bool operator!=(const I&, const ArrayCoordinate<I,1,Tag,CS>&);
+
+  namespace detail {
+    template <typename I, std::size_t DIM>
+    bool less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2);
+    template <typename I, std::size_t DIM>
+    bool less_eq(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2);
+    template <typename I, std::size_t DIM>
+    bool greater(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2);
+    template <typename I, std::size_t DIM>
+    bool greater_eq(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2);
+    template <typename CS, typename I, std::size_t DIM>
+    bool lex_less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2);
+  } // namespace detail
 
   /// ArrayCoordinate Tag strut: It is used to ensure type safety between different tiling domains.
   template<unsigned int Level>
@@ -42,7 +80,7 @@ namespace TiledArray {
   /// with identical mathematical behavior but distinct types to allow
   /// overloading in end-user classes.
   template <typename I, unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
-  class ArrayCoordinate :
+  class ArrayCoordinate : public
       boost::addable< ArrayCoordinate<I,DIM,Tag,CS>,                // point + point
       boost::subtractable< ArrayCoordinate<I,DIM,Tag,CS>,           // point - point
       boost::less_than_comparable1< ArrayCoordinate<I,DIM,Tag,CS>,  // point < point
@@ -62,7 +100,7 @@ namespace TiledArray {
     static unsigned int dim() { return DIM; }
 
     // Constructors/Destructor
-    explicit ArrayCoordinate(const index& init_value = 0) { r_.assign(init_value); }
+    explicit ArrayCoordinate(const index& init_value = 0ul) { r_.assign(init_value); }
     template <typename InIter>
     explicit ArrayCoordinate(InIter start, InIter finish) { std::copy(start,finish,r_.begin()); }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { } // no throw
@@ -79,20 +117,25 @@ namespace TiledArray {
     /// with this function. To work around this problem specify constant type.
     /// For example
     ArrayCoordinate(const index c0, const index c1, ...) {
+      r_.assign(0ul);
       va_list ap;
       va_start(ap, c1);
 
       r_[0] = c0;
       r_[1] = c1;
-      for(unsigned int i = 2; i < dim(); ++i)
-        r_[i] = va_arg(ap, index);
+      unsigned int ci = 0; // ci is used as an intermediate
+      for(unsigned int i = 2; i < dim(); ++i) {
+        ci = va_arg(ap, index);
+        r_[i] = ci;
+      }
 
       va_end(ap);
     }
-    ~ArrayCoordinate() {}
+    virtual ~ArrayCoordinate() {}
 
     static ArrayCoordinate_ make(const index c0, ...) {
       ArrayCoordinate_ result;
+      result.r_.assign(0ul);
       va_list ap;
       va_start(ap, c0);
 
@@ -387,7 +430,7 @@ namespace TiledArray {
 namespace boost {
   /// Append a boost::array<T,D> to an output stream.
   template <typename T, std::size_t D>
-  std::ostream& operator<<(std::ostream& output, const boost::array<T,D>& a) {
+  std::ostream& operator<<(std::ostream& output, const array<T,D>& a) {
     output << "{{";
     for(std::size_t d = 0; d < D - 1; ++d)
       output << a[d] << ", ";

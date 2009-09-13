@@ -16,9 +16,26 @@ namespace TiledArray {
   template <unsigned int DIM>
   class Permutation;
   template <unsigned int DIM>
-  bool operator==(const Permutation<DIM>& p1, const Permutation<DIM>& p2);
+  bool operator==(const Permutation<DIM>&, const Permutation<DIM>&);
   template <unsigned int DIM>
-  std::ostream& operator<<(std::ostream& output, const Permutation<DIM>& p);
+  bool operator!=(const Permutation<DIM>&, const Permutation<DIM>&);
+  template <unsigned int DIM>
+  std::ostream& operator<<(std::ostream&, const Permutation<DIM>&);
+  template <unsigned int DIM, typename T>
+  boost::array<T,DIM> operator^(const Permutation<DIM>&, const boost::array<T, static_cast<std::size_t>(DIM) >&);
+  template <unsigned int DIM, typename T>
+  std::vector<T> operator^(const Permutation<DIM>&, const std::vector<T>&);
+  template <unsigned int DIM, typename T>
+  std::vector<T> operator^=(std::vector<T>&, const Permutation<DIM>&);
+  template <unsigned int DIM, typename T>
+  boost::array<T,DIM> operator ^=(boost::array<T, static_cast<std::size_t>(DIM) >&, const Permutation<DIM>&);
+  template<unsigned int DIM>
+  Permutation<DIM> operator ^(const Permutation<DIM>&, const Permutation<DIM>&);
+
+  namespace detail {
+    template <typename InIter0, typename InIter1, typename Cont>
+    Cont& permute(InIter0, InIter0, InIter1, InIter1, Cont&);
+  } // namespace detail
 
   // Boost forward declaration
 

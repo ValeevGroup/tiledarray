@@ -8,7 +8,7 @@
 
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MAIN Tiled Array Tests
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 #include <madness_runtime.h>
 #include <world/world.h>
 
@@ -38,7 +38,8 @@ struct MadnessFixture : public MpiFixture {
   madness::World world;
 };
 
-BOOST_GLOBAL_FIXTURE( MadnessFixture );
+// This line will initialize mpi and madness.
+//BOOST_GLOBAL_FIXTURE( MadnessFixture );
 
 BOOST_AUTO_TEST_SUITE( dummy_suite )
 BOOST_AUTO_TEST_CASE( nothing ) {}
