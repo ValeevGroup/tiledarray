@@ -36,8 +36,8 @@ namespace TiledArray {
   Permutation<DIM> operator ^(const Permutation<DIM>&, const Permutation<DIM>&);
 
   namespace detail {
-    template <typename InIter0, typename InIter1, typename Cont>
-    Cont& permute(InIter0, InIter0, InIter1, InIter1, Cont&);
+    template <typename InIter0, typename InIter1, typename RandIter>
+    void permute(InIter0, InIter0, InIter1, RandIter&);
   } // namespace detail
 
   // Boost forward declaration
@@ -192,23 +192,27 @@ namespace TiledArray {
     /// \arg \c [first_p, \c last_p) is an iterator range to the permutation
     /// \arg \c [first_o, \c last_o) is an iterator range to the original array
     /// \arg \c result is the array which will contain the resulting permuted array
-    template <typename InIter0, typename InIter1, typename Cont>
-    Cont& permute(InIter0 first_p, InIter0 last_p, InIter1 first_o, InIter1 last_o, Cont& result) {
-      for(; first_p != last_p && first_o != last_o; ++first_p, ++first_o) {
-        result[*first_p] = *first_o;
-      }
-
-      return result;
+    template <typename InIter0, typename InIter1, typename RandIter>
+    void permute(InIter0 first_p, InIter0 last_p, InIter1 first_o, RandIter first_r) {
+      for(; first_p != last_p; ++first_p)
+        (* (first_r + *first_p)) = *first_o++;
     }
 
-    /// ForLoop defines a for loop for a random access iterator.
+    /// ForLoop defines a for loop operation for a random access iterator.
     template<typename RandIter, typename F>
     struct ForLoop {
       typedef typename std::iterator_traits<RandIter>::difference_type diff_t;
       /// Construct a ForLoop
+
+      /// \arg \c f is the function to be executed on each loop iteration.
+      /// \arg \c n is the end point offset from the starting point (i.e. last =
+      /// first + n;).
+      /// \arg \c s is the step size for the loop (optional).
       ForLoop(F f, diff_t n, diff_t s = 1ul) : func_(f), n_(n), step_(s) { }
 
       /// Execute the loop given a random access iterator as the starting point.
+      // Do not pass iterator by reference here since we will be modifying it
+      // in the function.
       void operator ()(RandIter first) {
         RandIter end = first + n_;
         // Use < operator because first will not always land on end_.
@@ -217,43 +221,130 @@ namespace TiledArray {
       }
 
     private:
-      F func_;        ///< Function to run on each loop iteration
-      diff_t n_;  ///< End of the iterator range
-      diff_t step_;        ///< Step size for the iterator
+      F func_;      ///< Function to run on each loop iteration
+      diff_t n_;    ///< End of the iterator range
+      diff_t step_; ///< Step size for the iterator
     }; // struct perm_range
 
+    /// NestedLoopOp constructs and executes a nested for loop object.
     template<unsigned int DIM, typename F, typename RandIter>
-    struct DoLoop : public DoLoop<DIM - 1, ForLoop<RandIter, F>, RandIter > {
+    struct NestedLoopOp : public NestedLoopOp<DIM - 1, ForLoop<RandIter, F>, RandIter > {
       typedef ForLoop<RandIter, F> F1;
-      typedef DoLoop<DIM - 1, F1, RandIter> DoLoop1;
+      typedef NestedLoopOp<DIM - 1, F1, RandIter> NestedLoopOp1;
 
+      /// Constructs the nested for loop object
+
+      /// \arg \c func is the current loops function body.
+      /// \arg \c [e_first, \c e_last) is the end point offset for the current
+      /// loop and subsequent loops.
+      /// \arg \c [s_first, \c s_last) is the step size for the current loop and
+      /// subsequent loops.
       template<typename InIter>
-      DoLoop(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
-          DoLoop1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
+      NestedLoopOp(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
+        NestedLoopOp1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
       { }
 
-      void operator()(RandIter it) { DoLoop1::operator ()(it); }
-    }; // struct DoLoop
+      /// Run the nested loop (call the next higher loop object).
+      void operator()(RandIter& it) { NestedLoopOp1::operator ()(it); }
+    }; // struct NestedLoopOp
 
+    /// NestedLoopOp constructs and executes a nested for loop object.
+
+    /// This specialization represents the terminating step for constructing the
+    /// nested loop object, stores the loop object and runs the object.
     template<typename F, typename RandIter>
-    struct DoLoop<0, F, RandIter> {
+    struct NestedLoopOp<0, F, RandIter> {
 
+      /// \arg \c func is the current loops function body.
+      /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
+      /// first and last should be equal here.
+      /// \arg \c [s_first, \c s_last) is the step size for the loops. first and
+      /// last should be equal here.
       template<typename InIter>
-      DoLoop(F func, InIter, InIter, InIter, InIter) : f_(func)
+      NestedLoopOp(F func, InIter, InIter, InIter, InIter) : f_(func)
       { }
 
-      void operator()(RandIter it) { f_(it); }
+      /// Run the actual loop object
+      void operator()(RandIter& it) { f_(it); }
     private:
       F f_;
+    }; // struct NestedLoopOp
+
+    /// NestedLoopOp constructs and executes a nested for loop object.
+
+    /// This specialization uses slightly different syntax for pointers. It uses
+    /// pointer forwarding as opposed to reference forwarding for iterators in
+    /// the base case. Otherwise it is the same.
+    template<unsigned int DIM, typename F, typename T>
+    struct NestedLoopOp<DIM, F, T*> : public NestedLoopOp<DIM - 1, ForLoop<T*, F>, T* > {
+      typedef ForLoop<T*, F> F1;
+      typedef NestedLoopOp<DIM - 1, F1, T*> NestedLoopOp1;
+
+      /// \arg \c func is the current loops function body.
+      /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
+      /// first and last should be equal here.
+      /// \arg \c [s_first, \c s_last) is the step size for the loops. first and
+      /// last should be equal here.
+      template<typename InIter>
+      NestedLoopOp(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
+        NestedLoopOp1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
+      { }
+
+      /// Run the nested loop (call the next higher loop object).
+      void operator()(T* p) { NestedLoopOp1::operator ()(p); }
     }; // struct DoLoop
 
-    template<typename RandIter, typename InIter>
+    /// NestedLoopOp constructs and executes a nested for loop object.
+
+    /// This specialization represents the terminating step for constructing the
+    /// nested loop object, stores the loop object and runs the object. It uses
+    /// pointer forwarding as opposed to reference forwarding for iterators in
+    /// the base case. Otherwise it is the same.
+    template<typename F, typename T>
+    struct NestedLoopOp<0, F, T*> {
+
+      /// \arg \c func is the current loops function body.
+      /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
+      /// first and last should be equal here.
+      /// \arg \c [s_first, \c s_last) is the step size for the loops. first and
+      /// last should be equal here.
+      template<typename InIter>
+      NestedLoopOp(F func, InIter, InIter, InIter, InIter) : f_(func)
+      { }
+
+      /// Run the actual loop object
+      void operator()(T* p) { f_(p); }
+    private:
+      F f_;
+    }; // struct NestedLoopOp
+
+    /// Function object that assigns the content of one iterator to another iterator.
+    template<typename OutIter, typename InIter>
     struct AssignmentOp {
       AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
 
-      void operator ()(RandIter it) {
+      void operator ()(OutIter& it) {
         TA_ASSERT(current_ != last_,
-            std::runtime_error("AssignmentOp::operator ()(...): The iterator is the end of the range."));
+            std::runtime_error("AssignmentOp<...>::operator ()(...): The iterator is the end of the range."));
+        *it = *current_++;
+      }
+
+    private:
+      AssignmentOp();
+      InIter current_;
+      InIter last_;
+    }; // struct AssignmentOp
+
+    /// Function object that assigns the content of one iterator to another iterator.
+
+    /// This specialization uses a pointer explicitly.
+    template<typename T, typename InIter>
+    struct AssignmentOp<T*, InIter> {
+      AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
+
+      void operator ()(T* it) {
+        TA_ASSERT(current_ != last_,
+            std::runtime_error("AssignmentOp<T*, InIter>::operator ()(...): The iterator is the end of the range."));
         *it = *current_++;
       }
 
@@ -270,10 +361,6 @@ namespace TiledArray {
     /// begin(), and end(). It must also define the const_iterator type.
     template<typename Cont>
     struct Permute {
-    private:
-
-
-    public:
       /// Construct a permute function object. \c c is the container that will
       /// permuted.
       Permute(const Cont& c) : cont_(c) { }
@@ -286,35 +373,37 @@ namespace TiledArray {
       /// \arg \c [first, \c last) is the iterator range for the resulting array.
       template<unsigned int DIM, typename RandIter>
       void operator ()(const Permutation<DIM>& p, RandIter first, RandIter last) {
-        typedef boost::array<std::size_t, static_cast<std::size_t>(DIM)> size_array;
+        typedef boost::array<typename Cont::ordinal_type, static_cast<std::size_t>(DIM)> size_array;
         TA_ASSERT(static_cast<typename Cont::volume_type>(std::distance(first, last)) == cont_.volume(),
             std::runtime_error("Permute<...>::operator()(...): The distance between first and last must be equal to the volume of the original container."));
+
+        // Calculate the sizes and weights of the permuted array
         size_array p_size;
-        permute(p.begin(), p.end(), cont_.size().begin(), cont_.size().end(), p_size);
+        permute(p.begin(), p.end(), cont_.size().begin(), p_size.begin());
         size_array weight;
         if(cont_.order() == decreasing_dimension_order)
           calc_weight(p_size.rbegin(), p_size.rend(), weight.rbegin());
         else
           calc_weight(p_size.begin(), p_size.end(), weight.begin());
 
+        // Calculate the step sizes for the nested loops
         Permutation<DIM> ip = -p;
         size_array step;
-        permute(ip.begin(), ip.end(), weight.begin(), weight.end(), step);
+        permute(ip.begin(), ip.end(), weight.begin(), step.begin());
 
+        // Calculate the loop end offsets.
         size_array end;
-        typename size_array::const_iterator step_it = step.begin();
-        typename Cont::size_array::const_iterator size_it = cont_.size().begin();
-        for(typename size_array::iterator it = end.begin(); it != end.end(); ++it, ++size_it, ++step_it)
-          *it = (*size_it) * (*step_it);
+        std::transform(cont_.size().begin(), cont_.size().end(), step.begin(),
+            end.begin(), std::multiplies<typename Cont::ordinal_type>());
 
         if(cont_.order() == decreasing_dimension_order) {
-          DoLoop<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
+          NestedLoopOp<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
               do_loop(AssignmentOp<RandIter, typename Cont::const_iterator >(cont_.begin(), cont_.end()),
               end.rbegin(), end.rend(), step.rbegin(), step.rend());
           do_loop(first);
         } else {
           p_size.front() = std::accumulate(weight.begin(), weight.end(), 1ul, std::multiplies<typename Cont::ordinal_type>()) + 1ul;
-          DoLoop<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
+          NestedLoopOp<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
               do_loop(AssignmentOp<RandIter, typename Cont::const_iterator >(cont_.begin(), cont_.end()),
               end.begin(), end.end(), step.begin(), step.end());
           do_loop(first);
@@ -323,38 +412,29 @@ namespace TiledArray {
 
     private:
 
+      Permute();
+
       const Cont& cont_;
     }; // struct Permute
 
-
-    template<typename T>
-    struct AssignIter {
-      AssignIter(T first) : current_(first) { }
-      template<typename U>
-      void operator ()(U u) {
-        *u = *current_;
-        ++current_;
-      }
-    private:
-      T current_;
-    };
-
   } // namespace detail
 
-  /// permute an array
+  /// permute a boost::array
   template <unsigned int DIM, typename T>
   boost::array<T,DIM> operator^(const Permutation<DIM>& perm, const boost::array<T, static_cast<std::size_t>(DIM) >& orig) {
     boost::array<T,DIM> result;
-    return detail::permute(perm.begin(), perm.end(), orig.begin(), orig.end(), result);
+    detail::permute(perm.begin(), perm.end(), orig.begin(), result.begin());
+    return result;
   }
 
-  /// permute an array
+  /// permute a std::vector<T>
   template <unsigned int DIM, typename T>
   std::vector<T> operator^(const Permutation<DIM>& perm, const std::vector<T>& orig) {
     TA_ASSERT((orig.size() == DIM),
         std::runtime_error("operator^(const Permutation<DIM>&, const std::vector<T>&): The permutation dimension is not equal to the vector size."));
     std::vector<T> result(DIM);
-    return detail::permute(perm.begin(), perm.end(), orig.begin(), orig.end(), result);
+    detail::permute(perm.begin(), perm.end(), orig.begin(), result.begin());
+    return result;
   }
 
   template <unsigned int DIM, typename T>
