@@ -4,6 +4,7 @@
 #include <range.h>
 #include <madness_runtime.h>
 #include <array_util.h>
+#include <permutation.h>
 #include <Eigen/core>
 //#include <boost/array.hpp>
 //#include <boost/iterator/filter_iterator.hpp>
@@ -52,11 +53,13 @@ namespace TiledArray {
     public:
       typedef ArrayDim<I, DIM, Tag, CS> ArrayDim_;
       typedef I ordinal_type;
+      typedef I volume_type;
       typedef CS coordinate_system;
       typedef ArrayCoordinate<ordinal_type, DIM, Tag, coordinate_system> index_type;
       typedef boost::array<ordinal_type,DIM> size_array;
 
       static unsigned int dim() { return DIM; }
+      static detail::DimensionOrderType  order() { return coordinate_system::dimension_order; }
 
       /// Default constructor. Constructs a 0 dimension array.
       ArrayDim() : size_(), weight_(), n_(0) { // no throw
@@ -189,6 +192,7 @@ namespace TiledArray {
     typedef detail::ArrayDim<std::size_t, DIM, Tag, CS> array_dim_type;
     typedef typename array_dim_type::index_type index_type;
     typedef typename array_dim_type::ordinal_type ordinal_type;
+    typedef typename array_dim_type::volume_type volume_type;
     typedef typename array_dim_type::size_array size_array;
     typedef T value_type;
     typedef CS coordinate_system;
@@ -198,6 +202,7 @@ namespace TiledArray {
     typedef const T & const_reference_type;
 
     static unsigned int dim() { return DIM; }
+    static detail::DimensionOrderType  order() { return coordinate_system::dimension_order; }
 
     /// Default constructor.
 
@@ -390,7 +395,7 @@ namespace TiledArray {
     const size_array& weight() const { return dim_.weight(); }
 
     /// Returns the number of elements in the array.
-    ordinal_type volume() const { return dim_.volume(); }
+    volume_type volume() const { return dim_.volume(); }
 
     /// Returns true if the given index is included in the array.
     bool includes(const index_type& i) const { return dim_.includes(i); }
@@ -742,13 +747,9 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   DenseArrayStorage<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& p, const DenseArrayStorage<T,DIM,Tag,CS>& s) {
-    typedef Range<typename DenseArrayStorage<T,DIM,Tag,CS>::ordinal_type,DIM,Tag,CS> range_type;
-    range_type b(s.size());
     DenseArrayStorage<T,DIM,Tag,CS> result(p ^ s.size());
-
-    for(typename range_type::const_iterator it = b.begin(); it != b.end(); ++it) {
-      result[p ^ *it] = s[ *it ];
-    }
+    detail::Permute<DenseArrayStorage<T,DIM,Tag,CS> > f_perm(s);
+    f_perm(p, result.begin(), result.end());
 
     return result;
   }

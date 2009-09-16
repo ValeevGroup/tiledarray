@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE( permutation )
   v3 ^= p;
   BOOST_CHECK_EQUAL_COLLECTIONS(v3.begin(), v3.end(), v2.begin(), v2.end());
 }
-
+/*
 BOOST_AUTO_TEST_CASE( implicit_permutation )
 {
   Permutation<4> p1(1,2,3,0);
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE( implicit_permutation )
 
   BOOST_CHECK_EQUAL_COLLECTIONS(p.begin(), p.end(), p1.begin(), p1.end());
 }
-
+*/
 BOOST_AUTO_TEST_CASE( ostream )
 {
   boost::test_tools::output_test_stream output;

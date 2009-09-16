@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE( element_assignment )
   BOOST_CHECK_CLOSE(a1[1] = 1.0, 1.0, 0.000001) ;   // check that assignment returns itself.
   BOOST_CHECK_CLOSE(a1[1], 1.0, 0.000001);          // check for correct assignment.
 }
-/*
+
 BOOST_AUTO_TEST_CASE( permutation )
 {
   Permutation<3> p(1,2,0);
@@ -179,6 +179,6 @@ BOOST_AUTO_TEST_CASE( permutation )
   BOOST_CHECK_EQUAL(a3.size()[2], 3);
   BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
 }
-*/
+
 BOOST_AUTO_TEST_SUITE_END()
 

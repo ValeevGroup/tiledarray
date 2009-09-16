@@ -257,6 +257,8 @@ BOOST_AUTO_TEST_CASE( permutation )
 
   DAS3 a1(s, val.begin(), val.end());
   DAS3 a3(a1);
+  BOOST_CHECK_EQUAL_COLLECTIONS(a1.begin(), a1.end(), val.begin(), val.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), val.begin(), val.end());
   DAS3 a2 = p ^ a1;
   BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), pval.begin(), pval.end()); // check permutation
 

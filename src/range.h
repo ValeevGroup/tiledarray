@@ -213,9 +213,9 @@ namespace TiledArray {
 
   /// Returns a permuted range.
   template <typename T, unsigned int DIM, typename Tag, typename CS>
-  Range<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& perm, const Range<T,DIM,Tag,CS>& b) {
-    const typename Range<T,DIM,Tag,CS>::index_type s = perm ^ b.start();
-    const typename Range<T,DIM,Tag,CS>::index_type f = perm ^ b.finish();
+  Range<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& perm, const Range<T,DIM,Tag,CS>& r) {
+    const typename Range<T,DIM,Tag,CS>::index_type s = perm ^ r.start();
+    const typename Range<T,DIM,Tag,CS>::index_type f = perm ^ r.finish();
     Range<T,DIM,Tag,CS> result(s, f);
     return result;
   }
@@ -239,8 +239,8 @@ namespace TiledArray {
 
   /// Returns a permuted range.
   template <typename T, typename Tag, typename CS>
-  Range<T,1,Tag,CS> operator ^(const Permutation<1>& perm, const Range<T,1,Tag,CS>& b) {
-    return b;
+  Range<T,1,Tag,CS> operator ^(const Permutation<1>& perm, const Range<T,1,Tag,CS>& r) {
+    return r;
   }
 
   /// ostream output orperator.

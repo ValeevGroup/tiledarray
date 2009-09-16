@@ -2,12 +2,15 @@
 #define PERMUTATION_H_
 
 #include <error.h>
+#include <coordinate_system.h>
 #include <array_util.h>
 //#include <iosfwd>
 //#include <algorithm>
 #include <vector>
 //#include <stdarg.h>
 //#include <iterator>
+//#include <functional>
+#include <numeric>
 #include <boost/array.hpp>
 
 namespace TiledArray {
@@ -181,6 +184,14 @@ namespace TiledArray {
 
   namespace detail {
 
+    /// Copies an iterator range into an array type container.
+
+    /// Permutes iterator range  \c [first_o, \c last_o) base on the permutation
+    /// \c [first_p, \c last_p) and places it in \c result. The result object
+    /// must define operator[](std::size_t).
+    /// \arg \c [first_p, \c last_p) is an iterator range to the permutation
+    /// \arg \c [first_o, \c last_o) is an iterator range to the original array
+    /// \arg \c result is the array which will contain the resulting permuted array
     template <typename InIter0, typename InIter1, typename Cont>
     Cont& permute(InIter0 first_p, InIter0 last_p, InIter1 first_o, InIter1 last_o, Cont& result) {
       for(; first_p != last_p && first_o != last_o; ++first_p, ++first_o) {
@@ -190,73 +201,142 @@ namespace TiledArray {
       return result;
     }
 
-    template<typename T, typename D = std::size_t>
-    class perm_range {
+    /// ForLoop defines a for loop for a random access iterator.
+    template<typename RandIter, typename F>
+    struct ForLoop {
+      typedef typename std::iterator_traits<RandIter>::difference_type diff_t;
+      /// Construct a ForLoop
+      ForLoop(F f, diff_t n, diff_t s = 1ul) : func_(f), n_(n), step_(s) { }
+
+      /// Execute the loop given a random access iterator as the starting point.
+      void operator ()(RandIter first) {
+        RandIter end = first + n_;
+        // Use < operator because first will not always land on end_.
+        for(; first < end; first += step_)
+          func_(first);
+      }
+
+    private:
+      F func_;        ///< Function to run on each loop iteration
+      diff_t n_;  ///< End of the iterator range
+      diff_t step_;        ///< Step size for the iterator
+    }; // struct perm_range
+
+    template<unsigned int DIM, typename F, typename RandIter>
+    struct DoLoop : public DoLoop<DIM - 1, ForLoop<RandIter, F>, RandIter > {
+      typedef ForLoop<RandIter, F> F1;
+      typedef DoLoop<DIM - 1, F1, RandIter> DoLoop1;
+
+      template<typename InIter>
+      DoLoop(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
+          DoLoop1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
+      { }
+
+      void operator()(RandIter it) { DoLoop1::operator ()(it); }
+    }; // struct DoLoop
+
+    template<typename F, typename RandIter>
+    struct DoLoop<0, F, RandIter> {
+
+      template<typename InIter>
+      DoLoop(F func, InIter, InIter, InIter, InIter) : f_(func)
+      { }
+
+      void operator()(RandIter it) { f_(it); }
+    private:
+      F f_;
+    }; // struct DoLoop
+
+    template<typename RandIter, typename InIter>
+    struct AssignmentOp {
+      AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
+
+      void operator ()(RandIter it) {
+        TA_ASSERT(current_ != last_,
+            std::runtime_error("AssignmentOp::operator ()(...): The iterator is the end of the range."));
+        *it = *current_++;
+      }
+
+    private:
+      AssignmentOp();
+      InIter current_;
+      InIter last_;
+    }; // struct AssignmentOp
+
+    /// Permutes of n-dimensional container
+
+    /// This function object permutes an n-dimensional container. The container
+    /// must define the following functions: size(), weight(), volume(),
+    /// begin(), and end(). It must also define the const_iterator type.
+    template<typename Cont>
+    struct Permute {
+    private:
+
+
     public:
-      typedef T value_type;
-      typedef D diff_type;
+      /// Construct a permute function object. \c c is the container that will
+      /// permuted.
+      Permute(const Cont& c) : cont_(c) { }
 
-      perm_range(const diff_type step, const value_type end) :
-          step_(step), end_(end) { }
+      /// Perform the permutation and place the resulting permuted n-dimensional
+      /// array in a new array starting at \c it. It must be a random access
+      /// iterator, and the distance between first and last iterators must be
+      /// equal to the volume of the original container.
+      /// \arg \c p is the permutation that will be applied to the original container.
+      /// \arg \c [first, \c last) is the iterator range for the resulting array.
+      template<unsigned int DIM, typename RandIter>
+      void operator ()(const Permutation<DIM>& p, RandIter first, RandIter last) {
+        typedef boost::array<std::size_t, static_cast<std::size_t>(DIM)> size_array;
+        TA_ASSERT(static_cast<typename Cont::volume_type>(std::distance(first, last)) == cont_.volume(),
+            std::runtime_error("Permute<...>::operator()(...): The distance between first and last must be equal to the volume of the original container."));
+        size_array p_size;
+        permute(p.begin(), p.end(), cont_.size().begin(), cont_.size().end(), p_size);
+        size_array weight;
+        if(cont_.order() == decreasing_dimension_order)
+          calc_weight(p_size.rbegin(), p_size.rend(), weight.rbegin());
+        else
+          calc_weight(p_size.begin(), p_size.end(), weight.begin());
 
-      void initialize(const value_type start) { current_ = start; }
-      value_type current() const { return current_; }
-      bool end() const { return current_ < end_; }
-      void increment() { current_ += step_; }
+        Permutation<DIM> ip = -p;
+        size_array step;
+        permute(ip.begin(), ip.end(), weight.begin(), weight.end(), step);
 
-    private:
-      perm_range();
-      perm_range(const perm_range&);
+        size_array end;
+        typename size_array::const_iterator step_it = step.begin();
+        typename Cont::size_array::const_iterator size_it = cont_.size().begin();
+        for(typename size_array::iterator it = end.begin(); it != end.end(); ++it, ++size_it, ++step_it)
+          *it = (*size_it) * (*step_it);
 
-      const diff_type step_;
-      const value_type end_;
-      value_type current_;
-    }; // class perm_range
-
-    template<typename T, typename D>
-    class perm_iterator {
-      typedef T value_type;
-      typedef D diff_type;
-      typedef perm_range<T,D> range_type;
-
-      template<typename InIterS, typename InIterP>
-      perm_iterator(InIterS first_s, InIterS last_s, InIterP first_p, InIterP last_p, const value_type start) :
-          start_(start), current_(std::distance(first_s, last_s) - 1)
-      {
-        std::vector<diff_type> weight(std::distance(first_s, last_s));
-        calc_weight(first_s, last_s, weight.begin());
-
-        std::vector<diff_type> size_p(weight.size());
-        permute(first_s, last_s, first_p, last_p, size_p);
-
-        std::vector<diff_type> weight_p(weight.size());
-        permute(weight.begin(), weight.end(), first_p, last_p, weight_p);
-
-        typename std::vector<diff_type>::const_iterator w_it = weight_p.begin();
-        typename std::vector<diff_type>::const_iterator s_it = size_p.begin();
-        for(; s_it != size_p.end(); ++s_it, ++w_it)
-          ranges_.push_back(range_type(*w_it, start + (*w_it) * (*s_it)));
-      }
-
-      void initialize() {
-        for(typename std::vector<range_type>::iterator it = ranges_.begin(); it != ranges_.end(); ++it)
-          *it->initialize(start_);
-      }
-
-      value_type current() { return ranges_.back().current(); }
-
-      bool end() const {
-        return ranges_.front().end();
-      }
-
-      void increment() {
-
+        if(cont_.order() == decreasing_dimension_order) {
+          DoLoop<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
+              do_loop(AssignmentOp<RandIter, typename Cont::const_iterator >(cont_.begin(), cont_.end()),
+              end.rbegin(), end.rend(), step.rbegin(), step.rend());
+          do_loop(first);
+        } else {
+          p_size.front() = std::accumulate(weight.begin(), weight.end(), 1ul, std::multiplies<typename Cont::ordinal_type>()) + 1ul;
+          DoLoop<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
+              do_loop(AssignmentOp<RandIter, typename Cont::const_iterator >(cont_.begin(), cont_.end()),
+              end.begin(), end.end(), step.begin(), step.end());
+          do_loop(first);
+        }
       }
 
     private:
-      std::vector<range_type> ranges_;
-      const value_type start_;
-      std::size_t current_;
+
+      const Cont& cont_;
+    }; // struct Permute
+
+
+    template<typename T>
+    struct AssignIter {
+      AssignIter(T first) : current_(first) { }
+      template<typename U>
+      void operator ()(U u) {
+        *u = *current_;
+        ++current_;
+      }
+    private:
+      T current_;
     };
 
   } // namespace detail

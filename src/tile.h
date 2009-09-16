@@ -56,6 +56,7 @@ namespace TiledArray {
     typedef typename data_container::iterator iterator;
 
     static unsigned int dim() { return DIM; }
+    static detail::DimensionOrderType  order() { return coordinate_system::order; }
 
     /// Default constructor
 

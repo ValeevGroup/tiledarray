@@ -47,6 +47,7 @@ namespace TiledArray {
     public:
       typedef AnnotatedTile<T> AnnotatedTile_;
       typedef std::size_t ordinal_type;
+      typedef std::size_t volume_type;
       typedef typename boost::remove_const<T>::type value_type;
       typedef typename TiledArray::detail::mirror_const<T, value_type>::reference reference_type;
       typedef const value_type & const_reference_type;
@@ -238,13 +239,13 @@ namespace TiledArray {
       /// Returns a constant reference to a vector with the dimension weights.
       const size_array& weight() const { return weight_; }
       /// Returns the number of elements contained by the tile.
-      std::size_t volume() const { return n_; }
+      volume_type volume() const { return n_; }
       /// Returns a constant reference to variable list (the annotation).
       const VariableList& vars() const { return var_; }
       /// Returns the number of dimensions of the tile.
       unsigned int dim() const { return var_.dim(); }
       /// Return the array storage order
-      TiledArray::detail::DimensionOrderType order() const { return order_; }
+      detail::DimensionOrderType order() const { return order_; }
 
       /// Returns a reference to element i (range checking is performed).
 
@@ -408,29 +409,19 @@ namespace TiledArray {
 
     }; // class AnnotatedTile
 
-/*
-    template <typename P, typename T>
-    AnnotatedTile<T> operator ^(const P& p, const AnnotatedTile<T>& t) {
-      typedef typename AnnotatedTile<T>::ordinal_type ordinal_type;
-      typedef CoordinateSystem<DIM, O> CS;
-      typedef LevelTag<0> Tag;
-      typedef Range<ordinal_type, DIM, Tag, CS> range_type;
 
+    template <unsigned int DIM, typename T>
+    AnnotatedTile<T> operator ^(const Permutation<DIM>& p, const AnnotatedTile<T>& t) {
       TA_ASSERT((t.dim() == DIM),
           std::runtime_error("operator^(const Permutation<DIM>&, const AnnotatedTile<T>&): The permutation dimension is not equal to the tile dimensions."));
 
-      typename range_type::size_array s;
-      std::copy(t.size().begin(), t.size().end(), s.begin());
-      range_type r(s);
-      typename AnnotatedTile<T>::size_array as = p ^ t.size();
-      VariableList av = p ^ t.vars();
-      AnnotatedTile<T> result(as, av);
-      for(typename range_type::const_iterator it = r.begin(); it != r.end(); ++it)
-        result[p ^ *it] = t[*it];
+      AnnotatedTile<T> result(p ^ t.size(), p ^ t.vars());
+      detail::Permute<AnnotatedTile<T> > f_perm(t);
+      f_perm(p, result.begin(), result.end());
 
       return result;
     }
-*/
+
   } // namespace expressions
 } // namespace TiledArray
 #endif // TILEDARRAY_ANNOTATED_TILE_H__INCLUDED

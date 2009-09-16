@@ -14,11 +14,10 @@ CXXDEPEND = $(CXX)
 CXXDEPENDSUF = none
 CXXDEPENDFLAGS = -M
 CXX = $(MPICXX)
-
-TESTSRC = permutationtest.cpp coordinatestest.cpp rangetest.cpp \
- 	tiledrange1test.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
+TESTSRC = TiledArrayTest.cpp permutationtest.cpp coordinatestest.cpp rangetest.cpp \
+	tiledrange1test.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
 	variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp \
-	annotatedtiletest.cpp tilemathtest.cpp arraytest.cpp TiledArrayTest.cpp
+	annotatedtiletest.cpp tilemathtest.cpp arraytest.cpp
 OBJS = $(TESTSRC:%.cpp=%.$(OBJSUF))
 
 TARGET =	TiledArrayTest
