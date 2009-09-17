@@ -15,7 +15,7 @@
 #endif
 
 #define WORLD_INSTANTIATE_STATIC_TEMPLATES
-//#include <world/world.h>
+#include <world/world.h>
 
 // Forward declaration of madness classes so we don't have to pull in all of the
 // madness header files.

@@ -465,17 +465,17 @@ namespace TiledArray {
   /// data. If we were to allow iteration over all data, all data would be sent
   /// to the local node.
   template <typename T, unsigned int DIM, typename Tag = LevelTag<1>, typename CS = CoordinateSystem<DIM> >
-  class DistributedArrayStorage : public detail::ArrayDim<std::size_t, DIM, Tag, CS> {
+  class DistributedArrayStorage {
   public:
-    typedef detail::ArrayDim<std::size_t, DIM, Tag, CS> ArrayDim_;
-    typedef typename ArrayDim_::index_type index_type;
-    typedef typename ArrayDim_::ordinal_type ordinal_type;
-    typedef typename ArrayDim_::size_array size_array;
+    typedef detail::ArrayDim<std::size_t, DIM, Tag, CS> array_dim_type;
+    typedef typename array_dim_type::index_type index_type;
+    typedef typename array_dim_type::ordinal_type ordinal_type;
+    typedef typename array_dim_type::volume_type volume_type;
+    typedef typename array_dim_type::size_array size_array;
     typedef CS coordinate_system;
     typedef T value_type;
     typedef ordinal_type key_type;
     typedef madness::WorldContainer<key_type,value_type> data_container;
-
 
     typedef typename data_container::iterator iterator;
     typedef typename data_container::const_iterator const_iterator;
@@ -487,7 +487,7 @@ namespace TiledArray {
     /// Construct an array with a definite size. All data elements are
     /// uninitialized. No communication occurs.
     DistributedArrayStorage(madness::World& world, const size_array& size) :
-        ArrayDim_(size), data_(world)
+        dim_(size), data_(world)
     { }
 
     /// Construct an array with a definite size and initializes the data.
@@ -511,11 +511,11 @@ namespace TiledArray {
     /// predict which one will be the final value.
     template <typename InIter>
     DistributedArrayStorage(madness::World& world, const size_array& size, InIter first, InIter last) :
-        ArrayDim_(size), data_(world)
+        dim_(size), data_(world)
     {
-      ordinal_type i_ord = 0;
+      ordinal_type i_ord = 0ul;
       for(; first != last; ++first) {
-        i_ord = ord(first->first);
+        i_ord = dim_.ord(first->first);
         if( data_.is_local(i_ord) )
           data_.replace(i_ord, first->second); // no communication
       }
@@ -526,7 +526,7 @@ namespace TiledArray {
 
     /// Copy constructor. This is a shallow copy of the data with no communication.
     DistributedArrayStorage(const DistributedArrayStorage& other) :
-        ArrayDim_(other), data_(other.data_)
+        dim_(other.dim_), data_(other.data_)
     { }
 
     ~DistributedArrayStorage() { }
@@ -730,7 +730,7 @@ namespace TiledArray {
     }
 
     void swap(DistributedArrayStorage& other) {
-      ArrayDim_::swap(other);
+      array_dim_type::swap(other);
       data_container temp(data_);
       data_ = other.data_;
       other.data_ = temp;
@@ -742,6 +742,7 @@ namespace TiledArray {
     /// a world object to have a valid object.
     DistributedArrayStorage();
 
+    array_dim_type dim_;
     data_container data_;
   }; // class DistributedArrayStorage
 
