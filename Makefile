@@ -3,6 +3,7 @@ include Make.path
 VPATH = src:Tests
 INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -I$(BLASINCLUDEDIR) -I$(EIGENDIR)
 LIBDIR = -L$(MADNESSDIR)/lib
+#LIBS = -lMADworld
 LIBS = -lMADworld -lboost_unit_test_framework
 ifeq ($(CXX),icpc)
 	WARNING = -wd981 -wd383 -wd1419 -wd444

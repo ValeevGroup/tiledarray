@@ -78,6 +78,21 @@ BOOST_AUTO_TEST_CASE( comarision )
   BOOST_CHECK( ! (p1 != p) );
 }
 
+BOOST_AUTO_TEST_CASE( unit_permutation )
+{
+  Permutation<3> p0;
+  BOOST_CHECK_EQUAL(p0[0], 0); // verify p0 is a unit permutation.
+  BOOST_CHECK_EQUAL(p0[1], 1);
+  BOOST_CHECK_EQUAL(p0[2], 2);
+  BOOST_CHECK_EQUAL(p0, Permutation<3>::unit() ); // check unit() is a unit permutation
+  BOOST_CHECK_EQUAL((p0 ^ p0), Permutation<3>::unit());
+}
+
+BOOST_AUTO_TEST_CASE( permute_function )
+{
+
+}
+
 BOOST_AUTO_TEST_CASE( permute_permutation )
 {
   Permutation<3> pr(1,2,0);
@@ -87,16 +102,6 @@ BOOST_AUTO_TEST_CASE( permute_permutation )
   Permutation<3> p2;
   p2 ^= p;
   BOOST_CHECK_EQUAL(p2, pr); // check in-place permutation permutation.
-}
-
-BOOST_AUTO_TEST_CASE( unit_permutation )
-{
-  Permutation<3> p0;
-  BOOST_CHECK_EQUAL(p0[0], 0); // verify p0 is a unit permutation.
-  BOOST_CHECK_EQUAL(p0[1], 1);
-  BOOST_CHECK_EQUAL(p0[2], 2);
-  BOOST_CHECK_EQUAL(p0, Permutation<3>::unit() ); // check unit() is a unit permutation
-  BOOST_CHECK_EQUAL((p0 ^ p0), Permutation<3>::unit());
 }
 
 BOOST_AUTO_TEST_CASE( reverse_permutation )
@@ -121,6 +126,16 @@ BOOST_AUTO_TEST_CASE( boost_array_permutation )
   a3 ^= p;
   BOOST_CHECK_EQUAL(a2, ar); // check assignment permutation
   BOOST_CHECK_EQUAL(a3, ar); // check in-place permutation
+}
+
+BOOST_AUTO_TEST_CASE( vector_permutation )
+{
+
+}
+
+BOOST_AUTO_TEST_CASE( permute_op )
+{
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

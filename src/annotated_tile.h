@@ -155,6 +155,8 @@ namespace TiledArray {
       /// Annotated tile assignment operator.
       AnnotatedTile_& operator =(const AnnotatedTile_& other) {
         if(this != &other) {
+          TA_ASSERT(var_ == other.var_,
+              std::runtime_error("AnnotatedTile<...>::operator=(const AnnotatedTile_& other): The variable lists do not match."));
           if(owner_) {
             destroy_();
             data_ = other.data_;
@@ -171,10 +173,6 @@ namespace TiledArray {
           }
 
           alloc_ = other.alloc_;
-
-          if(var_ != other.var_) {
-
-          }
         }
 
         return *this;
@@ -184,11 +182,8 @@ namespace TiledArray {
       /// Annotated tile move assignment operator.
       AnnotatedTile_& operator =(AnnotatedTile_&& other) {
         if(this != &other) {
-          if(var_ != other.var_) {
-            std::vector<std::size_t> p = var_.permutation(other.var_);
-
-
-          }
+          TA_ASSERT(var_ == other.var_,
+              std::runtime_error("AnnotatedTile<...>::operator=(AnnotatedTile_&& other): The variable lists do not match."));
           if(owner_) {
             swap(other);
           } else {
