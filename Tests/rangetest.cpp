@@ -42,7 +42,7 @@ struct RangeFixture {
 };
 
 
-BOOST_FIXTURE_TEST_SUITE( block_suite, RangeFixture )
+BOOST_FIXTURE_TEST_SUITE( range_suite, RangeFixture )
 
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {

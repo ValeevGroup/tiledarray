@@ -29,8 +29,14 @@ $(TARGET):	$(OBJS)
 
 all:	$(TARGET)
 
-check:
-	./TiledArrayTest --log_level=test_suite
+check: check_serial check_parallel
+
+check_serial: $(TARGET)
+	./TiledArrayTest --run_test="permutation_suite,array_coordinate_suite,range_suite,range1_suite,array_dim_suite,dense_storage_suite,tiled_range_suite,shape_suite,variable_list_suite,tile_suite,tile_slice_suite,packed_tile_suite,annotated_tile_suite,tile_math_suite"
+	
+check_parallel: $(TARGET)
+	./TiledArrayTest --run_test="distributed_storage_suite"
+	mpiexec -n 4 ./TiledArrayTest --run_test="distributed_storage_suite"
 
 .PHONY: clean dclean
 clean:

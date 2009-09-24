@@ -136,7 +136,7 @@ struct DenseArrayStorageFixture : public ArrayDimFixture {
   DenseArray3 da;
 };
 
-BOOST_FIXTURE_TEST_SUITE( dense_array_storage_suite, DenseArrayStorageFixture )
+BOOST_FIXTURE_TEST_SUITE( dense_storage_suite, DenseArrayStorageFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
@@ -294,7 +294,7 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
   DistArray3 a;
 }; // struct DistributedArrayStorageFixture
 
-BOOST_FIXTURE_TEST_SUITE( distributed_array_storage_suite, DistributedArrayStorageFixture )
+BOOST_FIXTURE_TEST_SUITE( distributed_storage_suite, DistributedArrayStorageFixture )
 
 BOOST_AUTO_TEST_CASE( accessor )
 {
