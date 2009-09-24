@@ -2,8 +2,10 @@
 #include "coordinates.h"
 #include "iterationtest.h"
 #include "permutation.h"
+#include <mpi.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
+#include <numeric>
 
 using namespace TiledArray;
 
@@ -304,12 +306,27 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(DistArray3 a1(world, s));
   DistArray3 a1(world, s);
+  BOOST_CHECK_EQUAL(a1.begin(), a1.end()); // Check that the array is empty
 
   BOOST_REQUIRE_NO_THROW(DistArray3 a2(world, s, data.begin(), data.end()));
   DistArray3 a2(world, s, data.begin(), data.end());
+  std::vector<double> local;
+  std::vector<double> all(100, 0.0);
+  for(DistArray3::iterator it = a2.begin(); it != a2.end(); ++it)
+    local.push_back(it->second.front());
+  MPI::COMM_WORLD.Allreduce(local.data(), all.data(), local.size(), MPI::DOUBLE, MPI::SUM);
+  world.gop.fence();
+  BOOST_CHECK_CLOSE(std::accumulate(all.begin(), all.end(), 0ul), 300.0, 0.0001);
 
+  local.resize(0);
+  std::fill(all.begin(), all.end(), 0.0);
   BOOST_REQUIRE_NO_THROW(DistArray3 a3(a2));
   DistArray3 a3(a2);
+  for(DistArray3::iterator it = a2.begin(); it != a2.end(); ++it)
+    local.push_back(it->second.front());
+  MPI::COMM_WORLD.Allreduce(local.data(), all.data(), local.size(), MPI::DOUBLE, MPI::SUM);
+  world.gop.fence();
+  BOOST_CHECK_CLOSE(std::accumulate(all.begin(), all.end(), 0ul), 300.0, 0.0001);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

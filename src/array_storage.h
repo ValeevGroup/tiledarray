@@ -533,10 +533,9 @@ namespace TiledArray {
 
     /// Create a shallow copy of the element data. No communication.
     DistributedArrayStorage& operator =(const DistributedArrayStorage& other) {
-      // TODO: make this a strongly exception safe function.
-      this->size_ = other.size_;
-      this->weight_ = other.weight_;
-      this->n_ = other.n_;
+      dim_.size_ = other.size_;
+      dim_.weight_ = other.weight_;
+      dim_.n_ = other.n_;
       data_ = other.data_; // shallow copy
       data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
       return *this;
