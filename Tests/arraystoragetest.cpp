@@ -289,6 +289,31 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
 
   }
 
+  double sum_first(const DistArray3& a) {
+    double sum = 0.0;
+    for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it) {
+//      std::cout << "P" << MPI::COMM_WORLD.Get_rank() << ": " << it->second.front() << "\n";
+      sum += it->second.front();
+    }
+//    std::cout << "P" << MPI::COMM_WORLD.Get_rank() << ": " << local << "\n";
+
+    MPI::COMM_WORLD.Allreduce(MPI_IN_PLACE, &sum, 1, MPI::DOUBLE, MPI::SUM);
+
+    return sum;
+  }
+
+  std::size_t tile_count(const DistArray3& a) {
+    // ToDo: Fix madness so it can use standard iterator functions
+//    int n = std::distance(a.begin(), a.end());
+    int n = 0;
+    for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it)
+      ++n;
+
+    MPI::COMM_WORLD.Allreduce(MPI_IN_PLACE, &n, 1, MPI::INT, MPI::SUM);
+
+    return n;
+  }
+
   data_array data;
   madness::World world;
   DistArray3 a;
@@ -301,7 +326,6 @@ BOOST_AUTO_TEST_CASE( accessor )
 
 }
 
-
 BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(DistArray3 a1(world, s));
@@ -310,23 +334,13 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_REQUIRE_NO_THROW(DistArray3 a2(world, s, data.begin(), data.end()));
   DistArray3 a2(world, s, data.begin(), data.end());
-  std::vector<double> local;
-  std::vector<double> all(100, 0.0);
-  for(DistArray3::iterator it = a2.begin(); it != a2.end(); ++it)
-    local.push_back(it->second.front());
-  MPI::COMM_WORLD.Allreduce(local.data(), all.data(), local.size(), MPI::DOUBLE, MPI::SUM);
-  world.gop.fence();
-  BOOST_CHECK_CLOSE(std::accumulate(all.begin(), all.end(), 0ul), 300.0, 0.0001);
+  BOOST_CHECK_CLOSE(sum_first(a2), 300.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a2), 24);
 
-  local.resize(0);
-  std::fill(all.begin(), all.end(), 0.0);
   BOOST_REQUIRE_NO_THROW(DistArray3 a3(a2));
   DistArray3 a3(a2);
-  for(DistArray3::iterator it = a2.begin(); it != a2.end(); ++it)
-    local.push_back(it->second.front());
-  MPI::COMM_WORLD.Allreduce(local.data(), all.data(), local.size(), MPI::DOUBLE, MPI::SUM);
-  world.gop.fence();
-  BOOST_CHECK_CLOSE(std::accumulate(all.begin(), all.end(), 0ul), 300.0, 0.0001);
+  BOOST_CHECK_CLOSE(sum_first(a3), 300.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a3), 24);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
