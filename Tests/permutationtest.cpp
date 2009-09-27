@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE( ostream )
   BOOST_CHECK( output.is_equal( "{0->2, 1->0, 2->1}" ) );
 }
 
-BOOST_AUTO_TEST_CASE( comarision )
+BOOST_AUTO_TEST_CASE( comparision )
 {
   Permutation<3> p0;
   Permutation<3> p1(p);
@@ -90,7 +90,20 @@ BOOST_AUTO_TEST_CASE( unit_permutation )
 
 BOOST_AUTO_TEST_CASE( permute_function )
 {
-
+  {
+    std::vector<int> a1(3); int a1v[3] = {1, 2, 3}; std::copy(a1v, a1v+3, a1.begin());
+    std::vector<int> ar(3); int arv[3] = {2, 3, 1}; std::copy(arv, arv+3, ar.begin());
+    std::vector<int> a2(3);
+    detail::permute(p.begin(), p.end(), a1.begin(), a2.begin());
+    BOOST_CHECK(a2 == ar); // check permutation applied via detail::permute()
+  }
+  {
+    boost::array<int, 3> a1 = {{1, 2, 3}};
+    boost::array<int, 3> ar = {{2, 3, 1}};
+    boost::array<int, 3> a2;
+    detail::permute(p.begin(), p.end(), a1.begin(), a2.begin());
+    BOOST_CHECK_EQUAL(a2, ar); // check permutation applied via detail::permute()
+  }
 }
 
 BOOST_AUTO_TEST_CASE( permute_permutation )
@@ -130,7 +143,13 @@ BOOST_AUTO_TEST_CASE( boost_array_permutation )
 
 BOOST_AUTO_TEST_CASE( vector_permutation )
 {
-
+  std::vector<int> a1(3); int a1v[3] = {1, 2, 3}; std::copy(a1v, a1v+3, a1.begin());
+  std::vector<int> ar(3); int arv[3] = {2, 3, 1}; std::copy(arv, arv+3, ar.begin());
+  std::vector<int> a2 = p ^ a1;
+  std::vector<int> a3 = a1;
+  a3 ^= p;
+  BOOST_CHECK(a2 == ar); // check assignment permutation
+  BOOST_CHECK(a3 == ar); // check in-place permutation
 }
 
 BOOST_AUTO_TEST_CASE( permute_op )
