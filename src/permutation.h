@@ -228,11 +228,11 @@ namespace TiledArray {
       diff_t step_; ///< Step size for the iterator
     }; // struct perm_range
 
-    /// NestedLoopOp constructs and executes a nested for loop object.
+    /// NestedForLoop constructs and executes a nested for loop object.
     template<unsigned int DIM, typename F, typename RandIter>
-    struct NestedLoopOp : public NestedLoopOp<DIM - 1, ForLoop<F, RandIter>, RandIter > {
+    struct NestedForLoop : public NestedForLoop<DIM - 1, ForLoop<F, RandIter>, RandIter > {
       typedef ForLoop<F, RandIter> F1;
-      typedef NestedLoopOp<DIM - 1, F1, RandIter> NestedLoopOp1;
+      typedef NestedForLoop<DIM - 1, F1, RandIter> NestedForLoop1;
 
       /// Constructs the nested for loop object
 
@@ -242,20 +242,20 @@ namespace TiledArray {
       /// \arg \c [s_first, \c s_last) is the step size for the current loop and
       /// subsequent loops.
       template<typename InIter>
-      NestedLoopOp(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
-        NestedLoopOp1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
+      NestedForLoop(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
+        NestedForLoop1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
       { }
 
       /// Run the nested loop (call the next higher loop object).
-      void operator()(RandIter& it) { NestedLoopOp1::operator ()(it); }
-    }; // struct NestedLoopOp
+      void operator()(RandIter it) { NestedForLoop1::operator ()(it); }
+    }; // struct NestedForLoop
 
-    /// NestedLoopOp constructs and executes a nested for loop object.
+    /// NestedForLoop constructs and executes a nested for loop object.
 
     /// This specialization represents the terminating step for constructing the
     /// nested loop object, stores the loop object and runs the object.
     template<typename F, typename RandIter>
-    struct NestedLoopOp<0, F, RandIter> {
+    struct NestedForLoop<0, F, RandIter> {
 
       /// \arg \c func is the current loops function body.
       /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
@@ -263,24 +263,24 @@ namespace TiledArray {
       /// \arg \c [s_first, \c s_last) is the step size for the loops. first and
       /// last should be equal here.
       template<typename InIter>
-      NestedLoopOp(F func, InIter, InIter, InIter, InIter) : f_(func)
+      NestedForLoop(F func, InIter, InIter, InIter, InIter) : f_(func)
       { }
 
       /// Run the actual loop object
-      void operator()(RandIter& it) { f_(it); }
+      void operator()(RandIter it) { f_(it); }
     private:
       F f_;
-    }; // struct NestedLoopOp
+    }; // struct NestedForLoop
 
-    /// NestedLoopOp constructs and executes a nested for loop object.
+    /// NestedForLoop constructs and executes a nested for loop object.
 
     /// This specialization uses slightly different syntax for pointers. It uses
     /// pointer forwarding as opposed to reference forwarding for iterators in
     /// the base case. Otherwise it is the same.
     template<unsigned int DIM, typename F, typename T>
-    struct NestedLoopOp<DIM, F, T*> : public NestedLoopOp<DIM - 1, ForLoop<F, T*>, T* > {
+    struct NestedForLoop<DIM, F, T*> : public NestedForLoop<DIM - 1, ForLoop<F, T*>, T* > {
       typedef ForLoop<F, T*> F1;
-      typedef NestedLoopOp<DIM - 1, F1, T*> NestedLoopOp1;
+      typedef NestedForLoop<DIM - 1, F1, T*> NestedForLoop1;
 
       /// \arg \c func is the current loops function body.
       /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
@@ -288,22 +288,22 @@ namespace TiledArray {
       /// \arg \c [s_first, \c s_last) is the step size for the loops. first and
       /// last should be equal here.
       template<typename InIter>
-      NestedLoopOp(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
-        NestedLoopOp1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
+      NestedForLoop(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
+        NestedForLoop1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
       { }
 
       /// Run the nested loop (call the next higher loop object).
-      void operator()(T* p) { NestedLoopOp1::operator ()(p); }
+      void operator()(T* p) { NestedForLoop1::operator ()(p); }
     }; // struct DoLoop
 
-    /// NestedLoopOp constructs and executes a nested for loop object.
+    /// NestedForLoop constructs and executes a nested for loop object.
 
     /// This specialization represents the terminating step for constructing the
     /// nested loop object, stores the loop object and runs the object. It uses
     /// pointer forwarding as opposed to reference forwarding for iterators in
     /// the base case. Otherwise it is the same.
     template<typename F, typename T>
-    struct NestedLoopOp<0, F, T*> {
+    struct NestedForLoop<0, F, T*> {
 
       /// \arg \c func is the current loops function body.
       /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
@@ -311,14 +311,14 @@ namespace TiledArray {
       /// \arg \c [s_first, \c s_last) is the step size for the loops. first and
       /// last should be equal here.
       template<typename InIter>
-      NestedLoopOp(F func, InIter, InIter, InIter, InIter) : f_(func)
+      NestedForLoop(F func, InIter, InIter, InIter, InIter) : f_(func)
       { }
 
       /// Run the actual loop object
       void operator()(T* p) { f_(p); }
     private:
       F f_;
-    }; // struct NestedLoopOp
+    }; // struct NestedForLoop
 
     /// Function object that assigns the content of one iterator to another iterator.
     template<typename OutIter, typename InIter>
@@ -399,13 +399,13 @@ namespace TiledArray {
             end.begin(), std::multiplies<typename Cont::ordinal_type>());
 
         if(cont_.order() == decreasing_dimension_order) {
-          NestedLoopOp<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
+          NestedForLoop<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
               do_loop(AssignmentOp<RandIter, typename Cont::const_iterator >(cont_.begin(), cont_.end()),
               end.rbegin(), end.rend(), step.rbegin(), step.rend());
           do_loop(first);
         } else {
           p_size.front() = std::accumulate(weight.begin(), weight.end(), 1ul, std::multiplies<typename Cont::ordinal_type>()) + 1ul;
-          NestedLoopOp<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
+          NestedForLoop<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
               do_loop(AssignmentOp<RandIter, typename Cont::const_iterator >(cont_.begin(), cont_.end()),
               end.begin(), end.end(), step.begin(), step.end());
           do_loop(first);
