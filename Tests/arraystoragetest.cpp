@@ -297,7 +297,7 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
     }
 //    std::cout << "P" << MPI::COMM_WORLD.Get_rank() << ": " << local << "\n";
 
-    MPI::COMM_WORLD.Allreduce(MPI_IN_PLACE, &sum, 1, MPI::DOUBLE, MPI::SUM);
+    world.mpi.comm().Allreduce(MPI_IN_PLACE, &sum, 1, MPI::DOUBLE, MPI::SUM);
 
     return sum;
   }
@@ -309,7 +309,7 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
     for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it)
       ++n;
 
-    MPI::COMM_WORLD.Allreduce(MPI_IN_PLACE, &n, 1, MPI::INT, MPI::SUM);
+    world.mpi.comm().Allreduce(MPI_IN_PLACE, &n, 1, MPI::INT, MPI::SUM);
 
     return n;
   }
