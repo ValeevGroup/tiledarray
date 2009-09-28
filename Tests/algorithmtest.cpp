@@ -30,7 +30,9 @@ struct AlgorithmFixture {
   typedef std::vector<int>::const_iterator iter;
   typedef detail::ForLoop<Counter<iter>, iter> ForLoop1;
   typedef detail::NestedForLoop<2, Counter<iter>, iter> ForLoop2;
+  typedef detail::NestedForLoop<2, Counter<int*>, int*> ForLoop2_ptr;
   typedef detail::NestedForLoop<ndim, Counter<iter>, iter> ForLoopN;
+  typedef detail::NestedForLoop<ndim, Counter<int*>, int*> ForLoopN_ptr;
 
   std::vector<std::size_t> zero;
   std::vector<std::size_t> unit;
@@ -83,6 +85,12 @@ BOOST_AUTO_TEST_CASE( evaluate_loop2 )
     ForLoop2 l0(functor, n.rbegin(), n.rbegin() + 2, unit.rbegin(), unit.rbegin() + 2); l0(v.begin());
     BOOST_CHECK_EQUAL(c, n[4]*n[3]);
   }
+  { // outer dim = 0, inner dim = 1
+    int c = 0;
+    Counter<int*> functor(c);
+    ForLoop2_ptr l0(functor, n.begin(), n.begin() + 2, unit.begin(), unit.begin() + 2); l0(&(v[0]));
+    BOOST_CHECK_EQUAL(c, n[0]*n[1]);
+  }
 }
 
 BOOST_AUTO_TEST_CASE( evaluate_loopN )
@@ -97,6 +105,12 @@ BOOST_AUTO_TEST_CASE( evaluate_loopN )
     int c = 0;
     Counter<iter> functor(c);
     ForLoopN l0(functor, n.rbegin(), n.rend(), unit.rbegin(), unit.rend()); l0(v.begin());
+    BOOST_CHECK_EQUAL(c, v.size());
+  }
+  { // outer dim = 0, inner dim = 4
+    int c = 0;
+    Counter<int*> functor(c);
+    ForLoopN_ptr l0(functor, n.begin(), n.end(), unit.begin(), unit.end()); l0(&(v[0]));
     BOOST_CHECK_EQUAL(c, v.size());
   }
 }

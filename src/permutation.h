@@ -272,54 +272,6 @@ namespace TiledArray {
       F f_;
     }; // struct NestedForLoop
 
-    /// NestedForLoop constructs and executes a nested for loop object.
-
-    /// This specialization uses slightly different syntax for pointers. It uses
-    /// pointer forwarding as opposed to reference forwarding for iterators in
-    /// the base case. Otherwise it is the same.
-    template<unsigned int DIM, typename F, typename T>
-    struct NestedForLoop<DIM, F, T*> : public NestedForLoop<DIM - 1, ForLoop<F, T*>, T* > {
-      typedef ForLoop<F, T*> F1;
-      typedef NestedForLoop<DIM - 1, F1, T*> NestedForLoop1;
-
-      /// \arg \c func is the current loops function body.
-      /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
-      /// first and last should be equal here.
-      /// \arg \c [s_first, \c s_last) is the step size for the loops. first and
-      /// last should be equal here.
-      template<typename InIter>
-      NestedForLoop(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
-        NestedForLoop1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
-      { }
-
-      /// Run the nested loop (call the next higher loop object).
-      void operator()(T* p) { NestedForLoop1::operator ()(p); }
-    }; // struct DoLoop
-
-    /// NestedForLoop constructs and executes a nested for loop object.
-
-    /// This specialization represents the terminating step for constructing the
-    /// nested loop object, stores the loop object and runs the object. It uses
-    /// pointer forwarding as opposed to reference forwarding for iterators in
-    /// the base case. Otherwise it is the same.
-    template<typename F, typename T>
-    struct NestedForLoop<0, F, T*> {
-
-      /// \arg \c func is the current loops function body.
-      /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
-      /// first and last should be equal here.
-      /// \arg \c [s_first, \c s_last) is the step size for the loops. first and
-      /// last should be equal here.
-      template<typename InIter>
-      NestedForLoop(F func, InIter, InIter, InIter, InIter) : f_(func)
-      { }
-
-      /// Run the actual loop object
-      void operator()(T* p) { f_(p); }
-    private:
-      F f_;
-    }; // struct NestedForLoop
-
     /// Function object that assigns the content of one iterator to another iterator.
     template<typename OutIter, typename InIter>
     struct AssignmentOp {
