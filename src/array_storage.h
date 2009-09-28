@@ -196,6 +196,7 @@ namespace TiledArray {
     typedef typename array_dim_type::size_array size_array;
     typedef T value_type;
     typedef CS coordinate_system;
+    typedef Tag tag_type;
     typedef T * iterator;
     typedef const T * const_iterator;
     typedef T & reference_type;
@@ -294,6 +295,7 @@ namespace TiledArray {
     DenseArrayStorage_& resize(const size_array& size, value_type val = value_type()) {
       DenseArrayStorage_ temp(size, val);
       if(d_ != NULL) {
+        // replace Range with ArrayDim?
         typedef Range<ordinal_type, DIM, Tag, coordinate_system > range_type;
         range_type range_temp(size);
         range_type range_curr(dim_.size_);
