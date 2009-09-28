@@ -6,6 +6,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
 #include <numeric>
+#include <iterator>
 
 using namespace TiledArray;
 
@@ -124,16 +125,42 @@ BOOST_AUTO_TEST_CASE( resize )
 BOOST_AUTO_TEST_SUITE_END()
 
 struct DenseArrayStorageFixture : public ArrayDimFixture {
+  const static std::size_t ndim = 5;
   typedef DenseArrayStorage<int, 3> DenseArray3;
-  DenseArrayStorageFixture() : ArrayDimFixture(), da(s, 1)  {
+  typedef DenseArrayStorage<int, ndim> DenseArrayN;
+  typedef Permutation<ndim> PermutationN;
 
+  DenseArrayStorageFixture() : ArrayDimFixture(), da3(s, 1) {
+
+    PermutationN::Array pp = {{0, 2, 1, 4, 3}};
+    p0 = pp;
+    DenseArrayN::size_array n = {{3, 5, 7, 11, 13}};
+    DenseArrayN::size_array n_p0 = p0 ^ n;
+    daN.resize(n);
+    daN_p0.resize(n_p0);
+
+    typedef Range<DenseArrayN::ordinal_type, ndim, DenseArrayN::tag_type, DenseArrayN::coordinate_system> RangeN;
+    typedef RangeN::const_iterator index_iter;
+    typedef DenseArrayN::iterator iter;
+    RangeN range(n);
+    RangeN range_p0(n_p0);
+    iter v = daN.begin();
+    for(index_iter i=range.begin(); i!=range.end(); ++i, ++v) {
+      *v = daN.ordinal(*i);
+      daN_p0[p0 ^ *i] = *v;
+    }
+
+    //std::copy(daN.begin(), daN.end(), std::ostream_iterator<int>(std::cout, "\n"));
+    //std::copy(daN_p0.begin(), daN_p0.end(), std::ostream_iterator<int>(std::cout, "\n"));
   }
 
   ~DenseArrayStorageFixture() {
-
   }
 
-  DenseArray3 da;
+  DenseArray3 da3;
+  DenseArrayN daN;
+  DenseArrayN daN_p0;
+  PermutationN p0;
 };
 
 BOOST_FIXTURE_TEST_SUITE( dense_storage_suite, DenseArrayStorageFixture )
@@ -159,8 +186,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   for(DenseArray3::ordinal_type i = 0; i < v; ++i, ++v2)
     BOOST_CHECK_EQUAL(a2.at(i), v2); // check for expected values.
 
-  BOOST_REQUIRE_NO_THROW(DenseArray3 a3(da));
-  DenseArray3 a3(da);
+  BOOST_REQUIRE_NO_THROW(DenseArray3 a3(da3));
+  DenseArray3 a3(da3);
   BOOST_CHECK_EQUAL(a3.volume(), v);
   for(DenseArray3::ordinal_type i = 0; i < v; ++i)
     BOOST_CHECK_EQUAL(a3.at(i), 1); // check for expected values.
@@ -177,15 +204,15 @@ BOOST_AUTO_TEST_CASE( constructor )
 BOOST_AUTO_TEST_CASE( accessor )
 {
   for(DenseArray3::ordinal_type i = 0; i < v; ++i)
-    BOOST_CHECK_EQUAL(da.at(i), 1);        // check ordinal access
+    BOOST_CHECK_EQUAL(da3.at(i), 1);        // check ordinal access
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(da.at(v), std::out_of_range);// check for out of range error
-  BOOST_CHECK_THROW(da.at(v), std::out_of_range);
+  BOOST_CHECK_THROW(da3.at(v), std::out_of_range);// check for out of range error
+  BOOST_CHECK_THROW(da3.at(v), std::out_of_range);
 #endif
 
   Range<std::size_t, 3> b(s);
   for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
-    BOOST_CHECK_EQUAL(da.at(* it), 1);        // check index access
+    BOOST_CHECK_EQUAL(da3.at(* it), 1);        // check index access
 
   DenseArray3 a1(s, 1);
   BOOST_CHECK_EQUAL((a1.at(1) = 2), 2); // check for write access with at
@@ -196,14 +223,14 @@ BOOST_AUTO_TEST_CASE( accessor )
 
   DenseArray3::index_type p2(s);
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(da.at(p2), std::out_of_range);// check for out of range error
+  BOOST_CHECK_THROW(da3.at(p2), std::out_of_range);// check for out of range error
 #endif
 
 #ifdef NDEBUG // operator() calls at() when debugging so we don't need to run this test in that case.
   for(DenseArray3::ordinal_type i = 0; i < v; ++i)
-    BOOST_CHECK_EQUAL(da.[i], 1);        // check ordinal access
+    BOOST_CHECK_EQUAL(da3.[i], 1);        // check ordinal access
   for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
-    BOOST_CHECK_EQUAL(da.[* it], 1);     // check index access
+    BOOST_CHECK_EQUAL(da3.[* it], 1);     // check index access
 
   DenseArray3 a2(s, 1);
   BOOST_CHECK_EQUAL((a2[1] = 2), 2); // check for write access with at
@@ -231,8 +258,8 @@ BOOST_AUTO_TEST_CASE( iteration )
 BOOST_AUTO_TEST_CASE( assignment )
 {
   DenseArray3 a1;
-  BOOST_CHECK_NO_THROW(a1 = da);
-  BOOST_CHECK_EQUAL_COLLECTIONS(a1.begin(), a1.end(), da.begin(), da.end());
+  BOOST_CHECK_NO_THROW(a1 = da3);
+  BOOST_CHECK_EQUAL_COLLECTIONS(a1.begin(), a1.end(), da3.begin(), da3.end());
 }
 
 BOOST_AUTO_TEST_CASE( resize )
@@ -251,21 +278,15 @@ BOOST_AUTO_TEST_CASE( resize )
 
 BOOST_AUTO_TEST_CASE( permutation )
 {
-  Permutation<3> p(1,2,0);
-  boost::array<int, 24> val =  {{0,  1,  2,  3, 10, 11, 12, 13, 20, 21, 22, 23,100,101,102,103,110,111,112,113,120,121,122,123}};
-  //         destination       {{0,100,200,300,  1,101,201,301,  2,102,202,302, 10,110,210,310, 11,111,211,311, 12,112,212,312}}
-  //         permuted index    {{0,  1,  2, 10, 11, 12,100,101,102,110,111,112,200,201,202,210,211,212,300,301,302,310,311,312}}
-  boost::array<int, 24> pval = {{0, 10, 20,100,110,120,  1, 11, 21,101,111,121,  2, 12, 22,102,112,122,  3, 13, 23,103,113,123}};
+  DenseArrayN a1(daN.size(), daN.begin(), daN.end());
+  DenseArrayN a3(a1);
+  BOOST_CHECK_EQUAL_COLLECTIONS(a1.begin(), a1.end(), daN.begin(), daN.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), daN.begin(), daN.end());
+  DenseArrayN a2 = p0 ^ a1;
+  BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), daN_p0.begin(), daN_p0.end()); // check permutation
 
-  DenseArray3 a1(s, val.begin(), val.end());
-  DenseArray3 a3(a1);
-  BOOST_CHECK_EQUAL_COLLECTIONS(a1.begin(), a1.end(), val.begin(), val.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), val.begin(), val.end());
-  DenseArray3 a2 = p ^ a1;
-  BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), pval.begin(), pval.end()); // check permutation
-
-  a3 ^= p;
-  BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), pval.begin(), pval.end()); // check in place permutation
+  a3 ^= p0;
+  BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), daN_p0.begin(), daN_p0.end()); // check in place permutation
 }
 
 BOOST_AUTO_TEST_SUITE_END()
