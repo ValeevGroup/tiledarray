@@ -305,6 +305,7 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
   std::size_t tile_count(const DistArray3& a) {
     // ToDo: Fix madness so it can use standard iterator functions
 //    int n = std::distance(a.begin(), a.end());
+    // TODO: use DistributedContainer::size() (if exists)
     int n = 0;
     for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it)
       ++n;
