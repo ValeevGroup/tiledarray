@@ -199,8 +199,10 @@ namespace TiledArray {
     }
 
     /// ForLoop defines a for loop operation for a random access iterator.
-    template<typename RandIter, typename F>
+    template<typename F, typename RandIter>
     struct ForLoop {
+      typedef F Functor;
+      typedef typename std::iterator_traits<RandIter>::value_type value_t;
       typedef typename std::iterator_traits<RandIter>::difference_type diff_t;
       /// Construct a ForLoop
 
@@ -214,7 +216,7 @@ namespace TiledArray {
       // Do not pass iterator by reference here since we will be modifying it
       // in the function.
       void operator ()(RandIter first) {
-        RandIter end = first + n_;
+        const RandIter end = first + n_;
         // Use < operator because first will not always land on end_.
         for(; first < end; first += step_)
           func_(first);
@@ -228,8 +230,8 @@ namespace TiledArray {
 
     /// NestedLoopOp constructs and executes a nested for loop object.
     template<unsigned int DIM, typename F, typename RandIter>
-    struct NestedLoopOp : public NestedLoopOp<DIM - 1, ForLoop<RandIter, F>, RandIter > {
-      typedef ForLoop<RandIter, F> F1;
+    struct NestedLoopOp : public NestedLoopOp<DIM - 1, ForLoop<F, RandIter>, RandIter > {
+      typedef ForLoop<F, RandIter> F1;
       typedef NestedLoopOp<DIM - 1, F1, RandIter> NestedLoopOp1;
 
       /// Constructs the nested for loop object
@@ -276,8 +278,8 @@ namespace TiledArray {
     /// pointer forwarding as opposed to reference forwarding for iterators in
     /// the base case. Otherwise it is the same.
     template<unsigned int DIM, typename F, typename T>
-    struct NestedLoopOp<DIM, F, T*> : public NestedLoopOp<DIM - 1, ForLoop<T*, F>, T* > {
-      typedef ForLoop<T*, F> F1;
+    struct NestedLoopOp<DIM, F, T*> : public NestedLoopOp<DIM - 1, ForLoop<F, T*>, T* > {
+      typedef ForLoop<F, T*> F1;
       typedef NestedLoopOp<DIM - 1, F1, T*> NestedLoopOp1;
 
       /// \arg \c func is the current loops function body.
