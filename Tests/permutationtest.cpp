@@ -6,9 +6,7 @@
 using namespace TiledArray;
 
 struct PermutationFixture {
-  PermutationFixture() : p(2,0,1) {
-
-  }
+  PermutationFixture() : p(2,0,1) {}
   ~PermutationFixture() {}
   Permutation<3> p;
 };
