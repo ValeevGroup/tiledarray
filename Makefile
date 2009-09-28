@@ -1,8 +1,9 @@
 include Make.path
 
 VPATH = src:Tests
-INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR) -I./src -I./Tests -I$(BLASINCLUDEDIR) -I$(EIGENDIR)
-LIBDIR = -L$(MADNESSDIR)/lib
+INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR)/include -I./src -I./Tests -I$(BLASINCLUDEDIR) -I$(EIGENDIR)
+LIBDIR = -L$(MADNESSDIR)/lib -L$(BOOSTDIR)/lib
+#LIBS = -lMADworld
 #LIBS = -lMADworld
 LIBS = -lMADworld -lboost_unit_test_framework
 ifeq ($(CXX),icpc)
@@ -18,7 +19,7 @@ CXX = $(MPICXX)
 TESTSRC = TiledArrayTest.cpp permutationtest.cpp coordinatestest.cpp rangetest.cpp \
 	tiledrange1test.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
 	variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp \
-	annotatedtiletest.cpp tilemathtest.cpp arraytest.cpp
+	annotatedtiletest.cpp tilemathtest.cpp arraytest.cpp algorithmtest.cpp
 OBJS = $(TESTSRC:%.cpp=%.$(OBJSUF))
 
 TARGET =	TiledArrayTest
