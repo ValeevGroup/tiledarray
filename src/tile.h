@@ -180,7 +180,7 @@ namespace TiledArray {
     /// Returns the tile range size.
     const size_array& size() const { return range_.size(); } // no throw
     /// Returns the number of elements in the volume.
-    const volume_type volume() const { return range_.volume(); } // no throw
+    const volume_type volume() const { return data_.volume(); } // no throw
     /// Returns the dimension weights.
     const size_array& weight() const { return data_.weight(); } // no throw
 
