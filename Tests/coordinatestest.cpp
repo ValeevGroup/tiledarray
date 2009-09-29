@@ -28,10 +28,10 @@ BOOST_AUTO_TEST_CASE( constructors )
 {
   BOOST_REQUIRE_NO_THROW( Point3 p1() );     // construct without exception
   Point3 p2;                               // default construction
-  BOOST_CHECK_EQUAL( p2.data().size(), 3); // correct size
-  BOOST_CHECK_EQUAL( p2.data()[0], 0);     // correct element initialization
-  BOOST_CHECK_EQUAL( p2.data()[1], 0);
-  BOOST_CHECK_EQUAL( p2.data()[2], 0);
+  BOOST_CHECK_EQUAL( p2.data().size(), 3u); // correct size
+  BOOST_CHECK_EQUAL( p2.data()[0], 0u);     // correct element initialization
+  BOOST_CHECK_EQUAL( p2.data()[1], 0u);
+  BOOST_CHECK_EQUAL( p2.data()[2], 0u);
 
   BOOST_REQUIRE_NO_THROW(Point3 p3(a.begin(), a.end())); // Iterator Constructor
   Point3 p3(a.begin(), a.end());
@@ -47,9 +47,9 @@ BOOST_AUTO_TEST_CASE( constructors )
 
   BOOST_REQUIRE_NO_THROW(Point3 p6(1));  // Assign constant constuctor
   Point3 p6(1);
-  BOOST_CHECK_EQUAL( p6.data()[0], 1);     // correct element initialization
-  BOOST_CHECK_EQUAL( p6.data()[1], 1);
-  BOOST_CHECK_EQUAL( p6.data()[2], 1);
+  BOOST_CHECK_EQUAL( p6.data()[0], 1u);     // correct element initialization
+  BOOST_CHECK_EQUAL( p6.data()[1], 1u);
+  BOOST_CHECK_EQUAL( p6.data()[2], 1u);
 
   BOOST_REQUIRE_NO_THROW(Point3 p7(1,2,3)); // variable argument list constructor
   Point3 p7(1,2,3);
@@ -58,9 +58,9 @@ BOOST_AUTO_TEST_CASE( constructors )
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
   BOOST_REQUIRE_NO_THROW(Point3 p8(std::forward<Point3>(Point3(1)))); // Move constructor.
   Point3 p8(Point3(1));
-  BOOST_CHECK_EQUAL( p8.data()[0], 1);     // correct element initialization
-  BOOST_CHECK_EQUAL( p8.data()[1], 1);
-  BOOST_CHECK_EQUAL( p8.data()[2], 1);
+  BOOST_CHECK_EQUAL( p8.data()[0], 1u);     // correct element initialization
+  BOOST_CHECK_EQUAL( p8.data()[1], 1u);
+  BOOST_CHECK_EQUAL( p8.data()[2], 1u);
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
@@ -77,12 +77,12 @@ BOOST_AUTO_TEST_CASE( make_functions )
 
 BOOST_AUTO_TEST_CASE( element_access )
 {
-  BOOST_CHECK_EQUAL( p[0], 1);            // correct element access
-  BOOST_CHECK_EQUAL( p[1], 2);
-  BOOST_CHECK_EQUAL( p[2], 3);
-  BOOST_CHECK_EQUAL( p.at(0), 1);         // correct element access
-  BOOST_CHECK_EQUAL( p.at(1), 2);
-  BOOST_CHECK_EQUAL( p.at(2), 3);
+  BOOST_CHECK_EQUAL( p[0], 1u);            // correct element access
+  BOOST_CHECK_EQUAL( p[1], 2u);
+  BOOST_CHECK_EQUAL( p[2], 3u);
+  BOOST_CHECK_EQUAL( p.at(0), 1u);         // correct element access
+  BOOST_CHECK_EQUAL( p.at(1), 2u);
+  BOOST_CHECK_EQUAL( p.at(2), 3u);
 #ifdef NEDBUG
   BOOST_CHECK_NO_TRHOW( p[3] );
 #endif
@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE( iteration )
 {
   BOOST_TEST_MESSAGE("iterator begin, end, and dereferenc");
   boost::array<std::size_t, 3> a = {{1, 2, 3}};
-  BOOST_CHECK_EQUAL( const_iteration_test(p, a.begin(), a.end()), 3); // check for basic iteration functionality
+  BOOST_CHECK_EQUAL( const_iteration_test(p, a.begin(), a.end()), 3u); // check for basic iteration functionality
 
   Point3 p1(p);
   std::size_t i = 3;
@@ -110,9 +110,9 @@ BOOST_AUTO_TEST_CASE( assignment )
   p1 = p;
   BOOST_CHECK_EQUAL_COLLECTIONS( p.begin(), p.end(), p1.begin(), p1.end()); // check for equality
   p1[0] = 4;
-  BOOST_CHECK_EQUAL( p1[0], 4); // check individual element assignment.
+  BOOST_CHECK_EQUAL( p1[0], 4u); // check individual element assignment.
   p1.at(1) = 5;
-  BOOST_CHECK_EQUAL( p1.at(1), 5); // check individual element assignment with range checking.
+  BOOST_CHECK_EQUAL( p1.at(1), 5u); // check individual element assignment with range checking.
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
   Point3 p2;
   p2 = Point3(1,2,3); // check move assignment.
@@ -247,64 +247,64 @@ BOOST_AUTO_TEST_CASE( c_incrmentation )
   Point3 p1(1);
   Point3 pa(p1);
   ++pa;
-  BOOST_CHECK_EQUAL( pa[0], 1 );  // check that the point was incremented
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 2 );
+  BOOST_CHECK_EQUAL( pa[0], 1u );  // check that the point was incremented
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 2u );
 
   BOOST_CHECK_EQUAL( (--pa), p1 ); // check that decrement returns the decremented object.
-  BOOST_CHECK_EQUAL( pa[0], 1 );   // check that the point was decremented.
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 1 );
+  BOOST_CHECK_EQUAL( pa[0], 1u );   // check that the point was decremented.
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 1u );
 
   BOOST_CHECK_EQUAL( (pa++), p1 ); // check that increment returns the initial value.
-  BOOST_CHECK_EQUAL( pa[0], 1 );   // check that the point was incremented.
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 2 );
+  BOOST_CHECK_EQUAL( pa[0], 1u );   // check that the point was incremented.
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 2u );
 
   --pa;
   --pa;
   BOOST_CHECK_EQUAL( (++pa), p1); // check that increment returns the incremented object.
-  BOOST_CHECK_EQUAL( pa[0], 1 );  // check that the
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 1 );
+  BOOST_CHECK_EQUAL( pa[0], 1u );  // check that the
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 1u );
 
   BOOST_CHECK_EQUAL( (pa--), p1); // check that decrement returns the initial value.
-  BOOST_CHECK_EQUAL( pa[0], 1 );  // check that the point was decremented.
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 0 );
+  BOOST_CHECK_EQUAL( pa[0], 1u );  // check that the point was decremented.
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 0u );
 }
 
-BOOST_AUTO_TEST_CASE( fortran_incrmentation )
+BOOST_AUTO_TEST_CASE( fortran_incrementation )
 {
   FPoint3 p1(1);
   FPoint3 pa(p1);
 
   ++pa;
-  BOOST_CHECK_EQUAL( pa[0], 2 );
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 1 );
+  BOOST_CHECK_EQUAL( pa[0], 2u );
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 1u );
 
   BOOST_CHECK_EQUAL( (--pa), p1 );
-  BOOST_CHECK_EQUAL( pa[0], 1 );
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 1 );
+  BOOST_CHECK_EQUAL( pa[0], 1u );
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 1u );
 
   BOOST_CHECK_EQUAL( (pa++), p1 );
-  BOOST_CHECK_EQUAL( pa[0], 2 );
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 1 );
+  BOOST_CHECK_EQUAL( pa[0], 2u );
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 1u );
 
   --pa;
   --pa;
   BOOST_CHECK_EQUAL( (++pa), p1);
-  BOOST_CHECK_EQUAL( pa[0], 1 );
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 1 );
+  BOOST_CHECK_EQUAL( pa[0], 1u );
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 1u );
 
   BOOST_CHECK_EQUAL( (pa--), p1);
-  BOOST_CHECK_EQUAL( pa[0], 0 );
-  BOOST_CHECK_EQUAL( pa[1], 1 );
-  BOOST_CHECK_EQUAL( pa[2], 1 );
+  BOOST_CHECK_EQUAL( pa[0], 0u );
+  BOOST_CHECK_EQUAL( pa[1], 1u );
+  BOOST_CHECK_EQUAL( pa[2], 1u );
 }
 
 BOOST_AUTO_TEST_CASE( permutation )
