@@ -17,28 +17,28 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW( Permutation<3> p0 ); // check default constructor
   Permutation<3> p0;
-  BOOST_CHECK_EQUAL(p0.data()[0], 0);
-  BOOST_CHECK_EQUAL(p0.data()[1], 1);
-  BOOST_CHECK_EQUAL(p0.data()[2], 2);
+  BOOST_CHECK_EQUAL(p0.data()[0], 0u);
+  BOOST_CHECK_EQUAL(p0.data()[1], 1u);
+  BOOST_CHECK_EQUAL(p0.data()[2], 2u);
 
   BOOST_REQUIRE_NO_THROW( Permutation<3> p1(0,1,2) ); // check variable list constructor
   Permutation<3> p1(0,1,2);
-  BOOST_CHECK_EQUAL(p1.data()[0], 0);
-  BOOST_CHECK_EQUAL(p1.data()[1], 1);
-  BOOST_CHECK_EQUAL(p1.data()[2], 2);
+  BOOST_CHECK_EQUAL(p1.data()[0], 0u);
+  BOOST_CHECK_EQUAL(p1.data()[1], 1u);
+  BOOST_CHECK_EQUAL(p1.data()[2], 2u);
 
   Permutation<3>::Array a = {{0, 1, 2}};
   BOOST_REQUIRE_NO_THROW( Permutation<3> p2(a) ); // check boost array constructor
   Permutation<3> p2(a);
-  BOOST_CHECK_EQUAL(p2.data()[0], 0);
-  BOOST_CHECK_EQUAL(p2.data()[1], 1);
-  BOOST_CHECK_EQUAL(p2.data()[2], 2);
+  BOOST_CHECK_EQUAL(p2.data()[0], 0u);
+  BOOST_CHECK_EQUAL(p2.data()[1], 1u);
+  BOOST_CHECK_EQUAL(p2.data()[2], 2u);
 
   BOOST_REQUIRE_NO_THROW( Permutation<3> p3(a.begin(), a.end()) ); // check iterator constructor
   Permutation<3> p3(a.begin(), a.end());
-  BOOST_CHECK_EQUAL(p3.data()[0], 0);
-  BOOST_CHECK_EQUAL(p3.data()[1], 1);
-  BOOST_CHECK_EQUAL(p3.data()[2], 2);
+  BOOST_CHECK_EQUAL(p3.data()[0], 0u);
+  BOOST_CHECK_EQUAL(p3.data()[1], 1u);
+  BOOST_CHECK_EQUAL(p3.data()[2], 2u);
 }
 
 BOOST_AUTO_TEST_CASE( iteration )
@@ -51,9 +51,9 @@ BOOST_AUTO_TEST_CASE( iteration )
 
 BOOST_AUTO_TEST_CASE( accessor )
 {
-  BOOST_CHECK_EQUAL(p[0], 2); // check that accessor is readable
-  BOOST_CHECK_EQUAL(p[1], 0);
-  BOOST_CHECK_EQUAL(p[2], 1);
+  BOOST_CHECK_EQUAL(p[0], 2u); // check that accessor is readable
+  BOOST_CHECK_EQUAL(p[1], 0u);
+  BOOST_CHECK_EQUAL(p[2], 1u);
   // no write access.
 }
 
@@ -79,9 +79,9 @@ BOOST_AUTO_TEST_CASE( comparision )
 BOOST_AUTO_TEST_CASE( unit_permutation )
 {
   Permutation<3> p0;
-  BOOST_CHECK_EQUAL(p0[0], 0); // verify p0 is a unit permutation.
-  BOOST_CHECK_EQUAL(p0[1], 1);
-  BOOST_CHECK_EQUAL(p0[2], 2);
+  BOOST_CHECK_EQUAL(p0[0], 0u); // verify p0 is a unit permutation.
+  BOOST_CHECK_EQUAL(p0[1], 1u);
+  BOOST_CHECK_EQUAL(p0[2], 2u);
   BOOST_CHECK_EQUAL(p0, Permutation<3>::unit() ); // check unit() is a unit permutation
   BOOST_CHECK_EQUAL((p0 ^ p0), Permutation<3>::unit());
 }

@@ -12,7 +12,7 @@ struct AlgorithmFixture {
     std::copy(nn, nn+ndim, n.begin());
 
     std::size_t size = 1;
-    for(int d=0; d<ndim; ++d) size *= n[d];
+    for(std::size_t d=0; d<ndim; ++d) size *= n[d];
     v.resize(size);
     std::fill(v.begin(), v.end(), 1);
   }
@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE( evaluate_loop1 )
   int c = 0;
   Counter<iter> functor(c);
   ForLoop1 l0 (functor, (ForLoop1::diff_t)n[0]); l0(v.begin());
-  BOOST_CHECK_EQUAL(c, n[0]);
+  BOOST_CHECK_EQUAL((std::size_t)c, n[0]);
 }
 
 BOOST_AUTO_TEST_CASE( evaluate_loop2 )
@@ -77,19 +77,19 @@ BOOST_AUTO_TEST_CASE( evaluate_loop2 )
     int c = 0;
     Counter<iter> functor(c);
     ForLoop2 l0(functor, n.begin(), n.begin() + 2, unit.begin(), unit.begin() + 2); l0(v.begin());
-    BOOST_CHECK_EQUAL(c, n[0]*n[1]);
+    BOOST_CHECK_EQUAL((std::size_t)c, n[0]*n[1]);
   }
   { // outer dim = 4, inner dim = 3
     int c = 0;
     Counter<iter> functor(c);
     ForLoop2 l0(functor, n.rbegin(), n.rbegin() + 2, unit.rbegin(), unit.rbegin() + 2); l0(v.begin());
-    BOOST_CHECK_EQUAL(c, n[4]*n[3]);
+    BOOST_CHECK_EQUAL((std::size_t)c, n[4]*n[3]);
   }
   { // outer dim = 0, inner dim = 1
     int c = 0;
     Counter<int*> functor(c);
     ForLoop2_ptr l0(functor, n.begin(), n.begin() + 2, unit.begin(), unit.begin() + 2); l0(&(v[0]));
-    BOOST_CHECK_EQUAL(c, n[0]*n[1]);
+    BOOST_CHECK_EQUAL((std::size_t)c, n[0]*n[1]);
   }
 }
 
@@ -99,19 +99,19 @@ BOOST_AUTO_TEST_CASE( evaluate_loopN )
     int c = 0;
     Counter<iter> functor(c);
     ForLoopN l0(functor, n.begin(), n.end(), unit.begin(), unit.end()); l0(v.begin());
-    BOOST_CHECK_EQUAL(c, v.size());
+    BOOST_CHECK_EQUAL((std::size_t)c, v.size());
   }
   { // outer dim = 4, inner dim = 0
     int c = 0;
     Counter<iter> functor(c);
     ForLoopN l0(functor, n.rbegin(), n.rend(), unit.rbegin(), unit.rend()); l0(v.begin());
-    BOOST_CHECK_EQUAL(c, v.size());
+    BOOST_CHECK_EQUAL((std::size_t)c, v.size());
   }
   { // outer dim = 0, inner dim = 4
     int c = 0;
     Counter<int*> functor(c);
     ForLoopN_ptr l0(functor, n.begin(), n.end(), unit.begin(), unit.end()); l0(&(v[0]));
-    BOOST_CHECK_EQUAL(c, v.size());
+    BOOST_CHECK_EQUAL((std::size_t)c, v.size());
   }
 }
 
