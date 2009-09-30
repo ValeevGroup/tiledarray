@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(ArrayDim3 a0); // Check default construction
   ArrayDim3 a0;
-  BOOST_CHECK_EQUAL(a0.volume(), 0);        // check for zero size with default
+  BOOST_CHECK_EQUAL(a0.volume(), 0u);        // check for zero size with default
   ArrayDim3::size_array s0 = {{0,0,0}}; // construction.
   BOOST_CHECK_EQUAL(a0.size(), s0);
   BOOST_CHECK_EQUAL(a0.weight(), s0);
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(DenseArray3 a0); // check default constructor
   DenseArray3 a0;
-  BOOST_CHECK_EQUAL(a0.volume(), 0); // check for zero size.
+  BOOST_CHECK_EQUAL(a0.volume(), 0u); // check for zero size.
   BOOST_CHECK_THROW(a0.at(0), std::out_of_range); // check for data access error.
 
   BOOST_REQUIRE_NO_THROW(DenseArray3 a1(s, 1)); // check size constructor w/ initial value.
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE( iteration )
   DenseArray3::iterator it = a1.begin();
   BOOST_CHECK(iteration_test(a1, val.begin(), val.end())); // Check interator basic functionality
   BOOST_CHECK(const_iteration_test(a1, val.begin(), val.end())); // Check const iterator basic functionality
-  BOOST_CHECK_EQUAL(a1.end() - a1.begin(), v); // check iterator difference operator
+  BOOST_CHECK_EQUAL(a1.end() - a1.begin(), (std::ptrdiff_t)v); // check iterator difference operator
   BOOST_CHECK_EQUAL(*it, 0); // check dereference
   BOOST_CHECK_EQUAL(* (it + 2), 2); // check random access
   BOOST_CHECK_EQUAL((*it = 5), 5 ); // check iterator write access.
@@ -357,12 +357,12 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(DistArray3 a2(world, s, data.begin(), data.end()));
   DistArray3 a2(world, s, data.begin(), data.end());
   BOOST_CHECK_CLOSE(sum_first(a2), 300.0, 0.0001);
-  BOOST_CHECK_EQUAL(tile_count(a2), 24);
+  BOOST_CHECK_EQUAL(tile_count(a2), 24u);
 
   BOOST_REQUIRE_NO_THROW(DistArray3 a3(a2));
   DistArray3 a3(a2);
   BOOST_CHECK_CLOSE(sum_first(a3), 300.0, 0.0001);
-  BOOST_CHECK_EQUAL(tile_count(a3), 24);
+  BOOST_CHECK_EQUAL(tile_count(a3), 24u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

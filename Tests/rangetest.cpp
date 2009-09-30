@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(r0.start(), s);
   BOOST_CHECK_EQUAL(r0.finish(), s);
   BOOST_CHECK_EQUAL(r0.size(), s.data());
-  BOOST_CHECK_EQUAL(r0.volume(), 0);
+  BOOST_CHECK_EQUAL(r0.volume(), 0u);
 
   BOOST_REQUIRE_NO_THROW(Range3 b1(size)); // Size Constructor
   Range3 r1(size);
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(r5.start(), p222);
   BOOST_CHECK_EQUAL(r5.finish(), p222);
   BOOST_CHECK_EQUAL(r5.size(), s.data());
-  BOOST_CHECK_EQUAL(r5.volume(), 0);
+  BOOST_CHECK_EQUAL(r5.volume(), 0u);
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
   BOOST_REQUIRE_NO_THROW(Range3 r6(std::forward<Range3>(Range3(size)))); // move constructor
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE( unions )
   Range3 ru3 = r3 & r4;
   BOOST_CHECK_EQUAL(ru3.start(), s);  // no over lap
   BOOST_CHECK_EQUAL(ru3.finish(), s);
-  BOOST_CHECK_EQUAL(ru3.volume(), 0);
+  BOOST_CHECK_EQUAL(ru3.volume(), 0u);
 
   Range3 r5(p111, p444);
   Range3 r6(p222, p333);
@@ -282,7 +282,7 @@ BOOST_AUTO_TEST_CASE( c_iteration )
   t[7] = index_type(2,2,2);
 
   Range3 r1(p111,p333);
-  BOOST_CHECK_EQUAL(const_iteration_test(r1, t.begin(), t.end()), 8);
+  BOOST_CHECK_EQUAL(const_iteration_test(r1, t.begin(), t.end()), 8u);
                                               // check basic iteration operation
 }
 
@@ -301,7 +301,7 @@ BOOST_AUTO_TEST_CASE( fortran_iteration )
   t[7] = FRange3::index_type(2,2,2);
 
   FRange3 r1(p1,p3);
-  BOOST_CHECK_EQUAL(const_iteration_test(r1, t.begin(), t.end()), 8);
+  BOOST_CHECK_EQUAL(const_iteration_test(r1, t.begin(), t.end()), 8u);
                               // check basic fortran ordered iteration operation
 }
 BOOST_AUTO_TEST_SUITE_END()

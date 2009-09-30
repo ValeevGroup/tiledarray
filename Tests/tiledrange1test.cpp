@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE( comparison )
 
 BOOST_AUTO_TEST_CASE( iteration )
 {
-  BOOST_CHECK_EQUAL(const_iteration_test(r, tile.begin(), tile.end()), 5);
+  BOOST_CHECK_EQUAL(const_iteration_test(r, tile.begin(), tile.end()), 5u);
                                     // check for proper iteration functionality.
   BOOST_CHECK_EQUAL( * r.find(11), tile[3]); // check that find returns an
                                              // iterator to the correct tile.

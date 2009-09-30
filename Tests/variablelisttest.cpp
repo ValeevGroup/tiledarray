@@ -27,7 +27,7 @@ BOOST_FIXTURE_TEST_SUITE( variable_list_suite , VariableListFixture )
 
 BOOST_AUTO_TEST_CASE( accessors )
 {
-  BOOST_CHECK_EQUAL(v.dim(), 4); // check for variable count
+  BOOST_CHECK_EQUAL(v.dim(), 4u); // check for variable count
   BOOST_CHECK_EQUAL(v.at(0), "a"); // check 1st variable access
   BOOST_CHECK_EQUAL(v.at(3), "d"); // check last variable access
   BOOST_CHECK_EQUAL(v[0], "a"); // check 1st variable access
@@ -39,11 +39,11 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(VariableList v0); // Check default constructor
   VariableList v0;
-  BOOST_CHECK_EQUAL(v0.dim(), 0);
+  BOOST_CHECK_EQUAL(v0.dim(), 0u);
 
   BOOST_REQUIRE_NO_THROW(VariableList v1("a,b,c,d")); // check string constructor
   VariableList v1("a,b,c,d");
-  BOOST_CHECK_EQUAL(v1.dim(), 4);
+  BOOST_CHECK_EQUAL(v1.dim(), 4u);
   BOOST_CHECK_EQUAL(v1.at(0), "a");  // check for corret data
   BOOST_CHECK_EQUAL(v1.at(1), "b");
   BOOST_CHECK_EQUAL(v1.at(2), "c");
@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_REQUIRE_NO_THROW(VariableList v2(v)); // check string constructor
   VariableList v2(v);
-  BOOST_CHECK_EQUAL(v2.dim(), 4);
+  BOOST_CHECK_EQUAL(v2.dim(), 4u);
   BOOST_CHECK_EQUAL(v2.at(0), "a");  // check for corret data
   BOOST_CHECK_EQUAL(v2.at(1), "b");
   BOOST_CHECK_EQUAL(v2.at(2), "c");
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   boost::array<std::string, 4> a10 = {{"a", "b", "c", "d"}};
   BOOST_REQUIRE_NO_THROW(VariableList v10(a10.begin(), a10.end())); // check iterator constructor
   VariableList v10(a10.begin(), a10.end());
-  BOOST_CHECK_EQUAL(v10.dim(), 4);
+  BOOST_CHECK_EQUAL(v10.dim(), 4u);
   BOOST_CHECK_EQUAL(v10.at(0), "a");  // check for corret data
   BOOST_CHECK_EQUAL(v10.at(1), "b");
   BOOST_CHECK_EQUAL(v10.at(2), "c");
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_REQUIRE_NO_THROW(VariableList v11("")); // Check zero length constructor
   VariableList v11("");
-  BOOST_CHECK_EQUAL(v11.dim(), 0);
+  BOOST_CHECK_EQUAL(v11.dim(), 0u);
 
 }
 

@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(ATile a0); // check default constructor
   ATile a0;
-  BOOST_CHECK_EQUAL(a0.volume(), 0);
+  BOOST_CHECK_EQUAL(a0.volume(), 0u);
   BOOST_CHECK_THROW(a0.at(index_type(0,0,0)), std::runtime_error);
 
   BOOST_REQUIRE_NO_THROW(ATile ac(a)); // check copy constructor
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   ATile a1(s, v, 2.0);                         // a constant initial value.
   BOOST_CHECK_EQUAL_COLLECTIONS(a1.size().begin(), a1.size().end(), s.begin(), s.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(a1.weight().begin(), a1.weight().end(), a.weight().begin(), a.weight().end());
-  BOOST_CHECK_EQUAL(a1.volume(), 125);
+  BOOST_CHECK_EQUAL(a1.volume(), 125u);
   BOOST_CHECK_EQUAL(a1.vars(), v);
   BOOST_CHECK(check_val(a1.begin(), a1.end(), 2.0));
 
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   ATile a2(s, v, t.begin(), t.end());                         // a initialization list.
   BOOST_CHECK_EQUAL_COLLECTIONS(a2.size().begin(), a2.size().end(), s.begin(), s.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(a2.weight().begin(), a2.weight().end(), a.weight().begin(), a.weight().end());
-  BOOST_CHECK_EQUAL(a2.volume(), 125);
+  BOOST_CHECK_EQUAL(a2.volume(), 125u);
   BOOST_CHECK_EQUAL(a2.vars(), v);
   BOOST_CHECK(check_val(a2.begin(), a2.end(), 1.0));
 }
@@ -167,16 +167,16 @@ BOOST_AUTO_TEST_CASE( permutation )
   ATile a1(s1, v, val.begin(), val.end());
   ATile a2 = p ^ a1;
 
-  BOOST_CHECK_EQUAL(a2.size()[0], 4); // check that the dimensions were correctly permuted.
-  BOOST_CHECK_EQUAL(a2.size()[1], 2);
-  BOOST_CHECK_EQUAL(a2.size()[2], 3);
+  BOOST_CHECK_EQUAL(a2.size()[0], 4u); // check that the dimensions were correctly permuted.
+  BOOST_CHECK_EQUAL(a2.size()[1], 2u);
+  BOOST_CHECK_EQUAL(a2.size()[2], 3u);
   BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
 
   ATile a3(s1, v, val.begin(), val.end());
   a3 ^= p;
-  BOOST_CHECK_EQUAL(a3.size()[0], 4); // check that the dimensions were correctly permuted.
-  BOOST_CHECK_EQUAL(a3.size()[1], 2);
-  BOOST_CHECK_EQUAL(a3.size()[2], 3);
+  BOOST_CHECK_EQUAL(a3.size()[0], 4u); // check that the dimensions were correctly permuted.
+  BOOST_CHECK_EQUAL(a3.size()[1], 2u);
+  BOOST_CHECK_EQUAL(a3.size()[2], 3u);
   BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
 }
 
