@@ -49,9 +49,9 @@ namespace TiledArray {
       typedef std::size_t ordinal_type;
       typedef std::size_t volume_type;
       typedef typename boost::remove_const<T>::type value_type;
-      typedef typename TiledArray::detail::mirror_const<T, value_type>::reference reference_type;
+      typedef typename detail::add_const<boost::is_const<T>::value, value_type>::type& reference_type;
       typedef const value_type & const_reference_type;
-      typedef typename TiledArray::detail::mirror_const<T, value_type>::pointer ptr_type;
+      typedef typename detail::add_const<boost::is_const<T>::value, value_type>::type* ptr_type;
       typedef const value_type * const_ptr_type;
       typedef std::vector<std::size_t> size_array;
       typedef ptr_type iterator;

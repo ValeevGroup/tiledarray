@@ -24,7 +24,7 @@ namespace TiledArray {
     typedef TileSlice<T> TileSlice_;
     typedef typename boost::remove_const<T>::type tile_type;
     typedef typename tile_type::value_type value_type;
-    typedef typename detail::mirror_const<T, value_type>::reference reference_type;
+    typedef typename detail::add_const<boost::is_const<T>::value, value_type>::type& reference_type;
     typedef const value_type& const_reference_type;
     typedef typename tile_type::coordinate_system coordinate_system;
     typedef typename tile_type::range_type range_type;

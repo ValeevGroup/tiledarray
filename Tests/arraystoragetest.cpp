@@ -306,17 +306,16 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
     for(data_array::iterator it = data.begin(); it != data.end(); ++it) {
       it->first = *r_it++;
       it->second.resize(24, ++val);
+      if(a.is_local(it->first))
+        a.insert(*it);
     }
 
   }
 
   double sum_first(const DistArray3& a) {
     double sum = 0.0;
-    for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it) {
-//      std::cout << "P" << MPI::COMM_WORLD.Get_rank() << ": " << it->second.front() << "\n";
+    for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it)
       sum += it->second.front();
-    }
-//    std::cout << "P" << MPI::COMM_WORLD.Get_rank() << ": " << local << "\n";
 
     world.mpi.comm().Allreduce(MPI_IN_PLACE, &sum, 1, MPI::DOUBLE, MPI::SUM);
 
@@ -324,13 +323,7 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
   }
 
   std::size_t tile_count(const DistArray3& a) {
-    // ToDo: Fix madness so it can use standard iterator functions
-//    int n = std::distance(a.begin(), a.end());
-    // TODO: use DistributedContainer::size() (if exists)
-    int n = 0;
-    for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it)
-      ++n;
-
+    int n = std::distance(a.begin(), a.end());
     world.mpi.comm().Allreduce(MPI_IN_PLACE, &n, 1, MPI::INT, MPI::SUM);
 
     return n;
@@ -343,16 +336,17 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
 
 BOOST_FIXTURE_TEST_SUITE( distributed_storage_suite, DistributedArrayStorageFixture )
 
-BOOST_AUTO_TEST_CASE( accessor )
+BOOST_AUTO_TEST_CASE( iterator )
 {
-
+  BOOST_CHECK_CLOSE(sum_first(a), 300.0, 0.0001); // check that all the expected tiles are present
+  BOOST_CHECK_EQUAL(tile_count(a), 24);
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(DistArray3 a1(world, s));
   DistArray3 a1(world, s);
-  BOOST_CHECK_EQUAL(a1.begin(), a1.end()); // Check that the array is empty
+  BOOST_CHECK(a1.begin() == a1.end()); // Check that the array is empty
 
   BOOST_REQUIRE_NO_THROW(DistArray3 a2(world, s, data.begin(), data.end()));
   DistArray3 a2(world, s, data.begin(), data.end());
@@ -363,6 +357,22 @@ BOOST_AUTO_TEST_CASE( constructor )
   DistArray3 a3(a2);
   BOOST_CHECK_CLOSE(sum_first(a3), 300.0, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a3), 24u);
+}
+
+BOOST_AUTO_TEST_CASE( swap )
+{
+  DistArray3 a1(a);
+  DistArray3 a2(world, s);
+
+  BOOST_CHECK_CLOSE(sum_first(a1), 300.0, 0.0001); // verify initial conditions
+  BOOST_CHECK_EQUAL(tile_count(a1), 24);
+  BOOST_CHECK(a2.begin() == a2.end());
+  a1.swap(a2);
+
+  BOOST_CHECK_CLOSE(sum_first(a2), 300.0, 0.0001); // check that the arrays were
+  BOOST_CHECK_EQUAL(tile_count(a2), 24);           // swapped correctly.
+  BOOST_CHECK(a1.begin() == a1.end());
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

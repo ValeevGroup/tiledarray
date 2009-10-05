@@ -32,7 +32,7 @@ namespace TiledArray {
     typedef typename range_type::const_iterator index_iterator;
     typedef typename tile_type::const_iterator const_iterator;
     typedef typename tile_type::iterator iterator;
-    typedef typename detail::mirror_const<T,value_type>::reference reference_type;
+    typedef typename detail::add_const<boost::is_const<T>::value, value_type>::type& reference_type;
     typedef const value_type & const_reference_type;
 
     static unsigned int dim() { return DIM; }
