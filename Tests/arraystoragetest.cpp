@@ -1,3 +1,4 @@
+#include "utility.h"
 #include "array_storage.h"
 #include "coordinates.h"
 #include "iterationtest.h"
@@ -26,14 +27,14 @@ struct ArrayDimFixture {
 
     v = 24;
 
-    a.resize(s);
+    d.resize(s);
   }
   ~ArrayDimFixture() { }
 
   size_array s;
   size_array w;
   std::size_t v;
-  ArrayDim3 a;
+  ArrayDim3 d;
 };
 
 
@@ -41,16 +42,16 @@ BOOST_FIXTURE_TEST_SUITE( array_dim_suite, ArrayDimFixture )
 
 BOOST_AUTO_TEST_CASE( access )
 {
-  BOOST_CHECK_EQUAL( a.volume(), v); // check volume calculation
-  BOOST_CHECK_EQUAL( a.size(), s);    // check the size accessor
-  BOOST_CHECK_EQUAL( a.weight(), w);  // check weight accessor
+  BOOST_CHECK_EQUAL( d.volume(), v); // check volume calculation
+  BOOST_CHECK_EQUAL( d.size(), s);    // check the size accessor
+  BOOST_CHECK_EQUAL( d.weight(), w);  // check weight accessor
 }
 
 BOOST_AUTO_TEST_CASE( includes )
 {
-  Range<std::size_t, 3> b(s);
-  for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it)
-    BOOST_CHECK(a.includes( *it )); // check that all the expected indexes are
+  Range<std::size_t, 3> r(s);
+  for(Range<std::size_t, 3>::const_iterator it = r.begin(); it != r.end(); ++it)
+    BOOST_CHECK(d.includes( *it )); // check that all the expected indexes are
                                      // included.
 
   std::vector<index_type> p;
@@ -60,42 +61,42 @@ BOOST_AUTO_TEST_CASE( includes )
   p.push_back(index_type(2,3,4));
 
   for(std::vector<index_type>::const_iterator it = p.begin(); it != p.end(); ++it)
-    BOOST_CHECK(! a.includes(*it));  // Check that elements outside the range
+    BOOST_CHECK(! d.includes(*it));  // Check that elements outside the range
                                      // are not included.
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(ArrayDim3 a0); // Check default construction
-  ArrayDim3 a0;
-  BOOST_CHECK_EQUAL(a0.volume(), 0u);        // check for zero size with default
+  BOOST_REQUIRE_NO_THROW(ArrayDim3 d0); // Check default construction
+  ArrayDim3 d0;
+  BOOST_CHECK_EQUAL(d0.volume(), 0u);        // check for zero size with default
   ArrayDim3::size_array s0 = {{0,0,0}}; // construction.
-  BOOST_CHECK_EQUAL(a0.size(), s0);
-  BOOST_CHECK_EQUAL(a0.weight(), s0);
+  BOOST_CHECK_EQUAL(d0.size(), s0);
+  BOOST_CHECK_EQUAL(d0.weight(), s0);
 
-  BOOST_REQUIRE_NO_THROW(ArrayDim3 a1(s)); // check size constructor
-  ArrayDim3 a1(s);
-  BOOST_CHECK_EQUAL(a1.volume(), v);  // check that a has correct va
-  BOOST_CHECK_EQUAL(a1.size(), s);
-  BOOST_CHECK_EQUAL(a1.weight(), w);
+  BOOST_REQUIRE_NO_THROW(ArrayDim3 d1(s)); // check size constructor
+  ArrayDim3 d1(s);
+  BOOST_CHECK_EQUAL(d1.volume(), v);  // check that a has correct va
+  BOOST_CHECK_EQUAL(d1.size(), s);
+  BOOST_CHECK_EQUAL(d1.weight(), w);
 
-  BOOST_REQUIRE_NO_THROW(ArrayDim3 a2(a));
-  ArrayDim3 a2(a);
-  BOOST_CHECK_EQUAL(a2.volume(), a.volume());
-  BOOST_CHECK_EQUAL(a2.size(), a.size());
-  BOOST_CHECK_EQUAL(a2.weight(), a.weight());
+  BOOST_REQUIRE_NO_THROW(ArrayDim3 d2(d));
+  ArrayDim3 d2(d);
+  BOOST_CHECK_EQUAL(d2.volume(), d.volume());
+  BOOST_CHECK_EQUAL(d2.size(), d.size());
+  BOOST_CHECK_EQUAL(d2.weight(), d.weight());
 }
 
 BOOST_AUTO_TEST_CASE( ordinal )
 {
-  Range<std::size_t, 3> b(s);
+  Range<std::size_t, 3> r(s);
   ArrayDim3::ordinal_type o = 0;
-  for(Range<std::size_t, 3>::const_iterator it = b.begin(); it != b.end(); ++it, ++o)
-    BOOST_CHECK_EQUAL(a.ordinal( *it ), o); // check ordinal calculation and order
+  for(Range<std::size_t, 3>::const_iterator it = r.begin(); it != r.end(); ++it, ++o)
+    BOOST_CHECK_EQUAL(d.ordinal( *it ), o); // check ordinal calculation and order
 
 #ifdef TA_EXCEPTION_ERROR
   index_type p(2,3,4);
-  BOOST_CHECK_THROW(a.ordinal(p), std::out_of_range); // check for throw with
+  BOOST_CHECK_THROW(d.ordinal(p), std::out_of_range); // check for throw with
                                                   // an out of range element.
 #endif
 }
@@ -105,21 +106,21 @@ BOOST_AUTO_TEST_CASE( ordinal_fortran )
   typedef detail::ArrayDim<std::size_t, 3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > FArrayDim3;
   typedef Range<std::size_t, 3, LevelTag<0>, CoordinateSystem<3, detail::increasing_dimension_order> > range_type;
 
-  FArrayDim3 a1(s);
+  FArrayDim3 d1(s);
   range_type r(s);
   FArrayDim3::ordinal_type o = 0;
   for(range_type::const_iterator it = r.begin(); it != r.end(); ++it, ++o)
-    BOOST_CHECK_EQUAL(a1.ordinal( *it ), o); // check ordinal calculation and
+    BOOST_CHECK_EQUAL(d1.ordinal( *it ), o); // check ordinal calculation and
                                              // order for fortran ordering.
 }
 
 BOOST_AUTO_TEST_CASE( resize )
 {
-  ArrayDim3 a1;
-  a1.resize(s);
-  BOOST_CHECK_EQUAL(a1.volume(), v); // check for correct resizing.
-  BOOST_CHECK_EQUAL(a1.size(), s);
-  BOOST_CHECK_EQUAL(a1.weight(), w);
+  ArrayDim3 d1;
+  d1.resize(s);
+  BOOST_CHECK_EQUAL(d1.volume(), v); // check for correct resizing.
+  BOOST_CHECK_EQUAL(d1.size(), s);
+  BOOST_CHECK_EQUAL(d1.weight(), w);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -165,11 +166,18 @@ struct DenseArrayStorageFixture : public ArrayDimFixture {
 
 BOOST_FIXTURE_TEST_SUITE( dense_storage_suite, DenseArrayStorageFixture )
 
+BOOST_AUTO_TEST_CASE( array_dims )
+{
+  BOOST_CHECK_EQUAL(da3.size(), s);
+  BOOST_CHECK_EQUAL(da3.weight(), w);
+  BOOST_CHECK_EQUAL(da3.volume(), v);
+}
+
 BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(DenseArray3 a0); // check default constructor
   DenseArray3 a0;
-  BOOST_CHECK_EQUAL(a0.volume(), 0u); // check for zero size.
+  BOOST_CHECK_EQUAL(a0.volume(), 0ul); // check for zero size.
   BOOST_CHECK_THROW(a0.at(0), std::out_of_range); // check for data access error.
 
   BOOST_REQUIRE_NO_THROW(DenseArray3 a1(s, 1)); // check size constructor w/ initial value.
@@ -299,7 +307,7 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
   typedef boost::array<std::pair<DistArray3::index_type, data_type>, 24> data_array;
   typedef Range<std::size_t, 3, LevelTag<1>, CoordinateSystem<3> > range_type;
 
-  DistributedArrayStorageFixture() : world(MPI::COMM_WORLD), a(world, s) {
+  DistributedArrayStorageFixture() : r(s), world(MPI::COMM_WORLD), a(world, s) {
     double val = 0.0;
     range_type r(index_type(0,0,0), index_type(2,3,4));
     range_type::const_iterator r_it = r.begin();
@@ -323,23 +331,88 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
   }
 
   std::size_t tile_count(const DistArray3& a) {
-    int n = std::distance(a.begin(), a.end());
+    int n = static_cast<int>(a.volume(true));
     world.mpi.comm().Allreduce(MPI_IN_PLACE, &n, 1, MPI::INT, MPI::SUM);
 
     return n;
   }
 
+  range_type r;
   data_array data;
   madness::World world;
   DistArray3 a;
 }; // struct DistributedArrayStorageFixture
 
+template<typename D>
+struct dim_ord : public std::unary_function<typename D::index_type, typename D::ordinal_type> {
+  dim_ord(const D& d) : d_(d) { }
+
+  typename D::ordinal_type operator()(const typename D::index_type& i) { return d_.ord(i); }
+private:
+  const D d_;
+};
+
 BOOST_FIXTURE_TEST_SUITE( distributed_storage_suite, DistributedArrayStorageFixture )
+
+BOOST_AUTO_TEST_CASE( array_dims )
+{
+  BOOST_CHECK_EQUAL(a.size(), s);
+  BOOST_CHECK_EQUAL(a.weight(), w);
+  BOOST_CHECK_EQUAL(a.volume(), v);
+  BOOST_CHECK(a.includes(r.start())); // check index includes check
+  BOOST_CHECK(a.includes(index_type(1,2,3)));
+  BOOST_CHECK(!a.includes(r.finish()));
+}
 
 BOOST_AUTO_TEST_CASE( iterator )
 {
-  BOOST_CHECK_CLOSE(sum_first(a), 300.0, 0.0001); // check that all the expected tiles are present
-  BOOST_CHECK_EQUAL(tile_count(a), 24);
+/*
+  detail::binary_transform<std::equal_to<ArrayDim3::ordinal_type>,
+      detail::unary_transform<dim_ord<ArrayDim3>, detail::pair_first<DistArray3::iterator::value_type> >,
+      detail::pair_first<data_array::const_iterator::value_type> >
+  comp = make_binary_transform(std::equal_to<ArrayDim3::ordinal_type>(),
+      make_unary_transform(dim_ord<ArrayDim3>(), detail::pair_first<DistArray3::iterator::value_type>()),
+      detail::pair_first<data_array::const_iterator::value_type>());
+
+  for(DistArray3::iterator it = a.begin(); it != a.end(); ++it) { // check non-const iterator functionality
+    data_array::const_iterator d_it = std::find_if(data.begin(), data.end(),
+        std::bind2nd(
+          make_binary_transform(
+            std::equal_to<ArrayDim3::ordinal_type>(),
+            detail::make_unary_transform(
+              dim_ord<ArrayDim3>(d),
+              detail::pair_first<DistArray3::iterator::value_type>()
+            ),
+            detail::pair_first<data_array::value_type>()
+          ),
+          *it
+        )
+    );
+
+    BOOST_CHECK(d_it != data.end());
+    BOOST_CHECK_EQUAL(d_it->second.front(), it->second.front());
+
+  }
+
+  for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it) { // chekc const/non-const iterator functionality
+    for(data_array::const_iterator d_it = data.begin(); d_it != data.end(); ++it)
+      if(it->first == d_it->first)
+        break;
+
+    BOOST_CHECK_EQUAL(it->first, d_it->first);
+    BOOST_CHECK_EQUAL(it->second.front(), d_it->second.front());
+  }
+
+  const DistArray3& a_ref = a;
+  for(DistArray3::const_iterator it = a_ref.begin(); it != a_ref.end(); ++it) { // check const iterator functionality
+    for(data_array::const_iterator d_it = data.begin(); d_it != data.end(); ++it)
+      if(it->first == d_it->first)
+        break;
+
+    BOOST_CHECK_EQUAL(it->first, d_it->first);
+    BOOST_CHECK_EQUAL(it->second.front(), d_it->second.front());
+  }
+  */
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -349,14 +422,107 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK(a1.begin() == a1.end()); // Check that the array is empty
 
   BOOST_REQUIRE_NO_THROW(DistArray3 a2(world, s, data.begin(), data.end()));
-  DistArray3 a2(world, s, data.begin(), data.end());
+  DistArray3 a2(world, s, data.begin(), data.end()); // check construction of
   BOOST_CHECK_CLOSE(sum_first(a2), 300.0, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a2), 24u);
 
   BOOST_REQUIRE_NO_THROW(DistArray3 a3(a2));
   DistArray3 a3(a2);
   BOOST_CHECK_CLOSE(sum_first(a3), 300.0, 0.0001);
-  BOOST_CHECK_EQUAL(tile_count(a3), 24u);
+  BOOST_CHECK_EQUAL(tile_count(a3), 24ul);
+}
+
+BOOST_AUTO_TEST_CASE( insert_erase )
+{
+  DistArray3 a1(world, s);
+  std::size_t n = 0ul;
+  double s = 0.0;
+
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check insert of pairs
+    BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
+    BOOST_CHECK_EQUAL(tile_count(a1), n);
+    if(a1.is_local(it->first))
+      a1.insert(*it);
+    ++n;
+    s += it->second.front();
+  }
+
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check erasure of element
+    BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
+    BOOST_CHECK_EQUAL(tile_count(a1), n);
+    if(a1.is_local(it->first))
+      a1.erase(it->first);
+    --n;
+    s -= it->second.front();
+  }
+
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check insert of element at index
+    BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
+    BOOST_CHECK_EQUAL(tile_count(a1), n);
+    if(a1.is_local(it->first))
+      a1.insert(it->first, it->second);
+    ++n;
+    s += it->second.front();
+  }
+
+  BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a1), n);
+
+  a1.erase(a1.begin(), a1.end()); // check erasing everything with iterators
+  world.gop.fence();
+
+  s = 0.0;
+  n = 0ul;
+
+  BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a1), n);
+
+
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check communicating insert
+    BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
+    BOOST_CHECK_EQUAL(tile_count(a1), n);
+
+    if(world.mpi.comm().rank() == 0)
+      a1.insert(*it);
+    world.gop.fence();
+
+    ++n;
+    s += it->second.front();
+  }
+
+  a1.erase(a1.begin(), a1.end());
+  world.gop.fence();
+  if(world.mpi.comm().rank() == 0)  // check communicating iterator insert.
+    a1.insert(data.begin(), data.end());
+  world.gop.fence();
+  BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a1), n);
+}
+
+BOOST_AUTO_TEST_CASE( find )
+{
+  // TODO: This stuff is causing runtime errors. Why?
+/*
+  typedef madness::Future<DistArray3::iterator> future_iter;
+
+  if(world.mpi.comm().rank() == 0) {
+    DistArray3::ordinal_type i = 0; // check find function with ordinal index
+    for(; i < a.volume(); ++i) {
+      future_iter v = a.find(i);
+      BOOST_CHECK_CLOSE(v.get()->second.front(), data[i].second.front(), 0.0001);
+    }
+  }
+  world.gop.fence();
+
+  if(world.mpi.comm().rank() == 0) {
+    DistArray3::ordinal_type i = 0;
+    for(range_type::const_iterator it = r.begin(); it != r.end(); ++it, ++i) {
+      future_iter v = a.find(*it);  // check find function with coordinate index
+      BOOST_CHECK_CLOSE(v.get()->second.front(), data[i].second.front(), 0.0001);
+    }
+  }
+  world.gop.fence();
+*/
 }
 
 BOOST_AUTO_TEST_CASE( swap )
@@ -365,14 +531,48 @@ BOOST_AUTO_TEST_CASE( swap )
   DistArray3 a2(world, s);
 
   BOOST_CHECK_CLOSE(sum_first(a1), 300.0, 0.0001); // verify initial conditions
-  BOOST_CHECK_EQUAL(tile_count(a1), 24);
+  BOOST_CHECK_EQUAL(tile_count(a1), 24ul);
   BOOST_CHECK(a2.begin() == a2.end());
   a1.swap(a2);
 
   BOOST_CHECK_CLOSE(sum_first(a2), 300.0, 0.0001); // check that the arrays were
-  BOOST_CHECK_EQUAL(tile_count(a2), 24);           // swapped correctly.
+  BOOST_CHECK_EQUAL(tile_count(a2), 24ul);           // swapped correctly.
   BOOST_CHECK(a1.begin() == a1.end());
 
+}
+
+BOOST_AUTO_TEST_CASE( resize )
+{
+  size_array s_big = {{ 4, 4, 4 }};
+  size_array w_big = {{ 16, 4, 1}};
+  DistArray3::ordinal_type v_big = 64;
+  size_array s_small = {{ 2, 2, 2 }};
+  size_array w_small = {{ 4, 2, 1 }};
+  DistArray3::ordinal_type v_small = 8;
+
+  range_type r_big(s_big);
+  range_type r_small(s_small);
+
+  DistArray3 a1(a);
+  DistArray3 a2(a);
+
+  a1.resize(s_big);   // Check resize for bigger resulting array
+  BOOST_CHECK_EQUAL(a1.size(), s_big);
+  BOOST_CHECK_EQUAL(a1.weight(), w_big);
+  BOOST_CHECK_EQUAL(a1.volume(), v_big);
+  BOOST_CHECK_CLOSE(sum_first(a1), 300.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a1), 24ul);
+  BOOST_CHECK(a1.includes(index_type(3,3,3)));  // check that an element can be added
+  a1.insert(index_type(3,3,3), data[23].second);// to a new location after resize
+  BOOST_CHECK_CLOSE(sum_first(a1), 324.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a1), 25ul);
+
+  a2.resize(s_small); // Check resize for a smaller resulting array
+  BOOST_CHECK_EQUAL(a2.size(), s_small);
+  BOOST_CHECK_EQUAL(a2.weight(), w_small);
+  BOOST_CHECK_EQUAL(a2.volume(), v_small);
+  BOOST_CHECK_CLOSE(sum_first(a2), 76.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a2), 8ul);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

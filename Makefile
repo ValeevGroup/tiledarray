@@ -16,10 +16,10 @@ CXXDEPEND = $(CXX)
 CXXDEPENDSUF = none
 CXXDEPENDFLAGS = -M
 CXX = $(MPICXX)
-TESTSRC = TiledArrayTest.cpp permutationtest.cpp coordinatestest.cpp rangetest.cpp \
-	tiledrange1test.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
-	variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp \
-	annotatedtiletest.cpp tilemathtest.cpp arraytest.cpp algorithmtest.cpp
+TESTSRC = TiledArrayTest.cpp permutationtest.cpp algorithmtest.cpp coordinatestest.cpp \
+	rangetest.cpp tiledrange1test.cpp arraystoragetest.cpp tiledrangetest.cpp \
+	shapetest.cpp variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp \
+	annotatedtiletest.cpp tilemathtest.cpp arraytest.cpp 
 OBJS = $(TESTSRC:%.cpp=%.$(OBJSUF))
 
 TARGET =	TiledArrayTest
@@ -33,7 +33,7 @@ all:	$(TARGET)
 check: check_serial check_parallel
 
 check_serial: $(TARGET)
-	./TiledArrayTest --run_test="permutation_suite,array_coordinate_suite,range_suite,range1_suite,array_dim_suite,dense_storage_suite,tiled_range_suite,shape_suite,variable_list_suite,tile_suite,tile_slice_suite,packed_tile_suite,annotated_tile_suite,tile_math_suite"
+	./TiledArrayTest --run_test="permutation_suite,algorithm_suite,array_coordinate_suite,range_suite,range1_suite,array_dim_suite,dense_storage_suite,tiled_range_suite,shape_suite,variable_list_suite,tile_suite,tile_slice_suite,packed_tile_suite,annotated_tile_suite,tile_math_suite"
 	
 check_parallel: $(TARGET)
 	./TiledArrayTest --run_test="distributed_storage_suite"

@@ -176,6 +176,18 @@ namespace TiledArray {
       ordinal_type n_;
     }; // class ArrayDim
 
+    template <typename Index, typename Dim>
+    struct ArrayHash : public std::unary_function<Index, madness::hashT> {
+      ArrayHash(const Dim& d) : dim_(d) {}
+      madness::hashT operator()(const Index& i) const {
+        const typename Dim::ordinal_type o = dim_.ord(i);
+        return madness::hash(o);
+      }
+    private:
+      ArrayHash();
+      Dim dim_;
+    };
+
   } // namespace detail
 
   /// DenseArrayStorage stores data for a dense N-dimensional Array. Data is
@@ -478,8 +490,9 @@ namespace TiledArray {
     typedef typename array_dim_type::size_array size_array;
     typedef CS coordinate_system;
     typedef T value_type;
-    typedef ordinal_type key_type;
-    typedef madness::WorldContainer<key_type,value_type> data_container;
+    typedef index_type key_type;
+    typedef detail::ArrayHash<index_type, array_dim_type> hasher_type;
+    typedef madness::WorldContainer<key_type, value_type, hasher_type > data_container;
 
     typedef typename data_container::iterator iterator;
     typedef typename data_container::const_iterator const_iterator;
@@ -493,7 +506,7 @@ namespace TiledArray {
     /// Construct an array with a definite size. All data elements are
     /// uninitialized. No communication occurs.
     DistributedArrayStorage(madness::World& world, const size_array& size) :
-        dim_(size), data_(world)
+        dim_(size), data_(world, true, hasher_type(dim_))
     { }
 
     /// Construct an array with a definite size and initializes the data.
@@ -507,8 +520,7 @@ namespace TiledArray {
     /// want to set store_local to false when you are storing data where you do
     /// not know where the data will be stored.  InIter type must be an input
     /// iterator or compatible type and dereference to a
-    /// std::pair<ordinal_type,value_type> or std::pair<index_type,value_type>
-    /// type.
+    /// std::pair<index_type,value_type> type.
     ///
     /// Caution: If you set store_local to false, make sure you do not assign
     /// duplicated values in different processes. If you do not excess
@@ -517,7 +529,7 @@ namespace TiledArray {
     /// predict which one will be the final value.
     template <typename InIter>
     DistributedArrayStorage(madness::World& world, const size_array& size, InIter first, InIter last) :
-        dim_(size), data_(world)
+        dim_(size), data_(world, true, hasher_type(dim_))
     {
       for(;first != last; ++first)
         if(is_local(first->first))
@@ -536,9 +548,7 @@ namespace TiledArray {
 
     /// Create a shallow copy of the element data. No communication.
     DistributedArrayStorage_& operator =(const DistributedArrayStorage& other) {
-      dim_.size_ = other.size_;
-      dim_.weight_ = other.weight_;
-      dim_.n_ = other.n_;
+      dim_ = other.dim_;
       data_ = other.data_; // shallow copy
       data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
       return *this;
@@ -553,13 +563,11 @@ namespace TiledArray {
     /// the element is already present, the previous element will be destroyed.
     /// If the element is not in the range of for the array, a std::out_of_range
     /// exception will be thrown.
-    template<typename index>
-    void insert(const index& i, const_reference_type v) {
-      const ordinal_type i_ord = dim_.ord(i);
-      TA_ASSERT(dim_.includes(i_ord),
+    void insert(const index_type& i, const_reference_type v) {
+      TA_ASSERT(dim_.includes(i),
           std::out_of_range("DistributedArrayStorage::insert(...): The index is not in range."));
 
-      data_.replace(i_ord, v);
+      data_.replace(i, v);
     }
 
     /// Inserts an element into the array
@@ -570,8 +578,7 @@ namespace TiledArray {
     /// the element is already present, the previous element will be destroyed.
     /// If the element is not in the range of for the array, a std::out_of_range
     /// exception will be thrown.
-    template<typename index>
-    void insert(const std::pair<index, value_type>& e) {
+    void insert(const std::pair<index_type, value_type>& e) {
       insert(e.first, e.second);
     }
 
@@ -585,16 +592,15 @@ namespace TiledArray {
 
     /// This function removes the element specified by the index, and performs a
     /// non-blocking communication for non-local elements.
-    template<typename index>
-    void erase(const index& i) {
-      const ordinal_type i_ord = dim_.ord(i);
-      data_.erase(i_ord);
+    void erase(const index_type& i) {
+      data_.erase(i);
     }
 
     /// Erase the range of iterators
 
     /// The iterator range must point to a list of pairs where std::pair::first
-    /// is the index to be deleted.
+    /// is the index to be deleted. It is intended to be used with a range of
+    /// element iterators.
     template<typename InIter>
     void erase(InIter first, InIter last) {
       for(; first != last; ++first)
@@ -624,9 +630,7 @@ namespace TiledArray {
       typedef typename range_type::const_iterator index_iterator;
 
       /// Construct temporary container.
-      range_type original_blk(this->size_);
-      range_type new_blk(size);
-      range_type common_blk( new_blk & original_blk);
+      range_type common_rng(range_type(dim_.size_) & range_type(size));
       DistributedArrayStorage temp(data_.get_world(), size);
 
       // Iterate over all indices in the array. For each element d_.find() is
@@ -634,14 +638,13 @@ namespace TiledArray {
       // element is written into the temp array, otherwise it is skipped. When
       // the data is written, non-blocking communication may occur (when the new
       // location is not local).
-      for(typename range_type::const_iterator it = common_blk.begin(); it != common_blk.end(); ++it) {
+      for(typename range_type::const_iterator it = common_rng.begin(); it != common_rng.end(); ++it) {
         typename data_container::const_accessor a;
-        if( data_.find(a, ordinal( *it )))
-          temp.data_.replace(temp.ordinal( *it ), a->second);
+        if( data_.find(a, *it))
+          temp.data_.replace(*it, a->second);
       }
 
-      data_.get_world().gop.fence(); // it is now safe to write.
-      data_ = temp.data_; // write all data, i.e do a shallow copy.
+      swap(temp);
       data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
       return *this;
     }
@@ -655,16 +658,29 @@ namespace TiledArray {
     /// Returns a constant iterator to the end of the local data.
     const_iterator end() const { return data_.end(); }
 
+    /// Return the sizes of each dimension.
+    const size_array& size() const { return dim_.size(); }
+
+    /// Returns the dimension weights.
+
+    /// The dimension weights are used to calculate ordinal values and is useful
+    /// for determining array boundaries.
+    const size_array& weight() const { return dim_.weight(); }
+
+    /// Returns the number of elements in the array.
+    volume_type volume(bool local = false) const { return ( local ? data_.size() : dim_.volume() ); }
+
+    /// Returns true if the given index is included in the array.
+    bool includes(const index_type& i) const { return dim_.includes(i); }
+
     /// Returns a Future iterator to an element at index i.
 
     /// This function will return an iterator to the element specified by index
     /// i. If the element is not local the it will use non-blocking communication
     /// to retrieve the data. The future will be immediately available if the data
     /// is local. Valid types for Index are ordinal_type or index_type.
-    template <typename Index>
-    madness::Future<iterator> find(const Index& i) {
-      const ordinal_type i_ord = ord(i);
-      return data_.find(i_ord);
+    madness::Future<iterator> find(const index_type& i) {
+      return data_.find(i);
     }
 
     /// Returns a Future const_iterator to an element at index i.
@@ -674,10 +690,8 @@ namespace TiledArray {
     /// communication to retrieve the data. The future will be immediately
     /// available if the data is local. Valid types for Index are ordinal_type
     /// or index_type.
-    template <typename Index>
-    madness::Future<const_iterator> find(const Index& i) const {
-      const ordinal_type i_ord = ord(i);
-      return data_.find(i_ord);
+    madness::Future<const_iterator> find(const index_type& i) const {
+      return data_.find(i);
     }
 
     /// Returns a reference to local data element.
@@ -686,21 +700,13 @@ namespace TiledArray {
     /// std::out_of_range if i is not included in the array, and std::range_error
     /// if i is not a local element. Valid types for Index are ordinal_type or
     /// index_type.
-    template <typename Index>
-    accessor at(const Index& i) {
-      const ordinal_type i_ord = ord(i);
-      if(! includes(i_ord))
+    accessor at(const index_type& i) {
+      if(! includes(i))
         throw std::out_of_range("DistributedArrayStorage::at(const Index&): Element is not in range.");
-      if(! data_.is_local(i_ord))
+      if(! data_.is_local(i))
         throw std::range_error("DistributedArrayStorage::at(const Index&): Element is not stored locally.");
-      accessor t;
-      if(data_.find(t, i_ord)) {
-        data_.replace(i_ord,value_type());
-        if(data_.find(t, i_ord))
-          throw std::runtime_error("DistributedArrayStorage::at(const Index&): Unable to create element.");
-      }
 
-      return t;
+      return get(i);
     }
 
     /// Returns a reference to local data element.
@@ -709,26 +715,20 @@ namespace TiledArray {
     /// std::out_of_range if i is not included in the array, and std::range_error
     /// if i is not a local element. Valid types for Index are ordinal_type or
     /// index_type.
-    template <typename Index>
-    const_accessor at(const Index i) const {
-      const ordinal_type i_ord = ord(i);
-      if(! includes(i_ord))
+    const_accessor at(const index_type i) const {
+      if(! includes(i))
         throw std::out_of_range("template <typename Index> DistributedArrayStorage::at(const Index&) const: Element is not in range.");
-      if(! data_.is_local(i_ord))
+      if(! data_.is_local(i))
         throw std::range_error("template <typename Index> DistributedArrayStorage::at(const Index&) const: Element is not stored locally.");
-      const_accessor t;
-      bool local = data_.find(t, i_ord);
-      return t;
+
+      return get(i);
     }
 
     /// Element access using the ordinal index without error checking
     template <typename Index>
     accessor operator[](const Index& i) { // no throw for non-debug
 #ifdef NDEBUG
-      accessor t;
-      ordinal_type i_ord = ord(i);
-      d_.find(t, i_ord);
-      return t;
+      return get(i);
 #else
       return at(i);
 #endif
@@ -737,20 +737,19 @@ namespace TiledArray {
     /// Element access using the ordinal index without error checking
     template <typename Index>
     const_accessor operator[](const Index& i) const { // no throw for non-debug
-#ifdef NDEBUG
-      accessor t;
-      ordinal_type i_ord = ord(i);
-      d_.find(t, i_ord);
-      return t;
+#ifdef NDEBUGs
+      return get(i);
 #else
       return at(i);
 #endif
     }
 
-    template <typename Index>
-    bool is_local(const Index& i) const {
-      ordinal_type i_ord = dim_.ord(i);
-      return data_.is_local(i_ord);
+    /// Returns true if index i is stored locally.
+
+    /// Note: This function does not check for the presence of an element at
+    /// the given location.
+    bool is_local(const index_type& i) const {
+      return data_.is_local(i);
     }
 
     void swap(DistributedArrayStorage& other) {
@@ -763,6 +762,38 @@ namespace TiledArray {
     /// No default construction. We need to initialize the data container with
     /// a world object to have a valid object.
     DistributedArrayStorage();
+
+    /// Returns an accessor to the local element at index i.
+
+    /// This function will return an accessor to a local element at index i. If
+    /// the element does not exist, a new element will be created with the
+    /// default constructor.
+    accessor get(const index_type& i) {
+      accessor a;
+      if(data_.find(a, i)) {
+        data_.replace(i, value_type());
+        if(data_.find(a, i))
+          throw std::runtime_error("DistributedArrayStorage::at(const Index&): Unable to create element.");
+      }
+
+      return a;
+    }
+
+    /// Returns a const_accessor to the local element at index i.
+
+    /// This function will return a const_accessor to a local element at index
+    /// i. If the element does not exist, a new element will be created with the
+    /// default constructor.
+    const_accessor get(const index_type& i) const {
+      const_accessor a;
+      if(data_.find(a, i)) {
+        data_.replace(i, value_type());
+        if(data_.find(a, i))
+          throw std::runtime_error("DistributedArrayStorage::at(const Index&): Unable to create element.");
+      }
+
+      return a;
+    }
 
     array_dim_type dim_;
     data_container data_;

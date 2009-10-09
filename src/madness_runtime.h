@@ -26,7 +26,7 @@ namespace madness {
   class World;
   template <class Derived>
   class WorldObject;
-  template <typename keyT, typename valueT>
+  template <typename keyT, typename valueT, typename hashfunT>
   class WorldContainer;
 }
 

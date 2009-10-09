@@ -224,20 +224,6 @@ namespace TiledArray {
       return ! operator ==(v0, v1);
     }
 
-    template<typename T, typename U>
-    struct pair_second : public std::unary_function<std::pair<T,U>, U> {
-      const U& operator ()(const std::pair<T,U>& p) const {
-        return p.second;
-      }
-    };
-
-    template<typename T, typename U>
-    struct pair_first : public std::unary_function<std::pair<T,U>, T> {
-      const T& operator ()(const std::pair<T,U>& p) const {
-        return p.first;
-      }
-    };
-
     template<unsigned int DIM>
     VariableList operator ^(const ::TiledArray::Permutation<DIM>& p, const VariableList& v) {
       VariableList result;

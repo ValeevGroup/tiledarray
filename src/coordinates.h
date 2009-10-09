@@ -1,5 +1,5 @@
-#ifndef NUMERIC_H_
-#define NUMERIC_H_
+#ifndef TILEDARRAY_COORDINATES_H__INCLUDED
+#define TILEDARRAY_COORDINATES_H__INCLUDED
 
 #include <coordinate_system.h>
 #include <iosfwd>
@@ -439,4 +439,4 @@ namespace boost {
   }
 } // namespace boost
 
-#endif /*NUMERIC_H_*/
+#endif // TILEDARRAY_COORDINATES_H__INCLUDED
