@@ -10,34 +10,31 @@
 #define BOOST_TEST_MAIN Tiled Array Tests
 #include <boost/test/unit_test.hpp>
 //#include <boost/test/included/unit_test.hpp>
-#include <madness_runtime.h>
-#include <world/world.h>
+#include "madness_fixture.h"
 
-struct MpiFixture {
-  MpiFixture() {
-    madness::initialize(boost::unit_test::framework::master_test_suite().argc,
-        boost::unit_test::framework::master_test_suite().argv);
-  }
+MadnessFixture::MadnessFixture() {
+  madness::initialize(boost::unit_test::framework::master_test_suite().argc,
+      boost::unit_test::framework::master_test_suite().argv);
 
-  ~MpiFixture() {
-    madness::finalize();
-  }
-};
+  if(!world)
+    world = new madness::World(MPI::COMM_WORLD);
+  world->args(boost::unit_test::framework::master_test_suite().argc,
+      boost::unit_test::framework::master_test_suite().argv);
 
-struct MadnessFixture : public MpiFixture {
-  MadnessFixture() : world(MPI::COMM_WORLD) {
-    world.args(boost::unit_test::framework::master_test_suite().argc,
-        boost::unit_test::framework::master_test_suite().argv);
+  world->gop.fence();
+}
 
-    world.gop.fence();
-  }
+MadnessFixture::~MadnessFixture() {
+  world->gop.fence();
 
-  ~MadnessFixture() {
-    world.gop.fence();
-  }
+  if(world)
+    delete world;
+  world = NULL;
+  madness::finalize();
+}
 
-  madness::World world;
-};
+madness::World* MadnessFixture::world = NULL;
+
 
 // This line will initialize mpi and madness.
 BOOST_GLOBAL_FIXTURE( MadnessFixture );
