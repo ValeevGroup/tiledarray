@@ -355,7 +355,7 @@ private:
 };
 
 BOOST_FIXTURE_TEST_SUITE( distributed_storage_suite, DistributedArrayStorageFixture )
-
+/*
 BOOST_AUTO_TEST_CASE( array_dims )
 {
   BOOST_CHECK_EQUAL(a.size(), s);
@@ -399,12 +399,12 @@ BOOST_AUTO_TEST_CASE( iterator )
 
 BOOST_AUTO_TEST_CASE( random_access )
 {
-  /*
-  for(range_type::const_iterator it = r.begin(); it != r.end(); ++it) {
-    if(a.is_local(*it))
-      BOOST_CHECK_EQUAL(a.at(*it)->second.front(), data.at(d.ord(*it)).second.front());
-  }
-  */
+
+//  for(range_type::const_iterator it = r.begin(); it != r.end(); ++it) {
+//    if(a.is_local(*it))
+//      BOOST_CHECK_EQUAL(a.at(*it)->second.front(), data.at(d.ord(*it)).second.front());
+//  }
+
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -427,7 +427,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 BOOST_AUTO_TEST_CASE( insert_erase )
 {
   // TODO: This stuff is causing a runtime error. Why?
-/*
+
   DistArray3 a1(world, s);
   std::size_t n = 0ul;
   double s = 0.0;
@@ -491,13 +491,13 @@ BOOST_AUTO_TEST_CASE( insert_erase )
   world.gop.fence();
   BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a1), n);
-*/
-}
 
+}
+*/
 BOOST_AUTO_TEST_CASE( find )
 {
   // TODO: This stuff is causing runtime errors. Why?
-/*
+//  world.gop.fence();
   typedef madness::Future<DistArray3::iterator> future_iter;
 
   if(world.mpi.comm().rank() == 0) {
@@ -508,9 +508,9 @@ BOOST_AUTO_TEST_CASE( find )
     }
   }
   world.gop.fence();
-*/
-}
 
+}
+/*
 BOOST_AUTO_TEST_CASE( swap )
 {
   DistArray3 a1(a);
@@ -559,5 +559,5 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_CLOSE(sum_first(a2), 76.0, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a2), 8ul);
 }
-
+*/
 BOOST_AUTO_TEST_SUITE_END()
