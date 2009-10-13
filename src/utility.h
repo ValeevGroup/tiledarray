@@ -23,7 +23,7 @@ namespace TiledArray {
 
     template<typename T>
     struct null_func : public std::unary_function<T,T> {
-      const T& operator()(const T& t) { return t; }
+      const T& operator()(const T& t) const { return t; }
     };
 
     template<typename Op, typename F = null_func<typename Op::argument_type> >
