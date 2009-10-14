@@ -2,6 +2,7 @@
 #define TA_ARRAY_UTIL_H__INCLUDED
 
 #include <boost/array.hpp>
+#include <iosfwd>
 //#include <numeric>
 
 namespace TiledArray {
@@ -26,6 +27,13 @@ namespace TiledArray {
 //      return std::accumulate(a.begin(), a.end(), T(1), std::multiplies<T>());
     }
 
+    template <typename InIter>
+    void print_array(std::ostream& output, InIter first, InIter last) {
+      if(first != last)
+        output << *first++;
+      for(; first != last; ++first)
+        output << ", " << *first;
+    }
   } // namespace detail
 } // namespace TiledArray
 

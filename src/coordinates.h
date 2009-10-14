@@ -2,7 +2,7 @@
 #define TILEDARRAY_COORDINATES_H__INCLUDED
 
 #include <coordinate_system.h>
-#include <iosfwd>
+#include <array_util.h>
 #include <boost/operators.hpp>
 #include <boost/array.hpp>
 
@@ -417,9 +417,8 @@ namespace TiledArray {
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<I,DIM,Tag,CS>& c) {
     output << "(";
-    for(unsigned int dim = 0; dim < DIM - 1; ++dim)
-      output << c[dim] << ", ";
-    output << c[DIM - 1] << ")";
+    detail::print_array(output, c.begin(), c.end());
+    output << ")";
     return output;
   }
 
@@ -432,9 +431,8 @@ namespace boost {
   template <typename T, std::size_t D>
   std::ostream& operator<<(std::ostream& output, const array<T,D>& a) {
     output << "{{";
-    for(std::size_t d = 0; d < D - 1; ++d)
-      output << a[d] << ", ";
-    output << a[D - 1] << "}}";
+    TiledArray::detail::print_array(output, a.begin(), a.end());
+    output << "}}";
     return output;
   }
 } // namespace boost
