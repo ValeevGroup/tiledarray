@@ -5,6 +5,7 @@
 #include <array_util.h>
 #include <boost/operators.hpp>
 #include <boost/array.hpp>
+#include <stdarg.h>
 
 namespace boost {
   template <typename T, std::size_t D>

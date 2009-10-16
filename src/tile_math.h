@@ -3,7 +3,7 @@
 
 #include <variable_list.h>
 #include <coordinate_system.h>
-#include <Eigen/core>
+#include <Eigen/Core>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 //#include <boost/tuple/tuple.hpp>

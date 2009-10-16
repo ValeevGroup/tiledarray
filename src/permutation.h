@@ -7,7 +7,7 @@
 //#include <iosfwd>
 //#include <algorithm>
 #include <vector>
-//#include <stdarg.h>
+#include <stdarg.h>
 //#include <iterator>
 //#include <functional>
 #include <numeric>

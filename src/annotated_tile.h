@@ -6,7 +6,7 @@
 #include <range.h>
 #include <type_traits.h>
 #include <boost/type_traits.hpp>
-#include <Eigen/core>
+#include <Eigen/Core>
 #include <vector>
 #include <numeric>
 #include <cstddef>

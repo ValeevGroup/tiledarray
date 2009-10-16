@@ -6,7 +6,7 @@
 #include <madness_runtime.h>
 #include <array_util.h>
 #include <permutation.h>
-#include <Eigen/core>
+#include <Eigen/Core>
 //#include <boost/array.hpp>
 //#include <boost/iterator/filter_iterator.hpp>
 #include <boost/scoped_array.hpp>
