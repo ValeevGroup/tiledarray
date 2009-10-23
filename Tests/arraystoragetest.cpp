@@ -320,6 +320,8 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
       if(a.is_local(it->first))
         a.insert(*it);
     }
+
+    world->gop.fence();
   }
 
   double sum_first(const DistArray3& a) {
@@ -356,7 +358,7 @@ private:
 };
 
 BOOST_FIXTURE_TEST_SUITE( distributed_storage_suite, DistributedArrayStorageFixture )
-/*
+
 BOOST_AUTO_TEST_CASE( array_dims )
 {
   BOOST_CHECK_EQUAL(a.size(), s);
@@ -410,12 +412,12 @@ BOOST_AUTO_TEST_CASE( random_access )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(DistArray3 a1(world, s));
-  DistArray3 a1(world, s);
+  BOOST_REQUIRE_NO_THROW(DistArray3 a1(*world, s));
+  DistArray3 a1(*world, s);
   BOOST_CHECK(a1.begin() == a1.end()); // Check that the array is empty
 
-  BOOST_REQUIRE_NO_THROW(DistArray3 a2(world, s, data.begin(), data.end()));
-  DistArray3 a2(world, s, data.begin(), data.end()); // check construction of
+  BOOST_REQUIRE_NO_THROW(DistArray3 a2(*world, s, data.begin(), data.end()));
+  DistArray3 a2(*world, s, data.begin(), data.end()); // check construction of
   BOOST_CHECK_CLOSE(sum_first(a2), 300.0, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a2), 24u);
 
@@ -427,9 +429,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( insert_erase )
 {
-  // TODO: This stuff is causing a runtime error. Why?
-
-  DistArray3 a1(world, s);
+  DistArray3 a1(*world, s);
   std::size_t n = 0ul;
   double s = 0.0;
 
@@ -464,7 +464,7 @@ BOOST_AUTO_TEST_CASE( insert_erase )
   BOOST_CHECK_EQUAL(tile_count(a1), n);
 
   a1.erase(a1.begin(), a1.end()); // check erasing everything with iterators
-  world.gop.fence();
+  world->gop.fence();
 
   s = 0.0;
   n = 0ul;
@@ -477,46 +477,44 @@ BOOST_AUTO_TEST_CASE( insert_erase )
     BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
     BOOST_CHECK_EQUAL(tile_count(a1), n);
 
-    if(world.mpi.comm().rank() == 0)
+    if(world->mpi.comm().rank() == 0)
       a1.insert(*it);
-    world.gop.fence();
+    world->gop.fence();
 
     ++n;
     s += it->second.front();
   }
 
   a1.erase(a1.begin(), a1.end());
-  world.gop.fence();
-  if(world.mpi.comm().rank() == 0)  // check communicating iterator insert.
+  world->gop.fence();
+  if(world->mpi.comm().rank() == 0)  // check communicating iterator insert.
     a1.insert(data.begin(), data.end());
-  world.gop.fence();
+  world->gop.fence();
   BOOST_CHECK_CLOSE(sum_first(a1), s, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a1), n);
 
 }
-*/
+
 BOOST_AUTO_TEST_CASE( find )
 {
-  // TODO: This stuff is causing runtime errors. Why?
-//  world.gop.fence();
+
   typedef madness::Future<DistArray3::iterator> future_iter;
 
   if(world->mpi.comm().rank() == 0) {
     DistArray3::ordinal_type i = 0;
     for(range_type::const_iterator it = r.begin(); it != r.end(); ++it, ++i) {
       future_iter v = a.find(*it);  // check find function with coordinate index
-      std::cout << *it << " = " << v.get()->second.front() << (a.is_local(*it) ? " local" : " remote") << "\n";
-      //BOOST_CHECK_CLOSE(v.get()->second.front(), data[i].second.front(), 0.0001);
+      BOOST_CHECK_CLOSE(v.get()->second.front(), data[i].second.front(), 0.0001);
     }
   }
   world->gop.fence();
 
 }
-/*
+
 BOOST_AUTO_TEST_CASE( swap )
 {
   DistArray3 a1(a);
-  DistArray3 a2(world, s);
+  DistArray3 a2(*world, s);
 
   BOOST_CHECK_CLOSE(sum_first(a1), 300.0, 0.0001); // verify initial conditions
   BOOST_CHECK_EQUAL(tile_count(a1), 24ul);
@@ -561,5 +559,5 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_CLOSE(sum_first(a2), 76.0, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a2), 8ul);
 }
-*/
+
 BOOST_AUTO_TEST_SUITE_END()
