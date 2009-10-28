@@ -12,6 +12,7 @@
 #include <boost/scoped_array.hpp>
 //#include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/utility.hpp>
 //#include <cstddef>
 //#include <algorithm>
 //#include <memory>
@@ -40,6 +41,11 @@ namespace TiledArray {
   namespace detail {
     template<typename I, unsigned int DIM, typename CS>
     bool less(const boost::array<I,DIM>&, const boost::array<I,DIM>&);
+
+    template <typename A>
+    class DistributedAccessor;
+    template<typename A>
+    void swap(DistributedAccessor<A>& a0, DistributedAccessor<A>& a1);
   } // namespace detail
 
   namespace detail {
@@ -696,17 +702,12 @@ namespace TiledArray {
 
     /// Returns a reference to local data element.
 
-    /// This function will return a reference to local data only. It will throw
+    /// This function will return an accessor to local data only. It will throw
     /// std::out_of_range if i is not included in the array, and std::range_error
-    /// if i is not a local element. Valid types for Index are ordinal_type or
-    /// index_type.
-    accessor at(const index_type& i) {
-      if(! includes(i))
-        throw std::out_of_range("DistributedArrayStorage::at(const Index&): Element is not in range.");
-      if(! data_.is_local(i))
-        throw std::range_error("DistributedArrayStorage::at(const Index&): Element is not stored locally.");
-
-      return get(i);
+    /// if i is not a local element. If the element is in range but not present,
+    /// it will be added to the array.
+    bool find(accessor& acc, const index_type& i) {
+      return data_.find(acc, i);
     }
 
     /// Returns a reference to local data element.
@@ -715,33 +716,8 @@ namespace TiledArray {
     /// std::out_of_range if i is not included in the array, and std::range_error
     /// if i is not a local element. Valid types for Index are ordinal_type or
     /// index_type.
-    const_accessor at(const index_type i) const {
-      if(! includes(i))
-        throw std::out_of_range("template <typename Index> DistributedArrayStorage::at(const Index&) const: Element is not in range.");
-      if(! data_.is_local(i))
-        throw std::range_error("template <typename Index> DistributedArrayStorage::at(const Index&) const: Element is not stored locally.");
-
-      return get(i);
-    }
-
-    /// Element access using the ordinal index without error checking
-    template <typename Index>
-    accessor operator[](const Index& i) { // no throw for non-debug
-#ifdef NDEBUG
-      return get(i);
-#else
-      return at(i);
-#endif
-    }
-
-    /// Element access using the ordinal index without error checking
-    template <typename Index>
-    const_accessor operator[](const Index& i) const { // no throw for non-debug
-#ifdef NDEBUGs
-      return get(i);
-#else
-      return at(i);
-#endif
+    bool find(const_accessor& acc, const index_type& i) const {
+      return data_.find(acc, i);
     }
 
     /// Returns true if index i is stored locally.
@@ -762,38 +738,6 @@ namespace TiledArray {
     /// No default construction. We need to initialize the data container with
     /// a world object to have a valid object.
     DistributedArrayStorage();
-
-    /// Returns an accessor to the local element at index i.
-
-    /// This function will return an accessor to a local element at index i. If
-    /// the element does not exist, a new element will be created with the
-    /// default constructor.
-    accessor get(const index_type& i) {
-      accessor a;
-      if(data_.find(a, i)) {
-        data_.replace(i, value_type());
-        if(data_.find(a, i))
-          throw std::runtime_error("DistributedArrayStorage::at(const Index&): Unable to create element.");
-      }
-
-      return a;
-    }
-
-    /// Returns a const_accessor to the local element at index i.
-
-    /// This function will return a const_accessor to a local element at index
-    /// i. If the element does not exist, a new element will be created with the
-    /// default constructor.
-    const_accessor get(const index_type& i) const {
-      const_accessor a;
-      if(data_.find(a, i)) {
-        data_.replace(i, value_type());
-        if(data_.find(a, i))
-          throw std::runtime_error("DistributedArrayStorage::at(const Index&): Unable to create element.");
-      }
-
-      return a;
-    }
 
     array_dim_type dim_;
     data_container data_;

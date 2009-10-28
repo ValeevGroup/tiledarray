@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE( resize )
 BOOST_AUTO_TEST_SUITE_END()
 
 struct DenseArrayStorageFixture : public ArrayDimFixture {
-  const static std::size_t ndim = 5;
+  static const std::size_t ndim = 5;
   typedef DenseArrayStorage<int, 3> DenseArray3;
   typedef DenseArrayStorage<int, ndim> DenseArrayN;
   typedef Permutation<ndim> PermutationN;
@@ -310,7 +310,7 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
   typedef Range<std::size_t, 3, LevelTag<1>, CoordinateSystem<3> > range_type;
 
   DistributedArrayStorageFixture() : world(MadnessFixture::world), r(s),
-      a(*world, s), d(s) {
+      a(*world, s), ca(a), d(s) {
     double val = 0.0;
     range_type r(index_type(0,0,0), index_type(2,3,4));
     range_type::const_iterator r_it = r.begin();
@@ -345,6 +345,7 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
   range_type r;
   data_array data;
   DistArray3 a;
+  const DistArray3& ca;
   ArrayDim3 d;
 }; // struct DistributedArrayStorageFixture
 
@@ -374,7 +375,7 @@ BOOST_AUTO_TEST_CASE( iterator )
   for(DistArray3::iterator it = a.begin(); it != a.end(); ++it){
     for(data_array::const_iterator d_it = data.begin(); d_it != data.end(); ++d_it) {
       if(it->first == d_it->first) {
-        BOOST_CHECK(it->second.front() == d_it->second.front());
+        BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
         break;
       }
     }
@@ -383,7 +384,7 @@ BOOST_AUTO_TEST_CASE( iterator )
   for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it) { // check const/non-const iterator functionality
     for(data_array::const_iterator d_it = data.begin(); d_it != data.end(); ++d_it) {
       if(it->first == d_it->first) {
-        BOOST_CHECK(it->second.front() == d_it->second.front());
+        BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
         break;
       }
     }
@@ -393,21 +394,30 @@ BOOST_AUTO_TEST_CASE( iterator )
   for(DistArray3::const_iterator it = a_ref.begin(); it != a_ref.end(); ++it) { // check const iterator functionality
     for(data_array::const_iterator d_it = data.begin(); d_it != data.end(); ++d_it) {
       if(it->first == d_it->first) {
-        BOOST_CHECK(it->second.front() == d_it->second.front());
+        BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
         break;
       }
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE( random_access )
+BOOST_AUTO_TEST_CASE( accessors )
 {
+  for(range_type::const_iterator it = r.begin(); it != r.end(); ++it) {
+    if(a.is_local(*it)) {
+      {
+        DistArray3::accessor acc;
+        BOOST_CHECK(a.find(acc,*it));
+        BOOST_CHECK_CLOSE(acc->second.front(), data.at(d.ord(*it)).second.front(), 0.000001);
+      }
 
-//  for(range_type::const_iterator it = r.begin(); it != r.end(); ++it) {
-//    if(a.is_local(*it))
-//      BOOST_CHECK_EQUAL(a.at(*it)->second.front(), data.at(d.ord(*it)).second.front());
-//  }
-
+      {
+        DistArray3::const_accessor const_acc;
+        BOOST_CHECK(ca.find(const_acc,*it));
+        BOOST_CHECK_CLOSE(const_acc->second.front(), data.at(d.ord(*it)).second.front(), 0.000001);
+      }
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE( constructor )

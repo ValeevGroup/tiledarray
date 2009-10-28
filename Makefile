@@ -6,9 +6,9 @@ LIBDIR = -L$(MADNESSDIR)/lib -L$(BOOSTDIR)/lib
 #LIBS = -lMADworld
 LIBS = -lMADworld -lboost_unit_test_framework
 ifeq ($(CXX),icpc)
-	WARNING = -wd981 -wd383 -wd1419 -wd444
+	WARNING = -wd981 -wd383 -wd1419 -wd444 -wd1418
 endif
-CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=gnu++0x $(WARNING)
+CXXFLAGS = -g -Wall -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=c++0x $(WARNING)
 CXXSUF = cpp
 OBJSUF = o
 CXXDEPEND = $(CXX)
