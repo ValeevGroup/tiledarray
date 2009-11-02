@@ -14,8 +14,6 @@ namespace TiledArray {
   // Forward declaration of TiledArray Permutation.
   template <typename I, unsigned int DIM, typename CS>
   class TiledRange;
-  template <typename I, unsigned int DIM, typename CS>
-  class Shape;
   template<typename T, unsigned int DIM, typename CS>
   class Tile;
 
@@ -24,166 +22,181 @@ namespace TiledArray {
   class Array : public madness::WorldObject< Array<T,DIM,CS> > {
   public:
     typedef Array<T, DIM, CS> Array_;
-    typedef T value_type;
     typedef CS coordinate_system;
-    typedef Tile<value_type, DIM, coordinate_system> tile;
+    typedef Tile<T, DIM, coordinate_system> tile_type;
 
   private:
-    typedef DistributedArrayStorage<tile, DIM, LevelTag<1>, coordinate_system > tile_container;
-    typedef typename tile_container::data_container::pairT pair_type;
+    typedef DistributedArrayStorage<tile_type, DIM, LevelTag<1>, coordinate_system> data_container;
 
   public:
-	typedef typename tile_container::ordinal_type ordinal_type;
+    typedef typename data_container::index_type index_type;
+    typedef typename tile_type::index_type tile_index_type;
+    typedef typename data_container::ordinal_type ordinal_type;
+    typedef typename data_container::volume_type volume_type;
+    typedef typename data_container::size_array size_array;
+    typedef typename data_container::value_type value_type;
     typedef TiledRange<ordinal_type, DIM, CS> tiled_range_type;
-    typedef Shape<ordinal_type, DIM, CS> shape_type;
-    typedef typename tiled_range_type::index_type index_type;
-    typedef typename tile::index_type tile_index_type;
-    typedef typename tiled_range_type::size_array size_array;
+    typedef tile_type & reference_type;
+    typedef const tile_type & const_reference_type;
+    typedef typename data_container::accessor accessor;
+    typedef typename data_container::const_accessor const_accessor;
+    typedef typename data_container::iterator iterator;
+    typedef typename data_container::const_iterator const_iterator;
 
-    typedef typename tile_container::iterator iterator;
-    typedef typename tile_container::const_iterator const_iterator;
+  private:
+    // Prohibited operations
+    Array();
+    Array(const Array_&);
+    Array_ operator=(const Array_&);
 
-
+  public:
     /// creates an array living in world and described by shape. Optional
     /// val specifies the default value of every element
-    template <typename S>
-    Array(madness::World& world, const boost::shared_ptr<S>& shp, value_type val = value_type()) :
-        madness::WorldObject<Array>(world), shape_(),
-        range_(), tiles_(world, shp->range()->tiles().size())
+    Array(madness::World& world, const tiled_range_type& rng, value_type val = value_type()) :
+        madness::WorldObject<Array_>(world), range_(rng), tiles_(world, rng.tiles().size())
     {
       this->process_pending();
-
-      shape_ = boost::dynamic_pointer_cast<shape_type>(shp);
-      range_ = boost::const_pointer_cast<tiled_range_type>(shape_->range());
-      // Create local tiles.
-      for(typename shape_type::const_iterator it = shape_->begin(); it != shape_->end(); ++it) {
-        if(tiles_.is_local( *it )) {
-          tiles_[ *it ] = tile(range_->tile( *it ), val);
-        }
-      }
-
-      this->world.gop.fence(); // make sure everyone is done creating tiles.
     }
 
+    /// Inserts a tile into the array.
+
+    /// Inserts a tile with all elements initialized to a constant value.
+    /// Non-local insertions will initiate non-blocking communication.
+    void insert(const index_type& i, T value = T()) {
+      tile_type t(range_.tile(i).start(), range_.tile(i).finish(), value);
+      tiles_.insert(i, t);
+    }
+
+    /// Inserts a tile into the array.
+
+    /// Inserts a tile with all elements initialized to the values given by the
+    /// iterator range [first, last). Non-local insertions will initiate
+    /// non-blocking communication.
+    template<typename InIter>
+    void insert(const index_type& i, InIter first, InIter last) {
+      tile_type t(range_.tile(i).start(), range_.tile(i).finish(), first, last);
+      tiles_.insert(i, t);
+    }
+
+    /// Inserts a tile into the array.
+
+    /// Copies the given tile into the array. Non-local insertions will initiate
+    /// non-blocking communication.
+    void insert(const index_type& i, const tile_type& t) {
+      TA_ASSERT(t.start() == range_.tile(i).start() && t.finish() == range_.tile(i).finish(),
+          std::runtime_error("Array<...>::insert(...): Tile boundaries do not match array tile boundaries."));
+      tiles_.insert(i, t);
+    }
+
+    /// Erases a tile from the array.
+
+    /// This will remove the tile at the given index. It will initiate
+    /// non-blocking for non-local tiles.
+    void erase(const index_type& i) {
+      tiles_.earse(i);
+    }
+
+    /// Erase a range of tiles from the array.
+
+    /// This will remove the range of tiles from the array. The iterator must
+    /// dereference to value_type (std::pair<index_type, tile_type>). It will
+    /// initiate non-blocking communication for non-local tiles.
+    template<typename InIter>
+    void erase(InIter first, InIter last) {
+      tiles_.earse(first, last);
+    }
+
+    /// Returns an iterator to the first local tile.
     iterator begin() { return tiles_.begin(); }
+    /// returns a const_iterator to the first local tile.
     const_iterator begin() const { return tiles_.begin(); }
+    /// Returns an iterator to the end of the local tile list.
     iterator end() { return tiles_.end(); }
+    /// Returns a const_iterator to the end of the local tile list.
     const_iterator end() const { return tiles_.end(); }
 
-    /// assign val to each element
-    Array& assign(const value_type& val) {
-      for(iterator it = begin(); it != end(); ++it)
-        std::fill(it->second.begin(), it->second.end(), val);
-
-      this->world.gop.fence(); // make sure everyone is done writing data.
-      return *this;
+    /// Resizes the array to the given tiled range.
+    void resize(const tiled_range_type) {
+      TA_ASSERT(false, std::runtime_error("Array<...>::resize(...): Function not implemented yet."));
     }
 
-    /// Assign data to tiles with the function object gen over all elements.
-
-    /// This function will assign data to each local element in the indices
-    /// definded by [first,last). The input iterator (type InIter) must
-    /// dereference to tile_index_type type. gen must be a function object or
-    /// function that accepts a single tile_index_type as its parameter and
-    /// returns a value_type (i.e. it must have the following signature
-    /// value_type gen(const tile_index_type&).
-    template <typename G>
-    Array& assign(G gen) {
-      for(iterator it = begin(); it != end(); ++it)
-        it->second.assign(gen);
-
-      this->world.gop.fence(); // make sure everyone is done writing data.
-      return *this;
-    }
-
-    /// Assign data to tiles with the function object gen over [first,last) tiles.
-
-    /// This function will assign data to each local tile in the indices
-    /// definded by [first,last). The input iterator (type InIter) must
-    /// dereference to index_type type. gen must be a function object or
-    /// function that accepts a single tile_index_type as its parameter and
-    /// returns a value_type (i.e. it must have the following signature
-    /// value_type gen(const tile_index_type&).
-    template <typename InIter, typename G>
-    Array& assign(InIter first, InIter last, G gen) {
-      for(; first != last; ++first)
-        if(tiles_.is_local(*first))
-          tiles_[*first].assign(gen);
-
-      this->world.gop.fence(); // make sure everyone is done writing data.
-      return *this;
-    }
-
+    /// Permutes the array. This will initiate blocking communication.
     Array& operator ^=(const Permutation<DIM>& p) {
-      tiles_ ^= p; // move the tiles to the correct location
-      shape_ ^= p; // shape_ will permute range_
       for(iterator it = begin(); it != end(); ++it)
         *it ^= p; // permute the individual tile
-    }
-
-    Array& operator +=(const Array& other) {
-      for(const_iterator it = begin(); it != end(); ++it) {
-        madness::Future<const_iterator> t2 = other.tiles_.find(it->first);
-        madness::Future<pair_type> t = task(it->first, &add, it, t2);
-        task(it->first, &write, t);
-      }
+      range_ ^= p;
+      tiles_ ^= p; // move the tiles to the correct location. Blocking communication here.
     }
 
     /// Returns true if the tile specified by index is stored locally.
     bool is_local(const index_type& i) const {
-      assert(shape_->includes(i));
       return tiles_.is_local(i);
     }
 
+    /// Returns true if the element specified by tile index i is stored locally.
+    bool is_local(const tile_index_type& i) const {
+      return range_.elements().includes(i) && is_local(get_tile_index(i));
+    }
+
+    /// Returns the index of the lower tile boundary.
+    const index_type& start() const {
+      return range_.tiles().start();
+    }
+
+    /// Returns the index  of the upper tile boundary.
+    const index_type& finish() const {
+      return range_.tiles().finish();
+    }
+
+    /// Returns a reference to the array's size array.
+    const size_array& size() const {
+      return tiles_.size();
+    }
+
+    /// Returns a reference to the dimension weight array.
+    const size_array& weight() const {
+      return tiles_.weight();
+    }
+
+    /// Returns the number of elements present in the array.
+
+    /// If local == false, then the total number of tiles in the array will be
+    /// returned. Otherwise, if local == true, it will return the number of
+    /// tiles that are stored locally. The number of local tiles may or may not
+    /// reflect the maximum possible number of tiles that can be stored locally.
+    volume_type volume(bool local = false) const {
+      return tiles_.volume(local);
+    }
+
+    /// Returns true if the tile is included in the array range.
     bool includes(const index_type& i) const {
-      return shape_->includes(i);
+      return tiles_.includes(i);
     }
 
-    tile& at(const index_type& i) {
-      assert(shape_->includes(i));
-      return tiles_.at(i);
+    /// Returns a reference to the tile range object.
+    const typename tiled_range_type::range_type& tiles() const {
+      return range_.tiles();
     }
 
-    const tile& at(const index_type& i) const {
-      assert(shape_->includes(i));
-      return tiles_.at(i);
+    /// Returns a reference to the element range object.
+    const typename tiled_range_type::element_range_type& elements() const {
+      return range_.elements();
     }
 
-    tile& operator [](const index_type& i) {
-      assert(shape_->includes(i));
-      return tiles_[i];
-    }
-
-    const tile& operator [](const index_type& i) const {
-      assert(shape_->includes(i));
-      return tiles_[i];
+    /// Returns a reference to the specified tile range object.
+    const typename tiled_range_type::tile_range_type& tile(const index_type& i) const {
+      return range_.tile(i);
     }
 
   private:
 
-	Array();
-
-	pair_type add(const_iterator t1, const_iterator t2) {
-	  assert(t1->first == t2->first);
-	  pair_type result(t1->first, t1->second);
-	  result.second += t2->second;
-	  return result;
-	}
-
-	void write(const pair_type& t) {
-	  assert(tiles_.is_local(t.first));
-      tiles_[t.first] = t.second;
-	}
-
     /// Returns the tile index that contains the element index e_idx.
-    index_type get_tile_index(const tile_index_type& e_idx) const {
-      assert(includes(e_idx));
-      return * range_->find(e_idx);
+    index_type get_tile_index(const tile_index_type& i) const {
+      return * range_.find(i);
     }
 
-    boost::shared_ptr<shape_type> shape_;
-    boost::shared_ptr<tiled_range_type> range_;
-    tile_container tiles_;
+    tiled_range_type range_;
+    data_container tiles_;
   }; // class Array
 
 

@@ -34,18 +34,20 @@ namespace TiledArray {
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   class DistributedArrayStorage;
   template <typename T, unsigned int DIM, typename Tag, typename CS>
-  DenseArrayStorage<T,DIM,Tag,CS> operator ^(const Permutation<DIM>&, const DenseArrayStorage<T,DIM,Tag,CS>&);
+  void swap(DenseArrayStorage<T, DIM, Tag, CS>&, DenseArrayStorage<T, DIM, Tag, CS>&);
   template <typename T, unsigned int DIM, typename Tag, typename CS>
-  DistributedArrayStorage<T,DIM,Tag,CS>& operator ^(const Permutation<DIM>&, const DistributedArrayStorage<T,DIM,Tag,CS>&);
+  void swap(DistributedArrayStorage<T, DIM, Tag, CS>&, DistributedArrayStorage<T, DIM, Tag, CS>&);
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  DenseArrayStorage<T,DIM,Tag,CS> operator ^(const Permutation<DIM>&, const DenseArrayStorage<T,DIM,Tag,CS>&);
 
   namespace detail {
     template<typename I, unsigned int DIM, typename CS>
     bool less(const boost::array<I,DIM>&, const boost::array<I,DIM>&);
 
-    template <typename A>
-    class DistributedAccessor;
-    template<typename A>
-    void swap(DistributedAccessor<A>& a0, DistributedAccessor<A>& a1);
+    template <typename I, unsigned int DIM, typename Tag, typename CS>
+    class ArrayDim;
+    template <typename I, unsigned int DIM, typename Tag, typename CS>
+    void swap(ArrayDim<I, DIM, Tag, CS>&, ArrayDim<I, DIM, Tag, CS>&);
   } // namespace detail
 
   namespace detail {
@@ -67,6 +69,8 @@ namespace TiledArray {
 
       static unsigned int dim() { return DIM; }
       static detail::DimensionOrderType  order() { return coordinate_system::dimension_order; }
+
+      friend void swap<>(ArrayDim_& first, ArrayDim_& second);
 
       /// Default constructor. Constructs a 0 dimension array.
       ArrayDim() : size_(), weight_(), n_(0) { // no throw
@@ -159,16 +163,6 @@ namespace TiledArray {
       ordinal_type ord(const ordinal_type i) const { return i; } // no throw
 
 
-      /// Exchange the content of a DenseArrayStorage with this.
-
-      /// Swap will exchange the data of the calling object with the function
-      /// argument. This function does not throw.
-      void swap(ArrayDim& other) { // no throw
-        boost::swap(size_, other.size_);
-        boost::swap(weight_, other.weight_);
-        std::swap(n_, other.n_);
-      }
-
       /// Class wrapper function for detail::calc_weight() function.
       static size_array calc_weight_(const size_array& size) { // no throw
         size_array result;
@@ -181,6 +175,13 @@ namespace TiledArray {
       size_array weight_;
       ordinal_type n_;
     }; // class ArrayDim
+
+    template <typename I, unsigned int DIM, typename Tag, typename CS>
+    void swap(ArrayDim<I, DIM, Tag, CS>& first, ArrayDim<I, DIM, Tag, CS>& second) {
+      boost::swap(first.size_, second.size_);
+      boost::swap(first.weight_, second.weight_);
+      std::swap(first.n_, second.n_);
+    }
 
     template <typename Index, typename Dim>
     struct ArrayHash : public std::unary_function<Index, madness::hashT> {
@@ -223,6 +224,8 @@ namespace TiledArray {
 
     static unsigned int dim() { return DIM; }
     static detail::DimensionOrderType  order() { return coordinate_system::dimension_order; }
+
+    friend void swap<>(DenseArrayStorage_& first, DenseArrayStorage_& second);
 
     /// Default constructor.
 
@@ -277,7 +280,7 @@ namespace TiledArray {
 
     DenseArrayStorage_& operator =(const DenseArrayStorage_& other) {
       DenseArrayStorage_ temp(other);
-      swap(temp);
+      swap(*this, temp);
 
       return *this;
     }
@@ -303,7 +306,7 @@ namespace TiledArray {
     DenseArrayStorage_& operator ^=(const Permutation<DIM>& p) {
       if(d_ != NULL) {
         DenseArrayStorage_ temp = p ^ (*this);
-        swap(temp);
+        swap(*this, temp);
       }
       return *this;
     }
@@ -323,7 +326,7 @@ namespace TiledArray {
         for(typename range_type::const_iterator it = range_common.begin(); it != range_common.end(); ++it)
           temp[ *it ] = operator[]( *it ); // copy common data.
       }
-      swap(temp);
+      swap(*this, temp);
       return *this;
     }
 
@@ -398,12 +401,6 @@ namespace TiledArray {
 #else
       return at(i);
 #endif
-    }
-
-    /// Exchange the content of a DenseArrayStorage with this.
-    void swap(DenseArrayStorage_& other) { // no throw
-      dim_.swap(other.dim_);
-      std::swap(d_, other.d_);
     }
 
     /// Return the sizes of each dimension.
@@ -495,10 +492,14 @@ namespace TiledArray {
     typedef typename array_dim_type::volume_type volume_type;
     typedef typename array_dim_type::size_array size_array;
     typedef CS coordinate_system;
-    typedef T value_type;
     typedef index_type key_type;
+
+  private:
     typedef detail::ArrayHash<index_type, array_dim_type> hasher_type;
-    typedef madness::WorldContainer<key_type, value_type, hasher_type > data_container;
+    typedef madness::WorldContainer<key_type, T, hasher_type > data_container;
+
+  public:
+    typedef typename data_container::pairT value_type;
 
     typedef typename data_container::iterator iterator;
     typedef typename data_container::const_iterator const_iterator;
@@ -508,6 +509,22 @@ namespace TiledArray {
     typedef typename data_container::const_accessor const_accessor;
 
     static unsigned int dim() { return DIM; }
+
+    friend void swap<>(DistributedArrayStorage_&, DistributedArrayStorage_&);
+
+  private:
+    // Operations not permitted.
+    DistributedArrayStorage();
+    DistributedArrayStorage(const DistributedArrayStorage_& other);
+    DistributedArrayStorage_& operator =(const DistributedArrayStorage_& other);
+
+  public:
+    /// Constructs a zero size array.
+    /// Construct an array with a definite size. All data elements are
+    /// uninitialized. No communication occurs.
+    DistributedArrayStorage(madness::World& world) :
+        dim_(), data_(world, true, hasher_type(dim_))
+    { }
 
     /// Construct an array with a definite size. All data elements are
     /// uninitialized. No communication occurs.
@@ -535,31 +552,30 @@ namespace TiledArray {
     /// predict which one will be the final value.
     template <typename InIter>
     DistributedArrayStorage(madness::World& world, const size_array& size, InIter first, InIter last) :
-        dim_(size), data_(world, true, hasher_type(dim_))
+        dim_(size), data_(world, false, hasher_type(dim_))
     {
       for(;first != last; ++first)
         if(is_local(first->first))
           insert(first->first, first->second);
 
+      data_.process_pending();
       data_.get_world().gop.barrier(); // Make sure everyone is done writing
                                        // before proceeding.
     }
 
-    /// Copy constructor. This is a shallow copy of the data with no communication.
-    DistributedArrayStorage(const DistributedArrayStorage& other) :
-        dim_(other.dim_), data_(other.data_)
-    { }
-
     ~DistributedArrayStorage() { }
 
-    /// Create a shallow copy of the element data. No communication.
-    DistributedArrayStorage_& operator =(const DistributedArrayStorage& other) {
-      dim_ = other.dim_;
-      data_ = other.data_; // shallow copy
-      data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
-      return *this;
-    }
+    /// Copy the content of this array into the other array.
 
+    /// Performs a deep copy of this array into the other array. The content of
+    /// the other array will be deleted.
+    void clone(const DistributedArrayStorage_& other) {
+      DistributedArrayStorage_ temp(data_.get_world(), other.dim_.size());
+      temp.insert(other.begin(), other.end());
+      data_.clear();
+      swap(*this, temp);
+      data_.get_world().gop.fence();
+    }
 
     /// Inserts an element into the array
 
@@ -569,7 +585,7 @@ namespace TiledArray {
     /// the element is already present, the previous element will be destroyed.
     /// If the element is not in the range of for the array, a std::out_of_range
     /// exception will be thrown.
-    void insert(const index_type& i, const_reference_type v) {
+    void insert(const key_type& i, const_reference_type v) {
       TA_ASSERT(dim_.includes(i),
           std::out_of_range("DistributedArrayStorage::insert(...): The index is not in range."));
 
@@ -584,7 +600,7 @@ namespace TiledArray {
     /// the element is already present, the previous element will be destroyed.
     /// If the element is not in the range of for the array, a std::out_of_range
     /// exception will be thrown.
-    void insert(const std::pair<index_type, value_type>& e) {
+    void insert(const value_type& e) {
       insert(e.first, e.second);
     }
 
@@ -598,7 +614,7 @@ namespace TiledArray {
 
     /// This function removes the element specified by the index, and performs a
     /// non-blocking communication for non-local elements.
-    void erase(const index_type& i) {
+    void erase(const key_type& i) {
       data_.erase(i);
     }
 
@@ -613,6 +629,11 @@ namespace TiledArray {
         erase(first->first);
     }
 
+    /// Erase all elements of the array.
+    void clear() {
+      data_.clear();
+    }
+
     /// In place permutation operator.
 
     /// This function permutes its elements only.
@@ -620,8 +641,28 @@ namespace TiledArray {
     /// Therefore, if the data in each element of the array also needs to be
     /// permuted, it's up to the array owner to permute the data.
     DistributedArrayStorage_& operator ^=(const Permutation<DIM>& p) {
-      DistributedArrayStorage_ temp(*this ^ p);
-      swap(temp);
+      typedef Range<ordinal_type, DIM, Tag, CS> range_type;
+
+      /// Construct temporary container.
+      range_type r(dim_.size());
+      DistributedArrayStorage_ temp(data_.get_world(), p ^ (dim_.size()));
+
+      // Iterate over all indices in the array. For each element d_.find() is
+      // used to request data at the current index. If the data is  local, the
+      // element is written into the temp array, otherwise it is skipped. When
+      // the data is written, non-blocking communication may occur (when the new
+      // location is not local).
+      const_accessor a;
+      for(typename range_type::const_iterator it = r.begin(); it != r.end(); ++it) {
+        if( data_.find(a, *it)) {
+          temp.insert(p ^ *it, a->second);
+          a.release();
+          data_.erase(*it);
+        }
+      }
+
+      // not communicate and should take no time
+      swap(*this, temp);
       data_.get_world().gop.barrier();
       return *this;
     }
@@ -633,7 +674,6 @@ namespace TiledArray {
     /// have uninitialized data.
     DistributedArrayStorage_& resize(const size_array& size) {
       typedef Range<ordinal_type, DIM, Tag, coordinate_system> range_type;
-      typedef typename range_type::const_iterator index_iterator;
 
       /// Construct temporary container.
       range_type common_rng(range_type(dim_.size_) & range_type(size));
@@ -650,7 +690,7 @@ namespace TiledArray {
           temp.data_.replace(*it, a->second);
       }
 
-      swap(temp);
+      swap(*this, temp);
       data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
       return *this;
     }
@@ -685,7 +725,7 @@ namespace TiledArray {
     /// i. If the element is not local the it will use non-blocking communication
     /// to retrieve the data. The future will be immediately available if the data
     /// is local. Valid types for Index are ordinal_type or index_type.
-    madness::Future<iterator> find(const index_type& i) {
+    madness::Future<iterator> find(const key_type& i) {
       return data_.find(i);
     }
 
@@ -696,27 +736,23 @@ namespace TiledArray {
     /// communication to retrieve the data. The future will be immediately
     /// available if the data is local. Valid types for Index are ordinal_type
     /// or index_type.
-    madness::Future<const_iterator> find(const index_type& i) const {
+    madness::Future<const_iterator> find(const key_type& i) const {
       return data_.find(i);
     }
 
-    /// Returns a reference to local data element.
+    /// Sets an accessor to point to a local data element.
 
-    /// This function will return an accessor to local data only. It will throw
-    /// std::out_of_range if i is not included in the array, and std::range_error
-    /// if i is not a local element. If the element is in range but not present,
-    /// it will be added to the array.
+    /// This function will set an accessor to point to a local data element only.
+    /// It will return false if the data element is remote or not found.
     bool find(accessor& acc, const index_type& i) {
       return data_.find(acc, i);
     }
 
-    /// Returns a reference to local data element.
+    /// Sets a const_accessor to point to a local data element.
 
-    /// This function will return a reference to local data only. It will throw
-    /// std::out_of_range if i is not included in the array, and std::range_error
-    /// if i is not a local element. Valid types for Index are ordinal_type or
-    /// index_type.
-    bool find(const_accessor& acc, const index_type& i) const {
+    /// This function will set a const_accessor to point to a local data element
+    /// only. It will return false if the data element is remote or not found.
+    bool find(const_accessor& acc, const key_type& i) const {
       return data_.find(acc, i);
     }
 
@@ -728,59 +764,37 @@ namespace TiledArray {
       return data_.is_local(i);
     }
 
-    void swap(DistributedArrayStorage& other) {
-      dim_.swap(other.dim_);
-      madness::swap(data_, other.data_);
+    madness::World& get_world() const {
+      return data_.get_world();
     }
 
   private:
-
-    /// No default construction. We need to initialize the data container with
-    /// a world object to have a valid object.
-    DistributedArrayStorage();
 
     array_dim_type dim_;
     data_container data_;
   }; // class DistributedArrayStorage
 
+  /// Swap the data of the two arrays.
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  void swap(DenseArrayStorage<T, DIM, Tag, CS>& first, DenseArrayStorage<T, DIM, Tag, CS>& second) { // no throw
+    detail::swap(first.dim_, second.dim_);
+    std::swap(first.d_, second.d_);
+  }
+
+  /// Swap the data of the two distributed arrays.
+  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  void swap(DistributedArrayStorage<T, DIM, Tag, CS>& first, DistributedArrayStorage<T, DIM, Tag, CS>& second) {
+    detail::swap(first.dim_, second.dim_);
+    madness::swap(first.data_, second.data_);
+  }
+
+  /// Permutes the content of the n-dimensional array.
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   DenseArrayStorage<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& p, const DenseArrayStorage<T,DIM,Tag,CS>& s) {
     DenseArrayStorage<T,DIM,Tag,CS> result(p ^ s.size());
     detail::Permute<DenseArrayStorage<T,DIM,Tag,CS> > f_perm(s);
     f_perm(p, result.begin(), result.end());
 
-    return result;
-  }
-
-  /// DistributedArrayStorage permutation operator.
-
-  /// This function permutes its elements only.
-  /// No assumptions are made about the data contained by this array.
-  /// Therefore, if the data in each element of the array also needs to be
-  /// permuted, it's up to the array owner to permute the data.
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  DistributedArrayStorage<T,DIM,Tag,CS>& operator ^(const Permutation<DIM>& p, const DistributedArrayStorage<T,DIM,Tag,CS>& s) {
-    typedef DistributedArrayStorage<T,DIM,Tag,CS> Store;
-    typedef Range<typename Store::ordinal_type, DIM, Tag, CS> range_type;
-    typedef typename range_type::const_iterator index_iterator;
-
-    /// Construct temporary container.
-    range_type b(s.size_);
-    Store result(s.data_.get_world(), p ^ (s.size_));
-
-    // Iterate over all indices in the array. For each element d_.find() is
-    // used to request data at the current index. If the data is  local, the
-    // element is written into the temp array, otherwise it is skipped. When
-    // the data is written, non-blocking communication may occur (when the new
-    // location is not local).
-    for(typename range_type::const_iterator it = b.begin(); it != b.end(); ++it) {
-      typename Store::const_accessor a;
-      if( s.data_.find(a, s.ordinal( *it )))
-        result.data_.replace(result.ordinal( p ^ *it ), a->second);
-    }
-
-    // not communicate and should take no time
-    result.data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
     return result;
   }
 

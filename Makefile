@@ -36,7 +36,7 @@ check_serial: $(TARGET)
 	
 check_parallel: $(TARGET)
 	./TiledArrayTest --run_test="distributed_storage_suite"
-	mpiexec -n 4 ./TiledArrayTest --run_test="distributed_storage_suite"
+	mpiexec -n 4 ./TiledArrayTest --run_test="distributed_storage_suite,array_suite"
 
 .PHONY: clean dclean
 clean:

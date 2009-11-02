@@ -134,7 +134,7 @@ namespace TiledArray {
       void swap(TiledRange& other) {
         range_.swap(other.range_);
         element_range_.swap(other.element_range_);
-        tile_ranges_.swap(other.tile_ranges_);
+        TiledArray::swap(tile_ranges_, other.tile_ranges_);
         boost::swap(ranges_, other.ranges_);
       }
 

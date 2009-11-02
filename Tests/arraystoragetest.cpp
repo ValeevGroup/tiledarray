@@ -422,19 +422,27 @@ BOOST_AUTO_TEST_CASE( accessors )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(DistArray3 a1(*world, s));
-  DistArray3 a1(*world, s);
+  BOOST_REQUIRE_NO_THROW(DistArray3 a1(*world));
+  DistArray3 a1(*world);
+  BOOST_CHECK_EQUAL(a1.volume(true), 0ul);
   BOOST_CHECK(a1.begin() == a1.end()); // Check that the array is empty
 
-  BOOST_REQUIRE_NO_THROW(DistArray3 a2(*world, s, data.begin(), data.end()));
-  DistArray3 a2(*world, s, data.begin(), data.end()); // check construction of
-  BOOST_CHECK_CLOSE(sum_first(a2), 300.0, 0.0001);
-  BOOST_CHECK_EQUAL(tile_count(a2), 24u);
+  BOOST_REQUIRE_NO_THROW(DistArray3 a2(*world, s));
+  DistArray3 a2(*world, s);
+  BOOST_CHECK(a2.begin() == a2.end()); // Check that the array is empty
 
-  BOOST_REQUIRE_NO_THROW(DistArray3 a3(a2));
-  DistArray3 a3(a2);
+  BOOST_REQUIRE_NO_THROW(DistArray3 a3(*world, s, data.begin(), data.end()));
+  DistArray3 a3(*world, s, data.begin(), data.end()); // check construction of
   BOOST_CHECK_CLOSE(sum_first(a3), 300.0, 0.0001);
-  BOOST_CHECK_EQUAL(tile_count(a3), 24ul);
+  BOOST_CHECK_EQUAL(tile_count(a3), 24u);
+}
+
+BOOST_AUTO_TEST_CASE( clone )
+{
+  DistArray3 a1(*world);
+  a1.clone(a);
+  BOOST_CHECK_CLOSE(sum_first(a1), 300.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a1), 24ul);
 }
 
 BOOST_AUTO_TEST_CASE( insert_erase )
@@ -505,9 +513,17 @@ BOOST_AUTO_TEST_CASE( insert_erase )
 
 }
 
+BOOST_AUTO_TEST_CASE( clear )
+{
+  BOOST_CHECK_CLOSE(sum_first(a), 300.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a), 24u);
+  a.clear();
+  BOOST_CHECK_CLOSE(sum_first(a), 0.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a), 0u);
+}
+
 BOOST_AUTO_TEST_CASE( find )
 {
-
   typedef madness::Future<DistArray3::iterator> future_iter;
 
   if(world->mpi.comm().rank() == 0) {
@@ -518,18 +534,18 @@ BOOST_AUTO_TEST_CASE( find )
     }
   }
   world->gop.fence();
-
 }
 
-BOOST_AUTO_TEST_CASE( swap )
+BOOST_AUTO_TEST_CASE( swap_array )
 {
-  DistArray3 a1(a);
+  DistArray3 a1(*world);
+  a1.clone(a);
   DistArray3 a2(*world, s);
 
   BOOST_CHECK_CLOSE(sum_first(a1), 300.0, 0.0001); // verify initial conditions
   BOOST_CHECK_EQUAL(tile_count(a1), 24ul);
   BOOST_CHECK(a2.begin() == a2.end());
-  a1.swap(a2);
+  swap(a1, a2);
 
   BOOST_CHECK_CLOSE(sum_first(a2), 300.0, 0.0001); // check that the arrays were
   BOOST_CHECK_EQUAL(tile_count(a2), 24ul);           // swapped correctly.
@@ -548,8 +564,10 @@ BOOST_AUTO_TEST_CASE( resize )
   range_type r_big(s_big);
   range_type r_small(s_small);
 
-  DistArray3 a1(a);
-  DistArray3 a2(a);
+  DistArray3 a1(*world);
+  a1.clone(a);
+  DistArray3 a2(*world);
+  a2.clone(a);
 
   a1.resize(s_big);   // Check resize for bigger resulting array
   BOOST_CHECK_EQUAL(a1.size(), s_big);
@@ -568,6 +586,18 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_EQUAL(a2.volume(), v_small);
   BOOST_CHECK_CLOSE(sum_first(a2), 76.0, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a2), 8ul);
+}
+
+BOOST_AUTO_TEST_CASE( permute )
+{
+  Permutation<3> p(2, 0, 1);
+  a ^= p;
+  DistArray3::const_accessor acc;
+  for(data_array::const_iterator it = data.begin(); it != data.end(); ++it) {
+    if(a.find(acc, p ^ it->first)) {
+      BOOST_CHECK_EQUAL(acc->second.front(), it->second.front());
+    }
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
