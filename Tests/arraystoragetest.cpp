@@ -6,7 +6,9 @@
 #include "../madness_fixture.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
+#include <boost/functional.hpp>
 #include <numeric>
+#include <algorithm>
 #include <iterator>
 
 using namespace TiledArray;
@@ -373,31 +375,28 @@ BOOST_AUTO_TEST_CASE( array_dims )
 BOOST_AUTO_TEST_CASE( iterator )
 {
   for(DistArray3::iterator it = a.begin(); it != a.end(); ++it){
-    for(data_array::const_iterator d_it = data.begin(); d_it != data.end(); ++d_it) {
-      if(it->first == d_it->first) {
-        BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
-        break;
-      }
-    }
+    data_array::const_iterator d_it = std::find_if(data.begin(), data.end(),
+        detail::make_unary_transform(boost::bind1st(std::equal_to<DistArray3::index_type>(), it->first),
+        detail::pair_first<DistArray3::value_type>()));
+    BOOST_CHECK(d_it != data.end());
+    BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
   }
 
   for(DistArray3::const_iterator it = a.begin(); it != a.end(); ++it) { // check const/non-const iterator functionality
-    for(data_array::const_iterator d_it = data.begin(); d_it != data.end(); ++d_it) {
-      if(it->first == d_it->first) {
-        BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
-        break;
-      }
-    }
+    data_array::const_iterator d_it = std::find_if(data.begin(), data.end(),
+        detail::make_unary_transform(boost::bind1st(std::equal_to<DistArray3::index_type>(), it->first),
+        detail::pair_first<DistArray3::value_type>()));
+    BOOST_CHECK(d_it != data.end());
+    BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
   }
 
   const DistArray3& a_ref = a;
   for(DistArray3::const_iterator it = a_ref.begin(); it != a_ref.end(); ++it) { // check const iterator functionality
-    for(data_array::const_iterator d_it = data.begin(); d_it != data.end(); ++d_it) {
-      if(it->first == d_it->first) {
-        BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
-        break;
-      }
-    }
+    data_array::const_iterator d_it = std::find_if(data.begin(), data.end(),
+        detail::make_unary_transform(boost::bind1st(std::equal_to<DistArray3::index_type>(), it->first),
+        detail::pair_first<DistArray3::value_type>()));
+    BOOST_CHECK(d_it != data.end());
+    BOOST_CHECK_CLOSE(it->second.front(), d_it->second.front(), 0.000001);
   }
 }
 

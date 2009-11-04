@@ -568,7 +568,8 @@ namespace TiledArray {
     /// Copy the content of this array into the other array.
 
     /// Performs a deep copy of this array into the other array. The content of
-    /// the other array will be deleted.
+    /// the other array will be deleted. This function is blocking and may cause
+    /// some communication.
     void clone(const DistributedArrayStorage_& other) {
       DistributedArrayStorage_ temp(data_.get_world(), other.dim_.size());
       temp.insert(other.begin(), other.end());
@@ -636,10 +637,7 @@ namespace TiledArray {
 
     /// In place permutation operator.
 
-    /// This function permutes its elements only.
-    /// No assumptions are made about the data contained by this array.
-    /// Therefore, if the data in each element of the array also needs to be
-    /// permuted, it's up to the array owner to permute the data.
+    /// This function will permute the elements of the array. This function is a global sync point.
     DistributedArrayStorage_& operator ^=(const Permutation<DIM>& p) {
       typedef Range<ordinal_type, DIM, Tag, CS> range_type;
 
@@ -671,26 +669,30 @@ namespace TiledArray {
 
     /// This resize will maintain the data common to both arrays. Some
     /// non-blocking communication will likely occur. Any new elements added
-    /// have uninitialized data.
-    DistributedArrayStorage_& resize(const size_array& size) {
+    /// have uninitialized data. This function is a global sync point.
+    DistributedArrayStorage_& resize(const size_array& size, bool keep_data = true) {
       typedef Range<ordinal_type, DIM, Tag, coordinate_system> range_type;
 
       /// Construct temporary container.
-      range_type common_rng(range_type(dim_.size_) & range_type(size));
       DistributedArrayStorage temp(data_.get_world(), size);
 
-      // Iterate over all indices in the array. For each element d_.find() is
-      // used to request data at the current index. If the data is  local, the
-      // element is written into the temp array, otherwise it is skipped. When
-      // the data is written, non-blocking communication may occur (when the new
-      // location is not local).
-      for(typename range_type::const_iterator it = common_rng.begin(); it != common_rng.end(); ++it) {
-        typename data_container::const_accessor a;
-        if( data_.find(a, *it))
-          temp.data_.replace(*it, a->second);
+      if(keep_data) {
+        range_type common_rng(range_type(dim_.size_) & range_type(size));
+
+        // Iterate over all indices in the array. For each element d_.find() is
+        // used to request data at the current index. If the data is  local, the
+        // element is written into the temp array, otherwise it is skipped. When
+        // the data is written, non-blocking communication may occur (when the new
+        // location is not local).
+        for(typename range_type::const_iterator it = common_rng.begin(); it != common_rng.end(); ++it) {
+          typename data_container::const_accessor a;
+          if( data_.find(a, *it))
+            temp.data_.replace(*it, a->second);
+        }
+
+        swap(*this, temp);
       }
 
-      swap(*this, temp);
       data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
       return *this;
     }
@@ -817,7 +819,7 @@ namespace madness {
         ar & wrap(data.get(),n);
         DAS temp(size, data.get(), data.get() + n);
 
-        s.swap(temp);
+        TiledArray::swap(s, temp);
       }
     };
 

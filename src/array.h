@@ -58,12 +58,22 @@ namespace TiledArray {
       this->process_pending();
     }
 
+    /// Copy the content of this array into the other array.
+
+    /// Performs a deep copy of this array into the other array. The content of
+    /// the other array will be deleted. This function is blocking and may cause
+    /// some communication.
+    void clone(const Array_& other) {
+      range_ = other.range_;
+      tiles_.clone(other.tiles_);
+    }
+
     /// Inserts a tile into the array.
 
     /// Inserts a tile with all elements initialized to a constant value.
     /// Non-local insertions will initiate non-blocking communication.
     void insert(const index_type& i, T value = T()) {
-      tile_type t(range_.tile(i).start(), range_.tile(i).finish(), value);
+      tile_type t(range_.tile(i), value);
       tiles_.insert(i, t);
     }
 
@@ -104,6 +114,11 @@ namespace TiledArray {
     template<typename InIter>
     void erase(InIter first, InIter last) {
       tiles_.earse(first, last);
+    }
+
+    /// Removes all tiles from the array.
+    void clear() {
+      tiles_.clear();
     }
 
     /// Returns an iterator to the first local tile.
@@ -171,6 +186,42 @@ namespace TiledArray {
     /// Returns true if the tile is included in the array range.
     bool includes(const index_type& i) const {
       return tiles_.includes(i);
+    }
+
+    /// Returns a Future iterator to an element at index i.
+
+    /// This function will return an iterator to the element specified by index
+    /// i. If the element is not local the it will use non-blocking communication
+    /// to retrieve the data. The future will be immediately available if the data
+    /// is local.
+    madness::Future<iterator> find(const index_type& i) {
+      return tiles_.find(i);
+    }
+
+    /// Returns a Future const_iterator to an element at index i.
+
+    /// This function will return a const_iterator to the element specified by
+    /// index i. If the element is not local the it will use non-blocking
+    /// communication to retrieve the data. The future will be immediately
+    /// available if the data is local.
+    madness::Future<const_iterator> find(const index_type& i) const {
+      return tiles_.find(i);
+    }
+
+    /// Sets an accessor to point to a local data element.
+
+    /// This function will set an accessor to point to a local data element only.
+    /// It will return false if the data element is remote or not found.
+    bool find(accessor& acc, const index_type& i) {
+      return tiles_.find(acc, i);
+    }
+
+    /// Sets a const_accessor to point to a local data element.
+
+    /// This function will set a const_accessor to point to a local data element
+    /// only. It will return false if the data element is remote or not found.
+    bool find(const_accessor& acc, const index_type& i) const {
+      return tiles_.find(acc, i);
     }
 
     /// Returns a reference to the tile range object.
