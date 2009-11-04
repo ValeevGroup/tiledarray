@@ -8,6 +8,7 @@ struct MadnessFixture {
   ~MadnessFixture();
 
   static madness::World* world;
+  static unsigned int count;
 };
 
 #endif // TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED

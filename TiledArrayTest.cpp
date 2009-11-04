@@ -16,30 +16,30 @@ MadnessFixture::MadnessFixture() {
   madness::initialize(boost::unit_test::framework::master_test_suite().argc,
       boost::unit_test::framework::master_test_suite().argv);
 
-  if(!world)
+  if(count == 0) {
     world = new madness::World(MPI::COMM_WORLD);
-  world->args(boost::unit_test::framework::master_test_suite().argc,
-      boost::unit_test::framework::master_test_suite().argv);
+    world->args(boost::unit_test::framework::master_test_suite().argc,
+        boost::unit_test::framework::master_test_suite().argv);
+  }
 
+  ++count;
   world->gop.fence();
 }
 
 MadnessFixture::~MadnessFixture() {
   world->gop.fence();
 
-  if(world)
+  --count;
+  if(count == 0) {
     delete world;
-  world = NULL;
+    world = NULL;
+  }
   madness::finalize();
 }
 
 madness::World* MadnessFixture::world = NULL;
+unsigned int MadnessFixture::count = 0;
 
 
 // This line will initialize mpi and madness.
 BOOST_GLOBAL_FIXTURE( MadnessFixture );
-
-BOOST_AUTO_TEST_SUITE( dummy_suite )
-BOOST_AUTO_TEST_CASE( nothing ) {}
-BOOST_AUTO_TEST_SUITE_END()
-
