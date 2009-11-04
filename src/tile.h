@@ -258,7 +258,7 @@ namespace TiledArray {
     /// Exchange calling tile's data with that of \c other.
     void swap(Tile_& other) {
       range_.swap(other.range_);
-      data_.swap(other.data_);
+      ::TiledArray::swap(data_, other.data_);
     }
 
     /// Serializes the tile data for communication with other nodes.
