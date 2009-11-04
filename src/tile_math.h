@@ -6,6 +6,7 @@
 #include <Eigen/Core>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/iterator/zip_iterator.hpp>
+#include <boost/functional.hpp>
 //#include <boost/tuple/tuple.hpp>
 //#include <functional>
 #include <numeric>
@@ -463,7 +464,7 @@ namespace TiledArray {
 
     template<typename Exp0, typename T, template<typename> class Op>
     struct ExpConstruct<Exp0, ValueExp<T>, Op> {
-      typedef std::binder2nd< Op<typename Exp0::value_type> > op_type;
+      typedef boost::binder2nd< Op<typename Exp0::value_type> > op_type;
       typedef UnaryTileExp<Exp0, op_type> exp_type;
 
       static exp_type make_exp(const Exp0& e0, const ValueExp<T> e1) {
@@ -473,7 +474,7 @@ namespace TiledArray {
 
     template<typename T, typename Exp1, template<typename> class Op>
     struct ExpConstruct<ValueExp<T>, Exp1, Op> {
-      typedef std::binder1st< Op<typename Exp1::value_type> > op_type;
+      typedef boost::binder1st< Op<typename Exp1::value_type> > op_type;
       typedef UnaryTileExp<Exp1, op_type> exp_type;
 
       static exp_type make_exp(const ValueExp<T> e0, const Exp1& e1) {
