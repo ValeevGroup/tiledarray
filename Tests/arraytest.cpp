@@ -37,10 +37,15 @@ struct ArrayFixture : public TiledRangeFixture<Array<int, 3> > {
   typedef std::vector<std::pair<index_type, tile_type> > data_array;
 
   ArrayFixture() : world(MadnessFixture::world), a(*world, trng), ca(a) {
-    int v = 0;
+    int v = 1;
+    int tv = 1;
     for(TRange3::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
-      a.insert(*it, v);
-      data.push_back(Array3::value_type(*it, tile_type(a.tile(*it), v++)));
+      tile_type t(a.tile(*it), v);
+      tv = v++;
+      for(tile_type::iterator t_it = t.begin(); t_it != t.end(); ++t_it)
+        *t_it = tv++;
+      a.insert(*it, t);
+      data.push_back(Array3::value_type(*it, t));
     }
     world->gop.fence();
   }
@@ -86,7 +91,8 @@ BOOST_AUTO_TEST_CASE( array_dims )
   BOOST_CHECK_EQUAL(a.start(), trng.tiles().start());
   BOOST_CHECK_EQUAL(a.finish(), trng.tiles().finish());
   BOOST_CHECK_EQUAL(a.size(), trng.tiles().size());
-//  BOOST_CHECK_EQUAL(a.weight(), trng.tiles().weight());
+  Array3::size_array w = {{20, 5, 1}};
+  BOOST_CHECK_EQUAL(a.weight(), w);
   BOOST_CHECK_EQUAL(a.volume(), trng.tiles().volume());
   BOOST_CHECK_EQUAL(a.tiles(), trng.tiles());
   BOOST_CHECK_EQUAL(a.elements(), trng.elements());
@@ -126,7 +132,7 @@ BOOST_AUTO_TEST_CASE( accessors )
   data_array::const_iterator d_it;
   for(TRange3::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
     if(a.is_local(*it)) {
-      data_array::const_iterator d_it = find_data_element(*it);
+      d_it = find_data_element(*it);
       BOOST_CHECK(a.find(acc,*it));
       BOOST_CHECK_EQUAL(acc->second.at(0), d_it->second.at(0));
       acc.release();
@@ -147,9 +153,176 @@ BOOST_AUTO_TEST_CASE( tile_construction )
       BOOST_CHECK_EQUAL(acc->second.finish(), trng.tile(*it).finish());
       BOOST_CHECK_EQUAL(acc->second.size(), trng.tile(*it).size());
       BOOST_CHECK_EQUAL(acc->second.volume(), trng.tile(*it).volume());
+      acc.release();
     }
-    acc.release();
   }
+}
+
+BOOST_AUTO_TEST_CASE( clear )
+{
+  BOOST_CHECK_EQUAL(sum_first(a), 1830);
+  BOOST_CHECK_EQUAL(tile_count(a), 60ul);
+  a.clear();
+  BOOST_CHECK_EQUAL(sum_first(a), 0);
+  BOOST_CHECK_EQUAL(tile_count(a), 0ul);
+}
+
+BOOST_AUTO_TEST_CASE( insert_erase )
+{
+  a.clear();
+
+  BOOST_CHECK_EQUAL(sum_first(a), 0);
+  BOOST_CHECK_EQUAL(tile_count(a), 0ul);
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check inserting pairs
+    if(a.is_local(it->first))
+      a.insert(*it);
+  }
+  world->gop.fence();
+  BOOST_CHECK_EQUAL(sum_first(a), 1830);
+  BOOST_CHECK_EQUAL(tile_count(a), 60ul);
+
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check erasure of element
+    if(a.is_local(it->first))
+      a.erase(it->first);
+  }
+  world->gop.fence();
+  BOOST_CHECK_EQUAL(sum_first(a), 0);
+  BOOST_CHECK_EQUAL(tile_count(a), 0ul);
+
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check insert of element at index
+    if(a.is_local(it->first))
+      a.insert(it->first, it->second);
+  }
+  world->gop.fence();
+  BOOST_CHECK_EQUAL(sum_first(a), 1830);
+  BOOST_CHECK_EQUAL(tile_count(a), 60ul);
+
+  a.erase(a.begin(), a.end()); // check erasing everything with iterators
+  world->gop.fence();
+  BOOST_CHECK_EQUAL(sum_first(a), 0);
+  BOOST_CHECK_EQUAL(tile_count(a), 0ul);
+
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check insert of element
+    if(a.is_local(it->first))                                   // w/ tile iterator initialization
+      a.insert(it->first, it->second.begin(), it->second.end());
+  }
+  world->gop.fence();
+  BOOST_CHECK_EQUAL(sum_first(a), 1830);
+  BOOST_CHECK_EQUAL(tile_count(a), 60ul);
+
+  a.clear();
+  world->gop.fence();
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) { // check insert of element
+    if(a.is_local(it->first))                                   // w/ tile constant initialization
+      a.insert(it->first, it->second.at(0));
+  }
+  world->gop.fence();
+  BOOST_CHECK_EQUAL(sum_first(a), 1830);
+  BOOST_CHECK_EQUAL(tile_count(a), 60ul);
+
+  a.clear();
+  world->gop.fence();
+  if(world->mpi.comm().rank() == 0)
+    for(data_array::iterator it = data.begin(); it != data.end(); ++it) // check communicating insert
+      a.insert(*it);
+  world->gop.fence();
+  BOOST_CHECK_EQUAL(sum_first(a), 1830);
+  BOOST_CHECK_EQUAL(tile_count(a), 60ul);
+}
+
+BOOST_AUTO_TEST_CASE( clone )
+{
+  Array3 a1(*world, trng);
+  BOOST_CHECK_EQUAL(sum_first(a1), 0);
+  BOOST_CHECK_EQUAL(tile_count(a1), 0ul);
+  a1.clone(a); // Test a deep copy.
+  BOOST_CHECK_EQUAL(sum_first(a1), 1830);
+  BOOST_CHECK_EQUAL(tile_count(a1), 60ul);
+}
+
+BOOST_AUTO_TEST_CASE( swap_array )
+{
+  Array3 a1(*world, trng);
+  a1.clone(a);
+  Array3 a2(*world, trng);
+
+  BOOST_CHECK_EQUAL(sum_first(a1), 1830); // verify initial conditions
+  BOOST_CHECK_EQUAL(tile_count(a1), 60ul);
+  BOOST_CHECK(a2.begin() == a2.end());
+  TiledArray::swap(a1, a2);
+
+  BOOST_CHECK_EQUAL(sum_first(a2), 1830); // check that the arrays were
+  BOOST_CHECK_EQUAL(tile_count(a2), 60ul);           // swapped correctly.
+  BOOST_CHECK(a1.begin() == a1.end());
+}
+
+BOOST_AUTO_TEST_CASE( find )
+{
+  typedef madness::Future<Array3::iterator> future_iter;
+
+  if(world->mpi.comm().rank() == 0) {
+    data_array::const_iterator d_it;
+    for(TRange3::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
+      future_iter v = a.find(*it);  // check find function with coordinate index
+      d_it = find_data_element(*it);
+      BOOST_CHECK_EQUAL(v.get()->second.at(0), d_it->second.at(0));
+    }
+  }
+
+  future_iter v = a.find(a.finish());
+  BOOST_CHECK(v.get() == a.end());
+}
+
+BOOST_AUTO_TEST_CASE( permute )
+{
+  Permutation<3> p(2, 0, 1);
+  a ^= p;
+  Array3::const_accessor acc;
+  for(data_array::const_iterator it = data.begin(); it != data.end(); ++it) {
+    if(a.find(acc, p ^ it->first)) {
+      tile_type pt =  p ^ it->second;
+      BOOST_CHECK_EQUAL(acc->second.at(0), pt.at(0));
+      BOOST_CHECK_EQUAL(acc->second.range(), pt.range());
+      BOOST_CHECK_EQUAL_COLLECTIONS(acc->second.begin(), acc->second.end(), pt.begin(), pt.end());
+    }
+  }
+}
+
+
+BOOST_AUTO_TEST_CASE( resize )
+{
+  const std::size_t d0[] = {0, 10, 20};
+  const std::size_t d1[] = {0, 5, 10, 15};
+  const std::size_t d2[] = {0, 3, 6, 9, 12};
+  const TRange1 dim0(d0, d0 + 3);
+  const TRange1 dim1(d1, d1 + 4);
+  const TRange1 dim2(d2, d2 + 5);
+  const TRange1 dims[3] = {dim0, dim1, dim2};
+  TRange3 trng1(dims, dims + 3);
+
+  a.resize(trng1);
+  BOOST_CHECK_EQUAL(sum_first(a), 0);   // check for no data
+  BOOST_CHECK_EQUAL(tile_count(a), 0ul);
+
+  BOOST_CHECK_EQUAL(a.start(), trng1.tiles().start());     // check the range dimensions for correctness
+  BOOST_CHECK_EQUAL(a.finish(), trng1.tiles().finish());
+  BOOST_CHECK_EQUAL(a.size(), trng1.tiles().size());
+  Array3::size_array w = {{12, 4, 1}};
+  BOOST_CHECK_EQUAL(a.weight(), w);
+  BOOST_CHECK_EQUAL(a.volume(), trng1.tiles().volume());
+  BOOST_CHECK_EQUAL(a.tiles(), trng1.tiles());
+  BOOST_CHECK_EQUAL(a.elements(), trng1.elements());
+  for(TRange3::range_type::const_iterator it = trng1.tiles().begin(); it != trng1.tiles().end(); ++it) {
+    BOOST_CHECK_EQUAL(a.tile(*it), trng1.tile(*it));
+  }
+
+  for(data_array::iterator it = data.begin(); it != data.end(); ++it) {
+    if(a.is_local(it->first) && a.includes(it->first))
+      a.insert(it->first, it->second);
+  }
+  world->gop.fence();
+  BOOST_CHECK_EQUAL(sum_first(a), 420);  // check that the correct tiles were added
+  BOOST_CHECK_EQUAL(tile_count(a), 24ul);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

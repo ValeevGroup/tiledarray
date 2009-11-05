@@ -532,7 +532,6 @@ BOOST_AUTO_TEST_CASE( find )
       BOOST_CHECK_CLOSE(v.get()->second.front(), data[i].second.front(), 0.0001);
     }
   }
-  world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE( swap_array )
@@ -567,6 +566,8 @@ BOOST_AUTO_TEST_CASE( resize )
   a1.clone(a);
   DistArray3 a2(*world);
   a2.clone(a);
+  DistArray3 a3(*world);
+  a3.clone(a);
 
   a1.resize(s_big);   // Check resize for bigger resulting array
   BOOST_CHECK_EQUAL(a1.size(), s_big);
@@ -585,6 +586,13 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_EQUAL(a2.volume(), v_small);
   BOOST_CHECK_CLOSE(sum_first(a2), 76.0, 0.0001);
   BOOST_CHECK_EQUAL(tile_count(a2), 8ul);
+
+  a3.resize(s_small, false); // Check resize for a smaller resulting array
+  BOOST_CHECK_EQUAL(a3.size(), s_small);
+  BOOST_CHECK_EQUAL(a3.weight(), w_small);
+  BOOST_CHECK_EQUAL(a3.volume(), v_small);
+  BOOST_CHECK_CLOSE(sum_first(a3), 0.0, 0.0001);
+  BOOST_CHECK_EQUAL(tile_count(a3), 0ul);
 }
 
 BOOST_AUTO_TEST_CASE( permute )

@@ -70,8 +70,6 @@ namespace TiledArray {
       static unsigned int dim() { return DIM; }
       static detail::DimensionOrderType  order() { return coordinate_system::dimension_order; }
 
-      friend void swap<>(ArrayDim_& first, ArrayDim_& second);
-
       /// Default constructor. Constructs a 0 dimension array.
       ArrayDim() : size_(), weight_(), n_(0) { // no throw
         size_.assign(0);
@@ -171,6 +169,8 @@ namespace TiledArray {
         return result;
       }
 
+      friend void swap<>(ArrayDim_& first, ArrayDim_& second);
+
       size_array size_;
       size_array weight_;
       ordinal_type n_;
@@ -224,8 +224,6 @@ namespace TiledArray {
 
     static unsigned int dim() { return DIM; }
     static detail::DimensionOrderType  order() { return coordinate_system::dimension_order; }
-
-    friend void swap<>(DenseArrayStorage_& first, DenseArrayStorage_& second);
 
     /// Default constructor.
 
@@ -468,6 +466,8 @@ namespace TiledArray {
       }
     }
 
+    friend void swap<>(DenseArrayStorage_& first, DenseArrayStorage_& second);
+
     array_dim_type dim_;
     value_type* d_;
     alloc_type alloc_;
@@ -509,8 +509,6 @@ namespace TiledArray {
     typedef typename data_container::const_accessor const_accessor;
 
     static unsigned int dim() { return DIM; }
-
-    friend void swap<>(DistributedArrayStorage_&, DistributedArrayStorage_&);
 
   private:
     // Operations not permitted.
@@ -690,8 +688,9 @@ namespace TiledArray {
             temp.data_.replace(*it, a->second);
         }
 
-        swap(*this, temp);
       }
+
+      swap(*this, temp);
 
       data_.get_world().gop.fence(); // Make sure write is complete before proceeding.
       return *this;
@@ -771,6 +770,8 @@ namespace TiledArray {
     }
 
   private:
+
+    friend void swap<>(DistributedArrayStorage_&, DistributedArrayStorage_&);
 
     array_dim_type dim_;
     data_container data_;

@@ -21,6 +21,8 @@ namespace TiledArray {
   template<class T>
   class TileSlice;
   template<typename T, unsigned int DIM, typename CS>
+  void swap(Tile<T,DIM,CS>&, Tile<T,DIM,CS>&);
+  template<typename T, unsigned int DIM, typename CS>
   Tile<T,DIM,CS> operator ^(const Permutation<DIM>& p, const Tile<T,DIM,CS>& t);
   template<typename T, unsigned int DIM, typename CS>
   std::ostream& operator <<(std::ostream& out, const Tile<T,DIM,CS>& t);
@@ -241,7 +243,7 @@ namespace TiledArray {
     /// Permute the tile given a permutation.
     Tile_& operator ^=(const Permutation<DIM>& p) {
       Tile_ temp = p ^ (*this);
-      swap(temp);
+      swap(*this, temp);
       return *this;
     }
 
@@ -253,12 +255,6 @@ namespace TiledArray {
 
     expressions::AnnotatedTile<const value_type> operator ()(const std::string& v) const {
       return expressions::AnnotatedTile<const value_type>(*this, expressions::VariableList(v));
-    }
-
-    /// Exchange calling tile's data with that of \c other.
-    void swap(Tile_& other) {
-      range_.swap(other.range_);
-      ::TiledArray::swap(data_, other.data_);
     }
 
     /// Serializes the tile data for communication with other nodes.
@@ -276,13 +272,21 @@ namespace TiledArray {
       return result;
     }
 
-    range_type range_;     ///< tile dimension information
-    data_container data_;  ///< element data
-
+    friend void swap<>(Tile_&, Tile_&);
     friend std::ostream& operator<< <>(std::ostream& , const Tile_&);
     friend Tile_ operator^ <>(const Permutation<DIM>&, const Tile_&);
 
+    range_type range_;     ///< tile dimension information
+    data_container data_;  ///< element data
+
   }; // class Tile
+
+  /// Exchange the data of the two tiles
+  template<typename T, unsigned int DIM, typename CS>
+  void swap(Tile<T,DIM,CS>& t0, Tile<T,DIM,CS>& t1) {
+    TiledArray::swap(t0.range_, t1.range_);
+    TiledArray::swap(t0.data_, t1.data_);
+  }
 
   /// Permute the tile given a permutation.
   template<typename T, unsigned int DIM, typename CS>

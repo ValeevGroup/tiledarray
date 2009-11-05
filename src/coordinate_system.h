@@ -120,7 +120,7 @@ namespace TiledArray {
       static iterator end(const C& c) { return c.rend(); }
     };
 
-  }; // namespace detail
+  } // namespace detail
 
   /// CoordinateSystem is a policy class that specifies e.g. the order of significance of dimension.
   /// This allows to, for example, to define order of iteration to be compatible with C or Fortran arrays.

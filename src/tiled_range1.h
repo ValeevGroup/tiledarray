@@ -12,6 +12,8 @@ namespace TiledArray {
 
   template <typename I>
   class TiledRange1;
+  template <typename I>
+  void swap(TiledRange1<I>&, TiledRange1<I>&);
   template<typename I>
   Range<I, 1, LevelTag<1>, CoordinateSystem<1> > make_range1(const I&, const I&);
   template<typename I>
@@ -46,6 +48,7 @@ namespace TiledArray {
     typedef typename tile_range_type::index_type tile_range_index;
 
   public:
+
     /// Default constructor, range of 0 tiles and elements.
     TiledRange1() : range_(make_range1<index_type>(0,0)), element_range_(make_tile_range1<index_type>(0,0)),
         tile_ranges_(1, make_tile_range1<index_type>(0,0)), elem2tile_(1, 0)
@@ -71,14 +74,14 @@ namespace TiledArray {
     /// Assignment operator
     TiledRange1& operator =(const TiledRange1& rng) {
       TiledRange1 temp(rng);
-      swap(temp);
+      swap(*this, temp);
       return *this;
     }
 
     template <typename RandIter>
     TiledRange1& resize(RandIter first, RandIter last, const index_type start_tile_index = 0) {
       TiledRange1 temp(first, last, start_tile_index);
-      swap(temp);
+      swap(*this, temp);
       return *this;
     }
 
@@ -101,14 +104,6 @@ namespace TiledArray {
     const tile_range_type& elements() const { return element_range_; }
     const tile_range_type& tile(const index_type& i) {
       return tile_ranges_.at(i - range_.start()[0]);
-    }
-
-    /// Swap the data of this range with another.
-    void swap(TiledRange1& other) { // no throw
-      range_.swap(other.range_);
-      element_range_.swap(other.element_range_);
-      std::swap(tile_ranges_, other.tile_ranges_);
-      std::swap(elem2tile_, other.elem2tile_);
     }
 
     const index_type& element2tile(const tile_index_type& e) const {
@@ -157,6 +152,7 @@ namespace TiledArray {
           elem2tile_[e - element_range_.start()[0]] = t + range_.start()[0];
     }
 
+    friend void swap<>(TiledRange1<I>&, TiledRange1<I>&);
     friend std::ostream& operator << <>(std::ostream&, const TiledRange1&);
 
     // TiledRange1 data
@@ -166,6 +162,15 @@ namespace TiledArray {
     std::vector<index_type> elem2tile_; ///< maps element index to tile index (secondary data).
 
   }; // class TiledRange1
+
+  /// Exchange the data of the two given ranges.
+  template <typename I>
+  void swap(TiledRange1<I>& r0, TiledRange1<I>& r1) { // no throw
+    TiledArray::swap(r0.range_, r1.range_);
+    TiledArray::swap(r0.element_range_, r1.element_range_);
+    std::swap(r0.tile_ranges_, r1.tile_ranges_);
+    std::swap(r0.elem2tile_, r1.elem2tile_);
+  }
 
   /// Equality operator
   template <typename I>

@@ -16,6 +16,10 @@ namespace TiledArray {
   class TiledRange;
   template<typename T, unsigned int DIM, typename CS>
   class Tile;
+  template <typename T, unsigned int DIM, typename CS>
+  class Array;
+  template<typename T, unsigned int DIM, typename CS>
+  void swap(Array<T, DIM, CS>& a0, Array<T, DIM, CS>& a1);
 
   /// Tiled Array with data distributed across many nodes.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
@@ -44,6 +48,9 @@ namespace TiledArray {
     typedef typename data_container::const_iterator const_iterator;
 
   private:
+
+    friend void swap<>(Array_& a0, Array_&);
+
     // Prohibited operations
     Array();
     Array(const Array_&);
@@ -74,7 +81,7 @@ namespace TiledArray {
     /// Non-local insertions will initiate non-blocking communication.
     void insert(const index_type& i, T value = T()) {
       tile_type t(range_.tile(i), value);
-      tiles_.insert(i, t);
+      tiles_.insert(i - start(), t);
     }
 
     /// Inserts a tile into the array.
@@ -84,8 +91,8 @@ namespace TiledArray {
     /// non-blocking communication.
     template<typename InIter>
     void insert(const index_type& i, InIter first, InIter last) {
-      tile_type t(range_.tile(i).start(), range_.tile(i).finish(), first, last);
-      tiles_.insert(i, t);
+      tile_type t(range_.tile(i), first, last);
+      tiles_.insert(i - start(), t);
     }
 
     /// Inserts a tile into the array.
@@ -93,9 +100,17 @@ namespace TiledArray {
     /// Copies the given tile into the array. Non-local insertions will initiate
     /// non-blocking communication.
     void insert(const index_type& i, const tile_type& t) {
-      TA_ASSERT(t.start() == range_.tile(i).start() && t.finish() == range_.tile(i).finish(),
+      TA_ASSERT(t.range() == range_.tile(i),
           std::runtime_error("Array<...>::insert(...): Tile boundaries do not match array tile boundaries."));
       tiles_.insert(i, t);
+    }
+
+    /// Inserts a tile into the array.
+
+    /// Copies the given value_type into the array. Non-local insertions will
+    /// initiate non-blocking communication.
+    void insert(const value_type& v) {
+      insert(v.first - start(), v.second);
     }
 
     /// Erases a tile from the array.
@@ -103,7 +118,7 @@ namespace TiledArray {
     /// This will remove the tile at the given index. It will initiate
     /// non-blocking for non-local tiles.
     void erase(const index_type& i) {
-      tiles_.earse(i);
+      tiles_.erase(i - start());
     }
 
     /// Erase a range of tiles from the array.
@@ -113,7 +128,7 @@ namespace TiledArray {
     /// initiate non-blocking communication for non-local tiles.
     template<typename InIter>
     void erase(InIter first, InIter last) {
-      tiles_.earse(first, last);
+      tiles_.erase(first, last);
     }
 
     /// Removes all tiles from the array.
@@ -131,26 +146,32 @@ namespace TiledArray {
     const_iterator end() const { return tiles_.end(); }
 
     /// Resizes the array to the given tiled range.
-    void resize(const tiled_range_type) {
-      TA_ASSERT(false, std::runtime_error("Array<...>::resize(...): Function not implemented yet."));
+
+    /// The array will be resized to the given dimensions and tile boundaries.
+    /// This will erase all data contained by the array.
+    void resize(const tiled_range_type& r) {
+      range_ = r;
+      tiles_.resize(range_.tiles().size(), false);
     }
 
     /// Permutes the array. This will initiate blocking communication.
     Array& operator ^=(const Permutation<DIM>& p) {
       for(iterator it = begin(); it != end(); ++it)
-        *it ^= p; // permute the individual tile
+        it->second ^= p; // permute the individual tile
       range_ ^= p;
       tiles_ ^= p; // move the tiles to the correct location. Blocking communication here.
+
+      return *this;
     }
 
     /// Returns true if the tile specified by index is stored locally.
     bool is_local(const index_type& i) const {
-      return tiles_.is_local(i);
+      return tiles_.is_local(i - start());
     }
 
     /// Returns true if the element specified by tile index i is stored locally.
     bool is_local(const tile_index_type& i) const {
-      return range_.elements().includes(i) && is_local(get_tile_index(i));
+      return range_.elements().includes(i) && is_local(get_tile_index(i) - start());
     }
 
     /// Returns the index of the lower tile boundary.
@@ -185,7 +206,7 @@ namespace TiledArray {
 
     /// Returns true if the tile is included in the array range.
     bool includes(const index_type& i) const {
-      return tiles_.includes(i);
+      return tiles_.includes(i - start());
     }
 
     /// Returns a Future iterator to an element at index i.
@@ -195,7 +216,7 @@ namespace TiledArray {
     /// to retrieve the data. The future will be immediately available if the data
     /// is local.
     madness::Future<iterator> find(const index_type& i) {
-      return tiles_.find(i);
+      return tiles_.find(i - start());
     }
 
     /// Returns a Future const_iterator to an element at index i.
@@ -205,7 +226,7 @@ namespace TiledArray {
     /// communication to retrieve the data. The future will be immediately
     /// available if the data is local.
     madness::Future<const_iterator> find(const index_type& i) const {
-      return tiles_.find(i);
+      return tiles_.find(i - start());
     }
 
     /// Sets an accessor to point to a local data element.
@@ -213,7 +234,7 @@ namespace TiledArray {
     /// This function will set an accessor to point to a local data element only.
     /// It will return false if the data element is remote or not found.
     bool find(accessor& acc, const index_type& i) {
-      return tiles_.find(acc, i);
+      return tiles_.find(acc, i - start());
     }
 
     /// Sets a const_accessor to point to a local data element.
@@ -221,7 +242,7 @@ namespace TiledArray {
     /// This function will set a const_accessor to point to a local data element
     /// only. It will return false if the data element is remote or not found.
     bool find(const_accessor& acc, const index_type& i) const {
-      return tiles_.find(acc, i);
+      return tiles_.find(acc, i - start());
     }
 
     /// Returns a reference to the tile range object.
@@ -250,7 +271,12 @@ namespace TiledArray {
     data_container tiles_;
   }; // class Array
 
+  template<typename T, unsigned int DIM, typename CS>
+  void swap(Array<T, DIM, CS>& a0, Array<T, DIM, CS>& a1) {
+    TiledArray::swap(a0.range_, a1.range_);
+    TiledArray::swap(a0.tiles_, a1.tiles_);
+  }
 
-};
+} // namespace TiledArray
 
 #endif // TILEDARRAY_H__INCLUDED

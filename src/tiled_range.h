@@ -17,7 +17,10 @@ namespace TiledArray {
   class TiledRange1;
 
   // need these forward declarations
-  template<typename I, unsigned int DIM, typename CS> class TiledRange;
+  template<typename I, unsigned int DIM, typename CS>
+  class TiledRange;
+  template<typename I, unsigned int DIM, typename CS>
+  void swap(TiledRange<I, DIM, CS>&, TiledRange<I, DIM, CS>&);
   template<typename I, unsigned int DIM, typename CS>
   TiledRange<I,DIM,CS> operator ^(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
   template<typename I, unsigned int DIM, typename CS>
@@ -94,14 +97,14 @@ namespace TiledArray {
       /// objects are
       TiledRange& operator ^=(const Permutation<DIM>& p) {
         TiledRange temp = p ^ *this;
-        swap(temp);
+        TiledArray::swap(*this, temp);
         return *this;
       }
 
       /// TiledRange assignment operator
       TiledRange& operator =(const TiledRange& other) {
         TiledRange temp(other);
-        swap(temp);
+        swap(*this, temp);
         return *this;
       }
 
@@ -110,7 +113,7 @@ namespace TiledArray {
       template <typename InIter>
       TiledRange& resize(InIter first, InIter last) {
         TiledRange temp(first, last);
-        swap(temp);
+        swap(*this, temp);
         return *this;
       }
 
@@ -129,13 +132,6 @@ namespace TiledArray {
         TA_ASSERT( tile_ranges_.includes(t),
             std::out_of_range("TiledRange<...>::tile(...) const: Tile index is out of range."));
         return tile_ranges_[t - range_.start()];
-      }
-
-      void swap(TiledRange& other) {
-        range_.swap(other.range_);
-        element_range_.swap(other.element_range_);
-        TiledArray::swap(tile_ranges_, other.tile_ranges_);
-        boost::swap(ranges_, other.ranges_);
       }
 
     private:
@@ -188,6 +184,7 @@ namespace TiledArray {
         return result;
       }
 
+      friend void swap<>(TiledRange_&, TiledRange_&);
       friend TiledRange operator ^ <>(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
       friend bool operator == <>(const TiledRange&, const TiledRange&);
 
@@ -215,6 +212,15 @@ namespace TiledArray {
       result.tile_ranges_[ p ^ *it ] ^= p;
 
     return result;
+  }
+
+  /// Exchange the content of the two given TiledRange's.
+  template<typename I, unsigned int DIM, typename CS>
+  void swap(TiledRange<I, DIM, CS>& r0, TiledRange<I, DIM, CS>& r1) {
+    TiledArray::swap(r0.range_, r1.range_);
+    TiledArray::swap(r0.element_range_, r1.element_range_);
+    TiledArray::swap(r0.tile_ranges_, r1.tile_ranges_);
+    boost::swap(r0.ranges_, r1.ranges_);
   }
 
   /// Returns true when all tile and element ranges are the same.

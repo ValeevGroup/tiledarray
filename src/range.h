@@ -20,6 +20,8 @@ namespace TiledArray {
   template <typename T, std::size_t DIM>
   T volume(const boost::array<T,DIM>&);
   template <typename I, unsigned int DIM, typename Tag, typename CS>
+  void swap(Range<I,DIM,Tag,CS>&, Range<I,DIM,Tag,CS>&);
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
   Range<I,DIM,Tag,CS> operator &(const Range<I,DIM,Tag,CS>&, const Range<I,DIM,Tag,CS>&);
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   Range<T,DIM,Tag,CS> operator ^(const Permutation<DIM>&, const Range<T,DIM,Tag,CS>&);
@@ -113,7 +115,7 @@ namespace TiledArray {
     /// Assignment Operator.
     Range_& operator =(const Range_& other) {
       Range_ temp(other);
-      swap(temp);
+      swap(*this, temp);
       return *this;
     }
 
@@ -135,21 +137,21 @@ namespace TiledArray {
   	  temp.finish_ ^= p;
   	  temp.size_ ^= p;
 
-  	  swap(temp);
+  	  swap(*this, temp);
       return *this;
     }
 
     /// Change the dimensions of the range.
     Range_& resize(const index_type& start, const index_type& finish) {
       Range_ temp(start, finish);
-      swap(temp);
+      swap(*this, temp);
       return *this;
     }
 
     /// Change the dimensions of the range.
     Range_& resize(const size_array& size) {
       Range_ temp(size, start_);
-      swap(temp);
+      swap(*this, temp);
       return *this;
     }
 
@@ -158,17 +160,13 @@ namespace TiledArray {
       ar & start_ & finish_ & size_;
     }
 
-    void swap(Range_& other) { // no throw
-      ::TiledArray::swap(start_, other.start_);
-      ::TiledArray::swap(finish_, other.finish_);
-      ::TiledArray::swap(size_, other.size_);
-    }
-
   private:
 
     void increment(index_type& i) const {
       detail::IncrementCoordinate<index_type,coordinate_system>(i, start_, finish_);
     }
+
+    friend   void swap<>(Range<I,DIM,Tag,CS>&, Range<I,DIM,Tag,CS>&);
 
     index_type start_;              // Tile origin
     index_type finish_;             // Tile upper bound
@@ -183,6 +181,14 @@ namespace TiledArray {
     for(std::size_t d = 0; d < DIM; ++d)
       result *= std::abs(static_cast<long int>(a[d]));
     return result;
+  }
+
+  /// Exchange the values of the give two ranges.
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  void swap(Range<I,DIM,Tag,CS>& r0, Range<I,DIM,Tag,CS>& r1) { // no throw
+    TiledArray::swap(r0.start_, r1.start_);
+    TiledArray::swap(r0.finish_, r1.finish_);
+    TiledArray::swap(r0.size_, r1.size_);
   }
 
   /// Return the union of two range (i.e. the overlap). If the ranges do not
