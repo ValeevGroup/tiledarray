@@ -4,6 +4,7 @@
 #include <array_storage.h>
 #include <tiled_range.h>
 #include <tile.h>
+#include <annotated_array.h>
 
 #include <cassert>
 #include <boost/shared_ptr.hpp>
@@ -19,7 +20,7 @@ namespace TiledArray {
   template <typename T, unsigned int DIM, typename CS>
   class Array;
   template<typename T, unsigned int DIM, typename CS>
-  void swap(Array<T, DIM, CS>& a0, Array<T, DIM, CS>& a1);
+  void swap(Array<T, DIM, CS>&, Array<T, DIM, CS>&);
 
   /// Tiled Array with data distributed across many nodes.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
@@ -40,16 +41,12 @@ namespace TiledArray {
     typedef typename data_container::size_array size_array;
     typedef typename data_container::value_type value_type;
     typedef TiledRange<ordinal_type, DIM, CS> tiled_range_type;
-    typedef tile_type & reference_type;
-    typedef const tile_type & const_reference_type;
     typedef typename data_container::accessor accessor;
     typedef typename data_container::const_accessor const_accessor;
     typedef typename data_container::iterator iterator;
     typedef typename data_container::const_iterator const_iterator;
 
   private:
-
-    friend void swap<>(Array_& a0, Array_&);
 
     // Prohibited operations
     Array();
@@ -266,6 +263,8 @@ namespace TiledArray {
     index_type get_tile_index(const tile_index_type& i) const {
       return * range_.find(i);
     }
+
+    friend void swap<>(Array_&, Array_&);
 
     tiled_range_type range_;
     data_container tiles_;

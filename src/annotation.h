@@ -6,6 +6,9 @@
 
 namespace TiledArray {
 
+  template<typename I, unsigned int DIM, typename Tag, typename CS>
+  class ArrayCoordinate;
+
   namespace detail {
     template<typename InIter, typename OutIter>
     void calc_weight(InIter first, InIter last, OutIter result);

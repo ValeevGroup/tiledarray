@@ -15,10 +15,12 @@
 //#include <range.h>
 #include <shape.h>
 //#include <variable_list.h>
+//#include <annotation.h>
 
 //#include <array_storage.h>
 //#include <tiled_range1.h>
 //#include <annotated_tile.h>
+//#include <annoated_array.h>
 //#include <packed_tile.h>
 //#include <tile_slice.h>
 //#include <tile_math.h>

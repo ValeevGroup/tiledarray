@@ -1,28 +1,39 @@
 #ifndef TILEDARRAY_ANNOTATED_ARRAY_H__INCLUDED
 #define TILEDARRAY_ANNOTATED_ARRAY_H__INCLUDED
 
-#include <variable_list.h>
-#include <vector>
+#include <annotation.h>
+#include <madness_runtime.h>
 
 namespace TiledArray {
+
+  template<typename T, unsigned int DIM, typename CS>
+  class Array;
+
   namespace expressions {
 
-    /// Annotated Array
     template<typename T>
-    class AnnotatedArray : public Annotation {
+    class AnnotatedTile;
+    template<typename T>
+    class AnnotatedArray;
+    template<typename T>
+    void swap(AnnotatedArray<T>&, AnnotatedArray<T>&);
+
+    /// Annotated Array
+
+    template<typename T>
+    class AnnotatedArray : public madness::WorldObject< AnnotatedArray<T> >, Annotation {
     public:
       typedef AnnotatedArray<T> AnnotatedArray_;
-    private:
-      typedef DistributedArrayStorage<tile_type, DIM, LevelTag<1>, coordinate_system> data_container;
-
-    public:
-      typedef typename data_container::index_type index_type;
-      typedef typename tile_type::index_type tile_index_type;
       typedef typename Annotation::ordinal_type ordinal_type;
       typedef typename Annotation::volume_type volume_type;
       typedef typename Annotation::size_array size_array;
+      typedef AnnotatedTile<T> tile_type;
+    private:
+      typedef madness::WorldContainer<ordinal_type, tile_type > data_container;
+
+    public:
+
       typedef typename data_container::value_type value_type;
-      typedef TiledRange<ordinal_type, DIM, CS> tiled_range_type;
       typedef tile_type & reference_type;
       typedef const tile_type & const_reference_type;
       typedef typename data_container::accessor accessor;
@@ -32,7 +43,7 @@ namespace TiledArray {
 
     private:
 
-      friend void swap<>(AnnotatedArray_& a0, AnnotatedArray_&);
+
 
       // Prohibited operations
       AnnotatedArray();
@@ -42,10 +53,16 @@ namespace TiledArray {
     public:
       /// creates an array living in world and described by shape. Optional
       /// val specifies the default value of every element
-      AnnotatedArray(madness::World& world, const tiled_range_type& rng) :
-          madness::WorldObject<AnnotatedArray_>(world), range_(rng), tiles_(world, rng.tiles().size())
+      template<unsigned int DIM, detail::DimensionOrderType O>
+      AnnotatedArray(const Array<T, DIM, CoordinateSystem<DIM, O> >& a, VariableList v) :
+          madness::WorldObject<AnnotatedArray_>(a.get_world()),
+          Annotation(a.size().begin(), a.size().begin(), a.weight().begin(),
+          a.weight().end(), a.volume(), v, O), tiles_(a.get_world(), true)
       {
+        for(typename Array<T, DIM, CoordinateSystem<DIM, O> >::const_iterator it = a.begin(); it != a.end(); ++it)
+          insert(this->ord_(it->first), tile_type(it->second, v));
         this->process_pending();
+        this->get_world().gop.fence();
       }
 
       /// Inserts a tile into the array.
@@ -56,7 +73,7 @@ namespace TiledArray {
       void insert(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i, const Tile& t) {
         TA_ASSERT(this->dim() == DIM, std::runtime_error,
             "The index dimensions is not equal to the array dimensions.");
-        tiles_.insert(i, t);
+        tiles_.insert(this->ord_(i), t);
       }
 
       /// Inserts a tile into the array.
@@ -76,7 +93,7 @@ namespace TiledArray {
       void erase(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) {
         TA_ASSERT(this->dim() == DIM, std::runtime_error,
             "The index dimensions is not equal to the array dimensions.");
-        tiles_.erase(i);
+        tiles_.erase(this->ord_(i));
       }
 
       /// Erase a range of tiles from the array.
@@ -86,7 +103,8 @@ namespace TiledArray {
       /// initiate non-blocking communication for non-local tiles.
       template<typename InIter>
       void erase(InIter first, InIter last) {
-        tiles_.erase(first, last);
+        for(; first != last; ++first);
+          tiles_.erase(this->ord_(first->first));
       }
 
       /// Removes all tiles from the array.
@@ -110,7 +128,7 @@ namespace TiledArray {
             "The permutation dimensions is not equal to the array dimensions.");
         for(iterator it = begin(); it != end(); ++it)
           it->second ^= p; // permute the individual tile
-        range_ ^= p;
+        Annotation::operator^=(p);
         tiles_ ^= p; // move the tiles to the correct location. Blocking communication here.
 
         return *this;
@@ -121,7 +139,7 @@ namespace TiledArray {
       bool is_local(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) const {
         TA_ASSERT(this->dim() == DIM, std::runtime_error,
             "The index dimensions is not equal to the array dimensions.");
-        return tiles_.is_local(i);
+        return tiles_.is_local(this->ord_(i));
       }
 
       /// Returns a Future iterator to an element at index i.
@@ -134,7 +152,7 @@ namespace TiledArray {
       madness::Future<iterator> find(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) {
         TA_ASSERT(this->dim() == DIM, std::runtime_error,
             "The index dimensions is not equal to the array dimensions.");
-        return tiles_.find(i);
+        return tiles_.find(this->ord_(i));
       }
 
       /// Returns a Future const_iterator to an element at index i.
@@ -147,7 +165,7 @@ namespace TiledArray {
       madness::Future<const_iterator> find(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) const {
         TA_ASSERT(this->dim() == DIM, std::runtime_error,
             "The index dimensions is not equal to the array dimensions.");
-        return tiles_.find(i);
+        return tiles_.find(this->ord_(i));
       }
 
       /// Sets an accessor to point to a local data element.
@@ -158,7 +176,7 @@ namespace TiledArray {
       bool find(accessor& acc, const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) {
         TA_ASSERT(this->dim() == DIM, std::runtime_error,
             "The index dimensions is not equal to the array dimensions.");
-        return tiles_.find(acc, i);
+        return tiles_.find(acc, this->ord_(i));
       }
 
       /// Sets a const_accessor to point to a local data element.
@@ -169,14 +187,21 @@ namespace TiledArray {
       bool find(const_accessor& acc, const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) const {
         TA_ASSERT(this->dim() == DIM, std::runtime_error,
             "The index dimensions is not equal to the array dimensions.");
-        return tiles_.find(acc, i);
+        return tiles_.find(acc, this->ord_(i));
       }
 
     private:
 
-      tiled_range_type range_;
+      friend void TiledArray::expressions::swap<>(AnnotatedArray_&, AnnotatedArray_&);
+
       data_container tiles_;
     }; // class AnnotatedArray
+
+    template<typename T>
+    void swap(AnnotatedArray<T>& a0, AnnotatedArray<T>&) {
+      TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
+    }
+
 
   } // namespace expressions
 } // namespace TiledArray

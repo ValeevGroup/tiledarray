@@ -167,7 +167,7 @@ namespace TiledArray {
           TA_ASSERT(var_ == other.var_, std::runtime_error,
               "The variable lists do not match.");
           if(owner_) {
-            swap(*this, other);
+            TiledArray::expressions::swap(*this, other);
           } else {
             TA_ASSERT(size_ == other.size_, std::runtime_error,
                 "Right-hand tile dimensions do not match the dimensions of the referenced tile.");
@@ -266,7 +266,7 @@ namespace TiledArray {
         TA_ASSERT(owner_, std::runtime_error,
             "This annotated tile cannot be permuted in place because it references another tile.");
         AnnotatedTile_ temp = p ^ *this;
-        swap(*this, temp);
+        TiledArray::expressions::swap(*this, temp);
 
         return *this;
       }
