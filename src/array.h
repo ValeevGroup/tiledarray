@@ -59,13 +59,13 @@ namespace TiledArray {
   public:
     /// creates an array living in world and described by shape. Optional
     /// val specifies the default value of every element
-    Array(madness::World& world, const tiled_range_type& rng, value_type val = value_type()) :
+    Array(madness::World& world, const tiled_range_type& rng) :
         madness::WorldObject<Array_>(world), range_(rng), tiles_(world, rng.tiles().size())
     {
       this->process_pending();
     }
 
-    /// Copy the content of this array into the other array.
+    /// Copy the content of the other array into this array.
 
     /// Performs a deep copy of this array into the other array. The content of
     /// the other array will be deleted. This function is blocking and may cause
@@ -100,9 +100,9 @@ namespace TiledArray {
     /// Copies the given tile into the array. Non-local insertions will initiate
     /// non-blocking communication.
     void insert(const index_type& i, const tile_type& t) {
-      TA_ASSERT(t.range() == range_.tile(i),
-          std::runtime_error("Array<...>::insert(...): Tile boundaries do not match array tile boundaries."));
-      tiles_.insert(i, t);
+      TA_ASSERT(t.range() == range_.tile(i), std::runtime_error,
+          "Tile boundaries do not match array tile boundaries.");
+      tiles_.insert(i - start(), t);
     }
 
     /// Inserts a tile into the array.
@@ -155,7 +155,7 @@ namespace TiledArray {
     }
 
     /// Permutes the array. This will initiate blocking communication.
-    Array& operator ^=(const Permutation<DIM>& p) {
+    Array_& operator ^=(const Permutation<DIM>& p) {
       for(iterator it = begin(); it != end(); ++it)
         it->second ^= p; // permute the individual tile
       range_ ^= p;

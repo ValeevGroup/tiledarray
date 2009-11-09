@@ -51,8 +51,8 @@ namespace TiledArray {
     template<typename InIter>
     PackedTile(T& t, InIter first, InIter last, const index_type& origin = index_type(0)) : r_(), w_(), t_(t)
     {
-      TA_ASSERT( (valid_pack(first, last, tile_type::dim(), DIM)),
-          std::runtime_error("PackedTile<...>::PackedTile(...): Invalid packing information."));
+      TA_ASSERT( (valid_pack(first, last, tile_type::dim(), DIM)) , std::runtime_error,
+          "Invalid packing information.");
       size_array s;
       s.assign(1);
 
@@ -65,7 +65,7 @@ namespace TiledArray {
       }
 
       TA_ASSERT( (std::accumulate(s.begin(), s.end(), ordinal_type(1), std::multiplies<ordinal_type>()) == t.volume()),
-          std::runtime_error("PackedTile<...>::PackedTile(...): Packing list does not include the all dimensions of the original tile."));
+          std::runtime_error, "Packing list does not include the all dimensions of the original tile.");
 
       r_.resize(origin, origin + s);
       w_ = calc_weight_(r_.size());

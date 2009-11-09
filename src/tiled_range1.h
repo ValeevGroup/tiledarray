@@ -108,7 +108,7 @@ namespace TiledArray {
 
     const index_type& element2tile(const tile_index_type& e) const {
       TA_ASSERT( element_range_.includes(tile_range_index(e)) ,
-          std::out_of_range("Range1<...>::element2tile(...): element index is out of range.") );
+          std::out_of_range, "Element index is out of range.");
       std::size_t i = e - element_range_.start()[0];
       return elem2tile_[i];
     }
@@ -131,8 +131,8 @@ namespace TiledArray {
     /// Initialize tiles use a set of tile offsets
     template <typename RandIter>
     void init_tiles_(RandIter first, RandIter last, index_type start_tile_index) {
-      TA_ASSERT( valid_(first, last) ,
-          std::runtime_error("Range1<...>::init_tiles_(...): tile boundaries do not have the expected structure.") );
+      TA_ASSERT( valid_(first, last) , std::runtime_error,
+          "Tile boundaries do not have the expected structure.");
       range_.resize(range_index(start_tile_index), range_index(start_tile_index + last - first - 1));
       element_range_.resize(tile_range_index(*first), tile_range_index(*(last - 1)));
       for (; first != (last - 1); ++first)

@@ -138,8 +138,8 @@ namespace TiledArray {
 
       /// computes an ordinal index for a given an index_type
       ordinal_type ordinal(const index_type& i) const {
-        TA_ASSERT(includes(i),
-            std::out_of_range("ArrayDim<...>::ordinal(...): Index is not included in the array range."));
+        TA_ASSERT(includes(i), std::out_of_range,
+            "Index is not included in the array range.");
         return ord(i);
       }
 
@@ -429,8 +429,8 @@ namespace TiledArray {
 
     /// All elements will contain the given value.
     void create_(const value_type val) {
-      TA_ASSERT(d_ == NULL,
-          std::runtime_error("DenseArrayStorage<...>::create_(...): Cannot allocate data to a non-NULL pointer."));
+      TA_ASSERT(d_ == NULL, std::runtime_error,
+          "Cannot allocate data to a non-NULL pointer.");
       d_ = alloc_.allocate(dim_.n_);
       for(ordinal_type i = 0; i < dim_.n_; ++i)
         alloc_.construct(d_ + i, val);
@@ -443,8 +443,8 @@ namespace TiledArray {
     /// the remaining elements will be initialized with the default constructor.
     template <typename InIter>
     void create_(InIter first, InIter last) {
-      TA_ASSERT(d_ == NULL,
-          std::runtime_error("DenseArrayStorage<...>::create_(...): Cannot allocate data to a non-NULL pointer."));
+      TA_ASSERT(d_ == NULL, std::runtime_error,
+          "Cannot allocate data to a non-NULL pointer.");
       d_ = alloc_.allocate(dim_.n_);
       ordinal_type i = 0;
       for(;first != last; ++first, ++i)
@@ -585,8 +585,8 @@ namespace TiledArray {
     /// If the element is not in the range of for the array, a std::out_of_range
     /// exception will be thrown.
     void insert(const key_type& i, const_reference_type v) {
-      TA_ASSERT(dim_.includes(i),
-          std::out_of_range("DistributedArrayStorage::insert(...): The index is not in range."));
+      TA_ASSERT(dim_.includes(i), std::out_of_range,
+          "The index is not in range.");
 
       data_.replace(i, v);
     }

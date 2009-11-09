@@ -62,7 +62,7 @@ namespace TiledArray {
         start_(start), finish_(start + size), size_(size)
     {
       TA_ASSERT( (detail::less_eq<I,DIM>(start_.data(), finish_.data())) ,
-          std::runtime_error("Range::Range(size): finish is less than start.") );
+          std::runtime_error, "Finish is less than start.");
     }
 
     /// Constructor defined by an upper and lower bound. All elements of
@@ -71,7 +71,7 @@ namespace TiledArray {
         start_(start), finish_(finish), size_(finish - start)
     {
       TA_ASSERT( (detail::less_eq<I,DIM>(start_.data(), finish.data())) ,
-          std::runtime_error("Range::Range(start, finish): finish is less than start.") );
+          std::runtime_error, "Finish is less than start.");
     }
 
     /// Copy Constructor

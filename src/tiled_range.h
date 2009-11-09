@@ -60,8 +60,8 @@ namespace TiledArray {
       template <typename InIter>
       TiledRange(InIter first, InIter last) {
         for(typename Ranges::iterator it = ranges_.begin(); it != ranges_.end(); ++it, ++first) {
-          TA_ASSERT( (first != last),
-              std::runtime_error("TiledRange<...>::TiledRange(...): iterator unexpectedly reached the end of the range.") );
+          TA_ASSERT( (first != last), std::runtime_error,
+              "Iterator unexpectedly reached the end of the range.");
           *it = *first;
         }
         init_();
@@ -129,8 +129,8 @@ namespace TiledArray {
 
       /// Access the range information on the elements contained by tile t.
       const tile_range_type& tile(const index_type& t) const {
-        TA_ASSERT( tile_ranges_.includes(t),
-            std::out_of_range("TiledRange<...>::tile(...) const: Tile index is out of range."));
+        TA_ASSERT( tile_ranges_.includes(t), std::out_of_range,
+            "Tile index is out of range.");
         return tile_ranges_[t - range_.start()];
       }
 

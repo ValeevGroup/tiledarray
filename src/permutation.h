@@ -67,17 +67,17 @@ namespace TiledArray {
 
     template <typename InIter>
     Permutation(InIter first, InIter last) {
-      TA_ASSERT( valid_(first, last) ,
-          std::runtime_error("Permutation::Permutation(...): invalid permutation supplied") );
-      TA_ASSERT( std::distance(first, last),
-          std::runtime_error("Permutation::Permutation(...): iterator range [first, last) is too short") );
+      TA_ASSERT( valid_(first, last) , std::runtime_error,
+          "Invalid permutation supplied." );
+      TA_ASSERT( std::distance(first, last), std::runtime_error,
+          "Iterator range [first, last) is too short.");
       for(typename Array::iterator it = p_.begin(); it != p_.end(); ++it, ++first)
         *it = *first;
     }
 
     Permutation(const Array& source) : p_(source) {
-      TA_ASSERT( valid_(source.begin(), source.end()) ,
-          std::runtime_error("Permutation::Permutation(...): invalid permutation supplied") );
+      TA_ASSERT( valid_(source.begin(), source.end()) , std::runtime_error,
+          "Invalid permutation supplied.");
     }
 
     Permutation(const Permutation& other) : p_(other.p_) { }
@@ -92,8 +92,8 @@ namespace TiledArray {
 
       va_end(ap);
 
-      TA_ASSERT( valid_(begin(), end()) ,
-          std::runtime_error("Permutation::Permutation(...): invalid permutation supplied") );
+      TA_ASSERT( valid_(begin(), end()) , std::runtime_error,
+          "Invalid permutation supplied.");
     }
 
     ~Permutation() {}
@@ -278,8 +278,8 @@ namespace TiledArray {
       AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
 
       void operator ()(OutIter& it) {
-        TA_ASSERT(current_ != last_,
-            std::runtime_error("AssignmentOp<...>::operator ()(...): The iterator is the end of the range."));
+        TA_ASSERT(current_ != last_, std::runtime_error,
+            "The iterator is the end of the range.");
         *it = *current_++;
       }
 
@@ -297,8 +297,8 @@ namespace TiledArray {
       AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
 
       void operator ()(T* it) {
-        TA_ASSERT(current_ != last_,
-            std::runtime_error("AssignmentOp<T*, InIter>::operator ()(...): The iterator is the end of the range."));
+        TA_ASSERT(current_ != last_, std::runtime_error,
+            "The iterator is the end of the range.");
         *it = *current_++;
       }
 
@@ -329,7 +329,8 @@ namespace TiledArray {
       void operator ()(const Permutation<DIM>& p, RandIter first, RandIter last) {
         typedef boost::array<typename Cont::ordinal_type, static_cast<std::size_t>(DIM)> size_array;
         TA_ASSERT(static_cast<typename Cont::volume_type>(std::distance(first, last)) == cont_.volume(),
-            std::runtime_error("Permute<...>::operator()(...): The distance between first and last must be equal to the volume of the original container."));
+            std::runtime_error,
+            "The distance between first and last must be equal to the volume of the original container.");
 
         // Calculate the sizes and weights of the permuted array
         size_array p_size;
@@ -384,8 +385,8 @@ namespace TiledArray {
   /// permute a std::vector<T>
   template <unsigned int DIM, typename T>
   std::vector<T> operator^(const Permutation<DIM>& perm, const std::vector<T>& orig) {
-    TA_ASSERT((orig.size() == DIM),
-        std::runtime_error("operator^(const Permutation<DIM>&, const std::vector<T>&): The permutation dimension is not equal to the vector size."));
+    TA_ASSERT((orig.size() == DIM), std::runtime_error,
+        "The permutation dimension is not equal to the vector size.");
     std::vector<T> result(DIM);
     detail::permute(perm.begin(), perm.end(), orig.begin(), result.begin());
     return result;

@@ -53,8 +53,8 @@ namespace TiledArray {
     /// into a new tile object.
     TileSlice(T& t, const range_type& r) : r_(r), t_(t)
     {
-      TA_ASSERT( ( valid_range_(r, t) ) ,
-          std::runtime_error("TileSlice<...>::TileSlice(...): Range slice is not contained by the range of the original tile."));
+      TA_ASSERT( ( valid_range_(r, t) ) , std::runtime_error,
+          "Range slice is not contained by the range of the original tile.");
     }
 
     /// Copy constructor

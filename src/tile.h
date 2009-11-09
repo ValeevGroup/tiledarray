@@ -117,8 +117,8 @@ namespace TiledArray {
         range_(make_size_(atile.size().begin(), atile.size().end())),
         data_(range_.size(), atile.begin(), atile.end())
     {
-      TA_ASSERT((atile.dim() == DIM),
-          std::runtime_error("Tile<...>::Tile(const AnnotatedTile&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+      TA_ASSERT((atile.dim() == DIM), std::runtime_error,
+          "The dimensions of the annotated tile do not match the dimensions of the tile.");
     }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
@@ -127,8 +127,8 @@ namespace TiledArray {
     Tile(expressions::AnnotatedTile<U>&& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())), data_()
     {
-      TA_ASSERT((atile.dim() == DIM),
-          std::runtime_error("Tile<...>::Tile(AnnotatedTile&&): The dimensions of the annotated tile do not match the dimensions of the tile."));
+      TA_ASSERT((atile.dim() == DIM), std::runtime_error,
+          "The dimensions of the annotated tile do not match the dimensions of the tile.");
       if(atile.owner_) {
         data_.move(range_.size(), atile.data());
         atile.owner_ = false;

@@ -25,6 +25,7 @@ namespace TiledArray {
     class VariableList;
     template<unsigned int DIM>
     VariableList operator ^(const ::TiledArray::Permutation<DIM>&, const VariableList&);
+    void swap(VariableList&, VariableList&);
     template<typename InIter1, typename InIter2>
     void find_common(InIter1, const InIter1, InIter2, const InIter2,
         std::pair<InIter1, InIter1>&, std::pair<InIter2, InIter2>&);
@@ -49,8 +50,8 @@ namespace TiledArray {
 
       template<typename InIter>
       VariableList(InIter first, InIter last) {
-        TA_ASSERT( unique_(first, last),
-            std::runtime_error("VariableList::VariableList(...): Duplicate variable names not allowed."));
+        TA_ASSERT( unique_(first, last), std::runtime_error,
+            "Duplicate variable names not allowed.");
 
         for(; first != last; ++first)
           vars_.push_back(trim_spaces_(first->begin(), first->end()));
@@ -84,8 +85,8 @@ namespace TiledArray {
 
       template<unsigned int DIM>
       VariableList& operator ^=(const Permutation<DIM>& p) {
-        TA_ASSERT(DIM == dim(),
-            std::runtime_error("VariableList::operator^=(...): The permutation dimensions are not equal to the variable list dimensions."));
+        TA_ASSERT(DIM == dim(), std::runtime_error,
+            "The permutation dimensions are not equal to the variable list dimensions.");
         vars_ ^= p;
         return *this;
       }
@@ -112,15 +113,15 @@ namespace TiledArray {
       }
 
       std::vector<std::size_t> permutation(const VariableList& other) {
-        TA_ASSERT(dim() == other.dim(),
-            std::runtime_error("ariableList::permutation(...): The variable list dimensions are not equal."));
+        TA_ASSERT(dim() == other.dim(), std::runtime_error,
+            "The variable list dimensions are not equal.");
         std::vector<std::size_t> p(dim(), 0);
         const_iterator other_it;
         const_iterator this_it = begin();
         for(std::vector<std::size_t>::iterator it = p.begin(); it != p.end(); ++it, ++this_it) {
           other_it = std::find(other.begin(), other.end(), *this_it);
-          TA_ASSERT(other_it != other.end(),
-              std::runtime_error("VariableList::permutation(...): Variable name not found in other variable list."));
+          TA_ASSERT(other_it != other.end(), std::runtime_error,
+              "Variable name not found in other variable list.");
           *it = std::distance(other.begin(), other_it);
         }
 
@@ -142,25 +143,25 @@ namespace TiledArray {
         }
         vars_.push_back(trim_spaces_(start, finish));
 
-        TA_ASSERT( (unique_(vars_.begin(), vars_.end())),
-            std::runtime_error("VariableList::init_(...): Duplicate variables not allowed in variable list.") );
+        TA_ASSERT( (unique_(vars_.begin(), vars_.end())), std::runtime_error,
+            "Duplicate variables not allowed in variable list.");
       }
 
       /// Returns a string with all the spaces ( ' ' ) removed from the string
       /// defined by the start and finish iterators.
       static std::string trim_spaces_(std::string::const_iterator first, std::string::const_iterator last) {
-        TA_ASSERT( (first != last),
-            std::runtime_error("VariableList::trim_spaces_(...): Zero length variable string not allowed.") );
+        TA_ASSERT( (first != last), std::runtime_error,
+            "Zero length variable string not allowed.");
         std::string result = "";
         for(;first != last; ++first) {
-          TA_ASSERT( valid_char_(*first),
-              std::runtime_error("VariableList::trim_spaces_(...): Variable names may only contain letters and numbers.") );
+          TA_ASSERT( valid_char_(*first), std::runtime_error,
+              "Variable names may only contain letters and numbers.");
           if(*first != ' ' && *first != '\0')
             result.append(1, *first);
         }
 
-        TA_ASSERT( (result.length() != 0) ,
-            std::runtime_error("VariableList::trim_spaces_(...): Blank variable string not allowed.") );
+        TA_ASSERT( (result.length() != 0) , std::runtime_error,
+            "Blank variable string not allowed.");
 
         return result;
       }
@@ -183,12 +184,19 @@ namespace TiledArray {
             (c >= '0' && c < '9') || (c == ' ') || (c == ',') || (c == '\0');
       }
 
+      friend void swap(VariableList&, VariableList&);
+
       std::vector<std::string> vars_;
 
       template<unsigned int DIM>
       friend VariableList operator ^(const ::TiledArray::Permutation<DIM>&, const VariableList&);
 
     }; // class VariableList
+
+    /// Exchange the content of the two variable lists.
+    inline void swap(VariableList& v0, VariableList& v1) {
+      std::swap(v0.vars_, v1.vars_);
+    }
 
     template<typename InIter1, typename InIter2>
     void find_common(InIter1 first1, const InIter1 last1, InIter2 first2, const InIter2 last2,
@@ -261,8 +269,8 @@ namespace std {
         const ::TiledArray::expressions::VariableList& v0,
         const ::TiledArray::expressions::VariableList& v1) const
     {
-      TA_ASSERT(v0 == v1,
-          std::runtime_error("std::plus<TiledArray::detail::VariableList>::operator(...): variable lists must be identical for addition operations."));
+      TA_ASSERT(v0 == v1, std::runtime_error,
+          "variable lists must be identical for addition operations.");
 
       return v0;
     }
@@ -277,8 +285,8 @@ namespace std {
         const ::TiledArray::expressions::VariableList& v0,
         const ::TiledArray::expressions::VariableList& v1) const
     {
-      TA_ASSERT(v0 == v1,
-          std::runtime_error("std::plus<TiledArray::detail::VariableList>::operator(...): variable lists must be identical for addition operations."));
+      TA_ASSERT(v0 == v1, std::runtime_error,
+          "variable lists must be identical for addition operations.");
 
       return v0;
     }
