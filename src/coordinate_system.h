@@ -91,33 +91,45 @@ namespace TiledArray {
     template<typename C, detail::DimensionOrderType O>
     struct CoordIterator {
       typedef typename C::iterator iterator;
+      typedef typename C::reverse_iterator reverse_iterator;
 
       static iterator begin(C& c) { return c.begin(); }
       static iterator end(C& c) { return c.end(); }
+      static reverse_iterator rbegin(C& c) { return c.rbegin(); }
+      static reverse_iterator rend(C& c) { return c.rend(); }
     };
 
     template<typename C, detail::DimensionOrderType O>
     struct CoordIterator<const C, O> {
       typedef typename C::const_iterator iterator;
+      typedef typename C::const_reverse_iterator reverse_iterator;
 
       static iterator begin(const C& c) { return c.begin(); }
       static iterator end(const C& c) { return c.end(); }
+      static reverse_iterator rbegin(const C& c) { return c.rbegin(); }
+      static reverse_iterator rend(const C& c) { return c.rend(); }
     };
 
     template<typename C>
     struct CoordIterator<C, decreasing_dimension_order> {
       typedef typename C::reverse_iterator iterator;
+      typedef typename C::iterator reverse_iterator;
 
       static iterator begin(C& c) { return c.rbegin(); }
       static iterator end(C& c) { return c.rend(); }
+      static reverse_iterator rbegin(C& c) { return c.begin(); }
+      static reverse_iterator rend(C& c) { return c.end(); }
     };
 
     template<typename C>
     struct CoordIterator<const C, decreasing_dimension_order> {
       typedef typename C::const_reverse_iterator iterator;
+      typedef typename C::const_iterator reverse_iterator;
 
       static iterator begin(const C& c) { return c.rbegin(); }
       static iterator end(const C& c) { return c.rend(); }
+      static reverse_iterator rbegin(const C& c) { return c.begin(); }
+      static reverse_iterator rend(const C& c) { return c.end(); }
     };
 
   } // namespace detail
@@ -139,14 +151,28 @@ namespace TiledArray {
     static const_iterator end() { return ordering_.end(); }
     static const_reverse_iterator rend() { return ordering_.rend(); }
 
+    /// Returns an iterator to the beginning of the least significant element.
     template<typename C>
     static typename detail::CoordIterator<C, Order>::iterator begin(C& c) {
       return detail::CoordIterator<C, Order>::begin(c);
     }
 
+    /// Returns an iterator to the end of the least significant element.
     template<typename C>
     static typename detail::CoordIterator<C, Order>::iterator end(C& c) {
       return detail::CoordIterator<C, Order>::end(c);
+    }
+
+    /// Returns an iterator to the beginning of the most significant element.
+    template<typename C>
+    static typename detail::CoordIterator<C, Order>::reverse_iterator rbegin(C& c) {
+      return detail::CoordIterator<C, Order>::rbegin(c);
+    }
+
+    /// Returns an iterator to the end of the most significant element.
+    template<typename C>
+    static typename detail::CoordIterator<C, Order>::reverse_iterator rend(C& c) {
+      return detail::CoordIterator<C, Order>::rend(c);
     }
 
     static const detail::DimensionOrderType dimension_order = Order;
