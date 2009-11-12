@@ -17,6 +17,20 @@ namespace TiledArray {
       }
     }
 
+    /// Calculate the index of an ordinal.
+    /// \arg \c o is the ordinal value.
+    /// \arg \c [first, last) is the iterator range that contains the array
+    /// weights from most significant to least significant.
+    /// \arg \c result is an iterator to the index, which points to the most
+    /// significant element.
+    template<typename Ord, typename InIter, typename OutIter>
+    void calc_index(Ord o, InIter first, InIter last, OutIter result) {
+      for(; first != last; ++first, ++result) {
+        *result = o % *first;
+        o -= *result * *first;
+      }
+    }
+
     /// Calculate the volume of an N-dimensional orthogonal.
     template <typename T, std::size_t DIM>
     T volume(const boost::array<T,DIM>& a) { // no throw when T is a standard type
