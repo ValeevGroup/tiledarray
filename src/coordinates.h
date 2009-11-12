@@ -6,6 +6,7 @@
 #include <boost/operators.hpp>
 #include <boost/array.hpp>
 #include <stdarg.h>
+#include <iterator>
 
 namespace boost {
   template <typename T, std::size_t D>
@@ -98,6 +99,8 @@ namespace TiledArray {
     typedef boost::array<index,DIM> Array;
     typedef typename Array::iterator iterator;
     typedef typename Array::const_iterator const_iterator;
+    typedef typename Array::reverse_iterator reverse_iterator;
+    typedef typename Array::const_reverse_iterator const_reverse_iterator;
     static unsigned int dim() { return DIM; }
 
     // Constructors/Destructor
@@ -167,6 +170,26 @@ namespace TiledArray {
     /// Returns a constant iterator to one element past the last coordinate.
     const_iterator end() const {
       return r_.end();
+    }
+
+    /// Returns a reverse iterator to the first coordinate
+    reverse_iterator rbegin() {
+      return r_.rbegin();
+    }
+
+    /// Returns a constant reverse iterator to the first coordinate.
+    const_reverse_iterator rbegin() const {
+      return r_.rbegin();
+    }
+
+    /// Returns a reverse iterator to one element past the last coordinate.
+    reverse_iterator rend() {
+      return r_.rend();
+    }
+
+    /// Returns a constant reverse iterator to one element past the last coordinate.
+    const_reverse_iterator rend() const {
+      return r_.rend();
     }
 
     /// Assignment operator
