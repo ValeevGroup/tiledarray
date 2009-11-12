@@ -288,7 +288,6 @@ BOOST_AUTO_TEST_CASE( permute )
   }
 }
 
-
 BOOST_AUTO_TEST_CASE( resize )
 {
   const std::size_t d0[] = {0, 10, 20};
