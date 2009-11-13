@@ -6,6 +6,69 @@
 namespace TiledArray {
   namespace detail {
 
+    template<typename Key1, typename Key2>
+    class Key;
+    template<typename Key1, typename Key2>
+    bool operator ==(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator ==(const Key<Key1, Key2>&, const Key1&);
+    template<typename Key1, typename Key2>
+    bool operator ==(const Key1&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator ==(const Key<Key1, Key2>&, const Key2&);
+    template<typename Key1, typename Key2>
+    bool operator ==(const Key2&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator !=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator !=(const Key<Key1, Key2>&, const Key1&);
+    template<typename Key1, typename Key2>
+    bool operator !=(const Key1&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator !=(const Key<Key1, Key2>&, const Key2&);
+    template<typename Key1, typename Key2>
+    bool operator !=(const Key2&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator <(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator <(const Key<Key1, Key2>&, const Key1&);
+    template<typename Key1, typename Key2>
+    bool operator <(const Key1&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator <(const Key<Key1, Key2>&, const Key2&);
+    template<typename Key1, typename Key2>
+    bool operator <(const Key2&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator <=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator <=(const Key<Key1, Key2>&, const Key1&);
+    template<typename Key1, typename Key2>
+    bool operator <=(const Key1&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator <=(const Key<Key1, Key2>&, const Key2&);
+    template<typename Key1, typename Key2>
+    bool operator <=(const Key2&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator >(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator >(const Key<Key1, Key2>&, const Key1&);
+    template<typename Key1, typename Key2>
+    bool operator >(const Key1&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator >(const Key<Key1, Key2>&, const Key2&);
+    template<typename Key1, typename Key2>
+    bool operator >(const Key2&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator >=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator >=(const Key<Key1, Key2>&, const Key1&);
+    template<typename Key1, typename Key2>
+    bool operator >=(const Key1&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    bool operator >=(const Key<Key1, Key2>&, const Key2&);
+    template<typename Key1, typename Key2>
+    bool operator >=(const Key2&, const Key<Key1, Key2>&);
+
     /// Key class that holds two arbitrary key types.
 
     /// Contains two arbitrary key values. It provides methods of comparing the
@@ -87,16 +150,30 @@ namespace TiledArray {
 
         return *this;
       }
+
+      /// Assign Key1, Key2 is unassigned.
+      Key_& operator=(key1_type&& k1) {
+        k1_ = std::move(k1);
+        k_ = 1;
+
+        return *this;
+      }
+
+      /// Assign Key2, Key1 is unassigned.
+      Key_& operator=(key2_type&& k2) {
+        k2_ = std::move(k2);
+        k_ = 2;
+      }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
       /// Implicit key 1 conversion
-      operator key1_type() const {
+      operator const key1_type() const {
         TA_ASSERT(k_ & 1, std::runtime_error, "Key1 is not set.");
         return k1_;
       }
 
       /// Implicit key 2 conversion
-      operator key2_type() const {
+      operator const key2_type() const {
         TA_ASSERT(k_ & 2, std::runtime_error, "Key2 is not set.");
         return k2_;
       }

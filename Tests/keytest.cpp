@@ -11,8 +11,9 @@ struct KeyFixture {
   typedef ArrayCoordinate<std::size_t, 3, LevelTag<0> > index_type;
   typedef Key<ordinal_type, index_type> key_type;
 
-  KeyFixture() : o(10ul), i(1,2,3), k(o, i), ko(o), ki(i),
-      khi(11ul, index_type(1,2,4)), klow(9ul, index_type(1,2,2))
+  KeyFixture() : o(10ul), ohi(11ul), olow(9ul), i(1,2,3), ihi(1,2,4), ilow(1,2,2),
+      k(o, i), ko(o), kohi(ohi), kolow(olow), ki(i), kihi(ihi), kilow(ilow),
+      khi(ohi, ihi), klow(olow, ilow)
   { }
 
   ~KeyFixture() { }
@@ -26,11 +27,19 @@ struct KeyFixture {
   }
 
   ordinal_type o;
+  ordinal_type ohi;
+  ordinal_type olow;
   index_type i;
+  index_type ihi;
+  index_type ilow;
   key_type k;
   key_type k0;
   key_type ko;
+  key_type kohi;
+  key_type kolow;
   key_type ki;
+  key_type kihi;
+  key_type kilow;
   key_type khi;
   key_type klow;
 }; // struct KeyFixture
@@ -114,45 +123,73 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(k10.key2(), i);
   BOOST_CHECK_EQUAL(k10.keys(), 3u);
 #endif // __GXX_EXPERIMENTAL_CXX0X__
+}
 
+BOOST_AUTO_TEST_CASE( assign )
+{
+  k = o;
+  BOOST_CHECK_EQUAL(k.key1(), o);
+  BOOST_CHECK_EQUAL(k.keys(), 1u);
+
+  k = i;
+  BOOST_CHECK_EQUAL(k.key2(), i);
+  BOOST_CHECK_EQUAL(k.keys(), 2u);
+
+  k = khi;
+  BOOST_CHECK_EQUAL(k.key1(), ohi);
+  BOOST_CHECK_EQUAL(k.key2(), ihi);
+  BOOST_CHECK_EQUAL(k.keys(), 3u);
+
+  k = ordinal_type(10ul);
+  BOOST_CHECK_EQUAL(k.key1(), o);
+  BOOST_CHECK_EQUAL(k.keys(), 1u);
+
+  k = index_type(1,2,3);
+  BOOST_CHECK_EQUAL(k.key2(), i);
+  BOOST_CHECK_EQUAL(k.keys(), 2u);
+
+  k = key_type(o, i);
+  BOOST_CHECK_EQUAL(k.key1(), o);
+  BOOST_CHECK_EQUAL(k.key2(), i);
+  BOOST_CHECK_EQUAL(k.keys(), 3u);
 }
 
 BOOST_AUTO_TEST_CASE( set )
 {
-  k.set(o, i);
+  k.set(o, i); // Check setting both keys.
   BOOST_CHECK_EQUAL(k.key1(), o);
   BOOST_CHECK_EQUAL(k.key2(), i);
   BOOST_CHECK_EQUAL(k.keys(), 3u);
 
-  k.set(o);
+  k.set(o); // Check setting key1.
   BOOST_CHECK_EQUAL(k.key1(), o);
   BOOST_CHECK_EQUAL(k.keys(), 1u);
 
-  k.set(i);
+  k.set(i); // Check setting key2.
   BOOST_CHECK_EQUAL(k.key2(), i);
   BOOST_CHECK_EQUAL(k.keys(), 2u);
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
-  k.set(o, index_type(1,2,3));
+  k.set(o, index_type(1,2,3)); // Check setting both keys, move key2.
   BOOST_CHECK_EQUAL(k.key1(), o);
   BOOST_CHECK_EQUAL(k.key2(), i);
   BOOST_CHECK_EQUAL(k.keys(), 3u);
 
-  k.set(ordinal_type(10), i);
+  k.set(ordinal_type(10), i); // Check setting both keys, move key1.
   BOOST_CHECK_EQUAL(k.key1(), o);
   BOOST_CHECK_EQUAL(k.key2(), i);
   BOOST_CHECK_EQUAL(k.keys(), 3u);
 
-  k.set(ordinal_type(10), index_type(1,2,3));
+  k.set(ordinal_type(10), index_type(1,2,3)); // Check setting both keys, move both keys.
   BOOST_CHECK_EQUAL(k.key1(), o);
   BOOST_CHECK_EQUAL(k.key2(), i);
   BOOST_CHECK_EQUAL(k.keys(), 3u);
 
-  k.set(ordinal_type(10));
+  k.set(ordinal_type(10)); // check moving key1.
   BOOST_CHECK_EQUAL(k.key1(), o);
   BOOST_CHECK_EQUAL(k.keys(), 1u);
 
-  k.set(index_type(1,2,3));
+  k.set(index_type(1,2,3)); // check moving key2.
   BOOST_CHECK_EQUAL(k.key2(), i);
   BOOST_CHECK_EQUAL(k.keys(), 2u);
 
@@ -161,19 +198,175 @@ BOOST_AUTO_TEST_CASE( set )
 
 BOOST_AUTO_TEST_CASE( conversion )
 {
-  ordinal_type o1;
+  ordinal_type o1; // convert to key 1.
   o1 = k;
   BOOST_CHECK_EQUAL(o1, o);
   ordinal_type o2(k);
   BOOST_CHECK_EQUAL(o2, o);
   BOOST_CHECK_EQUAL(ordinal(k), o);
 
-  index_type i1;
+  index_type i1; // convert to key 2.
   i1 = k;
   BOOST_CHECK_EQUAL(i1, i);
 //  index_type i2(k);
 //  BOOST_CHECK_EQUAL(i2, i);
-//  BOOST_CHECK_EQUAL(index(k), i);
+  BOOST_CHECK_EQUAL(index(k), i);
+}
+
+BOOST_AUTO_TEST_CASE( equal_comp )
+{
+  key_type k1(k);
+  BOOST_CHECK(k == k1); // check bool operator ==(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! k == khi);
+  BOOST_CHECK(k == ko);
+  BOOST_CHECK(! k == kohi);
+  BOOST_CHECK(k == ki);
+  BOOST_CHECK(! k == kihi);
+  BOOST_CHECK(! ko == ki);
+
+  BOOST_CHECK(k == o); // check bool operator ==(const Key<Key1, Key2>&, const Key1&);
+  BOOST_CHECK(! k == ohi);
+
+  BOOST_CHECK(o == k); // check bool operator ==(const Key1&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! ohi == k);
+
+  BOOST_CHECK(k == i); // check bool operator ==(const Key<Key1, Key2>&, const Key2&);
+  BOOST_CHECK(! (k == ihi));
+
+  BOOST_CHECK(i == k); // check bool operator ==(const Key2&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! (ihi == k));
+}
+
+BOOST_AUTO_TEST_CASE( ne_comp )
+{
+  key_type k1(k);
+  BOOST_CHECK(! k != k1); // check bool operator !=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+  BOOST_CHECK(k != khi);
+  BOOST_CHECK(! k != ko);
+  BOOST_CHECK(k != kohi);
+  BOOST_CHECK(! k != ki);
+  BOOST_CHECK(k != kihi);
+  BOOST_CHECK(! ko != ki);
+
+  BOOST_CHECK(! k != o); // check bool operator !=(const Key<Key1, Key2>&, const Key1&);
+  BOOST_CHECK(k != ohi);
+
+  BOOST_CHECK(! o != k); // check bool operator !=(const Key1&, const Key<Key1, Key2>&);
+  BOOST_CHECK(ohi != k);
+
+  BOOST_CHECK(! (k != i)); // check bool operator !=(const Key<Key1, Key2>&, const Key2&);
+  BOOST_CHECK(k != ihi);
+
+  BOOST_CHECK(! (i != k)); // check bool operator !=(const Key2&, const Key<Key1, Key2>&);
+  BOOST_CHECK(ihi != k);
+}
+
+BOOST_AUTO_TEST_CASE( lt_comp )
+{
+  BOOST_CHECK(klow < k); // check bool operator <(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! khi < k);
+  BOOST_CHECK(kolow < k);
+  BOOST_CHECK(! kohi < k);
+  BOOST_CHECK(kilow < k);
+  BOOST_CHECK(! kihi < k);
+  BOOST_CHECK(! ko < ki);
+
+  BOOST_CHECK(klow < o); // check bool operator <(const Key<Key1, Key2>&, const Key1&);
+  BOOST_CHECK(! khi < o);
+
+  BOOST_CHECK(olow < k); // check bool operator <(const Key1&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! ohi < k);
+
+  BOOST_CHECK(klow < i); // check bool operator <(const Key<Key1, Key2>&, const Key2&);
+  BOOST_CHECK(! (khi < i));
+
+  BOOST_CHECK(ilow < k); // check bool operator <(const Key2&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! (ihi < k));
+}
+
+BOOST_AUTO_TEST_CASE( le_comp )
+{
+  key_type k1(k);
+  BOOST_CHECK(klow <= k); // check bool operator <=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+  BOOST_CHECK(k1 <= k);
+  BOOST_CHECK(! khi <= k);
+  BOOST_CHECK(kolow <= k);
+  BOOST_CHECK(ko <= k);
+  BOOST_CHECK(! kohi <= k);
+  BOOST_CHECK(kilow <= k);
+  BOOST_CHECK(ki <= k);
+  BOOST_CHECK(! kihi <= k);
+  BOOST_CHECK(! ko <= ki);
+
+  BOOST_CHECK(klow <= o); // check bool operator <=(const Key<Key1, Key2>&, const Key1&);
+  BOOST_CHECK(k <= o);
+  BOOST_CHECK(! khi <= o);
+
+  BOOST_CHECK(olow <= k); // check bool operator <=(const Key1&, const Key<Key1, Key2>&);
+  BOOST_CHECK(o <= k);
+  BOOST_CHECK(! ohi <= k);
+
+  BOOST_CHECK(klow <= i); // check bool operator <=(const Key<Key1, Key2>&, const Key2&);
+  BOOST_CHECK(k <= i);
+  BOOST_CHECK(! (khi <= i));
+
+  BOOST_CHECK(ilow <= k); // check bool operator <=(const Key2&, const Key<Key1, Key2>&);
+  BOOST_CHECK(i <= k);
+  BOOST_CHECK(! (ihi <= k));
+}
+
+BOOST_AUTO_TEST_CASE( gt_comp )
+{
+  BOOST_CHECK(khi > k); // check bool operator >(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! klow > k);
+  BOOST_CHECK(kohi > k);
+  BOOST_CHECK(! kolow > k);
+  BOOST_CHECK(kihi > k);
+  BOOST_CHECK(! kilow > k);
+  BOOST_CHECK(! ko > ki);
+
+  BOOST_CHECK(khi > o); // check bool operator >(const Key<Key1, Key2>&, const Key1&);
+  BOOST_CHECK(! klow > o);
+
+  BOOST_CHECK(ohi > k); // check bool operator >(const Key1&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! olow > k);
+
+  BOOST_CHECK(khi > i); // check bool operator >(const Key<Key1, Key2>&, const Key2&);
+  BOOST_CHECK(! (klow > i));
+
+  BOOST_CHECK(ihi > k); // check bool operator >(const Key2&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! (ilow > k));
+}
+
+BOOST_AUTO_TEST_CASE( ge_comp )
+{
+  key_type k1(k);
+  BOOST_CHECK(khi >= k); // check bool operator >=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+  BOOST_CHECK(k1 >= k);
+  BOOST_CHECK(! klow >= k);
+  BOOST_CHECK(kohi >= k);
+  BOOST_CHECK(ko >= k);
+  BOOST_CHECK(! kolow >= k);
+  BOOST_CHECK(kihi >= k);
+  BOOST_CHECK(ki >= k);
+  BOOST_CHECK(! kilow >= k);
+  BOOST_CHECK(! ko >= ki);
+
+  BOOST_CHECK(khi >= o); // check bool operator >=(const Key<Key1, Key2>&, const Key1&);
+  BOOST_CHECK(k >= o);
+  BOOST_CHECK(! klow >= o);
+
+  BOOST_CHECK(ohi >= k); // check bool operator >=(const Key1&, const Key<Key1, Key2>&);
+  BOOST_CHECK(o >= k);
+  BOOST_CHECK(! olow >= k);
+
+  BOOST_CHECK(khi >= i); // check bool operator >=(const Key<Key1, Key2>&, const Key2&);
+  BOOST_CHECK(k >= i);
+  BOOST_CHECK(! (klow >= i));
+
+  BOOST_CHECK(ihi >= k); // check bool operator >=(const Key2&, const Key<Key1, Key2>&);
+  BOOST_CHECK(i >= k);
+  BOOST_CHECK(! (ilow >= k));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
