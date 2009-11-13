@@ -23,7 +23,7 @@ namespace TiledArray {
   template <unsigned int DIM, typename T>
   boost::array<T,DIM> operator ^=(boost::array<T, static_cast<std::size_t>(DIM) >&, const Permutation<DIM>&);
 
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
   class ArrayCoordinate;
   template <typename Coord>
   Coord make_coord(const typename Coord::index, ...);

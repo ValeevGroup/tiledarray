@@ -14,8 +14,8 @@ namespace TiledArray {
     class Key {
     public:
       typedef Key<Key1, Key2> Key_;
-      typedef Key1 key2_type;
-      typedef Key2 key1_type;
+      typedef Key1 key1_type;
+      typedef Key2 key2_type;
 
       /// Default constructor
       Key() : k1_(), k2_(), k_(0) { }
@@ -24,13 +24,14 @@ namespace TiledArray {
       Key(const key1_type& k1, const key2_type& k2) : k1_(k1), k2_(k2), k_(3) { }
 
       /// Key1 constructor
-      Key(const key1_type& k1) : k1_(k1), k2_(), k_(1) { }
+      explicit Key(const key1_type& k1) : k1_(k1), k2_(), k_(1) { }
 
       /// Key2 constructor
-      Key(const key2_type& k2) : k1_(), k2_(k2), k_(2) { }
+      explicit Key(const key2_type& k2) : k1_(), k2_(k2), k_(2) { }
 
       /// Copy constructor
       Key(const Key_& other) : k1_(other.k1_), k2_(other.k2_), k_(other.k_) { }
+
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
       /// Move constructor for key 2
       Key(const key1_type& k1, key2_type&& k2) : k1_(k1), k2_(std::move(k2)), k_(3) { }
@@ -48,7 +49,7 @@ namespace TiledArray {
       Key(key2_type&& k2) : k1_(), k2_(std::move(k2)), k_(2) { }
 
       /// Move constructor
-      Key(Key_&&) : k_(other.k_), k1_(std::move(other.k1_)), k2_(std::move(other.k2_)), k_(other.k_) { }
+      Key(Key_&& other) : k1_(std::move(other.k1_)), k2_(std::move(other.k2_)), k_(other.k_) { }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
       /// Destructor
@@ -136,7 +137,54 @@ namespace TiledArray {
       Key_ set(const key2_type& k2) {
         k2_ = k2;
         k_ = 2;
+
+        return *this;
       }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+      /// Set the keys to a new value.
+      Key_ set(key1_type&& k1, const key2_type& k2) {
+        k1_ = std::move(k1);
+        k2_ = k2;
+        k_ = 3;
+
+        return *this;
+      }
+
+      /// Set the keys to a new value.
+      Key_ set(const key1_type& k1, key2_type&& k2) {
+        k1_ = k1;
+        k2_ = std::move(k2);
+        k_ = 3;
+
+        return *this;
+      }
+
+      /// Set the keys to a new value.
+      Key_ set(key1_type&& k1, key2_type&& k2) {
+        k1_ = std::move(k1);
+        k2_ = std::move(k2);
+        k_ = 3;
+
+        return *this;
+      }
+
+      /// Set Key1 to a new value, Key2 is unset.
+      Key_ set(key1_type&& k1) {
+        k1_ = std::move(k1);
+        k_ = 1;
+
+        return *this;
+      }
+
+      /// Set Key2 to a new value, Key1 is unset.
+      Key_ set(key2_type&& k2) {
+        k2_ = std::move(k2);
+        k_ = 2;
+
+        return *this;
+      }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     private:
       key1_type k1_;      ///< Key 1
