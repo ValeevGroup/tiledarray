@@ -139,6 +139,8 @@ namespace TiledArray {
       Key_& operator=(const key2_type& k2) {
         k2_ = k2;
         k_ = 2;
+
+        return *this;
       }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
@@ -163,6 +165,8 @@ namespace TiledArray {
       Key_& operator=(key2_type&& k2) {
         k2_ = std::move(k2);
         k_ = 2;
+
+        return *this;
       }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
