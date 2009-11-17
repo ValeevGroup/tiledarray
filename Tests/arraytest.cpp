@@ -45,7 +45,7 @@ struct ArrayFixture : public TiledRangeFixture<Array<int, 3> > {
       for(tile_type::iterator t_it = t.begin(); t_it != t.end(); ++t_it)
         *t_it = tv++;
       a.insert(*it, t);
-      data.push_back(Array3::value_type(*it, t));
+      data.push_back(std::pair<index_type, tile_type>(*it, t));
     }
     world->gop.fence();
   }

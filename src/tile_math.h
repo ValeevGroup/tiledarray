@@ -165,7 +165,7 @@ namespace TiledArray {
           typename exp1_type::const_iterator> > > const_iterator;
 
       BinaryTileOp() { }
-      BinaryTileOp(std::multiplies<typename Res::value_type> op) { }
+      BinaryTileOp(std::multiplies<typename Res::value_type>) { }
 
       result_type operator ()(const exp0_type& e0, const exp1_type& e1) {
         typedef std::pair<expressions::VariableList::const_iterator,

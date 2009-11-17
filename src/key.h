@@ -2,6 +2,8 @@
 #define TILEDARRAY_KEY_H__INCLUDED
 
 #include <error.h>
+#include <iosfwd>
+#include <iostream>
 
 namespace TiledArray {
   namespace detail {
@@ -68,6 +70,8 @@ namespace TiledArray {
     bool operator >=(const Key<Key1, Key2>&, const Key2&);
     template<typename Key1, typename Key2>
     bool operator >=(const Key2&, const Key<Key1, Key2>&);
+    template<typename Key1, typename Key2>
+    std::ostream& operator<<(std::ostream&, const Key<Key1, Key2>&);
 
     /// Key class that holds two arbitrary key types.
 
@@ -267,6 +271,11 @@ namespace TiledArray {
       }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
+      template <typename Archive>
+      void serialize(const Archive& ar) {
+        ar & k1_ & k2_ & k_;
+      }
+
     private:
       key1_type k1_;      ///< Key 1
       key2_type k2_;      ///< Key 2
@@ -276,6 +285,8 @@ namespace TiledArray {
     /// Compare two keys for equality (only compares key1).
     template<typename Key1, typename Key2>
     bool operator ==(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
+      std::cout << "keyl = " << l << std::endl;
+      std::cout << "key2 = " << r << std::endl;
       return (((l.keys() & 1) && (r.keys() & 1)) && (l.key1() == r.key1())) ||
           (((l.keys() & 2) && (r.keys() & 2)) && (l.key2() == r.key2()));
     }
@@ -458,6 +469,12 @@ namespace TiledArray {
     template<typename Key1, typename Key2>
     bool operator >=(const Key2& l, const Key<Key1, Key2>& r) {
       return l >= r.key2();
+    }
+
+    template<typename Key1, typename Key2>
+    std::ostream& operator<<(std::ostream& out, const Key<Key1, Key2>& k) {
+      out << "Key1 = " << k.key1() << ", Key2 = " << k.key2() << ", Keys = " << k.keys();
+      return out;
     }
 
   } // namespace detal

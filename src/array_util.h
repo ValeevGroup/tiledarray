@@ -3,7 +3,7 @@
 
 #include <boost/array.hpp>
 #include <iosfwd>
-//#include <numeric>
+#include <numeric>
 
 namespace TiledArray {
   namespace detail {
@@ -34,11 +34,7 @@ namespace TiledArray {
     /// Calculate the volume of an N-dimensional orthogonal.
     template <typename T, std::size_t DIM>
     T volume(const boost::array<T,DIM>& a) { // no throw when T is a standard type
-      T result = 1;
-      for(std::size_t d = 0; d < DIM; ++d)
-        result *= ( a[d] < 0 ? -a[d] : a[d] );
-      return result;
-//      return std::accumulate(a.begin(), a.end(), T(1), std::multiplies<T>());
+      return std::accumulate(a.begin(), a.end(), T(1), std::multiplies<T>());
     }
 
     template <typename InIter>

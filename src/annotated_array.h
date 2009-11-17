@@ -13,6 +13,11 @@ namespace TiledArray {
 
     template<typename T>
     class AnnotatedTile;
+
+    template<typename Exp0, typename Exp1, typename Op>
+    class BinaryArrayExp;
+    template<typename Exp, typename Op>
+    class UnaryArrayExp;
     template<typename T>
     class AnnotatedArray;
     template<typename T>
@@ -64,6 +69,20 @@ namespace TiledArray {
         this->process_pending();
         this->get_world().gop.fence();
       }
+
+      /// AnnotatedTile assignment operator
+       template<typename Exp0, typename Exp1, typename Op>
+       AnnotatedArray_& operator =(const BinaryArrayExp<Exp0, Exp1, Op>& e) {
+
+         return *this;
+       }
+
+       /// AnnotatedTile assignment operator
+       template<typename Exp, typename Op>
+       AnnotatedArray_& operator =(const UnaryArrayExp<Exp, Op>& e) {
+
+         return *this;
+       }
 
       /// Inserts a tile into the array.
 

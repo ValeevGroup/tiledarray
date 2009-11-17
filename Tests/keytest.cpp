@@ -26,22 +26,22 @@ struct KeyFixture {
     return i;
   }
 
-  ordinal_type o;
-  ordinal_type ohi;
-  ordinal_type olow;
-  index_type i;
-  index_type ihi;
-  index_type ilow;
+  const ordinal_type o;
+  const ordinal_type ohi;
+  const ordinal_type olow;
+  const index_type i;
+  const index_type ihi;
+  const index_type ilow;
   key_type k;
-  key_type k0;
-  key_type ko;
-  key_type kohi;
-  key_type kolow;
-  key_type ki;
-  key_type kihi;
-  key_type kilow;
-  key_type khi;
-  key_type klow;
+  const key_type k0;
+  const key_type ko;
+  const key_type kohi;
+  const key_type kolow;
+  const key_type ki;
+  const key_type kihi;
+  const key_type kilow;
+  const key_type khi;
+  const key_type klow;
 }; // struct KeyFixture
 
 BOOST_FIXTURE_TEST_SUITE( key_suite , KeyFixture )
@@ -216,6 +216,13 @@ BOOST_AUTO_TEST_CASE( conversion )
 BOOST_AUTO_TEST_CASE( equal_comp )
 {
   key_type k1(k);
+  std::cout << "k = " << k << std::endl;
+  std::cout << "k1 = " << k1 << std::endl;
+  std::cout << "khi = " << khi << std::endl;
+  std::cout << "ko = " << ko << std::endl;
+  std::cout << "kohi = " << kohi << std::endl;
+  std::cout << "ki = " << ki << std::endl;
+  std::cout << "kihi = " << kihi << std::endl;
   BOOST_CHECK(k == k1); // check bool operator ==(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
   BOOST_CHECK(! k == khi);
   BOOST_CHECK(k == ko);

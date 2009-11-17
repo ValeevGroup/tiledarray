@@ -37,7 +37,7 @@ namespace TiledArray {
           break;
         }
 
-        init_(ord_.begin(), ord_.end());
+        init_();
       }
 
       unsigned int dim2order(unsigned int d) const { return ord_[d]; }
@@ -57,8 +57,7 @@ namespace TiledArray {
       }
 
       /// compute dim_ by inverting ord_ map
-      template <typename RandIter>
-      void init_(RandIter first, RandIter last) {
+      void init_() {
         boost::array<DimOrderPair,DIM> sorted_by_order;
         for(unsigned int d=0; d<DIM; ++d)
           sorted_by_order[d] = DimOrderPair(d,ord_[d]);

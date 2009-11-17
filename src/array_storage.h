@@ -6,6 +6,7 @@
 #include <madness_runtime.h>
 //#include <array_util.h>
 #include <permutation.h>
+#include <key.h>
 #include <Eigen/Core>
 //#include <boost/array.hpp>
 //#include <boost/iterator/filter_iterator.hpp>
@@ -183,11 +184,11 @@ namespace TiledArray {
       std::swap(first.n_, second.n_);
     }
 
-    template <typename Index, typename Dim>
-    struct ArrayHash : public std::unary_function<Index, madness::hashT> {
+    template <typename Key, typename Dim>
+    struct ArrayHash : public std::unary_function<Key, madness::hashT> {
       ArrayHash(const Dim& d) : dim_(d) {}
-      madness::hashT operator()(const Index& i) const {
-        const typename Dim::ordinal_type o = dim_.ord(i);
+      madness::hashT operator()(const Key& k) const {
+        const typename Dim::ordinal_type o = (k.keys() == 2 ? dim_.ord(k.key2()) : k.key1() );
         return madness::hash(o);
       }
     private:
@@ -492,10 +493,10 @@ namespace TiledArray {
     typedef typename array_dim_type::volume_type volume_type;
     typedef typename array_dim_type::size_array size_array;
     typedef CS coordinate_system;
-    typedef index_type key_type;
+    typedef detail::Key<ordinal_type, index_type> key_type;
 
   private:
-    typedef detail::ArrayHash<index_type, array_dim_type> hasher_type;
+    typedef detail::ArrayHash<key_type, array_dim_type> hasher_type;
     typedef madness::WorldContainer<key_type, T, hasher_type > data_container;
 
   public:
@@ -584,11 +585,10 @@ namespace TiledArray {
     /// the element is already present, the previous element will be destroyed.
     /// If the element is not in the range of for the array, a std::out_of_range
     /// exception will be thrown.
-    void insert(const key_type& i, const_reference_type v) {
-      TA_ASSERT(dim_.includes(i), std::out_of_range,
-          "The index is not in range.");
-
-      data_.replace(i, v);
+    template<typename Key>
+    void insert(const Key& i, const_reference_type v) {
+      TA_ASSERT(includes(i), std::out_of_range, "The index is not in range.");
+      data_.replace(make_key_(i), v);
     }
 
     /// Inserts an element into the array
@@ -599,8 +599,9 @@ namespace TiledArray {
     /// the element is already present, the previous element will be destroyed.
     /// If the element is not in the range of for the array, a std::out_of_range
     /// exception will be thrown.
-    void insert(const value_type& e) {
-      insert(e.first, e.second);
+    template<typename Key>
+    void insert(const std::pair<Key, T>& e) {
+      insert(make_key_(e.first), e.second);
     }
 
     template<typename InIter>
@@ -613,8 +614,9 @@ namespace TiledArray {
 
     /// This function removes the element specified by the index, and performs a
     /// non-blocking communication for non-local elements.
-    void erase(const key_type& i) {
-      data_.erase(i);
+    template<typename Key>
+    void erase(const Key& i) {
+      data_.erase(key_(i));
     }
 
     /// Erase the range of iterators
@@ -649,11 +651,13 @@ namespace TiledArray {
       // the data is written, non-blocking communication may occur (when the new
       // location is not local).
       const_accessor a;
+      key_type k;
       for(typename range_type::const_iterator it = r.begin(); it != r.end(); ++it) {
-        if( data_.find(a, *it)) {
+        k = dim_.ord(*it);
+        if( data_.find(a, k)) {
           temp.insert(p ^ *it, a->second);
           a.release();
-          data_.erase(*it);
+          data_.erase(k);
         }
       }
 
@@ -682,10 +686,13 @@ namespace TiledArray {
         // element is written into the temp array, otherwise it is skipped. When
         // the data is written, non-blocking communication may occur (when the new
         // location is not local).
+        typename data_container::const_accessor a;
+        key_type k;
         for(typename range_type::const_iterator it = common_rng.begin(); it != common_rng.end(); ++it) {
-          typename data_container::const_accessor a;
-          if( data_.find(a, *it))
-            temp.data_.replace(*it, a->second);
+          k = dim_.ord(*it);
+          if( data_.find(a, k))
+            temp.data_.replace(k, a->second);
+          a.release();
         }
 
       }
@@ -718,7 +725,8 @@ namespace TiledArray {
     volume_type volume(bool local = false) const { return ( local ? data_.size() : dim_.volume() ); }
 
     /// Returns true if the given index is included in the array.
-    bool includes(const index_type& i) const { return dim_.includes(i); }
+    template<typename Key>
+    bool includes(const Key& i) const { return dim_.includes(ord_(i)); }
 
     /// Returns a Future iterator to an element at index i.
 
@@ -726,8 +734,9 @@ namespace TiledArray {
     /// i. If the element is not local the it will use non-blocking communication
     /// to retrieve the data. The future will be immediately available if the data
     /// is local. Valid types for Index are ordinal_type or index_type.
-    madness::Future<iterator> find(const key_type& i) {
-      return data_.find(i);
+    template<typename Key>
+    madness::Future<iterator> find(const Key& i) {
+      return data_.find(key_(i));
     }
 
     /// Returns a Future const_iterator to an element at index i.
@@ -737,32 +746,36 @@ namespace TiledArray {
     /// communication to retrieve the data. The future will be immediately
     /// available if the data is local. Valid types for Index are ordinal_type
     /// or index_type.
-    madness::Future<const_iterator> find(const key_type& i) const {
-      return data_.find(i);
+    template<typename Key>
+    madness::Future<const_iterator> find(const Key& i) const {
+      return data_.find(key_(i));
     }
 
     /// Sets an accessor to point to a local data element.
 
     /// This function will set an accessor to point to a local data element only.
     /// It will return false if the data element is remote or not found.
-    bool find(accessor& acc, const index_type& i) {
-      return data_.find(acc, i);
+    template<typename Key>
+    bool find(accessor& acc, const Key& i) {
+      return data_.find(acc, key_(i));
     }
 
     /// Sets a const_accessor to point to a local data element.
 
     /// This function will set a const_accessor to point to a local data element
     /// only. It will return false if the data element is remote or not found.
-    bool find(const_accessor& acc, const key_type& i) const {
-      return data_.find(acc, i);
+    template<typename Key>
+    bool find(const_accessor& acc, const Key& i) const {
+      return data_.find(acc, key_(i));
     }
 
     /// Returns true if index i is stored locally.
 
     /// Note: This function does not check for the presence of an element at
     /// the given location.
-    bool is_local(const index_type& i) const {
-      return data_.is_local(i);
+    template<typename Key>
+    bool is_local(const Key& i) const {
+      return data_.is_local(key_(i));
     }
 
     madness::World& get_world() const {
@@ -770,6 +783,52 @@ namespace TiledArray {
     }
 
   private:
+
+    /// Converts an ordinal into an index
+    index_type get_index_(const std::size_t i) const {
+      index_type result;
+      detail::calc_index(i, coordinate_system::rbegin(dim_.weight()),
+          coordinate_system::rend(dim_.weight()),
+          coordinate_system::rbegin(result));
+      return result;
+    }
+
+    ordinal_type ord_(const key_type& k) const {
+      return k.key1();
+    }
+
+    ordinal_type ord_(const index_type& i) const {
+      return dim_.ord(i);
+    }
+
+    ordinal_type ord_(const ordinal_type& i) const {
+      return i;
+    }
+
+    key_type key_(const ordinal_type& i) const {
+      return key_type(i);
+    }
+
+    key_type key_(const index_type& i) const {
+      return key_type(dim_.ord(i));
+    }
+
+    key_type key_(const key_type& k) const {
+      return k;
+    }
+
+    key_type make_key_(const index_type& i) const {
+      return key_type(dim_.ord(i), i);
+    }
+
+    key_type make_key_(const ordinal_type& i) const {
+      return key_type(i, get_index_(i));
+    }
+
+    key_type make_key_(const key_type& i) const {
+      TA_ASSERT(i.keys() == 3, std::runtime_error, "Both key types must be assigned.");
+      return i;
+    }
 
     friend void swap<>(DistributedArrayStorage_&, DistributedArrayStorage_&);
 

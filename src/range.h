@@ -197,7 +197,7 @@ namespace TiledArray {
   Range<I,DIM,Tag,CS> operator &(const Range<I,DIM,Tag,CS>& b1, const Range<I,DIM,Tag,CS>& b2) {
     Range<I,DIM,Tag,CS> result;
     typename Range<I,DIM,Tag,CS>::index_type start, finish;
-    register typename Range<I,DIM,Tag,CS>::index_type::index s1, s2, f1, f2;
+    typename Range<I,DIM,Tag,CS>::index_type::index s1, s2, f1, f2;
     for(unsigned int d = 0; d < DIM; ++d) {
       s1 = b1.start()[d];
       f1 = b1.finish()[d];
