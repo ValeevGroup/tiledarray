@@ -70,10 +70,7 @@ namespace TiledArray {
           Annotation(t.size().begin(), t.size().end(), t.weight().begin(),
           t.weight().end(), t.volume(), var, O), data_(const_cast<T*>(t.data())),
           owner_(false), alloc_()
-      {
-        TA_ASSERT( t.dim() == var_.dim() , std::runtime_error,
-            "The number of variables in the variable list does not match the tile dimensions.");
-      }
+      { }
 
       /// Create an annotated tile with a constant initial value.
 

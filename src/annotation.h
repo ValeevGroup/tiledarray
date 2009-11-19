@@ -68,8 +68,8 @@ namespace TiledArray {
             "Variable list dimensions do not match size initialization list dimensions.");
         TA_ASSERT(var.dim() == std::distance(weight_first, weight_last), std::runtime_error,
             "Variable list dimensions do not match weight initialization list dimensions.");
-        TA_ASSERT(var.dim() == n, std::runtime_error,
-            "Variable list dimensions do not match specified dimensions.");
+        TA_ASSERT(n == std::accumulate(size_first, size_last, std::size_t(1), std::multiplies<std::size_t>()),
+            std::runtime_error, "Variable list dimensions do not match specified dimensions.");
       }
 
       /// Copy constructor
