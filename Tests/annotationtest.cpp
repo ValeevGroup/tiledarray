@@ -20,25 +20,26 @@ using TiledArray::expressions::VariableList;
 
 struct AnnotationFixture {
   static const size_t ndim = 3;
+  static const size_t primes[];
 
   typedef Annotation::size_array size_array;
   typedef Annotation::ordinal_type ordinal_type;
   typedef ArrayCoordinate<double,ndim,LevelTag<0>, CoordinateSystem<ndim> > index_type;
 
-  AnnotationFixture() : v("a,b,c"), s(ndim) {
-    const size_t primes[] = {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
-    for(size_t i=0; i<ndim; ++i) s[i] = primes[i];
-    Annotation* aa = new Annotation(s.begin(), s.end(), v);
-    a = *aa;
-    t = *aa;
-    delete aa;
-  }
+  AnnotationFixture() :
+      v("a,b,c"),
+      s(primes, primes + ndim),
+      a(primes, primes + ndim, v),
+      t(primes, primes + ndim, v)
+  { }
   ~AnnotationFixture() { }
 
   VariableList v;
   size_array s;
   Annotation a, t;
 };
+
+const size_t AnnotationFixture::primes[] = {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
 
 BOOST_FIXTURE_TEST_SUITE( annotation_suite , AnnotationFixture )
 
@@ -63,11 +64,6 @@ BOOST_AUTO_TEST_CASE( include )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(Annotation a0); // check default constructor
-  Annotation a0;
-  BOOST_CHECK_EQUAL(a0.volume(), 0u);
-  BOOST_REQUIRE_THROW(a0.includes(index_type(0,0,0)), std::runtime_error);
-
   BOOST_REQUIRE_NO_THROW(Annotation ac(a)); // check copy constructor
   Annotation ac(a);
   BOOST_CHECK_EQUAL_COLLECTIONS(ac.size().begin(), ac.size().end(),
@@ -104,7 +100,8 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( assignment )
 {
-  Annotation ac;  ac = a;
+  Annotation ac(primes + 2, primes + 2 + ndim, v);
+  ac = a;
   BOOST_CHECK_EQUAL_COLLECTIONS(ac.size().begin(), ac.size().end(),
                                 a.size().begin(), a.size().end());
   BOOST_CHECK_EQUAL_COLLECTIONS(ac.weight().begin(), ac.weight().end(),

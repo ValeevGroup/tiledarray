@@ -28,12 +28,11 @@ namespace TiledArray {
       typedef std::size_t volume_type;
       typedef std::vector<std::size_t> size_array;
 
-      /// Default constructor
+    private:
+      /// Default constructor not allowed
+      Annotation();
 
-      /// Creates an empty Annotation
-      Annotation() : size_(), weight_(), n_(0), var_(),
-          order_(detail::decreasing_dimension_order)
-      { }
+    public:
 
       /// Create an Annotation.
       /// \var \c [size_first, \c size_last) is the size of each dimension.
@@ -47,7 +46,10 @@ namespace TiledArray {
           calc_weight_<detail::increasing_dimension_order>(size_))),
           n_(std::accumulate(size_first, size_last, std::size_t(1), std::multiplies<std::size_t>())),
           var_(var), order_(o)
-      { }
+      {
+        TA_ASSERT(var.dim() == std::distance(size_first, size_last), std::runtime_error,
+            "Variable list dimensions do not match size initialization list dimensions.");
+      }
 
       /// Create an Annotation.
       /// \var \c [size_first, \c size_last) is the size of each dimension.
@@ -61,7 +63,14 @@ namespace TiledArray {
           detail::DimensionOrderType o = detail::decreasing_dimension_order) :
           size_(size_first, size_last), weight_(weight_first, weight_last),
           n_(n), var_(var), order_(o)
-      { }
+      {
+        TA_ASSERT(var.dim() == std::distance(size_first, size_last), std::runtime_error,
+            "Variable list dimensions do not match size initialization list dimensions.");
+        TA_ASSERT(var.dim() == std::distance(weight_first, weight_last), std::runtime_error,
+            "Variable list dimensions do not match weight initialization list dimensions.");
+        TA_ASSERT(var.dim() == n, std::runtime_error,
+            "Variable list dimensions do not match specified dimensions.");
+      }
 
       /// Copy constructor
       Annotation(const Annotation& other) :

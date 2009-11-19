@@ -52,14 +52,11 @@ namespace TiledArray {
       typedef const_ptr_type const_iterator;
     private:
       typedef Eigen::aligned_allocator<value_type> alloc_type;
+
+      /// Default constructor is not allowed
+      AnnotatedTile();
+
     public:
-
-      /// Default constructor
-
-      /// Creates an annotated tile with no size or dimensions.
-      AnnotatedTile() :
-          Annotation(), data_(NULL), owner_(false), alloc_()
-      { }
 
       /// Create an annotated tile from a tile.
 

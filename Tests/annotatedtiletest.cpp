@@ -104,17 +104,10 @@ BOOST_AUTO_TEST_CASE( iteration )
   *it1 = 2.0;
   BOOST_CHECK_CLOSE(*it1, 2.0, 0.000001); // check iterator assignment
   BOOST_CHECK_CLOSE(a1.at(0), 2.0, 0.000001);
-  ATile a2;
-  BOOST_CHECK_EQUAL(a2.begin(), a2.end());
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(ATile a0); // check default constructor
-  ATile a0;
-  BOOST_CHECK_EQUAL(a0.volume(), 0u);
-  BOOST_CHECK_THROW(a0.at(index_type(0,0,0)), std::runtime_error);
-
   BOOST_REQUIRE_NO_THROW(ATile ac(a)); // check copy constructor
   ATile ac(a);
   BOOST_CHECK_EQUAL_COLLECTIONS(ac.size().begin(), ac.size().end(),
