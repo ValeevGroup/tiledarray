@@ -81,13 +81,8 @@ namespace TiledArray {
 
       /// Annotation assignment operator.
       Annotation& operator =(const Annotation& other) {
-        // TODO Justus, should VariableList be also copied?
-#if 0
         TA_ASSERT(var_ == other.var_, std::runtime_error,
             "The variable lists do not match.");
-#else
-        var_ = other.var_;
-#endif
 
         size_ = other.size_;
         weight_ = other.weight_;
