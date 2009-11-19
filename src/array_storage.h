@@ -726,7 +726,17 @@ namespace TiledArray {
 
     /// Returns true if the given index is included in the array.
     template<typename Key>
-    bool includes(const Key& i) const { return dim_.includes(ord_(i)); }
+    bool includes(const Key& i) const { return dim_.includes(i); }
+
+    /// Returns true if the given key is included in the array.
+    bool includes(const key_type& k) const {
+      TA_ASSERT((k.keys() & 3) != 0, std::runtime_error, "Key is not initialized.");
+
+      if(k.keys() & 1)
+        return dim_.includes(k.key1());
+
+      return dim_.includes(k.key2());
+    }
 
     /// Returns a Future iterator to an element at index i.
 
@@ -772,7 +782,8 @@ namespace TiledArray {
     /// Returns true if index i is stored locally.
 
     /// Note: This function does not check for the presence of an element at
-    /// the given location.
+    /// the given location. If the index is not included in the range, then the
+    /// result will be erroneous.
     template<typename Key>
     bool is_local(const Key& i) const {
       return data_.is_local(key_(i));

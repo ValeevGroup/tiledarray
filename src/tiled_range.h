@@ -128,10 +128,10 @@ namespace TiledArray {
       }
 
       /// Access the range information on the elements contained by tile t.
-      const tile_range_type& tile(const index_type& t) const {
-        TA_ASSERT( tile_ranges_.includes(t), std::out_of_range,
+      const tile_range_type& tile(const index_type& i) const {
+        TA_ASSERT( tile_ranges_.includes(i - range_.start()), std::out_of_range,
             "Tile index is out of range.");
-        return tile_ranges_[t - range_.start()];
+        return tile_ranges_[i - range_.start()];
       }
 
     private:

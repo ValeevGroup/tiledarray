@@ -216,26 +216,26 @@ BOOST_AUTO_TEST_CASE( conversion )
 BOOST_AUTO_TEST_CASE( equal_comp )
 {
   key_type k1(k);
-  std::cout << "k = " << k << std::endl;
-  std::cout << "k1 = " << k1 << std::endl;
-  std::cout << "khi = " << khi << std::endl;
-  std::cout << "ko = " << ko << std::endl;
-  std::cout << "kohi = " << kohi << std::endl;
-  std::cout << "ki = " << ki << std::endl;
-  std::cout << "kihi = " << kihi << std::endl;
+//  std::cout << "k = " << k << std::endl;
+//  std::cout << "k1 = " << k1 << std::endl;
+//  std::cout << "khi = " << khi << std::endl;
+//  std::cout << "ko = " << ko << std::endl;
+//  std::cout << "kohi = " << kohi << std::endl;
+//  std::cout << "ki = " << ki << std::endl;
+//  std::cout << "kihi = " << kihi << std::endl;
   BOOST_CHECK(k == k1); // check bool operator ==(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-  BOOST_CHECK(! k == khi);
+  BOOST_CHECK(! (k == khi));
   BOOST_CHECK(k == ko);
-  BOOST_CHECK(! k == kohi);
+  BOOST_CHECK(! (k == kohi));
   BOOST_CHECK(k == ki);
-  BOOST_CHECK(! k == kihi);
-  BOOST_CHECK(! ko == ki);
+  BOOST_CHECK(! (k == kihi));
+  BOOST_CHECK(! (ko == ki));
 
   BOOST_CHECK(k == o); // check bool operator ==(const Key<Key1, Key2>&, const Key1&);
-  BOOST_CHECK(! k == ohi);
+  BOOST_CHECK(! (k == ohi));
 
   BOOST_CHECK(o == k); // check bool operator ==(const Key1&, const Key<Key1, Key2>&);
-  BOOST_CHECK(! ohi == k);
+  BOOST_CHECK(! (ohi == k));
 
   BOOST_CHECK(k == i); // check bool operator ==(const Key<Key1, Key2>&, const Key2&);
   BOOST_CHECK(! (k == ihi));
@@ -247,18 +247,18 @@ BOOST_AUTO_TEST_CASE( equal_comp )
 BOOST_AUTO_TEST_CASE( ne_comp )
 {
   key_type k1(k);
-  BOOST_CHECK(! k != k1); // check bool operator !=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! (k != k1)); // check bool operator !=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
   BOOST_CHECK(k != khi);
-  BOOST_CHECK(! k != ko);
+  BOOST_CHECK(! (k != ko));
   BOOST_CHECK(k != kohi);
-  BOOST_CHECK(! k != ki);
+  BOOST_CHECK(! (k != ki));
   BOOST_CHECK(k != kihi);
-  BOOST_CHECK(! ko != ki);
+  BOOST_CHECK(! (ko != ki));
 
-  BOOST_CHECK(! k != o); // check bool operator !=(const Key<Key1, Key2>&, const Key1&);
+  BOOST_CHECK(! (k != o)); // check bool operator !=(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(k != ohi);
 
-  BOOST_CHECK(! o != k); // check bool operator !=(const Key1&, const Key<Key1, Key2>&);
+  BOOST_CHECK(! (o != k)); // check bool operator !=(const Key1&, const Key<Key1, Key2>&);
   BOOST_CHECK(ohi != k);
 
   BOOST_CHECK(! (k != i)); // check bool operator !=(const Key<Key1, Key2>&, const Key2&);
@@ -271,18 +271,18 @@ BOOST_AUTO_TEST_CASE( ne_comp )
 BOOST_AUTO_TEST_CASE( lt_comp )
 {
   BOOST_CHECK(klow < k); // check bool operator <(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-  BOOST_CHECK(! khi < k);
+  BOOST_CHECK(! (khi < k));
   BOOST_CHECK(kolow < k);
-  BOOST_CHECK(! kohi < k);
+  BOOST_CHECK(! (kohi < k));
   BOOST_CHECK(kilow < k);
-  BOOST_CHECK(! kihi < k);
-  BOOST_CHECK(! ko < ki);
+  BOOST_CHECK(! (kihi < k));
+  BOOST_CHECK(! (ko < ki));
 
   BOOST_CHECK(klow < o); // check bool operator <(const Key<Key1, Key2>&, const Key1&);
-  BOOST_CHECK(! khi < o);
+  BOOST_CHECK(! (khi < o));
 
   BOOST_CHECK(olow < k); // check bool operator <(const Key1&, const Key<Key1, Key2>&);
-  BOOST_CHECK(! ohi < k);
+  BOOST_CHECK(! (ohi < k));
 
   BOOST_CHECK(klow < i); // check bool operator <(const Key<Key1, Key2>&, const Key2&);
   BOOST_CHECK(! (khi < i));
@@ -296,22 +296,22 @@ BOOST_AUTO_TEST_CASE( le_comp )
   key_type k1(k);
   BOOST_CHECK(klow <= k); // check bool operator <=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
   BOOST_CHECK(k1 <= k);
-  BOOST_CHECK(! khi <= k);
+  BOOST_CHECK(! (khi <= k));
   BOOST_CHECK(kolow <= k);
   BOOST_CHECK(ko <= k);
-  BOOST_CHECK(! kohi <= k);
+  BOOST_CHECK(! (kohi <= k));
   BOOST_CHECK(kilow <= k);
   BOOST_CHECK(ki <= k);
-  BOOST_CHECK(! kihi <= k);
-  BOOST_CHECK(! ko <= ki);
+  BOOST_CHECK(! (kihi <= k));
+  BOOST_CHECK(! (ko <= ki));
 
   BOOST_CHECK(klow <= o); // check bool operator <=(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(k <= o);
-  BOOST_CHECK(! khi <= o);
+  BOOST_CHECK(! (khi <= o));
 
   BOOST_CHECK(olow <= k); // check bool operator <=(const Key1&, const Key<Key1, Key2>&);
   BOOST_CHECK(o <= k);
-  BOOST_CHECK(! ohi <= k);
+  BOOST_CHECK(! (ohi <= k));
 
   BOOST_CHECK(klow <= i); // check bool operator <=(const Key<Key1, Key2>&, const Key2&);
   BOOST_CHECK(k <= i);
@@ -325,18 +325,18 @@ BOOST_AUTO_TEST_CASE( le_comp )
 BOOST_AUTO_TEST_CASE( gt_comp )
 {
   BOOST_CHECK(khi > k); // check bool operator >(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-  BOOST_CHECK(! klow > k);
+  BOOST_CHECK(! (klow > k));
   BOOST_CHECK(kohi > k);
-  BOOST_CHECK(! kolow > k);
+  BOOST_CHECK(! (kolow > k));
   BOOST_CHECK(kihi > k);
-  BOOST_CHECK(! kilow > k);
-  BOOST_CHECK(! ko > ki);
+  BOOST_CHECK(! (kilow > k));
+  BOOST_CHECK(! (ko > ki));
 
   BOOST_CHECK(khi > o); // check bool operator >(const Key<Key1, Key2>&, const Key1&);
-  BOOST_CHECK(! klow > o);
+  BOOST_CHECK(! (klow > o));
 
   BOOST_CHECK(ohi > k); // check bool operator >(const Key1&, const Key<Key1, Key2>&);
-  BOOST_CHECK(! olow > k);
+  BOOST_CHECK(! (olow > k));
 
   BOOST_CHECK(khi > i); // check bool operator >(const Key<Key1, Key2>&, const Key2&);
   BOOST_CHECK(! (klow > i));
@@ -350,22 +350,22 @@ BOOST_AUTO_TEST_CASE( ge_comp )
   key_type k1(k);
   BOOST_CHECK(khi >= k); // check bool operator >=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
   BOOST_CHECK(k1 >= k);
-  BOOST_CHECK(! klow >= k);
+  BOOST_CHECK(! (klow >= k));
   BOOST_CHECK(kohi >= k);
   BOOST_CHECK(ko >= k);
-  BOOST_CHECK(! kolow >= k);
+  BOOST_CHECK(! (kolow >= k));
   BOOST_CHECK(kihi >= k);
   BOOST_CHECK(ki >= k);
-  BOOST_CHECK(! kilow >= k);
-  BOOST_CHECK(! ko >= ki);
+  BOOST_CHECK(! (kilow >= k));
+  BOOST_CHECK(! (ko >= ki));
 
   BOOST_CHECK(khi >= o); // check bool operator >=(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(k >= o);
-  BOOST_CHECK(! klow >= o);
+  BOOST_CHECK(! (klow >= o));
 
   BOOST_CHECK(ohi >= k); // check bool operator >=(const Key1&, const Key<Key1, Key2>&);
   BOOST_CHECK(o >= k);
-  BOOST_CHECK(! olow >= k);
+  BOOST_CHECK(! (olow >= k));
 
   BOOST_CHECK(khi >= i); // check bool operator >=(const Key<Key1, Key2>&, const Key2&);
   BOOST_CHECK(k >= i);

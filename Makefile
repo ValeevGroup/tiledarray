@@ -6,8 +6,8 @@ LIBDIR = -L$(MADNESSDIR)/lib -L$(BOOSTDIR)/lib
 #LIBS = -lMADworld
 LIBS = -lMADworld -lboost_unit_test_framework
 #WARNING = -wd981 -wd383 -wd1419 -wd444 -wd1418
-
-CXXFLAGS = -g -Wall -Wstrict-aliasing -fstrict-aliasing -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=c++0x $(WARNING)
+#-Wextra -pedantic
+CXXFLAGS = -g -Wall -fstrict-aliasing -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=c++0x $(WARNING)
 CXXSUF = cpp
 OBJSUF = o
 CXXDEPEND = $(CXX)
@@ -16,7 +16,8 @@ CXXDEPENDFLAGS = -M
 CXX = $(MPICXX)
 TESTSRC = TiledArrayTest.cpp permutationtest.cpp algorithmtest.cpp \
 	coordsystemtest.cpp coordinatestest.cpp rangetest.cpp tiledrange1test.cpp \
-	keytest.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp \
+	keytest.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
+	variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp \
 	annotationtest.cpp annotatedtiletest.cpp tilemathtest.cpp arraytest.cpp \
 	annotatedarraytest.cpp arraymathtest.cpp arrayslicetest.cpp
 OBJS = $(TESTSRC:%.cpp=%.$(OBJSUF))
@@ -32,7 +33,7 @@ all:	$(TARGET)
 check: check_serial check_parallel
 
 check_serial: $(TARGET)
-	./TiledArrayTest --run_test="permutation_suite,algorithm_suite,array_coordinate_suite,range_suite,range1_suite,array_dim_suite,dense_storage_suite,tiled_range_suite,shape_suite,variable_list_suite,tile_suite,tile_slice_suite,packed_tile_suite,annotated_tile_suite,tile_math_suite"
+	./TiledArrayTest --run_test="permutation_suite,algorithm_suite,array_coordinate_suite,range_suite,range1_suite,array_dim_suite,dense_storage_suite,tiled_range_suite,key_suite,shape_suite,variable_list_suite,tile_suite,tile_slice_suite,packed_tile_suite,annotation_suite,annotated_tile_suite,tile_math_suite"
 	
 check_parallel: $(TARGET)
 	./TiledArrayTest --run_test="distributed_storage_suite,array_suite"

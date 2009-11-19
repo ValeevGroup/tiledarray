@@ -277,6 +277,14 @@ namespace TiledArray {
       }
 
     private:
+
+      friend bool operator == <>(const Key_& l, const Key_&);
+      friend bool operator != <>(const Key_& l, const Key_&);
+      friend bool operator < <>(const Key_& l, const Key_&);
+      friend bool operator <= <>(const Key_& l, const Key_&);
+      friend bool operator > <>(const Key_& l, const Key_&);
+      friend bool operator >= <>(const Key_& l, const Key_&);
+
       key1_type k1_;      ///< Key 1
       key2_type k2_;      ///< Key 2
       unsigned int k_;    ///< Flags for keys that are assigned.
@@ -285,10 +293,8 @@ namespace TiledArray {
     /// Compare two keys for equality (only compares key1).
     template<typename Key1, typename Key2>
     bool operator ==(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      std::cout << "keyl = " << l << std::endl;
-      std::cout << "key2 = " << r << std::endl;
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.key1() == r.key1())) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.key2() == r.key2()));
+      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ == r.k1_)) ||
+          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ == r.k2_));
     }
 
     /// Compare the key with a key1 type for equality.
@@ -319,8 +325,8 @@ namespace TiledArray {
     /// Compare two keys for inequality (only compares key1).
     template<typename Key1, typename Key2>
     bool operator !=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.key1() != r.key1())) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.key2() != r.key2()));
+      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ != r.k1_)) ||
+          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ != r.k2_));
     }
 
     /// Compare the key with a key1 type for inequality.
@@ -350,8 +356,8 @@ namespace TiledArray {
     /// Less-than comparison of two keys (only compares key1).
     template<typename Key1, typename Key2>
     bool operator <(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.key1() < r.key1())) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.key2() < r.key2()));
+      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ < r.k1_)) ||
+          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ < r.k2_));
     }
 
     /// Less-than comparison of a key with a key1 type.
@@ -381,8 +387,8 @@ namespace TiledArray {
     /// Less-than or equal-to comparison with two keys (only compares key1).
     template<typename Key1, typename Key2>
     bool operator <=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.key1() <= r.key1())) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.key2() <= r.key2()));
+      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ <= r.k1_)) ||
+          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ <= r.k2_));
     }
 
     /// Less-than or equal-to comparison of a key with a key1 type.
@@ -412,8 +418,8 @@ namespace TiledArray {
     /// Greater-than comparison with two keys (only compares key1).
     template<typename Key1, typename Key2>
     bool operator >(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.key1() > r.key1())) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.key2() > r.key2()));
+      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ > r.k1_)) ||
+          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ > r.k2_));
     }
 
     /// Greater-than comparison of a key with a key1 type.
@@ -443,8 +449,8 @@ namespace TiledArray {
     /// Greater-than or equal-to comparison with two keys (only compares key1).
     template<typename Key1, typename Key2>
     bool operator >=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.key1() >= r.key1())) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.key2() >= r.key2()));
+      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ >= r.k1_)) ||
+          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ >= r.k2_));
     }
 
     /// Greater-than or equal-to comparison of a key with a key1 type.
