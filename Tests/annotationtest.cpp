@@ -18,40 +18,59 @@ using namespace TiledArray;
 using TiledArray::expressions::Annotation;
 using TiledArray::expressions::VariableList;
 
+namespace {
+  const size_t primes[] = {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
+  const char varlist[] = "a,b,c,d,e,f,g,h,i,j,k";
+};
+
 struct AnnotationFixture {
+  static const size_t ndim = 4;
+  static const size_t __ndim;
   typedef Annotation::size_array size_array;
   typedef Annotation::ordinal_type ordinal_type;
-  typedef ArrayCoordinate<double,3,LevelTag<0>, CoordinateSystem<3> > index_type;
+  typedef ArrayCoordinate<double,ndim,LevelTag<0>, CoordinateSystem<ndim> > index_type;
 
-  AnnotationFixture() : var("a,b,c"), a(size, size + dim, var) { }
+  AnnotationFixture() : var(std::string(varlist, 2*ndim-1)), a(primes, primes+ndim, var) {
+    assert(ndim >= 3);
+    const TiledArray::detail::DimensionOrder<ndim> dimord(order);
+    vol = 1;
+    for(unsigned int o=0; o<ndim; ++o) {
+      const unsigned int d = dimord.order2dim(o);
+      const size_t s = primes[d];
+      size[d] = s;
+      weight[d] = vol;
+      vol *= s;
+    }
+  }
   ~AnnotationFixture() { }
 
-  static const unsigned int dim;
-  static const Annotation::volume_type vol;
-  static const size_t size[];
-  static const size_t weight[];
+  Annotation::volume_type vol;
+  size_t size[ndim];
+  size_t weight[ndim];
   static const TiledArray::detail::DimensionOrderType order;
   const VariableList var;
   Annotation a;
 };
 
-const unsigned int AnnotationFixture::dim = 3;
+#if 0
 const Annotation::volume_type AnnotationFixture::vol = 105;
 const size_t AnnotationFixture::size[] = {3, 5, 7};
 const size_t AnnotationFixture::weight[] = {35, 7, 1};
+#endif
 const TiledArray::detail::DimensionOrderType AnnotationFixture::order
     = detail::decreasing_dimension_order;
+const size_t AnnotationFixture::__ndim = AnnotationFixture::ndim;
 
 BOOST_FIXTURE_TEST_SUITE( annotation_suite , AnnotationFixture )
 
 BOOST_AUTO_TEST_CASE( accessor )
 {
   BOOST_CHECK_EQUAL_COLLECTIONS(a.size().begin(), a.size().end(),
-                                size, size + dim);    // check size accessor
+                                size, size + __ndim);    // check size accessor
   BOOST_CHECK_EQUAL_COLLECTIONS(a.weight().begin(), a.weight().end(),
-                                weight, weight + dim); // check weight accessor
+                                weight, weight + __ndim); // check weight accessor
   BOOST_CHECK_EQUAL(a.vars(), var); // check variable list accessor
-  BOOST_CHECK_EQUAL(a.dim(), dim); // check dimension accessor
+  BOOST_CHECK_EQUAL(a.dim(), __ndim); // check dimension accessor
   BOOST_CHECK_EQUAL(a.volume(), vol);// check volume accessor
   BOOST_CHECK_EQUAL(a.order(), order);// check order accessor
 }
@@ -72,31 +91,31 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL_COLLECTIONS(ac.weight().begin(), ac.weight().end(),
                                 a.weight().begin(), a.weight().end());
   BOOST_CHECK_EQUAL(ac.vars(), var);
-  BOOST_CHECK_EQUAL(ac.dim(), 3);
+  BOOST_CHECK_EQUAL(ac.dim(), __ndim);
   BOOST_CHECK_EQUAL(ac.volume(), a.volume());
   BOOST_CHECK_EQUAL(ac.order(), a.order());
 
   // check construction from sizes and annotation
-  BOOST_REQUIRE_NO_THROW(Annotation a1(size, size + dim, var));
-  Annotation a1(size, size + dim, var);
+  BOOST_REQUIRE_NO_THROW(Annotation a1(size, size + __ndim, var));
+  Annotation a1(size, size + __ndim, var);
   BOOST_CHECK_EQUAL_COLLECTIONS(a1.size().begin(), a1.size().end(),
-                                size, size + dim);
+                                size, size + __ndim);
   BOOST_CHECK_EQUAL_COLLECTIONS(a1.weight().begin(), a1.weight().end(),
-                                weight, weight + dim);
+                                weight, weight + __ndim);
   BOOST_CHECK_EQUAL(a1.vars(), var);
-  BOOST_CHECK_EQUAL(a1.dim(), dim);
+  BOOST_CHECK_EQUAL(a1.dim(), __ndim);
   BOOST_CHECK_EQUAL(a1.volume(), vol);
   BOOST_CHECK_EQUAL(a1.order(), order);
 
   // check construction from sizes, weights, size, and annotation
-  BOOST_REQUIRE_NO_THROW(Annotation a2(size, size + dim, weight, weight + dim, vol, var));
-  Annotation a2(size, size + dim, weight, weight + dim, vol, var);
+  BOOST_REQUIRE_NO_THROW(Annotation a2(size, size + __ndim, weight, weight + __ndim, vol, var));
+  Annotation a2(size, size + __ndim, weight, weight + __ndim, vol, var);
   BOOST_CHECK_EQUAL_COLLECTIONS(a2.size().begin(), a2.size().end(),
-                                size, size + dim);
+                                size, size + __ndim);
   BOOST_CHECK_EQUAL_COLLECTIONS(a2.weight().begin(), a2.weight().end(),
-                                weight, weight + dim);
+                                weight, weight + __ndim);
   BOOST_CHECK_EQUAL(a2.vars(), var);
-  BOOST_CHECK_EQUAL(a2.dim(), dim);
+  BOOST_CHECK_EQUAL(a2.dim(), __ndim);
   BOOST_CHECK_EQUAL(a2.volume(), vol);
   BOOST_CHECK_EQUAL(a2.order(), order);
 }
@@ -104,7 +123,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 BOOST_AUTO_TEST_CASE( assignment )
 {
   const size_t s[] = { 10, 10, 10 };
-  Annotation ac(s, s + dim, var);
+  Annotation ac(s, s + __ndim, var);
   ac = a;
   BOOST_CHECK_EQUAL_COLLECTIONS(ac.size().begin(), ac.size().end(),
                                 a.size().begin(), a.size().end());
@@ -118,8 +137,9 @@ BOOST_AUTO_TEST_CASE( assignment )
 
 BOOST_AUTO_TEST_CASE( permutation )
 {
-  Permutation<dim> p(1,2,0);
-  size_array s1(size, size +dim);
+  const size_t perm_indices[] = {1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  Permutation<ndim> p(perm_indices, perm_indices+ndim);
+  size_array s1(size, size + __ndim);
   s1 ^= p;
   VariableList v1 = p ^ var;
   Annotation a1(s1.begin(), s1.end(), v1);
