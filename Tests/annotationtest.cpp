@@ -31,7 +31,8 @@ struct AnnotationFixture {
   typedef ArrayCoordinate<double,ndim,LevelTag<0>, CoordinateSystem<ndim> > index_type;
 
   AnnotationFixture() : var(std::string(varlist, 2*ndim-1)), a(primes, primes+ndim, var) {
-    assert(ndim >= 3);
+    assert(ndim >= 3ul);
+    assert(ndim <= 11ul);
     const TiledArray::detail::DimensionOrder<ndim> dimord(order);
     vol = 1;
     for(unsigned int o=0; o<ndim; ++o) {
@@ -77,9 +78,9 @@ BOOST_AUTO_TEST_CASE( accessor )
 
 BOOST_AUTO_TEST_CASE( include )
 {
-  BOOST_CHECK(a.includes(index_type(0,0,0)));
-  BOOST_CHECK(a.includes(index_type(2,4,4)));
-  BOOST_CHECK(! a.includes(index_type(4,4,5)));
+  BOOST_CHECK(a.includes(index_type(0,0,0,0,0,0,0,0,0,0,0)));
+  BOOST_CHECK(a.includes(index_type(2,4,6,10,12,16,18,22,28,30,36)));
+  BOOST_CHECK(! a.includes(index_type(3,5,7,11,13,17,19,23,29,31,37)));
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -122,7 +123,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( assignment )
 {
-  const size_t s[] = { 10, 10, 10 };
+  const size_t s[] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
   Annotation ac(s, s + __ndim, var);
   ac = a;
   BOOST_CHECK_EQUAL_COLLECTIONS(ac.size().begin(), ac.size().end(),
