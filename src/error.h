@@ -4,7 +4,7 @@
 #ifdef TA_EXCEPTION_ERROR
 #ifdef TA_ASSERT_ERROR
 #undef TA_ASSERT_ERROR
-#warning "TA_EXCPETION_ERROR supersedes TA_ASSERT_ERROR"
+#warning "TA_EXCEPTION_ERROR supersedes TA_ASSERT_ERROR"
 #endif
 #include <stdexcept>
 #define TA_STRINGIZE( s ) #s
