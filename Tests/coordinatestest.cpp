@@ -33,8 +33,8 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL( p2.data()[1], 0u);
   BOOST_CHECK_EQUAL( p2.data()[2], 0u);
 
-  BOOST_REQUIRE_NO_THROW(Point3 p3(a.begin(), a.end())); // Iterator Constructor
-  Point3 p3(a.begin(), a.end());
+  BOOST_REQUIRE_NO_THROW(Point3 p3(a.begin())); // Iterator Constructor
+  Point3 p3(a.begin());
   BOOST_CHECK_EQUAL_COLLECTIONS(p3.data().begin(), p3.data().end(), a.begin(), a.end());
 
   BOOST_REQUIRE_NO_THROW(Point3 p4(a)); // Boost array constructor
@@ -45,19 +45,19 @@ BOOST_AUTO_TEST_CASE( constructors )
   Point3 p5(p);
   BOOST_CHECK_EQUAL_COLLECTIONS(p5.data().begin(), p5.data().end(), p.begin(), p.end());
 
-  BOOST_REQUIRE_NO_THROW(Point3 p6(1));  // Assign constant constuctor
-  Point3 p6(1);
-  BOOST_CHECK_EQUAL( p6.data()[0], 1u);     // correct element initialization
-  BOOST_CHECK_EQUAL( p6.data()[1], 1u);
-  BOOST_CHECK_EQUAL( p6.data()[2], 1u);
+  BOOST_REQUIRE_NO_THROW(Point3 p6());  // Assign constant constuctor
+  Point3 p6;
+  BOOST_CHECK_EQUAL( p6.data()[0], 0u);     // correct element initialization
+  BOOST_CHECK_EQUAL( p6.data()[1], 0u);
+  BOOST_CHECK_EQUAL( p6.data()[2], 0u);
 
   BOOST_REQUIRE_NO_THROW(Point3 p7(1,2,3)); // variable argument list constructor
   Point3 p7(1,2,3);
   BOOST_CHECK_EQUAL_COLLECTIONS(p7.data().begin(), p7.data().end(), a.begin(), a.end());
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(Point3 p8(std::forward<Point3>(Point3(1)))); // Move constructor.
-  Point3 p8(Point3(1));
+  BOOST_REQUIRE_NO_THROW(Point3 p8(std::forward<Point3>(Point3(1,1,1)))); // Move constructor.
+  Point3 p8(Point3(1,1,1));
   BOOST_CHECK_EQUAL( p8.data()[0], 1u);     // correct element initialization
   BOOST_CHECK_EQUAL( p8.data()[1], 1u);
   BOOST_CHECK_EQUAL( p8.data()[2], 1u);
@@ -231,9 +231,9 @@ BOOST_AUTO_TEST_CASE( comparison_functions )
 
 BOOST_AUTO_TEST_CASE( math )
 {
-  Point3 p1(1);
-  Point3 p2(2);
-  Point3 p3(3);
+  Point3 p1(1, 1, 1);
+  Point3 p2(2, 2, 2);
+  Point3 p3(3, 3, 3);
   Point3 pa(p1);
 
   BOOST_CHECK_EQUAL( p1 + p2, p3 );  // check addition operator
@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE( math )
 
 BOOST_AUTO_TEST_CASE( c_incrmentation )
 {
-  Point3 p1(1);
+  Point3 p1(1, 1, 1);
   Point3 pa(p1);
   ++pa;
   BOOST_CHECK_EQUAL( pa[0], 1u );  // check that the point was incremented
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE( c_incrmentation )
 
 BOOST_AUTO_TEST_CASE( fortran_incrementation )
 {
-  FPoint3 p1(1);
+  FPoint3 p1(1, 1, 1);
   FPoint3 pa(p1);
 
   ++pa;

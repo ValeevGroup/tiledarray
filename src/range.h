@@ -54,11 +54,11 @@ namespace TiledArray {
 
     /// Default constructor. The range has 0 size and the origin is set at 0.
     Range() :
-        start_(0), finish_(0), size_(0)
+        start_(), finish_(), size_()
     {}
 
     /// Construct a range of size with the origin set at 0 for all dimensions.
-    Range(const size_array& size, const index_type& start = index_type(0)) :
+    Range(const size_array& size, const index_type& start = index_type()) :
         start_(start), finish_(start + size), size_(size)
     {
       TA_ASSERT( (detail::less_eq<I,DIM>(start_.data(), finish_.data())) ,

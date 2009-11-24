@@ -3,8 +3,11 @@
 
 #include <coordinate_system.h>
 #include <array_util.h>
+#include <error.h>
+#include <utility.h>
 #include <boost/operators.hpp>
 #include <boost/array.hpp>
+#include <boost/type_traits.hpp>
 #include <stdarg.h>
 #include <iterator>
 
@@ -104,9 +107,19 @@ namespace TiledArray {
     static unsigned int dim() { return DIM; }
 
     // Constructors/Destructor
-    explicit ArrayCoordinate(const index& init_value = 0ul) { r_.assign(init_value); }
+    explicit ArrayCoordinate() { r_.assign(index(0)); }
     template <typename InIter>
-    explicit ArrayCoordinate(InIter start, InIter finish) { std::copy(start,finish,r_.begin()); }
+      explicit ArrayCoordinate(InIter start) {
+      // should variadic constructor been chosen?
+      // need to disambiguate the call if DIM==1
+      // assume iterators if InIter is not an integral type
+      // else assume wanted variadic constructor
+      // this scheme follows what std::vector does
+      if (DIM != 1u) TA_ASSERT( boost::is_integral<InIter>::value == false,
+                                std::invalid_argument,
+                                "ArrayCoordinate range constructor invoked with non-iterators" );
+      detail::initialize_from_values(start, r_.c_array(), DIM, boost::is_integral<InIter>());
+    }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { } // no throw
     ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { } // no throw
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
@@ -115,11 +128,19 @@ namespace TiledArray {
     /// Constant index constructor.
 
     /// Constructs an ArrayCoordinate with the specified constants. For example,
-    /// ArrayCoordinate<std::size_t, 4, p(0, 1, 2, 3); would construct a point with the
+    /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a point with the
     /// coordinates (0, 1, 2, 3).
-    /// Note: The compiler gets confused when constructing a 2D array coordinate
-    /// with this function. To work around this problem specify constant type.
-    /// For example
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    template <typename... Params>
+    ArrayCoordinate(Params... params) {
+      detail::fill<DIM,I,Params...>(r_.c_array(), params...);
+    }
+    template <typename... Params>
+    static ArrayCoordinate_ make(Params... params) {
+      ArrayCoordinate_ result(params...);
+      return result;
+    }
+#else
     ArrayCoordinate(const index c0, const index c1, ...) {
       r_.assign(0ul);
       va_list ap;
@@ -135,8 +156,6 @@ namespace TiledArray {
 
       va_end(ap);
     }
-    virtual ~ArrayCoordinate() {}
-
     static ArrayCoordinate_ make(const index c0, ...) {
       ArrayCoordinate_ result;
       result.r_.assign(0ul);
@@ -151,6 +170,8 @@ namespace TiledArray {
 
       return result;
     }
+#endif
+    ~ArrayCoordinate() {}
 
     /// Returns an iterator to the first coordinate
     iterator begin() {
@@ -400,7 +421,7 @@ namespace TiledArray {
     return result ^= perm;
   }
 
-  /// Append an ArrayCoordinate<...> to an output stream.
+  /// Append an ArrayCoordinate to an output stream.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<I,DIM,Tag,CS>& c) {
     output << "(";

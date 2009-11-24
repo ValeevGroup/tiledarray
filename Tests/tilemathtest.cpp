@@ -202,7 +202,8 @@ BOOST_AUTO_TEST_CASE( contraction )
 
   Tile4::range_type r4(Tile4::index_type(0,0,0,0), Tile4::index_type(5,5,5,5));
   Tile4 tr4(r4);
-  Tile0::range_type r0(Tile0::index_type(0), Tile0::index_type(1));
+  Tile0::index_type i0;
+  Tile0::range_type r0(i0, i0);
   Tile0 tr0(r0);
 
   std::fill(tr4.begin(), tr4.end(), 0.0);

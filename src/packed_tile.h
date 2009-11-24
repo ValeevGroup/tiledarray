@@ -49,7 +49,7 @@ namespace TiledArray {
     /// \arg \c first, \c last are the dimension boundaries list.
     /// \arg \c origin is the offset of the packed tile (optional).
     template<typename InIter>
-    PackedTile(T& t, InIter first, InIter last, const index_type& origin = index_type(0)) : r_(), w_(), t_(t)
+    PackedTile(T& t, InIter first, InIter last, const index_type& origin = index_type()) : r_(), w_(), t_(t)
     {
       TA_ASSERT( (valid_pack(first, last, tile_type::dim(), DIM)) , std::runtime_error,
           "Invalid packing information.");

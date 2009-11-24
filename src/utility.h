@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <functional>
+#include <boost/type_traits.hpp>
 
 namespace TiledArray {
   namespace detail {
@@ -67,6 +68,45 @@ namespace TiledArray {
     template<typename Op, typename F>
     unary_transform<Op, F> make_unary_transform(Op op, F f) {
       return unary_transform<Op, F>(op, f);
+    }
+
+    // help with initialization of classes with constructors that need disambiguation
+    template <typename I, typename T>
+    void initialize_from_values(I start, T* data, unsigned int size, boost::true_type is_not_iterator) {
+      data[0] = start;
+    }
+    template <typename I, typename T>
+    void initialize_from_values(I start, T* data, unsigned int size, boost::false_type is_iterator) {
+      std::copy(start, start+size, data);
+    }
+
+    // help with variadic constructors
+    template <unsigned int C> struct is_zero {
+        typedef boost::false_type value_type;
+    };
+    template <> struct is_zero<0u> {
+        typedef boost::true_type value_type ;
+    };
+    template <typename T>
+      void fill(T* begin, boost::true_type is_zero) {}
+    template <typename T>
+      void fill(T* begin, boost::false_type is_zero) {
+      // something wrong, shut the lights!
+      // generate meaningful compile-time error message
+      const int ArrayCoordinate_VariadicConstructor_NumArguments = 1;
+      const int ArrayCoordinate_NumDimensions = 2;
+      BOOST_STATIC_ASSERT(ArrayCoordinate_VariadicConstructor_NumArguments == ArrayCoordinate_NumDimensions || sizeof(T) == 0);
+    }
+    template <unsigned int DIM, typename T, typename U>
+      void fill(T* begin, U p_0) {
+      begin[0] = p_0;
+      typedef typename is_zero<DIM-1>::value_type is_zero_type;
+      fill(++begin, is_zero_type());
+    }
+    template <unsigned int DIM, typename T, typename U, typename... Params>
+      void fill(T* begin, U p_0, Params... params_1_n) {
+      begin[0] = p_0;
+      fill<DIM-1,T,Params...>(++begin, params_1_n...);
     }
 
   } // namespace detail

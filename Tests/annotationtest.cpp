@@ -78,9 +78,12 @@ BOOST_AUTO_TEST_CASE( accessor )
 
 BOOST_AUTO_TEST_CASE( include )
 {
-  BOOST_CHECK(a.includes(index_type(0,0,0,0,0,0,0,0,0,0,0)));
-  BOOST_CHECK(a.includes(index_type(2,4,6,10,12,16,18,22,28,30,36)));
-  BOOST_CHECK(! a.includes(index_type(3,5,7,11,13,17,19,23,29,31,37)));
+  index_type in0;
+  index_type in1(in0);  ++in1;
+  index_type out0(primes);
+  BOOST_CHECK(a.includes(in0));
+  BOOST_CHECK(a.includes(in1));
+  BOOST_CHECK(! a.includes(out0));
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -139,7 +142,7 @@ BOOST_AUTO_TEST_CASE( assignment )
 BOOST_AUTO_TEST_CASE( permutation )
 {
   const size_t perm_indices[] = {1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  Permutation<ndim> p(perm_indices, perm_indices+ndim);
+  Permutation<ndim> p(perm_indices);
   size_array s1(size, size + __ndim);
   s1 ^= p;
   VariableList v1 = p ^ var;

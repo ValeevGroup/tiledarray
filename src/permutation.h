@@ -3,6 +3,7 @@
 
 #include <error.h>
 #include <coordinate_system.h>
+#include <utility.h>
 #include <array_util.h>
 //#include <iosfwd>
 //#include <algorithm>
@@ -40,8 +41,6 @@ namespace TiledArray {
     void permute(InIter0, InIter0, InIter1, RandIter&);
   } // namespace detail
 
-  // Boost forward declaration
-
   /// Permutation
 
   /// Permutation class is used as an argument in all permutation operations on
@@ -66,22 +65,31 @@ namespace TiledArray {
     }
 
     template <typename InIter>
-    Permutation(InIter first, InIter last) {
-      TA_ASSERT( valid_(first, last) , std::runtime_error,
+    Permutation(InIter first) {
+      // should variadic constructor been chosen?
+      // need to disambiguate the call if DIM==1
+      // assume iterators if InIter is not an integral type
+      // else assume wanted variadic constructor
+      // this scheme follows what std::vector does
+      if (DIM != 1u) TA_ASSERT( boost::is_integral<InIter>::value == false, std::invalid_argument, "ArrayCoordinate range constructor invoked with non-iterators" );
+      detail::initialize_from_values(first, p_.c_array(), DIM, boost::is_integral<InIter>());
+      TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
           "Invalid permutation supplied." );
-      TA_ASSERT( std::distance(first, last), std::runtime_error,
-          "Iterator range [first, last) is too short.");
-      for(typename Array::iterator it = p_.begin(); it != p_.end(); ++it, ++first)
-        *it = *first;
     }
 
     Permutation(const Array& source) : p_(source) {
-      TA_ASSERT( valid_(source.begin(), source.end()) , std::runtime_error,
+      TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
           "Invalid permutation supplied.");
     }
 
     Permutation(const Permutation& other) : p_(other.p_) { }
 
+#if __GXX_EXPERIMENTAL_CXX0X__
+    template <typename... Params>
+    Permutation(Params... params) {
+      detail::fill<DIM,std::size_t,Params...>(p_.c_array(), params...);
+    }
+#else
     Permutation(const index_type p0, ...) {
       va_list ap;
       va_start(ap, p0);
@@ -95,6 +103,7 @@ namespace TiledArray {
       TA_ASSERT( valid_(begin(), end()) , std::runtime_error,
           "Invalid permutation supplied.");
     }
+#endif
 
     ~Permutation() {}
 
@@ -156,7 +165,7 @@ namespace TiledArray {
     make_unit_permutation() {
       typename Permutation<DIM>::index_type _result[DIM];
       for(unsigned int d=0; d<DIM; ++d) _result[d] = d;
-      return Permutation<DIM>(_result, _result + DIM);
+      return Permutation<DIM>(_result);
     }
   }
 

@@ -34,8 +34,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(p2.data()[1], 1u);
   BOOST_CHECK_EQUAL(p2.data()[2], 2u);
 
-  BOOST_REQUIRE_NO_THROW( Permutation<3> p3(a.begin(), a.end()) ); // check iterator constructor
-  Permutation<3> p3(a.begin(), a.end());
+  BOOST_REQUIRE_NO_THROW( Permutation<3> p3(a.begin()) ); // check iterator constructor
+  Permutation<3> p3(a.begin());
   BOOST_CHECK_EQUAL(p3.data()[0], 0u);
   BOOST_CHECK_EQUAL(p3.data()[1], 1u);
   BOOST_CHECK_EQUAL(p3.data()[2], 2u);
