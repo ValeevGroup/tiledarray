@@ -42,6 +42,7 @@ namespace TiledArray {
   class Range {
   public:
     typedef Range<I,DIM,Tag,CS> Range_;
+    typedef I ordinal_type;
     typedef ArrayCoordinate<I,DIM,Tag,CS> index_type;
     typedef I volume_type;
     typedef boost::array<I,DIM> size_array;
@@ -110,6 +111,10 @@ namespace TiledArray {
     bool includes(const index_type& i) const {
       return (detail::less_eq(start_.data(), i.data()) &&
           detail::less(i.data(), finish_.data()));
+    }
+
+    bool includes(const ordinal_type& o) const {
+      return o < volume();
     }
 
     /// Assignment Operator.
