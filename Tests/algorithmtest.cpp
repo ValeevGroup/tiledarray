@@ -38,7 +38,7 @@ struct AlgorithmFixture {
   std::vector<std::size_t> unit;
   std::vector<std::size_t> n;
   std::vector<int> v;
-};
+}; // struct AlgorithmFixture
 
 BOOST_FIXTURE_TEST_SUITE( algorithm_suite, AlgorithmFixture )
 
