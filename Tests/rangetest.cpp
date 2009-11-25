@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(r0.size(), s.data());
   BOOST_CHECK_EQUAL(r0.volume(), 0u);
 
-  BOOST_REQUIRE_NO_THROW(Range3 b1(size)); // Size Constructor
+  BOOST_REQUIRE_NO_THROW(Range3 r1(size)); // Size Constructor
   Range3 r1(size);
   BOOST_CHECK_EQUAL(r1.start(), s);
   BOOST_CHECK_EQUAL(r1.finish(), f);
@@ -76,6 +76,9 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(r10.volume(), v);
 
   BOOST_REQUIRE_NO_THROW(Range3 r2(p222, p222 + f)); // Start/Finish Constructor
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(Range3 r2(p222 + f, p222), std::runtime_error);
+#endif
   Range3 r2(p222, p222 + f);
   BOOST_CHECK_EQUAL(r2.start(), p222);
   BOOST_CHECK_EQUAL(r2.finish(), p222 + f);
@@ -211,6 +214,12 @@ BOOST_AUTO_TEST_CASE( include )
   BOOST_CHECK(!r1.includes(t18));
   BOOST_CHECK(r1.includes(t19));  // check corners
   BOOST_CHECK(r1.includes(t20));
+
+  Range3::ordinal_type o = 0;
+  for(; o < r.volume(); ++o)
+    BOOST_CHECK(r.includes(o));
+
+  BOOST_CHECK(! r.includes(o));
 }
 
 BOOST_AUTO_TEST_CASE( unions )
