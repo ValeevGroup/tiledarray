@@ -76,7 +76,9 @@ namespace TiledArray {
     /// Key class that holds two arbitrary key types.
 
     /// Contains two arbitrary key values. It provides methods of comparing the
-    /// two keys with the appropriate type. Both key values must be set.
+    /// two keys with the appropriate type, key access functions, and automatic
+    /// type conversion to the base key types. Also, direct comparisons may be
+    /// made between base key types and this key.
     template<typename Key1, typename Key2>
     class Key {
     public:
