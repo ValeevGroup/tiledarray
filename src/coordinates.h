@@ -8,8 +8,10 @@
 #include <boost/operators.hpp>
 #include <boost/array.hpp>
 #include <boost/type_traits.hpp>
-#include <stdarg.h>
 #include <iterator>
+#ifndef __GXX_EXPERIMENTAL_CXX0X__
+#include <stdarg.h>
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
 namespace boost {
   template <typename T, std::size_t D>
@@ -28,8 +30,6 @@ namespace TiledArray {
 
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   class ArrayCoordinate;
-  template <typename Coord>
-  Coord make_coord(const typename Coord::index, ...);
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   void swap(ArrayCoordinate<I,DIM,Tag,CS>&, ArrayCoordinate<I,DIM,Tag,CS>&);
   /// Add operator
@@ -107,40 +107,47 @@ namespace TiledArray {
     static unsigned int dim() { return DIM; }
 
     // Constructors/Destructor
-    explicit ArrayCoordinate() { r_.assign(index(0)); }
+    ArrayCoordinate() { r_.assign(index(0)); }
     template <typename InIter>
-      explicit ArrayCoordinate(InIter start) {
+    explicit ArrayCoordinate(InIter first) {
       // should variadic constructor been chosen?
       // need to disambiguate the call if DIM==1
       // assume iterators if InIter is not an integral type
       // else assume wanted variadic constructor
       // this scheme follows what std::vector does
-      if (DIM != 1u) TA_ASSERT( boost::is_integral<InIter>::value == false,
-                                std::invalid_argument,
-                                "ArrayCoordinate range constructor invoked with non-iterators" );
-      detail::initialize_from_values(start, r_.c_array(), DIM, boost::is_integral<InIter>());
+      BOOST_STATIC_ASSERT((DIM == 1u) || (! boost::is_integral<InIter>::value));
+      detail::initialize_from_values(first, r_.begin(), DIM, boost::is_integral<InIter>());
     }
     ArrayCoordinate(const Array& init_values) : r_(init_values) { } // no throw
     ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { } // no throw
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     ArrayCoordinate(ArrayCoordinate&& a) : r_(std::move(a.r_)) { } // no throw
 #endif // __GXX_EXPERIMENTAL_CXX0X__
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// Constant index constructor.
 
     /// Constructs an ArrayCoordinate with the specified constants. For example,
-    /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a point with the
-    /// coordinates (0, 1, 2, 3).
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a
+    /// point with the coordinates (0, 1, 2, 3).
     template <typename... Params>
     ArrayCoordinate(Params... params) {
-      detail::fill<DIM,I,Params...>(r_.c_array(), params...);
+      BOOST_STATIC_ASSERT(detail::Count<Params...>::value == DIM);
+      BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
+      detail::fill(r_.begin(), params...);
     }
+
+    /// Constructs and returns a coordinate with the given constant values.
     template <typename... Params>
     static ArrayCoordinate_ make(Params... params) {
-      ArrayCoordinate_ result(params...);
-      return result;
+      return ArrayCoordinate_(params...);
     }
 #else
+    /// Constant index constructor.
+
+    /// Constructs an ArrayCoordinate with the specified constants. For example,
+    /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a
+    /// point with the coordinates (0, 1, 2, 3).
     ArrayCoordinate(const index c0, const index c1, ...) {
       r_.assign(0ul);
       va_list ap;
@@ -156,6 +163,8 @@ namespace TiledArray {
 
       va_end(ap);
     }
+
+    /// Constructs and returns a coordinate with the given constant values.
     static ArrayCoordinate_ make(const index c0, ...) {
       ArrayCoordinate_ result;
       result.r_.assign(0ul);
@@ -171,47 +180,32 @@ namespace TiledArray {
       return result;
     }
 #endif
+
     ~ArrayCoordinate() {}
 
     /// Returns an iterator to the first coordinate
-    iterator begin() {
-      return r_.begin();
-    }
+    iterator begin() { return r_.begin(); }
 
     /// Returns a constant iterator to the first coordinate.
-    const_iterator begin() const {
-      return r_.begin();
-    }
+    const_iterator begin() const { return r_.begin(); }
 
-    /// Returns an iterator to one element past the last coordinate.
-    iterator end() {
-      return r_.end();
-    }
+    /// Returns an iterator to one past the last coordinate.
+    iterator end() { return r_.end(); }
 
-    /// Returns a constant iterator to one element past the last coordinate.
-    const_iterator end() const {
-      return r_.end();
-    }
+    /// Returns a constant iterator to one past the last coordinate.
+    const_iterator end() const { return r_.end(); }
 
-    /// Returns a reverse iterator to the first coordinate
-    reverse_iterator rbegin() {
-      return r_.rbegin();
-    }
+    /// Returns a reverse iterator to the last coordinate
+    reverse_iterator rbegin() { return r_.rbegin(); }
 
-    /// Returns a constant reverse iterator to the first coordinate.
-    const_reverse_iterator rbegin() const {
-      return r_.rbegin();
-    }
+    /// Returns a constant reverse iterator to the last coordinate.
+    const_reverse_iterator rbegin() const { return r_.rbegin(); }
 
-    /// Returns a reverse iterator to one element past the last coordinate.
-    reverse_iterator rend() {
-      return r_.rend();
-    }
+    /// Returns a reverse iterator to one before the first coordinate.
+    reverse_iterator rend() { return r_.rend(); }
 
-    /// Returns a constant reverse iterator to one element past the last coordinate.
-    const_reverse_iterator rend() const {
-      return r_.rend();
-    }
+    /// Returns a constant reverse iterator to one before the first coordinate.
+    const_reverse_iterator rend() const { return r_.rend(); }
 
     /// Assignment operator
     ArrayCoordinate_&
@@ -296,28 +290,13 @@ namespace TiledArray {
     Array r_;
   };
 
-  template <typename Coord>
-  Coord make_coord(const typename Coord::index c0, ...) {
-    Coord result;
-    va_list ap;
-    va_start(ap, c0);
-
-    result[0] = c0;
-    for(unsigned int i = 1; i < Coord::dim(); ++i)
-      result[i] = va_arg(ap, typename Coord::index);
-
-    va_end(ap);
-
-    return result;
-  }
-
   /// Swap the data of c1 with c2.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   void swap(ArrayCoordinate<I,DIM,Tag,CS>& c1, ArrayCoordinate<I,DIM,Tag,CS>& c2) { // no throw
     boost::swap(c1.data(), c2.data());
   }
 
-  /// Add operator
+  /// Add constant to coordinate.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<I,DIM,Tag,CS>& operator +=(ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s) {
     for(typename ArrayCoordinate<I,DIM,Tag,CS>::iterator it = c.begin(); it != c.end(); ++it)
@@ -325,6 +304,7 @@ namespace TiledArray {
     return c;
   }
 
+  /// Returns a coordinates with a constant added to each element.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<I,DIM,Tag,CS> operator +(const ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s) {
     ArrayCoordinate<I,DIM,Tag,CS> result(c);
@@ -333,7 +313,7 @@ namespace TiledArray {
     return result;
   }
 
-  /// Subtract operator
+  /// Subtract a constant from coordinate.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<I,DIM,Tag,CS>& operator -=(ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s) {
     for(typename ArrayCoordinate<I,DIM,Tag,CS>::iterator it = c.begin(); it != c.end(); ++it)
@@ -341,6 +321,7 @@ namespace TiledArray {
     return c;
   }
 
+  /// Returns a coordinates with a constant subtracted from each element.
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<I,DIM,Tag,CS> operator -(const ArrayCoordinate<I,DIM,Tag,CS>& c, const I& s) {
     ArrayCoordinate<I,DIM,Tag,CS> result(c);

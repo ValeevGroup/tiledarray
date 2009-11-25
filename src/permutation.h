@@ -71,8 +71,8 @@ namespace TiledArray {
       // assume iterators if InIter is not an integral type
       // else assume wanted variadic constructor
       // this scheme follows what std::vector does
-      if (DIM != 1u) TA_ASSERT( boost::is_integral<InIter>::value == false, std::invalid_argument, "ArrayCoordinate range constructor invoked with non-iterators" );
-      detail::initialize_from_values(first, p_.c_array(), DIM, boost::is_integral<InIter>());
+      BOOST_STATIC_ASSERT((DIM == 1u) || (! boost::is_integral<InIter>::value));
+      detail::initialize_from_values(first, p_.begin(), DIM, boost::is_integral<InIter>());
       TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
           "Invalid permutation supplied." );
     }
@@ -87,7 +87,9 @@ namespace TiledArray {
 #if __GXX_EXPERIMENTAL_CXX0X__
     template <typename... Params>
     Permutation(Params... params) {
-      detail::fill<DIM,std::size_t,Params...>(p_.c_array(), params...);
+      BOOST_STATIC_ASSERT(detail::Count<Params...>::value == DIM);
+      BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
+      detail::fill(p_.begin(), params...);
     }
 #else
     Permutation(const index_type p0, ...) {

@@ -6,7 +6,14 @@
 #include <boost/type_traits.hpp>
 
 namespace TiledArray {
+
+  template <typename I, unsigned int DIM, typename Tag, typename CS >
+  class ArrayCoordinate;
+
   namespace detail {
+
+    template<typename Key1, typename Key2>
+    class Key;
 
     template<typename P>
     struct pair_first : public std::unary_function<P, typename P::first_type> {
@@ -71,43 +78,89 @@ namespace TiledArray {
     }
 
     // help with initialization of classes with constructors that need disambiguation
-    template <typename I, typename T>
-    void initialize_from_values(I start, T* data, unsigned int size, boost::true_type is_not_iterator) {
-      data[0] = start;
+    template <typename Value, typename OutIter>
+    void initialize_from_values(Value val, OutIter result, unsigned int size, boost::true_type is_not_iterator) {
+      *result = val;
     }
-    template <typename I, typename T>
-    void initialize_from_values(I start, T* data, unsigned int size, boost::false_type is_iterator) {
-      std::copy(start, start+size, data);
+    template <typename InIter, typename OutIter>
+    void initialize_from_values(InIter first, OutIter result, unsigned int size, boost::false_type is_iterator) {
+      for(unsigned int i = 0; i < size; ++i, ++result, ++first)
+        *result = *first;
     }
 
-    // help with variadic constructors
-    template <unsigned int C> struct is_zero {
-        typedef boost::false_type value_type;
+    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
+    void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag, CS> > k,
+        OutIter result, unsigned int size, boost::false_type is_iterator)
+    {
+      std::copy(k.key2().begin(), k.key2().end(), result);
+    }
+
+    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
+    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag, CS>, I > k,
+        OutIter result, unsigned int size, boost::false_type is_iterator)
+    {
+      std::copy(k.key1().begin(), k.key1().end(), result);
+    }
+
+    template<typename OutIter, typename V>
+    void fill(OutIter it, V v) {
+      *it = v;
+    }
+
+    template <typename OutIter, typename V, typename... Params>
+    void fill(OutIter it, V v, Params... params) {
+      *it = v;
+      fill(++it, params...);
+    }
+
+    /// value is equal to the number of template parameters.
+    template<typename... Args> struct Count;
+
+    template<typename T, typename... Args>
+    struct Count<T, Args...> {
+      static const unsigned int value = Count<Args...>::value + 1u;
     };
-    template <> struct is_zero<0u> {
-        typedef boost::true_type value_type ;
+
+    template<>
+    struct Count<> {
+      static const unsigned int value = 0u;
     };
-    template <typename T>
-      void fill(T* begin, boost::true_type is_zero) {}
-    template <typename T>
-      void fill(T* begin, boost::false_type is_zero) {
-      // something wrong, shut the lights!
-      // generate meaningful compile-time error message
-      const int ArrayCoordinate_VariadicConstructor_NumArguments = 1;
-      const int ArrayCoordinate_NumDimensions = 2;
-      BOOST_STATIC_ASSERT(ArrayCoordinate_VariadicConstructor_NumArguments == ArrayCoordinate_NumDimensions || sizeof(T) == 0);
-    }
-    template <unsigned int DIM, typename T, typename U>
-      void fill(T* begin, U p_0) {
-      begin[0] = p_0;
-      typedef typename is_zero<DIM-1>::value_type is_zero_type;
-      fill(++begin, is_zero_type());
-    }
-    template <unsigned int DIM, typename T, typename U, typename... Params>
-      void fill(T* begin, U p_0, Params... params_1_n) {
-      begin[0] = p_0;
-      fill<DIM-1,T,Params...>(++begin, params_1_n...);
-    }
+
+    /// value is true if all template parameter types are integral types.
+    template<typename... Args> struct is_integral_list;
+
+    template<typename T, typename... Args>
+    struct is_integral_list<T, Args...> {
+      static const bool value = is_integral_list<Args...>::value && boost::is_integral<T>::value;
+    };
+
+    template<>
+    struct is_integral_list<> {
+      static const bool value = true;
+    };
+
+#if 0
+    template<unsigned int DIM, typename V, typename... Params>
+    struct FillCoord {
+    private:
+      BOOST_STATIC_ASSERT((Count<V, Params...>::value) == DIM);
+    public:
+      template<typename OutIter>
+      void operator()(OutIter it, V v, Params... p) {
+        *it = v;
+        FillCoord<DIM - 1, Params...> f; // this is not implemented yet
+        f(++it, p...);
+      }
+    };
+
+    template<typename V>
+    struct FillCoord<1u, V> {
+      template<typename OutIter>
+      void operator()(OutIter it, V v) {
+        *it = v;
+      }
+    };
+#endif
 
   } // namespace detail
 } // namespace TiledArray
