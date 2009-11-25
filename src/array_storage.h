@@ -184,18 +184,6 @@ namespace TiledArray {
       std::swap(first.n_, second.n_);
     }
 
-    template <typename Key, typename Dim>
-    struct ArrayHash : public std::unary_function<Key, madness::hashT> {
-      ArrayHash(const Dim& d) : dim_(d) {}
-      madness::hashT operator()(const Key& k) const {
-        const typename Dim::ordinal_type o = (k.keys() == 2 ? dim_.ord(k.key2()) : k.key1() );
-        return madness::hash(o);
-      }
-    private:
-      ArrayHash();
-      Dim dim_;
-    };
-
   } // namespace detail
 
   /// DenseArrayStorage stores data for a dense N-dimensional Array. Data is
@@ -231,11 +219,11 @@ namespace TiledArray {
     /// Constructs an empty array. You must call
     /// DenseArrayStorage::resize(const size_array&) before the array can be
     /// used.
-    DenseArrayStorage() : dim_(), d_(NULL), alloc_() { }
+    DenseArrayStorage() : dim_(), data_(NULL), alloc_() { }
 
     /// Constructs an array with dimensions of size and fill it with val.
     DenseArrayStorage(const size_array& size, const value_type& val = value_type()) :
-        dim_(size), d_(NULL), alloc_()
+        dim_(size), data_(NULL), alloc_()
     {
       create_(val);
     }
@@ -249,7 +237,7 @@ namespace TiledArray {
     /// throw an assertion error.
     template <typename InIter>
     DenseArrayStorage(const size_array& size, InIter first, InIter last) :
-        dim_(size), d_(NULL), alloc_()
+        dim_(size), data_(NULL), alloc_()
     {
       create_(first, last);
     }
@@ -258,7 +246,7 @@ namespace TiledArray {
 
     /// The copy constructor performs a deep copy of the data.
     DenseArrayStorage(const DenseArrayStorage_& other) :
-        dim_(other.dim_), d_(NULL), alloc_()
+        dim_(other.dim_), data_(NULL), alloc_()
     {
       create_(other.begin(), other.end());
     }
@@ -266,9 +254,9 @@ namespace TiledArray {
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// Move constructor
     DenseArrayStorage(DenseArrayStorage_&& other) : dim_(std::move(other.dim_)),
-        d_(other.d_), alloc_()
+        data_(other.data_), alloc_()
     {
-      other.d_ = NULL;
+      other.data_ = NULL;
     }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
@@ -289,8 +277,8 @@ namespace TiledArray {
       if(this != &other) {
         destroy_();
         dim_ = std::move(other.dim_);
-        d_ = other.d_;
-        other.d_ = NULL;
+        data_ = other.data_;
+        other.data_ = NULL;
       }
       return *this;
     }
@@ -303,7 +291,7 @@ namespace TiledArray {
     /// Therefore, if the data in each element of the array also needs to be
     /// permuted, it's up to the array owner to permute the data.
     DenseArrayStorage_& operator ^=(const Permutation<DIM>& p) {
-      if(d_ != NULL) {
+      if(data_ != NULL) {
         DenseArrayStorage_ temp = p ^ (*this);
         swap(*this, temp);
       }
@@ -315,7 +303,7 @@ namespace TiledArray {
     /// specified, the default constructor will be used for new elements.
     DenseArrayStorage_& resize(const size_array& size, value_type val = value_type()) {
       DenseArrayStorage_ temp(size, val);
-      if(d_ != NULL) {
+      if(data_ != NULL) {
         // replace Range with ArrayDim?
         typedef Range<ordinal_type, DIM, Tag, coordinate_system > range_type;
         range_type range_temp(size);
@@ -331,27 +319,27 @@ namespace TiledArray {
 
     /// Returns a raw pointer to the array elements. Elements are ordered from
     /// least significant to most significant dimension.
-    value_type * data() { return d_; }
+    value_type * data() { return data_; }
 
     /// Returns a constant raw pointer to the array elements. Elements are
     /// ordered from least significant to most significant dimension.
-    const value_type * data() const { return d_; }
+    const value_type * data() const { return data_; }
 
     // Iterator factory functions.
     iterator begin() { // no throw
-      return d_;
+      return data_;
     }
 
     iterator end() { // no throw
-      return d_ + dim_.n_;
+      return data_ + dim_.n_;
     }
 
     const_iterator begin() const { // no throw
-      return d_;
+      return data_;
     }
 
     const_iterator end() const { // no throw
-      return d_ + dim_.n_;
+      return data_ + dim_.n_;
     }
 
     /// Returns a reference to element i (range checking is performed).
@@ -364,7 +352,7 @@ namespace TiledArray {
       if(! dim_.includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...): Element is not in range.");
 
-      return * (d_ + dim_.ord(i));
+      return * (data_ + dim_.ord(i));
     }
 
     /// Returns a constant reference to element i (range checking is performed).
@@ -377,7 +365,7 @@ namespace TiledArray {
       if(! dim_.includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...) const: Element is not in range.");
 
-      return * (d_ + dim_.ord(i));
+      return * (data_ + dim_.ord(i));
     }
 
     /// Returns a reference to the element at i.
@@ -386,7 +374,7 @@ namespace TiledArray {
     template <typename Index>
     reference_type operator[](const Index& i) { // no throw for non-debug
 #ifdef NDEBUG
-      return * (d_ + dim_.ord(i));
+      return * (data_ + dim_.ord(i));
 #else
       return at(i);
 #endif
@@ -396,7 +384,7 @@ namespace TiledArray {
     template <typename Index>
     const_reference_type operator[](const Index& i) const { // no throw for non-debug
 #ifdef NDEBUG
-      return * (d_ + dim_.ord(i));
+      return * (data_ + dim_.ord(i));
 #else
       return at(i);
 #endif
@@ -430,11 +418,11 @@ namespace TiledArray {
 
     /// All elements will contain the given value.
     void create_(const value_type val) {
-      TA_ASSERT(d_ == NULL, std::runtime_error,
+      TA_ASSERT(data_ == NULL, std::runtime_error,
           "Cannot allocate data to a non-NULL pointer.");
-      d_ = alloc_.allocate(dim_.n_);
+      data_ = alloc_.allocate(dim_.n_);
       for(ordinal_type i = 0; i < dim_.n_; ++i)
-        alloc_.construct(d_ + i, val);
+        alloc_.construct(data_ + i, val);
     }
 
     /// Allocate and initialize the array.
@@ -444,33 +432,33 @@ namespace TiledArray {
     /// the remaining elements will be initialized with the default constructor.
     template <typename InIter>
     void create_(InIter first, InIter last) {
-      TA_ASSERT(d_ == NULL, std::runtime_error,
+      TA_ASSERT(data_ == NULL, std::runtime_error,
           "Cannot allocate data to a non-NULL pointer.");
-      d_ = alloc_.allocate(dim_.n_);
+      data_ = alloc_.allocate(dim_.n_);
       ordinal_type i = 0;
       for(;first != last; ++first, ++i)
-        alloc_.construct(d_ + i, *first);
+        alloc_.construct(data_ + i, *first);
       for(; i < dim_.n_; ++i)
-        alloc_.construct(d_ + i, value_type());
+        alloc_.construct(data_ + i, value_type());
     }
 
     /// Destroy the array
     void destroy_() {
-      if(d_ != NULL) {
-        value_type* d = d_;
-        const value_type* const e = d_ + dim_.n_;
+      if(data_ != NULL) {
+        value_type* d = data_;
+        const value_type* const e = data_ + dim_.n_;
         for(; d != e; ++d)
           alloc_.destroy(d);
 
-        alloc_.deallocate(d_, dim_.n_);
-        d_ = NULL;
+        alloc_.deallocate(data_, dim_.n_);
+        data_ = NULL;
       }
     }
 
     friend void swap<>(DenseArrayStorage_& first, DenseArrayStorage_& second);
 
     array_dim_type dim_;
-    value_type* d_;
+    value_type* data_;
     alloc_type alloc_;
   }; // class DenseArrayStorage
 
@@ -493,11 +481,30 @@ namespace TiledArray {
     typedef typename array_dim_type::volume_type volume_type;
     typedef typename array_dim_type::size_array size_array;
     typedef CS coordinate_system;
+
+    // Note: Since key_type is actually two keys, all elements inserted into
+    // the data_container must include both key_types so the array can function
+    // correctly when given an index_type, ordinal_type, or key_type.
     typedef detail::Key<ordinal_type, index_type> key_type;
 
   private:
-    typedef detail::ArrayHash<key_type, array_dim_type> hasher_type;
-    typedef madness::WorldContainer<key_type, T, hasher_type > data_container;
+
+    ///
+    struct ArrayHash : public std::unary_function<key_type, madness::hashT> {
+      ArrayHash(const array_dim_type& d) : dim_(&d) {}
+      void set(const array_dim_type& d) { dim_ = &d; }
+      madness::hashT operator()(const key_type& k) const {
+        const typename array_dim_type::ordinal_type o =
+            (k.keys() == 2 ? dim_->ord(k.key2()) : k.key1() );
+        return madness::hash(o);
+      }
+    private:
+      ArrayHash();
+      const array_dim_type* dim_;
+    }; // struct ArrayHash
+
+//    typedef detail::ArrayHash<key_type, array_dim_type> hasher_type;
+    typedef madness::WorldContainer<key_type, T, ArrayHash > data_container;
 
   public:
     typedef typename data_container::pairT value_type;
@@ -522,13 +529,13 @@ namespace TiledArray {
     /// Construct an array with a definite size. All data elements are
     /// uninitialized. No communication occurs.
     DistributedArrayStorage(madness::World& world) :
-        dim_(), data_(world, true, hasher_type(dim_))
+        dim_(), data_(world, true, ArrayHash(dim_))
     { }
 
     /// Construct an array with a definite size. All data elements are
     /// uninitialized. No communication occurs.
     DistributedArrayStorage(madness::World& world, const size_array& size) :
-        dim_(size), data_(world, true, hasher_type(dim_))
+        dim_(size), data_(world, true, ArrayHash(dim_))
     { }
 
     /// Construct an array with a definite size and initializes the data.
@@ -551,7 +558,7 @@ namespace TiledArray {
     /// predict which one will be the final value.
     template <typename InIter>
     DistributedArrayStorage(madness::World& world, const size_array& size, InIter first, InIter last) :
-        dim_(size), data_(world, false, hasher_type(dim_))
+        dim_(size), data_(world, false, ArrayHash(dim_))
     {
       for(;first != last; ++first)
         if(is_local(first->first))
@@ -601,7 +608,7 @@ namespace TiledArray {
     /// exception will be thrown.
     template<typename Key>
     void insert(const std::pair<Key, T>& e) {
-      insert(make_key_(e.first), e.second);
+      insert(e.first, e.second);
     }
 
     template<typename InIter>
@@ -796,7 +803,7 @@ namespace TiledArray {
   private:
 
     /// Converts an ordinal into an index
-    index_type get_index_(const std::size_t i) const {
+    index_type get_index_(const ordinal_type i) const {
       index_type result;
       detail::calc_index(i, coordinate_system::rbegin(dim_.weight()),
           coordinate_system::rend(dim_.weight()),
@@ -804,41 +811,55 @@ namespace TiledArray {
       return result;
     }
 
+    /// Returns the ordinal given a key
     ordinal_type ord_(const key_type& k) const {
       return k.key1();
     }
 
+    /// Returns the ordinal given an index
     ordinal_type ord_(const index_type& i) const {
       return dim_.ord(i);
     }
 
+    /// Returns the given ordinal
     ordinal_type ord_(const ordinal_type& i) const {
       return i;
     }
 
+    /// Returns a key (key1_type)
     key_type key_(const ordinal_type& i) const {
       return key_type(i);
     }
 
+    /// Returns a key (key1_type)
     key_type key_(const index_type& i) const {
       return key_type(dim_.ord(i));
     }
 
+    /// Returns the given key
     key_type key_(const key_type& k) const {
       return k;
     }
 
+    /// Returns a key that contains both key types, base on an index
     key_type make_key_(const index_type& i) const {
       return key_type(dim_.ord(i), i);
     }
 
+    /// returns a key that contains both key types, pase on an ordinal
     key_type make_key_(const ordinal_type& i) const {
       return key_type(i, get_index_(i));
     }
 
-    key_type make_key_(const key_type& i) const {
-      TA_ASSERT(i.keys() == 3, std::runtime_error, "Both key types must be assigned.");
-      return i;
+    /// Returns the give key if b
+    key_type make_key_(const key_type& k) const {
+      TA_ASSERT( k.keys() & 3u , std::runtime_error, "No valid keys are assigned.");
+      if(k.keys() == 3u)
+        return k;
+
+      key_type result((k.keys() & 1u ? k.key1() : ord_(k.key2())),
+                      (k.keys() & 2u ? k.key2() : get_index_(k.key1())));
+      return result;
     }
 
     friend void swap<>(DistributedArrayStorage_&, DistributedArrayStorage_&);
@@ -851,7 +872,7 @@ namespace TiledArray {
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   void swap(DenseArrayStorage<T, DIM, Tag, CS>& first, DenseArrayStorage<T, DIM, Tag, CS>& second) { // no throw
     detail::swap(first.dim_, second.dim_);
-    std::swap(first.d_, second.d_);
+    std::swap(first.data_, second.data_);
   }
 
   /// Swap the data of the two distributed arrays.
@@ -859,6 +880,8 @@ namespace TiledArray {
   void swap(DistributedArrayStorage<T, DIM, Tag, CS>& first, DistributedArrayStorage<T, DIM, Tag, CS>& second) {
     detail::swap(first.dim_, second.dim_);
     madness::swap(first.data_, second.data_);
+    first.data_.get_hash().set(first.dim_);
+    second.data_.get_hash().set(second.dim_);
   }
 
   /// Permutes the content of the n-dimensional array.
