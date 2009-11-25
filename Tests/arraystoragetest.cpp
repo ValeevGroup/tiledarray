@@ -308,16 +308,17 @@ struct DistributedArrayStorageFixture : public ArrayDimFixture {
   typedef std::vector<double> data_type;
   typedef DistributedArrayStorage<data_type, 3> DistArray3;
   typedef DistArray3::index_type index_type;
-  typedef boost::array<std::pair<DistArray3::index_type, data_type>, 24> data_array;
+  typedef boost::array<std::pair<DistArray3::key_type, data_type>, 24> data_array;
   typedef Range<std::size_t, 3, LevelTag<1>, CoordinateSystem<3> > range_type;
 
   DistributedArrayStorageFixture() : world(MadnessFixture::world), r(s),
       a(*world, s), ca(a), d(s) {
     double val = 0.0;
     range_type r(index_type(0,0,0), index_type(2,3,4));
+    DistArray3::ordinal_type o = 0ul;
     range_type::const_iterator r_it = r.begin();
     for(data_array::iterator it = data.begin(); it != data.end(); ++it) {
-      it->first = *r_it++;
+      it->first = DistArray3::key_type(o++, *r_it++);
       it->second.resize(24, ++val);
       if(a.is_local(it->first))
         a.insert(*it);
@@ -367,9 +368,29 @@ BOOST_AUTO_TEST_CASE( array_dims )
   BOOST_CHECK_EQUAL(a.size(), s);
   BOOST_CHECK_EQUAL(a.weight(), w);
   BOOST_CHECK_EQUAL(a.volume(), v);
-  BOOST_CHECK(a.includes(r.start())); // check index includes check
+}
+
+BOOST_AUTO_TEST_CASE( includes )
+{
+  BOOST_CHECK(a.includes(data[0].first)); // check index includes check
+  BOOST_CHECK(a.includes(data[0].first.key1()));
+  BOOST_CHECK(a.includes(data[0].first.key2()));
+  BOOST_CHECK(a.includes(DistArray3::key_type(data[0].first.key1())));
+  BOOST_CHECK(a.includes(DistArray3::key_type(data[0].first.key1())));
   BOOST_CHECK(a.includes(index_type(1,2,3)));
-  BOOST_CHECK(!a.includes(r.finish()));
+  BOOST_CHECK(a.includes(23ul));
+  BOOST_CHECK(! a.includes(r.finish()));
+  BOOST_CHECK(! a.includes(24ul));
+}
+
+BOOST_AUTO_TEST_CASE( is_local )
+{
+  bool local = a.is_local(data[0].first);
+  // check to see if all key types work for is local
+  BOOST_CHECK_EQUAL(a.is_local(data[0].first.key1()), local);
+  BOOST_CHECK_EQUAL(a.is_local(data[0].first.key2()), local);
+  BOOST_CHECK_EQUAL(a.is_local(DistArray3::key_type(data[0].first.key1())), local);
+  BOOST_CHECK_EQUAL(a.is_local(DistArray3::key_type(data[0].first.key1())), local);
 }
 
 BOOST_AUTO_TEST_CASE( iterator )
@@ -402,19 +423,49 @@ BOOST_AUTO_TEST_CASE( iterator )
 
 BOOST_AUTO_TEST_CASE( accessors )
 {
-  for(range_type::const_iterator it = r.begin(); it != r.end(); ++it) {
-    if(a.is_local(*it)) {
-      {
-        DistArray3::accessor acc;
-        BOOST_CHECK(a.find(acc,*it));
-        BOOST_CHECK_CLOSE(acc->second.front(), data.at(d.ord(*it)).second.front(), 0.000001);
-      }
+  DistArray3::accessor acc;
+  DistArray3::const_accessor const_acc;
+  for(data_array::const_iterator it = data.begin(); it != data.end(); ++it) {
+    if(a.is_local(it->first)) {
+      BOOST_CHECK(a.find(acc,it->first));
+      BOOST_CHECK_CLOSE(acc->second.front(), it->second.front(), 0.000001);
+      acc.release();
 
-      {
-        DistArray3::const_accessor const_acc;
-        BOOST_CHECK(ca.find(const_acc,*it));
-        BOOST_CHECK_CLOSE(const_acc->second.front(), data.at(d.ord(*it)).second.front(), 0.000001);
-      }
+      BOOST_CHECK(a.find(acc,it->first.key1()));
+      BOOST_CHECK_CLOSE(acc->second.front(), it->second.front(), 0.000001);
+      acc.release();
+
+      BOOST_CHECK(a.find(acc,it->first.key2()));
+      BOOST_CHECK_CLOSE(acc->second.front(), it->second.front(), 0.000001);
+      acc.release();
+
+      BOOST_CHECK(a.find(acc,DistArray3::key_type(it->first.key1())));
+      BOOST_CHECK_CLOSE(acc->second.front(), it->second.front(), 0.000001);
+      acc.release();
+
+      BOOST_CHECK(a.find(acc,DistArray3::key_type(it->first.key1())));
+      BOOST_CHECK_CLOSE(acc->second.front(), it->second.front(), 0.000001);
+      acc.release();
+
+      BOOST_CHECK(a.find(const_acc,it->first));
+      BOOST_CHECK_CLOSE(const_acc->second.front(), it->second.front(), 0.000001);
+      const_acc.release();
+
+      BOOST_CHECK(a.find(const_acc,it->first.key1()));
+      BOOST_CHECK_CLOSE(const_acc->second.front(), it->second.front(), 0.000001);
+      const_acc.release();
+
+      BOOST_CHECK(a.find(const_acc,it->first.key2()));
+      BOOST_CHECK_CLOSE(const_acc->second.front(), it->second.front(), 0.000001);
+      const_acc.release();
+
+      BOOST_CHECK(a.find(const_acc,DistArray3::key_type(it->first.key1())));
+      BOOST_CHECK_CLOSE(const_acc->second.front(), it->second.front(), 0.000001);
+      const_acc.release();
+
+      BOOST_CHECK(a.find(const_acc,DistArray3::key_type(it->first.key1())));
+      BOOST_CHECK_CLOSE(const_acc->second.front(), it->second.front(), 0.000001);
+      const_acc.release();
     }
   }
 }
@@ -601,7 +652,7 @@ BOOST_AUTO_TEST_CASE( permute )
   a ^= p;
   DistArray3::const_accessor acc;
   for(data_array::const_iterator it = data.begin(); it != data.end(); ++it) {
-    if(a.find(acc, p ^ it->first)) {
+    if(a.find(acc, p ^ it->first.key2())) {
       BOOST_CHECK_EQUAL(acc->second.front(), it->second.front());
     }
   }
