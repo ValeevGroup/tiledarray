@@ -66,13 +66,9 @@ BOOST_AUTO_TEST_CASE( constructors )
 
 BOOST_AUTO_TEST_CASE( make_functions )
 {
+  // check for correct creation of point
   Point3 p1 = Point3::make(1,2,3);
-  BOOST_TEST_MESSAGE("Class Make Function");
-  BOOST_CHECK_EQUAL_COLLECTIONS(p1.data().begin(), p1.data().end(), a.begin(), a.end()); // check for correct creation of point
-
-  Point3 p2 = make_coord<Point3>(1,2,3);
-  BOOST_TEST_MESSAGE("Free Make Function");
-  BOOST_CHECK_EQUAL_COLLECTIONS(p2.data().begin(), p2.data().end(), a.begin(), a.end()); // check for correct creation of point
+  BOOST_CHECK_EQUAL_COLLECTIONS(p1.data().begin(), p1.data().end(), a.begin(), a.end());
 }
 
 BOOST_AUTO_TEST_CASE( element_access )
