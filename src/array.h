@@ -14,7 +14,9 @@
 namespace TiledArray {
 
   // Forward declaration of TiledArray Permutation.
-  template <typename I, unsigned int DIM, typename CS>
+  template<unsigned int DIM>
+  class Permutation;
+  template<typename I, unsigned int DIM, typename CS>
   class TiledRange;
   template<typename T, unsigned int DIM, typename CS>
   class Tile;
@@ -22,6 +24,8 @@ namespace TiledArray {
   class BaseArray;
   template <typename T, unsigned int DIM, typename CS>
   class Array;
+  template<typename T, unsigned int DIM>
+  BaseArray<T>* operator^=(BaseArray<T>*, const Permutation<DIM>&);
   template<typename T, unsigned int DIM, typename CS>
   void swap(Array<T, DIM, CS>&, Array<T, DIM, CS>&);
 
@@ -49,9 +53,17 @@ namespace TiledArray {
     virtual bool is_local(const std::size_t) const = 0;
     virtual bool includes(const std::size_t) const = 0;
     virtual std::pair<const T*, const T*> data(const std::size_t) const = 0;
+    virtual std::pair<const std::size_t*, const std::size_t*> size(const std::size_t) const = 0;
+    virtual void permute(const std::size_t*) = 0;
 
     friend class expressions::AnnotatedArray<T>;
   }; // class BaseArray
+
+  template<typename T, unsigned int DIM>
+  BaseArray<T>* operator^=(BaseArray<T>* a, const Permutation<DIM>& p) {
+    a->permute(p.begin(), p.end());
+    return a;
+  }
 
   /// Tiled Array with data distributed across many nodes.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
@@ -65,6 +77,7 @@ namespace TiledArray {
     typedef DistributedArrayStorage<tile_type, DIM, LevelTag<1>, coordinate_system> data_container;
 
   public:
+    typedef typename data_container::key_type key_type;
     typedef typename data_container::index_type index_type;
     typedef typename tile_type::index_type tile_index_type;
     typedef typename data_container::ordinal_type ordinal_type;
@@ -95,8 +108,7 @@ namespace TiledArray {
 
     /// AnnotatedArray copy constructor
     template<typename U>
-    Array(const expressions::AnnotatedArray<U>& aarray)
-    {
+    Array(const expressions::AnnotatedArray<U>& aarray) {
       // TODO: Implement this function
       TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
       TA_ASSERT((aarray.dim() == DIM), std::runtime_error,
@@ -106,8 +118,7 @@ namespace TiledArray {
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedArray copy constructor
     template<typename U>
-    Array(expressions::AnnotatedArray<U>&& aarray)
-    {
+    Array(expressions::AnnotatedArray<U>&& aarray) {
       // TODO: Implement this function.
       TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
       TA_ASSERT((aarray.dim() == DIM), std::runtime_error,
@@ -133,9 +144,10 @@ namespace TiledArray {
 
     /// Inserts a tile with all elements initialized to a constant value.
     /// Non-local insertions will initiate non-blocking communication.
-    void insert(const index_type& i, T value = T()) {
-      tile_type t(range_.tile(i), value);
-      tiles_.insert(i - start(), t);
+    template<typename Key>
+    void insert(const Key& k, T value = T()) {
+      tile_type t(range_.tile(key_(k)), value);
+      tiles_.insert(key_(k), t);
     }
 
     /// Inserts a tile into the array.
@@ -143,36 +155,39 @@ namespace TiledArray {
     /// Inserts a tile with all elements initialized to the values given by the
     /// iterator range [first, last). Non-local insertions will initiate
     /// non-blocking communication.
-    template<typename InIter>
-    void insert(const index_type& i, InIter first, InIter last) {
-      tile_type t(range_.tile(i), first, last);
-      tiles_.insert(i - start(), t);
+    template<typename Key, typename InIter>
+    void insert(const Key& k, InIter first, InIter last) {
+      tile_type t(range_.tile(key_(k)), first, last);
+      tiles_.insert(key_(k), t);
     }
 
     /// Inserts a tile into the array.
 
     /// Copies the given tile into the array. Non-local insertions will initiate
     /// non-blocking communication.
-    void insert(const index_type& i, const tile_type& t) {
-      TA_ASSERT(t.range() == range_.tile(i), std::runtime_error,
+    template<typename Key>
+    void insert(const Key& k, const tile_type& t) {
+      TA_ASSERT(t.range() == range_.tile(key_(k)), std::runtime_error,
           "Tile boundaries do not match array tile boundaries.");
-      tiles_.insert(i - start(), t);
+      tiles_.insert(key_(k), t);
     }
 
     /// Inserts a tile into the array.
 
     /// Copies the given value_type into the array. Non-local insertions will
     /// initiate non-blocking communication.
-    void insert(const value_type& v) {
-      insert(v.first - start(), v.second);
+    template<typename Key>
+    void insert(const std::pair<Key, tile_type>& v) {
+      insert(v.first, v.second);
     }
 
     /// Erases a tile from the array.
 
     /// This will remove the tile at the given index. It will initiate
     /// non-blocking for non-local tiles.
-    void erase(const index_type& i) {
-      tiles_.erase(i - start());
+    template<typename Key>
+    void erase(const Key& k) {
+      tiles_.erase(key_(k));
     }
 
     /// Erase a range of tiles from the array.
@@ -182,7 +197,8 @@ namespace TiledArray {
     /// initiate non-blocking communication for non-local tiles.
     template<typename InIter>
     void erase(InIter first, InIter last) {
-      tiles_.erase(first, last);
+      for(; first != last; ++first)
+        tiles_.erase(key_(first->first));
     }
 
     /// Removes all tiles from the array.
@@ -219,13 +235,14 @@ namespace TiledArray {
     }
 
     /// Returns true if the tile specified by index is stored locally.
-    bool is_local(const index_type& i) const {
-      return tiles_.is_local(i - start());
+    template<typename Key>
+    bool is_local(const Key& k) const {
+      return tiles_.is_local(key_(k));
     }
 
     /// Returns true if the element specified by tile index i is stored locally.
     bool is_local(const tile_index_type& i) const {
-      return is_local(get_tile_index_(i) - start());
+      return is_local(get_tile_index_(i));
     }
 
     /// Returns the index of the lower tile boundary.
@@ -259,8 +276,9 @@ namespace TiledArray {
     }
 
     /// Returns true if the tile is included in the array range.
-    bool includes(const index_type& i) const {
-      return tiles_.includes(i - start());
+    template<typename Key>
+    bool includes(const Key& k) const {
+      return tiles_.includes(key_(k));
     }
 
     /// Returns a Future iterator to an element at index i.
@@ -269,8 +287,9 @@ namespace TiledArray {
     /// i. If the element is not local the it will use non-blocking communication
     /// to retrieve the data. The future will be immediately available if the data
     /// is local.
-    madness::Future<iterator> find(const index_type& i) {
-      return tiles_.find(i - start());
+    template<typename Key>
+    madness::Future<iterator> find(const Key& k) {
+      return tiles_.find(key_(k));
     }
 
     /// Returns a Future const_iterator to an element at index i.
@@ -279,24 +298,27 @@ namespace TiledArray {
     /// index i. If the element is not local the it will use non-blocking
     /// communication to retrieve the data. The future will be immediately
     /// available if the data is local.
-    madness::Future<const_iterator> find(const index_type& i) const {
-      return tiles_.find(i - start());
+    template<typename Key>
+    madness::Future<const_iterator> find(const Key& k) const {
+      return tiles_.find(key_(k));
     }
 
     /// Sets an accessor to point to a local data element.
 
     /// This function will set an accessor to point to a local data element only.
     /// It will return false if the data element is remote or not found.
-    bool find(accessor& acc, const index_type& i) {
-      return tiles_.find(acc, i - start());
+    template<typename Key>
+    bool find(accessor& acc, const Key& k) {
+      return tiles_.find(acc, key_(k));
     }
 
     /// Sets a const_accessor to point to a local data element.
 
     /// This function will set a const_accessor to point to a local data element
     /// only. It will return false if the data element is remote or not found.
-    bool find(const_accessor& acc, const index_type& i) const {
-      return tiles_.find(acc, i - start());
+    template<typename Key>
+    bool find(const_accessor& acc, const Key& k) const {
+      return tiles_.find(acc, key_(k));
     }
 
     expressions::AnnotatedArray<T> operator ()(const std::string& v) {
@@ -326,12 +348,12 @@ namespace TiledArray {
   protected:
     /// Inserts a tile at the give ordinal index with the given data values.
     virtual void insert(const std::size_t i, const T* first, const T* last) {
-      insert(get_index_(i), first, last);
+      insert(i, first, last);
     }
 
     /// Erases a tile at the given ordinal index.
     virtual void erase(const std::size_t i) {
-      erase(get_index_(i));
+      erase(i);
     }
 
     /// Returns true if the ordinal index is stored locally.
@@ -354,6 +376,21 @@ namespace TiledArray {
       return std::make_pair<const T*, const T*>(p, p + range_.tile(index).volume());
     }
 
+    /// Return the a pair of pointers to the size of the tile.
+    virtual std::pair<const std::size_t*, const std::size_t*> size(const std::size_t i) const {
+      index_type index = get_index_(i);
+      return std::make_pair<const std::size_t*, const std::size_t*>
+          (tile(index).size().begin(), tile(index).size().end());
+    }
+
+    virtual void permute(const std::size_t* first) {
+      Permutation<DIM> p(first);
+      for(iterator it = begin(); it != end(); ++it)
+        it->second ^= p; // permute the individual tile
+      range_ ^= p;
+      tiles_ ^= p; // move the tiles to the correct location. Blocking communication here.
+    }
+
   private:
 
     /// Returns the tile index that contains the element index e_idx.
@@ -362,12 +399,24 @@ namespace TiledArray {
     }
 
     /// Converts an ordinal into an index
-    index_type get_index_(const std::size_t i) const {
+    index_type get_index_(const ordinal_type i) const {
       index_type result;
       detail::calc_index(i, coordinate_system::rbegin(tiles_.weight()),
           coordinate_system::rend(tiles_.weight()),
           coordinate_system::rbegin(result));
       return result;
+    }
+
+    const ordinal_type& key_(const ordinal_type& o) const {
+      return o;
+    }
+
+    const index_type key_(const index_type& i) const {
+      return i - start();
+    }
+
+    const key_type& key_(const key_type& k) const {
+      return k;
     }
 
     friend void swap<>(Array_&, Array_&);
