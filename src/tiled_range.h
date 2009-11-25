@@ -42,6 +42,7 @@ namespace TiledArray {
       typedef Range<I,DIM,LevelTag<0>,coordinate_system> element_range_type;
       typedef element_range_type tile_range_type;
       typedef typename range_type::size_array size_array;
+      typedef I ordinal_type;
       typedef typename range_type::index_type index_type;
       typedef typename range_type::volume_type volume_type;
       typedef typename tile_range_type::index_type element_index_type;
@@ -129,9 +130,16 @@ namespace TiledArray {
 
       /// Access the range information on the elements contained by tile t.
       const tile_range_type& tile(const index_type& i) const {
-        TA_ASSERT( tile_ranges_.includes(i - range_.start()), std::out_of_range,
+        TA_ASSERT( tile_ranges_.includes(i), std::out_of_range,
             "Tile index is out of range.");
         return tile_ranges_[i - range_.start()];
+      }
+
+      /// Access the range information on the elements contained by tile t.
+      const tile_range_type& tile(const ordinal_type& i) const {
+        TA_ASSERT( tile_ranges_.includes(i), std::out_of_range,
+            "Tile index is out of range.");
+        return tile_ranges_[i];
       }
 
     private:
