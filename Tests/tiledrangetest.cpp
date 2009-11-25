@@ -72,7 +72,11 @@ BOOST_AUTO_TEST_CASE( accessor )
   BOOST_CHECK_EQUAL(r.tiles(), tile_range);
   BOOST_CHECK_EQUAL(r.elements(), element_range);
   BOOST_CHECK_EQUAL(r.tile(tile_start), tile000_range);
+  BOOST_CHECK_EQUAL(r.tile(0ul), tile000_range);
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(r.tile(tile_finish), std::out_of_range);
+  BOOST_CHECK_THROW(r.tile(60ul), std::out_of_range);
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -82,7 +86,9 @@ BOOST_AUTO_TEST_CASE( constructor )
   TRange3::size_array s0 = {{0,0,0}};
   BOOST_CHECK_EQUAL(r0.tiles().size(), s0);
   BOOST_CHECK_EQUAL(r0.elements().size(), s0);
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(r0.tile(tile_start), std::out_of_range);
+#endif // TA_EXCEPTION_ERROR
 
   BOOST_REQUIRE_NO_THROW(TRange3 r1(dims.begin(), dims.end())); // check ranges constructor
   TRange3 r1(dims.begin(), dims.end());
@@ -122,6 +128,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(r4.tiles(), r.tiles());
   BOOST_CHECK_EQUAL(r4.elements(), r.elements());
   BOOST_CHECK_EQUAL(r4.tile(tile_start), r.tile(tile_start));
+
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(TRange3 r5(dims3.begin(), dims3.end() - 1), std::runtime_error);
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( iteration ) {
