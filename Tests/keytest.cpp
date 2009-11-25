@@ -204,25 +204,25 @@ BOOST_AUTO_TEST_CASE( conversion )
   ordinal_type o2(k);
   BOOST_CHECK_EQUAL(o2, o);
   BOOST_CHECK_EQUAL(ordinal(k), o);
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ordinal(ki), std::runtime_error); // check that type conversions throw correctly.
+#endif // TA_EXCEPTION_ERROR
 
   index_type i1; // convert to key 2.
   i1 = k;
   BOOST_CHECK_EQUAL(i1, i);
-//  index_type i2(k);
-//  BOOST_CHECK_EQUAL(i2, i);
+  // this does not work because key2_type's constructors can also accept key1_type.
+  index_type i2(k);
+  BOOST_CHECK_EQUAL(i2, i);
   BOOST_CHECK_EQUAL(index(k), i);
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(index(ko), std::runtime_error); // check that type conversions throw correctly.
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( equal_comp )
 {
   key_type k1(k);
-//  std::cout << "k = " << k << std::endl;
-//  std::cout << "k1 = " << k1 << std::endl;
-//  std::cout << "khi = " << khi << std::endl;
-//  std::cout << "ko = " << ko << std::endl;
-//  std::cout << "kohi = " << kohi << std::endl;
-//  std::cout << "ki = " << ki << std::endl;
-//  std::cout << "kihi = " << kihi << std::endl;
   BOOST_CHECK(k == k1); // check bool operator ==(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
   BOOST_CHECK(! (k == khi));
   BOOST_CHECK(k == ko);
