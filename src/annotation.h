@@ -2,6 +2,7 @@
 #define TILEDARRAY_ANNOTATION_H__INCLUDED
 
 #include <variable_list.h>
+#include <type_traits.h>
 #include <vector>
 
 namespace TiledArray {
@@ -47,6 +48,7 @@ namespace TiledArray {
           n_(std::accumulate(size_first, size_last, std::size_t(1), std::multiplies<std::size_t>())),
           var_(var), order_(o)
       {
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
         TA_ASSERT(var.dim() == std::distance(size_first, size_last), std::runtime_error,
             "Variable list dimensions do not match size initialization list dimensions.");
       }
@@ -64,6 +66,8 @@ namespace TiledArray {
           size_(size_first, size_last), weight_(weight_first, weight_last),
           n_(n), var_(var), order_(o)
       {
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<SizeInIter>::value);
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
         TA_ASSERT(var.dim() == std::distance(size_first, size_last), std::runtime_error,
             "Variable list dimensions do not match size initialization list dimensions.");
         TA_ASSERT(var.dim() == std::distance(weight_first, weight_last), std::runtime_error,

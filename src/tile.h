@@ -99,7 +99,9 @@ namespace TiledArray {
     template <typename InIter>
     Tile(const range_type& range, InIter first, InIter last) :
     	  range_(range), data_(range.size(), first, last)
-    { }
+    {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+    }
 
     /// Creates a new tile from a TileSlice
 
@@ -267,6 +269,7 @@ namespace TiledArray {
 
     template<typename InIter>
     static size_array make_size_(InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       size_array result;
       std::copy(first, last, result.begin());
       return result;
@@ -318,6 +321,7 @@ namespace TiledArray {
   /// \arg \c gen Function or functor object used to generate the data.
   template<typename T, unsigned int DIM, typename CS, typename InIter, typename Generator>
   Tile<T, DIM, CS>& generate(Tile<T, DIM, CS>& res, InIter first, InIter last, Generator gen) {
+    BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
     for(; first != last; ++first)
       res[ *first ] = gen( *first );
 

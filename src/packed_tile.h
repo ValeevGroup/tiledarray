@@ -51,7 +51,8 @@ namespace TiledArray {
     template<typename InIter>
     PackedTile(T& t, InIter first, InIter last, const index_type& origin = index_type()) : r_(), w_(), t_(t)
     {
-      TA_ASSERT( (valid_pack(first, last, tile_type::dim(), DIM)) , std::runtime_error,
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TA_ASSERT( (valid_pack_(first, last, tile_type::dim(), DIM)) , std::runtime_error,
           "Invalid packing information.");
       size_array s;
       s.assign(1);
@@ -176,7 +177,7 @@ namespace TiledArray {
     /// Returns true if all dimension packing information follows the this
     /// pattern: a0 = 0, an = tile_dim, and a0 < a1 < a2 < ... < an.
     template<typename InIter>
-    static bool valid_pack(InIter first, InIter last, const unsigned int tile_dim, const unsigned int pack_dim) {
+    static bool valid_pack_(InIter first, InIter last, const unsigned int tile_dim, const unsigned int pack_dim) {
       if(first == last && tile_dim != 0)
         return false;
 

@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_UTILITY_H__INCLUDED
 #define TILEDARRAY_UTILITY_H__INCLUDED
 
+#include <type_traits.h>
 #include <utility>
 #include <functional>
 #include <boost/type_traits.hpp>
@@ -80,10 +81,13 @@ namespace TiledArray {
     // help with initialization of classes with constructors that need disambiguation
     template <typename Value, typename OutIter>
     void initialize_from_values(Value val, OutIter result, unsigned int size, boost::true_type is_not_iterator) {
+      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
       *result = val;
     }
     template <typename InIter, typename OutIter>
     void initialize_from_values(InIter first, OutIter result, unsigned int size, boost::false_type is_iterator) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
       for(unsigned int i = 0; i < size; ++i, ++result, ++first)
         *result = *first;
     }
@@ -104,40 +108,16 @@ namespace TiledArray {
 
     template<typename OutIter, typename V>
     void fill(OutIter it, V v) {
+      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
       *it = v;
     }
 
     template <typename OutIter, typename V, typename... Params>
     void fill(OutIter it, V v, Params... params) {
+      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
       *it = v;
       fill(++it, params...);
     }
-
-    /// value is equal to the number of template parameters.
-    template<typename... Args> struct Count;
-
-    template<typename T, typename... Args>
-    struct Count<T, Args...> {
-      static const unsigned int value = Count<Args...>::value + 1u;
-    };
-
-    template<>
-    struct Count<> {
-      static const unsigned int value = 0u;
-    };
-
-    /// value is true if all template parameter types are integral types.
-    template<typename... Args> struct is_integral_list;
-
-    template<typename T, typename... Args>
-    struct is_integral_list<T, Args...> {
-      static const bool value = is_integral_list<Args...>::value && boost::is_integral<T>::value;
-    };
-
-    template<>
-    struct is_integral_list<> {
-      static const bool value = true;
-    };
 
 #if 0
     template<unsigned int DIM, typename V, typename... Params>
@@ -147,6 +127,7 @@ namespace TiledArray {
     public:
       template<typename OutIter>
       void operator()(OutIter it, V v, Params... p) {
+        BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
         *it = v;
         FillCoord<DIM - 1, Params...> f; // this is not implemented yet
         f(++it, p...);
@@ -157,6 +138,7 @@ namespace TiledArray {
     struct FillCoord<1u, V> {
       template<typename OutIter>
       void operator()(OutIter it, V v) {
+        BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
         *it = v;
       }
     };

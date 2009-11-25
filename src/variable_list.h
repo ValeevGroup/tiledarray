@@ -50,6 +50,7 @@ namespace TiledArray {
 
       template<typename InIter>
       VariableList(InIter first, InIter last) {
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
         TA_ASSERT( unique_(first, last), std::runtime_error,
             "Duplicate variable names not allowed.");
 
@@ -202,6 +203,8 @@ namespace TiledArray {
     void find_common(InIter1 first1, const InIter1 last1, InIter2 first2, const InIter2 last2,
         std::pair<InIter1, InIter1>& common1, std::pair<InIter2, InIter2>& common2)
     {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter2>::value);
       common1.first = last1;
       common1.second = last1;
       common2.first = last2;

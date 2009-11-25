@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 #define TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 
+#include <type_traits.h>
 #include <boost/array.hpp>
 
 namespace TiledArray {
@@ -69,6 +70,7 @@ namespace TiledArray {
 
       template <typename RandIter>
       bool valid_(RandIter first, RandIter last) {
+        BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
         if((last - first) == DIM)
           return false;
         boost::array<int,DIM> count;

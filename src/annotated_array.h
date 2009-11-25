@@ -108,6 +108,7 @@ namespace TiledArray {
       /// initiate non-blocking communication for non-local tiles.
       template<typename InIter>
       void erase(InIter first, InIter last) {
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
         for(; first != last; ++first);
           array_.erase(this->ord_(first->first));
       }

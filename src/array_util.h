@@ -1,6 +1,7 @@
 #ifndef TA_ARRAY_UTIL_H__INCLUDED
 #define TA_ARRAY_UTIL_H__INCLUDED
 
+#include <type_traits.h>
 #include <boost/array.hpp>
 #include <iosfwd>
 #include <numeric>
@@ -12,6 +13,8 @@ namespace TiledArray {
     template<typename InIter, typename OutIter>
     void calc_weight(InIter first, InIter last, OutIter result) { // no throw
       for(typename std::iterator_traits<OutIter>::value_type weight = 1; first != last; ++first, ++result) {
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+        BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
         *result = weight;
         weight *= *first;
       }
@@ -25,6 +28,8 @@ namespace TiledArray {
     /// significant element.
     template<typename Ord, typename InIter, typename OutIter>
     void calc_index(Ord o, InIter first, InIter last, OutIter result) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
       for(; first != last; ++first, ++result) {
         *result = o % *first;
         o -= *result * *first;
@@ -39,6 +44,7 @@ namespace TiledArray {
 
     template <typename InIter>
     void print_array(std::ostream& output, InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       if(first != last)
         output << *first++;
       for(; first != last; ++first)

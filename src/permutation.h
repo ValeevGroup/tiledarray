@@ -205,6 +205,9 @@ namespace TiledArray {
     /// \arg \c result is the array which will contain the resulting permuted array
     template <typename InIter0, typename InIter1, typename RandIter>
     void permute(InIter0 first_p, InIter0 last_p, InIter1 first_o, RandIter first_r) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter0>::value);
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
+      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
       for(; first_p != last_p; ++first_p)
         (* (first_r + *first_p)) = *first_o++;
     }
@@ -212,6 +215,9 @@ namespace TiledArray {
     /// ForLoop defines a for loop operation for a random access iterator.
     template<typename F, typename RandIter>
     struct ForLoop {
+    private:
+      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+    public:
       typedef F Functor;
       typedef typename std::iterator_traits<RandIter>::value_type value_t;
       typedef typename std::iterator_traits<RandIter>::difference_type diff_t;
@@ -242,6 +248,9 @@ namespace TiledArray {
     /// NestedForLoop constructs and executes a nested for loop object.
     template<unsigned int DIM, typename F, typename RandIter>
     struct NestedForLoop : public NestedForLoop<DIM - 1, ForLoop<F, RandIter>, RandIter > {
+    private:
+      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+    public:
       typedef ForLoop<F, RandIter> F1;
       typedef NestedForLoop<DIM - 1, F1, RandIter> NestedForLoop1;
 
@@ -255,7 +264,9 @@ namespace TiledArray {
       template<typename InIter>
       NestedForLoop(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
         NestedForLoop1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
-      { }
+      {
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      }
 
       /// Run the nested loop (call the next higher loop object).
       void operator()(RandIter it) { NestedForLoop1::operator ()(it); }
@@ -267,6 +278,9 @@ namespace TiledArray {
     /// nested loop object, stores the loop object and runs the object.
     template<typename F, typename RandIter>
     struct NestedForLoop<0, F, RandIter> {
+    private:
+      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+    public:
 
       /// \arg \c func is the current loops function body.
       /// \arg \c [e_first, \c e_last) is the end point offset for the loops.
@@ -286,6 +300,10 @@ namespace TiledArray {
     /// Function object that assigns the content of one iterator to another iterator.
     template<typename OutIter, typename InIter>
     struct AssignmentOp {
+    private:
+      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+    public:
       AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
 
       void operator ()(OutIter& it) {
@@ -305,6 +323,9 @@ namespace TiledArray {
     /// This specialization uses a pointer explicitly.
     template<typename T, typename InIter>
     struct AssignmentOp<T*, InIter> {
+    private:
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+    public:
       AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
 
       void operator ()(T* it) {
@@ -338,6 +359,7 @@ namespace TiledArray {
       /// \arg \c [first, \c last) is the iterator range for the resulting array.
       template<unsigned int DIM, typename RandIter>
       void operator ()(const Permutation<DIM>& p, RandIter first, RandIter last) {
+        BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
         typedef boost::array<typename Cont::ordinal_type, static_cast<std::size_t>(DIM)> size_array;
         TA_ASSERT(static_cast<typename Cont::volume_type>(std::distance(first, last)) == cont_.volume(),
             std::runtime_error,

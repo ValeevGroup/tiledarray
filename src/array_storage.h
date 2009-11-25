@@ -3,6 +3,7 @@
 
 //#include <error.h>
 #include <range.h>
+#include <type_traits.h>
 #include <madness_runtime.h>
 //#include <array_util.h>
 #include <permutation.h>
@@ -239,6 +240,7 @@ namespace TiledArray {
     DenseArrayStorage(const size_array& size, InIter first, InIter last) :
         dim_(size), data_(NULL), alloc_()
     {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       create_(first, last);
     }
 
@@ -432,6 +434,7 @@ namespace TiledArray {
     /// the remaining elements will be initialized with the default constructor.
     template <typename InIter>
     void create_(InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       TA_ASSERT(data_ == NULL, std::runtime_error,
           "Cannot allocate data to a non-NULL pointer.");
       data_ = alloc_.allocate(dim_.n_);
@@ -560,6 +563,7 @@ namespace TiledArray {
     DistributedArrayStorage(madness::World& world, const size_array& size, InIter first, InIter last) :
         dim_(size), data_(world, false, ArrayHash(dim_))
     {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       for(;first != last; ++first)
         if(is_local(first->first))
           insert(first->first, first->second);
@@ -613,6 +617,7 @@ namespace TiledArray {
 
     template<typename InIter>
     void insert(InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       for(;first != last; ++first)
         insert(first->first, first->second);
     }
@@ -633,6 +638,7 @@ namespace TiledArray {
     /// element iterators.
     template<typename InIter>
     void erase(InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       for(; first != last; ++first)
         erase(first->first);
     }

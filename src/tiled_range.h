@@ -60,6 +60,7 @@ namespace TiledArray {
       // Constructed with a set of ranges pointed to by [ first, last ).
       template <typename InIter>
       TiledRange(InIter first, InIter last) {
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
         for(typename Ranges::iterator it = ranges_.begin(); it != ranges_.end(); ++it, ++first) {
           TA_ASSERT( (first != last), std::runtime_error,
               "Iterator unexpectedly reached the end of the range.");
@@ -113,6 +114,7 @@ namespace TiledArray {
       /// iterators. The iterators must dereference to a tiled_range1_type.
       template <typename InIter>
       TiledRange& resize(InIter first, InIter last) {
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
         TiledRange temp(first, last);
         swap(*this, temp);
         return *this;

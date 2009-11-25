@@ -105,6 +105,7 @@ namespace TiledArray {
           Annotation(size.begin(), size.end(), var, o), data_(NULL),
           owner_(false), alloc_()
       {
+//        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
         create_(first, last);
       }
 

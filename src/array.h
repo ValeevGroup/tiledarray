@@ -157,6 +157,7 @@ namespace TiledArray {
     /// non-blocking communication.
     template<typename Key, typename InIter>
     void insert(const Key& k, InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       tile_type t(range_.tile(key_(k)), first, last);
       tiles_.insert(key_(k), t);
     }
@@ -197,6 +198,7 @@ namespace TiledArray {
     /// initiate non-blocking communication for non-local tiles.
     template<typename InIter>
     void erase(InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       for(; first != last; ++first)
         tiles_.erase(key_(first->first));
     }
