@@ -20,7 +20,7 @@ struct TileMathFixture {
   typedef Tile3::volume_type volume_type;
   typedef Tile3::size_array size_array;
   typedef Tile3::range_type range_type;
-  typedef expressions::AnnotatedTile<double> ATile;
+  typedef expressions::tile::AnnotatedTile<double> ATile;
 
   TileMathFixture() {
 
@@ -135,8 +135,8 @@ BOOST_AUTO_TEST_CASE( contraction_func )
 BOOST_AUTO_TEST_CASE( value_exp )
 {
   double d = 1.0;
-  BOOST_REQUIRE_NO_THROW(expressions::ValueExp<double> ve(d));
-  expressions::ValueExp<double> ve(d);
+  BOOST_REQUIRE_NO_THROW(expressions::tile::ValueExp<double> ve(d));
+  expressions::tile::ValueExp<double> ve(d);
   BOOST_CHECK_CLOSE(ve.eval(), 1.0, 0.000001);
 }
 

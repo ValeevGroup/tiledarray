@@ -1,7 +1,7 @@
 #ifndef TILEDARRAY_TILE_H__INCLUDED
 #define TILEDARRAY_TILE_H__INCLUDED
 
-#include <array_storage.h>
+#include <dense_array.h>
 #include <annotated_tile.h>
 #include <tile_math.h>
 #include <tile_slice.h>
@@ -41,7 +41,7 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Tile
   {
-    typedef DenseArrayStorage<T, DIM, LevelTag<0>, CS > data_container;
+    typedef DenseArray<T, DIM, LevelTag<0>, CS > data_container;
   public:
     typedef Tile<T, DIM, CS> Tile_;
     typedef T value_type;
@@ -115,7 +115,7 @@ namespace TiledArray {
     /// The constructor will throw when the dimensions of the annotated tile do
     /// not match the dimensions of the tile.
     template<typename U>
-    Tile(const expressions::AnnotatedTile<U>& atile) :
+    Tile(const expressions::tile::AnnotatedTile<U>& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())),
         data_(range_.size(), atile.begin(), atile.end())
     {
@@ -126,7 +126,7 @@ namespace TiledArray {
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedTile assignment operator
     template<typename U>
-    Tile(expressions::AnnotatedTile<U>&& atile) :
+    Tile(expressions::tile::AnnotatedTile<U>&& atile) :
         range_(make_size_(atile.size().begin(), atile.size().end())), data_()
     {
       TA_ASSERT((atile.dim() == DIM), std::runtime_error,
@@ -250,13 +250,13 @@ namespace TiledArray {
     }
 
 
-    expressions::AnnotatedTile<value_type> operator ()(const std::string& v) {
-      expressions::AnnotatedTile<value_type> result(*this, expressions::VariableList(v));
+    expressions::tile::AnnotatedTile<value_type> operator ()(const std::string& v) {
+      expressions::tile::AnnotatedTile<value_type> result(*this, expressions::VariableList(v));
       return result;
     }
 
-    expressions::AnnotatedTile<const value_type> operator ()(const std::string& v) const {
-      return expressions::AnnotatedTile<const value_type>(*this, expressions::VariableList(v));
+    expressions::tile::AnnotatedTile<const value_type> operator ()(const std::string& v) const {
+      return expressions::tile::AnnotatedTile<const value_type>(*this, expressions::VariableList(v));
     }
 
     /// Serializes the tile data for communication with other nodes.

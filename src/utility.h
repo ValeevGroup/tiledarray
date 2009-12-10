@@ -80,12 +80,12 @@ namespace TiledArray {
 
     // help with initialization of classes with constructors that need disambiguation
     template <typename Value, typename OutIter>
-    void initialize_from_values(Value val, OutIter result, unsigned int size, boost::true_type is_not_iterator) {
+    void initialize_from_values(Value val, OutIter result, unsigned int, boost::true_type) {
       BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
       *result = val;
     }
     template <typename InIter, typename OutIter>
-    void initialize_from_values(InIter first, OutIter result, unsigned int size, boost::false_type is_iterator) {
+    void initialize_from_values(InIter first, OutIter result, unsigned int size, boost::false_type) {
       BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
       for(unsigned int i = 0; i < size; ++i, ++result, ++first)
@@ -94,14 +94,14 @@ namespace TiledArray {
 
     template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
     void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag, CS> > k,
-        OutIter result, unsigned int size, boost::false_type is_iterator)
+        OutIter result, unsigned int, boost::false_type)
     {
       std::copy(k.key2().begin(), k.key2().end(), result);
     }
 
     template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
     void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag, CS>, I > k,
-        OutIter result, unsigned int size, boost::false_type is_iterator)
+        OutIter result, unsigned int, boost::false_type)
     {
       std::copy(k.key1().begin(), k.key1().end(), result);
     }

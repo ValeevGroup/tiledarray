@@ -42,4 +42,4 @@ unsigned int MadnessFixture::count = 0;
 
 
 // This line will initialize mpi and madness.
-BOOST_GLOBAL_FIXTURE( MadnessFixture );
+BOOST_GLOBAL_FIXTURE( MadnessFixture )

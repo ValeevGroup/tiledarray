@@ -21,7 +21,7 @@ using TiledArray::expressions::VariableList;
 namespace {
   const size_t primes[] = {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
   const char varlist[] = "a,b,c,d,e,f,g,h,i,j,k";
-};
+}
 
 struct AnnotationFixture {
   static const size_t ndim = 4;

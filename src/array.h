@@ -1,7 +1,7 @@
 #ifndef ARRAY_H__INCLUDED
 #define ARRAY_H__INCLUDED
 
-#include <array_storage.h>
+#include <distributed_array.h>
 #include <tiled_range.h>
 #include <tile.h>
 #include <annotated_array.h>
@@ -74,7 +74,7 @@ namespace TiledArray {
     typedef Tile<T, DIM, coordinate_system> tile_type;
 
   private:
-    typedef DistributedArrayStorage<tile_type, DIM, LevelTag<1>, coordinate_system> data_container;
+    typedef DistributedArray<tile_type, DIM, LevelTag<1>, coordinate_system> data_container;
 
   public:
     typedef typename data_container::key_type key_type;

@@ -7,7 +7,7 @@ LIBDIR = -L$(MADNESSDIR)/lib -L$(BOOSTDIR)/lib
 LIBS = -lMADworld -lboost_unit_test_framework
 #WARNING = -wd981 -wd383 -wd1419 -wd444 -wd1418
 #-Wextra -pedantic
-CXXFLAGS = -g -Wall -fstrict-aliasing -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=c++0x $(WARNING)
+CXXFLAGS = -g -Wall -Wextra -pedantic -fstrict-aliasing -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=c++0x $(WARNING)
 CXXSUF = cpp
 OBJSUF = o
 CXXDEPEND = $(CXX)
@@ -16,10 +16,11 @@ CXXDEPENDFLAGS = -M
 CXX = $(MPICXX)
 TESTSRC = TiledArrayTest.cpp permutationtest.cpp algorithmtest.cpp \
 	coordsystemtest.cpp coordinatestest.cpp rangetest.cpp tiledrange1test.cpp \
-	keytest.cpp arraystoragetest.cpp tiledrangetest.cpp shapetest.cpp \
-	variablelisttest.cpp tiletest.cpp tileslicetest.cpp packedtiletest.cpp \
-	annotationtest.cpp annotatedtiletest.cpp tilemathtest.cpp arraytest.cpp \
-	annotatedarraytest.cpp arraymathtest.cpp arrayslicetest.cpp
+	arraydimtest.cpp densearraytest.cpp keytest.cpp distributedarraytest.cpp \
+	tiledrangetest.cpp shapetest.cpp variablelisttest.cpp tiletest.cpp \
+	tileslicetest.cpp packedtiletest.cpp annotationtest.cpp annotatedtiletest.cpp \
+	tilemathtest.cpp arraytest.cpp annotatedarraytest.cpp arraymathtest.cpp \
+	arrayslicetest.cpp
 OBJS = $(TESTSRC:%.cpp=%.$(OBJSUF))
 
 TARGET =	TiledArrayTest

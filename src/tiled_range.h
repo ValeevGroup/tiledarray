@@ -3,7 +3,7 @@
 
 //#include <coordinates.h>
 #include <tiled_range1.h>
-#include <array_storage.h>
+#include <dense_array.h>
 //#include <iosfwd>
 //#include <boost/array.hpp>
 //#include <boost/operators.hpp>
@@ -47,7 +47,7 @@ namespace TiledArray {
       typedef typename range_type::volume_type volume_type;
       typedef typename tile_range_type::index_type element_index_type;
       typedef typename tile_range_type::index_type tile_index_type;
-      typedef DenseArrayStorage<tile_range_type, DIM, LevelTag<1>, coordinate_system > tile_container;
+      typedef DenseArray<tile_range_type, DIM, LevelTag<1>, coordinate_system > tile_container;
       typedef typename tile_container::iterator iterator;
       typedef typename tile_container::const_iterator const_iterator;
 

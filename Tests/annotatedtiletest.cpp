@@ -11,7 +11,7 @@
 
 using namespace TiledArray;
 using TiledArray::expressions::VariableList;
-using TiledArray::expressions::AnnotatedTile;
+using TiledArray::expressions::tile::AnnotatedTile;
 
 template<typename InIter, typename T>
 bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001);
