@@ -14,10 +14,11 @@ namespace TiledArray {
 
   namespace expressions {
 
-    template<typename T>
-    class AnnotatedArray;
+
 
     namespace array {
+      template<typename T>
+      class AnnotatedArray;
 
       template<typename Exp0, typename Exp1, template<typename> class Op >
       struct Expression;
@@ -43,7 +44,7 @@ namespace TiledArray {
   } // namespace expressions
 
   namespace math {
-
+/*
     template<typename T, detail::DimensionOrderType D>
     void contract(const std::size_t, const std::size_t, const std::size_t,
         const std::size_t, const std::size_t, const T*, const T*, T*);
@@ -107,7 +108,7 @@ namespace TiledArray {
     private:
       op_type op_;
     }; // struct ZipOp
-
+*/
     /// Array operation
 
     /// Performs an element wise binary operation (e.g. std::plus<T>,
@@ -119,33 +120,7 @@ namespace TiledArray {
       typedef Exp0 exp0_type;
       typedef Exp1 exp1_type;
       typedef Res result_type;
-      typedef typename Res::value_type value_type;
-      typedef ZipOp<typename exp0_type::value_type,
-          typename exp1_type::value_type, value_type, Op> op_type;
-      typedef boost::transform_iterator<op_type,
-          boost::zip_iterator<boost::tuple<typename exp0_type::const_iterator,
-          typename exp1_type::const_iterator> > > const_iterator;
 
-      BinaryArrayOp() : op_(Op()) { }
-      BinaryArrayOp(Op op) : op_(op) { }
-
-      result_type operator ()(const exp0_type& e0, const exp0_type& e1) {
-        result_type result(e0.size(), e0.vars(), begin(e0, e1), end(e0, e1));
-        return result;
-      }
-
-    private:
-      const_iterator begin(const exp0_type& e0, const exp0_type& e1) {
-        return boost::make_transform_iterator(boost::make_zip_iterator(
-            boost::make_tuple(e0.begin(), e1.begin())), op_);
-      }
-
-      const_iterator end(const exp0_type& e0, const exp0_type& e1) {
-        return boost::make_transform_iterator(boost::make_zip_iterator(
-            boost::make_tuple(e0.end(), e1.end())), op_);
-      }
-
-      op_type op_;
     }; // struct BinaryArrayOp
 
     /// Array operation, contraction specialization
@@ -154,76 +129,13 @@ namespace TiledArray {
     /// two tiles. If more than one index will be contracted, all contracted
     /// indexes must be adjacent.
     template<typename T, typename U, typename Res>
-    struct BinaryArrayOp<expressions::AnnotatedArray<T>, expressions::AnnotatedArray<U>,
+    struct BinaryArrayOp<expressions::array::AnnotatedArray<T>, expressions::array::AnnotatedArray<U>,
         Res, std::multiplies<typename Res::value_type> >
     {
-      typedef expressions::AnnotatedArray<T> exp0_type;
-      typedef expressions::AnnotatedArray<U> exp1_type;
+      typedef expressions::array::AnnotatedArray<T> exp0_type;
+      typedef expressions::array::AnnotatedArray<U> exp1_type;
       typedef Res result_type;
-      typedef typename Res::value_type value_type;
-      typedef ZipOp< typename exp0_type::const_iterator,
-          typename exp1_type::const_iterator, value_type, std::multiplies<typename Res::value_type> > op_type;
-      typedef boost::transform_iterator<op_type,
-          boost::zip_iterator<boost::tuple<typename exp0_type::const_iterator,
-          typename exp1_type::const_iterator> > > const_iterator;
 
-      BinaryArrayOp() { }
-      BinaryArrayOp(std::multiplies<typename Res::value_type>) { }
-
-      result_type operator ()(const exp0_type& e0, const exp1_type& e1) {
-        typedef std::pair<expressions::VariableList::const_iterator,
-            expressions::VariableList::const_iterator> it_pair;
-
-        // find common variable lists
-        std::multiplies<expressions::VariableList> v_op;
-        it_pair e0_common;
-        it_pair e1_common;
-        expressions::VariableList vars = v_op(e0.vars(), e1.vars());
-        expressions::find_common(e0.vars().begin(), e0.vars().end(), e1.vars().begin(),
-            e1.vars().end(), e0_common, e1_common);
-
-        // find dimensions of the result tile
-        typename result_type::size_array size(vars.dim(), 1);
-        typename result_type::size_array::iterator it = size.begin();
-        expressions::VariableList::const_iterator v_it = vars.begin();
-        expressions::VariableList::const_iterator e_it;
-        for(; it != size.end(); ++it, ++v_it) {
-          if((e_it = std::find(e0.vars().begin(), e0.vars().end(), *v_it)) != e0.vars().end()) {
-            *it = e0.size()[std::distance(e0.vars().begin(), e_it)];
-          } else {
-            e_it = std::find(e1.vars().begin(), e1.vars().end(), *v_it);
-            *it = e1.size()[std::distance(e1.vars().begin(), e_it)];
-          }
-        }
-
-        // calculate packed tile dimensions
-        const std::size_t init = 1;
-        const std::size_t m = std::accumulate(e0.size().begin(), e0.size().begin() +
-            std::distance(e0.vars().begin(), e0_common.first), init,
-            std::multiplies<std::size_t>());
-        const std::size_t n = std::accumulate(e0.size().begin() +
-            std::distance(e0.vars().begin(), e0_common.second), e0.size().end(),
-            init, std::multiplies<std::size_t>());
-        const std::size_t o = std::accumulate(e1.size().begin(), e1.size().begin() +
-            std::distance(e1.vars().begin(), e1_common.first), init,
-            std::multiplies<std::size_t>());
-        const std::size_t p = std::accumulate(e1.size().begin() +
-            std::distance(e1.vars().begin(), e1_common.second), e1.size().end(),
-            init, std::multiplies<std::size_t>());
-        const std::size_t i = std::accumulate(e0.size().begin() +
-            std::distance(e0.vars().begin(), e0_common.first), e0.size().begin()
-            + std::distance(e0.vars().begin(), e0_common.second), init,
-            std::multiplies<std::size_t>());
-
-        // construct result tile
-        result_type result(size, vars);
-        if(e0.order() == TiledArray::detail::decreasing_dimension_order)
-          contract<value_type, TiledArray::detail::decreasing_dimension_order>(m, n, o, p, i, e0.data(), e1.data(), result.data());
-        else
-          contract<value_type, TiledArray::detail::increasing_dimension_order>(m, n, o, p, i, e0.data(), e1.data(), result.data());
-
-        return result;
-      }
     }; // struct BinaryArrayOp<AnnotatedArray<T,O>, AnnotatedArray<U,O>, Res, std::multiplies>
 
     /// Unary tile operation

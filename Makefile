@@ -4,9 +4,8 @@ VPATH = src:Tests
 INCDIR = -I$(MADNESSDIR)/include -I$(BOOSTDIR)/include -I./src -I./Tests -I$(BLASINCLUDEDIR) -I$(EIGENDIR)
 LIBDIR = -L$(MADNESSDIR)/lib -L$(BOOSTDIR)/lib
 #LIBS = -lMADworld
-LIBS = -lMADworld -lboost_unit_test_framework
+LIBS = -lMADworld -lboost_unit_test_framework /System/Library/Frameworks/vecLib.framework/vecLib
 #WARNING = -wd981 -wd383 -wd1419 -wd444 -wd1418
-#-Wextra -pedantic
 CXXFLAGS = -g -Wall -Wextra -pedantic -fstrict-aliasing -fmessage-length=0 $(INCDIR) -DTA_EXCEPTION_ERROR -std=c++0x $(WARNING)
 CXXSUF = cpp
 OBJSUF = o

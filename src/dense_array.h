@@ -3,7 +3,7 @@
 
 //#include <error.h>
 #include <range.h>
-#include <type_traits.h>
+//#include <type_traits.h>
 #include <madness_runtime.h>
 #include <array_dim.h>
 #include <permutation.h>
@@ -12,12 +12,12 @@
 //#include <boost/iterator/filter_iterator.hpp>
 #include <boost/scoped_array.hpp>
 //#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/utility.hpp>
+//#include <boost/make_shared.hpp>
+//#include <boost/utility.hpp>
 //#include <cstddef>
 //#include <algorithm>
 //#include <memory>
-#include <numeric>
+//#include <numeric>
 //#include <iterator>
 //#include <stdexcept>
 
@@ -26,8 +26,6 @@ namespace TiledArray {
   // Forward declarations
   template <unsigned int Level>
   class LevelTag;
-  template <unsigned int DIM>
-  class Permutation;
   template <typename T, unsigned int DIM, typename Tag, typename CS>
   class DenseArray;
   template <typename T, unsigned int DIM, typename Tag, typename CS>

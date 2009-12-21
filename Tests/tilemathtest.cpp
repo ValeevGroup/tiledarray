@@ -7,9 +7,6 @@
 using namespace TiledArray;
 using TiledArray::math::contract;
 
-template<typename InIter, typename T>
-bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001);
-
 struct TileMathFixture {
   typedef Tile<double, 0> Tile0;
   typedef Tile<double, 1> Tile1;
@@ -37,6 +34,16 @@ struct TileMathFixture {
 
   ~TileMathFixture() { }
 
+  template<typename InIter, typename T>
+  bool check_val(InIter first, InIter last, const T& v, const T& tol = 0.000001) {
+    for(; first != last; ++first)
+      if((*first > (v + tol)) || (*first < (v - tol)))
+        return false;
+
+    return true;
+
+  }
+
   range_type r;
   Tile3 tr;
   Tile3 t1;
@@ -44,16 +51,6 @@ struct TileMathFixture {
   Tile3 t3;
   Tile3 t4;
 };
-
-template<typename InIter, typename T>
-bool check_val(InIter first, InIter last, const T& v, const T& tol) {
-  for(; first != last; ++first)
-    if((*first > (v + tol)) || (*first < (v - tol)))
-      return false;
-
-  return true;
-
-}
 
 BOOST_FIXTURE_TEST_SUITE( tile_math_suite , TileMathFixture )
 

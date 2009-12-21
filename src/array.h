@@ -29,11 +29,6 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename CS>
   void swap(Array<T, DIM, CS>&, Array<T, DIM, CS>&);
 
-  namespace expressions {
-    template<typename T>
-    class AnnotatedArray;
-  } // namespace expressions
-
   /// Array interface class.
 
   /// Provides a common interface for math operations on array objects.
@@ -45,6 +40,7 @@ namespace TiledArray {
     BaseArray<T>& operator=(const BaseArray<T>&);
   public:
     virtual void clear() = 0;
+    virtual std::size_t volume(bool local = false) const = 0;
   protected:
     BaseArray(madness::World& world) : madness::WorldObject<BaseArray<T> >(world) { }
     virtual ~BaseArray() { }
@@ -53,10 +49,13 @@ namespace TiledArray {
     virtual bool is_local(const std::size_t) const = 0;
     virtual bool includes(const std::size_t) const = 0;
     virtual std::pair<const T*, const T*> data(const std::size_t) const = 0;
-    virtual std::pair<const std::size_t*, const std::size_t*> size(const std::size_t) const = 0;
+    virtual std::pair<const std::size_t*, const std::size_t*> size_pair(const std::size_t) const = 0;
+    virtual std::pair<const std::size_t*, const std::size_t*> size_pair() const = 0;
+//    virtual std::pair<const std::size_t*, const std::size_t*> weight_pair(const std::size_t) const = 0;
+    virtual std::pair<const std::size_t*, const std::size_t*> weight_pair() const = 0;
     virtual void permute(const std::size_t*) = 0;
 
-    friend class expressions::AnnotatedArray<T>;
+    friend class expressions::array::AnnotatedArrayImpl<T>;
   }; // class BaseArray
 
   template<typename T, unsigned int DIM>
@@ -89,6 +88,7 @@ namespace TiledArray {
     typedef typename data_container::const_accessor const_accessor;
     typedef typename data_container::iterator iterator;
     typedef typename data_container::const_iterator const_iterator;
+    typedef Range<ordinal_type, DIM, LevelTag<1>, coordinate_system > range_type;
 
   private:
 
@@ -108,7 +108,7 @@ namespace TiledArray {
 
     /// AnnotatedArray copy constructor
     template<typename U>
-    Array(const expressions::AnnotatedArray<U>& aarray) {
+    Array(const expressions::array::AnnotatedArray<U>& aarray) {
       // TODO: Implement this function
       TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
       TA_ASSERT((aarray.dim() == DIM), std::runtime_error,
@@ -118,7 +118,7 @@ namespace TiledArray {
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedArray copy constructor
     template<typename U>
-    Array(expressions::AnnotatedArray<U>&& aarray) {
+    Array(expressions::array::AnnotatedArray<U>&& aarray) {
       // TODO: Implement this function.
       TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
       TA_ASSERT((aarray.dim() == DIM), std::runtime_error,
@@ -273,7 +273,7 @@ namespace TiledArray {
     /// returned. Otherwise, if local == true, it will return the number of
     /// tiles that are stored locally. The number of local tiles may or may not
     /// reflect the maximum possible number of tiles that can be stored locally.
-    volume_type volume(bool local = false) const {
+    virtual volume_type volume(bool local = false) const {
       return tiles_.volume(local);
     }
 
@@ -323,13 +323,12 @@ namespace TiledArray {
       return tiles_.find(acc, key_(k));
     }
 
-    expressions::AnnotatedArray<T> operator ()(const std::string& v) {
-      expressions::AnnotatedArray<T> result(*this, expressions::VariableList(v));
-      return result;
+    expressions::array::AnnotatedArray<T> operator ()(const std::string& v) {
+      return expressions::array::AnnotatedArray<T>(this, expressions::VariableList(v));
     }
 
-    expressions::AnnotatedArray<const T> operator ()(const std::string& v) const {
-      return expressions::AnnotatedArray<const T>(*this, expressions::VariableList(v));
+    expressions::array::AnnotatedArray<const T> operator ()(const std::string& v) const {
+      return expressions::array::AnnotatedArray<const T>(this, expressions::VariableList(v));
     }
 
     /// Returns a reference to the tile range object.
@@ -379,10 +378,29 @@ namespace TiledArray {
     }
 
     /// Return the a pair of pointers to the size of the tile.
-    virtual std::pair<const std::size_t*, const std::size_t*> size(const std::size_t i) const {
+    virtual std::pair<const std::size_t*, const std::size_t*> size_pair(const std::size_t i) const {
       index_type index = get_index_(i);
       return std::make_pair<const std::size_t*, const std::size_t*>
           (tile(index).size().begin(), tile(index).size().end());
+    }
+
+    /// Return the a pair of pointers to the size of the array.
+    virtual std::pair<const std::size_t*, const std::size_t*> size_pair() const {
+      return std::make_pair<const std::size_t*, const std::size_t*>
+          (tiles().size().begin(), tiles().size().end());
+    }
+
+//    /// Return the a pair of pointers to the weight of the tile.
+//    virtual std::pair<const std::size_t*, const std::size_t*> weight_pair(const std::size_t i) const {
+//      index_type index = get_index_(i);
+//      return std::make_pair<const std::size_t*, const std::size_t*>
+//          (tile(index).weight().begin(), tile(index).weight().end());
+//    }
+
+    /// Return the a pair of pointers to the weight of the array.
+    virtual std::pair<const std::size_t*, const std::size_t*> weight_pair() const {
+      return std::make_pair<const std::size_t*, const std::size_t*>
+          (tiles_.weight().begin(), tiles_.weight().end());
     }
 
     virtual void permute(const std::size_t* first) {
