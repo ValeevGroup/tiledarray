@@ -13,7 +13,7 @@ AC_PROG_INSTALL
 
 # Set compiler standard
 AC_ARG_ENABLE([cpp0x],
-  [AC_HELP_STRING([--enable-cpp0x@<:@=compiler arg@:>@], [Enable enable experimental c++0x standard @<:@default=-std=c++0x@:>@.])],
+  [AC_HELP_STRING([--enable-cpp0x@<:@=compiler arg@:>@], [Enable experimental c++0x standard @<:@default=-std=c++0x@:>@.])],
   [
     case $enable_cpp0x in
       yes)
@@ -21,6 +21,37 @@ AC_ARG_ENABLE([cpp0x],
       ;;
       *)
         CXXFLAGS="$CXXFLAGS $enable_cpp0x"
+      ;;
+    esac
+  ]
+)
+
+# Set debugging
+AC_ARG_ENABLE([debugging],
+  [AC_HELP_STRING([--enable-debugging@<:@=compiler arg@:>@], [Enable debugging information @<:@default=-g@:>@.])],
+  [
+    case $enable_cpp0x in
+      yes)
+        CXXFLAGS="$CXXFLAGS -g"
+      ;;
+      *)
+        CXXFLAGS="$CXXFLAGS $enable_debugging"
+      ;;
+    esac
+  ]
+)
+
+# Set optimization
+# Set debugging
+AC_ARG_ENABLE([optimization],
+  [AC_HELP_STRING([--enable-optimization@<:@=compiler arg@:>@], [Enable code optimization @<:@default=-O2@:>@.])],
+  [
+    case $enable_cpp0x in
+      yes)
+        CXXFLAGS="$CXXFLAGS -O2"
+      ;;
+      *)
+        CXXFLAGS="$CXXFLAGS $enable_optimization"
       ;;
     esac
   ]
