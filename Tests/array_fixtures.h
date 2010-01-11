@@ -1,11 +1,11 @@
 #ifndef TILEDARRAY_ARRAY_FIXTURES_H__INCLUDED
 #define TILEDARRAY_ARRAY_FIXTURES_H__INCLUDED
 
-#include "coordinate_system.h"
-#include "coordinates.h"
-#include "array_dim.h"
-#include "dense_array.h"
-#include "distributed_array.h"
+#include "TiledArray/coordinate_system.h"
+#include "TiledArray/coordinates.h"
+#include "TiledArray/array_dim.h"
+#include "TiledArray/dense_array.h"
+#include "TiledArray/distributed_array.h"
 
 using namespace TiledArray;
 
