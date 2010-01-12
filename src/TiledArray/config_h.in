@@ -98,7 +98,7 @@
 #undef TA_DEFAULT_ERROR
 
 /* Defines the boost unit test framework linkage. */
-#undef TA_UNIT_TEST_LINKAGE
+#undef TA_UNIT_TEST_DYLINK
 
 /* TiledArray will use blas for some math operations. */
 #undef TA_USE_CBLAS

@@ -188,7 +188,7 @@ namespace TiledArray {
     /// Returns the dimension weights.
     const size_array& weight() const { return data_.weight(); } // no throw
 
-    /// Returns true when \i is in the tile range.
+    /// Returns true when \c i is in the tile range.
 
     /// \arg \c i Element index.
     bool includes(const index_type& i) const { return range_.includes(i); }

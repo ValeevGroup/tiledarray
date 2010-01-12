@@ -8,7 +8,7 @@
 
 #include <TiledArray/config.h>
 #define BOOST_TEST_MAIN Tiled Array Tests
-#if TA_UNIT_TEST_LINKAGE
+#ifdef TA_UNIT_TEST_DYLINK
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 #else

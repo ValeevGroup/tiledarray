@@ -13,14 +13,16 @@ AC_PROG_INSTALL
 
 # Set compiler standard
 AC_ARG_ENABLE([cpp0x],
-  [AC_HELP_STRING([--enable-cpp0x@<:@=compiler arg@:>@], [Enable experimental c++0x standard @<:@default=-std=c++0x@:>@.])],
+  [AC_HELP_STRING([--enable-cpp0x@<:@=standard@:>@], [Enable experimental c++0x standard (e.g. ARG=c++0x) @<:@default=no@:>@.])],
   [
-    case $enable_cpp0x in
+    case $enableval in
       yes)
         CXXFLAGS="$CXXFLAGS -std=c++0x"
       ;;
+      no)
+      ;;
       *)
-        CXXFLAGS="$CXXFLAGS $enable_cpp0x"
+        CXXFLAGS="$CXXFLAGS -std=$enableval"
       ;;
     esac
   ]
@@ -28,30 +30,33 @@ AC_ARG_ENABLE([cpp0x],
 
 # Set debugging
 AC_ARG_ENABLE([debugging],
-  [AC_HELP_STRING([--enable-debugging@<:@=compiler arg@:>@], [Enable debugging information @<:@default=-g@:>@.])],
+  [AC_HELP_STRING([--enable-debugging@<:@=ARG@:>@], [Enable debugging information @<:@default=no@:>@.])],
   [
-    case $enable_cpp0x in
+    case $enableval in
       yes)
         CXXFLAGS="$CXXFLAGS -g"
       ;;
+      no)
+      ;;
       *)
-        CXXFLAGS="$CXXFLAGS $enable_debugging"
+        CXXFLAGS="$CXXFLAGS -g$enableval"
       ;;
     esac
   ]
 )
 
 # Set optimization
-# Set debugging
 AC_ARG_ENABLE([optimization],
-  [AC_HELP_STRING([--enable-optimization@<:@=compiler arg@:>@], [Enable code optimization @<:@default=-O2@:>@.])],
+  [AC_HELP_STRING([--enable-optimization@<:@=ARG@:>@], [Enable code optimization @<:@default=2@:>@.])],
   [
-    case $enable_cpp0x in
+    case $enableval in
       yes)
         CXXFLAGS="$CXXFLAGS -O2"
       ;;
+      no)
+      ;;
       *)
-        CXXFLAGS="$CXXFLAGS $enable_optimization"
+        CXXFLAGS="$CXXFLAGS -O$enableval"
       ;;
     esac
   ]
@@ -74,7 +79,7 @@ TA_DEFAULT_ERROR=3
 AC_ARG_ENABLE([error-checking],
   [AC_HELP_STRING([--enable-error-checking@<:@=throw|assert|no@:>@], [Enable default error checking@<:@default=throw@:>@.])],
   [
-    case $enable_error_checking in
+    case $enableval in
       yes)
         AC_DEFINE([TA_DEFAULT_ERROR], [1], [Defines the default error checking behavior. none = 0, throw = 1, assert = 2])
       ;;
@@ -136,11 +141,10 @@ AC_CHECK_HEADER([boost/test/unit_test.hpp], [], [AC_MSG_ERROR([Unable to find Bo
 
 AC_CHECK_LIB([boost_unit_test_framework], [main],
   [
-    AC_DEFINE([TA_UNIT_TEST_LINKAGE], [1], [Defines the boost unit test framework linkage.])
+    AC_DEFINE([TA_UNIT_TEST_DYLINK], [1], [Defines the boost unit test framework linkage.])
     LIBS="-lboost_unit_test_framework $LIBS"
   ], [
     AC_CHECK_HEADER([boost/test/included/unit_test.hpp], [], [AC_MSG_ERROR([Unable to find Boost Test header file.])])
-    AC_DEFINE([TA_UNIT_TEST_LINKAGE], [0], [Defines the boost unit test framework linkage.])
     AC_MSG_WARN([The Boost unit test framework library was not found. You will still be able to compile and run unit tests, but it will take more time to compile.]) 
   ]
 )
@@ -148,9 +152,17 @@ AC_CHECK_LIB([boost_unit_test_framework], [main],
 AC_ARG_WITH([blas],
             [AS_HELP_STRING([--with-blas@<:@=DIR@:>@], [DIR where the blas library is installed.])],
             [
-              if test "$enable_cpp0x" != yes; then
-                CPPFLAGS="$CPPFLAGS -I$enable_cpp0x/include"
-                LDFLAGS="$LDFLAGS -L$enable_cpp0x/lib"
+              case $with_blas in
+                yes)
+                ;;
+                no)
+                ;;
+                *)
+                ;;
+              esac
+              if test "$with_blas" != yes; then
+                CPPFLAGS="$CPPFLAGS -I$with_blas/include"
+                LDFLAGS="$LDFLAGS -L$with_blas/lib"
               fi
               AC_CHECK_HEADER([cblas.h], [], [AC_MSG_ERROR([Unable to find the cblas header file.])])
               AC_DEFINE([TA_USE_CBLAS], [1], [TiledArray will use blas for some math operations.])
@@ -165,6 +177,11 @@ AH_TOP([#ifndef TILEDARRAY_CONFIGURE_H__INCULDED
 ])
 AH_BOTTOM([#endif // TILEDARRAY_CONFIGURE_H__INCULDED])
 
+# Display options
+AC_MSG_NOTICE([CPPFLAGS = $CPPFLAGS])
+AC_MSG_NOTICE([CXXFLAGS = $CXXFLAGS])
+AC_MSG_NOTICE([LDFLAGS = $LDFLAGS])
+AC_MSG_NOTICE([LIBS = $LIBS])
 # Output files
 AC_CONFIG_HEADERS([src/TiledArray/config.h:src/TiledArray/config_h.in])
 AC_CONFIG_FILES([doc/Doxyfile])

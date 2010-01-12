@@ -1,0 +1,129 @@
+TiledArray Installation instructions:
+
+Prerequisites:
+- Software:
+  - C and C++ compiler
+    TiledArray only requires a c++ complier, but m-a-d-n-e-s-s also requires a
+    c compiler. This package was developed with GNU GCC 4.4.x, but any GCC 4.2.x
+    and higher should work, as well as any compiler with good template support.
+ 
+  - Autotools (optional)
+    Autotools is needed if you want an automated installation and testing process.
+
+- Libraries:
+  - m-a-d-n-e-s-s 
+    This is an open source library which is designed to solve quantum chemistry
+    problems. (http://code.google.com/p/m-a-d-n-e-s-s/)
+    
+  - MPI-2
+    Most MPI-2 implementations should work. It is required for both TiledArray
+    and m-a-d-n-e-s-s. Both MPICH2 (http://www.mcs.anl.gov/research/projects/mpich2/)
+    and OpenMPI (http://www.open-mpi.org/) should work.
+
+  - BLAS and LAPACK
+    BLAS is optional for TiledArray, but BLAS and LAPACK are required by m-a-d-n-e-s-s.
+    You can use your favorite implementation for this.
+      
+  - Eigen
+    This is an open source c++ template library which is a c++ replacement for
+    BLAS and LAPACK. It is the default math library for TiledArray, but you may
+    replace it with BLAS. You can download a copy of it here:
+    http://eigen.tuxfamily.org/index.php?title=Main_Page .
+    
+  - Boost
+    This is a semi-standard open source c++ template library. It contains many
+    useful generic template libraries you can use with your programs. You can
+    download a copy of it here: http://www.boost.org/ .
+
+
+  - TCMalloc (optional)
+    This is a fast memory allocation tool designed by Google. It is an optional
+    component for m-a-d-n-e-s-s, and it is highly recommend for any application
+    where fast performance is needed. You may download a copy of it here:
+    http://code.google.com/p/google-perftools/ .
+
+  - Google Test (optional)
+    This is a unit testing suite that was created by Google. It is only used for
+    unit testing with m-a-d-n-e-s-s. If you do not want to run these unit tests
+    (not recommended), then you will not need this component. Note: Unit testing
+    for TiledArray is done with Boost Test.
+    
+  - PAPI (optional)
+    This is an optional component for m-a-d-n-e-s-s. Currently, it is only
+    implemented on Linux operating systems.
+
+Building:
+
+  TiledArray is a template library, so there is no precompiled library for you 
+  to include in your project. Therefore you may need to specify additional
+  compiler arguments in your project. First you will need to make sure you have
+  all the necessary prerequisites listed above.
+  
+  Next, you need to specify the include paths for each of the following:
+  libraries:
+    - m-a-d-n-e-s-s
+    - Eigen
+    - Boost
+    - BLAS (optional)
+  For GCC the include paths will look something like the following:
+  
+    -I/path/to/madness/include -I/path/to/eigen/include -I/path/to/boost/include -I/path/to/blas/include
+  
+  You must also specify the library paths for each of the following: 
+    - m-a-d-n-e-s-s
+    - BLAS (optional)
+  For GCC the library paths will look something like the following:
+    -L/path/to/madness/lib -L/path/to/blas/lib
+  You will also need to inlculd the m-a-d-n-e-s-s and possible blas libraries
+  to your link commands. For example:
+    -lMADworld -lblas
+    
+  Next, there are three macro definitions that you may want to specify to change
+  the behavior of TiledArray.
+    -DTA_EXCEPTION_ERROR
+      TiledArray will perform runtime error checking and throw exceptions when
+      an error is encountered. 
+    -DTA_ASSERT_ERROR
+      TiledArray will perform runtime error checking and will call the standard
+      assert() or exit() function when an error is encountered.
+  If nether of these compile macros are used then TiledArray will perform minimal
+  error checking and call exit() when an error is encountered.
+  
+    
+
+Configuration options:
+
+ --enable-cpp0x[=compiler arg]
+                          Enable experimental c++0x standard
+                          [default=-std=c++0x].
+   
+   This option is used to enable experimental C++0x standard. The argument for 
+   this option will be passed to the C++ compiler. The default option is the
+   "-std=c++0x", and is the argument required by GCC for this standard.
+                          
+  --enable-debugging[=compiler arg]
+                          Enable debugging information [default=-g].
+                          
+    This option is used to enable or disable debugging. The default argument is
+    for the GCC compiler. However, you may specify any compiler specific arguments.
+
+  --enable-optimization[=compiler arg]
+                          Enable code optimization [default=-O2].
+                          
+    This option is used to enable or disable optimization. The default argument
+    is for the GCC compiler. However, you may specify any compiler specific arguments.
+    
+  --enable-error-checking[=throw|assert|no]
+                          Enable default error checking[default=throw].
+                          
+    This will set default error checking behavior of TiledArray.
+      - "throw" will cause TiledArray to throw an exception whenever an error is encountered.
+      - "assert" will call the standard library assert() or exit() if an error is encountered.
+      - "no" will disable most error checking. However, some minimal error checking
+        is still done, in which case it will call exit().
+
+  --with-blas[=DIR]       DIR where the blas library is installed.
+
+    When you specify this option, BLAS will be used for most math operations
+    instead of Eigen. 
+
