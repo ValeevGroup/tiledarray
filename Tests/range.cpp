@@ -1,8 +1,6 @@
 #include "TiledArray/range.h"
 #include "TiledArray/permutation.h"
-#include <boost/test/unit_test.hpp>
-#include <boost/test/output_test_stream.hpp>
-#include "iteration_test.h"
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 

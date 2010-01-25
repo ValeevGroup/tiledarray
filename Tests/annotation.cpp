@@ -5,7 +5,7 @@
 #include <iostream>
 #include <math.h>
 #include <utility>
-#include <boost/test/unit_test.hpp>
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 using TiledArray::expressions::Annotation;

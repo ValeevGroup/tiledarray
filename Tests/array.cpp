@@ -1,10 +1,8 @@
 #include "TiledArray/array.h"
 #include "TiledArray/utility.h"
-#include <boost/test/unit_test.hpp>
-#include <boost/test/output_test_stream.hpp>
 #include <boost/functional.hpp>
 #include <algorithm>
-#include "madness_fixture.h"
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 
@@ -36,7 +34,7 @@ struct ArrayFixture : public TiledRangeFixture<Array<int, 3> > {
   typedef Array3::tile_type tile_type;
   typedef std::vector<std::pair<index_type, tile_type> > data_array;
 
-  ArrayFixture() : world(MadnessFixture::world), a(*world, trng), ca(a) {
+  ArrayFixture() : world(GlobalFixture::world), a(*world, trng), ca(a) {
     int v = 1;
     int tv = 1;
     for(TRange3::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {

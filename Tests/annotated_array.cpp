@@ -1,7 +1,1 @@
-/*
- * annotatedarraytest.cpp
- *
- *  Created on: Nov 9, 2009
- *      Author: justus
- */
-
+#include "unit_test_config.h"

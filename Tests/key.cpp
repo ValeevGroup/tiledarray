@@ -1,7 +1,7 @@
 #include "TiledArray/key.h"
 #include "TiledArray/coordinates.h"
 #include <cstddef>
-#include <boost/test/unit_test.hpp>
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 using namespace TiledArray::detail;

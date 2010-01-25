@@ -1,11 +1,9 @@
 #include "TiledArray/distributed_array.h"
-#include "madness_fixture.h"
-#include "array_fixtures.h"
-#include <boost/test/unit_test.hpp>
 #include <boost/functional.hpp>
+#include "unit_test_config.h"
 
 
-DistributedArrayFixture::DistributedArrayFixture() : world(MadnessFixture::world), r(s),
+DistributedArrayFixture::DistributedArrayFixture() : world(GlobalFixture::world), r(s),
     a(*world, s), ca(a), d(s) {
   double val = 0.0;
   range_type r(index_type(0,0,0), index_type(2,3,4));

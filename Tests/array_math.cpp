@@ -1,9 +1,7 @@
 #include "TiledArray/array_math.h"
 #include "TiledArray/array.h"
 #include <Eigen/Core>
-#include <boost/test/unit_test.hpp>
-#include <boost/test/output_test_stream.hpp>
-#include "madness_fixture.h"
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 using TiledArray::math::contract;
@@ -46,7 +44,7 @@ struct ArrayMathFixture : public TiledRangeFixture<int> {
   typedef Array3::range_type range_type;
   typedef expressions::array::AnnotatedArray<int> AArray;
 
-  ArrayMathFixture() : TiledRangeFixture<int>(), world(MadnessFixture::world),
+  ArrayMathFixture() : TiledRangeFixture<int>(), world(GlobalFixture::world),
       ar(*world, trng3), a1(*world, trng3), a2(*world, trng3), a3(*world, trng3),
       a4(*world, trng3)
   {

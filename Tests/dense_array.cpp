@@ -2,14 +2,10 @@
 #include "TiledArray/dense_array.h"
 #include "TiledArray/coordinates.h"
 #include "TiledArray/permutation.h"
-#include "madness_fixture.h"
-#include <boost/test/unit_test.hpp>
-#include <boost/test/output_test_stream.hpp>
 #include <numeric>
 #include <algorithm>
 #include <iterator>
-#include "iteration_test.h"
-#include "array_fixtures.h"
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 

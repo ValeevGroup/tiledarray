@@ -1,8 +1,7 @@
 #include "TiledArray/array_dim.h"
 #include "TiledArray/coordinates.h"
 #include "TiledArray/range.h"
-#include "array_fixtures.h"
-#include <boost/test/unit_test.hpp>
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 

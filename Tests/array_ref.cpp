@@ -1,7 +1,7 @@
 #include "TiledArray/array_ref.h"
 #include <boost/array.hpp>
 #include <vector>
-#include <boost/test/unit_test.hpp>
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 
