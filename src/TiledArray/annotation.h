@@ -63,12 +63,17 @@ namespace TiledArray {
       void init_from_size_(const SizeArray& size, const VariableList& var,
           detail::DimensionOrderType o, typename boost::remove_const<I>::type* data)
       {
+        typedef detail::CoordIterator<size_array, detail::increasing_dimension_order> CIinc;
+        typedef detail::CoordIterator<size_array, detail::decreasing_dimension_order> CIdec;
 
         const unsigned int dim = var.dim();
         Annotation_::size_ = std::make_pair(data, data + dim);
         Annotation_::weight_ = std::make_pair(data + dim, data + dim + dim);
         std::copy(size.begin(), size.end(), size_.begin());
-        detail::calc_weight(size_.begin(), size_.end(), weight_.begin());
+        if(o == detail::increasing_dimension_order)
+          detail::calc_weight(CIinc::begin(size_), CIinc::end(size_), CIinc::begin(weight_));
+        else
+          detail::calc_weight(CIdec::begin(size_), CIdec::end(size_), CIdec::begin(weight_));
         n_ = detail::volume(size_.begin(), size_.end());
         var_ = var;
         order_ = o;
@@ -93,8 +98,8 @@ namespace TiledArray {
             "Variable list dimensions do not match size initialization list dimensions.");
         TA_ASSERT(var.dim() == (weight_last - weight_first), std::runtime_error,
             "Variable list dimensions do not match weight initialization list dimensions.");
-        TA_ASSERT(n == std::accumulate(size_first, size_last, ordinal_type(1), std::multiplies<ordinal_type>()),
-            std::runtime_error, "Variable list dimensions do not match specified dimensions.");
+        TA_ASSERT(n == detail::volume(size_first, size_last),
+            std::runtime_error, "Volume does not match specified size.");
       }
 
       /// Copy constructor
@@ -193,11 +198,9 @@ namespace TiledArray {
       /// Class wrapper function for detail::calc_weight() function.
       template<TiledArray::detail::DimensionOrderType O>
       static size_array calc_weight_(const size_array& size) { // no throw
+        typedef detail::CoordIterator<size_array, O> CI;
         size_array result(size.size(), 0);
-        TiledArray::detail::calc_weight(
-            TiledArray::detail::CoordIterator<const size_array, O>::begin(size),
-            TiledArray::detail::CoordIterator<const size_array, O>::end(size),
-            TiledArray::detail::CoordIterator<size_array, O>::begin(result));
+        TiledArray::detail::calc_weight(CI::begin(size), CI::end(size),  CI::begin(result));
         return result;
       }
 

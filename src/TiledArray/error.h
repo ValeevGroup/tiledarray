@@ -25,13 +25,23 @@
 #warning "TA_EXCEPTION_ERROR supersedes TA_ASSERT_ERROR. TA_ASSERT_ERROR will be undefined."
 #endif
 #include <stdexcept>
+namespace TiledArray {
+  namespace detail {
+     inline void exception_break() { }
+  }
+}
+
+
 #define TA_STRINGIZE( s ) #s
 #define TA_EXCEPTION_MESSAGE( file , line , func , type ,  mess ) \
   type TA_STRINGIZE( func ) ":" \
   TA_STRINGIZE( file ) "(" TA_STRINGIZE( line ) "): " mess
 #define TA_ASSERT( a , e , m )  \
   if(! ( a ) ) \
-    { throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __FUNCTION__ , "TiledArray Assertion failure in " , m ) ) ; }
+    { \
+      TiledArray::detail::exception_break(); \
+      throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __FUNCTION__ , "TiledArray Assertion failure in " , m ) ) ; \
+    }
 
 #define TA_EXCEPTION( e , t ,  m ) \
     throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __FUNCTION__ , t , m ) )

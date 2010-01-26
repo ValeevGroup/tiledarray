@@ -109,8 +109,8 @@ BOOST_AUTO_TEST_CASE( constructor )
       a.size().begin(), a.size().end());
   BOOST_CHECK(check_val(t.begin(), t.end(), 1.0)); // Verify tile data
   BOOST_CHECK(check_val(a.begin(), a.end(), 1.0)); // verify annotated tile data.
-  BOOST_CHECK_EQUAL(ac.begin(), a.begin()); // make sure iterators are the same
-  BOOST_CHECK_EQUAL(ac.end(), a.end());
+  BOOST_CHECK(ac.begin() == a.begin()); // make sure iterators are the same
+  BOOST_CHECK(ac.end() == a.end());
   BOOST_CHECK(check_val(ac.begin(), ac.end(), 1.0));
 
   BOOST_REQUIRE_NO_THROW(ATile a1(s, v, 2.0)); // check non-reference annotated tile with

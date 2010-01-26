@@ -293,7 +293,7 @@ namespace TiledArray {
           TA_ASSERT(owner_, std::runtime_error,
               "This annotated tile cannot be permuted in place because it references another tile.");
           AnnotatedTile_ temp = p ^ *this;
-          TiledArray::expressions::swap(*this, temp);
+          swap(temp);
 
           return *this;
         }
