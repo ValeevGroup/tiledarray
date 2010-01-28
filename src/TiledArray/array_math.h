@@ -121,6 +121,8 @@ namespace TiledArray {
       typedef Exp1 exp1_type;
       typedef Res result_type;
 
+
+
     }; // struct BinaryArrayOp
 
     /// Array operation, contraction specialization

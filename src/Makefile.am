@@ -29,6 +29,7 @@ nobase_include_HEADERS = TiledArray/annotated_array.h \
                   TiledArray/tile.h \
                   TiledArray/tiled_range.h \
                   TiledArray/tiled_range1.h \
+                  TiledArray/transform_iterator.h \
                   TiledArray/type_traits.h \
                   TiledArray/utility.h \
                   TiledArray/variable_list.h \

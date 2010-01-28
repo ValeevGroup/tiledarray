@@ -8,15 +8,41 @@ namespace TiledArray {
   namespace detail {
 
     /// adds const to the type if the boolean parameter is true
-    template <bool B, typename T>
+    template<bool B, typename T>
     struct add_const {
       typedef const typename boost::remove_const<T>::type type;
     }; // struct add_const
 
-    template <typename T>
+    template<typename T>
     struct add_const<false, T> {
       typedef typename boost::remove_const<T>::type type;
     }; // struct add_const<false, T>
+
+    template<class UnaryFunc>
+    struct unary_functor_types {
+      typedef typename UnaryFunc::result_type result_type;
+      typedef typename UnaryFunc::argument_type argument_type;
+    }; // struct unary_functor_types
+
+    template<class R, class A>
+    struct unary_functor_types<R(*)(A)> {
+      typedef R result_type;
+      typedef A argument_type;
+    }; // struct unary_functor_types<Return(*)(Argument)>
+
+    template<class BinaryFunc>
+    struct binary_functor_types {
+      typedef typename BinaryFunc::result_type result_type;
+      typedef typename BinaryFunc::first_argument_type first_argument_type;
+      typedef typename BinaryFunc::second_argument_type second_argument_type;
+    }; // struct binary_functor_types
+
+    template<class R, class A1, class A2>
+    struct binary_functor_types<R(*)(A1, A2)> {
+      typedef R result_type;
+      typedef A1 first_argument_type;
+      typedef A2 second_argument_type;
+    }; // struct binary_functor_types<Return(*)(Argument)>
 
     /// The static member value is true if the type T is a random access iterator
     template<typename T>

@@ -27,6 +27,8 @@ namespace TiledArray {
       template<typename T>
       class AnnotatedArray;
       template<typename T>
+      class AnnotatedTile;
+      template<typename T>
       void swap(AnnotatedArray<T>&, AnnotatedArray<T>&);
 
       /// Annotated Array implementation class
@@ -63,18 +65,24 @@ namespace TiledArray {
         }
 
         /// AnnotatedTile assignment operator
-         template<typename Exp0, typename Exp1, typename Op>
-         AnnotatedArrayImpl_& operator =(const BinaryArrayExp<Exp0, Exp1, Op>& /*e*/) {
-           TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
-           return *this;
-         }
+        template<typename Exp0, typename Exp1, typename Op>
+        AnnotatedArrayImpl_& operator =(const BinaryArrayExp<Exp0, Exp1, Op>& /*e*/) {
+          TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
+          return *this;
+        }
 
-         /// AnnotatedTile assignment operator
-         template<typename Exp, typename Op>
-         AnnotatedArrayImpl_& operator =(const UnaryArrayExp<Exp, Op>& /*e*/) {
-           TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
-           return *this;
-         }
+        /// AnnotatedTile assignment operator
+        template<typename Exp, typename Op>
+        AnnotatedArrayImpl_& operator =(const UnaryArrayExp<Exp, Op>& /*e*/) {
+          TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
+          return *this;
+        }
+
+        /// Returns an iterator to an AnnotatedTile object.
+
+        /// This function will return an AnnotatedTile object, which points to
+        /// the tiles contained by the AnnotatedArray.
+
 
         /// Inserts a tile into the array.
 

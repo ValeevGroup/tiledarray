@@ -179,7 +179,7 @@ namespace TiledArray {
 
       return result;
     }
-#endif
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     ~ArrayCoordinate() {}
 
