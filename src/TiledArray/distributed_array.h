@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_DISTRIBUTED_ARRAY_H__INCLUDED
 #define TILEDARRAY_DISTRIBUTED_ARRAY_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/array_dim.h>
 #include <TiledArray/key.h>
 #include <TiledArray/range.h>

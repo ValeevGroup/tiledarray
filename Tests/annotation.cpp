@@ -12,59 +12,15 @@ using namespace TiledArray;
 using TiledArray::expressions::Annotation;
 using TiledArray::expressions::VariableList;
 
-namespace {
-  const size_t primes[] = {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
-  const char varlist[] = "a,b,c,d,e,f,g,h,i,j,k";
-}
+// Note: You can change the number of dimensions used in the tests by changing
+// the value of TA_TEST_DIM.
+#define TA_TEST_DIM 4
 
-template<std::size_t DIM>
-struct AnnotationBaseFixture {
-  BOOST_STATIC_ASSERT((DIM >= 3ul) && (DIM <= 11ul));
-
-
-  AnnotationBaseFixture() { }
-  ~AnnotationBaseFixture() { }
-
-  static boost::array<std::size_t, DIM> make_size() {
-    boost::array<std::size_t, DIM> result;
-    std::copy(primes, primes + DIM, result.begin());
-    return result;
-  }
-
-  static boost::array<std::size_t, DIM> make_weight() {
-    boost::array<std::size_t, DIM> result;
-    detail::calc_weight(primes, primes + DIM, result.begin());
-    return result;
-  }
-
-  static const std::size_t dim;
-  static const Annotation<std::size_t>::volume_type vol;
-  static const boost::array<std::size_t, DIM> size;
-  static const boost::array<std::size_t, DIM> weight;
-  static const TiledArray::detail::DimensionOrderType order;
-  static const VariableList var;
-}; // struct AnnotationBaseFixture
-
-template<std::size_t DIM>
-const std::size_t AnnotationBaseFixture<DIM>::dim = DIM;
-template<std::size_t DIM>
-const std::size_t AnnotationBaseFixture<DIM>::vol = detail::volume(primes, primes + DIM);
-template<std::size_t DIM>
-const boost::array<std::size_t, DIM> AnnotationBaseFixture<DIM>::size = AnnotationBaseFixture<DIM>::make_size();
-template<std::size_t DIM>
-const boost::array<std::size_t, DIM> AnnotationBaseFixture<DIM>::weight = AnnotationBaseFixture<DIM>::make_weight();
-template<std::size_t DIM>
-const TiledArray::detail::DimensionOrderType AnnotationBaseFixture<DIM>::order
-    = detail::decreasing_dimension_order;
-template<std::size_t DIM>
-const VariableList AnnotationBaseFixture<DIM>::var(std::string(varlist, varlist + 2*dim-1));
-
-struct AnnotationFixture : public AnnotationBaseFixture<4> {
-  // Note: You can change the number of dimensions used by modifying the
-  // template parameter of AnnotationBaseFixture.
+struct AnnotationFixture {
+  BOOST_STATIC_ASSERT((TA_TEST_DIM >= 3ul) && (TA_TEST_DIM <= 11ul));
   typedef Annotation<std::size_t>::size_array size_array;
   typedef Annotation<std::size_t>::ordinal_type ordinal_type;
-  typedef ArrayCoordinate<double,dim,LevelTag<0>, CoordinateSystem<dim> > index_type;
+  typedef ArrayCoordinate<double,TA_TEST_DIM,LevelTag<0>, CoordinateSystem<TA_TEST_DIM> > index_type;
 
   AnnotationFixture() : s(size), w(weight),
       ca(size.begin(), size.end(), weight.begin(), weight.end(), vol, var),
@@ -72,11 +28,40 @@ struct AnnotationFixture : public AnnotationBaseFixture<4> {
   { }
   ~AnnotationFixture() { }
 
-  boost::array<std::size_t, dim> s;
-  boost::array<std::size_t, dim> w;
+  static boost::array<std::size_t, TA_TEST_DIM> make_size() {
+    boost::array<std::size_t, TA_TEST_DIM> result;
+    std::copy(primes, primes + TA_TEST_DIM, result.begin());
+    return result;
+  }
+
+  static boost::array<std::size_t, TA_TEST_DIM> make_weight() {
+    boost::array<std::size_t, TA_TEST_DIM> result;
+    detail::calc_weight(primes, primes + TA_TEST_DIM, result.begin());
+    return result;
+  }
+
+  static const size_t primes[11];
+  static const char varlist[22];
+  static const std::size_t dim;
+  static const Annotation<std::size_t>::volume_type vol;
+  static const boost::array<std::size_t, TA_TEST_DIM> size;
+  static const boost::array<std::size_t, TA_TEST_DIM> weight;
+  static const TiledArray::detail::DimensionOrderType order;
+  static const VariableList var;
+
+  boost::array<std::size_t, TA_TEST_DIM> s;
+  boost::array<std::size_t, TA_TEST_DIM> w;
   Annotation<const std::size_t> ca;
   Annotation<std::size_t> a;
 };
+
+const size_t AnnotationFixture::primes[11] = {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
+const char AnnotationFixture::varlist[22] = "a,b,c,d,e,f,g,h,i,j,k";
+const std::size_t AnnotationFixture::vol = detail::volume(primes, primes + TA_TEST_DIM);
+const boost::array<std::size_t, TA_TEST_DIM> AnnotationFixture::size = AnnotationFixture::make_size();
+const boost::array<std::size_t, TA_TEST_DIM> AnnotationFixture::weight = AnnotationFixture::make_weight();
+const TiledArray::detail::DimensionOrderType AnnotationFixture::order = detail::decreasing_dimension_order;
+const VariableList AnnotationFixture::var(std::string(varlist, varlist + 2*TA_TEST_DIM-1));
 
 BOOST_FIXTURE_TEST_SUITE( annotation_suite , AnnotationFixture )
 
@@ -87,7 +72,7 @@ BOOST_AUTO_TEST_CASE( accessor )
   BOOST_CHECK_EQUAL_COLLECTIONS(a.weight().begin(), a.weight().end(),
                                 weight.begin(), weight.end()); // check weight accessor
   BOOST_CHECK_EQUAL(a.vars(), var); // check variable list accessor
-  BOOST_CHECK_EQUAL(a.dim(), dim); // check dimension accessor
+  BOOST_CHECK_EQUAL(a.dim(), TA_TEST_DIM); // check dimension accessor
   BOOST_CHECK_EQUAL(a.volume(), vol);// check volume accessor
   BOOST_CHECK_EQUAL(a.order(), order);// check order accessor
 }
@@ -111,7 +96,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL_COLLECTIONS(ac.weight().begin(), ac.weight().end(),
                                 a.weight().begin(), a.weight().end());
   BOOST_CHECK_EQUAL(ac.vars(), var);
-  BOOST_CHECK_EQUAL(ac.dim(), dim);
+  BOOST_CHECK_EQUAL(ac.dim(), TA_TEST_DIM);
   BOOST_CHECK_EQUAL(ac.volume(), a.volume());
   BOOST_CHECK_EQUAL(ac.order(), a.order());
 
@@ -123,17 +108,17 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL_COLLECTIONS(a2.weight().begin(), a2.weight().end(),
       weight.begin(), weight.end());
   BOOST_CHECK_EQUAL(a2.vars(), var);
-  BOOST_CHECK_EQUAL(a2.dim(), dim);
+  BOOST_CHECK_EQUAL(a2.dim(), TA_TEST_DIM);
   BOOST_CHECK_EQUAL(a2.volume(), vol);
   BOOST_CHECK_EQUAL(a2.order(), order);
 }
 
 BOOST_AUTO_TEST_CASE( assignment )
 {
-  typedef detail::CoordIterator<boost::array<std::size_t, dim>, order> CI;
-  boost::array<std::size_t, dim> ss;
+  typedef detail::CoordIterator<boost::array<std::size_t, TA_TEST_DIM>, order> CI;
+  boost::array<std::size_t, TA_TEST_DIM> ss;
   ss.assign(2);
-  boost::array<std::size_t, dim> ww;
+  boost::array<std::size_t, TA_TEST_DIM> ww;
   detail::calc_weight(CI::begin(ss), CI::end(ss), CI::begin(ww));
   std::size_t vv = detail::volume(ss.begin(), ss.end());
   Annotation<std::size_t> ac(ss.begin(), ss.end(), w.begin(), w.end(), vv, var);
@@ -151,9 +136,9 @@ BOOST_AUTO_TEST_CASE( assignment )
 BOOST_AUTO_TEST_CASE( permutation )
 {
   const size_t perm_indices[] = {1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  Permutation<dim> p(perm_indices);
-  boost::array<std::size_t, dim> sp = p ^ size;
-  boost::array<std::size_t, dim> wp;
+  Permutation<TA_TEST_DIM> p(perm_indices);
+  boost::array<std::size_t, TA_TEST_DIM> sp = p ^ size;
+  boost::array<std::size_t, TA_TEST_DIM> wp;
   detail::calc_weight(sp.begin(), sp.end(), wp.begin());
   std::size_t volp = detail::volume(sp);
   VariableList varp = p ^ var;
@@ -163,7 +148,7 @@ BOOST_AUTO_TEST_CASE( permutation )
   BOOST_CHECK_EQUAL_COLLECTIONS(wp.begin(), wp.end(),
                                 a.weight().begin(), a.weight().end());
   BOOST_CHECK_EQUAL(varp, a.vars());
-  BOOST_CHECK_EQUAL(dim, a.dim());
+  BOOST_CHECK_EQUAL(TA_TEST_DIM, a.dim());
   BOOST_CHECK_EQUAL(volp, a.volume());
   BOOST_CHECK_EQUAL(order, a.order());
 }

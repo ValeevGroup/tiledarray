@@ -7,16 +7,16 @@
 #include <boost/type_traits.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/scoped_ptr.hpp>
 
 namespace TiledArray {
   namespace detail {
 
-
-
     /// Polymorphic transform iterator
 
     /// This iterator will transform an arbitrary iterator with an arbitrary
-    /// transformation function. It is typed by the return type of the
+    /// transformation function. The Value template parameter must be compatible
+    /// with the return type of the transformation function.
     template<typename Value>
     class PolyTransformIterator : public boost::iterator_facade<PolyTransformIterator<Value>,
         Value, std::input_iterator_tag, Value>
@@ -81,30 +81,44 @@ namespace TiledArray {
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
     private:
-      // Give
+      // Give boost::iterator_facade access to private member functions.
       friend class boost::iterator_core_access;
 
+      /// Return a transformed object.
       reference dereference() const {
         return holder_->dereference();
       }
-      bool equal(const PolyTransformIterator_& other) const {
+
+      /// Compare this iterator with another iterator
+
+      /// If the base iterators used to construct the transformation iterator
+      /// have the same type, then the iterators are compared using the ==
+      /// operator. Otherwise, they are compared with void pointers to the base
+      /// iterator's to the data pointed to by those iterators.
+      template<typename OtherValue>
+      bool equal(const PolyTransformIterator<OtherValue>& other) const {
         if(holder_->type() == other.holder_->type())
           return holder_->equal(other.holder_);
 
         return holder_->void_ptr() == other.holder_->void_ptr();
       }
+
+      /// Increment the base pointer.
       void increment() {
         holder_->increment();
       }
 
-      HolderBase* holder_;
+      HolderBase* holder_;  ///< Base pointer to the iterator/transform function holder.
 
+      /// Provides the interface to the iterator/transformation function holder.
       class HolderBase
       {
       public:
         virtual ~HolderBase() { }
 
+        /// Returns the type_info object of the base iterator.
         virtual const std::type_info& type() const = 0;
+        /// Returns a base pointer to a copy of the actual object.
         virtual HolderBase* clone() const = 0;
         virtual reference dereference() const = 0;
         virtual bool equal(const HolderBase* other) const = 0;

@@ -71,7 +71,7 @@ struct ArrayFixture : public TiledRangeFixture<Array<int, 3> > {
 
   data_array::const_iterator find_data_element(const index_type& i) const {
     return std::find_if(data.begin(), data.end(),
-            detail::make_unary_transform(boost::bind1st(std::equal_to<Array3::index_type>(), i),
+            detail::make_unary_transform(std::bind1st(std::equal_to<Array3::index_type>(), i),
             detail::pair_first<Array3::value_type>()));
   }
 

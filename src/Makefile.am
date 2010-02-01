@@ -23,7 +23,6 @@ nobase_include_HEADERS = TiledArray/annotated_array.h \
                   TiledArray/permutation.h \
                   TiledArray/predicate.h \
                   TiledArray/range.h \
-                  TiledArray/shape.h \
                   TiledArray/tile_math.h \
                   TiledArray/tile_slice.h \
                   TiledArray/tile.h \

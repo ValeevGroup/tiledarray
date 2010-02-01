@@ -38,7 +38,7 @@ namespace TiledArray {
 
   namespace detail {
     template <typename InIter0, typename InIter1, typename RandIter>
-    void permute(InIter0, InIter0, InIter1, RandIter&);
+    void permute(InIter0, InIter0, InIter1, RandIter);
   } // namespace detail
 
   /// Permutation
@@ -421,7 +421,8 @@ namespace TiledArray {
     TA_ASSERT((orig.size() == DIM), std::runtime_error,
         "The permutation dimension is not equal to the vector size.");
     std::vector<T> result(DIM);
-    detail::permute(perm.begin(), perm.end(), orig.begin(), result.begin());
+    detail::permute<Permutation<DIM>::const_iterator, std::vector<T>::const_iterator, std::vector<T>::iterator>
+      (perm.begin(), perm.end(), orig.begin(), result.begin());
     return result;
   }
 

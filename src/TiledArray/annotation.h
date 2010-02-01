@@ -204,7 +204,7 @@ namespace TiledArray {
         return result;
       }
 
-      void swap(Annotation& other) {
+      void swap_(Annotation& other) {
         detail::swap(size_, other.size_);
         detail::swap(weight_, other.weight_);
         std::swap(n_, other.n_);
@@ -212,7 +212,7 @@ namespace TiledArray {
         std::swap(order_, other.order_);
       }
 
-      friend void TiledArray::expressions::swap<>(Annotation_&, Annotation_&);
+      friend void swap<>(Annotation_&, Annotation_&);
 
       size_array size_;         ///< tile size
       size_array weight_;       ///< dimension weights
@@ -225,7 +225,7 @@ namespace TiledArray {
     /// Exchange the values of a0 and a1.
     template<typename I>
     void swap(Annotation<I>& a0, Annotation<I>& a1) {
-      a0.swap(a1);
+      a0.swap_(a1);
     }
 
   } // namespace expressions

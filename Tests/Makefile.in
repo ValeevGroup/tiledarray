@@ -58,8 +58,8 @@ am_ta_test_OBJECTS = TiledArrayTest.$(OBJEXT) permutation.$(OBJEXT) \
 	coordinates.$(OBJEXT) range.$(OBJEXT) tiled_range1.$(OBJEXT) \
 	array_dim.$(OBJEXT) dense_array.$(OBJEXT) key.$(OBJEXT) \
 	distributed_array.$(OBJEXT) tiled_range.$(OBJEXT) \
-	shape.$(OBJEXT) variable_list.$(OBJEXT) tile.$(OBJEXT) \
-	tile_slice.$(OBJEXT) packed_tile.$(OBJEXT) array_ref.$(OBJEXT) \
+	variable_list.$(OBJEXT) tile.$(OBJEXT) tile_slice.$(OBJEXT) \
+	packed_tile.$(OBJEXT) array_ref.$(OBJEXT) \
 	transform_iterator.$(OBJEXT) annotation.$(OBJEXT) \
 	annotated_tile.$(OBJEXT) tile_math.$(OBJEXT) array.$(OBJEXT) \
 	annotated_array.$(OBJEXT) array_math.$(OBJEXT) \
@@ -176,14 +176,35 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = -I$(top_builddir)/src/ -I$(top_srcdir)/src/
-ta_test_SOURCES = TiledArrayTest.cpp permutation.cpp algorithm.cpp \
-  coordinate_system.cpp coordinates.cpp range.cpp tiled_range1.cpp \
-  array_dim.cpp dense_array.cpp key.cpp distributed_array.cpp \
-  tiled_range.cpp shape.cpp variable_list.cpp tile.cpp \
-  tile_slice.cpp packed_tile.cpp array_ref.cpp transform_iterator.cpp \
-  annotation.cpp annotated_tile.cpp tile_math.cpp array.cpp annotated_array.cpp \
-  array_math.cpp array_slice.cpp array_fixtures.h iteration_test.h \
-  global_fixture.h unit_test_config.h
+ta_test_SOURCES = TiledArrayTest.cpp \
+                  permutation.cpp \
+                  algorithm.cpp \
+                  coordinate_system.cpp \
+                  coordinates.cpp \
+                  range.cpp \
+                  tiled_range1.cpp \
+                  array_dim.cpp \
+                  dense_array.cpp \
+                  key.cpp \
+                  distributed_array.cpp \
+                  tiled_range.cpp \
+                  variable_list.cpp \
+                  tile.cpp \
+                  tile_slice.cpp \
+                  packed_tile.cpp \
+                  array_ref.cpp \
+                  transform_iterator.cpp \
+                  annotation.cpp \
+                  annotated_tile.cpp \
+                  tile_math.cpp \
+                  array.cpp \
+                  annotated_array.cpp \
+                  array_math.cpp \
+                  array_slice.cpp \
+                  array_fixtures.h \
+                  iteration_test.h \
+                  global_fixture.h \
+                  unit_test_config.h
 
 TESTS = $(check_PROGRAMS)
 all: unit_test_config.h
@@ -269,7 +290,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/packed_tile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/permutation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/range.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shape.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tile_math.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tile_slice.Po@am__quote@
@@ -583,7 +603,7 @@ uninstall-am:
 
 
 check_parallel: $(TESTS)
-	$(MPIEXEC) -n 4 ./$(TESTS)
+	$(MPIEXEC) -n 4 ./ta-test
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

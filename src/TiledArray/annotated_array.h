@@ -177,7 +177,7 @@ namespace TiledArray {
         /// val specifies the default value of every element
         template<unsigned int DIM, detail::DimensionOrderType O>
         AnnotatedArray(Array<value_type, DIM, CoordinateSystem<DIM, O> >* a, const VariableList& v) :
-            pimpl_(boost::make_shared<AnnotatedArrayImpl<T> >(dynamic_cast<array_ptr>(a), v, O))
+            pimpl_(new AnnotatedArrayImpl<T>(dynamic_cast<array_ptr>(a), v, O))
         { }
 
         /// Copy constructor

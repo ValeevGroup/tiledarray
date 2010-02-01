@@ -293,7 +293,7 @@ namespace TiledArray {
           TA_ASSERT(owner_, std::runtime_error,
               "This annotated tile cannot be permuted in place because it references another tile.");
           AnnotatedTile_ temp = p ^ *this;
-          swap(temp);
+          swap_(temp);
 
           return *this;
         }
@@ -342,15 +342,15 @@ namespace TiledArray {
           dim_ = NULL;
         }
 
-        void swap(AnnotatedTile_& t) {
-          Annotation_::swap(t);
+        void swap_(AnnotatedTile_& t) {
+          Annotation_::swap_(t);
           std::swap(data_, t.data_);
           std::swap(dim_, t.dim_);
           std::swap(owner_, t.owner_);
           std::swap(alloc_, t.alloc_);
         }
 
-        friend void TiledArray::expressions::tile::swap<>(AnnotatedTile_&, AnnotatedTile_&);
+        friend void swap<>(AnnotatedTile_&, AnnotatedTile_&);
 
         ptr_type data_;           ///< tile data
         std::size_t* dim_;              ///< dimension data when annotated tile owns the data.
@@ -362,7 +362,7 @@ namespace TiledArray {
       /// Exchange the content of the two annotated tiles.
       template<typename T>
       void swap(AnnotatedTile<T>& t0, AnnotatedTile<T>& t1) {
-        t0.swap(t1);
+        t0.swap_(t1);
       }
 
       template <unsigned int DIM, typename T>
