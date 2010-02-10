@@ -1,5 +1,5 @@
-#ifndef PERMUTATION_H_
-#define PERMUTATION_H_
+#ifndef TILEDARRAY_PERMUTATION_H__INCLUED
+#define TILEDARRAY_PERMUTATION_H__INCLUED
 
 #include <TiledArray/error.h>
 #include <TiledArray/coordinate_system.h>
@@ -84,7 +84,7 @@ namespace TiledArray {
 
     Permutation(const Permutation& other) : p_(other.p_) { }
 
-#if __GXX_EXPERIMENTAL_CXX0X__
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
     template <typename... Params>
     Permutation(Params... params) {
       BOOST_STATIC_ASSERT(detail::Count<Params...>::value == DIM);
@@ -105,7 +105,7 @@ namespace TiledArray {
       TA_ASSERT( valid_(begin(), end()) , std::runtime_error,
           "Invalid permutation supplied.");
     }
-#endif
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     ~Permutation() {}
 
@@ -421,7 +421,7 @@ namespace TiledArray {
     TA_ASSERT((orig.size() == DIM), std::runtime_error,
         "The permutation dimension is not equal to the vector size.");
     std::vector<T> result(DIM);
-    detail::permute<Permutation<DIM>::const_iterator, std::vector<T>::const_iterator, std::vector<T>::iterator>
+    detail::permute<typename Permutation<DIM>::const_iterator, typename std::vector<T>::const_iterator, typename std::vector<T>::iterator>
       (perm.begin(), perm.end(), orig.begin(), result.begin());
     return result;
   }
@@ -446,4 +446,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif /*PERMUTATION_H_*/
+#endif // TILEDARRAY_PERMUTATION_H__INCLUED
