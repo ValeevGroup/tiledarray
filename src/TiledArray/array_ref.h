@@ -28,6 +28,8 @@ namespace TiledArray {
     bool operator>=(const ArrayRef<T>&, const ArrayRef<T>&);
     template <unsigned int DIM, typename T>
     ArrayRef<T>& operator^=(ArrayRef<T>&, const Permutation<DIM>&);
+    template <unsigned int DIM, typename T>
+    boost::array<T, static_cast<std::size_t>(DIM) > operator^(const Permutation<DIM>&, const ArrayRef<T>&);
 
     /// Stores a reference to an array.
 
@@ -193,8 +195,8 @@ namespace TiledArray {
     /// Array reference equality comparison
 
     /// Returns true if all elements of the two arrays are equal.
-    template<typename T>
-    bool operator==(const ArrayRef<T>& a1, const ArrayRef<T>& a2) {
+    template<typename T, typename U>
+    bool operator==(const ArrayRef<T>& a1, const ArrayRef<U>& a2) {
       return a1.size() == a2.size() &&
           std::equal(a1.begin(), a1.end(), a2.begin());
     }
@@ -202,16 +204,16 @@ namespace TiledArray {
     /// Array reference inequality comparison
 
     /// Returns true if any one of the elements is not equal.
-    template<typename T>
-    bool operator!=(const ArrayRef<T>& a1, const ArrayRef<T>& a2) {
+    template<typename T, typename U>
+    bool operator!=(const ArrayRef<T>& a1, const ArrayRef<U>& a2) {
       return !(a1 == a2);
     }
 
     /// Array reference less-than comparison
 
     /// This does a lexicographical less-than comparison between the two arrays.
-    template<typename T>
-    bool operator<(const ArrayRef<T>& a1, const ArrayRef<T>& a2) {
+    template<typename T, typename U>
+    bool operator<(const ArrayRef<T>& a1, const ArrayRef<U>& a2) {
       return std::lexicographical_compare(a1.begin(), a1.end(), a2.begin(), a2.end());
     }
 
@@ -219,8 +221,8 @@ namespace TiledArray {
 
     /// This does a lexicographical greater-than comparison between the two
     /// arrays.
-    template<typename T>
-    bool operator>(const ArrayRef<T>& a1, const ArrayRef<T>& a2) {
+    template<typename T, typename U>
+    bool operator>(const ArrayRef<T>& a1, const ArrayRef<U>& a2) {
       return a2 < a1;
     }
 
@@ -228,8 +230,8 @@ namespace TiledArray {
 
     /// This does a lexicographical less-than-or-equal-to comparison between the
     /// two arrays.
-    template<typename T>
-    bool operator<=(const ArrayRef<T>& a1, const ArrayRef<T>& a2) {
+    template<typename T, typename U>
+    bool operator<=(const ArrayRef<T>& a1, const ArrayRef<U>& a2) {
       return !(a2 < a1);
     }
 
@@ -237,8 +239,112 @@ namespace TiledArray {
 
     /// This does a lexicographical greater-than-or-equal-to comparison between
     /// the two arrays.
-    template<typename T, std::size_t N>
-    bool operator>=(const ArrayRef<T>& a1, const ArrayRef<T>& a2) {
+    template<typename T, typename U>
+    bool operator>=(const ArrayRef<T>& a1, const ArrayRef<U>& a2) {
+      return !(a1 < a2);
+    }
+
+    /// Array reference equality comparison
+
+    /// Returns true if all elements of the two arrays are equal.
+    template<typename T, typename U, std::size_t N>
+    bool operator==(const ArrayRef<T>& a1, const boost::array<U, N>& a2) {
+      return a1.size() == a2.size() &&
+          std::equal(a1.begin(), a1.end(), a2.begin());
+    }
+
+    /// Array reference inequality comparison
+
+    /// Returns true if any one of the elements is not equal.
+    template<typename T, typename U, std::size_t N>
+    bool operator!=(const ArrayRef<T>& a1, const boost::array<U, N>& a2) {
+      return !(a1 == a2);
+    }
+
+    /// Array reference less-than comparison
+
+    /// This does a lexicographical less-than comparison between the two arrays.
+    template<typename T, typename U, std::size_t N>
+    bool operator<(const ArrayRef<T>& a1, const boost::array<U, N>& a2) {
+      return std::lexicographical_compare(a1.begin(), a1.end(), a2.begin(), a2.end());
+    }
+
+    /// Array reference greater-than comparison
+
+    /// This does a lexicographical greater-than comparison between the two
+    /// arrays.
+    template<typename T, typename U, std::size_t N>
+    bool operator>(const ArrayRef<T>& a1, const boost::array<U, N>& a2) {
+      return a2 < a1;
+    }
+
+    /// Array reference less-than-or-equal-to comparison
+
+    /// This does a lexicographical less-than-or-equal-to comparison between the
+    /// two arrays.
+    template<typename T, typename U, std::size_t N>
+    bool operator<=(const ArrayRef<T>& a1, const boost::array<U, N>& a2) {
+      return !(a2 < a1);
+    }
+
+    /// Array reference greater-than-or-equal-to comparison
+
+    /// This does a lexicographical greater-than-or-equal-to comparison between
+    /// the two arrays.
+    template<typename T, typename U, std::size_t N>
+    bool operator>=(const ArrayRef<T>& a1, const boost::array<U, N>& a2) {
+      return !(a1 < a2);
+    }
+
+    /// Array reference equality comparison
+
+    /// Returns true if all elements of the two arrays are equal.
+    template<typename T, typename U, std::size_t N>
+    bool operator==(const boost::array<T, N>& a1, const ArrayRef<U>& a2) {
+      return a1.size() == a2.size() &&
+          std::equal(a1.begin(), a1.end(), a2.begin());
+    }
+
+    /// Array reference inequality comparison
+
+    /// Returns true if any one of the elements is not equal.
+    template<typename T, typename U, std::size_t N>
+    bool operator!=(const boost::array<T, N>& a1, const ArrayRef<U>& a2) {
+      return !(a1 == a2);
+    }
+
+    /// Array reference less-than comparison
+
+    /// This does a lexicographical less-than comparison between the two arrays.
+    template<typename T, typename U, std::size_t N>
+    bool operator<(const boost::array<T, N>& a1, const ArrayRef<U>& a2) {
+      return std::lexicographical_compare(a1.begin(), a1.end(), a2.begin(), a2.end());
+    }
+
+    /// Array reference greater-than comparison
+
+    /// This does a lexicographical greater-than comparison between the two
+    /// arrays.
+    template<typename T, typename U, std::size_t N>
+    bool operator>(const ArrayRef<T>& a1, const boost::array<T, N>& a2) {
+      return a2 < a1;
+    }
+
+    /// Array reference less-than-or-equal-to comparison
+
+    /// This does a lexicographical less-than-or-equal-to comparison between the
+    /// two arrays.
+    template<typename T, typename U, std::size_t N>
+    bool operator<=(const boost::array<T, N>& a1, const ArrayRef<U>& a2) {
+      return !(a2 < a1);
+    }
+
+    /// Array reference greater-than-or-equal-to comparison
+
+    /// This does a lexicographical greater-than-or-equal-to comparison between
+    /// the two arrays.
+    template<typename T, typename U, std::size_t N>
+    bool operator>=(const boost::array<T, N>& a1, const ArrayRef<U>& a2) {
       return !(a1 < a2);
     }
 
