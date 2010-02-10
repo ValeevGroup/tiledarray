@@ -1,6 +1,7 @@
 #include "TiledArray/distributed_array.h"
 #include <boost/functional.hpp>
 #include "unit_test_config.h"
+#include "array_fixtures.h"
 
 
 DistributedArrayFixture::DistributedArrayFixture() : world(GlobalFixture::world), r(s),

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iterator>
 #include "unit_test_config.h"
+#include "array_fixtures.h"
 
 using namespace TiledArray;
 

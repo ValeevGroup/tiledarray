@@ -16,7 +16,6 @@
 
 #include <boost/test/output_test_stream.hpp>
 #include "global_fixture.h"
-#include "array_fixtures.h"
 #include "iteration_test.h"
 
 #endif // TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED

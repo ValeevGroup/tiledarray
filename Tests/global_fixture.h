@@ -1,7 +1,9 @@
 #ifndef TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 
-#include <world/world.h>
+namespace madness {
+  class World;
+} // namespace madness
 
 struct GlobalFixture {
   GlobalFixture();

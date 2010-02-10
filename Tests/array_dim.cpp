@@ -2,6 +2,7 @@
 #include "TiledArray/coordinates.h"
 #include "TiledArray/range.h"
 #include "unit_test_config.h"
+#include "array_fixtures.h"
 
 using namespace TiledArray;
 
