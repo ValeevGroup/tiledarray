@@ -13,8 +13,29 @@ namespace TiledArray {
 
   namespace detail {
 
+    // Forward declarations
     template<typename Key1, typename Key2>
     class Key;
+
+    // Local forward declarations
+    template<typename Op, typename F0, typename F1>
+    struct binary_transform;
+    template<typename Op, typename F>
+    struct unary_transform;
+    template<typename Op, typename F0, typename F1>
+    binary_transform<Op, F0, F1> make_binary_transform(Op op, F0 f0, F1 f1);
+    template<typename Op, typename F>
+    unary_transform<Op, F> make_unary_transform(Op op, F f);
+    template <typename Value, typename OutIter>
+    void initialize_from_values(Value val, OutIter result, unsigned int, boost::true_type);
+    template <typename InIter, typename OutIter>
+    void initialize_from_values(InIter, OutIter, unsigned int, boost::false_type);
+    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
+    void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag, CS> > k, OutIter result, unsigned int, boost::false_type);
+    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
+    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag, CS>, I > k, OutIter result, unsigned int, boost::false_type);
+    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
+    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag, CS>, I >, OutIter, unsigned int, boost::false_type);
 
     template<typename P>
     struct pair_first : public std::unary_function<P, typename P::first_type> {
