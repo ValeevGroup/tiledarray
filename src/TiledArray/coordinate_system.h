@@ -186,4 +186,36 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
+namespace madness {
+  namespace archive {
+
+    template <class Archive, typename T>
+    struct ArchiveLoadImpl;
+    template <class Archive, typename T>
+    struct ArchiveStoreImpl;
+
+    template <class Archive>
+    struct ArchiveLoadImpl<Archive, TiledArray::detail::DimensionOrderType > {
+
+      static void load(const Archive& ar, TiledArray::detail::DimensionOrderType o) {
+        unsigned int i;
+        ar & i;
+        if(i == 0u)
+          o = TiledArray::detail::decreasing_dimension_order;
+        else
+          o =  TiledArray::detail::increasing_dimension_order;
+      }
+    }; // struct ArchiveLoadImpl<Archive, TiledArray::expressions::tile::Annotation<I> >
+
+    template <class Archive>
+    struct ArchiveStoreImpl<Archive, TiledArray::detail::DimensionOrderType > {
+
+      static void store(const Archive& ar, const TiledArray::detail::DimensionOrderType o) {
+        ar & (o == TiledArray::detail::decreasing_dimension_order ? 0u : 1u);
+      }
+    }; // struct ArchiveStoreImpl<Archive, TiledArray::expression::Annotation<I> >
+
+  } // namespace archive
+} // namespace madness
+
 #endif // TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
