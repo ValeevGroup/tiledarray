@@ -1,6 +1,6 @@
 # TiledArray/Makefile
 
-AM_CPPFLAGS = -I$(top_builddir)/src/ -I$(top_srcdir)/src/
+AM_CPPFLAGS = -I$(top_srcdir)/src/
 
 check_PROGRAMS = ta-test
 ta_test_SOURCES = TiledArrayTest.cpp \
