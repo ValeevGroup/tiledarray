@@ -109,6 +109,19 @@ namespace TiledArray {
 
       const std::vector<std::string>& data() const { return vars_; }
 
+      std::string string() const {
+        std::string result;
+        std::vector<std::string>::const_iterator it = vars_.begin();
+        if(it == vars_.end())
+          return result;
+
+        for(result = *it; it != vars_.end(); ++it) {
+          result += "," + *it;
+        }
+
+        return result;
+      }
+
       void swap(VariableList& other) {
         std::swap(vars_, other.vars_);
       }
@@ -259,6 +272,35 @@ namespace TiledArray {
   } // namespace expressions
 
 } // namespace TiledArray
+
+namespace madness {
+  namespace archive {
+
+    template <class Archive, typename T>
+    struct ArchiveLoadImpl;
+
+    template <class Archive, typename T>
+    struct ArchiveStoreImpl;
+
+    template <class Archive>
+    struct ArchiveLoadImpl<Archive, TiledArray::expressions::VariableList > {
+      static void load(const Archive& ar, TiledArray::expressions::VariableList& v) {
+        std::string s;
+        ar & s;
+        v = s;
+      }
+    }; // struct ArchiveLoadImpl<Archive, TiledArray::expressions::VariableList >
+
+    template <class Archive>
+    struct ArchiveStoreImpl<Archive, TiledArray::expressions::VariableList > {
+      static void store(const Archive& ar, const TiledArray::expressions::VariableList& v) {
+        ar & v.string();
+      }
+    }; // struct ArchiveLoadImpl<Archive, TiledArray::expressions::VariableList >
+
+  } // namespace archive
+} // namespace madness
+
 
 // Add specializations of math functors.
 namespace std {
