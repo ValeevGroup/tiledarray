@@ -24,7 +24,7 @@ struct AlgorithmFixture {
     void operator()(const RandIter& it) { i_ += *it; }
   };
 
-  const static std::size_t ndim = 5;
+  static const std::size_t ndim = 5;
 
   typedef std::vector<int>::const_iterator iter;
   typedef detail::ForLoop<Counter<iter>, iter> ForLoop1;
