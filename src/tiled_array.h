@@ -13,7 +13,6 @@
 //#include <TiledArray/iterator.h>
 
 //#include <TiledArray/range.h>
-#include <TiledArray/shape.h>
 //#include <TiledArray/variable_list.h>
 //#include <TiledArray/annotation.h>
 
