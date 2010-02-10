@@ -249,7 +249,6 @@ namespace TiledArray {
       return *this;
     }
 
-
     expressions::tile::AnnotatedTile<value_type> operator ()(const std::string& v) {
       expressions::tile::AnnotatedTile<value_type> result(*this, expressions::VariableList(v));
       return result;
@@ -257,6 +256,15 @@ namespace TiledArray {
 
     expressions::tile::AnnotatedTile<const value_type> operator ()(const std::string& v) const {
       return expressions::tile::AnnotatedTile<const value_type>(*this, expressions::VariableList(v));
+    }
+
+    expressions::tile::AnnotatedTile<value_type> operator ()(const expressions::VariableList& v) {
+      expressions::tile::AnnotatedTile<value_type> result(*this, v);
+      return result;
+    }
+
+    expressions::tile::AnnotatedTile<const value_type> operator ()(const expressions::VariableList& v) const {
+      return expressions::tile::AnnotatedTile<const value_type>(*this, v);
     }
 
     /// Serializes the tile data for communication with other nodes.
