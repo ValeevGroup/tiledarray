@@ -10,7 +10,6 @@
 
 using namespace TiledArray;
 using TiledArray::expressions::VariableList;
-using TiledArray::expressions::tile::AnnotatedTile;
 
 struct TileFixture {
   typedef Tile<double, 3> Tile3;
@@ -32,8 +31,8 @@ struct TileFixture {
 };
 
 struct AnnotatedTileFixture : public TileFixture {
-  typedef AnnotatedTile<double> ATile;
-  typedef AnnotatedTile<const double> ConstATile;
+  typedef TiledArray::expressions::tile::AnnotatedTile<double> ATile;
+  typedef TiledArray::expressions::tile::AnnotatedTile<const double> ConstATile;
 
   AnnotatedTileFixture() : v("a,b,c"), a(t, v), ca(const_cast<const Tile3&>(t), v), s(t.size()) { }
   ~AnnotatedTileFixture() { }
@@ -58,7 +57,7 @@ BOOST_FIXTURE_TEST_SUITE( annotated_tile_suite , AnnotatedTileFixture )
 BOOST_AUTO_TEST_CASE( accessor )
 {
   BOOST_CHECK_EQUAL(a.data(), t.data()); // check that the same data pointer is used.
-
+  BOOST_CHECK_EQUAL(ca.data(), t.data());
   BOOST_CHECK_EQUAL_COLLECTIONS(a.size().begin(), a.size().end(),
       t.size().begin(), t.size().end());    // check size accessor
   BOOST_CHECK_EQUAL_COLLECTIONS(a.weight().begin(), a.weight().end(),
