@@ -3,6 +3,7 @@
 
 #include <TiledArray/variable_list.h>
 #include <TiledArray/coordinate_system.h>
+#include <TiledArray/array_ref.h>
 #include <TiledArray/config.h>
 #include <Eigen/Core>
 #include <boost/iterator/transform_iterator.hpp>
@@ -21,6 +22,8 @@ namespace TiledArray {
     namespace tile {
       template<typename T>
       class AnnotatedTile;
+      template<typename T>
+      class ArrayRef;
       template<typename Exp0, typename Exp1, template<typename> class Op >
       struct Expression;
       template<typename Exp, typename Op>

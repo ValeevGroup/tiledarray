@@ -1,13 +1,18 @@
-#ifndef ARRAY_H__INCLUDED
-#define ARRAY_H__INCLUDED
+#ifndef TILEDARRAY_ARRAY_H__INCLUDED
+#define TILEDARRAY_ARRAY_H__INCLUDED
 
 #include <TiledArray/distributed_array.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/tile.h>
 #include <TiledArray/annotated_array.h>
 #include <TiledArray/array_util.h>
-#include <cassert>
+#include <TiledArray/transform_iterator.h>
+#include <TiledArray/madness_runtime.h>
+#include <TiledArray/array_ref.h>
 #include <boost/shared_ptr.hpp>
+#include <boost/functional.hpp>
+#include <boost/iterator/filter_iterator.hpp>
+#include <functional>
 
 namespace TiledArray {
 
@@ -18,57 +23,122 @@ namespace TiledArray {
   class TiledRange;
   template<typename T, unsigned int DIM, typename CS>
   class Tile;
-  template<typename T>
+  template<typename T, typename I>
   class BaseArray;
   template <typename T, unsigned int DIM, typename CS>
   class Array;
-  template<typename T, unsigned int DIM>
-  BaseArray<T>* operator^=(BaseArray<T>*, const Permutation<DIM>&);
+  template<typename T, typename I, unsigned int DIM>
+  BaseArray<T, I>* operator^=(BaseArray<T, I>*, const Permutation<DIM>&);
   template<typename T, unsigned int DIM, typename CS>
   void swap(Array<T, DIM, CS>&, Array<T, DIM, CS>&);
+
+  namespace expressions {
+    class VariableList;
+//    namespace tile {
+//      template<typename T>
+//      class AnnotatedTile;
+//
+//    } // namespace tile
+//
+//    namespace array {
+//
+//      template<typename T>
+//      class AnnotatedTile;
+//    } // namespace array
+  } // namespace expressions
+
+
 
   /// Array interface class.
 
   /// Provides a common interface for math operations on array objects.
-  template<typename T>
-  class BaseArray : public madness::WorldObject< BaseArray<T> > {
+  template<typename T, typename I>
+  class BaseArray {
   private:
-    BaseArray();
-    BaseArray(const BaseArray<T>&);
-    BaseArray<T>& operator=(const BaseArray<T>&);
-  public:
-    virtual void clear() = 0;
-    virtual std::size_t volume(bool local = false) const = 0;
+    typedef BaseArray<T, I> BaseArray_;
+
+    // Prevent copy operations.
+    BaseArray(const BaseArray<T, I>&);
+    BaseArray<T, I>& operator=(const BaseArray<T, I>&);
+
   protected:
-    BaseArray(madness::World& world) : madness::WorldObject<BaseArray<T> >(world) { }
+    // Basic typedefs
+    typedef typename boost::remove_const<T>::type value_type;
+    typedef I ordinal_type;
+    typedef I volume_type;
+    typedef detail::ArrayRef<const I> size_array;
+
+    // Annotated tile typedefs
+    typedef expressions::tile::AnnotatedTile<value_type> atile_type;
+    typedef expressions::tile::AnnotatedTile<const value_type> const_atile_type;
+    typedef std::pair<ordinal_type, atile_type> data_type;
+    typedef std::pair<ordinal_type, const_atile_type> const_data_type;
+    typedef madness::Future<data_type> fut_atile_type;
+    typedef madness::Future<const_data_type> const_fut_atile_type;
+
+    // Iterator typedefs
+    typedef detail::PolyTransformIterator<fut_atile_type> iterator_atile;
+    typedef detail::PolyTransformIterator<const_fut_atile_type> const_iterator_atile;
+
+    BaseArray() { }
     virtual ~BaseArray() { }
-    virtual void insert(const std::size_t, const T* first, const T* last) = 0;
+
+    // Clone the array
+    virtual BaseArray_* clone(bool copy_data = false) const = 0;
+
+    // Iterators which return futures to annotated tiles.
+    virtual iterator_atile begin_atile(const expressions::VariableList&) = 0;
+    virtual const_iterator_atile begin_atile(const expressions::VariableList&) const = 0;
+    virtual iterator_atile end_atile(const expressions::VariableList&) = 0;
+    virtual const_iterator_atile end_atile(const expressions::VariableList&) const = 0;
+
+    // Basic array modification interface.
+    virtual void insert(const std::size_t, const value_type*, const value_type*) = 0;
+    virtual void insert(const std::size_t, const detail::ArrayRef<value_type>&) = 0;
+    virtual void insert(const std::size_t, const atile_type&) = 0;
     virtual void erase(const std::size_t) = 0;
+
+    // Returns information on the array tiles.
     virtual bool is_local(const std::size_t) const = 0;
     virtual bool includes(const std::size_t) const = 0;
-    virtual std::pair<const T*, const T*> data(const std::size_t) const = 0;
-    virtual std::pair<const std::size_t*, const std::size_t*> size_pair(const std::size_t) const = 0;
-    virtual std::pair<const std::size_t*, const std::size_t*> size_pair() const = 0;
-//    virtual std::pair<const std::size_t*, const std::size_t*> weight_pair(const std::size_t) const = 0;
-    virtual std::pair<const std::size_t*, const std::size_t*> weight_pair() const = 0;
-    virtual void permute(const std::size_t*) = 0;
+    virtual detail::ArrayRef<const value_type> data(const std::size_t) const = 0;
+    virtual detail::ArrayRef<value_type> data(const std::size_t) = 0;
+    virtual size_array size_ref() const = 0;
+    virtual size_array weight_ref() const = 0;
+    virtual void permute(const ordinal_type*) = 0;
 
-    friend class expressions::array::AnnotatedArrayImpl<T>;
+    // Remote communication
+    virtual madness::Future<bool> probe(const ordinal_type) const = 0;
+    virtual fut_atile_type find(const ordinal_type, const expressions::VariableList& v) = 0;
+    virtual const_fut_atile_type find(const ordinal_type, const expressions::VariableList& v) const = 0;
+
+  public:
+    // public access functions.
+    virtual void clear() = 0;
+    virtual volume_type volume(bool local = false) const = 0;
+    virtual madness::World& get_world() const = 0;
+
+  private:
+    friend class expressions::array::AnnotatedArray<T>;
   }; // class BaseArray
 
-  template<typename T, unsigned int DIM>
-  BaseArray<T>* operator^=(BaseArray<T>* a, const Permutation<DIM>& p) {
+  template<typename T, typename I, unsigned int DIM>
+  BaseArray<T, I>* operator^=(BaseArray<T, I>* a, const Permutation<DIM>& p) {
     a->permute(p.begin(), p.end());
     return a;
   }
 
   /// Tiled Array with data distributed across many nodes.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
-  class Array : public BaseArray<T> {
+  class Array : public BaseArray<T, std::size_t>, public madness::WorldObject<Array<T, DIM, CS> > {
   public:
     typedef Array<T, DIM, CS> Array_;
+    typedef BaseArray<T, std::size_t> BaseArray_;
+    typedef madness::WorldObject<Array<T, DIM, CS> > WorldObject_;
     typedef CS coordinate_system;
-    typedef Tile<T, DIM, coordinate_system> tile_type;
+    typedef Tile<T, DIM, CS> tile_type;
+
+    static unsigned int dim() { return DIM; }
 
   private:
     typedef DistributedArray<tile_type, DIM, LevelTag<1>, coordinate_system> data_container;
@@ -99,29 +169,33 @@ namespace TiledArray {
     /// creates an array living in world and described by shape. Optional
     /// val specifies the default value of every element
     Array(madness::World& world, const tiled_range_type& rng) :
-        BaseArray<T>(world), range_(rng), tiles_(world, rng.tiles().size())
+        WorldObject_(world), range_(rng), tiles_(world, rng.tiles().size())
     {
       this->process_pending();
     }
 
     /// AnnotatedArray copy constructor
     template<typename U>
-    Array(const expressions::array::AnnotatedArray<U>& aarray) {
+    Array(const expressions::array::AnnotatedArray<U>& aarray) :
+        WorldObject_(aarray.get_world())
+    {
       // TODO: Implement this function
       TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
       TA_ASSERT((aarray.dim() == DIM), std::runtime_error,
           "The dimensions of the annotated tile do not match the dimensions of the tile.");
+      this->process_pending();
     }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// AnnotatedArray copy constructor
     template<typename U>
-    Array(expressions::array::AnnotatedArray<U>&& aarray) {
+    Array(expressions::array::AnnotatedArray<U>&& aarray) : BaseArray_(aarray.get_world())
+    {
       // TODO: Implement this function.
       TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
       TA_ASSERT((aarray.dim() == DIM), std::runtime_error,
           "The dimensions of the annotated array do not match the dimensions of the tile.");
-
+      this->process_pending();
     }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
@@ -166,7 +240,7 @@ namespace TiledArray {
     /// non-blocking communication.
     template<typename Key>
     void insert(const Key& k, const tile_type& t) {
-      TA_ASSERT(t.range() == range_.tile(key_(k)), std::runtime_error,
+      TA_ASSERT(t.size() == range_.tile(key_(k)).size(), std::runtime_error,
           "Tile boundaries do not match array tile boundaries.");
       tiles_.insert(key_(k), t);
     }
@@ -321,6 +395,8 @@ namespace TiledArray {
       return tiles_.find(acc, key_(k));
     }
 
+    virtual madness::World& get_world() const { return WorldObject_::get_world(); }
+
     expressions::array::AnnotatedArray<T> operator ()(const std::string& v) {
       return expressions::array::AnnotatedArray<T>(this, expressions::VariableList(v));
     }
@@ -345,9 +421,70 @@ namespace TiledArray {
     }
 
   protected:
+
+    virtual BaseArray_* clone(bool copy_data = true) const {
+      Array_* result = new Array_(this->world, range_);
+      if(copy_data)
+        for(const_iterator it = begin(); it != end(); ++it)
+          result->insert(*it);
+
+      return result;
+    }
+    template<typename U, typename Arg>
+    struct MakeFutATile
+    {
+    private:
+      MakeFutATile();
+    public:
+      typedef std::pair<typename key_type::key1_type, expressions::tile::AnnotatedTile<U> > data_type;
+      typedef Arg argument_type;
+      typedef madness::Future<data_type> result_type;
+
+      MakeFutATile(const expressions::VariableList& var) : var_(var) { }
+      result_type operator()(argument_type t) const {
+        return result_type(data_type(t.first.key1(), t.second(var_)));
+      }
+
+    private:
+      const expressions::VariableList& var_;
+    }; // struct MakeFutATile
+
+    // Iterators which return annotated tiles when dereferenced.
+    virtual typename BaseArray_::iterator_atile
+    begin_atile(const expressions::VariableList& v) {
+      return typename BaseArray_::iterator_atile(begin(),
+          MakeFutATile<T, typename iterator::value_type&>(v));
+    }
+    virtual typename BaseArray_::const_iterator_atile
+    begin_atile(const expressions::VariableList& v) const {
+      return typename BaseArray_::const_iterator_atile(begin(),
+          MakeFutATile<const T, const typename iterator::value_type&>(v));
+    }
+    virtual typename BaseArray_::iterator_atile
+    end_atile(const expressions::VariableList& v) {
+      return typename BaseArray_::iterator_atile(end(),
+          MakeFutATile<T, typename iterator::value_type&>(v));
+    }
+    virtual typename BaseArray_::const_iterator_atile
+    end_atile(const expressions::VariableList& v) const {
+      return typename BaseArray_::const_iterator_atile(end(),
+          MakeFutATile<const T, const typename iterator::value_type&>(v));
+    }
+
     /// Inserts a tile at the give ordinal index with the given data values.
-    virtual void insert(const std::size_t i, const T* first, const T* last) {
-      insert(i, first, last);
+    virtual void insert(const ordinal_type i, const typename BaseArray_::value_type* first, const typename BaseArray_::value_type* last) {
+      tile_type t(range_.tile(i), first, last);
+      tiles_.insert(i, t);
+    }
+
+    virtual void insert(const ordinal_type i, const detail::ArrayRef<typename BaseArray_::value_type>& a) {
+      tile_type t(range_.tile(i), a.begin(), a.end());
+      tiles_.insert(i, t);
+    }
+
+    virtual void insert(const ordinal_type i, const typename BaseArray_::atile_type& a) {
+      tile_type t(range_.tile(i), a.begin(), a.end());
+      tiles_.insert(i, t);
     }
 
     /// Erases a tile at the given ordinal index.
@@ -366,39 +503,33 @@ namespace TiledArray {
     }
 
     /// Returns a pair of pointers that point to the indicated tile's data.
-    virtual std::pair<const T*, const T*> data(const std::size_t i) const {
+    virtual detail::ArrayRef<typename BaseArray_::value_type> data(const std::size_t i) {
+      index_type index = get_index_(i);
+      accessor acc;
+      find(acc, index);
+      typename BaseArray_::value_type* p = acc->second.data();
+      return detail::ArrayRef<typename BaseArray_::value_type>(p, p + acc->second.volume());
+    }
+
+    /// Returns a pair of pointers that point to the indicated tile's data.
+    virtual detail::ArrayRef<const typename BaseArray_::value_type> data(const std::size_t i) const {
       index_type index = get_index_(i);
       const_accessor acc;
       find(acc, index);
-      const T* p = acc->second.data();
-      acc.release();
-      return std::make_pair<const T*, const T*>(p, p + range_.tile(index).volume());
+      const typename BaseArray_::value_type* p = acc->second.data();
+      return detail::ArrayRef<const typename BaseArray_::value_type>(p, p + acc->second.volume());
     }
 
-    /// Return the a pair of pointers to the size of the tile.
-    virtual std::pair<const std::size_t*, const std::size_t*> size_pair(const std::size_t i) const {
-      index_type index = get_index_(i);
-      return std::make_pair<const std::size_t*, const std::size_t*>
-          (tile(index).size().begin(), tile(index).size().end());
-    }
+
 
     /// Return the a pair of pointers to the size of the array.
-    virtual std::pair<const std::size_t*, const std::size_t*> size_pair() const {
-      return std::make_pair<const std::size_t*, const std::size_t*>
-          (tiles().size().begin(), tiles().size().end());
+    virtual typename BaseArray_::size_array size_ref() const {
+      return typename BaseArray_::size_array(tiles().size().begin(), tiles().size().end());
     }
 
-//    /// Return the a pair of pointers to the weight of the tile.
-//    virtual std::pair<const std::size_t*, const std::size_t*> weight_pair(const std::size_t i) const {
-//      index_type index = get_index_(i);
-//      return std::make_pair<const std::size_t*, const std::size_t*>
-//          (tile(index).weight().begin(), tile(index).weight().end());
-//    }
-
     /// Return the a pair of pointers to the weight of the array.
-    virtual std::pair<const std::size_t*, const std::size_t*> weight_pair() const {
-      return std::make_pair<const std::size_t*, const std::size_t*>
-          (tiles_.weight().begin(), tiles_.weight().end());
+    virtual typename BaseArray_::size_array weight_ref() const {
+      return typename BaseArray_::size_array(tiles_.weight().begin(), tiles_.weight().end());
     }
 
     virtual void permute(const std::size_t* first) {
@@ -407,6 +538,158 @@ namespace TiledArray {
         it->second ^= p; // permute the individual tile
       range_ ^= p;
       tiles_ ^= p; // move the tiles to the correct location. Blocking communication here.
+    }
+
+    /// Sends a bool indicating the existence of a tile to a specified process.
+
+    /// This function is called via an active message, and will send a bool to
+    /// the requestor. The result will be true if the tile exists on the local
+    /// node and false otherwise.
+    /// \var \c requester is the process where the tile will be sent
+    /// \var \c i is the ordinal index of the tile being probed
+    /// \var \c ref is the remote reference to the destination future
+    madness::Void send_probe(ProcessID requester, const ordinal_type i,
+        const madness::RemoteReference< madness::FutureImpl<bool> >& ref) const
+    {
+      madness::Future<const_iterator> fit = find(i);
+      const bool result = fit.get() != end();
+      this->send(requester, &Array_::receive_probe, ref, result);
+      return madness::None;
+    }
+
+    /// Handles successful find response
+    madness::Void receive_probe(const madness::RemoteReference< madness::FutureImpl<bool> >& ref, const bool p) {
+      madness::FutureImpl<bool>* f = ref.get();
+      f->set(p);
+      ref.dec();
+      return madness::None;
+    }
+
+    /// Sends a tile to a specified process.
+
+    /// This function is called via an active message, and will send the tile at
+    /// ordinal index to the requesting process.
+    /// \var \c requester is the process where the tile will be sent
+    /// \var \c i is the ordinal index of the tile to be sent
+    /// \var \c ref is the remote reference to the destination future
+    /// \var \c var is the variable list which will be used to construct the annotated tile
+    madness::Void send_atile(ProcessID requester, const ordinal_type i,
+        const madness::RemoteReference< madness::FutureImpl<typename BaseArray_::data_type> >& ref,
+        const expressions::VariableList& var)
+    {
+      // Todo: We need to find a way to eliminate the need to send the variable list with the active message.
+      accessor acc;
+      if(find(acc, i))
+        this->send(requester, &Array_::receive_atile, ref, i, acc->second, var);
+      else
+        this->send(requester, &Array_::receive_no_atile, ref, i);
+      return madness::None;
+    }
+
+    /// Handles successful find response
+    madness::Void receive_atile(const madness::RemoteReference< madness::FutureImpl<typename BaseArray_::data_type> >& ref, const ordinal_type i, const tile_type& tile, const expressions::VariableList& var) {
+      madness::FutureImpl<typename BaseArray_::data_type>* f = ref.get();
+      f->set(typename BaseArray_::data_type(i, typename BaseArray_::atile_type(tile.size(),
+          var, tile.begin(), tile.end(), coordinate_system::dimension_order)));
+      ref.dec();
+      return madness::None;
+    }
+
+    /// Handles unsuccessful find response
+    madness::Void receive_no_atile(const madness::RemoteReference< madness::FutureImpl<typename BaseArray_::data_type> >& ref, const ordinal_type i) {
+      madness::FutureImpl<typename BaseArray_::data_type>* f = ref.get();
+      f->set(typename BaseArray_::data_type(i, typename BaseArray_::atile_type()));
+      ref.dec();
+      return madness::None;
+    }
+
+    /// Sends a tile to a specified process.
+
+    /// This function is called via an active message, and will send the tile at
+    /// ordinal index to the requesting process.
+    /// \var \c requester is the process where the tile will be sent
+    /// \var \c i is the ordinal index of the tile to be sent
+    /// \var \c ref is the remote reference to the destination future
+    /// \var \c var is the variable list which will be used to construct the annotated tile
+    madness::Void send_const_atile(ProcessID requester, const ordinal_type i,
+        const madness::RemoteReference< madness::FutureImpl<typename BaseArray_::const_data_type> >& ref,
+        const expressions::VariableList& var)
+    {
+      // Todo: We need to find a way to eliminate the need to send the variable list with the active message.
+      const_accessor acc;
+      if(find(acc, i))
+        this->send(requester, &Array_::receive_const_atile, ref, i, acc->second, var);
+      else
+        this->send(requester, &Array_::receive_no_const_atile, ref, i);
+      return madness::None;
+    }
+
+    /// Handles successful find response
+    madness::Void receive_const_atile(const madness::RemoteReference< madness::FutureImpl<typename BaseArray_::const_data_type> >& ref,
+        const ordinal_type i, const tile_type& tile, const expressions::VariableList& var)
+    {
+      madness::FutureImpl<typename BaseArray_::const_data_type>* f = ref.get();
+      f->set(typename BaseArray_::const_data_type(i,
+          typename BaseArray_::const_atile_type(tile.size(), var, tile.begin(),
+          tile.end(), coordinate_system::dimension_order)));
+      ref.dec();
+      return madness::None;
+    }
+
+    /// Handles unsuccessful find response
+    madness::Void receive_no_const_atile(const madness::RemoteReference< madness::FutureImpl<typename BaseArray_::const_data_type> >& ref,
+        const ordinal_type i)
+    {
+      madness::FutureImpl<typename BaseArray_::const_data_type>* f = ref.get();
+      f->set(typename BaseArray_::const_data_type(i, typename BaseArray_::const_atile_type()));
+      ref.dec();
+      return madness::None;
+    }
+
+    // Remote communication
+    virtual madness::Future<bool> probe(const ordinal_type i) const {
+      const ProcessID dest = tiles_.owner(i);
+      const ProcessID me = this->world.mpi.rank();
+      madness::Future<bool> result;
+      if(dest == me) {
+        const_iterator it = tiles_.find(i);
+        result.set(it != tiles_.end());
+      } else {
+        this->send(dest, &Array_::send_probe, me, i, result.remote_ref(this->world));
+      }
+
+      return result;
+    }
+
+    virtual typename BaseArray_::fut_atile_type find(const ordinal_type i, const expressions::VariableList& v) {
+      const ProcessID dest = tiles_.owner(i);
+      const ProcessID me = this->world.mpi.rank();
+      typename BaseArray_::fut_atile_type result;
+      if (dest == me) {
+        accessor acc;
+        tiles_.find(acc, i);
+        result.set(typename BaseArray_::data_type(i, acc->second(v)));
+        return result;
+      } else {
+        this->send(dest, &Array_::send_atile, me, i, result.remote_ref(this->world), v);
+      }
+
+      return result;
+    }
+
+    virtual typename BaseArray_::const_fut_atile_type find(const ordinal_type i, const expressions::VariableList& v) const {
+      const ProcessID dest = tiles_.owner(i);
+      const ProcessID me = this->world.mpi.rank();
+      typename BaseArray_::const_fut_atile_type result;
+      if (dest == me) {
+        const_accessor acc;
+        tiles_.find(acc, i);
+        result.set(typename BaseArray_::const_data_type(i, acc->second(v)));
+      } else {
+        this->send(dest, &Array_::send_const_atile, me, i, result.remote_ref(this->world), v);
+      }
+
+      return result;
     }
 
   private:
@@ -433,8 +716,13 @@ namespace TiledArray {
       return i - start();
     }
 
-    const key_type& key_(const key_type& k) const {
-      return k;
+    const ordinal_type key_(const key_type& k) const {
+      return k.key1();
+    }
+
+    ordinal_type ord_(const index_type& i) const {
+      return std::inner_product(i.begin(), i.end(), tiles_.weight().begin(),
+          ordinal_type(0));
     }
 
     friend void swap<>(Array_&, Array_&);
@@ -451,4 +739,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif // TILEDARRAY_H__INCLUDED
+#endif // TILEDARRAY_ARRAY_H__INCLUDED

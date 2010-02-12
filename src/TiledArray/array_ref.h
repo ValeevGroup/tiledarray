@@ -14,18 +14,42 @@ namespace TiledArray {
     class ArrayRef;
     template<typename T>
     void swap(ArrayRef<T>& , ArrayRef<T>& );
-    template<typename T>
-    bool operator==(const ArrayRef<T>& , const ArrayRef<T>& );
-    template<typename T>
-    bool operator!=(const ArrayRef<T>& , const ArrayRef<T>& );
-    template<typename T>
-    bool operator<(const ArrayRef<T>& , const ArrayRef<T>& );
-    template<typename T>
-    bool operator>(const ArrayRef<T>&, const ArrayRef<T>&);
-    template<typename T>
-    bool operator<=(const ArrayRef<T>&, const ArrayRef<T>&);
-    template<typename T>
-    bool operator>=(const ArrayRef<T>&, const ArrayRef<T>&);
+    template<typename T, typename U>
+    bool operator==(const ArrayRef<T>& , const ArrayRef<U>& );
+    template<typename T, typename U>
+    bool operator!=(const ArrayRef<T>& , const ArrayRef<U>& );
+    template<typename T, typename U>
+    bool operator<(const ArrayRef<T>& , const ArrayRef<U>& );
+    template<typename T, typename U>
+    bool operator>(const ArrayRef<T>&, const ArrayRef<U>&);
+    template<typename T, typename U>
+    bool operator<=(const ArrayRef<T>&, const ArrayRef<U>&);
+    template<typename T, typename U>
+    bool operator>=(const ArrayRef<T>&, const ArrayRef<U>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator==(const ArrayRef<T>&, const boost::array<U, N>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator!=(const ArrayRef<T>&, const boost::array<U, N>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator<(const ArrayRef<T>&, const boost::array<U, N>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator>(const ArrayRef<T>&, const boost::array<U, N>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator<=(const ArrayRef<T>&, const boost::array<U, N>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator>=(const ArrayRef<T>&, const boost::array<U, N>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator==(const boost::array<T, N>&, const ArrayRef<U>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator!=(const boost::array<T, N>&, const ArrayRef<U>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator<(const boost::array<T, N>&, const ArrayRef<U>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator>(const boost::array<T, N>&, const ArrayRef<U>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator<=(const boost::array<T, N>&, const ArrayRef<U>&);
+    template<typename T, typename U, std::size_t N>
+    bool operator>=(const boost::array<T, N>&, const ArrayRef<U>&);
     template <unsigned int DIM, typename T>
     ArrayRef<T>& operator^=(ArrayRef<T>&, const Permutation<DIM>&);
     template <unsigned int DIM, typename T>
@@ -326,7 +350,7 @@ namespace TiledArray {
     /// This does a lexicographical greater-than comparison between the two
     /// arrays.
     template<typename T, typename U, std::size_t N>
-    bool operator>(const ArrayRef<T>& a1, const boost::array<T, N>& a2) {
+    bool operator>(const boost::array<T, N>& a1, const ArrayRef<U>& a2) {
       return a2 < a1;
     }
 

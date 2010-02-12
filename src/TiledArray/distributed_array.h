@@ -356,6 +356,11 @@ namespace TiledArray {
       return data_.is_local(key_(i));
     }
 
+    template<typename Key>
+    ProcessID owner(const Key& i) const {
+      return data_.owner(key_(i));
+    }
+
     madness::World& get_world() const {
       return data_.get_world();
     }

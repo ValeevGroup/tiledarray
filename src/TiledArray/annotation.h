@@ -45,6 +45,11 @@ namespace TiledArray {
           order_(detail::decreasing_dimension_order)
       { }
 
+      void set_size_weight_(ordinal_type* size, ordinal_type* weight, const unsigned int dim) {
+        Annotation_::size_ = std::make_pair(size, size + dim);
+        Annotation_::weight_ = std::make_pair(weight, weight + dim);
+      }
+
       /// Initialize the annotation with a size array.
 
       /// This function will use the pointer data to store the size and weight
@@ -60,15 +65,11 @@ namespace TiledArray {
       /// \var \c o is the dimension order.
       /// \var \c data is the array that Annotation will use to store the size and weight information.
       template<typename SizeArray>
-      void init_from_size_(const SizeArray& size, const VariableList& var,
-          detail::DimensionOrderType o, typename boost::remove_const<I>::type* data)
+      void init_from_size_(const SizeArray& size, const VariableList& var, detail::DimensionOrderType o)
       {
         typedef detail::CoordIterator<size_array, detail::increasing_dimension_order> CIinc;
         typedef detail::CoordIterator<size_array, detail::decreasing_dimension_order> CIdec;
 
-        const unsigned int dim = var.dim();
-        Annotation_::size_ = std::make_pair(data, data + dim);
-        Annotation_::weight_ = std::make_pair(data + dim, data + dim + dim);
         std::copy(size.begin(), size.end(), size_.begin());
         if(o == detail::increasing_dimension_order)
           detail::calc_weight(CIinc::begin(size_), CIinc::end(size_), CIinc::begin(weight_));
@@ -213,6 +214,10 @@ namespace TiledArray {
       }
 
       friend void swap<>(Annotation_&, Annotation_&);
+      template <class Archive, typename T>
+      friend struct madness::archive::ArchiveStoreImpl;
+      template <class Archive, typename T>
+      friend struct madness::archive::ArchiveLoadImpl;
 
       size_array size_;         ///< tile size
       size_array weight_;       ///< dimension weights
@@ -231,5 +236,39 @@ namespace TiledArray {
   } // namespace expressions
 } //namespace TiledArray
 
+namespace madness {
+  namespace archive {
+
+    template <class Archive, typename T>
+    struct ArchiveLoadImpl;
+    template <class Archive, typename T>
+    struct ArchiveStoreImpl;
+
+    template <class Archive, typename I>
+    struct ArchiveLoadImpl<Archive, TiledArray::expressions::Annotation<I> > {
+      typedef TiledArray::expressions::Annotation<I> annotation_type;
+
+      static void load(const Archive& ar, annotation_type& a, unsigned int dim) {
+        if(dim == 0)
+          ar & dim;
+        ar & wrap(a.size_.c_array(), dim) & wrap(a.weight_.c_array(), dim) & a.n_ & a.var_ & a.order_;
+      }
+    }; // struct ArchiveLoadImpl<Archive, TiledArray::expressions::tile::Annotation<I> >
+
+    template <class Archive, typename I>
+    struct ArchiveStoreImpl<Archive, TiledArray::expressions::Annotation<I> > {
+      typedef TiledArray::expressions::Annotation<I> annotation_type;
+
+      static void store(const Archive& ar, const annotation_type& a, unsigned int dim) {
+        if(dim == 0) {
+          dim = a.dim();
+          ar & dim;
+        }
+        ar & wrap(a.size_.data(), dim) & wrap(a.weight_.data(), dim) & a.n_ & a.var_ & a.order_;
+      }
+    }; // struct ArchiveStoreImpl<Archive, TiledArray::expression::Annotation<I> >
+
+  } // namespace archive
+} // namespace madness
 
 #endif // TILEDARRAY_ANNOTATION_H__INCLUDED

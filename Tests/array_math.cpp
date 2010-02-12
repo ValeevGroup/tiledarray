@@ -44,17 +44,16 @@ struct ArrayMathFixture : public TiledRangeFixture<int> {
   typedef Array3::range_type range_type;
   typedef expressions::array::AnnotatedArray<int> AArray;
 
-  ArrayMathFixture() : TiledRangeFixture<int>(), world(GlobalFixture::world),
-      ar(*world, trng3), a1(*world, trng3), a2(*world, trng3), a3(*world, trng3),
-      a4(*world, trng3)
+  ArrayMathFixture() : TiledRangeFixture<int>(), world(* GlobalFixture::world),
+      ar(world, trng3), a1(world, trng3), a2(world, trng3), a3(world, trng3),
+      a4(world, trng3)
   {
-    world->gop.fence();
+    world.gop.fence();
     int v;
-    int tv = 1;
     for(TRange3::range_type::const_iterator it = trng3.tiles().begin(); it != trng3.tiles().end(); ++it) {
       v = 0;
       tile_type t(trng3.tile(*it));
-      tv = v++;
+      ++v;
       std::fill(t.begin(), t.end(), v++);
       ar.insert(*it, t);
       std::fill(t.begin(), t.end(), v++);
@@ -88,7 +87,7 @@ struct ArrayMathFixture : public TiledRangeFixture<int> {
 
   ~ArrayMathFixture() { }
 
-  madness::World* world;
+  madness::World& world;
   Array3 ar;
   Array3 a1;
   Array3 a2;
@@ -114,7 +113,7 @@ BOOST_AUTO_TEST_CASE( value_exp )
 
 BOOST_AUTO_TEST_CASE( array_op )
 {
-  math::BinaryArrayOp<AArray, AArray, AArray, std::plus<double> > op;
+//  math::BinaryArrayOp<AArray, AArray, AArray, std::plus<double> > op;
 
 }
 
@@ -157,8 +156,8 @@ BOOST_AUTO_TEST_CASE( negate )
 
 BOOST_AUTO_TEST_CASE( contraction )
 {
-  Array4 ar4(*world, trng4);
-  Array3 ar0(*world, trng0);
+  Array4 ar4(world, trng4);
+  Array3 ar0(world, trng0);
 
   fill(ar4, 0);
   ar4("a,x,b,y") = a2("a,i,b") * a3("x,i,y");
@@ -194,7 +193,7 @@ BOOST_AUTO_TEST_CASE( contraction )
 
 BOOST_AUTO_TEST_CASE( chain_expressions )
 {
-  Array4 ar4(*world, trng4);
+  Array4 ar4(world, trng4);
 
   ar4("a,c,b,d") = 6.0 * a2("a,i,b") * a3("c,i,d") + a3("a,i,b") * a4("c,i,d") - 1.0;
   BOOST_CHECK(check_val(ar4, 239));

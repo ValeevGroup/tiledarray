@@ -342,16 +342,16 @@ namespace madness {
 
     template <class Archive, typename T, unsigned int DIM, typename Tag, typename CS>
     struct ArchiveLoadImpl<Archive, TiledArray::DenseArray<T,DIM,Tag,CS> > {
-      typedef TiledArray::DenseArray<T,DIM,Tag,CS> DAS;
-      typedef typename DAS::value_type value_type;
+      typedef TiledArray::DenseArray<T,DIM,Tag,CS> dense_array_type;
+      typedef typename dense_array_type::value_type value_type;
 
-      static inline void load(const Archive& ar, DAS& s) {
-        typename DAS::size_array size;
+      static inline void load(const Archive& ar, dense_array_type& s) {
+        typename dense_array_type::size_array size;
         ar & size;
         std::size_t n = TiledArray::detail::volume(size);
         boost::scoped_array<value_type> data(new value_type[n]);
         ar & wrap(data.get(),n);
-        DAS temp(size, data.get(), data.get() + n);
+        dense_array_type temp(size, data.get(), data.get() + n);
 
         TiledArray::swap(s, temp);
       }
@@ -368,6 +368,7 @@ namespace madness {
       }
     };
 
-  }
-}
+  } // namespace archive
+} // namespace madness
+
 #endif // TILEDARRAY_ARRAY_STORAGE_H__INCLUDED

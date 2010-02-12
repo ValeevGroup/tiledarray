@@ -3,6 +3,7 @@
 
 #include <TiledArray/variable_list.h>
 #include <TiledArray/coordinate_system.h>
+#include <TiledArray/madness_runtime.h>
 #include <Eigen/Core>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/iterator/zip_iterator.hpp>
@@ -109,6 +110,106 @@ namespace TiledArray {
       op_type op_;
     }; // struct ZipOp
 */
+    /// Binary task operation
+
+    /// This functor will use any functor to spawn a task that will execute that
+    /// function. The input and output arguments are futures. The template
+    /// arguments are the types use by the type. For example:
+    /// \code
+    /// BinaryTaskOp<int, int, int, std::plus<int> > op;
+    /// madness::Future<int> a;
+    /// madness::Future<int> b;
+    /// madness::Future<int> c;
+    /// c = op(a, b);
+    /// \endcode
+    /// This will spawn a task that sums the values of the futures \c a and \c b
+    /// and places the result in the future c.
+    /// \var \c Arg1 is the left-hand future type to the operator() () function.
+    /// \var \c Arg2 is the right-hand future type to the operator() ()  function.
+    /// \var \c Result is the result future type to the operator() () function.
+    /// \var \c Op is the functor type, and the operation that will be performed by the task.
+    template<typename Arg1, typename Arg2, typename Result, typename Op>
+    struct BinaryTaskOp : public std::binary_function<madness::Future<Arg1>, madness::Future<Arg2>, madness::Future<Result> > {
+    private:
+      typedef std::binary_function<madness::Future<Arg1>, madness::Future<Arg2>, madness::Future<Result> > bin_functor;
+      BinaryTaskOp();
+    public:
+      typedef typename bin_functor::first_argument_type first_argument_type;
+      typedef typename bin_functor::second_argument_type second_argument_type;
+      typedef typename bin_functor::result_type result_type;
+
+      /// Primary constructor
+
+      /// Constructs a binary task object. If no functor is provided, the default
+      /// constructor will be used to create it.
+      /// \var \c w is the world object used to spawn tasks.
+      /// \var \c o is the functor object which performs the task work (optional).
+      BinaryTaskOp(madness::World& w, madness::TaskAttributes a = madness::TaskAttributes(), Op o = Op()) :
+          world(w), attr_(a), op_(o)
+      { }
+
+      /// Creates a task.
+
+      /// This will generate a task on the local task queue
+      result_type operator() (const first_argument_type& fut1, const second_argument_type& fut2) const {
+        return world.taskq.add(op_, &Op::operator(), fut1, fut2, attr_);
+      }
+
+    private:
+      madness::World& world;          ///< Reference to the world object used to create tasks.
+      madness::TaskAttributes attr_;  ///< Task attribute object.
+      Op op_;                         ///< Functor which does the task work.
+    }; // struct BinaryTaskOp
+
+
+    /// Unary task operation
+
+    /// This functor will use any functor to spawn a task that will execute that
+    /// function. The input and output arguments are futures. The template
+    /// arguments are the types use by the future types. For example:
+    /// \code
+    /// UnaryTaskOp<int, int, std::negate<int> > op;
+    /// madness::Future<int> a;
+    /// madness::Future<int> b;
+    /// b = op(a);
+    /// \endcode
+    /// This will spawn a task that sums the values of the futures \c a and \c b
+    /// and places the result in the future c.
+    /// \var \c Arg is the future type to the operator() () function.
+    /// \var \c Result is the result future type to the operator() () function.
+    /// \var \c Op is the functor type, and the operation that will be performed by the task.
+    template<typename Arg, typename Result, typename Op>
+    struct UnaryTaskOp : public std::unary_function<madness::Future<Arg>, madness::Future<Result> > {
+    private:
+      typedef std::unary_function<madness::Future<Arg>, madness::Future<Result> > un_functor;
+      UnaryTaskOp();
+    public:
+      typedef typename un_functor::argument_type argument_type;
+      typedef typename un_functor::result_type result_type;
+
+      /// Primary constructor
+
+      /// Constructs a binary task object. If no functor is provided, the default
+      /// constructor will be used to create it.
+      /// \var \c w is the world object used to spawn tasks.
+      /// \var \c o is the functor object which performs the task work (optional).
+      UnaryTaskOp(madness::World& w, madness::TaskAttributes a = madness::TaskAttributes(), Op o = Op()) :
+          world(w), attr_(a), op_(o)
+      { }
+
+      /// Creates a task.
+
+      /// This will generate a task on the local task queue
+      result_type operator() (const argument_type& fut) const {
+        return world.taskq.add(op_, &Op::operator(), fut, attr_);
+      }
+
+    private:
+      madness::World& world;          ///< Reference to the world object used to create tasks.
+      madness::TaskAttributes attr_;  ///< Task attribute object.
+      Op op_;                         ///< Functor which does the task work.
+    }; // struct UnaryTaskOp
+
     /// Array operation
 
     /// Performs an element wise binary operation (e.g. std::plus<T>,
@@ -117,13 +218,71 @@ namespace TiledArray {
     /// must be implicitly convertible to the result value type.
     template<typename Exp0, typename Exp1, typename Res, typename Op>
     struct BinaryArrayOp {
+    private:
+      BinaryArrayOp();
+
+    public:
       typedef Exp0 exp0_type;
       typedef Exp1 exp1_type;
       typedef Res result_type;
+      typedef typename Res::value_type value_type;
+      typedef typename Res::fut_value_type fut_value_type;
+      typedef Op op_type;
 
+      BinaryArrayOp(madness::World& w, Op op = Op()) : world_(w), op_(op) { }
 
+      result_type operator ()(const exp0_type& e0, const exp0_type& e1) {
+        result_type result(world_);
+        for(typename exp0_type::const_iterator it = e0.begin(); it != e0.end(); ++it) {
+          result.insert(it->first, op_(it->second, e1.find(it->first)));
+        }
+        return result;
+      }
 
+    private:
+      madness::World& world_;
+      op_type op_;
     }; // struct BinaryArrayOp
+
+//    /// Tile operation
+//
+//    /// Performs an element wise binary operation (e.g. std::plus<T>,
+//    /// std::minus<T>) on two annotated tiles. The value type of the different
+//    /// tiles may be different, but the value types of expression one and two
+//    /// must be implicitly convertible to the result value type.
+//    template<typename Exp0, typename Exp1, typename Res, typename Op>
+//    struct BinaryTileOp {
+//      typedef Exp0 exp0_type;
+//      typedef Exp1 exp1_type;
+//      typedef Res result_type;
+//      typedef typename Res::value_type value_type;
+//      typedef ZipOp<typename exp0_type::value_type,
+//          typename exp1_type::value_type, value_type, Op> op_type;
+//      typedef boost::transform_iterator<op_type,
+//          boost::zip_iterator<boost::tuple<typename exp0_type::const_iterator,
+//          typename exp1_type::const_iterator> > > const_iterator;
+//
+//      BinaryTileOp() : op_(Op()) { }
+//      BinaryTileOp(Op op) : op_(op) { }
+//
+//      result_type operator ()(const exp0_type& e0, const exp0_type& e1) {
+//        result_type result(e0.size(), e0.vars(), begin(e0, e1), end(e0, e1));
+//        return result;
+//      }
+//
+//    private:
+//      const_iterator begin(const exp0_type& e0, const exp0_type& e1) {
+//        return boost::make_transform_iterator(boost::make_zip_iterator(
+//            boost::make_tuple(e0.begin(), e1.begin())), op_);
+//      }
+//
+//      const_iterator end(const exp0_type& e0, const exp0_type& e1) {
+//        return boost::make_transform_iterator(boost::make_zip_iterator(
+//            boost::make_tuple(e0.end(), e1.end())), op_);
+//      }
+//
+//      op_type op_;
+//    }; // struct BinaryTileOp
 
     /// Array operation, contraction specialization
 

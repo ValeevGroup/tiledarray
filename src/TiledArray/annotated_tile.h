@@ -2,8 +2,9 @@
 #define TILEDARRAY_ANNOTATED_TILE_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <TiledArray/annotation.h>
+#include <TiledArray/array_ref.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/variable_list.h>
 #include <boost/type_traits.hpp>
 #include <Eigen/Core>
 #include <numeric>
