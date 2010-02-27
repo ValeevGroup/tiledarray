@@ -115,33 +115,33 @@ namespace TiledArray {
     /// std::minus<T>) on two annotated tiles. The value type of the different
     /// tiles may be different, but the value types of expression one and two
     /// must be implicitly convertible to the result value type.
-    template<typename Exp0, typename Exp1, typename Res, typename Op>
+    template<typename Arg1, typename Arg2, typename Res, typename Op>
     struct BinaryTileOp {
-      typedef Exp0 exp0_type;
-      typedef Exp1 exp1_type;
+      typedef const Arg1& first_argument_type;
+      typedef const Arg2& second_argument_type;
       typedef Res result_type;
       typedef typename Res::value_type value_type;
-      typedef ZipOp<typename exp0_type::value_type,
-          typename exp1_type::value_type, value_type, Op> op_type;
+      typedef ZipOp<typename Arg1::value_type,
+          typename Arg2::value_type, value_type, Op> op_type;
       typedef boost::transform_iterator<op_type,
-          boost::zip_iterator<boost::tuple<typename exp0_type::const_iterator,
-          typename exp1_type::const_iterator> > > const_iterator;
+          boost::zip_iterator<boost::tuple<typename Arg1::const_iterator,
+          typename Arg2::const_iterator> > > const_iterator;
 
       BinaryTileOp() : op_(Op()) { }
       BinaryTileOp(Op op) : op_(op) { }
 
-      result_type operator ()(const exp0_type& e0, const exp0_type& e1) {
+      result_type operator ()(first_argument_type e0, second_argument_type e1) {
         result_type result(e0.size(), e0.vars(), begin(e0, e1), end(e0, e1));
         return result;
       }
 
     private:
-      const_iterator begin(const exp0_type& e0, const exp0_type& e1) {
+      const_iterator begin(first_argument_type e0, second_argument_type e1) {
         return boost::make_transform_iterator(boost::make_zip_iterator(
             boost::make_tuple(e0.begin(), e1.begin())), op_);
       }
 
-      const_iterator end(const exp0_type& e0, const exp0_type& e1) {
+      const_iterator end(first_argument_type e0, second_argument_type e1) {
         return boost::make_transform_iterator(boost::make_zip_iterator(
             boost::make_tuple(e0.end(), e1.end())), op_);
       }
@@ -158,20 +158,20 @@ namespace TiledArray {
     struct BinaryTileOp<expressions::tile::AnnotatedTile<T>, expressions::tile::AnnotatedTile<U>,
         Res, std::multiplies<typename Res::value_type> >
     {
-      typedef expressions::tile::AnnotatedTile<T> exp0_type;
-      typedef expressions::tile::AnnotatedTile<U> exp1_type;
+      typedef expressions::tile::AnnotatedTile<T> first_argument_type;
+      typedef expressions::tile::AnnotatedTile<U> second_argument_type;
       typedef Res result_type;
       typedef typename Res::value_type value_type;
-      typedef ZipOp< typename exp0_type::const_iterator,
-          typename exp1_type::const_iterator, value_type, std::multiplies<typename Res::value_type> > op_type;
+      typedef ZipOp< typename first_argument_type::const_iterator,
+          typename second_argument_type::const_iterator, value_type, std::multiplies<typename Res::value_type> > op_type;
       typedef boost::transform_iterator<op_type,
-          boost::zip_iterator<boost::tuple<typename exp0_type::const_iterator,
-          typename exp1_type::const_iterator> > > const_iterator;
+          boost::zip_iterator<boost::tuple<typename first_argument_type::const_iterator,
+          typename second_argument_type::const_iterator> > > const_iterator;
 
       BinaryTileOp() { }
       BinaryTileOp(std::multiplies<typename Res::value_type>) { }
 
-      result_type operator ()(const exp0_type& e0, const exp1_type& e1) {
+      result_type operator ()(const first_argument_type& e0, const second_argument_type& e1) {
         typedef std::pair<expressions::VariableList::const_iterator,
             expressions::VariableList::const_iterator> it_pair;
 
@@ -235,27 +235,27 @@ namespace TiledArray {
     /// Unary tile operation
 
     /// Performs an element wise unary operation on a tile.
-    template<typename Exp, typename Res, typename Op>
+    template<typename Arg, typename Res, typename Op>
     struct UnaryTileOp {
-      typedef Exp exp_type;
+      typedef Arg argument_type;
       typedef Res result_type;
       typedef typename Res::value_type value_type;
       typedef Op op_type;
-      typedef boost::transform_iterator<op_type, typename Exp::const_iterator > const_iterator;
+      typedef boost::transform_iterator<op_type, typename argument_type::const_iterator > const_iterator;
 
       UnaryTileOp() : op_(op_type()) { }
       UnaryTileOp(op_type op) : op_(op) { }
 
-      result_type operator ()(const exp_type& e) {
+      result_type operator ()(const argument_type& e) {
         return result_type(e.size(), e.vars(), begin(e), end(e));
       }
 
     private:
-      const_iterator begin(const exp_type& e) {
+      const_iterator begin(const argument_type& e) {
         return boost::make_transform_iterator(e.begin(), op_);
       }
 
-      const_iterator end(const exp_type& e) {
+      const_iterator end(const argument_type& e) {
         return boost::make_transform_iterator(e.end(), op_);
       }
 
