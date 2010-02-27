@@ -21,7 +21,7 @@ namespace TiledArray {
   class Permutation;
   template <unsigned int DIM>
   class LevelTag;
-  template <typename T, unsigned int DIM, typename CS>
+  template <typename T, unsigned int DIM, typename CS, typename C>
   class Array;
 
   namespace expressions {
@@ -486,7 +486,7 @@ namespace TiledArray {
         friend struct madness::archive::ArchiveStoreImpl;
         template <class, typename>
         friend struct madness::archive::ArchiveLoadImpl;
-        template <typename, unsigned int, typename>
+        template <typename, unsigned int, typename, typename>
         friend class Array;
 
 
