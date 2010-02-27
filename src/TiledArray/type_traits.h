@@ -18,31 +18,56 @@ namespace TiledArray {
       typedef typename boost::remove_const<T>::type type;
     }; // struct add_const<false, T>
 
-    template<class UnaryFunc>
+    template<typename T>
+    struct remove_cr {
+      typedef typename boost::remove_const<typename boost::remove_reference<T>::type>::type type;
+    };
+
+    template<typename Func>
     struct unary_functor_types {
-      typedef typename UnaryFunc::result_type result_type;
-      typedef typename UnaryFunc::argument_type argument_type;
+      typedef typename Func::argument_type argument_type;
+      typedef typename Func::result_type result_type;
+      typedef result_type(*func_ptr_type)(argument_type);
+
+      static func_ptr_type func_ptr(Func& f) {
+        return &Func::operator();
+      }
     }; // struct unary_functor_types
 
-    template<class R, class A>
-    struct unary_functor_types<R(*)(A)> {
-      typedef R result_type;
-      typedef A argument_type;
-    }; // struct unary_functor_types<Return(*)(Argument)>
+    template<typename Arg, typename Res>
+    struct unary_functor_types<Res(*)(Arg)> {
+      typedef Arg argument_type;
+      typedef Res result_type;
+      typedef result_type(*func_ptr_type)(argument_type);
 
-    template<class BinaryFunc>
+      static func_ptr_type func_ptr(func_ptr_type f) {
+        return f;
+      }
+    }; // struct unary_functor_types<Res(*)(Arg)>
+
+    template<typename Func>
     struct binary_functor_types {
-      typedef typename BinaryFunc::result_type result_type;
-      typedef typename BinaryFunc::first_argument_type first_argument_type;
-      typedef typename BinaryFunc::second_argument_type second_argument_type;
+      typedef typename Func::first_argument_type first_argument_type;
+      typedef typename Func::second_argument_type second_argument_type;
+      typedef typename Func::result_type result_type;
+      typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
+
+      static func_ptr_type func_ptr(const Func&) {
+        return &Func::operator();
+      }
     }; // struct binary_functor_types
 
-    template<class R, class A1, class A2>
-    struct binary_functor_types<R(*)(A1, A2)> {
-      typedef R result_type;
-      typedef A1 first_argument_type;
-      typedef A2 second_argument_type;
-    }; // struct binary_functor_types<Return(*)(Argument)>
+    template<typename Arg1, typename Arg2, typename Res>
+    struct binary_functor_types<Res(*)(Arg1,Arg2)> {
+      typedef Arg1 first_argument_type;
+      typedef Arg2 second_argument_type;
+      typedef Res result_type;
+      typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
+
+      static func_ptr_type func_ptr(func_ptr_type f) {
+        return f;
+      }
+    }; // struct binary_functor_types<Res(*)(Arg1,Arg2)>
 
     /// The static member value is true if the type T is a random access iterator
     template<typename T>
