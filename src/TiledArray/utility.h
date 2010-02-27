@@ -39,16 +39,15 @@ namespace TiledArray {
 
     template<typename P>
     struct pair_first : public std::unary_function<P, typename P::first_type> {
-      const typename P::first_type& operator ()(const P& p) const {
-        return p.first;
-      }
+      typename P::first_type& operator ()(P& p) const { return p.first; }
+      typename P::first_type& operator ()(const P& p) const { return p.first; }
+
     };
 
     template<typename P>
     struct pair_second : public std::unary_function<P, typename P::second_type> {
-      const typename P::second_type& operator ()(const P& p) const {
-        return p.second;
-      }
+      typename P::second_type& operator ()(P& p) const { return p.second; }
+      typename P::second_type& operator ()(const P& p) const { return p.second; }
     };
 
     template<typename T>
