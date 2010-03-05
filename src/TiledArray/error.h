@@ -2,6 +2,7 @@
 #define TILEDARRAY_ERROR_H__INCLUDED
 
 #include <TiledArray/config.h>
+#include <boost/current_function.hpp>
 
 // Check for default error checking method, which is determined by TA_DEFAULT
 // error. It is defined in TiledArray/config.h.
@@ -40,11 +41,11 @@ namespace TiledArray {
   if(! ( a ) ) \
     { \
       TiledArray::detail::exception_break(); \
-      throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __FUNC__ , "TiledArray Assertion failure in " , m ) ) ; \
+      throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __func__ , "TiledArray Assertion failure in " , m ) ) ; \
     }
 
-#define TA_EXCEPTION( e , t ,  m ) \
-    throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __FUNC__ , t , m ) )
+#define TA_EXCEPTION( e ,  m ) \
+    throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __func__ , "TiledArray Exception in " , m ) )
 
 #elif defined(TA_ASSERT_ERROR)
 // This sections defines behavior for TiledArray assertion error checking which

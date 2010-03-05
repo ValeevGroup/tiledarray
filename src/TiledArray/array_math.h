@@ -62,13 +62,13 @@ namespace TiledArray {
     struct BinaryTaskOp {
     private:
       BinaryTaskOp();
-      typedef typename detail::remove_cr<typename detail::binary_functor_types<Op>::first_argument_type>::type func_first_arg_type;
-      typedef typename detail::remove_cr<typename detail::binary_functor_types<Op>::second_argument_type>::type func_second_arg_type;
-      typedef typename detail::remove_cr<typename detail::binary_functor_types<Op>::result_type>::type func_res_type;
+      typedef typename boost::call_traits<typename detail::binary_functor_types<Op>::first_argument_type>::value_type first_value_type;
+      typedef typename boost::call_traits<typename detail::binary_functor_types<Op>::second_argument_type>::value_type second_value_type;
+      typedef typename boost::call_traits<typename detail::binary_functor_types<Op>::result_type>::value_type result_value_type;
     public:
-      typedef madness::Future<func_first_arg_type> first_argument_type;
-      typedef madness::Future<func_second_arg_type> second_argument_type;
-      typedef madness::Future<func_res_type> result_type;
+      typedef typename boost::call_traits<madness::Future<first_value_type> >::param_type first_argument_type;
+      typedef typename boost::call_traits<madness::Future<second_value_type> >::param_type second_argument_type;
+      typedef typename boost::call_traits<madness::Future<result_value_type> >::value_type result_type;
 
       /// Primary constructor
 
@@ -92,7 +92,7 @@ namespace TiledArray {
       /// Creates a task.
 
       /// This will generate a task on the local task queue
-      result_type operator() (const first_argument_type& fut1, const second_argument_type& fut2) const {
+      result_type operator() (first_argument_type fut1, second_argument_type fut2) const {
         return world_.taskq.add(op_, detail::binary_functor_types<Op>::func_ptr(op_), fut1, fut2, attr_);
       }
 
@@ -173,8 +173,8 @@ namespace TiledArray {
       BinaryArrayOp();
 
     public:
-      typedef Arg1& first_argument_type;   ///< first array argument type.
-      typedef Arg2& second_argument_type;  ///< second array argument type.
+      typedef Arg1& first_argument_type;  ///< first array argument type.
+      typedef Arg2& second_argument_type; ///< second array argument type.
       typedef Res result_type;            ///< result array type.
 
     private:
@@ -215,9 +215,9 @@ namespace TiledArray {
     /// Performs an element wise unary operation on a tile.
     template<typename Arg, typename Res, typename Op>
     struct UnaryArrayOp {
-      typedef Arg argument_type;
+      typedef Arg& argument_type;
       typedef Res result_type;
-      typedef UnaryTaskOp<UnaryTileOp<typename argument_type::tile_type,
+      typedef UnaryTaskOp<UnaryTileOp<typename Arg::tile_type,
           typename result_type::tile_type, Op> > op_type;
 
     private:
@@ -232,9 +232,12 @@ namespace TiledArray {
           op_(w, o, a) { }
 
       /// Constructs a series of tasks for the given arrays.
-      result_type operator ()(const argument_type& a) const {
+      result_type operator ()(argument_type a) const {
+        typedef typename boost::mpl::if_<boost::is_const<Arg>,
+            typename Arg::const_iterator, typename Arg::iterator>::type iterator_type;
+
         result_type result = a.clone(op_.get_world(), false);
-        for(typename argument_type::const_iterator it = a.begin(); it == a.end(); ++it)
+        for(iterator_type it = a.begin(); it == a.end(); ++it)
           result.insert(it->first, op_(it->second));
         return result;
       }
@@ -244,7 +247,7 @@ namespace TiledArray {
     }; // struct UnaryArrayOp
 
   } // namespace math
-
+/*
   namespace expressions {
 
     namespace array {
@@ -375,7 +378,7 @@ namespace TiledArray {
 
       /// Binary Array Expression
 
-      /// This structure represents a binary tile math expression. The Op type
+      /// This structure represents a binary array math expression. The Op type
       /// represents the basic math operation that will be performed on a pair of
       /// elements (one from each tile). The expression types may be annotated
       /// tiles, fundamental types, or other tile expressions. They may be combined
@@ -492,7 +495,7 @@ namespace TiledArray {
 
       template<typename Exp0, typename Exp1, template<typename> class Op >
       struct Expression :
-          public ExpConstruct<typename ExpType<Exp0>::type, typename ExpType<Exp1>::type, Op> {
+          public array::ExpConstruct<typename ExpType<Exp0>::type, typename ExpType<Exp1>::type, Op> {
 
       }; // struct Expression
 
@@ -501,9 +504,9 @@ namespace TiledArray {
       /// This operator constructs a tile binary, addition expression object. The
       /// expression is not immediately evaluated.
       template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::plus>::exp_type
+      typename array::Expression<Exp0, Exp1, std::plus>::exp_type
       operator +(const Exp0& e0, const Exp1& e1) {
-        return Expression<Exp0, Exp1, std::plus>::make_exp(e0, e1);
+        return array::Expression<Exp0, Exp1, std::plus>::make_exp(e0, e1);
       }
 
       /// Array expression subtraction operation
@@ -511,9 +514,9 @@ namespace TiledArray {
       /// This operator constructs a tile binary, subtraction expression object.
       /// The expression is not immediately evaluated.
       template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::minus>::exp_type
+      typename array::Expression<Exp0, Exp1, std::minus>::exp_type
       operator -(const Exp0& e0, const Exp1& e1) {
-        return Expression<Exp0, Exp1, std::minus>::make_exp(e0, e1);
+        return array::Expression<Exp0, Exp1, std::minus>::make_exp(e0, e1);
       }
 
       /// Array expression multiplication or contraction operation
@@ -524,9 +527,9 @@ namespace TiledArray {
       /// expression is constructed if both expressions will evaluate to annotated
       /// tiles. The expression is not immediately evaluated.
       template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::multiplies>::exp_type
+      typename array::Expression<Exp0, Exp1, std::multiplies>::exp_type
       operator *(const Exp0& e0, const Exp1& e1) {
-        return Expression<Exp0, Exp1, std::multiplies>::make_exp(e0, e1);
+        return array::Expression<Exp0, Exp1, std::multiplies>::make_exp(e0, e1);
       }
 
       /// Array expression negate operation
@@ -549,7 +552,7 @@ namespace TiledArray {
     } // namespace array
 
   } // namespace expressions
-
+*/
 } // namespace TiledArray
 
 #endif // TILEDARRAY_ARRAY_MATH_H__INCLUDED

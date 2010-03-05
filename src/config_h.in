@@ -101,6 +101,9 @@
    2 */
 #undef TA_DEFAULT_ERROR
 
+/* Maximum number of allowed dimensions. */
+#undef TA_MAX_DIM
+
 /* TiledArray will use blas for some math operations. */
 #undef TA_USE_CBLAS
 

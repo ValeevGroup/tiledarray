@@ -57,8 +57,8 @@ namespace TiledArray {
     typedef typename data_container::const_iterator const_iterator;
     typedef typename data_container::iterator iterator;
 
-    static unsigned int dim() { return DIM; }
-    static detail::DimensionOrderType  order() { return coordinate_system::order; }
+    static const unsigned int dim;
+    static const detail::DimensionOrderType order;
 
     /// Default constructor
 
@@ -100,7 +100,7 @@ namespace TiledArray {
     Tile(const range_type& range, InIter first, InIter last) :
     	  range_(range), data_(range.size(), first, last)
     {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+//      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
     }
 
     /// Creates a new tile from a TileSlice
@@ -193,6 +193,11 @@ namespace TiledArray {
     /// \arg \c i Element index.
     bool includes(const index_type& i) const { return range_.includes(i); }
 
+    /// Returns true when \c i is in the tile range.
+
+    /// \arg \c i Element index.
+    bool includes(const ordinal_type i) const { return i < range_.volume(); }
+
     // The at() functions do error checking, but we do not need to implement it
     // here because the data container already does that. There is no need to do
     // it twice.
@@ -254,8 +259,8 @@ namespace TiledArray {
       return result;
     }
 
-    expressions::tile::AnnotatedTile<const value_type> operator ()(const std::string& v) const {
-      return expressions::tile::AnnotatedTile<const value_type>(*this, expressions::VariableList(v));
+    const expressions::tile::AnnotatedTile<value_type> operator ()(const std::string& v) const {
+      return expressions::tile::AnnotatedTile<value_type>(* const_cast<Tile_*>(this), expressions::VariableList(v));
     }
 
     expressions::tile::AnnotatedTile<value_type> operator ()(const expressions::VariableList& v) {
@@ -263,8 +268,8 @@ namespace TiledArray {
       return result;
     }
 
-    expressions::tile::AnnotatedTile<const value_type> operator ()(const expressions::VariableList& v) const {
-      return expressions::tile::AnnotatedTile<const value_type>(*this, v);
+    const expressions::tile::AnnotatedTile<value_type> operator ()(const expressions::VariableList& v) const {
+      return expressions::tile::AnnotatedTile<value_type>(* const_cast<Tile_*>(this), v);
     }
 
     /// Serializes the tile data for communication with other nodes.
@@ -291,6 +296,12 @@ namespace TiledArray {
     data_container data_;  ///< element data
 
   }; // class Tile
+
+  // const static data member initialization
+  template<typename T, unsigned int DIM, typename CS>
+  const unsigned int Tile<T, DIM, CS>::dim = DIM;
+  template<typename T, unsigned int DIM, typename CS>
+  const detail::DimensionOrderType  Tile<T, DIM, CS>::order = CS::dimension_order;
 
   /// Exchange the data of the two tiles
   template<typename T, unsigned int DIM, typename CS>

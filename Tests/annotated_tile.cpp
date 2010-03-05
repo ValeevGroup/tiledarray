@@ -32,9 +32,8 @@ struct TileFixture {
 
 struct AnnotatedTileFixture : public TileFixture {
   typedef TiledArray::expressions::tile::AnnotatedTile<double> ATile;
-  typedef TiledArray::expressions::tile::AnnotatedTile<const double> ConstATile;
 
-  AnnotatedTileFixture() : v("a,b,c"), a(t, v), ca(const_cast<const Tile3&>(t), v), s(t.size()) { }
+  AnnotatedTileFixture() : v("a,b,c"), a(t, v), ca(t, v), s(t.size()) { }
   ~AnnotatedTileFixture() { }
 
   template<typename InIter, typename T>
@@ -48,7 +47,7 @@ struct AnnotatedTileFixture : public TileFixture {
 
   VariableList v;
   ATile a;
-  ConstATile ca;
+  const ATile ca;
   Tile3::size_array s;
 };
 
@@ -63,7 +62,7 @@ BOOST_AUTO_TEST_CASE( accessor )
   BOOST_CHECK_EQUAL_COLLECTIONS(a.weight().begin(), a.weight().end(),
       t.weight().begin(), t.weight().end()); // check weight accessor
   BOOST_CHECK_EQUAL(a.vars(), v); // check variable list accessor
-  BOOST_CHECK_EQUAL(a.dim(), t.dim()); // check dimension accessor
+  BOOST_CHECK_EQUAL(a.dim(), t.dim); // check dimension accessor
   BOOST_CHECK_EQUAL(a.volume(), t.volume());// check volume accessor
 }
 

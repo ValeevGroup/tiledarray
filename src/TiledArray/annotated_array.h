@@ -39,23 +39,22 @@ namespace TiledArray {
       class ArrayHolderBase {
       public:
         typedef ArrayHolderBase<T, I> ArrayHolderBase_;
-        typedef typename boost::remove_const<T>::type value_type;
         typedef I index_type;
         typedef I ordinal_type;
         typedef I volume_type;
-        typedef detail::ArrayRef<const I> size_array;
         typedef tile::AnnotatedTile<T> tile_type;
+        typedef std::pair<const index_type, madness::Future<tile_type> > value_type;
+        typedef detail::ArrayRef<const index_type> size_array;
 
       private:
         // Annotated tile typedefs
         typedef std::pair<const ordinal_type, madness::Future<tile::AnnotatedTile<value_type> > > data_type;
-        typedef std::pair<const ordinal_type, madness::Future<tile::AnnotatedTile<const value_type> > > const_data_type;
 
 
       public:
         // Iterator typedefs
-        typedef detail::PolyTransformIterator<data_type> iterator;
-        typedef detail::PolyTransformIterator<const_data_type> const_iterator;
+        typedef detail::PolyTransformIterator<value_type> iterator;
+        typedef detail::PolyTransformIterator<const value_type> const_iterator;
 
         // Clone the array
         virtual boost::shared_ptr<ArrayHolderBase_> clone(madness::World&, bool copy_data = false) const = 0;
@@ -108,11 +107,6 @@ namespace TiledArray {
         typedef typename ArrayHolderBase_::size_array size_array;
         typedef typename ArrayHolderBase_::tile_type tile_type;
 
-      protected:
-        // Annotated tile typedefs
-        typedef typename ArrayHolderBase_::data_type data_type;
-        typedef typename ArrayHolderBase_::const_data_type const_data_type;
-
       public:
         // Iterator typedefs
         typedef typename ArrayHolderBase_::iterator iterator;
@@ -126,8 +120,8 @@ namespace TiledArray {
         private:
           MakeFutATile();
         public:
-          typedef Res result_type;
-          typedef Arg argument_type;
+          typedef typename boost::call_traits<Res>::value_type result_type;
+          typedef typename boost::call_traits<Arg>::param_type argument_type;
 
           /// Constructor
           MakeFutATile(const expressions::VariableList& var) : var_(var) { }
@@ -306,7 +300,6 @@ namespace TiledArray {
       /// Annotated Array implementation class
       template<typename T>
       class AnnotatedArray {
-
       public:
         typedef AnnotatedArray<T> AnnotatedArray_;
         typedef tile::AnnotatedTile<T> tile_type;
@@ -330,7 +323,7 @@ namespace TiledArray {
         /// val specifies the default value of every element
         template<typename A>
         AnnotatedArray(A* a, const VariableList& v) :
-            array_(dynamic_cast<ArrayHolderBase_*>(new ArrayHolder<A, T, index_type>(a)), & AnnotatedArray_::no_delete), var_(v)
+            array_(dynamic_cast<ArrayHolderBase_*>(new ArrayHolder<A, T, index_type>(a))), var_(v)
         { }
 
         template<typename Range>
@@ -530,7 +523,7 @@ namespace TiledArray {
 
         template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O>
         ordinal_type ord_(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) {
-          return std::inner_product(i.begin(), i.end(), array_->weight_ref().begin(), ordinal_type(0));
+          return std::inner_product(i.begin(), i.end(), array_->weight().begin(), ordinal_type(0));
         }
 
         /// Private swap function.

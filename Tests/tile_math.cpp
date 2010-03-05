@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE( contraction_func )
   b = NULL;
   c = NULL;
 }
-
+/*
 BOOST_AUTO_TEST_CASE( value_exp )
 {
   double d = 1.0;
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE( value_exp )
   expressions::tile::ValueExp<double> ve(d);
   BOOST_CHECK_CLOSE(ve.eval(), 1.0, 0.000001);
 }
-
+*/
 BOOST_AUTO_TEST_CASE( zip_op )
 {
   boost::tuple<const ATile::value_type&, const ATile::value_type&> tup_it =
@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE( tile_op )
   BOOST_CHECK(check_val(result.begin(), result.end(), 3.0));
 }
 
-
+/*
 BOOST_AUTO_TEST_CASE( addition )
 {
   tr("a,b,c") = t1("a,b,c") + t2("a,b,c");
@@ -241,5 +241,5 @@ BOOST_AUTO_TEST_CASE( chain_expressions )
   tr4("a,c,b,d") = 6.0 * t2("a,i,b") * t3("c,i,d") + t3("a,i,b") * t4("c,i,d") - 1.0;
   BOOST_CHECK(check_val(tr4.begin(), tr4.end(), 239.0));
 }
-
+*/
 BOOST_AUTO_TEST_SUITE_END()

@@ -691,6 +691,7 @@ enable_dependency_tracking
 enable_error_checking
 with_boost_test_lib
 with_blas
+with_max_dim
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1340,6 +1341,8 @@ Optional Packages:
                           [default=check].
 
   --with-blas[=DIR]       DIR where the blas library is installed.
+  --with-max-dim[=NUMBER] The maximum number of allowed dimensions
+                          [Default=20].
 
 Some influential environment variables:
   MPICXX      MPI C++ compiler
@@ -4378,6 +4381,35 @@ fi
 
 
 $as_echo "#define TA_USE_CBLAS 1" >>confdefs.h
+
+
+fi
+
+
+
+# Check whether --with-max-dim was given.
+if test "${with_max_dim+set}" = set; then :
+  withval=$with_max_dim;
+              case $with_max_dim in
+                yes)
+
+$as_echo "#define TA_MAX_DIM 20" >>confdefs.h
+
+                ;;
+                no)
+                  as_fn_error "A maximum number of dimensions must be specified." "$LINENO" 5
+                ;;
+                *)
+
+$as_echo "#define TA_MAX_DIM \$with_max_dim" >>confdefs.h
+
+                ;;
+              esac
+
+else
+
+
+$as_echo "#define TA_MAX_DIM 20" >>confdefs.h
 
 
 fi

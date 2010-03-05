@@ -52,7 +52,7 @@ namespace TiledArray {
     PackedTile(T& t, InIter first, InIter last, const index_type& origin = index_type()) : r_(), w_(), t_(t)
     {
       BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-      TA_ASSERT( (valid_pack_(first, last, tile_type::dim(), DIM)) , std::runtime_error,
+      TA_ASSERT( (valid_pack_(first, last, tile_type::dim, DIM)) , std::runtime_error,
           "Invalid packing information.");
       size_array s;
       s.assign(1);

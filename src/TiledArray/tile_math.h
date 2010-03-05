@@ -263,7 +263,7 @@ namespace TiledArray {
     }; // struct UnaryTileOp
 
   } // namespace math
-
+/*
   namespace expressions {
 
     namespace tile {
@@ -495,7 +495,7 @@ namespace TiledArray {
 
       template<typename Exp0, typename Exp1, template<typename> class Op >
       struct Expression :
-          public ExpConstruct<typename ExpType<Exp0>::type, typename ExpType<Exp1>::type, Op> {
+          public tile::ExpConstruct<typename ExpType<Exp0>::type, typename ExpType<Exp1>::type, Op> {
 
       }; // struct ExpPairOp
 
@@ -504,9 +504,9 @@ namespace TiledArray {
       /// This operator constructs a tile binary, addition expression object. The
       /// expression is not immediately evaluated.
       template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::plus>::exp_type
+      typename tile::Expression<Exp0, Exp1, std::plus>::exp_type
       operator +(const Exp0& e0, const Exp1& e1) {
-        return Expression<Exp0, Exp1, std::plus>::make_exp(e0, e1);
+        return tile::Expression<Exp0, Exp1, std::plus>::make_exp(e0, e1);
       }
 
       /// Tile expression subtraction operation
@@ -514,9 +514,9 @@ namespace TiledArray {
       /// This operator constructs a tile binary, subtraction expression object.
       /// The expression is not immediately evaluated.
       template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::minus>::exp_type
+      typename tile::Expression<Exp0, Exp1, std::minus>::exp_type
       operator -(const Exp0& e0, const Exp1& e1) {
-        return Expression<Exp0, Exp1, std::minus>::make_exp(e0, e1);
+        return tile::Expression<Exp0, Exp1, std::minus>::make_exp(e0, e1);
       }
 
       /// Tile expression multiplication or contraction operation
@@ -527,9 +527,9 @@ namespace TiledArray {
       /// expression is constructed if both expressions will evaluate to annotated
       /// tiles. The expression is not immediately evaluated.
       template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::multiplies>::exp_type
+      typename tile::Expression<Exp0, Exp1, std::multiplies>::exp_type
       operator *(const Exp0& e0, const Exp1& e1) {
-        return Expression<Exp0, Exp1, std::multiplies>::make_exp(e0, e1);
+        return tile::Expression<Exp0, Exp1, std::multiplies>::make_exp(e0, e1);
       }
 
       /// Tile expression negate operation
@@ -545,7 +545,7 @@ namespace TiledArray {
     } // namespace tile
 
   } // namespace expressions
-
+*/
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_MATH_H__INCLUDED

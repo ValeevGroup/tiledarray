@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE( contraction_func )
 {
 
 }
-
+/*
 BOOST_AUTO_TEST_CASE( value_exp )
 {
   double d = 1.0;
@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE( value_exp )
   expressions::tile::ValueExp<double> ve(d);
   BOOST_CHECK_CLOSE(ve.eval(), 1.0, 0.000001);
 }
-
+*/
 
 BOOST_AUTO_TEST_CASE( array_op )
 {
@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE( array_op )
 
 }
 
-
+/*
 BOOST_AUTO_TEST_CASE( addition )
 {
   ar("a,b,c") = a1("a,b,c") + a2("a,b,c");
@@ -198,5 +198,5 @@ BOOST_AUTO_TEST_CASE( chain_expressions )
   ar4("a,c,b,d") = 6.0 * a2("a,i,b") * a3("c,i,d") + a3("a,i,b") * a4("c,i,d") - 1.0;
   BOOST_CHECK(check_val(ar4, 239));
 }
-
+*/
 BOOST_AUTO_TEST_SUITE_END()

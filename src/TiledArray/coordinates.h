@@ -131,7 +131,7 @@ namespace TiledArray {
     /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a
     /// point with the coordinates (0, 1, 2, 3).
     template <typename... Params>
-    ArrayCoordinate(Params... params) {
+    explicit ArrayCoordinate(Params... params) {
       BOOST_STATIC_ASSERT(detail::Count<Params...>::value == DIM);
       BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
       detail::fill(r_.begin(), params...);
@@ -148,7 +148,7 @@ namespace TiledArray {
     /// Constructs an ArrayCoordinate with the specified constants. For example,
     /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a
     /// point with the coordinates (0, 1, 2, 3).
-    ArrayCoordinate(const index c0, const index c1, ...) {
+    explicit ArrayCoordinate(const index c0, const index c1, ...) {
       r_.assign(0ul);
       va_list ap;
       va_start(ap, c1);

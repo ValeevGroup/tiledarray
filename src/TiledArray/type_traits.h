@@ -30,7 +30,7 @@ namespace TiledArray {
       typedef result_type(*func_ptr_type)(argument_type);
 
       static func_ptr_type func_ptr(Func& f) {
-        return &Func::operator();
+        return Func::operator();
       }
     }; // struct unary_functor_types
 
@@ -53,7 +53,7 @@ namespace TiledArray {
       typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
 
       static func_ptr_type func_ptr(const Func&) {
-        return &Func::operator();
+        return & Func::operator();
       }
     }; // struct binary_functor_types
 

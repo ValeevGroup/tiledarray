@@ -486,8 +486,8 @@ namespace TiledArray {
       return expressions::array::AnnotatedArray<T>(this, expressions::VariableList(v));
     }
 
-    expressions::array::AnnotatedArray<const T> operator ()(const std::string& v) const {
-      return expressions::array::AnnotatedArray<const T>(this, expressions::VariableList(v));
+    expressions::array::AnnotatedArray<T> operator ()(const std::string& v) const {
+      return expressions::array::AnnotatedArray<T>(const_cast<const Array_*>(this), expressions::VariableList(v));
     }
 
     /// Returns a reference to the tile range object.

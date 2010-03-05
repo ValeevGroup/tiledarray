@@ -91,7 +91,7 @@ namespace TiledArray {
     DenseArray(const size_array& size, InIter first, InIter last) :
         dim_(size), data_(NULL), alloc_()
     {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+//      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       create_(first, last);
     }
 
@@ -285,7 +285,7 @@ namespace TiledArray {
     /// the remaining elements will be initialized with the default constructor.
     template <typename InIter>
     void create_(InIter first, InIter last) {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+//      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       TA_ASSERT(data_ == NULL, std::runtime_error,
           "Cannot allocate data to a non-NULL pointer.");
       data_ = alloc_.allocate(dim_.n_);

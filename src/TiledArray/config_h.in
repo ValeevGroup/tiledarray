@@ -7,4 +7,7 @@
 /* TiledArray will use blas for some math operations. */
 #undef TA_USE_CBLAS
 
+/* Maximum number of allowed dimensions. */
+#undef TA_MAX_DIM
+
 #endif // TILEDARRAY_CONFIGURE_H__INCULDED

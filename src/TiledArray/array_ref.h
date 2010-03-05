@@ -53,7 +53,8 @@ namespace TiledArray {
     template <unsigned int DIM, typename T>
     ArrayRef<T>& operator^=(ArrayRef<T>&, const Permutation<DIM>&);
     template <unsigned int DIM, typename T>
-    boost::array<T, static_cast<std::size_t>(DIM) > operator^(const Permutation<DIM>&, const ArrayRef<T>&);
+    boost::array<typename boost::remove_const<T>::type, static_cast<std::size_t>(DIM) >
+    operator^(const Permutation<DIM>&, const ArrayRef<T>&);
 
     /// Stores a reference to an array.
 
@@ -178,13 +179,13 @@ namespace TiledArray {
       const_reference operator[](size_type n) const { return first[n]; }
       reference at(size_type n) {
         if(n > std::distance(first, last))
-          TA_EXCEPTION(std::out_of_range, "Range check:", "Element n is out of range.");
+          TA_EXCEPTION(std::out_of_range, "Element n is out of range.");
         return first[n];
       }
 
       const_reference at(size_type n) const {
         if(n > std::distance(first, last))
-          TA_EXCEPTION(std::out_of_range, "Range check:", "Element n is out of range.");
+          TA_EXCEPTION(std::out_of_range, "Element n is out of range.");
         return first[n];
       }
 
@@ -385,10 +386,11 @@ namespace TiledArray {
 
     /// permute an array reference
     template <unsigned int DIM, typename T>
-    boost::array<T, static_cast<std::size_t>(DIM) > operator^(const Permutation<DIM>& perm, const ArrayRef<T>& a) {
+    boost::array<typename boost::remove_const<T>::type, static_cast<std::size_t>(DIM) >
+    operator^(const Permutation<DIM>& perm, const ArrayRef<T>& a) {
       TA_ASSERT(a.size() == DIM, std::runtime_error,
           "Dimensions of the array must match that of the permutation.");
-      boost::array<T, static_cast<std::size_t>(DIM) > result;
+      boost::array<typename boost::remove_const<T>::type, static_cast<std::size_t>(DIM) > result;
       detail::permute(perm.begin(), perm.end(), a.begin(), result.begin());
       return result;
     }

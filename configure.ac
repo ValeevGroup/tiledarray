@@ -72,6 +72,24 @@ AC_ARG_WITH([blas],
               AC_CHECK_HEADER([cblas.h], [], [AC_MSG_ERROR([Unable to find the cblas header file.])])
               AC_DEFINE([TA_USE_CBLAS], [1], [TiledArray will use blas for some math operations.])
             ])
+            
+AC_ARG_WITH([max-dim],
+            [AS_HELP_STRING([--with-max-dim@<:@=NUMBER@:>@], [The maximum number of allowed dimensions @<:@Default=20@:>@.])],
+            [
+              case $with_max_dim in
+                yes)
+                  AC_DEFINE([TA_MAX_DIM], [20], [Maximum number of allowed dimensions.])
+                ;;
+                no)
+                  AC_MSG_ERROR([A maximum number of dimensions must be specified.])
+                ;;
+                *)
+                  AC_DEFINE([TA_MAX_DIM], [$with_max_dim], [Maximum number of allowed dimensions.])
+                ;;
+              esac
+            ], [
+              AC_DEFINE([TA_MAX_DIM], [20], [Maximum number of allowed dimensions.])
+            ])
 
 # Display options
 AC_MSG_NOTICE([CPPFLAGS = $CPPFLAGS])
