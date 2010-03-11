@@ -21,45 +21,48 @@ namespace TiledArray {
 
   template<unsigned int DIM, typename Tag = LevelTag<1> >
   class DensePred {
-    public:
+    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
+  public:
 
-      /// Default constructor
-      DensePred() /* throw() */
-      { }
+    /// Default constructor
+    DensePred() /* throw() */
+    { }
 
-      /// Copy constructor
-      DensePred(const DensePred& pred) /* throw() */
-      { }
+    /// Copy constructor
+    DensePred(const DensePred& pred) /* throw() */
+    { }
 
-      DensePred& operator =(const DensePred& pred) { /* throw() */
+    DensePred& operator =(const DensePred& pred) { /* throw() */
 
-        return *this;
-      }
+      return *this;
+    }
 
-      /// predicate function
-      template <typename I, typename CS>
-      bool includes(const ArrayCoordinate<I,DIM,Tag,CS>& i) const { /* throw() */
-    	  return true;
-      }
+    /// predicate function
+    template <typename I, typename CS>
+    bool includes(const ArrayCoordinate<I,DIM,Tag,CS>& i) const { /* throw() */
+      return true;
+    }
 
-      /// predicate operator
-      template <typename I, typename CS>
-      bool operator ()(const ArrayCoordinate<I,DIM,Tag,CS>& i) const { /* throw() */
-        return includes(i);
-      }
+    /// predicate operator
+    template <typename I, typename CS>
+    bool operator ()(const ArrayCoordinate<I,DIM,Tag,CS>& i) const { /* throw() */
+      return includes(i);
+    }
 
-      /// Permute the predicate
-      DensePred& operator ^=(const Permutation<DIM>& perd) /* throw() */
-      { return *this; }
+    /// Permute the predicate
+    DensePred& operator ^=(const Permutation<DIM>& perd) /* throw() */
+    { return *this; }
 
-      /// Reset the predicate to its default state.
-      void reset() {}
+    /// Reset the predicate to its default state.
+    void reset() {}
 
   }; // class DensePred
 
 
   template <unsigned int DIM, typename Tag = LevelTag<1> >
   class LowerTrianglePred {
+    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
+
   public:
     // Default constructor
     LowerTrianglePred() :

@@ -30,6 +30,8 @@ namespace TiledArray {
   /// to the local node.
   template <typename T, unsigned int DIM, typename Tag = LevelTag<1>, typename CS = CoordinateSystem<DIM> >
   class DistributedArray {
+    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
+
   public:
     typedef DistributedArray<T, DIM, Tag, CS> DistributedArrayStorage_;
     typedef detail::ArrayDim<std::size_t, DIM, Tag, CS> array_dim_type;

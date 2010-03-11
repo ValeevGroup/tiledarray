@@ -46,6 +46,8 @@ namespace TiledArray {
   /// constructor requirement by specifying default values in
   template <typename T, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
   class DenseArray {
+    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
+
   private:
     typedef Eigen::aligned_allocator<T> alloc_type;
   public:

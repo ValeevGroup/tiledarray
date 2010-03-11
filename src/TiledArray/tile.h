@@ -41,6 +41,8 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class Tile
   {
+    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
+
     typedef DenseArray<T, DIM, LevelTag<0>, CS > data_container;
   public:
     typedef Tile<T, DIM, CS> Tile_;

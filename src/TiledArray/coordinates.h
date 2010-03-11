@@ -95,6 +95,9 @@ namespace TiledArray {
       > > > > > >
   {
   public:
+    BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
+    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
+
     typedef ArrayCoordinate<I,DIM,Tag,CS> ArrayCoordinate_;
     typedef I index;
     typedef I volume;
