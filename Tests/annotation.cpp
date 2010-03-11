@@ -20,7 +20,7 @@ struct AnnotationFixture {
   BOOST_STATIC_ASSERT((TA_TEST_DIM >= 3ul) && (TA_TEST_DIM <= 11ul));
   typedef Annotation<std::size_t>::size_array size_array;
   typedef Annotation<std::size_t>::ordinal_type ordinal_type;
-  typedef ArrayCoordinate<double,TA_TEST_DIM,LevelTag<0>, CoordinateSystem<TA_TEST_DIM> > index_type;
+  typedef ArrayCoordinate<std::size_t,TA_TEST_DIM,LevelTag<0>, CoordinateSystem<TA_TEST_DIM> > index_type;
 
   AnnotationFixture() : s(size), w(weight),
       ca(size.begin(), size.end(), weight.begin(), weight.end(), vol, var),
