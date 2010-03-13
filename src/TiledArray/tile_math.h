@@ -158,20 +158,20 @@ namespace TiledArray {
     struct BinaryTileOp<expressions::tile::AnnotatedTile<T>, expressions::tile::AnnotatedTile<U>,
         Res, std::multiplies<typename Res::value_type> >
     {
-      typedef expressions::tile::AnnotatedTile<T> first_argument_type;
-      typedef expressions::tile::AnnotatedTile<U> second_argument_type;
+      typedef const expressions::tile::AnnotatedTile<T>& first_argument_type;
+      typedef const expressions::tile::AnnotatedTile<U>& second_argument_type;
       typedef Res result_type;
       typedef typename Res::value_type value_type;
-      typedef ZipOp< typename first_argument_type::const_iterator,
-          typename second_argument_type::const_iterator, value_type, std::multiplies<typename Res::value_type> > op_type;
+      typedef ZipOp< typename expressions::tile::AnnotatedTile<T>::const_iterator,
+          typename expressions::tile::AnnotatedTile<U>::const_iterator, value_type, std::multiplies<typename Res::value_type> > op_type;
       typedef boost::transform_iterator<op_type,
-          boost::zip_iterator<boost::tuple<typename first_argument_type::const_iterator,
-          typename second_argument_type::const_iterator> > > const_iterator;
+          boost::zip_iterator<boost::tuple<typename expressions::tile::AnnotatedTile<T>::const_iterator,
+          typename expressions::tile::AnnotatedTile<U>::const_iterator> > > const_iterator;
 
       BinaryTileOp() { }
       BinaryTileOp(std::multiplies<typename Res::value_type>) { }
 
-      result_type operator ()(const first_argument_type& e0, const second_argument_type& e1) {
+      result_type operator ()(first_argument_type e0, second_argument_type e1) {
         typedef std::pair<expressions::VariableList::const_iterator,
             expressions::VariableList::const_iterator> it_pair;
 

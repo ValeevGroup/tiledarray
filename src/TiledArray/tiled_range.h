@@ -4,6 +4,8 @@
 //#include <coordinates.h>
 #include <TiledArray/tiled_range1.h>
 #include <TiledArray/dense_array.h>
+#include <TiledArray/array_ref.h>
+#include <iterator>
 //#include <iosfwd>
 //#include <boost/array.hpp>
 //#include <boost/operators.hpp>
@@ -30,181 +32,224 @@ namespace TiledArray {
   template<typename I, unsigned int DIM, typename CS>
   std::ostream& operator<<(std::ostream& out, const TiledRange<I,DIM,CS>& rng);
 
+  namespace detail {
+
+    /// Tiled Range data structure
+    template<typename I>
+    struct RangeData {
+      BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
+    public:
+      template<std::size_t D>
+      RangeData(const boost::array<TiledRange1<I>, D>& r, DimensionOrderType o) :
+          ranges(r), dim(D), order(o)
+      { }
+
+      ArrayRef<const TiledRange1<I> > ranges;
+      unsigned int dim;
+      DimensionOrderType order;
+    }; // struct RangeData
+
+  }  // namespace detail
+
+
   /// TiledRange is a tiled DIM-dimensional range. It is immutable, to simplify API.
   template<typename I, unsigned int DIM, typename CS = CoordinateSystem<DIM> >
   class TiledRange : public boost::equality_comparable1< TiledRange<I,DIM,CS> > {
 	public:
-      // typedefs
-      typedef TiledRange<I,DIM,CS> TiledRange_;
-      typedef CS coordinate_system;
-      typedef TiledRange1<I> tiled_range1_type;
-      typedef Range<I,DIM,LevelTag<1>,coordinate_system> range_type;
-      typedef Range<I,DIM,LevelTag<0>,coordinate_system> element_range_type;
-      typedef element_range_type tile_range_type;
-      typedef typename range_type::size_array size_array;
-      typedef I ordinal_type;
-      typedef typename range_type::index_type index_type;
-      typedef typename range_type::volume_type volume_type;
-      typedef typename tile_range_type::index_type element_index_type;
-      typedef typename tile_range_type::index_type tile_index_type;
-      typedef DenseArray<tile_range_type, DIM, LevelTag<1>, coordinate_system > tile_container;
-      typedef typename tile_container::iterator iterator;
-      typedef typename tile_container::const_iterator const_iterator;
+    BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
+    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
 
-      /// Returns the number of dimensions
-      static unsigned int dim() { return DIM; }
+    // typedefs
+    typedef TiledRange<I,DIM,CS> TiledRange_;
+    typedef CS coordinate_system;
+    typedef TiledRange1<I> tiled_range1_type;
+    typedef Range<I,DIM,LevelTag<1>,coordinate_system> range_type;
+    typedef Range<I,DIM,LevelTag<0>,coordinate_system> element_range_type;
+    typedef element_range_type tile_range_type;
+    typedef typename range_type::size_array size_array;
+    typedef I ordinal_type;
+    typedef typename range_type::index_type index_type;
+    typedef typename range_type::volume_type volume_type;
+    typedef typename tile_range_type::index_type element_index_type;
+    typedef typename tile_range_type::index_type tile_index_type;
+    typedef DenseArray<tile_range_type, DIM, LevelTag<1>, coordinate_system > tile_container;
+    typedef typename tile_container::iterator iterator;
+    typedef typename tile_container::const_iterator const_iterator;
 
-      // Default constructor
-      TiledRange() : range_(), element_range_(), tile_ranges_(), ranges_() { }
+    /// Returns the number of dimensions
+    static const unsigned int dim;
+    static const detail::DimensionOrderType order;
 
-      // Constructed with a set of ranges pointed to by [ first, last ).
-      template <typename InIter>
-      TiledRange(InIter first, InIter last) {
-        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-        for(typename Ranges::iterator it = ranges_.begin(); it != ranges_.end(); ++it, ++first) {
-          TA_ASSERT( (first != last), std::runtime_error,
-              "Iterator unexpectedly reached the end of the range.");
-          *it = *first;
+    /// Default constructor
+    TiledRange() : range_(), element_range_(), tile_ranges_(), ranges_() { }
+
+    /// Constructed with a set of ranges pointed to by [ first, last ).
+    template <typename InIter>
+    TiledRange(InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TA_ASSERT(std::distance(first, last) == DIM, std::runtime_error,
+          "Tiling for all dimensions must be specified.");
+      std::copy(first, last, ranges_.begin());
+      init_();
+    }
+
+    /// Constructed with a set of ranges pointed to by [ first, last ).
+    TiledRange(const detail::RangeData<I>& rd) {
+      TA_ASSERT(rd.ranges.size() == DIM, std::runtime_error,
+          "Tiling for all dimensions must be specified.");
+      TA_ASSERT(rd.order == coordinate_system::dimension_order, std::runtime_error,
+          "Range data ordering does not match range object ordering.");
+      std::copy(rd.ranges.begin(), rd.ranges.end(), ranges_.begin());
+      init_();
+    }
+
+
+    /// Copy constructor
+    TiledRange(const TiledRange& other) :
+        range_(other.range_), element_range_(other.element_range_),
+        tile_ranges_(other.tile_ranges_), ranges_(other.ranges_)
+    { }
+
+    /// Returns a const_iterator to the first tile range in TiledRange.
+    const_iterator begin() const { return tile_ranges_.begin(); }
+    /// Return a const_iterator to the end of the tile range.
+    const_iterator end() const { return tile_ranges_.end(); }
+
+    /// Return iterator to the tile range that contains the element index.
+    const_iterator find(const tile_index_type e) const {
+      const_iterator result;
+      if(element_range_.includes(e)) {
+        index_type t = element2tile_(e);
+        result = tile_ranges_.begin() + tile_ranges_.ordinal(t);
+      } else {
+        result = tile_ranges_.end();
+      }
+      return result;
+    }
+
+    /// In place permutation of range.
+
+    /// This function will permute the range. Note: only tiles that are not
+    /// being used by other objects will be permuted. The owner of those
+    /// objects are
+    TiledRange& operator ^=(const Permutation<DIM>& p) {
+      TiledRange temp = p ^ *this;
+      TiledArray::swap(*this, temp);
+      return *this;
+    }
+
+    /// TiledRange assignment operator
+    TiledRange& operator =(const TiledRange& other) {
+      TiledRange temp(other);
+      swap(*this, temp);
+      return *this;
+    }
+
+    /// Resize the range to the set of dimensions in [first, last) input
+    /// iterators. The iterators must dereference to a tiled_range1_type.
+    template <typename InIter>
+    TiledRange& resize(InIter first, InIter last) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TiledRange temp(first, last);
+      swap(*this, temp);
+      return *this;
+    }
+
+    /// Access the range information on the tiles contained by the range.
+    const range_type& tiles() const {
+      return range_;
+    }
+
+    /// Access the range information on the elements contained by the range.
+    const element_range_type& elements() const {
+      return element_range_;
+    }
+
+    /// Access the range information on the elements contained by tile t.
+    const tile_range_type& tile(const index_type& i) const {
+      TA_ASSERT( tile_ranges_.includes(i), std::out_of_range,
+          "Tile index is out of range.");
+      return tile_ranges_[i - range_.start()];
+    }
+
+    /// Access the range information on the elements contained by tile t.
+    const tile_range_type& tile(const ordinal_type& i) const {
+      TA_ASSERT( tile_ranges_.includes(i), std::out_of_range,
+          "Tile index is out of range.");
+      return tile_ranges_[i];
+    }
+
+    /// Returns a data structure with the range data.
+    detail::RangeData<I> range_data() const {
+      return detail::RangeData<I>(ranges_, coordinate_system::dimension_order);
+    }
+
+  private:
+    /// precomputes useful data listed below
+    void init_() {
+      // Indices used to store range start and finish.
+      index_type start;
+      index_type finish;
+      tile_index_type start_element;
+      tile_index_type finish_element;
+
+      // Find the start and finish of the over all tiles and element ranges.
+      for(unsigned int d=0; d < DIM; ++d) {
+        start[d] = ranges_[d].tiles().start()[0];
+        finish[d] = ranges_[d].tiles().finish()[0];
+
+        start_element[d] = ranges_[d].elements().start()[0];
+        finish_element[d] = ranges_[d].elements().finish()[0];
+      }
+      range_.resize(start, finish);
+      element_range_.resize(start_element, finish_element);
+
+      // Find the dimensions of each tile and store its range information.
+      tile_index_type start_tile;
+      tile_index_type finish_tile;
+      tile_ranges_.resize(range_.size());
+      for(typename range_type::const_iterator it = range_.begin(); it != range_.end(); ++it) {
+        // Determine the start and finish of each tile.
+        for(unsigned int d = 0; d < DIM; ++d) {
+          start_tile[d] = ranges_[d].tile( (*it)[d] ).start()[0];
+          finish_tile[d] = ranges_[d].tile( (*it)[d] ).finish()[0];
         }
-        init_();
+
+        // Create and store the tile range.
+        tile_ranges_[ *it - range_.start()] = tile_range_type(start_tile, finish_tile);
       }
+    }
 
-      /// Copy constructor
-      TiledRange(const TiledRange& other) :
-          range_(other.range_), element_range_(other.element_range_),
-          tile_ranges_(other.tile_ranges_), ranges_(other.ranges_)
-      { }
-
-      /// Returns a const_iterator to the first tile range in TiledRange.
-      const_iterator begin() const { return tile_ranges_.begin(); }
-      /// Return a const_iterator to the end of the tile range.
-      const_iterator end() const { return tile_ranges_.end(); }
-
-      /// Return iterator to the tile range that contains the element index.
-      const_iterator find(const tile_index_type e) const {
-        const_iterator result;
-        if(element_range_.includes(e)) {
-          index_type t = element2tile_(e);
-          result = tile_ranges_.begin() + tile_ranges_.ordinal(t);
-        } else {
-          result = tile_ranges_.end();
+    /// Returns the tile index of the tile that contains the given element index.
+    index_type element2tile_(const tile_index_type& e) const {
+      index_type result;
+      if(elements().includes(e)) {
+        for(unsigned int d = 0; d < DIM; ++d) {
+          result[d] = ranges_[d].element2tile(e[d]);
         }
-        return result;
+      } else {
+        result = range_.finish().data();
       }
 
-      /// In place permutation of range.
+      return result;
+    }
 
-      /// This function will permute the range. Note: only tiles that are not
-      /// being used by other objects will be permuted. The owner of those
-      /// objects are
-      TiledRange& operator ^=(const Permutation<DIM>& p) {
-        TiledRange temp = p ^ *this;
-        TiledArray::swap(*this, temp);
-        return *this;
-      }
+    friend void swap<>(TiledRange_&, TiledRange_&);
+    friend TiledRange operator ^ <>(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
+    friend bool operator == <>(const TiledRange&, const TiledRange&);
 
-      /// TiledRange assignment operator
-      TiledRange& operator =(const TiledRange& other) {
-        TiledRange temp(other);
-        swap(*this, temp);
-        return *this;
-      }
-
-      /// Resize the range to the set of dimensions in [first, last) input
-      /// iterators. The iterators must dereference to a tiled_range1_type.
-      template <typename InIter>
-      TiledRange& resize(InIter first, InIter last) {
-        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-        TiledRange temp(first, last);
-        swap(*this, temp);
-        return *this;
-      }
-
-      /// Access the range information on the tiles contained by the range.
-      const range_type& tiles() const {
-        return range_;
-      }
-
-      /// Access the range information on the elements contained by the range.
-      const element_range_type& elements() const {
-        return element_range_;
-      }
-
-      /// Access the range information on the elements contained by tile t.
-      const tile_range_type& tile(const index_type& i) const {
-        TA_ASSERT( tile_ranges_.includes(i), std::out_of_range,
-            "Tile index is out of range.");
-        return tile_ranges_[i - range_.start()];
-      }
-
-      /// Access the range information on the elements contained by tile t.
-      const tile_range_type& tile(const ordinal_type& i) const {
-        TA_ASSERT( tile_ranges_.includes(i), std::out_of_range,
-            "Tile index is out of range.");
-        return tile_ranges_[i];
-      }
-
-    private:
-      /// precomputes useful data listed below
-      void init_() {
-        // Indices used to store range start and finish.
-        index_type start;
-        index_type finish;
-        tile_index_type start_element;
-        tile_index_type finish_element;
-
-        // Find the start and finish of the over all tiles and element ranges.
-        for(unsigned int d=0; d < DIM; ++d) {
-          start[d] = ranges_[d].tiles().start()[0];
-          finish[d] = ranges_[d].tiles().finish()[0];
-
-          start_element[d] = ranges_[d].elements().start()[0];
-          finish_element[d] = ranges_[d].elements().finish()[0];
-        }
-        range_.resize(start, finish);
-        element_range_.resize(start_element, finish_element);
-
-        // Find the dimensions of each tile and store its range information.
-        tile_index_type start_tile;
-        tile_index_type finish_tile;
-        tile_ranges_.resize(range_.size());
-        for(typename range_type::const_iterator it = range_.begin(); it != range_.end(); ++it) {
-          // Determine the start and finish of each tile.
-          for(unsigned int d = 0; d < DIM; ++d) {
-            start_tile[d] = ranges_[d].tile( (*it)[d] ).start()[0];
-            finish_tile[d] = ranges_[d].tile( (*it)[d] ).finish()[0];
-          }
-
-          // Create and store the tile range.
-          tile_ranges_[ *it - range_.start()] = tile_range_type(start_tile, finish_tile);
-        }
-      }
-
-      /// Returns the tile index of the tile that contains the given element index.
-      index_type element2tile_(const tile_index_type& e) const {
-        index_type result;
-        if(elements().includes(e)) {
-          for(unsigned int d = 0; d < DIM; ++d) {
-            result[d] = ranges_[d].element2tile(e[d]);
-          }
-        } else {
-          result = range_.finish().data();
-        }
-
-        return result;
-      }
-
-      friend void swap<>(TiledRange_&, TiledRange_&);
-      friend TiledRange operator ^ <>(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
-      friend bool operator == <>(const TiledRange&, const TiledRange&);
-
-      range_type range_; ///< Stores information on tile indexing for the range.
-      element_range_type element_range_; ///< Stores information on element indexing for the range.
-      tile_container tile_ranges_; ///< Stores a indexing information for each tile in the range.
-      typedef boost::array<tiled_range1_type,DIM> Ranges;
-      Ranges ranges_; ///< Stores tile boundaries for each dimension.
-
+    range_type range_; ///< Stores information on tile indexing for the range.
+    element_range_type element_range_; ///< Stores information on element indexing for the range.
+    tile_container tile_ranges_; ///< Stores a indexing information for each tile in the range.
+    typedef boost::array<tiled_range1_type,DIM> Ranges;
+    Ranges ranges_; ///< Stores tile boundaries for each dimension.
   };
+
+  // const static data member initialization
+  template<typename T, unsigned int DIM, typename CS>
+  const unsigned int TiledRange<T, DIM, CS>::dim = DIM;
+  template<typename T, unsigned int DIM, typename CS>
+  const detail::DimensionOrderType  TiledRange<T, DIM, CS>::order = CS::dimension_order;
 
   /// TiledRange permutation operator.
 

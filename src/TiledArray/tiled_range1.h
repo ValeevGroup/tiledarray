@@ -37,6 +37,8 @@ namespace TiledArray {
   template <typename I>
   class TiledRange1 {
   public:
+    BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
+
     typedef Range<I, 1, LevelTag<1>, CoordinateSystem<1> > range_type;
     typedef Range<I, 1, LevelTag<0>,  CoordinateSystem<1> > tile_range_type;
     typedef I index_type;
@@ -71,6 +73,56 @@ namespace TiledArray {
     TiledRange1(const TiledRange1& rng) : range_(rng.range_), element_range_(rng.element_range_),
       tile_ranges_(rng.tile_ranges_), elem2tile_(rng.elem2tile_)
     { }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+    /// Construct a 1D tiled range.
+
+    /// This will construct a 1D tiled range with the given tile boundaries. The
+    /// first argument is the number of tiles. The number of tile boundaries
+    /// must be n + 1. Tiles are defined as [t1, t2), [t2, t3), ...
+    /// \var \c n is the number of tiles.
+    /// \var \c t1, t2, ... are the tile boundaries.
+    template <typename... Params>
+    explicit TiledRange1(const index_type start_tile_index, const std::size_t n, Params... params) {
+      BOOST_STATIC_ASSERT(detail::Count<Params...>::value > 1);
+      BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
+      std::vector<I> r(detail::Count<Params...>::value, I(0));
+      detail::fill(r.begin(), params...);
+
+      init_tiles_(r.begin(), r.end(), start_tile_index);
+      init_map_();
+    }
+
+#else
+    /// Construct a 1D tiled range.
+
+    /// This will construct a 1D tiled range with the given tile boundaries. The
+    /// first argument is the number of tiles. The number of tile boundaries
+    /// must be n + 1. Tiles are defined as [t1, t2), [t2, t3), ...
+    /// \var \c n is the number of tiles.
+    /// \var \c t1, t2, ... are the tile boundaries.
+    explicit TiledRange1(const index_type start_tile_index, const std::size_t n, const tile_index_type t0, const tile_index_type t1, ...) {
+      TA_ASSERT(n >= 1, std::runtime_error, "There must be at least one tile.");
+      va_list ap;
+      va_start(ap, t1);
+
+      std::vector<tile_index_type> r;
+      r.push_back(t0);
+      r.push_back(t1);
+      tile_index_type ti; // ci is used as an intermediate
+      for(unsigned int i = 1; i < n; ++i) {
+        ci = 0ul;
+        ci = va_arg(ap, tile_index_type);
+        r.push_back(ti)
+      }
+
+      va_end(ap);
+
+      init_tiles_(r.begin(), r.end(), start_tile_index);
+      init_map_();
+    }
+
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Assignment operator
     TiledRange1& operator =(const TiledRange1& rng) {

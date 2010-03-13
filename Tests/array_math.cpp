@@ -21,7 +21,7 @@ struct TiledRangeFixture {
 
     const TRange1 dim0(d, d + 5);
     const TRange1 dims0[3] = {dim0, dim0, dim0};
-    trng0.resize(dims0, dims + 3);
+    trng0.resize(dims0, dims0 + 3);
   }
 
   ~TiledRangeFixture() { }
@@ -113,8 +113,11 @@ BOOST_AUTO_TEST_CASE( value_exp )
 
 BOOST_AUTO_TEST_CASE( array_op )
 {
-//  math::BinaryArrayOp<AArray, AArray, AArray, std::plus<double> > op;
+  math::BinaryArrayOp<AArray, AArray, AArray, std::plus<int> > op(world);
 
+  AArray result = op(a1("a,b,c"), a2("a,b,c"));
+  for(AArray::iterator it = result.begin(); it != result.end(); ++it)
+    BOOST_CHECK_EQUAL(it->second.get()[0], 3);
 }
 
 /*

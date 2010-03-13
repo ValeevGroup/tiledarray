@@ -51,52 +51,37 @@ namespace TiledArray {
 
     /// This class defines the operations for a specific tile needed by Array.
     template<typename T>
-    class array_tile {
-      typedef T tile_type;
-
-      template<typename I, unsigned int DIM, typename CS>
-      static tile_type create(const Range<I, DIM, LevelTag<0>, CS>& r, T val) {
-        return tile_type(r, val);
-      }
-
-      template<typename I, unsigned int DIM, typename CS, typename InIter>
-      static tile_type create(const Range<I, DIM, LevelTag<0>, CS>& r, InIter first, InIter last) {
-        return tile_type(r, first, last);
-      }
-
-      static expressions::tile::AnnotatedTile<T> annotation(tile_type& t, const expressions::VariableList& v) {
-        return t(v);
-      }
-
-      static expressions::tile::AnnotatedTile<T> annotation(tile_type& t, const std::string& v) {
-        return t(v);
-      }
-    };
+    class array_tile;
 
     /// This class defines the operations for a specific tile needed by Array.
     template<typename T>
-    class array_tile<madness::Future<T> > {
+    class array_tile<madness::Future<T> > : public array_tile<T> {
     public:
-      typedef T tile_type;
+      typedef madness::Future<T> tile_type;
+      typedef typename array_tile<T>::index_type index_type;
+      typedef typename array_tile<T>::value_type value_type;
 
+      /// Create a future to a tile that will be inserted into the array.
       template<typename I, unsigned int DIM, typename CS, typename Value>
-      static tile_type create(const Range<I, DIM, LevelTag<0>, CS>& r, Value v) {
-        return tile_type(T(r, v));
+      static madness::Future<T> create(const Range<I, DIM, LevelTag<0>, CS>& r, Value v) {
+        madness::Future<T> f(array_tile<T>::create(r, v));
+        return f;
       }
 
+      /// Create a future to a tile that will be inserted into the array.
       template<typename I, unsigned int DIM, typename CS, typename InIter>
       static tile_type create(const Range<I, DIM, LevelTag<0>, CS>& r, InIter first, InIter last) {
-        return tile_type(T(r, first, last));
+        madness::Future<T> f(array_tile<T>::create(r, first, last));
+        return f;
       }
 
-      static expressions::tile::AnnotatedTile<typename T::value_type> annotation(tile_type& t, const expressions::VariableList& v) {
-        const T& a = t.get();
-        return a(v);
+      /// Created an annotated tile.
+      static expressions::tile::AnnotatedTile<typename T::value_type> annotation(madness::Future<T>& f, const expressions::VariableList& v) {
+        return array_tile<T>::annotation(f.get(), v);
       }
 
-      static expressions::tile::AnnotatedTile<typename T::value_type> annotation(tile_type& t, const std::string& v) {
-        const T& a = t.get();
-        return make_annotation(a, v);
+      static expressions::tile::AnnotatedTile<typename T::value_type> annotation(const madness::Future<T>& f, const std::string& v) {
+        return array_tile<T>::annotation(f.get(), v);
       }
 
     };
@@ -105,6 +90,8 @@ namespace TiledArray {
     class array_tile<Tile<T, DIM, CS> > {
     public:
       typedef Tile<T, DIM, CS> tile_type;
+      typedef typename Tile<T, DIM, CS>::index_type index_type;
+      typedef typename Tile<T, DIM, CS>::value_type value_type;
 
       template<typename I>
       static tile_type create(const Range<I, DIM, LevelTag<0>, CS>& r, T val) {
@@ -129,6 +116,8 @@ namespace TiledArray {
     class array_tile<expressions::tile::AnnotatedTile<T> > {
     public:
       typedef expressions::tile::AnnotatedTile<T> tile_type;
+      typedef typename expressions::tile::AnnotatedTile<T>::index_type index_type;
+      typedef typename expressions::tile::AnnotatedTile<T>::value_type value_type;
 
       template<typename I, unsigned int DIM, typename CS>
       static tile_type create(const Range<I, DIM, LevelTag<0>, CS>& range, T val) {
@@ -150,62 +139,6 @@ namespace TiledArray {
         return t;
       }
     };
-
-    template<typename T>
-    class array_tile<madness::Future<expressions::tile::AnnotatedTile<T> > > {
-    public:
-      typedef madness::Future<expressions::tile::AnnotatedTile<T> > tile_type;
-
-      template<typename R>
-      static tile_type create(const R& range, T val) {
-        return tile_type(expressions::tile::AnnotatedTile<T>(range.size(), val));
-      }
-
-      template<typename R, typename InIter>
-      static tile_type create(const R& range, InIter first, InIter last) {
-        return tile_type(expressions::tile::AnnotatedTile<T>(range.size(), first, last));
-      }
-
-      static expressions::tile::AnnotatedTile<T> annotation(tile_type& t, const expressions::VariableList& v) {
-        const expressions::tile::AnnotatedTile<T>& a = t.get();
-        TA_ASSERT(v == a.var(), std::runtime_error, "Variable list cannot be modified.");
-        return t.get();
-      }
-
-      static expressions::tile::AnnotatedTile<T> annotation(tile_type& t, const std::string& v) {
-        const expressions::tile::AnnotatedTile<T>& a = t.get();
-        TA_ASSERT(v == a.var(), std::runtime_error, "Variable list cannot be modified.");
-        return t.get();
-      }
-    };
-
-    template<typename T, unsigned int DIM, typename CS>
-    class array_tile<madness::Future<Tile<T, DIM, CS> > > {
-    public:
-      typedef madness::Future<expressions::tile::AnnotatedTile<T> > tile_type;
-
-      template<typename R>
-      static tile_type create(const R& range, T val) {
-        return tile_type(Tile<T, DIM, CS>(range, val));
-      }
-
-      template<typename R, typename InIter>
-      static tile_type create(const R& range, InIter first, InIter last) {
-        return tile_type(Tile<T, DIM, CS>(range, first, last));
-      }
-
-      static expressions::tile::AnnotatedTile<T> annotation(tile_type& t, const expressions::VariableList& v) {
-        const expressions::tile::AnnotatedTile<T>& a = t.get();
-        TA_ASSERT(v == a.var(), std::runtime_error, "Variable list cannot be modified.");
-        return t.get();
-      }
-
-      static expressions::tile::AnnotatedTile<T> annotation(tile_type& t, const std::string& v) {
-        const expressions::tile::AnnotatedTile<T>& a = t.get();
-        TA_ASSERT(v == a.var(), std::runtime_error, "Variable list cannot be modified.");
-        return t.get();
-      }
-    };
   } // namespace detail
 
 
@@ -218,13 +151,16 @@ namespace TiledArray {
   /// \arg \c C is the tile container type.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM>, typename C = Tile<T, DIM, CS> >
   class Array : public madness::WorldObject<Array<T, DIM, CS> > {
+    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
+
   public:
     typedef Array<T, DIM, CS> Array_;
     typedef madness::WorldObject<Array<T, DIM, CS> > WorldObject_;
     typedef CS coordinate_system;
     typedef typename detail::array_tile<C>::tile_type tile_type;
 
-    static unsigned int dim() { return DIM; }
+    static const unsigned int dim;
+    static const detail::DimensionOrderType order;
 
   private:
     typedef DistributedArray<tile_type, DIM, LevelTag<1>, coordinate_system> data_container;
@@ -232,7 +168,7 @@ namespace TiledArray {
   public:
     typedef typename data_container::key_type key_type;
     typedef typename data_container::index_type index_type;
-    typedef typename tile_type::index_type tile_index_type;
+    typedef typename detail::array_tile<C>::index_type tile_index_type;
     typedef typename data_container::ordinal_type ordinal_type;
     typedef typename data_container::volume_type volume_type;
     typedef typename data_container::size_array size_array;
@@ -256,6 +192,15 @@ namespace TiledArray {
     /// val specifies the default value of every element
     Array(madness::World& world, const tiled_range_type& rng) :
         WorldObject_(world), range_(rng), tiles_(world, rng.tiles().size())
+    {
+      this->process_pending();
+    }
+
+    /// creates an array living in world and described by shape. Optional
+    /// val specifies the default value of every element
+    Array(const madness::World& world, const tiled_range_type& rng) :
+        WorldObject_(const_cast<madness::World&>(world)), range_(rng),
+        tiles_(const_cast<madness::World&>(world), rng.tiles().size())
     {
       this->process_pending();
     }
@@ -325,8 +270,6 @@ namespace TiledArray {
     /// non-blocking communication.
     template<typename Key>
     void insert(const Key& k, const tile_type& t) {
-      TA_ASSERT(t.size() == range_.tile(key_(k)).size(), std::runtime_error,
-          "Tile boundaries do not match array tile boundaries.");
       tiles_.insert(key_(k), t);
     }
 
@@ -397,11 +340,6 @@ namespace TiledArray {
     template<typename Key>
     bool is_local(const Key& k) const {
       return tiles_.is_local(key_(k));
-    }
-
-    /// Returns true if the element specified by tile index i is stored locally.
-    bool is_local(const tile_index_type& i) const {
-      return is_local(get_tile_index_(i));
     }
 
     /// Returns the index of the lower tile boundary.
@@ -483,11 +421,11 @@ namespace TiledArray {
     madness::World& get_world() const { return WorldObject_::get_world(); }
 
     expressions::array::AnnotatedArray<T> operator ()(const std::string& v) {
-      return expressions::array::AnnotatedArray<T>(this, expressions::VariableList(v));
+      return expressions::array::AnnotatedArray<T>(*this, expressions::VariableList(v));
     }
 
     expressions::array::AnnotatedArray<T> operator ()(const std::string& v) const {
-      return expressions::array::AnnotatedArray<T>(const_cast<const Array_*>(this), expressions::VariableList(v));
+      return expressions::array::AnnotatedArray<T>(* const_cast<const Array_*>(this), expressions::VariableList(v));
     }
 
     /// Returns a reference to the tile range object.
@@ -511,11 +449,6 @@ namespace TiledArray {
     ProcessID owner(const Key& k) { return tiles_.owner(key_(k)); }
 
   private:
-
-    /// Returns the tile index that contains the element index e_idx.
-    index_type get_tile_index_(const tile_index_type& i) const {
-      return * range_.find(i);
-    }
 
     /// Converts an ordinal into an index
     index_type get_index_(const ordinal_type i) const {
@@ -550,6 +483,12 @@ namespace TiledArray {
     tiled_range_type range_;
     data_container tiles_;
   }; // class Array
+
+  // const static data member initialization
+  template<typename T, unsigned int DIM, typename CS, typename C>
+  const unsigned int Array<T, DIM, CS, C>::dim = DIM;
+  template<typename T, unsigned int DIM, typename CS, typename C>
+  const detail::DimensionOrderType  Array<T, DIM, CS, C>::order = CS::dimension_order;
 
   template<typename T, unsigned int DIM, typename CS, typename C>
   void swap(Array<T, DIM, CS, C>& a0, Array<T, DIM, CS, C>& a1) {

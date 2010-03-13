@@ -14,23 +14,6 @@
 
 namespace TiledArray {
 
-  namespace expressions {
-
-    namespace array {
-      template<typename T>
-      class AnnotatedArray;
-
-      template<typename Exp0, typename Exp1, template<typename> class Op >
-      struct Expression;
-      template<typename Exp0, typename Exp1, typename Op>
-      struct BinaryArrayExp;
-      template<typename Exp, typename Op>
-      struct UnaryArrayExp;
-
-    } // namespace array
-
-  } // namespace expressions
-
   namespace math {
 
     template<typename Arg1, typename Arg2, typename Res, typename Op>
@@ -62,13 +45,13 @@ namespace TiledArray {
     struct BinaryTaskOp {
     private:
       BinaryTaskOp();
-      typedef typename boost::call_traits<typename detail::binary_functor_types<Op>::first_argument_type>::value_type first_value_type;
-      typedef typename boost::call_traits<typename detail::binary_functor_types<Op>::second_argument_type>::value_type second_value_type;
-      typedef typename boost::call_traits<typename detail::binary_functor_types<Op>::result_type>::value_type result_value_type;
+      typedef typename detail::remove_cr<typename detail::binary_functor_types<Op>::first_argument_type>::type first_value_type;
+      typedef typename detail::remove_cr<typename detail::binary_functor_types<Op>::second_argument_type>::type second_value_type;
+      typedef typename detail::remove_cr<typename detail::binary_functor_types<Op>::result_type>::type result_value_type;
     public:
-      typedef typename boost::call_traits<madness::Future<first_value_type> >::param_type first_argument_type;
-      typedef typename boost::call_traits<madness::Future<second_value_type> >::param_type second_argument_type;
-      typedef typename boost::call_traits<madness::Future<result_value_type> >::value_type result_type;
+      typedef const madness::Future<first_value_type>& first_argument_type;
+      typedef const madness::Future<second_value_type>& second_argument_type;
+      typedef madness::Future<result_value_type> result_type;
 
       /// Primary constructor
 
@@ -81,10 +64,11 @@ namespace TiledArray {
       { }
 
       /// Set the task attributes to the the given attributes.
-      void set(madness::TaskAttributes a) { attr_ = a; }
 
-      /// Reset the task attributes to the default (none).
-      void reset() { attr_ = madness::TaskAttributes(); }
+      /// Change the task attributes to a new value. If no attribute flag is
+      /// Provided, the attributes will be set to the default value.
+      /// \var \c a is the new attribute to be used when generating tasks (optional).
+      void reset(madness::TaskAttributes a = madness::TaskAttributes()) { attr_ = a; }
 
       /// Returns a reference to the world object where tasks will be spawned.
       madness::World& get_world() const { return world_; }
@@ -92,12 +76,13 @@ namespace TiledArray {
       /// Creates a task.
 
       /// This will generate a task on the local task queue
-      result_type operator() (first_argument_type fut1, second_argument_type fut2) const {
-        return world_.taskq.add(op_, detail::binary_functor_types<Op>::func_ptr(op_), fut1, fut2, attr_);
+      result_type operator() (first_argument_type fut1, second_argument_type fut2) {
+        return world_.taskq.add(op_, & Op::operator(), fut1, fut2, attr_);
       }
 
     private:
-      madness::World& world_; ///< Reference to the world object used to create tasks.
+      madness::World& world_;         ///< Reference to the world object used to
+                                      ///< create tasks.
       madness::TaskAttributes attr_;  ///< Task attribute object.
       Op op_;                         ///< Functor which does the task work.
     }; // struct BinaryTaskOp
@@ -126,8 +111,10 @@ namespace TiledArray {
     private:
       UnaryTaskOp();
     public:
-      typedef madness::Future<typename detail::unary_functor_types<Op>::argument_type> argument_type;
-      typedef madness::Future<typename detail::unary_functor_types<Op>::result_type> result_type;
+      typedef madness::Future<typename detail::unary_functor_types<Op>::argument_type>
+          argument_type;
+      typedef madness::Future<typename detail::unary_functor_types<Op>::result_type>
+          result_type;
 
       /// Primary constructor
 
@@ -135,15 +122,17 @@ namespace TiledArray {
       /// constructor will be used to create it.
       /// \var \c w is the world object used to spawn tasks.
       /// \var \c o is the functor object which performs the task work (optional).
-      UnaryTaskOp(madness::World& w, Op o = Op(), madness::TaskAttributes a = madness::TaskAttributes()) :
+      UnaryTaskOp(madness::World& w, Op o = Op(),
+          madness::TaskAttributes a = madness::TaskAttributes()) :
           world_(w), attr_(a), op_(o)
       { }
 
       /// Set the task attributes to the the given attributes.
-      void set(madness::TaskAttributes a) { attr_ = a; }
 
-      /// Reset the task attributes to the default (none).
-      void reset() { attr_ = madness::TaskAttributes(); }
+      /// Change the task attributes to a new value. If no attribute flag is
+      /// Provided, the attributes will be set to the default value.
+      /// \var \c a is the new attribute to be used when generating tasks (optional).
+      void reset(madness::TaskAttributes a = madness::TaskAttributes()) { attr_ = a; }
 
       /// Returns a reference to the world object where tasks will be spawned.
       madness::World& get_world() const { return world_; }
@@ -152,11 +141,12 @@ namespace TiledArray {
 
       /// This will generate a task on the local task queue
       result_type operator() (const argument_type& fut) const {
-        return world_.taskq.add(op_, &Op::operator(), fut, attr_);
+        return world_.taskq.add(op_, fut, attr_);
       }
 
     private:
-      madness::World& world_; ///< Reference to the world object used to create tasks.
+      madness::World& world_;         ///< Reference to the world object used to
+                                      ///< create tasks.
       madness::TaskAttributes attr_;  ///< Task attribute object.
       Op op_;                         ///< Functor which does the task work.
     }; // struct UnaryTaskOp
@@ -173,8 +163,8 @@ namespace TiledArray {
       BinaryArrayOp();
 
     public:
-      typedef Arg1& first_argument_type;  ///< first array argument type.
-      typedef Arg2& second_argument_type; ///< second array argument type.
+      typedef const Arg1& first_argument_type;  ///< first array argument type.
+      typedef const Arg2& second_argument_type; ///< second array argument type.
       typedef Res result_type;            ///< result array type.
 
     private:
@@ -191,14 +181,12 @@ namespace TiledArray {
           op_(w, o, a) { }
 
       /// Constructs a series of tasks for the given arrays.
-      result_type operator ()(first_argument_type a1, second_argument_type a2) const {
-        typedef typename boost::mpl::if_<boost::is_const<Arg1>,
-            typename Arg1::const_iterator, typename Arg1::iterator>::type iterator_type;
+      result_type operator ()(first_argument_type a1, second_argument_type a2) {
         // Here we assume that the array tiles have compatible sizes because it
         // is checked in the expression generation functions (if error checking
         // is enabled.
-        result_type result = a1.clone(op_.get_world(), false);
-        for(iterator_type it = a1.begin(); it != a1.end(); ++it) {
+        result_type result(a1.get_world(), a1.range(), a1.vars(), a1.order());
+        for(typename Arg1::const_iterator it = a1.begin(); it != a1.end(); ++it) {
           result.insert(it->first, op_(it->second, a2.find(it->first)->second));
         }
         return result;

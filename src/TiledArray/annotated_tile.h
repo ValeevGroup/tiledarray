@@ -415,9 +415,9 @@ namespace TiledArray {
         template<typename SizeArray>
         static boost::shared_ptr<TileHolderBase_> create_tile_ptr_(const SizeArray& s, const detail::DimensionOrderType o, value_type v) {
           if(o == detail::increasing_dimension_order)
-            return MakeTile<0, detail::increasing_dimension_order>::make(s, s.size(), v);
+            return MakeTile<1, detail::increasing_dimension_order>::make(s, s.size(), v);
           else
-            return MakeTile<0, detail::decreasing_dimension_order>::make(s, s.size(), v);
+            return MakeTile<1, detail::decreasing_dimension_order>::make(s, s.size(), v);
         }
 
         template<typename SizeArray, typename InIter>
@@ -558,6 +558,8 @@ namespace madness {
 
       /// Loads an AnnotatedTile from an archive
       static void load(const Archive& ar, atile_type& t = 0) {
+        // TODO: Implement this function
+        TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
       }
     }; // struct ArchiveLoadImpl<Archive, TiledArray::expression::tile::AnnotatedTile<T> >
 
@@ -568,6 +570,8 @@ namespace madness {
 
       /// Stores an AnnotatedTile to an archive
       static void store(const Archive& ar, const atile_type& t) {
+        // TODO: Implement this function
+        TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
       }
     }; // struct ArchiveStoreImpl<Archive, TiledArray::expression::tile::AnnotatedTile<T> >
 

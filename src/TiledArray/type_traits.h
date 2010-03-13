@@ -28,10 +28,6 @@ namespace TiledArray {
       typedef typename Func::argument_type argument_type;
       typedef typename Func::result_type result_type;
       typedef result_type(*func_ptr_type)(argument_type);
-
-      static func_ptr_type func_ptr(Func& f) {
-        return Func::operator();
-      }
     }; // struct unary_functor_types
 
     template<typename Arg, typename Res>
@@ -39,10 +35,6 @@ namespace TiledArray {
       typedef Arg argument_type;
       typedef Res result_type;
       typedef result_type(*func_ptr_type)(argument_type);
-
-      static func_ptr_type func_ptr(func_ptr_type f) {
-        return f;
-      }
     }; // struct unary_functor_types<Res(*)(Arg)>
 
     template<typename Func>
@@ -51,10 +43,6 @@ namespace TiledArray {
       typedef typename Func::second_argument_type second_argument_type;
       typedef typename Func::result_type result_type;
       typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
-
-      static func_ptr_type func_ptr(const Func&) {
-        return & Func::operator();
-      }
     }; // struct binary_functor_types
 
     template<typename Arg1, typename Arg2, typename Res>
@@ -63,10 +51,6 @@ namespace TiledArray {
       typedef Arg2 second_argument_type;
       typedef Res result_type;
       typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
-
-      static func_ptr_type func_ptr(func_ptr_type f) {
-        return f;
-      }
     }; // struct binary_functor_types<Res(*)(Arg1,Arg2)>
 
     /// The static member value is true if the type T is a random access iterator

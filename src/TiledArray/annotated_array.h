@@ -16,6 +16,11 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename CS, typename C>
   class Array;
 
+  namespace detail {
+    template<typename T>
+    class array_tile;
+  } // namespace detail
+
   namespace expressions {
     namespace array {
 
@@ -45,11 +50,7 @@ namespace TiledArray {
         typedef tile::AnnotatedTile<T> tile_type;
         typedef std::pair<const index_type, madness::Future<tile_type> > value_type;
         typedef detail::ArrayRef<const index_type> size_array;
-
-      private:
-        // Annotated tile typedefs
-        typedef std::pair<const ordinal_type, madness::Future<tile::AnnotatedTile<value_type> > > data_type;
-
+        typedef detail::RangeData<I> range_type;
 
       public:
         // Iterator typedefs
@@ -67,9 +68,7 @@ namespace TiledArray {
         virtual const_iterator end(const VariableList&) const = 0;
 
         // Basic array modification interface.
-        virtual void insert(const index_type, const value_type*, const value_type*) = 0;
-        virtual void insert(const index_type, const detail::ArrayRef<const value_type>&) = 0;
-        virtual void insert(const index_type, const tile_type&) = 0;
+        virtual void insert(const index_type, const madness::Future<tile_type>&, const VariableList&) = 0;
         virtual void erase(const index_type) = 0;
         virtual void clear() = 0;
 
@@ -79,6 +78,9 @@ namespace TiledArray {
         virtual size_array size() const = 0;
         virtual size_array weight() const = 0;
         virtual volume_type volume(bool local = false) const = 0;
+        virtual unsigned int dim() const = 0;
+        virtual detail::DimensionOrderType order() const = 0;
+        virtual range_type range() const = 0;
 
         // Remote communication
         virtual iterator find(const ordinal_type, const expressions::VariableList&) = 0;
@@ -93,18 +95,24 @@ namespace TiledArray {
       /// Holds a pointer to an Array object.
 
       /// This class implements the interface required by an AnnotatedArray.
-      template<typename A, typename T, typename I>
-      class ArrayHolder : public ArrayHolderBase<T, I> {
+      template<typename A>
+      class ArrayHolder : public ArrayHolderBase<typename detail::array_tile<typename A::tile_type>::value_type, typename A::ordinal_type> {
       public:
         typedef A array_type;
-        typedef ArrayHolder<A, T, I> ArrayHolder_;
-        typedef ArrayHolderBase<T, I> ArrayHolderBase_;
+        typedef ArrayHolder<A> ArrayHolder_;
+
+      private:
+        typedef typename detail::array_tile<typename A::tile_type>::value_type tile_value_type;
+
+      public:
+        typedef ArrayHolderBase<tile_value_type, typename A::ordinal_type> ArrayHolderBase_;
 
         typedef typename ArrayHolderBase_::value_type value_type;
         typedef typename ArrayHolderBase_::index_type index_type;
         typedef typename ArrayHolderBase_::ordinal_type ordinal_type;
         typedef typename ArrayHolderBase_::volume_type volume_type;
         typedef typename ArrayHolderBase_::size_array size_array;
+        typedef typename ArrayHolderBase_::range_type range_type;
         typedef typename ArrayHolderBase_::tile_type tile_type;
 
       public:
@@ -128,17 +136,48 @@ namespace TiledArray {
 
           /// Converts a from type argument_type to result type.
           result_type operator()(argument_type a) const {
-            return result_type(a.first.key1(), typename result_type::second_type(a.second(var_)));
+            return result_type(a.first.key1(), make_fut_annotation(a.second));
           }
 
         private:
+          template<typename U>
+          madness::Future<tile_type> make_fut_annotation(const madness::Future<U>& f) const {
+            return make_fut_annotation(f.get());
+          }
+
+          template<typename U>
+          madness::Future<tile_type> make_fut_annotation(madness::Future<U>& f) const {
+            return make_fut_annotation(f.get());
+          }
+
+          template<unsigned int DIM, typename CS>
+          madness::Future<tile_type> make_fut_annotation(const Tile<tile_value_type, DIM, CS>& t) const {
+            return madness::Future<tile_type>(t(var_));
+          }
+
+          template<unsigned int DIM, typename CS>
+          madness::Future<tile_type> make_fut_annotation(Tile<tile_value_type, DIM, CS>& t) const {
+            return madness::Future<tile_type>(t(var_));
+          }
+
+          madness::Future<tile_type> make_fut_annotation(const tile::AnnotatedTile<tile_value_type>& t) const {
+            return madness::Future<tile_type>(t);
+          }
+
+          madness::Future<tile_type> make_fut_annotation(tile::AnnotatedTile<tile_value_type>& t) const {
+            return madness::Future<tile_type>(t);
+          }
+
           const expressions::VariableList& var_;
         }; // struct MakeFutATile
 
       public:
 
         /// Constructor
-        ArrayHolder(array_type* a) : array_(a) { }
+        ArrayHolder(boost::shared_ptr<array_type> a) : array_(a) { }
+
+        /// virtual destructor
+        virtual ~ArrayHolder() { }
 
         /// Clone the array
 
@@ -146,14 +185,14 @@ namespace TiledArray {
         /// \var \c copy_data (optional), if true, the data of the original array will be
         /// copied to the clone. The default value is false.
         virtual boost::shared_ptr<ArrayHolderBase_> clone(madness::World& w, bool copy_data = false) const {
-          boost::shared_ptr<ArrayHolderBase_> result(dynamic_cast<ArrayHolderBase_*>(new array_type(w, array_->range())));
+          boost::shared_ptr<array_type> array = boost::make_shared<array_type>(w, array_->range());
+
           if(copy_data) {
-            array_type* r = dynamic_cast<array_type*>(result.get());
             for(typename array_type::const_iterator it = array_->begin(); it != array_->end(); ++it)
-              r->insert(*it);
+              array->insert(*it);
           }
 
-          return result;
+          return boost::dynamic_pointer_cast<ArrayHolderBase_>(boost::make_shared<ArrayHolder_>(array));
         }
 
         /// Clone the array
@@ -210,31 +249,11 @@ namespace TiledArray {
         /// Insert a tile at index i.
 
         /// Inserts a tile a the given index. The tile will contain the data given
-        /// by the pointers [first, last).
-        /// \var \c i is the ordinal index where the tile will be inserted.
-        /// \var \c [first, \c last) is the data that will be placed in the tile.
-        virtual void insert(const index_type i, const value_type* first, const value_type* last) {
-          array_->insert(i, first, last);
-        }
-
-        /// Insert a tile at index i.
-
-        /// Inserts a tile a the given index. The tile will contain the data given
-        /// by the array reference, d.
-        /// \var \c i is the ordinal index where the tile will be inserted.
-        /// \var \c d is the data that will be placed in the tile.
-        virtual void insert(const index_type i, const detail::ArrayRef<const value_type>& d) {
-          array_->insert(i, d.begin(), d.end());
-        }
-
-        /// Insert a tile at index i.
-
-        /// Inserts a tile a the given index. The tile will contain the data given
         /// by the array reference, d.
         /// \var \c i is the ordinal index where the tile will be inserted.
         /// \var \c t will be copied into the destination.
-        virtual void insert(const index_type i, const tile_type& t) {
-          array_->insert(i, t.begin(), t.end());
+        virtual void insert(const index_type i, const madness::Future<tile_type>& t, const VariableList& v) {
+          ArrayInserter<typename array_type::tile_type>::insert(array_, i, t, v);
         }
 
         /// Erase the tile at the given index, i.
@@ -263,6 +282,15 @@ namespace TiledArray {
         /// present.
         virtual volume_type volume(bool local = false) const { return array_->volume(local); }
 
+        /// Returns the number of dimensions of the array.
+        virtual unsigned int dim() const { return array_type::dim; }
+
+        /// Returns the dimension ordering of the array.
+        virtual detail::DimensionOrderType order() const { return array_type::order; }
+
+        /// Return the range data for the array.
+        virtual range_type range() const { return array_->range().range_data(); }
+
         /// Returns an iterator to the element at i.
 
         /// This function will return an iterator to the tile at the given index.
@@ -280,7 +308,8 @@ namespace TiledArray {
         virtual const_iterator find(const ordinal_type i, const expressions::VariableList& v) const {
           madness::Future<typename array_type::iterator> fut_it = array_->find(i);
           // Todo: We need to remove the call to get() and find a way around
-          // the fact that find() returns a future, probably should involve tasks.
+          // the fact that find() returns a future, probably should involve a
+          // call back.
           return const_iterator(fut_it.get(),
               MakeFutATile<typename array_type::const_iterator::reference,
               const typename const_iterator::value_type>(v));
@@ -290,8 +319,55 @@ namespace TiledArray {
         // public access functions.
         virtual madness::World& get_world() const { return array_->world; }
 
+        /// Clean-up function for an array reference.
+
+        /// This function is the clean-up operation for an array reference. Its
+        /// purpose is to prevent boost shared pointer from calling delete on an
+        /// array pointer that is not dynamically allocated.
+        static void no_delete(array_type*) { /* do nothing */ }
+
       private:
-        array_type* array_;
+
+        template<typename U>
+        struct ArrayInserter;
+
+        template<unsigned int DIM, typename CS>
+        struct ArrayInserter<Tile<tile_value_type, DIM, CS> > {
+          static void insert(boost::shared_ptr<array_type>& a, const index_type i,
+              const madness::Future<tile_type>& t, const VariableList&)
+          {
+            a->insert(i, Tile<tile_value_type, DIM, CS>(t.get()));
+          }
+        }; // struct ArrayInserter
+
+        template<typename U>
+        struct ArrayInserter<tile::AnnotatedTile<U> > {
+          static void insert(boost::shared_ptr<array_type>& a, const index_type i,
+              const madness::Future<tile_type>& t, const VariableList& v)
+          {
+            a->insert(i, t.get()(v));
+          }
+        }; // struct ArrayInserter
+
+        template<unsigned int DIM, typename CS>
+        struct ArrayInserter<madness::Future<Tile<tile_value_type, DIM, CS> > > {
+          static void insert(boost::shared_ptr<array_type>& a, const index_type i,
+              const madness::Future<tile_type>& t, const VariableList& v)
+          {
+            a->insert(i, madness::Future<Tile<tile_value_type, DIM, CS> >(Tile<tile_value_type, DIM, CS>(t.get())));
+          }
+        }; // struct ArrayInserter<madness::Future<Tile<tile_value_type, DIM, CS> > >
+
+        template<typename U>
+        struct ArrayInserter<madness::Future<tile::AnnotatedTile<U> > > {
+          static void insert(boost::shared_ptr<array_type>& a, const index_type i,
+              const madness::Future<tile_type>& t, const VariableList&)
+          {
+            a->insert(i, t);
+          }
+        }; // struct ArrayInserter<madness::Future<Tile<tile_value_type, DIM, CS> > >
+
+        boost::shared_ptr<array_type> array_; ///< Shared pointer to the array.
 
       }; // class ArrayHolder
 
@@ -313,23 +389,35 @@ namespace TiledArray {
         typedef typename ArrayHolderBase_::volume_type volume_type;
         typedef typename ArrayHolderBase_::value_type value_type;
         typedef typename ArrayHolderBase_::size_array size_array;
+        typedef typename ArrayHolderBase_::range_type range_type;
         typedef typename ArrayHolderBase_::iterator iterator;
         typedef typename ArrayHolderBase_::const_iterator const_iterator;
 
+      private:
         /// Default constructor
-        AnnotatedArray() : array_(), var_() { }
+        AnnotatedArray();
+
+      public:
 
         /// creates an array living in world and described by shape. Optional
         /// val specifies the default value of every element
-        template<typename A>
-        AnnotatedArray(A* a, const VariableList& v) :
-            array_(dynamic_cast<ArrayHolderBase_*>(new ArrayHolder<A, T, index_type>(a))), var_(v)
+        template<unsigned int DIM, typename CS, typename C>
+        AnnotatedArray(Array<T, DIM, CS, C>& a, const VariableList& v) :
+            array_(create_array_ptr_(a)), var_(v)
         { }
 
-        template<typename Range>
-        AnnotatedArray(madness::World& w, const Range& r, const VariableList& v,
+        /// creates an array living in world and described by shape. Optional
+        /// val specifies the default value of every element
+        template<unsigned int DIM, typename CS, typename C>
+        AnnotatedArray(const Array<T, DIM, CS, C>& a, const VariableList& v) :
+            array_(create_array_ptr_(a)), var_(v)
+        { }
+
+
+        template<typename R>
+        AnnotatedArray(madness::World& w, const R& r, const VariableList& v,
             detail::DimensionOrderType o = detail::decreasing_dimension_order) :
-            array_(create_array_(w, r, o)), var_()
+            array_(create_array_ptr_(w, r, o)), var_(v)
         { }
 
         /// Copy constructor
@@ -413,6 +501,14 @@ namespace TiledArray {
         size_array weight() const { return array_->weight(); }
         /// Return the number of tiles in the annotated array.
         volume_type volume(bool local = false) const { return array_->volume(local); }
+        /// Returns a constant reference to variable list (the annotation).
+        const VariableList& vars() const { return var_; }
+        /// Returns the number of dimensions of the array.
+        unsigned int dim() const { return array_->dim(); }
+        /// Return the array storage order
+        detail::DimensionOrderType order() const { return array_->order(); }
+        /// Return the tiled range data for the array.
+        range_type range() const { return array_->range(); }
         /// Return a future to an AnnotatedTile Object.
         template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O>
         iterator find(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) {
@@ -436,19 +532,26 @@ namespace TiledArray {
 
         /// Copies the given tile into the array. Non-local insertions will initiate
         /// non-blocking communication.
-        template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O, typename Tile>
-        void insert(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i, const Tile& t) {
-          TA_ASSERT(this->dim() == DIM, std::runtime_error,
-              "The index dimensions is not equal to the array dimensions.");
-          array_->insert(this->ord_(i), t);
+        template<typename Index, typename Tile>
+        void insert(const Index i, const Tile& t) {
+          array_->insert(ord_(i), madness::Future<Tile>(t), var_);
+        }
+
+        /// Inserts a tile into the array.
+
+        /// Copies the given tile into the array. Non-local insertions will initiate
+        /// non-blocking communication.
+        template<typename Index, typename Tile>
+        void insert(const Index i, const madness::Future<Tile>& t) {
+          array_->insert(ord_(i), t, var_);
         }
 
         /// Inserts a tile into the array.
 
         /// Copies the given value_type into the array. Non-local insertions will
         /// initiate non-blocking communication.
-        template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O, typename Tile>
-        void insert(const std::pair<const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >, Tile>& v) {
+        template<typename Index, typename Tile>
+        void insert(const std::pair<const Index, Tile>& v) {
           insert(v.first, v.second);
         }
 
@@ -504,40 +607,92 @@ namespace TiledArray {
 
       private:
 
-        template<typename Range>
-        static boost::shared_ptr<ArrayHolderBase_> create_array_(madness::World& w, const Range& r, const detail::DimensionOrderType o) {
-          if(o == detail::increasing_dimension_order)
-            return create_array_<0, detail::increasing_dimension_order>(w, r, r.dim());
-          else
-            return create_array_<0, detail::decreasing_dimension_order>(w, r, r.dim());
+        template<typename arrayT>
+        static boost::shared_ptr<ArrayHolderBase_> create_array_ptr_(const boost::shared_ptr<arrayT>& a) {
+          return boost::dynamic_pointer_cast<ArrayHolderBase_>(boost::make_shared<ArrayHolder<arrayT> >(a));
         }
 
-        template<typename Range, unsigned int DIM, detail::DimensionOrderType O>
-        static boost::shared_ptr<ArrayHolderBase_> create_array_(madness::World& w, const Range& r, const unsigned int d) {
-          typedef Array<value_type, DIM, LevelTag<1>, CoordinateSystem<DIM, O> > array_type;
-          if(d == DIM)
-            return boost::shared_ptr<ArrayHolderBase_>(new array_type(w, r));
-          else
-            return create_array_<DIM + 1, detail::decreasing_dimension_order>(w, r, d);
+        template<unsigned int DIM, detail::DimensionOrderType O, typename C>
+        static boost::shared_ptr<ArrayHolderBase_> create_array_ptr_(Array<T, DIM, CoordinateSystem<DIM, O>, C>& a) {
+          typedef Array<T, DIM, CoordinateSystem<DIM, O>, C> arrayT;
+          boost::shared_ptr<arrayT> array(&a, &ArrayHolder<arrayT>::no_delete);
+          return create_array_ptr_(array);
         }
+
+        template<unsigned int DIM, detail::DimensionOrderType O, typename C>
+        static boost::shared_ptr<ArrayHolderBase_> create_array_ptr_(const Array<T, DIM, CoordinateSystem<DIM, O>, C>& a) {
+          typedef const Array<T, DIM, CoordinateSystem<DIM, O>, C> arrayT;
+          boost::shared_ptr<arrayT> array(&a, &ArrayHolder<arrayT>::no_delete);
+          return create_array_ptr_(array);
+        }
+
+        template<typename TRange>
+        static boost::shared_ptr<ArrayHolderBase_> create_array_ptr_(madness::World& w, const TRange& r, const detail::DimensionOrderType o) {
+          if(o == detail::increasing_dimension_order)
+            return MakeArray<1, detail::increasing_dimension_order,
+                madness::Future<tile::AnnotatedTile<T> > >::make(w, r, r.dim);
+          else
+            return MakeArray<1, detail::decreasing_dimension_order,
+            madness::Future<tile::AnnotatedTile<T> > >::make(w, r, r.dim);
+        }
+
+        template<unsigned int DIM, detail::DimensionOrderType O, typename C>
+        struct MakeArray {
+          typedef Array<T, DIM, CoordinateSystem<DIM, O>, C> arrayT;
+
+          static const unsigned int dim = DIM;
+          static const detail::DimensionOrderType order = O;
+
+          template<typename R>
+          static boost::shared_ptr<ArrayHolderBase_> make(madness::World& w, const R& r, const unsigned int d) {
+            if(d != DIM)
+              return MakeArray<DIM + 1, detail::decreasing_dimension_order, C>::make(w, r, d);
+
+            // create a tile.
+            typename arrayT::tiled_range_type range(r);
+            boost::shared_ptr<arrayT> array = boost::make_shared<arrayT>(w, range);
+
+            return create_array_ptr_(array);
+          }
+
+        };
+
+        template<detail::DimensionOrderType O, typename C>
+        struct MakeArray<TA_MAX_DIM, O, C> {
+          typedef Array<T, TA_MAX_DIM, CoordinateSystem<TA_MAX_DIM, O>, C> arrayT;
+
+          static const unsigned int dim = TA_MAX_DIM;
+          static const detail::DimensionOrderType order = O;
+
+          template<typename TRange>
+          static boost::shared_ptr<ArrayHolderBase_> make(madness::World&,const TRange&, const unsigned int) {
+            TA_EXCEPTION(std::runtime_error,
+                "The maximum number of dimensions was exceeded. Rerun configure and specify a larger number of dimensions.");
+
+            return boost::shared_ptr<ArrayHolderBase_>();
+          }
+
+          template<typename TRange>
+          static boost::shared_ptr<ArrayHolderBase_> make(const TRange&, const unsigned int) {
+            TA_EXCEPTION(std::runtime_error,
+                "The maximum number of dimensions was exceeded. Rerun configure and specify a larger number of dimensions.");
+
+            return boost::shared_ptr<ArrayHolderBase_>();
+          }
+        };
 
         template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O>
         ordinal_type ord_(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) {
           return std::inner_product(i.begin(), i.end(), array_->weight().begin(), ordinal_type(0));
         }
 
+        ordinal_type ord_(const index_type i) const { return i; }
+
         /// Private swap function.
         void swap_(AnnotatedArray_& other) { // no throw
           boost::swap(array_, other.array_);
           expressions::swap(var_, other.var_);
         }
-
-        /// Clean-up function for an array reference.
-
-        /// This function is the clean-up operation for an array reference. Its
-        /// purpose is to prevent boost shared pointer from calling delete on an
-        /// array pointer that is not dynamically allocated.
-        static void no_delete(ArrayHolderBase_*) { /* do nothing */ }
 
         friend void swap<>(AnnotatedArray_&, AnnotatedArray_&);
 

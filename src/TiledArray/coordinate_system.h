@@ -2,6 +2,7 @@
 #define TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
+#include <TiledArray/config.h>
 #include <boost/array.hpp>
 
 namespace TiledArray {
