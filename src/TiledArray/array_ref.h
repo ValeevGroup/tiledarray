@@ -5,6 +5,7 @@
 #include <TiledArray/permutation.h>
 #include <boost/array.hpp>
 #include <boost/type_traits.hpp>
+#include <boost/utility.hpp>
 
 namespace TiledArray {
   namespace detail {
@@ -68,9 +69,10 @@ namespace TiledArray {
     /// provides a convention operator to boost::array types.
     template<typename T>
     class ArrayRef {
+    private:
+      typedef ArrayRef<T>                           ArrayRef_;
     public:
       // types
-      typedef ArrayRef<T>                           ArrayRef_;
       typedef typename boost::remove_const<T>::type value_type;
       typedef T*                                    iterator;
       typedef const T*                              const_iterator;
@@ -87,7 +89,7 @@ namespace TiledArray {
       ArrayRef(const ArrayRef_& other) : first(other.first), last(other.last) { }
       /// Construct a view of a boost array.
       template<typename U, std::size_t N>
-      ArrayRef(boost::array<U,N>& a) : first(a.c_array()), last(a.c_array() + N) { }
+      ArrayRef(boost::array<U,N>& a) : first(a.data()), last(a.data() + N) { }
       template<typename U, std::size_t N>
       ArrayRef(const boost::array<U,N>& a) : first(a.data()), last(a.data() + N) { }
 
@@ -107,7 +109,8 @@ namespace TiledArray {
 
       /// f should be a pointer to the beginning of the array range and l should
       /// be a pointer to the end of the array range.
-      ArrayRef(T* f, T* l) : first(f), last(l) {
+      template<typename U>
+      ArrayRef(U* f, U* l) : first(f), last(l) {
         TA_ASSERT(f <= l, std::range_error,
             "The first pointer is after the last pointer in memory.");
       }
@@ -128,8 +131,22 @@ namespace TiledArray {
       /// given boost array. No memory is copied.
       template<typename U, std::size_t N>
       ArrayRef& operator=(const boost::array<U,N>& a) {
-        first = a.c_array();
-        last = a.c_array() + N;
+        first = a.data();
+        last = a.data() + N;
+
+        return *this;
+      }
+
+      /// Assignment operator for a boost array.
+
+      /// This assignment will change the array reference so it references the
+      /// given boost array. No memory is copied.
+      template<typename U, std::size_t N>
+      ArrayRef& operator=(boost::array<U,N>& a) {
+        first = a.data();
+        last = a.data() + N;
+
+        return *this;
       }
 
       /// Assignment operator for a boost
@@ -139,7 +156,7 @@ namespace TiledArray {
       /// std::runtime_error is thrown when p.first <= p.second.
       template<typename U>
       ArrayRef& operator=(const std::pair<U*, U*>& p) {
-        TA_ASSERT(p.first <= p.second, std::range_error,
+        TA_ASSERT(std::distance(p.first, p.second) >= 1, std::range_error,
             "The first pointer is after the last pointer in memory.");
         first = p.first;
         last = p.second;
@@ -178,7 +195,8 @@ namespace TiledArray {
       reference operator[](size_type n) { return first[n]; }
       const_reference operator[](size_type n) const { return first[n]; }
       reference at(size_type n) {
-        if(n > std::distance(first, last))
+        const long c = n;
+        if(n > size())
           TA_EXCEPTION(std::out_of_range, "Element n is out of range.");
         return first[n];
       }
@@ -193,6 +211,7 @@ namespace TiledArray {
       const_reference front() const { return *first; }
       reference back() { return *(last - 1); }
       const_reference back() const { return *(last - 1); }
+      T* data() { return first; }
       const T* data() const { return first; }
       T* c_array() { return first; }
 
@@ -394,6 +413,16 @@ namespace TiledArray {
       detail::permute(perm.begin(), perm.end(), a.begin(), result.begin());
       return result;
     }
+
+    /// Append the ArrayRef content to an output stream.
+    template <typename T>
+    std::ostream& operator<<(std::ostream& output, const ArrayRef<T>& a) {
+      output << "(";
+      detail::print_array(output, a.begin(), a.end());
+      output << ")";
+      return output;
+    }
+
   } // namespace detail
 } // namespace TiledArray
 
