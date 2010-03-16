@@ -515,8 +515,8 @@ namespace TiledArray {
         template <typename, unsigned int, typename, typename>
         friend class Array;
 
-        boost::shared_ptr<TileHolderBase_> tile_;
-        VariableList var_;        ///< variable list
+        boost::shared_ptr<TileHolderBase_> tile_; ///< Base pointer to tile holder.
+        VariableList var_;                        ///< variable list
 
       }; // class AnnotatedTile
 
@@ -557,9 +557,19 @@ namespace madness {
       typedef TiledArray::expressions::tile::AnnotatedTile<T> atile_type;
 
       /// Loads an AnnotatedTile from an archive
-      static void load(const Archive& ar, atile_type& t = 0) {
-        // TODO: Implement this function
-        TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
+      static void load(const Archive& ar, atile_type& t) {
+        unsigned int dim = 0;
+        typename atile_type::volume_type vol = 0;
+        ar & dim & vol;
+        std::vector<typename atile_type::index_type> size(dim);
+        std::vector<typename atile_type::value_type> data(vol);
+        TiledArray::detail::DimensionOrderType order;
+        TiledArray::expressions::VariableList var;
+        ar & order & wrap(size.data(), dim) & wrap(data.data(), vol) & var;
+
+        t.tile_.reset();
+        t.tile_ = atile_type::create_tile_ptr_(size, order, data.begin(), data.end());
+        t.var_ = var;
       }
     }; // struct ArchiveLoadImpl<Archive, TiledArray::expression::tile::AnnotatedTile<T> >
 
@@ -570,8 +580,8 @@ namespace madness {
 
       /// Stores an AnnotatedTile to an archive
       static void store(const Archive& ar, const atile_type& t) {
-        // TODO: Implement this function
-        TA_ASSERT(false, std::runtime_error, "Not yet implemented.");
+        ar & t.dim() & t.volume() & t.order() & wrap(t.size().begin(), t.dim())
+            & wrap(t.begin(), t.volume()) & t.vars();
       }
     }; // struct ArchiveStoreImpl<Archive, TiledArray::expression::tile::AnnotatedTile<T> >
 
