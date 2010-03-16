@@ -228,5 +228,38 @@ BOOST_AUTO_TEST_CASE( permutation )
   BOOST_CHECK_EQUAL(r2, r1);// check that the permutation was assigned correctly.
 }
 
+BOOST_AUTO_TEST_CASE( range_data )
+{
+  TRange3 r1(r);
+  BOOST_CHECK(r1 == r);     // check equality operator
+
+  boost::array<TRange3::tiled_range1_type, 3> dims2 =
+      {{ TRange3::tiled_range1_type(d0.begin(), d0.end(), 1),
+      TRange3::tiled_range1_type(d1.begin(), d1.end(), 2),
+      TRange3::tiled_range1_type(d2.begin(), d2.end(), 3) }};
+  TRange3 r2(dims2.begin(), dims2.end());
+
+  BOOST_CHECK(r2 != r);                 // comparison w/ offset tile origin.
+
+  BOOST_CHECK(r1.range_data() == r);
+  BOOST_CHECK(r == r1.range_data());
+  BOOST_CHECK(r.range_data() == r1);
+  BOOST_CHECK(r1 == r.range_data());
+
+  BOOST_CHECK(! (r2.range_data() == r));
+  BOOST_CHECK(! (r == r2.range_data()));
+  BOOST_CHECK(! (r.range_data() == r2));
+  BOOST_CHECK(! (r2 == r.range_data()));
+
+  BOOST_CHECK(r2.range_data() != r);
+  BOOST_CHECK(r != r2.range_data());
+  BOOST_CHECK(r.range_data() != r2);
+  BOOST_CHECK(r2 != r.range_data());
+
+  BOOST_CHECK(! (r1.range_data() != r));
+  BOOST_CHECK(! (r != r1.range_data()));
+  BOOST_CHECK(! (r.range_data() != r1));
+  BOOST_CHECK(! (r1 != r.range_data()));
+}
 BOOST_AUTO_TEST_SUITE_END()
 

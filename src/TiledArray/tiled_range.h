@@ -18,6 +18,11 @@ namespace TiledArray {
   template <typename I>
   class TiledRange1;
 
+  namespace detail {
+    template<typename I>
+    struct RangeData;
+  } // namespace detail
+
   // need these forward declarations
   template<typename I, unsigned int DIM, typename CS>
   class TiledRange;
@@ -29,6 +34,14 @@ namespace TiledArray {
   bool operator ==(const TiledRange<I,DIM,CS>&, const TiledRange<I,DIM,CS>&);
   template<typename I, unsigned int DIM, typename CS>
   bool operator !=(const TiledRange<I, DIM, CS>&, const TiledRange<I, DIM, CS>&);
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator ==(const TiledRange<I, DIM, CS>&, const detail::RangeData<I>&);
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator ==(const detail::RangeData<I>&, const TiledRange<I, DIM, CS>&);
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator !=(const TiledRange<I, DIM, CS>&, const detail::RangeData<I>&);
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator !=(const detail::RangeData<I>& r1, const TiledRange<I, DIM, CS>& r2);
   template<typename I, unsigned int DIM, typename CS>
   std::ostream& operator<<(std::ostream& out, const TiledRange<I,DIM,CS>& rng);
 
@@ -237,6 +250,7 @@ namespace TiledArray {
     friend void swap<>(TiledRange_&, TiledRange_&);
     friend TiledRange operator ^ <>(const Permutation<DIM>&, const TiledRange<I,DIM,CS>&);
     friend bool operator == <>(const TiledRange&, const TiledRange&);
+    friend bool operator == <>(const TiledRange&, const detail::RangeData<I>&);
 
     range_type range_; ///< Stores information on tile indexing for the range.
     element_range_type element_range_; ///< Stores information on element indexing for the range.
@@ -304,6 +318,29 @@ namespace TiledArray {
     return out;
   }
 
+  /// Returns true when all tile and element ranges are the same.
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator ==(const TiledRange<I, DIM, CS>& r1, const detail::RangeData<I>& r2) {
+    return std::equal(r1.ranges_.begin(), r1.ranges_.end(), r2.ranges.begin());
+  }
+
+  /// Returns true when all tile and element ranges are the same.
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator ==(const detail::RangeData<I>& r1, const TiledRange<I, DIM, CS>& r2) {
+    return operator==(r2, r1);
+  }
+
+  /// Returns true when all tile and element ranges are the same.
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator !=(const TiledRange<I, DIM, CS>& r1, const detail::RangeData<I>& r2) {
+    return ! operator==(r1, r2);
+  }
+
+  /// Returns true when all tile and element ranges are the same.
+  template<typename I, unsigned int DIM, typename CS>
+  bool operator !=(const detail::RangeData<I>& r1, const TiledRange<I, DIM, CS>& r2) {
+    return ! operator==(r2, r1);
+  }
 
 } // namespace TiledArray
 
