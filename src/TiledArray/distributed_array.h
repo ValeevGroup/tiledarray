@@ -33,7 +33,7 @@ namespace TiledArray {
     BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
 
   public:
-    typedef DistributedArray<T, DIM, Tag, CS> DistributedArrayStorage_;
+    typedef DistributedArray<T, DIM, Tag, CS> DistributedArray_;
     typedef detail::ArrayDim<std::size_t, DIM, Tag, CS> array_dim_type;
     typedef typename array_dim_type::index_type index_type;
     typedef typename array_dim_type::ordinal_type ordinal_type;
@@ -80,8 +80,8 @@ namespace TiledArray {
   private:
     // Operations not permitted.
     DistributedArray();
-    DistributedArray(const DistributedArrayStorage_& other);
-    DistributedArrayStorage_& operator =(const DistributedArrayStorage_& other);
+    DistributedArray(const DistributedArray_& other);
+    DistributedArray_& operator =(const DistributedArray_& other);
 
   public:
     /// Constructs a zero size array.
@@ -136,8 +136,8 @@ namespace TiledArray {
     /// Performs a deep copy of this array into the other array. The content of
     /// the other array will be deleted. This function is blocking and may cause
     /// some communication.
-    void clone(const DistributedArrayStorage_& other) {
-      DistributedArrayStorage_ temp(data_.get_world(), other.dim_.size());
+    void clone(const DistributedArray_& other) {
+      DistributedArray_ temp(data_.get_world(), other.dim_.size());
       temp.insert(other.begin(), other.end());
       data_.clear();
       swap(*this, temp);
@@ -207,12 +207,12 @@ namespace TiledArray {
     /// In place permutation operator.
 
     /// This function will permute the elements of the array. This function is a global sync point.
-    DistributedArrayStorage_& operator ^=(const Permutation<DIM>& p) {
+    DistributedArray_& operator ^=(const Permutation<DIM>& p) {
       typedef Range<ordinal_type, DIM, Tag, CS> range_type;
 
       /// Construct temporary container.
       range_type r(dim_.size());
-      DistributedArrayStorage_ temp(data_.get_world(), p ^ (dim_.size()));
+      DistributedArray_ temp(data_.get_world(), p ^ (dim_.size()));
 
       // Iterate over all indices in the array. For each element d_.find() is
       // used to request data at the current index. If the data is  local, the
@@ -241,7 +241,7 @@ namespace TiledArray {
     /// This resize will maintain the data common to both arrays. Some
     /// non-blocking communication will likely occur. Any new elements added
     /// have uninitialized data. This function is a global sync point.
-    DistributedArrayStorage_& resize(const size_array& size, bool keep_data = true) {
+    DistributedArray_& resize(const size_array& size, bool keep_data = true) {
       typedef Range<ordinal_type, DIM, Tag, coordinate_system> range_type;
 
       /// Construct temporary container.
@@ -429,7 +429,8 @@ namespace TiledArray {
       return result;
     }
 
-    friend void swap<>(DistributedArrayStorage_&, DistributedArrayStorage_&);
+    friend class DistributedIterator<DistributedArray_>;
+    friend void swap<>(DistributedArray_&, DistributedArray_&);
 
     array_dim_type dim_;
     data_container data_;
