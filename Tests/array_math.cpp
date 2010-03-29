@@ -52,9 +52,7 @@ struct ArrayMathFixture : public TiledRangeFixture<int> {
     int v;
     for(TRange3::range_type::const_iterator it = trng3.tiles().begin(); it != trng3.tiles().end(); ++it) {
       v = 0;
-      tile_type t(trng3.tile(*it));
-      ++v;
-      std::fill(t.begin(), t.end(), v++);
+      tile_type t(trng3.tile(*it), v++);
       ar.insert(*it, t);
       std::fill(t.begin(), t.end(), v++);
       a1.insert(*it, t);
@@ -62,7 +60,7 @@ struct ArrayMathFixture : public TiledRangeFixture<int> {
       a2.insert(*it, t);
       std::fill(t.begin(), t.end(), v++);
       a3.insert(*it, t);
-      std::fill(t.begin(), t.end(), v++);
+      std::fill(t.begin(), t.end(), v);
       a4.insert(*it, t);
     }
   }

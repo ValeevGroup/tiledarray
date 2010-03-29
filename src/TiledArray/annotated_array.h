@@ -8,41 +8,53 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/type_traits.hpp>
+#include <boost/call_traits.hpp>
 
 namespace TiledArray {
 
-  template<typename T, typename I>
-  class BaseArray;
+  // Forward declarations
+
+  // Primary data classes
   template<typename T, unsigned int DIM, typename CS, typename C>
   class Array;
+  template<typename T, unsigned int DIM, typename CS>
+  class Tile;
 
+  // Related support classes
   namespace detail {
     template<typename T>
     class array_tile;
+    template<typename I>
+    struct RangeData;
   } // namespace detail
 
   namespace expressions {
-    namespace array {
 
+    // Annotation classes
+    namespace tile {
       template<typename T>
       class AnnotatedTile;
+    }  // namespace tile
 
+    namespace array {
+
+      // Expressions used in assignments
       template<typename Exp0, typename Exp1, typename Op>
       class BinaryArrayExp;
       template<typename Exp, typename Op>
       class UnaryArrayExp;
+
+      // In-file forward declarations
       template<typename T>
       class AnnotatedArray;
       template<typename T>
-      class AnnotatedTile;
-      template<typename T>
       void swap(AnnotatedArray<T>&, AnnotatedArray<T>&);
 
-
-
+      /// Interface class for array holder classes.
       template<typename T, typename I >
       class ArrayHolderBase {
       public:
+        // General typedefs
         typedef ArrayHolderBase<T, I> ArrayHolderBase_;
         typedef I index_type;
         typedef I ordinal_type;
@@ -52,7 +64,6 @@ namespace TiledArray {
         typedef detail::ArrayRef<const index_type> size_array;
         typedef detail::RangeData<I> range_type;
 
-      public:
         // Iterator typedefs
         typedef detail::PolyTransformIterator<value_type> iterator;
         typedef detail::PolyTransformIterator<const value_type> const_iterator;
@@ -68,7 +79,7 @@ namespace TiledArray {
         virtual const_iterator end(const VariableList&) const = 0;
 
         // Basic array modification interface.
-        virtual void insert(const index_type, const madness::Future<tile_type>&, const VariableList&) = 0;
+        virtual void insert(const index_type, const madness::Future<tile_type>&) = 0;
         virtual void erase(const index_type) = 0;
         virtual void clear() = 0;
 
@@ -171,10 +182,18 @@ namespace TiledArray {
           const expressions::VariableList& var_;
         }; // struct MakeFutATile
 
+        // Prevent the operations that we do not want or need.
+        /// Default constuctor not allowed.
+        ArrayHolder();
+        /// Copy constructor not needed or allowed.
+        ArrayHolder(const ArrayHolder<A>&);
+        /// Assignment operator not needed or allowed.
+        ArrayHolder<A>& operator=(const ArrayHolder<A>&);
+
       public:
 
-        /// Constructor
-        ArrayHolder(boost::shared_ptr<array_type> a) : array_(a) { }
+        /// Primary constructor
+        explicit ArrayHolder(boost::shared_ptr<array_type> a) : array_(a) { }
 
         /// virtual destructor
         virtual ~ArrayHolder() { }
@@ -252,8 +271,8 @@ namespace TiledArray {
         /// by the array reference, d.
         /// \var \c i is the ordinal index where the tile will be inserted.
         /// \var \c t will be copied into the destination.
-        virtual void insert(const index_type i, const madness::Future<tile_type>& t, const VariableList& v) {
-          ArrayInserter<typename array_type::tile_type>::insert(array_, i, t, v);
+        virtual void insert(const index_type i, const madness::Future<tile_type>& t) {
+          ArrayInserter<typename array_type::tile_type>::insert(array_, i, t);
         }
 
         /// Erase the tile at the given index, i.
@@ -334,7 +353,7 @@ namespace TiledArray {
         template<unsigned int DIM, typename CS>
         struct ArrayInserter<Tile<tile_value_type, DIM, CS> > {
           static void insert(boost::shared_ptr<array_type>& a, const index_type i,
-              const madness::Future<tile_type>& t, const VariableList&)
+              const madness::Future<tile_type>& t)
           {
             a->insert(i, Tile<tile_value_type, DIM, CS>(t.get()));
           }
@@ -343,16 +362,16 @@ namespace TiledArray {
         template<typename U>
         struct ArrayInserter<tile::AnnotatedTile<U> > {
           static void insert(boost::shared_ptr<array_type>& a, const index_type i,
-              const madness::Future<tile_type>& t, const VariableList& v)
+              const madness::Future<tile_type>& t)
           {
-            a->insert(i, t.get()(v));
+            a->insert(i, t.get());
           }
         }; // struct ArrayInserter
 
         template<unsigned int DIM, typename CS>
         struct ArrayInserter<madness::Future<Tile<tile_value_type, DIM, CS> > > {
           static void insert(boost::shared_ptr<array_type>& a, const index_type i,
-              const madness::Future<tile_type>& t, const VariableList& v)
+              const madness::Future<tile_type>& t)
           {
             a->insert(i, madness::Future<Tile<tile_value_type, DIM, CS> >(Tile<tile_value_type, DIM, CS>(t.get())));
           }
@@ -361,7 +380,7 @@ namespace TiledArray {
         template<typename U>
         struct ArrayInserter<madness::Future<tile::AnnotatedTile<U> > > {
           static void insert(boost::shared_ptr<array_type>& a, const index_type i,
-              const madness::Future<tile_type>& t, const VariableList&)
+              const madness::Future<tile_type>& t)
           {
             a->insert(i, t);
           }
@@ -543,7 +562,7 @@ namespace TiledArray {
         /// non-blocking communication.
         template<typename Index, typename Tile>
         void insert(const Index i, const madness::Future<Tile>& t) {
-          array_->insert(ord_(i), t, var_);
+          array_->insert(ord_(i), t);
         }
 
         /// Inserts a tile into the array.

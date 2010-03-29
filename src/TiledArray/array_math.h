@@ -187,7 +187,12 @@ namespace TiledArray {
         // is enabled.
         result_type result(a1.get_world(), a1.range(), a1.vars(), a1.order());
         for(typename Arg1::const_iterator it = a1.begin(); it != a1.end(); ++it) {
-          result.insert(it->first, op_(it->second, a2.find(it->first)->second));
+          const typename Arg1::index_type i = it->first;
+          madness::Future<typename Arg1::tile_type> t1 = it->second;
+          madness::Future<typename Arg2::tile_type> t2 = a2.find(i)->second;
+          madness::Future<typename Res::tile_type> tr = op_(t1, t2);
+
+          result.insert(i, tr);
         }
         return result;
       }

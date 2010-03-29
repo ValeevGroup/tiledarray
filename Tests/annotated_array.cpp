@@ -6,6 +6,7 @@
 using namespace TiledArray;
 using TiledArray::expressions::VariableList;
 using TiledArray::expressions::array::ArrayHolder;
+using TiledArray::expressions::tile::AnnotatedTile;
 
 // Define the number of dimensions used.
 namespace {
@@ -62,6 +63,10 @@ struct ArrayHolderFixture : public TiledRangeFixture<Array<int, dim> > {
       for(tile_type::iterator t_it = t.begin(); t_it != t.end(); ++t_it)
         *t_it = tv++;
       a.insert(*it, t);
+      at.insert(*it, t);
+      aa.insert(*it, t("a,b,c"));
+      aft.insert(*it, madness::Future<tile_type>(t));
+      afa.insert(*it, madness::Future<AnnotatedTile<int> >(t("a,b,c")));
     }
     world->gop.fence();
   }
@@ -107,12 +112,12 @@ BOOST_FIXTURE_TEST_SUITE( array_holder_suite , ArrayHolderFixture )
 
 BOOST_AUTO_TEST_CASE( array_dim )
 {
-  BOOST_CHECK_EQUAL(ht.dim(), a.dim);
-  BOOST_CHECK_EQUAL(ht.order(), a.order);
-  BOOST_CHECK_EQUAL(ht.size(), a.size());
-  BOOST_CHECK_EQUAL(ht.weight(), a.weight());
-  BOOST_CHECK_EQUAL(ht.volume(), a.volume());
-  BOOST_CHECK_EQUAL(ht.volume(true), a.volume(true));
+  BOOST_CHECK_EQUAL(ht.dim(), at.dim);
+  BOOST_CHECK_EQUAL(ht.order(), at.order);
+  BOOST_CHECK_EQUAL(ht.size(), at.size());
+  BOOST_CHECK_EQUAL(ht.weight(), at.weight());
+  BOOST_CHECK_EQUAL(ht.volume(), at.volume());
+  BOOST_CHECK_EQUAL(ht.volume(true), at.volume(true));
   BOOST_CHECK( ht.range() == a.range() );
 }
 
