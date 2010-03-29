@@ -278,18 +278,22 @@ namespace TiledArray {
         /// dimensions, data ordering, and variable list must match, otherwise
         /// a runtime exception is thrown.
         AnnotatedTile_& operator =(const AnnotatedTile_& other) {
-          if(tile_->data() == other.tile_->data())
-            return *this;     // Do not copy yourself.
+          if(tile_.get() == NULL) {
+            tile_ = other.tile_;
+          } else {
+            if(tile_->data() == other.tile_->data())
+              return *this;     // Do not copy yourself.
 
-          // This is a reference to a Tile, so we need to verify that the
-          // dimensions of the other tile match this tile and copy the data.
-          TA_ASSERT(tile_->size() == other.tile_->size(), std::runtime_error,
-              "Right-hand tile dimensions do not match the left-hand tile dimensions.");
-          TA_ASSERT(tile_->order() == other.tile_->order(), std::runtime_error,
-              "Tile orders do not match.");
-          TA_ASSERT(this->var_ == other.var_, std::runtime_error,
-              "The variable lists do not match.");
-          std::copy(other.begin(), other.end(), tile_->begin());
+            // This is a reference to a Tile, so we need to verify that the
+            // dimensions of the other tile match this tile and copy the data.
+            TA_ASSERT(tile_->size() == other.tile_->size(), std::runtime_error,
+                "Right-hand tile dimensions do not match the left-hand tile dimensions.");
+            TA_ASSERT(tile_->order() == other.tile_->order(), std::runtime_error,
+                "Tile orders do not match.");
+            TA_ASSERT(this->var_ == other.var_, std::runtime_error,
+                "The variable lists do not match.");
+            std::copy(other.begin(), other.end(), tile_->begin());
+          }
 
           return *this;
         }
