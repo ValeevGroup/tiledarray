@@ -195,14 +195,13 @@ namespace TiledArray {
       reference operator[](size_type n) { return first[n]; }
       const_reference operator[](size_type n) const { return first[n]; }
       reference at(size_type n) {
-        const long c = n;
-        if(n > size())
+        if(n >= size())
           TA_EXCEPTION(std::out_of_range, "Element n is out of range.");
         return first[n];
       }
 
       const_reference at(size_type n) const {
-        if(n > std::distance(first, last))
+        if(n >= std::distance(first, last))
           TA_EXCEPTION(std::out_of_range, "Element n is out of range.");
         return first[n];
       }
