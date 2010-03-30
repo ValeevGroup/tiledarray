@@ -429,7 +429,6 @@ namespace TiledArray {
       return result;
     }
 
-    friend class DistributedIterator<DistributedArray_>;
     friend void swap<>(DistributedArray_&, DistributedArray_&);
 
     array_dim_type dim_;
