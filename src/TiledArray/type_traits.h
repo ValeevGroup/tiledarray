@@ -7,17 +7,6 @@
 namespace TiledArray {
   namespace detail {
 
-    /// adds const to the type if the boolean parameter is true
-    template<bool B, typename T>
-    struct add_const {
-      typedef const typename boost::remove_const<T>::type type;
-    }; // struct add_const
-
-    template<typename T>
-    struct add_const<false, T> {
-      typedef typename boost::remove_const<T>::type type;
-    }; // struct add_const<false, T>
-
     template<typename T>
     struct remove_cr {
       typedef typename boost::remove_const<typename boost::remove_reference<T>::type>::type type;

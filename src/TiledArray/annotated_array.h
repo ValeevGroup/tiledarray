@@ -96,6 +96,7 @@ namespace TiledArray {
         // Remote communication
         virtual iterator find(const ordinal_type, const expressions::VariableList&) = 0;
         virtual const_iterator find(const ordinal_type, const expressions::VariableList&) const = 0;
+        virtual madness::Future<bool> probe(const index_type& i) const  = 0;
 
         // public access functions.
         virtual madness::World& get_world() const = 0;
@@ -107,7 +108,9 @@ namespace TiledArray {
 
       /// This class implements the interface required by an AnnotatedArray.
       template<typename A>
-      class ArrayHolder : public ArrayHolderBase<typename detail::array_tile<typename A::tile_type>::value_type, typename A::ordinal_type> {
+      class ArrayHolder : public ArrayHolderBase<typename detail::array_tile<
+          typename A::tile_type>::value_type, typename A::ordinal_type>
+      {
       public:
         typedef A array_type;
         typedef ArrayHolder<A> ArrayHolder_;
@@ -151,31 +154,45 @@ namespace TiledArray {
           }
 
         private:
+
+          madness::Future<tile_type>
+          make_fut_annotation(const madness::Future<tile_type>& f) const {
+            return f;
+          }
+
           template<typename U>
-          madness::Future<tile_type> make_fut_annotation(const madness::Future<U>& f) const {
+          madness::Future<tile_type>
+          make_fut_annotation(const madness::Future<U>& f) const {
+            /// Todo: Remove the call to get() and replace it with a callback.
             return make_fut_annotation(f.get());
           }
 
           template<typename U>
-          madness::Future<tile_type> make_fut_annotation(madness::Future<U>& f) const {
+          madness::Future<tile_type>
+          make_fut_annotation(madness::Future<U>& f) const {
+            /// Todo: Remove the call to get() and replace it with a callback.
             return make_fut_annotation(f.get());
           }
 
           template<unsigned int DIM, typename CS>
-          madness::Future<tile_type> make_fut_annotation(const Tile<tile_value_type, DIM, CS>& t) const {
+          madness::Future<tile_type>
+          make_fut_annotation(const Tile<tile_value_type, DIM, CS>& t) const {
             return madness::Future<tile_type>(t(var_));
           }
 
           template<unsigned int DIM, typename CS>
-          madness::Future<tile_type> make_fut_annotation(Tile<tile_value_type, DIM, CS>& t) const {
+          madness::Future<tile_type>
+          make_fut_annotation(Tile<tile_value_type, DIM, CS>& t) const {
             return madness::Future<tile_type>(t(var_));
           }
 
-          madness::Future<tile_type> make_fut_annotation(const tile::AnnotatedTile<tile_value_type>& t) const {
+          madness::Future<tile_type>
+          make_fut_annotation(const tile::AnnotatedTile<tile_value_type>& t) const {
             return madness::Future<tile_type>(t);
           }
 
-          madness::Future<tile_type> make_fut_annotation(tile::AnnotatedTile<tile_value_type>& t) const {
+          madness::Future<tile_type>
+          make_fut_annotation(tile::AnnotatedTile<tile_value_type>& t) const {
             return madness::Future<tile_type>(t);
           }
 
@@ -333,6 +350,8 @@ namespace TiledArray {
               MakeFutATile<typename array_type::const_iterator::reference,
               const typename const_iterator::value_type>(v));
         }
+
+        virtual madness::Future<bool> probe(const index_type& i) const { return array_->probe(i); }
 
 
         // public access functions.
@@ -553,7 +572,7 @@ namespace TiledArray {
         /// non-blocking communication.
         template<typename Index, typename Tile>
         void insert(const Index i, const Tile& t) {
-          array_->insert(ord_(i), madness::Future<Tile>(t), var_);
+          array_->insert(ord_(i), madness::Future<Tile>(t));
         }
 
         /// Inserts a tile into the array.
@@ -619,6 +638,17 @@ namespace TiledArray {
           TA_ASSERT(this->dim() == DIM, std::runtime_error,
               "The index dimensions is not equal to the array dimensions.");
           return array_.is_local(this->ord_(i));
+        }
+
+        /// Returns a future bool which is true if the tile is present in the array.
+        template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O>
+        madness::Future<bool> probe(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) const {
+          return array_->probe(ord_(i));
+        }
+
+        /// Returns a future bool which is true if the tile is present in the array.
+        madness::Future<bool> probe(const ordinal_type i) const {
+          return array_->probe(i);
         }
 
         /// Return a reference to the world object of the array.

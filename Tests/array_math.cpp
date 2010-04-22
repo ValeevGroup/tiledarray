@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( value_exp )
 
 BOOST_AUTO_TEST_CASE( array_op )
 {
-  math::BinaryArrayOp<AArray, AArray, AArray, std::plus<int> > op(world);
+  math::BinaryArrayOp<AArray, AArray, AArray, std::plus > op(world);
 
   AArray result = op(a1("a,b,c"), a2("a,b,c"));
   for(AArray::iterator it = result.begin(); it != result.end(); ++it)

@@ -178,14 +178,12 @@ namespace TiledArray {
 
       /// Implicit key 1 conversion
       operator const key1_type() const {
-        TA_ASSERT(k_ & 1, std::runtime_error, "Key1 is not set.");
-        return k1_;
+        return key1();
       }
 
       /// Implicit key 2 conversion
       operator const key2_type() const {
-        TA_ASSERT(k_ & 2, std::runtime_error, "Key2 is not set.");
-        return k2_;
+        return key2();
       }
 
       /// Returns a constant reference to key 1.

@@ -69,6 +69,7 @@ namespace TiledArray {
         // data access interface
         virtual pointer data() = 0;
         virtual const_pointer data() const = 0;
+        virtual bool initialized() const = 0;
 
         // tile information access
         virtual size_array size() const = 0;
@@ -130,6 +131,7 @@ namespace TiledArray {
         // data access interface
         virtual pointer data() { return tile_->data(); }
         virtual const_pointer data() const { return tile_->data(); }
+        virtual bool initialized() const { return tile_->initialized(); }
 
         // tile information access
         virtual size_array size() const { return size_array(tile_->size()); }
@@ -394,6 +396,9 @@ namespace TiledArray {
 
           return *this;
         }
+
+        /// returns true if the tile data is initialized.
+        bool initialized() const { return tile_->initialized(); }
 
       private:
 

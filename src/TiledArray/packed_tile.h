@@ -3,8 +3,9 @@
 
 #include <TiledArray/range.h>
 #include <TiledArray/array_util.h>
-#include <TiledArray/type_traits.h>
-//#include <boost/type_traits.hpp>
+//#include <TiledArray/type_traits.h>
+#include <boost/mpl/if.hpp>
+#include <boost/type_traits.hpp>
 #include <numeric>
 
 namespace TiledArray {
@@ -34,7 +35,7 @@ namespace TiledArray {
     typedef typename range_type::const_iterator index_iterator;
     typedef typename tile_type::const_iterator const_iterator;
     typedef typename tile_type::iterator iterator;
-    typedef typename detail::add_const<boost::is_const<T>::value, value_type>::type& reference_type;
+    typedef typename boost::mpl::if_<boost::is_const<T>, const value_type&, value_type&>::type reference_type;
     typedef const value_type & const_reference_type;
 
     static unsigned int dim() { return DIM; }

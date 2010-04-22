@@ -150,12 +150,12 @@ namespace TiledArray {
   /// \arg \c CS is used to define the coordinate system.
   /// \arg \c C is the tile container type.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM>, typename C = Tile<T, DIM, CS> >
-  class Array : public madness::WorldObject<Array<T, DIM, CS> > {
+  class Array : public madness::WorldObject<Array<T, DIM, CS, C> > {
     BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
 
   public:
-    typedef Array<T, DIM, CS> Array_;
-    typedef madness::WorldObject<Array<T, DIM, CS> > WorldObject_;
+    typedef Array<T, DIM, CS, C> Array_;
+    typedef madness::WorldObject<Array<T, DIM, CS, C> > WorldObject_;
     typedef CS coordinate_system;
     typedef typename detail::array_tile<C>::tile_type tile_type;
 
@@ -446,7 +446,19 @@ namespace TiledArray {
     const tiled_range_type& range() const { return range_; }
 
     template<typename Key>
-    ProcessID owner(const Key& k) { return tiles_.owner(key_(k)); }
+    ProcessID owner(const Key& k) const { return tiles_.owner(key_(k)); }
+
+    template<typename Key>
+    madness::Future<bool> probe(const Key& k) const {
+      if(is_local(k)) {
+        madness::Future<const_iterator> it = find(k);
+        return madness::Future<bool>(it.get() != end());
+      } else {
+        madness::Future<bool> result;
+        send(owner(k), &Array_::probe_handler, ord_(k), result.remote_ref(get_world()));
+        return result;
+      }
+    }
 
   private:
 
@@ -476,9 +488,27 @@ namespace TiledArray {
           ordinal_type(0));
     }
 
+    ordinal_type ord_(const ordinal_type& i) const {
+      return i;
+    }
+
+    ordinal_type ord_(const key_type& k) const {
+      if((k.keys() & 1) != 0)
+        return k.key1();
+      else
+        return ord_(k.key2());
+    }
+
+    /// Handles probe requests
+    madness::Void probe_handler(const ordinal_type& k, const madness::RemoteReference< madness::FutureImpl<bool> >& ref) const {
+      madness::Future<bool> f(ref);
+      madness::Future<const_iterator> t = find(k);
+      f.set(t.get() != end());
+
+      return madness::None;
+    }
+
     friend void swap<>(Array_&, Array_&);
-//    friend class expressions::array::ArrayHolder<Array_, T, ordinal_type>;
-//    friend class expressions::array::ArrayHolder<Array_, const T, ordinal_type>;
 
     tiled_range_type range_;
     data_container tiles_;

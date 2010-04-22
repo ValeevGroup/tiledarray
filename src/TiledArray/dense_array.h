@@ -174,26 +174,36 @@ namespace TiledArray {
 
     /// Returns a raw pointer to the array elements. Elements are ordered from
     /// least significant to most significant dimension.
-    value_type * data() { return data_; }
+    value_type * data() {
+      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
+      return data_;
+    }
 
     /// Returns a constant raw pointer to the array elements. Elements are
     /// ordered from least significant to most significant dimension.
-    const value_type * data() const { return data_; }
+    const value_type * data() const {
+      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
+      return data_;
+    }
 
     // Iterator factory functions.
     iterator begin() { // no throw
+      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       return data_;
     }
 
     iterator end() { // no throw
+      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       return data_ + dim_.n_;
     }
 
     const_iterator begin() const { // no throw
+      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       return data_;
     }
 
     const_iterator end() const { // no throw
+      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       return data_ + dim_.n_;
     }
 
@@ -204,6 +214,7 @@ namespace TiledArray {
     /// thrown. Valid types for Index are ordinal_type and index_type.
     template <typename Index>
     reference_type at(const Index& i) {
+      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       if(! dim_.includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...): Element is not in range.");
 
@@ -217,6 +228,7 @@ namespace TiledArray {
     /// thrown. Valid types for Index are ordinal_type and index_type.
     template <typename Index>
     const_reference_type at(const Index& i) const {
+      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       if(! dim_.includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...) const: Element is not in range.");
 
@@ -258,15 +270,16 @@ namespace TiledArray {
     volume_type volume() const { return dim_.volume(); }
 
     /// Returns true if the given index is included in the array.
-    bool includes(const index_type& i) const { return dim_.includes(i); }
-
-    /// Returns true if the given index is included in the array.
-    bool includes(const ordinal_type& i) const { return dim_.includes(i); }
+    template<typename Index>
+    bool includes(const Index& i) const { return dim_.includes(i); }
 
     /// Returns the ordinal (linearized) index for the given index.
 
     /// If the given index is not included in the
     ordinal_type ordinal(const index_type& i) const { return dim_.ordinal(i); }
+
+    /// Returns true if the array data pointer has been allocated.
+    bool initialized() const { return data_ != NULL; }
 
   private:
     /// Allocate and initialize the array.

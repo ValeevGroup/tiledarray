@@ -256,6 +256,9 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Returns true if the tile data has been initialized.
+    bool initialized() const { return data_.initialized(); }
+
     expressions::tile::AnnotatedTile<value_type> operator ()(const std::string& v) {
       expressions::tile::AnnotatedTile<value_type> result(*this, expressions::VariableList(v));
       return result;

@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE( zip_op )
 
 BOOST_AUTO_TEST_CASE( tile_op )
 {
-  math::BinaryTileOp<ATile, ATile, ATile, std::plus<double> > op;
+  math::BinaryTileOp<ATile, ATile, ATile, std::plus > op;
 
   ATile result = op(t1("a,b,c"), t2("a,b,c"));
   BOOST_CHECK(check_val(result.begin(), result.end(), 3.0));
