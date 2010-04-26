@@ -109,11 +109,11 @@ namespace TiledArray {
       std::vector<tile_index_type> r;
       r.push_back(t0);
       r.push_back(t1);
-      tile_index_type ti; // ci is used as an intermediate
+      tile_index_type ti; // ti is used as an intermediate
       for(unsigned int i = 1; i < n; ++i) {
-        ci = 0ul;
-        ci = va_arg(ap, tile_index_type);
-        r.push_back(ti)
+        ti = 0ul;
+        ti = va_arg(ap, tile_index_type);
+        r.push_back(ti);
       }
 
       va_end(ap);
