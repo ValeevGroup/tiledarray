@@ -167,27 +167,27 @@ namespace TiledArray {
         AnnotatedTileDataImpl() :
             dim_(0),
             volume_(0),
+            order_(detail::decreasing_dimension_order),
             data_(),
-            size_weight_(),
-            order_(detail::decreasing_dimension_order)
+            size_weight_()
         { }
 
         template<typename SizeInIter, typename DataInIter>
         AnnotatedTileDataImpl(SizeInIter s_first, SizeInIter s_last, DataInIter d_first, DataInIter d_last, detail::DimensionOrderType o) :
             dim_(std::distance(s_first, s_last)),
             volume_(detail::volume(s_first, s_last)),
+            order_(o),
             data_(init_data_(d_first, d_last)),
-            size_weight_(init_size_weight_(s_first, s_last)),
-            order_(o)
+            size_weight_(init_size_weight_(s_first, s_last))
         { }
 
         template<typename InIter>
         AnnotatedTileDataImpl(InIter first, InIter last, value_type v, detail::DimensionOrderType o) :
             dim_(std::distance(first, last)),
             volume_(detail::volume(first, last)),
+            order_(o),
             data_(init_data_(v)),
-            size_weight_(init_size_weight_(first, last)),
-            order_(o)
+            size_weight_(init_size_weight_(first, last))
         { }
 
         /// virtual destructor.
@@ -218,12 +218,14 @@ namespace TiledArray {
 
         // Element access
         virtual reference at(const index_type i) {
+          TA_ASSERT(initialized(), std::runtime_error, "Data is not initialized.");
           if(! includes(i))
             TA_EXCEPTION(std::out_of_range, "Index is out of range.");
           return data_[i];
         }
 
         virtual const_reference at(const index_type i) const {
+          TA_ASSERT(initialized(), std::runtime_error, "Data is not initialized.");
           if(! includes(i))
             TA_EXCEPTION(std::out_of_range, "Index is out of range.");
           return data_[i];
@@ -265,16 +267,21 @@ namespace TiledArray {
         boost::shared_array<ordinal_type> init_size_weight_(InIter first, InIter last) const {
           boost::shared_array<ordinal_type> a(new ordinal_type[2 * dim_]);
           std::copy(first, last, a.get());
-          detail::calc_weight(first, last, a.get() + dim_);
+          if(order_ == detail::increasing_dimension_order)
+            detail::calc_weight(first, last, a.get() + dim_);
+          else
+            detail::calc_weight(std::reverse_iterator<InIter>(last),
+                std::reverse_iterator<InIter>(first),
+                std::reverse_iterator<ordinal_type*>(a.get() + 2 * dim_));
 
           return a;
         }
 
         unsigned int dim_;
         volume_type volume_;
+        detail::DimensionOrderType order_;
         boost::shared_array<value_type> data_;
         boost::shared_array<ordinal_type> size_weight_;
-        detail::DimensionOrderType order_;
       }; // class AnnotatedTileDataImpl
 
       /// Annotated tile.
