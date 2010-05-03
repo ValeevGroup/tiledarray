@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(Tile3 t0); // check default constructor
   Tile3 t0;
   BOOST_CHECK_EQUAL(t0.volume(), 0u);
-  BOOST_CHECK_THROW(t0.at(index_type(0,0,0)), std::out_of_range);
+  BOOST_CHECK_THROW(t0.at(index_type(0,0,0)), std::runtime_error);
 
   BOOST_REQUIRE_NO_THROW(Tile3 tc(t)); // check copy constructor
   Tile3 tc(t);
