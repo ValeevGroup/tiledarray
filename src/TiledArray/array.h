@@ -151,8 +151,6 @@ namespace TiledArray {
   /// \arg \c C is the tile container type.
   template <typename T, unsigned int DIM, typename CS = CoordinateSystem<DIM>, typename C = Tile<T, DIM, CS> >
   class Array : public madness::WorldObject<Array<T, DIM, CS, C> > {
-    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
-
   public:
     typedef Array<T, DIM, CS, C> Array_;
     typedef madness::WorldObject<Array<T, DIM, CS, C> > WorldObject_;
@@ -505,6 +503,7 @@ namespace TiledArray {
       madness::Future<const_iterator> t = find(k);
       f.set(t.get() != end());
 
+      ref.dec();
       return madness::None;
     }
 

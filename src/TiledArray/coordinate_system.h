@@ -142,8 +142,6 @@ namespace TiledArray {
   /// The default is for the last dimension to be least significant.
   template <unsigned int DIM, detail::DimensionOrderType Order = detail::decreasing_dimension_order>
   class CoordinateSystem {
-    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
-
   public:
     typedef typename detail::DimensionOrder<DIM>::const_iterator const_iterator;
     typedef typename detail::DimensionOrder<DIM>::const_reverse_iterator const_reverse_iterator;

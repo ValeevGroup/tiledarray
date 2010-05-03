@@ -70,7 +70,6 @@ namespace TiledArray {
   class TiledRange : public boost::equality_comparable1< TiledRange<I,DIM,CS> > {
 	public:
     BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
-    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
 
     // typedefs
     typedef TiledRange<I,DIM,CS> TiledRange_;

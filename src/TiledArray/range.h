@@ -40,8 +40,6 @@ namespace TiledArray {
   /// information. It also provides index iteration over its range.
   template <typename I, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
   class Range {
-    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
-
   public:
     typedef Range<I,DIM,Tag,CS> Range_;
     typedef I ordinal_type;

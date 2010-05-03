@@ -20,8 +20,6 @@ namespace TiledArray {
   /// dimensions.
   template<typename T, unsigned int DIM>
   class PackedTile {
-    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
-
   public:
     typedef PackedTile<T, DIM> PackedTile_;
     typedef typename boost::remove_const<T>::type tile_type;

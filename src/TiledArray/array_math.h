@@ -37,40 +37,39 @@ namespace TiledArray {
           typename result_type::tile_type, Op> tile_op; ///< Binary tile operation
 
     private:
+
+      /// Copies of this object are passed to the madness task queue.
+
+      /// This object handles decision making which operations should be run
+      /// based on the existence or non-existence of tiles.
       class ProbeOp {
+        ProbeOp();
       public:
+        ProbeOp(tile_op o) : op_(o) { }
 
-        /// Copies of this object are passed to the madness task queue.
+        /// Executes operations for local left hand tile operands.
 
-        /// This object handles decision making which operations should be run
-        /// based on the existence or non-existence of tiles.
-        class ProbeOp {
-          ProbeOp();
-        public:
-          ProbeOp(tile_op o) : op_(o) { }
+        /// This function checks for the existence of the right hand operand.
+        /// If it exists, the binary operation is performed and the result is
+        ///
+        typename result_type::tile_type left_op(const typename Arg1::tile_type& t1, const typename Arg2::tile_type& t2) const {
+          if(t2.initialized())
+            return op_(t1, t2);
 
-          /// Executes operations for local left hand tile operands.
+          return op_(t1, 0);
+        }
 
-          /// This function checks for the existence of the right hand operand.
-          /// If it exists, the binary operation is performed and the result is
-          ///
-          typename result_type::tile_type left_op(const typename Arg1::tile_type& t1, const typename Arg2::tile_type& t2) const {
-            if(t2.initialized())
-              return op_(t1, t2);
+        typename result_type::tile_type right_op(bool p1, typename Arg2::tile_type t2) const {
+          if(!p1)
+            return op_(0, t2);
 
-            return op_(t1, 0);
-          }
+          typename result_type::tile_type result;
+          return result;
+        }
 
-          typename result_type::tile_type right_op(bool p1, typename Arg2::tile_type t2) const {
-            if(!p1)
-              return op_(0, t2);
-
-            return result_type::tile_type();
-          }
-
-        private:
-          tile_op op_; ///< Tile operation to be executed.
-        }; // class ProbeOp
+      private:
+        tile_op op_; ///< Tile operation to be executed.
+      }; // class ProbeOp
 
     public:
       /// operation constructor
@@ -90,14 +89,14 @@ namespace TiledArray {
         // This loop will generate the appropriate tasks for the cases where the
         // left and right tile exist and only the left tile exists.
         result_type result(world_, a1.range(), a1.vars(), a1.order());
-        ProbeOp probe(result, op_);
+        ProbeOp probe(op_);
         for(typename Arg1::const_iterator it = a1.begin(); it != a1.end(); ++it) {
           const typename Arg1::index_type i = it->first;
           madness::Future<typename Arg1::tile_type> f1 = it->second;
           madness::Future<typename Arg2::tile_type> f2 = a2.find(i)->second;
 
           madness::Future<typename result_type::tile_type> fr =
-              world_.taskq.add(probe, &ProbeOp::left_op, i, f1, f2, attr_);
+              world_.taskq.add(probe, &ProbeOp::left_op, f1, f2, attr_);
 
           result.insert(i, fr);
         }
@@ -110,7 +109,7 @@ namespace TiledArray {
           madness::Future<typename Arg2::tile_type> f2 = it->second;
 
           madness::Future<typename result_type::tile_type> fr =
-              world_.taskq.add(probe, &ProbeOp::right_op, i, f1, f2, attr_);
+              world_.taskq.add(probe, &ProbeOp::right_op, f1, f2, attr_);
 
           result.insert(i, fr);
         }
@@ -127,6 +126,7 @@ namespace TiledArray {
     }; // struct BinaryArrayOp
 
 
+/*
     /// Array operation
 
     /// Performs an element wise binary operation (e.g. std::plus<T>,
@@ -144,7 +144,9 @@ namespace TiledArray {
       typedef const Arg2& second_argument_type; ///< second array argument type.
       typedef Res result_type;                  ///< result array type.
       typedef BinaryTileOp<typename Arg1::tile_type, typename Arg2::tile_type,
-          typename result_type::tile_type, std::multiplies> tile_op; ///< Binary tile operation
+          typename result_type::tile_type, std::multiplies> tile_multiplies_op; ///< Tile contraction operation
+      typedef BinaryTileOp<typename Arg1::tile_type, typename Arg2::tile_type,
+          typename result_type::tile_type, std::plus> tile_plus_op; ///< Tile contraction operation
 
     private:
 
@@ -225,7 +227,7 @@ namespace TiledArray {
       tile_op op_;
       madness::TaskAttributes attr_;
     }; // struct BinaryArrayOp
-
+*/
     /// Unary tile operation
 
     /// Performs an element wise unary operation on a tile.

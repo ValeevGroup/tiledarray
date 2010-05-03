@@ -21,7 +21,6 @@ namespace TiledArray {
 
   template<unsigned int DIM, typename Tag = LevelTag<1> >
   class DensePred {
-    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
   public:
 
     /// Default constructor
@@ -61,8 +60,6 @@ namespace TiledArray {
 
   template <unsigned int DIM, typename Tag = LevelTag<1> >
   class LowerTrianglePred {
-    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
-
   public:
     // Default constructor
     LowerTrianglePred() :

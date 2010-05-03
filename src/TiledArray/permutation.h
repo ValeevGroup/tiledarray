@@ -50,8 +50,6 @@ namespace TiledArray {
   ///   a ^= p;    // permute a given the permutation p.
   template <unsigned int DIM>
   class Permutation {
-    BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
-
   public:
     typedef Permutation<DIM> Permutation_;
     typedef std::size_t index_type;

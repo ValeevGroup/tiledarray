@@ -7,6 +7,7 @@
 #include <TiledArray/variable_list.h>
 #include <TiledArray/tile.h>
 #include <boost/type_traits.hpp>
+#include <boost/shared_array.hpp>
 #include <boost/make_shared.hpp>
 #include <Eigen/Core>
 #include <numeric>
@@ -39,9 +40,9 @@ namespace TiledArray {
       AnnotatedTile<T> operator ^(const Permutation<DIM>&, const AnnotatedTile<T>&);
 
       template<typename T, typename I>
-      class TileHolderBase {
+      class AnnotatedTileImplBase {
       public:
-        typedef TileHolderBase<T, I> TileHolderBase_;
+        typedef AnnotatedTileImplBase<T, I> TileHolderBase_;
         typedef T value_type;
         typedef I index_type;
         typedef I ordinal_type;
@@ -56,9 +57,7 @@ namespace TiledArray {
         typedef const_pointer const_iterator;
 
         /// virtual destructor.
-        virtual ~TileHolderBase() { }
-
-        virtual boost::shared_ptr<TileHolderBase_> clone() const = 0;
+        virtual ~AnnotatedTileImplBase() { }
 
         // iterator interface
         virtual iterator begin() = 0;
@@ -77,50 +76,43 @@ namespace TiledArray {
         virtual volume_type volume() const = 0;
         virtual unsigned int dim() const = 0;
         virtual detail::DimensionOrderType order() const = 0;
-        virtual bool includes(index_type) const = 0;
+        virtual bool includes(const index_type) const = 0;
 
         // Element access
-        virtual reference at(index_type) = 0;
-        virtual const_reference at(index_type) const = 0;
-        virtual reference operator[](index_type) = 0;
-        virtual const_reference operator[](const index_type&) const = 0;
+        virtual reference at(const index_type) = 0;
+        virtual const_reference at(const index_type) const = 0;
+        virtual reference operator[](const index_type) = 0;
+        virtual const_reference operator[](const index_type) const = 0;
 
-        // Operations
-        virtual void permute(const std::size_t*, unsigned int) = 0;
-
-      }; // class TileHolderBase
+      }; // class AnnotatedTileImplBase
 
       template<typename T>
-      class TileHolder : public TileHolderBase<typename T::value_type, typename T::ordinal_type> {
+      class AnnotatedTileRefImpl : public AnnotatedTileImplBase<typename T::value_type, typename T::ordinal_type> {
       public:
-        typedef TileHolderBase<typename T::value_type, typename T::ordinal_type> TileHolderBase_;
-        typedef typename TileHolderBase_::value_type value_type;
-        typedef typename TileHolderBase_::index_type index_type;
-        typedef typename TileHolderBase_::ordinal_type ordinal_type;
-        typedef typename TileHolderBase_::volume_type volume_type;
-        typedef typename TileHolderBase_::reference reference;
-        typedef typename TileHolderBase_::const_reference const_reference;
-        typedef typename TileHolderBase_::pointer pointer;
-        typedef typename TileHolderBase_::const_pointer const_pointer;
-        typedef typename TileHolderBase_::size_array size_array;
+        typedef AnnotatedTileImplBase<typename T::value_type, typename T::ordinal_type> AnnotatedTileImplBase_;
+        typedef typename AnnotatedTileImplBase_::value_type value_type;
+        typedef typename AnnotatedTileImplBase_::index_type index_type;
+        typedef typename AnnotatedTileImplBase_::ordinal_type ordinal_type;
+        typedef typename AnnotatedTileImplBase_::volume_type volume_type;
+        typedef typename AnnotatedTileImplBase_::reference reference;
+        typedef typename AnnotatedTileImplBase_::const_reference const_reference;
+        typedef typename AnnotatedTileImplBase_::pointer pointer;
+        typedef typename AnnotatedTileImplBase_::const_pointer const_pointer;
+        typedef typename AnnotatedTileImplBase_::size_array size_array;
 
-        typedef typename TileHolderBase_::iterator iterator;
-        typedef typename TileHolderBase_::const_iterator const_iterator;
+        typedef typename AnnotatedTileImplBase_::iterator iterator;
+        typedef typename AnnotatedTileImplBase_::const_iterator const_iterator;
 
         typedef T tile_type;
-        typedef boost::shared_ptr<T> tile_ptr;
 
         // Constructors
-        TileHolder() : tile_(NULL) { }
-        TileHolder(boost::shared_ptr<tile_type> t) : tile_(t) { }
-        TileHolder(const TileHolder<T>& other) : tile_(other.tile_) { }
+        AnnotatedTileRefImpl() : tile_(NULL) { }
+        AnnotatedTileRefImpl(tile_type& t) : tile_(&t) { }
+        AnnotatedTileRefImpl(const tile_type& t) : tile_(const_cast<tile_type*>(&t)) { }
+        AnnotatedTileRefImpl(const AnnotatedTileRefImpl<T>& other) : tile_(other.tile_) { }
 
         // virtual destructor
-        virtual ~TileHolder() { }
-
-        virtual boost::shared_ptr<TileHolderBase_> clone() const {
-          return boost::dynamic_pointer_cast<TileHolderBase_>(boost::make_shared<TileHolder<T> >(boost::make_shared<tile_type>(*tile_)));
-        }
+        virtual ~AnnotatedTileRefImpl() { }
 
         // iterator interface
         virtual iterator begin() { return tile_->begin(); }
@@ -139,53 +131,172 @@ namespace TiledArray {
         virtual volume_type volume() const { return tile_->volume(); }
         virtual unsigned int dim() const { return T::dim; }
         virtual detail::DimensionOrderType order() const { return T::order; }
-        virtual bool includes(index_type i) const { return tile_->includes(i); }
+        virtual bool includes(const index_type i) const { return tile_->includes(i); }
 
         // Element access
-        virtual reference at(index_type i) { return tile_->at(i); }
-        virtual const_reference at(index_type i) const { return tile_->at(i); }
-        virtual reference operator[](index_type i) { return (*tile_)[i]; }
-        virtual const_reference operator[](const index_type& i) const { return (*tile_)[i]; }
-
-        // Operations
-        virtual void permute(const std::size_t* first, unsigned int d) {
-          TA_ASSERT(d == tile_type::dim, std::runtime_error,
-              "Permutation dimensions do not match tile dimensions.");
-          Permutation<tile_type::dim> p(first);
-          *tile_ ^= p;
-        }
-
-        /// Clean-up function for an array reference.
-
-        /// This function is the clean-up operation for an array reference. Its
-        /// purpose is to prevent boost shared pointer from calling delete on an
-        /// array pointer that is not dynamically allocated.
-        static void no_delete(tile_type*) { /* do nothing */ }
+        virtual reference at(const index_type i) { return tile_->at(i); }
+        virtual const_reference at(const index_type i) const { return tile_->at(i); }
+        virtual reference operator[](const index_type i) { return (*tile_)[i]; }
+        virtual const_reference operator[](const index_type i) const { return (*tile_)[i]; }
 
       private:
-        boost::shared_ptr<tile_type> tile_;
-      }; // class TileHolderBase
+        tile_type* tile_;
+      }; // class AnnotatedTileImplBase
+
+      template<typename T, typename I>
+      class AnnotatedTileDataImpl {
+      private:
+        typedef AnnotatedTileDataImpl<T, I> AnnotatedTileDataImpl_;
+        typedef AnnotatedTileImplBase<T, I> AnnotatedTileImplBase_;
+        typedef Eigen::aligned_allocator<T> alloc_type;
+
+      public:
+        typedef T value_type;
+        typedef I index_type;
+        typedef I ordinal_type;
+        typedef I volume_type;
+        typedef T& reference;
+        typedef const T& const_reference;
+        typedef T* pointer;
+        typedef const T* const_pointer;
+        typedef detail::ArrayRef<const index_type> size_array;
+
+        typedef pointer iterator;
+        typedef const_pointer const_iterator;
+
+        AnnotatedTileDataImpl() :
+            dim_(0),
+            volume_(0),
+            data_(),
+            size_weight_(),
+            order_(detail::decreasing_dimension_order)
+        { }
+
+        template<typename SizeInIter, typename DataInIter>
+        AnnotatedTileDataImpl(SizeInIter s_first, SizeInIter s_last, DataInIter d_first, DataInIter d_last, detail::DimensionOrderType o) :
+            dim_(std::distance(s_first, s_last)),
+            volume_(detail::volume(s_first, s_last)),
+            data_(init_data_(d_first, d_last)),
+            size_weight_(init_size_weight_(s_first, s_last)),
+            order_(o)
+        { }
+
+        template<typename InIter>
+        AnnotatedTileDataImpl(InIter first, InIter last, value_type v, detail::DimensionOrderType o) :
+            dim_(std::distance(first, last)),
+            volume_(detail::volume(first, last)),
+            data_(init_data_(v)),
+            size_weight_(init_size_weight_(first, last)),
+            order_(o)
+        { }
+
+        /// virtual destructor.
+        virtual ~AnnotatedTileDataImpl() { }
+
+        // iterator interface
+        virtual iterator begin() { return data_.get(); }
+        virtual const_iterator begin() const { return data_.get(); }
+        virtual iterator end() { return data_.get() + volume_; }
+        virtual const_iterator end() const { return data_.get() + volume_; }
+
+        // data access interface
+        virtual pointer data() { return data_.get(); }
+        virtual const_pointer data() const { return data_.get(); }
+        virtual bool initialized() const { return data_; }
+
+        // tile information access
+        virtual size_array size() const {
+          return size_array(size_weight_.get(), size_weight_.get() + dim_);
+        }
+        virtual size_array weight() const {
+          return size_array(size_weight_.get() + dim_, size_weight_.get() + 2 * dim_);
+        }
+        virtual volume_type volume() const { return volume_; }
+        virtual unsigned int dim() const { return dim_; }
+        virtual detail::DimensionOrderType order() const { return order_; }
+        virtual bool includes(const index_type i) const { return i < volume_; }
+
+        // Element access
+        virtual reference at(const index_type i) {
+          if(! includes(i))
+            TA_EXCEPTION(std::out_of_range, "Index is out of range.");
+          return data_[i];
+        }
+
+        virtual const_reference at(const index_type i) const {
+          if(! includes(i))
+            TA_EXCEPTION(std::out_of_range, "Index is out of range.");
+          return data_[i];
+        }
+        virtual reference operator[](const index_type i) {
+#ifdef NDEBUG
+          return data_[i];
+#else
+          return at(i);
+#endif
+        }
+
+        virtual const_reference operator[](const index_type i) const {
+#ifdef NDEBUG
+          return data_[i];
+#else
+          return at(i);
+#endif
+        }
+
+      private:
+
+        boost::shared_array<value_type> init_data_(value_type val) const {
+          // Todo: Implement this with an aligned allocator.
+          boost::shared_array<value_type> a(new value_type[volume_]);
+          std::fill(a.get(), a.get() + volume_, val);
+          return a;
+        }
+
+        template<typename InIter>
+        boost::shared_array<value_type> init_data_(InIter first, InIter last) const {
+          boost::shared_array<value_type> a(new value_type[volume_]);
+          std::fill(std::copy(first, last, a.get()), a.get() + volume_, value_type());
+
+          return a;
+        }
+
+        template<typename InIter>
+        boost::shared_array<ordinal_type> init_size_weight_(InIter first, InIter last) const {
+          boost::shared_array<ordinal_type> a(new ordinal_type[2 * dim_]);
+          std::copy(first, last, a.get());
+          detail::calc_weight(first, last, a.get() + dim_);
+
+          return a;
+        }
+
+        unsigned int dim_;
+        volume_type volume_;
+        boost::shared_array<value_type> data_;
+        boost::shared_array<ordinal_type> size_weight_;
+        detail::DimensionOrderType order_;
+      }; // class AnnotatedTileDataImpl
 
       /// Annotated tile.
       template<typename T>
       class AnnotatedTile {
       private:
-        typedef TileHolderBase<T, std::size_t> TileHolderBase_;
-      public:
         typedef AnnotatedTile<T> AnnotatedTile_;
+        typedef AnnotatedTileImplBase<T, std::size_t> AnnotatedTileImplBase_;
 
-        typedef typename TileHolderBase_::value_type value_type;
-        typedef typename TileHolderBase_::index_type index_type;
-        typedef typename TileHolderBase_::ordinal_type ordinal_type;
-        typedef typename TileHolderBase_::volume_type volume_type;
-        typedef typename TileHolderBase_::reference reference;
-        typedef typename TileHolderBase_::const_reference const_reference;
-        typedef typename TileHolderBase_::pointer pointer;
-        typedef typename TileHolderBase_::const_pointer const_pointer;
-        typedef typename TileHolderBase_::size_array size_array;
+      public:
+        typedef typename AnnotatedTileImplBase_::value_type value_type;
+        typedef typename AnnotatedTileImplBase_::index_type index_type;
+        typedef typename AnnotatedTileImplBase_::ordinal_type ordinal_type;
+        typedef typename AnnotatedTileImplBase_::volume_type volume_type;
+        typedef typename AnnotatedTileImplBase_::reference reference;
+        typedef typename AnnotatedTileImplBase_::const_reference const_reference;
+        typedef typename AnnotatedTileImplBase_::pointer pointer;
+        typedef typename AnnotatedTileImplBase_::const_pointer const_pointer;
+        typedef typename AnnotatedTileImplBase_::size_array size_array;
 
-        typedef typename TileHolderBase_::iterator iterator;
-        typedef typename TileHolderBase_::const_iterator const_iterator;
+        typedef typename AnnotatedTileImplBase_::iterator iterator;
+        typedef typename AnnotatedTileImplBase_::const_iterator const_iterator;
 
       public:
         /// Default constructor
@@ -391,8 +502,14 @@ namespace TiledArray {
 
         template<unsigned int DIM>
         AnnotatedTile_& operator ^=(const Permutation<DIM>& p) {
-          tile_->permute(p.begin(), DIM);
-          var_ ^= p;
+          TA_ASSERT((dim() == DIM), std::runtime_error,
+              "The permutation dimension is not equal to the tile dimensions.");
+
+          AnnotatedTile<T> result(p ^ size(), p ^ vars(), T());
+          detail::Permute<AnnotatedTile<T> > f_perm(*this);
+          f_perm(p, result.begin(), result.end());
+
+          swap_(result);
 
           return *this;
         }
@@ -403,103 +520,21 @@ namespace TiledArray {
       private:
 
         template<typename tileT>
-        static boost::shared_ptr<TileHolderBase_> create_tile_ptr_(const boost::shared_ptr<tileT>& t) {
-          return boost::dynamic_pointer_cast<TileHolderBase_>(boost::make_shared<TileHolder<tileT> >(t));
-        }
-
-        template<unsigned int DIM, detail::DimensionOrderType O>
-        static boost::shared_ptr<TileHolderBase_> create_tile_ptr_(Tile<T, DIM, CoordinateSystem<DIM, O> >& t) {
-          typedef Tile<T, DIM, CoordinateSystem<DIM, O> > tileT;
-          boost::shared_ptr<tileT> tile(&t, &TileHolder<tileT>::no_delete);
-          return create_tile_ptr_(tile);
-        }
-
-        template<unsigned int DIM, detail::DimensionOrderType O>
-        static boost::shared_ptr<TileHolderBase_> create_tile_ptr_(const Tile<T, DIM, CoordinateSystem<DIM, O> >& t) {
-          typedef const Tile<T, DIM, CoordinateSystem<DIM, O> > tileT;
-          boost::shared_ptr<tileT> tile(&t, &TileHolder<tileT>::no_delete);
-          return create_tile_ptr_(tile);
+        static boost::shared_ptr<AnnotatedTileImplBase_> create_tile_ptr_(tileT& t) {
+          return boost::dynamic_pointer_cast<AnnotatedTileImplBase_>(boost::make_shared<AnnotatedTileRefImpl<tileT> >(t));
         }
 
         template<typename SizeArray>
-        static boost::shared_ptr<TileHolderBase_> create_tile_ptr_(const SizeArray& s, const detail::DimensionOrderType o, value_type v) {
-          if(o == detail::increasing_dimension_order)
-            return MakeTile<1, detail::increasing_dimension_order>::make(s, s.size(), v);
-          else
-            return MakeTile<1, detail::decreasing_dimension_order>::make(s, s.size(), v);
+        static boost::shared_ptr<AnnotatedTileImplBase_> create_tile_ptr_(const SizeArray& s, const detail::DimensionOrderType o, value_type v) {
+          return boost::dynamic_pointer_cast<AnnotatedTileImplBase_>(
+              boost::make_shared<AnnotatedTileDataImpl<value_type, index_type> >(s.begin(), s.end(), v, o));
         }
 
         template<typename SizeArray, typename InIter>
-        static boost::shared_ptr<TileHolderBase_> create_tile_ptr_(const SizeArray& s, const detail::DimensionOrderType o, InIter first, InIter last) {
-          if(o == detail::increasing_dimension_order)
-            return MakeTile<1, detail::increasing_dimension_order>::make(s, s.size(), first, last);
-          else
-            return MakeTile<1, detail::decreasing_dimension_order>::make(s, s.size(), first, last);
+        static boost::shared_ptr<AnnotatedTileImplBase_> create_tile_ptr_(const SizeArray& s, const detail::DimensionOrderType o, InIter first, InIter last) {
+          return boost::dynamic_pointer_cast<AnnotatedTileImplBase_>(
+              boost::make_shared<AnnotatedTileDataImpl<value_type, index_type> >(s.begin(), s.end(), first, last, o));
         }
-
-        template<unsigned int DIM, detail::DimensionOrderType O>
-        struct MakeTile {
-          typedef Tile<T, DIM, CoordinateSystem<DIM, O> > tileT;
-
-          static const unsigned int dim = DIM;
-          static const detail::DimensionOrderType order = O;
-
-          template<typename SizeArray>
-          static boost::shared_ptr<TileHolderBase_> make(const SizeArray& s, const unsigned int d, value_type v) {
-            typedef Tile<T, DIM, CoordinateSystem<DIM, O> > tileT;
-
-            if(d != DIM)
-              return MakeTile<DIM + 1, detail::decreasing_dimension_order>::make(s, d, v);
-
-            // create a tile.
-            typename tileT::range_type::size_array size;
-            std::copy(s.begin(), s.end(), size.begin());
-            typename tileT::range_type range(size);
-            boost::shared_ptr<tileT> tile = boost::make_shared<tileT>(range, v);
-
-            return create_tile_ptr_(tile);
-          }
-
-          template<typename SizeArray, typename InIter>
-          static boost::shared_ptr<TileHolderBase_> make(const SizeArray& s, const unsigned int d, InIter first, InIter last) {
-            typedef Tile<T, DIM, CoordinateSystem<DIM, O> > tileT;
-
-            if(d != DIM)
-              return MakeTile<DIM + 1, detail::decreasing_dimension_order>::make(s, d, first, last);
-
-            // create a tile.
-            typename tileT::range_type::size_array size;
-            std::copy(s.begin(), s.end(), size.begin());
-            typename tileT::range_type range(size);
-            boost::shared_ptr<tileT> tile = boost::make_shared<tileT>(range, first, last);
-
-            return create_tile_ptr_(tile);
-          }
-        };
-
-        template<detail::DimensionOrderType O>
-        struct MakeTile<TA_MAX_DIM, O> {
-          typedef Tile<T, TA_MAX_DIM, CoordinateSystem<TA_MAX_DIM, O> > tileT;
-
-          static const unsigned int dim = TA_MAX_DIM;
-          static const detail::DimensionOrderType order = O;
-
-          template<typename SizeArray>
-          static boost::shared_ptr<TileHolderBase_> make(const SizeArray&, const unsigned int, value_type) {
-            TA_EXCEPTION(std::runtime_error,
-                "The maximum number of dimensions was exceeded. Rerun configure and specify a larger number of dimensions.");
-
-            return boost::shared_ptr<TileHolderBase_>();
-          }
-
-          template<typename SizeArray, typename InIter>
-          static boost::shared_ptr<TileHolderBase_> make(const SizeArray&, const unsigned int, InIter, InIter) {
-            TA_EXCEPTION(std::runtime_error,
-                "The maximum number of dimensions was exceeded. Rerun configure and specify a larger number of dimensions.");
-
-            return boost::shared_ptr<TileHolderBase_>();
-          }
-        };
 
         template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O>
         ordinal_type ord_(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) const {
@@ -524,7 +559,7 @@ namespace TiledArray {
         template <typename, unsigned int, typename, typename>
         friend class Array;
 
-        boost::shared_ptr<TileHolderBase_> tile_; ///< Base pointer to tile holder.
+        boost::shared_ptr<AnnotatedTileImplBase_> tile_; ///< Base pointer to tile holder.
         VariableList var_;                        ///< variable list
 
       }; // class AnnotatedTile

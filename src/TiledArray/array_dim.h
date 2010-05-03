@@ -28,8 +28,6 @@ namespace TiledArray {
     /// classes to implement. The array origin is always zero for all dimensions.
     template <typename I, unsigned int DIM, typename Tag, typename CS = CoordinateSystem<DIM> >
     class ArrayDim {
-      BOOST_STATIC_ASSERT(DIM < TA_MAX_DIM);
-
     public:
       typedef ArrayDim<I, DIM, Tag, CS> ArrayDim_;
       typedef I ordinal_type;
