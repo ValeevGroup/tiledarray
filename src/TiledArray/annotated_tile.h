@@ -144,7 +144,7 @@ namespace TiledArray {
       }; // class AnnotatedTileImplBase
 
       template<typename T, typename I>
-      class AnnotatedTileDataImpl {
+      class AnnotatedTileDataImpl : public AnnotatedTileImplBase<T, I> {
       private:
         typedef AnnotatedTileDataImpl<T, I> AnnotatedTileDataImpl_;
         typedef AnnotatedTileImplBase<T, I> AnnotatedTileImplBase_;

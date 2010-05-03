@@ -187,22 +187,18 @@ namespace TiledArray {
 
     // Iterator factory functions.
     iterator begin() { // no throw
-      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       return data_;
     }
 
     iterator end() { // no throw
-      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       return data_ + dim_.n_;
     }
 
     const_iterator begin() const { // no throw
-      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       return data_;
     }
 
     const_iterator end() const { // no throw
-      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
       return data_ + dim_.n_;
     }
 
