@@ -24,9 +24,11 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   annotation.cpp \
                   annotated_tile.cpp \
                   tile_math.cpp \
+                  shape.cpp \
                   array.cpp \
                   annotated_array.cpp \
                   array_math.cpp \
+                  expressions.cpp \
                   array_slice.cpp \
                   array_fixtures.h \
                   iteration_test.h \

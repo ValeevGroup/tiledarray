@@ -51,39 +51,45 @@ namespace TiledArray {
     typedef detail::IndexIterator<index_type, Range_> const_iterator;
     friend class detail::IndexIterator< index_type , Range_ >;
 
-    static unsigned int dim() { return DIM; }
+    static const unsigned int dim = DIM;
 
     /// Default constructor. The range has 0 size and the origin is set at 0.
     Range() :
-        start_(), finish_(), size_()
+        start_(), finish_(), size_(), weight_()
     {}
 
     /// Construct a range of size with the origin set at 0 for all dimensions.
     Range(const size_array& size, const index_type& start = index_type()) :
-        start_(start), finish_(start + size), size_(size)
+        start_(start), finish_(start + size), size_(size), weight_()
     {
       TA_ASSERT( (detail::less_eq<I,DIM>(start_.data(), finish_.data())) ,
           std::runtime_error, "Finish is less than start.");
+      detail::calc_weight(coordinate_system::begin(size_),
+          coordinate_system::end(size_), coordinate_system::begin(weight_));
     }
 
     /// Constructor defined by an upper and lower bound. All elements of
     /// finish must be greater than or equal to those of start.
     Range(const index_type& start, const index_type& finish) :
-        start_(start), finish_(finish), size_(finish - start)
+        start_(start), finish_(finish), size_(finish - start), weight_()
     {
       TA_ASSERT( (detail::less_eq<I,DIM>(start_.data(), finish.data())) ,
           std::runtime_error, "Finish is less than start.");
+      detail::calc_weight(coordinate_system::begin(size_),
+          coordinate_system::end(size_), coordinate_system::begin(weight_));
     }
 
     /// Copy Constructor
     Range(const Range_& other) : // no throw
-        start_(other.start_), finish_(other.finish_), size_(other.size_)
+        start_(other.start_), finish_(other.finish_), size_(other.size_),
+        weight_(other.weight_)
     {}
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// Move Constructor
     Range(Range_&& other) : // no throw
-        start_(std::move(other.start_)), finish_(std::move(other.finish_)), size_(std::move(other.size_))
+        start_(std::move(other.start_)), finish_(std::move(other.finish_)),
+        size_(std::move(other.size_)), weight_(std::move(other.weight_))
     {}
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
@@ -102,6 +108,8 @@ namespace TiledArray {
     /// Returns an array with the size of each dimension.
     const size_array& size() const { return size_.data(); } // no throw
 
+    const size_array& weight() const { return weight_.data(); } // no throw
+
     /// Returns the number of elements in the range.
     volume_type volume() const {
       return detail::volume(size_.data());
@@ -119,8 +127,10 @@ namespace TiledArray {
 
     /// Assignment Operator.
     Range_& operator =(const Range_& other) {
-      Range_ temp(other);
-      swap(*this, temp);
+      start_ = other.start_;
+      finish_ = other.finish_;
+      size_ = other.size_;
+      weight_ = other.weight_;
       return *this;
     }
 
@@ -130,26 +140,24 @@ namespace TiledArray {
       start_ = std::move(other.start_);
       finish_ = std::move(other.finish_);
       size_ = std::move(other.size_);
-
+      weight_ = std::move(other.weight_);
       return *this;
     }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Permute the tile given a permutation.
     Range_& operator ^=(const Permutation<DIM>& p) {
-      Range_ temp(*this);
-  	  temp.start_ ^= p;
-  	  temp.finish_ ^= p;
-  	  temp.size_ ^= p;
-
+      Range_ temp(p ^ start_, p ^ finish_);
   	  swap(*this, temp);
-      return *this;
+
+  	  return *this;
     }
 
     /// Change the dimensions of the range.
     Range_& resize(const index_type& start, const index_type& finish) {
       Range_ temp(start, finish);
       swap(*this, temp);
+
       return *this;
     }
 
@@ -157,12 +165,13 @@ namespace TiledArray {
     Range_& resize(const size_array& size) {
       Range_ temp(size, start_);
       swap(*this, temp);
+
       return *this;
     }
 
     template <typename Archive>
     void serialize(const Archive& ar) {
-      ar & start_ & finish_ & size_;
+      ar & start_ & finish_ & size_ & weight_;
     }
 
   private:
@@ -173,10 +182,10 @@ namespace TiledArray {
 
     friend   void swap<>(Range<I,DIM,Tag,CS>&, Range<I,DIM,Tag,CS>&);
 
-    index_type start_;              // Tile origin
-    index_type finish_;             // Tile upper bound
-    index_type size_;               // Dimension sizes
-
+    index_type start_;    ///< Tile origin
+    index_type finish_;   ///< Tile upper bound
+    index_type size_;     ///< Dimension sizes
+    index_type weight_;   ///< Dimension weights
   }; // class Range
 
   /// compute the volume of the orthotope bounded by the origin and a
@@ -194,6 +203,7 @@ namespace TiledArray {
     TiledArray::swap(r0.start_, r1.start_);
     TiledArray::swap(r0.finish_, r1.finish_);
     TiledArray::swap(r0.size_, r1.size_);
+    TiledArray::swap(r0.weight_, r1.weight_);
   }
 
   /// Return the union of two range (i.e. the overlap). If the ranges do not
@@ -238,7 +248,7 @@ namespace TiledArray {
     return ( r1.start() == r2.start() ) && ( r1.finish() == r2.finish() );
 #else
     return ( r1.start() == r2.start() ) && ( r1.finish() == r2.finish() ) &&
-        (r1.size() == r2.size()); // do an extra size check to catch bugs.
+        (r1.size() == r2.size()) && (r1.weight() == r2.weight()); // do an extra size check to catch bugs.
 #endif
   }
 

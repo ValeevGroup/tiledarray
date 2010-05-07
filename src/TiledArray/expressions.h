@@ -1,7 +1,7 @@
 #ifndef TILEDARRAY_EXPRESSIONS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_H__INCLUDED
 
-#include <TildeArray/annotated_tile.h>
+#include <TiledArray/annotated_tile.h>
 #include <TiledArray/annotated_array.h>
 #include <TiledArray/tile_math.h>
 #include <TiledArray/array_math.h>
@@ -17,17 +17,17 @@ namespace TiledArray {
     struct ValueExp;
     template<typename Exp>
     struct ExpType;
-    template<typename Exp, template<typename> Op>
+    template<typename Exp, template<typename> class Op>
     struct UnaryExp;
-    template<typename Exp1, typename Exp2, template<typename> Op>
+    template<typename Exp1, typename Exp2, template<typename> class Op>
     struct BinaryExp;
-    template<typename Exp, template<typename> Op>
+    template<typename Exp, template<typename> class Op>
     struct UnaryTileExp;
-    template<typename Exp1, typename Exp2, template<typename> Op>
+    template<typename Exp1, typename Exp2, template<typename> class Op>
     struct BinaryTileExp;
-    template<typename Exp, template<typename> Op>
+    template<typename Exp, template<typename> class Op>
     struct UnaryArrayExp;
-    template<typename Exp1, typename Exp2, template<typename> Op>
+    template<typename Exp1, typename Exp2, template<typename> class Op>
     struct BinaryArrayExp;
 
 
@@ -80,7 +80,7 @@ namespace TiledArray {
 
     /// This class is used to determine the return type for the expression and
     /// the element type.
-    template<typename Exp0, typename Exp1, typename Op>
+    template<typename Exp0, typename Exp1, template<typename> class Op>
     struct ExpType<BinaryTileExp<Exp0, Exp1, Op> > {
       typedef BinaryTileExp<Exp0, Exp1, Op> type;
       typedef typename BinaryTileExp<Exp0, Exp1, Op>::result_type result_type;
@@ -91,7 +91,7 @@ namespace TiledArray {
 
     /// This class is used to determine the return type for the expression and
     /// the element type.
-    template<typename Exp, typename Op>
+    template<typename Exp, template<typename> class Op>
     struct ExpType<UnaryTileExp<Exp, Op> > {
       typedef UnaryTileExp<Exp, Op> type;
       typedef typename UnaryTileExp<Exp, Op>::result_type result_type;
@@ -113,7 +113,7 @@ namespace TiledArray {
 
     /// This class is used to determine the return type for the expression and
     /// the element type.
-    template<typename Exp0, typename Exp1, typename Op>
+    template<typename Exp0, typename Exp1, template<typename> class Op>
     struct ExpType<BinaryArrayExp<Exp0, Exp1, Op> > {
       typedef BinaryArrayExp<Exp0, Exp1, Op> type;
       typedef typename BinaryArrayExp<Exp0, Exp1, Op>::result_type result_type;
@@ -124,7 +124,7 @@ namespace TiledArray {
 
     /// This class is used to determine the return type for the expression and
     /// the element type.
-    template<typename Exp, typename Op>
+    template<typename Exp, template<typename> class Op>
     struct ExpType<UnaryArrayExp<Exp, Op> > {
       typedef UnaryArrayExp<Exp, Op> type;
       typedef typename UnaryArrayExp<Exp, Op>::result_type result_type;
@@ -138,7 +138,7 @@ namespace TiledArray {
     template<typename Exp0, typename Exp1>
     struct ExpPair {
       typedef typename ExpType<Exp0>::value_type value_type;
-      typedef AnnotatedTile<value_type> result_type;
+      typedef tile::AnnotatedTile<value_type> result_type;
     }; // ExpPair
 
     /// Expression pair, constant value first argument specialization
@@ -148,7 +148,7 @@ namespace TiledArray {
     template<typename T, typename Exp1>
     struct ExpPair<ValueExp<T>, Exp1> {
       typedef typename ExpType<Exp1>::value_type value_type;
-      typedef AnnotatedTile<value_type> result_type;
+      typedef tile::AnnotatedTile<value_type> result_type;
     }; // struct ExpPair<ValueExp<T>, Exp1>
 
     /// Expression pair, constant value second argument specialization
@@ -158,7 +158,7 @@ namespace TiledArray {
     template<typename Exp0, typename T>
     struct ExpPair<Exp0, ValueExp<T> > {
       typedef typename ExpType<Exp0>::value_type value_type;
-      typedef AnnotatedTile<value_type> result_type;
+      typedef tile::AnnotatedTile<value_type> result_type;
     }; // struct ExpPair<Exp0, ValueExp<T> >
 
     /// Expression evaluation
@@ -166,11 +166,11 @@ namespace TiledArray {
     /// This structure contains the methods for evaluating various expression
     /// types.
     struct ExpEval {
-      template<typename E0, typename E1, typename EOp >
+      template<typename E0, typename E1, template<typename> class EOp >
       static typename BinaryTileExp<E0, E1, EOp>::result_type
       eval(const BinaryTileExp<E0, E1, EOp>& e) { return e.eval(); }
 
-      template<typename E, typename EOp >
+      template<typename E, template<typename> class EOp >
       static typename UnaryTileExp<E, EOp>::result_type
       eval(const UnaryTileExp<E, EOp>& e) { return e.eval(); }
 
@@ -181,7 +181,7 @@ namespace TiledArray {
       static ValueExp<T> eval(const T& e) { return ValueExp<T>(e); }
 
       template<typename T>
-      static AnnotatedTile<T> eval(const AnnotatedTile<T>& e) { return e; }
+      static tile::AnnotatedTile<T> eval(const tile::AnnotatedTile<T>& e) { return e; }
     }; // struct ExpEval
 
     /// Binary Tile Expression
@@ -196,16 +196,16 @@ namespace TiledArray {
     /// does a lazy evaluation, i.e. it is only evaluated when the eval()
     /// function is explicitly called. If one of the arguments is another
     /// expression, it will be evaluated before this expression.
-    template<typename Exp0, typename Exp1, typename Op>
+    template<typename Exp0, typename Exp1, template<typename> class Op>
     struct BinaryTileExp {
       typedef typename ExpType<Exp0>::result_type exp0_type;
       typedef typename ExpType<Exp1>::result_type exp1_type;
       typedef typename ExpPair<exp0_type, exp1_type>::result_type result_type;
       typedef typename ExpPair<exp0_type, exp1_type>::value_type value_type;
-      typedef math::BinaryTileOp<exp0_type, exp1_type, result_type, Op> op_type;
+      typedef math::BinaryTileOp<exp0_type, exp1_type, result_type, Op > op_type;
 //      typedef typename result_type::const_iterator const_iterator;
 
-      BinaryTileExp(const Exp0& e0, const Exp1& e1, Op op = Op()) :
+      BinaryTileExp(const Exp0& e0, const Exp1& e1, Op<value_type> op = Op<value_type>()) :
           e0_(e0), e1_(e1), op_(op) { }
 
       result_type eval() const {
@@ -219,7 +219,7 @@ namespace TiledArray {
 
       const Exp0& e0_;
       const Exp1& e1_;
-      Op op_;
+      Op<value_type> op_;
     }; // struct BinaryTileExp
 
     /// Unary Tile Expression
@@ -231,7 +231,7 @@ namespace TiledArray {
     /// it is only evaluated when the eval() function is explicitly called. If
     /// the argument is another expression, it will be evaluated before this
     /// expression.
-    template<typename Exp, typename Op>
+    template<typename Exp, template<typename> class Op>
     struct UnaryTileExp {
       typedef typename ExpType<Exp>::result_type exp_type;
       typedef exp_type result_type;
@@ -239,7 +239,7 @@ namespace TiledArray {
       typedef math::UnaryTileOp<exp_type, result_type, Op> op_type;
 //      typedef typename result_type::const_iterator const_iterator;
 
-      UnaryTileExp(const Exp& e, Op op = Op()) : e_(e), op_(op) { }
+      UnaryTileExp(const Exp& e, Op<value_type> op = Op<value_type>()) : e_(e), op_(op) { }
 
       result_type eval() const {
         op_type tile_op(op_);
@@ -251,13 +251,13 @@ namespace TiledArray {
       UnaryTileExp();
 
       const Exp& e_;
-      Op op_;
+      Op<value_type> op_;
     }; // struct UnaryTileExp
 
     template<typename Exp0, typename Exp1, template<typename> class Op>
     struct ExpConstruct {
       typedef Op<typename ExpPair<Exp0, Exp1>::value_type> op_type;
-      typedef BinaryTileExp<Exp0, Exp1, op_type> exp_type;
+      typedef BinaryTileExp<Exp0, Exp1, Op> exp_type;
 
       static exp_type make_exp(const Exp0& e0, const Exp1& e1) {
         return exp_type(e0, e1, op_type());
@@ -267,7 +267,7 @@ namespace TiledArray {
     template<typename Exp0, typename T, template<typename> class Op>
     struct ExpConstruct<Exp0, ValueExp<T>, Op> {
       typedef boost::binder2nd< Op<typename Exp0::value_type> > op_type;
-      typedef UnaryTileExp<Exp0, op_type> exp_type;
+      typedef UnaryTileExp<Exp0, Op> exp_type;
 
       static exp_type make_exp(const Exp0& e0, const ValueExp<T> e1) {
         return exp_type(e0, op_type(Op<typename Exp0::value_type>(), e1.eval()));
@@ -277,7 +277,7 @@ namespace TiledArray {
     template<typename T, typename Exp1, template<typename> class Op>
     struct ExpConstruct<ValueExp<T>, Exp1, Op> {
       typedef boost::binder1st< Op<typename Exp1::value_type> > op_type;
-      typedef UnaryTileExp<Exp1, op_type> exp_type;
+      typedef UnaryTileExp<Exp1, Op> exp_type;
 
       static exp_type make_exp(const ValueExp<T> e0, const Exp1& e1) {
         return exp_type(e1, op_type(Op<typename Exp1::value_type>(), e0.eval()));
@@ -301,13 +301,13 @@ namespace TiledArray {
 
     template<typename Exp, template<typename> class Op >
     struct Construct : public Arguments<Exp> {
-      make(const Exp& e) {
+      void make(const Exp&) {
 
       }
     };
 
     template<typename Exp1, typename Exp2, template<typename> class Op >
-    struct Construct<ExpPair<Exp1, Exp2> > {
+    struct Construct<ExpPair<Exp1, Exp2>, Op> {
 
     };
 
@@ -360,9 +360,9 @@ namespace TiledArray {
     /// This operator constructs a negation expression object. The expression is
     /// not immediately evaluated.
     template<typename Exp>
-    UnaryTileExp<Exp, std::negate<typename Exp::value_type> >
+    UnaryTileExp<Exp, std::negate >
     operator -(const Exp& e) {
-      return UnaryTileExp<Exp, std::negate<typename Exp::value_type> >(e);
+      return UnaryTileExp<Exp, std::negate>(e);
     }
 
 

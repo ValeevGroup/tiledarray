@@ -16,6 +16,8 @@ nobase_include_HEADERS = TiledArray/annotated_array.h \
                   TiledArray/dense_array.h \
                   TiledArray/distributed_array.h \
                   TiledArray/error.h \
+                  TiledArray/expressions.h \
+                  TiledArray/indexed_iterator.h \
                   TiledArray/iterator.h \
                   TiledArray/key.h \
                   TiledArray/madness_runtime.h \
@@ -23,6 +25,7 @@ nobase_include_HEADERS = TiledArray/annotated_array.h \
                   TiledArray/permutation.h \
                   TiledArray/predicate.h \
                   TiledArray/range.h \
+                  TiledArray/shape.h \
                   TiledArray/tile_math.h \
                   TiledArray/tile_slice.h \
                   TiledArray/tile.h \

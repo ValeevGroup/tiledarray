@@ -61,9 +61,9 @@ am_ta_test_OBJECTS = TiledArrayTest.$(OBJEXT) permutation.$(OBJEXT) \
 	variable_list.$(OBJEXT) tile.$(OBJEXT) tile_slice.$(OBJEXT) \
 	packed_tile.$(OBJEXT) array_ref.$(OBJEXT) \
 	transform_iterator.$(OBJEXT) annotation.$(OBJEXT) \
-	annotated_tile.$(OBJEXT) tile_math.$(OBJEXT) array.$(OBJEXT) \
-	annotated_array.$(OBJEXT) array_math.$(OBJEXT) \
-	array_slice.$(OBJEXT)
+	annotated_tile.$(OBJEXT) tile_math.$(OBJEXT) shape.$(OBJEXT) \
+	array.$(OBJEXT) annotated_array.$(OBJEXT) array_math.$(OBJEXT) \
+	expressions.$(OBJEXT) array_slice.$(OBJEXT)
 ta_test_OBJECTS = $(am_ta_test_OBJECTS)
 ta_test_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src -I$(top_builddir)/src/TiledArray
@@ -197,9 +197,11 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   annotation.cpp \
                   annotated_tile.cpp \
                   tile_math.cpp \
+                  shape.cpp \
                   array.cpp \
                   annotated_array.cpp \
                   array_math.cpp \
+                  expressions.cpp \
                   array_slice.cpp \
                   array_fixtures.h \
                   iteration_test.h \
@@ -286,10 +288,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coordinates.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dense_array.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/distributed_array.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/expressions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/key.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/packed_tile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/permutation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/range.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shape.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tile_math.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tile_slice.Po@am__quote@

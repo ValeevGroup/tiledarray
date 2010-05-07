@@ -1,109 +1,91 @@
 #include "TiledArray/range.h"
 #include "TiledArray/permutation.h"
 #include "unit_test_config.h"
+#include "range_fixture.h"
 
 using namespace TiledArray;
 
-struct RangeFixture {
-  typedef Range<std::size_t, 3> Range3;
-  typedef Range<std::size_t, 3, LevelTag<1>,
-      CoordinateSystem<3, detail::increasing_dimension_order> > FRange3;
-  typedef Range3::size_array size_array;
-  typedef Range3::index_type index_type;
-  typedef Range3::volume_type volume_type;
-
-  RangeFixture() : p000(0,0,0), p111(1,1,1), p222(2,2,2), p333(3,3,3),
-      p444(4,4,4), p555(5,5,5), p666(6,6,6)
-  {
-    size[0] = 1;
-    size[1] = 2;
-    size[2] = 3;
-    r.resize(size);
-    f = size;
-    v = 6;
-  }
-
-  ~RangeFixture() { }
-
-  Range3 r;
-  size_array size;
-  index_type s;
-  index_type f;
-  volume_type v;
-  const index_type p000;
-  const index_type p111;
-  const index_type p222;
-  const index_type p333;
-  const index_type p444;
-  const index_type p555;
-  const index_type p666;
-};
+RangeFixture::RangeFixture() :
+    p000(0,0,0), p111(1,1,1), p222(2,2,2), p333(3,3,3), p444(4,4,4),
+    p555(5,5,5), p666(6,6,6)
+{
+  size[0] = 1;
+  size[1] = 2;
+  size[2] = 3;
+  weight[0] = 6;
+  weight[1] = 3;
+  weight[2] = 1;
+  r.resize(size);
+  finish = size;
+  volume = 6;
+}
 
 
 BOOST_FIXTURE_TEST_SUITE( range_suite, RangeFixture )
 
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
-  BOOST_CHECK_EQUAL(r.start(), s);   // check start()
-  BOOST_CHECK_EQUAL(r.finish(), f);  // check finish()
+  BOOST_CHECK_EQUAL(r.start(), start);   // check start()
+  BOOST_CHECK_EQUAL(r.finish(), finish);  // check finish()
   BOOST_CHECK_EQUAL(r.size(), size); // check size()
-  BOOST_CHECK_EQUAL(r.volume(), v);  // check volume()
+  BOOST_CHECK_EQUAL(r.weight(), weight); // check weight()
+  BOOST_CHECK_EQUAL(r.volume(), volume);  // check volume()
 }
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
   BOOST_REQUIRE_NO_THROW(Range3 r0); // Default Constructor
   Range3 r0;
-  BOOST_CHECK_EQUAL(r0.start(), s);
-  BOOST_CHECK_EQUAL(r0.finish(), s);
-  BOOST_CHECK_EQUAL(r0.size(), s.data());
+  BOOST_CHECK_EQUAL(r0.start(), start);
+  BOOST_CHECK_EQUAL(r0.finish(), start);
+  BOOST_CHECK_EQUAL(r0.size(), start.data());
   BOOST_CHECK_EQUAL(r0.volume(), 0u);
 
   BOOST_REQUIRE_NO_THROW(Range3 r1(size)); // Size Constructor
   Range3 r1(size);
-  BOOST_CHECK_EQUAL(r1.start(), s);
-  BOOST_CHECK_EQUAL(r1.finish(), f);
+  BOOST_CHECK_EQUAL(r1.start(), start);
+  BOOST_CHECK_EQUAL(r1.finish(), finish);
   BOOST_CHECK_EQUAL(r1.size(), size);
-  BOOST_CHECK_EQUAL(r1.volume(), v);
+  BOOST_CHECK_EQUAL(r1.volume(), volume);
 
   BOOST_REQUIRE_NO_THROW(Range3 r10(size, p222)); // Size Constructor (with offset)
   Range3 r10(size, p222);
   BOOST_CHECK_EQUAL(r10.start(), p222);
   BOOST_CHECK_EQUAL(r10.finish(), p222 + size);
   BOOST_CHECK_EQUAL(r10.size(), size);
-  BOOST_CHECK_EQUAL(r10.volume(), v);
+  BOOST_CHECK_EQUAL(r10.volume(), volume);
 
-  BOOST_REQUIRE_NO_THROW(Range3 r2(p222, p222 + f)); // Start/Finish Constructor
+  BOOST_REQUIRE_NO_THROW(Range3 r2(p222, p222 + finish)); // Start/Finish Constructor
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(Range3 r2(p222 + f, p222), std::runtime_error);
+  BOOST_CHECK_THROW(Range3 r2(p222 + finish, p222), std::runtime_error);
 #endif
-  Range3 r2(p222, p222 + f);
+  Range3 r2(p222, p222 + finish);
   BOOST_CHECK_EQUAL(r2.start(), p222);
-  BOOST_CHECK_EQUAL(r2.finish(), p222 + f);
+  BOOST_CHECK_EQUAL(r2.finish(), p222 + finish);
   BOOST_CHECK_EQUAL(r2.size(), size);
-  BOOST_CHECK_EQUAL(r2.volume(), v);
+  BOOST_CHECK_EQUAL(r2.volume(), volume);
 
   BOOST_REQUIRE_NO_THROW(Range3 r4(r)); // Copy Constructor
   Range3 r4(r);
-  BOOST_CHECK_EQUAL(r4.start(), s);
-  BOOST_CHECK_EQUAL(r4.finish(), f);
+  BOOST_CHECK_EQUAL(r4.start(), start);
+  BOOST_CHECK_EQUAL(r4.finish(), finish);
   BOOST_CHECK_EQUAL(r4.size(), size);
-  BOOST_CHECK_EQUAL(r4.volume(), v);
+  BOOST_CHECK_EQUAL(r4.volume(), volume);
 
   BOOST_REQUIRE_NO_THROW(Range3 r5(p222, p222)); // Zero Size Construction
   Range3 r5(p222, p222);
   BOOST_CHECK_EQUAL(r5.start(), p222);
   BOOST_CHECK_EQUAL(r5.finish(), p222);
-  BOOST_CHECK_EQUAL(r5.size(), s.data());
+  BOOST_CHECK_EQUAL(r5.size(), start.data());
   BOOST_CHECK_EQUAL(r5.volume(), 0u);
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
   BOOST_REQUIRE_NO_THROW(Range3 r6(std::forward<Range3>(Range3(size)))); // move constructor
   Range3 r6(std::forward<Range3>(Range3(size)));
-  BOOST_CHECK_EQUAL(r6.start(), s);
-  BOOST_CHECK_EQUAL(r6.finish(), f);
+  BOOST_CHECK_EQUAL(r6.start(), start);
+  BOOST_CHECK_EQUAL(r6.finish(), finish);
   BOOST_CHECK_EQUAL(r6.size(), size);
-  BOOST_CHECK_EQUAL(r6.volume(), v);
+  BOOST_CHECK_EQUAL(r6.volume(), volume);
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
@@ -147,7 +129,7 @@ BOOST_AUTO_TEST_CASE( resize )
   Range3 r1;
   BOOST_CHECK_EQUAL(r1.resize(size), r); // check resize with size_array
   Range3 r2;
-  BOOST_CHECK_EQUAL(r2.resize(s, f), r); // check resize with start and finish
+  BOOST_CHECK_EQUAL(r2.resize(start, finish), r); // check resize with start and finish
   BOOST_CHECK_EQUAL(r2.size(), r.size());// check that size was correctly recalculated
 }
 
@@ -235,8 +217,8 @@ BOOST_AUTO_TEST_CASE( unions )
   Range3 r3(p111, p222);
   Range3 r4(p333, p444);
   Range3 ru3 = r3 & r4;
-  BOOST_CHECK_EQUAL(ru3.start(), s);  // no over lap
-  BOOST_CHECK_EQUAL(ru3.finish(), s);
+  BOOST_CHECK_EQUAL(ru3.start(), start);  // no over lap
+  BOOST_CHECK_EQUAL(ru3.finish(), start);
   BOOST_CHECK_EQUAL(ru3.volume(), 0u);
 
   Range3 r5(p111, p444);
