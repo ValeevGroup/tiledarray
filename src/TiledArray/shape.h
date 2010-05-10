@@ -77,40 +77,33 @@ namespace TiledArray {
     detail::ShapeType type() const { return type_; }
 
   protected:
+
+    /// Forward ordinal index
+    static ordinal_type forward_index(const ordinal_type& i) {
+      return i;
+    }
+
+    /// Forward coordinate index
+    template<unsigned int DIM, typename Tag, typename CS>
+    static size_array forward_index(const ArrayCoordinate<I, DIM, Tag, CS>& i) {
+      return size_array(i.data());
+    }
+
     /// Returns true if the range includes the ordinal index i.
     virtual bool range_includes(const ordinal_type& i) const = 0;
 
     /// Returns true if the range includes the coordinate index i.
     virtual bool range_includes(const size_array& i) const = 0;
 
-    /// Forward ordinal index
-    ordinal_type forward_index(const ordinal_type& i) const {
-      return i;
-    }
-
-    /// Forward coordinate index
-    template<unsigned int DIM, typename Tag, typename CS>
-    size_array forward_index(const ArrayCoordinate<I, DIM, Tag, CS>& i) const {
-      return size_array(i.data());
-    }
-
   private:
     /// Returns madness::Future<bool> which will be true if the tile is included.
     virtual madness::Future<bool> tile_includes(ordinal_type) const = 0;
+
     /// Returns madness::Future<bool> which will be true if the tile is included.
     virtual madness::Future<bool> tile_includes(size_array) const = 0;
+
     /// Returns true if the local data has been fully initialized.
     virtual bool initialized() const = 0;
-    /// Returns a size_array of the array weight.
-    virtual size_array weight() const = 0;
-    /// Returns a size_array of the range start index.
-    virtual size_array start() const = 0;
-    /// Returns a size_array of the range finish index.
-    virtual size_array finish() const = 0;
-    /// Returns the volume of the range.
-    virtual volume_type volume() const = 0;
-    /// Returns the array dimension.
-    virtual unsigned int dim() const = 0;
 
     detail::ShapeType type_; ///< Shape type (dense, sparse, or predicated).
   }; // class shape
@@ -132,8 +125,6 @@ namespace TiledArray {
     typedef RangeShape<R> RangeShape_;
     typedef Shape<typename R::ordinal_type> Shape_;
     typedef R range_type;
-
-  protected:
     typedef typename Shape_::ordinal_type ordinal_type;
     typedef typename Shape_::size_array size_array;
     typedef typename Shape_::volume_type volume_type;
@@ -146,19 +137,21 @@ namespace TiledArray {
         Shape_(t), range_(r)
     { }
 
-  protected:
     /// Returns the ordinal index i.
     ordinal_type ord(ordinal_type i) const { return i; }
 
     /// Calculates the ordinal index based on i.
     ordinal_type ord(const size_array& i) const {
-      TA_ASSERT(i.size() == range_type::dim, std::runtime_error, "Array dimensions do not match range dimensions.");
-      return detail::calc_ordinal(i.begin(), i.end(), range_->weight().begin(), range_->start().begin());
+      TA_ASSERT(i.size() == range_type::dim, std::runtime_error,
+          "Array dimensions do not match range dimensions.");
+      return detail::calc_ordinal(i.begin(), i.end(), range_->weight().begin(),
+          range_->start().begin());
     }
 
     /// Calculates the ordinal index based on i.
     ordinal_type ord(const typename range_type::index_type& i) const {
-      return detail::calc_ordinal(i.begin(), i.end(), range_->weight().begin(), range_->start().begin());
+      return detail::calc_ordinal(i.begin(), i.end(), range_->weight().begin(),
+          range_->start().begin());
     }
 
     /// Forward the ordinal index
@@ -173,27 +166,6 @@ namespace TiledArray {
     }
 
   private:
-    /// Returns a size_array of the array weight.
-    virtual size_array weight() const { return size_array(range_->weight()); }
-
-    /// Returns a size_array of the array start index.
-    virtual size_array start() const {
-      return size_array(range_->start().data());
-    }
-
-    /// Returns a size_array of the array start index.
-    virtual size_array finish() const {
-      return size_array(range_->finish().data());
-    }
-
-    /// Returns the volume of the range.
-    virtual volume_type volume() const {
-      return range_->volume();
-    }
-
-    /// Returns the array dimension.
-    virtual unsigned int dim() const { return range_type::dim; }
-
     boost::shared_ptr<range_type> range_; ///< pointer to range data.
   }; // class RangeShape
 
@@ -312,7 +284,7 @@ namespace TiledArray {
     /// if this happens).
     template<typename Index>
     void add(const Index& i) {
-      TA_ASSERT(SparseShape_::range_includes(forward_index(i)), std::out_of_range,
+      TA_ASSERT(this->range_includes(forward_index(i)), std::out_of_range,
           "Index i is not included by the range.");
       TA_ASSERT(is_local(i), std::runtime_error, "Index i is not be stored locally.");
       if(initialized_)
