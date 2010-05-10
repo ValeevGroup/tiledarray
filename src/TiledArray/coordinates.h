@@ -106,7 +106,8 @@ namespace TiledArray {
     typedef typename Array::const_iterator const_iterator;
     typedef typename Array::reverse_iterator reverse_iterator;
     typedef typename Array::const_reverse_iterator const_reverse_iterator;
-    static unsigned int dim() { return DIM; }
+
+    static const unsigned int dim = DIM;
 
     // Constructors/Destructor
     ArrayCoordinate() { r_.assign(index(0)); }
@@ -158,7 +159,7 @@ namespace TiledArray {
       r_[0] = c0;
       r_[1] = c1;
       unsigned int ci = 0; // ci is used as an intermediate
-      for(unsigned int i = 2; i < dim(); ++i) {
+      for(unsigned int i = 2; i < DIM; ++i) {
         ci = va_arg(ap, index);
         r_[i] = ci;
       }
@@ -174,7 +175,7 @@ namespace TiledArray {
       va_start(ap, c0);
 
       result.r_[0] = c0;
-      for(unsigned int i = 1; i < dim(); ++i)
+      for(unsigned int i = 1; i < DIM; ++i)
         result.r_[i] = va_arg(ap, index);
 
       va_end(ap);
@@ -241,14 +242,14 @@ namespace TiledArray {
 
     /// Add operator
     ArrayCoordinate_& operator+=(const ArrayCoordinate_& c) {
-      for(unsigned int d = 0; d < dim(); ++d)
+      for(unsigned int d = 0; d < DIM; ++d)
         r_[d] += c.r_[d];
       return *this;
     }
 
     /// Subtract operator
     ArrayCoordinate_ operator-=(const ArrayCoordinate_& c) {
-      for(unsigned int d = 0; d < dim(); ++d)
+      for(unsigned int d = 0; d < DIM; ++d)
         r_[d] -= c.r_[d];
       return *this;
     }

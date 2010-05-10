@@ -13,6 +13,8 @@
 
 namespace TiledArray {
 
+  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  class ArrayCoordinate;
 
   namespace detail {
 
@@ -65,7 +67,7 @@ namespace TiledArray {
     template<typename Index>
     madness::Future<bool> includes(const Index& i) const {
 
-      if(! range_includes(i))
+      if(! this->range_includes(forward_index(i)))
         return madness::Future<bool>(false);
 
       return this->tile_includes(forward_index(i));
@@ -75,26 +77,12 @@ namespace TiledArray {
     detail::ShapeType type() const { return type_; }
 
   protected:
-    /// Forward the ordinal index
-    bool range_includes(const ordinal_type& i) const {
-      return i < this->volume();
-    }
+    /// Returns true if the range includes the ordinal index i.
+    virtual bool range_includes(const ordinal_type& i) const = 0;
 
-    /// Calculate the ordinal index
-    template<unsigned int DIM, typename Tag, typename CS>
-    bool range_includes(const ArrayCoordinate<I, DIM, Tag, CS>& i) const {
-      typename ArrayCoordinate<I, DIM, Tag, CS>::const_iterator i_it = i.begin();
-      typename size_array::const_iterator s_it = this->start().begin();
-      typename size_array::const_iterator f_it = this->finish().begin();
+    /// Returns true if the range includes the coordinate index i.
+    virtual bool range_includes(const size_array& i) const = 0;
 
-      for(; i_it != i.end(); ++i_it, ++s_it, ++f_it)
-        if((*i_it < *s_it) || (*i_it >= *f_it))
-          return false;
-
-      return true;
-    }
-
-  private:
     /// Forward ordinal index
     ordinal_type forward_index(const ordinal_type& i) const {
       return i;
@@ -106,14 +94,13 @@ namespace TiledArray {
       return size_array(i.data());
     }
 
+  private:
     /// Returns madness::Future<bool> which will be true if the tile is included.
     virtual madness::Future<bool> tile_includes(ordinal_type) const = 0;
     /// Returns madness::Future<bool> which will be true if the tile is included.
     virtual madness::Future<bool> tile_includes(size_array) const = 0;
     /// Returns true if the local data has been fully initialized.
     virtual bool initialized() const = 0;
-
-  protected:
     /// Returns a size_array of the array weight.
     virtual size_array weight() const = 0;
     /// Returns a size_array of the range start index.
@@ -165,19 +152,27 @@ namespace TiledArray {
 
     /// Calculates the ordinal index based on i.
     ordinal_type ord(const size_array& i) const {
-      std::vector<ordinal_type> o(i.size(), 0ul);
-      std::transform(i.begin(), i.end(), range_->start().begin(), o.begin(), std::minus<ordinal_type>());
-      return std::inner_product(o.begin(), o.end(), range_->weight().begin(), ordinal_type(0));
+      TA_ASSERT(i.size() == range_type::dim, std::runtime_error, "Array dimensions do not match range dimensions.");
+      return detail::calc_ordinal(i.begin(), i.end(), range_->weight().begin(), range_->start().begin());
     }
 
     /// Calculates the ordinal index based on i.
-    template<unsigned int DIM, typename Tag, typename CS>
-    ordinal_type ord(typename range_type::index_type i) const {
-      std::vector<ordinal_type> o(i.size(), 0ul);
-      std::transform(i.begin(), i.end(), range_->start().begin(), o.begin(), std::minus<ordinal_type>());
-      return std::inner_product(o.begin(), o.end(), range_->weight().begin(), ordinal_type(0));
+    ordinal_type ord(const typename range_type::index_type& i) const {
+      return detail::calc_ordinal(i.begin(), i.end(), range_->weight().begin(), range_->start().begin());
     }
 
+    /// Forward the ordinal index
+    virtual bool range_includes(const ordinal_type& i) const {
+      return range_->includes(i);
+    }
+
+    /// Calculate the ordinal index
+    virtual bool range_includes(const size_array& i) const {
+      typename range_type::index_type ii(i.begin());
+      return range_->includes(ii);
+    }
+
+  private:
     /// Returns a size_array of the array weight.
     virtual size_array weight() const { return size_array(range_->weight()); }
 
@@ -261,6 +256,8 @@ namespace TiledArray {
     typedef typename RangeShape_::range_type range_type;
     typedef H hasher_type;
 
+    typedef madness::RemoteReference< madness::FutureImpl<bool> > remote_ref;
+
     // Note: Shape has private default constructor, copy constructor, and
     // assignment operator. These operations are not allowed here.
 
@@ -270,13 +267,35 @@ namespace TiledArray {
     typedef typename Shape_::size_array size_array;
 
     /// Primary constructor
-    SparseShape(madness::World& w, const boost::shared_ptr<range_type>& r, hasher_type h = hasher_type()) :
+
+    /// This is a world object so all processes must construct SparseShape
+    /// on all processes in the same order relative to other world objects.
+    /// It is your responsibility to ensure that the range object is identical
+    /// on all processes, otherwise process mapping will not be correct.
+    SparseShape(madness::World& w, const boost::shared_ptr<range_type>& r,
+      const hasher_type h = hasher_type()) :
         RangeShape_(r, detail::sparse_shape),
         WorldObject_(w),
         n_(r->volume() / sizeof(unsigned long) + (r->volume() % sizeof(unsigned long) == 0 ? 0 : 1)),
         tiles_(new unsigned long[n_]),
         initialized_(false),
         hasher_(h),
+        pmap_(new madness::WorldDCDefaultPmap<ordinal_type, hasher_type>(w, hasher_)),
+        me_(w.rank())
+    {
+      std::fill(tiles_, tiles_ + n_, 0ul);
+    }
+
+    /// Primary constructor
+    SparseShape(madness::World& w, const boost::shared_ptr<range_type>& r,
+      const boost::shared_ptr<madness::WorldDCDefaultPmap<ordinal_type, hasher_type> > pm) :
+        RangeShape_(r, detail::sparse_shape),
+        WorldObject_(w),
+        n_(r->volume() / sizeof(unsigned long) + (r->volume() % sizeof(unsigned long) == 0 ? 0 : 1)),
+        tiles_(new unsigned long[n_]),
+        initialized_(false),
+        hasher_(),
+        pmap_(pm),
         me_(w.rank())
     {
       std::fill(tiles_, tiles_ + n_, 0ul);
@@ -293,7 +312,7 @@ namespace TiledArray {
     /// if this happens).
     template<typename Index>
     void add(const Index& i) {
-      TA_ASSERT(SparseShape_::range_includes(i), std::out_of_range,
+      TA_ASSERT(SparseShape_::range_includes(forward_index(i)), std::out_of_range,
           "Index i is not included by the range.");
       TA_ASSERT(is_local(i), std::runtime_error, "Index i is not be stored locally.");
       if(initialized_)
@@ -317,20 +336,21 @@ namespace TiledArray {
     }
 
     /// Returns true if the tile data is stored locally.
-    bool is_local(ordinal_type i) const {
+    template<typename Index>
+    bool is_local(const Index& i) const {
       // Todo: This will likely need to to be improved.
-      return owner(i) == me_;
+      return owner(ord(i)) == me_;
     }
 
   private:
     /// Handles tile probe messages.
-    madness::Void fetch_handler(ProcessID requestor, ordinal_type i, const madness::RemoteReference< madness::FutureImpl<bool> >& ref) const {
+    madness::Void fetch_handler(ProcessID requestor, ordinal_type i, const remote_ref& ref) const {
       WorldObject_::send(requestor, &SparseShape_::fetch_return, tile_includes(i).get(), ref);
 
       return madness::None;
     }
 
-    madness::Void fetch_return(bool val, const madness::RemoteReference< madness::FutureImpl<bool> >& ref) const {
+    madness::Void fetch_return(bool val, const remote_ref& ref) const {
       madness::FutureImpl<bool>* f = ref.get();
       f->set(val);
 
@@ -341,7 +361,7 @@ namespace TiledArray {
 
     /// Returns the owner of a given index.
     ProcessID owner(ordinal_type i) const {
-      return hasher_(i) % WorldObject_::get_world().size();
+      return pmap_->owner(i);
     }
 
     /// Returns madness::Future<bool> which will be true if the tile is included.
@@ -355,7 +375,8 @@ namespace TiledArray {
             (1ul << (i % sizeof(unsigned long))));
 
       madness::Future<bool> result;
-      WorldObject_::send(owner(i), &SparseShape_::fetch_handler, me_, i, result.remote_ref(WorldObject_::get_world()));
+      WorldObject_::send(owner(i), &SparseShape_::fetch_handler, me_, i,
+          result.remote_ref(WorldObject_::get_world()));
       return result;
     }
 
@@ -371,6 +392,7 @@ namespace TiledArray {
     unsigned long* tiles_; ///< tiling data.
     bool initialized_;
     hasher_type hasher_;
+    boost::shared_ptr<madness::WorldDCPmapInterface<ordinal_type> > pmap_;
     ProcessID me_;
   }; // class SparseShape
 

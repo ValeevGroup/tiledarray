@@ -103,11 +103,24 @@ BOOST_FIXTURE_TEST_SUITE( sparse_shape_suite, SparseShapeFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(SparseShape3 ps0(world, pr));
+  BOOST_REQUIRE_NO_THROW(SparseShape3 ss0(world, pr));
   SparseShape3 ss0(world, pr);
   BOOST_CHECK(! ss0.is_initialized()); // Check that the shape is not immediately available
   BOOST_CHECK_EQUAL(ss0.type(), detail::sparse_shape);
+
+  madness::Hash_private::defhashT<std::size_t> h;
+  BOOST_REQUIRE_NO_THROW(SparseShape3 ss1(world, pr, h));
+  SparseShape3 ss1(world, pr, h);
+  BOOST_CHECK(! ss1.is_initialized()); // Check that the shape is not immediately available
+  BOOST_CHECK_EQUAL(ss1.type(), detail::sparse_shape);
+
+  const boost::shared_ptr<madness::WorldDCDefaultPmap<std::size_t, madness::Hash_private::defhashT<std::size_t> > > pm;
+  BOOST_REQUIRE_NO_THROW(SparseShape3 ss2(world, pr, pm));
+  SparseShape3 ss2(world, pr, pm);
+  BOOST_CHECK(! ss2.is_initialized()); // Check that the shape is not immediately available
+  BOOST_CHECK_EQUAL(ss2.type(), detail::sparse_shape);
 }
+
 
 BOOST_AUTO_TEST_CASE( add_ordinal )
 {
@@ -172,7 +185,105 @@ BOOST_AUTO_TEST_CASE( add_ordinal )
 
   BOOST_CHECK(! ss.includes(6).get());
   BOOST_CHECK(! ss.includes(7).get());
+}
 
+BOOST_AUTO_TEST_CASE( add_index )
+{
+  index_type i(0,0,0);
+  if(ss.is_local(i))
+    ss.add(i);
+#ifdef TA_EXCEPTION_ERROR
+  else
+    BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
+#endif
+
+  i[2] = 1;
+  if(ss.is_local(i))
+    ss.add(i);
+#ifdef TA_EXCEPTION_ERROR
+  else
+    BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
+#endif
+
+  i[2] = 2;
+  if(ss.is_local(i))
+    ss.add(i);
+#ifdef TA_EXCEPTION_ERROR
+  else
+    BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
+#endif
+
+  i[1] = 1;
+  i[2] = 0;
+  if(ss.is_local(i))
+    ss.add(i);
+#ifdef TA_EXCEPTION_ERROR
+  else
+    BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
+#endif
+
+  i[2] = 1;
+  if(ss.is_local(i))
+    ss.add(i);
+#ifdef TA_EXCEPTION_ERROR
+  else
+    BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
+#endif
+
+  i[2] = 2;
+  if(ss.is_local(i))
+    ss.add(i);
+#ifdef TA_EXCEPTION_ERROR
+  else
+    BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
+#endif
+
+  // Check the out of range assertion.
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ss.add(index_type(1,2,3)), std::out_of_range);
+#endif
+  ss.set_initialized();
+
+  // Make sure an exception is thrown after_set() initialized is called.
+  BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
+
+  // Check the points that are included
+  BOOST_CHECK(ss.includes(index_type(0,0,0)).get());
+  BOOST_CHECK(ss.includes(index_type(0,0,1)).get());
+  BOOST_CHECK(ss.includes(index_type(0,0,2)).get());
+  BOOST_CHECK(ss.includes(index_type(0,1,0)).get());
+  BOOST_CHECK(ss.includes(index_type(0,1,1)).get());
+  BOOST_CHECK(ss.includes(index_type(0,1,2)).get());
+
+  BOOST_CHECK(ss.includes(0).get());
+  BOOST_CHECK(ss.includes(1).get());
+  BOOST_CHECK(ss.includes(2).get());
+  BOOST_CHECK(ss.includes(3).get());
+  BOOST_CHECK(ss.includes(4).get());
+  BOOST_CHECK(ss.includes(5).get());
+
+  // Check points outside the limits
+  BOOST_CHECK(! ss.includes(index_type(1,0,0)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,0,1)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,0,2)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,1,0)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,1,1)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,1,2)).get());
+  BOOST_CHECK(! ss.includes(index_type(0,2,0)).get());
+  BOOST_CHECK(! ss.includes(index_type(0,2,1)).get());
+  BOOST_CHECK(! ss.includes(index_type(0,2,2)).get());
+  BOOST_CHECK(! ss.includes(index_type(0,0,3)).get());
+  BOOST_CHECK(! ss.includes(index_type(0,1,3)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,2,0)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,2,1)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,2,2)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,0,3)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,1,3)).get());
+  BOOST_CHECK(! ss.includes(index_type(0,2,3)).get());
+  BOOST_CHECK(! ss.includes(index_type(1,2,3)).get());
+
+  BOOST_CHECK(! ss.includes(6).get());
+  BOOST_CHECK(! ss.includes(7).get());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

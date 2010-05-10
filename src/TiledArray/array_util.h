@@ -21,6 +21,7 @@ namespace TiledArray {
     }
 
     /// Calculate the index of an ordinal.
+
     /// \arg \c o is the ordinal value.
     /// \arg \c [first, last) is the iterator range that contains the array
     /// weights from most significant to least significant.
@@ -34,6 +35,37 @@ namespace TiledArray {
         *result = o % *first;
         o -= *result * *first;
       }
+    }
+
+    /// Calculate the ordinal index of an array.
+
+    /// \var \c [index_first, \c index_last) is a pair of iterators to the coordinate index.
+    /// \var \c weight_first is an iterator to the array weights.
+    template<typename IndexInIter, typename WeightInIter>
+    typename std::iterator_traits<IndexInIter>::value_type
+    calc_ordinal(IndexInIter index_first, IndexInIter index_last, WeightInIter weight_first) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<IndexInIter>::value);
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
+      return std::inner_product(index_first, index_last, weight_first,
+          typename std::iterator_traits<IndexInIter>::value_type(1));
+    }
+
+    /// Calculate the ordinal index of an array.
+
+    /// \var \c [index_first, \c index_last) is a pair of iterators to the coordinate index.
+    /// \var \c weight_first is an iterator to the array weights.
+    template<typename IndexInIter, typename WeightInIter, typename StartInIter>
+    typename std::iterator_traits<IndexInIter>::value_type
+    calc_ordinal(IndexInIter index_first, IndexInIter index_last, WeightInIter weight_first, StartInIter start_first) {
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<IndexInIter>::value);
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
+
+      typename std::iterator_traits<IndexInIter>::value_type o = 1;
+      for(; index_first != index_last; ++index_first, ++weight_first, ++start_first)
+        o *= (*index_first - *start_first) * *weight_first;
+
+      return o;
     }
 
     /// Calculate the volume of an N-dimensional orthogonal.
