@@ -482,8 +482,7 @@ namespace TiledArray {
     }
 
     ordinal_type ord_(const index_type& i) const {
-      return std::inner_product(i.begin(), i.end(), tiles_.weight().begin(),
-          ordinal_type(0));
+      return detail::calc_ordinal(i.begin(), i.end(), tiles_.weight().begin());
     }
 
     ordinal_type ord_(const ordinal_type& i) const {

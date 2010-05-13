@@ -172,7 +172,7 @@ namespace TiledArray {
     PackedTile();
 
     ordinal_type ord_(const index_type& i) const { // no throw
-      return std::inner_product(i.data().begin(), i.data().end(), w_.begin(), typename index_type::index(0));
+      return detail::calc_ordinal(i.data().begin(), i.data().end(), w_.begin());
     }
 
     /// Returns true if all dimension packing information follows the this

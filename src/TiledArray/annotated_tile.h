@@ -545,7 +545,7 @@ namespace TiledArray {
 
         template<typename I, unsigned int DIM, typename Tag, TiledArray::detail::DimensionOrderType O>
         ordinal_type ord_(const ArrayCoordinate<I,DIM,Tag, CoordinateSystem<DIM,O> >& i) const {
-          return std::inner_product(i.begin(), i.end(), tile_->weight().begin(), ordinal_type(0));
+          return detail::calc_ordinal(i.begin(), i.end(), tile_->weight().begin());
         }
 
         ordinal_type ord_(ordinal_type i) const {
