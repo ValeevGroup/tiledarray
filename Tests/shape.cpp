@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE( add_index )
     BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
 #endif
 
-  i[2] = 1;
+  i = index_type(0,0,1);
   if(ss.is_local(i))
     ss.add(i);
 #ifdef TA_EXCEPTION_ERROR
@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE( add_index )
     BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
 #endif
 
-  i[2] = 2;
+  i = index_type(0,0,2);
   if(ss.is_local(i))
     ss.add(i);
 #ifdef TA_EXCEPTION_ERROR
@@ -213,8 +213,7 @@ BOOST_AUTO_TEST_CASE( add_index )
     BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
 #endif
 
-  i[1] = 1;
-  i[2] = 0;
+  i = index_type(0,1,0);
   if(ss.is_local(i))
     ss.add(i);
 #ifdef TA_EXCEPTION_ERROR
@@ -222,7 +221,7 @@ BOOST_AUTO_TEST_CASE( add_index )
     BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
 #endif
 
-  i[2] = 1;
+  i = index_type(0,1,1);
   if(ss.is_local(i))
     ss.add(i);
 #ifdef TA_EXCEPTION_ERROR
@@ -230,7 +229,7 @@ BOOST_AUTO_TEST_CASE( add_index )
     BOOST_CHECK_THROW(ss.add(i), std::runtime_error);
 #endif
 
-  i[2] = 2;
+  i = index_type(0,1,2);
   if(ss.is_local(i))
     ss.add(i);
 #ifdef TA_EXCEPTION_ERROR

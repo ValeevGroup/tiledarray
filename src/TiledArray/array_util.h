@@ -47,7 +47,7 @@ namespace TiledArray {
       BOOST_STATIC_ASSERT(detail::is_input_iterator<IndexInIter>::value);
       BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
       return std::inner_product(index_first, index_last, weight_first,
-          typename std::iterator_traits<IndexInIter>::value_type(1));
+          typename std::iterator_traits<IndexInIter>::value_type(0));
     }
 
     /// Calculate the ordinal index of an array.
@@ -61,9 +61,9 @@ namespace TiledArray {
       BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
       BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
 
-      typename std::iterator_traits<IndexInIter>::value_type o = 1;
+      typename std::iterator_traits<IndexInIter>::value_type o = 0;
       for(; index_first != index_last; ++index_first, ++weight_first, ++start_first)
-        o *= (*index_first - *start_first) * *weight_first;
+        o += (*index_first - *start_first) * *weight_first;
 
       return o;
     }
