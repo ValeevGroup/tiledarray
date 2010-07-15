@@ -7,8 +7,6 @@ using namespace TiledArray;
 
 struct ArrayCoordinateFixture {
   typedef ArrayCoordinate<std::size_t, 3, LevelTag<0> > Point3;
-  typedef ArrayCoordinate<std::size_t, 3, LevelTag<0>,
-      CoordinateSystem<2, detail::increasing_dimension_order> > FPoint3;
   ArrayCoordinateFixture() : p(1,2,3) {
     a[0] = 1;
     a[1] = 2;
@@ -167,50 +165,6 @@ BOOST_AUTO_TEST_CASE( c_comparisons )
   BOOST_CHECK( ! (p8 == pp) );
 }
 
-BOOST_AUTO_TEST_CASE( fortran_comparisons )
-{
-  typedef ArrayCoordinate<std::size_t, 2, LevelTag<0>,
-      CoordinateSystem<2, detail::increasing_dimension_order> > FPoint2;
-  FPoint2 p0(0ul,0ul);
-  FPoint2 p1(1ul,0ul);
-  FPoint2 p2(2ul,0ul);
-  FPoint2 p3(0ul,1ul);
-  FPoint2 p4(1ul,1ul);
-  FPoint2 p5(2ul,1ul);
-  FPoint2 p6(0ul,2ul);
-  FPoint2 p7(1ul,2ul);
-  FPoint2 p8(2ul,2ul);
-  FPoint2 pp(1ul,1ul);
-
-  BOOST_CHECK(p0 < pp);    // check for correct lexicographical comparisons
-  BOOST_CHECK(p1 < pp);    // for fortran ordering.
-  BOOST_CHECK(p2 < pp);
-  BOOST_CHECK(p3 < pp);
-  BOOST_CHECK(p3 <= pp);
-  BOOST_CHECK(p4 <= pp);
-  BOOST_CHECK(p4 == pp);
-  BOOST_CHECK(p4 >= pp);
-  BOOST_CHECK(p5 >= pp);
-  BOOST_CHECK(p5 > pp);
-  BOOST_CHECK(p6 > pp);
-  BOOST_CHECK(p7 > pp);
-  BOOST_CHECK(p8 > pp);
-  BOOST_CHECK(p1 != pp);
-
-  BOOST_CHECK( ! (p0 > pp) );
-  BOOST_CHECK( ! (p1 > pp) );
-  BOOST_CHECK( ! (p2 > pp) );
-  BOOST_CHECK( ! (p3 > pp) );
-  BOOST_CHECK( ! (p3 >= pp) );
-  BOOST_CHECK( ! (p4 != pp) );
-  BOOST_CHECK( ! (p5 <= pp) );
-  BOOST_CHECK( ! (p5 < pp) );
-  BOOST_CHECK( ! (p6 < pp) );
-  BOOST_CHECK( ! (p7 < pp) );
-  BOOST_CHECK( ! (p8 < pp) );
-  BOOST_CHECK( ! (p8 == pp) );
-}
-
 BOOST_AUTO_TEST_CASE( comparison_functions )
 {
   Point3 p111(1,1,1);
@@ -233,71 +187,6 @@ BOOST_AUTO_TEST_CASE( math )
   BOOST_CHECK_EQUAL( p3 - p1, p2 );  // check subtraction operator
   BOOST_CHECK_EQUAL( pa += p2, p3 ); // check addition assignment operator
   BOOST_CHECK_EQUAL( pa -= p2, p1 ); // check subtraction assignment operator
-}
-
-BOOST_AUTO_TEST_CASE( c_incrmentation )
-{
-  Point3 p1(1, 1, 1);
-  Point3 pa(p1);
-  ++pa;
-  BOOST_CHECK_EQUAL( pa[0], 1u );  // check that the point was incremented
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 2u );
-
-  BOOST_CHECK_EQUAL( (--pa), p1 ); // check that decrement returns the decremented object.
-  BOOST_CHECK_EQUAL( pa[0], 1u );   // check that the point was decremented.
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 1u );
-
-  BOOST_CHECK_EQUAL( (pa++), p1 ); // check that increment returns the initial value.
-  BOOST_CHECK_EQUAL( pa[0], 1u );   // check that the point was incremented.
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 2u );
-
-  --pa;
-  --pa;
-  BOOST_CHECK_EQUAL( (++pa), p1); // check that increment returns the incremented object.
-  BOOST_CHECK_EQUAL( pa[0], 1u );  // check that the
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 1u );
-
-  BOOST_CHECK_EQUAL( (pa--), p1); // check that decrement returns the initial value.
-  BOOST_CHECK_EQUAL( pa[0], 1u );  // check that the point was decremented.
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 0u );
-}
-
-BOOST_AUTO_TEST_CASE( fortran_incrementation )
-{
-  FPoint3 p1(1, 1, 1);
-  FPoint3 pa(p1);
-
-  ++pa;
-  BOOST_CHECK_EQUAL( pa[0], 2u );
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 1u );
-
-  BOOST_CHECK_EQUAL( (--pa), p1 );
-  BOOST_CHECK_EQUAL( pa[0], 1u );
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 1u );
-
-  BOOST_CHECK_EQUAL( (pa++), p1 );
-  BOOST_CHECK_EQUAL( pa[0], 2u );
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 1u );
-
-  --pa;
-  --pa;
-  BOOST_CHECK_EQUAL( (++pa), p1);
-  BOOST_CHECK_EQUAL( pa[0], 1u );
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 1u );
-
-  BOOST_CHECK_EQUAL( (pa--), p1);
-  BOOST_CHECK_EQUAL( pa[0], 0u );
-  BOOST_CHECK_EQUAL( pa[1], 1u );
-  BOOST_CHECK_EQUAL( pa[2], 1u );
 }
 
 BOOST_AUTO_TEST_CASE( permutation )

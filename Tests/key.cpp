@@ -6,9 +6,11 @@
 using namespace TiledArray;
 using namespace TiledArray::detail;
 
+struct IndexTag { };
+
 struct KeyFixture {
   typedef std::size_t ordinal_type;
-  typedef ArrayCoordinate<std::size_t, 3, LevelTag<0> > index_type;
+  typedef ArrayCoordinate<std::size_t, 3, IndexTag > index_type;
   typedef Key<ordinal_type, index_type> key_type;
 
   KeyFixture() : o(10ul), ohi(11ul), olow(9ul), i(1,2,3), ihi(1,2,4), ilow(1,2,2),

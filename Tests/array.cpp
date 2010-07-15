@@ -6,38 +6,18 @@
 
 using namespace TiledArray;
 
-template <typename A>
-struct TiledRangeFixture {
-  typedef typename A::tiled_range_type TRange3;
-  typedef typename TRange3::tiled_range1_type TRange1;
-
-  TiledRangeFixture() {
-    const std::size_t d0[] = {0, 10, 20, 30};
-    const std::size_t d1[] = {0, 5, 10, 15, 20};
-    const std::size_t d2[] = {0, 3, 6, 9, 12, 15};
-    const TRange1 dim0(d0, d0 + 4);
-    const TRange1 dim1(d1, d1 + 5);
-    const TRange1 dim2(d2, d2 + 6);
-    const TRange1 dims[3] = {dim0, dim1, dim2};
-    trng.resize(dims, dims + 3);
-  }
-
-  ~TiledRangeFixture() { }
-
-  TRange3 trng;
-}; // struct TiledRangeFixture
-
-struct ArrayFixture : public TiledRangeFixture<Array<int, 3> > {
+struct ArrayFixture {
+/*
   typedef Array<int, 3> Array3;
   typedef Array3::index_type index_type;
-  typedef Array3::tile_index_type tile_index_type;
+  typedef Array3::tile_index tile_index_type;
   typedef Array3::tile_type tile_type;
   typedef std::vector<std::pair<index_type, tile_type> > data_array;
 
   ArrayFixture() : world(GlobalFixture::world), a(*world, trng), ca(a) {
     int v = 1;
     int tv = 1;
-    for(TRange3::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
+    for(TRangeN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
       tile_type t(a.tile(*it), v);
       tv = v++;
       for(tile_type::iterator t_it = t.begin(); t_it != t.end(); ++t_it)
@@ -79,11 +59,11 @@ struct ArrayFixture : public TiledRangeFixture<Array<int, 3> > {
   Array3 a;
   const Array3& ca;
   data_array data;
-
+*/
 }; // struct ArrayFixture
 
 BOOST_FIXTURE_TEST_SUITE( array_suite , ArrayFixture )
-
+/*
 BOOST_AUTO_TEST_CASE( array_dims )
 {
   BOOST_CHECK_EQUAL(a.start(), trng.tiles().start());
@@ -94,7 +74,7 @@ BOOST_AUTO_TEST_CASE( array_dims )
   BOOST_CHECK_EQUAL(a.volume(), trng.tiles().volume());
   BOOST_CHECK_EQUAL(a.tiles(), trng.tiles());
   BOOST_CHECK_EQUAL(a.elements(), trng.elements());
-  for(TRange3::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
+  for(TRangeN::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
     BOOST_CHECK_EQUAL(a.tile(*it), trng.tile(*it));
   }
   BOOST_CHECK(a.includes(trng.tiles().start()));
@@ -128,7 +108,7 @@ BOOST_AUTO_TEST_CASE( accessors )
   Array3::accessor acc;
   Array3::const_accessor const_acc;
   data_array::const_iterator d_it;
-  for(TRange3::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
+  for(TRangeN::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
     if(a.is_local(*it)) {
       d_it = find_data_element(*it);
       BOOST_CHECK(a.find(acc,*it));
@@ -145,7 +125,7 @@ BOOST_AUTO_TEST_CASE( accessors )
 BOOST_AUTO_TEST_CASE( tile_construction )
 {
   Array3::const_accessor acc;
-  for(TRange3::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
+  for(TRangeN::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
     if(a.find(acc,*it)) {
       BOOST_CHECK_EQUAL(acc->second.start(), trng.tile(*it).start());
       BOOST_CHECK_EQUAL(acc->second.finish(), trng.tile(*it).finish());
@@ -260,7 +240,7 @@ BOOST_AUTO_TEST_CASE( find )
 
   if(world->mpi.comm().rank() == 0) {
     data_array::const_iterator d_it;
-    for(TRange3::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
+    for(TRangeN::range_type::const_iterator it = trng.tiles().begin(); it != trng.tiles().end(); ++it) {
       future_iter v = a.find(*it);  // check find function with coordinate index
       d_it = find_data_element(*it);
       BOOST_CHECK_EQUAL(v.get()->second.at(0), d_it->second.at(0));
@@ -295,7 +275,7 @@ BOOST_AUTO_TEST_CASE( resize )
   const TRange1 dim1(d1, d1 + 4);
   const TRange1 dim2(d2, d2 + 5);
   const TRange1 dims[3] = {dim0, dim1, dim2};
-  TRange3 trng1(dims, dims + 3);
+  TRangeN trng1(dims, dims + 3);
 
   a.resize(trng1);
   BOOST_CHECK_EQUAL(sum_first(a), 0);   // check for no data
@@ -309,7 +289,7 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_EQUAL(a.volume(), trng1.tiles().volume());
   BOOST_CHECK_EQUAL(a.tiles(), trng1.tiles());
   BOOST_CHECK_EQUAL(a.elements(), trng1.elements());
-  for(TRange3::range_type::const_iterator it = trng1.tiles().begin(); it != trng1.tiles().end(); ++it) {
+  for(TRangeN::range_type::const_iterator it = trng1.tiles().begin(); it != trng1.tiles().end(); ++it) {
     BOOST_CHECK_EQUAL(a.tile(*it), trng1.tile(*it));
   }
 
@@ -321,5 +301,5 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_EQUAL(sum_first(a), 420);  // check that the correct tiles were added
   BOOST_CHECK_EQUAL(tile_count(a), 24ul);
 }
-
+*/
 BOOST_AUTO_TEST_SUITE_END()

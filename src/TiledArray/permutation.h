@@ -345,11 +345,11 @@ namespace TiledArray {
     /// This function object permutes an n-dimensional container. The container
     /// must define the following functions: size(), weight(), volume(),
     /// begin(), and end(). It must also define the const_iterator type.
-    template<typename Cont>
+    template<typename CS>
     struct Permute {
       /// Construct a permute function object. \c c is the container that will
       /// permuted.
-      Permute(const Cont& c) : cont_(c) { }
+      Permute(const Range<CS>& r) : range_(r) { }
 
       /// Perform the permutation and place the resulting permuted n-dimensional
       /// array in a new array starting at \c it. It must be a random access
@@ -357,44 +357,44 @@ namespace TiledArray {
       /// equal to the volume of the original container.
       /// \arg \c p is the permutation that will be applied to the original container.
       /// \arg \c [first, \c last) is the iterator range for the resulting array.
-      template<unsigned int DIM, typename RandIter>
-      void operator ()(const Permutation<DIM>& p, RandIter first, RandIter last) {
+      template<typename RandIter, typename InIter>
+      void operator ()(const Permutation<CS::dim>& p, RandIter first_out, RandIter last_out, InIter first_in, InIter last_in) {
         BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
-        typedef boost::array<typename Cont::ordinal_type, static_cast<std::size_t>(DIM)> size_array;
-        TA_ASSERT(static_cast<typename Cont::volume_type>(std::distance(first, last)) == cont_.volume(),
+        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+        TA_ASSERT(static_cast<typename Range<CS>::volume_type>(std::distance(first_out, last_out)) == range_.volume(),
+            std::runtime_error,
+            "The distance between first_out and last_out must be equal to the volume of the original container.");
+        TA_ASSERT(static_cast<typename Range<CS>::volume_type>(std::distance(first_in, last_in)) == range_.volume(),
             std::runtime_error,
             "The distance between first and last must be equal to the volume of the original container.");
 
         // Calculate the sizes and weights of the permuted array
-        size_array p_size;
-        permute(p.begin(), p.end(), cont_.size().begin(), p_size.begin());
-        size_array weight;
-        if(cont_.order() == decreasing_dimension_order)
-          calc_weight(p_size.rbegin(), p_size.rend(), weight.rbegin());
-        else
-          calc_weight(p_size.begin(), p_size.end(), weight.begin());
+        typename Range<CS>::size_array p_size;
+        permute(p.begin(), p.end(), range_.size().begin(), p_size.begin());
+        typename Range<CS>::size_array weight = CS::calc_weight(p_size);
 
         // Calculate the step sizes for the nested loops
-        Permutation<DIM> ip = -p;
-        size_array step;
+        Permutation<CS::dim> ip = -p;
+        typename Range<CS>::size_array step;
         permute(ip.begin(), ip.end(), weight.begin(), step.begin());
 
         // Calculate the loop end offsets.
-        size_array end;
-        std::transform(cont_.size().begin(), cont_.size().end(), step.begin(),
-            end.begin(), std::multiplies<typename Cont::ordinal_type>());
+        typename Range<CS>::size_array end;
+        std::transform(range_.size().begin(), range_.size().end(), step.begin(),
+            end.begin(), std::multiplies<typename Range<CS>::ordinal_index>());
 
-        if(cont_.order() == decreasing_dimension_order) {
-          NestedForLoop<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
-              do_loop(AssignmentOp<RandIter, typename Cont::const_iterator >(cont_.begin(), cont_.end()),
+        if(CS::order == decreasing_dimension_order) {
+          NestedForLoop<CS::dim, AssignmentOp<RandIter, InIter>, RandIter >
+              do_loop(AssignmentOp<RandIter, InIter >(first_in, last_in),
               end.rbegin(), end.rend(), step.rbegin(), step.rend());
-          do_loop(first);
+          do_loop(first_out);
         } else {
-          p_size.front() = std::accumulate(weight.begin(), weight.end(), 1ul, std::multiplies<typename Cont::ordinal_type>()) + 1ul;
-          NestedForLoop<DIM, AssignmentOp<RandIter, typename Cont::const_iterator >, RandIter >
-              do_loop(AssignmentOp<RandIter, typename Cont::const_iterator >(cont_.begin(), cont_.end()),
+          p_size.front() = std::accumulate(weight.begin(), weight.end(), 1ul,
+              std::multiplies<typename Range<CS>::ordinal_index>()) + 1ul;
+          NestedForLoop<CS::dim, AssignmentOp<RandIter, InIter >, RandIter >
+              do_loop(AssignmentOp<RandIter, InIter>(first_in, last_in),
               end.begin(), end.end(), step.begin(), step.end());
-          do_loop(first);
+          do_loop(first_out);
         }
       }
 
@@ -402,7 +402,7 @@ namespace TiledArray {
 
       Permute();
 
-      const Cont& cont_;
+      const Range<CS>& range_;
     }; // struct Permute
 
   } // namespace detail

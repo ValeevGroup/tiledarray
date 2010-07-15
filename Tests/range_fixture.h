@@ -1,31 +1,94 @@
 #ifndef TILEDARRAY_RANGE_FIXTURE_H__INCLUDED
 #define TILEDARRAY_RANGE_FIXTURE_H__INCLUDED
 
+#include "TiledArray/range.h"
+#include "TiledArray/tiled_range1.h"
+#include "TiledArray/tiled_range.h"
+
+using namespace TiledArray;
+
 struct RangeFixture {
-  typedef TiledArray::Range<std::size_t, 3> Range3;
-  typedef TiledArray::Range<std::size_t, 3, TiledArray::LevelTag<1>,
-      TiledArray::CoordinateSystem<3, TiledArray::detail::increasing_dimension_order> > FRange3;
-  typedef Range3::size_array size_array;
-  typedef Range3::index_type index_type;
-  typedef Range3::volume_type volume_type;
+  typedef Range<GlobalFixture::coordinate_system> RangeN;
+  typedef RangeN::size_array size_array;
+  typedef RangeN::index index;
+  typedef RangeN::ordinal_index ordinal_index;
+  typedef RangeN::volume_type volume_type;
+
+  static const index start;
+  static const index finish;
+  static const size_array size;
+  static const size_array weight;
+  static const volume_type volume;
+  static const index p0;
+  static const index p1;
+  static const index p2;
+  static const index p3;
+  static const index p4;
+  static const index p5;
+  static const index p6;
 
   RangeFixture();
 
   ~RangeFixture() { }
 
-  Range3 r;
-  size_array size;
-  size_array weight;
-  index_type start;
-  index_type finish;
-  volume_type volume;
-  const index_type p000;
-  const index_type p111;
-  const index_type p222;
-  const index_type p333;
-  const index_type p444;
-  const index_type p555;
-  const index_type p666;
+  template <typename Index>
+  static Index fill_index(typename Index::index value) {
+    Index result;
+    result.data().assign(value);
+    return result;
+  }
+
+  RangeN r;
+};
+
+struct Range1BaseFixture {
+
+};
+
+struct Range1Fixture : public Range1BaseFixture {
+  typedef TiledRange1<GlobalFixture::coordinate_system> range1_type;
+  typedef range1_type::ordinal_index ordinal_index;
+  typedef range1_type::tile_coordinate_system::index tile_index;
+
+  static const boost::array<std::size_t, 6> a;
+  static const range1_type::range_type tiles;
+  static const range1_type::tile_range_type elements;
+
+  Range1Fixture() : tr1(a.begin(), a.end()) { }
+  ~Range1Fixture() { }
+
+  template <std::size_t D>
+  static boost::array<std::size_t, D> init_tiling() {
+    boost::array<std::size_t, D> result;
+    result[0] = 0u;
+    std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + D, result.begin());
+    return result;
+  }
+
+  range1_type tr1;
+  boost::array<range1_type::tile_range_type, 5> tile;
+};
+
+struct TiledRangeFixtureBase : public Range1Fixture {
+  TiledRangeFixtureBase() : dims(range1_type::coordinate_system::dim, tr1) { }
+  std::vector<range1_type> dims;
+}; // struct TiledRangeFixtureBase
+
+struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
+  typedef TiledRange<GlobalFixture::coordinate_system> TRangeN;
+  typedef TRangeN::tile_index tile_index;
+
+  static const TRangeN::range_type tile_range;
+  static const TRangeN::tile_range_type element_range;
+
+  TiledRangeFixture() : tr(dims.begin(), dims.end()){
+
+  }
+  ~TiledRangeFixture() { }
+
+  static tile_index fill_tile_index(tile_index::index);
+
+  TRangeN tr;
 };
 
 #endif // TILEDARRAY_RANGE_FIXTURE_H__INCLUDED

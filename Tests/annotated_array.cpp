@@ -1,137 +1,94 @@
 #include "TiledArray/annotated_array.h"
-#include "TiledArray/annotated_tile.h"
+#include "TiledArray/tile.h"
 #include "TiledArray/array.h"
 #include "unit_test_config.h"
+#include "range_fixture.h"
 
 using namespace TiledArray;
-using TiledArray::expressions::VariableList;
-using TiledArray::expressions::array::ArrayHolder;
-using TiledArray::expressions::tile::AnnotatedTile;
+using namespace TiledArray::expressions;
 
-// Define the number of dimensions used.
-namespace {
-  const unsigned int dim = 3;
+struct AnnotatedArrayFixture {
+  typedef Tile<int, GlobalFixture::element_coordinate_system> TileN;
+  typedef TileN::range_type RangeN;
+  typedef AnnotatedArray<TileN> AnnotatedTileN;
+  typedef AnnotatedTileN::index index;
+
+  static const VariableList vars;
+  static const boost::shared_ptr<RangeN> r;
+  static const TileN t;
+
+  AnnotatedArrayFixture() : at(t, vars) { }
+
+  static std::string make_var_list() {
+    const char* temp = "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z";
+    std::string result(temp, 2 * GlobalFixture::element_coordinate_system::dim - 1 );
+    return result;
+  }
+
+  AnnotatedTileN at;
+}; // struct AnnotatedArrayFixture
+
+const VariableList AnnotatedArrayFixture::vars(AnnotatedArrayFixture::make_var_list());
+const boost::shared_ptr<AnnotatedArrayFixture::RangeN> AnnotatedArrayFixture::r =
+    boost::make_shared<AnnotatedArrayFixture::RangeN>(
+    RangeFixture::fill_index<AnnotatedArrayFixture::index>(0),
+    RangeFixture::fill_index<AnnotatedArrayFixture::index>(5));
+const AnnotatedArrayFixture::TileN AnnotatedArrayFixture::t(r, 1);
+
+BOOST_FIXTURE_TEST_SUITE( annotated_array_suite , AnnotatedArrayFixture )
+
+BOOST_AUTO_TEST_CASE( range_accessor )
+{
+  BOOST_CHECK_EQUAL(at.range(), *r);
 }
 
-template <typename A>
-struct TiledRangeFixture {
-  typedef typename A::tiled_range_type TRange3;
-  typedef typename TRange3::tiled_range1_type TRange1;
-
-  TiledRangeFixture() {
-    const std::size_t d0[] = {0, 10, 20, 30};
-    const std::size_t d1[] = {0, 5, 10, 15, 20};
-    const std::size_t d2[] = {0, 3, 6, 9, 12, 15};
-    const TRange1 dim0(d0, d0 + 4);
-    const TRange1 dim1(d1, d1 + 5);
-    const TRange1 dim2(d2, d2 + 6);
-    const TRange1 dims[3] = {dim0, dim1, dim2};
-    trng.resize(dims, dims + 3);
-  }
-
-  ~TiledRangeFixture() { }
-
-  TRange3 trng;
-}; // struct TiledRangeFixture
-
-struct ArrayHolderFixture : public TiledRangeFixture<Array<int, dim> > {
-  typedef Array<int, dim> Array3T;
-  typedef Array<int, dim, CoordinateSystem<dim>, expressions::tile::AnnotatedTile<int> > Array3A;
-  typedef Array<int, dim, CoordinateSystem<dim>, madness::Future<Tile<int, dim> > > Array3FT;
-  typedef Array<int, dim, CoordinateSystem<dim>, madness::Future<expressions::tile::AnnotatedTile<int> > > Array3FA;
-
-  typedef ArrayHolder<Array3T> AHolder3T;
-  typedef ArrayHolder<Array3A> AHolder3A;
-  typedef ArrayHolder<Array3FT> AHolder3FT;
-  typedef ArrayHolder<Array3FA> AHolder3FA;
-
-  typedef Array3T::index_type index_type;
-  typedef Array3T::tile_index_type tile_index_type;
-  typedef Array3T::tile_type tile_type;
-
-  ArrayHolderFixture() : world(GlobalFixture::world),
-      a(*world, trng), at(*world, trng), aa(*world, trng), aft(*world, trng),
-      afa(*world, trng), pat(&at, &AHolder3T::no_delete),
-      paa(&aa, &AHolder3A::no_delete), paft(&aft, &AHolder3FT::no_delete),
-      pafa(&afa, &AHolder3FA::no_delete), ht(pat), ha(paa), hft(paft), hfa(pafa)
-  {
-    int v = 1;
-    int tv = 1;
-    for(TRange3::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
-      tile_type t(a.tile(*it), v);
-      tv = v++;
-      for(tile_type::iterator t_it = t.begin(); t_it != t.end(); ++t_it)
-        *t_it = tv++;
-      a.insert(*it, t);
-      at.insert(*it, t);
-      aa.insert(*it, t("a,b,c"));
-      aft.insert(*it, madness::Future<tile_type>(t));
-      afa.insert(*it, madness::Future<AnnotatedTile<int> >(t("a,b,c")));
-    }
-    world->gop.fence();
-  }
-
-  ~ArrayHolderFixture() { }
-
-  // Sum the first elements of each tile on all nodes.
-  double sum_first(const Array3T& a) {
-    double sum = 0.0;
-    for(Array3T::const_iterator it = a.begin(); it != a.end(); ++it)
-      sum += it->second.at(0);
-
-    world->mpi.comm().Allreduce(MPI_IN_PLACE, &sum, 1, MPI::DOUBLE, MPI::SUM);
-
-    return sum;
-  }
-
-  // Count the number of tiles in the array on all nodes.
-  std::size_t tile_count(const Array3T& a) {
-    int n = static_cast<int>(a.volume(true));
-    world->mpi.comm().Allreduce(MPI_IN_PLACE, &n, 1, MPI::INT, MPI::SUM);
-
-    return n;
-  }
-
-  madness::World* world;
-  Array3T a;
-  Array3T at;
-  Array3A aa;
-  Array3FT aft;
-  Array3FA afa;
-  boost::shared_ptr<Array3T> pat;
-  boost::shared_ptr<Array3A> paa;
-  boost::shared_ptr<Array3FT> paft;
-  boost::shared_ptr<Array3FA> pafa;
-  AHolder3T ht;
-  AHolder3A ha;
-  AHolder3FT hft;
-  AHolder3FA hfa;
-}; // struct ArrayHolderFixture
-
-BOOST_FIXTURE_TEST_SUITE( array_holder_suite , ArrayHolderFixture )
-
-BOOST_AUTO_TEST_CASE( array_dim )
+BOOST_AUTO_TEST_CASE( iterators )
 {
-  BOOST_CHECK_EQUAL(ht.dim(), at.dim);
-  BOOST_CHECK_EQUAL(ht.order(), at.order);
-  BOOST_CHECK_EQUAL(ht.size(), at.size());
-  BOOST_CHECK_EQUAL(ht.weight(), at.weight());
-  BOOST_CHECK_EQUAL(ht.volume(), at.volume());
-  BOOST_CHECK_EQUAL(ht.volume(true), at.volume(true));
-  BOOST_CHECK( ht.range() == a.range() );
+  BOOST_CHECK( at.begin() == t.end() );
+  BOOST_CHECK( at.end() == t.end() );
+}
+
+BOOST_AUTO_TEST_CASE( const_iterators )
+{
+  const TileN& ct = t;
+  const AnnotatedTileN cat = at;
+
+  BOOST_CHECK( ct.begin() == cat.end() );
+  BOOST_CHECK( ct.end() == cat.end() );
+}
+
+BOOST_AUTO_TEST_CASE( tile_data )
+{
+  BOOST_CHECK_EQUAL_COLLECTIONS(at.begin(), at.end(), t.begin(), t.end());
 }
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
-  BOOST_REQUIRE_NO_THROW(AHolder3T h0(pat));
+  BOOST_REQUIRE_NO_THROW(AnnotatedTileN at1(t, vars));
+  AnnotatedTileN at1(t, vars);
+  BOOST_CHECK_EQUAL_COLLECTIONS(at1.begin(), at1.end(), t.begin(), t.end());
+  BOOST_CHECK_EQUAL(at1.range(), *r);
+  BOOST_CHECK_EQUAL(at1.vars(), vars);
+
+  BOOST_REQUIRE_NO_THROW(AnnotatedTileN at2(t, vars));
+  AnnotatedTileN at2(t, vars);
+  BOOST_CHECK_EQUAL_COLLECTIONS(at2.begin(), at2.end(), t.begin(), t.end());
+  BOOST_CHECK_EQUAL(at2.range(), *r);
+  BOOST_CHECK_EQUAL(at2.vars(), vars);
+
+  BOOST_REQUIRE_NO_THROW(AnnotatedTileN at3(at));
+  AnnotatedTileN at3(at);
+  BOOST_CHECK_EQUAL_COLLECTIONS(at3.begin(), at3.end(), t.begin(), t.end());
+  BOOST_CHECK_EQUAL(at3.range(), *r);
+  BOOST_CHECK_EQUAL(at3.vars(), vars);
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+  BOOST_REQUIRE_NO_THROW(AnnotatedTileN at4(std::move(at)));
+  AnnotatedTileN at4(std::move(at));
+  BOOST_CHECK_EQUAL_COLLECTIONS(at4.begin(), at4.end(), t.begin(), t.end());
+  BOOST_CHECK_EQUAL(at4.range(), *r);
+  BOOST_CHECK_EQUAL(at4.vars(), vars);
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
-
-BOOST_AUTO_TEST_SUITE_END()
-
-struct AnnotatedArrayFixture {
-
-}; // struct AnnotatedArrayFixture
-
-BOOST_FIXTURE_TEST_SUITE( annotated_array_suite , AnnotatedArrayFixture )
 
 BOOST_AUTO_TEST_SUITE_END()

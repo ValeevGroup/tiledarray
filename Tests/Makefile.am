@@ -10,27 +10,26 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   coordinates.cpp \
                   range.cpp \
                   tiled_range1.cpp \
-                  array_dim.cpp \
-                  dense_array.cpp \
-                  key.cpp \
-                  distributed_array.cpp \
                   tiled_range.cpp \
-                  variable_list.cpp \
                   tile.cpp \
-                  tile_slice.cpp \
-                  packed_tile.cpp \
-                  array_ref.cpp \
-                  transform_iterator.cpp \
-                  annotation.cpp \
-                  annotated_tile.cpp \
-                  tile_math.cpp \
-                  shape.cpp \
-                  array.cpp \
+                  variable_list.cpp \
+                  array_math.cpp \
                   annotated_array.cpp \
+                  variable_list_math.cpp \
+                  range_math.cpp \
+                  tile_math.cpp \
+                  shape_math.cpp \
+                  key.cpp \
+                  array.cpp \
                   array_math.cpp \
                   expressions.cpp \
-                  array_slice.cpp \
+                  dense_shape.cpp \
+                  sparse_shape.cpp \
+                  pred_shape.cpp \
+                  shape.cpp \
                   array_fixtures.h \
+                  range_fixture.h \
+                  shape_fixtures.h \
                   iteration_test.h \
                   global_fixture.h \
                   unit_test_config.h

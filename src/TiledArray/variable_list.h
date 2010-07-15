@@ -26,9 +26,6 @@ namespace TiledArray {
     template<unsigned int DIM>
     VariableList operator ^(const ::TiledArray::Permutation<DIM>&, const VariableList&);
     void swap(VariableList&, VariableList&);
-    template<typename InIter1, typename InIter2>
-    void find_common(InIter1, const InIter1, InIter2, const InIter2,
-        std::pair<InIter1, InIter1>&, std::pair<InIter2, InIter2>&);
 
     /// Variable list manages a list variable strings.
 
@@ -212,34 +209,6 @@ namespace TiledArray {
       std::swap(v0.vars_, v1.vars_);
     }
 
-    template<typename InIter1, typename InIter2>
-    void find_common(InIter1 first1, const InIter1 last1, InIter2 first2, const InIter2 last2,
-        std::pair<InIter1, InIter1>& common1, std::pair<InIter2, InIter2>& common2)
-    {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter2>::value);
-      common1.first = last1;
-      common1.second = last1;
-      common2.first = last2;
-      common2.second = last2;
-
-      for(; first1 != last1; ++first1) {
-        common2.first = std::find(first2, last2, *first1);
-        if(common2.first != last2)
-          break;
-      }
-      common1.first = first1;
-      first2 = common2.first;
-      while((first1 != last1) && (first2 != last2)) {
-        if(!std::equal(first1->begin(), first1->end(), first2->begin()))
-          break;
-        ++first1;
-        ++first2;
-      }
-      common1.second = first1;
-      common2.second = first2;
-    }
-
     inline bool operator ==(const VariableList& v0, const VariableList& v1) {
       return (v0.dim() == v1.dim()) && std::equal(v0.begin(), v0.end(), v1.begin());
     }
@@ -300,95 +269,5 @@ namespace madness {
 
   } // namespace archive
 } // namespace madness
-
-
-// Add specializations of math functors.
-namespace std {
-
-  template<>
-  struct plus< ::TiledArray::expressions::VariableList> : public binary_function <
-      ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
-      ::TiledArray::expressions::VariableList>
-  {
-    const ::TiledArray::expressions::VariableList& operator() (
-        const ::TiledArray::expressions::VariableList& v0,
-        const ::TiledArray::expressions::VariableList& v1) const
-    {
-      TA_ASSERT(v0 == v1, std::runtime_error,
-          "variable lists must be identical for addition operations.");
-
-      return v0;
-    }
-  };
-
-  template<>
-  struct minus< ::TiledArray::expressions::VariableList> : public binary_function <
-      ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
-      ::TiledArray::expressions::VariableList>
-  {
-    const ::TiledArray::expressions::VariableList& operator() (
-        const ::TiledArray::expressions::VariableList& v0,
-        const ::TiledArray::expressions::VariableList& v1) const
-    {
-      TA_ASSERT(v0 == v1, std::runtime_error,
-          "variable lists must be identical for addition operations.");
-
-      return v0;
-    }
-  };
-
-  template<>
-  struct multiplies< ::TiledArray::expressions::VariableList> : public binary_function <
-      ::TiledArray::expressions::VariableList,::TiledArray::expressions::VariableList,
-      ::TiledArray::expressions::VariableList>
-  {
-    const ::TiledArray::expressions::VariableList operator() (
-        const ::TiledArray::expressions::VariableList& v0,
-        const ::TiledArray::expressions::VariableList& v1) const
-    {
-      typedef ::TiledArray::expressions::VariableList::const_iterator iterator;
-      typedef std::pair<iterator, iterator> it_pair;
-
-      it_pair c0(v0.end(), v0.end());
-      it_pair c1(v1.end(), v1.end());
-      ::TiledArray::expressions::find_common(v0.begin(), v0.end(), v1.begin(), v1.end(), c0, c1);
-
-      std::size_t n0 = 2 * v0.dim() + 1;
-      std::size_t n1 = 2 * v1.dim();
-
-      std::map<std::size_t, std::string> v;
-      std::pair<std::size_t, std::string> p;
-      for(iterator it = v0.begin(); it != c0.first; ++it, n0 -= 2) {
-        p.first = n0;
-        p.second = *it;
-        v.insert(p);
-      }
-      for(iterator it = v1.begin(); it != c1.first; ++it, n1 -= 2) {
-        p.first = n1;
-        p.second = *it;
-        v.insert(p);
-      }
-      n0 -= 2 * (c0.second - c0.first);
-      n1 -= 2 * (c1.second - c1.first);
-      for(iterator it = c0.second; it != v0.end(); ++it, n0 -= 2) {
-        p.first = n0;
-        p.second = *it;
-        v.insert(p);
-      }
-      for(iterator it = c1.second; it != v1.end(); ++it, n1 -= 2) {
-        p.first = n1;
-        p.second = *it;
-        v.insert(p);
-      }
-
-      std::vector<std::string> result;
-      for(std::map<std::size_t, std::string>::reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
-        result.push_back(it->second);
-
-      return ::TiledArray::expressions::VariableList(result.begin(), result.end());
-    }
-  };
-
-} // namespace std
 
 #endif // TILEDARRAY_VARIABLE_LIST_H__INCLUDED

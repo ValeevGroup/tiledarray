@@ -28,7 +28,8 @@
 #include <stdexcept>
 namespace TiledArray {
   namespace detail {
-     inline void exception_break() { }
+    /// Place a break point on this function to stop before TiledArray exceptions are thrown.
+    inline void tiledarray_exception_break() { }
   }
 }
 
@@ -40,7 +41,7 @@ namespace TiledArray {
 #define TA_ASSERT( a , e , m )  \
   if(! ( a ) ) \
     { \
-      TiledArray::detail::exception_break(); \
+      TiledArray::detail::tiledarray_exception_break(); \
       throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __func__ , "TiledArray Assertion failure in " , m ) ) ; \
     }
 

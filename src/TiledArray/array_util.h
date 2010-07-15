@@ -42,7 +42,7 @@ namespace TiledArray {
     /// \var \c [index_first, \c index_last) is a pair of iterators to the coordinate index.
     /// \var \c weight_first is an iterator to the array weights.
     template<typename IndexInIter, typename WeightInIter>
-    typename std::iterator_traits<IndexInIter>::value_type
+    static typename std::iterator_traits<IndexInIter>::value_type
     calc_ordinal(IndexInIter index_first, IndexInIter index_last, WeightInIter weight_first) {
       BOOST_STATIC_ASSERT(detail::is_input_iterator<IndexInIter>::value);
       BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
@@ -55,7 +55,7 @@ namespace TiledArray {
     /// \var \c [index_first, \c index_last) is a pair of iterators to the coordinate index.
     /// \var \c weight_first is an iterator to the array weights.
     template<typename IndexInIter, typename WeightInIter, typename StartInIter>
-    typename std::iterator_traits<IndexInIter>::value_type
+    static typename std::iterator_traits<IndexInIter>::value_type
     calc_ordinal(IndexInIter index_first, IndexInIter index_last, WeightInIter weight_first, StartInIter start_first) {
       BOOST_STATIC_ASSERT(detail::is_input_iterator<IndexInIter>::value);
       BOOST_STATIC_ASSERT(detail::is_input_iterator<WeightInIter>::value);
@@ -83,7 +83,10 @@ namespace TiledArray {
       return volume(a.begin(), a.end());
     }
 
+    template<typename InIterLeft, typename InIterRight, typename OutIterLeft, typename OutIterRight>
+    void pack_size(InIterLeft lfirst, InIterLeft llast, InIterRight rfirst, InIterRight rlast, OutIterLeft lresult, OutIterRight rresult) {
 
+    }
     template <typename InIter>
     void print_array(std::ostream& output, InIter first, InIter last) {
       BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);

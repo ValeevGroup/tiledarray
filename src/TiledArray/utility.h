@@ -8,7 +8,7 @@
 
 namespace TiledArray {
 
-  template <typename I, unsigned int DIM, typename Tag, typename CS >
+  template <typename I, unsigned int DIM, typename Tag>
   class ArrayCoordinate;
 
   namespace detail {
@@ -30,12 +30,12 @@ namespace TiledArray {
     void initialize_from_values(Value val, OutIter result, unsigned int, boost::true_type);
     template <typename InIter, typename OutIter>
     void initialize_from_values(InIter, OutIter, unsigned int, boost::false_type);
-    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
-    void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag, CS> > k, OutIter result, unsigned int, boost::false_type);
-    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
-    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag, CS>, I > k, OutIter result, unsigned int, boost::false_type);
-    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
-    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag, CS>, I >, OutIter, unsigned int, boost::false_type);
+    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
+    void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag> > k, OutIter result, unsigned int, boost::false_type);
+    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
+    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag>, I > k, OutIter result, unsigned int, boost::false_type);
+    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
+    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag>, I >, OutIter, unsigned int, boost::false_type);
 
     template<typename P>
     struct pair_first : public std::unary_function<P, typename P::first_type> {
@@ -112,15 +112,15 @@ namespace TiledArray {
         *result = *first;
     }
 
-    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
-    void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag, CS> > k,
+    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
+    void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag> > k,
         OutIter result, unsigned int, boost::false_type)
     {
       std::copy(k.key2().begin(), k.key2().end(), result);
     }
 
-    template<typename I, unsigned int DIM, typename Tag, typename CS, typename OutIter>
-    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag, CS>, I > k,
+    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
+    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag>, I > k,
         OutIter result, unsigned int, boost::false_type)
     {
       std::copy(k.key1().begin(), k.key1().end(), result);

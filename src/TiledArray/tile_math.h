@@ -1,9 +1,9 @@
 #ifndef TILEDARRAY_TILE_MATH_H__INCLUDED
 #define TILEDARRAY_TILE_MATH_H__INCLUDED
 
+#include <TiledArray/error.h>
 #include <TiledArray/variable_list.h>
 #include <TiledArray/coordinate_system.h>
-#include <TiledArray/array_ref.h>
 #include <TiledArray/config.h>
 #include <Eigen/Core>
 #include <boost/iterator/transform_iterator.hpp>
@@ -18,42 +18,228 @@
 
 namespace TiledArray {
 
-  namespace expressions {
-    namespace tile {
-      template<typename T>
-      class AnnotatedTile;
-      template<typename T>
-      class ArrayRef;
-      template<typename Exp0, typename Exp1, template<typename> class Op >
-      struct Expression;
-      template<typename Exp, typename Op>
-      struct UnaryTileExp;
-      template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::plus>::exp_type
-      operator +(const Exp0& e0, const Exp1& e1);
-      template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::minus>::exp_type
-      operator -(const Exp0& e0, const Exp1& e1);
-      template<typename Exp0, typename Exp1>
-      typename Expression<Exp0, Exp1, std::multiplies>::exp_type
-      operator *(const Exp0& e0, const Exp1& e1);
-      template<typename Exp>
-      UnaryTileExp<Exp, std::negate<typename Exp::value_type> >
-      operator -(const Exp& e);
-    } // namesapce tile
-  } // namespace expressions
-
   namespace math {
+/*
+    template<typename I>
+    class ContractedData {
+    public:
+      typedef std::vector<I> size_array;
+      typedef boost::array<I, 3> packed_size_array;
 
-    template<typename T, detail::DimensionOrderType D>
-    void contract(const std::size_t, const std::size_t, const std::size_t,
-        const std::size_t, const std::size_t, const T*, const T*, T*);
+      template<typename LeftSize, typename RightSize>
+      ContractedData(const LeftSize& lsize, const expressions::VariableList& lvars,
+          const RightSize& rsize, const expressions::VariableList& rvars,
+          detail::DimensionOrderType o) :
+          order_(o)
+      {
+        typedef std::pair<expressions::VariableList::const_iterator,
+            expressions::VariableList::const_iterator> vars_iter_pair;
+        typedef std::pair<typename LeftSize::const_iterator, typename LeftSize::const_iterator> lsize_iter_pair;
+        typedef std::pair<typename RightSize::const_iterator, typename RightSize::const_iterator> rsize_iter_pair;
+
+        // find common variable lists
+        std::multiplies<expressions::VariableList> v_op;
+        vars_iter_pair lvars_common;
+        vars_iter_pair rvars_common;
+        vars_ = v_op(lvars, rvars);
+        expressions::find_common(lvars.begin(), lvars.end(), rvars.begin(),
+            rvars.end(), lvars_common, rvars_common);
+
+        lsize_iter_pair lsize_common = get_common_range_iterators(lsize.begin(),
+            std::distance(lvars.begin(), lvars_common.first),
+            std::distance(lvars.begin(), lvars_common.second));
+        rsize_iter_pair rsize_common = get_common_range_iterators(rsize.begin(),
+            std::distance(rvars.begin(), rvars_common.first),
+            std::distance(rvars.begin(), rvars_common.second));
+
+        TA_ASSERT(std::lexicographical_compare(lsize_common.first,
+            lsize_common.second, rsize_common.first, rsize_common.second),
+            std::runtime_error, "The common start dimensions do not match.");
+
+        // find dimensions of the result tile
+        size_.resize(vars_.dim(), 0);
+        start_.resize(vars_.dim(), 0);
+        finish_.resize(vars_.dim(), 0);
+        typename size_array::iterator size_it = size_.begin();
+        typename size_array::iterator size_end = size_.end();
+        typename size_array::iterator finish_it = finish_it.begin();
+        expressions::VariableList::const_iterator v_it = vars_.begin();
+        expressions::VariableList::const_iterator lvar_begin = lvars.begin();
+        expressions::VariableList::const_iterator lvar_end = lvars.end();
+        expressions::VariableList::const_iterator rvar_begin = rvars.begin();
+        expressions::VariableList::const_iterator rvar_end = rvars.end();
+        expressions::VariableList::const_iterator find_it;
+        std::iterator_traits<expressions::VariableList::const_iterator>::difference_type n = 0;
+        for(; size_it != size_end; ++size_it, ++finish_it, ++v_it) {
+          if((find_it = std::find(lvar_begin, lvar_end, *v_it)) != lvars.end()) {
+            n  = std::distance(lvar_begin, find_it);
+            *size_it = *finish_it = lsize[n];
+          } else {
+            find_it = std::find(rvar_begin, rvar_end, *v_it);
+            n  = std::distance(rvar_begin, find_it);
+            *size_it = *finish_it = lsize[n];
+          }
+        }
+
+        // calculate packed tile dimensions
+        const I init = 1;
+        packed_left_size_[0] = std::accumulate(lsize.begin(), lsize_common.first,
+            init, std::multiplies<I>());
+        packed_left_size_[2] = std::accumulate(lsize_common.second, lsize.end(),
+            init, std::multiplies<I>());
+        packed_right_size_[0] = std::accumulate(rsize.begin(), rsize_common.fist,
+            init, std::multiplies<I>());
+        packed_right_size_[2] = std::accumulate(rsize_common.second, rsize.end(),
+            init, std::multiplies<I>());
+        packed_left_size_[1] = std::accumulate(lsize_common.first, lsize_common.second,
+            init, std::multiplies<std::size_t>());
+        packed_right_size_[1] = packed_left_size_[1];
+      }
+
+      template<typename LeftIndex, typename RightIndex>
+      ContractedData(const LeftIndex& lstart, const LeftIndex& lfinish,
+          const expressions::VariableList& lvars,
+          const RightIndex& rstart, const RightIndex& rfinish,
+          const expressions::VariableList& rvars,
+          detail::DimensionOrderType o) :
+          order_(o)
+      {
+        typedef std::pair<expressions::VariableList::const_iterator,
+            expressions::VariableList::const_iterator> vars_iter_pair;
+        typedef std::pair<typename LeftIndex::const_iterator,
+            typename LeftIndex::const_iterator> lindex_iter_pair;
+        typedef std::pair<typename RightIndex::const_iterator,
+            typename RightIndex::const_iterator> rindex_iter_pair;
+
+        // find common variable lists
+        std::multiplies<expressions::VariableList> v_op;
+        vars_iter_pair lvars_common;
+        vars_iter_pair rvars_common;
+        vars_ = v_op(lvars, rvars);
+        expressions::find_common(lvars.begin(), lvars.end(), rvars.begin(),
+            rvars.end(), lvars_common, rvars_common);
+
+        lindex_iter_pair lstart_common = get_common_range_iterators(lstart.begin(),
+            std::distance(lvars.begin(), lvars_common.first),
+            std::distance(lvars.begin(), lvars_common.second));
+        rindex_iter_pair rstart_common = get_common_range_iterators(rstart.begin(),
+            std::distance(rvars.begin(), rvars_common.first),
+            std::distance(rvars.begin(), rvars_common.second));
+
+        lindex_iter_pair lfinish_common = get_common_range_iterators(lfinish.begin(),
+            std::distance(lvars.begin(), lvars_common.first),
+            std::distance(lvars.begin(), lvars_common.second));
+        rindex_iter_pair rfinish_common = get_common_range_iterators(rfinish.begin(),
+            std::distance(rvars.begin(), rvars_common.first),
+            std::distance(rvars.begin(), rvars_common.second));
+
+
+        TA_ASSERT(std::lexicographical_compare(lstart_common.first,
+            lstart_common.second, rstart_common.first, rstart_common.second),
+            std::runtime_error, "The common start dimensions do not match.");
+        TA_ASSERT(std::lexicographical_compare(lfinish_common.first,
+            lfinish_common.second, rfinish_common.first, rfinish_common.second),
+            std::runtime_error, "The common finish dimensions do not match.");
+
+        // find dimensions of the result tile
+        size_.resize(vars_.dim(), 0);
+        start_.resize(vars_.dim(), 0);
+        finish_.resize(vars_.dim(), 0);
+        typename size_array::iterator size_it = size_.begin();
+        typename size_array::iterator start_it = start_.begin();
+        typename size_array::iterator finish_it = finish_it.begin();
+        typename size_array::iterator size_end = size_.end();
+        expressions::VariableList::const_iterator v_it = vars_.begin();
+        expressions::VariableList::const_iterator lvar_begin = lvars.begin();
+        expressions::VariableList::const_iterator lvar_end = lvars.end();
+        expressions::VariableList::const_iterator rvar_begin = rvars.begin();
+        expressions::VariableList::const_iterator rvar_end = rvars.end();
+        expressions::VariableList::const_iterator find_it;
+        std::iterator_traits<expressions::VariableList::const_iterator>::difference_type n = 0;
+        for(; size_it != size_end; ++size_it, ++start_it, ++finish_it, ++v_it) {
+          if((find_it = std::find(lvar_begin, lvar_end, *v_it)) != lvars.end()) {
+            n  = std::distance(lvar_begin, find_it);
+            *start_it = lstart[n];
+            *finish_it = lfinish[n];
+            *size_it = *finish_it - *start_it;
+          } else {
+            find_it = std::find(rvar_begin, rvar_end, *v_it);
+            n  = std::distance(rvar_begin, find_it);
+            *start_it = rstart[n];
+            *finish_it = rfinish[n];
+            *size_it = *finish_it - *start_it;
+          }
+        }
+
+        // calculate packed tile dimensions
+        packed_left_size_[0] = accumulate<I>(lfinish.begin(), lfinish_common.first, lstart.begin());
+        packed_left_size_[2] = accumulate<I>(lfinish_common.second, lfinish.end(), lstart_common.second);
+        packed_right_size_[0] = accumulate<I>(rfinish.begin(), rfinish_common.first, rstart.begin());
+        packed_right_size_[2] = accumulate<I>(rfinish_common.second, rfinish.end(), rstart_common.second);
+        packed_left_size_[1] = accumulate<I>(lfinish_common.first, lfinish_common.second, lstart_common.first);
+        packed_right_size_[1] = packed_left_size_[1];
+      }
+
+      const size_array& size() const { return size_; }
+      const size_array& start() const { return start_; }
+      const size_array& finish() const { return finish_; }
+      const packed_size_array& packed_left_size() const { return packed_left_size_; }
+      const packed_size_array& packed_right_size() const { return packed_right_size_; }
+      const expressions::VariableList& vars() const { return vars_; }
+      detail::DimensionOrderType& order() const { return order_; }
+
+      I m() const { return packed_left_size_[0]; }
+      I n() const { return packed_left_size_[2]; }
+      I o() const { return packed_right_size_[0]; }
+      I p() const { return packed_right_size_[2]; }
+      I i() const { return packed_left_size_[1]; }
+
+    private:
+
+      template<typename T, typename InIter1, typename InIter2, typename AccOp, typename BinOp>
+      static T accumulate(InIter1 first1, InIter1 last1, InIter2 first2) {
+        T initial = 1;
+        while(first1 != last1)
+          initial *= *first1++ - *first2++;
+
+        return initial;
+      }
+
+      template<typename InIter, typename Diff>
+      static std::pair<InIter, InIter> get_common_range_iterators(InIter first, Diff d1, Diff d2) {
+        std::pair<InIter, InIter> result(first, first);
+        std::advance(result.first, d1);
+        std::advance(result.second, d2);
+
+        return result;
+      }
+
+      expressions::VariableList vars_;
+      size_array size_;
+      size_array start_;
+      size_array finish_;
+      packed_size_array packed_left_size_;
+      packed_size_array packed_right_size_;
+      detail::DimensionOrderType order_;
+    }; // class ContractedData
 
     /// Contract a and b, and place the results into c.
     /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
-    template<typename T, detail::DimensionOrderType D>
-    void contract(const std::size_t m, const std::size_t n, const std::size_t o,
-        const std::size_t p, const std::size_t i, const T* a, const T* b, T* c)
+    template<typename I, typename T>
+    void contract(const ContractedData<I>& data, const T* a, const T* b, T* c) {
+      if(data.order() == TiledArray::detail::decreasing_dimension_order)
+        contract<T, TiledArray::detail::decreasing_dimension_order>(
+            data.m(), data.n(), data.o(), data.p(), data.i(), a, b, c);
+      else
+        contract<T, TiledArray::detail::increasing_dimension_order>(
+            data.m(), data.n(), data.o(), data.p(), data.i(), a, b, c);
+    }
+
+    /// Contract a and b, and place the results into c.
+    /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
+    template<detail::DimensionOrderType D, typename I, typename T>
+    void contract(const I& m, const I& n, const I& o,
+        const I& p, const I& i, const T* a, const T* b, T* c)
     {
       typedef Eigen::Matrix< T , Eigen::Dynamic , Eigen::Dynamic,
           (D == detail::decreasing_dimension_order ? Eigen::RowMajor : Eigen::ColMajor) | Eigen::AutoAlign > matrix_type;
@@ -126,8 +312,8 @@ namespace TiledArray {
     /// std::minus<T>) on two annotated tiles. The value type of the different
     /// tiles may be different, but the value types of expression one and two
     /// must be implicitly convertible to the result value type.
-    template<typename Arg1, typename Arg2, typename Res, template <typename> class Op>
-    struct BinaryTileOp {
+    template<typename Res, typename Arg1, typename Arg2, template <typename> class Op>
+    struct BinaryOp {
       typedef const Arg1& first_argument_type;
       typedef const Arg2& second_argument_type;
       typedef Res result_type;
@@ -196,61 +382,11 @@ namespace TiledArray {
       BinaryTileOp(std::multiplies<typename Res::value_type>) { }
 
       result_type operator ()(first_argument_type e0, second_argument_type e1) const {
-        typedef std::pair<expressions::VariableList::const_iterator,
-            expressions::VariableList::const_iterator> it_pair;
-
-        // find common variable lists
-        std::multiplies<expressions::VariableList> v_op;
-        it_pair e0_common;
-        it_pair e1_common;
-        expressions::VariableList vars = v_op(e0.vars(), e1.vars());
-        expressions::find_common(e0.vars().begin(), e0.vars().end(), e1.vars().begin(),
-            e1.vars().end(), e0_common, e1_common);
-
-        // find dimensions of the result tile
-        std::vector<typename result_type::size_array::value_type> size(vars.dim(), 1);
-        typename std::vector<typename result_type::size_array::value_type>::iterator it = size.begin();
-        typename std::vector<typename result_type::size_array::value_type>::iterator size_end = size.end();
-        expressions::VariableList::const_iterator v_it = vars.begin();
-        expressions::VariableList::const_iterator evar0_begin = e0.vars().begin();
-        expressions::VariableList::const_iterator evar0_end = e0.vars().end();
-        expressions::VariableList::const_iterator evar1_begin = e1.vars().begin();
-        expressions::VariableList::const_iterator evar1_end = e1.vars().end();
-        expressions::VariableList::const_iterator e_it;
-        for(; it != size_end; ++it, ++v_it) {
-          if((e_it = std::find(evar0_begin, evar0_end, *v_it)) != e0.vars().end()) {
-            *it = e0.size()[std::distance(evar0_begin, e_it)];
-          } else {
-            e_it = std::find(evar1_begin, evar1_end, *v_it);
-            *it = e1.size()[std::distance(evar1_begin, e_it)];
-          }
-        }
-
-        // calculate packed tile dimensions
-        const std::size_t init = 1;
-        const std::size_t m = std::accumulate(e0.size().begin(), e0.size().begin() +
-            std::distance(e0.vars().begin(), e0_common.first), init,
-            std::multiplies<std::size_t>());
-        const std::size_t n = std::accumulate(e0.size().begin() +
-            std::distance(e0.vars().begin(), e0_common.second), e0.size().end(),
-            init, std::multiplies<std::size_t>());
-        const std::size_t o = std::accumulate(e1.size().begin(), e1.size().begin() +
-            std::distance(e1.vars().begin(), e1_common.first), init,
-            std::multiplies<std::size_t>());
-        const std::size_t p = std::accumulate(e1.size().begin() +
-            std::distance(e1.vars().begin(), e1_common.second), e1.size().end(),
-            init, std::multiplies<std::size_t>());
-        const std::size_t i = std::accumulate(e0.size().begin() +
-            std::distance(e0.vars().begin(), e0_common.first), e0.size().begin()
-            + std::distance(e0.vars().begin(), e0_common.second), init,
-            std::multiplies<std::size_t>());
+        ContractedData<std::size_t> result_data(e0.size(), e0.vars(), e1.size(), e1.vars(), e0.order());
 
         // construct result tile
-        result_type result(size, vars, value_type());
-        if(e0.order() == TiledArray::detail::decreasing_dimension_order)
-          contract<value_type, TiledArray::detail::decreasing_dimension_order>(m, n, o, p, i, e0.data(), e1.data(), result.data());
-        else
-          contract<value_type, TiledArray::detail::increasing_dimension_order>(m, n, o, p, i, e0.data(), e1.data(), result.data());
+        result_type result(result_data.size(), result_data.vars(), value_type());
+        contract(result_data, e0.data(), e1.data(), result.data());
 
         return result;
       }
@@ -285,291 +421,9 @@ namespace TiledArray {
 
       op_type op_;
     }; // struct UnaryTileOp
-
-  } // namespace math
-/*
-  namespace expressions {
-
-    namespace tile {
-
-      template<typename Exp0, typename Exp1, typename Op>
-      struct BinaryTileExp;
-      template<typename Exp, typename Op>
-      struct UnaryTileExp;
-
-      /// ValueExp holds a constant value expression.
-      template<typename T>
-      struct ValueExp {
-        typedef typename boost::remove_const<T>::type value_type;
-
-        ValueExp(const value_type& v) : v_(v) { }
-
-        const value_type eval() const { return v_; }
-      private:
-        ValueExp();
-        const value_type v_;
-      }; // class ValueExp
-
-      /// Expression Type for constant values
-
-      /// This class is used to ensure that constant values are correctly converted
-      /// to ValueExp<T> type, and to make sure the underlying type is maintained.
-      template<typename T>
-      struct ExpType {
-        typedef ValueExp<T> type;
-        typedef ValueExp<T> result_type;
-        typedef T value_type;
-      }; // struct ExpType
-
-      /// Expression Type for constant values
-
-      /// This class is used to ensure that constant values are correctly converted
-      /// to ValueExp<T> type, and to make sure the underlying type is maintained.
-      template<typename T>
-      struct ExpType<ValueExp<T> > {
-        typedef ValueExp<T> type;
-        typedef ValueExp<T> result_type;
-        typedef T value_type;
-      }; // struct ExpType<ValueExp<T> >
-
-      /// Expression Type for annotated tiles.
-
-      /// This class is used to determine the type of the tile and the element type.
-      template<typename T>
-      struct ExpType<AnnotatedTile<T> > {
-        typedef AnnotatedTile<T> type;
-        typedef AnnotatedTile<T> result_type;
-        typedef typename AnnotatedTile<T>::value_type value_type;
-      }; // struct ExpType<AnnotatedTile<T,O> >
-
-      /// Expression Type for Binary Expressions.
-
-      /// This class is used to determine the return type for the expression and
-      /// the element type.
-      template<typename Exp0, typename Exp1, typename Op>
-      struct ExpType<BinaryTileExp<Exp0, Exp1, Op> > {
-        typedef BinaryTileExp<Exp0, Exp1, Op> type;
-        typedef typename BinaryTileExp<Exp0, Exp1, Op>::result_type result_type;
-        typedef typename BinaryTileExp<Exp0, Exp1, Op>::value_type value_type;
-      }; // struct ExpType<BinaryTileExp<Exp0, Exp1, Op> >
-
-      /// Expression Type for Binary Expressions.
-
-      /// This class is used to determine the return type for the expression and
-      /// the element type.
-      template<typename Exp, typename Op>
-      struct ExpType<UnaryTileExp<Exp, Op> > {
-        typedef UnaryTileExp<Exp, Op> type;
-        typedef typename UnaryTileExp<Exp, Op>::result_type result_type;
-        typedef typename UnaryTileExp<Exp, Op>::value_type value_type;
-      }; // struct ExpType<UnaryTileExp<Exp, Op> >
-
-      /// Expression pair
-
-      /// Determines the value and result type of an expression given two
-      /// Expressions. The first expression value type is favored.
-      template<typename Exp0, typename Exp1>
-      struct ExpPair {
-        typedef typename ExpType<Exp0>::value_type value_type;
-        typedef AnnotatedTile<value_type> result_type;
-      }; // ExpPair
-
-      /// Expression pair, constant value first argument specialization
-
-      /// Determines the value and result type of an expression given two
-      /// Expressions. The second expression value type is favored.
-      template<typename T, typename Exp1>
-      struct ExpPair<ValueExp<T>, Exp1> {
-        typedef typename ExpType<Exp1>::value_type value_type;
-        typedef AnnotatedTile<value_type> result_type;
-      }; // struct ExpPair<ValueExp<T>, Exp1>
-
-      /// Expression pair, constant value second argument specialization
-
-      /// Determines the value and result type of an expression given two
-      /// Expressions. The first expression value type is favored.
-      template<typename Exp0, typename T>
-      struct ExpPair<Exp0, ValueExp<T> > {
-        typedef typename ExpType<Exp0>::value_type value_type;
-        typedef AnnotatedTile<value_type> result_type;
-      }; // struct ExpPair<Exp0, ValueExp<T> >
-
-      /// Expression evaluation
-
-      /// This structure contains the methods for evaluating various expression
-      /// types.
-      struct ExpEval {
-        template<typename E0, typename E1, typename EOp >
-        static typename BinaryTileExp<E0, E1, EOp>::result_type
-        eval(const BinaryTileExp<E0, E1, EOp>& e) { return e.eval(); }
-
-        template<typename E, typename EOp >
-        static typename UnaryTileExp<E, EOp>::result_type
-        eval(const UnaryTileExp<E, EOp>& e) { return e.eval(); }
-
-        template<typename T>
-        static ValueExp<T> eval(const ValueExp<T>& e) { return e.eval(); }
-
-        template<typename T>
-        static ValueExp<T> eval(const T& e) { return ValueExp<T>(e); }
-
-        template<typename T>
-        static AnnotatedTile<T> eval(const AnnotatedTile<T>& e) { return e; }
-      }; // struct ExpEval
-
-      /// Binary Tile Expression
-
-      /// This structure represents a binary tile math expression. The Op type
-      /// represents the basic math operation that will be performed on a pair of
-      /// elements (one from each tile). The expression types may be annotated
-      /// tiles, fundamental types, or other tile expressions. They may be combined
-      /// in any combination (except two fundamental types). Both expression types
-      /// must have the same storage order. When constructed, the expression stores
-      /// a reference to the two expressions it will operate on. The expression
-      /// does a lazy evaluation, i.e. it is only evaluated when the eval()
-      /// function is explicitly called. If one of the arguments is another
-      /// expression, it will be evaluated before this expression.
-      template<typename Exp0, typename Exp1, typename Op>
-      struct BinaryTileExp {
-        typedef typename ExpType<Exp0>::result_type exp0_type;
-        typedef typename ExpType<Exp1>::result_type exp1_type;
-        typedef typename ExpPair<exp0_type, exp1_type>::result_type result_type;
-        typedef typename ExpPair<exp0_type, exp1_type>::value_type value_type;
-        typedef math::BinaryTileOp<exp0_type, exp1_type, result_type, Op> op_type;
-  //      typedef typename result_type::const_iterator const_iterator;
-
-        BinaryTileExp(const Exp0& e0, const Exp1& e1, Op op = Op()) :
-            e0_(e0), e1_(e1), op_(op) { }
-
-        result_type eval() const {
-          op_type tile_op(op_);
-          return tile_op(ExpEval::eval(e0_), ExpEval::eval(e1_));
-        }
-
-      private:
-
-        BinaryTileExp();
-
-        const Exp0& e0_;
-        const Exp1& e1_;
-        Op op_;
-      }; // struct BinaryTileExp
-
-      /// Unary Tile Expression
-
-      /// This structure represents a unary tile math expression. The Op type
-      /// represents the basic math operation that will be performed on each
-      /// element. The expression types may be annotated tiles, fundamental types,
-      /// or other tile expressions. The expression does a lazy evaluation, i.e.
-      /// it is only evaluated when the eval() function is explicitly called. If
-      /// the argument is another expression, it will be evaluated before this
-      /// expression.
-      template<typename Exp, typename Op>
-      struct UnaryTileExp {
-        typedef typename ExpType<Exp>::result_type exp_type;
-        typedef exp_type result_type;
-        typedef typename exp_type::value_type value_type;
-        typedef math::UnaryTileOp<exp_type, result_type, Op> op_type;
-  //      typedef typename result_type::const_iterator const_iterator;
-
-        UnaryTileExp(const Exp& e, Op op = Op()) : e_(e), op_(op) { }
-
-        result_type eval() const {
-          op_type tile_op(op_);
-          return tile_op(ExpEval::eval(e_));
-        }
-
-      private:
-
-        UnaryTileExp();
-
-        const Exp& e_;
-        Op op_;
-      }; // struct UnaryTileExp
-
-      template<typename Exp0, typename Exp1, template<typename> class Op>
-      struct ExpConstruct {
-        typedef Op<typename ExpPair<Exp0, Exp1>::value_type> op_type;
-        typedef BinaryTileExp<Exp0, Exp1, op_type> exp_type;
-
-        static exp_type make_exp(const Exp0& e0, const Exp1& e1) {
-          return exp_type(e0, e1, op_type());
-        }
-      };
-
-      template<typename Exp0, typename T, template<typename> class Op>
-      struct ExpConstruct<Exp0, ValueExp<T>, Op> {
-        typedef boost::binder2nd< Op<typename Exp0::value_type> > op_type;
-        typedef UnaryTileExp<Exp0, op_type> exp_type;
-
-        static exp_type make_exp(const Exp0& e0, const ValueExp<T> e1) {
-          return exp_type(e0, op_type(Op<typename Exp0::value_type>(), e1.eval()));
-        }
-      };
-
-      template<typename T, typename Exp1, template<typename> class Op>
-      struct ExpConstruct<ValueExp<T>, Exp1, Op> {
-        typedef boost::binder1st< Op<typename Exp1::value_type> > op_type;
-        typedef UnaryTileExp<Exp1, op_type> exp_type;
-
-        static exp_type make_exp(const ValueExp<T> e0, const Exp1& e1) {
-          return exp_type(e1, op_type(Op<typename Exp1::value_type>(), e0.eval()));
-        }
-      };
-
-      template<typename Exp0, typename Exp1, template<typename> class Op >
-      struct Expression :
-          public tile::ExpConstruct<typename ExpType<Exp0>::type, typename ExpType<Exp1>::type, Op> {
-
-      }; // struct ExpPairOp
-
-      /// Tile expression addition operation
-
-      /// This operator constructs a tile binary, addition expression object. The
-      /// expression is not immediately evaluated.
-      template<typename Exp0, typename Exp1>
-      typename tile::Expression<Exp0, Exp1, std::plus>::exp_type
-      operator +(const Exp0& e0, const Exp1& e1) {
-        return tile::Expression<Exp0, Exp1, std::plus>::make_exp(e0, e1);
-      }
-
-      /// Tile expression subtraction operation
-
-      /// This operator constructs a tile binary, subtraction expression object.
-      /// The expression is not immediately evaluated.
-      template<typename Exp0, typename Exp1>
-      typename tile::Expression<Exp0, Exp1, std::minus>::exp_type
-      operator -(const Exp0& e0, const Exp1& e1) {
-        return tile::Expression<Exp0, Exp1, std::minus>::make_exp(e0, e1);
-      }
-
-      /// Tile expression multiplication or contraction operation
-
-      /// This operator constructs a tile binary, multiplication or contraction
-      /// expression object. A multiplication expression is constructed when one
-      /// of the expressions is a constant value. Otherwise, a contraction
-      /// expression is constructed if both expressions will evaluate to annotated
-      /// tiles. The expression is not immediately evaluated.
-      template<typename Exp0, typename Exp1>
-      typename tile::Expression<Exp0, Exp1, std::multiplies>::exp_type
-      operator *(const Exp0& e0, const Exp1& e1) {
-        return tile::Expression<Exp0, Exp1, std::multiplies>::make_exp(e0, e1);
-      }
-
-      /// Tile expression negate operation
-
-      /// This operator constructs a negation expression object. The expression is
-      /// not immediately evaluated.
-      template<typename Exp>
-      UnaryTileExp<Exp, std::negate<typename Exp::value_type> >
-      operator -(const Exp& e) {
-        return UnaryTileExp<Exp, std::negate<typename Exp::value_type> >(e);
-      }
-
-    } // namespace tile
-
-  } // namespace expressions
 */
+  } // namespace math
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_MATH_H__INCLUDED

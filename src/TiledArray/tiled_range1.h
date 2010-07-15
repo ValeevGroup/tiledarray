@@ -3,7 +3,6 @@
 
 #include <TiledArray/range.h>
 //#include <TiledArray/coordinates.h>
-//#include <cassert>
 #include <vector>
 //#include <cstddef>
 //#include <iosfwd>
@@ -14,18 +13,13 @@ namespace TiledArray {
   class TiledRange1;
   template <typename I>
   void swap(TiledRange1<I>&, TiledRange1<I>&);
-  template<typename I>
-  Range<I, 1, LevelTag<1>, CoordinateSystem<1> > make_range1(const I&, const I&);
-  template<typename I>
-  Range<I, 1, LevelTag<0>, CoordinateSystem<1> > make_tile_range1(const I&, const I&);
+  template<typename CS>
+  Range<CoordinateSystem<1, CS::level, CS::order, typename CS::ordinal_index> >
+  make_range1(const typename CS::ordinal_index&, const typename CS::ordinal_index&);
   template <typename I>
   bool operator ==(const TiledRange1<I>&, const TiledRange1<I>&);
   template <typename I>
   bool operator !=(const TiledRange1<I>&, const TiledRange1<I>&);
-  template<typename I>
-  Range<I, 1, LevelTag<1>, CoordinateSystem<1> > make_range1(const I&, const I&);
-  template<typename I>
-  Range<I, 1, LevelTag<0>, CoordinateSystem<1> > make_tile_range1(const I&, const I&);
   template <typename I>
   std::ostream& operator <<(std::ostream&, const TiledRange1<I>&);
 
@@ -34,26 +28,31 @@ namespace TiledArray {
   /// the format {a0, a1, a2, ...}, where 0 <= a0 < a1 < a2 < ... Each tile is
   /// defined as [a0,a1), [a1,a2), ... The number of tiles in the range will be
   /// equal to one less than the number of elements in the array.
-  template <typename I>
+  template <typename CS>
   class TiledRange1 {
   public:
-    BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
+    typedef CS coordinate_system;
+    typedef CoordinateSystem<CS::dim, CS::level - 1, CS::order, typename CS::ordinal_index> tile_coordinate_system;
 
-    typedef Range<I, 1, LevelTag<1>, CoordinateSystem<1> > range_type;
-    typedef Range<I, 1, LevelTag<0>,  CoordinateSystem<1> > tile_range_type;
-    typedef I index_type;
-    typedef I tile_index_type;
+  private:
+    typedef CoordinateSystem<1, CS::level, CS::order, typename CS::ordinal_index> internal_coordinate_system;
+    typedef CoordinateSystem<1, CS::level - 1, CS::order, typename CS::ordinal_index> internal_element_coordinate_system;
+
+  public:
+    typedef Range<internal_coordinate_system> range_type;
+    typedef Range<internal_element_coordinate_system> tile_range_type;
+    typedef typename CS::ordinal_index ordinal_index;
     typedef typename std::vector<tile_range_type>::const_iterator const_iterator;
 
   private:
-    typedef typename range_type::index_type range_index;
-    typedef typename tile_range_type::index_type tile_range_index;
+    typedef typename range_type::index range_index;
+    typedef typename tile_range_type::index tile_range_index;
 
   public:
 
     /// Default constructor, range of 0 tiles and elements.
-    TiledRange1() : range_(make_range1<index_type>(0,0)), element_range_(make_tile_range1<index_type>(0,0)),
-        tile_ranges_(1, make_tile_range1<index_type>(0,0)), elem2tile_(1, 0)
+    TiledRange1() : range_(make_range1<coordinate_system>(0,0)), element_range_(make_range1<tile_coordinate_system>(0,0)),
+        tile_ranges_(1, make_range1<tile_coordinate_system>(0,0)), elem2tile_(1, 0)
     {
       init_map_();
     }
@@ -61,7 +60,7 @@ namespace TiledArray {
     /// Constructs a range with the boundaries provided by [first, last).
     /// Start_tile_index is the index of the first tile.
     template <typename RandIter>
-    TiledRange1(RandIter first, RandIter last, const index_type start_tile_index = 0) :
+    TiledRange1(RandIter first, RandIter last, const ordinal_index start_tile_index = 0) :
         range_(), element_range_(), tile_ranges_(), elem2tile_()
     {
       BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
@@ -83,10 +82,10 @@ namespace TiledArray {
     /// \var \c n is the number of tiles.
     /// \var \c t1, t2, ... are the tile boundaries.
     template <typename... Params>
-    explicit TiledRange1(const index_type start_tile_index, const std::size_t n, Params... params) {
-      BOOST_STATIC_ASSERT(detail::Count<Params...>::value > 1);
+    explicit TiledRange1(const ordinal_index start_tile_index, const std::size_t n, Params... params) {
+      BOOST_STATIC_ASSERT(detail::Count<Params...>::value == coordinate_system::dim);
       BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
-      std::vector<I> r(detail::Count<Params...>::value, I(0));
+      std::vector<ordinal_index> r(detail::Count<Params...>::value, ordinal_index(0));
       detail::fill(r.begin(), params...);
 
       init_tiles_(r.begin(), r.end(), start_tile_index);
@@ -101,19 +100,19 @@ namespace TiledArray {
     /// must be n + 1. Tiles are defined as [t1, t2), [t2, t3), ...
     /// \var \c n is the number of tiles.
     /// \var \c t1, t2, ... are the tile boundaries.
-    explicit TiledRange1(const index_type start_tile_index, const std::size_t n, const tile_index_type t0, const tile_index_type t1, ...) {
+    explicit TiledRange1(const ordinal_index start_tile_index, const std::size_t n, const ordinal_index t0, const ordinal_index t1, ...) {
       TA_ASSERT(n >= 1, std::runtime_error, "There must be at least one tile.");
       va_list ap;
       va_start(ap, t1);
 
-      std::vector<tile_index_type> r;
+      std::vector<ordinal_index> r;
       r.push_back(t0);
       r.push_back(t1);
-      tile_index_type ti; // ti is used as an intermediate
+      ordinal_index ti; // ci is used as an intermediate
       for(unsigned int i = 1; i < n; ++i) {
-        ti = 0ul;
-        ti = va_arg(ap, tile_index_type);
-        r.push_back(ti);
+        ci = 0ul;
+        ci = va_arg(ap, ordinal_index);
+        r.push_back(ti)
       }
 
       va_end(ap);
@@ -132,7 +131,7 @@ namespace TiledArray {
     }
 
     template <typename RandIter>
-    TiledRange1& resize(RandIter first, RandIter last, const index_type start_tile_index = 0) {
+    TiledRange1& resize(RandIter first, RandIter last, const ordinal_index start_tile_index = 0) {
       BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
       TiledRange1 temp(first, last, start_tile_index);
       swap(*this, temp);
@@ -145,8 +144,8 @@ namespace TiledArray {
     /// Returns an iterator to the end of the range.
     const_iterator end() const { return tile_ranges_.end(); }
 
-    /// Return tile iterator associated with tile_index_type
-    const_iterator find(const tile_index_type& e) const{
+    /// Return tile iterator associated with ordinal_index
+    const_iterator find(const ordinal_index& e) const{
       if(! element_range_.includes(tile_range_index(e)))
         return tile_ranges_.end();
       const_iterator result = tile_ranges_.begin();
@@ -156,11 +155,11 @@ namespace TiledArray {
 
     const range_type& tiles() const { return range_; }
     const tile_range_type& elements() const { return element_range_; }
-    const tile_range_type& tile(const index_type& i) {
+    const tile_range_type& tile(const ordinal_index i) const {
       return tile_ranges_.at(i - range_.start()[0]);
     }
 
-    const index_type& element2tile(const tile_index_type& e) const {
+    const ordinal_index& element2tile(const ordinal_index& e) const {
       TA_ASSERT( element_range_.includes(tile_range_index(e)) ,
           std::out_of_range, "Element index is out of range.");
       std::size_t i = e - element_range_.start()[0];
@@ -184,13 +183,13 @@ namespace TiledArray {
 
     /// Initialize tiles use a set of tile offsets
     template <typename RandIter>
-    void init_tiles_(RandIter first, RandIter last, index_type start_tile_index) {
+    void init_tiles_(RandIter first, RandIter last, ordinal_index start_tile_index) {
       TA_ASSERT( valid_(first, last) , std::runtime_error,
           "Tile boundaries do not have the expected structure.");
       range_.resize(range_index(start_tile_index), range_index(start_tile_index + last - first - 1));
       element_range_.resize(tile_range_index(*first), tile_range_index(*(last - 1)));
       for (; first != (last - 1); ++first)
-        tile_ranges_.push_back(make_tile_range1<I>(*first, *(first + 1)));
+        tile_ranges_.push_back(make_range1<tile_coordinate_system>(*first, *(first + 1)));
     }
 
     /// Initialize secondary data
@@ -201,25 +200,25 @@ namespace TiledArray {
 
       // initialize elem2tile map
       elem2tile_.resize(element_range_.size()[0]);
-      for(index_type t = 0; t < range_.size()[0]; ++t)
-        for(tile_index_type e = tile_ranges_[t].start()[0]; e < tile_ranges_[t].finish()[0]; ++e)
+      for(ordinal_index t = 0; t < range_.size()[0]; ++t)
+        for(ordinal_index e = tile_ranges_[t].start()[0]; e < tile_ranges_[t].finish()[0]; ++e)
           elem2tile_[e - element_range_.start()[0]] = t + range_.start()[0];
     }
 
-    friend void swap<>(TiledRange1<I>&, TiledRange1<I>&);
+    friend void swap<>(TiledRange1<CS>&, TiledRange1<CS>&);
     friend std::ostream& operator << <>(std::ostream&, const TiledRange1&);
 
     // TiledRange1 data
     range_type range_; ///< stores the overall dimensions of the tiles.
     tile_range_type element_range_; ///< stores overall element dimensions.
     std::vector<tile_range_type> tile_ranges_; ///< stores the dimensions of each tile.
-    std::vector<index_type> elem2tile_; ///< maps element index to tile index (secondary data).
+    std::vector<ordinal_index> elem2tile_; ///< maps element index to tile index (secondary data).
 
   }; // class TiledRange1
 
   /// Exchange the data of the two given ranges.
-  template <typename I>
-  void swap(TiledRange1<I>& r0, TiledRange1<I>& r1) { // no throw
+  template <typename CS>
+  void swap(TiledRange1<CS>& r0, TiledRange1<CS>& r1) { // no throw
     TiledArray::swap(r0.range_, r1.range_);
     TiledArray::swap(r0.element_range_, r1.element_range_);
     std::swap(r0.tile_ranges_, r1.tile_ranges_);
@@ -239,20 +238,14 @@ namespace TiledArray {
     return ! operator ==(r1, r2);
   }
 
-  template<typename I>
-  Range<I, 1, LevelTag<1>, CoordinateSystem<1> > make_range1(const I& s, const I& f) {
-    typedef Range<I, 1, LevelTag<1>, CoordinateSystem<1> > range_type;
-    typedef typename range_type::index_type index_type;
+  template<typename CS>
+  Range<CoordinateSystem<1, CS::level, CS::order, typename CS::ordinal_index> >
+  make_range1(const typename CS::ordinal_index& s, const typename CS::ordinal_index& f) {
+    typedef CoordinateSystem<1, CS::level, CS::order, typename CS::ordinal_index> cs1;
+    typedef Range<cs1> range_type;
+    typedef typename range_type::ordinal_index ordinal_index;
 
-    return range_type(index_type(s), index_type(f));
-  }
-
-  template<typename I>
-  Range<I, 1, LevelTag<0>, CoordinateSystem<1> > make_tile_range1(const I& s, const I& f) {
-    typedef Range<I, 1, LevelTag<0>, CoordinateSystem<1> > range_type;
-    typedef typename range_type::index_type index_type;
-
-    return range_type(index_type(s), index_type(f));
+    return range_type(typename cs1::index(s), typename cs1::index(f));
   }
 
   /// TiledRange1 ostream operator

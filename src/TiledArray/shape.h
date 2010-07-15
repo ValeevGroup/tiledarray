@@ -1,9 +1,8 @@
 #ifndef TILEDARRAY_SHAPE_H__INCLUDED
 #define TILEDARRAY_SHAPE_H__INCLUDED
-
+/*
 #include <TiledArray/error.h>
 #include <TiledArray/utility.h>
-#include <TiledArray/array_ref.h>
 #include <TiledArray/madness_runtime.h>
 #include <TiledArray/coordinate_system.h>
 #include <boost/noncopyable.hpp>
@@ -13,10 +12,11 @@
 #include <algorithm>
 #include <numeric>
 #include <functional>
+#include <map>
 
 namespace TiledArray {
 
-  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  template <typename, unsigned int, typename>
   class ArrayCoordinate;
 
   namespace detail {
@@ -81,6 +81,8 @@ namespace TiledArray {
           std::equal(i.begin(), i.end(), this->range_finish().begin(), std::less<I>()));
     }
 
+    detail::DimensionOrderType order() const { return this->range_order(); }
+
     unsigned int dim() const { return this->range_dim(); }
 
     volume_type volume() const { return this->range_volume(); }
@@ -96,6 +98,8 @@ namespace TiledArray {
   private:
     /// Returns the dimensions of the range.
     virtual unsigned int range_dim() const = 0;
+
+    virtual detail::DimensionOrderType range_order() const = 0;
 
     /// Returns the volume of the shape's range.
     virtual volume_type range_volume() const = 0;
@@ -149,6 +153,11 @@ namespace TiledArray {
     /// Returns the dimensions of the range.
     virtual unsigned int range_dim() const { return range_type::dim; }
 
+    /// Returns the dimension ordering
+    virtual detail::DimensionOrderType range_order() const {
+      return range_type::coordinate_system::dimension_order;
+    }
+
     /// Returns the volume of the shape's range.
     virtual volume_type range_volume() const { return range_.volume(); }
 
@@ -195,6 +204,7 @@ namespace TiledArray {
     template<typename Size>
     DynamicRange(const Size& size, detail::DimensionOrderType o) :
         dim_(std::distance(size.begin(), size.end())),
+        order_(o),
         start_(dim_, 0),
         finish_(size.begin(), size.end()),
         size_(size.begin(), size.end()),
@@ -213,6 +223,7 @@ namespace TiledArray {
     template<typename Index>
     DynamicRange(const Index& start, const Index& finish, detail::DimensionOrderType o) :
         dim_(std::distance(start.begin(), start.end())),
+        order_(o),
         start_(start.begin(), start.end()),
         finish_(finish.begin(), finish.end()),
         size_(dim_),
@@ -233,6 +244,9 @@ namespace TiledArray {
   private:
     /// Returns the dimensions of the range.
     virtual unsigned int range_dim() const { return dim_; }
+
+    /// Returns the dimension ordering.
+    virtual detail::DimensionOrderType range_order() const { return order_; }
 
     /// Returns the volume of the shape's range.
     virtual volume_type range_volume() const { return volume_; }
@@ -255,6 +269,7 @@ namespace TiledArray {
     }
 
     unsigned int dim_;
+    detail::DimensionOrderType order_;
     std::vector<I> start_;
     std::vector<I> finish_;
     std::vector<I> size_;
@@ -317,6 +332,9 @@ namespace TiledArray {
     { }
 
   public:
+
+    virtual ~Shape() { }
+
     /// Set the range to a new range object.
     template<typename R>
     void set_range(const R& r) {
@@ -340,6 +358,12 @@ namespace TiledArray {
 
     /// Returns the shape type (dense_shape, sparse_shape, or predicated_shape).
     detail::ShapeType type() const { return type_; }
+
+    /// Returns the range dimension
+    unsigned int dim() const { return range_->dim(); }
+
+    /// Returns the dimension order
+    detail::DimensionOrderType order() const { return range_->order(); }
 
     /// Returns the volume of the shape's range.
     volume_type volume() const { return range_->volume(); }
@@ -394,329 +418,6 @@ namespace TiledArray {
     detail::ShapeType type_; ///< Shape type (dense, sparse, or predicated).
   }; // class shape
 
-// =============================================================================
-// DenseShape class
-
-  /// Dense shape used to construct Array objects.
-
-  /// DenseShape is used to represent dense arrays. It is initialized with a
-  /// madness world object and a range object. It includes all tiles included by
-  /// the range object.
-  ///
-  /// Template parameters:
-  /// \var \c R is the range object type.
-  template<typename I>
-  class DenseShape : public Shape<I> {
-  protected:
-    typedef DenseShape<I> DenseShape_;
-    typedef Shape<I> Shape_;
-
-  public:
-    typedef typename Shape_::ordinal_type ordinal_type;
-    typedef typename Shape_::size_array size_array;
-
-    /// Primary constructor
-
-    /// Since all tiles are present in a dense array, the shape is considered
-    /// Immediately available.
-    template<typename R>
-    DenseShape(const R& r) :
-        Shape_(detail::dense_shape, r)
-    { }
-
-    /// Constructor defined by an size array.
-    template<typename Size>
-    DenseShape(const Size& size, detail::DimensionOrderType o) :
-        Shape_(detail::dense_shape, size, o)
-    { }
-
-    /// Constructor defined by an upper and lower bound.
-
-    /// All elements of finish must be greater than or equal to those of start.
-    template<typename Index>
-    DenseShape(const Index& start, const Index& finish, detail::DimensionOrderType o) :
-        Shape_(detail::dense_shape, start, finish, o)
-    { }
-
-  private:
-    /// Returns madness::Future<bool> which will be true if the tile is included.
-    virtual madness::Future<bool> tile_includes(ordinal_type) const {
-      return madness::Future<bool>(true);
-    }
-
-    /// Returns madness::Future<bool> which will be true if the tile is included.
-    virtual madness::Future<bool> tile_includes(size_array) const {
-      return madness::Future<bool>(true);
-    }
-
-    /// Returns true if the local data has been fully initialized.
-    virtual bool initialized() const { return true; }
-
-  }; // class DenseShape
-
-// =============================================================================
-// SparseShape class
-
-  template<typename I, typename H = madness::Hash_private::defhashT<I> >
-  class SparseShape : public Shape<I>, public madness::WorldObject<SparseShape<I, H> > {
-  protected:
-    typedef SparseShape<I, H> SparseShape_;
-    typedef madness::WorldObject<SparseShape_ > WorldObject_;
-    typedef Shape<I> Shape_;
-    typedef H hasher_type;
-
-    typedef madness::RemoteReference< madness::FutureImpl<bool> > remote_ref;
-
-    // Note: Shape has private default constructor, copy constructor, and
-    // assignment operator. These operations are not allowed here.
-
-  public:
-    typedef typename Shape_::ordinal_type ordinal_type;
-    typedef typename Shape_::volume_type volume_type;
-    typedef typename Shape_::size_array size_array;
-    typedef madness::WorldDCPmapInterface<ordinal_type> pmap_type;
-
-    /// Primary constructor
-
-    /// This is a world object so all processes must construct SparseShape
-    /// on all processes in the same order relative to other world objects.
-    /// It is your responsibility to ensure that the range object is identical
-    /// on all processes, otherwise process mapping will not be correct.
-    template<typename R>
-    SparseShape(madness::World& w, const R& r,
-      const hasher_type h = hasher_type()) :
-        Shape_(detail::sparse_shape, r),
-        WorldObject_(w),
-        n_(r.volume() / sizeof(unsigned long) + (r.volume() % sizeof(unsigned long) == 0 ? 0 : 1)),
-        tiles_(new unsigned long[n_]),
-        initialized_(false),
-        hasher_(h),
-        pmap_(dynamic_cast<pmap_type*>(
-            new madness::WorldDCDefaultPmap<ordinal_type, hasher_type>(w, hasher_)))
-    {
-      TA_ASSERT(pmap_.get() != NULL, std::runtime_error, "Pmap dynamic cast failed.");
-      std::fill(tiles_, tiles_ + n_, 0ul);
-    }
-
-    /// Primary constructor
-    template<typename R>
-    SparseShape(madness::World& w, const R& r,
-      const boost::shared_ptr<pmap_type>& pm) :
-        Shape_(detail::sparse_shape, r),
-        WorldObject_(w),
-        n_(r.volume() / sizeof(unsigned long) + (r.volume() % sizeof(unsigned long) == 0 ? 0 : 1)),
-        tiles_(new unsigned long[n_]),
-        initialized_(false),
-        hasher_(),
-        pmap_(pm)
-    {
-      std::fill(tiles_, tiles_ + n_, 0ul);
-    }
-
-    /// Constructor defined by an size array.
-    template<typename Size>
-    SparseShape(madness::World& w, const Size& size, detail::DimensionOrderType o,
-      const hasher_type h = hasher_type()) :
-        Shape_(detail::sparse_shape, size, o),
-        WorldObject_(w),
-        n_(Shape_::volume() / sizeof(unsigned long) + (Shape_::volume() % sizeof(unsigned long) == 0 ? 0 : 1)),
-        tiles_(new unsigned long[n_]),
-        initialized_(false),
-        hasher_(h),
-        pmap_(dynamic_cast<pmap_type*>(
-            new madness::WorldDCDefaultPmap<ordinal_type, hasher_type>(w, hasher_)))
-
-    { }
-
-    /// Constructor defined by an upper and lower bound.
-
-    /// All elements of finish must be greater than or equal to those of start.
-    template<typename Index>
-    SparseShape(madness::World& w, const Index& start, const Index& finish, detail::DimensionOrderType o,
-      const hasher_type h = hasher_type()) :
-        Shape_(detail::sparse_shape, start, finish, o),
-        WorldObject_(w),
-        n_(Shape_::volume() / sizeof(unsigned long) + (Shape_::volume() % sizeof(unsigned long) == 0 ? 0 : 1)),
-        tiles_(new unsigned long[n_]),
-        initialized_(false),
-        hasher_(h),
-        pmap_(dynamic_cast<pmap_type*>(
-            new madness::WorldDCDefaultPmap<ordinal_type, hasher_type>(w, hasher_)))
-    { }
-
-    /// Constructor defined by an size array.
-    template<typename Size>
-    SparseShape(madness::World& w, const Size& size, detail::DimensionOrderType o,
-      const boost::shared_ptr<pmap_type>& pm) :
-        Shape_(detail::sparse_shape, size, o),
-        WorldObject_(w),
-        n_(Shape_::volume() / sizeof(unsigned long) + (Shape_::volume() % sizeof(unsigned long) == 0 ? 0 : 1)),
-        tiles_(new unsigned long[n_]),
-        initialized_(false),
-        hasher_(),
-        pmap_(pm)
-    { }
-
-    /// Constructor defined by an upper and lower bound.
-
-    /// All elements of finish must be greater than or equal to those of start.
-    template<typename Index>
-    SparseShape(madness::World& w, const Index& start, const Index& finish, detail::DimensionOrderType o,
-      const boost::shared_ptr<pmap_type>& pm) :
-        Shape_(detail::sparse_shape, start, finish, o),
-        WorldObject_(w),
-        n_(Shape_::volume() / sizeof(unsigned long) + (Shape_::volume() % sizeof(unsigned long) == 0 ? 0 : 1)),
-        tiles_(new unsigned long[n_]),
-        initialized_(false),
-        hasher_(),
-        pmap_(pm)
-    { }
-
-    ~SparseShape() {
-      delete [] tiles_;
-    }
-
-    /// Add a tile at index i to the sparse shape.
-
-    /// This will add a single tile to the sparse shape. It CANNOT be called
-    /// after set_initialized() (a std::runtime_error exception will be thrown
-    /// if this happens).
-    template<typename Index>
-    void add(const Index& i) {
-      TA_ASSERT(range_includes(forward_index(i)), std::out_of_range,
-          "Index i is not included by the range.");
-      TA_ASSERT(is_local(i), std::runtime_error, "Index i is not be stored locally.");
-      if(initialized_)
-        TA_EXCEPTION(std::runtime_error,
-            "Tiles cannot be added once set_initialized() is called.");
-
-      ordinal_type o = ord(i);
-
-      unsigned int e = 1ul << (o % sizeof(unsigned long));
-      std::size_t n = o / sizeof(unsigned long);
-      tiles_[n] = tiles_[n] | e;
-
-    }
-
-    /// Set the local tiles as initialized
-    void set_initialized() {
-      // Todo: In the future we likely need to do something more scalable than an all reduce.
-      WorldObject_::get_world().gop.reduce(tiles_, n_, detail::bit_or<unsigned long>());
-      WorldObject_::process_pending();
-      initialized_ = true;
-    }
-
-    /// Returns true if the tile data is stored locally.
-    template<typename Index>
-    bool is_local(const Index& i) const {
-      // Todo: This will likely need to to be improved.
-      return owner(ord(i)) == WorldObject_::get_world().rank();
-    }
-
-  private:
-    /// Handles tile probe messages.
-    madness::Void fetch_handler(ProcessID requestor, ordinal_type i, const remote_ref& ref) const {
-      WorldObject_::send(requestor, &SparseShape_::fetch_return, tile_includes(i).get(), ref);
-
-      return madness::None;
-    }
-
-    madness::Void fetch_return(bool val, const remote_ref& ref) const {
-      madness::FutureImpl<bool>* f = ref.get();
-      f->set(val);
-
-      ref.dec();
-
-      return madness::None;
-    }
-
-    /// Returns the owner of a given index.
-    ProcessID owner(ordinal_type i) const {
-      return pmap_->owner(i);
-    }
-
-    /// Returns madness::Future<bool> which will be true if the tile is included.
-    virtual madness::Future<bool> tile_includes(ordinal_type i) const {
-      TA_ASSERT(initialized_, std::runtime_error, "Shape is not full initialized.");
-
-//      if(is_local(i))
-      // Everything is local because it is broadcast. When data is ditributed
-      // this will need to change.
-        return madness::Future<bool>(tiles_[i / sizeof(unsigned long)] &
-            (1ul << (i % sizeof(unsigned long))));
-
-      madness::Future<bool> result;
-      WorldObject_::send(owner(i), &SparseShape_::fetch_handler,
-          WorldObject_::get_world().rank(), i,
-          result.remote_ref(WorldObject_::get_world()));
-      return result;
-    }
-
-    /// Returns madness::Future<bool> which will be true if the tile is included.
-    virtual madness::Future<bool> tile_includes(size_array i) const {
-      return SparseShape_::tile_includes(ord(i));
-    }
-
-    /// Returns true if the local data has been fully initialized.
-    virtual bool initialized() const { return initialized_; }
-
-    std::size_t n_;
-    unsigned long* tiles_; ///< tiling data.
-    bool initialized_;
-    hasher_type hasher_;
-    boost::shared_ptr<pmap_type> pmap_;
-  }; // class SparseShape
-
-// =============================================================================
-// PredShape class
-
-  template<typename I, typename P>
-  class PredShape : public Shape<I> {
-  protected:
-    typedef PredShape<I, P> PredShape_;
-    typedef Shape<I> Shape_;
-    typedef P pred_type;
-
-  public:
-    typedef typename Shape_::ordinal_type ordinal_type;
-    typedef typename Shape_::size_array size_array;
-
-    template<typename R>
-    PredShape(const R& r, pred_type p = pred_type()) :
-        Shape_(detail::predicated_shape, r), predicate_(p)
-    { }
-
-    /// Constructor defined by an size array.
-    template<typename Size>
-    PredShape(const Size& size, detail::DimensionOrderType o, pred_type p = pred_type()) :
-        Shape_(detail::predicated_shape, size, o), predicate_(p)
-    { }
-
-    /// Constructor defined by an upper and lower bound.
-
-    /// All elements of finish must be greater than or equal to those of start.
-    template<typename Index>
-    PredShape(const Index& start, const Index& finish, detail::DimensionOrderType o, pred_type p = pred_type()) :
-        Shape_(detail::predicated_shape, start, finish, o), predicate_(p)
-    { }
-
-  private:
-    /// Returns madness::Future<bool> which will be true if the tile is included.
-    virtual madness::Future<bool> tile_includes(ordinal_type i) const {
-      return madness::Future<bool>(predicate_(i));
-    }
-
-    /// Returns madness::Future<bool> which will be true if the tile is included.
-    virtual madness::Future<bool> tile_includes(size_array i) const {
-      return madness::Future<bool>(predicate_(i));
-    }
-
-    /// Returns true if the local data has been fully initialized.
-    virtual bool initialized() const { return true; }
-
-    pred_type predicate_;
-  }; // class PredShape
-
-}  // namespace TiledArray
-
+} // namespace TiledArray
+*/
 #endif // TILEDARRAY_SHAPE_H__INCLUDED

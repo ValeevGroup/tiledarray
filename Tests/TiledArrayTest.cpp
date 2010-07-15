@@ -37,6 +37,8 @@ GlobalFixture::~GlobalFixture() {
 
 madness::World* GlobalFixture::world = NULL;
 unsigned int GlobalFixture::count = 0;
+const boost::array<std::size_t, 20> GlobalFixture::primes =
+    {{ 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71 }};
 
 
 // This line will initialize mpi and madness.

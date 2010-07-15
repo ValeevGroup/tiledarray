@@ -1,205 +1,228 @@
 #ifndef TILEDARRAY_ARRAY_STORAGE_H__INCLUDED
 #define TILEDARRAY_ARRAY_STORAGE_H__INCLUDED
 
-//#include <TiledArray/error.h>
+#include <TiledArray/error.h>
 #include <TiledArray/range.h>
-//#include <TiledArray/type_traits.h>
-#include <TiledArray/madness_runtime.h>
-#include <TiledArray/array_dim.h>
 #include <TiledArray/permutation.h>
 #include <Eigen/Core>
-//#include <boost/array.hpp>
-//#include <boost/iterator/filter_iterator.hpp>
-#include <boost/scoped_array.hpp>
-//#include <boost/shared_ptr.hpp>
-//#include <boost/make_shared.hpp>
-//#include <boost/utility.hpp>
-//#include <cstddef>
-//#include <algorithm>
-//#include <memory>
-//#include <numeric>
-//#include <iterator>
-//#include <stdexcept>
+#include <boost/utility/enable_if.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/type_traits/is_integral.hpp>
+#include <boost/type_traits/has_trivial_destructor.hpp>
+#include <iterator>
 
 namespace TiledArray {
 
   // Forward declarations
-  template <unsigned int Level>
-  class LevelTag;
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  class DenseArray;
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  void swap(DenseArray<T, DIM, Tag, CS>&, DenseArray<T, DIM, Tag, CS>&);
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  DenseArray<T,DIM,Tag,CS> operator ^(const Permutation<DIM>&, const DenseArray<T,DIM,Tag,CS>&);
+  template <typename, typename, typename>
+  class Tile;
+  template <typename T, typename CS, typename A>
+  void swap(Tile<T, CS, A>&, Tile<T, CS, A>&);
+  template <unsigned int DIM, typename T, typename CS, typename A>
+  Tile<T,CS, A> operator ^(const Permutation<DIM>&, const Tile<T,CS, A>&);
 
   namespace detail {
 
   } // namespace detail
 
 
-  /// DenseArrayStorage stores data for a dense N-dimensional Array. Data is
-  /// stored in order in the order specified by the coordinate system template
-  /// parameter. The default allocator used by array storage is std::allocator.
-  /// All data is allocated and stored locally. Type T must be default-
-  /// Constructible and copy-constructible. You may work around the default
-  /// constructor requirement by specifying default values in
-  template <typename T, unsigned int DIM, typename Tag = LevelTag<0>, typename CS = CoordinateSystem<DIM> >
-  class DenseArray {
+  /// Tile is an N-dimensional, dense array.
+
+  /// \tparam T The value type of the array.
+  /// \tparam CS The coordinate system type (it must conform to TiledArray
+  /// coordinate system requirements)
+  /// \tparam A The allocator type that conforms to standard C++ allocator
+  /// requirements (Default: Eigen::aligned_allocator<T>)
+  template <typename T, typename CS, typename A = Eigen::aligned_allocator<T> >
+  class Tile : private A {
   private:
-    typedef Eigen::aligned_allocator<T> alloc_type;
+    typedef A alloc_type;
 
   public:
-    typedef DenseArray<T,DIM,Tag,CS> DenseArrayStorage_;
-    typedef detail::ArrayDim<std::size_t, DIM, Tag, CS> array_dim_type;
-    typedef typename array_dim_type::index_type index_type;
-    typedef typename array_dim_type::ordinal_type ordinal_type;
-    typedef typename array_dim_type::volume_type volume_type;
-    typedef typename array_dim_type::size_array size_array;
-    typedef T value_type;
-    typedef CS coordinate_system;
-    typedef Tag tag_type;
-    typedef T * iterator;
-    typedef const T * const_iterator;
-    typedef T & reference_type;
-    typedef const T & const_reference_type;
+    typedef Tile<T,CS> Tile_;                         ///< This object's type
+    typedef CS coordinate_system;                     ///< The array coordinate system
 
-    static unsigned int dim() { return DIM; }
-    static detail::DimensionOrderType  order() { return coordinate_system::dimension_order; }
+    typedef typename CS::volume_type volume_type;     ///< Array volume type
+    typedef typename CS::index index;                 ///< Array coordinate index type
+    typedef typename CS::ordinal_index ordinal_index; ///< Array ordinal index type
+    typedef typename CS::size_array size_array;       ///< Size array type
 
-    /// Default constructor.
+    typedef T value_type;                             ///< Array element type
+    typedef T * iterator;                             ///< Element iterator type
+    typedef const T * const_iterator;                 ///< Element const iterator type
+    typedef T & reference;                            ///< Element reference type
+    typedef const T & const_reference;                ///< Element reference type
+    typedef typename alloc_type::pointer pointer;     ///< Element pointer type
+    typedef typename alloc_type::const_pointer const_pointer; ///< Element const pointer type
 
-    /// Constructs an empty array. You must call
-    /// DenseArrayStorage::resize(const size_array&) before the array can be
-    /// used.
-    DenseArray() : dim_(), data_(NULL), alloc_() { }
+    typedef Range<coordinate_system> range_type;      ///< Tile range type
 
-    /// Constructs an array with dimensions of size and fill it with val.
-    DenseArray(const size_array& size, const value_type& val = value_type()) :
-        dim_(size), data_(NULL), alloc_()
-    {
-      create_(val);
-    }
+  public:
+    /// Default constructor
 
-    /// Construct the array with the given data.
-
-    /// Constructs an array of size and fills it with the data indicated by
-    /// the first and last input iterators. The range of data [first, last)
-    /// must point to a range at least as large as the array being constructed.
-    /// If the iterator range is smaller than the array, the constructor will
-    /// throw an assertion error.
-    template <typename InIter>
-    DenseArray(const size_array& size, InIter first, InIter last) :
-        dim_(size), data_(NULL), alloc_()
-    {
-//      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-      create_(first, last);
-    }
+    /// Constructs a tile with zero size.
+    /// \note You must call resize() before attempting to access any elements.
+    Tile() :
+        alloc_type(), range_(boost::make_shared<range_type>()), first_(NULL), last_(NULL)
+    { }
 
     /// Copy constructor
-
-    /// The copy constructor performs a deep copy of the data.
-    DenseArray(const DenseArrayStorage_& other) :
-        dim_(other.dim_), data_(NULL), alloc_()
+    Tile(const Tile_& other) :
+        alloc_type(other), range_(other.range_), first_(NULL), last_(NULL)
     {
-      create_(other.begin(), other.end());
+      first_ = alloc_type::allocate(other.range_->volume());
+      last_ = first_ + other.range_->volume();
+      uninitialized_copy_(other.first_, other.last_, first_);
+    }
+
+    /// Assignment operator
+
+    /// \param other The tile object to be moved
+    /// \return A reference to this object
+    /// \throw std::bad_alloc There is not enough memory available for the target tile
+    Tile_& operator =(const Tile_& other) {
+      Tile_ temp(other);
+      swap(temp);
+
+      return *this;
     }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// Move constructor
-    DenseArray(DenseArrayStorage_&& other) : dim_(std::move(other.dim_)),
-        data_(other.data_), alloc_()
+
+    /// \param other The tile object to move
+    /// \throw anything Throws anything the allocator move/copy constructor can throw.
+    Tile(Tile_&& other) :
+        allocator_type(std::move(other)), range_(other.range_), first_(other.first_), last_(other.last_)
     {
-      other.data_ = NULL;
+      other.range_.reset();
+      other.first_ = NULL;
+      other.last_ = NULL;
+    }
+
+    /// Move assignment operator
+
+    /// \param other The tile object to be moved
+    /// \return A reference to this object
+    /// \throw nothing
+    Tile_& operator =(Tile_&& other) {
+      swap(other);
+      return *this;
     }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
+
+    /// Constructs a new tile
+
+    /// The tile will have the dimensions specified by the range object \c r and
+    /// the elements of the new tile will be equal to \c v. The provided
+    /// allocator \c a will allocate space for only for the tile data.
+    /// \param r A shared pointer to the range object that will define the tile
+    /// dimensions
+    /// \param v The fill value for the new tile elements ( default: value_type() )
+    /// \param a The allocator object for the tile data ( default: alloc_type() )
+    /// \throw std::bad_alloc There is not enough memory available for the target tile
+    /// \throw anything Any exception that can be thrown by \c T type default or
+    /// copy constructors
+    Tile(const boost::shared_ptr<range_type>& r, const value_type& v = value_type(), const alloc_type& a = alloc_type()) :
+        alloc_type(a), range_(r), first_(NULL), last_(NULL)
+    {
+      first_ = alloc_type::allocate(r->volume());
+      last_ = first_ + r->volume();
+      uninitialized_fill_(first_, last_, v);
+    }
+
+
+    /// Constructs a new tile
+
+    /// The tile will have the dimensions specified by the range object \c r and
+    /// the elements of the new tile will be equal to \c v. The provided
+    /// allocator \c a will allocate space for only for the tile data.
+    /// \tparam InIter An input iterator type.
+    /// \param r A shared pointer to the range object that will define the tile
+    /// dimensions
+    /// \param first An input iterator to the beginning of the data to copy.
+    /// \param last An input iterator to one past the end of the data to copy.
+    /// \param a The allocator object for the tile data ( default: alloc_type() )
+    /// \throw std::bad_alloc There is not enough memory available for the
+    /// target tile
+    /// \throw anything Any exceptions that can be thrown by \c T type default
+    /// or copy constructors
+    template <typename InIter>
+    Tile(const boost::shared_ptr<range_type>& r, InIter first, InIter last, const alloc_type& a = alloc_type()) :
+        alloc_type(a), range_(r), first_(create_(first, last))
+    {
+      first_ = alloc_type::allocate(r->volume());
+      last_ = first_ + r->volume();
+      uninitialized_copy_(first, last, first_);
+    }
 
     /// Destructor
-    ~DenseArray() {
-      destroy_();
+    ~Tile() {
+      destroy_(first_, last_);
+      alloc_type::deallocate(first_, range_->volume());
     }
 
-    DenseArrayStorage_& operator =(const DenseArrayStorage_& other) {
-      DenseArrayStorage_ temp(other);
-      swap(*this, temp);
+    /// In place permutation of tile elements.
 
-      return *this;
-    }
+    /// \param p A permutation object.
+    /// \return A reference to this object
+    Tile_& operator ^=(const Permutation<coordinate_system::dim>& p) {
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    DenseArrayStorage_& operator =(DenseArrayStorage_&& other) {
-      if(this != &other) {
-        destroy_();
-        dim_ = std::move(other.dim_);
-        data_ = other.data_;
-        other.data_ = NULL;
-      }
-      return *this;
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-    /// In place permutation operator.
-
-    /// This function permutes its elements only.
-    /// No assumptions are made about the data contained by this array.
-    /// Therefore, if the data in each element of the array also needs to be
-    /// permuted, it's up to the array owner to permute the data.
-    DenseArrayStorage_& operator ^=(const Permutation<DIM>& p) {
-      if(data_ != NULL) {
-        DenseArrayStorage_ temp = p ^ (*this);
-        swap(*this, temp);
+      if(first_ != NULL) {
+        Tile_ temp = p ^ (*this);
+        swap(temp);
       }
       return *this;
     }
 
-    /// Resize the array. The current data common to both arrays is maintained.
-    /// Any new elements added have be assigned a value of val. If val is not
-    /// specified, the default constructor will be used for new elements.
-    DenseArrayStorage_& resize(const size_array& size, value_type val = value_type()) {
-      DenseArrayStorage_ temp(size, val);
-      if(data_ != NULL) {
+    /// Resize the array to the specified dimensions.
+
+    /// \param r The range object that specifies the new size.
+    /// \param val The value that will fill any new elements in the array
+    /// ( default: value_type() ).
+    /// \return A reference to this object.
+    /// \note The current data common to both arrays is maintained.
+    /// \note This function cannot change the number of tile dimensions.
+    Tile_& resize(const boost::shared_ptr<range_type>& r, value_type val = value_type()) {
+      Tile_ temp(r, val);
+      if(first_ != NULL) {
         // replace Range with ArrayDim?
-        typedef Range<ordinal_type, DIM, Tag, coordinate_system > range_type;
-        range_type range_temp(size);
-        range_type range_curr(dim_.size_);
-        range_type range_common = range_temp & range_curr;
+        range_type range_common = r & (*range_);
 
         for(typename range_type::const_iterator it = range_common.begin(); it != range_common.end(); ++it)
           temp[ *it ] = operator[]( *it ); // copy common data.
       }
-      swap(*this, temp);
+      swap(temp);
       return *this;
     }
 
     /// Returns a raw pointer to the array elements. Elements are ordered from
     /// least significant to most significant dimension.
     value_type * data() {
-      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
-      return data_;
+      return first_;
     }
 
     /// Returns a constant raw pointer to the array elements. Elements are
     /// ordered from least significant to most significant dimension.
     const value_type * data() const {
-      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
-      return data_;
+      return first_;
     }
 
     // Iterator factory functions.
     iterator begin() { // no throw
-      return data_;
+      return first_;
     }
 
     iterator end() { // no throw
-      return data_ + dim_.n_;
+      return last_;
     }
 
     const_iterator begin() const { // no throw
-      return data_;
+      return first_;
     }
 
     const_iterator end() const { // no throw
-      return data_ + dim_.n_;
+      return last_;
     }
 
     /// Returns a reference to element i (range checking is performed).
@@ -208,12 +231,11 @@ namespace TiledArray {
     /// If i is not included in the range of elements, std::out_of_range will be
     /// thrown. Valid types for Index are ordinal_type and index_type.
     template <typename Index>
-    reference_type at(const Index& i) {
-      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
-      if(! dim_.includes(i))
+    reference at(const Index& i) {
+      if(! range_->includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...): Element is not in range.");
 
-      return * (data_ + dim_.ord(i));
+      return first_[ord_(i)];
     }
 
     /// Returns a constant reference to element i (range checking is performed).
@@ -222,21 +244,20 @@ namespace TiledArray {
     /// If i is not included in the range of elements, std::out_of_range will be
     /// thrown. Valid types for Index are ordinal_type and index_type.
     template <typename Index>
-    const_reference_type at(const Index& i) const {
-      TA_ASSERT(initialized(), std::runtime_error, "Data has not been initialized.");
-      if(! dim_.includes(i))
+    const_reference at(const Index& i) const {
+      if(! range_->includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...) const: Element is not in range.");
 
-      return * (data_ + dim_.ord(i));
+      return first_[ord_(i)];
     }
 
     /// Returns a reference to the element at i.
 
     /// This No error checking is performed.
     template <typename Index>
-    reference_type operator[](const Index& i) { // no throw for non-debug
+    reference operator[](const Index& i) { // no throw for non-debug
 #ifdef NDEBUG
-      return * (data_ + dim_.ord(i));
+      return first_[ord_(i)];
 #else
       return at(i);
 #endif
@@ -244,141 +265,279 @@ namespace TiledArray {
 
     /// Returns a constant reference to element i. No error checking is performed.
     template <typename Index>
-    const_reference_type operator[](const Index& i) const { // no throw for non-debug
+    const_reference operator[](const Index& i) const { // no throw for non-debug
 #ifdef NDEBUG
-      return * (data_ + dim_.ord(i));
+      return first_[ord_(i)];
 #else
       return at(i);
 #endif
     }
 
-    /// Return the sizes of each dimension.
-    const size_array& size() const { return dim_.size(); }
+    /// Tile range accessor
 
-    /// Returns the dimension weights.
+    /// \return A const reference to the tile range object.
+    /// \throw nothing
+    const range_type& range() const { return *range_; }
 
-    /// The dimension weights are used to calculate ordinal values and is useful
-    /// for determining array boundaries.
-    const size_array& weight() const { return dim_.weight(); }
+    /// Create an annotated tile
 
-    /// Returns the number of elements in the array.
-    volume_type volume() const { return dim_.volume(); }
+    /// \param v A string with a comma-separated list of variables.
+    expressions::AnnotatedArray<Tile_> operator ()(const std::string& v) {
+      return expressions::AnnotatedArray<Tile_>(*this,
+          expressions::VariableList(v));
+    }
 
-    /// Returns true if the given index is included in the array.
-    template<typename Index>
-    bool includes(const Index& i) const { return dim_.includes(i); }
+    /// Create an annotated tile
 
-    /// Returns the ordinal (linearized) index for the given index.
+    /// \param v A string with a comma-separated list of variables.
+    const expressions::AnnotatedArray<Tile_> operator ()(const std::string& v) const {
+      return expressions::AnnotatedArray<Tile_>(* const_cast<Tile_*>(this),
+          expressions::VariableList(v));
+    }
 
-    /// If the given index is not included in the
-    ordinal_type ordinal(const index_type& i) const { return dim_.ordinal(i); }
+    /// Create an annotated tile
 
-    /// Returns true if the array data pointer has been allocated.
-    bool initialized() const { return data_ != NULL; }
+    /// \param v A variable list object.
+    expressions::AnnotatedArray<Tile_> operator ()(const expressions::VariableList& v) {
+      return expressions::AnnotatedArray<Tile_>(*this, v);
+    }
+
+    /// Create an annotated tile
+
+    /// \param v A variable list object.
+    const expressions::AnnotatedArray<Tile_> operator ()(const expressions::VariableList& v) const {
+      return expressions::AnnotatedArray<Tile_>(* const_cast<Tile_*>(this), v);
+    }
+
 
   private:
-    /// Allocate and initialize the array.
 
-    /// All elements will contain the given value.
-    void create_(const value_type val) {
-      TA_ASSERT(data_ == NULL, std::runtime_error,
-          "Cannot allocate data to a non-NULL pointer.");
-      data_ = alloc_.allocate(dim_.n_);
-      for(ordinal_type i = 0; i < dim_.n_; ++i)
-        alloc_.construct(data_ + i, val);
+    /// Forwards the ordinal index.
+
+    /// \param i An ordinal index
+    /// \return The given ordinal index i.
+    /// \throw nothing
+    /// \note No range checking is done in this function.
+    inline const ordinal_index& ord_(const ordinal_index& i) const { return i; }
+
+    /// Convert an index to an ordinal index
+
+    /// This function converts a coordinate index to the equivalent ordinal index.
+    /// \param i index to be converted to an ordinal index
+    /// \return The ordinal index of the index.
+    /// \throw nothing
+    /// \note No range checking is done in this function.
+    inline ordinal_index ord_(const index& i) const {
+      return coordinate_system::calc_ordinal(i, range_->weight(), range_->start());
     }
 
-    /// Allocate and initialize the array.
+    /// Copy iterator range into an uninitialized memory
 
-    /// All elements will be initialized to the values given by the iterators.
-    /// If the iterator range does not contain enough elements to fill the array,
-    /// the remaining elements will be initialized with the default constructor.
-    template <typename InIter>
-    void create_(InIter first, InIter last) {
-//      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-      TA_ASSERT(data_ == NULL, std::runtime_error,
-          "Cannot allocate data to a non-NULL pointer.");
-      data_ = alloc_.allocate(dim_.n_);
-      ordinal_type i = 0;
-      for(;first != last; ++first, ++i)
-        alloc_.construct(data_ + i, *first);
-      for(; i < dim_.n_; ++i)
-        alloc_.construct(data_ + i, value_type());
+    /// This function is for data with a non-trivial copy operation (i.e. a
+    /// a simple memory copy is not safe).
+    /// \tparam InIter Input iterator type for the data to copy.
+    /// \param first An input iterator to the beginning of the data to copy.
+    /// \param last An input iterator to one past the end of the data to copy.
+    /// \param result A pointer to the first element where the data will be copied.
+    /// \return A pointer to the end of the copied data.
+    /// \throw anything This function will rethrow any thing that is thrown
+    /// by the T copy constructor.
+    template<typename InIter>
+    typename boost::disable_if<boost::has_trivial_copy<value_type>, pointer >::type
+    uninitialized_copy_(InIter first, InIter last, pointer result) {
+      pointer cur = result;
+      try {
+        for(; first != last; ++first, ++cur)
+          alloc_type::construct(&*cur, *first);
+      } catch(...) {
+        destroy(result, cur);
+        throw;
+      }
+
+      return cur;
     }
 
-    /// Destroy the array
-    void destroy_() {
-      if(data_ != NULL) {
-        value_type* d = data_;
-        const value_type* const e = data_ + dim_.n_;
-        for(; d != e; ++d)
-          alloc_.destroy(d);
+    /// Copy iterator range into an uninitialized memory
 
-        alloc_.deallocate(data_, dim_.n_);
-        data_ = NULL;
+    /// This function is for data with a trivial copy operation (i.e. a simple
+    /// memory copy is safe).
+    /// \tparam InIter Input iterator type for the data to copy.
+    /// \param first An input iterator to the beginning of the data to copy.
+    /// \param last An input iterator to one past the end of the data to copy.
+    /// \param result A pointer to the first element where the data will be copied.
+    /// \return A pointer to the end of the copied data.
+    /// \throw nothing
+    template<typename InIter>
+    typename boost::enable_if<boost::has_trivial_copy<value_type>, pointer >::type
+    uninitialized_copy_(InIter first, InIter last, pointer result) {
+      return std::copy(first, last, result);
+    }
+
+    /// Fill a range of memory with the given value.
+
+    /// \param first A pointer to the first element in the memory range to fill
+    /// \param last A pointer to one past the last element in the memory range to fill
+    /// \param v The value to be copied into the memory range
+    void uninitialized_fill_(pointer first, pointer last, const value_type& v) {
+      uninitialized_fill_aux_(first, last, v, boost::has_trivial_copy<value_type>());
+    }
+
+    /// Fill a range of memory with the given value.
+
+    /// This is a helper function for filling data with a non-trivial copy operation.
+    /// \param first A pointer to the first element in the memory range to fill
+    /// \param last A pointer to one past the last element in the memory range to fill
+    /// \param v The value to be copied into the memory range
+    /// \throw anything This function will rethrow any thing that is thrown
+    /// by the T copy constructor.
+    void uninitialized_fill_aux_(pointer first, pointer last, const value_type& v, boost::false_type) {
+      ForIter cur = first;
+      try {
+        for(; n > 0; --n, ++cur)
+          alloc_type::construct(&*cur, v);
+      } catch(...) {
+        destroy_(first, cur);
+        throw;
       }
     }
 
-    friend void swap<>(DenseArrayStorage_& first, DenseArrayStorage_& second);
+    /// Fill a range of memory with the given value.
 
-    array_dim_type dim_;
-    value_type* data_;
-    alloc_type alloc_;
+    /// This is a helper function for filling data with a trivial copy operation.
+    /// \param first A pointer to the first element in the memory range to fill
+    /// \param last A pointer to one past the last element in the memory range to fill
+    /// \param v The value to be copied into the memory range
+    /// \throw nothing
+    void uninitialized_fill_aux_(pointer first, pointer last, const value_type& v, boost::true_type) {
+      std::fill(first, last, v);
+    }
+
+    /// Call the destructor for a range of data.
+
+    /// \param first A pointer to the first element in the memory range to destroy
+    /// \param last A pointer to one past the last element in the memory range to destroy
+    void destroy_(pointer first, pointer last) {
+      destroy_aux_(first, last, boost::has_trivial_destructor<value_type>());
+    }
+
+    /// Call the destructor for a range of data.
+
+    /// This is a helper function for data with a non-trivial destructor function.
+    /// \param first A pointer to the first element in the memory range to destroy
+    /// \param last A pointer to one past the last element in the memory range to destroy
+    /// \throw nothing
+    void destroy_aux_(pointer first, pointer last, boost::false_type) {
+      for(; first != last; ++first)
+        alloc_type::destroy(&*first);
+    }
+
+    /// Call the destructor for a range of data.
+
+    /// This is a helper function for data with a trivial destructor functions.
+    /// \param first A pointer to the first element in the memory range to destroy
+    /// \param last A pointer to one past the last element in the memory range to destroy
+    /// \throw nothing
+    void destroy_aux_(pointer, pointer, boost::true_type) { }
+
+    /// Exchange the content of this object with other.
+
+    /// \param other The other Tile to swap with this object
+    /// \throw nothing
+    void swap(Tile_& other) {
+      std::swap<alloc_type>(*this, other);
+      boost::swap(range_, other.range_);
+      std::swap(first_, other.first_);
+      std::swap(last_, other.last_);
+    }
+
+    friend void TiledArray::swap<>(Tile_& first, Tile_& second);
+
+    boost::shared_ptr<range_type> range_; ///< Shared pointer to the range data for this tile
+    pointer first_;                       ///< Pointer to the beginning of the data range
+    pointer last_;                        ///< Pointer to the end of the data range
   }; // class DenseArrayStorage
 
 
   /// Swap the data of the two arrays.
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  void swap(DenseArray<T, DIM, Tag, CS>& first, DenseArray<T, DIM, Tag, CS>& second) { // no throw
-    detail::swap(first.dim_, second.dim_);
-    std::swap(first.data_, second.data_);
+  template <typename T, typename CS, typename A>
+  void swap(Tile<T, CS, A>& first, Tile<T, CS, A>& second) { // no throw
+    first.swap(second);
   }
 
   /// Permutes the content of the n-dimensional array.
-  template <typename T, unsigned int DIM, typename Tag, typename CS>
-  DenseArray<T,DIM,Tag,CS> operator ^(const Permutation<DIM>& p, const DenseArray<T,DIM,Tag,CS>& s) {
-    DenseArray<T,DIM,Tag,CS> result(p ^ s.size());
-    detail::Permute<DenseArray<T,DIM,Tag,CS> > f_perm(s);
+  template <typename T, typename CS, typename A>
+  Tile<T,CS,A> operator ^(const Permutation<CS::dim>& p, const Tile<T,CS,A>& s) {
+    Tile<T,CS,A> result(p ^ s.size());
+    detail::Permute<Tile<T,CS,A> > f_perm(s);
     f_perm(p, result.begin(), result.end());
 
     return result;
   }
 
-} // namespace TiledArray
+  /// ostream output orperator.
+  template <typename T, typename CS, typename A>
+  std::ostream& operator <<(std::ostream& out, const Tile<T, CS, A>& t) {
+    typedef Tile<T,CS> tile_type;
+    const typename tile_type::size_array& weight = t.data_.weight();
 
+    out << "{";
+    typename CS::const_iterator d ;
+    typename tile_type::ordinal_index i = 0;
+    for(typename tile_type::const_iterator it = t.begin(); it != t.end(); ++it, ++i) {
+      for(d =  CS::begin(), ++d; d != CS::end(); ++d) {
+        if((i % weight[*d]) == 0)
+          out << "{";
+      }
+
+      out << *it << " ";
+
+
+      for(d = CS::begin(), ++d; d != CS::end(); ++d) {
+        if(((i + 1) % weight[*d]) == 0)
+          out << "}";
+      }
+    }
+    out << "}";
+    return out;
+  }
+
+} // namespace TiledArray
 
 namespace madness {
   namespace archive {
 
-    template <class Archive, typename T, unsigned int DIM, typename Tag, typename CS>
-    struct ArchiveLoadImpl<Archive, TiledArray::DenseArray<T,DIM,Tag,CS> > {
-      typedef TiledArray::DenseArray<T,DIM,Tag,CS> dense_array_type;
-      typedef typename dense_array_type::value_type value_type;
+    template <class Archive, class T>
+    struct ArchiveStoreImpl;
+    template <class Archive, class T>
+    struct ArchiveLoadImpl;
 
-      static inline void load(const Archive& ar, dense_array_type& s) {
-        typename dense_array_type::size_array size;
-        ar & size;
-        std::size_t n = TiledArray::detail::volume(size);
-        boost::scoped_array<value_type> data(new value_type[n]);
-        ar & wrap(data.get(),n);
-        dense_array_type temp(size, data.get(), data.get() + n);
-
-        TiledArray::swap(s, temp);
+    template <class Archive, typename T, typename CS, typename A>
+    struct ArchiveStoreImpl<Archive, TiledArray::Tile<T, CS, A> > {
+      static void store(const Archive& ar, const TiledArray::Tile<T, CS, A>& t) {
+        ar & static_cast<const TiledArray::Tile::alloc_type&>(t) & t.range()
+            & wrap(t.data(), t.range().volume());
       }
     };
 
-    template <class Archive, typename T, unsigned int DIM, typename Tag, typename CS>
-    struct ArchiveStoreImpl<Archive, TiledArray::DenseArray<T,DIM,Tag,CS> > {
-      typedef TiledArray::DenseArray<T,DIM,Tag,CS> DAS;
-      typedef typename DAS::value_type value_type;
+    template <class Archive, typename T, typename CS, typename A>
+    struct ArchiveLoadImpl<Archive, TiledArray::Tile<T, CS, A> > {
+      static void load(const Archive& ar, TiledArray::Tile<T, CS, A>& a) {
+        if(a.first_ != NULL) {
+          t.destroy_(a.first_, a.last_);
+          t.deallocate(t.first_, t.range_.volume());
+        }
 
-      static inline void store(const Archive& ar, const DAS& s) {
-        ar & s.size();
-        ar & wrap(s.begin(), s.volume());
+        ar & static_cast<TiledArray::Tile::alloc_type&>(t);
+        t.range_ = boost::make_shared<typename TiledArray::Tile<T, CS, A>::range_type>();
+        ar & (* t.range_);
+        t.allocate(t.first_, t.range_->volume());
+        t.last_ = t.first_ + t.range_->volume();
+        t.uninitialized_fill_(t.first_, t.last_, TiledArray::Tile::value_type());
+        ar & wrap(t.first_, t.range_->volume());
       }
     };
 
-  } // namespace archive
-} // namespace madness
+  }
+}
 
 #endif // TILEDARRAY_ARRAY_STORAGE_H__INCLUDED
