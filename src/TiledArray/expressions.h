@@ -122,7 +122,7 @@ namespace TiledArray {
     /// \param left A const reference to the left-hand expression object.
     /// \param right A const reference to the right-hand expression object.
     template<typename LeftExp, typename RightExp>
-    Expression<BinaryExpression<LeftExp, RightExp, std::minus> >
+    Expression<BinaryExpression<LeftExp, RightExp, std::multiplies> >
     operator *(const LeftExp& left, const RightExp& right) {
       Expression<BinaryExpression<LeftExp, RightExp, std::minus> >(left, right);
     }
