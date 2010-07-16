@@ -1,7 +1,7 @@
 #ifndef TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 
-#include "TiledArray/types.h"
+#include "TiledArray/coordinate_system.h"
 #include <boost/array.hpp>
 
 namespace madness {
