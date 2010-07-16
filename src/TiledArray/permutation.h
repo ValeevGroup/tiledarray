@@ -17,24 +17,14 @@
 namespace TiledArray {
 
   // weirdly necessary forward declarations
-  template <unsigned int DIM>
+  template <typename>
+  class Range;
+  template <unsigned int>
   class Permutation;
   template <unsigned int DIM>
   bool operator==(const Permutation<DIM>&, const Permutation<DIM>&);
   template <unsigned int DIM>
-  bool operator!=(const Permutation<DIM>&, const Permutation<DIM>&);
-  template <unsigned int DIM>
   std::ostream& operator<<(std::ostream&, const Permutation<DIM>&);
-  template <unsigned int DIM, typename T>
-  boost::array<T,DIM> operator^(const Permutation<DIM>&, const boost::array<T, static_cast<std::size_t>(DIM) >&);
-  template <unsigned int DIM, typename T>
-  std::vector<T> operator^(const Permutation<DIM>&, const std::vector<T>&);
-  template <unsigned int DIM, typename T>
-  std::vector<T> operator^=(std::vector<T>&, const Permutation<DIM>&);
-  template <unsigned int DIM, typename T>
-  boost::array<T,DIM> operator ^=(boost::array<T, static_cast<std::size_t>(DIM) >&, const Permutation<DIM>&);
-  template<unsigned int DIM>
-  Permutation<DIM> operator ^(const Permutation<DIM>&, const Permutation<DIM>&);
 
   namespace detail {
     template <typename InIter0, typename InIter1, typename RandIter>
@@ -340,23 +330,31 @@ namespace TiledArray {
       InIter last_;
     }; // struct AssignmentOp
 
-    /// Permutes of n-dimensional container
+    /// Permutes of n-dimensional type container
 
-    /// This function object permutes an n-dimensional container. The container
-    /// must define the following functions: size(), weight(), volume(),
-    /// begin(), and end(). It must also define the const_iterator type.
+    /// \tparam CS The coordinate system type associated with the object that
+    /// will be permuted.
     template<typename CS>
     struct Permute {
-      /// Construct a permute function object. \c c is the container that will
-      /// permuted.
+      /// Construct a permute function object.
+
+      /// \param r The range object of the original object.
       Permute(const Range<CS>& r) : range_(r) { }
 
-      /// Perform the permutation and place the resulting permuted n-dimensional
-      /// array in a new array starting at \c it. It must be a random access
-      /// iterator, and the distance between first and last iterators must be
-      /// equal to the volume of the original container.
-      /// \arg \c p is the permutation that will be applied to the original container.
-      /// \arg \c [first, \c last) is the iterator range for the resulting array.
+      /// Perform the data of an n-dimenstional container
+
+      /// \tparam RandIter Random access iterator type for the output data
+      /// \tparam InIter Input iterator type for the input data
+      /// \param[in] p The permutation to be applied to the n-d array container
+      /// \param[out] first_out The first iterator for the data of the output
+      /// array
+      /// \param[out] last_out The last iterator for the data of the output
+      /// array
+      /// \param[in] first_in The first iterator for the data of the input array
+      /// \param[in] first_in The last iterator for the data of the input array
+      /// \throw std::runtime_error When the distance between first_out and
+      /// last_out, or first_in and last_in is not equal to the volume of the
+      /// range object given in the constructor.
       template<typename RandIter, typename InIter>
       void operator ()(const Permutation<CS::dim>& p, RandIter first_out, RandIter last_out, InIter first_in, InIter last_in) {
         BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
@@ -400,9 +398,10 @@ namespace TiledArray {
 
     private:
 
+      /// Default construction not allowed.
       Permute();
 
-      const Range<CS>& range_;
+      const Range<CS>& range_; ///< Range object for the original array
     }; // struct Permute
 
   } // namespace detail

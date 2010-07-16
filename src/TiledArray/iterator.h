@@ -109,29 +109,6 @@ namespace TiledArray {
 
     }; // class ElementIterator
 
-    template<typename INDEX, typename CS>
-    void IncrementCoordinate(INDEX& current, const INDEX& start, const INDEX& finish) {
-      assert(current >= start && current < finish);
-      // Get order iterators.
-      typename CS::const_iterator order_iter = CS::begin();
-      const typename CS::const_iterator end_iter = CS::end();
-
-      // increment least significant, and check to see if the iterator has reached the end
-      for(; order_iter != end_iter; ++order_iter) {
-        // increment and break if done.
-        if( (++(current[*order_iter]) ) < finish[*order_iter])
-          return;
-
-        // Reset current index to start value.
-        current[*order_iter] = start[*order_iter];
-      }
-
-      // Check for end (i.e. current was reset to start)
-      if(current == start)
-        current = finish;
-
-    }
-
   } // namespace detail
 
 } // namespace TiledArray

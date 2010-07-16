@@ -515,23 +515,26 @@ namespace TiledArray {
   /// ostream output orperator.
   template <typename T, typename CS, typename A>
   std::ostream& operator <<(std::ostream& out, const Tile<T, CS, A>& t) {
-    typedef Tile<T,CS> tile_type;
-    const typename tile_type::size_array& weight = t.range().weight();
+    typedef Tile<T, CS, A> tile_type;
+    typedef typename detail::CoordIterator<const typename tile_type::size_array,
+        tile_type::coordinate_system::order>::iterator weight_iterator;
+
+    typename tile_type::ordinal_index i = 0;
+    weight_iterator weight_begin_1 = tile_type::coordinate_system::begin(t.range().weight()) + 1;
+    weight_iterator weight_end = tile_type::coordinate_system::end(t.range().weight());
+    weight_iterator weight_it;
 
     out << "{";
-    typename CS::const_iterator d ;
-    typename tile_type::ordinal_index i = 0;
     for(typename tile_type::const_iterator it = t.begin(); it != t.end(); ++it, ++i) {
-      for(d =  CS::begin(), ++d; d != CS::end(); ++d) {
-        if((i % weight[*d]) == 0)
+      for(weight_it = weight_begin_1; weight_it != weight_end; ++weight_it) {
+        if((i % *weight_it) == 0)
           out << "{";
       }
 
       out << *it << " ";
 
-
-      for(d = CS::begin(), ++d; d != CS::end(); ++d) {
-        if(((i + 1) % weight[*d]) == 0)
+      for(weight_it = weight_begin_1; weight_it != weight_end; ++weight_it) {
+        if(((i + 1) % *weight_it) == 0)
           out << "}";
       }
     }

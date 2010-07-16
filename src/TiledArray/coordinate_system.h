@@ -1,10 +1,10 @@
 #ifndef TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 #define TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 
-#include <TiledArray/type_traits.h>
+#include <TiledArray/error.h>
 #include <TiledArray/config.h>
-#include <TiledArray/types.h>
 #include <boost/array.hpp>
+#include <boost/static_assert.hpp>
 #include <boost/type_traits/is_integral.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/mpl/equal_to.hpp>
@@ -20,125 +20,152 @@ namespace TiledArray {
 
   namespace detail {
 
-    template <unsigned int DIM>
-    class DimensionOrder {
-      typedef std::pair<unsigned int, unsigned int> DimOrderPair;
-      typedef boost::array<unsigned int,DIM> IntArray;
-    public:
-      typedef typename IntArray::const_iterator const_iterator;
-      typedef typename IntArray::const_reverse_iterator const_reverse_iterator;
-      DimensionOrder(const DimensionOrderType& order) {
-        // map dimensions to their importance order
-        switch (order) {
-          case increasing_dimension_order:
-            for(unsigned int d = 0; d < DIM; ++d)
-              ord_[d] = d;
-          break;
+    /// Coordinate system level tag.
 
-          case decreasing_dimension_order:
-            for(unsigned int d = 0; d < DIM; ++d)
-              ord_[d] = DIM-d-1;
-          break;
+    /// This class is used to differentiate coordinate system types between
+    /// tile coordinates (Level = 1) and element coordinate systems (Level = 0).
+    template<unsigned int Level>
+    struct LevelTag { };
 
-          default:
-            throw std::runtime_error("Unknown dimension ordering. decreasing_dimension_order and increasing_dimension_order are allowed.");
-          break;
-        }
+    /// Dimension order types
+    typedef enum {
+      decreasing_dimension_order, ///< c-style dimension ordering
+      increasing_dimension_order  ///< fortran dimension ordering
+    } DimensionOrderType;
 
-        init_();
-      }
+    /// Select the correct iterator factory function based on dimension ordering
 
-      unsigned int dim2order(unsigned int d) const { return ord_[d]; }
-      unsigned int order2dim(unsigned int o) const { return dim_[o]; }
-      /// use this to start iteration over dimensions in increasing order of their significance
-      const_iterator begin() const { return dim_.begin(); }
-      /// use this to end iteration over dimensions in increasing order of their significance
-      const_iterator end() const { return dim_.end(); }
-      /// use this to start iteration over dimensions in decreasing order of their significance
-      const_reverse_iterator rbegin() const { return dim_.rbegin(); }
-      /// use this to end iteration over dimensions in decreasing order of their significance
-      const_reverse_iterator rend() const { return dim_.rend(); }
-    private:
-
-      static bool less_order_(const DimOrderPair& a, const DimOrderPair& b) {
-        return a.second < b.second;
-      }
-
-      /// compute dim_ by inverting ord_ map
-      void init_() {
-        boost::array<DimOrderPair,DIM> sorted_by_order;
-        for(unsigned int d=0; d<DIM; ++d)
-          sorted_by_order[d] = DimOrderPair(d,ord_[d]);
-        std::sort(sorted_by_order.begin(),sorted_by_order.end(), less_order_);
-        // construct the order->dimension map
-        for(unsigned int d=0; d<DIM; ++d)
-          dim_[d] = sorted_by_order[d].first;
-      }
-
-      template <typename RandIter>
-      bool valid_(RandIter first, RandIter last) {
-        BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
-        if((last - first) == DIM)
-          return false;
-        boost::array<int,DIM> count;
-        count.assign(0);
-        for(; first < DIM; ++first) {
-          if( ((*first) >= DIM) || (count[ *first ] > 0) )
-            return false;
-          ++count[ *first ];
-        }
-        return true;
-      }
-
-      /// maps dimension to its order
-      boost::array<unsigned int,DIM> ord_;
-      /// maps order to dimension -- inverse of ord_
-      boost::array<unsigned int,DIM> dim_;
-    }; // class DimensionOrder
-
-    template<typename C, detail::DimensionOrderType O>
+    /// This non-specialized version handles non-const containers and increasing
+    /// dimension orders.
+    /// \tparam C The container object type
+    /// \tparam O The dimension ordering
+    template<typename C, DimensionOrderType O>
     struct CoordIterator {
-      typedef typename C::iterator iterator;
-      typedef typename C::reverse_iterator reverse_iterator;
+      typedef typename C::iterator iterator;                  ///< Least to most significant iterator type
+      typedef typename C::reverse_iterator reverse_iterator;  ///< Most to least significant iterator type
 
+      /// Least to most significant begin iterator factory
+
+      /// \return  An iterator pointing to the least significant element.
       static iterator begin(C& c) { return c.begin(); }
+
+      /// Least to most significant end iterator factory
+
+      /// \return  An iterator pointing to one element past the most significant
+      /// element.
       static iterator end(C& c) { return c.end(); }
+
+      /// Most to least significant begin iterator factory
+
+      /// \return  An iterator pointing to the most significant element.
       static reverse_iterator rbegin(C& c) { return c.rbegin(); }
+
+      /// Most to least significant end iterator factory
+
+      /// \return  An iterator pointing to one element past the least significant
+      /// element.
       static reverse_iterator rend(C& c) { return c.rend(); }
-    };
+    }; // struct CoordIterator
 
-    template<typename C, detail::DimensionOrderType O>
+    /// Select the correct iterator factory function based on dimension ordering
+
+    /// This specialized version handles const containers and increasing
+    /// dimension orders.
+    /// \tparam C The container object type
+    /// \tparam O The dimension ordering
+    template<typename C, DimensionOrderType O>
     struct CoordIterator<const C, O> {
-      typedef typename C::const_iterator iterator;
-      typedef typename C::const_reverse_iterator reverse_iterator;
+      typedef typename C::const_iterator iterator;                  ///< Least to most significant const iterator type
+      typedef typename C::const_reverse_iterator reverse_iterator;  ///< Most to least significant const iterator type
 
+      /// Least to most significant begin iterator factory
+
+      /// \return  An iterator pointing to the least significant element.
       static iterator begin(const C& c) { return c.begin(); }
-      static iterator end(const C& c) { return c.end(); }
-      static reverse_iterator rbegin(const C& c) { return c.rbegin(); }
-      static reverse_iterator rend(const C& c) { return c.rend(); }
-    };
 
+      /// Least to most significant end iterator factory
+
+      /// \return  An iterator pointing to one element past the most significant
+      /// element.
+      static iterator end(const C& c) { return c.end(); }
+
+      /// Most to least significant begin iterator factory
+
+      /// \return  An iterator pointing to the most significant element.
+      static reverse_iterator rbegin(const C& c) { return c.rbegin(); }
+
+      /// Most to least significant end iterator factory
+
+      /// \return  An iterator pointing to one element past the least significant
+      /// element.
+      static reverse_iterator rend(const C& c) { return c.rend(); }
+    }; // CoordIterator<const C, O>
+
+    /// Select the correct iterator factory function based on dimension ordering
+
+    /// This non-specialized version handles non-const containers and decreasing
+    /// dimension orders.
+    /// \tparam C The container object type
     template<typename C>
     struct CoordIterator<C, decreasing_dimension_order> {
-      typedef typename C::reverse_iterator iterator;
-      typedef typename C::iterator reverse_iterator;
+      typedef typename C::reverse_iterator iterator;  ///< Least to most significant iterator type
+      typedef typename C::iterator reverse_iterator;  ///< Most to least significant iterator type
 
+      /// Least to most significant begin iterator factory
+
+      /// \return  An iterator pointing to the least significant element.
       static iterator begin(C& c) { return c.rbegin(); }
-      static iterator end(C& c) { return c.rend(); }
-      static reverse_iterator rbegin(C& c) { return c.begin(); }
-      static reverse_iterator rend(C& c) { return c.end(); }
-    };
 
+      /// Least to most significant end iterator factory
+
+      /// \return  An iterator pointing to one element past the most significant
+      /// element.
+      static iterator end(C& c) { return c.rend(); }
+
+      /// Most to least significant begin iterator factory
+
+      /// \return  An iterator pointing to the most significant element.
+      static reverse_iterator rbegin(C& c) { return c.begin(); }
+
+      /// Most to least significant end iterator factory
+
+      /// \return  An iterator pointing to one element past the least significant
+      /// element.
+      static reverse_iterator rend(C& c) { return c.end(); }
+    }; // CoordIterator<C, decreasing_dimension_order>
+
+    /// Select the correct iterator factory function based on dimension ordering
+
+    /// This non-specialized version handles const containers and decreasing
+    /// dimension orders.
+    /// \tparam C The container object type
     template<typename C>
     struct CoordIterator<const C, decreasing_dimension_order> {
-      typedef typename C::const_reverse_iterator iterator;
-      typedef typename C::const_iterator reverse_iterator;
+      typedef typename C::const_reverse_iterator iterator;  ///< Least to most significant const iterator type
+      typedef typename C::const_iterator reverse_iterator;  ///< Most to least significant const iterator type
 
+      /// Least to most significant begin iterator factory
+
+      /// \return  An iterator pointing to the least significant element.
       static iterator begin(const C& c) { return c.rbegin(); }
+
+      /// Least to most significant end iterator factory
+
+      /// \return  An iterator pointing to one element past the most significant
+      /// element.
       static iterator end(const C& c) { return c.rend(); }
+
+      /// Most to least significant begin iterator factory
+
+      /// \return  An iterator pointing to the most significant element.
       static reverse_iterator rbegin(const C& c) { return c.begin(); }
+
+      /// Most to least significant end iterator factory
+
+      /// \return  An iterator pointing to one element past the least significant
+      /// element.
       static reverse_iterator rend(const C& c) { return c.end(); }
-    };
+    }; // struct CoordIterator<const C, decreasing_dimension_order>
 
   } // namespace detail
 
@@ -152,10 +179,7 @@ namespace TiledArray {
     BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
 
   public:
-    typedef typename detail::DimensionOrder<DIM>::const_iterator const_iterator;
-    typedef typename detail::DimensionOrder<DIM>::const_reverse_iterator const_reverse_iterator;
-
-    typedef detail::LevelTag<Level> level_tag;
+    typedef detail::LevelTag<Level> level_tag;  ///< Coordinate system level (Elements: Level = 0, Tiles: Level = 1)
 
     typedef I volume_type;
     typedef I ordinal_index;
@@ -165,11 +189,6 @@ namespace TiledArray {
     static const unsigned int dim = DIM;
     static const unsigned int level = Level;
     static const detail::DimensionOrderType order = O;
-
-    static const_iterator begin() { return ordering_.begin(); }
-    static const_reverse_iterator rbegin() { return ordering_.rbegin(); }
-    static const_iterator end() { return ordering_.end(); }
-    static const_reverse_iterator rend() { return ordering_.rend(); }
 
     /// Calculate the weighted dimension values.
     static size_array calc_weight(const size_array& size) { // no throw
@@ -187,7 +206,7 @@ namespace TiledArray {
     /// significant element.
     static index calc_index(ordinal_index i, const size_array& weight) {
       index result;
-      calc_index_(i, begin(weight), end(weight), begin(result));
+      calc_index_(i, rbegin(weight), rend(weight), rbegin(result));
       return result;
     }
 
@@ -210,6 +229,29 @@ namespace TiledArray {
     /// Calculate the volume of an N-dimensional orthogonal.
     static volume_type calc_volume(const size_array& size) { // no throw
       return std::accumulate(size.begin(), size.end(), volume_type(1), std::multiplies<volume_type>());
+    }
+
+    /// Increment a coordinate index within a range.
+
+    /// This will increment a coordinate within the range \c [start, \c finish).
+    /// If the end of the range is reached, current will be equal to finish.
+    /// \param[out] current The current coordinate index to be incremented.
+    /// \param[in] start The start index of the coordinate range.
+    /// \param[in] finish The finish index of the coordinate range.
+    /// \throw std::runtime_error When current is not bounded by \c [start,
+    /// \c finish)
+    static void increment_coordinate(index& current, const index& start, const index& finish) {
+      TA_ASSERT(start <= current, std::runtime_error,
+          "Current coordinate is less than start coordinate.");
+      TA_ASSERT(current < finish, std::runtime_error,
+          "Current coordinate is less than start coordinate.");
+
+      increment_coordinate_(begin(current), end(current), begin(start), begin(finish));
+
+      // if the current location was set to start then it was at the end and
+      // needs to be reset to equal finish.
+      if(std::equal(current.begin(), current.end(), start.begin()))
+        std::copy(finish.begin(), finish.end(), current.begin());
     }
 
     /// Returns an iterator to the beginning of the least significant element.
@@ -238,9 +280,21 @@ namespace TiledArray {
 
   private:
     /// Calculate the weighted dimension values.
+
+    /// \tparam InIter Input iterator type for the size
+    /// \tparam OutIter Output iterator type for the weight
+    /// \param[in] first The first iterator pointing to the least significant
+    /// element of the size array
+    /// \param[in] last The last iterator pointing to one past the most
+    /// significant element of the size array
+    /// \param[out] result The first iterator pointing to the least significant
+    /// element of the weight array
+    /// \throw nothing
     template<typename InIter, typename OutIter>
     static void calc_weight_(InIter first, InIter last, OutIter result) { // no throw
-      for(typename std::iterator_traits<OutIter>::value_type weight = 1; first != last; ++first, ++result) {
+      typedef typename std::iterator_traits<OutIter>::value_type value_type;
+
+      for(value_type weight = 1; first != last; ++first, ++result) {
         *result = weight;
         weight *= *first;
       }
@@ -248,11 +302,16 @@ namespace TiledArray {
 
     /// Calculate the index of an ordinal.
 
-    /// \arg \c o is the ordinal value.
-    /// \arg \c [first, last) is the iterator range that contains the array
-    /// weights from most significant to least significant.
-    /// \arg \c result is an iterator to the index, which points to the most
-    /// significant element.
+    /// \tparam InIter Input iterator type for the weight
+    /// \tparam OutIter Output iterator type for the coordinate index
+    /// \param[in] o is the ordinal value
+    /// \param[in] first The first iterator pointing to the most significant
+    /// element of the weight array
+    /// \param[in] last The last iterator pointing to one past the least
+    /// significant element of the weight array
+    /// \param[out] result An iterator to the first points to the most
+    /// significant element of the coordinate index
+    /// \throw nothing
     template<typename InIter, typename OutIter>
     static void calc_index_(ordinal_index o, InIter first, InIter last, OutIter result) {
       for(; first != last; ++first, ++result) {
@@ -263,8 +322,11 @@ namespace TiledArray {
 
     /// Calculate the ordinal index of an array.
 
-    /// \var \c [index_first, \c index_last) is a pair of iterators to the coordinate index.
-    /// \var \c weight_first is an iterator to the array weights.
+    /// \param index_first First coordinate index iterator
+    /// \param index_last Last coordinate index iterator
+    /// \param weight_first First weight iterator
+    /// \return The ordinal index corresponding to the coordinate index
+    /// \throw nothing
     template<typename IndexInIter, typename WeightInIter>
     static typename std::iterator_traits<IndexInIter>::value_type
     calc_ordinal_(IndexInIter index_first, IndexInIter index_last, WeightInIter weight_first) {
@@ -274,8 +336,11 @@ namespace TiledArray {
 
     /// Calculate the ordinal index of an array.
 
-    /// \var \c [index_first, \c index_last) is a pair of iterators to the coordinate index.
-    /// \var \c weight_first is an iterator to the array weights.
+    /// \param index_first First coordinate index iterator
+    /// \param index_last Last coordinate index iterator
+    /// \param weight_first First weight iterator
+    /// \return The ordinal index corresponding to the coordinate index
+    /// \throw nothing
     template<typename IndexInIter, typename WeightInIter, typename StartInIter>
     static typename std::iterator_traits<IndexInIter>::value_type
     calc_ordinal_(IndexInIter index_first, IndexInIter index_last, WeightInIter weight_first, StartInIter start_first) {
@@ -286,11 +351,32 @@ namespace TiledArray {
       return o;
     }
 
-    static detail::DimensionOrder<DIM> ordering_;
-  };
+    /// Increment a coordinate index
 
-  template <unsigned int DIM, unsigned int Level, detail::DimensionOrderType O, typename I>
-  detail::DimensionOrder<DIM> CoordinateSystem<DIM, Level, O, I>::ordering_(O);
+    /// \tparam ForIter The forward iterator type of the current index
+    /// \tparam InIter The input iterator type for the start and finish indexes
+    /// \param first_cur The first iterator pointing to the least significant
+    /// element of the current index.
+    /// \param last_cur The last iterator pointing to one past the most
+    /// significant element of the current index.
+    /// \param start The first iterator pointing to the least significant
+    /// element of the start index
+    /// \param start The first iterator pointing to the least significant
+    /// element of the finish index
+    /// \throw nothing
+    template <typename ForIter, typename InIter>
+    static void increment_coordinate_(ForIter first_cur, ForIter last_cur, InIter start, InIter finish) {
+      // increment least significant, and check to see if the iterator has reached the end
+      for(++first_cur; first_cur != last_cur; ++first_cur, ++start, ++finish) {
+        // increment and break if done.
+        if( *first_cur < *finish)
+          return;
+
+        // Reset current index to start value.
+        *first_cur = *start;
+      }
+    }
+  };
 
   namespace detail {
 

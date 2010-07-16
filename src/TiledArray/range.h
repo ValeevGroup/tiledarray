@@ -163,7 +163,7 @@ namespace TiledArray {
   private:
 
     void increment(index& i) const {
-      detail::IncrementCoordinate<index,coordinate_system>(i, start_, finish_);
+      coordinate_system::increment_coordinate(i, start_, finish_);
     }
 
     friend   void swap<>(Range<CS>&, Range<CS>&);
