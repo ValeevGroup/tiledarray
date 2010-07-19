@@ -54,8 +54,8 @@ CONFIG_HEADER = $(top_builddir)/src/config.h \
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am_ta_test_OBJECTS = TiledArrayTest.$(OBJEXT) permutation.$(OBJEXT) \
-	algorithm.$(OBJEXT) coordinate_system.$(OBJEXT) \
-	coordinates.$(OBJEXT) range.$(OBJEXT) tiled_range1.$(OBJEXT) \
+	coordinates.$(OBJEXT) coordinate_system.$(OBJEXT) \
+	algorithm.$(OBJEXT) range.$(OBJEXT) tiled_range1.$(OBJEXT) \
 	tiled_range.$(OBJEXT) tile.$(OBJEXT) variable_list.$(OBJEXT) \
 	array_math.$(OBJEXT) annotated_array.$(OBJEXT) \
 	variable_list_math.$(OBJEXT) range_math.$(OBJEXT) \
@@ -177,9 +177,9 @@ top_srcdir = @top_srcdir@
 AM_CPPFLAGS = -I$(top_srcdir)/src/
 ta_test_SOURCES = TiledArrayTest.cpp \
                   permutation.cpp \
-                  algorithm.cpp \
-                  coordinate_system.cpp \
                   coordinates.cpp \
+                  coordinate_system.cpp \
+                  algorithm.cpp \
                   range.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \

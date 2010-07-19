@@ -5,9 +5,9 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/
 check_PROGRAMS = ta-test
 ta_test_SOURCES = TiledArrayTest.cpp \
                   permutation.cpp \
-                  algorithm.cpp \
-                  coordinate_system.cpp \
                   coordinates.cpp \
+                  coordinate_system.cpp \
+                  algorithm.cpp \
                   range.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
