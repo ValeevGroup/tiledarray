@@ -191,8 +191,8 @@ namespace TiledArray {
       }
 
       static bool valid_char_(char c) {
-        return (c >= 'a' && c < 'z') || (c >= 'A' && c < 'Z') ||
-            (c >= '0' && c < '9') || (c == ' ') || (c == ',') || (c == '\0');
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+            (c >= '0' && c <= '9') || (c == ' ') || (c == ',') || (c == '\0');
       }
 
       friend void swap(VariableList&, VariableList&);
