@@ -63,11 +63,11 @@ struct TiledRangeFixture {
 
 
 const TiledRangeFixture::TRangeN::range_type
-TiledRangeFixture::tile_range(RangeFixture::fill_index<TiledRangeFixture::index>(0),
-    RangeFixture::fill_index<TiledRangeFixture::index>(5));
+TiledRangeFixture::tile_range(fill_index<TiledRangeFixture::index>(0),
+    fill_index<TiledRangeFixture::index>(5));
 const TiledRangeFixture::TRangeN::tile_range_type
-TiledRangeFixture::element_range(RangeFixture::fill_index<TiledRangeFixture::tile_index>(0),
-    RangeFixture::fill_index<TiledRangeFixture::tile_index>(a[5]));
+TiledRangeFixture::element_range(fill_index<TiledRangeFixture::tile_index>(0),
+    fill_index<TiledRangeFixture::tile_index>(a[5]));
 
 BOOST_FIXTURE_TEST_SUITE( tiled_range_suite, TiledRangeFixture )
 

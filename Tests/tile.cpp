@@ -42,8 +42,8 @@ struct TileFixture {
 };
 
 const boost::shared_ptr<TileFixture::RangeN> TileFixture::pr =
-    boost::make_shared<TileFixture::RangeN>(RangeFixture::fill_index<index>(0),
-    RangeFixture::fill_index<index>(5));
+    boost::make_shared<TileFixture::RangeN>(fill_index<index>(0),
+    fill_index<index>(5));
 
 
 template<typename InIter, typename T>
@@ -70,12 +70,12 @@ BOOST_AUTO_TEST_CASE( accessor )
 BOOST_AUTO_TEST_CASE( element_access )
 {
   // check at() with array coordinate index
-  BOOST_CHECK_EQUAL(t.at(RangeFixture::fill_index<index>(0)), 1);
-  BOOST_CHECK_EQUAL(t.at(RangeFixture::fill_index<index>(4)), 1);
+  BOOST_CHECK_EQUAL(t.at(fill_index<index>(0)), 1);
+  BOOST_CHECK_EQUAL(t.at(fill_index<index>(4)), 1);
 
   // check operator[] with array coordinate index
-  BOOST_CHECK_EQUAL(t[RangeFixture::fill_index<index>(0)], 1);
-  BOOST_CHECK_EQUAL(t[RangeFixture::fill_index<index>(4)], 1);
+  BOOST_CHECK_EQUAL(t[fill_index<index>(0)], 1);
+  BOOST_CHECK_EQUAL(t[fill_index<index>(4)], 1);
 
   // check at() with ordinal index
   BOOST_CHECK_EQUAL(t.at(0), 1);
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE( resize )
 
   // Check that the common elements are maintained in resize operation.
   boost::shared_ptr<RangeN> pr2 = boost::make_shared<RangeN>(
-      RangeFixture::fill_index<index>(0), RangeFixture::fill_index<index>(6));
+      fill_index<index>(0), fill_index<index>(6));
   t2.resize(pr2, 2);
   BOOST_CHECK_EQUAL(t2.range(), *pr2); // check new dimensions
   BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), pr2->volume());

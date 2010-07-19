@@ -31,15 +31,15 @@ struct RangeFixture {
 
   ~RangeFixture() { }
 
-  template <typename Index>
-  static Index fill_index(typename Index::index value) {
-    Index result;
-    result.data().assign(value);
-    return result;
-  }
-
   RangeN r;
 };
+
+template <typename Index>
+Index fill_index(typename Index::index value) {
+  Index result;
+  std::fill(result.begin(), result.end(), value);
+  return result;
+}
 
 struct Range1Fixture {
   typedef TiledRange1<GlobalFixture::coordinate_system> range1_type;

@@ -9,18 +9,18 @@ RangeFixture::RangeFixture()
 {
 }
 
-const RangeFixture::index RangeFixture::start         = RangeFixture::fill_index<RangeFixture::index>(0);
-const RangeFixture::index RangeFixture::finish        = RangeFixture::fill_index<RangeFixture::index>(5);
+const RangeFixture::index RangeFixture::start         = fill_index<RangeFixture::index>(0);
+const RangeFixture::index RangeFixture::finish        = fill_index<RangeFixture::index>(5);
 const RangeFixture::size_array RangeFixture::size     = RangeFixture::finish.data();
 const RangeFixture::size_array RangeFixture::weight   = GlobalFixture::coordinate_system::calc_weight(RangeFixture::size);
 const RangeFixture::volume_type RangeFixture::volume  = GlobalFixture::coordinate_system::calc_volume(RangeFixture::size);
-const RangeFixture::index RangeFixture::p0            = RangeFixture::fill_index<RangeFixture::index>(0);
-const RangeFixture::index RangeFixture::p1            = RangeFixture::fill_index<RangeFixture::index>(1);
-const RangeFixture::index RangeFixture::p2            = RangeFixture::fill_index<RangeFixture::index>(2);
-const RangeFixture::index RangeFixture::p3            = RangeFixture::fill_index<RangeFixture::index>(3);
-const RangeFixture::index RangeFixture::p4            = RangeFixture::fill_index<RangeFixture::index>(4);
-const RangeFixture::index RangeFixture::p5            = RangeFixture::fill_index<RangeFixture::index>(5);
-const RangeFixture::index RangeFixture::p6            = RangeFixture::fill_index<RangeFixture::index>(6);
+const RangeFixture::index RangeFixture::p0            = fill_index<RangeFixture::index>(0);
+const RangeFixture::index RangeFixture::p1            = fill_index<RangeFixture::index>(1);
+const RangeFixture::index RangeFixture::p2            = fill_index<RangeFixture::index>(2);
+const RangeFixture::index RangeFixture::p3            = fill_index<RangeFixture::index>(3);
+const RangeFixture::index RangeFixture::p4            = fill_index<RangeFixture::index>(4);
+const RangeFixture::index RangeFixture::p5            = fill_index<RangeFixture::index>(5);
+const RangeFixture::index RangeFixture::p6            = fill_index<RangeFixture::index>(6);
 
 
 BOOST_FIXTURE_TEST_SUITE( range_suite, RangeFixture )
