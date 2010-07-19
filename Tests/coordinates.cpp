@@ -60,13 +60,6 @@ BOOST_AUTO_TEST_CASE( constructors )
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
-BOOST_AUTO_TEST_CASE( make_functions )
-{
-  // check for correct creation of point
-  Point3 p1 = Point3::make(1,2,3);
-  BOOST_CHECK_EQUAL_COLLECTIONS(p1.data().begin(), p1.data().end(), a.begin(), a.end());
-}
-
 BOOST_AUTO_TEST_CASE( element_access )
 {
   BOOST_CHECK_EQUAL( p[0], 1u);            // correct element access
@@ -125,16 +118,16 @@ BOOST_AUTO_TEST_CASE( c_comparisons )
 {
   // 2D coordinate constructor?
   typedef ArrayCoordinate<std::size_t, 2, LevelTag<0> > Point2;
-  Point2 p0(0ul,0ul);
-  Point2 p1(0ul,1ul);
-  Point2 p2(0ul,2ul);
-  Point2 p3(1ul,0ul);
-  Point2 p4(1ul,1ul);
-  Point2 p5(1ul,2ul);
-  Point2 p6(2ul,0ul);
-  Point2 p7(2ul,1ul);
-  Point2 p8(2ul,2ul);
-  Point2 pp(1ul,1ul);
+  Point2 p0(0,0);
+  Point2 p1(0,1);
+  Point2 p2(0,2);
+  Point2 p3(1,0);
+  Point2 p4(1,1);
+  Point2 p5(1,2);
+  Point2 p6(2,0);
+  Point2 p7(2,1);
+  Point2 p8(2,2);
+  Point2 pp(1,1);
 
   BOOST_CHECK(p0 < pp);  // check comparison operators for success.
   BOOST_CHECK(p1 < pp);  // check for correct lexicographical comparison order.
@@ -163,17 +156,6 @@ BOOST_AUTO_TEST_CASE( c_comparisons )
   BOOST_CHECK( ! (p7 < pp) );
   BOOST_CHECK( ! (p8 < pp) );
   BOOST_CHECK( ! (p8 == pp) );
-}
-
-BOOST_AUTO_TEST_CASE( comparison_functions )
-{
-  Point3 p111(1,1,1);
-  Point3 p222(2,2,2);
-  Point3 p123(1,2,3);
-  Point3 p012(0,1,2);
-  Point3 p002(0,0,2);
-
-  BOOST_CHECK(detail::less(p111.data(),p222.data()));
 }
 
 BOOST_AUTO_TEST_CASE( math )
