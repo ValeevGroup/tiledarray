@@ -8,26 +8,34 @@
 #include <boost/operators.hpp>
 #include <boost/array.hpp>
 #include <boost/type_traits.hpp>
+#include <boost/utility/enable_if.hpp>
 #include <iterator>
+#include <algorithm>
 #ifndef __GXX_EXPERIMENTAL_CXX0X__
 #include <stdarg.h>
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
+  // Forward declarations.
 namespace boost {
   template <typename T, std::size_t D>
   std::ostream& operator<<(std::ostream&, const boost::array<T,D>&);
 } // namespace boost
 
 namespace TiledArray {
-  // Forward declaration of TiledArray Permutation.
+  // Forward declarations.
   template <unsigned int DIM>
   class Permutation;
+  namespace detail {
+    template <typename InIter0, typename InIter1, typename RandIter>
+    void permute(InIter0, InIter0, InIter1, RandIter);
+  }  // namespace detail
 
-  /// ArrayCoordinate represents coordinates of a point in a DIM-dimensional orthogonal lattice).
-  ///
-  /// The purpose of Tag is to create multiple instances of the class
-  /// with identical mathematical behavior but distinct types to allow
-  /// overloading in end-user classes.
+
+  /// ArrayCoordinate represents a coordinate index of an DIM-dimensional orthogonal tensor.
+
+  /// \tparam I The index type of each coordinate element.
+  /// \tparam DIM The number of dimensions in the coordinate
+  /// \tparam Tag Type used to differentiate different coordinate systems.
   template <typename I, unsigned int DIM, typename Tag>
   class ArrayCoordinate : public
       boost::addable< ArrayCoordinate<I,DIM,Tag>,                // point + point
@@ -36,55 +44,73 @@ namespace TiledArray {
       boost::equality_comparable1< ArrayCoordinate<I,DIM,Tag>    // point == point
       > > > >
   {
+  private:
+    typedef boost::array<I,DIM> array_type; ///< array_type type used to store coordinates
+
   public:
     BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
 
-    typedef ArrayCoordinate<I,DIM,Tag> ArrayCoordinate_;
-    typedef I index;
-    typedef I volume;
-    typedef boost::array<index,DIM> Array;
-    typedef typename Array::iterator iterator;
-    typedef typename Array::const_iterator const_iterator;
-    typedef typename Array::reverse_iterator reverse_iterator;
-    typedef typename Array::const_reverse_iterator const_reverse_iterator;
+    typedef ArrayCoordinate<I,DIM,Tag> ArrayCoordinate_;                        ///< This type
+    typedef I index;                                                            ///< Coordinate element type
+    typedef typename array_type::iterator iterator;                             ///< Coordinate element iterator
+    typedef typename array_type::const_iterator const_iterator;                 ///< Coordinate element const iterator
+    typedef typename array_type::reverse_iterator reverse_iterator;             ///< Coordinate element reverse iterator
+    typedef typename array_type::const_reverse_iterator const_reverse_iterator; ///< Coordinate element const reverse iterator
 
-    static const unsigned int dim = DIM;
+    /// Default constructor
 
-    // Constructors/Destructor
+    /// All coordinate elements are initialized to 0.
     ArrayCoordinate() { r_.assign(index(0)); }
+
+    /// Initialize coordinate with an iterator
+
+    /// \tparam InIter Input iterator type (InIter::value_type must be an
+    /// integral type)
+    /// \param first An iterator that points to the beginning of a list elements
+    /// used to initialize the coordinate elements
+    /// \throw nothing
     template <typename InIter>
-    explicit ArrayCoordinate(InIter first) {
+    explicit ArrayCoordinate(InIter first, typename boost::disable_if<boost::is_integral<InIter> >::type* = NULL) {
       // should variadic constructor been chosen?
       // need to disambiguate the call if DIM==1
       // assume iterators if InIter is not an integral type
       // else assume wanted variadic constructor
       // this scheme follows what std::vector does
-      BOOST_STATIC_ASSERT((DIM == 1u) || (! boost::is_integral<InIter>::value));
       detail::initialize_from_values(first, r_.begin(), DIM, boost::is_integral<InIter>());
     }
-    ArrayCoordinate(const Array& init_values) : r_(init_values) { } // no throw
-    ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { } // no throw
+
+    /// Copy the content of the boost::array<I, DIM> object into the coordinate elements.
+
+    /// \throw nothing
+    ArrayCoordinate(const array_type& init_values) : r_(init_values) { }
+
+    /// Copy constructor
+
+    /// \throw nothing
+    ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { }
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
-    ArrayCoordinate(ArrayCoordinate&& a) : r_(std::move(a.r_)) { } // no throw
+    /// Move constructor
+
+    /// \throw nothing
+    ArrayCoordinate(ArrayCoordinate&& a) : r_(std::move(a.r_)) { }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Constant index constructor.
+    /// Constant list constructor constructor.
 
-    /// Constructs an ArrayCoordinate with the specified constants. For example,
-    /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a
-    /// point with the coordinates (0, 1, 2, 3).
+    /// This constructor takes a list of integral-type values and initializes
+    /// the elements of the coordinate with them. The number of parameters
+    /// passed to this constructor must be exactly equal to DIM.
+    /// \tparam ...Params The variadic parameter list (All parameters types must
+    /// be integral types)
+    /// \param params The list of parameters to be used to initialize the
+    /// coordinate
+    /// \throw nothing
     template <typename... Params>
     explicit ArrayCoordinate(Params... params) {
       BOOST_STATIC_ASSERT(detail::Count<Params...>::value == DIM);
       BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
       detail::fill(r_.begin(), params...);
-    }
-
-    /// Constructs and returns a coordinate with the given constant values.
-    template <typename... Params>
-    static ArrayCoordinate_ make(Params... params) {
-      return ArrayCoordinate_(params...);
     }
 #else
     /// Constant index constructor.
@@ -108,83 +134,125 @@ namespace TiledArray {
       va_end(ap);
     }
 
-    /// Constructs and returns a coordinate with the given constant values.
-    static ArrayCoordinate_ make(const index c0, ...) {
-      ArrayCoordinate_ result;
-      result.r_.assign(0ul);
-      va_list ap;
-      va_start(ap, c0);
-
-      result.r_[0] = c0;
-      for(unsigned int i = 1; i < DIM; ++i)
-        result.r_[i] = va_arg(ap, index);
-
-      va_end(ap);
-
-      return result;
-    }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
-    ~ArrayCoordinate() {}
+    /// Begin iterator factory
 
-    /// Returns an iterator to the first coordinate
+    /// \return An iterator to the first coordinate element
+    /// \throw nothing
     iterator begin() { return r_.begin(); }
 
-    /// Returns a constant iterator to the first coordinate.
+    /// Begin const iterator factory
+
+    /// \return A const iterator to the first coordinate element
+    /// \throw nothing
     const_iterator begin() const { return r_.begin(); }
 
-    /// Returns an iterator to one past the last coordinate.
+    /// End iterator factory
+
+    /// \return An iterator pointing to one past the end of the coordinate
+    /// elements.
+    /// \throw nothing
     iterator end() { return r_.end(); }
 
-    /// Returns a constant iterator to one past the last coordinate.
+    /// End const iterator factory
+
+    /// \return A const iterator pointing to one past the end of the coordinate
+    /// elements.
+    /// \throw nothing
     const_iterator end() const { return r_.end(); }
 
-    /// Returns a reverse iterator to the last coordinate
+    /// Reverse begin iterator factory
+
+    /// \return An iterator pointing to one element before the first coordinate
+    /// elements.
     reverse_iterator rbegin() { return r_.rbegin(); }
 
-    /// Returns a constant reverse iterator to the last coordinate.
+    /// Reverse begin const iterator factory
+
+    /// \return A const iterator pointing to one element before the first
+    /// coordinate elements.
     const_reverse_iterator rbegin() const { return r_.rbegin(); }
 
-    /// Returns a reverse iterator to one before the first coordinate.
+    /// Reverse end iterator factory
+
+    /// \return An iterator to the last coordinate element
     reverse_iterator rend() { return r_.rend(); }
 
-    /// Returns a constant reverse iterator to one before the first coordinate.
+    /// Reverse end const iterator factory
+
+    /// \return A const iterator to the last coordinate element
     const_reverse_iterator rend() const { return r_.rend(); }
 
     /// Assignment operator
+
+    /// \param other The other coordinate to be copied
+    /// \return A reference to this object
+    /// \throw nothing
     ArrayCoordinate_&
-    operator =(const ArrayCoordinate_& c) {
-      r_ = c.r_;
+    operator =(const ArrayCoordinate_& other) {
+      r_ = other.r_;
 
       return (*this);
     }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
     /// Move assignment operator
+
+    /// \param other The other coordinate to be moved
+    /// \return A reference to this object
+    /// \throw nothing
     ArrayCoordinate_&
-    operator =(ArrayCoordinate_&& c) {
-      r_ = std::move(c.r_);
+    operator =(ArrayCoordinate_&& other) {
+      r_ = std::move(other.r_);
 
       return (*this);
     }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
 
-    /// Add operator
-    ArrayCoordinate_& operator+=(const ArrayCoordinate_& c) {
-      for(unsigned int d = 0; d < DIM; ++d)
-        r_[d] += c.r_[d];
+    /// Addition-assignment operator
+
+    /// \param other The coordinate to be added to this coordinate
+    /// \return A reference to this object
+    /// \throw nothing
+    ArrayCoordinate_& operator+=(const ArrayCoordinate_& other) {
+      const_iterator other_it = other.begin();
+      for(iterator it = r_.begin(); it != r_.end(); ++it, ++other_it)
+        *it += *other_it;
       return *this;
     }
 
-    /// Subtract operator
-    ArrayCoordinate_ operator-=(const ArrayCoordinate_& c) {
-      for(unsigned int d = 0; d < DIM; ++d)
-        r_[d] -= c.r_[d];
+    /// Subtract-assignement operator
+
+    /// \param other The coordinate to be subtracted from this coordinate
+    /// \return A reference to this object
+    /// \throw nothing
+    ArrayCoordinate_ operator-=(const ArrayCoordinate_& other) {
+      const_iterator other_it = other.begin();
+      for(iterator it = r_.begin(); it != r_.end(); ++it, ++other_it)
+        *it -= *other_it;
       return *this;
     }
 
-    const index& operator[](size_t d) const
-    {
+    /// Coordinate element const accessor
+
+    /// \param n The element to access
+    /// \return A const reference to element \c n
+    /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
+    const index& operator[](std::size_t n) const {
+#ifdef NDEBUG
+      return r_[n];
+#else
+      return r_.at(n);
+#endif
+    }
+
+    /// Coordinate element accessor
+
+    /// \param n The element to access
+    /// \return A reference to element \c n
+    /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
+    index& operator[](std::size_t d) {
 #ifdef NDEBUG
       return r_[d];
 #else
@@ -192,51 +260,95 @@ namespace TiledArray {
 #endif
     }
 
-    index& operator[](size_t d)
-    {
-#ifdef NDEBUG
-      return r_[d];
-#else
-      return r_.at(d);
-#endif
-    }
+    /// Coordinate element const accessor
 
-    const index& at(size_t d) const {  return r_.at(d);  }
-    index& at(size_t d) { return r_.at(d); }
+    /// \param n The element to access
+    /// \return A const reference to element \c n
+    /// \throw std::out_of_range When \c n \c >= \c DIM
+    const index& at(std::size_t d) const {  return r_.at(d);  }
 
-    const Array& data() const { return r_; }
-    Array& data() { return r_; }
+    /// Coordinate element accessor
 
-    const ArrayCoordinate_ operator ^= (const Permutation<DIM>& p) {
-      r_ = p ^ r_;
+    /// \param n The element to access
+    /// \return A reference to element \c n
+    /// \throw std::out_of_range When \c n \c >= \c DIM
+    index& at(std::size_t d) { return r_.at(d); }
+
+    /// Coordinate array const accessor
+
+    /// \return A const reference to the coordinate data array
+    /// \throw nothing
+    const array_type& data() const { return r_; }
+
+    /// Coordinate array accessor
+
+    /// \return A reference to the coordinate data array
+    /// \throw nothing
+    array_type& data() { return r_; }
+
+    /// Coordinate permutation operator
+
+    /// Permute this coordinate.
+    /// \param p Permutation object
+    /// \return A reference to this object
+    ArrayCoordinate_& operator ^= (const Permutation<DIM>& p) {
+      array_type temp;
+      detail::permute(p.begin(), p.end(), r_.begin(), temp.begin());
+      boost::swap(r_, temp);
       return *this;
     }
 
+    /// Serialize coordinate data
+
+    /// Serialized the coordinate data into archive \c ar.
+    /// \tparam Archive The serialization archive type
+    /// \tparam ar The serialization archive object
     template <typename Archive>
     void serialize(const Archive& ar) {
       ar & r_;
     }
 
   private:
-    /// last dimension is least significant
-    Array r_;
+    array_type r_; ///< The coordinate data array
   };
 
-  /// Swap the data of c1 with c2.
+  /// Swap the data of \c c1 with \c c2.
+
+  /// \tparam I The coordinate index type
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The first coordinate to be swaped
+  /// \param c2 The second coordinate to be swaped
+  /// \throw nothing
   template <typename I, unsigned int DIM, typename Tag>
   void swap(ArrayCoordinate<I,DIM,Tag>& c1, ArrayCoordinate<I,DIM,Tag>& c2) { // no throw
     boost::swap(c1.data(), c2.data());
   }
 
-  /// Add constant to coordinate.
-  template <typename I, unsigned int DIM, typename Tag, typename CS>
+  /// Add a constant to a coordinate
+
+  /// \tparam I The coordinate index type
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c The coordinate to be modified
+  /// \param s The constant to be added to each element of the coordinate
+  /// \return A reference to the modified coordinate \c c
+  /// \throw nothing
+  template <typename I, unsigned int DIM, typename Tag>
   ArrayCoordinate<I,DIM,Tag>& operator +=(ArrayCoordinate<I,DIM,Tag>& c, const I& s) {
     for(typename ArrayCoordinate<I,DIM,Tag>::iterator it = c.begin(); it != c.end(); ++it)
       *it += s;
     return c;
   }
 
-  /// Returns a coordinates with a constant added to each element.
+  /// Add a constant to a coordinate
+
+  /// \tparam I The coordinate index type
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c The coordinate to be modified
+  /// \param s The constant to be added to each element of the coordinate
+  /// \return A copy of coordinate \c c with the constant \c s added to it
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<I,DIM,Tag> operator +(const ArrayCoordinate<I,DIM,Tag>& c, const I& s) {
     ArrayCoordinate<I,DIM,Tag> result(c);
@@ -245,7 +357,15 @@ namespace TiledArray {
     return result;
   }
 
-  /// Subtract a constant from coordinate.
+  /// Subtract a constant from a coordinate
+
+  /// \tparam I The coordinate index type
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c The original coordinate
+  /// \param s The constant to be subtracted from each element of the coordinate
+  /// \return A reference to the modified coordinate \c c
+  /// \throw nothing
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<I,DIM,Tag>& operator -=(ArrayCoordinate<I,DIM,Tag>& c, const I& s) {
     for(typename ArrayCoordinate<I,DIM,Tag>::iterator it = c.begin(); it != c.end(); ++it)
@@ -253,7 +373,14 @@ namespace TiledArray {
     return c;
   }
 
-  /// Returns a coordinates with a constant subtracted from each element.
+  /// Subtract a constant from a coordinate
+
+  /// \tparam I The coordinate index type
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c The original coordinate
+  /// \param s The constant to be added to each element of the coordinate
+  /// \return A copy of coordinate \c c with the constant \c s subtracted from it
   template <typename I, unsigned int DIM, typename Tag, typename CS>
   ArrayCoordinate<I,DIM,Tag> operator -(const ArrayCoordinate<I,DIM,Tag>& c, const I& s) {
     ArrayCoordinate<I,DIM,Tag> result(c);
@@ -262,34 +389,12 @@ namespace TiledArray {
     return result;
   }
 
-  namespace detail {
+  /// Lexicographic comparison of two ArrayCoordinates.
 
-    template <typename I, std::size_t DIM>
-    bool less(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      return std::equal(a1.begin(), a1.end(), a2.begin(), std::less<I>());
-    }
-
-    template <typename I, std::size_t DIM>
-    bool less_eq(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      return std::equal(a1.begin(), a1.end(), a2.begin(), std::less_equal<I>());
-    }
-
-    template <typename I, std::size_t DIM>
-    bool greater(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      return std::equal(a1.begin(), a1.end(), a2.begin(), std::greater<I>());
-    }
-
-    template <typename I, std::size_t DIM>
-    bool greater_eq(const boost::array<I,DIM>& a1, const boost::array<I,DIM>& a2) {
-      return std::equal(a1.begin(), a1.end(), a2.begin(), std::greater_equal<I>());
-    }
-
-  } // namespace detail
-
-  /// Compare ArrayCoordinates Lexicographically.
+  /// \return \c true when all elements of
   template <typename I, unsigned int DIM, typename Tag>
   bool operator<(const ArrayCoordinate<I,DIM,Tag>& c1, const ArrayCoordinate<I,DIM,Tag>& c2) {
-    return std::equal(c1.begin(), c1.end(), c2.begin());
+    return std::lexicographical_compare(c1.begin(), c1.end(), c2.begin(), c2.end());
   }
 
   template <typename I, unsigned int DIM, typename Tag>
@@ -297,41 +402,12 @@ namespace TiledArray {
     return std::equal(c1.begin(), c1.end(), c2.begin());
   }
 
-  template <typename I>
-  bool operator==(const boost::array<I,1>& a, const I& i) {
-    return a[0] == i;
-  }
-
-  template <typename I>
-  bool operator==(const I& i, const boost::array<I,1>& a) {
-    return a[0] == i;
-  }
-
-  template <typename I, typename Tag>
-  bool operator==(const ArrayCoordinate<I,1,Tag>& c, const I& i) {
-    return c[0] == i;
-  }
-
-  template <typename I, typename Tag>
-  bool operator==(const I& i, const ArrayCoordinate<I,1,Tag>& c) {
-    return operator==(c[0], i);
-  }
-
-  template <typename I, typename Tag>
-  bool operator!=(const ArrayCoordinate<I,1,Tag>& c, const I& i) {
-    return ! operator==(c[0], i);
-  }
-
-  template <typename I, typename Tag>
-  bool operator!=(const I& i, const ArrayCoordinate<I,1,Tag>& c) {
-    return ! operator==(c[0], i);
-  }
-
   /// Permute an ArrayCoordinate
   template <typename I, unsigned int DIM, typename Tag>
-  ArrayCoordinate<I,DIM,Tag> operator ^(const Permutation<DIM>& perm, const ArrayCoordinate<I,DIM,Tag>& c) {
-    ArrayCoordinate<I,DIM,Tag> result(c);
-    return result ^= perm;
+  ArrayCoordinate<I,DIM,Tag> operator ^(const Permutation<DIM>& p, const ArrayCoordinate<I,DIM,Tag>& c) {
+    ArrayCoordinate<I,DIM,Tag> result;
+    detail::permute(p.begin(), p.end(), c.begin(), result.begin());
+    return result;
   }
 
   /// Append an ArrayCoordinate to an output stream.
