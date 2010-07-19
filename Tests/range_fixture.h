@@ -41,11 +41,7 @@ struct RangeFixture {
   RangeN r;
 };
 
-struct Range1BaseFixture {
-
-};
-
-struct Range1Fixture : public Range1BaseFixture {
+struct Range1Fixture {
   typedef TiledRange1<GlobalFixture::coordinate_system> range1_type;
   typedef range1_type::ordinal_index ordinal_index;
   typedef range1_type::tile_coordinate_system::index tile_index;

@@ -28,16 +28,13 @@ BOOST_AUTO_TEST_CASE( block_accessor )
 
 BOOST_AUTO_TEST_CASE( block_info )
 {
-  boost::array<std::size_t, 1> s1 = {{ 5 }};
-  boost::array<std::size_t, 1> s2 = {{ 50 }};
-  boost::array<std::size_t, 1> s3 = {{ 3 }};
-  BOOST_CHECK_EQUAL(tr1.tiles().size(), s1);
+  BOOST_CHECK_EQUAL(tr1.tiles().size(), 5ul);
   BOOST_CHECK_EQUAL(tr1.tiles().start(), 0ul);
   BOOST_CHECK_EQUAL(tr1.tiles().finish(), 5ul);
-  BOOST_CHECK_EQUAL(tr1.elements().size(), s2);
+  BOOST_CHECK_EQUAL(tr1.elements().size(), 50ul);
   BOOST_CHECK_EQUAL(tr1.elements().start(), 0ul);
   BOOST_CHECK_EQUAL(tr1.elements().finish(), 50ul);
-  BOOST_CHECK_EQUAL(tr1.tile(0).size(), s3);
+  BOOST_CHECK_EQUAL(tr1.tile(0).size(), 3ul);
   BOOST_CHECK_EQUAL(tr1.tile(0).start(), 0ul);
   BOOST_CHECK_EQUAL(tr1.tile(0).finish(), 3ul);
 }
