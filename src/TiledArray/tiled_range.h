@@ -130,8 +130,8 @@ namespace TiledArray {
       tile_index start;
       tile_index finish;
       for(unsigned int d = 0; d < coordinate_system::dim; ++d) {
-        start[d] = ranges_[d].tile(i[d]).start()[0];
-        finish[d] = ranges_[d].tile(i[d]).finish()[0];
+        start[d] = ranges_[d].tile(i[d]).start();
+        finish[d] = ranges_[d].tile(i[d]).finish();
       }
       return tile_range_type(start, finish);
     }
@@ -147,11 +147,11 @@ namespace TiledArray {
 
       // Find the start and finish of the over all tiles and element ranges.
       for(unsigned int d=0; d < coordinate_system::dim; ++d) {
-        start[d] = ranges_[d].tiles().start()[0];
-        finish[d] = ranges_[d].tiles().finish()[0];
+        start[d] = ranges_[d].tiles().start();
+        finish[d] = ranges_[d].tiles().finish();
 
-        start_element[d] = ranges_[d].elements().start()[0];
-        finish_element[d] = ranges_[d].elements().finish()[0];
+        start_element[d] = ranges_[d].elements().start();
+        finish_element[d] = ranges_[d].elements().finish();
       }
       range_.resize(start, finish);
       element_range_.resize(start_element, finish_element);

@@ -156,13 +156,13 @@ namespace TiledArray {
     const range_type& tiles() const { return range_; }
     const tile_range_type& elements() const { return element_range_; }
     const tile_range_type& tile(const ordinal_index i) const {
-      return tile_ranges_.at(i - range_.start()[0]);
+      return tile_ranges_.at(i - range_.start());
     }
 
     const ordinal_index& element2tile(const ordinal_index& e) const {
       TA_ASSERT( element_range_.includes(tile_range_index(e)) ,
           std::out_of_range, "Element index is out of range.");
-      std::size_t i = e - element_range_.start()[0];
+      std::size_t i = e - element_range_.start();
       return elem2tile_[i];
     }
 
@@ -195,14 +195,14 @@ namespace TiledArray {
     /// Initialize secondary data
     void init_map_() {
       // check for 0 size range.
-      if(element_range_.size()[0] == 0)
+      if(element_range_.size() == 0)
         return;
 
       // initialize elem2tile map
-      elem2tile_.resize(element_range_.size()[0]);
-      for(ordinal_index t = 0; t < range_.size()[0]; ++t)
-        for(ordinal_index e = tile_ranges_[t].start()[0]; e < tile_ranges_[t].finish()[0]; ++e)
-          elem2tile_[e - element_range_.start()[0]] = t + range_.start()[0];
+      elem2tile_.resize(element_range_.size());
+      for(ordinal_index t = 0; t < range_.size(); ++t)
+        for(ordinal_index e = tile_ranges_[t].start(); e < tile_ranges_[t].finish(); ++e)
+          elem2tile_[e - element_range_.start()] = t + range_.start();
     }
 
     friend void swap<>(TiledRange1<CS>&, TiledRange1<CS>&);
@@ -245,14 +245,14 @@ namespace TiledArray {
     typedef Range<cs1> range_type;
     typedef typename range_type::ordinal_index ordinal_index;
 
-    return range_type(typename cs1::index(s), typename cs1::index(f));
+    return range_type(s, f);
   }
 
   /// TiledRange1 ostream operator
   template <typename I>
   std::ostream& operator <<(std::ostream& out, const TiledRange1<I>& rng) {
-    out << "( tiles = [ " << rng.tiles().start()[0] << ", " << rng.tiles().finish()[0]
-        << " ), elements = [ " << rng.elements().start()[0] << ", " << rng.elements().finish()[0] << " ) )";
+    out << "( tiles = [ " << rng.tiles().start() << ", " << rng.tiles().finish()
+        << " ), elements = [ " << rng.elements().start() << ", " << rng.elements().finish() << " ) )";
     return out;
   }
 
