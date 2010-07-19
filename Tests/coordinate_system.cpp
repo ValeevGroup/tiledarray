@@ -123,4 +123,21 @@ BOOST_AUTO_TEST_CASE( increment_coordinate )
   // Todo: Test that all elements are traversed and in the correct order.
 }
 
+BOOST_AUTO_TEST_CASE( index_comparison )
+{
+  // Check less comparison for index
+  // Todo: Test less works correctly for all points adjacent to a test point.
+
+  // Check less_eq comparison for index
+  // Todo: Test less_eq works correctly for all points adjacent to a test point.
+
+
+  // Check greater comparison for index
+  // Todo: Test greater works correctly for all points adjacent to a test point.
+
+
+  // Check greater_eq comparison for index
+  // Todo: Test greater_eq works correctly for all points adjacent to a test point.
+}
+
 BOOST_AUTO_TEST_SUITE_END()
