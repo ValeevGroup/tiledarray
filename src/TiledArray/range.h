@@ -57,12 +57,11 @@ namespace TiledArray {
     /// Constructor defined by an upper and lower bound. All elements of
     /// finish must be greater than or equal to those of start.
     Range(const index& start, const index& finish) :
-        start_(start), finish_(finish), size_(finish - start), weight_()
+        start_(start), finish_(finish), size_(finish - start), weight_(coordinate_system::calc_weight(size_.data()))
     {
-      TA_ASSERT( (detail::less_eq(start_.data(), finish.data())) ,
+      TA_ASSERT( (std::equal(start_.begin(), start_.end(), finish_.begin(), std::less<typename coordinate_system::ordinal_index>())) ,
           std::runtime_error, "Finish is less than start.");
-      detail::calc_weight(coordinate_system::begin(size_),
-          coordinate_system::end(size_), coordinate_system::begin(weight_));
+
     }
 
     /// Copy Constructor
@@ -98,13 +97,15 @@ namespace TiledArray {
 
     /// Returns the number of elements in the range.
     volume_type volume() const {
-      return detail::volume(size_.data());
+      return coordinate_system::calc_volume(size_.data());
     }
 
     /// Check the coordinate to make sure it is within the range.
     bool includes(const index& i) const {
-      return (detail::less_eq(start_.data(), i.data()) &&
-          detail::less(i.data(), finish_.data()));
+      return std::equal(start_.begin(), start_.end(), i.begin(),
+          std::less<typename coordinate_system::ordinal_index>()) &&
+          std::equal(i.begin(), i.end(), finish_.begin(),
+          std::less<typename coordinate_system::ordinal_index>());
     }
 
     bool includes(const ordinal_index& o) const {
@@ -134,7 +135,7 @@ namespace TiledArray {
     /// Permute the tile given a permutation.
     Range_& operator ^=(const Permutation<coordinate_system::dim>& p) {
       Range_ temp(p ^ start_, p ^ finish_);
-  	  swap(*this, temp);
+  	  swap(temp);
 
   	  return *this;
     }
@@ -142,15 +143,7 @@ namespace TiledArray {
     /// Change the dimensions of the range.
     Range_& resize(const index& start, const index& finish) {
       Range_ temp(start, finish);
-      swap(*this, temp);
-
-      return *this;
-    }
-
-    /// Change the dimensions of the range.
-    Range_& resize(const size_array& size) {
-      Range_ temp(size, start_);
-      swap(*this, temp);
+      swap(temp);
 
       return *this;
     }
@@ -166,7 +159,14 @@ namespace TiledArray {
       coordinate_system::increment_coordinate(i, start_, finish_);
     }
 
-    friend   void swap<>(Range<CS>&, Range<CS>&);
+    void swap(Range_& other) {
+      TiledArray::swap(start_, other.start_);
+      TiledArray::swap(finish_, other.finish_);
+      TiledArray::swap(size_, other.size_);
+      TiledArray::swap(weight_, other.weight_);
+    }
+
+    friend void TiledArray::swap<>(Range_&, Range_&);
 
     index start_;    ///< Tile origin
     index finish_;   ///< Tile upper bound
@@ -174,13 +174,117 @@ namespace TiledArray {
     index weight_;   ///< Dimension weights
   }; // class Range
 
+  /// Range stores dimension information for a block of tiles or elements.
+
+  /// Range is used to obtain and/or store start, finish, size, and volume
+  /// information. It also provides index iteration over its range.
+  template <unsigned int L, detail::DimensionOrderType O, typename I>
+  class Range<CoordinateSystem<1u, L, O, I> > {
+  public:
+    typedef Range<CoordinateSystem<1u, L, O, I> > Range_;
+    typedef CoordinateSystem<1u, L, O, I> coordinate_system;
+
+    typedef typename coordinate_system::volume_type volume_type;
+    typedef typename coordinate_system::ordinal_index index;
+    typedef typename coordinate_system::ordinal_index ordinal_index;
+    typedef typename coordinate_system::ordinal_index size_array;
+
+    typedef detail::IndexIterator<index, Range_> const_iterator;
+    friend class detail::IndexIterator< index , Range_ >;
+
+    /// Default constructor. The range has 0 size and the origin is set at 0.
+    Range() :
+        start_(), finish_(), size_()
+    {}
+
+    /// Constructor defined by an upper and lower bound. All elements of
+    /// finish must be greater than or equal to those of start.
+    Range(const index start, const index finish) :
+        start_(start), finish_(finish), size_(finish - start)
+    {
+      TA_ASSERT( start < finish ,
+          std::runtime_error, "Finish is less than start.");
+    }
+
+    /// Copy Constructor
+    Range(const Range_& other) : // no throw
+        start_(other.start_), finish_(other.finish_), size_(other.size_)
+    {}
+
+    ~Range() {}
+
+    // iterator factory functions
+    const_iterator begin() const { return const_iterator(start_, this); }
+    const_iterator end() const { return const_iterator(finish_, this); }
+
+    /// Returns the lower bound of the range
+    index start() const { return start_; } // no throw
+
+    /// Returns the upper bound of the range
+    index finish() const { return finish_; } // no throw
+
+    /// Returns an array with the size of each dimension.
+    size_array size() const { return size_; } // no throw
+
+    size_array weight() const { return 1; } // no throw
+
+    /// Returns the number of elements in the range.
+    volume_type volume() const {
+      return size_;
+    }
+
+    /// Check the coordinate to make sure it is within the range.
+    bool includes(const index& i) const {
+      return (start_ < i) && (i < finish_);
+    }
+
+    /// Assignment Operator.
+    Range_& operator =(const Range_& other) {
+      start_ = other.start_;
+      finish_ = other.finish_;
+      size_ = other.size_;
+      return *this;
+    }
+
+    /// Permute the tile given a permutation.
+    Range_& operator ^=(const Permutation<1>& p) { return *this; }
+
+    /// Change the dimensions of the range.
+    Range_& resize(const index& start, const index& finish) {
+      Range_ temp(start, finish);
+      swap(temp);
+
+      return *this;
+    }
+
+    template <typename Archive>
+    void serialize(const Archive& ar) {
+      ar & start_ & finish_ & size_;
+    }
+
+  private:
+
+    void increment(index& i) const {
+      ++i;
+    }
+
+    void swap(Range_& other) {
+      std::swap(start_, other.start_);
+      std::swap(finish_, other.finish_);
+      std::swap(size_, other.size_);
+    }
+
+    friend void TiledArray::swap<>(Range_&, Range_&);
+
+    index start_;    ///< Tile origin
+    index finish_;   ///< Tile upper bound
+    index size_;     ///< Dimension sizes
+  }; // class Range
+
   /// Exchange the values of the give two ranges.
   template <typename CS>
   void swap(Range<CS>& r0, Range<CS>& r1) { // no throw
-    TiledArray::swap(r0.start_, r1.start_);
-    TiledArray::swap(r0.finish_, r1.finish_);
-    TiledArray::swap(r0.size_, r1.size_);
-    TiledArray::swap(r0.weight_, r1.weight_);
+    r0.swap(r1);
   }
 
   /// Return the union of two range (i.e. the overlap). If the ranges do not
