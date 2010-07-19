@@ -254,25 +254,105 @@ namespace TiledArray {
         std::copy(finish.begin(), finish.end(), current.begin());
     }
 
-    /// Returns an iterator to the beginning of the least significant element.
+    /// Index lexicographical less-than comparison
+
+    /// \param i1 The left index to be compared
+    /// \param i2 The right index to be compared
+    /// \return \c true when all elements of i1 are lexicographically less-than
+    /// all elements of i2.
+    static bool less(const index& i1, const index& i2) {
+      return std::lexicographical_compare(begin(i1), end(i1), begin(i2), end(i2));
+    }
+
+    /// Index lexicographical less-than-or-equal-to comparison
+
+    /// \param i1 The left index to be compared
+    /// \param i2 The right index to be compared
+    /// \return \c true when all elements of i1 are lexicographically
+    /// less-than-or-equal-to all elements of i2.
+    static bool less_eq(const index& i1, const index& i2) {
+      return ! less(i2, i1);
+    }
+
+    /// Index lexicographical greater-than comparison
+
+    /// \param i1 The left index to be compared
+    /// \param i2 The right index to be compared
+    /// \return \c true when all elements of i1 are lexicographically less-than
+    /// all elements of i2.
+    static bool greater(const index& i1, const index& i2) {
+      return less(i2, i1);
+    }
+
+    /// Index lexicographical greater-than-or-equal-to comparison
+
+    /// \param i1 The left index to be compared
+    /// \param i2 The right index to be compared
+    /// \return \c true when all elements of i1 are lexicographically
+    /// greater-than-or-equal-to all elements of i2.
+    static bool greater_eq(const index& i1, const index& i2) {
+      return ! less(i1, i2);
+    }
+
+    /// Least significant begin iterator factory selector
+
+    /// Constness of the container will be observed when generating the
+    /// iterator. That is, when the array container is const, the iterator
+    /// type is const; and likewise for non-const arrays.
+    /// \note If you need the const iterator type when you have a non-const
+    /// array, use \c static_cast to cast the object to a const reference before
+    /// passing it to this function.
+    /// \tparam C The array container type
+    /// \param c The array container
+    /// \return An iterator to the least significant element of the array.
     template<typename C>
     static typename detail::CoordIterator<C, O>::iterator begin(C& c) {
       return detail::CoordIterator<C, O>::begin(c);
     }
 
-    /// Returns an iterator to the end of the least significant element.
+    /// Least significant end iterator factory selector
+
+    /// Constness of the container will be observed when generating the
+    /// iterator. That is, when the array container is const, the iterator
+    /// type is const; and likewise for non-const arrays.
+    /// \note If you need the const iterator type when you have a non-const
+    /// array, use \c static_cast to cast the object to a const reference before
+    /// passing it to this function.
+    /// \tparam C The array container type
+    /// \param c The array container
+    /// \return An iterator to the least significant element of the array.
     template<typename C>
     static typename detail::CoordIterator<C, O>::iterator end(C& c) {
       return detail::CoordIterator<C, O>::end(c);
     }
 
-    /// Returns an iterator to the beginning of the most significant element.
+    /// Most significant begin iterator factory selector
+
+    /// Constness of the container will be observed when generating the
+    /// iterator. That is, when the array container is const, the iterator
+    /// type is const; and likewise for non-const arrays.
+    /// \note If you need the const iterator type when you have a non-const
+    /// array, use \c static_cast to cast the object to a const reference before
+    /// passing it to this function.
+    /// \tparam C The array container type
+    /// \param c The array container
+    /// \return An iterator to the most significant element of the array.
     template<typename C>
     static typename detail::CoordIterator<C, O>::reverse_iterator rbegin(C& c) {
       return detail::CoordIterator<C, O>::rbegin(c);
     }
 
-    /// Returns an iterator to the end of the most significant element.
+    /// Most significant end iterator factory selector
+
+    /// Constness of the container will be observed when generating the
+    /// iterator. That is, when the array container is const, the iterator
+    /// type is const; and likewise for non-const arrays.
+    /// \note If you need the const iterator type when you have a non-const
+    /// array, use \c static_cast to cast the object to a const reference before
+    /// passing it to this function.
+    /// \tparam C The array container type
+    /// \param c The array container
+    /// \return An iterator to the most significant element of the array.
     template<typename C>
     static typename detail::CoordIterator<C, O>::reverse_iterator rend(C& c) {
       return detail::CoordIterator<C, O>::rend(c);
@@ -376,7 +456,7 @@ namespace TiledArray {
         *first_cur = *start;
       }
     }
-  };
+  }; // class CoordinateSystem
 
   namespace detail {
 
