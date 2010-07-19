@@ -115,10 +115,18 @@ BOOST_AUTO_TEST_CASE( assignment )
 BOOST_AUTO_TEST_CASE( resize )
 {
   RangeN r1;
-  BOOST_CHECK_EQUAL(r1.resize(size), r); // check resize with size_array
-  RangeN r2;
-  BOOST_CHECK_EQUAL(r2.resize(start, finish), r); // check resize with start and finish
-  BOOST_CHECK_EQUAL(r2.size(), r.size());// check that size was correctly recalculated
+
+  // Check initial conditions
+  BOOST_CHECK_EQUAL(r1.volume(), 0ul);
+
+  // check resize and return value
+  BOOST_CHECK_EQUAL(r1.resize(start, finish), r);
+  // check that size was correctly recalculated
+  BOOST_CHECK_EQUAL(r1.size(), r.size());
+  // Check that weight was correctly recalculated
+  BOOST_CHECK_EQUAL(r1.size(), r.weight());
+  // Check that volume was correctly recalculated
+  BOOST_CHECK_EQUAL(r1.volume(), r.volume());
 }
 
 BOOST_AUTO_TEST_CASE( permutation )
@@ -128,11 +136,15 @@ BOOST_AUTO_TEST_CASE( permutation )
   Permutation<3> p(2,0,1);
   RangeN r2 = p ^ r1;
   RangeN r3 = r1;
-  BOOST_CHECK_EQUAL(r1.start()[0], r2.start()[2]);  // check for correct start
-  BOOST_CHECK_EQUAL(r1.start()[1], r2.start()[0]);  // permutation
+
+  // check for correct start permutation
+  BOOST_CHECK_EQUAL(r1.start()[0], r2.start()[2]);
+  BOOST_CHECK_EQUAL(r1.start()[1], r2.start()[0]);
   BOOST_CHECK_EQUAL(r1.start()[2], r2.start()[1]);
-  BOOST_CHECK_EQUAL(r1.finish()[0], r2.finish()[2]);// check for correct finish
-  BOOST_CHECK_EQUAL(r1.finish()[1], r2.finish()[0]);// permutation
+
+  // check for correct finish permutation
+  BOOST_CHECK_EQUAL(r1.finish()[0], r2.finish()[2]);
+  BOOST_CHECK_EQUAL(r1.finish()[1], r2.finish()[0]);
   BOOST_CHECK_EQUAL(r1.finish()[2], r2.finish()[1]);
   BOOST_CHECK_EQUAL(r3 ^= p, r2);
   BOOST_CHECK_EQUAL(r3, r2);
