@@ -24,6 +24,85 @@ struct VariableListFixture {
 
 BOOST_FIXTURE_TEST_SUITE( variable_list_suite , VariableListFixture )
 
+BOOST_AUTO_TEST_CASE( valid_chars )
+{
+  // Check for valid characters in string input
+
+  // Check letters 'a' - 'z'
+  BOOST_CHECK_NO_THROW(VariableList v1("a"));
+  BOOST_CHECK_NO_THROW(VariableList v1("b"));
+  BOOST_CHECK_NO_THROW(VariableList v1("c"));
+  BOOST_CHECK_NO_THROW(VariableList v1("d"));
+  BOOST_CHECK_NO_THROW(VariableList v1("e"));
+  BOOST_CHECK_NO_THROW(VariableList v1("f"));
+  BOOST_CHECK_NO_THROW(VariableList v1("g"));
+  BOOST_CHECK_NO_THROW(VariableList v1("h"));
+  BOOST_CHECK_NO_THROW(VariableList v1("i"));
+  BOOST_CHECK_NO_THROW(VariableList v1("j"));
+  BOOST_CHECK_NO_THROW(VariableList v1("k"));
+  BOOST_CHECK_NO_THROW(VariableList v1("l"));
+  BOOST_CHECK_NO_THROW(VariableList v1("m"));
+  BOOST_CHECK_NO_THROW(VariableList v1("n"));
+  BOOST_CHECK_NO_THROW(VariableList v1("o"));
+  BOOST_CHECK_NO_THROW(VariableList v1("p"));
+  BOOST_CHECK_NO_THROW(VariableList v1("q"));
+  BOOST_CHECK_NO_THROW(VariableList v1("r"));
+  BOOST_CHECK_NO_THROW(VariableList v1("s"));
+  BOOST_CHECK_NO_THROW(VariableList v1("t"));
+  BOOST_CHECK_NO_THROW(VariableList v1("u"));
+  BOOST_CHECK_NO_THROW(VariableList v1("v"));
+  BOOST_CHECK_NO_THROW(VariableList v1("w"));
+  BOOST_CHECK_NO_THROW(VariableList v1("x"));
+  BOOST_CHECK_NO_THROW(VariableList v1("y"));
+  BOOST_CHECK_NO_THROW(VariableList v1("z"));
+
+  // Check letters 'A' - 'Z'
+  BOOST_CHECK_NO_THROW(VariableList v1("A"));
+  BOOST_CHECK_NO_THROW(VariableList v1("B"));
+  BOOST_CHECK_NO_THROW(VariableList v1("C"));
+  BOOST_CHECK_NO_THROW(VariableList v1("D"));
+  BOOST_CHECK_NO_THROW(VariableList v1("E"));
+  BOOST_CHECK_NO_THROW(VariableList v1("F"));
+  BOOST_CHECK_NO_THROW(VariableList v1("G"));
+  BOOST_CHECK_NO_THROW(VariableList v1("H"));
+  BOOST_CHECK_NO_THROW(VariableList v1("I"));
+  BOOST_CHECK_NO_THROW(VariableList v1("J"));
+  BOOST_CHECK_NO_THROW(VariableList v1("K"));
+  BOOST_CHECK_NO_THROW(VariableList v1("L"));
+  BOOST_CHECK_NO_THROW(VariableList v1("M"));
+  BOOST_CHECK_NO_THROW(VariableList v1("N"));
+  BOOST_CHECK_NO_THROW(VariableList v1("O"));
+  BOOST_CHECK_NO_THROW(VariableList v1("P"));
+  BOOST_CHECK_NO_THROW(VariableList v1("Q"));
+  BOOST_CHECK_NO_THROW(VariableList v1("R"));
+  BOOST_CHECK_NO_THROW(VariableList v1("S"));
+  BOOST_CHECK_NO_THROW(VariableList v1("T"));
+  BOOST_CHECK_NO_THROW(VariableList v1("U"));
+  BOOST_CHECK_NO_THROW(VariableList v1("V"));
+  BOOST_CHECK_NO_THROW(VariableList v1("W"));
+  BOOST_CHECK_NO_THROW(VariableList v1("X"));
+  BOOST_CHECK_NO_THROW(VariableList v1("Y"));
+  BOOST_CHECK_NO_THROW(VariableList v1("Z"));
+
+  // Check characters '0' - '9'
+  BOOST_CHECK_NO_THROW(VariableList v1("0"));
+  BOOST_CHECK_NO_THROW(VariableList v1("1"));
+  BOOST_CHECK_NO_THROW(VariableList v1("2"));
+  BOOST_CHECK_NO_THROW(VariableList v1("3"));
+  BOOST_CHECK_NO_THROW(VariableList v1("4"));
+  BOOST_CHECK_NO_THROW(VariableList v1("5"));
+  BOOST_CHECK_NO_THROW(VariableList v1("5"));
+  BOOST_CHECK_NO_THROW(VariableList v1("6"));
+  BOOST_CHECK_NO_THROW(VariableList v1("7"));
+  BOOST_CHECK_NO_THROW(VariableList v1("8"));
+  BOOST_CHECK_NO_THROW(VariableList v1("9"));
+
+  // Check characters ',', ' ', and '\0'
+  BOOST_CHECK_NO_THROW(VariableList v1("a,b"));
+  BOOST_CHECK_NO_THROW(VariableList v1("a ,b"));
+  BOOST_CHECK_NO_THROW(VariableList v1(""));
+}
+
 BOOST_AUTO_TEST_CASE( accessors )
 {
   BOOST_CHECK_EQUAL(v.dim(), 4u); // check for variable count
