@@ -6,61 +6,6 @@
 #include "TiledArray/coordinates.h"
 
 using namespace TiledArray;
-/*
-struct TiledRangeFixture {
-  typedef TiledRange<GlobalFixture::coordinate_system> TRangeN;
-  typedef TRangeN::index index;
-
-  TiledRangeFixture() {
-    d[0] = 0; d[1] = 10; d[2] = 20; d[3] = 30;
-
-    start000 = TRangeN::tile_index::make(d0[0], d1[0], d2[0]);
-    tile_start = TRangeN::index::make(0,0,0);
-    element_start = TRangeN::tile_index::make(d0[0], d1[0], d2[0]);
-    finish000 = TRangeN::tile_index::make(d0[1], d1[1], d2[1]);
-    tile_finish = TRangeN::index::make(d0.size() - 1, d1.size() - 1, d2.size() - 1);
-    element_finish = TRangeN::tile_index::make(d0[d0.size() - 1], d1[d1.size() - 1], d2[d2.size() - 1]);
-    size000 = finish000.data();
-    tile_size = tile_finish.data();
-    element_size = element_finish.data();
-
-    tile_range.resize(tile_start, tile_finish);
-    element_range.resize(element_start, element_finish);
-    tile000_range.resize(start000, finish000);
-
-    vol000 = tile000_range.volume();
-    tile_vol = tile_range.volume();
-    element_vol = element_range.volume();
-
-    tr.resize(dims.begin(), dims.end());
-  }
-  ~TiledRangeFixture() { }
-
-  boost::array<std::size_t, 4> d0;
-  boost::array<std::size_t, 5> d1;
-  boost::array<std::size_t, 6> d2;
-  boost::array<TRangeN::tiled_range1_type, 3> dims;
-  TRangeN tr;
-
-  TRangeN::tile_index start000;
-  TRangeN::index tile_start;
-  TRangeN::tile_index element_start;
-  TRangeN::tile_index finish000;
-  TRangeN::index tile_finish;
-  TRangeN::tile_index element_finish;
-  TRangeN::size_array size000;
-  TRangeN::size_array tile_size;
-  TRangeN::size_array element_size;
-  TRangeN::volume_type vol000;
-  TRangeN::volume_type tile_vol;
-  TRangeN::volume_type element_vol;
-  TRangeN::range_type tile_range;
-  TRangeN::element_range_type element_range;
-  TRangeN::tile_range_type tile000_range;
-
-};
-*/
-
 
 const TiledRangeFixture::TRangeN::range_type
 TiledRangeFixture::tile_range(fill_index<TiledRangeFixture::index>(0),
@@ -132,6 +77,16 @@ BOOST_AUTO_TEST_CASE( ostream )
   BOOST_CHECK( !output.is_empty( false ) );
   BOOST_CHECK( output.check_length( 75, false ) );
   BOOST_CHECK( output.is_equal( "( tiles = [ (0, 0, 0), (3, 4, 5) ) elements = [ (0, 0, 0), (30, 20, 15) ) )" ) );
+
+  std::stringstream stm;
+  stm << "( tiles = [" << range1_type::range_type(0, a.size() - 1) <<
+      ", elements = " << range1_type::tile_range_type(a.front(), a.back()) << " )";
+
+  boost::test_tools::output_test_stream output;
+  output << tr1;
+  BOOST_CHECK( !output.is_empty( false ) );
+  BOOST_CHECK( output.check_length( stm.str().size(), false ) );
+  BOOST_CHECK( output.is_equal( stm.str().c_str() ) );
 }
 
 BOOST_AUTO_TEST_CASE( comparison ) {
