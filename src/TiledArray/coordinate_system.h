@@ -446,9 +446,11 @@ namespace TiledArray {
     /// \throw nothing
     template <typename ForIter, typename InIter>
     static void increment_coordinate_(ForIter first_cur, ForIter last_cur, InIter start, InIter finish) {
-      // increment least significant, and check to see if the iterator has reached the end
-      for(++first_cur; first_cur != last_cur; ++first_cur, ++start, ++finish) {
-        // increment and break if done.
+      for(; first_cur != last_cur; ++first_cur, ++start, ++finish) {
+        // increment coordinate
+        ++(*first_cur);
+
+        // break if done
         if( *first_cur < *finish)
           return;
 
