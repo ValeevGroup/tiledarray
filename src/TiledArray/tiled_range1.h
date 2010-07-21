@@ -41,6 +41,7 @@ namespace TiledArray {
   public:
     typedef Range<internal_coordinate_system> range_type;
     typedef Range<internal_element_coordinate_system> tile_range_type;
+    typedef typename CS::ordinal_index index;
     typedef typename CS::ordinal_index ordinal_index;
     typedef typename std::vector<tile_range_type>::const_iterator const_iterator;
 
@@ -153,9 +154,20 @@ namespace TiledArray {
       return result;
     }
 
+    /// Tiles range accessor
     const range_type& tiles() const { return range_; }
+
+    /// Elements range accessor
     const tile_range_type& elements() const { return element_range_; }
-    const tile_range_type& tile(const ordinal_index i) const {
+
+    /// Tile range accessor
+
+    /// \param i The coordinate index for the tile range to be returned
+    /// \return A const reference to a the tile range for tile \c i
+    /// \throw std::out_of_range When \c i \c >= \c tiles().size()
+    const tile_range_type& tile(const index i) const {
+      TA_ASSERT(range_.includes(i), std::out_of_range,
+          "The index i is out of range.");
       return tile_ranges_.at(i - range_.start());
     }
 

@@ -84,10 +84,9 @@ BOOST_AUTO_TEST_CASE( ostream )
   stm << "[ " << start << ", " << finish << " )";
 
   boost::test_tools::output_test_stream output;
-  const std::size_t coord_str_len = (GlobalFixture::coordinate_system::dim == 0 ? 2 : 3 * (GlobalFixture::coordinate_system::dim));
   output << r;
   BOOST_CHECK( !output.is_empty( false ) ); // check for correct output.
-  BOOST_CHECK( output.check_length( 6 + 2 * coord_str_len, false ) );
+  BOOST_CHECK( output.check_length( stm.str().size(), false ) );
   BOOST_CHECK( output.is_equal(stm.str().c_str()) );
 }
 

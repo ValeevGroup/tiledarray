@@ -6,7 +6,6 @@
 #include <TiledArray/array_util.h>
 #include <TiledArray/iterator.h>
 
-
 namespace TiledArray {
 
   // Forward declaration of TiledArray components.
@@ -202,7 +201,7 @@ namespace TiledArray {
     Range(const index start, const index finish) :
         start_(start), finish_(finish), size_(finish - start)
     {
-      TA_ASSERT( start < finish ,
+      TA_ASSERT( start <= finish ,
           std::runtime_error, "Finish is less than start.");
     }
 
@@ -235,7 +234,7 @@ namespace TiledArray {
 
     /// Check the coordinate to make sure it is within the range.
     bool includes(const index& i) const {
-      return (start_ < i) && (i < finish_);
+      return (start_ <= i) && (i < finish_);
     }
 
     /// Assignment Operator.

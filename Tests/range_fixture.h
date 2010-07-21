@@ -59,7 +59,8 @@ struct Range1Fixture {
   static boost::array<std::size_t, D> init_tiling() {
     boost::array<std::size_t, D> result;
     result[0] = 0u;
-    std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + D, result.begin());
+    for(std::size_t i = 1; i < D; ++i)
+      result[i] = result[i - 1] + GlobalFixture::primes[i - 1];
     return result;
   }
 
