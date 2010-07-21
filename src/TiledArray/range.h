@@ -59,7 +59,7 @@ namespace TiledArray {
     Range(const index& start, const index& finish) :
         start_(start), finish_(finish), size_(finish - start), weight_(coordinate_system::calc_weight(size_.data()))
     {
-      TA_ASSERT( (std::equal(start_.begin(), start_.end(), finish_.begin(), std::less<typename coordinate_system::ordinal_index>())) ,
+      TA_ASSERT( (std::equal(start_.begin(), start_.end(), finish_.begin(), std::less_equal<typename coordinate_system::ordinal_index>())) ,
           std::runtime_error, "Finish is less than start.");
 
     }
