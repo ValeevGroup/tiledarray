@@ -2,10 +2,11 @@
 #include "TiledArray/permutation.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
+#include <sstream>
 
 using namespace TiledArray;
 
-RangeFixture::RangeFixture()
+RangeFixture::RangeFixture() : r(start, finish)
 {
 }
 
@@ -79,11 +80,15 @@ BOOST_AUTO_TEST_CASE( constructors )
 
 BOOST_AUTO_TEST_CASE( ostream )
 {
+  std::stringstream stm;
+  stm << "[ " << start << ", " << finish << " )";
+
   boost::test_tools::output_test_stream output;
+  const std::size_t coord_str_len = (GlobalFixture::coordinate_system::dim == 0 ? 2 : 3 * (GlobalFixture::coordinate_system::dim));
   output << r;
   BOOST_CHECK( !output.is_empty( false ) ); // check for correct output.
-  BOOST_CHECK( output.check_length( 24, false ) );
-  BOOST_CHECK( output.is_equal("[ (0, 0, 0), (1, 2, 3) )") );
+  BOOST_CHECK( output.check_length( 6 + 2 * coord_str_len, false ) );
+  BOOST_CHECK( output.is_equal(stm.str().c_str()) );
 }
 
 BOOST_AUTO_TEST_CASE( comparision )
@@ -124,55 +129,73 @@ BOOST_AUTO_TEST_CASE( resize )
   // check that size was correctly recalculated
   BOOST_CHECK_EQUAL(r1.size(), r.size());
   // Check that weight was correctly recalculated
-  BOOST_CHECK_EQUAL(r1.size(), r.weight());
+  BOOST_CHECK_EQUAL(r1.weight(), r.weight());
   // Check that volume was correctly recalculated
   BOOST_CHECK_EQUAL(r1.volume(), r.volume());
 }
 
 BOOST_AUTO_TEST_CASE( permutation )
 {
-  index p1(4,6,8);
-  RangeN r1(size, p1);
-  Permutation<3> p(2,0,1);
+  index s;
+  index f;
+  size_array a;
+  for(unsigned int d = 0; d < GlobalFixture::coordinate_system::dim; ++d) {
+    s[d] = d;
+    f[d] = d + d * 5;
+    a[GlobalFixture::coordinate_system::dim - d - 1] = d;
+  }
+  RangeN r1(s, f);
+  // create a reverse order permutation
+  Permutation<3> p(a.begin());
   RangeN r2 = p ^ r1;
   RangeN r3 = r1;
 
-  // check for correct start permutation
-  BOOST_CHECK_EQUAL(r1.start()[0], r2.start()[2]);
-  BOOST_CHECK_EQUAL(r1.start()[1], r2.start()[0]);
-  BOOST_CHECK_EQUAL(r1.start()[2], r2.start()[1]);
+  // check start, finish, size, volume, and weight of permuted range
+  BOOST_CHECK_EQUAL_COLLECTIONS(r1.start().rbegin(), r1.start().rend(),
+                                r2.start().begin(),  r2.start().end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r1.finish().rbegin(), r1.finish().rend(),
+                                r2.finish().begin(),  r2.finish().end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r1.size().rbegin(), r1.size().rend(),
+                                r2.size().begin(),  r2.size().end());
+  BOOST_CHECK_EQUAL(r2.volume(), r1.volume());
+
+  BOOST_CHECK_EQUAL(r2.weight(), GlobalFixture::coordinate_system::calc_weight(r2.size()));
 
   // check for correct finish permutation
-  BOOST_CHECK_EQUAL(r1.finish()[0], r2.finish()[2]);
-  BOOST_CHECK_EQUAL(r1.finish()[1], r2.finish()[0]);
-  BOOST_CHECK_EQUAL(r1.finish()[2], r2.finish()[1]);
   BOOST_CHECK_EQUAL(r3 ^= p, r2);
+  BOOST_CHECK_EQUAL(r3.start(), r2.start());
+  BOOST_CHECK_EQUAL(r3.finish(), r2.finish());
+  BOOST_CHECK_EQUAL(r3.size(), r2.size());
+  BOOST_CHECK_EQUAL(r3.volume(), r2.volume());
+  BOOST_CHECK_EQUAL(r3.weight(), r2.weight());
   BOOST_CHECK_EQUAL(r3, r2);
 }
 
 BOOST_AUTO_TEST_CASE( include )
 {
-  RangeN r1(p1, p5);
-  index t1(0,3,3);
-  index t2(1,3,3);
-  index t3(2,3,3);
-  index t4(4,3,3);
-  index t5(5,3,3);
-  index t6(6,3,3);
-  index t7(0,0,3);
-  index t8(1,1,3);
-  index t9(2,2,3);
-  index t10(4,4,3);
-  index t11(5,5,3);
-  index t12(6,6,3);
-  index t13(0,6,3);
-  index t14(1,5,3);
-  index t15(2,4,3);
-  index t16(4,2,3);
-  index t17(5,1,3);
-  index t18(6,0,3);
-  index t19(1,4,3);
-  index t20(4,1,3);
+  Range<CoordinateSystem<3> >::index s(0,0,0);
+  Range<CoordinateSystem<3> >::index f(5,5,5);
+  Range<CoordinateSystem<3> > r1(s, f);
+  Range<CoordinateSystem<3> >::index t1(0,3,3);
+  Range<CoordinateSystem<3> >::index t2(1,3,3);
+  Range<CoordinateSystem<3> >::index t3(2,3,3);
+  Range<CoordinateSystem<3> >::index t4(4,3,3);
+  Range<CoordinateSystem<3> >::index t5(5,3,3);
+  Range<CoordinateSystem<3> >::index t6(6,3,3);
+  Range<CoordinateSystem<3> >::index t7(0,0,3);
+  Range<CoordinateSystem<3> >::index t8(1,1,3);
+  Range<CoordinateSystem<3> >::index t9(2,2,3);
+  Range<CoordinateSystem<3> >::index t10(4,4,3);
+  Range<CoordinateSystem<3> >::index t11(5,5,3);
+  Range<CoordinateSystem<3> >::index t12(6,6,3);
+  Range<CoordinateSystem<3> >::index t13(0,6,3);
+  Range<CoordinateSystem<3> >::index t14(1,5,3);
+  Range<CoordinateSystem<3> >::index t15(2,4,3);
+  Range<CoordinateSystem<3> >::index t16(4,2,3);
+  Range<CoordinateSystem<3> >::index t17(5,1,3);
+  Range<CoordinateSystem<3> >::index t18(6,0,3);
+  Range<CoordinateSystem<3> >::index t19(1,4,3);
+  Range<CoordinateSystem<3> >::index t20(4,1,3);
 
   BOOST_CHECK(! r1.includes(t1)); // check side include
   BOOST_CHECK(r1.includes(t2));
@@ -265,26 +288,30 @@ BOOST_AUTO_TEST_CASE( iteration )
   std::vector<index> t(8);
 
 #ifdef TEST_C_STYLE_CS
-  t[0] = index(1,1,1);
-  t[1] = index(1,1,2);
-  t[2] = index(1,2,1);
-  t[3] = index(1,2,2);
-  t[4] = index(2,1,1);
-  t[5] = index(2,1,2);
-  t[6] = index(2,2,1);
-  t[7] = index(2,2,2);
+  typedef CoordinateSystem<3> cs3;
+  typedef Range<cs3> Range3;
+  t[0] = Range3::index(1,1,1);
+  t[1] = Range3::index(1,1,2);
+  t[2] = Range3::index(1,2,1);
+  t[3] = Range3::index(1,2,2);
+  t[4] = Range3::index(2,1,1);
+  t[5] = Range3::index(2,1,2);
+  t[6] = Range3::index(2,2,1);
+  t[7] = Range3::index(2,2,2);
 #else // TEST_FORTRAN_CS
-  t[0] = FRangeN::index(1,1,1);
-  t[1] = FRangeN::index(2,1,1);
-  t[2] = FRangeN::index(1,2,1);
-  t[3] = FRangeN::index(2,2,1);
-  t[4] = FRangeN::index(1,1,2);
-  t[5] = FRangeN::index(2,1,2);
-  t[6] = FRangeN::index(1,2,2);
-  t[7] = FRangeN::index(2,2,2);
+  typedef CoordinateSystem<3, 1, TiledArray::detail::increasing_dimension_order> cs3;
+  typedef Range<cs3> Range3;
+  t[0] = Range3::index(1,1,1);
+  t[1] = Range3::index(2,1,1);
+  t[2] = Range3::index(1,2,1);
+  t[3] = Range3::index(2,2,1);
+  t[4] = Range3::index(1,1,2);
+  t[5] = Range3::index(2,1,2);
+  t[6] = Range3::index(1,2,2);
+  t[7] = Range3::index(2,2,2);
 #endif
 
-  RangeN r1(index(1,1,1),index(3,3,3));
+  Range3 r1(Range3::index(1,1,1),Range3::index(3,3,3));
   BOOST_CHECK_EQUAL_COLLECTIONS(r1.begin(), r1.end(), t.begin(), t.end());
 }
 

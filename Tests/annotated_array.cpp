@@ -31,8 +31,8 @@ struct AnnotatedArrayFixture {
 const VariableList AnnotatedArrayFixture::vars(AnnotatedArrayFixture::make_var_list());
 const boost::shared_ptr<AnnotatedArrayFixture::RangeN> AnnotatedArrayFixture::r =
     boost::make_shared<AnnotatedArrayFixture::RangeN>(
-    RangeFixture::fill_index<AnnotatedArrayFixture::index>(0),
-    RangeFixture::fill_index<AnnotatedArrayFixture::index>(5));
+    fill_index<AnnotatedArrayFixture::index>(0),
+    fill_index<AnnotatedArrayFixture::index>(5));
 const AnnotatedArrayFixture::TileN AnnotatedArrayFixture::t(r, 1);
 
 BOOST_FIXTURE_TEST_SUITE( annotated_array_suite , AnnotatedArrayFixture )

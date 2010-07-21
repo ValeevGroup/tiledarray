@@ -4,6 +4,8 @@
 #include "TiledArray/range.h"
 #include "TiledArray/tiled_range1.h"
 #include "TiledArray/tiled_range.h"
+#include "TiledArray/array_util.h"
+#include <iostream>
 
 using namespace TiledArray;
 
@@ -77,9 +79,9 @@ struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
   static const TRangeN::range_type tile_range;
   static const TRangeN::tile_range_type element_range;
 
-  TiledRangeFixture() : tr(dims.begin(), dims.end()){
-
+  TiledRangeFixture() : tr(dims.begin(), dims.end()) {
   }
+
   ~TiledRangeFixture() { }
 
   static tile_index fill_tile_index(tile_index::index);
