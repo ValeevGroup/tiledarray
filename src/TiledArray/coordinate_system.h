@@ -181,77 +181,87 @@ namespace TiledArray {
   public:
     typedef detail::LevelTag<Level> level_tag;  ///< Coordinate system level (Elements: Level = 0, Tiles: Level = 1)
 
-    typedef I volume_type;
-    typedef I ordinal_index;
-    typedef ArrayCoordinate<I, DIM, level_tag > index;
-    typedef boost::array<I, DIM> size_array;
+    typedef I volume_type;                              ///< Type used to output range and array volume
+    typedef I ordinal_index;                            ///< Linear ordinal index type for ranges and arrays
+    typedef ArrayCoordinate<I, DIM, level_tag > index;  ///< Coordinate index type for ranges and arrays
+    typedef boost::array<I, DIM> size_array;            ///< Array type for size and weight of ranges and arrays
 
-    static const unsigned int dim = DIM;
-    static const unsigned int level = Level;
-    static const detail::DimensionOrderType order = O;
+    static const unsigned int dim = DIM;                ///< The number of dimensions in the coordinate system
+    static const unsigned int level = Level;            ///< The coordinate system level (used to differentiate types of similar coordinate systems)
+    static const detail::DimensionOrderType order = O;  ///< The dimension ordering. This may be decreasing (c-style) or increasing (fortran) dimension ordering.
 
     /// Calculate the weighted dimension values.
-    static size_array calc_weight(const size_array& size) { // no throw
-      size_array result;
-      calc_weight_(begin(size), end(size), begin(result));
-      return result;
+
+    /// \param s The size array for which the weight will be calculated
+    /// \return The range weight array
+    static size_array calc_weight(const size_array& s) { // no throw
+      size_array r;
+      calc_weight_(begin(s), end(s), begin(r));
+      return r;
     }
 
-    /// Calculate the index of an ordinal.
+    /// Calculate the coordinate index of an ordinal index
 
-    /// \arg \c o is the ordinal value.
-    /// \arg \c [first, last) is the iterator range that contains the array
-    /// weights from most significant to least significant.
-    /// \arg \c result is an iterator to the index, which points to the most
-    /// significant element.
-    static index calc_index(ordinal_index i, const size_array& weight) {
-      index result;
-      calc_index_(i, rbegin(weight), rend(weight), rbegin(result));
-      return result;
+    /// \param i The ordinal index that will be converted to a coordinate index
+    /// \param w The weight array of the range.
+    /// \return The coordinate index that corresponds to \c i
+    /// \note The returned ordinal index assumes the range start is at
+    /// (0,0,...,0). If this is not the case, the start coordinate should be
+    /// added to the returned index.
+    static index calc_index(ordinal_index i, const size_array& w) {
+      index r;
+      calc_index_(i, rbegin(w), rend(w), rbegin(r));
+      return r;
+    }
+
+    /// Calculate the coordinate index of an ordinal index given a start index
+
+    /// \param i The coordinate index for which the ordinal index will be
+    /// calculated.
+    /// \param w The weight array for the range.
+    /// \return The coordinate index that corresponds to \c i
+    static ordinal_index calc_ordinal(const index& i, const size_array& w) {
+      return calc_ordinal_(begin(i), end(i), begin(w));
     }
 
     /// Calculate the ordinal index of an array.
 
-    /// \var \c [index_first, \c index_last) is a pair of iterators to the coordinate index.
-    /// \var \c weight_first is an iterator to the array weights.
-    static ordinal_index calc_ordinal(const index& i, const size_array& weight) {
-      return calc_ordinal_(begin(i), end(i), begin(weight));
+    /// \param i The coordinate index to be converted into an ordinal index
+    /// \param w The weight array for the range
+    /// \param s The start index of the range
+    /// \return The ordinal index that corresponds to \c i
+    static ordinal_index calc_ordinal(const index& i, const size_array& w, const index& s) {
+      return calc_ordinal_(begin(i), end(i), begin(w), begin(s));
     }
 
-    /// Calculate the ordinal index of an array.
+    /// Calculate the volume of an N-dimensional range.
 
-    /// \var \c [index_first, \c index_last) is a pair of iterators to the coordinate index.
-    /// \var \c weight_first is an iterator to the array weights.
-    static ordinal_index calc_ordinal(const index& i, const size_array& weight, const index& start) {
-      return calc_ordinal_(begin(i), end(i), begin(weight), begin(start));
-    }
-
-    /// Calculate the volume of an N-dimensional orthogonal.
-    static volume_type calc_volume(const size_array& size) { // no throw
-      return std::accumulate(size.begin(), size.end(), volume_type(1), std::multiplies<volume_type>());
+    /// \param s The size array of the range
+    /// \return The volume of the range
+    static volume_type calc_volume(const size_array& s) { // no throw
+      return std::accumulate(s.begin(), s.end(), volume_type(1), std::multiplies<volume_type>());
     }
 
     /// Increment a coordinate index within a range.
 
-    /// This will increment a coordinate within the range \c [start, \c finish).
+    /// This will increment a coordinate within the range \c [s, \c f).
     /// If the end of the range is reached, current will be equal to finish.
-    /// \param[out] current The current coordinate index to be incremented.
-    /// \param[in] start The start index of the coordinate range.
-    /// \param[in] finish The finish index of the coordinate range.
-    /// \throw std::runtime_error When current is not bounded by \c [start,
-    /// \c finish)
-    static void increment_coordinate(index& current, const index& start, const index& finish) {
-      TA_ASSERT(start <= current, std::runtime_error,
+    /// \param[out] c The current coordinate index to be incremented.
+    /// \param[in] s The start index of the range.
+    /// \param[in] f The finish index of the range.
+    /// \throw std::runtime_error When current is not bounded by \c [s, \c f)
+    static void increment_coordinate(index& c, const index& s, const index& f) {
+      TA_ASSERT(s <= c, std::runtime_error,
           "Current coordinate is less than start coordinate.");
-      TA_ASSERT(current < finish, std::runtime_error,
+      TA_ASSERT(c < f, std::runtime_error,
           "Current coordinate is less than start coordinate.");
 
-      increment_coordinate_(begin(current), end(current), begin(start), begin(finish));
+      increment_coordinate_(begin(c), end(c), begin(s), begin(f));
 
       // if the current location was set to start then it was at the end and
       // needs to be reset to equal finish.
-      if(std::equal(current.begin(), current.end(), start.begin()))
-        std::copy(finish.begin(), finish.end(), current.begin());
+      if(std::equal(c.begin(), c.end(), s.begin()))
+        std::copy(f.begin(), f.end(), c.begin());
     }
 
     /// Index lexicographical less-than comparison
