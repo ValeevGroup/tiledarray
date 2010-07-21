@@ -35,18 +35,17 @@ namespace TiledArray {
 
 
 #define TA_STRINGIZE( s ) #s
-#define TA_EXCEPTION_MESSAGE( file , line , func , type ,  mess ) \
-  type TA_STRINGIZE( func ) ":" \
-  TA_STRINGIZE( file ) "(" TA_STRINGIZE( line ) "): " mess
+#define TA_EXCEPTION_MESSAGE( file , line , type ,  mess ) \
+  type TA_STRINGIZE( file ) "(" TA_STRINGIZE( line ) "): " mess
 #define TA_ASSERT( a , e , m )  \
   if(! ( a ) ) \
     { \
       TiledArray::detail::tiledarray_exception_break(); \
-      throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __func__ , "TiledArray Assertion failure in " , m ) ) ; \
+      throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , "TiledArray Assertion failure at " , m ) ) ; \
     }
 
 #define TA_EXCEPTION( e , m ) \
-    throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , __func__ , "TiledArray Exception in " , m ) )
+    throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , "TiledArray Exception at " , m ) )
 
 #elif defined(TA_ASSERT_ERROR)
 // This sections defines behavior for TiledArray assertion error checking which
