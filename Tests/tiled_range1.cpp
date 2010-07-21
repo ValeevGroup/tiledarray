@@ -2,94 +2,147 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include "TiledArray/coordinates.h"
+#include <sstream>
 
 using namespace TiledArray;
 
 
 const boost::array<std::size_t, 6> Range1Fixture::a = Range1Fixture::init_tiling<6>();
-const Range1Fixture::range1_type::range_type Range1Fixture::tiles
-    = make_range1<range1_type::coordinate_system>(0,5);
-const Range1Fixture::range1_type::tile_range_type Range1Fixture::elements
-    = make_range1<range1_type::tile_coordinate_system>(0,50);
+const Range1Fixture::range1_type::range_type Range1Fixture::tiles(0, Range1Fixture::a.size() - 1);
+const Range1Fixture::range1_type::tile_range_type Range1Fixture::elements(Range1Fixture::a.front(), Range1Fixture::a.back());
 
 BOOST_FIXTURE_TEST_SUITE( range1_suite, Range1Fixture )
 
-BOOST_AUTO_TEST_CASE( block_accessor )
+BOOST_AUTO_TEST_CASE( range_accessor )
 {
   BOOST_CHECK_EQUAL(tr1.tiles(), tiles);
   BOOST_CHECK_EQUAL(tr1.elements(), elements);
-  BOOST_CHECK_EQUAL(tr1.tile(0), tile[0]);
-  BOOST_CHECK_EQUAL(tr1.tile(1), tile[1]);
-  BOOST_CHECK_EQUAL(tr1.tile(2), tile[2]);
-  BOOST_CHECK_EQUAL(tr1.tile(3), tile[3]);
-  BOOST_CHECK_EQUAL(tr1.tile(4), tile[4]);
-  BOOST_CHECK_THROW(tr1.tile(5), std::out_of_range);
+
+  // Check individual tiles
+  for(std::size_t i = 0; i < a.size() - 1; ++i)
+    BOOST_CHECK_EQUAL(tr1.tile(i), range1_type::tile_range_type(a[i], a[i + 1]));
 }
 
-BOOST_AUTO_TEST_CASE( block_info )
+BOOST_AUTO_TEST_CASE( range_info )
 {
-  BOOST_CHECK_EQUAL(tr1.tiles().size(), 5ul);
+  BOOST_CHECK_EQUAL(tr1.tiles().size(), a.size() - 1);
   BOOST_CHECK_EQUAL(tr1.tiles().start(), 0ul);
-  BOOST_CHECK_EQUAL(tr1.tiles().finish(), 5ul);
-  BOOST_CHECK_EQUAL(tr1.elements().size(), 50ul);
+  BOOST_CHECK_EQUAL(tr1.tiles().finish(), a.size() - 1);
+  BOOST_CHECK_EQUAL(tr1.elements().size(), a.back());
   BOOST_CHECK_EQUAL(tr1.elements().start(), 0ul);
-  BOOST_CHECK_EQUAL(tr1.elements().finish(), 50ul);
-  BOOST_CHECK_EQUAL(tr1.tile(0).size(), 3ul);
-  BOOST_CHECK_EQUAL(tr1.tile(0).start(), 0ul);
-  BOOST_CHECK_EQUAL(tr1.tile(0).finish(), 3ul);
+  BOOST_CHECK_EQUAL(tr1.elements().finish(), a.back());
+  for(std::size_t i = 0; i < a.size() - 1; ++i) {
+    BOOST_CHECK_EQUAL(tr1.tile(i).start(), a[i]);
+    BOOST_CHECK_EQUAL(tr1.tile(i).finish(), a[i + 1]);
+    BOOST_CHECK_EQUAL(tr1.tile(i).size(), a[i + 1] - a[i]);
+    BOOST_CHECK_EQUAL(tr1.tile(i).volume(), a[i + 1] - a[i]);
+    BOOST_CHECK_EQUAL(tr1.tile(i).weight(), 1);
+  }
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(range1_type r0);
-  range1_type r0;                  // check default construction and range info.
-  BOOST_CHECK_EQUAL(r0.tiles(), make_range1<range1_type::coordinate_system>(0,0));
-  BOOST_CHECK_EQUAL(r0.elements(), make_range1<range1_type::tile_coordinate_system>(0,0));
-  BOOST_CHECK_EQUAL(r0.tile(ordinal_index(0)), make_range1<range1_type::tile_coordinate_system>(0,0));
+  // check default construction and range info.
+  {
+    BOOST_REQUIRE_NO_THROW(range1_type r);
+    range1_type r;
+    BOOST_CHECK_EQUAL(r.tiles(), range1_type::range_type(0,0));
+    BOOST_CHECK_EQUAL(r.elements(), range1_type::tile_range_type(0,0));
+#ifdef TA_EXCEPTION_ERROR
+    BOOST_CHECK_THROW(r.tile(0), std::out_of_range);
+#endif
+  }
 
-  BOOST_REQUIRE_NO_THROW(range1_type r1(a.begin(), a.end()));
-  range1_type r1(a.begin(), a.end());           // check construction with a
-  BOOST_CHECK_EQUAL(r1.tiles(), tiles);         // iterators and the range info.
-  BOOST_CHECK_EQUAL(r1.elements(), elements);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r1.begin(), r1.end(), tile.begin(), tile.end());
+  // check construction with a iterators and the range info.
+  {
+    BOOST_REQUIRE_NO_THROW(range1_type r(a.begin(), a.end()));
+    range1_type r(a.begin(), a.end());
+    BOOST_CHECK_EQUAL(r.tiles(), tiles);
+    BOOST_CHECK_EQUAL(r.elements(), elements);
+    for(std::size_t i = 0; i < a.size() - 1; ++i) {
+      BOOST_CHECK_EQUAL(r.tile(i).start(), a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i).finish(), a[i + 1]);
+      BOOST_CHECK_EQUAL(r.tile(i).size(), a[i + 1] - a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i).volume(), a[i + 1] - a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i).weight(), 1);
+    }
+  }
 
-  BOOST_REQUIRE_NO_THROW(range1_type r2(tr1));
-  range1_type r2(tr1);                                   // check copy constructor
-  BOOST_CHECK_EQUAL(r1.tiles(), tiles);
-  BOOST_CHECK_EQUAL(r1.elements(), elements);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r1.begin(), r1.end(), tile.begin(), tile.end());
 
-  BOOST_REQUIRE_NO_THROW(range1_type r3(a.begin(), a.end(), 2));
-  range1_type r3(a.begin(), a.end(), 2);// check construction with a with a tile offset.
-  BOOST_CHECK_EQUAL(r3.tiles(), make_range1<range1_type::coordinate_system>(2,7));
-  BOOST_CHECK_EQUAL(r3.elements(), elements);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r3.begin(), r3.end(), tile.begin(), tile.end());
+  // check copy constructor
+  {
+    BOOST_REQUIRE_NO_THROW(range1_type r(tr1));
+    range1_type r(tr1);
+    BOOST_CHECK_EQUAL(r.tiles(), tiles);
+    BOOST_CHECK_EQUAL(r.elements(), elements);
+    for(std::size_t i = 0; i < a.size() - 1; ++i) {
+      BOOST_CHECK_EQUAL(r.tile(i).start(), a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i).finish(), a[i + 1]);
+      BOOST_CHECK_EQUAL(r.tile(i).size(), a[i + 1] - a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i).volume(), a[i + 1] - a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i).weight(), 1);
+    }
+  }
 
-  BOOST_REQUIRE_NO_THROW(range1_type r4(a.begin() + 1, a.end()));
-  range1_type r4(a.begin() + 1, a.end());// check construction with a with a element offset.
-  BOOST_CHECK_EQUAL(r4.tiles(), make_range1<range1_type::coordinate_system>(0,4));
-  BOOST_CHECK_EQUAL(r4.elements(), make_range1<range1_type::tile_coordinate_system>(3,50));
-  BOOST_CHECK_EQUAL_COLLECTIONS(r4.begin(), r4.end(), tile.begin() + 1, tile.end());
+  // check construction with a with a tile offset.
+  {
+    BOOST_REQUIRE_NO_THROW(range1_type r(a.begin(), a.end(), 2));
+    range1_type r(a.begin(), a.end(), 2);
+    BOOST_CHECK_EQUAL(r.tiles(), range1_type::range_type(2, 1 + a.size()));
+    BOOST_CHECK_EQUAL(r.elements(), elements);
+    for(std::size_t i = 0; i < a.size() - 1; ++i) {
+      BOOST_CHECK_EQUAL(r.tile(i + 2).start(), a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i + 2).finish(), a[i + 1]);
+      BOOST_CHECK_EQUAL(r.tile(i + 2).size(), a[i + 1] - a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i + 2).volume(), a[i + 1] - a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i + 2).weight(), 1);
+    }
+  }
+
+
+  // check construction with a with a element offset.
+  {
+    BOOST_REQUIRE_NO_THROW(range1_type r(a.begin() + 1, a.end()));
+    range1_type r(a.begin() + 1, a.end());
+    BOOST_CHECK_EQUAL(r.tiles(), range1_type::range_type(0,a.size() - 2));
+    BOOST_CHECK_EQUAL(r.elements(), range1_type::tile_range_type(a[1],a.back()));
+    for(std::size_t i = 1; i < a.size() - 1; ++i) {
+      BOOST_CHECK_EQUAL(r.tile(i - 1).start(), a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i - 1).finish(), a[i + 1]);
+      BOOST_CHECK_EQUAL(r.tile(i - 1).size(), a[i + 1] - a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i - 1).volume(), a[i + 1] - a[i]);
+      BOOST_CHECK_EQUAL(r.tile(i - 1).weight(), 1);
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
 {
+  std::stringstream stm;
+  stm << "( tiles = " << range1_type::range_type(0, a.size() - 1) <<
+      ", elements = " << range1_type::tile_range_type(a.front(), a.back()) << " )";
+
   boost::test_tools::output_test_stream output;
   output << tr1;
   BOOST_CHECK( !output.is_empty( false ) );
-  BOOST_CHECK( output.check_length( 42, false ) );
-  BOOST_CHECK( output.is_equal( "( tiles = [ 0, 5 ), elements = [ 0, 50 ) )" ) );
+  BOOST_CHECK( output.check_length( stm.str().size(), false ) );
+  BOOST_CHECK( output.is_equal( stm.str().c_str() ) );
 }
 
 BOOST_AUTO_TEST_CASE( element2tile )
 {
-  boost::array<std::size_t, 50> e = {{0,0,0,1,1,1,1,2,2,2,3,3,3,3,3,3,3,3,3,3,
-      4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4}};
-  boost::array<std::size_t, 50> c;
+  // construct a map that should match the element to tile map for tr1.
+  std::vector<std::size_t> e;
+  for(range1_type::range_type::index t = tr1.tiles().start(); t < tr1.tiles().finish(); ++t)
+    for(ordinal_index i = tr1.tile(t).start(); i < tr1.tile(t).finish(); ++i)
+      e.push_back(t);
 
-  for(std::size_t i = 0; i < 50; ++i)
-    c[i] = tr1.element2tile(i);
+  // Construct a map that matches the internal element to tile map for tr1.
+  std::vector<std::size_t> c;
+  for(std::size_t i = tr1.elements().start(); i < tr1.elements().finish(); ++i)
+    c.push_back(tr1.element2tile(i));
 
+  // Check that the expected and internal element to tile maps match.
   BOOST_CHECK_EQUAL_COLLECTIONS(c.begin(), c.end(), e.begin(), e.end());
 }
 
@@ -122,13 +175,22 @@ BOOST_AUTO_TEST_CASE( comparison )
 
 BOOST_AUTO_TEST_CASE( iteration )
 {
-  BOOST_CHECK_EQUAL(const_iteration_test(tr1, tile.begin(), tile.end()), 5u);
-                                    // check for proper iteration functionality.
-  BOOST_CHECK_EQUAL( * tr1.find(11), tile[3]); // check that find returns an
-                                             // iterator to the correct tile.
+  // check for proper iteration functionality.
+  std::size_t count = 0;
+  for(range1_type::const_iterator it = tr1.begin(); it != tr1.end(); ++it, ++count) {
+    BOOST_CHECK_EQUAL(*it, range1_type::tile_range_type(a[count], a[count + 1]));
+  }
+  BOOST_CHECK_EQUAL(count, tr1.tiles().volume());
+}
 
-  BOOST_CHECK( tr1.find(55) == tr1.end()); // check that the iterator points to
-                           // the end() iterator if the element is out of range.
+BOOST_AUTO_TEST_CASE( find )
+{
+  // check that find returns an iterator to the correct tile.
+  BOOST_CHECK_EQUAL( * tr1.find(tr1.tile(3).start() + 1), range1_type::tile_range_type(a[3], a[4]));
+
+  // check that the iterator points to the end() iterator if the element is out of range.
+  BOOST_CHECK( tr1.find(a.back() + 10) == tr1.end());
+
 }
 
 BOOST_AUTO_TEST_CASE( assignment )
