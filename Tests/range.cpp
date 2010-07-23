@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE( permutation )
 
 BOOST_AUTO_TEST_CASE( include )
 {
-  Range<CoordinateSystem<3> >::index s(0,0,0);
+  Range<CoordinateSystem<3> >::index s(1,1,1);
   Range<CoordinateSystem<3> >::index f(5,5,5);
   Range<CoordinateSystem<3> > r1(s, f);
   Range<CoordinateSystem<3> >::index t1(0,3,3);
