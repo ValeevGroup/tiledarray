@@ -100,15 +100,26 @@ namespace TiledArray {
     }
 
     /// Check the coordinate to make sure it is within the range.
+
+    /// \param i The coordinate index to check for inclusion in the range
+    /// \return \c true when \c i \c >= \c start and \c i \c < \c f, otherwise
+    /// \c false
     bool includes(const index& i) const {
-      return std::equal(start_.begin(), start_.end(), i.begin(),
-          std::less<typename coordinate_system::ordinal_index>()) &&
-          std::equal(i.begin(), i.end(), finish_.begin(),
-          std::less<typename coordinate_system::ordinal_index>());
+      typename size_array::const_iterator start_it = start_.begin();
+      typename size_array::const_iterator finish_it = finish_.begin();
+      for(typename index::const_iterator it = i.begin(); it != i.end(); ++it, ++start_it, ++finish_it)
+        if((*it < *start_it) || (*it >= *finish_it))
+          return false;
+
+      return true;
     }
 
-    bool includes(const ordinal_index& o) const {
-      return o < volume();
+    /// Check the ordinal index to make sure it is within the range.
+
+    /// \param i The ordinal index to check for inclusion in the range
+    /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
+    bool includes(const ordinal_index& i) const {
+      return include_ordinal_(i);
     }
 
     /// Assignment Operator.
@@ -153,6 +164,16 @@ namespace TiledArray {
     }
 
   private:
+
+    template <typename T>
+    bool include_ordinal_(const T& i, typename boost::enable_if< boost::is_signed<T> >::type* = NULL) const {
+      return (i >= 0) && (i < volume());
+    }
+
+    template <typename T>
+    bool include_ordinal_(const T& i, typename boost::disable_if< boost::is_signed<T> >::type* = NULL) const {
+      return i < volume();
+    }
 
     void increment(index& i) const {
       coordinate_system::increment_coordinate(i, start_, finish_);
