@@ -109,13 +109,10 @@ namespace TiledArray {
 
     /// Construct a range for the given index.
 
-    /// \tparam Index An integral type
     /// \param i The ordinal index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
-    template <typename Index>
-    typename boost::enable_if<boost::is_integral<Index>, tile_range_type>::type
-    make_tile_range(const Index& i) const {
+    tile_range_type make_tile_range(const ordinal_index& i) const {
       TA_ASSERT(range_.includes(i), std::runtime_error, "Index i is not included in the range.");
       return make_tile_range(coordinate_system::calc_index(i, range_.weight()));
     }
@@ -222,7 +219,7 @@ namespace TiledArray {
   template <typename CS>
   std::ostream& operator<<(std::ostream& out, const TiledRange<CS>& rng) {
     out << "(" << " tiles = " << rng.tiles()
-        << " elements = " << rng.elements() << " )";
+        << ", elements = " << rng.elements() << " )";
     return out;
   }
 
