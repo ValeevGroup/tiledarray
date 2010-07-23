@@ -405,8 +405,8 @@ namespace TiledArray {
     template<typename InIter, typename OutIter>
     static void calc_index_(ordinal_index o, InIter first, InIter last, OutIter result) {
       for(; first != last; ++first, ++result) {
-        *result = o % *first;
-        o -= *result * *first;
+        *result = o / (*first);
+        o -= (*result) * (*first);
       }
     }
 
