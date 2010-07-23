@@ -72,18 +72,13 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( ostream )
 {
-  boost::test_tools::output_test_stream output;
-  output << tr;
-  BOOST_CHECK( !output.is_empty( false ) );
-  BOOST_CHECK( output.check_length( 75, false ) );
-  BOOST_CHECK( output.is_equal( "( tiles = [ (0, 0, 0), (3, 4, 5) ) elements = [ (0, 0, 0), (30, 20, 15) ) )" ) );
 
   std::stringstream stm;
-  stm << "( tiles = [" << range1_type::range_type(0, a.size() - 1) <<
-      ", elements = " << range1_type::tile_range_type(a.front(), a.back()) << " )";
+  stm << "( tiles = " << TRangeN::range_type(tr.tiles().start(), tr.tiles().finish()) <<
+      ", elements = " << TRangeN::tile_range_type(tr.elements().start(), tr.elements().finish()) << " )";
 
   boost::test_tools::output_test_stream output;
-  output << tr1;
+  output << tr;
   BOOST_CHECK( !output.is_empty( false ) );
   BOOST_CHECK( output.check_length( stm.str().size(), false ) );
   BOOST_CHECK( output.is_equal( stm.str().c_str() ) );
@@ -151,11 +146,11 @@ BOOST_AUTO_TEST_CASE( make_tile_range )
 
   // iterate over all the tile indexes in the tiled range.
   TRangeN::ordinal_index i = 0;
-  for(RangeN::const_iterator it = r.begin(); it != r.end(); ++it, ++i) {
+  for(RangeN::const_iterator it = tr.tiles().begin(); it != tr.tiles().end(); ++it, ++i) {
     // get the start and finish indexes of the current range.
     for(unsigned int d = 0; d < GlobalFixture::coordinate_system::dim; ++d) {
       start[d] = a[ (*it)[d] ];
-      finish[d] = a[ (*it)[d] ];
+      finish[d] = a[ (*it)[d] + 1 ];
     }
 
     // construct a range object that should match the range constructed by TiledRange.
