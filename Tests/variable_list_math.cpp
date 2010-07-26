@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE( contraction_op )
   BOOST_CHECK_EQUAL(r, VariableList("i,a"));
   contraction_op(r, VariableList("i"), VariableList("x,i,y"));
   BOOST_CHECK_EQUAL(r, VariableList("x,y"));
-  contraction_op(r, VariableList("i"), VariableList("xi"));
+  contraction_op(r, VariableList("i"), VariableList("x,i"));
   BOOST_CHECK_EQUAL(r, VariableList("x"));
   contraction_op(r, VariableList("i"), VariableList("i,x"));
   BOOST_CHECK_EQUAL(r, VariableList("x"));
