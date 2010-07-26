@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE( range_accessor )
 
 BOOST_AUTO_TEST_CASE( iterators )
 {
-  BOOST_CHECK( at.begin() == t.end() );
+  BOOST_CHECK( at.begin() == t.begin() );
   BOOST_CHECK( at.end() == t.end() );
 }
 
@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE( const_iterators )
   const TileN& ct = t;
   const AnnotatedTileN cat = at;
 
-  BOOST_CHECK( ct.begin() == cat.end() );
+  BOOST_CHECK( ct.begin() == cat.begin() );
   BOOST_CHECK( ct.end() == cat.end() );
 }
 
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE( constructors )
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
   BOOST_REQUIRE_NO_THROW(AnnotatedTileN at4(std::move(at)));
-  AnnotatedTileN at4(std::move(at));
+  AnnotatedTileN at4(std::move(at3));
   BOOST_CHECK_EQUAL_COLLECTIONS(at4.begin(), at4.end(), t.begin(), t.end());
   BOOST_CHECK_EQUAL(at4.range(), *r);
   BOOST_CHECK_EQUAL(at4.vars(), vars);
