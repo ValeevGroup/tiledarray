@@ -13,6 +13,7 @@
 #include <string>
 #include <algorithm>
 #include <utility>
+#include <iostream>
 
 namespace TiledArray {
 
@@ -73,11 +74,16 @@ namespace TiledArray {
 
     /// \param other The tile to be copied.
     Tile(const Tile_& other) :
-        alloc_type(other), range_(other.range_), first_(NULL), last_(NULL)
+        alloc_type(other), range_(boost::make_shared<range_type>(* other.range_)),
+        first_(alloc_type::allocate(other.range_->volume())),
+        last_(first_ + other.range_->volume())
     {
-      first_ = alloc_type::allocate(other.range_->volume());
-      last_ = first_ + other.range_->volume();
-      uninitialized_copy_(other.first_, other.last_, first_);
+      try {
+        uninitialized_copy_(other.first_, other.last_, first_);
+      } catch(...) {
+        alloc_type::deallocate(first_, other.range_->volume());
+        throw;
+      }
     }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
@@ -106,12 +112,16 @@ namespace TiledArray {
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     /// \throw anything Any exception that can be thrown by \c T type default or
     /// copy constructors
-    Tile(const boost::shared_ptr<range_type>& r, const value_type& v = value_type(), const alloc_type& a = alloc_type()) :
-        alloc_type(a), range_(r), first_(NULL), last_(NULL)
+    Tile(const boost::shared_ptr<range_type>& r, const value_type& val = value_type(), const alloc_type& a = alloc_type()) :
+        alloc_type(a), range_(r), first_(alloc_type::allocate(r->volume())),
+        last_(first_ + r->volume())
     {
-      first_ = alloc_type::allocate(r->volume());
-      last_ = first_ + r->volume();
-      uninitialized_fill_(first_, last_, v);
+      try {
+        uninitialized_fill_(first_, last_, val);
+      } catch (...) {
+        alloc_type::deallocate(first_, r->volume());
+        throw;
+      }
     }
 
 
@@ -132,11 +142,17 @@ namespace TiledArray {
     /// or copy constructors
     template <typename InIter>
     Tile(const boost::shared_ptr<range_type>& r, InIter first, InIter last, const alloc_type& a = alloc_type()) :
-        alloc_type(a), range_(r), first_(NULL), last_(NULL)
+        alloc_type(a), range_(r), first_(alloc_type::allocate(r->volume())),
+        last_(first_ + r->volume())
     {
-      first_ = alloc_type::allocate(r->volume());
-      last_ = first_ + r->volume();
-      uninitialized_copy_(first, last, first_);
+      try {
+        TA_ASSERT(volume_type(std::distance(first, last)) == r->volume(), std::runtime_error,
+            "The distance between initialization iterators must be equal to the tile volume.");
+        uninitialized_copy_(first, last, first_);
+      } catch (...) {
+        alloc_type::deallocate(first_, r->volume());
+        throw;
+      }
     }
 
     /// Assignment operator
@@ -175,28 +191,26 @@ namespace TiledArray {
     /// \return A reference to this object
     /// \warning This function modifies the shared range object.
     Tile_& operator ^=(const Permutation<coordinate_system::dim>& p) {
+      typedef detail::UninitializedCopy<typename Tile<T,CS,A>::const_iterator, A> copy_op;
+
+      const typename range_type::volume_type v = range_->volume();
+      range_type r(p ^ *range_);
+
       // Allocate some space for the permuted data.
-      pointer result_first = alloc_type::allocate(range_->volume());
-      pointer result_last = result_first + range_->volume();
+      pointer result_first = alloc_type::allocate(v);
+      pointer result_last = result_first + v;
 
-      // Todo: This if can be optimized out at compile time.
-      if(! boost::has_trivial_copy<value_type>::value)
-        uninitialized_fill_(result_first, result_last, value_type());
-
-      // create a permuted copy of the tile data
-      detail::Permute<CS> f_perm(*range_);
       try {
-        f_perm(p, result_first, result_last, first_, last_);
+        // create a permuted copy of the tile data
+        detail::Permute<CS, copy_op> f_perm(*range_, copy_op(first_, last_, *this));
+        f_perm(p, result_first, result_last);
+
       } catch(...) {
-        destroy_(result_first, result_last);
         alloc_type::deallocate(result_first, range_->volume());
         throw;
       }
 
-      // create a permuted copy of the tile range
-      range_type r = p ^ *range_;
-
-      // Swap the current range and data with the permuted copy.
+      // Swap the current range and data with the permuted copies.
       TiledArray::swap(*range_, r);
       std::swap(first_, result_first);
       std::swap(last_, result_last);
@@ -486,6 +500,7 @@ namespace TiledArray {
       std::swap(last_, other.last_);
     }
 
+    friend Tile_ operator ^ <>(const Permutation<coordinate_system::dim>&, const Tile_&);
     friend void TiledArray::swap<>(Tile_&, Tile_&);
 
     boost::shared_ptr<range_type> range_; ///< Shared pointer to the range data for this tile
@@ -503,11 +518,15 @@ namespace TiledArray {
   /// Permutes the content of the n-dimensional array.
   template <typename T, typename CS, typename A>
   Tile<T,CS,A> operator ^(const Permutation<CS::dim>& p, const Tile<T,CS,A>& t) {
+    typedef detail::AssignmentOp<typename Tile<T,CS,A>::iterator, typename Tile<T,CS,A>::const_iterator> assign_op;
+
     boost::shared_ptr<typename Tile<T,CS,A>::range_type> r =
         boost::make_shared<typename Tile<T,CS,A>::range_type>(p ^ t.range());
     Tile<T,CS,A> result(r);
-    detail::Permute<CS> f_perm(t.range());
-    f_perm(p, result.begin(), result.end(), t.begin(), t.end());
+
+    // create a permuted copy of the tile data
+    detail::Permute<CS, assign_op> f_perm(t.range(), assign_op(t.begin(), t.end()));
+    f_perm(p, result.begin(), result.end());
 
     return result;
   }

@@ -5,6 +5,8 @@
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/utility.h>
 #include <TiledArray/array_util.h>
+#include <boost/utility/enable_if.hpp>
+#include <boost/type_traits/has_trivial_copy.hpp>
 //#include <iosfwd>
 //#include <algorithm>
 #include <vector>
@@ -325,23 +327,58 @@ namespace TiledArray {
       }
 
     private:
-      AssignmentOp();
       InIter current_;
       InIter last_;
     }; // struct AssignmentOp
 
+    /// Function object that assigns the content of one iterator to another iterator.
+    template<typename InIter, typename Alloc >
+    struct UninitializedCopy {
+    private:
+      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+    public:
+      typedef typename Alloc::pointer pointer;
+      typedef typename Alloc::value_type value_type;
+
+      UninitializedCopy(InIter first, InIter last, const Alloc& a) : current_(first), last_(last), alloc_(a) { }
+
+      void operator ()(pointer it) {
+        TA_ASSERT(current_ != last_, std::runtime_error,
+            "The iterator is the end of the range.");
+        copy_data(it);
+      }
+
+    private:
+      template <typename T>
+      typename boost::enable_if<boost::has_trivial_copy<T> >::type
+      copy_data(T* p) { *p = *current_++; }
+
+      template <typename T>
+      typename boost::disable_if<boost::has_trivial_copy<T> >::type
+      copy_data(T* p) { alloc_.construct(p, *current_++); }
+
+      InIter current_;
+      InIter last_;
+      const Alloc& alloc_;
+    }; // struct UninitializedCopy
+
     /// Permutes of n-dimensional type container
 
+    /// The copy/assignment operation is the inner most loop operation. It
+    /// assigns data to the permuted array. It should assign the data from the
+    /// original n-dimensional array in order to the permuted array.
     /// \tparam CS The coordinate system type associated with the object that
     /// will be permuted.
-    template<typename CS>
+    template<typename CS, typename Op>
     struct Permute {
       /// Construct a permute function object.
 
       /// \param r The range object of the original object.
-      Permute(const Range<CS>& r) : range_(r) { }
+      /// \param op The copy/assignment operation used to copy/assign the
+      /// permuted data
+      Permute(const Range<CS>& r, Op op) : range_(r), op_(op) { }
 
-      /// Perform the data of an n-dimenstional container
+      /// Perform the data of an n-dimensional container
 
       /// \tparam RandIter Random access iterator type for the output data
       /// \tparam InIter Input iterator type for the input data
@@ -352,19 +389,17 @@ namespace TiledArray {
       /// array
       /// \param[in] first_in The first iterator for the data of the input array
       /// \param[in] first_in The last iterator for the data of the input array
+      /// \param[in] op The assignment operation
       /// \throw std::runtime_error When the distance between first_out and
       /// last_out, or first_in and last_in is not equal to the volume of the
       /// range object given in the constructor.
-      template<typename RandIter, typename InIter>
-      void operator ()(const Permutation<CS::dim>& p, RandIter first_out, RandIter last_out, InIter first_in, InIter last_in) {
+      template<typename RandIter>
+      void operator ()(const Permutation<CS::dim>& p, RandIter first_out, RandIter last_out)
+      {
         BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
-        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
         TA_ASSERT(static_cast<typename Range<CS>::volume_type>(std::distance(first_out, last_out)) == range_.volume(),
             std::runtime_error,
             "The distance between first_out and last_out must be equal to the volume of the original container.");
-        TA_ASSERT(static_cast<typename Range<CS>::volume_type>(std::distance(first_in, last_in)) == range_.volume(),
-            std::runtime_error,
-            "The distance between first and last must be equal to the volume of the original container.");
 
         // Calculate the sizes and weights of the permuted array
         typename Range<CS>::size_array p_size;
@@ -381,19 +416,10 @@ namespace TiledArray {
         std::transform(range_.size().begin(), range_.size().end(), step.begin(),
             end.begin(), std::multiplies<typename Range<CS>::ordinal_index>());
 
-        if(CS::order == decreasing_dimension_order) {
-          NestedForLoop<CS::dim, AssignmentOp<RandIter, InIter>, RandIter >
-              do_loop(AssignmentOp<RandIter, InIter >(first_in, last_in),
-              end.rbegin(), end.rend(), step.rbegin(), step.rend());
-          do_loop(first_out);
-        } else {
-          p_size.front() = std::accumulate(weight.begin(), weight.end(), 1ul,
-              std::multiplies<typename Range<CS>::ordinal_index>()) + 1ul;
-          NestedForLoop<CS::dim, AssignmentOp<RandIter, InIter >, RandIter >
-              do_loop(AssignmentOp<RandIter, InIter>(first_in, last_in),
-              end.begin(), end.end(), step.begin(), step.end());
-          do_loop(first_out);
-        }
+        // create the nested for loop object which will permute the data
+        NestedForLoop<CS::dim, Op, RandIter >
+            do_loop(op_, CS::begin(end), CS::end(end), CS::begin(step), CS::end(step));
+        do_loop(first_out);
       }
 
     private:
@@ -402,6 +428,7 @@ namespace TiledArray {
       Permute();
 
       const Range<CS>& range_; ///< Range object for the original array
+      Op op_;
     }; // struct Permute
 
   } // namespace detail
