@@ -8,6 +8,13 @@
 namespace TiledArray {
   namespace math {
 
+    // Forward declarations
+    template <typename, typename, typename, template <typename> class>
+    class BinaryOp;
+
+    template <typename, typename, template <typename> class>
+    class UnaryOp;
+
     /// Default binary operation for \c VariableList objects
 
     /// \tparam The operation type to be performed on two data elements.
