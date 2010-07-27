@@ -17,6 +17,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   annotated_array.cpp \
                   variable_list_math.cpp \
                   range_math.cpp \
+                  tiled_range_math.cpp \
                   tile_math.cpp \
                   shape_math.cpp \
                   key.cpp \

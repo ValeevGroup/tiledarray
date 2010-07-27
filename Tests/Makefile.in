@@ -59,8 +59,9 @@ am_ta_test_OBJECTS = TiledArrayTest.$(OBJEXT) permutation.$(OBJEXT) \
 	tiled_range.$(OBJEXT) tile.$(OBJEXT) variable_list.$(OBJEXT) \
 	array_math.$(OBJEXT) annotated_array.$(OBJEXT) \
 	variable_list_math.$(OBJEXT) range_math.$(OBJEXT) \
-	tile_math.$(OBJEXT) shape_math.$(OBJEXT) key.$(OBJEXT) \
-	array.$(OBJEXT) array_math.$(OBJEXT) expressions.$(OBJEXT) \
+	tiled_range_math.$(OBJEXT) tile_math.$(OBJEXT) \
+	shape_math.$(OBJEXT) key.$(OBJEXT) array.$(OBJEXT) \
+	array_math.$(OBJEXT) expressions.$(OBJEXT) \
 	dense_shape.$(OBJEXT) sparse_shape.$(OBJEXT) \
 	pred_shape.$(OBJEXT) shape.$(OBJEXT)
 ta_test_OBJECTS = $(am_ta_test_OBJECTS)
@@ -189,6 +190,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   annotated_array.cpp \
                   variable_list_math.cpp \
                   range_math.cpp \
+                  tiled_range_math.cpp \
                   tile_math.cpp \
                   shape_math.cpp \
                   key.cpp \
@@ -293,6 +295,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tile_math.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tiled_range.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tiled_range1.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tiled_range_math.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/variable_list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/variable_list_math.Po@am__quote@
 
