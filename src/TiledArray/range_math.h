@@ -1,7 +1,16 @@
 #ifndef TILEDARRAY_RANGE_MATH_H__INCLUDED
 #define TILEDARRAY_RANGE_MATH_H__INCLUDED
 
+#include <TiledArray/error.h>
+#include <TiledArray/coordinate_system.h>
+#include <TiledArray/variable_list.h>
+#include <boost/static_assert.hpp>
+
 namespace TiledArray {
+
+  template <typename>
+  class Range;
+
   namespace expressions {
 
     template <typename>
@@ -10,6 +19,13 @@ namespace TiledArray {
   } // namespace expressions
 
   namespace math {
+
+    // Forward declarations
+    template <typename, typename, typename, template <typename> class>
+    class BinaryOp;
+
+    template <typename, typename, template <typename> class>
+    class UnaryOp;
 
     /// Default binary operation for \c Range objects
 
