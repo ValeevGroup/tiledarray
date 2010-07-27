@@ -326,6 +326,12 @@ namespace TiledArray {
     /// \throw nothing
     const range_type& range() const { return *range_; }
 
+    /// Tile range shared pointer accessor
+
+    /// \return A shared pointer to the tile's range object.
+    /// \throw nothing
+    boost::shared_ptr<range_type> range_ptr() const { return range_; }
+
     /// Create an annotated tile
 
     /// \param v A string with a comma-separated list of variables.
@@ -584,7 +590,7 @@ namespace madness {
       static void load(const Archive& ar, TiledArray::Tile<T, CS, A>& t) {
         if(t.first_ != NULL) {
           t.destroy_(t.first_, t.last_);
-          t.deallocate(t.first_, t.range_.volume());
+          t.deallocate(t.first_, t.range_->volume());
         }
 
         ar & static_cast<typename TiledArray::Tile<T, CS, A>::alloc_type&>(t);

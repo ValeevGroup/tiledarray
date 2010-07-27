@@ -65,6 +65,7 @@ BOOST_AUTO_TEST_CASE( range_accessor )
   BOOST_CHECK_EQUAL(t.range().size(), pr->size());    // check size accessor
   BOOST_CHECK_EQUAL(t.range().volume(), pr->volume());// check volume accessor
   BOOST_CHECK_EQUAL(t.range(), *pr);          // check range accessof
+  BOOST_CHECK_EQUAL(t.range_ptr(), pr);
 }
 
 BOOST_AUTO_TEST_CASE( element_access )
