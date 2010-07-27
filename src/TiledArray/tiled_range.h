@@ -6,6 +6,7 @@
 #include <iosfwd>
 #include <boost/type_traits/is_integral.hpp>
 #include <boost/utility/enable_if.hpp>
+#include <boost/make_shared.hpp>
 
 namespace TiledArray {
 
@@ -112,7 +113,7 @@ namespace TiledArray {
     /// \param i The ordinal index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
-    tile_range_type make_tile_range(const ordinal_index& i) const {
+    boost::shared_ptr<tile_range_type> make_tile_range(const ordinal_index& i) const {
       TA_ASSERT(range_.includes(i), std::runtime_error, "Index i is not included in the range.");
       return make_tile_range(coordinate_system::calc_index(i, range_.weight()));
     }
@@ -122,7 +123,7 @@ namespace TiledArray {
     /// \param i The index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
-    tile_range_type make_tile_range(const index& i) const {
+    boost::shared_ptr<tile_range_type> make_tile_range(const index& i) const {
       TA_ASSERT(range_.includes(i), std::runtime_error, "Index i is not included in the range.");
       tile_index start;
       tile_index finish;
@@ -130,7 +131,8 @@ namespace TiledArray {
         start[d] = ranges_[d].tile(i[d]).start();
         finish[d] = ranges_[d].tile(i[d]).finish();
       }
-      return tile_range_type(start, finish);
+
+      return boost::make_shared<tile_range_type>(start, finish);
     }
 
   private:

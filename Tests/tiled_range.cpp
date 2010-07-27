@@ -157,11 +157,11 @@ BOOST_AUTO_TEST_CASE( make_tile_range )
     TRangeN::tile_range_type range(start, finish);
 
     // Get the two ranges to be tested.
-    TRangeN::tile_range_type range_index = tr.make_tile_range(*it);
-    TRangeN::tile_range_type range_ordinal = tr.make_tile_range(i);
+    boost::shared_ptr<TRangeN::tile_range_type> range_index = tr.make_tile_range(*it);
+    boost::shared_ptr<TRangeN::tile_range_type> range_ordinal = tr.make_tile_range(i);
 
-    BOOST_CHECK_EQUAL(range_index, range);
-    BOOST_CHECK_EQUAL(range_ordinal, range);
+    BOOST_CHECK_EQUAL(*range_index, range);
+    BOOST_CHECK_EQUAL(*range_ordinal, range);
   }
 }
 
