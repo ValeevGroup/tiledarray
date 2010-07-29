@@ -1,16 +1,13 @@
 #ifndef TILEDARRAY_COORDINATES_H__INCLUDED
 #define TILEDARRAY_COORDINATES_H__INCLUDED
 
-#include <TiledArray/coordinate_system.h>
 #include <TiledArray/array_util.h>
-#include <TiledArray/error.h>
 #include <TiledArray/utility.h>
 #include <boost/operators.hpp>
 #include <boost/array.hpp>
-#include <boost/type_traits.hpp>
+#include <boost/type_traits/is_integral.hpp>
 #include <boost/utility/enable_if.hpp>
-#include <iterator>
-#include <algorithm>
+#include <iosfwd>
 #ifndef __GXX_EXPERIMENTAL_CXX0X__
 #include <stdarg.h>
 #endif // __GXX_EXPERIMENTAL_CXX0X__
@@ -47,6 +44,8 @@ namespace TiledArray {
   private:
     typedef boost::array<I,DIM> array_type; ///< array_type type used to store coordinates
 
+    struct Enabler { };
+
   public:
     BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
 
@@ -70,7 +69,7 @@ namespace TiledArray {
     /// used to initialize the coordinate elements
     /// \throw nothing
     template <typename InIter>
-    explicit ArrayCoordinate(InIter first, typename boost::disable_if<boost::is_integral<InIter> >::type* = NULL) {
+    explicit ArrayCoordinate(InIter first, typename boost::disable_if<boost::is_integral<InIter>, Enabler >::type = Enabler()) {
       // should variadic constructor been chosen?
       // need to disambiguate the call if DIM==1
       // assume iterators if InIter is not an integral type
@@ -394,12 +393,12 @@ namespace TiledArray {
   /// \return \c true when all elements of
   template <typename I, unsigned int DIM, typename Tag>
   bool operator<(const ArrayCoordinate<I,DIM,Tag>& c1, const ArrayCoordinate<I,DIM,Tag>& c2) {
-    return std::lexicographical_compare(c1.begin(), c1.end(), c2.begin(), c2.end());
+    return c1.data() < c2.data();
   }
 
   template <typename I, unsigned int DIM, typename Tag>
   bool operator==(const ArrayCoordinate<I,DIM,Tag>& c1, const ArrayCoordinate<I,DIM,Tag>& c2) {
-    return std::equal(c1.begin(), c1.end(), c2.begin());
+    return c1.data() == c2.data();
   }
 
   /// Permute an ArrayCoordinate

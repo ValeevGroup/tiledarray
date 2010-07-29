@@ -10,6 +10,7 @@
 #include <boost/mpl/equal_to.hpp>
 #include <boost/mpl/bool.hpp>
 #include <numeric>
+#include <cstddef>
 
 namespace TiledArray {
 

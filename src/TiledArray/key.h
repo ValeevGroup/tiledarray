@@ -2,7 +2,6 @@
 #define TILEDARRAY_KEY_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <iosfwd>
 #include <iostream>
 
 namespace TiledArray {
