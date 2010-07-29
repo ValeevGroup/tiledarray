@@ -21,6 +21,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   tile_math.cpp \
                   shape_math.cpp \
                   key.cpp \
+                  indexed_iterator.cpp \
                   array.cpp \
                   array_math.cpp \
                   expressions.cpp \

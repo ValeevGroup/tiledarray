@@ -1,207 +1,211 @@
 #ifndef TILEDARRAY_INDEXED_ITERATOR_H__INCLUDED
 #define TILEDARRAY_INDEXED_ITERATOR_H__INCLUDED
 
-#include <boost/iterator/iterator_facade.hpp>
+#include <TiledArray/type_traits.h>
+#include <boost/iterator/iterator_adaptor.hpp>
+#include <boost/utility/enable_if.hpp>
+#include <boost/mpl/if.hpp>
+#include <boost/type_traits/is_const.hpp>
+#include <boost/type_traits/remove_const.hpp>
+#include <iterator>
 
 namespace TiledArray {
 
+  template <typename, unsigned int, typename>
+  class ArrayCoordinate;
+
   namespace detail {
 
-    /// Wrapper class iterators to provide the index interface.
+    template <typename, typename>
+    class Key;
 
-    /// This class wraps an iterator object which dereferences into a pair, where
-    /// the first is the index and second is the data.
-    /// \arg \c It is the iterator type.
-    template<typename It>
-    class IndexedIterator : public boost::iterator_facade<IndexedIterator<It>,
-        typename It::value_type::second_type, typename It::iterator_category,
-        typename It::reference, typename It::difference_type>
+    template <typename Iterator>
+    struct BaseIteratorTraits {
+      typedef typename std::iterator_traits<Iterator>::value_type base_value_type;
+      typedef typename std::iterator_traits<Iterator>::reference base_reference;
+      typedef typename std::iterator_traits<Iterator>::value_type::second_type value_type;
+      typedef typename boost::mpl::if_<boost::is_const<typename boost::remove_reference<base_reference>::type >,
+          const value_type&, value_type&>::type reference;
+    };
+
+    /// Iterator adapter for indexed iterators
+
+    /// This class wraps an indexed iterator so that only the data is is given
+    /// when dereferencing the iterator. It also provides a const accessor
+    /// member function for the iterators index. Otherwise, the iterator behaves
+    /// the same as the base iterator. \c Iterator type must conform to the
+    /// standard c++ iterator requirements.
+    /// \tparam Iterator The base iterator type.
+    /// \note Iterator::value_type must be a \c std::pair<const \c K, \c D>
+    /// type, where \c K is the key (or index) type and \c D is the data type.
+    /// \note If Iterator::value_type is a \c TiledArray::detail::Key type, then
+    /// index type will default to \c Key::key1_type; unless one of the two
+    /// \c Key types is a \c TiledArray::ArrayCoordinate type, in which case it
+    /// will be the \c TiledArray::ArrayCoordinate type.
+    template <typename Iterator>
+    class IndexedIterator : public boost::iterator_adaptor<
+        IndexedIterator<Iterator>,                          // Derived class type
+        Iterator,                                           // Base iterator
+        typename BaseIteratorTraits<Iterator>::value_type,  // Value type
+        boost::use_default,                                 // Iterator category
+        typename BaseIteratorTraits<Iterator>::reference>   // reference type
+
     {
     private:
-      typedef boost::iterator_facade<IndexedIterator<It>,
-          typename It::value_type::second_type,
-          typename It::iterator_category> iterator_facade_; ///< Base class type
+      /// The base class type
+      typedef boost::iterator_adaptor<IndexedIterator<Iterator>, Iterator,
+          typename BaseIteratorTraits<Iterator>::value_type, boost::use_default,
+          typename BaseIteratorTraits<Iterator>::reference> iterator_adaptor_;
 
+      // Used to selectively enable functions with boost::enable_if
+      struct Enabler { };
+
+      // This set of classes are used to ensure that TiledArray::detail::Key
+      // index types are handled correctly. The default behavior is to use
+      // Iterator::value_type::first_type as the index type. But when that type
+      // is a TiledArray::detail::Key<T1,T2> type, we need to select one of the
+      // two Key types. The default behavior in this case is to select
+      // Key::key1_type. If one of the two key types is a
+      // TiledArray::ArrayCoordinate type, then that type is used.
+      template <typename T>
+      struct IndexType {
+        typedef T type;
+
+        static type& get_index(const Iterator& it) {
+          return it->first;
+        }
+      };
+
+      template <typename T1, typename T2>
+      struct IndexType<const Key<T1, T2> > {
+        typedef const T1 type;
+
+        static type& get_index(const Iterator& it) {
+          return it->first.key1();
+        }
+      };
+
+      template <typename I, unsigned int DIM, typename Tag, typename T2>
+      struct IndexType<const Key<ArrayCoordinate<I, DIM, Tag>, T2> > {
+        typedef const ArrayCoordinate<I, DIM, Tag> type;
+
+        static type& get_index(const Iterator& it) {
+          return it->first.key1();
+        }
+      };
+
+      template <typename T1, typename I, unsigned int DIM, typename Tag>
+      struct IndexType<const Key<T1, ArrayCoordinate<I, DIM, Tag> > > {
+        typedef const ArrayCoordinate<I, DIM, Tag> type;
+
+        static type& get_index(const Iterator& it) {
+          return it->first.key2();
+        }
+      };
+
+      typedef IndexType<typename std::iterator_traits<Iterator>::value_type::first_type> indexer;
 
     public:
-      typedef IndexedIterator<It> IndexedIterator_; ///< this object type
-      typedef typename It::value_type::first_type index_type;
-      typedef It iterator_type;
-      typedef typename iterator_facade_::value_type value_type;
-      typedef typename iterator_facade_::reference reference;
-      typedef typename iterator_facade_::pointer pointer;
-      typedef typename iterator_facade_::difference_type difference_type;
-      typedef typename iterator_facade_::iterator_category iterator_category;
+      typedef IndexedIterator<Iterator> IndexedIterator_; ///< this object type
+      typedef typename indexer::type index_type; ///< The index (or key) type for the iterator
+      typedef typename iterator_adaptor_::base_type base_type; ///< The base iterator type
+      typedef typename iterator_adaptor_::value_type value_type; ///< iterator value_type
+      typedef typename iterator_adaptor_::reference reference; ///< iterator reference type
+      typedef typename iterator_adaptor_::pointer pointer; ///< iterator pointer type
+      typedef typename iterator_adaptor_::difference_type difference_type; ///< iterator difference type
+      typedef typename iterator_adaptor_::iterator_category iterator_category; ///< iterator traversal category
 
       /// Default constructor
-      IndexedIterator() : it_() { }
-      /// Construct with a base iterator
-      IndexedIterator(iterator_type it) : it_(it) { }
+
+      /// Constructs an indexed iterator that uses the default constructor for
+      /// the base iterator.
+      /// \note This constructor is only enabled for forward, bidirectional, and
+      /// random access type pointers.
+      IndexedIterator(typename boost::enable_if<is_forward_iterator<Iterator>, Enabler >::type = Enabler()) :
+          iterator_adaptor_()
+      { }
+
+      /// Construct with an iterator
+
+      /// \tparam It Any iterator type that implicitly convertible to the
+      /// base iterator type
+      /// \param it An iterator that will initialize the internal iterator.
+      /// \note \c it must be implicitly convertible to the base iterator type.
+      template <typename It>
+      explicit IndexedIterator(const It& it,
+          typename boost::enable_if<boost::is_convertible<It, Iterator>, Enabler>::type = Enabler()) :
+          iterator_adaptor_(it)
+      { }
+
       /// Copy constructor
-      IndexedIterator(const IndexedIterator_& other) : it_(other.it_) { }
+
+      /// \param other The other indexed iterator to be copied.
+      IndexedIterator(const IndexedIterator_& other) : iterator_adaptor_(other) { }
+
       /// Copy a convertible iterator
-      template<typename OtherIt>
-      IndexedIterator(const IndexedIterator<OtherIt>& other) : it_(other.it_) { }
-  #ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Move copy constructor
-      IndexedIterator(IndexedIterator_&& other) : it_(std::move(other.it_)) { }
-  #endif // __GXX_EXPERIMENTAL_CXX0X__
+
+      /// \tparam It Another iterator type that is convertible to the
+      /// internal iterator type.
+      /// \param other The indexed iterator that is to be copied.
+      template<typename It>
+      IndexedIterator(const IndexedIterator<It>& other,
+          typename boost::enable_if<boost::is_convertible<It, Iterator>, Enabler>::type = Enabler()) :
+          iterator_adaptor_(other.base())
+      { }
 
       /// Assignment operator
+
+      /// \param other The indexed iterator that is to be copied.
+      /// \return A reference to this iterator
       IndexedIterator_& operator=(const IndexedIterator_& other) {
-        it_ = other.it_;
+        iterator_adaptor_::base_reference() = other.base_reference();
         return *this;
       }
 
-  #ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Move assignment operator
-      IndexedIterator_& operator=(IndexedIterator_&& other) {
-        it_ = std::move(other.it_);
+      /// Assignment operator for other indexed iterator types
+
+      /// \tparam It Another iterator type that is convertible to the base
+      /// iterator type.
+      /// \param other The indexed iterator that is to be copied.
+      /// \return A reference to this iterator
+      template <typename It>
+      typename boost::enable_if<boost::is_convertible<It, Iterator>, IndexedIterator_&>::type
+      operator=(const IndexedIterator<It>& other) {
+        iterator_adaptor_::base_reference() = other.base();
         return *this;
       }
-  #endif // __GXX_EXPERIMENTAL_CXX0X__
 
-      /// Returns the current index.
-      const index_type& index() const { return it_->first; }
+      /// Assignment operator for other iterator types
+
+      /// \tparam It Another iterator type that is convertible to the base
+      /// iterator type.
+      /// \param other The indexed iterator that is to be copied.
+      /// \return A reference to this iterator
+      template <typename It>
+      typename boost::enable_if<boost::is_convertible<It, Iterator>, IndexedIterator_&>::type
+      operator=(const It& it) {
+        iterator_adaptor_::base_reference() = it;
+        return *this;
+      }
+
+      /// Index accessor
+
+      /// \return The index associated with the iterator.
+      index_type& index() const {
+        return indexer::get_index(iterator_adaptor_::base_reference());
+      }
+
+      reference operator[] (difference_type n) const
+      { return iterator_adaptor_::base_reference()[n].second; }
 
     private:
       /// Returns a reference to the iterator data.
-      reference dereference() { return it_->second; }
-
-      /// Returns true if the base iterators are equal.
-      bool equal(const IndexedIterator_& other) const { return it_ == other.it_; }
-
-      /// Increments the base iterator.
-      void increment() { ++it_; }
-
-      /// Decrements the base iterator.
-      void decrement() { --it_; }
-
-      /// Advances the base iterator n positions.
-      void advance(difference_type n) { std::advance(it_, n); }
-
-      /// Returns the difference between this base iterator (lh) and the other base iterator (rh).
-      difference_type distance_to(const IndexedIterator_& other) const {
-        return std::distance(it_, other.it_);
-      }
+      reference dereference() const { return iterator_adaptor_::base_reference()->second; }
 
       friend class boost::iterator_core_access;
-
-      iterator_type it_; ///< Base iterator
-    }; // class IndexedIterator
-
-
-    /// Wrapper class iterators to provide the index interface.
-
-    /// This is a specialization that uses a pair to store an index and iterator
-    /// object. This is appropriate for iterators that do NOT dereference into a
-    /// pair with key type and data type. The Index type should have the
-    /// following operators defined (when the equivalent iterator operations are
-    /// valid): ++, --, -, and +=.
-    /// \arg \c Ix is the index type.
-    /// \arg \c It is the iterator type.
-    template<typename Ix, typename It>
-    class IndexedIterator<std::pair<Ix, It> > :
-        public boost::iterator_facade<IndexedIterator<std::pair<Ix, It> >,
-            typename std::iterator_traits<It>::value_type,
-            typename std::iterator_traits<It>::iterator_category,
-            typename std::iterator_traits<It>::reference,
-            typename std::iterator_traits<It>::difference_type>
-    {
-    private:
-      typedef boost::iterator_facade<IndexedIterator<std::pair<Ix, It> >,
-          typename std::iterator_traits<It>::value_type,
-          typename std::iterator_traits<It>::iterator_category,
-          typename std::iterator_traits<It>::reference,
-          typename std::iterator_traits<It>::difference_type> iterator_facade_;
-
-    public:
-      typedef IndexedIterator<It> IndexedIterator_;
-      typedef Ix index_type;
-      typedef It iterator_type;
-      typedef typename iterator_facade_::value_type value_type;
-      typedef typename iterator_facade_::reference reference;
-      typedef typename iterator_facade_::pointer pointer;
-      typedef typename iterator_facade_::difference_type difference_type;
-      typedef typename iterator_facade_::iterator_category iterator_category;
-
-      /// Default constructor
-      IndexedIterator() : it_() { }
-
-      /// Construct with an index-iterator pair.
-      IndexedIterator(std::pair<index_type, iterator_type> it) : it_(it) { }
-
-      /// Copy constructor
-      IndexedIterator(const IndexedIterator_& other) : it_(other.it_) { }
-
-      /// Construct with a convertible iterator.
-      template<typename OtherIt>
-      IndexedIterator(const IndexedIterator<OtherIt>& other) : it_(other.it_) { }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Move Constructor
-      IndexedIterator(IndexedIterator_&& other) : it_(std::move(other.it_.first), std::move(other.it_.second)) { }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-      /// Assignment operator
-      IndexedIterator_& operator=(const IndexedIterator_& other) {
-        it_ = other.it_;
-        return *this;
-      }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Move assignment operator
-      IndexedIterator_& operator=(IndexedIterator_&& other) {
-        it_.first = std::move(other.it_.first);
-        it_.second = std::move(other.it_.second);
-
-        return *this;
-      }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-      /// Returns the current index
-      const index_type& index() const { return it_.first; }
-
-    private:
-
-      /// Dereferences to base iterator
-      reference dereference() const { return * (it_.second); }
-
-      /// Compares base iterators for equality.
-      bool equal(const IndexedIterator_& other) const {
-        return (it_.second == other.it_.second);
-      }
-
-      /// Increments the index and base iterator
-      void increment() {
-        ++(it_.first);
-        ++(it_.second);
-      }
-
-      /// Decrements the index and base iterator
-      void decrement() {
-        --(it_.first);
-        --(it_.second);
-      }
-
-      /// Advances the index and base iterator n positions.
-      void advance(difference_type n) {
-        it_.first += n;
-        std::advance(it_.second, n);
-      }
-
-      /// Returns the distance between this and the other base iterators.
-      difference_type distance_to(const IndexedIterator_& other) const {
-        return std::distance(it_.second, other.it_.second);
-      }
-
-      friend class boost::iterator_core_access;
-
-      std::pair<Ix, It> it_; ///< pair with the index and base iterator.
     }; // class IndexedIterator
 
   } // namespace detail
-
 }  // namespace TiledArray
 
 
