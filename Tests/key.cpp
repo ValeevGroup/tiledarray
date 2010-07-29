@@ -1,6 +1,5 @@
 #include "TiledArray/key.h"
 #include "TiledArray/coordinates.h"
-#include <cstddef>
 #include "unit_test_config.h"
 
 using namespace TiledArray;
