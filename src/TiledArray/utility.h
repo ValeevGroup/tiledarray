@@ -4,7 +4,7 @@
 #include <TiledArray/type_traits.h>
 #include <utility>
 #include <functional>
-#include <boost/type_traits.hpp>
+#include <boost/type_traits/integral_constant.hpp>
 
 namespace TiledArray {
 

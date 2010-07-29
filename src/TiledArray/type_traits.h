@@ -4,7 +4,12 @@
 #include <iterator>
 #include <boost/mpl/if.hpp>
 #include <boost/mpl/or.hpp>
-#include <boost/type_traits.hpp>
+#include <boost/type_traits/remove_const.hpp>
+#include <boost/type_traits/remove_reference.hpp>
+#include <boost/type_traits/is_same.hpp>
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+#include <boost/type_traits/is_integral.hpp>
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
 namespace TiledArray {
   namespace detail {
