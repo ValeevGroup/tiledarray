@@ -2,9 +2,13 @@
 #define TILEDARRAY_RANGE_H__INCLUDED
 
 #include <TiledArray/error.h>
+#include <TiledArray/coordinate_system.h>
 #include <TiledArray/coordinates.h>
-#include <TiledArray/array_util.h>
 #include <TiledArray/iterator.h>
+#include <boost/utility/enable_if.hpp>
+#include <boost/type_traits/is_signed.hpp>
+#include <boost/static_assert.hpp>
+#include <algorithm>
 
 namespace TiledArray {
 

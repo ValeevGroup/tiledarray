@@ -5,15 +5,14 @@
 #include <TiledArray/range.h>
 #include <TiledArray/annotated_array.h>
 #include <Eigen/Core>
-#include <boost/utility/enable_if.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/type_traits/has_trivial_copy.hpp>
 #include <boost/type_traits/has_trivial_destructor.hpp>
 #include <iterator>
 #include <string>
 #include <algorithm>
-#include <utility>
-#include <iostream>
+#include <iosfwd>
 
 namespace TiledArray {
 

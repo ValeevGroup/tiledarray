@@ -3,6 +3,7 @@
 
 #include <TiledArray/type_traits.h>
 #include <boost/array.hpp>
+#include <boost/static_assert.hpp>
 #include <iosfwd>
 #include <numeric>
 

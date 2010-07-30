@@ -5,6 +5,7 @@
 #include <utility>
 #include <functional>
 #include <boost/type_traits/integral_constant.hpp>
+#include <boost/static_assert.hpp>
 
 namespace TiledArray {
 

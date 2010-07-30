@@ -1,7 +1,7 @@
 #ifndef TILEDARRAY_ITERATOR_H__INCLUDED
 #define TILEDARRAY_ITERATOR_H__INCLUDED
 
-#include <TiledArray/coordinate_system.h>
+//#include <TiledArray/coordinate_system.h>
 #include <boost/iterator/iterator_facade.hpp>
 
 namespace TiledArray {
