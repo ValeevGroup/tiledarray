@@ -196,7 +196,7 @@ namespace TiledArray {
       }
 
       reference operator[] (difference_type n) const
-      { return iterator_adaptor_::base_reference()[n].second; }
+      { return static_cast<reference>(iterator_adaptor_::operator[](n)); }
 
     private:
       /// Returns a reference to the iterator data.
