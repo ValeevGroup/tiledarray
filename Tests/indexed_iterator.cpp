@@ -12,7 +12,7 @@ struct IndexedIteratorFixture {
   typedef TiledArray::detail::IndexedIterator<container_type::const_iterator > const_iterator;
 
   IndexedIteratorFixture() :
-      d(/*1, data_type(2,3))*/), cd(d), it(d.begin()), cit(cd.begin())
+      d(10, value_type(1,data_type(2,3))), cd(d), it(d.begin()), cit(cd.begin())
   { }
 
   container_type d;
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE( advance )
 BOOST_AUTO_TEST_CASE( offset_dereference )
 {
   for(int i = 0; i < 10; ++i) {
-    BOOST_CHECK_EQUAL(it[i].first, 0);
+    BOOST_CHECK_EQUAL(it[i].first, 2);
     BOOST_CHECK_EQUAL(it[i].second, 3);
   }
 }
