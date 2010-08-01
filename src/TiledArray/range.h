@@ -4,7 +4,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/coordinates.h>
-#include <TiledArray/iterator.h>
+#include <TiledArray/range_iterator.h>
 #include <boost/utility/enable_if.hpp>
 #include <boost/type_traits/is_signed.hpp>
 #include <boost/static_assert.hpp>
@@ -49,8 +49,8 @@ namespace TiledArray {
     typedef typename CS::ordinal_index ordinal_index;
     typedef typename CS::size_array size_array;
 
-    typedef detail::IndexIterator<index, Range_> const_iterator;
-    friend class detail::IndexIterator< index , Range_ >;
+    typedef detail::RangeIterator<index, Range_> const_iterator;
+    friend class detail::RangeIterator< index , Range_ >;
 
     /// Default constructor. The range has 0 size and the origin is set at 0.
     Range() :
@@ -213,8 +213,8 @@ namespace TiledArray {
     typedef typename coordinate_system::ordinal_index ordinal_index;
     typedef typename coordinate_system::ordinal_index size_array;
 
-    typedef detail::IndexIterator<index, Range_> const_iterator;
-    friend class detail::IndexIterator< index , Range_ >;
+    typedef detail::RangeIterator<index, Range_> const_iterator;
+    friend class detail::RangeIterator< index , Range_ >;
 
     /// Default constructor. The range has 0 size and the origin is set at 0.
     Range() :

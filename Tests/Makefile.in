@@ -55,15 +55,16 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am_ta_test_OBJECTS = TiledArrayTest.$(OBJEXT) permutation.$(OBJEXT) \
 	coordinates.$(OBJEXT) coordinate_system.$(OBJEXT) \
-	algorithm.$(OBJEXT) range.$(OBJEXT) tiled_range1.$(OBJEXT) \
-	tiled_range.$(OBJEXT) tile.$(OBJEXT) variable_list.$(OBJEXT) \
-	array_math.$(OBJEXT) annotated_array.$(OBJEXT) \
+	algorithm.$(OBJEXT) range_iterator.$(OBJEXT) range.$(OBJEXT) \
+	tiled_range1.$(OBJEXT) tiled_range.$(OBJEXT) tile.$(OBJEXT) \
+	dense_shape.$(OBJEXT) sparse_shape.$(OBJEXT) \
+	pred_shape.$(OBJEXT) shape.$(OBJEXT) variable_list.$(OBJEXT) \
+	annotated_array.$(OBJEXT) key.$(OBJEXT) \
+	indexed_iterator.$(OBJEXT) array.$(OBJEXT) \
 	variable_list_math.$(OBJEXT) range_math.$(OBJEXT) \
 	tiled_range_math.$(OBJEXT) tile_math.$(OBJEXT) \
-	shape_math.$(OBJEXT) key.$(OBJEXT) indexed_iterator.$(OBJEXT) \
-	array.$(OBJEXT) array_math.$(OBJEXT) expressions.$(OBJEXT) \
-	dense_shape.$(OBJEXT) sparse_shape.$(OBJEXT) \
-	pred_shape.$(OBJEXT) shape.$(OBJEXT)
+	shape_math.$(OBJEXT) array_math.$(OBJEXT) \
+	expressions.$(OBJEXT)
 ta_test_OBJECTS = $(am_ta_test_OBJECTS)
 ta_test_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src -I$(top_builddir)/src/TiledArray
@@ -181,27 +182,27 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   coordinates.cpp \
                   coordinate_system.cpp \
                   algorithm.cpp \
+                  range_iterator.cpp \
                   range.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
                   tile.cpp \
+                  dense_shape.cpp \
+                  sparse_shape.cpp \
+                  pred_shape.cpp \
+                  shape.cpp \
                   variable_list.cpp \
-                  array_math.cpp \
                   annotated_array.cpp \
+                  key.cpp \
+                  indexed_iterator.cpp \
+                  array.cpp \
                   variable_list_math.cpp \
                   range_math.cpp \
                   tiled_range_math.cpp \
                   tile_math.cpp \
                   shape_math.cpp \
-                  key.cpp \
-                  indexed_iterator.cpp \
-                  array.cpp \
                   array_math.cpp \
                   expressions.cpp \
-                  dense_shape.cpp \
-                  sparse_shape.cpp \
-                  pred_shape.cpp \
-                  shape.cpp \
                   array_fixtures.h \
                   range_fixture.h \
                   shape_fixtures.h \
@@ -289,6 +290,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/permutation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pred_shape.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/range.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/range_iterator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/range_math.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shape.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shape_math.Po@am__quote@

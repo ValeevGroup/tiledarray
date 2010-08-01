@@ -8,27 +8,27 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   coordinates.cpp \
                   coordinate_system.cpp \
                   algorithm.cpp \
+                  range_iterator.cpp \
                   range.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
                   tile.cpp \
+                  dense_shape.cpp \
+                  sparse_shape.cpp \
+                  pred_shape.cpp \
+                  shape.cpp \
                   variable_list.cpp \
-                  array_math.cpp \
                   annotated_array.cpp \
+                  key.cpp \
+                  indexed_iterator.cpp \
+                  array.cpp \
                   variable_list_math.cpp \
                   range_math.cpp \
                   tiled_range_math.cpp \
                   tile_math.cpp \
                   shape_math.cpp \
-                  key.cpp \
-                  indexed_iterator.cpp \
-                  array.cpp \
                   array_math.cpp \
                   expressions.cpp \
-                  dense_shape.cpp \
-                  sparse_shape.cpp \
-                  pred_shape.cpp \
-                  shape.cpp \
                   array_fixtures.h \
                   range_fixture.h \
                   shape_fixtures.h \
