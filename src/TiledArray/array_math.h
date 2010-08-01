@@ -1,267 +1,177 @@
 #ifndef TILEDARRAY_ARRAY_MATH_H__INCLUDED
 #define TILEDARRAY_ARRAY_MATH_H__INCLUDED
 
+#include <TiledArray/coordinate_system.h>
+#include <boost/static_assert.hpp>
+#include <functional>
+
 namespace TiledArray {
+
+  template <typename, typename, typename>
+  class Array;
+
+  namespace expressions {
+
+    template <typename>
+    class AnnotatedArray;
+    class VariableList;
+
+  }  // namespace expressions
 
   namespace math {
 
+    // Forward declarations
+    template <typename, typename, typename, template <typename> class>
+    class BinaryOp;
+
+    template <typename, typename, template <typename> class>
+    class UnaryOp;
 
 
+    /// Default binary operation for \c Array objects
 
-
-
-
-/*
-    /// Array operation
-
-    /// Performs an element wise binary operation (e.g. std::plus<T>,
-    /// std::minus<T>) on two annotated tiles. The value type of the different
-    /// tiles may be different, but the value types of expression one and two
-    /// must be implicitly convertible to the result value type.
-    template<typename Arg1, typename Arg2, typename Res, template <typename> class Op>
-    struct BinaryArrayOp {
+    /// \tparam TO Output array element type
+    /// \tparam CSO Output array coordinate system type
+    /// \tparam PO Output array policy type
+    /// \tparam TL Left-hand argument array element type
+    /// \tparam CSL Left-hand argument array coordinate system type
+    /// \tparam PL Left-hand argument array policy type
+    /// \tparam TR Right-hand argument array element type
+    /// \tparam CSR Right-hand argument array coordinate system type
+    /// \tparam PR Right-hand argument array policy type
+    /// \tparam Op The binary operation to be performed
+    template <typename T, typename CSO, typename PO,
+                          typename CSL, typename PL,
+                          typename CSR, typename PR,
+              template <typename> class Op>
+    class BinaryOp<
+        expressions::AnnotatedArray<Array<T, CSO, PO> >,
+        expressions::AnnotatedArray<Array<T, CSL, PL> >,
+        expressions::AnnotatedArray<Array<T, CSR, PR> >,
+        Op>
+    {
     private:
-      BinaryArrayOp();
-      typedef BinaryArrayOp<Arg1, Arg2, Res, Op> BinaryArrayOp_;
+      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSL>::value) );
+      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSR>::value) );
+      BOOST_STATIC_ASSERT( (detail::same_cs_dim<CSO, CSL>::value) );
+      BOOST_STATIC_ASSERT( (detail::same_cs_dim<CSO, CSR>::value) );
 
     public:
-      typedef const Arg1& first_argument_type;  ///< first array argument type.
-      typedef const Arg2& second_argument_type; ///< second array argument type.
-      typedef Res result_type;                  ///< result array type.
-      typedef BinaryTileOp<typename Arg1::tile_type, typename Arg2::tile_type,
-          typename result_type::tile_type, Op> tile_op; ///< Binary tile operation
+      typedef const expressions::AnnotatedArray<Array<T, CSO, PL> >& first_argument_type;
+      typedef const expressions::AnnotatedArray<Array<T, CSL, PR> >& second_argument_type;
+      typedef expressions::AnnotatedArray<Array<T, CSR, PL> >& result_type;
+      typedef expressions::VariableList VarList;
 
-    private:
+      /// Set \c result to hold the resulting variable list for this operation
 
-      /// Copies of this object are passed to the madness task queue.
+      /// The default behavior for this operation is to set copy left into
+      /// result.
+      /// \param result The result range
+      /// \param left The array for the left-hand argument
+      /// \param right The array for the right-hand argument
+      result_type operator ()(result_type result, first_argument_type left,
+          second_argument_type& right) const
+      {
+        // Todo: Create result variable list and compare it with result variable list.
+        // Todo: Spawn task to construct a new tiled range
+        // Todo: Spawn task to construct a new pmap
+        // Todo: Spawn task to construct a new shape
+        // Todo: Spawn task to construct a new tile container
+        return result;
+      }
+    }; // BinaryOp for AnnotatedArray<Array<> >
 
-      /// This object handles decision making which operations should be run
-      /// based on the existence or non-existence of tiles.
-      class ProbeOp {
-        ProbeOp();
-      public:
-        ProbeOp(tile_op o) : op_(o) { }
 
-        /// Executes operations for local left hand tile operands.
+    /// Default binary operation for \c Array objects
 
-        /// This function checks for the existence of the right hand operand.
-        /// If it exists, the binary operation is performed and the result is
-        ///
-        typename result_type::tile_type left_op(const typename Arg1::tile_type& t1, const typename Arg2::tile_type& t2) const {
-          if(t2.initialized())
-            return op_(t1, t2);
-
-          return op_(t1, 0);
-        }
-
-        typename result_type::tile_type right_op(bool p1, typename Arg2::tile_type t2) const {
-          if(!p1)
-            return op_(0, t2);
-
-          typename result_type::tile_type result;
-          return result;
-        }
-
-      private:
-        tile_op op_; ///< Tile operation to be executed.
-      }; // class ProbeOp
+    /// \tparam TO Output array element type
+    /// \tparam CSO Output array coordinate system type
+    /// \tparam PO Output array policy type
+    /// \tparam TL Left-hand argument array element type
+    /// \tparam CSL Left-hand argument array coordinate system type
+    /// \tparam PL Left-hand argument array policy type
+    /// \tparam TR Right-hand argument array element type
+    /// \tparam CSR Right-hand argument array coordinate system type
+    /// \tparam PR Right-hand argument array policy type
+    /// \tparam Op The binary operation to be performed
+    template <typename T, typename CSO, typename PO,
+                          typename CSL, typename PL,
+                          typename CSR, typename PR>
+    class BinaryOp<
+        expressions::AnnotatedArray<Array<T, CSO, PO> >,
+        expressions::AnnotatedArray<Array<T, CSL, PL> >,
+        expressions::AnnotatedArray<Array<T, CSR, PR> >,
+        std::multiplies>
+    {
+      // Check that the coordinate systems are compatible.
+      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSL>::value) );
+      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSR>::value) );
 
     public:
-      /// operation constructor
-      /// \arg \c w is a reference to the world object where tasks will be spawned.
-      /// \arg \c o is the functor or function that will be used in tile operations.
-      /// \arg \c a is the task attributes that will be used when spawning tile, task operations.
-      BinaryArrayOp(madness::World& w, tile_op o = tile_op(), madness::TaskAttributes a = madness::TaskAttributes()) :
-          world_(w), op_(o), attr_(a)
-      { }
+      typedef const expressions::AnnotatedArray<Array<T, CSO, PL> >& first_argument_type;
+      typedef const expressions::AnnotatedArray<Array<T, CSL, PR> >& second_argument_type;
+      typedef expressions::AnnotatedArray<Array<T, CSR, PL> >& result_type;
+      typedef expressions::VariableList VarList;
 
-      /// Constructs a series of tasks for the given arrays.
-      result_type operator ()(first_argument_type a1, second_argument_type a2) {
-        // Here we assume that the array tiles have compatible sizes because it
-        // is checked in the expression generation functions (if error checking
-        // is enabled.
+      /// Set \c result to hold the resulting variable list for this operation
 
-        // This loop will generate the appropriate tasks for the cases where the
-        // left and right tile exist and only the left tile exists.
-        result_type result(world_, a1.range(), a1.vars(), a1.order());
-        ProbeOp probe(op_);
-        for(typename Arg1::const_iterator it = a1.begin(); it != a1.end(); ++it) {
-          const typename Arg1::index_type i = it->first;
-          madness::Future<typename Arg1::tile_type> f1 = it->second;
-          madness::Future<typename Arg2::tile_type> f2 = a2.find(i)->second;
-
-          madness::Future<typename result_type::tile_type> fr =
-              world_.taskq.add(probe, &ProbeOp::left_op, f1, f2, attr_);
-
-          result.insert(i, fr);
-        }
-
-        // This loop will generate the appropriate tasks for the cases where
-        // only the right tile exists.
-        for(typename Arg2::const_iterator it = a2.begin(); it != a2.end(); ++it) {
-          const typename Arg2::index_type i = it->first;
-          madness::Future<bool> f1 = a1.probe(i);
-          madness::Future<typename Arg2::tile_type> f2 = it->second;
-
-          madness::Future<typename result_type::tile_type> fr =
-              world_.taskq.add(probe, &ProbeOp::right_op, f1, f2, attr_);
-
-          result.insert(i, fr);
-        }
-
-        // No tasks are generated where neither the left nor the right tiles exits.
+      /// The default behavior for this operation is to set copy left into
+      /// result.
+      /// \param result The result range
+      /// \param result_vars The result variable list
+      /// \param left The annotated array for the left-hand argument
+      /// \param right The annotated array for the right-hand argument
+      result_type operator ()(result_type result, const VarList& result_vars,
+          first_argument_type left, second_argument_type& right) const
+      {
 
         return result;
       }
+    }; // BinaryOp for AnnotatedArray<Array<> > with Op = std::multiplies
 
-    private:
-      madness::World& world_;
-      tile_op op_;
-      madness::TaskAttributes attr_;
-    }; // struct BinaryArrayOp
+    /// Default binary operation for \c Array objects
 
-
-    /// Array operation
-
-    /// Performs an element wise binary operation (e.g. std::plus<T>,
-    /// std::minus<T>) on two annotated tiles. The value type of the different
-    /// tiles may be different, but the value types of expression one and two
-    /// must be implicitly convertible to the result value type.
-    template<typename Arg1, typename Arg2, typename Res>
-    struct BinaryArrayOp<Arg1, Arg2, Res, std::multiplies> {
-    private:
-      BinaryArrayOp();
-      typedef BinaryArrayOp<Arg1, Arg2, Res, std::multiplies> BinaryArrayOp_;
-
+    /// \tparam TO Output array element type
+    /// \tparam CSO Output array coordinate system type
+    /// \tparam PO Output array policy type
+    /// \tparam TL Left-hand argument array element type
+    /// \tparam CSL Left-hand argument array coordinate system type
+    /// \tparam PL Left-hand argument array policy type
+    /// \tparam TR Right-hand argument array element type
+    /// \tparam CSR Right-hand argument array coordinate system type
+    /// \tparam PR Right-hand argument array policy type
+    /// \tparam Op The binary operation to be performed
+    template <typename T, typename CS, typename PR, typename PA, template <typename> class Op>
+    class UnaryOp<
+        expressions::AnnotatedArray<Array<T, CS, PR> >,
+        expressions::AnnotatedArray<Array<T, CS, PA> >,
+        Op>
+    {
     public:
-      typedef const Arg1& first_argument_type;  ///< first array argument type.
-      typedef const Arg2& second_argument_type; ///< second array argument type.
-      typedef Res result_type;                  ///< result array type.
-      typedef BinaryTileOp<typename Arg1::tile_type, typename Arg2::tile_type,
-          typename result_type::tile_type, std::multiplies> tile_multiplies_op; ///< Tile contraction operation
-      typedef BinaryTileOp<typename Arg1::tile_type, typename Arg2::tile_type,
-          typename result_type::tile_type, std::plus> tile_plus_op; ///< Tile contraction operation
+      typedef const expressions::AnnotatedArray<Array<T, CS, PA> >& argument_type;
+      typedef expressions::AnnotatedArray<Array<T, CS, PR> >& result_type;
+      typedef expressions::VariableList VarList;
 
-    private:
 
-      /// Copies of this object are passed to the madness task queue.
+      /// Set \c result to hold the resulting variable list for this operation
 
-      /// This object handles decision making which operations should be run
-      /// based on the existence or non-existence of tiles.
-      class ProbeOp {
-        ProbeOp();
-      public:
-        ProbeOp(tile_op o) : op_(o) { }
-
-        /// Executes operations for local left hand tile operands.
-
-        /// This function checks for the existence of the right hand operand.
-        /// If it exists, the binary operation is performed and the result is
-        ///
-        typename result_type::tile_type left_op(const typename Arg1::tile_type& t1, const typename Arg2::tile_type& t2) const {
-          if(t2.initialized())
-            return op_(t1, t2);
-
-          return op_(t1, 0);
-        }
-
-        typename result_type::tile_type right_op(bool p1, typename Arg2::tile_type t2) const {
-          if(!p1)
-            return op_(0, t2);
-
-          return result_type::tile_type();
-        }
-
-      private:
-        tile_op op_; ///< Tile operation to be executed.
-      }; // class ProbeOp
-
-    public:
-      /// operation constructor
-      /// \arg \c w is a reference to the world object where tasks will be spawned.
-      /// \arg \c o is the functor or function that will be used in tile operations.
-      /// \arg \c a is the task attributes that will be used when spawning tile, task operations.
-      BinaryArrayOp(madness::World& w, tile_op o = tile_op(), madness::TaskAttributes a = madness::TaskAttributes()) :
-          world_(w), op_(o), attr_(a)
-      { }
-
-      /// Constructs a series of tasks for the given arrays.
-      result_type operator ()(first_argument_type a1, second_argument_type a2) {
-        // Here we assume that the array tiles have compatible sizes because it
-        // is checked in the expression generation functions (if error checking
-        // is enabled.
-        result_type result(world_, a1.range(), a1.vars(), a1.order());
-        ProbeOp probe(result, op_);
-        for(typename Arg1::const_iterator it = a1.begin(); it != a1.end(); ++it) {
-          const typename Arg1::index_type i = it->first;
-          madness::Future<typename Arg1::tile_type> f1 = it->second;
-          madness::Future<typename Arg2::tile_type> f2 = a2.find(i)->second;
-
-          madness::Future<typename result_type::tile_type> fr =
-              world_.taskq.add(probe, &ProbeOp::left_op, i, f1, f2, attr_);
-
-          result.insert(i, fr);
-        }
-
-        for(typename Arg2::const_iterator it = a2.begin(); it != a2.end(); ++it) {
-          const typename Arg2::index_type i = it->first;
-          madness::Future<bool> f1 = a1.probe(i);
-          madness::Future<typename Arg2::tile_type> f2 = it->second;
-
-          madness::Future<typename result_type::tile_type> fr =
-              world_.taskq.add(probe, &ProbeOp::right_op, i, f1, f2, attr_);
-
-          result.insert(i, fr);
-        }
+      /// The default behavior for this operation is to set copy left into
+      /// result.
+      /// \param result The result range
+      /// \param result_vars The result variable list
+      /// \param arg The annotated array argument
+      /// \throw std::runtime_error When \c result_vars is not equal to the
+      /// \c arg variables.
+      expressions::VariableList& operator ()(result_type result,
+          const VarList& result_vars, argument_type arg) const
+      {
         return result;
       }
+    }; // class UnaryOp for AnnotatedArray<Array<> >
 
-    private:
-      madness::World& world_;
-      tile_op op_;
-      madness::TaskAttributes attr_;
-    }; // struct BinaryArrayOp
 
-    /// Unary tile operation
 
-    /// Performs an element wise unary operation on a tile.
-    template<typename Arg, typename Res, template <typename> class Op>
-    struct UnaryArrayOp {
-      typedef Arg& argument_type;
-      typedef Res result_type;
-      typedef UnaryTileOp<typename Arg::tile_type, typename result_type::tile_type, Op> tile_op;
-
-    private:
-      UnaryArrayOp();
-
-    public:
-      /// operation constructor
-      /// \arg \c w is a reference to the world object where tasks will be spawned.
-      /// \arg \c o is the functor or function that will be used in tile operations.
-      /// \arg \c a is the task attributes that will be used when spawning tile, task operations.
-      UnaryArrayOp(madness::World& w, tile_op o = tile_op(), madness::TaskAttributes a = madness::TaskAttributes()) :
-          world_(w), op_(o), attr_(a)
-      { }
-
-      /// Constructs a series of tasks for the given arrays.
-      result_type operator ()(argument_type a) const {
-        typedef typename boost::mpl::if_<boost::is_const<Arg>,
-            typename Arg::const_iterator, typename Arg::iterator>::type iterator_type;
-
-        result_type result(world_, a.range(), a.vars(), a.order());
-        for(iterator_type it = a.begin(); it == a.end(); ++it)
-          result.insert(it->first, world_.taskq.add(op_, it->second));
-        return result;
-      }
-
-    private:
-      madness::World& world_;
-      tile_op op_;
-      madness::TaskAttributes attr_;
-    }; // struct UnaryArrayOp
-*/
   } // namespace math
-
 } // namespace TiledArray
 
 #endif // TILEDARRAY_ARRAY_MATH_H__INCLUDED
