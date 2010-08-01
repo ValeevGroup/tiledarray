@@ -1,6 +1,5 @@
 #include "TiledArray/array_math.h"
 #include "TiledArray/array.h"
-#include <Eigen/Core>
 #include "unit_test_config.h"
 
 using namespace TiledArray;
