@@ -1,14 +1,18 @@
 #include "TiledArray/array.h"
 #include "TiledArray/utility.h"
-#include <boost/functional.hpp>
-#include <algorithm>
 #include "unit_test_config.h"
+#include "range_fixture.h"
 
 using namespace TiledArray;
 
-struct ArrayFixture {
+struct ArrayFixture : public TiledRangeFixture {
+  typedef Array<int, GlobalFixture::coordinate_system> ArrayN;
+  typedef ArrayN::index index;
+  typedef ArrayN::value_type tile_type;
+
+  ArrayFixture() : world(* GlobalFixture::world) { }
 /*
-  typedef Array<int, 3> Array3;
+
   typedef Array3::index_type index_type;
   typedef Array3::tile_index tile_index_type;
   typedef Array3::tile_type tile_type;
@@ -54,12 +58,11 @@ struct ArrayFixture {
             detail::make_unary_transform(std::bind1st(std::equal_to<Array3::index_type>(), i),
             detail::pair_first<Array3::value_type>()));
   }
-
-  madness::World* world;
-  Array3 a;
-  const Array3& ca;
-  data_array data;
 */
+  madness::World& world;
+//  ArrayN a;
+//  const ArrayN& ca;
+
 }; // struct ArrayFixture
 
 BOOST_FIXTURE_TEST_SUITE( array_suite , ArrayFixture )
