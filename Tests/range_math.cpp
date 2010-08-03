@@ -14,7 +14,7 @@ struct RangeMathFixture {
 
   static const range_type r;
   static const array_type a;
-  static const VariableList& vars;
+  static const VariableList vars;
   static const fake_annotation fa;
 
   RangeMathFixture() : result() { }
@@ -24,7 +24,7 @@ struct RangeMathFixture {
 
 const RangeMathFixture::range_type RangeMathFixture::r;
 const RangeMathFixture::array_type RangeMathFixture::a(r);
-const VariableList& RangeMathFixture::vars(AnnotatedArrayFixture::vars);
+const VariableList RangeMathFixture::vars(AnnotatedArrayFixture::make_var_list());
 const RangeMathFixture::fake_annotation RangeMathFixture::fa(a, RangeMathFixture::vars);
 
 BOOST_FIXTURE_TEST_SUITE( range_math_suite, RangeMathFixture )
