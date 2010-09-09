@@ -7,7 +7,9 @@
 #include <boost/array.hpp>
 #include <boost/type_traits/is_integral.hpp>
 #include <boost/utility/enable_if.hpp>
+#include <boost/functional/hash.hpp>
 #include <iosfwd>
+#include <cstddef>
 #ifndef __GXX_EXPERIMENTAL_CXX0X__
 #include <stdarg.h>
 #endif // __GXX_EXPERIMENTAL_CXX0X__
@@ -407,6 +409,18 @@ namespace TiledArray {
     ArrayCoordinate<I,DIM,Tag> result;
     detail::permute(p.begin(), p.end(), c.begin(), result.begin());
     return result;
+  }
+
+  /// Hash function for array coordinates
+
+  /// \tparam I The array coordinate element type
+  /// \tparam DIM The array coordinate dimensions
+  /// \tparam Tag The array coordinate tag type
+  /// \param c The array coordinate to hash
+  template <typename I, unsigned int DIM, typename Tag>
+  std::size_t hash_value(const ArrayCoordinate<I,DIM,Tag>& c) {
+      boost::hash<boost::array<I,DIM> > hasher;
+      return hasher(c.data());
   }
 
   /// Append an ArrayCoordinate to an output stream.

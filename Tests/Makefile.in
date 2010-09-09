@@ -60,10 +60,10 @@ am_ta_test_OBJECTS = TiledArrayTest.$(OBJEXT) permutation.$(OBJEXT) \
 	dense_shape.$(OBJEXT) sparse_shape.$(OBJEXT) \
 	pred_shape.$(OBJEXT) shape.$(OBJEXT) variable_list.$(OBJEXT) \
 	annotated_array.$(OBJEXT) key.$(OBJEXT) \
-	indexed_iterator.$(OBJEXT) array.$(OBJEXT) \
-	variable_list_math.$(OBJEXT) range_math.$(OBJEXT) \
-	tiled_range_math.$(OBJEXT) tile_math.$(OBJEXT) \
-	shape_math.$(OBJEXT) array_math.$(OBJEXT) \
+	indexed_iterator.$(OBJEXT) versioned_pmap.$(OBJEXT) \
+	array.$(OBJEXT) variable_list_math.$(OBJEXT) \
+	range_math.$(OBJEXT) tiled_range_math.$(OBJEXT) \
+	tile_math.$(OBJEXT) shape_math.$(OBJEXT) array_math.$(OBJEXT) \
 	expressions.$(OBJEXT)
 ta_test_OBJECTS = $(am_ta_test_OBJECTS)
 ta_test_LDADD = $(LDADD)
@@ -195,6 +195,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   annotated_array.cpp \
                   key.cpp \
                   indexed_iterator.cpp \
+                  versioned_pmap.cpp \
                   array.cpp \
                   variable_list_math.cpp \
                   range_math.cpp \
@@ -302,6 +303,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tiled_range_math.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/variable_list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/variable_list_math.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/versioned_pmap.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

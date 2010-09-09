@@ -21,6 +21,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   annotated_array.cpp \
                   key.cpp \
                   indexed_iterator.cpp \
+                  versioned_pmap.cpp \
                   array.cpp \
                   variable_list_math.cpp \
                   range_math.cpp \

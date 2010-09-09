@@ -2,6 +2,7 @@
 #define TILEDARRAY_KEY_H__INCLUDED
 
 #include <TiledArray/error.h>
+#include <boost/functional/hash.hpp>
 #include <iostream>
 
 namespace TiledArray {
@@ -474,6 +475,20 @@ namespace TiledArray {
     template<typename Key1, typename Key2>
     bool operator >=(const Key2& l, const Key<Key1, Key2>& r) {
       return l >= r.key2();
+    }
+
+    /// Hash function for array coordinates
+
+    /// \tparam I The array coordinate element type
+    /// \tparam DIM The array coordinate dimensions
+    /// \tparam Tag The array coordinate tag type
+    /// \param c The array coordinate to hash
+    template <typename Key1, typename Key2>
+    std::size_t hash_value(const Key<Key1,Key2>& k) {
+      std::size_t seed = 0;
+      boost::hash_combine(seed, k.key1());
+      boost::hash_combine(seed, k.key2());
+      return seed;
     }
 
     template<typename Key1, typename Key2>

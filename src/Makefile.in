@@ -35,9 +35,8 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 subdir = src
-DIST_COMMON = $(include_HEADERS) $(nobase_include_HEADERS) \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(srcdir)/config_h.in
+DIST_COMMON = $(include_HEADERS) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in $(srcdir)/config_h.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/acx_check_boost.m4 \
 	$(top_srcdir)/config/acx_check_madness.m4 \
@@ -84,8 +83,8 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__installdirs = "$(DESTDIR)$(includedir)" "$(DESTDIR)$(includedir)"
-HEADERS = $(include_HEADERS) $(nobase_include_HEADERS)
+am__installdirs = "$(DESTDIR)$(includedir)"
+HEADERS = $(include_HEADERS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
@@ -211,36 +210,6 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = TiledArray
 include_HEADERS = tiled_array.h
-nobase_include_HEADERS = TiledArray/annotated_array.h \
-                  TiledArray/array_math.h \
-                  TiledArray/array_slice.h \
-                  TiledArray/array_util.h \
-                  TiledArray/array.h \
-                  TiledArray/coordinate_system.h \
-                  TiledArray/coordinates.h \
-                  TiledArray/error.h \
-                  TiledArray/expressions.h \
-                  TiledArray/indexed_iterator.h \
-                  TiledArray/iterator.h \
-                  TiledArray/key.h \
-                  TiledArray/madness_runtime.h \
-                  TiledArray/packed_tile.h \
-                  TiledArray/permutation.h \
-                  TiledArray/predicate.h \
-                  TiledArray/range.h \
-                  TiledArray/shape_math.h \
-                  TiledArray/shape.h \
-                  TiledArray/tile_math.h \
-                  TiledArray/tile_slice.h \
-                  TiledArray/tile.h \
-                  TiledArray/tiled_range.h \
-                  TiledArray/tiled_range1.h \
-                  TiledArray/transform_iterator.h \
-                  TiledArray/type_traits.h \
-                  TiledArray/utility.h \
-                  TiledArray/variable_list.h \
-                  TiledArray/config.h
-
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -309,29 +278,6 @@ uninstall-includeHEADERS:
 	@$(NORMAL_UNINSTALL)
 	@list='$(include_HEADERS)'; test -n "$(includedir)" || list=; \
 	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
-	test -n "$$files" || exit 0; \
-	echo " ( cd '$(DESTDIR)$(includedir)' && rm -f" $$files ")"; \
-	cd "$(DESTDIR)$(includedir)" && rm -f $$files
-install-nobase_includeHEADERS: $(nobase_include_HEADERS)
-	@$(NORMAL_INSTALL)
-	test -z "$(includedir)" || $(MKDIR_P) "$(DESTDIR)$(includedir)"
-	@list='$(nobase_include_HEADERS)'; test -n "$(includedir)" || list=; \
-	$(am__nobase_list) | while read dir files; do \
-	  xfiles=; for file in $$files; do \
-	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
-	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
-	  test -z "$$xfiles" || { \
-	    test "x$$dir" = x. || { \
-	      echo "$(MKDIR_P) '$(DESTDIR)$(includedir)/$$dir'"; \
-	      $(MKDIR_P) "$(DESTDIR)$(includedir)/$$dir"; }; \
-	    echo " $(INSTALL_HEADER) $$xfiles '$(DESTDIR)$(includedir)/$$dir'"; \
-	    $(INSTALL_HEADER) $$xfiles "$(DESTDIR)$(includedir)/$$dir" || exit $$?; }; \
-	done
-
-uninstall-nobase_includeHEADERS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(nobase_include_HEADERS)'; test -n "$(includedir)" || list=; \
-	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
 	test -n "$$files" || exit 0; \
 	echo " ( cd '$(DESTDIR)$(includedir)' && rm -f" $$files ")"; \
 	cd "$(DESTDIR)$(includedir)" && rm -f $$files
@@ -534,7 +480,7 @@ check: check-recursive
 all-am: Makefile $(HEADERS) config.h
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(includedir)" "$(DESTDIR)$(includedir)"; do \
+	for dir in "$(DESTDIR)$(includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-recursive
@@ -582,7 +528,7 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-includeHEADERS install-nobase_includeHEADERS
+install-data-am: install-includeHEADERS
 
 install-dvi: install-dvi-recursive
 
@@ -626,7 +572,7 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-includeHEADERS uninstall-nobase_includeHEADERS
+uninstall-am: uninstall-includeHEADERS
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) all \
 	ctags-recursive install-am install-strip tags-recursive
@@ -638,13 +584,12 @@ uninstall-am: uninstall-includeHEADERS uninstall-nobase_includeHEADERS
 	install install-am install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
 	install-html-am install-includeHEADERS install-info \
-	install-info-am install-man install-nobase_includeHEADERS \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	installdirs-am maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am tags \
-	tags-recursive uninstall uninstall-am uninstall-includeHEADERS \
-	uninstall-nobase_includeHEADERS
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs installdirs-am maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
+	pdf-am ps ps-am tags tags-recursive uninstall uninstall-am \
+	uninstall-includeHEADERS
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
