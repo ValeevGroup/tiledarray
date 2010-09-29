@@ -1,26 +1,26 @@
 #ifndef TILEDARRAY_ARRAY_H__INCLUDED
 #define TILEDARRAY_ARRAY_H__INCLUDED
 
-#include <TiledArray/error.h>
-#include <TiledArray/tiled_range.h>
-#include <TiledArray/madness_runtime.h>
-#include <TiledArray/key.h>
-#include <TiledArray/shape.h>
 #include <TiledArray/tile.h>
-#include <TiledArray/indexed_iterator.h>
+#include <TiledArray/array_impl.h>
 #include <boost/shared_ptr.hpp>
-#include <boost/type_traits/is_base_of.hpp>
-#include <boost/type_traits/has_virtual_destructor.hpp>
 
 namespace TiledArray {
-
-  template <typename>
-  class Shape;
 
   namespace detail {
     template <typename, typename>
     class ArrayPolicy;
   }
+
+  namespace math {
+    template <typename, typename, typename, template <typename> class>
+    class BinaryOp;
+
+    template <typename, typename, template <typename> class>
+    class UnaryOp;
+  }
+
+
 
   /// An n-dimensional, tiled array
 
@@ -28,14 +28,10 @@ namespace TiledArray {
   /// \tparam Coordinate system type
   /// \tparam Policy class for the array
   template <typename T, typename CS, typename P = detail::ArrayPolicy<T, CS> >
-  class Array : madness::WorldObject<Array<T, CS, P> > {
+  class Array {
   private:
-    typedef madness::WorldObject<Array<T, CS, P> > WorldObject_;
     typedef P array_policy;
-    typedef typename array_policy::key_type key_type;
-    typedef typename array_policy::data_type data_type;
-    typedef typename array_policy::container_type container_type;
-    typedef typename array_policy::pmap_interface_type pmap_interface_type;
+    typedef detail::ArrayImpl<T, CS, P> impl_type;
 
   public:
     typedef Array<T, CS, P> Array_; ///< This object's type
@@ -47,112 +43,123 @@ namespace TiledArray {
     typedef typename coordinate_system::size_array size_array; ///< Size array type
 
     typedef typename array_policy::value_type value_type; ///< Tile type
-    typedef typename array_policy::reference reference; ///< Reference to tile type
-    typedef typename array_policy::const_reference const_reference; ///< Const reference to tile type
+//    typedef value_type& reference; ///< Reference to tile type
+//    typedef const value_type& const_reference; ///< Const reference to tile type
 
-    typedef typename array_policy::tiled_range_type tiled_range_type; ///< Tile range type
-    typedef typename array_policy::range_type range_type; ///< Range type for tiles
-    typedef typename array_policy::tile_range_type tile_range_type; ///< Range type for elements
+    typedef TiledRange<CS> tiled_range_type; ///< Tile range type
+    typedef typename tiled_range_type::range_type range_type; ///< Range type for tiles
+    typedef typename tiled_range_type::tile_range_type tile_range_type; ///< Range type for elements
 
-    typedef detail::IndexedIterator<typename container_type::iterator> iterator; ///< Local tile iterator
-    typedef detail::IndexedIterator<typename container_type::const_iterator> const_iterator; ///< Local tile const iterator
+    typedef typename impl_type::iterator iterator; ///< Local tile iterator
+    typedef typename impl_type::const_iterator const_iterator; ///< Local tile const iterator
 
   private:
-    Array();
-    Array(const Array_&);
-    Array_& operator=(const Array_&);
+
+    template <typename, typename, typename, template <typename> class>
+    friend class math::BinaryOp;
+
+    template <typename, typename, template <typename> class>
+    friend class math::UnaryOp;
 
   public:
 
-    Array(madness::World& w, const tiled_range_type& tr, const boost::shared_ptr<Shape<CS> >& s) :
-        WorldObject_(w), tiled_range_(tr), shape_(s), tiles_(array_policy::make_tile_container(w, s->pmap()))
+    /// Dense array constructor
+
+    ///
+    /// \param w The world where the array will live.
+    /// \param tr The tiled range object that will be used to set the array tiling.
+    Array(madness::World& w, const tiled_range_type& tr) :
+        pimpl_(boost::make_shared<impl_type>(w, tr))
+    {
+      pimpl_->set_shape(impl_type::make_shape(pimpl_->tiles()));
+    }
+
+    /// Sparse array constructor
+
+    /// \param w The world where the array will live.
+    /// \param tr The tiled range object that will be used to set the array tiling.
+    /// \param first An input iterator that points to the a list of tiles to be
+    /// added to the sparse array.
+    template <typename InIter>
+    Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last) :
+        pimpl_(boost::make_shared<impl_type>(w, tr))
+    {
+      pimpl_->set_shape(impl_type::make_shape(w, pimpl_->tiles(), pimpl_->get_pmap(), first, last));
+    }
+
+    /// Predicated array constructor
+
+    /// \param w The world where the array will live.
+    /// \param tr The tiled range object that will be used to set the array tiling.
+    /// \param p The shape predicate.
+    template <typename Pred>
+    Array(madness::World& w, const tiled_range_type& tr, Pred p) :
+        pimpl_(boost::make_shared<impl_type>(w, tr))
+    {
+      pimpl_->set_shape(impl_type::make_shape(pimpl_->tiles(), p));
+    }
+
+    /// Array copy constructor
+
+    /// Performs a shallow copy of \c other array
+    /// \param other The array to be copied
+    Array(const Array_& other) :
+        pimpl_(other.pimpl_)
     { }
+
+    /// Array assignment operator
+
+    /// Performs a shallow copy of \c other array
+    /// \param other The array to be copied
+    /// \return A reference to this object
+    Array_& operator=(const Array_& other) {
+      pimpl_ = other.pimpl_;
+      return *this;
+    }
 
     /// Begin iterator factory function
 
     /// \return An iterator to the first local tile.
-    iterator begin() { return iterator(tiles_->begin()); }
+    iterator begin() { return pimpl_->begin(); }
 
     /// Begin const iterator factory function
 
     /// \return A const iterator to the first local tile.
-    const_iterator begin() const { return const_iterator(tiles_->begin()); }
+    const_iterator begin() const { return pimpl_->begin(); }
 
     /// End iterator factory function
 
     /// \return An iterator to one past the last local tile.
-    iterator end() { return iterator(tiles_->end()); }
+    iterator end() { return pimpl_->end(); }
 
     /// End const iterator factory function
 
     /// \return A const iterator to one past the last local tile.
-    const_iterator end() const { return const_iterator(tiles_->end()); }
+    const_iterator end() const { return pimpl_->end(); }
 
-    /// Insert a tile into the array
-
-    /// \tparam Index The type of the index (valid types are: Array::index or
-    /// Array::ordinal_index)
-    /// \tparam InIter Input iterator type for the data
-    /// \param i The index where the tile will be inserted
-    /// \param first The first iterator for the tile data
-    /// \param last The last iterator for the tile data
-    /// \throw std::out_of_range When \c i is not included in the array range
-    /// \throw std::range_error When \c i is not included in the array shape
-    /// \throw std::runtime_error When \c first \c - \c last is not equal to the
-    /// volume of the tile at \c i
     template <typename Index, typename InIter>
-    void insert(const Index& i, InIter first, InIter last) {
-      TA_ASSERT(shape_->inclues(i), std::range_error,
-          "The given index i is not included in the array shape.");
+    void set(const Index& i, InIter first, InIter last) { pimpl_->set(i, first, last); }
 
-      boost::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
-
-      TA_ASSERT(volume_type(std::distance(first, last)) == r->volume(), std::runtime_error,
-          "The number of elements in [first, last) is not equal to the tile volume.");
-    }
-
-
-    /// Insert a tile into the array
-
-    /// \tparam Index The type of the index (valid types are: Array::index or
-    /// Array::ordinal_index)
-    /// \tparam InIter Input iterator type for the data
-    /// \param i The index where the tile will be inserted
-    /// \param v The value that will be used to initialize the tile data
-    /// \throw std::out_of_range When \c i is not included in the array range
-    /// \throw std::range_error When \c i is not included in the array shape
     template <typename Index>
-    void insert(const Index& i, value_type v = value_type()) {
-      TA_ASSERT(tiled_range_.tiles().includes(i), std::runtime_error,
-          "The given index i is not included in the array range.");
-      TA_ASSERT(shape_->inclues(i), std::runtime_error,
-          "The given index i is not included in the array shape.");
-
-    }
+    void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }
 
     /// Tiled range accessor
 
     /// \return A const reference to the tiled range object for the array
     /// \throw nothing
-    const tile_range_type& tiling() const { return tiled_range_; }
+    const tiled_range_type& tiling() const { return pimpl_->tiling(); }
 
     /// Tile range accessor
 
     /// \return A const reference to the range object for the array tiles
     /// \throw nothing
-    const range_type& tiles() const { return tiled_range_.tiles(); }
+    const range_type& tiles() const { return pimpl_->tiles(); }
 
     /// Element range accessor
 
     /// \return A const reference to the range object for the array elements
     /// \throw nothing
-    const tile_range_type& elements() const { return tiled_range_.elements(); }
-
-    /// Process map accessor
-
-    /// \return A const shared pointer reference to the array process map
-    /// \throw nothing
-    const madness::SharedPtr< pmap_interface_type >& pmap() const{ return shape_->pmap(); }
+    const tile_range_type& elements() const { return pimpl_->elements(); }
 
     /// Create an annotated tile
 
@@ -188,175 +195,23 @@ namespace TiledArray {
       return expressions::AnnotatedArray<Array_>(* const_cast<Array_*>(this), v);
     }
 
+    madness::World& get_world() const { return pimpl_->get_world(); }
+
   private:
-    TiledRange<CS> tiled_range_;                      ///< Tiled range object
-    boost::shared_ptr<Shape<ordinal_index> > shape_;  ///< Pointer to the shape object
-    boost::shared_ptr<container_type> tiles_;         ///< Distributed container that holds tiles
+
+    void preassign(madness::World& w, const tiled_range_type& tr) {
+      pimpl_ = boost::make_shared<impl_type>(w, tr);
+    }
+
+    boost::shared_ptr<impl_type> pimpl_;
   }; // class Array
 
   namespace detail {
-    /// Defer cleanup of object
-
-    /// This class is used to automate deferred cleanup of objects. as a the deletion functor with shared pointers. It
-    /// will defer cleanup of the object until the next synchronization point.
-    /// If \c D is a function pointer it must be \c void(*)(T*) (the default
-    /// type) or a function object which defines \c D::operator()(T*).
-    /// \tparam T The object type to be deleted (This type must be derived from
-    /// madness::DeferredCleanupInterface and have a virtual destructor).
-    /// \tparam D The deleter object for the (Default = \c void(*)(T*) )
-    template<typename T, typename D = void(*)(T*)>
-    class DeferedDelete {
-    private:
-      BOOST_STATIC_ASSERT( (boost::is_base_of<madness::DeferredCleanupInterface, T>::value) );
-      BOOST_STATIC_ASSERT( (boost::has_virtual_destructor<T>::value) );
-
-      struct Enabler { };
-
-    public:
-      typedef DeferedDelete<T,D> DeferedDelete_;
-      typedef D delete_func;
-
-      /// Constructor
-
-      /// This constructor is used when \c D is a function pointer.
-      /// \param w A \c World object that is responsible for the deferred clean-up
-      /// \param d The deleter function for the T* pointer (Default = A function
-      /// that calls \c delete when the pointer should be destroyed.).
-      DeferedDelete(madness::World& w, delete_func d = &deleter,
-          typename boost::enable_if<boost::is_same<delete_func, void(*)(T*)>, Enabler>::type = Enabler()) :
-          world_(&w), deleter_(d)
-      { }
-
-      /// Constructor
-
-      /// This constructor is used when \c D is a functor.
-      /// \param w A \c World object that is responsible for the deferred clean-up
-      /// \param d The deleter function for the T* pointer (Default = The
-      /// default constructor of the deleter object).
-      DeferedDelete(madness::World& w, delete_func d = delete_func(),
-          typename boost::enable_if<boost::is_class<delete_func>, Enabler>::type = Enabler()) :
-          world_(&w), deleter_(d)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The object to be copied
-      DeferedDelete(const DeferedDelete_& other) :
-          world_(other.world_), deleter_(other.deleter_)
-      { }
-
-      /// Assignment operator
-
-      /// \param other The object to be copied
-      DeferedDelete_& operator=(const DeferedDelete_& other) {
-        deleter_ = other.deleter_;
-        world_ = other.world_;
-        return *this;
-      }
-
-      /// Cleanup function
-
-      /// When this function is called (i.e. When the pointer is ready for
-      /// cleanup), the pointer is put in a new shared pointer and place in a
-      /// world object's list for deferred cleanup. The
-      void operator()(T* p) {
-        world_->deferred_cleanup(madness::SharedPtr<T>(p, deleter_));
-      }
-
-    private:
-      /// Default cleanup function
-      static void deleter(T* p) { delete p; }
-
-      madness::World* world_; ///< The world object that handles cleanup deferment
-      D deleter_;             ///< The deleter function that will cleanup the pointer
-    }; // class DeferedDelete
 
     template <typename T, typename CS>
     class ArrayPolicy {
     public:
       typedef Tile<T, CS> value_type;
-      typedef value_type& reference;
-      typedef const value_type& const_reference;
-
-      typedef detail::Key<typename CS::ordinal_index, typename CS::index> key_type;
-      typedef madness::Future<value_type> data_type;
-      typedef madness::WorldContainer<key_type, data_type> container_type;
-      typedef madness::WorldDCPmapInterface< key_type > pmap_interface_type;
-      typedef madness::WorldDCDefaultPmap<key_type> pmap_type;
-
-      typedef TiledRange<CS> tiled_range_type; ///< Tile range type
-      typedef typename tiled_range_type::range_type range_type; ///< Range type for tiles
-      typedef typename tiled_range_type::tile_range_type tile_range_type; ///< Range type for elements
-
-      static boost::shared_ptr<container_type> make_tile_container(madness::World& w,
-          const madness::SharedPtr<pmap_type>& m)
-      {
-        return boost::shared_ptr<container_type>(
-            new madness::WorldContainer<key_type, data_type>(w, m), DeferedDelete<container_type>(w));
-      }
-
-      template <typename Index, typename InIter>
-      static void add_tile(const Index& i, const tiled_range_type& r,
-          const container_type& c, InIter first, InIter last)
-      {
-        TA_ASSERT(c.is_local(key(i)), std::runtime_error,
-            "Index i is not stored locally.");
-
-        data_type data;
-        typename container_type::accessor a;
-        c.replace(make_key(i,r.tiles().start(), r.tiles().weight()), data);
-
-      }
-
-    private:
-      template <typename InIter>
-      static value_type make_tile(const boost::shared_ptr<tile_range_type>& r, InIter first, InIter last) {
-        return value_type(r, first, last);
-      }
-
-      template <typename InIter>
-      static value_type make_tile(const boost::shared_ptr<tile_range_type>& r, const T& v) {
-        return value_type(r, v);
-      }
-
-      static key_type key(const typename CS::ordinal_index& i) {
-        return key_type(i);
-      }
-
-      static key_type key(const typename CS::index& i) {
-        return key_type(i);
-      }
-
-      static const key_type& key(const key_type& i) {
-        return i;
-      }
-
-      static key_type make_key(const key_type& i, const typename range_type::index& s,
-          const typename range_type::size_array& w)
-      {
-        switch(i.keys()) {
-          case 1u:
-            return make_key(i.key1(), s, w);
-            break;
-          case 2u:
-            return make_key(i.key2(), s, w);
-            break;
-          case 3u:
-            return i;
-        }
-
-        return key_type(); // keep the compiler happy
-      }
-
-      static key_type make_key(const typename range_type::index& i,
-          const typename range_type::index& s, const typename range_type::size_array& w) {
-        return key_type(CS::calc_ordinal(i - s, w), i);
-      }
-
-      static key_type make_key(const typename range_type::ordinal_index& i,
-          const typename range_type::index& s, const typename range_type::size_array& w) {
-        return key_type(i, CS::calc_index(i, w) + s);
-      }
 
     }; // class TilePolicy
 

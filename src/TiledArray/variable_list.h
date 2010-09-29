@@ -225,6 +225,19 @@ namespace TiledArray {
       return result;
     }
 
+    namespace detail {
+      template <unsigned int DIM>
+      Permutation<DIM> var_perm(const VariableList& l, const VariableList& r) {
+        boost::array<std::size_t, DIM> a;
+        VariableList::const_iterator rit = r.begin();
+        for(typename boost::array<std::size_t, DIM>::iterator it = a.begin(); it != a.end(); ++it) {
+          VariableList::const_iterator lit = std::find(l.begin(), l.end(), *rit++);
+          *it = std::distance(l.begin(), lit);
+        }
+        return Permutation<DIM>(a.begin());
+      }
+    } // namespace detail
+
     /// ostream VariableList output orperator.
     inline std::ostream& operator <<(std::ostream& out, const VariableList& v) {
       out << "(";

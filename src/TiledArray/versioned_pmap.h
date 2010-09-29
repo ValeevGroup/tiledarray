@@ -36,7 +36,7 @@ namespace TiledArray {
         /// Increment the version counter
 
         /// \return The new version number for the pmap
-        unsigned int next() { return ++version_; }
+        unsigned int version() { return version_; }
 
         /// Owner of an index
 

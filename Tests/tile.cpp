@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE( element_assignment )
 BOOST_AUTO_TEST_CASE( resize )
 {
   TileN t1;
-  BOOST_CHECK_EQUAL(t1.range().volume(), 0);
+  BOOST_CHECK_EQUAL(t1.range().volume(), 0u);
   t1.resize(pr);
   // check new dimensions.
   BOOST_CHECK_EQUAL(t1.range(), *pr);

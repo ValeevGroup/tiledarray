@@ -4,6 +4,7 @@
 #include <TiledArray/shape.h>
 #include <TiledArray/madness_runtime.h>
 #include <TiledArray/shape.h>
+#include <boost/make_shared.hpp>
 
 namespace madness {
   template<typename T>
@@ -11,7 +12,7 @@ namespace madness {
 
 } // namespace madness
 namespace TiledArray {
-/*
+
   /// Dense shape used to construct Array objects.
 
   /// DenseShape is used to represent dense arrays. It is initialized with a
@@ -20,55 +21,60 @@ namespace TiledArray {
   ///
   /// Template parameters:
   /// \var \c R is the range object type.
-  template<typename I>
-  class DenseShape : public Shape<I> {
+  template<typename CS, typename Key>
+  class DenseShape : public Shape<CS, Key> {
   protected:
-    typedef DenseShape<I> DenseShape_;
-    typedef Shape<I> Shape_;
+    typedef DenseShape<CS, Key> DenseShape_;
+    typedef Shape<CS, Key> Shape_;
 
   public:
-    typedef typename Shape_::ordinal_type ordinal_type;
-    typedef typename Shape_::size_array size_array;
+    typedef typename Shape_::index index;
+    typedef typename Shape_::ordinal_index ordinal_index;
 
     /// Primary constructor
 
     /// Since all tiles are present in a dense array, the shape is considered
     /// Immediately available.
     template<typename R>
-    DenseShape(const R& r) :
-        Shape_(detail::dense_shape, r)
+    DenseShape(const typename Shape_::range_type& r) :
+        Shape_(r)
     { }
 
-    /// Constructor defined by an size array.
-    template<typename Size>
-    DenseShape(const Size& size, detail::DimensionOrderType o) :
-        Shape_(detail::dense_shape, size, o)
-    { }
+    DenseShape(const DenseShape_& other) : Shape_(other) { }
 
-    /// Constructor defined by an upper and lower bound.
+    virtual boost::shared_ptr<Shape_> clone() const {
+      return boost::dynamic_pointer_cast<Shape_>(
+          boost::make_shared<DenseShape_>(*this));
+    }
 
-    /// All elements of finish must be greater than or equal to those of start.
-    template<typename Index>
-    DenseShape(const Index& start, const Index& finish, detail::DimensionOrderType o) :
-        Shape_(detail::dense_shape, start, finish, o)
-    { }
+    virtual std::type_info type() const { return typeid(DenseShape_); }
 
   private:
-    /// Returns madness::Future<bool> which will be true if the tile is included.
-    virtual madness::Future<bool> tile_includes(ordinal_type) const {
+
+    /// Check that a tiles information is stored locally.
+
+    /// \param i The ordinal index to check.
+    virtual bool local(ordinal_index i) const { return true; }
+
+    /// Probe for the presence of a tile in the shape
+
+    /// \param i The index to be probed.
+    virtual madness::Future<bool> probe(ordinal_index i) const {
       return madness::Future<bool>(true);
     }
-
-    /// Returns madness::Future<bool> which will be true if the tile is included.
-    virtual madness::Future<bool> tile_includes(size_array) const {
-      return madness::Future<bool>(true);
-    }
-
-    /// Returns true if the local data has been fully initialized.
-    virtual bool initialized() const { return true; }
 
   }; // class DenseShape
-*/
+
+  template <typename CS, typename Key>
+  inline bool is_dense(const boost::shared_ptr<Shape<CS, Key> >& s) {
+    return s->type() == typeid(DenseShape<CS,Key>);
+  }
+
+  template <typename CS, typename Key>
+  inline bool is_dense(const boost::shared_ptr<DenseShape<CS, Key> >&) {
+    return true;
+  }
+
 }  // namespace TiledArray
 
 #endif // TILEDARRAY_SHAPE_H__INCLUDED

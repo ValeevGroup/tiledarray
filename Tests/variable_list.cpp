@@ -214,16 +214,16 @@ BOOST_AUTO_TEST_CASE( permutation )
   v3 ^= p;
   BOOST_CHECK_EQUAL_COLLECTIONS(v3.begin(), v3.end(), v2.begin(), v2.end());
 }
-/*
+
 BOOST_AUTO_TEST_CASE( implicit_permutation )
 {
   Permutation<4> p1(1,2,3,0);
-  VariableList v1 = p1 ^ v;
-  std::vector<std::size_t> p = v.permutation(v1);
+  VariableList v1 = (p1 ^ v);
+  Permutation<4> p = TiledArray::expressions::detail::var_perm<4>(v1, v);
 
   BOOST_CHECK_EQUAL_COLLECTIONS(p.begin(), p.end(), p1.begin(), p1.end());
 }
-*/
+
 BOOST_AUTO_TEST_CASE( ostream )
 {
   boost::test_tools::output_test_stream output;
