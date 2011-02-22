@@ -507,6 +507,10 @@ namespace TiledArray {
 
     friend Tile_ operator ^ <>(const Permutation<coordinate_system::dim>&, const Tile_&);
     friend void TiledArray::swap<>(Tile_&, Tile_&);
+    template <class, class>
+    friend struct madness::archive::ArchiveStoreImpl;
+    template <class, class>
+    friend struct madness::archive::ArchiveLoadImpl;
 
     boost::shared_ptr<range_type> range_; ///< Shared pointer to the range data for this tile
     pointer first_;                       ///< Pointer to the beginning of the data range
@@ -586,22 +590,42 @@ namespace madness {
 
     template <class Archive, typename T, typename CS, typename A>
     struct ArchiveLoadImpl<Archive, TiledArray::Tile<T, CS, A> > {
-      static void load(const Archive& ar, TiledArray::Tile<T, CS, A>& t) {
+      typedef TiledArray::Tile<T, CS, A> tile_type;
+
+      static void load(const Archive& ar, tile_type& t) {
         if(t.first_ != NULL) {
           t.destroy_(t.first_, t.last_);
           t.deallocate(t.first_, t.range_->volume());
         }
 
         ar & static_cast<typename TiledArray::Tile<T, CS, A>::alloc_type&>(t);
-        t.range_ = boost::make_shared<typename TiledArray::Tile<T, CS, A>::range_type>();
         ar & (* t.range_);
-        t.allocate(t.first_, t.range_->volume());
+        t.first_ = t.allocate(t.range_->volume());
         t.last_ = t.first_ + t.range_->volume();
-        t.uninitialized_fill_(t.first_, t.last_, TiledArray::Tile<T, CS, A>::value_type());
+        t.uninitialized_fill_(t.first_, t.last_, typename TiledArray::Tile<T, CS, A>::value_type());
         ar & wrap(t.first_, t.range_->volume());
       }
     };
 
+    template <class Archive, typename T>
+    struct ArchiveStoreImpl<Archive, Eigen::aligned_allocator<T> > {
+      static void store(const Archive&, const Eigen::aligned_allocator<T>&) { }
+    };
+
+    template <class Archive, typename T>
+    struct ArchiveLoadImpl<Archive, Eigen::aligned_allocator<T> > {
+      static void load(const Archive&, Eigen::aligned_allocator<T>&) { }
+    };
+
+    template <class Archive, typename T>
+    struct ArchiveStoreImpl<Archive, std::allocator<T> > {
+      static void store(const Archive&, const std::allocator<T>&) { }
+    };
+
+    template <class Archive, typename T>
+    struct ArchiveLoadImpl<Archive, std::allocator<T> > {
+      static void load(const Archive&, std::allocator<T>&) { }
+    };
   }
 }
 #endif // TILEDARRAY_TILE_H__INCLUDED

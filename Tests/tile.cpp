@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), 0);
   t2.resize(pr, 1);
   BOOST_CHECK_EQUAL(t2.range(), *pr);
-  BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), pr->volume());
+  BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), static_cast<long>(pr->volume()));
   // check for new element initialization
   BOOST_CHECK_EQUAL(std::find_if(t2.begin(), t2.end(), std::bind1st(std::not_equal_to<int>(), 1)), t2.end());
 

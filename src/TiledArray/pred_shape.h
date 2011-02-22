@@ -60,14 +60,14 @@ namespace TiledArray {
     }
 
     /// Type info accessor for derived class
-    virtual std::type_info type() const { return typeid(PredShape_); }
+    virtual const std::type_info& type() const { return typeid(PredShape_); }
 
   private:
 
     /// Check that a tiles information is stored locally.
 
     /// \param i The ordinal index to check.
-    virtual bool local(ordinal_index i) const { return true; }
+    virtual bool local(ordinal_index) const { return true; }
 
     /// Probe for the presence of a tile in the shape
 

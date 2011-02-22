@@ -9,7 +9,7 @@ namespace TiledArray {
 
   namespace detail {
     template <typename, typename>
-    class ArrayPolicy;
+    class DefaultArrayPolicy;
   }
 
   namespace math {
@@ -27,7 +27,7 @@ namespace TiledArray {
   /// \tparam T The element type of for array tiles
   /// \tparam Coordinate system type
   /// \tparam Policy class for the array
-  template <typename T, typename CS, typename P = detail::ArrayPolicy<T, CS> >
+  template <typename T, typename CS, typename P = detail::DefaultArrayPolicy<T, CS> >
   class Array {
   private:
     typedef P array_policy;
@@ -209,7 +209,7 @@ namespace TiledArray {
   namespace detail {
 
     template <typename T, typename CS>
-    class ArrayPolicy {
+    class DefaultArrayPolicy {
     public:
       typedef Tile<T, CS> value_type;
 

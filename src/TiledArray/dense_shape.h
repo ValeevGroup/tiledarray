@@ -35,7 +35,6 @@ namespace TiledArray {
 
     /// Since all tiles are present in a dense array, the shape is considered
     /// Immediately available.
-    template<typename R>
     DenseShape(const typename Shape_::range_type& r) :
         Shape_(r)
     { }
@@ -47,19 +46,19 @@ namespace TiledArray {
           boost::make_shared<DenseShape_>(*this));
     }
 
-    virtual std::type_info type() const { return typeid(DenseShape_); }
+    virtual const std::type_info& type() const { return typeid(DenseShape_); }
 
   private:
 
     /// Check that a tiles information is stored locally.
 
     /// \param i The ordinal index to check.
-    virtual bool local(ordinal_index i) const { return true; }
+    virtual bool local(ordinal_index) const { return true; }
 
     /// Probe for the presence of a tile in the shape
 
     /// \param i The index to be probed.
-    virtual madness::Future<bool> probe(ordinal_index i) const {
+    virtual madness::Future<bool> probe(ordinal_index) const {
       return madness::Future<bool>(true);
     }
 

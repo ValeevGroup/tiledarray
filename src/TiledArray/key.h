@@ -3,12 +3,13 @@
 
 #include <TiledArray/error.h>
 #include <boost/functional/hash.hpp>
+#include <TiledArray/madness_runtime.h>
 #include <iostream>
 
 namespace TiledArray {
   namespace detail {
 
-    template<typename Key1, typename Key2>
+    template<typename, typename>
     class Key;
     template<typename Key1, typename Key2>
     bool operator ==(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
@@ -72,6 +73,8 @@ namespace TiledArray {
     bool operator >=(const Key2&, const Key<Key1, Key2>&);
     template<typename Key1, typename Key2>
     std::ostream& operator<<(std::ostream&, const Key<Key1, Key2>&);
+    template <typename Key1, typename Key2>
+    std::size_t hash_value(const Key<Key1,Key2>&);
 
     /// Key class that holds two arbitrary key types.
 
@@ -270,6 +273,7 @@ namespace TiledArray {
         return *this;
       }
 #endif // __GXX_EXPERIMENTAL_CXX0X__
+
 
       template <typename Archive>
       void serialize(const Archive& ar) {
@@ -497,7 +501,20 @@ namespace TiledArray {
       return out;
     }
 
-  } // namespace detal
+  } // namespace detail
 } // namespace TiledArray
+
+namespace madness {
+  template <typename>
+  struct Hash;
+
+  template <typename Key1, typename Key2>
+  struct Hash<TiledArray::detail::Key<Key1,Key2> > {
+      static hashT hash(const TiledArray::detail::Key<Key1,Key2>& k) {
+          boost::hash<TiledArray::detail::Key<Key1,Key2> > key_hasher;
+          return key_hasher(k);
+      };
+  };
+}
 
 #endif // TILEDARRAY_KEY_H__INCLUDED

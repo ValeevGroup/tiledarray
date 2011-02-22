@@ -445,6 +445,20 @@ namespace boost {
     output << "}}";
     return output;
   }
+
+  /// Hash function for boost::array
+
+  /// Recursively hash each element of the array.
+  /// \tparam T The array element type
+  /// \tparam N The array size
+  /// \param a The array to hash
+  template <typename T, std::size_t N>
+  std::size_t hash_value(const boost::array<T,N>& a) {
+      std::size_t seed = 0;
+      for(typename boost::array<T,N>::const_iterator it = a.begin(); it != a.end(); ++it)
+        boost::hash_combine(seed, *it);
+      return seed;
+  }
 } // namespace boost
 
 #endif // TILEDARRAY_COORDINATES_H__INCLUDED

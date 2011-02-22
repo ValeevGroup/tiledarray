@@ -18,7 +18,7 @@ namespace TiledArray {
     template <typename T, typename CS, typename P >
     class ArrayImpl : private boost::noncopyable {
     private:
-      typedef madness::WorldObject<ArrayImpl<T, CS, P> > WorldObject_;
+//      typedef madness::WorldObject<ArrayImpl<T, CS, P> > WorldObject_;
       typedef P policy;
       typedef detail::Key<typename CS::ordinal_index, typename CS::index> key_type;
       typedef madness::Future<typename policy::value_type> data_type;
@@ -50,14 +50,16 @@ namespace TiledArray {
       ArrayImpl(madness::World& w, const tiled_range_type& tr, unsigned int v = 0) :
           tiled_range_(tr),
           pmap_(make_pmap_(w, v)),
-          shape_(NULL),
+          shape_(),
           tiles_(w, pmap_, false)
       { }
 
       /// Set the array shape.
-      madness::Void set_shape(const madness::SharedPtr<pmap_interface_type>& s) {
+      madness::Void set_shape(const boost::shared_ptr<shape_type>& s) {
         TA_ASSERT(shape_.get() == NULL, std::runtime_error,
             "Array shape has already been set.");
+        TA_ASSERT(s.get() != NULL, std::runtime_error,
+            "The shape to be assigned cannot be null.");
 
         // Set the array shape and add local tiles to the distributed container.
         shape_ = s;
@@ -70,7 +72,7 @@ namespace TiledArray {
 
       /// \return The current version number
       unsigned int version() const {
-        // Todo: This has a runtime hit taht we don't want, but it can't be avoided
+        // Todo: This has a runtime hit that we don't want, but it can't be avoided
         // until madness shared pointers change to tr1 versions.
         pmap_type* pmap = dynamic_cast<pmap_type*>(pmap_.get());
         return pmap->version();
@@ -229,18 +231,16 @@ namespace TiledArray {
 
       /// \param r The tile range object
       /// \param pmap The array process map
-      static madness::SharedPtr<pmap_interface_type>
-      make_shape(const typename tiled_range_type::tile_range_type& r) {
+      static boost::shared_ptr<shape_type>
+      make_shape(const range_type& r) {
 #ifdef NDEBUG
         // Optimize away the dynamic cast checking
-        madness::SharedPtr<shape_type> result(static_cast<shape_type*>(new dense_shape_type(r)));
+        boost::shared_ptr result(static_cast<shape_type*>(new dense_shape_type(r)));
 #else
-        madness::SharedPtr<shape_type> result();
+        boost::shared_ptr<shape_type> result;
         dense_shape_type* s = new dense_shape_type(r);
         try {
-          result = madness::SharedPtr<shape_type>(dynamic_cast<shape_type*>(s));
-          if(result.get() == NULL)
-            throw std::bad_cast("Shape cast failed.");
+          result.reset(dynamic_cast<shape_type*>(s));
         } catch(...) {
           delete s;
           throw;
@@ -260,20 +260,18 @@ namespace TiledArray {
       /// \note InIter::value_type may be Array::index, Array::ordinal_index, or
       /// Array::key_type types.
       template <typename InIter>
-      static madness::SharedPtr<pmap_interface_type>
-      make_shape(madness::World& w, const typename tiled_range_type::tile_range_type& r,
+      static boost::shared_ptr<shape_type>
+      make_shape(madness::World& w, const range_type& r,
           const madness::SharedPtr<pmap_interface_type>& pmap, InIter first, InIter last) {
 #ifdef NDEBUG
         // Optimize away the dynamic cast checking
         madness::SharedPtr<shape_type> result(
             static_cast<shape_type*>(new sparse_shape_type(w, r, pmap, first, last)));
 #else
-        madness::SharedPtr<shape_type> result;
+        boost::shared_ptr<shape_type> result;
         sparse_shape_type* s = new sparse_shape_type(w, r, pmap, first, last);
         try {
-          result = madness::SharedPtr<shape_type>(dynamic_cast<shape_type*>(s));
-          if(result.get() == NULL)
-            throw std::bad_cast("Shape cast failed.");
+          result.reset(dynamic_cast<shape_type*>(s));
         } catch(...) {
           delete s;
           throw;
@@ -288,19 +286,17 @@ namespace TiledArray {
       /// \param pmap The array process map
       /// \param p The predicate used to construct the predicated shape
       template <typename Pred>
-      static madness::SharedPtr<pmap_interface_type>
-      make_shape(const typename tiled_range_type::tile_range_type& r, const Pred& p) {
+      static boost::shared_ptr<shape_type>
+      make_shape(const range_type& r, const Pred& p) {
 #ifdef NDEBUG
         // Optimize away the dynamic_cast runtime check
-        madness::SharedPtr<shape_type> result(
+        boost::shared_ptr<shape_type> result(
             static_cast<shape_type*>(new PredShape<coordinate_system, key_type, Pred>(r, p)));
 #else
-        madness::SharedPtr<shape_type> result;
+        boost::shared_ptr<shape_type> result;
         sparse_shape_type* s = new PredShape<coordinate_system, key_type, Pred>(r, p);
         try {
-          result = madness::SharedPtr<shape_type>(dynamic_cast<shape_type*>(s));
-          if(result.get() == NULL)
-            throw std::bad_cast("Shape cast failed.");
+          result.reset(dynamic_cast<shape_type*>(s));
         } catch(...) {
           delete s;
           throw;
@@ -323,8 +319,6 @@ namespace TiledArray {
         pmap_type* p = new pmap_type(w, v);
         try {
           result = madness::SharedPtr<pmap_interface_type>(dynamic_cast<pmap_interface_type*>(p));
-          if(result.get() == NULL)
-            throw std::bad_cast("Shape cast failed.");
         } catch(...) {
           delete p;
           throw;
@@ -334,11 +328,11 @@ namespace TiledArray {
       }
 
       /// Initialize the array container by inserting local tiles.
-      void initialize_() const {
+      void initialize_() {
         for(typename tiled_range_type::range_type::const_iterator it =
             tiled_range_.tiles().begin(); it != tiled_range_.tiles().end(); ++it) {
           if(shape_->is_local_and_includes(*it))
-            tiles_.replace(*it, data_type());
+            tiles_.replace(key_(*it), data_type());
         }
 
         tiles_.process_pending();

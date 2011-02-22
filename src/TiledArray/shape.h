@@ -72,9 +72,15 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Checks that the index, \c i , is stored locally
+
+    /// \tparam Index Ordinal or coordinate index type
+    /// \param i The index to test
+    /// \return If \c i is included in the shape range and this rank owns \c i
+    /// (according to the shape process map), then true. Otherwise false.
     template <typename Index>
     bool is_local(const Index& i) const {
-      return range_->includes(i) && this->local(i);
+      return range_->includes(i) && this->local(ord_(i));
     }
 
     template <typename Index>
@@ -90,7 +96,7 @@ namespace TiledArray {
     /// \tparam Index The index type (index or ordinal_index).
     /// \param i The index to be checked
     template <typename Index>
-    bool local_and_includes(const Index& i) const {
+    bool is_local_and_includes(const Index& i) const {
       if(is_local(i))
         return this->probe(ord_(i)).get();
 
@@ -98,7 +104,7 @@ namespace TiledArray {
     }
 
     /// Type info accessor for derived class
-    virtual std::type_info type() const = 0;
+    virtual const std::type_info& type() const = 0;
 
   protected:
 

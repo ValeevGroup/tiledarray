@@ -62,7 +62,7 @@ namespace TiledArray {
           boost::make_shared<SparseShape_>(*this));
     }
 
-    virtual std::type_info type() const { return typeid(SparseShape_); }
+    virtual const std::type_info& type() const { return typeid(SparseShape_); }
 
 
   private:
@@ -83,8 +83,10 @@ namespace TiledArray {
 
       ordinal_index o = 0;
       for(; first != last; ++first) {
-        o = Shape_::ord_(*first);
-        local.set(o, SparseShape_::local(o));
+        if(this->is_local(*first)) {
+          o = Shape_::ord_(*first);
+          local.set(o, SparseShape_::local(o));
+        }
       }
 
       // Construct the bitset for remote data

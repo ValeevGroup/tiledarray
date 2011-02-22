@@ -16,6 +16,7 @@
 
 #define WORLD_INSTANTIATE_STATIC_TEMPLATES
 #include <world/world.h>
+#include <world/worldhash.h>
 
 namespace madness {
   namespace archive {
