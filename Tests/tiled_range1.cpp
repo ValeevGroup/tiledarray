@@ -7,7 +7,7 @@
 using namespace TiledArray;
 
 
-const boost::array<std::size_t, 6> Range1Fixture::a = Range1Fixture::init_tiling<6>();
+const std::array<std::size_t, 6> Range1Fixture::a = Range1Fixture::init_tiling<6>();
 const Range1Fixture::range1_type::range_type Range1Fixture::tiles(0, Range1Fixture::a.size() - 1);
 const Range1Fixture::range1_type::tile_range_type Range1Fixture::elements(Range1Fixture::a.front(), Range1Fixture::a.back());
 
@@ -36,7 +36,7 @@ BOOST_AUTO_TEST_CASE( range_info )
     BOOST_CHECK_EQUAL(tr1.tile(i).finish(), a[i + 1]);
     BOOST_CHECK_EQUAL(tr1.tile(i).size(), a[i + 1] - a[i]);
     BOOST_CHECK_EQUAL(tr1.tile(i).volume(), a[i + 1] - a[i]);
-    BOOST_CHECK_EQUAL(tr1.tile(i).weight(), 1);
+    BOOST_CHECK_EQUAL(tr1.tile(i).weight(), 1ul);
   }
 }
 
@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE( constructor )
       BOOST_CHECK_EQUAL(r.tile(i).finish(), a[i + 1]);
       BOOST_CHECK_EQUAL(r.tile(i).size(), a[i + 1] - a[i]);
       BOOST_CHECK_EQUAL(r.tile(i).volume(), a[i + 1] - a[i]);
-      BOOST_CHECK_EQUAL(r.tile(i).weight(), 1);
+      BOOST_CHECK_EQUAL(r.tile(i).weight(), 1ul);
     }
   }
 
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE( constructor )
       BOOST_CHECK_EQUAL(r.tile(i).finish(), a[i + 1]);
       BOOST_CHECK_EQUAL(r.tile(i).size(), a[i + 1] - a[i]);
       BOOST_CHECK_EQUAL(r.tile(i).volume(), a[i + 1] - a[i]);
-      BOOST_CHECK_EQUAL(r.tile(i).weight(), 1);
+      BOOST_CHECK_EQUAL(r.tile(i).weight(), 1ul);
     }
   }
 
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE( constructor )
       BOOST_CHECK_EQUAL(r.tile(i + 2).finish(), a[i + 1]);
       BOOST_CHECK_EQUAL(r.tile(i + 2).size(), a[i + 1] - a[i]);
       BOOST_CHECK_EQUAL(r.tile(i + 2).volume(), a[i + 1] - a[i]);
-      BOOST_CHECK_EQUAL(r.tile(i + 2).weight(), 1);
+      BOOST_CHECK_EQUAL(r.tile(i + 2).weight(), 1ul);
     }
   }
 
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( constructor )
       BOOST_CHECK_EQUAL(r.tile(i - 1).finish(), a[i + 1]);
       BOOST_CHECK_EQUAL(r.tile(i - 1).size(), a[i + 1] - a[i]);
       BOOST_CHECK_EQUAL(r.tile(i - 1).volume(), a[i + 1] - a[i]);
-      BOOST_CHECK_EQUAL(r.tile(i - 1).weight(), 1);
+      BOOST_CHECK_EQUAL(r.tile(i - 1).weight(), 1ul);
     }
   }
 }
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE( comparison )
   r1.resize(a.begin(), a.end(), 3);
   BOOST_CHECK(! (r1 == tr1)); // check for inequality with different start  point for tiles
   BOOST_CHECK(r1 != tr1);
-  boost::array<std::size_t, 6> a1 = a;
+  std::array<std::size_t, 6> a1 = a;
   a1[2] = 8;
   r1.resize(a1.begin(), a1.end(), 0);
   BOOST_CHECK(! (r1 == tr1)); // check for inequality with different tile boundaries.

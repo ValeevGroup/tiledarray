@@ -3,7 +3,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/shape.h>
-#include <boost/make_shared.hpp>
+#include <world/sharedptr.h>
 
 namespace TiledArray {
 
@@ -54,9 +54,9 @@ namespace TiledArray {
     /// Construct a copy of this shape
 
     /// \return A shared pointer to a copy of this object
-    virtual boost::shared_ptr<Shape_> clone() const {
-      return boost::dynamic_pointer_cast<Shape_>(
-          boost::make_shared<PredShape_>(*this));
+    virtual std::shared_ptr<Shape_> clone() const {
+      return std::dynamic_pointer_cast<Shape_>(
+          std::make_shared<PredShape_>(*this));
     }
 
     /// Type info accessor for derived class

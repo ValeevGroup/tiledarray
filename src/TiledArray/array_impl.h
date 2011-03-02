@@ -55,7 +55,7 @@ namespace TiledArray {
       { }
 
       /// Set the array shape.
-      madness::Void set_shape(const boost::shared_ptr<shape_type>& s) {
+      madness::Void set_shape(const std::shared_ptr<shape_type>& s) {
         TA_ASSERT(shape_.get() == NULL, std::runtime_error,
             "Array shape has already been set.");
         TA_ASSERT(s.get() != NULL, std::runtime_error,
@@ -141,7 +141,7 @@ namespace TiledArray {
         TA_ASSERT(shape_->local_and_inclues(i), std::range_error,
             "The given index i is not local or not included in the array shape.");
 
-        boost::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
+        std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
 
         TA_ASSERT(volume_type(std::distance(first, last)) == r->volume(), std::runtime_error,
             "The number of elements in [first, last) is not equal to the tile volume.");
@@ -167,7 +167,7 @@ namespace TiledArray {
         TA_ASSERT(shape_->local_and_inclues(i), std::runtime_error,
             "The given index i is not local and included in the array.");
 
-        boost::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
+        std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
 
         typename container_type::accessor acc;
         bool found = tiles_.find(acc, i);
@@ -189,7 +189,7 @@ namespace TiledArray {
         TA_ASSERT(shape_->local_and_inclues(i), std::runtime_error,
             "The given index i is not local and included in the array.");
 
-        boost::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
+        std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
 
         typename container_type::accessor acc;
         bool found = tiles_.find(acc, i);
@@ -219,10 +219,10 @@ namespace TiledArray {
 
       /// \return A const shared pointer reference to the array process map
       /// \throw nothing
-      const madness::SharedPtr< pmap_interface_type >& get_pmap() const { return shape_->pmap(); }
+      const std::shared_ptr< pmap_interface_type >& get_pmap() const { return shape_->pmap(); }
 
       /// Shape accessor
-      const boost::shared_ptr<shape_type>& get_shape() const { return shape_; }
+      const std::shared_ptr<shape_type>& get_shape() const { return shape_; }
 
       /// World accessor
       madness::World& get_world() const { return tiles_.get_world(); }
@@ -231,13 +231,13 @@ namespace TiledArray {
 
       /// \param r The tile range object
       /// \param pmap The array process map
-      static boost::shared_ptr<shape_type>
+      static std::shared_ptr<shape_type>
       make_shape(const range_type& r) {
 #ifdef NDEBUG
         // Optimize away the dynamic cast checking
-        boost::shared_ptr result(static_cast<shape_type*>(new dense_shape_type(r)));
+        std::shared_ptr result(static_cast<shape_type*>(new dense_shape_type(r)));
 #else
-        boost::shared_ptr<shape_type> result;
+        std::shared_ptr<shape_type> result;
         dense_shape_type* s = new dense_shape_type(r);
         try {
           result.reset(dynamic_cast<shape_type*>(s));
@@ -260,15 +260,15 @@ namespace TiledArray {
       /// \note InIter::value_type may be Array::index, Array::ordinal_index, or
       /// Array::key_type types.
       template <typename InIter>
-      static boost::shared_ptr<shape_type>
+      static std::shared_ptr<shape_type>
       make_shape(madness::World& w, const range_type& r,
-          const madness::SharedPtr<pmap_interface_type>& pmap, InIter first, InIter last) {
+          const std::shared_ptr<pmap_interface_type>& pmap, InIter first, InIter last) {
 #ifdef NDEBUG
         // Optimize away the dynamic cast checking
-        madness::SharedPtr<shape_type> result(
+        std::shared_ptr<shape_type> result(
             static_cast<shape_type*>(new sparse_shape_type(w, r, pmap, first, last)));
 #else
-        boost::shared_ptr<shape_type> result;
+        std::shared_ptr<shape_type> result;
         sparse_shape_type* s = new sparse_shape_type(w, r, pmap, first, last);
         try {
           result.reset(dynamic_cast<shape_type*>(s));
@@ -286,14 +286,14 @@ namespace TiledArray {
       /// \param pmap The array process map
       /// \param p The predicate used to construct the predicated shape
       template <typename Pred>
-      static boost::shared_ptr<shape_type>
+      static std::shared_ptr<shape_type>
       make_shape(const range_type& r, const Pred& p) {
 #ifdef NDEBUG
         // Optimize away the dynamic_cast runtime check
-        boost::shared_ptr<shape_type> result(
+        std::shared_ptr<shape_type> result(
             static_cast<shape_type*>(new PredShape<coordinate_system, key_type, Pred>(r, p)));
 #else
-        boost::shared_ptr<shape_type> result;
+        std::shared_ptr<shape_type> result;
         sparse_shape_type* s = new PredShape<coordinate_system, key_type, Pred>(r, p);
         try {
           result.reset(dynamic_cast<shape_type*>(s));
@@ -307,18 +307,18 @@ namespace TiledArray {
 
     private:
 
-      static madness::SharedPtr<pmap_interface_type>
+      static std::shared_ptr<pmap_interface_type>
       make_pmap_(madness::World& w, unsigned int v) {
 #ifdef NDEBUG
         // Optimize away the dynamic_cast runtime check
-        madness::SharedPtr<pmap_interface_type> result(
+        std::shared_ptr<pmap_interface_type> result(
             static_cast<pmap_interface_type*>(new pmap_type(w, v)));
 
 #else
-        madness::SharedPtr<pmap_interface_type> result;
+        std::shared_ptr<pmap_interface_type> result;
         pmap_type* p = new pmap_type(w, v);
         try {
-          result = madness::SharedPtr<pmap_interface_type>(dynamic_cast<pmap_interface_type*>(p));
+          result = std::shared_ptr<pmap_interface_type>(dynamic_cast<pmap_interface_type*>(p));
         } catch(...) {
           delete p;
           throw;
@@ -412,8 +412,8 @@ namespace TiledArray {
       }
 
       TiledRange<CS> tiled_range_;                      ///< Tiled range object
-      madness::SharedPtr<pmap_interface_type> pmap_;    ///< Versioned process map
-      boost::shared_ptr<shape_type> shape_;             ///< Pointer to the shape object
+      std::shared_ptr<pmap_interface_type> pmap_;    ///< Versioned process map
+      std::shared_ptr<shape_type> shape_;             ///< Pointer to the shape object
       container_type tiles_;                            ///< Distributed container that holds tiles
     };
 

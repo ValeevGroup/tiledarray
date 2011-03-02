@@ -4,7 +4,7 @@
 #include <TiledArray/array_util.h>
 #include <TiledArray/utility.h>
 #include <boost/operators.hpp>
-#include <boost/array.hpp>
+#include <world/array.h>
 #include <boost/type_traits/is_integral.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/functional/hash.hpp>
@@ -17,7 +17,7 @@
   // Forward declarations.
 namespace boost {
   template <typename T, std::size_t D>
-  std::ostream& operator<<(std::ostream&, const boost::array<T,D>&);
+  std::ostream& operator<<(std::ostream&, const std::array<T,D>&);
 } // namespace boost
 
 namespace TiledArray {
@@ -44,7 +44,7 @@ namespace TiledArray {
       > > > >
   {
   private:
-    typedef boost::array<I,DIM> array_type; ///< array_type type used to store coordinates
+    typedef std::array<I,DIM> array_type; ///< array_type type used to store coordinates
 
     struct Enabler { };
 
@@ -61,7 +61,7 @@ namespace TiledArray {
     /// Default constructor
 
     /// All coordinate elements are initialized to 0.
-    ArrayCoordinate() { r_.assign(index(0)); }
+    ArrayCoordinate() { r_.fill(index(0)); }
 
     /// Initialize coordinate with an iterator
 
@@ -80,7 +80,7 @@ namespace TiledArray {
       detail::initialize_from_values(first, r_.begin(), DIM, boost::is_integral<InIter>());
     }
 
-    /// Copy the content of the boost::array<I, DIM> object into the coordinate elements.
+    /// Copy the content of the std::array<I, DIM> object into the coordinate elements.
 
     /// \throw nothing
     ArrayCoordinate(const array_type& init_values) : r_(init_values) { }
@@ -419,7 +419,7 @@ namespace TiledArray {
   /// \param c The array coordinate to hash
   template <typename I, unsigned int DIM, typename Tag>
   std::size_t hash_value(const ArrayCoordinate<I,DIM,Tag>& c) {
-      boost::hash<boost::array<I,DIM> > hasher;
+      boost::hash<std::array<I,DIM> > hasher;
       return hasher(c.data());
   }
 
@@ -436,28 +436,16 @@ namespace TiledArray {
 
 // We need this operator in the boost namespace so it works properly in other
 // name spaces, specifically in boost::test namespace.
-namespace boost {
-  /// Append a boost::array<T,D> to an output stream.
-  template <typename T, std::size_t D>
-  std::ostream& operator<<(std::ostream& output, const array<T,D>& a) {
-    output << "{{";
-    TiledArray::detail::print_array(output, a.begin(), a.end());
-    output << "}}";
-    return output;
-  }
-
-  /// Hash function for boost::array
+namespace std {
+  /// Hash function for std::array
 
   /// Recursively hash each element of the array.
   /// \tparam T The array element type
   /// \tparam N The array size
   /// \param a The array to hash
   template <typename T, std::size_t N>
-  std::size_t hash_value(const boost::array<T,N>& a) {
-      std::size_t seed = 0;
-      for(typename boost::array<T,N>::const_iterator it = a.begin(); it != a.end(); ++it)
-        boost::hash_combine(seed, *it);
-      return seed;
+  std::size_t hash_value(const array<T,N>& a) {
+      return boost::hash_range(a.begin(), a.end());
   }
 } // namespace boost
 

@@ -5,7 +5,8 @@
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/range.h>
 #include <TiledArray/madness_runtime.h>
-#include <boost/shared_ptr.hpp>
+#include <world/sharedptr.h>
+#include <world/worlddc.h>
 #include <typeinfo>
 
 namespace TiledArray {
@@ -61,7 +62,7 @@ namespace TiledArray {
     /// Create a copy of this object
 
     /// \return A shared pointer to a copy of this object.
-    virtual boost::shared_ptr<Shape_> clone() const = 0;
+    virtual std::shared_ptr<Shape_> clone() const = 0;
 
     /// Virtual destructor
     virtual ~Shape() { }

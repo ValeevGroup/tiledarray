@@ -24,7 +24,7 @@ namespace TiledArray {
     class ContractedData {
     public:
       typedef std::vector<I> size_array;
-      typedef boost::array<I, 3> packed_size_array;
+      typedef std::array<I, 3> packed_size_array;
 
       template<typename LeftSize, typename RightSize>
       ContractedData(const LeftSize& lsize, const expressions::VariableList& lvars,

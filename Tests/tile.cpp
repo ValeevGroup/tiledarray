@@ -31,7 +31,7 @@ struct TileFixture {
   typedef TileN::size_array size_array;
   typedef TileN::range_type RangeN;
 
-  static const boost::shared_ptr<RangeN> pr;
+  static const std::shared_ptr<RangeN> pr;
 
   TileFixture() : t(pr, 1) {
   }
@@ -41,8 +41,8 @@ struct TileFixture {
   TileN t;
 };
 
-const boost::shared_ptr<TileFixture::RangeN> TileFixture::pr =
-    boost::make_shared<TileFixture::RangeN>(fill_index<index>(0),
+const std::shared_ptr<TileFixture::RangeN> TileFixture::pr =
+    std::make_shared<TileFixture::RangeN>(fill_index<index>(0),
     fill_index<index>(5));
 
 
@@ -193,11 +193,11 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_EQUAL(std::find_if(t2.begin(), t2.end(), std::bind1st(std::not_equal_to<int>(), 1)), t2.end());
 
   // Check that the common elements are maintained in resize operation.
-  boost::shared_ptr<RangeN> pr2 = boost::make_shared<RangeN>(
+  std::shared_ptr<RangeN> pr2 = std::make_shared<RangeN>(
       fill_index<index>(0), fill_index<index>(6));
   t2.resize(pr2, 2);
   BOOST_CHECK_EQUAL(t2.range(), *pr2); // check new dimensions
-  BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), pr2->volume());
+  BOOST_CHECK_EQUAL(static_cast<std::size_t>(std::distance(t2.begin(), t2.end())), pr2->volume());
   for(RangeN::const_iterator it = pr2->begin(); it != pr2->end(); ++it) {
     if(pr->includes(*it))
       BOOST_CHECK_EQUAL(t2[*it], 1);
@@ -210,14 +210,14 @@ BOOST_AUTO_TEST_CASE( permutation )
 {
   typedef TiledArray::CoordinateSystem<3, 0> cs3;
   Permutation<3> p(1,2,0);
-  boost::shared_ptr<Range<cs3> > pr1 =
-      boost::make_shared<Range<cs3> >(Range<cs3>::index(0,0,0), Range<cs3>::index(2,3,4));
-  boost::shared_ptr<Range<cs3> > pr3 =
-      boost::make_shared<Range<cs3> >(*pr1);
-  boost::array<double, 24> val =  {{0,  1,  2,  3, 10, 11, 12, 13, 20, 21, 22, 23,100,101,102,103,110,111,112,113,120,121,122,123}};
+  std::shared_ptr<Range<cs3> > pr1 =
+      std::make_shared<Range<cs3> >(Range<cs3>::index(0,0,0), Range<cs3>::index(2,3,4));
+  std::shared_ptr<Range<cs3> > pr3 =
+      std::make_shared<Range<cs3> >(*pr1);
+  std::array<double, 24> val =  {{0,  1,  2,  3, 10, 11, 12, 13, 20, 21, 22, 23,100,101,102,103,110,111,112,113,120,121,122,123}};
   //         destination       {{0,100,200,300,  1,101,201,301,  2,102,202,302, 10,110,210,310, 11,111,211,311, 12,112,212,312}}
   //         permuted index    {{0,  1,  2, 10, 11, 12,100,101,102,110,111,112,200,201,202,210,211,212,300,301,302,310,311,312}}
-  boost::array<double, 24> pval = {{0, 10, 20,100,110,120,  1, 11, 21,101,111,121,  2, 12, 22,102,112,122,  3, 13, 23,103,113,123}};
+  std::array<double, 24> pval = {{0, 10, 20,100,110,120,  1, 11, 21,101,111,121,  2, 12, 22,102,112,122,  3, 13, 23,103,113,123}};
   Tile<int, cs3> t1(pr1, val.begin(), val.end());
   Tile<int, cs3> t2 = p ^ t1;
   BOOST_CHECK_EQUAL(t2.range(), p ^ t1.range()); // check that the dimensions were correctly permuted.
@@ -232,8 +232,8 @@ BOOST_AUTO_TEST_CASE( permutation )
 BOOST_AUTO_TEST_CASE( ostream )
 {
   typedef TiledArray::CoordinateSystem<3> cs3;
-  boost::shared_ptr<Range<cs3> > pr1 =
-      boost::make_shared<Range<cs3> >(Range<cs3>::index(0,0,0), Range<cs3>::index(3,3,3));
+  std::shared_ptr<Range<cs3> > pr1 =
+      std::make_shared<Range<cs3> >(Range<cs3>::index(0,0,0), Range<cs3>::index(3,3,3));
   Tile<int, cs3> t1(pr1, 1);
   boost::test_tools::output_test_stream output;
   output << t1;

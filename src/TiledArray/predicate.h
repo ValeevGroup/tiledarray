@@ -2,7 +2,7 @@
 #define PREDICATE_H__INCLUDED
 
 #include <TiledArray/permutation.h>
-#include <boost/shared_ptr.hpp>
+#include <world/sharedptr.h>
 
 namespace TiledArray {
 

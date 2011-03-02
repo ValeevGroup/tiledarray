@@ -37,7 +37,7 @@ struct GlobalFixture {
 
   static madness::World* world;
   static unsigned int count;
-  static const boost::array<std::size_t, 20> primes;
+  static const std::array<std::size_t, 20> primes;
 };
 
 #endif // TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED

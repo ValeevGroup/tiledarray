@@ -48,7 +48,7 @@ struct Range1Fixture {
   typedef range1_type::ordinal_index ordinal_index;
   typedef range1_type::tile_coordinate_system::index tile_index;
 
-  static const boost::array<std::size_t, 6> a;
+  static const std::array<std::size_t, 6> a;
   static const range1_type::range_type tiles;
   static const range1_type::tile_range_type elements;
 
@@ -56,8 +56,8 @@ struct Range1Fixture {
   ~Range1Fixture() { }
 
   template <std::size_t D>
-  static boost::array<std::size_t, D> init_tiling() {
-    boost::array<std::size_t, D> result;
+  static std::array<std::size_t, D> init_tiling() {
+    std::array<std::size_t, D> result;
     result[0] = 0u;
     for(std::size_t i = 1; i < D; ++i)
       result[i] = result[i - 1] + GlobalFixture::primes[i - 1];
@@ -65,7 +65,7 @@ struct Range1Fixture {
   }
 
   range1_type tr1;
-  boost::array<range1_type::tile_range_type, 5> tile;
+  std::array<range1_type::tile_range_type, 5> tile;
 };
 
 struct TiledRangeFixtureBase : public Range1Fixture {

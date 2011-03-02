@@ -5,9 +5,7 @@
 #include <TiledArray/pred_shape.h>
 #include <TiledArray/sparse_shape.h>
 #include <TiledArray/tile_math.h>
-#include <boost/shared_ptr.hpp>
-#include <boost/shared_array.hpp>
-#include <boost/make_shared.hpp>
+#include <world/sharedptr.h>
 #include <algorithm>
 
 namespace TiledArray {
@@ -21,8 +19,8 @@ namespace TiledArray {
     struct MakeShapePolicy {
       typedef madness::WorldDCPmapInterface<I> pmap_type;
 
-      detail::ShapeType select_shape_type(const boost::shared_ptr<Shape<I> >& lshape,
-          const boost::shared_ptr<Shape<I> >& rshape)
+      detail::ShapeType select_shape_type(const std::shared_ptr<Shape<I> >& lshape,
+          const std::shared_ptr<Shape<I> >& rshape)
       {
         if(lshape->type() == detail::dense_shape)
           return rshape->type();
@@ -32,10 +30,10 @@ namespace TiledArray {
           return detail::sparse_shape;
       }
 
-      static boost::shared_ptr<SparseShape<I> >
-      add_tiles(madness::World& world, const boost::shared_ptr<pmap_type> pmap,
-          const boost::shared_ptr<Shape<I> >& lshape, const expressions::VariableList& lvars,
-          const boost::shared_ptr<Shape<I> >& rshape, const expressions::VariableList& rvars)
+      static std::shared_ptr<SparseShape<I> >
+      add_tiles(madness::World& world, const std::shared_ptr<pmap_type> pmap,
+          const std::shared_ptr<Shape<I> >& lshape, const expressions::VariableList& lvars,
+          const std::shared_ptr<Shape<I> >& rshape, const expressions::VariableList& rvars)
       {
         TA_ASSERT(std::lexicographical_compare(lshape.start().begin(), lshape.start().end(),
             rshape.start().begin(), rshape.start().end()), std::runtime_error,
@@ -57,8 +55,8 @@ namespace TiledArray {
     struct MakeShapePolicy<I, std::multiplies> {
       typedef madness::WorldDCPmapInterface<I> pmap_type;
 
-      detail::ShapeType select_shape_type(const boost::shared_ptr<Shape<I> >& lshape,
-          const boost::shared_ptr<Shape<I> >& rshape)
+      detail::ShapeType select_shape_type(const std::shared_ptr<Shape<I> >& lshape,
+          const std::shared_ptr<Shape<I> >& rshape)
       {
         if(lshape->type() == detail::dense_shape && rshape->type() == detail::dense_shape)
           return detail::dense_shape;
@@ -66,10 +64,10 @@ namespace TiledArray {
           return detail::sparse_shape;
       }
 
-      static boost::shared_ptr<SparseShape<I> >
-      add_tiles(madness::World& world, const boost::shared_ptr<pmap_type> pmap,
-          const boost::shared_ptr<Shape<I> >& lshape, const expressions::VariableList& lvars,
-          const boost::shared_ptr<Shape<I> >& rshape, const expressions::VariableList& rvars)
+      static std::shared_ptr<SparseShape<I> >
+      add_tiles(madness::World& world, const std::shared_ptr<pmap_type> pmap,
+          const std::shared_ptr<Shape<I> >& lshape, const expressions::VariableList& lvars,
+          const std::shared_ptr<Shape<I> >& rshape, const expressions::VariableList& rvars)
       {
         boost::shared_array<unsigned int> a = create_int_array(lshape);
         boost::shared_array<unsigned int> b = create_int_array(rshape);
@@ -92,7 +90,7 @@ namespace TiledArray {
       }
 
     private:
-      static boost::shared_array<unsigned int> create_int_array(const boost::shared_ptr<Shape<I> >& shape) {
+      static boost::shared_array<unsigned int> create_int_array(const std::shared_ptr<Shape<I> >& shape) {
         const typename Shape<I>::volume_type vol = shape->volume;
         boost::shared_array<unsigned int> result(new int[vol]);
         std::fill(result.get(), result.get() + vol, 0u);
@@ -111,12 +109,12 @@ namespace TiledArray {
     public:
       typedef madness::WorldDCPmapInterface<I> pmap_type;
 
-      BinaryShapeOp(madness::World& w, const boost::shared_ptr<pmap_type>& pm) :
+      BinaryShapeOp(madness::World& w, const std::shared_ptr<pmap_type>& pm) :
           world_(w), pmap_(pm)
       {  }
 
-      boost::shared_ptr<Shape<I> > operator()(const boost::shared_ptr<Shape<I> >& lshape,
-          const expressions::VariableList& lvars, const boost::shared_ptr<Shape<I> >& rshape,
+      std::shared_ptr<Shape<I> > operator()(const std::shared_ptr<Shape<I> >& lshape,
+          const expressions::VariableList& lvars, const std::shared_ptr<Shape<I> >& rshape,
           const expressions::VariableList& rvars)
       {
         TA_ASSERT(lshape.order() == rshape.order(), std::runtime_error,
@@ -130,40 +128,40 @@ namespace TiledArray {
 
 
       template<typename Index>
-      static boost::shared_ptr<DenseShape<I> > make_dense(const Index& start, const Index& finish, detail::DimensionOrderType o) {
-        return boost::make_shared<DenseShape<I> >(start, finish, o);
+      static std::shared_ptr<DenseShape<I> > make_dense(const Index& start, const Index& finish, detail::DimensionOrderType o) {
+        return std::make_shared<DenseShape<I> >(start, finish, o);
       }
 
       template<typename Index>
-      static boost::shared_ptr<PredShape<I> > make_predicate(const Index& start,
+      static std::shared_ptr<PredShape<I> > make_predicate(const Index& start,
           const Index& finish, detail::DimensionOrderType o,
-          boost::shared_ptr<typename PredShape<I>::PredInterface> pred)
+          std::shared_ptr<typename PredShape<I>::PredInterface> pred)
       {
-        boost::make_shared<PredShape<I> >(start, finish, o, pred);
+        std::make_shared<PredShape<I> >(start, finish, o, pred);
       }
 
 
       template<typename Index>
-      boost::shared_ptr<DenseShape<I> > make_sparse(const Index& start,
+      std::shared_ptr<DenseShape<I> > make_sparse(const Index& start,
           const Index& finish, detail::DimensionOrderType o,
-          const boost::shared_ptr<Shape<I> >& s1, const boost::shared_ptr<Shape<I> >& s2)
+          const std::shared_ptr<Shape<I> >& s1, const std::shared_ptr<Shape<I> >& s2)
       {
-        boost::shared_ptr<SparseShape<I> > sparse_shape =
-            boost::make_shared<SparseShape<I> >(world_, start, finish, o, pmap_);
+        std::shared_ptr<SparseShape<I> > sparse_shape =
+            std::make_shared<SparseShape<I> >(world_, start, finish, o, pmap_);
         Op<I> logic();
         for(I i = 0; i < sparse_shape->volume(); ++i) {
           if(sparse_shape->is_local(i))
               sparse_shape->add(i, s1->includes(i), s2->includes(i), logic);
         }
-        return boost::dynamic_pointer_cast<Shape<I> >(sparse_shape);
+        return std::dynamic_pointer_cast<Shape<I> >(sparse_shape);
       }
 
       /// Returns a copy of the shapes predicate.
-      static boost::shared_ptr<typename PredShape<I>::PredInterface> get_pred(const boost::shared_ptr<Shape<I> >& s) {
+      static std::shared_ptr<typename PredShape<I>::PredInterface> get_pred(const std::shared_ptr<Shape<I> >& s) {
         TA_ASSERT(s.type() == detail::predicated_shape, std::runtime_error,
             "Shape is not a predicate shape.");
-        boost::shared_ptr<PredShape<I> > pred_shape =
-            boost::dynamic_pointer_cast<PredShape<I> >(s);
+        std::shared_ptr<PredShape<I> > pred_shape =
+            std::dynamic_pointer_cast<PredShape<I> >(s);
         TA_ASSERT(pred_shape.get() != NULL, std::runtime_error,
             "Dynamic pointer cast failed.");
         return pred_shape->clone_predicate();
@@ -171,12 +169,12 @@ namespace TiledArray {
 
 
       template<typename OtherShape>
-      static boost::shared_ptr<Shape<I> > cast_shape(const boost::shared_ptr<OtherShape>& other) {
-        return boost::dynamic_pointer_cast<Shape<I> >(other);
+      static std::shared_ptr<Shape<I> > cast_shape(const std::shared_ptr<OtherShape>& other) {
+        return std::dynamic_pointer_cast<Shape<I> >(other);
       }
 
       madness::World& world_;
-      const boost::shared_ptr<pmap_type> pmap_;
+      const std::shared_ptr<pmap_type> pmap_;
     }; // struct ShapeOp
 */
   } // namespace math

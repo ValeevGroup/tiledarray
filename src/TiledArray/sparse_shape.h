@@ -39,7 +39,7 @@ namespace TiledArray {
     /// the process map) are ignored.
     template <typename InIter>
     SparseShape(madness::World& w, const range_type& r,
-        const madness::SharedPtr<pmap_interface_type> pm, InIter first, InIter last) :
+        const std::shared_ptr<pmap_interface_type> pm, InIter first, InIter last) :
       Shape_(r),
       WorldObject_(w),
       pmap_(pm),
@@ -57,9 +57,9 @@ namespace TiledArray {
 
     virtual ~SparseShape() { }
 
-    virtual boost::shared_ptr<Shape_> clone() const {
-      return boost::dynamic_pointer_cast<Shape_>(
-          boost::make_shared<SparseShape_>(*this));
+    virtual std::shared_ptr<Shape_> clone() const {
+      return std::dynamic_pointer_cast<Shape_>(
+          std::make_shared<SparseShape_>(*this));
     }
 
     virtual const std::type_info& type() const { return typeid(SparseShape_); }
@@ -115,17 +115,17 @@ namespace TiledArray {
       return madness::Future<bool>(tiles_[i]);
     }
 
-    madness::SharedPtr<pmap_interface_type> pmap_;
+    std::shared_ptr<pmap_interface_type> pmap_;
     const boost::dynamic_bitset<unsigned long> tiles_;
   }; // class SparseShape
 
   template <typename CS, typename Key>
-  inline bool is_sparse(const boost::shared_ptr<Shape<CS, Key> >& s) {
+  inline bool is_sparse(const std::shared_ptr<Shape<CS, Key> >& s) {
     return s->type() == typeid(SparseShape<CS,Key>);
   }
 
   template <typename CS, typename Key>
-  inline bool is_sparse(const boost::shared_ptr<SparseShape<CS, Key> >&) {
+  inline bool is_sparse(const std::shared_ptr<SparseShape<CS, Key> >&) {
     return true;
   }
 

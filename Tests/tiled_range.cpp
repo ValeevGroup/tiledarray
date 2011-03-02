@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(r2.tiles(), t2);
   BOOST_CHECK_EQUAL(r2.elements(), element_range);
 
-  boost::array<std::size_t, 6> a3;
+  std::array<std::size_t, 6> a3;
   std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
   std::vector<TRangeN::tiled_range1_type> dims3(GlobalFixture::coordinate_system::dim, TRangeN::tiled_range1_type(a3.begin(), a3.end()));
   TRangeN::tile_range_type e3(fill_index<tile_index>(a3[0]), fill_index<tile_index>(a3[5]));
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE( comparison ) {
   BOOST_CHECK(! (r2 == tr));
   BOOST_CHECK(r2 != tr);
 
-  boost::array<std::size_t, 6> a3;
+  std::array<std::size_t, 6> a3;
   std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
   std::vector<TRangeN::tiled_range1_type> dims3(GlobalFixture::coordinate_system::dim,
       TRangeN::tiled_range1_type(a3.begin(), a3.end()));
@@ -157,8 +157,8 @@ BOOST_AUTO_TEST_CASE( make_tile_range )
     TRangeN::tile_range_type range(start, finish);
 
     // Get the two ranges to be tested.
-    boost::shared_ptr<TRangeN::tile_range_type> range_index = tr.make_tile_range(*it);
-    boost::shared_ptr<TRangeN::tile_range_type> range_ordinal = tr.make_tile_range(i);
+    std::shared_ptr<TRangeN::tile_range_type> range_index = tr.make_tile_range(*it);
+    std::shared_ptr<TRangeN::tile_range_type> range_ordinal = tr.make_tile_range(i);
 
     BOOST_CHECK_EQUAL(*range_index, range);
     BOOST_CHECK_EQUAL(*range_ordinal, range);

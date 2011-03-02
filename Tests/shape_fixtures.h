@@ -40,7 +40,7 @@ struct SparseShapeFixture : public RangeFixture {
   }
 
   madness::World& world;
-  madness::SharedPtr<PMapT> pmap;
+  std::shared_ptr<PMapT> pmap;
   std::vector<std::size_t> list;
   SparseShapeT ss;
 };

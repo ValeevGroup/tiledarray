@@ -14,7 +14,7 @@ struct ArrayCoordinateFixture {
   }
   ~ArrayCoordinateFixture() {}
 
-  boost::array<Point3::index, 3> a;
+  std::array<Point3::index, 3> a;
   Point3 p;
 };
 
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE( element_access )
 BOOST_AUTO_TEST_CASE( iteration )
 {
   BOOST_TEST_MESSAGE("iterator begin, end, and dereferenc");
-  boost::array<std::size_t, 3> a = {{1, 2, 3}};
+  std::array<std::size_t, 3> a = {{1, 2, 3}};
   BOOST_CHECK_EQUAL( const_iteration_test(p, a.begin(), a.end()), 3u); // check for basic iteration functionality
 
   Point3 p1(p);

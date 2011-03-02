@@ -14,7 +14,7 @@ BOOST_FIXTURE_TEST_SUITE( sparse_shape_suite, SparseShapeFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  const boost::shared_ptr<madness::WorldDCPmapInterface<std::size_t> > pm(
+  const std::shared_ptr<madness::WorldDCPmapInterface<std::size_t> > pm(
       dynamic_cast<madness::WorldDCPmapInterface<std::size_t>*>(
           new madness::WorldDCDefaultPmap<std::size_t>(world)));
   BOOST_REQUIRE(pm.get() != NULL);

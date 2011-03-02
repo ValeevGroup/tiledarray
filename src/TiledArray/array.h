@@ -3,7 +3,7 @@
 
 #include <TiledArray/tile.h>
 #include <TiledArray/array_impl.h>
-#include <boost/shared_ptr.hpp>
+#include <world/sharedptr.h>
 
 namespace TiledArray {
 
@@ -69,7 +69,7 @@ namespace TiledArray {
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     Array(madness::World& w, const tiled_range_type& tr) :
-        pimpl_(boost::make_shared<impl_type>(w, tr))
+        pimpl_(std::make_shared<impl_type>(w, tr))
     {
       pimpl_->set_shape(impl_type::make_shape(pimpl_->tiles()));
     }
@@ -82,7 +82,7 @@ namespace TiledArray {
     /// added to the sparse array.
     template <typename InIter>
     Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last) :
-        pimpl_(boost::make_shared<impl_type>(w, tr))
+        pimpl_(std::make_shared<impl_type>(w, tr))
     {
       pimpl_->set_shape(impl_type::make_shape(w, pimpl_->tiles(), pimpl_->get_pmap(), first, last));
     }
@@ -94,7 +94,7 @@ namespace TiledArray {
     /// \param p The shape predicate.
     template <typename Pred>
     Array(madness::World& w, const tiled_range_type& tr, Pred p) :
-        pimpl_(boost::make_shared<impl_type>(w, tr))
+        pimpl_(std::make_shared<impl_type>(w, tr))
     {
       pimpl_->set_shape(impl_type::make_shape(pimpl_->tiles(), p));
     }
@@ -200,10 +200,10 @@ namespace TiledArray {
   private:
 
     void preassign(madness::World& w, const tiled_range_type& tr) {
-      pimpl_ = boost::make_shared<impl_type>(w, tr);
+      pimpl_ = std::make_shared<impl_type>(w, tr);
     }
 
-    boost::shared_ptr<impl_type> pimpl_;
+    std::shared_ptr<impl_type> pimpl_;
   }; // class Array
 
   namespace detail {

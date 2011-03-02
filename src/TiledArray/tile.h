@@ -5,8 +5,7 @@
 #include <TiledArray/range.h>
 #include <TiledArray/annotated_array.h>
 #include <Eigen/Core>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+#include <world/sharedptr.h>
 #include <boost/type_traits/has_trivial_copy.hpp>
 #include <boost/type_traits/has_trivial_destructor.hpp>
 #include <iterator>
@@ -66,14 +65,14 @@ namespace TiledArray {
     /// Constructs a tile with zero size.
     /// \note You must call resize() before attempting to access any elements.
     Tile() :
-        alloc_type(), range_(boost::make_shared<range_type>()), first_(NULL), last_(NULL)
+        alloc_type(), range_(std::make_shared<range_type>()), first_(NULL), last_(NULL)
     { }
 
     /// Copy constructor
 
     /// \param other The tile to be copied.
     Tile(const Tile_& other) :
-        alloc_type(other), range_(boost::make_shared<range_type>(* other.range_)),
+        alloc_type(other), range_(std::make_shared<range_type>(* other.range_)),
         first_(alloc_type::allocate(other.range_->volume())),
         last_(first_ + other.range_->volume())
     {
@@ -111,7 +110,7 @@ namespace TiledArray {
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     /// \throw anything Any exception that can be thrown by \c T type default or
     /// copy constructors
-    Tile(const boost::shared_ptr<range_type>& r, const value_type& val = value_type(), const alloc_type& a = alloc_type()) :
+    Tile(const std::shared_ptr<range_type>& r, const value_type& val = value_type(), const alloc_type& a = alloc_type()) :
         alloc_type(a), range_(r), first_(alloc_type::allocate(r->volume())),
         last_(first_ + r->volume())
     {
@@ -140,7 +139,7 @@ namespace TiledArray {
     /// \throw anything Any exceptions that can be thrown by \c T type default
     /// or copy constructors
     template <typename InIter>
-    Tile(const boost::shared_ptr<range_type>& r, InIter first, InIter last, const alloc_type& a = alloc_type()) :
+    Tile(const std::shared_ptr<range_type>& r, InIter first, InIter last, const alloc_type& a = alloc_type()) :
         alloc_type(a), range_(r), first_(alloc_type::allocate(r->volume())),
         last_(first_ + r->volume())
     {
@@ -229,7 +228,7 @@ namespace TiledArray {
     /// \return A reference to this object.
     /// \note The current data common to both arrays is maintained.
     /// \note This function cannot change the number of tile dimensions.
-    Tile_& resize(const boost::shared_ptr<range_type>& r, value_type val = value_type()) {
+    Tile_& resize(const std::shared_ptr<range_type>& r, value_type val = value_type()) {
       Tile_ temp(r, val);
       if(first_ != NULL) {
         // replace Range with ArrayDim?
@@ -329,7 +328,7 @@ namespace TiledArray {
 
     /// \return A shared pointer to the tile's range object.
     /// \throw nothing
-    boost::shared_ptr<range_type> range_ptr() const { return range_; }
+    std::shared_ptr<range_type> range_ptr() const { return range_; }
 
     /// Create an annotated tile
 
@@ -512,7 +511,7 @@ namespace TiledArray {
     template <class, class>
     friend struct madness::archive::ArchiveLoadImpl;
 
-    boost::shared_ptr<range_type> range_; ///< Shared pointer to the range data for this tile
+    std::shared_ptr<range_type> range_; ///< Shared pointer to the range data for this tile
     pointer first_;                       ///< Pointer to the beginning of the data range
     pointer last_;                        ///< Pointer to the end of the data range
   }; // class Tile
@@ -529,8 +528,8 @@ namespace TiledArray {
   Tile<T,CS,A> operator ^(const Permutation<CS::dim>& p, const Tile<T,CS,A>& t) {
     typedef detail::AssignmentOp<typename Tile<T,CS,A>::iterator, typename Tile<T,CS,A>::const_iterator> assign_op;
 
-    boost::shared_ptr<typename Tile<T,CS,A>::range_type> r =
-        boost::make_shared<typename Tile<T,CS,A>::range_type>(p ^ t.range());
+    std::shared_ptr<typename Tile<T,CS,A>::range_type> r =
+        std::make_shared<typename Tile<T,CS,A>::range_type>(p ^ t.range());
     Tile<T,CS,A> result(r);
 
     // create a permuted copy of the tile data

@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(v2.at(2), "c");
   BOOST_CHECK_EQUAL(v2.at(3), "d");
 
-  boost::array<std::string, 4> a10 = {{"a", "b", "c", "d"}};
+  std::array<std::string, 4> a10 = {{"a", "b", "c", "d"}};
   BOOST_REQUIRE_NO_THROW(VariableList v10(a10.begin(), a10.end())); // check iterator constructor
   VariableList v10(a10.begin(), a10.end());
   BOOST_CHECK_EQUAL(v10.dim(), 4u);
@@ -169,10 +169,10 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( iterator )
 {
-  boost::array<std::string, 4> a1 = {{"a", "b", "c", "d"}};
+  std::array<std::string, 4> a1 = {{"a", "b", "c", "d"}};
 
   BOOST_CHECK_EQUAL_COLLECTIONS(v.begin(), v.end(), a1.begin(), a1.end()); // check that all values are equal
-  boost::array<std::string, 4>::const_iterator it_a = a1.begin();
+  std::array<std::string, 4>::const_iterator it_a = a1.begin();
   for(VariableList::const_iterator it = v.begin(); it != v.end(); ++it, ++it_a) // check basic iterator functionality.
     BOOST_CHECK_EQUAL(*it, *it_a);
 

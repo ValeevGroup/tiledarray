@@ -45,7 +45,7 @@ namespace TiledArray {
   public:
     typedef Permutation<DIM> Permutation_;
     typedef std::size_t index_type;
-    typedef boost::array<index_type,DIM> Array;
+    typedef std::array<index_type,DIM> Array;
     typedef typename Array::const_iterator const_iterator;
 
     static unsigned int dim() { return DIM; }
@@ -140,7 +140,7 @@ namespace TiledArray {
     template <typename InIter>
     bool valid_(InIter first, InIter last) {
       Array count;
-      count.assign(0);
+      count.fill(0);
       for(; first != last; ++first) {
         const index_type& i = *first;
         if(i >= DIM) return false;
@@ -433,10 +433,10 @@ namespace TiledArray {
 
   } // namespace detail
 
-  /// permute a boost::array
+  /// permute a std::array
   template <unsigned int DIM, typename T>
-  boost::array<T,DIM> operator^(const Permutation<DIM>& perm, const boost::array<T, static_cast<std::size_t>(DIM) >& orig) {
-    boost::array<T,DIM> result;
+  std::array<T,DIM> operator^(const Permutation<DIM>& perm, const std::array<T, static_cast<std::size_t>(DIM) >& orig) {
+    std::array<T,DIM> result;
     detail::permute(perm.begin(), perm.end(), orig.begin(), result.begin());
     return result;
   }
@@ -466,7 +466,7 @@ namespace TiledArray {
   }
 
   template <unsigned int DIM, typename T>
-  boost::array<T,DIM> operator ^=(boost::array<T, static_cast<std::size_t>(DIM) >& a, const Permutation<DIM>& perm) {
+  std::array<T,DIM> operator ^=(std::array<T, static_cast<std::size_t>(DIM) >& a, const Permutation<DIM>& perm) {
     return (a = perm ^ a);
   }
 

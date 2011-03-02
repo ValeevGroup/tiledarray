@@ -80,11 +80,11 @@ namespace TiledArray {
       typedef madness::Future<otrange_type> fut_trange;
 
       typedef typename oarray_type::pmap_interface_type pmap_type;
-      typedef madness::SharedPtr<pmap_type> pmap_ptr;
+      typedef std::shared_ptr<pmap_type> pmap_ptr;
       typedef madness::Future<pmap_ptr> fut_pmap;
 
       typedef typename oarray_type::shape_type shape_type;
-      typedef boost::shared_ptr<shape_type> shape_ptr;
+      typedef std::shared_ptr<shape_type> shape_ptr;
       typedef madness::Future<shape_ptr> fut_shape;
 
       typedef typename oarray_type::container_type container_type;

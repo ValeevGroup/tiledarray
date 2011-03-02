@@ -13,7 +13,7 @@ BOOST_FIXTURE_TEST_SUITE( pred_shape_suite, PredShapeFixture )
 
 BOOST_AUTO_TEST_CASE( pred_clone )
 {
-  boost::shared_ptr<PredShapeT::PredInterface> p = ps.clone_pred();
+  std::shared_ptr<PredShapeT::PredInterface> p = ps.clone_pred();
   BOOST_CHECK(p.get() != NULL);
   BOOST_CHECK(p->check(0));
   BOOST_CHECK(! p->check(1));

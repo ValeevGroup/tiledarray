@@ -4,7 +4,7 @@
 #include <TiledArray/shape.h>
 #include <TiledArray/madness_runtime.h>
 #include <TiledArray/shape.h>
-#include <boost/make_shared.hpp>
+#include <world/sharedptr.h>
 
 namespace madness {
   template<typename T>
@@ -41,9 +41,9 @@ namespace TiledArray {
 
     DenseShape(const DenseShape_& other) : Shape_(other) { }
 
-    virtual boost::shared_ptr<Shape_> clone() const {
-      return boost::dynamic_pointer_cast<Shape_>(
-          boost::make_shared<DenseShape_>(*this));
+    virtual std::shared_ptr<Shape_> clone() const {
+      return std::dynamic_pointer_cast<Shape_>(
+          std::make_shared<DenseShape_>(*this));
     }
 
     virtual const std::type_info& type() const { return typeid(DenseShape_); }
@@ -65,12 +65,12 @@ namespace TiledArray {
   }; // class DenseShape
 
   template <typename CS, typename Key>
-  inline bool is_dense(const boost::shared_ptr<Shape<CS, Key> >& s) {
+  inline bool is_dense(const std::shared_ptr<Shape<CS, Key> >& s) {
     return s->type() == typeid(DenseShape<CS,Key>);
   }
 
   template <typename CS, typename Key>
-  inline bool is_dense(const boost::shared_ptr<DenseShape<CS, Key> >&) {
+  inline bool is_dense(const std::shared_ptr<DenseShape<CS, Key> >&) {
     return true;
   }
 

@@ -3,7 +3,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/config.h>
-#include <boost/array.hpp>
+#include <world/array.h>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_integral.hpp>
 #include <boost/type_traits/is_same.hpp>
@@ -185,7 +185,7 @@ namespace TiledArray {
     typedef I volume_type;                              ///< Type used to output range and array volume
     typedef I ordinal_index;                            ///< Linear ordinal index type for ranges and arrays
     typedef ArrayCoordinate<I, DIM, level_tag > index;  ///< Coordinate index type for ranges and arrays
-    typedef boost::array<I, DIM> size_array;            ///< Array type for size and weight of ranges and arrays
+    typedef std::array<I, DIM> size_array;            ///< Array type for size and weight of ranges and arrays
 
     static const unsigned int dim = DIM;                ///< The number of dimensions in the coordinate system
     static const unsigned int level = Level;            ///< The coordinate system level (used to differentiate types of similar coordinate systems)

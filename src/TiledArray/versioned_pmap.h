@@ -2,6 +2,7 @@
 #define TILEDARRAY_VERSIONED_PMAP_H__INCLUDED
 
 #include <TiledArray/madness_runtime.h>
+#include <world/worlddc.h>
 #include <boost/functional/hash.hpp>
 
 namespace TiledArray {

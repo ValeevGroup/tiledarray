@@ -25,7 +25,7 @@ struct PackedTileBaseFixture {
 
   Tile6 t;
   range6_type r;
-  boost::array<std::size_t, 4> b;
+  std::array<std::size_t, 4> b;
 };
 
 struct PackedTileFixture : public PackedTileBaseFixture {
