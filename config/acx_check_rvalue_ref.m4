@@ -10,7 +10,7 @@ AC_DEFUN([ACX_CHECK_RVALUE_REF], [
       )
     ],
     [
-      AC_DEFINE([TILEDARRAY_HAS_RVALUE_REF],[1],[define if compiler supports rvalue references.])
+      AC_DEFINE([TILEDARRAY_RVALUE_REF],[1],[define if compiler supports rvalue references.])
       acx_has_rvalue_ref=yes
     ]
   )
