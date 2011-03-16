@@ -14,6 +14,10 @@ AC_PROG_INSTALL
 # Set compiler standard
 ACX_ENABLE_CXXFLAGS_ARG([cplusplus0x], [-std], [c++0x], [no])
 
+# Check for C++0x language features
+ACX_CHECK_VARIADIC_TEMPLATE
+ACX_CHECK_RVALUE_REF
+
 # Set debugging
 ACX_ENABLE_CXXFLAGS_OPT([debugging], [-g], [], [no])
 
