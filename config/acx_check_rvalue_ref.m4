@@ -1,6 +1,6 @@
 AC_DEFUN([ACX_CHECK_RVALUE_REF], [
   acx_has_rvalue_ref=no
-  AC_MSG_CHECKING([for rvalue reference support])
+  AC_MSG_CHECKING([for compiler rvalue reference support])
   
     AC_COMPILE_IFELSE(
     [
