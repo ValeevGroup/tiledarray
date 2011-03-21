@@ -157,29 +157,33 @@ BOOST_AUTO_TEST_CASE( permutation )
 
 BOOST_AUTO_TEST_CASE( include )
 {
-  Range<CoordinateSystem<3> >::index s(1,1,1);
-  Range<CoordinateSystem<3> >::index f(5,5,5);
-  Range<CoordinateSystem<3> > r1(s, f);
-  Range<CoordinateSystem<3> >::index t1(0,3,3);
-  Range<CoordinateSystem<3> >::index t2(1,3,3);
-  Range<CoordinateSystem<3> >::index t3(2,3,3);
-  Range<CoordinateSystem<3> >::index t4(4,3,3);
-  Range<CoordinateSystem<3> >::index t5(5,3,3);
-  Range<CoordinateSystem<3> >::index t6(6,3,3);
-  Range<CoordinateSystem<3> >::index t7(0,0,3);
-  Range<CoordinateSystem<3> >::index t8(1,1,3);
-  Range<CoordinateSystem<3> >::index t9(2,2,3);
-  Range<CoordinateSystem<3> >::index t10(4,4,3);
-  Range<CoordinateSystem<3> >::index t11(5,5,3);
-  Range<CoordinateSystem<3> >::index t12(6,6,3);
-  Range<CoordinateSystem<3> >::index t13(0,6,3);
-  Range<CoordinateSystem<3> >::index t14(1,5,3);
-  Range<CoordinateSystem<3> >::index t15(2,4,3);
-  Range<CoordinateSystem<3> >::index t16(4,2,3);
-  Range<CoordinateSystem<3> >::index t17(5,1,3);
-  Range<CoordinateSystem<3> >::index t18(6,0,3);
-  Range<CoordinateSystem<3> >::index t19(1,4,3);
-  Range<CoordinateSystem<3> >::index t20(4,1,3);
+  typedef Range<CoordinateSystem<3> > Range3;
+  typedef Range3::index index;
+  typedef Range3::key_type key_type;
+
+  index s(1,1,1);
+  index f(5,5,5);
+  Range3 r1(s, f);
+  index t1(0,3,3);
+  index t2(1,3,3);
+  index t3(2,3,3);
+  index t4(4,3,3);
+  index t5(5,3,3);
+  index t6(6,3,3);
+  index t7(0,0,3);
+  index t8(1,1,3);
+  index t9(2,2,3);
+  index t10(4,4,3);
+  index t11(5,5,3);
+  index t12(6,6,3);
+  index t13(0,6,3);
+  index t14(1,5,3);
+  index t15(2,4,3);
+  index t16(4,2,3);
+  index t17(5,1,3);
+  index t18(6,0,3);
+  index t19(1,4,3);
+  index t20(4,1,3);
 
   BOOST_CHECK(! r1.includes(t1)); // check side include
   BOOST_CHECK(r1.includes(t2));
@@ -202,11 +206,35 @@ BOOST_AUTO_TEST_CASE( include )
   BOOST_CHECK(r1.includes(t19));  // check corners
   BOOST_CHECK(r1.includes(t20));
 
-  RangeN::ordinal_index o = 0;
-  for(; o < r.volume(); ++o)
+  BOOST_CHECK(! r1.includes(key_type(t1))); // check side include
+  BOOST_CHECK(r1.includes(key_type(t2)));
+  BOOST_CHECK(r1.includes(key_type(t3)));
+  BOOST_CHECK(r1.includes(key_type(t4)));
+  BOOST_CHECK(!r1.includes(key_type(t5)));
+  BOOST_CHECK(!r1.includes(key_type(t6)));
+  BOOST_CHECK(!r1.includes(key_type(t7))); // check diagonal include
+  BOOST_CHECK(r1.includes(key_type(t8)));
+  BOOST_CHECK(r1.includes(key_type(t9)));
+  BOOST_CHECK(r1.includes(key_type(t10)));
+  BOOST_CHECK(!r1.includes(key_type(t11)));
+  BOOST_CHECK(!r1.includes(key_type(t12)));
+  BOOST_CHECK(!r1.includes(key_type(t13))); // check other diagonal include
+  BOOST_CHECK(!r1.includes(key_type(t14)));
+  BOOST_CHECK(r1.includes(key_type(t15)));
+  BOOST_CHECK(r1.includes(key_type(t16)));
+  BOOST_CHECK(!r1.includes(key_type(t17)));
+  BOOST_CHECK(!r1.includes(key_type(t18)));
+  BOOST_CHECK(r1.includes(key_type(t19)));  // check corners
+  BOOST_CHECK(r1.includes(key_type(t20)));
+
+  Range3::ordinal_index o = 0;
+  for(; o < r.volume(); ++o) {
     BOOST_CHECK(r.includes(o));
+    BOOST_CHECK(r.includes(key_type(o)));
+  }
 
   BOOST_CHECK(! r.includes(o));
+  BOOST_CHECK(r.includes(key_type(o)));
 }
 
 BOOST_AUTO_TEST_CASE( unions )
