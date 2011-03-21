@@ -50,14 +50,6 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_REQUIRE_NO_THROW(Point3 p7(1,2,3)); // variable argument list constructor
   Point3 p7(1,2,3);
   BOOST_CHECK_EQUAL_COLLECTIONS(p7.data().begin(), p7.data().end(), a.begin(), a.end());
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(Point3 p8(std::forward<Point3>(Point3(1,1,1)))); // Move constructor.
-  Point3 p8(Point3(1,1,1));
-  BOOST_CHECK_EQUAL( p8.data()[0], 1u);     // correct element initialization
-  BOOST_CHECK_EQUAL( p8.data()[1], 1u);
-  BOOST_CHECK_EQUAL( p8.data()[2], 1u);
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( element_access )
@@ -68,9 +60,6 @@ BOOST_AUTO_TEST_CASE( element_access )
   BOOST_CHECK_EQUAL( p.at(0), 1u);         // correct element access
   BOOST_CHECK_EQUAL( p.at(1), 2u);
   BOOST_CHECK_EQUAL( p.at(2), 3u);
-#ifdef NEDBUG
-  BOOST_CHECK_NO_TRHOW( p[3] );
-#endif
   BOOST_CHECK_THROW( p.at(3), std::out_of_range);
 }
 
@@ -98,11 +87,6 @@ BOOST_AUTO_TEST_CASE( assignment )
   BOOST_CHECK_EQUAL( p1[0], 4u); // check individual element assignment.
   p1.at(1) = 5;
   BOOST_CHECK_EQUAL( p1.at(1), 5u); // check individual element assignment with range checking.
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  Point3 p2;
-  p2 = Point3(1,2,3); // check move assignment.
-  BOOST_CHECK_EQUAL_COLLECTIONS( p.begin(), p.end(), p2.begin(), p2.end()); // check for equality
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
