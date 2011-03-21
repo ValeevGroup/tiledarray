@@ -1,18 +1,98 @@
 #ifndef TILEDARRAY_TYPE_TRAITS_H__INCLUDED
 #define TILEDARRAY_TYPE_TRAITS_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <iterator>
 #include <boost/mpl/if.hpp>
 #include <boost/mpl/or.hpp>
-#include <boost/type_traits/remove_const.hpp>
-#include <boost/type_traits/remove_reference.hpp>
-#include <boost/type_traits/is_same.hpp>
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-#include <boost/type_traits/is_integral.hpp>
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
+#include <boost/type_traits.hpp>
+#include <iterator>
+#include <boost/iterator/iterator_traits.hpp>
+#include <boost/utility/enable_if.hpp>
+#include <boost/interprocess/detail/move.hpp>
 namespace TiledArray {
   namespace detail {
+
+    template <class T, class U>
+    class is_convertible
+    {
+       typedef char true_t;
+       class false_t { char dummy[2]; };
+       static true_t dispatch(U);
+       static false_t dispatch(...);
+       static T trigger();
+       public:
+       enum { value = sizeof(dispatch(trigger())) == sizeof(true_t) };
+    };
+
+    template <typename T>
+    struct has_iterator_catagory
+    {
+        // yes and no are guaranteed to have different sizes,
+        // specifically sizeof(yes) == 1 and sizeof(no) == 2
+        typedef char yes[1];
+        typedef char no[2];
+
+        template <typename C>
+        static yes& test(typename C::iterator_category*);
+
+        template <typename>
+        static no& test(...);
+
+        // if the sizeof the result of calling test<T>(0) is equal to the sizeof(yes),
+        // the first overload worked and T has a nested type named type.
+        static const bool value = sizeof(test<T>(0)) == sizeof(yes);
+    };
+
+    struct none_iterator_tag { };
+
+    template <typename T, typename Enabler = void>
+    struct is_iterator : public boost::false_type {
+      typedef none_iterator_tag iterator_category;
+    };
+
+    template <typename T>
+    struct is_iterator<T, typename boost::enable_if_c<has_iterator_catagory<T>::value >::type > : public boost::true_type {
+      typedef typename std::iterator_traits<T>::iterator_category iterator_category;
+    };
+
+    template <typename T>
+    struct is_iterator<T*, void> : boost::true_type {
+      typedef typename std::iterator_traits<T*>::iterator_category iterator_category;
+    };
+
+    template <typename T>
+    struct is_iterator<const T*, void> : boost::true_type {
+      typedef typename std::iterator_traits<const T*>::iterator_category iterator_category;
+    };
+
+    template <typename T>
+    struct is_input_iterator :
+        public boost::is_base_of<std::input_iterator_tag, typename is_iterator<T>::iterator_category>
+    { };
+
+    template <typename T>
+    struct is_output_iterator :
+        public boost::is_base_of<std::output_iterator_tag, typename is_iterator<T>::iterator_category>
+    { };
+
+    template <typename T>
+    struct is_forward_iterator :
+        public boost::is_base_of<std::forward_iterator_tag, typename is_iterator<T>::iterator_category>
+    { };
+
+    template <typename T>
+    struct is_bidirectional_iterator :
+        public boost::is_base_of<std::bidirectional_iterator_tag, typename is_iterator<T>::iterator_category>
+    { };
+
+    template <typename T>
+    struct is_random_iterator :
+        public boost::is_base_of<std::random_access_iterator_tag, typename is_iterator<T>::iterator_category>
+    { };
+
+    /// Argument type helper class
+    struct NoTypeArg { };
 
     template<typename T>
     struct remove_cr {
@@ -40,96 +120,6 @@ namespace TiledArray {
       typedef typename Func::result_type result_type;
       typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
     }; // struct binary_functor_types
-
-    template<typename Arg1, typename Arg2, typename Res>
-    struct binary_functor_types<Res(*)(Arg1,Arg2)> {
-      typedef Arg1 first_argument_type;
-      typedef Arg2 second_argument_type;
-      typedef Res result_type;
-      typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
-    }; // struct binary_functor_types<Res(*)(Arg1,Arg2)>
-
-    /// The static member value is true if the type T is a random access iterator
-    template<typename T>
-    struct is_random_iterator : public boost::is_same<std::random_access_iterator_tag,
-        typename std::iterator_traits<T>::iterator_category>
-    { }; // struct is_random_iterator
-
-    template<typename T>
-    struct is_random_iterator<T*> : public boost::true_type
-    { }; // struct is_random_iterator
-
-    /// The static member value is true if the type T is a bidirectional iterator
-    template<typename T>
-    struct is_bidirectional_iterator : public
-        boost::mpl::if_<
-          boost::mpl::or_<
-            is_random_iterator<T>,
-            boost::is_same<std::bidirectional_iterator_tag, typename std::iterator_traits<T>::iterator_category>
-          >, boost::true_type, boost::false_type
-        >::type
-    { }; // struct is_bidirectional_iterator
-
-    /// The static member value is true if the type T is a forward iterator
-    template<typename T>
-    struct is_forward_iterator : public
-        boost::mpl::if_<
-          boost::mpl::or_<
-            is_bidirectional_iterator<T>,
-            boost::is_same<std::forward_iterator_tag, typename std::iterator_traits<T>::iterator_category>
-          >, boost::true_type, boost::false_type
-        >::type
-    { }; // struct is_forward_iterator
-
-    /// The static member value is true if the type T is an output iterator
-    template<typename T>
-    struct is_output_iterator : public
-        boost::mpl::if_<
-          boost::mpl::or_<
-            is_forward_iterator<T>,
-            boost::is_same<std::output_iterator_tag, typename std::iterator_traits<T>::iterator_category>
-          >, boost::true_type, boost::false_type
-        >::type
-    { }; // struct is_output_iterator
-
-    /// The static member value is true if the type T is an input iterator
-    template<typename T>
-    struct is_input_iterator : public
-        boost::mpl::if_<
-          boost::mpl::or_<
-            is_forward_iterator<T>,
-            boost::is_same<std::input_iterator_tag, typename std::iterator_traits<T>::iterator_category>
-          >, boost::true_type, boost::false_type
-        >::type
-    { }; // struct is_input_iterator
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// value is equal to the number of template parameters.
-    template<typename... Args> struct Count;
-
-    template<typename T, typename... Args>
-    struct Count<T, Args...> {
-      static const unsigned int value = Count<Args...>::value + 1u;
-    }; // struct Count<T, Args...>
-
-    template<>
-    struct Count<> {
-      static const unsigned int value = 0u;
-    }; // struct Count<>
-
-    /// value is true if all template parameter types are integral types.
-    template<typename... Args> struct is_integral_list;
-
-    template<typename T, typename... Args>
-    struct is_integral_list<T, Args...> {
-      static const bool value = is_integral_list<Args...>::value && boost::is_integral<T>::value;
-    }; // struct is_integral_list<T, Args...>
-
-    template<>
-    struct is_integral_list<> {
-      static const bool value = true;
-    }; // is_integral_list<>
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
   } // namespace detail
 } // namespace TiledArray
