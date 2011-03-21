@@ -7,6 +7,7 @@
 #include <TiledArray/array_util.h>
 #include <boost/utility/enable_if.hpp>
 #include <boost/type_traits/has_trivial_copy.hpp>
+#include <boost/concept_check.hpp>
 //#include <iosfwd>
 //#include <algorithm>
 #include <vector>
@@ -14,7 +15,7 @@
 //#include <iterator>
 //#include <functional>
 #include <numeric>
-#include <boost/array.hpp>
+#include <stdarg.h>
 
 namespace TiledArray {
 
@@ -42,6 +43,11 @@ namespace TiledArray {
   ///   a ^= p;    // permute a given the permutation p.
   template <unsigned int DIM>
   class Permutation {
+  private:
+
+    // Used to select the correct constructor based on input template types
+    struct Enabler { };
+
   public:
     typedef Permutation<DIM> Permutation_;
     typedef std::size_t index_type;
@@ -57,14 +63,9 @@ namespace TiledArray {
     }
 
     template <typename InIter>
-    Permutation(InIter first) {
-      // should variadic constructor been chosen?
-      // need to disambiguate the call if DIM==1
-      // assume iterators if InIter is not an integral type
-      // else assume wanted variadic constructor
-      // this scheme follows what std::vector does
-      BOOST_STATIC_ASSERT((DIM == 1u) || (! boost::is_integral<InIter>::value));
-      detail::initialize_from_values(first, p_.begin(), DIM, boost::is_integral<InIter>());
+    Permutation(InIter first, typename boost::enable_if<detail::is_input_iterator<InIter>, Enabler >::type = Enabler()) {
+      for(std::size_t d = 0; d < DIM; ++d, ++first)
+        p_[d] = *first;
       TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
           "Invalid permutation supplied." );
     }
@@ -76,28 +77,30 @@ namespace TiledArray {
 
     Permutation(const Permutation& other) : p_(other.p_) { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    template <typename... Params>
-    Permutation(Params... params) {
-      BOOST_STATIC_ASSERT(detail::Count<Params...>::value == DIM);
-      BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
-      detail::fill(p_.begin(), params...);
+
+    Permutation(index_type v) {
+      p_[0] = v;
+      TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
+          "Invalid permutation supplied." );
     }
-#else
-    Permutation(const index_type p0, ...) {
+
+    Permutation(const index_type p0, const index_type p1, ...) {
+      std::fill_n(p_.begin(), DIM, 0ul);
       va_list ap;
-      va_start(ap, p0);
+      va_start(ap, p1);
 
       p_[0] = p0;
-      for(unsigned int i = 1; i < DIM; ++i)
-        p_[i] = va_arg(ap, index_type);
+      p_[1] = p1;
+      index_type pi = 0; // ci is used as an intermediate
+      for(unsigned int i = 2; i < DIM; ++i) {
+        pi = va_arg(ap, index_type);
+        p_[i] = pi;
+      }
 
       va_end(ap);
-
-      TA_ASSERT( valid_(begin(), end()) , std::runtime_error,
-          "Invalid permutation supplied.");
+      TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
+          "Invalid permutation supplied." );
     }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     ~Permutation() {}
 
@@ -105,11 +108,7 @@ namespace TiledArray {
     const_iterator end() const { return p_.end(); }
 
     const index_type& operator[](unsigned int i) const {
-#ifdef NDEBUG
       return p_[i];
-#else
-      return p_.at(i);
-#endif
     }
 
     Permutation<DIM>& operator=(const Permutation<DIM>& other) { p_ = other.p_; return *this; }
@@ -140,7 +139,7 @@ namespace TiledArray {
     template <typename InIter>
     bool valid_(InIter first, InIter last) {
       Array count;
-      count.fill(0);
+      std::fill(count.begin(), count.end(), 0);
       for(; first != last; ++first) {
         const index_type& i = *first;
         if(i >= DIM) return false;
