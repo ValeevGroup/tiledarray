@@ -9,7 +9,7 @@ namespace madness {
 } // namespace madness
 
 #ifndef TEST_DIM
-#define TEST_DIM 3
+#define TEST_DIM 3U
 #endif
 #if TEST_DIM > 20
 #error "TEST_DIM cannot be greater than 20"
@@ -22,10 +22,10 @@ struct GlobalFixture {
   GlobalFixture();
   ~GlobalFixture();
 
-  typedef TiledArray::CoordinateSystem<TEST_DIM, 1, TiledArray::detail::decreasing_dimension_order, std::size_t> c_coordinate_system;
-  typedef TiledArray::CoordinateSystem<TEST_DIM, 1, TiledArray::detail::increasing_dimension_order, std::size_t> fortran_coordinate_system;
-  typedef TiledArray::CoordinateSystem<TEST_DIM, 0, TiledArray::detail::decreasing_dimension_order, std::size_t> c_element_coordinate_system;
-  typedef TiledArray::CoordinateSystem<TEST_DIM, 0, TiledArray::detail::increasing_dimension_order, std::size_t> fortran_element_coordinate_system;
+  typedef TiledArray::CoordinateSystem<TEST_DIM, 1U, TiledArray::detail::decreasing_dimension_order, std::size_t> c_coordinate_system;
+  typedef TiledArray::CoordinateSystem<TEST_DIM, 1U, TiledArray::detail::increasing_dimension_order, std::size_t> fortran_coordinate_system;
+  typedef TiledArray::CoordinateSystem<TEST_DIM, 0U, TiledArray::detail::decreasing_dimension_order, std::size_t> c_element_coordinate_system;
+  typedef TiledArray::CoordinateSystem<TEST_DIM, 0U, TiledArray::detail::increasing_dimension_order, std::size_t> fortran_element_coordinate_system;
 
 #ifdef TEST_C_STYLE_CS
   typedef c_coordinate_system coordinate_system;
