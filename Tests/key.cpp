@@ -88,42 +88,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(k4.key1(), o);
   BOOST_CHECK_EQUAL(k4.key2(), i);
   BOOST_CHECK_EQUAL(k4.keys(), 3u);
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(key_type k5(o, index_type(1,2,3))); // check key2 move constructor.
-  key_type k5(o, index_type(1,2,3));
-  BOOST_CHECK_EQUAL(k5.key1(), o);
-  BOOST_CHECK_EQUAL(k5.key2(), i);
-  BOOST_CHECK_EQUAL(k5.keys(), 3u);
-
-  BOOST_REQUIRE_NO_THROW(key_type k6(ordinal_type(10), i)); // check key1 move constructor.
-  key_type k6(ordinal_type(10), i);
-  BOOST_CHECK_EQUAL(k6.key1(), o);
-  BOOST_CHECK_EQUAL(k6.key2(), i);
-  BOOST_CHECK_EQUAL(k6.keys(), 3u);
-
-  BOOST_REQUIRE_NO_THROW(key_type k7(ordinal_type(10), index_type(1,2,3))); // check both keys move constructor.
-  key_type k7(ordinal_type(10), index_type(1,2,3));
-  BOOST_CHECK_EQUAL(k7.key1(), o);
-  BOOST_CHECK_EQUAL(k7.key2(), i);
-  BOOST_CHECK_EQUAL(k7.keys(), 3u);
-
-  BOOST_REQUIRE_NO_THROW(key_type k8(ordinal_type(10))); // check move constructor for just key1.
-  key_type k8(ordinal_type(10));
-  BOOST_CHECK_EQUAL(k8.key1(), o);
-  BOOST_CHECK_EQUAL(k8.keys(), 1u);
-
-  BOOST_REQUIRE_NO_THROW(key_type k9(index_type(1,2,3))); // check move constructor for just key2.
-  key_type k9(index_type(1,2,3));
-  BOOST_CHECK_EQUAL(k9.key2(), i);
-  BOOST_CHECK_EQUAL(k9.keys(), 2u);
-
-  BOOST_REQUIRE_NO_THROW(key_type k10(key_type(o, i))); // check key move constructor.
-  key_type k10(key_type(o, i));
-  BOOST_CHECK_EQUAL(k10.key1(), o);
-  BOOST_CHECK_EQUAL(k10.key2(), i);
-  BOOST_CHECK_EQUAL(k10.keys(), 3u);
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( assign )
@@ -169,32 +133,6 @@ BOOST_AUTO_TEST_CASE( set )
   k.set(i); // Check setting key2.
   BOOST_CHECK_EQUAL(k.key2(), i);
   BOOST_CHECK_EQUAL(k.keys(), 2u);
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  k.set(o, index_type(1,2,3)); // Check setting both keys, move key2.
-  BOOST_CHECK_EQUAL(k.key1(), o);
-  BOOST_CHECK_EQUAL(k.key2(), i);
-  BOOST_CHECK_EQUAL(k.keys(), 3u);
-
-  k.set(ordinal_type(10), i); // Check setting both keys, move key1.
-  BOOST_CHECK_EQUAL(k.key1(), o);
-  BOOST_CHECK_EQUAL(k.key2(), i);
-  BOOST_CHECK_EQUAL(k.keys(), 3u);
-
-  k.set(ordinal_type(10), index_type(1,2,3)); // Check setting both keys, move both keys.
-  BOOST_CHECK_EQUAL(k.key1(), o);
-  BOOST_CHECK_EQUAL(k.key2(), i);
-  BOOST_CHECK_EQUAL(k.keys(), 3u);
-
-  k.set(ordinal_type(10)); // check moving key1.
-  BOOST_CHECK_EQUAL(k.key1(), o);
-  BOOST_CHECK_EQUAL(k.keys(), 1u);
-
-  k.set(index_type(1,2,3)); // check moving key2.
-  BOOST_CHECK_EQUAL(k.key2(), i);
-  BOOST_CHECK_EQUAL(k.keys(), 2u);
-
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( conversion )
@@ -213,7 +151,7 @@ BOOST_AUTO_TEST_CASE( conversion )
   i1 = k;
   BOOST_CHECK_EQUAL(i1, i);
   // this does not work because key2_type's constructors can also accept key1_type.
-  index_type i2(k);
+  index_type i2 = k;
   BOOST_CHECK_EQUAL(i2, i);
   BOOST_CHECK_EQUAL(index(k), i);
 #ifdef TA_EXCEPTION_ERROR
