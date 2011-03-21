@@ -67,15 +67,6 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(r5.finish(), p2);
   BOOST_CHECK_EQUAL(r5.size(), start.data());
   BOOST_CHECK_EQUAL(r5.volume(), 0u);
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(RangeN r6(std::forward<RangeN>(RangeN(start, finish)))); // move constructor
-  RangeN r6(std::forward<RangeN>(RangeN(start, finish)));
-  BOOST_CHECK_EQUAL(r6.start(), start);
-  BOOST_CHECK_EQUAL(r6.finish(), finish);
-  BOOST_CHECK_EQUAL(r6.size(), size);
-  BOOST_CHECK_EQUAL(r6.volume(), volume);
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
@@ -108,12 +99,6 @@ BOOST_AUTO_TEST_CASE( assignment )
 
   RangeN r2 = r;
   BOOST_CHECK_EQUAL(r2, r); // check construction assignment.
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  RangeN r3;
-  r3 = RangeN(start, finish);
-  BOOST_CHECK_EQUAL(r3, r); // check move assignment.
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( resize )

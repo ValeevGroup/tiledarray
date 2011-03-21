@@ -47,6 +47,7 @@ namespace TiledArray {
     typedef typename CS::volume_type volume_type;
     typedef typename CS::index index;
     typedef typename CS::ordinal_index ordinal_index;
+    typedef typename CS::key_type key_type;
     typedef typename CS::size_array size_array;
 
     typedef detail::RangeIterator<index, Range_> const_iterator;
@@ -72,14 +73,6 @@ namespace TiledArray {
         start_(other.start_), finish_(other.finish_), size_(other.size_),
         weight_(other.weight_)
     {}
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move Constructor
-    Range(Range_&& other) : // no throw
-        start_(std::move(other.start_)), finish_(std::move(other.finish_)),
-        size_(std::move(other.size_)), weight_(std::move(other.weight_))
-    {}
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     ~Range() {}
 
@@ -126,6 +119,17 @@ namespace TiledArray {
       return include_ordinal_(i);
     }
 
+    /// Check the ordinal index to make sure it is within the range.
+
+    /// \param i The ordinal index to check for inclusion in the range
+    /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
+    bool includes(const key_type& k) const {
+      if(k.keys() & 1)
+        return includes(k.key1());
+      else
+        return includes(k.key2());
+    }
+
     /// Assignment Operator.
     Range_& operator =(const Range_& other) {
       start_ = other.start_;
@@ -134,17 +138,6 @@ namespace TiledArray {
       weight_ = other.weight_;
       return *this;
     }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Assignment Operator.
-    Range_& operator =(Range_&& other) {
-      start_ = std::move(other.start_);
-      finish_ = std::move(other.finish_);
-      size_ = std::move(other.size_);
-      weight_ = std::move(other.weight_);
-      return *this;
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Permute the tile given a permutation.
     Range_& operator ^=(const Permutation<coordinate_system::dim>& p) {
@@ -170,12 +163,14 @@ namespace TiledArray {
   private:
 
     template <typename T>
-    bool include_ordinal_(const T& i, typename boost::enable_if< boost::is_signed<T> >::type* = NULL) const {
+    typename boost::enable_if< boost::is_signed<T>, bool>::type
+    include_ordinal_(const T& i) const {
       return (i >= 0) && (i < volume());
     }
 
     template <typename T>
-    bool include_ordinal_(const T& i, typename boost::disable_if< boost::is_signed<T> >::type* = NULL) const {
+    typename boost::disable_if< boost::is_signed<T>, bool>::type
+    include_ordinal_(const T& i) const {
       return i < volume();
     }
 
