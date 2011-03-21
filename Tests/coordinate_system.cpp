@@ -111,6 +111,15 @@ BOOST_AUTO_TEST_CASE( calc_ordinal )
   // Todo: That the entire range of coordinate indexes for a given size array produce correct coordinate indexes
 }
 
+BOOST_AUTO_TEST_CASE( key )
+{
+  // Check that CoordSysN::key() returns a complete key
+  // Todo: All three complete key functions work correctly
+
+  // Check that CoordSysN::key() returns a partial key
+  // Todo: All three incomplete key functions work correctly
+}
+
 BOOST_AUTO_TEST_CASE( calc_volume )
 {
   // Check the volume of a given size array.
