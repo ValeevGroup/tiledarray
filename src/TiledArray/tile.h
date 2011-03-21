@@ -6,6 +6,7 @@
 #include <TiledArray/annotated_array.h>
 #include <Eigen/Core>
 #include <world/sharedptr.h>
+#include <world/archive.h>
 #include <boost/type_traits/has_trivial_copy.hpp>
 #include <boost/type_traits/has_trivial_destructor.hpp>
 #include <iterator>
@@ -84,20 +85,6 @@ namespace TiledArray {
       }
     }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move constructor
-
-    /// \param other The tile object to move
-    /// \throw anything Throws anything the allocator move/copy constructor can throw.
-    Tile(Tile_&& other) :
-        alloc_type(std::move(other)), range_(other.range_), first_(other.first_), last_(other.last_)
-    {
-      other.range_.reset();
-      other.first_ = NULL;
-      other.last_ = NULL;
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
     /// Constructs a new tile
 
     /// The tile will have the dimensions specified by the range object \c r and
@@ -164,18 +151,6 @@ namespace TiledArray {
 
       return *this;
     }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move assignment operator
-
-    /// \param other The tile object to be moved
-    /// \return A reference to this object
-    /// \throw nothing
-    Tile_& operator =(Tile_&& other) {
-      swap(other);
-      return *this;
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// destructor
     ~Tile() {

@@ -5,7 +5,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 
-using namespace TiledArray;
+//using namespace TiledArray;
 
 // Element Generation object test.
 template<typename T, typename Index>
@@ -25,7 +25,7 @@ public:
 };
 
 struct TileFixture {
-  typedef Tile<int, GlobalFixture::element_coordinate_system> TileN;
+  typedef TiledArray::Tile<int, GlobalFixture::element_coordinate_system> TileN;
   typedef TileN::index index;
   typedef TileN::volume_type volume_type;
   typedef TileN::size_array size_array;
@@ -42,8 +42,7 @@ struct TileFixture {
 };
 
 const std::shared_ptr<TileFixture::RangeN> TileFixture::pr =
-    std::make_shared<TileFixture::RangeN>(fill_index<index>(0),
-    fill_index<index>(5));
+    std::make_shared<TileFixture::RangeN>(index(0), index(5));
 
 
 template<typename InIter, typename T>
@@ -194,7 +193,7 @@ BOOST_AUTO_TEST_CASE( resize )
 
   // Check that the common elements are maintained in resize operation.
   std::shared_ptr<RangeN> pr2 = std::make_shared<RangeN>(
-      fill_index<index>(0), fill_index<index>(6));
+      index(0), index(6));
   t2.resize(pr2, 2);
   BOOST_CHECK_EQUAL(t2.range(), *pr2); // check new dimensions
   BOOST_CHECK_EQUAL(static_cast<std::size_t>(std::distance(t2.begin(), t2.end())), pr2->volume());
