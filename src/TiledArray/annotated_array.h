@@ -74,17 +74,6 @@ namespace TiledArray {
           array_(other.array_), vars_(other.vars_)
       { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Move constructor
-
-      /// \param other The AnnotatedArray to be moved
-      AnnotatedArray(AnnotatedArray_&& other) :
-          array_(other.array_), vars_(std::move(other.vars_))
-      {
-        other.array_ = NULL;
-      }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
       /// Destructor
       ~AnnotatedArray() { }
 
@@ -95,17 +84,6 @@ namespace TiledArray {
         array_ = other.array_;
         vars_ = other.vars_;
       }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// AnnotatedArray assignment operator.
-
-      /// \param other The AnnotatedArray to be moved
-      AnnotatedArray_& operator =(AnnotatedArray&& other) {
-        array_ = other.array_;
-        other.array_ = NULL;
-        vars_ = std::move(other.vars_);
-      }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
       /// Assign the result of the given expression to this object.
 

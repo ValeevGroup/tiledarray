@@ -69,14 +69,6 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL_COLLECTIONS(at3.begin(), at3.end(), t.begin(), t.end());
   BOOST_CHECK_EQUAL(at3.range(), r);
   BOOST_CHECK_EQUAL(at3.vars(), vars);
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(fake_annotation at4(std::move(at)));
-  fake_annotation at4(std::move(at3));
-  BOOST_CHECK_EQUAL_COLLECTIONS(at4.begin(), at4.end(), t.begin(), t.end());
-  BOOST_CHECK_EQUAL(at4.range(), r);
-  BOOST_CHECK_EQUAL(at4.vars(), vars);
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_SUITE_END()
