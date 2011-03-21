@@ -7,7 +7,19 @@
 /* TiledArray will use blas for some math operations. */
 #undef TA_USE_CBLAS
 
-/* Maximum number of allowed dimensions. */
-#undef TA_MAX_DIM
+/* define if compiler has std::identity. */
+#undef TILEDARRAY_HAS_STD_IDENTITY
+
+/* define if compiler has std::forward. */
+#undef TILEDARRAY_HAS_STD_FORWARD
+
+/* define if compiler has std::move. */
+#undef TILEDARRAY_HAS_STD_MOVE
+
+/* define if compiler supports rvalue references. */
+#undef TILEDARRAY_RVALUE_REF
+
+/* define if compiler supports variadic templates. */
+#undef TILEDARRAY_VARIADIC_TEMPLATE
 
 #endif // TILEDARRAY_CONFIGURE_H__INCULDED
