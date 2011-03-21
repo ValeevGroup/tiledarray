@@ -50,11 +50,6 @@ namespace TiledArray {
       /// Copy constructor
       PolyTransformIterator(const PolyTransformIterator_& other) : holder_(other.holder_->clone()) { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Move constructor
-      PolyTransformIterator(PolyTransformIterator_&& other) : holder_(other.holder_) { other.holder_ = NULL; }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
       /// Destructor
       ~PolyTransformIterator() { delete holder_; }
 
@@ -67,18 +62,6 @@ namespace TiledArray {
 
         return *this;
       }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Move assignment operator
-      PolyTransformIterator_& operator =(PolyTransformIterator_&& other) {
-        if(this != &other) { // make sure we are not assigning this pointer to itself.
-          delete holder_;
-          holder_ = other.holder_->clone();
-        }
-
-        return *this;
-      }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     private:
       // Give boost::iterator_facade access to private member functions.

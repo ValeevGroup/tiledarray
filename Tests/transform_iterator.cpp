@@ -51,9 +51,6 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(PolyTransformIterator<double> it1(v.begin(), sqr()));
   BOOST_REQUIRE_NO_THROW(PolyTransformIterator<double> it2(begin));
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(PolyTransformIterator<double> it3(PolyTransformIterator<double>(v.begin(), sqr())));
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( dereference )
