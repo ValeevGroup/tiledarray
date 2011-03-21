@@ -58,23 +58,11 @@ namespace TiledArray {
 
       VariableList(const VariableList& other) : vars_(other.vars_) { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      VariableList(VariableList&& other) : vars_(std::move(other.vars_)) { }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
       VariableList& operator =(const VariableList& other) {
         vars_ = other.vars_;
 
         return *this;
       }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      VariableList& operator =(VariableList&& other) {
-        vars_ = std::move(other.vars_);
-
-        return *this;
-      }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
       VariableList& operator =(const std::string& vars) {
         init_(vars);
