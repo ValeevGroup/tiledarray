@@ -74,26 +74,6 @@ namespace TiledArray {
       tile_ranges_(rng.tile_ranges_), elem2tile_(rng.elem2tile_)
     { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Construct a 1D tiled range.
-
-    /// This will construct a 1D tiled range with the given tile boundaries. The
-    /// first argument is the number of tiles. The number of tile boundaries
-    /// must be n + 1. Tiles are defined as [t1, t2), [t2, t3), ...
-    /// \var \c n is the number of tiles.
-    /// \var \c t1, t2, ... are the tile boundaries.
-    template <typename... Params>
-    explicit TiledRange1(const ordinal_index start_tile_index, const std::size_t n, Params... params) {
-      BOOST_STATIC_ASSERT(detail::Count<Params...>::value == coordinate_system::dim);
-      BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
-      std::vector<ordinal_index> r(detail::Count<Params...>::value, ordinal_index(0));
-      detail::fill(r.begin(), params...);
-
-      init_tiles_(r.begin(), r.end(), start_tile_index);
-      init_map_();
-    }
-
-#else
     /// Construct a 1D tiled range.
 
     /// This will construct a 1D tiled range with the given tile boundaries. The
@@ -111,9 +91,9 @@ namespace TiledArray {
       r.push_back(t1);
       ordinal_index ti; // ci is used as an intermediate
       for(unsigned int i = 1; i < n; ++i) {
-        ci = 0ul;
-        ci = va_arg(ap, ordinal_index);
-        r.push_back(ti)
+        ti = 0ul;
+        ti = va_arg(ap, ordinal_index);
+        r.push_back(ti);
       }
 
       va_end(ap);
@@ -121,8 +101,6 @@ namespace TiledArray {
       init_tiles_(r.begin(), r.end(), start_tile_index);
       init_map_();
     }
-
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Assignment operator
     TiledRange1& operator =(const TiledRange1& rng) {
