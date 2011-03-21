@@ -3,7 +3,7 @@
 
 #include <TiledArray/error.h>
 #include <boost/functional/hash.hpp>
-#include <TiledArray/madness_runtime.h>
+#include <world/worldhash.h>
 #include <iostream>
 
 namespace TiledArray {
@@ -104,26 +104,6 @@ namespace TiledArray {
       /// Copy constructor
       Key(const Key_& other) : k1_(other.k1_), k2_(other.k2_), k_(other.k_) { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Move constructor for key 2
-      Key(const key1_type& k1, key2_type&& k2) : k1_(k1), k2_(std::move(k2)), k_(3) { }
-
-      /// Move constructor for key 1
-      Key(key1_type&& k1, const key2_type& k2) : k1_(std::move(k1)), k2_(k2), k_(3) { }
-
-      /// Move constructor for key 1 and key 2
-      Key(key1_type&& k1, key2_type&& k2) : k1_(std::move(k1)), k2_(std::move(k2)), k_(3) { }
-
-      /// Key1 move constructor
-      Key(key1_type&& k1) : k1_(std::move(k1)), k2_(), k_(1) { }
-
-      /// Key2 constructor
-      Key(key2_type&& k2) : k1_(), k2_(std::move(k2)), k_(2) { }
-
-      /// Move constructor
-      Key(Key_&& other) : k1_(std::move(other.k1_)), k2_(std::move(other.k2_)), k_(other.k_) { }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
       /// Destructor
       ~Key() { }
 
@@ -151,33 +131,6 @@ namespace TiledArray {
 
         return *this;
       }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Key move assignment operator
-      Key_& operator=(Key_&& other) {
-        k1_ = std::move(other.k1_);
-        k2_ = std::move(other.k2_);
-        k_ = other.k_;
-
-        return *this;
-      }
-
-      /// Assign Key1, Key2 is unassigned.
-      Key_& operator=(key1_type&& k1) {
-        k1_ = std::move(k1);
-        k_ = 1;
-
-        return *this;
-      }
-
-      /// Assign Key2, Key1 is unassigned.
-      Key_& operator=(key2_type&& k2) {
-        k2_ = std::move(k2);
-        k_ = 2;
-
-        return *this;
-      }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
       /// Implicit key 1 conversion
       operator const key1_type() const {
@@ -228,52 +181,6 @@ namespace TiledArray {
 
         return *this;
       }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      /// Set the keys to a new value.
-      Key_ set(key1_type&& k1, const key2_type& k2) {
-        k1_ = std::move(k1);
-        k2_ = k2;
-        k_ = 3;
-
-        return *this;
-      }
-
-      /// Set the keys to a new value.
-      Key_ set(const key1_type& k1, key2_type&& k2) {
-        k1_ = k1;
-        k2_ = std::move(k2);
-        k_ = 3;
-
-        return *this;
-      }
-
-      /// Set the keys to a new value.
-      Key_ set(key1_type&& k1, key2_type&& k2) {
-        k1_ = std::move(k1);
-        k2_ = std::move(k2);
-        k_ = 3;
-
-        return *this;
-      }
-
-      /// Set Key1 to a new value, Key2 is unset.
-      Key_ set(key1_type&& k1) {
-        k1_ = std::move(k1);
-        k_ = 1;
-
-        return *this;
-      }
-
-      /// Set Key2 to a new value, Key1 is unset.
-      Key_ set(key2_type&& k2) {
-        k2_ = std::move(k2);
-        k_ = 2;
-
-        return *this;
-      }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
 
       template <typename Archive>
       void serialize(const Archive& ar) {
@@ -505,9 +412,6 @@ namespace TiledArray {
 } // namespace TiledArray
 
 namespace madness {
-  template <typename>
-  struct Hash;
-
   template <typename Key1, typename Key2>
   struct Hash<TiledArray::detail::Key<Key1,Key2> > {
       static hashT hash(const TiledArray::detail::Key<Key1,Key2>& k) {
