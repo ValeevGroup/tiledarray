@@ -4,7 +4,6 @@
 #include <TiledArray/type_traits.h>
 #include <utility>
 #include <functional>
-#include <boost/type_traits/integral_constant.hpp>
 #include <boost/static_assert.hpp>
 
 namespace TiledArray {
@@ -126,46 +125,6 @@ namespace TiledArray {
     {
       std::copy(k.key1().begin(), k.key1().end(), result);
     }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    template<typename OutIter, typename V>
-    void fill(OutIter it, V v) {
-      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
-      *it = v;
-    }
-
-    template <typename OutIter, typename V, typename... Params>
-    void fill(OutIter it, V v, Params... params) {
-      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
-      *it = v;
-      fill(++it, params...);
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-#if 0
-    template<unsigned int DIM, typename V, typename... Params>
-    struct FillCoord {
-    private:
-      BOOST_STATIC_ASSERT((Count<V, Params...>::value) == DIM);
-    public:
-      template<typename OutIter>
-      void operator()(OutIter it, V v, Params... p) {
-        BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
-        *it = v;
-        FillCoord<DIM - 1, Params...> f; // this is not implemented yet
-        f(++it, p...);
-      }
-    };
-
-    template<typename V>
-    struct FillCoord<1u, V> {
-      template<typename OutIter>
-      void operator()(OutIter it, V v) {
-        BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
-        *it = v;
-      }
-    };
-#endif
 
     template<typename T>
     struct bit_and : public std::binary_function<T, T, T> {
