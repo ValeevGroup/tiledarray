@@ -72,14 +72,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(pt2.range(), pr);
   BOOST_CHECK_CLOSE(pt2.at(index3_type(0,0,0)), 1.0, 0.000001);
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(PackedTile3 pt3(std::forward<PackedTile3>(PackedTile3(t, b.begin(), b.end())))); // move constructor
-  PackedTile3 pt3(std::forward<PackedTile3>(PackedTile3(t, b.begin(), b.end())));
-  BOOST_CHECK_EQUAL(pt3.range(), pr);
-  BOOST_CHECK_CLOSE(pt3.at(index3_type(0,0,0)), 1.0, 0.000001);
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-
   const Tile6 ct(r, 1.0);
   BOOST_REQUIRE_NO_THROW( PackedConstTile3 pt4(ct, b.begin(), b.end()) ); // primary constructor w/ const tile
   PackedConstTile3 pt4(ct, b.begin(), b.end());
@@ -104,12 +96,6 @@ BOOST_AUTO_TEST_CASE( assignment )
   PackedTile3 pt1(t1, b.begin(), b.end());
   pt1 = pt;
   BOOST_CHECK(std::equal(pt1.begin(), pt1.end(), pt.begin()));
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  PackedTile3 pt2(t1, b.begin(), b.end());
-  pt2 = PackedTile3(t, b.begin(), b.end());
-  BOOST_CHECK(std::equal(pt2.begin(), pt2.end(), pt.begin()));
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( iteration )

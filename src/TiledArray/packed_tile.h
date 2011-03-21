@@ -76,11 +76,6 @@ namespace TiledArray {
     /// Copy constructor
     PackedTile(const PackedTile_& other) : r_(other.r_), w_(other.w_), t_(other.t_) { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move constructor
-    PackedTile(PackedTile_&& other) : r_(std::move(other.r_)), w_(std::move(other.w_)), t_(other.t_) { }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
     ~PackedTile() { }
 
     /// Assignment operator
@@ -91,17 +86,6 @@ namespace TiledArray {
 
       return *this;
     }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move assignment operator
-    PackedTile_& operator =(PackedTile_&& other) {
-      r_ = std::move(other.r_);
-      w_ = std::move(other.w_);
-      t_ = other.t_;
-
-      return *this;
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Returns an iterator to the first element of the tile.
     iterator begin() { return t_.begin(); } // no throw
