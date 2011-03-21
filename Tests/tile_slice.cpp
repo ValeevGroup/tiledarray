@@ -64,13 +64,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(ts2.range(), rs);
   BOOST_CHECK_CLOSE(ts2.at(index_type(0,0,0)), 1.0, 0.000001);
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  BOOST_REQUIRE_NO_THROW(TileSlice3 ts3(std::forward<TileSlice3>(TileSlice3(t,rs)))); // move constructor
-  TileSlice3 ts3(std::forward<TileSlice3>(TileSlice3(t,rs)));
-  BOOST_CHECK_EQUAL(ts3.range(), rs);
-  BOOST_CHECK_CLOSE(ts3.at(index_type(0,0,0)), 1.0, 0.000001);
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
   const Tile3 tc(r, 1.0);
   BOOST_REQUIRE_NO_THROW(TileSlice<const Tile3> ts4(tc,rs)); // primary constructor w/ const tile
   TileSlice<const Tile3> ts4(tc,rs);
@@ -97,12 +90,6 @@ BOOST_AUTO_TEST_CASE( assignment )
   TileSlice3 ts1(t1, rs);
   ts1 = ts;
   BOOST_CHECK(std::equal(ts1.begin(), ts1.end(), ts.begin()));
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  TileSlice3 ts2(t1, rs);
-  ts2 = TileSlice3(t,rs);
-  BOOST_CHECK(std::equal(ts2.begin(), ts2.end(), ts.begin()));
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 }
 
 BOOST_AUTO_TEST_CASE( iteration )

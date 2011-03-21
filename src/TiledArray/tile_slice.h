@@ -61,11 +61,6 @@ namespace TiledArray {
     /// Copy constructor
     TileSlice(const TileSlice_& other) : r_(other.r_), t_(other.t_) { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move constructor
-    TileSlice(TileSlice&& other) : r_(std::move(other.r_)), t_(other.t_) { }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
     ~TileSlice() { }
 
     /// Assignment operator
@@ -75,16 +70,6 @@ namespace TiledArray {
 
       return *this;
     }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move assignment operator
-    TileSlice_& operator =(TileSlice_&& other) {
-      r_ = std::move(other.r_);
-      t_ = other.t_;
-
-      return *this;
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Returns an iterator to the first element of the tile.
     iterator begin() { return iterator(r_.begin(), this); } // no throw
