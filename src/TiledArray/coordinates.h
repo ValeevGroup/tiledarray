@@ -1,8 +1,10 @@
 #ifndef TILEDARRAY_COORDINATES_H__INCLUDED
 #define TILEDARRAY_COORDINATES_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/array_util.h>
 #include <TiledArray/utility.h>
+#include <TiledArray/error.h>
 #include <boost/operators.hpp>
 #include <world/array.h>
 #include <boost/type_traits/is_integral.hpp>
@@ -10,9 +12,7 @@
 #include <boost/functional/hash.hpp>
 #include <iosfwd>
 #include <cstddef>
-#ifndef __GXX_EXPERIMENTAL_CXX0X__
 #include <stdarg.h>
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
   // Forward declarations.
 namespace boost {
@@ -61,7 +61,7 @@ namespace TiledArray {
     /// Default constructor
 
     /// All coordinate elements are initialized to 0.
-    ArrayCoordinate() { r_.fill(index(0)); }
+    ArrayCoordinate() { std::fill(r_.begin(), r_.end(), index(0)); }
 
     /// Initialize coordinate with an iterator
 
@@ -71,13 +71,9 @@ namespace TiledArray {
     /// used to initialize the coordinate elements
     /// \throw nothing
     template <typename InIter>
-    explicit ArrayCoordinate(InIter first, typename boost::disable_if<boost::is_integral<InIter>, Enabler >::type = Enabler()) {
-      // should variadic constructor been chosen?
-      // need to disambiguate the call if DIM==1
-      // assume iterators if InIter is not an integral type
-      // else assume wanted variadic constructor
-      // this scheme follows what std::vector does
-      detail::initialize_from_values(first, r_.begin(), DIM, boost::is_integral<InIter>());
+    explicit ArrayCoordinate(InIter first, typename boost::enable_if<detail::is_input_iterator<InIter>, Enabler >::type = Enabler()) {
+      for(std::size_t d = 0; d < DIM; ++d, ++first)
+        r_[d] = *first;
     }
 
     /// Copy the content of the std::array<I, DIM> object into the coordinate elements.
@@ -89,38 +85,24 @@ namespace TiledArray {
 
     /// \throw nothing
     ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { }
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move constructor
 
+    /// Initialize coordinate with a given value
+
+    /// All elements of the coordinate are initialized to the value of \c v
+    /// \tparam Integral An integral type
+    /// \param v The value that will be assigned to all coordinate elements
     /// \throw nothing
-    ArrayCoordinate(ArrayCoordinate&& a) : r_(std::move(a.r_)) { }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Constant list constructor constructor.
-
-    /// This constructor takes a list of integral-type values and initializes
-    /// the elements of the coordinate with them. The number of parameters
-    /// passed to this constructor must be exactly equal to DIM.
-    /// \tparam ...Params The variadic parameter list (All parameters types must
-    /// be integral types)
-    /// \param params The list of parameters to be used to initialize the
-    /// coordinate
-    /// \throw nothing
-    template <typename... Params>
-    explicit ArrayCoordinate(Params... params) {
-      BOOST_STATIC_ASSERT(detail::Count<Params...>::value == DIM);
-      BOOST_STATIC_ASSERT(detail::is_integral_list<Params...>::value);
-      detail::fill(r_.begin(), params...);
+    explicit ArrayCoordinate(index i) {
+      std::fill_n(r_.begin(), DIM, i);
     }
-#else
+
     /// Constant index constructor.
 
     /// Constructs an ArrayCoordinate with the specified constants. For example,
     /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a
     /// point with the coordinates (0, 1, 2, 3).
     explicit ArrayCoordinate(const index c0, const index c1, ...) {
-      r_.assign(0ul);
+      std::fill_n(r_.begin(), DIM, 0ul);
       va_list ap;
       va_start(ap, c1);
 
@@ -134,8 +116,6 @@ namespace TiledArray {
 
       va_end(ap);
     }
-
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
     /// Begin iterator factory
 
@@ -197,20 +177,6 @@ namespace TiledArray {
       return (*this);
     }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-    /// Move assignment operator
-
-    /// \param other The other coordinate to be moved
-    /// \return A reference to this object
-    /// \throw nothing
-    ArrayCoordinate_&
-    operator =(ArrayCoordinate_&& other) {
-      r_ = std::move(other.r_);
-
-      return (*this);
-    }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
-
     /// Addition-assignment operator
 
     /// \param other The coordinate to be added to this coordinate
@@ -241,11 +207,7 @@ namespace TiledArray {
     /// \return A const reference to element \c n
     /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
     const index& operator[](std::size_t n) const {
-#ifdef NDEBUG
       return r_[n];
-#else
-      return r_.at(n);
-#endif
     }
 
     /// Coordinate element accessor
@@ -254,11 +216,7 @@ namespace TiledArray {
     /// \return A reference to element \c n
     /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
     index& operator[](std::size_t d) {
-#ifdef NDEBUG
       return r_[d];
-#else
-      return r_.at(d);
-#endif
     }
 
     /// Coordinate element const accessor
@@ -266,14 +224,22 @@ namespace TiledArray {
     /// \param n The element to access
     /// \return A const reference to element \c n
     /// \throw std::out_of_range When \c n \c >= \c DIM
-    const index& at(std::size_t d) const {  return r_.at(d);  }
+    const index& at(std::size_t d) const {
+      if(d < DIM)
+        throw std::out_of_range("dimension out of range.");
+      return r_[d];
+    }
 
     /// Coordinate element accessor
 
     /// \param n The element to access
     /// \return A reference to element \c n
     /// \throw std::out_of_range When \c n \c >= \c DIM
-    index& at(std::size_t d) { return r_.at(d); }
+    index& at(std::size_t d) {
+      if(d < DIM)
+        throw std::out_of_range("dimension out of range.");
+      return r_[d];
+    }
 
     /// Coordinate array const accessor
 
@@ -419,8 +385,7 @@ namespace TiledArray {
   /// \param c The array coordinate to hash
   template <typename I, unsigned int DIM, typename Tag>
   std::size_t hash_value(const ArrayCoordinate<I,DIM,Tag>& c) {
-      boost::hash<std::array<I,DIM> > hasher;
-      return hasher(c.data());
+      return boost::hash_range(c.begin(), c.end());
   }
 
   /// Append an ArrayCoordinate to an output stream.
@@ -433,20 +398,5 @@ namespace TiledArray {
   }
 
 } // namespace TiledArray
-
-// We need this operator in the boost namespace so it works properly in other
-// name spaces, specifically in boost::test namespace.
-namespace std {
-  /// Hash function for std::array
-
-  /// Recursively hash each element of the array.
-  /// \tparam T The array element type
-  /// \tparam N The array size
-  /// \param a The array to hash
-  template <typename T, std::size_t N>
-  std::size_t hash_value(const array<T,N>& a) {
-      return boost::hash_range(a.begin(), a.end());
-  }
-} // namespace boost
 
 #endif // TILEDARRAY_COORDINATES_H__INCLUDED
