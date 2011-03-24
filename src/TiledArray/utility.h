@@ -126,27 +126,6 @@ namespace TiledArray {
       std::copy(k.key1().begin(), k.key1().end(), result);
     }
 
-    template<typename T>
-    struct bit_and : public std::binary_function<T, T, T> {
-      T operator()(const T& t1, const T& t2) const {
-        return t1 & t2;
-      }
-    }; // struct bit_and
-
-    template<typename T>
-    struct bit_or : public std::binary_function<T, T, T> {
-      T operator()(const T& t1, const T& t2) const {
-        return t1 | t2;
-      }
-    }; // struct bit_or
-
-    template<typename T>
-    struct bit_xor : public std::binary_function<T, T, T> {
-      T operator()(const T& t1, const T& t2) const {
-        return t1 ^ t2;
-      }
-    }; // struct bit_xor
-
   } // namespace detail
 } // namespace TiledArray
 
