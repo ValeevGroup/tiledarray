@@ -88,9 +88,8 @@ namespace TiledArray {
 
     /// Initialize coordinate with a given value
 
-    /// All elements of the coordinate are initialized to the value of \c v
-    /// \tparam Integral An integral type
-    /// \param v The value that will be assigned to all coordinate elements
+    /// All elements of the coordinate are initialized to the value of \c i
+    /// \param i The value that will be assigned to all coordinate elements
     /// \throw nothing
     explicit ArrayCoordinate(index i) {
       std::fill_n(r_.begin(), DIM, i);
@@ -212,7 +211,7 @@ namespace TiledArray {
 
     /// Coordinate element accessor
 
-    /// \param n The element to access
+    /// \param d The dimension index
     /// \return A reference to element \c n
     /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
     index& operator[](std::size_t d) {
@@ -221,7 +220,7 @@ namespace TiledArray {
 
     /// Coordinate element const accessor
 
-    /// \param n The element to access
+    /// \param d The dimension index
     /// \return A const reference to element \c n
     /// \throw std::out_of_range When \c n \c >= \c DIM
     const index& at(std::size_t d) const {
@@ -232,7 +231,7 @@ namespace TiledArray {
 
     /// Coordinate element accessor
 
-    /// \param n The element to access
+    /// \param d The dimension index
     /// \return A reference to element \c n
     /// \throw std::out_of_range When \c n \c >= \c DIM
     index& at(std::size_t d) {

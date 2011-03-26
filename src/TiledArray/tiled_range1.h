@@ -78,9 +78,11 @@ namespace TiledArray {
 
     /// This will construct a 1D tiled range with the given tile boundaries. The
     /// first argument is the number of tiles. The number of tile boundaries
-    /// must be n + 1. Tiles are defined as [t1, t2), [t2, t3), ...
-    /// \var \c n is the number of tiles.
-    /// \var \c t1, t2, ... are the tile boundaries.
+    /// must be n + 1. Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
+    /// \param start_tile_index
+    /// \param n is the number of tiles.
+    /// \param t0 The first lower bound
+    /// \param t1 ... are the tile boundaries.
     explicit TiledRange1(const ordinal_index start_tile_index, const std::size_t n, const ordinal_index t0, const ordinal_index t1, ...) {
       TA_ASSERT(n >= 1, std::runtime_error, "There must be at least one tile.");
       va_list ap;

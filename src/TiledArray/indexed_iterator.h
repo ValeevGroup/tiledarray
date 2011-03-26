@@ -179,7 +179,7 @@ namespace TiledArray {
 
       /// \tparam It Another iterator type that is convertible to the base
       /// iterator type.
-      /// \param other The indexed iterator that is to be copied.
+      /// \param it The indexed iterator that is to be copied.
       /// \return A reference to this iterator
       template <typename It>
       typename boost::enable_if<boost::is_convertible<It, Iterator>, IndexedIterator_&>::type

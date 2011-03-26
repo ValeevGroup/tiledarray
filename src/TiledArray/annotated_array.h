@@ -90,7 +90,7 @@ namespace TiledArray {
       /// The expression is evaluated and the results are assigned the array
       /// here.
       /// \tparam ExpType The type of the expression
-      /// \param The expression that will be evaluated and assigned to the array
+      /// \param exp The expression that will be evaluated and assigned to the array
       /// \return This annotated array object
       template <typename ExpType>
       AnnotatedArray_& operator =(const Expression<ExpType>& exp) {

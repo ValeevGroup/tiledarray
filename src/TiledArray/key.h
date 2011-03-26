@@ -390,10 +390,9 @@ namespace TiledArray {
 
     /// Hash function for array coordinates
 
-    /// \tparam I The array coordinate element type
-    /// \tparam DIM The array coordinate dimensions
-    /// \tparam Tag The array coordinate tag type
-    /// \param c The array coordinate to hash
+    /// \tparam Key1 The first key type
+    /// \tparam Key2 The second key type
+    /// \param k The key pair to hash
     template <typename Key1, typename Key2>
     std::size_t hash_value(const Key<Key1,Key2>& k) {
       std::size_t seed = 0;

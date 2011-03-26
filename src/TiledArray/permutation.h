@@ -386,9 +386,6 @@ namespace TiledArray {
       /// array
       /// \param[out] last_out The last iterator for the data of the output
       /// array
-      /// \param[in] first_in The first iterator for the data of the input array
-      /// \param[in] first_in The last iterator for the data of the input array
-      /// \param[in] op The assignment operation
       /// \throw std::runtime_error When the distance between first_out and
       /// last_out, or first_in and last_in is not equal to the volume of the
       /// range object given in the constructor.

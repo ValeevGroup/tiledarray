@@ -121,7 +121,7 @@ namespace TiledArray {
 
     /// Check the ordinal index to make sure it is within the range.
 
-    /// \param i The ordinal index to check for inclusion in the range
+    /// \param k The ordinal index to check for inclusion in the range
     /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
     bool includes(const key_type& k) const {
       if(k.keys() & 1)

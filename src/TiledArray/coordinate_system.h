@@ -258,6 +258,8 @@ namespace TiledArray {
     /// Construct a complete key from an index
 
     /// \param k The index of the key
+    /// \param w The weight array of the range
+    /// \param s The starting index of the range
     /// \return A key that contains both key1 and key2
     static key_type key(const index& k, const size_array& w, const index& s) {
       return key_type(calc_ordinal(k, w, s), k);
@@ -266,6 +268,8 @@ namespace TiledArray {
     /// Construct a complete key from an ordinal index
 
     /// \param k The ordinal index of the key
+    /// \param w The weight array of the range
+    /// \param s The starting index of the range
     /// \return A key that contains both key1 and key2
     static key_type key(const ordinal_index& k, const size_array& w, const index&) {
       return key_type(k, calc_index(k, w));

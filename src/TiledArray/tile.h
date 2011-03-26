@@ -92,7 +92,7 @@ namespace TiledArray {
     /// allocator \c a will allocate space for only for the tile data.
     /// \param r A shared pointer to the range object that will define the tile
     /// dimensions
-    /// \param v The fill value for the new tile elements ( default: value_type() )
+    /// \param val The fill value for the new tile elements ( default: value_type() )
     /// \param a The allocator object for the tile data ( default: alloc_type() )
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     /// \throw anything Any exception that can be thrown by \c T type default or
