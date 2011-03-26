@@ -3,13 +3,10 @@
 
 #include <TiledArray/config.h>
 #include <iterator>
-#include <boost/mpl/if.hpp>
-#include <boost/mpl/or.hpp>
-#include <boost/type_traits.hpp>
-#include <iterator>
 #include <boost/iterator/iterator_traits.hpp>
-#include <boost/utility/enable_if.hpp>
-#include <boost/interprocess/detail/move.hpp>
+#include <world/enable_if.h>
+#include <world/typestuff.h>
+
 namespace TiledArray {
   namespace detail {
 
@@ -47,22 +44,22 @@ namespace TiledArray {
     struct none_iterator_tag { };
 
     template <typename T, typename Enabler = void>
-    struct is_iterator : public boost::false_type {
+    struct is_iterator : public std::false_type {
       typedef none_iterator_tag iterator_category;
     };
 
     template <typename T>
-    struct is_iterator<T, typename boost::enable_if_c<has_iterator_catagory<T>::value >::type > : public boost::true_type {
+    struct is_iterator<T, typename madness::enable_if_c<has_iterator_catagory<T>::value >::type > : public std::true_type {
       typedef typename std::iterator_traits<T>::iterator_category iterator_category;
     };
 
     template <typename T>
-    struct is_iterator<T*, void> : boost::true_type {
+    struct is_iterator<T*, void> : std::true_type {
       typedef typename std::iterator_traits<T*>::iterator_category iterator_category;
     };
 
     template <typename T>
-    struct is_iterator<const T*, void> : boost::true_type {
+    struct is_iterator<const T*, void> : std::true_type {
       typedef typename std::iterator_traits<const T*>::iterator_category iterator_category;
     };
 
@@ -91,12 +88,9 @@ namespace TiledArray {
         public boost::is_base_of<std::random_access_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
 
-    /// Argument type helper class
-    struct NoTypeArg { };
-
     template<typename T>
     struct remove_cr {
-      typedef typename boost::remove_const<typename boost::remove_reference<T>::type>::type type;
+      typedef typename std::remove_const<typename std::remove_reference<T>::type>::type type;
     };
 
     template<typename Func>
