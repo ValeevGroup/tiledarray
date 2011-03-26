@@ -23,11 +23,11 @@ namespace TiledArray {
     public:
         /// Primary constructor
 
-        /// \param w The world that this Pmap will belong to
+        /// \param s The world size
         /// \param v The initial version number for this pmap (Default = 0 )
         /// \param h The hashing function used to hash (Default = Hasher() )
-        VersionedPmap(madness::World& w, unsigned int v = 0, const Hasher& h = Hasher()) :
-            size_(w.size()), version_(v), hashfun_(h)
+        VersionedPmap(std::size_t s, unsigned int v = 0, const Hasher& h = Hasher()) :
+            size_(s), version_(v), hashfun_(h)
         { }
 
         virtual ~VersionedPmap() { }
