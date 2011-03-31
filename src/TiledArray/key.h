@@ -2,7 +2,6 @@
 #define TILEDARRAY_KEY_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <boost/functional/hash.hpp>
 #include <world/worldhash.h>
 #include <iostream>
 
@@ -395,10 +394,8 @@ namespace TiledArray {
     /// \param k The key pair to hash
     template <typename Key1, typename Key2>
     std::size_t hash_value(const Key<Key1,Key2>& k) {
-      std::size_t seed = 0;
-      boost::hash_combine(seed, k.key1());
-      boost::hash_combine(seed, k.key2());
-      return seed;
+      TA_ASSERT(k.keys() & 1, std::runtime_error, "Key1 must be defined for key.");
+      return madness::hash_value(k.key1());
     }
 
     template<typename Key1, typename Key2>
@@ -409,15 +406,5 @@ namespace TiledArray {
 
   } // namespace detail
 } // namespace TiledArray
-
-namespace madness {
-  template <typename Key1, typename Key2>
-  struct Hash<TiledArray::detail::Key<Key1,Key2> > {
-      static hashT hash(const TiledArray::detail::Key<Key1,Key2>& k) {
-          boost::hash<TiledArray::detail::Key<Key1,Key2> > key_hasher;
-          return key_hasher(k);
-      };
-  };
-}
 
 #endif // TILEDARRAY_KEY_H__INCLUDED

@@ -20,59 +20,60 @@ namespace TiledArray {
   /// the range object.
   ///
   /// Template parameters:
-  /// \var \c R is the range object type.
-  template<typename CS, typename Key>
-  class DenseShape : public Shape<CS, Key> {
+  /// \tparam CS Coordiante system.
+  template<typename CS>
+  class DenseShape : public Shape<CS> {
   protected:
-    typedef DenseShape<CS, Key> DenseShape_;
-    typedef Shape<CS, Key> Shape_;
+    typedef DenseShape<CS> DenseShape_;
+    typedef Shape<CS> Shape_;
 
   public:
+    typedef CS coordinate_system;                         ///< Shape coordinate system
+    typedef typename Shape_::key_type key_type;           ///< The pmap key type
     typedef typename Shape_::index index;
     typedef typename Shape_::ordinal_index ordinal_index;
+    typedef typename Shape_::range_type range_type;
+    typedef typename Shape_::pmap_type pmap_type;
+
+  private:
+
+    // Default constuctor not allowed
+    DenseShape();
+
+    /// Copy constructor
+
+    /// \param other The dense shape to be copied
+    DenseShape(const DenseShape_& other) : Shape_(other) { }
+
+  public:
 
     /// Primary constructor
 
     /// Since all tiles are present in a dense array, the shape is considered
     /// Immediately available.
-    DenseShape(const typename Shape_::range_type& r) :
-        Shape_(r)
+    /// \param r A shared pointer to the range object of the shape
+    /// \param m A shared pointer to the process map object
+    DenseShape(const range_type& r, const pmap_type& m) :
+        Shape_(r, m)
     { }
 
-    DenseShape(const DenseShape_& other) : Shape_(other) { }
+    /// Clone (copy) this object.
 
+    /// Create a copy of this object using the copy constructor and place the
+    /// result in a shared pointer to a shape object.
+    /// \return A shared pointer
     virtual std::shared_ptr<Shape_> clone() const {
-      return std::dynamic_pointer_cast<Shape_>(
-          std::make_shared<DenseShape_>(*this));
+      return std::shared_ptr<Shape_>(static_cast<Shape_*>(new DenseShape_(*this)));
     }
-
-    virtual const std::type_info& type() const { return typeid(DenseShape_); }
 
   private:
+    // Assignement operator not allowed
+    DenseShape_& operator=(const DenseShape_&);
 
-    /// Check that a tiles information is stored locally.
-
-    /// \param i The ordinal index to check.
-    virtual bool local(ordinal_index) const { return true; }
-
-    /// Probe for the presence of a tile in the shape
-
-    /// \param i The index to be probed.
-    virtual madness::Future<bool> probe(ordinal_index) const {
-      return madness::Future<bool>(true);
-    }
+  public:
+    virtual const std::type_info& type() const { return typeid(DenseShape_); }
 
   }; // class DenseShape
-
-  template <typename CS, typename Key>
-  inline bool is_dense(const std::shared_ptr<Shape<CS, Key> >& s) {
-    return s->type() == typeid(DenseShape<CS,Key>);
-  }
-
-  template <typename CS, typename Key>
-  inline bool is_dense(const std::shared_ptr<DenseShape<CS, Key> >&) {
-    return true;
-  }
 
 }  // namespace TiledArray
 

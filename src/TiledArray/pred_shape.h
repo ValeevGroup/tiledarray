@@ -23,58 +23,67 @@ namespace TiledArray {
   /// define a coordinate, and returns true of the coordinate is is included by
   /// the shape.
   /// \tparam I is the ordinal index type.
-  template<typename CS, typename Key, typename Pred>
-  class PredShape : public Shape<CS, Key> {
+  template <typename CS, typename Pred>
+  class PredShape : public Shape<CS> {
   private:
-    typedef PredShape<CS, Key, Pred> PredShape_;  ///< This class typedef
-    typedef Shape<CS, Key> Shape_;                ///< Base class typedef
+    typedef PredShape<CS, Pred> PredShape_;  ///< This class typedef
+    typedef Shape<CS> Shape_;                ///< Base class typedef
 
   public:
-    typedef typename Shape_::index index;               ///< index type
+    typedef CS coordinate_system;                         ///< Shape coordinate system
+    typedef typename Shape_::key_type key_type;           ///< The pmap key type
+    typedef typename Shape_::index index;                 ///< index type
     typedef typename Shape_::ordinal_index ordinal_index; ///< ordinal index type
-    typedef typename Shape_::range_type range_type;     ///< Range type of shape
+    typedef typename Shape_::range_type range_type;       ///< Range type
+    typedef typename Shape_::pmap_type pmap_type;         ///< Process map type
     typedef Pred pred_type;
 
-    /// Construct the shape with a range object
-
-    /// \param r A range object
-    /// \param p The shape predicate
-    PredShape(const range_type& r, const pred_type& p) :
-        Shape_(r), pred_(p)
-    { }
+  private:
+    // Default constructor not allowed
+    PredShape();
 
     /// Copy constructor
 
     /// \param other The shape to be copied
     PredShape(const PredShape_& other) : Shape_(other), pred_(other.pred_) { }
 
+  public:
+
+    /// Construct the shape with a range object
+
+    /// \param r A shared pointer to a range object
+    /// \param m A shared pointer to a process map
+    /// \param p The shape predicate
+    PredShape(const range_type& r, const pmap_type& m, const pred_type& p) :
+        Shape_(r, m), pred_(p)
+    { }
+
+
     /// Shape virtual destructor
     virtual ~PredShape() { }
+
+  private:
+    // Assignment not allowed
+    PredShape_& operator=(const PredShape_&);
+
+  public:
 
     /// Construct a copy of this shape
 
     /// \return A shared pointer to a copy of this object
     virtual std::shared_ptr<Shape_> clone() const {
-      return std::dynamic_pointer_cast<Shape_>(
-          std::make_shared<PredShape_>(*this));
+      return std::shared_ptr<Shape_>(static_cast<Shape_*>(new PredShape_(*this)));
     }
 
     /// Type info accessor for derived class
     virtual const std::type_info& type() const { return typeid(PredShape_); }
 
-  private:
-
-    /// Check that a tiles information is stored locally.
-
-    /// \param i The ordinal index to check.
-    virtual bool local(ordinal_index) const { return true; }
-
-    /// Probe for the presence of a tile in the shape
-
-    /// \param i The index to be probed.
-    virtual madness::Future<bool> probe(ordinal_index i) const {
-      return madness::Future<bool>(pred_(i));
+    /// \param k The index to be probed.
+    virtual bool probe(const key_type& k) const {
+        return Shape_::probe(k) && pred_(k);
     }
+
+  private:
 
     pred_type pred_; ///< The shape predicate
   }; // class PredShape

@@ -2,10 +2,11 @@
 #include "TiledArray/utility.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
+#include "shape_fixtures.h"
 
 using namespace TiledArray;
 
-struct ArrayFixture : public TiledRangeFixture {
+struct ArrayFixture : public TiledRangeFixture, public ShapeFixture {
   typedef Array<int, GlobalFixture::coordinate_system> ArrayN;
   typedef ArrayN::index index;
   typedef ArrayN::value_type tile_type;
@@ -25,6 +26,14 @@ BOOST_FIXTURE_TEST_SUITE( array_suite , ArrayFixture )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
+  // Construct a dense array
+  ArrayN ad(world, tr);
+
+  // Construct a sparse array
+  ArrayN as(world, tr, list.begin(), list.end());
+
+  // Construct a predicated array
+  ArrayN ap(world, tr, p);
 
 }
 

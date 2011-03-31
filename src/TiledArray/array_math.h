@@ -13,9 +13,9 @@ namespace TiledArray {
   template <typename, typename, typename>
   class Array;
 
-  template <typename, typename>
+  template <typename>
   class DenseShape;
-  template <typename, typename>
+  template <typename>
   class SparseShape;
 
   namespace expressions {
@@ -130,10 +130,10 @@ namespace TiledArray {
     private:
 
       shape_ptr make_shape(const oarray_type& result, const larray_type& left, rarray_type& right) const {
-        typedef DenseShape<typename larray_type::coordinate_system, typename larray_type::key_type> ldense_array;
-        typedef DenseShape<typename rarray_type::coordinate_system, typename rarray_type::key_type> rdense_array;
-        typedef SparseShape<typename larray_type::coordinate_system, typename larray_type::key_type> lsparse_array;
-        typedef SparseShape<typename rarray_type::coordinate_system, typename rarray_type::key_type> rsparse_array;
+        typedef DenseShape<typename larray_type::coordinate_system> ldense_array;
+        typedef DenseShape<typename rarray_type::coordinate_system> rdense_array;
+        typedef SparseShape<typename larray_type::coordinate_system> lsparse_array;
+        typedef SparseShape<typename rarray_type::coordinate_system> rsparse_array;
 
         // Output shape is determined as follows:
         //
@@ -163,7 +163,7 @@ namespace TiledArray {
           // output shape is dense
           return fut_shape(oarray_type::impl_type::make_shape(result.array().tiles()));
 
-        } else if(is_sparse(left.pimpl_->get_shape()) || is_sparse(right.pimpl_->get_shape())) {
+        } else if(is_sparse_shape(left.pimpl_->get_shape()) || is_sparse_shape(right.pimpl_->get_shape())) {
           // output shape is sparse
           std::vector<typename larray_type::ordinal_index> tiles;
           for(typename larray_type::ordinal_index i = 0; i < left.tiles().volume(); ++i)

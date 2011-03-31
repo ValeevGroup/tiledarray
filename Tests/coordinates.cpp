@@ -4,6 +4,7 @@
 #include "unit_test_config.h"
 
 using namespace TiledArray;
+using TiledArray::detail::LevelTag;
 
 struct ArrayCoordinateFixture {
   typedef ArrayCoordinate<std::size_t, 3, LevelTag<0> > Point3;

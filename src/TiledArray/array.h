@@ -69,23 +69,22 @@ namespace TiledArray {
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     Array(madness::World& w, const tiled_range_type& tr) :
-        pimpl_(std::make_shared<impl_type>(w, tr))
-    {
-      pimpl_->set_shape(impl_type::make_shape(pimpl_->tiles()));
-    }
+        pimpl_(std::make_shared<impl_type>(w, tr, 0u))
+    { }
 
     /// Sparse array constructor
 
+    /// \tparam InIter Input iterator type
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param first An input iterator that points to the a list of tiles to be
     /// added to the sparse array.
+    /// \param last An input iterator that points to the last position in a list
+    /// of tiles to be added to the sparse array.
     template <typename InIter>
     Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last) :
-        pimpl_(std::make_shared<impl_type>(w, tr))
-    {
-      pimpl_->set_shape(impl_type::make_shape(w, pimpl_->tiles(), pimpl_->get_pmap(), first, last));
-    }
+        pimpl_(std::make_shared<impl_type>(w, tr, first, last, 0u))
+    { }
 
     /// Predicated array constructor
 
@@ -94,10 +93,8 @@ namespace TiledArray {
     /// \param p The shape predicate.
     template <typename Pred>
     Array(madness::World& w, const tiled_range_type& tr, Pred p) :
-        pimpl_(std::make_shared<impl_type>(w, tr))
-    {
-      pimpl_->set_shape(impl_type::make_shape(pimpl_->tiles(), p));
-    }
+        pimpl_(std::make_shared<impl_type>(w, tr, p, 0u))
+    { }
 
     /// Array copy constructor
 

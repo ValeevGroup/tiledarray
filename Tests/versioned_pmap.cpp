@@ -1,9 +1,6 @@
-#include "TiledArray/versioned_pmap.h"
+#include "versioned_pmap_fixture.h"
+#include "global_fixture.h"
 #include "unit_test_config.h"
-
-struct VersionedPmapFixture {
-
-};
 
 BOOST_FIXTURE_TEST_SUITE( versioned_pmap_suite , VersionedPmapFixture )
 

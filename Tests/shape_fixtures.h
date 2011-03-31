@@ -3,29 +3,40 @@
 
 #include "TiledArray/range.h"
 #include "range_fixture.h"
+#include "versioned_pmap_fixture.h"
 #include "TiledArray/sparse_shape.h"
 #include "TiledArray/dense_shape.h"
 #include "TiledArray/pred_shape.h"
 
-struct DenseShapeFixture : public RangeFixture {
-  typedef TiledArray::DenseShape<GlobalFixture::coordinate_system, std::size_t> DenseShapeT;
+struct BaseShapeFixture :
+    public virtual RangeFixture,
+    public virtual VersionedPmapFixture
+{ };
 
-  DenseShapeFixture() : ds(r)
+struct DenseShapeFixture : public BaseShapeFixture {
+  typedef TiledArray::DenseShape<GlobalFixture::coordinate_system> DenseShapeT;
+
+  DenseShapeFixture() :
+      RangeFixture(),
+      VersionedPmapFixture(),
+      BaseShapeFixture(),
+      ds(r, m)
   { }
 
   DenseShapeT ds;
 };
 
 
-struct SparseShapeFixture : public RangeFixture {
-  typedef TiledArray::SparseShape<GlobalFixture::coordinate_system, std::size_t> SparseShapeT;
+struct SparseShapeFixture : public BaseShapeFixture {
+  typedef TiledArray::SparseShape<GlobalFixture::coordinate_system> SparseShapeT;
   typedef madness::WorldDCDefaultPmap<std::size_t> PMapT;
 
   SparseShapeFixture() :
-      world(* GlobalFixture::world),
-      pmap(new SparseShapeFixture::PMapT(* GlobalFixture::world)),
+      RangeFixture(),
+      VersionedPmapFixture(),
+      BaseShapeFixture(),
       list(SparseShapeFixture::make_list(r.volume())),
-      ss(world, r, pmap, list.begin(), list.end())
+      ss(* GlobalFixture::world, r, m, list.begin(), list.end())
   { }
 
   static std::vector<std::size_t> make_list(const std::size_t size) {
@@ -39,13 +50,11 @@ struct SparseShapeFixture : public RangeFixture {
     return result;
   }
 
-  madness::World& world;
-  std::shared_ptr<PMapT> pmap;
   std::vector<std::size_t> list;
   SparseShapeT ss;
 };
 
-struct PredShapeFixture : public RangeFixture {
+struct PredShapeFixture : public BaseShapeFixture {
   struct Even {
     typedef GlobalFixture::coordinate_system::size_array size_array;
 
@@ -63,17 +72,24 @@ struct PredShapeFixture : public RangeFixture {
     size_array weight;
   }; // struct Even
 
-  typedef TiledArray::PredShape<GlobalFixture::coordinate_system, std::size_t, Even> PredShapeT;
+  typedef TiledArray::PredShape<GlobalFixture::coordinate_system, Even> PredShapeT;
 
-  PredShapeFixture() : p(r.weight()), ps(r, p)
+  PredShapeFixture() :
+      RangeFixture(),
+      VersionedPmapFixture(),
+      BaseShapeFixture(),
+      p(r.weight()),
+      ps(r, m, p)
   { }
 
   Even p;
   PredShapeT ps;
 };
 
-struct ShapeFixture : public PredShapeFixture, public SparseShapeFixture, public DenseShapeFixture {
-  typedef TiledArray::Shape<GlobalFixture::coordinate_system, std::size_t>* ShapePtr;
+struct ShapeFixture : public virtual PredShapeFixture, public virtual SparseShapeFixture, public virtual DenseShapeFixture {
+  typedef TiledArray::Shape<GlobalFixture::coordinate_system>* ShapePtr;
+
+  ShapeFixture() : RangeFixture() { }
 
 };
 

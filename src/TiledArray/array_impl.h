@@ -16,22 +16,24 @@ namespace TiledArray {
   namespace detail {
 
     template <typename T, typename CS, typename P >
-    class ArrayImpl : private boost::noncopyable {
+    class ArrayImpl : public madness::WorldObject<ArrayImpl<T,CS,P> >, private boost::noncopyable {
+    public:
+      typedef CS coordinate_system; ///< The array coordinate system
+
     private:
-//      typedef madness::WorldObject<ArrayImpl<T, CS, P> > WorldObject_;
+      typedef ArrayImpl<T, CS, P> ArrayImpl_;
+      typedef madness::WorldObject<ArrayImpl_> WorldObject_;
       typedef P policy;
-      typedef detail::Key<typename CS::ordinal_index, typename CS::index> key_type;
+      typedef typename coordinate_system::key_type key_type;
       typedef madness::Future<typename policy::value_type> data_type;
-      typedef madness::WorldDCPmapInterface< key_type > pmap_interface_type;
-      typedef madness::WorldContainer<key_type, data_type> container_type;
+      typedef madness::ConcurrentHashMap<key_type, data_type> container_type;
       typedef detail::VersionedPmap<key_type> pmap_type;
-      typedef Shape<CS, key_type> shape_type;
-      typedef DenseShape<CS, key_type> dense_shape_type;
-      typedef SparseShape<CS, key_type> sparse_shape_type;
+      typedef Shape<CS> shape_type;
+      typedef DenseShape<CS> dense_shape_type;
+      typedef SparseShape<CS> sparse_shape_type;
 
     public:
       typedef typename policy::value_type value_type; /// The array value type (i.e. tiles)
-      typedef CS coordinate_system; ///< The array coordinate system
       typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
       typedef typename coordinate_system::index index; ///< Array coordinate index type
       typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
@@ -47,26 +49,47 @@ namespace TiledArray {
 
       /// \param w The world where the array will live.
       /// \param tr The tiled range object that will be used to set the array tiling.
-      ArrayImpl(madness::World& w, const tiled_range_type& tr, unsigned int v = 0) :
+      /// \param v The version number of the array
+      ArrayImpl(madness::World& w, const tiled_range_type& tr, unsigned int v) :
+          WorldObject_(w),
           tiled_range_(tr),
-          pmap_(make_pmap_(w, v)),
-          shape_(),
-          tiles_(w, pmap_, false)
+          pmap_(w.size(), v),
+          shape_(static_cast<shape_type*>(new dense_shape_type(tiled_range_.tiles(), pmap_))),
+          tiles_()
       { }
 
-      /// Set the array shape.
-      madness::Void set_shape(const std::shared_ptr<shape_type>& s) {
-        TA_ASSERT(shape_.get() == NULL, std::runtime_error,
-            "Array shape has already been set.");
-        TA_ASSERT(s.get() != NULL, std::runtime_error,
-            "The shape to be assigned cannot be null.");
+      /// Dense array constructor
 
-        // Set the array shape and add local tiles to the distributed container.
-        shape_ = s;
-        initialize_();
+      /// \param w The world where the array will live.
+      /// \param tr The tiled range object that will be used to set the array tiling.
+      /// \param first An input iterator that points to the a list of tiles to be
+      /// added to the sparse array.
+      /// \param last An input iterator that points to the last position in a list
+      /// of tiles to be added to the sparse array.
+      /// \param v The version number of the array
+      template <typename InIter>
+      ArrayImpl(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, unsigned int v) :
+          WorldObject_(w),
+          tiled_range_(tr),
+          pmap_(w.size(), v),
+          shape_(static_cast<shape_type*>(new sparse_shape_type(w, tiled_range_.tiles(), pmap_, first, last))),
+          tiles_()
+      { }
 
-        return madness::None;
-      }
+      /// Dense array constructor
+
+      /// \param w The world where the array will live.
+      /// \param tr The tiled range object that will be used to set the array tiling.
+      /// \param p The predicate for the array shape
+      /// \param v The version number for the array
+      template <typename Pred>
+      ArrayImpl(madness::World& w, const tiled_range_type& tr, const Pred& p, unsigned int v) :
+          WorldObject_(w),
+          tiled_range_(tr),
+          pmap_(w.size(), v),
+          shape_(static_cast<shape_type*>(new PredShape<coordinate_system, Pred>(tiled_range_.tiles(), pmap_, p))),
+          tiles_()
+      { }
 
       /// Version number accessor
 
@@ -181,7 +204,7 @@ namespace TiledArray {
       /// Array::ordinal_index)
       /// \tparam InIter Input iterator type for the data
       /// \param i The index where the tile will be inserted
-      /// \param v The value that will be used to initialize the tile data
+      /// \param t The value that will be used to initialize the tile data
       /// \throw std::out_of_range When \c i is not included in the array range
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
@@ -219,113 +242,16 @@ namespace TiledArray {
 
       /// \return A const shared pointer reference to the array process map
       /// \throw nothing
-      const std::shared_ptr< pmap_interface_type >& get_pmap() const { return shape_->pmap(); }
+      const pmap_type& pmap() const { return pmap_; }
 
       /// Shape accessor
-      const std::shared_ptr<shape_type>& get_shape() const { return shape_; }
+      const shape_type& get_shape() const { return shape_; }
 
       /// World accessor
       madness::World& get_world() const { return tiles_.get_world(); }
 
-      /// Construct a dense shape
-
-      /// \param r The tile range object
-      /// \param pmap The array process map
-      static std::shared_ptr<shape_type>
-      make_shape(const range_type& r) {
-#ifdef NDEBUG
-        // Optimize away the dynamic cast checking
-        std::shared_ptr result(static_cast<shape_type*>(new dense_shape_type(r)));
-#else
-        std::shared_ptr<shape_type> result;
-        dense_shape_type* s = new dense_shape_type(r);
-        try {
-          result.reset(dynamic_cast<shape_type*>(s));
-        } catch(...) {
-          delete s;
-          throw;
-        }
-#endif
-        return result;
-      }
-
-      /// Construct a sparse shape
-
-      /// \tparam InIter Input iterator type for tile list
-      /// \param pmap The array process map
-      /// \param first An input iterator pointing to the first element in a list
-      /// of tiles to be added to the shape.
-      /// \param last An input iterator pointing to the last element in a list of
-      /// tiles to be added to the shape.
-      /// \note InIter::value_type may be Array::index, Array::ordinal_index, or
-      /// Array::key_type types.
-      template <typename InIter>
-      static std::shared_ptr<shape_type>
-      make_shape(madness::World& w, const range_type& r,
-          const std::shared_ptr<pmap_interface_type>& pmap, InIter first, InIter last) {
-#ifdef NDEBUG
-        // Optimize away the dynamic cast checking
-        std::shared_ptr<shape_type> result(
-            static_cast<shape_type*>(new sparse_shape_type(w, r, pmap, first, last)));
-#else
-        std::shared_ptr<shape_type> result;
-        sparse_shape_type* s = new sparse_shape_type(w, r, pmap, first, last);
-        try {
-          result.reset(dynamic_cast<shape_type*>(s));
-        } catch(...) {
-          delete s;
-          throw;
-        }
-#endif
-        return result;
-      }
-
-      /// Construct a predicated shape
-
-      /// \tparam Pred The predicate type
-      /// \param pmap The array process map
-      /// \param p The predicate used to construct the predicated shape
-      template <typename Pred>
-      static std::shared_ptr<shape_type>
-      make_shape(const range_type& r, const Pred& p) {
-#ifdef NDEBUG
-        // Optimize away the dynamic_cast runtime check
-        std::shared_ptr<shape_type> result(
-            static_cast<shape_type*>(new PredShape<coordinate_system, key_type, Pred>(r, p)));
-#else
-        std::shared_ptr<shape_type> result;
-        sparse_shape_type* s = new PredShape<coordinate_system, key_type, Pred>(r, p);
-        try {
-          result.reset(dynamic_cast<shape_type*>(s));
-        } catch(...) {
-          delete s;
-          throw;
-        }
-#endif
-        return result;
-      }
-
     private:
 
-      static std::shared_ptr<pmap_interface_type>
-      make_pmap_(madness::World& w, unsigned int v) {
-#ifdef NDEBUG
-        // Optimize away the dynamic_cast runtime check
-        std::shared_ptr<pmap_interface_type> result(
-            static_cast<pmap_interface_type*>(new pmap_type(w, v)));
-
-#else
-        std::shared_ptr<pmap_interface_type> result;
-        pmap_type* p = new pmap_type(w, v);
-        try {
-          result = std::shared_ptr<pmap_interface_type>(dynamic_cast<pmap_interface_type*>(p));
-        } catch(...) {
-          delete p;
-          throw;
-        }
-#endif
-        return result;
-      }
 
       /// Initialize the array container by inserting local tiles.
       void initialize_() {
@@ -377,31 +303,8 @@ namespace TiledArray {
       /// \param k The key to convert to a complete key
       /// \return A key that contains both key1 and key2
       key_type key_(const key_type& k) const {
-        if(k.keys() == 1)
-          return key_(k.key1());
-        else if(k.keys() == 2)
-          return key_(k.key2());
-
-        return k;
-      }
-
-
-      /// Construct a complete key from an index
-
-      /// \param k The index of the key
-      /// \return A key that contains both key1 and key2
-      key_type key_(const index& k) const {
-        return key_type(coordinate_system::calc_ordinal(k,
-            tiled_range_.tiles().weight(), tiled_range_.tiles().start()), k);
-      }
-
-      /// Construct a complete key from an ordinal index
-
-      /// \param k The ordinal index of the key
-      /// \return A key that contains both key1 and key2
-      key_type key_(const ordinal_index& k) const {
-        return key_type(k, coordinate_system::calc_index(k,
-            tiled_range_.tiles().weight()));
+        return coordinate_system::key(k, tiled_range_.tiles().weight(),
+            tiled_range_.tiles().start());
       }
 
       value_type find_handler(const typename container_type::iterator& it) const {
@@ -411,11 +314,11 @@ namespace TiledArray {
         return it->second;
       }
 
-      TiledRange<CS> tiled_range_;                      ///< Tiled range object
-      std::shared_ptr<pmap_interface_type> pmap_;    ///< Versioned process map
-      std::shared_ptr<shape_type> shape_;             ///< Pointer to the shape object
-      container_type tiles_;                            ///< Distributed container that holds tiles
-    };
+      tiled_range_type tiled_range_; ///< Tiled range object
+      pmap_type pmap_;     ///< Versioned process map
+      std::shared_ptr<shape_type> shape_;                             ///< Pointer to the shape object
+      container_type tiles_;                          ///< Distributed container that holds tiles
+    }; // class ArrayImpl
 
   } // detail
 } // namespace TiledArray

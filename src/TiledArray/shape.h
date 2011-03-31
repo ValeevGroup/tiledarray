@@ -4,15 +4,20 @@
 #include <TiledArray/error.h>
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/range.h>
-#include <TiledArray/madness_runtime.h>
+#include <TiledArray/versioned_pmap.h>
 #include <world/sharedptr.h>
-#include <world/worlddc.h>
 #include <typeinfo>
 
 namespace TiledArray {
 
-  template <typename, unsigned int, typename>
-  class ArrayCoordinate;
+  // Forward declarations
+  template <typename>
+  class DenseShape;
+  template <typename>
+  class SparseShape;
+  template <typename, typename>
+  class PredShape;
+
 
   /// Shape of array tiles
 
@@ -20,131 +25,142 @@ namespace TiledArray {
   /// and handles interprocess communication when the information is not locally
   /// available.
   /// \tparam CS The \c Shape coordinate system type
-  /// \tparam Key The key type used by the process map [ Default =
-  /// \c Array::key_type ].
   /// \note This is an interface class only and cannot be constructed directly.
   /// Insted use DenseShape, SparseShape, or PredShape.
-  template <typename CS, typename Key>
+  template <typename CS>
   class Shape {
   private:
-    typedef Shape<CS, Key> Shape_;  ///< This type
-    typedef Key key_type;           ///< The pmap key type
-    typedef madness::WorldDCPmapInterface< key_type > pmap_interface_type;
-                                    ///< The process map interface type
+    typedef Shape<CS> Shape_;  ///< This type
 
     // assignment not allowed
+    Shape();
     Shape_& operator=(const Shape_&);
 
   public:
     typedef CS coordinate_system;
+    typedef typename coordinate_system::key_type key_type;           ///< The pmap key type
     typedef typename coordinate_system::index index;
     typedef typename coordinate_system::ordinal_index ordinal_index;
-    typedef Range<coordinate_system> range_type; ///< Range object type
+    typedef Range<coordinate_system> range_type;  ///< Range object type
+    typedef detail::VersionedPmap<key_type> pmap_type; ///< The process map interface type
 
   protected:
     /// Shape constructor
 
     /// Shape base class constructor
-    Shape(const range_type& r) : range_(&r) { }
+    /// \param r The range for the shape
+    /// \param m The process map for the shape
+    Shape(const range_type& r, const pmap_type& m) : range_(r), pmap_(m) { }
 
     /// Copy constructor
 
     /// \param other The shape to be copied
-    Shape(const Shape_& other) : range_(other.range_) { }
-
-    /// Range accessor
-
-    /// \return A const reference to the range associated with this shape.
-    const range_type& range() const { return *range_; }
+    Shape(const Shape_& other) : range_(other.range_), pmap_(other.pmap_) { }
 
   public:
+
+    /// Virtual destructor
+    virtual ~Shape() { }
 
     /// Create a copy of this object
 
     /// \return A shared pointer to a copy of this object.
     virtual std::shared_ptr<Shape_> clone() const = 0;
 
-    /// Virtual destructor
-    virtual ~Shape() { }
-
-    /// Set a new range for the shape
-    Shape_ set(const range_type& r) {
-      range_ = &r;
-      return *this;
-    }
-
-    /// Checks that the index, \c i , is stored locally
-
-    /// \tparam Index Ordinal or coordinate index type
-    /// \param i The index to test
-    /// \return If \c i is included in the shape range and this rank owns \c i
-    /// (according to the shape process map), then true. Otherwise false.
-    template <typename Index>
-    bool is_local(const Index& i) const {
-      return range_->includes(i) && this->local(ord_(i));
-    }
-
-    template <typename Index>
-    madness::Future<bool> includes(const Index& i) const {
-      if(! range_->includes(i)) // Check that it is in range
-        madness::Future<bool>(false);
-
-      return this->probe(ord_(i));
-    }
-
-    /// Check that \c i is locally available and included
-
-    /// \tparam Index The index type (index or ordinal_index).
-    /// \param i The index to be checked
-    template <typename Index>
-    bool is_local_and_includes(const Index& i) const {
-      if(is_local(i))
-        return this->probe(ord_(i)).get();
-
-      return false;
-    }
-
     /// Type info accessor for derived class
     virtual const std::type_info& type() const = 0;
 
+    /// Probe for the presence of an element at key
+    virtual bool probe(const key_type& k) const {
+      return range_.includes(ord(k));
+    }
+
   protected:
 
-    /// Calculate the ordinal index
+    ordinal_index ord(ordinal_index o) const { return o; }
 
-    /// \param i The ordinal index to convert
-    /// \return The ordinal index of \c i
-    /// \note This function is a pass through function. It is only here to make
-    /// life easier with templates.
-    /// \note No range checking is done in this function.
-    ordinal_index ord_(const ordinal_index& i) const { return i; }
+    ordinal_index ord(const index& i) const {
+      return coordinate_system::ord(i, range_.weight(), range_.start());
+    }
 
-    /// Calculate the ordinal index
+    ordinal_index ord(const key_type& k) const {
+      return coordinate_system::calc_ordinal(k, range_.weight(), range_.start());
+    }
 
-    /// \param i The coordinate index to convert
-    /// \return The ordinal index of \c i
-    /// \note No range checking is done in this function.
-    ordinal_index ord_(const index& i) const {
-      return coordinate_system::calc_ordinal(i, range_->weight(), range_->start());
+    template <typename Index>
+    key_type key(const Index& i) const { return coordinate_system::key(i, range_.weight(), range_.start()); }
+
+    typename range_type::volume_type volume() { return range_.volume(); }
+
+    template <typename Index>
+    ProcessID owner(const Index& i) const {
+      return pmap_.owner(coordinate_system::key(i));
     }
 
   private:
-
-    // The virtual function interface
-
-    /// Check that a tiles information is stored locally.
-
-    /// \param i The ordinal index to check.
-    virtual bool local(ordinal_index i) const = 0;
-
-    /// Probe for the presence of a tile in the shape
-
-    /// \param i The index to be probed.
-    virtual madness::Future<bool> probe(ordinal_index i) const = 0;
-
-    // private data
-
-    const range_type* range_; ///< The range object associated with this shape.
+    const range_type& range_; ///< The range object associated with this shape.
+    const pmap_type& pmap_;   ///< The process map for the shape.
   };
+
+  /// Runtime type checking for dense shape
+
+  /// \tparam CS Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c DenseShape class return \c true , otherwise \c false .
+  template <typename CS>
+  inline bool is_dense_shape(const std::shared_ptr<Shape<CS> >& s) {
+    return s->type() == typeid(DenseShape<CS>);
+  }
+
+  /// Runtime type checking for dense shape
+
+  /// \tparam CS Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c DenseShape class return \c true , otherwise \c false .
+  template <typename CS>
+  inline bool is_dense_shape(const std::shared_ptr<DenseShape<CS> >&) {
+    return true;
+  }
+
+  /// Runtime type checking for sparse shape
+
+  /// \tparam CS Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c SparseShape class return \c true , otherwise \c false .
+  template <typename CS>
+  inline bool is_sparse_shape(const std::shared_ptr<Shape<CS> >& s) {
+    return s->type() == typeid(SparseShape<CS>);
+  }
+
+  /// Runtime type checking for sparse shape
+
+  /// \tparam CS Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c SparseShape class return \c true , otherwise \c false .
+  template <typename CS>
+  inline bool is_sparse_shape(const std::shared_ptr<SparseShape<CS> >&) {
+    return true;
+  }
+
+  /// Runtime type checking for predicated shape
+
+  /// \tparam CS Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c PredShape class return \c true , otherwise \c false .
+  template <typename CS>
+  inline bool is_pred_shape(const std::shared_ptr<Shape<CS> >& s) {
+    return (! is_dense_shape(s)) && (! is_sparse_shape(s));
+  }
+
+  /// Runtime type checking for predicated shape
+
+  /// \tparam CS Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c PredShape class return \c true , otherwise \c false .
+  template <typename CS, typename Pred>
+  inline bool is_pred_shape(const std::shared_ptr<PredShape<CS, Pred> >& s) {
+    return (! is_dense_shape(s)) && (! is_sparse_shape(s));
+  }
 
 } // namespace TiledArray
 

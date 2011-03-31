@@ -7,9 +7,8 @@
 #include <TiledArray/error.h>
 #include <boost/operators.hpp>
 #include <world/array.h>
-#include <boost/type_traits/is_integral.hpp>
 #include <boost/utility/enable_if.hpp>
-#include <boost/functional/hash.hpp>
+#include <world/worldhash.h>
 #include <iosfwd>
 #include <cstddef>
 #include <stdarg.h>
@@ -49,7 +48,7 @@ namespace TiledArray {
     struct Enabler { };
 
   public:
-    BOOST_STATIC_ASSERT(boost::is_integral<I>::value);
+    BOOST_STATIC_ASSERT(std::is_integral<I>::value);
 
     typedef ArrayCoordinate<I,DIM,Tag> ArrayCoordinate_;                        ///< This type
     typedef I index;                                                            ///< Coordinate element type
@@ -383,8 +382,8 @@ namespace TiledArray {
   /// \tparam Tag The array coordinate tag type
   /// \param c The array coordinate to hash
   template <typename I, unsigned int DIM, typename Tag>
-  std::size_t hash_value(const ArrayCoordinate<I,DIM,Tag>& c) {
-      return boost::hash_range(c.begin(), c.end());
+  madness::hashT hash_value(const ArrayCoordinate<I,DIM,Tag>& c) {
+      return hash_value(c.data());
   }
 
   /// Append an ArrayCoordinate to an output stream.

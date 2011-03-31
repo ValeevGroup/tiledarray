@@ -26,16 +26,6 @@ namespace TiledArray {
     binary_transform<Op, F0, F1> make_binary_transform(Op op, F0 f0, F1 f1);
     template<typename Op, typename F>
     unary_transform<Op, F> make_unary_transform(Op op, F f);
-    template <typename Value, typename OutIter>
-    void initialize_from_values(Value val, OutIter result, unsigned int, boost::true_type);
-    template <typename InIter, typename OutIter>
-    void initialize_from_values(InIter, OutIter, unsigned int, boost::false_type);
-    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
-    void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag> > k, OutIter result, unsigned int, boost::false_type);
-    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
-    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag>, I > k, OutIter result, unsigned int, boost::false_type);
-    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
-    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag>, I >, OutIter, unsigned int, boost::false_type);
 
     template<typename P>
     struct pair_first : public std::unary_function<P, typename P::first_type> {
@@ -96,34 +86,6 @@ namespace TiledArray {
     template<typename Op, typename F>
     unary_transform<Op, F> make_unary_transform(Op op, F f) {
       return unary_transform<Op, F>(op, f);
-    }
-
-    // help with initialization of classes with constructors that need disambiguation
-    template <typename Value, typename OutIter>
-    void initialize_from_values(Value val, OutIter result, unsigned int, boost::true_type) {
-      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
-      *result = val;
-    }
-    template <typename InIter, typename OutIter>
-    void initialize_from_values(InIter first, OutIter result, unsigned int size, boost::false_type) {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
-      for(unsigned int i = 0; i < size; ++i, ++result, ++first)
-        *result = *first;
-    }
-
-    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
-    void initialize_from_values(Key<I, ArrayCoordinate<I, DIM, Tag> > k,
-        OutIter result, unsigned int, boost::false_type)
-    {
-      std::copy(k.key2().begin(), k.key2().end(), result);
-    }
-
-    template<typename I, unsigned int DIM, typename Tag, typename OutIter>
-    void initialize_from_values(Key<ArrayCoordinate<I, DIM, Tag>, I > k,
-        OutIter result, unsigned int, boost::false_type)
-    {
-      std::copy(k.key1().begin(), k.key1().end(), result);
     }
 
   } // namespace detail

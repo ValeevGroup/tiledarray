@@ -65,27 +65,27 @@ namespace TiledArray {
 
     template <typename T>
     struct is_input_iterator :
-        public boost::is_base_of<std::input_iterator_tag, typename is_iterator<T>::iterator_category>
+        public std::is_base_of<std::input_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
 
     template <typename T>
     struct is_output_iterator :
-        public boost::is_base_of<std::output_iterator_tag, typename is_iterator<T>::iterator_category>
+        public std::is_base_of<std::output_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
 
     template <typename T>
     struct is_forward_iterator :
-        public boost::is_base_of<std::forward_iterator_tag, typename is_iterator<T>::iterator_category>
+        public std::is_base_of<std::forward_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
 
     template <typename T>
     struct is_bidirectional_iterator :
-        public boost::is_base_of<std::bidirectional_iterator_tag, typename is_iterator<T>::iterator_category>
+        public std::is_base_of<std::bidirectional_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
 
     template <typename T>
     struct is_random_iterator :
-        public boost::is_base_of<std::random_access_iterator_tag, typename is_iterator<T>::iterator_category>
+        public std::is_base_of<std::random_access_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
 
     template<typename T>

@@ -3,7 +3,6 @@
 
 #include <TiledArray/madness_runtime.h>
 #include <world/worlddc.h>
-#include <boost/functional/hash.hpp>
 
 namespace TiledArray {
   namespace detail {
@@ -13,14 +12,16 @@ namespace TiledArray {
     /// This process map returns a new mapping for each new version.
     /// \tparam I The index type that will be hashed
     /// \tparam Hasher The hashing function type
-    template <typename I, typename Hasher = boost::hash<I> >
-    class VersionedPmap : public madness::WorldDCPmapInterface<I> {
+    template <typename Key, typename Hasher = madness::Hash<Key> >
+    class VersionedPmap : public madness::WorldDCPmapInterface<Key> {
     private:
         const int size_;       ///< The number of processes in the world
         unsigned int version_;  ///< The process map version
         Hasher hashfun_;        ///< The hashing function
 
     public:
+        typedef Key key_type;
+
         /// Primary constructor
 
         /// \param s The world size
@@ -43,12 +44,12 @@ namespace TiledArray {
 
         /// This function calculates the owning process of an index value by
         /// hashing the given index and the pmap version number.
-        /// \param i The index value to be mapped to a process.
+        /// \param k The key to be mapped to a process.
         /// \return The process number associated with the given index. This
         /// process number is less-than-or-equal-to world size.
-        ProcessID owner(const I& i) const {
-          std::size_t seed = hashfun_(i);
-          boost::hash_combine(seed, version_);
+        virtual ProcessID owner(const key_type& k) const {
+          std::size_t seed = hashfun_(k);
+          madness::hash_combine(seed, version_);
           return (seed % size_);
         }
     }; // class VersionedPmap
