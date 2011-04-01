@@ -80,9 +80,10 @@ namespace TiledArray {
       /// AnnotatedArray assignment operator.
 
       /// \param other The AnnotatedArray to be copied
-      AnnotatedArray_& operator =(const AnnotatedArray& other) {
+      AnnotatedArray_& operator =(const AnnotatedArray_& other) {
         array_ = other.array_;
         vars_ = other.vars_;
+        return *this;
       }
 
       /// Assign the result of the given expression to this object.

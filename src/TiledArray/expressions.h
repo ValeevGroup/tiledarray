@@ -112,7 +112,7 @@ namespace TiledArray {
     template<typename LeftExp, typename RightExp>
     Expression<BinaryExpression<LeftExp, RightExp, std::minus> >
     operator -(const LeftExp& left, const RightExp& right) {
-      Expression<BinaryExpression<LeftExp, RightExp, std::minus> >(left, right);
+      return Expression<BinaryExpression<LeftExp, RightExp, std::minus> >(left, right);
     }
 
     /// Constructs a contraction expression
@@ -124,7 +124,7 @@ namespace TiledArray {
     template<typename LeftExp, typename RightExp>
     Expression<BinaryExpression<LeftExp, RightExp, std::multiplies> >
     operator *(const LeftExp& left, const RightExp& right) {
-      Expression<BinaryExpression<LeftExp, RightExp, std::minus> >(left, right);
+      return Expression<BinaryExpression<LeftExp, RightExp, std::minus> >(left, right);
     }
 
     /// Constructs a negation expression
