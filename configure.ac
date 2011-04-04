@@ -57,6 +57,7 @@ ACX_CHECK_MADNESS
 # Check for the presence of boost header files and add the --with-boost-test-lib
 # option. 
 ACX_CHECK_BOOST
+ACX_WITH_BOOST_TEST_LIB
 
 AC_ARG_WITH([blas],
             [AS_HELP_STRING([--with-blas@<:@=DIR@:>@], [DIR where the blas library is installed.])],
