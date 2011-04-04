@@ -3,6 +3,7 @@
 
 #include <TiledArray/madness_runtime.h>
 #include <world/worlddc.h>
+#include <world/worldhash.h>
 
 namespace TiledArray {
   namespace detail {
@@ -16,7 +17,7 @@ namespace TiledArray {
     class VersionedPmap : public madness::WorldDCPmapInterface<Key> {
     private:
         const int size_;       ///< The number of processes in the world
-        unsigned int version_;  ///< The process map version
+        std::size_t version_;  ///< The process map version
         Hasher hashfun_;        ///< The hashing function
 
     public:
@@ -38,7 +39,7 @@ namespace TiledArray {
         /// Increment the version counter
 
         /// \return The new version number for the pmap
-        unsigned int version() { return version_; }
+        std::size_t version() { return version_; }
 
         /// Owner of an index
 
@@ -48,7 +49,7 @@ namespace TiledArray {
         /// \return The process number associated with the given index. This
         /// process number is less-than-or-equal-to world size.
         virtual ProcessID owner(const key_type& k) const {
-          std::size_t seed = hashfun_(k);
+          madness::hashT seed = hashfun_(k);
           madness::hash_combine(seed, version_);
           return (seed % size_);
         }

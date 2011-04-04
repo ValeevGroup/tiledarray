@@ -395,7 +395,8 @@ namespace TiledArray {
     template <typename Key1, typename Key2>
     std::size_t hash_value(const Key<Key1,Key2>& k) {
       TA_ASSERT(k.keys() & 1, std::runtime_error, "Key1 must be defined for key.");
-      return madness::hash_value(k.key1());
+      madness::Hash<Key1> hasher;
+      return hasher(k.key1());
     }
 
     template<typename Key1, typename Key2>
