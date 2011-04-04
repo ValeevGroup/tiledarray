@@ -5,17 +5,17 @@
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/coordinates.h>
 #include <TiledArray/range_iterator.h>
+#include <TiledArray/type_traits.h>
 #include <boost/utility/enable_if.hpp>
-#include <boost/type_traits/is_signed.hpp>
 #include <boost/static_assert.hpp>
 #include <algorithm>
 
 namespace TiledArray {
 
   // Forward declaration of TiledArray components.
-  template <unsigned int DIM>
+  template <unsigned int>
   class Permutation;
-  template <typename CS>
+  template <typename>
   class Range;
   template <typename I, unsigned int DIM, typename Tag>
   void swap(ArrayCoordinate<I,DIM,Tag>& c1, ArrayCoordinate<I,DIM,Tag>& c2);
@@ -160,24 +160,6 @@ namespace TiledArray {
       ar & start_ & finish_ & size_ & weight_;
     }
 
-  private:
-
-    template <typename T>
-    typename boost::enable_if< boost::is_signed<T>, bool>::type
-    include_ordinal_(const T& i) const {
-      return (i >= 0) && (i < volume());
-    }
-
-    template <typename T>
-    typename boost::disable_if< boost::is_signed<T>, bool>::type
-    include_ordinal_(const T& i) const {
-      return i < volume();
-    }
-
-    void increment(index& i) const {
-      coordinate_system::increment_coordinate(i, start_, finish_);
-    }
-
     void swap(Range_& other) {
       TiledArray::swap(start_, other.start_);
       TiledArray::swap(finish_, other.finish_);
@@ -185,7 +167,23 @@ namespace TiledArray {
       TiledArray::swap(weight_, other.weight_);
     }
 
-    friend void TiledArray::swap<>(Range_&, Range_&);
+  private:
+
+    template <typename T>
+    typename boost::enable_if<std::is_signed<T>, bool>::type
+    include_ordinal_(const T& i) const {
+      return (i >= 0) && (i < volume());
+    }
+
+    template <typename T>
+    typename boost::disable_if<std::is_signed<T>, bool>::type
+    include_ordinal_(const T& i) const {
+      return i < volume();
+    }
+
+    void increment(index& i) const {
+      coordinate_system::increment_coordinate(i, start_, finish_);
+    }
 
     index start_;    ///< Tile origin
     index finish_;   ///< Tile upper bound
@@ -281,19 +279,17 @@ namespace TiledArray {
       ar & start_ & finish_ & size_;
     }
 
-  private:
-
-    void increment(index& i) const {
-      ++i;
-    }
-
     void swap(Range_& other) {
       std::swap(start_, other.start_);
       std::swap(finish_, other.finish_);
       std::swap(size_, other.size_);
     }
 
-    friend void TiledArray::swap<>(Range_&, Range_&);
+  private:
+
+    void increment(index& i) const {
+      ++i;
+    }
 
     index start_;    ///< Tile origin
     index finish_;   ///< Tile upper bound

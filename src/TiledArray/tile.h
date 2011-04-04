@@ -4,11 +4,10 @@
 #include <TiledArray/error.h>
 #include <TiledArray/range.h>
 #include <TiledArray/annotated_array.h>
+#include <TiledArray/type_traits.h>
 #include <Eigen/Core>
 #include <world/sharedptr.h>
 #include <world/archive.h>
-#include <boost/type_traits/has_trivial_copy.hpp>
-#include <boost/type_traits/has_trivial_destructor.hpp>
 #include <iterator>
 #include <string>
 #include <algorithm>
@@ -78,7 +77,7 @@ namespace TiledArray {
         last_(first_ + other.range_->volume())
     {
       try {
-        uninitialized_copy_(other.first_, other.last_, first_);
+        std::uninitialized_copy(other.first_, other.last_, first_);
       } catch(...) {
         alloc_type::deallocate(first_, other.range_->volume());
         throw;
@@ -102,7 +101,7 @@ namespace TiledArray {
         last_(first_ + r->volume())
     {
       try {
-        uninitialized_fill_(first_, last_, val);
+        std::uninitialized_fill(first_, last_, val);
       } catch (...) {
         alloc_type::deallocate(first_, r->volume());
         throw;
@@ -133,7 +132,7 @@ namespace TiledArray {
       try {
         TA_ASSERT(volume_type(std::distance(first, last)) == r->volume(), std::runtime_error,
             "The distance between initialization iterators must be equal to the tile volume.");
-        uninitialized_copy_(first, last, first_);
+        std::uninitialized_copy(first, last, first_);
       } catch (...) {
         alloc_type::deallocate(first_, r->volume());
         throw;
@@ -335,6 +334,16 @@ namespace TiledArray {
       return expressions::AnnotatedArray<Tile_>(* const_cast<Tile_*>(this), v);
     }
 
+    /// Exchange the content of this object with other.
+
+    /// \param other The other Tile to swap with this object
+    /// \throw nothing
+    void swap(Tile_& other) {
+      std::swap<alloc_type>(*this, other);
+      boost::swap(range_, other.range_);
+      std::swap(first_, other.first_);
+      std::swap(last_, other.last_);
+    }
 
   private:
 
@@ -357,96 +366,12 @@ namespace TiledArray {
       return coordinate_system::calc_ordinal(i, range_->weight(), range_->start());
     }
 
-    template<typename InIter>
-    pointer uninitialized_copy_(InIter first, InIter last, pointer result) {
-      return uninitialized_copy_aux_(first, last, result, boost::has_trivial_copy<value_type>());
-    }
-
-    /// Copy iterator range into an uninitialized memory
-
-    /// This function is for data with a non-trivial copy operation (i.e. a
-    /// a simple memory copy is not safe).
-    /// \tparam InIter Input iterator type for the data to copy.
-    /// \param first An input iterator to the beginning of the data to copy.
-    /// \param last An input iterator to one past the end of the data to copy.
-    /// \param result A pointer to the first element where the data will be copied.
-    /// \return A pointer to the end of the copied data.
-    /// \throw anything This function will rethrow any thing that is thrown
-    /// by the T copy constructor.
-    template<typename InIter>
-    pointer uninitialized_copy_aux_(InIter first, InIter last, pointer result, boost::false_type) {
-      pointer cur = result;
-      try {
-        for(; first != last; ++first, ++cur)
-          alloc_type::construct(&*cur, *first);
-      } catch(...) {
-        destroy(result, cur);
-        throw;
-      }
-
-      return cur;
-    }
-
-    /// Copy iterator range into an uninitialized memory
-
-    /// This function is for data with a trivial copy operation (i.e. a simple
-    /// memory copy is safe).
-    /// \tparam InIter Input iterator type for the data to copy.
-    /// \param first An input iterator to the beginning of the data to copy.
-    /// \param last An input iterator to one past the end of the data to copy.
-    /// \param result A pointer to the first element where the data will be copied.
-    /// \return A pointer to the end of the copied data.
-    /// \throw nothing
-    template<typename InIter>
-    pointer uninitialized_copy_aux_(InIter first, InIter last, pointer result, boost::true_type) {
-      return std::copy(first, last, result);
-    }
-
-    /// Fill a range of memory with the given value.
-
-    /// \param first A pointer to the first element in the memory range to fill
-    /// \param last A pointer to one past the last element in the memory range to fill
-    /// \param v The value to be copied into the memory range
-    void uninitialized_fill_(pointer first, pointer last, const value_type& v) {
-      uninitialized_fill_aux_(first, last, v, boost::has_trivial_copy<value_type>());
-    }
-
-    /// Fill a range of memory with the given value.
-
-    /// This is a helper function for filling data with a non-trivial copy operation.
-    /// \param first A pointer to the first element in the memory range to fill
-    /// \param last A pointer to one past the last element in the memory range to fill
-    /// \param v The value to be copied into the memory range
-    /// \throw anything This function will rethrow any thing that is thrown
-    /// by the T copy constructor.
-    void uninitialized_fill_aux_(pointer first, pointer last, const value_type& v, boost::false_type) {
-      pointer cur = first;
-      try {
-        for(; cur != last; ++cur)
-          alloc_type::construct(cur, v);
-      } catch(...) {
-        destroy_(first, cur);
-        throw;
-      }
-    }
-
-    /// Fill a range of memory with the given value.
-
-    /// This is a helper function for filling data with a trivial copy operation.
-    /// \param first A pointer to the first element in the memory range to fill
-    /// \param last A pointer to one past the last element in the memory range to fill
-    /// \param v The value to be copied into the memory range
-    /// \throw nothing
-    void uninitialized_fill_aux_(pointer first, pointer last, const value_type& v, boost::true_type) {
-      std::fill(first, last, v);
-    }
-
     /// Call the destructor for a range of data.
 
     /// \param first A pointer to the first element in the memory range to destroy
     /// \param last A pointer to one past the last element in the memory range to destroy
     void destroy_(pointer first, pointer last) {
-      destroy_aux_(first, last, boost::has_trivial_destructor<value_type>());
+      destroy_aux_(first, last, std::has_trivial_destructor<value_type>());
     }
 
     /// Call the destructor for a range of data.
@@ -455,7 +380,7 @@ namespace TiledArray {
     /// \param first A pointer to the first element in the memory range to destroy
     /// \param last A pointer to one past the last element in the memory range to destroy
     /// \throw nothing
-    void destroy_aux_(pointer first, pointer last, boost::false_type) {
+    void destroy_aux_(pointer first, pointer last, std::false_type) {
       for(; first != last; ++first)
         alloc_type::destroy(&*first);
     }
@@ -466,21 +391,9 @@ namespace TiledArray {
     /// \param first A pointer to the first element in the memory range to destroy
     /// \param last A pointer to one past the last element in the memory range to destroy
     /// \throw nothing
-    void destroy_aux_(pointer, pointer, boost::true_type) { }
-
-    /// Exchange the content of this object with other.
-
-    /// \param other The other Tile to swap with this object
-    /// \throw nothing
-    void swap(Tile_& other) {
-      std::swap<alloc_type>(*this, other);
-      boost::swap(range_, other.range_);
-      std::swap(first_, other.first_);
-      std::swap(last_, other.last_);
-    }
+    void destroy_aux_(pointer, pointer, std::true_type) { }
 
     friend Tile_ operator ^ <>(const Permutation<coordinate_system::dim>&, const Tile_&);
-    friend void TiledArray::swap<>(Tile_&, Tile_&);
     template <class, class>
     friend struct madness::archive::ArchiveStoreImpl;
     template <class, class>
