@@ -6,7 +6,7 @@
 #include <TiledArray/utility.h>
 #include <TiledArray/array_util.h>
 #include <boost/utility/enable_if.hpp>
-#include <boost/type_traits/has_trivial_copy.hpp>
+#include <TiledArray/type_traits.h>
 #include <boost/concept_check.hpp>
 //#include <iosfwd>
 //#include <algorithm>
@@ -349,11 +349,11 @@ namespace TiledArray {
 
     private:
       template <typename T>
-      typename boost::enable_if<boost::has_trivial_copy<T> >::type
+      typename boost::enable_if<std::is_fundamental<T> >::type
       copy_data(T* p) { *p = *current_++; }
 
       template <typename T>
-      typename boost::disable_if<boost::has_trivial_copy<T> >::type
+      typename boost::disable_if<std::is_fundamental<T> >::type
       copy_data(T* p) { alloc_.construct(p, *current_++); }
 
       InIter current_;
