@@ -5,7 +5,6 @@
 #include <iterator>
 #include <iosfwd>
 #include <world/sharedptr.h>
-#include <boost/type_traits/is_integral.hpp>
 #include <boost/utility/enable_if.hpp>
 
 namespace TiledArray {
