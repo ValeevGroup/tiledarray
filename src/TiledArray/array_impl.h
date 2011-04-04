@@ -94,12 +94,7 @@ namespace TiledArray {
       /// Version number accessor
 
       /// \return The current version number
-      unsigned int version() const {
-        // Todo: This has a runtime hit that we don't want, but it can't be avoided
-        // until madness shared pointers change to tr1 versions.
-        pmap_type* pmap = dynamic_cast<pmap_type*>(pmap_.get());
-        return pmap->version();
-      }
+      std::size_t version() const { return pmap_->version(); }
 
 
       /// Begin iterator factory function
