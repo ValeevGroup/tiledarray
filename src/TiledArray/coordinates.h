@@ -43,7 +43,6 @@ namespace TiledArray {
       > > > >
   {
   private:
-    typedef std::array<I,DIM> array_type; ///< array_type type used to store coordinates
 
     struct Enabler { };
 
@@ -51,6 +50,7 @@ namespace TiledArray {
     BOOST_STATIC_ASSERT(std::is_integral<I>::value);
 
     typedef ArrayCoordinate<I,DIM,Tag> ArrayCoordinate_;                        ///< This type
+    typedef std::array<I,DIM> array_type;                                       ///< array_type type used to store coordinates
     typedef I index;                                                            ///< Coordinate element type
     typedef typename array_type::iterator iterator;                             ///< Coordinate element iterator
     typedef typename array_type::const_iterator const_iterator;                 ///< Coordinate element const iterator
