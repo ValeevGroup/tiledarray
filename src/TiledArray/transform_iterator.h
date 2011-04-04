@@ -2,11 +2,12 @@
 #define TILEDARRAY_TRANSFORM_ITERATOR_H__INCLUDED
 
 #include <TiledArray/error.h>
+#include <TiledArray/type_traits.h>
 #include <typeinfo>
 #include <iterator>
-#include <boost/type_traits.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/iterator/iterator_traits.hpp>
 #include <boost/scoped_ptr.hpp>
 
 namespace TiledArray {
@@ -44,7 +45,7 @@ namespace TiledArray {
       /// Construct from an iterator
       template<typename Iterator, typename Functor>
       PolyTransformIterator(const Iterator& it, const Functor& f) : holder_(new Holder<Iterator, Functor>(it, f)) {
-//        BOOST_STATIC_ASSERT((boost::is_same<typename std::iterator_traits<Iterator>::value_type, value_type>::value));
+        BOOST_STATIC_ASSERT((std::is_same<typename std::iterator_traits<Iterator>::value_type, value_type>::value));
       }
 
       /// Copy constructor
