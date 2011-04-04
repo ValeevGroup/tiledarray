@@ -3,9 +3,8 @@
 
 #include <TiledArray/range.h>
 #include <TiledArray/array_util.h>
-//#include <TiledArray/type_traits.h>
+#include <TiledArray/type_traits.h>
 #include <boost/mpl/if.hpp>
-#include <boost/type_traits.hpp>
 #include <numeric>
 
 namespace TiledArray {
@@ -22,7 +21,7 @@ namespace TiledArray {
   class PackedTile {
   public:
     typedef PackedTile<T, DIM> PackedTile_;
-    typedef typename boost::remove_const<T>::type tile_type;
+    typedef typename std::remove_const<T>::type tile_type;
     typedef typename tile_type::value_type value_type;
     typedef CoordinateSystem<DIM, tile_type::coordinate_system::dimension_order> coordinate_system;
     typedef typename tile_type::ordinal_type ordinal_type;
@@ -33,7 +32,7 @@ namespace TiledArray {
     typedef typename range_type::const_iterator index_iterator;
     typedef typename tile_type::const_iterator const_iterator;
     typedef typename tile_type::iterator iterator;
-    typedef typename boost::mpl::if_<boost::is_const<T>, const value_type&, value_type&>::type reference_type;
+    typedef typename boost::mpl::if_<std::is_const<T>, const value_type&, value_type&>::type reference_type;
     typedef const value_type & const_reference_type;
 
     static unsigned int dim() { return DIM; }

@@ -5,8 +5,6 @@
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/mpl/if.hpp>
-#include <boost/type_traits/is_const.hpp>
-#include <boost/type_traits/remove_const.hpp>
 #include <iterator>
 
 namespace TiledArray {
@@ -24,7 +22,7 @@ namespace TiledArray {
       typedef typename std::iterator_traits<Iterator>::value_type base_value_type;
       typedef typename std::iterator_traits<Iterator>::reference base_reference;
       typedef typename std::iterator_traits<Iterator>::value_type::second_type value_type;
-      typedef typename boost::mpl::if_<boost::is_const<typename boost::remove_reference<base_reference>::type >,
+      typedef typename boost::mpl::if_<std::is_const<typename std::remove_reference<base_reference>::type >,
           const value_type&, value_type&>::type reference;
     };
 
@@ -133,7 +131,7 @@ namespace TiledArray {
       /// \note \c it must be implicitly convertible to the base iterator type.
       template <typename It>
       explicit IndexedIterator(const It& it,
-          typename boost::enable_if<boost::is_convertible<It, Iterator>, Enabler>::type = Enabler()) :
+          typename boost::enable_if<std::is_convertible<It, Iterator>, Enabler>::type = Enabler()) :
           iterator_adaptor_(it)
       { }
 
@@ -149,7 +147,7 @@ namespace TiledArray {
       /// \param other The indexed iterator that is to be copied.
       template<typename It>
       IndexedIterator(const IndexedIterator<It>& other,
-          typename boost::enable_if<boost::is_convertible<It, Iterator>, Enabler>::type = Enabler()) :
+          typename boost::enable_if<std::is_convertible<It, Iterator>, Enabler>::type = Enabler()) :
           iterator_adaptor_(other.base())
       { }
 
@@ -169,7 +167,7 @@ namespace TiledArray {
       /// \param other The indexed iterator that is to be copied.
       /// \return A reference to this iterator
       template <typename It>
-      typename boost::enable_if<boost::is_convertible<It, Iterator>, IndexedIterator_&>::type
+      typename boost::enable_if<std::is_convertible<It, Iterator>, IndexedIterator_&>::type
       operator=(const IndexedIterator<It>& other) {
         iterator_adaptor_::base_reference() = other.base();
         return *this;
@@ -182,7 +180,7 @@ namespace TiledArray {
       /// \param it The indexed iterator that is to be copied.
       /// \return A reference to this iterator
       template <typename It>
-      typename boost::enable_if<boost::is_convertible<It, Iterator>, IndexedIterator_&>::type
+      typename boost::enable_if<std::is_convertible<It, Iterator>, IndexedIterator_&>::type
       operator=(const It& it) {
         iterator_adaptor_::base_reference() = it;
         return *this;
