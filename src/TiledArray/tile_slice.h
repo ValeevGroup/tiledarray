@@ -5,7 +5,6 @@
 #include <TiledArray/range.h>
 #include <TiledArray/type_traits.h>
 #include <boost/mpl/if.hpp>
-#include <boost/type_traits.hpp>
 
 namespace TiledArray {
 
@@ -23,9 +22,9 @@ namespace TiledArray {
   {
   public:
     typedef TileSlice<T> TileSlice_;
-    typedef typename boost::remove_const<T>::type tile_type;
+    typedef typename std::remove_const<T>::type tile_type;
     typedef typename tile_type::value_type value_type;
-    typedef typename boost::mpl::if_<boost::is_const<T>, const value_type&, value_type&>::type reference_type;
+    typedef typename boost::mpl::if_<std::is_const<T>, const value_type&, value_type&>::type reference_type;
     typedef const value_type& const_reference_type;
     typedef typename tile_type::coordinate_system coordinate_system;
     typedef typename tile_type::range_type range_type;
