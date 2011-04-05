@@ -2,7 +2,6 @@
 #define TILEDARRAY_ERROR_H__INCLUDED
 
 #include <TiledArray/config.h>
-#include <boost/current_function.hpp>
 
 // Check for default error checking method, which is determined by TA_DEFAULT
 // error. It is defined in TiledArray/config.h.
