@@ -11,16 +11,13 @@ struct ArrayFixture : public TiledRangeFixture, public ShapeFixture {
   typedef ArrayN::index index;
   typedef ArrayN::value_type tile_type;
 
-  ArrayFixture() : a(world, tr) {
+  ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
 
   }
 
-  static madness::World& world;
+  madness::World& world;
   ArrayN a;
 }; // struct ArrayFixture
-
-// static veriables for fixture
-madness::World& ArrayFixture::world = *GlobalFixture::world;
 
 BOOST_FIXTURE_TEST_SUITE( array_suite , ArrayFixture )
 
