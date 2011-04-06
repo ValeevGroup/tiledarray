@@ -104,6 +104,16 @@ namespace TiledArray {
 
   /// Runtime type checking for dense shape
 
+  /// \tparam T Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c DenseShape class return \c true , otherwise \c false .
+  template <typename T>
+  inline bool is_dense_shape(const std::shared_ptr<T>&) {
+    return false;
+  }
+
+  /// Runtime type checking for dense shape
+
   /// \tparam CS Coordinate system type of shape
   /// \param s The shape to check
   /// \return If shape is a \c DenseShape class return \c true , otherwise \c false .
@@ -127,6 +137,16 @@ namespace TiledArray {
   /// \tparam CS Coordinate system type of shape
   /// \param s The shape to check
   /// \return If shape is a \c SparseShape class return \c true , otherwise \c false .
+  template <typename T>
+  inline bool is_sparse_shape(const std::shared_ptr<T>&) {
+    return false;
+  }
+
+  /// Runtime type checking for sparse shape
+
+  /// \tparam CS Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c SparseShape class return \c true , otherwise \c false .
   template <typename CS>
   inline bool is_sparse_shape(const std::shared_ptr<Shape<CS> >& s) {
     return s->type() == typeid(SparseShape<CS>);
@@ -140,6 +160,16 @@ namespace TiledArray {
   template <typename CS>
   inline bool is_sparse_shape(const std::shared_ptr<SparseShape<CS> >&) {
     return true;
+  }
+
+  /// Runtime type checking for predicated shape
+
+  /// \tparam CS Coordinate system type of shape
+  /// \param s The shape to check
+  /// \return If shape is a \c PredShape class return \c true , otherwise \c false .
+  template <typename T>
+  inline bool is_pred_shape(const std::shared_ptr<T>& s) {
+    return false;
   }
 
   /// Runtime type checking for predicated shape
