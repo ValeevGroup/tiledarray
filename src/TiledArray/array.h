@@ -134,7 +134,8 @@ namespace TiledArray {
       TA_STATIC_ASSERT((std::is_same<it_value_type, index>::value || std::is_integral<it_value_type>::value));
       TA_ASSERT(std::distance(first, last) > long(pimpl_->tile(i).volume()), std::runtime_error,
           "The number of elements assigned to tile i must be equal to the tile volume.");
-      pimpl_->set(i, first, last); }
+      pimpl_->set(i, first, last);
+    }
 
     template <typename Index>
     void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }
@@ -195,19 +196,27 @@ namespace TiledArray {
 
   private:
 
-    void preassign(madness::World& w, const tiled_range_type& tr) {
-      pimpl_ = std::make_shared<impl_type>(w, tr);
-    }
-
     std::shared_ptr<impl_type> pimpl_;
   }; // class Array
 
   namespace detail {
 
     template <typename T, typename CS>
-    class DefaultArrayPolicy {
-    public:
-      typedef Tile<T, CS> value_type;
+    struct DefaultArrayPolicy {
+      typedef Eigen::aligned_allocator allocator;
+      typedef TileCoordinateSystem<CS> tile_coordinate_system;
+      typedef Tile<T, tile_coordinate_system, allocator> value_type;
+      typedef Range<tile_coordinate_system> range_type;
+
+      template <typename InIter>
+      static value_type construct_value(const std::shared_ptr<range_type>& r, InIter first, InIter last) {
+        return value_type(r, first, last);
+      }
+
+      template <typename InIter>
+      static value_type construct_value(const std::shared_ptr<range_type>& r, T value) {
+        return value_type(r, value);
+      }
 
     }; // class TilePolicy
 

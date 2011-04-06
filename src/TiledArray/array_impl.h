@@ -1,15 +1,16 @@
 #ifndef TILEDARRAY_ARRAY_IMPL_H__INCLUDED
 #define TILEDARRAY_ARRAY_IMPL_H__INCLUDED
 
+#define WORLD_INSTANTIATE_STATIC_TEMPLATES
+
 #include <TiledArray/error.h>
 #include <TiledArray/tiled_range.h>
-#include <TiledArray/madness_runtime.h>
-#include <TiledArray/key.h>
 #include <TiledArray/indexed_iterator.h>
 #include <TiledArray/versioned_pmap.h>
 #include <TiledArray/dense_shape.h>
 #include <TiledArray/sparse_shape.h>
 #include <TiledArray/pred_shape.h>
+#include <world/worldobj.h>
 #include <boost/noncopyable.hpp>
 #include <boost/scoped_ptr.hpp>
 
@@ -18,13 +19,16 @@ namespace TiledArray {
 
     template <typename T, typename CS, typename P >
     class ArrayImpl : public madness::WorldObject<ArrayImpl<T,CS,P> >, private boost::noncopyable {
+    private:
+      typedef P policy;
+
     public:
       typedef CS coordinate_system; ///< The array coordinate system
+      typedef typename policy::value_type value_type;
 
     private:
       typedef ArrayImpl<T, CS, P> ArrayImpl_;
       typedef madness::WorldObject<ArrayImpl_> WorldObject_;
-      typedef P policy;
       typedef typename coordinate_system::key_type key_type;
       typedef madness::Future<typename policy::value_type> data_type;
       typedef madness::ConcurrentHashMap<key_type, data_type> container_type;
@@ -34,7 +38,6 @@ namespace TiledArray {
       typedef SparseShape<CS> sparse_shape_type;
 
     public:
-      typedef typename policy::value_type value_type; /// The array value type (i.e. tiles)
       typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
       typedef typename coordinate_system::index index; ///< Array coordinate index type
       typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
@@ -59,7 +62,7 @@ namespace TiledArray {
           pmap_(w.size(), v),
           shape_(static_cast<shape_type*>(new dense_shape_type(tiled_range_.tiles(), pmap_))),
           tiles_()
-      { }
+      { initialize_(); }
 
       /// Dense array constructor
 
@@ -77,7 +80,7 @@ namespace TiledArray {
           pmap_(w.size(), v),
           shape_(static_cast<shape_type*>(new sparse_shape_type(w, tiled_range_.tiles(), pmap_, first, last))),
           tiles_()
-      { }
+      { initialize_(); }
 
       /// Dense array constructor
 
@@ -92,33 +95,33 @@ namespace TiledArray {
           pmap_(w.size(), v),
           shape_(static_cast<shape_type*>(new PredShape<coordinate_system, Pred>(tiled_range_.tiles(), pmap_, p))),
           tiles_()
-      { }
+      { initialize_(); }
 
       /// Version number accessor
 
       /// \return The current version number
-      std::size_t version() const { return pmap_->version(); }
+      std::size_t version() const { return pmap_.version(); }
 
 
       /// Begin iterator factory function
 
       /// \return An iterator to the first local tile.
-      iterator begin() { return iterator(tiles_->begin()); }
+      iterator begin() { return iterator(tiles_.begin()); }
 
       /// Begin const iterator factory function
 
       /// \return A const iterator to the first local tile.
-      const_iterator begin() const { return const_iterator(tiles_->begin()); }
+      const_iterator begin() const { return const_iterator(tiles_.begin()); }
 
       /// End iterator factory function
 
       /// \return An iterator to one past the last local tile.
-      iterator end() { return iterator(tiles_->end()); }
+      iterator end() { return iterator(tiles_.end()); }
 
       /// End const iterator factory function
 
       /// \return A const iterator to one past the last local tile.
-      const_iterator end() const { return const_iterator(tiles_->end()); }
+      const_iterator end() const { return const_iterator(tiles_.end()); }
 
       /// Tile future accessor
 
@@ -126,7 +129,16 @@ namespace TiledArray {
       /// \return If found true, otherwise false.
       template <typename Index>
       bool local_find(const_accessor& acc, const Index& i) const {
-        if(tiled_range_.tiles().includes() && shape_->probe())
+        key_type key = key_(i);
+        const ProcessID me = get_world().rank();
+        const ProcessID dest = pmap_.owner(key);
+        TA_ASSERT(dest == me, std::runtime_error,
+            "Do not do a remote find on local tiles.");
+        TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
+            "Element is out of range.");
+
+        // Short-cut to check if the tile exists.
+        if(! shape_.probe(key))
           return false;
 
         return tiles_.find(acc, i);;
@@ -134,17 +146,25 @@ namespace TiledArray {
 
       template <typename Index>
       madness::Future<value_type> remote_find(const Index& i) const {
+        key_type key = key_(i);
+        const ProcessID me = get_world().rank();
+        const ProcessID dest = owner(key);
+        TA_ASSERT(dest != me, std::runtime_error,
+            "Do not do a remote find on local tiles.");
+        TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
+            "Element is out of range.");
+
+
         // If there is no tile to return then return an empty tile
-        if(!tiled_range_.tiles().includes() || !shape_->probe())
+        if(!shape_->probe(key))
           return madness::Future<value_type>(value_type());
 
-        madness::Future<typename container_type::iterator> fut_it =
-            tiles_.find(i);
-        madness::TaskAttributes attr();
-        data_type tile = get_world().taskq.add(this, & find_handler, fut_it, attr);
+        madness::Future<value_type> result;
+        WorldObject_::send(dest, & find_handler, key, result.remote_ref(get_world()));
+        return result;
       }
 
-      /// Insert a tile into the array
+      /// Set the data of a tile in the array
 
       /// \tparam Index The type of the index (valid types are: Array::index or
       /// Array::ordinal_index)
@@ -158,22 +178,16 @@ namespace TiledArray {
       /// volume of the tile at \c i
       template <typename Index, typename InIter>
       void set(const Index& i, InIter first, InIter last) {
-        TA_ASSERT(shape_->local_and_inclues(i), std::range_error,
-            "The given index i is not local or not included in the array shape.");
-
         std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
 
         TA_ASSERT(volume_type(std::distance(first, last)) == r->volume(), std::runtime_error,
             "The number of elements in [first, last) is not equal to the tile volume.");
 
-        typename container_type::accessor acc;
-        bool found = tiles_.find(acc, i);
-        TA_ASSERT(found, std::runtime_error, "The tile should be present,");
-        acc->set(policy::construct_value(i, r, first, last));
+        set(policy::construct_value(r, first, last));
       }
 
 
-      /// Insert a tile into the array
+      /// Set the data of a tile in the array
 
       /// \tparam Index The type of the index (valid types are: Array::index or
       /// Array::ordinal_index)
@@ -183,16 +197,10 @@ namespace TiledArray {
       /// \throw std::out_of_range When \c i is not included in the array range
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
-      void set(const Index& i, const T& v = T()) {
-        TA_ASSERT(shape_->local_and_inclues(i), std::runtime_error,
-            "The given index i is not local and included in the array.");
-
+      void set(const Index& i, const T& v) {
         std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
 
-        typename container_type::accessor acc;
-        bool found = tiles_.find(acc, i);
-        TA_ASSERT(found, std::runtime_error, "The tile should be present,");
-        acc->set(policy::construct_value(i, r, v));
+        set(i, policy::construct_value(r, v));
       }
 
       /// Insert a tile into the array
@@ -206,10 +214,8 @@ namespace TiledArray {
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
       void set(const Index& i, const value_type& t) {
-        TA_ASSERT(shape_->local_and_inclues(i), std::runtime_error,
+        TA_ASSERT(shape_->probe(i), std::runtime_error,
             "The given index i is not local and included in the array.");
-
-        std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
 
         typename container_type::accessor acc;
         bool found = tiles_.find(acc, i);
@@ -239,26 +245,41 @@ namespace TiledArray {
 
       /// \return A const shared pointer reference to the array process map
       /// \throw nothing
-      const pmap_type& pmap() const { return pmap_; }
+      template <typename Index>
+      ProcessID owner(const Index& i) const { return pmap_.owner(key_(i)); }
 
       /// Shape accessor
       const shape_type& get_shape() const { return shape_; }
 
       /// World accessor
-      madness::World& get_world() const { return tiles_.get_world(); }
+      madness::World& get_world() const { return WorldObject_::get_world(); }
 
     private:
 
+      bool insert_tile(const key_type& key) {
+        TA_ASSERT(key.keys() & 3, std::runtime_error,
+            "A full key must be used to insert a tile into the array.");
+        TA_ASSERT(owner(key), std::runtime_error,
+            "Tile must be owned by this node.");
+
+        std::pair<typename container_type::iterator, bool> result =
+            tiles_.insert(typename container_type::datumT(key, data_type()));
+        return result.second;
+      }
 
       /// Initialize the array container by inserting local tiles.
       void initialize_() {
-        for(typename tiled_range_type::range_type::const_iterator it =
-            tiled_range_.tiles().begin(); it != tiled_range_.tiles().end(); ++it) {
-          if(shape_->is_local_and_includes(*it))
-            tiles_.replace(key_(*it), data_type());
+        ordinal_index o = 0;
+        for(typename tiled_range_type::range_type::const_iterator it = tiled_range_.tiles().begin(); it != tiled_range_.tiles().end(); ++it, ++o) {
+          key_type key(o, *it);
+          if(pmap_.owner(key) && shape_->probe(key)) {
+            bool success = insert_tile(key_(key));
+            TA_ASSERT(success, std::runtime_error,
+                "For some reason the tile was not inserted into the container.");
+          }
         }
 
-        tiles_.process_pending();
+        WorldObject_::process_pending();
       }
 
       /// Calculate the ordinal index
@@ -299,8 +320,9 @@ namespace TiledArray {
       /// is returned as is.
       /// \param k The key to convert to a complete key
       /// \return A key that contains both key1 and key2
-      key_type key_(const key_type& k) const {
-        return coordinate_system::key(k, tiled_range_.tiles().weight(),
+      template <typename Index>
+      key_type key_(const Index& i) const {
+        return coordinate_system::key(i, tiled_range_.tiles().weight(),
             tiled_range_.tiles().start());
       }
 
@@ -309,6 +331,17 @@ namespace TiledArray {
           return value_type();
 
         return it->second;
+      }
+
+      /// Handles find request
+      void find_handler(const key_type& key, const madness::RemoteReference< madness::FutureImpl<value_type> >& ref) {
+        typename container_type::const_iterator it = tiles_.find(key);
+        data_type result(ref);
+
+        if (it == tiles_.end())
+          result.set(it->second);
+        else
+          result.set(value_type());
       }
 
       tiled_range_type tiled_range_;        ///< Tiled range object

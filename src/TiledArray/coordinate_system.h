@@ -525,6 +525,12 @@ namespace TiledArray {
 
   namespace detail {
 
+    template <typename CS>
+    class TileCoordinateSystem {
+      typedef CoordinateSystem<CS::dim, CS::Level - 1, CS::order, typename CS::ordinal_index> coordinate_system;
+    };
+
+
     // The following code is designed to check for the sameness of the different
     // coordinate system properties at compile time.
 
