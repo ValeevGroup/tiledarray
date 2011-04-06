@@ -70,9 +70,24 @@ namespace TiledArray {
     /// Type info accessor for derived class
     virtual const std::type_info& type() const = 0;
 
+    /// Is shape data for key \c k stored locally.
+
+    /// \param i The key to check
+    /// \return \c true when shape data for the given tile is stored on this node,
+    /// otherwise \c false.
+    template <typename Index>
+    bool is_local(const Index& i) const {
+      TA_ASSERT(range_.includes(i), std::out_of_range,
+          "Cannot check for tiles that are not in the range.");
+      return this->local_data(key(i));
+    }
+
     /// Probe for the presence of an element at key
-    virtual bool probe(const key_type& k) const {
-      return range_.includes(ord(k));
+    template <typename Index>
+    bool probe(const Index& i) const {
+      TA_ASSERT(this->is_local(i), std::runtime_error,
+          "You cannot probe data that is not stored locally.");
+      return  this->local_probe(key(i));
     }
 
   protected:
@@ -98,6 +113,10 @@ namespace TiledArray {
     }
 
   private:
+
+    virtual bool local_data(const key_type&) const { return true; }
+    virtual bool local_probe(const key_type&) const { return true; }
+
     const range_type& range_; ///< The range object associated with this shape.
     const pmap_type& pmap_;   ///< The process map for the shape.
   };

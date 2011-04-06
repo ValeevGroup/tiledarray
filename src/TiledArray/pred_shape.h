@@ -78,12 +78,14 @@ namespace TiledArray {
     /// Type info accessor for derived class
     virtual const std::type_info& type() const { return typeid(PredShape_); }
 
-    /// \param k The index to be probed.
-    virtual bool probe(const key_type& k) const {
-        return Shape_::probe(k) && pred_(k);
-    }
-
   private:
+
+    /// Probe for tile existence
+
+    /// \param k The index to be probed.
+    virtual bool probe_local(const key_type& k) const {
+        return pred_(k);
+    }
 
     pred_type pred_; ///< The shape predicate
   }; // class PredShape

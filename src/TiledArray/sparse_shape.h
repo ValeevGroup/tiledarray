@@ -64,14 +64,14 @@ namespace TiledArray {
 
     virtual const std::type_info& type() const { return typeid(SparseShape_); }
 
+  private:
+
     /// Probe for the presence of a tile in the shape
 
     /// \param k The index to be probed.
-    virtual bool probe(const key_type& k) const {
-      return Shape_::probe(k) && tiles_[k];
+    virtual bool local_probe(const key_type& k) const {
+      return tiles_[k];
     }
-
-  private:
 
     /// Construct the tile bitset
 
