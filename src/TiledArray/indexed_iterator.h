@@ -3,6 +3,7 @@
 
 #include <TiledArray/type_traits.h>
 #include <boost/iterator/iterator_adaptor.hpp>
+#include <boost/iterator/iterator_traits.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/mpl/if.hpp>
 #include <iterator>
