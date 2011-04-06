@@ -3,6 +3,7 @@
 
 #include <TiledArray/tile.h>
 #include <TiledArray/array_impl.h>
+#include <TiledArray/type_traits.h>
 #include <world/sharedptr.h>
 
 namespace TiledArray {
@@ -24,6 +25,7 @@ namespace TiledArray {
 
   /// An n-dimensional, tiled array
 
+  /// Array is considered a global object
   /// \tparam T The element type of for array tiles
   /// \tparam Coordinate system type
   /// \tparam Policy class for the array
@@ -52,6 +54,8 @@ namespace TiledArray {
 
     typedef typename impl_type::iterator iterator; ///< Local tile iterator
     typedef typename impl_type::const_iterator const_iterator; ///< Local tile const iterator
+    typedef typename impl_type::accessor accessor; ///< Local tile accessor
+    typedef typename impl_type::const_accessor const_accessor; ///< Local tile const accessor
 
   private:
 
@@ -61,6 +65,10 @@ namespace TiledArray {
     template <typename, typename, template <typename> class>
     friend class math::UnaryOp;
 
+    // not allowed
+    Array(const Array_& other);
+    Array_& operator=(const Array_& other);
+
   public:
 
     /// Dense array constructor
@@ -69,7 +77,7 @@ namespace TiledArray {
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     Array(madness::World& w, const tiled_range_type& tr) :
-        pimpl_(std::make_shared<impl_type>(w, tr, 0u))
+        pimpl_(new impl_type(w, tr, 0u), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Sparse array constructor
@@ -83,7 +91,7 @@ namespace TiledArray {
     /// of tiles to be added to the sparse array.
     template <typename InIter>
     Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last) :
-        pimpl_(std::make_shared<impl_type>(w, tr, first, last, 0u))
+        pimpl_(new impl_type(w, tr, first, last, 0u), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Predicated array constructor
@@ -93,26 +101,8 @@ namespace TiledArray {
     /// \param p The shape predicate.
     template <typename Pred>
     Array(madness::World& w, const tiled_range_type& tr, Pred p) :
-        pimpl_(std::make_shared<impl_type>(w, tr, p, 0u))
+        pimpl_(new impl_type(w, tr, p, 0u), madness::make_deferred_deleter<impl_type>(w))
     { }
-
-    /// Array copy constructor
-
-    /// Performs a shallow copy of \c other array
-    /// \param other The array to be copied
-    Array(const Array_& other) :
-        pimpl_(other.pimpl_)
-    { }
-
-    /// Array assignment operator
-
-    /// Performs a shallow copy of \c other array
-    /// \param other The array to be copied
-    /// \return A reference to this object
-    Array_& operator=(const Array_& other) {
-      pimpl_ = other.pimpl_;
-      return *this;
-    }
 
     /// Begin iterator factory function
 
@@ -134,8 +124,17 @@ namespace TiledArray {
     /// \return A const iterator to one past the last local tile.
     const_iterator end() const { return pimpl_->end(); }
 
+    /// Set the data of tile \c i
+
+    /// \tparam Index \c index or an integral type
+    /// \tparam InIter An input iterator
     template <typename Index, typename InIter>
-    void set(const Index& i, InIter first, InIter last) { pimpl_->set(i, first, last); }
+    void set(const Index& i, InIter first, InIter last) {
+      typedef typename std::iterator_traits<InIter>::value_type it_value_type;
+      TA_STATIC_ASSERT((std::is_same<it_value_type, index>::value || std::is_integral<it_value_type>::value));
+      TA_ASSERT(std::distance(first, last) > long(pimpl_->tile(i).volume()), std::runtime_error,
+          "The number of elements assigned to tile i must be equal to the tile volume.");
+      pimpl_->set(i, first, last); }
 
     template <typename Index>
     void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }

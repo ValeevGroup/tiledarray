@@ -11,6 +11,7 @@
 #include <TiledArray/sparse_shape.h>
 #include <TiledArray/pred_shape.h>
 #include <boost/noncopyable.hpp>
+#include <boost/scoped_ptr.hpp>
 
 namespace TiledArray {
   namespace detail {
@@ -40,6 +41,8 @@ namespace TiledArray {
       typedef typename coordinate_system::size_array size_array; ///< Size array type
       typedef detail::IndexedIterator<typename container_type::iterator> iterator; ///< Local tile iterator
       typedef detail::IndexedIterator<typename container_type::const_iterator> const_iterator; ///< Local tile const iterator
+      typedef detail::IndexedIterator<typename container_type::accessor> accessor; ///< Local tile accessor
+      typedef detail::IndexedIterator<typename container_type::const_accessor> const_accessor; ///< Local tile const accessor
 
       typedef TiledRange<CS> tiled_range_type; ///< Tile range type
       typedef typename tiled_range_type::range_type range_type; ///< Range type for tiles
@@ -120,21 +123,20 @@ namespace TiledArray {
       /// Tile future accessor
 
       /// Search for and return a future to the tile.
+      /// \return If found true, otherwise false.
       template <typename Index>
-      data_type local_find(const Index& i) const {
-        TA_ASSERT(shape_->local_and_includes(), std::runtime_error,
-            "Tile is not local or is not included in the array.");
-        typename container_type::const_accessor acc;
-        const bool found = tiles_.find(acc, i);
-        TA_ASSERT(found, std::runtime_error,
-            "A local tile search did not find a tile when it should have.");
-        return *acc;
+      bool local_find(const_accessor& acc, const Index& i) const {
+        if(tiled_range_.tiles().includes() && shape_->probe())
+          return false;
+
+        return tiles_.find(acc, i);;
       }
 
       template <typename Index>
-      data_type remote_find(const Index& i) const {
-        if(shape_->local_and_includes())
-          return local_find(i);
+      madness::Future<value_type> remote_find(const Index& i) const {
+        // If there is no tile to return then return an empty tile
+        if(!tiled_range_.tiles().includes() || !shape_->probe())
+          return madness::Future<value_type>(value_type());
 
         madness::Future<typename container_type::iterator> fut_it =
             tiles_.find(i);
@@ -309,10 +311,10 @@ namespace TiledArray {
         return it->second;
       }
 
-      tiled_range_type tiled_range_; ///< Tiled range object
-      pmap_type pmap_;     ///< Versioned process map
-      std::shared_ptr<shape_type> shape_;                             ///< Pointer to the shape object
-      container_type tiles_;                          ///< Distributed container that holds tiles
+      tiled_range_type tiled_range_;        ///< Tiled range object
+      pmap_type pmap_;                      ///< Versioned process map
+      boost::scoped_ptr<shape_type> shape_; ///< Pointer to the shape object
+      container_type tiles_;                ///< Distributed container that holds tiles
     }; // class ArrayImpl
 
   } // detail
