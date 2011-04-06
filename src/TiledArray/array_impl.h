@@ -128,20 +128,20 @@ namespace TiledArray {
       /// Search for and return a future to the tile.
       /// \return If found true, otherwise false.
       template <typename Index>
-      bool local_find(const_accessor& acc, const Index& i) const {
+      madness::Future<value_type> local_find(const Index& i) const {
         key_type key = key_(i);
-        const ProcessID me = get_world().rank();
-        const ProcessID dest = pmap_.owner(key);
-        TA_ASSERT(dest == me, std::runtime_error,
+        TA_ASSERT(pmap_.owner(key) == get_world().rank(), std::runtime_error,
             "Do not do a remote find on local tiles.");
         TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
             "Element is out of range.");
+        TA_ASSERT(shape_.probe(key), std::runtime_error, "Tile does not exist.");
 
-        // Short-cut to check if the tile exists.
-        if(! shape_.probe(key))
-          return false;
+        typename container_type::const_iterator it = tiles_.find(key);
 
-        return tiles_.find(acc, i);;
+        TA_ASSERT(it == tiles_.end(), std::runtime_error,
+            "A tile that should have been in the array was not found.");
+
+        return it->second;
       }
 
       template <typename Index>
@@ -334,14 +334,14 @@ namespace TiledArray {
       }
 
       /// Handles find request
-      void find_handler(const key_type& key, const madness::RemoteReference< madness::FutureImpl<value_type> >& ref) {
+      void find_handler(const key_type& key, const madness::RemoteReference< madness::FutureImpl<value_type> >& ref) const {
         typename container_type::const_iterator it = tiles_.find(key);
         data_type result(ref);
 
-        if (it == tiles_.end())
-          result.set(it->second);
+        if(shape_->probe(key))
+          result.set(local_find(key));
         else
-          result.set(value_type());
+          result.set(policy::construct_value());
       }
 
       tiled_range_type tiled_range_;        ///< Tiled range object

@@ -10,7 +10,7 @@ namespace TiledArray {
 
   namespace detail {
     template <typename, typename>
-    class DefaultArrayPolicy;
+    struct DefaultArrayPolicy;
   }
 
   namespace math {
@@ -203,17 +203,20 @@ namespace TiledArray {
 
     template <typename T, typename CS>
     struct DefaultArrayPolicy {
-      typedef Eigen::aligned_allocator allocator;
-      typedef TileCoordinateSystem<CS> tile_coordinate_system;
+      typedef Eigen::aligned_allocator<T> allocator;
+      typedef typename TileCoordinateSystem<CS>::coordinate_system tile_coordinate_system;
       typedef Tile<T, tile_coordinate_system, allocator> value_type;
       typedef Range<tile_coordinate_system> range_type;
+
+      static value_type construct_value() {
+        return value_type();
+      }
 
       template <typename InIter>
       static value_type construct_value(const std::shared_ptr<range_type>& r, InIter first, InIter last) {
         return value_type(r, first, last);
       }
 
-      template <typename InIter>
       static value_type construct_value(const std::shared_ptr<range_type>& r, T value) {
         return value_type(r, value);
       }
