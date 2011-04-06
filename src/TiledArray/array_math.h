@@ -4,7 +4,6 @@
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/permutation.h>
 #include <TiledArray/variable_list.h>
-#include <boost/static_assert.hpp>
 #include <TiledArray/madness_runtime.h>
 #include <functional>
 
@@ -57,10 +56,10 @@ namespace TiledArray {
         Op>
     {
     private:
-      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSL>::value) );
-      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSR>::value) );
-      BOOST_STATIC_ASSERT( (detail::same_cs_dim<CSO, CSL>::value) );
-      BOOST_STATIC_ASSERT( (detail::same_cs_dim<CSO, CSR>::value) );
+      TA_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSL>::value) );
+      TA_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSR>::value) );
+      TA_STATIC_ASSERT( (detail::same_cs_dim<CSO, CSL>::value) );
+      TA_STATIC_ASSERT( (detail::same_cs_dim<CSO, CSR>::value) );
 
       typedef Array<T, CSO, PO> oarray_type;
       typedef Array<T, CSL, PL> larray_type;
@@ -244,8 +243,8 @@ namespace TiledArray {
         std::multiplies>
     {
       // Check that the coordinate systems are compatible.
-      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSL>::value) );
-      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSR>::value) );
+      TA_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSL>::value) );
+      TA_STATIC_ASSERT( (detail::compatible_coordinate_system<CSO, CSR>::value) );
 
     public:
       typedef const expressions::AnnotatedArray<Array<T, CSO, PL> >& first_argument_type;

@@ -3,6 +3,16 @@
 
 #include <TiledArray/config.h>
 
+#ifdef TILEDARRAY_HAVE_STATIC_ASSERT
+
+#define TA_STATIC_ASSERT( a ) static_assert( a )
+
+#else
+
+#include <boost/static_assert.hpp>
+#define TA_STATIC_ASSERT( a ) BOOST_STATIC_ASSERT( a )
+#endif // TILEDARRAY_HAVE_STATIC_ASSERT
+
 // Check for default error checking method, which is determined by TA_DEFAULT
 // error. It is defined in TiledArray/config.h.
 #ifdef TA_DEFAULT_ERROR

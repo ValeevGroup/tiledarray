@@ -4,7 +4,6 @@
 #include <TiledArray/error.h>
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/variable_list.h>
-#include <boost/static_assert.hpp>
 
 namespace TiledArray {
 
@@ -77,7 +76,7 @@ namespace TiledArray {
         expressions::AnnotatedArray<LeftArrayType>, expressions::AnnotatedArray<RightArrayType>, std::multiplies>
     {
       // Check that the coordinate systems are compatible.
-      BOOST_STATIC_ASSERT( (detail::compatible_coordinate_system<LeftArrayType, RightArrayType>::value) );
+      TA_STATIC_ASSERT( (detail::compatible_coordinate_system<LeftArrayType, RightArrayType>::value) );
 
     public:
       typedef const expressions::AnnotatedArray<LeftArrayType>& first_argument_type;

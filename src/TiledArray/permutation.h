@@ -196,9 +196,9 @@ namespace TiledArray {
     /// \arg \c result is a random access iterator that will contain the resulting permuted array
     template <typename InIter0, typename InIter1, typename RandIter>
     void permute(InIter0 first_p, InIter0 last_p, InIter1 first_o, RandIter first_r) {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter0>::value);
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
-      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+      TA_STATIC_ASSERT(detail::is_input_iterator<InIter0>::value);
+      TA_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
+      TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
       for(; first_p != last_p; ++first_p)
         (* (first_r + *first_p)) = *first_o++;
     }
@@ -207,7 +207,7 @@ namespace TiledArray {
     template<typename F, typename RandIter>
     struct ForLoop {
     private:
-      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+      TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
     public:
       typedef F Functor;
       typedef typename std::iterator_traits<RandIter>::value_type value_t;
@@ -240,7 +240,7 @@ namespace TiledArray {
     template<unsigned int DIM, typename F, typename RandIter>
     struct NestedForLoop : public NestedForLoop<DIM - 1, ForLoop<F, RandIter>, RandIter > {
     private:
-      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+      TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
     public:
       typedef ForLoop<F, RandIter> F1;
       typedef NestedForLoop<DIM - 1, F1, RandIter> NestedForLoop1;
@@ -256,7 +256,7 @@ namespace TiledArray {
       NestedForLoop(F func, InIter e_first, InIter e_last, InIter s_first, InIter s_last) :
         NestedForLoop1(F1(func, *e_first, *s_first), e_first + 1, e_last, s_first + 1, s_last)
       {
-        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+        TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       }
 
       /// Run the nested loop (call the next higher loop object).
@@ -270,7 +270,7 @@ namespace TiledArray {
     template<typename F, typename RandIter>
     struct NestedForLoop<0, F, RandIter> {
     private:
-      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+      TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
     public:
 
       /// \arg \c func is the current loops function body.
@@ -292,8 +292,8 @@ namespace TiledArray {
     template<typename OutIter, typename InIter>
     struct AssignmentOp {
     private:
-      BOOST_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TA_STATIC_ASSERT(detail::is_output_iterator<OutIter>::value);
+      TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
     public:
       AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
 
@@ -315,7 +315,7 @@ namespace TiledArray {
     template<typename T, typename InIter>
     struct AssignmentOp<T*, InIter> {
     private:
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
     public:
       AssignmentOp(InIter first, InIter last) : current_(first), last_(last) { }
 
@@ -334,7 +334,7 @@ namespace TiledArray {
     template<typename InIter, typename Alloc >
     struct UninitializedCopy {
     private:
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
     public:
       typedef typename Alloc::pointer pointer;
       typedef typename Alloc::value_type value_type;
@@ -392,7 +392,7 @@ namespace TiledArray {
       template<typename RandIter>
       void operator ()(const Permutation<CS::dim>& p, RandIter first_out, RandIter last_out)
       {
-        BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+        TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
         TA_ASSERT(static_cast<typename Range<CS>::volume_type>(std::distance(first_out, last_out)) == range_.volume(),
             std::runtime_error,
             "The distance between first_out and last_out must be equal to the volume of the original container.");

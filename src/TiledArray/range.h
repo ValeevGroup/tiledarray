@@ -7,7 +7,6 @@
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/type_traits.h>
 #include <boost/utility/enable_if.hpp>
-#include <boost/static_assert.hpp>
 #include <algorithm>
 
 namespace TiledArray {
@@ -331,7 +330,7 @@ namespace TiledArray {
   /// Returns a permuted range.
   template <unsigned int DIM, typename CS>
   Range<CS> operator ^(const Permutation<DIM>& perm, const Range<CS>& r) {
-    BOOST_STATIC_ASSERT(DIM == CS::dim);
+    TA_STATIC_ASSERT(DIM == CS::dim);
     const typename Range<CS>::index s = perm ^ r.start();
     const typename Range<CS>::index f = perm ^ r.finish();
     Range<CS> result(s, f);
@@ -358,7 +357,7 @@ namespace TiledArray {
   /// Returns a permuted range.
   template <typename CS>
   Range<CS> operator ^(const Permutation<1>& perm, const Range<CS>& r) {
-    BOOST_STATIC_ASSERT(CS::dim == 1);
+    TA_STATIC_ASSERT(CS::dim == 1);
     return r;
   }
 

@@ -64,7 +64,7 @@ namespace TiledArray {
     TiledRange1(RandIter first, RandIter last, const ordinal_index start_tile_index = 0) :
         range_(), element_range_(), tile_ranges_(), elem2tile_()
     {
-      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+      TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
       init_tiles_(first, last, start_tile_index);
       init_map_();
     }
@@ -113,7 +113,7 @@ namespace TiledArray {
 
     template <typename RandIter>
     TiledRange1& resize(RandIter first, RandIter last, const ordinal_index start_tile_index = 0) {
-      BOOST_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+      TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
       TiledRange1 temp(first, last, start_tile_index);
       swap(*this, temp);
       return *this;

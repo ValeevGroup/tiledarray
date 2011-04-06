@@ -47,7 +47,7 @@ namespace TiledArray {
     struct Enabler { };
 
   public:
-    BOOST_STATIC_ASSERT(std::is_integral<I>::value);
+    TA_STATIC_ASSERT(std::is_integral<I>::value);
 
     typedef ArrayCoordinate<I,DIM,Tag> ArrayCoordinate_;                        ///< This type
     typedef std::array<I,DIM> array_type;                                       ///< array_type type used to store coordinates

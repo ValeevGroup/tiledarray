@@ -1,6 +1,5 @@
 #include "TiledArray/coordinate_system.h"
 #include "unit_test_config.h"
-#include <boost/static_assert.hpp>
 
 using TiledArray::detail::DimensionOrderType;
 using TiledArray::detail::increasing_dimension_order;
@@ -42,19 +41,19 @@ struct CoordinateSystemFixture {
 BOOST_FIXTURE_TEST_SUITE( coord_sys_suite , CoordinateSystemFixture )
 
 // Check same_cs_dim
-// Todo: Check the 4 variants with BOOST_STATIC_ASSERT
+// Todo: Check the 4 variants with TA_STATIC_ASSERT
 
 // Check same_cs_level
-// Todo: Check the 4 variants with BOOST_STATIC_ASSERT
+// Todo: Check the 4 variants with TA_STATIC_ASSERT
 
 // Check same_cs_order
-// Todo: Check the 4 variants with BOOST_STATIC_ASSERT
+// Todo: Check the 4 variants with TA_STATIC_ASSERT
 
 // Check same_cs_index
-// Todo: Check the 4 variants with BOOST_STATIC_ASSERT
+// Todo: Check the 4 variants with TA_STATIC_ASSERT
 
 // Check compatible_coordinate_system
-// Todo: Check the 4 variants with BOOST_STATIC_ASSERT
+// Todo: Check the 4 variants with TA_STATIC_ASSERT
 
 BOOST_AUTO_TEST_CASE( coord_iterator )
 {

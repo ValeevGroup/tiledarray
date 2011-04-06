@@ -4,7 +4,6 @@
 #include <TiledArray/type_traits.h>
 #include <utility>
 #include <functional>
-#include <boost/static_assert.hpp>
 
 namespace TiledArray {
 

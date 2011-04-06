@@ -1,9 +1,9 @@
 #ifndef TA_ARRAY_UTIL_H__INCLUDED
 #define TA_ARRAY_UTIL_H__INCLUDED
 
+#include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
 #include <boost/array.hpp>
-#include <boost/static_assert.hpp>
 #include <iosfwd>
 #include <numeric>
 
@@ -16,7 +16,7 @@ namespace TiledArray {
     }
     template <typename InIter>
     void print_array(std::ostream& output, InIter first, InIter last) {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       if(first != last)
         output << *first++;
       for(; first != last; ++first)

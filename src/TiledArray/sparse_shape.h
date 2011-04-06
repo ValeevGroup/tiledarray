@@ -88,12 +88,12 @@ namespace TiledArray {
       const std::size_t size = local.num_blocks();
 
       ordinal_index o = 0;
-      const int rank = world_.rank();
+//      const int rank = world_.rank();
       for(; first != last; ++first) {
-        if(Shape_::owner(*first) == rank) {
+//        if(Shape_::owner(*first) == rank) {
           o = Shape_::ord(*first);
           local.set(o, true);
-        }
+//        }
       }
 
       // Construct the bitset for remote data

@@ -49,7 +49,7 @@ namespace TiledArray {
     /// Constructed with a set of ranges pointed to by [ first, last ).
     template <typename InIter>
     TiledRange(InIter first, InIter last) {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       TA_ASSERT(std::distance(first, last) == coordinate_system::dim, std::runtime_error,
           "Tiling for all dimensions must be specified.");
       std::copy(first, last, ranges_.begin());
@@ -87,7 +87,7 @@ namespace TiledArray {
     /// \return A reference to the newly resized Tiled Range
     template <typename InIter>
     TiledRange& resize(InIter first, InIter last) {
-      BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+      TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       TiledRange temp(first, last);
       swap(*this, temp);
       return *this;

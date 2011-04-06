@@ -22,4 +22,7 @@
 /* define if compiler supports variadic templates. */
 #undef TILEDARRAY_VARIADIC_TEMPLATE
 
+/* define if compiler supports static_assert. */
+#undef TILEDARRAY_HAVE_STATIC_ASSERT
+
 #endif // TILEDARRAY_CONFIGURE_H__INCULDED

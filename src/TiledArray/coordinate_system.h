@@ -6,7 +6,6 @@
 #include <TiledArray/key.h>
 #include <TiledArray/coordinates.h>
 #include <world/array.h>
-#include <boost/static_assert.hpp>
 #include <TiledArray/type_traits.h>
 #include <boost/mpl/equal_to.hpp>
 #include <boost/mpl/bool.hpp>
@@ -173,7 +172,7 @@ namespace TiledArray {
   template <unsigned int DIM, unsigned int Level = 1u, detail::DimensionOrderType O = detail::decreasing_dimension_order, typename I = std::size_t>
   class CoordinateSystem {
     // Static asserts
-    BOOST_STATIC_ASSERT(std::is_integral<I>::value);
+    TA_STATIC_ASSERT(std::is_integral<I>::value);
 
   public:
 

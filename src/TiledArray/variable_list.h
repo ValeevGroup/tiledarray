@@ -47,7 +47,7 @@ namespace TiledArray {
 
       template<typename InIter>
       VariableList(InIter first, InIter last) {
-        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+        TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
         TA_ASSERT( unique_(first, last), std::runtime_error,
             "Duplicate variable names not allowed.");
 

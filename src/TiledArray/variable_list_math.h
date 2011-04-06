@@ -3,7 +3,6 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/variable_list.h>
-#include <boost/static_assert.hpp>
 
 namespace TiledArray {
   namespace math {
@@ -130,8 +129,8 @@ namespace TiledArray {
       static void find_common(InIter1 first1, const InIter1 last1, InIter2 first2, const InIter2 last2,
           std::pair<InIter1, InIter1>& common1, std::pair<InIter2, InIter2>& common2)
       {
-        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
-        BOOST_STATIC_ASSERT(detail::is_input_iterator<InIter2>::value);
+        TA_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
+        TA_STATIC_ASSERT(detail::is_input_iterator<InIter2>::value);
         common1.first = last1;
         common1.second = last1;
         common2.first = last2;
