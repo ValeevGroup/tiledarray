@@ -92,16 +92,22 @@ namespace TiledArray {
       Key() : k1_(), k2_(), k_(0) { }
 
       /// Key pair constructor
-      Key(const key1_type& k1, const key2_type& k2) : k1_(k1), k2_(k2), k_(3) { }
+      Key(const key1_type& k1, const key2_type& k2) : k1_(k1), k2_(k2), k_(3), hash_(0) {
+        madness::Hash<Key1> hasher;
+        hash_ = hasher(k1_);
+      }
 
       /// Key1 constructor
-      explicit Key(const key1_type& k1) : k1_(k1), k2_(), k_(1) { }
+      explicit Key(const key1_type& k1) : k1_(k1), k2_(), k_(1), hash_(0) {
+        madness::Hash<Key1> hasher;
+        hash_ = hasher(k1_);
+      }
 
       /// Key2 constructor
-      explicit Key(const key2_type& k2) : k1_(), k2_(k2), k_(2) { }
+      explicit Key(const key2_type& k2) : k1_(), k2_(k2), k_(2), hash_(0) { }
 
       /// Copy constructor
-      Key(const Key_& other) : k1_(other.k1_), k2_(other.k2_), k_(other.k_) { }
+      Key(const Key_& other) : k1_(other.k1_), k2_(other.k2_), k_(other.k_), hash_(other.hash_) { }
 
       /// Destructor
       ~Key() { }
@@ -111,6 +117,7 @@ namespace TiledArray {
         k1_ = other.k1_;
         k2_ = other.k2_;
         k_ = other.k_;
+        hash_ = other.hash_;
 
         return *this;
       }
@@ -119,6 +126,8 @@ namespace TiledArray {
       Key_& operator=(const key1_type& k1) {
         k1_ = k1;
         k_ = 1;
+        madness::Hash<Key1> hasher;
+        hash_ = hasher(k1_);
 
         return *this;
       }
@@ -186,6 +195,10 @@ namespace TiledArray {
         ar & k1_ & k2_ & k_;
       }
 
+      madness::hashT hash() const {
+        return hash_;
+      }
+
     private:
 
       friend bool operator == <>(const Key_& l, const Key_&);
@@ -195,9 +208,10 @@ namespace TiledArray {
       friend bool operator > <>(const Key_& l, const Key_&);
       friend bool operator >= <>(const Key_& l, const Key_&);
 
-      key1_type k1_;      ///< Key 1
-      key2_type k2_;      ///< Key 2
-      unsigned int k_;    ///< Flags for keys that are assigned.
+      key1_type k1_;        ///< Key 1
+      key2_type k2_;        ///< Key 2
+      unsigned int k_;      ///< Flags for keys that are assigned.
+      madness::hashT hash_; ///< The hashed key value
     }; // class Key
 
     /// Compare two keys for equality (only compares key1).
@@ -394,9 +408,7 @@ namespace TiledArray {
     /// \param k The key pair to hash
     template <typename Key1, typename Key2>
     std::size_t hash_value(const Key<Key1,Key2>& k) {
-      TA_ASSERT(k.keys() & 1, std::runtime_error, "Key1 must be defined for key.");
-      madness::Hash<Key1> hasher;
-      return hasher(k.key1());
+      return k.hash();
     }
 
     template<typename Key1, typename Key2>
