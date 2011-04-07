@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE( include )
   }
 
   BOOST_CHECK(! r.includes(o));
-  BOOST_CHECK(r.includes(key_type(o)));
+  BOOST_CHECK(! r.includes(key_type(o)));
 }
 
 BOOST_AUTO_TEST_CASE( unions )
