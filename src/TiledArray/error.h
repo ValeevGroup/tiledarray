@@ -36,25 +36,25 @@
 #endif
 #include <stdexcept>
 namespace TiledArray {
-  namespace detail {
-    /// Place a break point on this function to stop before TiledArray exceptions are thrown.
-    inline void tiledarray_exception_break() { }
-  }
+  /// Place a break point on this function to stop before TiledArray exceptions are thrown.
+  inline void tiledarray_exception_break() { }
 }
 
 
 #define TA_STRINGIZE( s ) #s
+
 #define TA_EXCEPTION_MESSAGE( file , line , type ,  mess ) \
   type TA_STRINGIZE( file ) "(" TA_STRINGIZE( line ) "): " mess
-#define TA_ASSERT( a , e , m )  \
-  if(! ( a ) ) \
-    { \
-      TiledArray::detail::tiledarray_exception_break(); \
-      throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , "TiledArray Assertion failure at " , m ) ) ; \
-    }
 
 #define TA_EXCEPTION( e , m ) \
     throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , "TiledArray Exception at " , m ) )
+
+#define TA_ASSERT( a , e , m )  \
+  if(! ( a ) ) \
+    { \
+      TiledArray::exception_break(); \
+      throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , "TiledArray: assertion failure at " , m ) ) ; \
+    }
 
 #elif defined(TA_ASSERT_ERROR)
 // This sections defines behavior for TiledArray assertion error checking which
@@ -70,5 +70,11 @@ namespace TiledArray {
 #define TA_EXCEPTION( e , m ) exit(1)
 
 #endif //TA_EXCEPTION_ERROR
+
+#define TA_CHECK( a , e , m )  \
+  if(! ( a ) ) \
+    { \
+      throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , "TiledArray: failure at " , m ) ) ; \
+    }
 
 #endif // TILEDARRAY_ERROR_H__INCLUDED
