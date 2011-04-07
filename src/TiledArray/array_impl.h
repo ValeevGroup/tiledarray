@@ -134,7 +134,6 @@ namespace TiledArray {
             "Do not do a remote find on local tiles.");
         TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
             "Element is out of range.");
-        TA_ASSERT(shape_.probe(key), std::runtime_error, "Tile does not exist.");
 
         typename container_type::const_iterator it = tiles_.find(key);
 
@@ -154,9 +153,9 @@ namespace TiledArray {
         TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
             "Element is out of range.");
 
-
-        // If there is no tile to return then return an empty tile
-        if(!shape_->probe(key))
+        // If the tile existence data is stored locally and shape says it does
+        // not exist, then we return an empty tile.
+        if(shape_->is_local(key) && !shape_->probe(key))
           return madness::Future<value_type>(value_type());
 
         madness::Future<value_type> result;
@@ -338,6 +337,7 @@ namespace TiledArray {
         typename container_type::const_iterator it = tiles_.find(key);
         data_type result(ref);
 
+        // Since the tile is local, shape will definitely contain local existence data.
         if(shape_->probe(key))
           result.set(local_find(key));
         else

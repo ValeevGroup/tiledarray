@@ -124,6 +124,16 @@ namespace TiledArray {
     /// \return A const iterator to one past the last local tile.
     const_iterator end() const { return pimpl_->end(); }
 
+    /// Find local or remote tile
+
+    /// \tparam Index The index type
+    template <typename Index>
+    madness::Future<value_type> find(const Index& i) const {
+      if(owner(i) == rank())
+        return pimpl_->local_find(i);
+
+      return pimpl_->remote_find(i);
+    }
     /// Set the data of tile \c i
 
     /// \tparam Index \c index or an integral type
@@ -194,7 +204,12 @@ namespace TiledArray {
 
     madness::World& get_world() const { return pimpl_->get_world(); }
 
+    template <typename Index>
+    ProcessID owner(const Index& i) const { pimpl_->owner(i); }
+
   private:
+
+    ProcessID rank() const { return pimpl_->get_world().rank(); }
 
     std::shared_ptr<impl_type> pimpl_;
   }; // class Array
