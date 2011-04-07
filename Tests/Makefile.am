@@ -6,6 +6,7 @@ check_PROGRAMS = ta-test
 ta_test_SOURCES = TiledArrayTest.cpp \
                   permutation.cpp \
                   coordinates.cpp \
+                  key.cpp \
                   coordinate_system.cpp \
                   algorithm.cpp \
                   range_iterator.cpp \
@@ -19,7 +20,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   shape.cpp \
                   variable_list.cpp \
                   annotated_array.cpp \
-                  key.cpp \
                   indexed_iterator.cpp \
                   versioned_pmap.cpp \
                   array.cpp \
