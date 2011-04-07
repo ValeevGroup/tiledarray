@@ -37,7 +37,7 @@
 #include <stdexcept>
 namespace TiledArray {
   /// Place a break point on this function to stop before TiledArray exceptions are thrown.
-  inline void tiledarray_exception_break() { }
+  inline void exception_break() { }
 }
 
 
