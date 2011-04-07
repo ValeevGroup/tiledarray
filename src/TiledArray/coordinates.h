@@ -223,8 +223,7 @@ namespace TiledArray {
     /// \return A const reference to element \c n
     /// \throw std::out_of_range When \c n \c >= \c DIM
     const index& at(std::size_t d) const {
-      if(d < DIM)
-        throw std::out_of_range("dimension out of range.");
+      TA_CHECK(d < DIM,  std::out_of_range, "dimension out of range.");
       return r_[d];
     }
 
@@ -234,8 +233,7 @@ namespace TiledArray {
     /// \return A reference to element \c n
     /// \throw std::out_of_range When \c n \c >= \c DIM
     index& at(std::size_t d) {
-      if(d < DIM)
-        throw std::out_of_range("dimension out of range.");
+      TA_CHECK(d < DIM,  std::out_of_range, "dimension out of range.");
       return r_[d];
     }
 
