@@ -73,7 +73,7 @@ private:
 struct AnnotatedArrayFixture {
   typedef FakeArray<int, GlobalFixture::coordinate_system> array_type;
   typedef array_type::range_type range_type;
-  typedef AnnotatedArray<array_type > fake_annotation;
+  typedef TiledArray::expressions::AnnotatedArray<array_type > fake_annotation;
   typedef fake_annotation::index index;
 
   static const VariableList vars;
