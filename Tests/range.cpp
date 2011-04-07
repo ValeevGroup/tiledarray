@@ -296,35 +296,35 @@ BOOST_AUTO_TEST_CASE( unions )
 
 BOOST_AUTO_TEST_CASE( iteration )
 {
-  typedef CoordinateSystem<3> cs3;
-  std::vector<index> t(8);
+  typedef Range<CoordinateSystem<3> > Range3C;
+  std::vector<Range3C::index> tc(8);
 
-#ifdef TEST_C_STYLE_CS
-  typedef CoordinateSystem<3> cs3;
-  typedef Range<cs3> Range3;
-  t[0] = Range3::index(1,1,1);
-  t[1] = Range3::index(1,1,2);
-  t[2] = Range3::index(1,2,1);
-  t[3] = Range3::index(1,2,2);
-  t[4] = Range3::index(2,1,1);
-  t[5] = Range3::index(2,1,2);
-  t[6] = Range3::index(2,2,1);
-  t[7] = Range3::index(2,2,2);
-#else // TEST_FORTRAN_CS
-  typedef CoordinateSystem<3, 1, TiledArray::detail::increasing_dimension_order> cs3;
-  typedef Range<cs3> Range3;
-  t[0] = Range3::index(1,1,1);
-  t[1] = Range3::index(2,1,1);
-  t[2] = Range3::index(1,2,1);
-  t[3] = Range3::index(2,2,1);
-  t[4] = Range3::index(1,1,2);
-  t[5] = Range3::index(2,1,2);
-  t[6] = Range3::index(1,2,2);
-  t[7] = Range3::index(2,2,2);
-#endif
+  tc[0] = Range3C::index(1,1,1);
+  tc[1] = Range3C::index(1,1,2);
+  tc[2] = Range3C::index(1,2,1);
+  tc[3] = Range3C::index(1,2,2);
+  tc[4] = Range3C::index(2,1,1);
+  tc[5] = Range3C::index(2,1,2);
+  tc[6] = Range3C::index(2,2,1);
+  tc[7] = Range3C::index(2,2,2);
 
-  Range3 r1(Range3::index(1,1,1),Range3::index(3,3,3));
-  BOOST_CHECK_EQUAL_COLLECTIONS(r1.begin(), r1.end(), t.begin(), t.end());
+  Range3C rc(Range3C::index(1,1,1),Range3C::index(3,3,3));
+  BOOST_CHECK_EQUAL_COLLECTIONS(rc.begin(), rc.end(), tc.begin(), tc.end());
+
+  typedef Range<CoordinateSystem<3, 1, TiledArray::detail::increasing_dimension_order> > Range3F;
+  std::vector<Range3F::index> tf(8);
+
+  tf[0] = Range3F::index(1,1,1);
+  tf[1] = Range3F::index(2,1,1);
+  tf[2] = Range3F::index(1,2,1);
+  tf[3] = Range3F::index(2,2,1);
+  tf[4] = Range3F::index(1,1,2);
+  tf[5] = Range3F::index(2,1,2);
+  tf[6] = Range3F::index(1,2,2);
+  tf[7] = Range3F::index(2,2,2);
+
+  Range3F rf(Range3F::index(1,1,1),Range3F::index(3,3,3));
+  BOOST_CHECK_EQUAL_COLLECTIONS(rf.begin(), rf.end(), tf.begin(), tf.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
