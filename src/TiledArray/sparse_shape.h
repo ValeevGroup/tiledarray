@@ -4,8 +4,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/shape.h>
 #include <TiledArray/utility.h>
-#include <boost/dynamic_bitset.hpp>
-#include <boost/scoped_array.hpp>
+#include <TiledArray/bitset.h>
 
 namespace TiledArray {
 
@@ -16,6 +15,9 @@ namespace TiledArray {
     typedef SparseShape<CS> SparseShape_;
     typedef Shape<CS> Shape_;
     typedef madness::WorldObject<SparseShape_ > WorldObject_;
+
+  private:
+    typedef unsigned long block_type;
 
   public:
     typedef CS coordinate_system;                         ///< Shape coordinate system
@@ -53,8 +55,22 @@ namespace TiledArray {
         const pmap_type& m, InIter first, InIter last) :
       Shape_(r,m),
       world_(w),
-      tiles_(make_tiles(first, last))
-    { }
+      tiles_(r.volume())
+    {
+
+      ordinal_index o = 0;
+//      const int rank = world_.rank();
+      for(; first != last; ++first) {
+//        if(Shape_::owner(*first) == rank) {
+          o = Shape_::ord(*first);
+          tiles_.set(o);
+//        }
+      }
+
+      // Construct the bitset for remote data
+
+      world_.gop.bit_or(tiles_.get(), tiles_.num_blocks());
+    }
 
     virtual ~SparseShape() { }
 
@@ -73,43 +89,8 @@ namespace TiledArray {
       return tiles_[k];
     }
 
-    /// Construct the tile bitset
-
-    /// Generates a local bitset, then shares the bitset with other processes.
-    /// \tparam InIter Input list input iterator type
-    /// \param first First element of a list of tiles that will be stored locally
-    /// \param last Last element of a list of tiles that will be stored locally
-    /// \note Tiles in the list that are not owned by this process are ignored.
-    template <typename InIter>
-    boost::dynamic_bitset<unsigned long> make_tiles(InIter first, InIter last)
-    {
-      // Construct the bitset for the local data
-      boost::dynamic_bitset<unsigned long> local(Shape_::volume());
-      const std::size_t size = local.num_blocks();
-
-      ordinal_index o = 0;
-//      const int rank = world_.rank();
-      for(; first != last; ++first) {
-//        if(Shape_::owner(*first) == rank) {
-          o = Shape_::ord(*first);
-          local.set(o, true);
-//        }
-      }
-
-      // Construct the bitset for remote data
-      boost::scoped_array<unsigned long> data(new unsigned long[size]);
-      boost::to_block_range(local, data.get());
-
-      world_.gop.bit_or(data.get(), size);
-      boost::dynamic_bitset<unsigned long> remote(data.get(), data.get() + size);
-
-      local |= remote;
-
-      return local;
-    }
-
     const madness::World& world_;
-    const boost::dynamic_bitset<unsigned long> tiles_;
+    detail::Bitset<> tiles_;
   }; // class SparseShape
 
 } // namespace TiledArray
