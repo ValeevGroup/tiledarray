@@ -29,7 +29,6 @@ struct DenseShapeFixture : public BaseShapeFixture {
 
 struct SparseShapeFixture : public BaseShapeFixture {
   typedef TiledArray::SparseShape<GlobalFixture::coordinate_system> SparseShapeT;
-  typedef madness::WorldDCDefaultPmap<std::size_t> PMapT;
 
   SparseShapeFixture() :
       RangeFixture(),
