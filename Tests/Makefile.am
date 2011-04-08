@@ -14,6 +14,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
                   tile.cpp \
+                  bitset.cpp \
                   dense_shape.cpp \
                   sparse_shape.cpp \
                   pred_shape.cpp \
