@@ -202,10 +202,32 @@ namespace TiledArray {
       return expressions::AnnotatedArray<Array_>(* const_cast<Array_*>(this), v);
     }
 
+    /// World accessor
+
+    /// \return A reference to the world that owns this array.
     madness::World& get_world() const { return pimpl_->get_world(); }
 
+    /// Tile ownership
+
+    /// \tparam Index An index type
+    /// \param i The index of a tile
+    /// \return The process ID of the owner of a tile.
+    /// \note This does not indicate whether a tile exists or not. Only, who
+    /// would own it if it does exist.
     template <typename Index>
     ProcessID owner(const Index& i) const { pimpl_->owner(i); }
+
+    /// Check for zero tiles
+
+    /// \return \c true if tile at index \c i is zero, false if the tile is
+    /// non-zero or remote existence data is not available.
+    template <typename Index>
+    bool zero(const Index& i) const {
+      if(pimpl_->shape()->is_local(i))
+        return pimpl_->shape()->probe(i);
+      else
+        return false;
+    }
 
   private:
 

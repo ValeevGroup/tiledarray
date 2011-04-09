@@ -155,8 +155,9 @@ namespace TiledArray {
 
         // If the tile existence data is stored locally and shape says it does
         // not exist, then we return an empty tile.
-        if(shape_->is_local(key) && !shape_->probe(key))
-          return madness::Future<value_type>(value_type());
+        if(shape_->is_local(key))
+          if(!shape_->probe(key))
+            return madness::Future<value_type>(value_type());
 
         madness::Future<value_type> result;
         WorldObject_::send(dest, & find_handler, key, result.remote_ref(get_world()));
@@ -213,8 +214,10 @@ namespace TiledArray {
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
       void set(const Index& i, const value_type& t) {
+        TA_ASSERT(is_local(i), std::runtime_error,
+            "You cannot set a non-local tile.");
         TA_ASSERT(shape_->probe(i), std::runtime_error,
-            "The given index i is not local and included in the array.");
+            "The given index i is not included in the array shape.");
 
         typename container_type::accessor acc;
         bool found = tiles_.find(acc, i);
@@ -246,6 +249,9 @@ namespace TiledArray {
       /// \throw nothing
       template <typename Index>
       ProcessID owner(const Index& i) const { return pmap_.owner(key_(i)); }
+
+      template <typename Index>
+      bool is_local(const Index& i) const { return owner(i) == get_world().rank(); }
 
       /// Shape accessor
       const shape_type& get_shape() const { return shape_; }
