@@ -57,6 +57,8 @@ namespace TiledArray {
         Shape_(r, m)
     { }
 
+    virtual ~DenseShape() { }
+
     /// Clone (copy) this object.
 
     /// Create a copy of this object using the copy constructor and place the
