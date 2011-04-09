@@ -16,6 +16,9 @@ namespace TiledArray {
     /// \tparam Block The type used to store the data [ default = \c unsigned \c long ]
     template <typename Block = unsigned long>
     class Bitset {
+    private:
+      static const std::size_t block_bits; ///< The number of bits in a block
+
     public:
       typedef Block block_type;     ///< The type used to store the data
       typedef bool const_reference; ///< Constant reference to a bit
@@ -26,7 +29,7 @@ namespace TiledArray {
       /// \throw std::bad_alloc If bitset allocation fails.
       Bitset(std::size_t s) :
           size_(s),
-          blocks_(s / sizeof(block_type) + (s % sizeof(block_type) ? 1 : 0)),
+          blocks_((s / block_bits) + (s % block_bits ? 1 : 0)),
           set_(new block_type[blocks_])
       {
         std::fill_n(set_.get(), num_blocks(), block_type(0));
@@ -135,14 +138,31 @@ namespace TiledArray {
 
     private:
 
-      static std::size_t block_index(std::size_t i) { return i / sizeof(block_type); }
-      static std::size_t bit_index(std::size_t i) { return i % sizeof(block_type); }
+      /// Calculate block index
+
+      /// \return The block index that contains the i-th bit
+      /// \throw nothing
+      static std::size_t block_index(std::size_t i) { return i / block_bits; }
+
+      /// Calculate the bit index
+
+      /// \return The bit index that contains the i-th bit in the block
+      /// \throw nothing
+      static std::size_t bit_index(std::size_t i) { return i % block_bits; }
+
+      /// Construct a mask
+
+      /// \return A \c block_type that contains a single bit "on" bit at the i-th
+      /// bit index.
       static block_type mask(std::size_t i) { return block_type(1) << bit_index(i); }
 
-      std::size_t size_;
-      std::size_t blocks_;
-      boost::scoped_array<block_type> set_;
+      std::size_t size_;                    ///< The number of bits in the set
+      std::size_t blocks_;                  ///< The number of blocks used to store the bits
+      boost::scoped_array<block_type> set_; ///< An array that store the bits
     }; // class Bitset
+
+    template <typename Block>
+    const std::size_t Bitset<Block>::block_bits = 8 * sizeof(typename Bitset<Block>::block_type);
 
   } // namespace detail
 
