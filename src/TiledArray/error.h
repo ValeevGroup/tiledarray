@@ -16,7 +16,7 @@
 // Check for default error checking method, which is determined by TA_DEFAULT
 // error. It is defined in TiledArray/config.h.
 #ifdef TA_DEFAULT_ERROR
-# if !defined(TA_EXCEPTION_ERROR) && !defined(TA_EXCEPTION_ERROR) && !defined(TA_EXCEPTION_ERROR)
+# if !defined(TA_EXCEPTION_ERROR) && !defined(TA_ASSERT_ERROR) && !defined(TA_NO_ERROR)
 #  if TA_DEFAULT_ERROR == 0
 #   define TA_NO_ERROR
 #  elif TA_DEFAULT_ERROR == 1
