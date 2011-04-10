@@ -5,10 +5,8 @@
 #include <TiledArray/config.h>
 #include <TiledArray/key.h>
 #include <TiledArray/coordinates.h>
-#include <world/array.h>
 #include <TiledArray/type_traits.h>
 #include <boost/mpl/equal_to.hpp>
-#include <boost/mpl/bool.hpp>
 #include <numeric>
 #include <cstddef>
 

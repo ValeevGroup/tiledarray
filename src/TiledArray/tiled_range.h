@@ -196,7 +196,7 @@ namespace TiledArray {
   void swap(TiledRange<CS>& r0, TiledRange<CS>& r1) {
     TiledArray::swap(r0.range_, r1.range_);
     TiledArray::swap(r0.element_range_, r1.element_range_);
-    boost::swap(r0.ranges_, r1.ranges_);
+    std::swap(r0.ranges_, r1.ranges_);
   }
 
   /// Returns true when all tile and element ranges are the same.

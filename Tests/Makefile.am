@@ -15,6 +15,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   tiled_range.cpp \
                   tile.cpp \
                   bitset.cpp \
+                  versioned_pmap.cpp \
                   dense_shape.cpp \
                   sparse_shape.cpp \
                   pred_shape.cpp \
@@ -22,7 +23,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   variable_list.cpp \
                   annotated_array.cpp \
                   indexed_iterator.cpp \
-                  versioned_pmap.cpp \
                   array.cpp \
                   variable_list_math.cpp \
                   range_math.cpp \

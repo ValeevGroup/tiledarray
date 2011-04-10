@@ -2,7 +2,6 @@
 #define TILEDARRAY_COORDINATES_H__INCLUDED
 
 #include <TiledArray/config.h>
-#include <TiledArray/array_util.h>
 #include <TiledArray/utility.h>
 #include <TiledArray/error.h>
 #include <boost/operators.hpp>
@@ -257,7 +256,7 @@ namespace TiledArray {
     ArrayCoordinate_& operator ^= (const Permutation<DIM>& p) {
       array_type temp;
       detail::permute(p.begin(), p.end(), r_.begin(), temp.begin());
-      boost::swap(r_, temp);
+      std::swap(r_, temp);
       return *this;
     }
 
@@ -285,7 +284,7 @@ namespace TiledArray {
   /// \throw nothing
   template <typename I, unsigned int DIM, typename Tag>
   void swap(ArrayCoordinate<I,DIM,Tag>& c1, ArrayCoordinate<I,DIM,Tag>& c2) { // no throw
-    boost::swap(c1.data(), c2.data());
+    std::swap(c1.data(), c2.data());
   }
 
   /// Add a constant to a coordinate
@@ -387,9 +386,7 @@ namespace TiledArray {
   /// Append an ArrayCoordinate to an output stream.
   template <typename I, unsigned int DIM, typename Tag>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<I,DIM,Tag>& c) {
-    output << "(";
-    detail::print_array(output, c.begin(), c.end());
-    output << ")";
+    output << "(" << c << ")";
     return output;
   }
 

@@ -5,7 +5,6 @@ library_include_HEADERS = annotated_array.h \
                           array_impl.h \
                           array_math.h \
                           array_slice.h \
-                          array_util.h \
                           array.h \
                           bitset.h \
                           coordinate_system.h \

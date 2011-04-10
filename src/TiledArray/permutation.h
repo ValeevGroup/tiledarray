@@ -4,7 +4,6 @@
 #include <TiledArray/error.h>
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/utility.h>
-#include <TiledArray/array_util.h>
 #include <boost/utility/enable_if.hpp>
 #include <TiledArray/type_traits.h>
 #include <boost/concept_check.hpp>

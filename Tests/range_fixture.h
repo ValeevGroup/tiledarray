@@ -4,7 +4,6 @@
 #include "TiledArray/range.h"
 #include "TiledArray/tiled_range1.h"
 #include "TiledArray/tiled_range.h"
-#include "TiledArray/array_util.h"
 #include <iostream>
 
 using namespace TiledArray;

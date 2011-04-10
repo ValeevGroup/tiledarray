@@ -340,7 +340,7 @@ namespace TiledArray {
     /// \throw nothing
     void swap(Tile_& other) {
       std::swap<alloc_type>(*this, other);
-      boost::swap(range_, other.range_);
+      std::swap(range_, other.range_);
       std::swap(first_, other.first_);
       std::swap(last_, other.last_);
     }
