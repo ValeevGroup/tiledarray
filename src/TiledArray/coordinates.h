@@ -386,7 +386,7 @@ namespace TiledArray {
   /// Append an ArrayCoordinate to an output stream.
   template <typename I, unsigned int DIM, typename Tag>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<I,DIM,Tag>& c) {
-    output << "(" << c << ")";
+    output << c.data();
     return output;
   }
 
