@@ -95,8 +95,8 @@ BOOST_AUTO_TEST_CASE( ostream )
   boost::test_tools::output_test_stream output;
   output << p;
   BOOST_CHECK( !output.is_empty( false ) );       // check that the string was assigned.
-  BOOST_CHECK( output.check_length( 9, false ) ); // check for correct length.
-  BOOST_CHECK( output.is_equal( "(1, 2, 3)" ) );  // check for correct output.
+  BOOST_CHECK( output.check_length( 7, false ) ); // check for correct length.
+  BOOST_CHECK( output.is_equal( "[1,2,3]" ) );  // check for correct output.
 }
 
 BOOST_AUTO_TEST_CASE( c_comparisons )
