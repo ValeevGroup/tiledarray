@@ -28,8 +28,8 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   Bitset b64(64);
   // Check that the size of the bitset is correct
-  BOOST_CHECK_EQUAL(b64.size(), 64);
-  BOOST_CHECK_EQUAL(b64.num_blocks(), 1);
+  BOOST_CHECK_EQUAL(b64.size(), 64ul);
+  BOOST_CHECK_EQUAL(b64.num_blocks(), 1ul);
 
   // check that all bits are correctly initialized to false.
   for(std::size_t i = 0; i < b64.size(); ++i)
