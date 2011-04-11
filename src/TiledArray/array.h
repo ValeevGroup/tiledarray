@@ -215,7 +215,7 @@ namespace TiledArray {
     /// \note This does not indicate whether a tile exists or not. Only, who
     /// would own it if it does exist.
     template <typename Index>
-    ProcessID owner(const Index& i) const { pimpl_->owner(i); }
+    ProcessID owner(const Index& i) const { return pimpl_->owner(i); }
 
     /// Check for zero tiles
 
