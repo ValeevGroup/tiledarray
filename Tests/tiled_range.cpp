@@ -8,11 +8,9 @@
 using namespace TiledArray;
 
 const TiledRangeFixture::TRangeN::range_type
-TiledRangeFixture::tile_range(fill_index<TiledRangeFixture::index>(0),
-    fill_index<TiledRangeFixture::index>(5));
+TiledRangeFixture::tile_range(TiledRangeFixture::index(0), TiledRangeFixture::index(5));
 const TiledRangeFixture::TRangeN::tile_range_type
-TiledRangeFixture::element_range(fill_index<TiledRangeFixture::tile_index>(0),
-    fill_index<TiledRangeFixture::tile_index>(a[5]));
+TiledRangeFixture::element_range(TiledRangeFixture::tile_index(0), TiledRangeFixture::tile_index(a[5]));
 
 BOOST_FIXTURE_TEST_SUITE( tiled_range_suite, TiledRangeFixture )
 
@@ -51,7 +49,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   std::array<std::size_t, 6> a3;
   std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
   std::vector<TRangeN::tiled_range1_type> dims3(GlobalFixture::coordinate_system::dim, TRangeN::tiled_range1_type(a3.begin(), a3.end()));
-  TRangeN::tile_range_type e3(fill_index<tile_index>(a3[0]), fill_index<tile_index>(a3[5]));
+  TRangeN::tile_range_type e3 = TRangeN::tile_range_type(tile_index(a3[0]), tile_index(a3[5]));
 
   // check ranges constructor w/ offset element origin.
   BOOST_REQUIRE_NO_THROW(TRangeN r3(dims3.begin(), dims3.end()));

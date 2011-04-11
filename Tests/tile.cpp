@@ -70,12 +70,12 @@ BOOST_AUTO_TEST_CASE( range_accessor )
 BOOST_AUTO_TEST_CASE( element_access )
 {
   // check at() with array coordinate index
-  BOOST_CHECK_EQUAL(t.at(fill_index<index>(0)), 1);
-  BOOST_CHECK_EQUAL(t.at(fill_index<index>(4)), 1);
+  BOOST_CHECK_EQUAL(t.at(index(0)), 1);
+  BOOST_CHECK_EQUAL(t.at(index(4)), 1);
 
   // check operator[] with array coordinate index
-  BOOST_CHECK_EQUAL(t[fill_index<index>(0)], 1);
-  BOOST_CHECK_EQUAL(t[fill_index<index>(4)], 1);
+  BOOST_CHECK_EQUAL(t[index(0)], 1);
+  BOOST_CHECK_EQUAL(t[index(4)], 1);
 
   // check at() with ordinal index
   BOOST_CHECK_EQUAL(t.at(0), 1);

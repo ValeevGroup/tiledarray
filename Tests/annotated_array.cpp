@@ -19,8 +19,8 @@ std::string AnnotatedArrayFixture::make_var_list() {
 
 const VariableList AnnotatedArrayFixture::vars(AnnotatedArrayFixture::make_var_list());
 const AnnotatedArrayFixture::range_type AnnotatedArrayFixture::r(
-    fill_index<AnnotatedArrayFixture::index>(0),
-    fill_index<AnnotatedArrayFixture::index>(5));
+    AnnotatedArrayFixture::index(0),
+    AnnotatedArrayFixture::index(5));
 const AnnotatedArrayFixture::array_type AnnotatedArrayFixture::t(r, 1);
 
 BOOST_FIXTURE_TEST_SUITE( annotated_array_suite , AnnotatedArrayFixture )
