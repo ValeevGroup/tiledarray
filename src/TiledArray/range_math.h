@@ -30,12 +30,15 @@ namespace TiledArray {
 
     /// \tparam ArrayType The array type of the annotated array objects
     template <typename ArrayType, template <typename> class Op>
-    class BinaryOp<Range<typename ArrayType::coordinate_system>,
-        expressions::AnnotatedArray<ArrayType>, expressions::AnnotatedArray<ArrayType>, Op>
+    class BinaryOp<
+        Range<typename ArrayType::coordinate_system>,
+        TiledArray::expressions::AnnotatedArray<ArrayType>,
+        TiledArray::expressions::AnnotatedArray<ArrayType>,
+        Op>
     {
     public:
-      typedef const expressions::AnnotatedArray<ArrayType>& first_argument_type;
-      typedef const expressions::AnnotatedArray<ArrayType>& second_argument_type;
+      typedef const TiledArray::expressions::AnnotatedArray<ArrayType>& first_argument_type;
+      typedef const TiledArray::expressions::AnnotatedArray<ArrayType>& second_argument_type;
       typedef Range<typename ArrayType::coordinate_system>& result_type;
       typedef expressions::VariableList VarList;
 
@@ -54,7 +57,7 @@ namespace TiledArray {
       /// \throw std::runtime_error When \c result_vars is not equal to the
       /// argument variable lists.
       result_type operator ()(result_type result, const VarList& result_vars,
-          first_argument_type left, second_argument_type& right) const
+          first_argument_type left, second_argument_type right) const
       {
         TA_ASSERT(left.range() == right.range(), std::runtime_error,
             "Left and right ranges must match.");
@@ -93,7 +96,7 @@ namespace TiledArray {
       /// \param left The annotated array for the left-hand argument
       /// \param right The annotated array for the right-hand argument
       result_type operator ()(result_type result, const VarList& result_vars,
-          first_argument_type left, second_argument_type& right) const
+          first_argument_type left, second_argument_type right) const
       {
         typename Range<CS>::index start;
         typename Range<CS>::index finish;

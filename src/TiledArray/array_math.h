@@ -261,7 +261,7 @@ namespace TiledArray {
       /// \param left The annotated array for the left-hand argument
       /// \param right The annotated array for the right-hand argument
       result_type operator ()(result_type result, const VarList& result_vars,
-          first_argument_type left, second_argument_type& right) const
+          first_argument_type left, second_argument_type right) const
       {
 
         return result;

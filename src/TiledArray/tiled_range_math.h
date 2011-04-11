@@ -7,10 +7,15 @@ namespace TiledArray {
 
   template <typename>
   class TiledRange;
-  template <typename>
-  class AnnotatedArray;
   template <typename, typename, typename>
   class Array;
+
+  namespace expressions {
+
+    template <typename>
+    class AnnotatedArray;
+
+  } // namespace expressions
 
   namespace math {
 
@@ -43,7 +48,7 @@ namespace TiledArray {
       /// \throw std::runtime_error When \c result_vars is not equal to the
       /// argument variable lists.
       result_type operator ()(result_type result, const VarList& result_vars,
-          first_argument_type left, second_argument_type& right) const
+          first_argument_type left, second_argument_type right) const
       {
         TA_ASSERT(left.range() == right.range(), std::runtime_error,
             "Left and right ranges must match.");
@@ -79,7 +84,7 @@ namespace TiledArray {
       /// \param left The annotated array for the left-hand argument
       /// \param right The annotated array for the right-hand argument
       result_type operator ()(result_type result, const VarList& result_vars,
-          first_argument_type left, second_argument_type& right) const
+          first_argument_type left, second_argument_type right) const
       {
         typename Range<typename ArrayType::coordinate_system>::index start;
         typename Range<typename ArrayType::coordinate_system>::index finish;
