@@ -83,8 +83,8 @@ namespace TiledArray {
     /// Probe for tile existence
 
     /// \param k The index to be probed.
-    virtual bool probe_local(const key_type& k) const {
-        return pred_(k);
+    virtual bool local_probe(const key_type& k) const {
+      return pred_(k);
     }
 
     pred_type pred_; ///< The shape predicate

@@ -86,7 +86,7 @@ namespace TiledArray {
 
     /// \param k The index to be probed.
     virtual bool local_probe(const key_type& k) const {
-      return tiles_[k];
+      return tiles_[Shape_::ord(k)];
     }
 
     const madness::World& world_;

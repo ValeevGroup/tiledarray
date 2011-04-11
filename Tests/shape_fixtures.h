@@ -8,32 +8,39 @@
 #include "TiledArray/dense_shape.h"
 #include "TiledArray/pred_shape.h"
 
-struct BaseShapeFixture :
-    public virtual RangeFixture,
-    public virtual VersionedPmapFixture
-{ };
+struct BaseShapeFixture {
+  typedef GlobalFixture::coordinate_system::index index;
+  typedef GlobalFixture::coordinate_system::ordinal_index ordinal_index;
+  typedef GlobalFixture::coordinate_system::key_type key_type;
+  typedef TiledArray::Range<GlobalFixture::coordinate_system> RangeN;
+  typedef TiledArray::detail::VersionedPmap<GlobalFixture::coordinate_system::key_type> PmapT;
+  typedef TiledArray::Shape<GlobalFixture::coordinate_system> ShapeT;
 
-struct DenseShapeFixture : public BaseShapeFixture {
+
+  // Common data for shape tests.
+  BaseShapeFixture() :
+      r(index(0), index(5)), m(GlobalFixture::world->size())
+  {}
+
+  const RangeN r;
+  const PmapT m;
+};
+
+struct DenseShapeFixture : public virtual BaseShapeFixture {
   typedef TiledArray::DenseShape<GlobalFixture::coordinate_system> DenseShapeT;
 
   DenseShapeFixture() :
-      RangeFixture(),
-      VersionedPmapFixture(),
-      BaseShapeFixture(),
-      ds(r, m)
+    ds(r, m)
   { }
 
   DenseShapeT ds;
 };
 
 
-struct SparseShapeFixture : public BaseShapeFixture {
+struct SparseShapeFixture : public virtual BaseShapeFixture {
   typedef TiledArray::SparseShape<GlobalFixture::coordinate_system> SparseShapeT;
 
   SparseShapeFixture() :
-      RangeFixture(),
-      VersionedPmapFixture(),
-      BaseShapeFixture(),
       list(SparseShapeFixture::make_list(r.volume())),
       ss(* GlobalFixture::world, r, m, list.begin(), list.end())
   { }
@@ -53,13 +60,14 @@ struct SparseShapeFixture : public BaseShapeFixture {
   SparseShapeT ss;
 };
 
-struct PredShapeFixture : public BaseShapeFixture {
+struct PredShapeFixture : public virtual BaseShapeFixture {
   struct Even {
     typedef GlobalFixture::coordinate_system::size_array size_array;
 
     Even(const size_array& w) : weight(w) { }
 
-    bool operator()(std::size_t i) const {
+    bool operator()(const key_type& k) const {
+      ordinal_index i = (k.keys() & 1 ? k.key1() : GlobalFixture::coordinate_system::calc_ordinal(k.key2(), weight));
       return (i % 2) == 0;
     }
 
@@ -74,9 +82,6 @@ struct PredShapeFixture : public BaseShapeFixture {
   typedef TiledArray::PredShape<GlobalFixture::coordinate_system, Even> PredShapeT;
 
   PredShapeFixture() :
-      RangeFixture(),
-      VersionedPmapFixture(),
-      BaseShapeFixture(),
       p(r.weight()),
       ps(r, m, p)
   { }
@@ -85,10 +90,10 @@ struct PredShapeFixture : public BaseShapeFixture {
   PredShapeT ps;
 };
 
-struct ShapeFixture : public virtual PredShapeFixture, public virtual SparseShapeFixture, public virtual DenseShapeFixture {
-  typedef TiledArray::Shape<GlobalFixture::coordinate_system>* ShapePtr;
+struct ShapeFixture : public DenseShapeFixture, public SparseShapeFixture, public PredShapeFixture {
+  typedef ShapeT* ShapePtr;
 
-  ShapeFixture() : RangeFixture() { }
+  ShapeFixture() { }
 
 };
 

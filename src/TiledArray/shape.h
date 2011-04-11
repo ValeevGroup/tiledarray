@@ -99,7 +99,10 @@ namespace TiledArray {
     }
 
     ordinal_index ord(const key_type& k) const {
-      return coordinate_system::calc_ordinal(k, range_.weight(), range_.start());
+      if(k.keys() & 1)
+        return k.key1();
+      else
+        return coordinate_system::calc_ordinal(k.key2(), range_.weight(), range_.start());
     }
 
     template <typename Index>
