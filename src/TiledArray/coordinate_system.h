@@ -238,7 +238,7 @@ namespace TiledArray {
     /// \param w The weight array of the range
     /// \param s The size array of the range
     /// \return A key that contains both key1 and key2
-    static key_type key(const key_type& k, const size_array& w, const index& s) {
+    static key_type key(const key_type& k, const size_array&, const index&) {
       if(k.keys() == 1)
         return key(k.key1());
       else if(k.keys() == 2)
