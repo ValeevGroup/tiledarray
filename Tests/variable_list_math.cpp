@@ -1,6 +1,5 @@
 #include "TiledArray/variable_list_math.h"
 #include "unit_test_config.h"
-#include "TiledArray/variable_list.h"
 #include "math_fixture.h"
 
 using TiledArray::math::BinaryOp;
@@ -19,6 +18,18 @@ struct VariableListMathFixture : public MathFixture {
 
 
 BOOST_FIXTURE_TEST_SUITE( variable_list_math_suite, VariableListMathFixture )
+
+BOOST_AUTO_TEST_CASE( construct )
+{
+  // Construct a binary VariableList operation object
+  BOOST_REQUIRE_NO_THROW((BinaryOp<VariableList, array_annotation, array_annotation, std::plus>()));
+
+  // Construct a binary VariableList contraction operation object
+  BOOST_REQUIRE_NO_THROW((BinaryOp<VariableList, array_annotation, array_annotation, std::multiplies>()));
+
+  // Construct a unary VariableList operation object
+  BOOST_REQUIRE_NO_THROW((UnaryOp<VariableList, array_annotation, std::negate>()));
+}
 
 BOOST_AUTO_TEST_CASE( default_binary_op )
 {

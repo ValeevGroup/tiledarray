@@ -59,16 +59,16 @@ namespace TiledArray {
 
 
     /// Contraction operation for \c VariableList objects
-    template <typename ArrayType>
+    template <typename ArrayType1, typename ArrayType2>
     class BinaryOp<
         expressions::VariableList,
-        expressions::AnnotatedArray<ArrayType>,
-        expressions::AnnotatedArray<ArrayType>,
+        expressions::AnnotatedArray<ArrayType1>,
+        expressions::AnnotatedArray<ArrayType2>,
         std::multiplies>
     {
     public:
-      typedef const expressions::AnnotatedArray<ArrayType>& first_argument_type;
-      typedef const expressions::AnnotatedArray<ArrayType>& second_argument_type;
+      typedef const expressions::AnnotatedArray<ArrayType1>& first_argument_type;
+      typedef const expressions::AnnotatedArray<ArrayType2>& second_argument_type;
       typedef expressions::VariableList& result_type;
       typedef expressions::VariableList VarList;
 

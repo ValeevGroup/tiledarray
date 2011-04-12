@@ -32,8 +32,8 @@ namespace TiledArray {
     template <typename ArrayType, template <typename> class Op>
     class BinaryOp<
         Range<typename ArrayType::coordinate_system>,
-        TiledArray::expressions::AnnotatedArray<ArrayType>,
-        TiledArray::expressions::AnnotatedArray<ArrayType>,
+        expressions::AnnotatedArray<ArrayType>,
+        expressions::AnnotatedArray<ArrayType>,
         Op>
     {
     public:
