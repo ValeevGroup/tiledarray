@@ -21,14 +21,12 @@ const MathFixture::array_annotation MathFixture::a3(f3, VariableList(make_var_li
 std::string MathFixture::make_var_list(std::size_t first, std::size_t last) {
   assert(abs(last - first) <= 24);
   assert(last < 24);
-  static const char temp[26] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i','j',
-      'k','l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
 
   std::string result;
-  result += temp[first];
+  result += 'a' + first;
   for(++first; first != last; ++first) {
     result += ",";
-    result += temp[first];
+    result += 'a' + first;
   }
 
   return result;
