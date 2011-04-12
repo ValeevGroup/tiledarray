@@ -1,13 +1,10 @@
-#ifndef TILEDARRAY_ARRAY_FIXTURES_H__INCLUDED
-#define TILEDARRAY_ARRAY_FIXTURES_H__INCLUDED
+#ifndef TILEDARRAY_TEST_MATH_FIXTURE_H__INCLUDED
+#define TILEDARRAY_TEST_MATH_FIXTURE_H__INCLUDED
 
-#include "range_fixture.h"
-#include "TiledArray/variable_list.h"
+#include <cstddef>
+#include "unit_test_config.h"
+#include "TiledArray/range.h"
 #include "TiledArray/annotated_array.h"
-
-using namespace TiledArray;
-using TiledArray::expressions::AnnotatedArray;
-using TiledArray::expressions::VariableList;
 
 // Emulate an N-dimensional array class
 template <typename T, typename CS>
@@ -23,7 +20,7 @@ public:
   typedef const value_type&                                 const_reference;
   typedef typename std::vector<value_type>::iterator        iterator;
   typedef typename std::vector<value_type>::const_iterator  const_iterator;
-  typedef Range<CS>                                         range_type;
+  typedef TiledArray::Range<CS>                             range_type;
 
   FakeArray() :
       r_(), d_()
@@ -53,10 +50,15 @@ public:
   iterator end() { return d_.end(); }
   const_iterator end() const { return d_.end(); }
 
-  reference at(std::size_t n) { return d_.at(n); }
-  const_reference at(std::size_t n) const { return d_.at(n); }
-  reference operator[](std::size_t n) { return d_[n]; }
-  const_reference operator[](std::size_t n) const { return d_[n]; }
+  reference at(ordinal_index i) { return d_.at(i); }
+  const_reference at(ordinal_index i) const { return d_.at(i); }
+  reference operator[](ordinal_index i) { return d_[i]; }
+  const_reference operator[](ordinal_index i) const { return d_[i]; }
+
+  reference at(const index& i) { return d_.at(ord(i)); }
+  const_reference at(const index& i) const { return d_.at(ord(i)); }
+  reference operator[](const index& i) { return d_[ord(i)]; }
+  const_reference operator[](const index& i) const { return d_[ord(i)]; }
 
   const range_type& range() const { return r_; }
 
@@ -66,25 +68,42 @@ public:
   }
 
 private:
+
+  ordinal_index ord(const index& i) const {
+    return coordinate_system::calc_ordinal(i, r_.weight());
+  }
+
   range_type r_;
   std::vector<value_type> d_;
 };
 
-struct AnnotatedArrayFixture {
+struct MathFixture {
   typedef FakeArray<int, GlobalFixture::coordinate_system> array_type;
+  typedef TiledArray::CoordinateSystem<GlobalFixture::coordinate_system::dim + 1,
+        GlobalFixture::coordinate_system::level,
+        GlobalFixture::coordinate_system::order,
+        GlobalFixture::coordinate_system::ordinal_index> coordinate_system1;
+  typedef FakeArray<int, coordinate_system1> array1_type;
   typedef array_type::range_type range_type;
-  typedef TiledArray::expressions::AnnotatedArray<array_type > fake_annotation;
-  typedef fake_annotation::index index;
+  typedef TiledArray::expressions::AnnotatedArray<array_type > array_annotation;
+  typedef array_annotation::index index;
+  typedef array_annotation::ordinal_index ordinal_index;
 
-  static const VariableList vars;
+  MathFixture()
+  { }
+
+  static std::string make_var_list(std::size_t first = 0,
+      std::size_t last = GlobalFixture::element_coordinate_system::dim);
+
+  static const TiledArray::expressions::VariableList vars;
   static const range_type r;
-  static const array_type t;
+  static const array_type f1;
+  static const array_type f2;
+  static const array_type f3;
 
-  AnnotatedArrayFixture();
+  static const array_annotation a1;
+  static const array_annotation a2;
+  static const array_annotation a3;
+};
 
-  static std::string make_var_list();
-
-  fake_annotation at;
-}; // struct AnnotatedArrayFixture
-
-#endif // TILEDARRAY_ARRAY_FIXTURES_H__INCLUDED
+#endif // TILEDARRAY_TEST_MATH_FIXTURE_H__INCLUDED

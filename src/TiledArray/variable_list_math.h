@@ -5,6 +5,15 @@
 #include <TiledArray/variable_list.h>
 
 namespace TiledArray {
+
+
+  namespace expressions {
+
+    template <typename>
+    class AnnotatedArray;
+
+  } // namespace expressions
+
   namespace math {
 
     // Forward declarations
@@ -17,10 +26,19 @@ namespace TiledArray {
     /// Default binary operation for \c VariableList objects
 
     /// \tparam The operation type to be performed on two data elements.
-    template <template <typename> class Op>
-    class BinaryOp<expressions::VariableList, expressions::VariableList, expressions::VariableList, Op>
+    template <typename ArrayType, template <typename> class Op>
+    class BinaryOp<
+        expressions::VariableList,
+        expressions::AnnotatedArray<ArrayType>,
+        expressions::AnnotatedArray<ArrayType>,
+        Op>
     {
     public:
+      typedef const expressions::AnnotatedArray<ArrayType>& first_argument_type;
+      typedef const expressions::AnnotatedArray<ArrayType>& second_argument_type;
+      typedef expressions::VariableList& result_type;
+      typedef expressions::VariableList VarList;
+
       /// Set \c result to hold the resulting variable list for this operation
 
       /// The default behavior for this operation is to set copy left into
@@ -29,60 +47,70 @@ namespace TiledArray {
       /// \param left The variable list for the left-hand argument.
       /// \param right The variable list for the right-hand argument.
       /// \throw std::runtime_error When \c left is not equal to \c right.
-      expressions::VariableList& operator ()(expressions::VariableList& result,
-          const expressions::VariableList& left, const expressions::VariableList& right) const
+      result_type operator ()(result_type result, first_argument_type left,
+          second_argument_type right) const
       {
-        TA_ASSERT(left == right, std::runtime_error,
+        TA_ASSERT(left.vars() == right.vars(), std::runtime_error,
             "Left and right variable lists must match");
-        result = left;
+        result = left.vars();
         return result;
       }
-    }; // BinaryOp<expressions::VariableList, expressions::VariableList, expressions::VariableList, Op>
+    }; // class BinaryOp -- expressions::VariableList
 
 
     /// Contraction operation for \c VariableList objects
-    template <>
-    class BinaryOp<expressions::VariableList, expressions::VariableList, expressions::VariableList, std::multiplies>
+    template <typename ArrayType>
+    class BinaryOp<
+        expressions::VariableList,
+        expressions::AnnotatedArray<ArrayType>,
+        expressions::AnnotatedArray<ArrayType>,
+        std::multiplies>
     {
     public:
+      typedef const expressions::AnnotatedArray<ArrayType>& first_argument_type;
+      typedef const expressions::AnnotatedArray<ArrayType>& second_argument_type;
+      typedef expressions::VariableList& result_type;
+      typedef expressions::VariableList VarList;
+
       /// Set \c result to the correct variable list for the contraction operation
 
       /// \param result The result variable list
       /// \param left The variable list for the left-hand argument.
       /// \param right The variable list for the right-hand argument.
-      expressions::VariableList& operator ()(expressions::VariableList& result,
-          const expressions::VariableList& left, const expressions::VariableList& right) const
+      /// \return A reference to the modified \c result
+      result_type operator ()(result_type result, first_argument_type left,
+          second_argument_type right) const
       {
         typedef expressions::VariableList::const_iterator iterator;
         typedef std::pair<iterator, iterator> it_pair;
 
-        it_pair c0(left.end(), left.end());
-        it_pair c1(right.end(), right.end());
-        find_common(left.begin(), left.end(), right.begin(), right.end(), c0, c1);
+        it_pair c0(left.vars().end(), left.vars().end());
+        it_pair c1(right.vars().end(), right.vars().end());
+        find_common(left.vars().begin(), left.vars().end(), right.vars().begin(), right.vars().end(), c0, c1);
 
-        std::size_t n0 = 2 * left.dim() + 1;
-        std::size_t n1 = 2 * right.dim();
+        std::size_t n0 = 2 * left.vars().dim() + 1;
+        std::size_t n1 = 2 * right.vars().dim();
 
         std::map<std::size_t, std::string> v;
         std::pair<std::size_t, std::string> p;
-        for(iterator it = left.begin(); it != c0.first; ++it, n0 -= 2) {
+        for(iterator it = left.vars().begin(); it != c0.first; ++it, n0 -= 2) {
           p.first = n0;
           p.second = *it;
           v.insert(p);
         }
-        for(iterator it = right.begin(); it != c1.first; ++it, n1 -= 2) {
+        for(iterator it = right.vars().begin(); it != c1.first; ++it, n1 -= 2) {
           p.first = n1;
           p.second = *it;
           v.insert(p);
         }
         n0 -= 2 * (c0.second - c0.first);
         n1 -= 2 * (c1.second - c1.first);
-        for(iterator it = c0.second; it != left.end(); ++it, n0 -= 2) {
+        for(iterator it = c0.second; it != left.vars().end(); ++it, n0 -= 2) {
           p.first = n0;
           p.second = *it;
           v.insert(p);
         }
-        for(iterator it = c1.second; it != right.end(); ++it, n1 -= 2) {
+        for(iterator it = c1.second; it != right.vars().end(); ++it, n1 -= 2) {
           p.first = n1;
           p.second = *it;
           v.insert(p);
@@ -92,8 +120,21 @@ namespace TiledArray {
         for(std::map<std::size_t, std::string>::reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
           temp.push_back(it->second);
 
-        result = expressions::VariableList(temp.begin(), temp.end());
+        expressions::VariableList(temp.begin(), temp.end()).swap(result);
 
+        return result;
+      }
+
+      /// Set \c result to the correct variable list for the contraction operation
+
+      /// \param left The variable list for the left-hand argument.
+      /// \param right The variable list for the right-hand argument.
+      /// \return The contracted variable list.
+      expressions::VariableList operator ()(
+          const expressions::VariableList& left, const expressions::VariableList& right) const
+      {
+        expressions::VariableList result;
+        operator()(result, left, right);
         return result;
       }
 
@@ -156,23 +197,24 @@ namespace TiledArray {
         common2.second = first2;
       }
 
-    }; // class BinaryOp<expressions::VariableList, expressions::VariableList, expressions::VariableList, std::multiplies>
+    }; // class BinaryOp -- expressions::VariableList, std::multiplies
 
 
     /// Default unary operation for \c VariableList objects
 
     /// \tparam The operation type to be performed on the data elements.
-    template <template <typename> class Op>
-    class UnaryOp<expressions::VariableList, expressions::VariableList, Op>
+    template <typename ArrayType, template <typename> class Op>
+    class UnaryOp<expressions::VariableList, expressions::AnnotatedArray<ArrayType>, Op>
     {
     public:
-      expressions::VariableList& operator ()(expressions::VariableList& result,
-          const expressions::VariableList& arg) const
-      {
-        result = arg;
+      typedef const expressions::AnnotatedArray<ArrayType>& argument_type;
+      typedef expressions::VariableList& result_type;
+
+      result_type operator ()(result_type result, argument_type arg) const {
+        result = arg.vars();
         return result;
       }
-    }; // class UnaryOp<expressions::VariableList, Op>
+    }; // class UnaryOp -- expressions::VariableList
 
   } // namespace detail
 } // namespace TiledArray

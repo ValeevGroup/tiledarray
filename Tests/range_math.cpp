@@ -1,31 +1,15 @@
 #include "TiledArray/range_math.h"
 #include "TiledArray/annotated_array.h"
 #include "unit_test_config.h"
-#include "array_fixtures.h"
+#include "math_fixture.h"
 
-using TiledArray::Range;
-using TiledArray::expressions::AnnotatedArray;
 
-struct RangeMathFixture {
-  typedef FakeArray<int, GlobalFixture::coordinate_system> array_type;
-  typedef AnnotatedArray<array_type > fake_annotation;
-  typedef fake_annotation::range_type range_type;
-  typedef array_type::index index;
-
-  static const range_type r;
-  static const array_type a;
-  static const VariableList vars;
-  static const fake_annotation fa;
+struct RangeMathFixture : public MathFixture {
 
   RangeMathFixture() : result() { }
 
   range_type result;
 }; // RangeMathFixture
-
-const RangeMathFixture::range_type RangeMathFixture::r;
-const RangeMathFixture::array_type RangeMathFixture::a(r);
-const VariableList RangeMathFixture::vars(AnnotatedArrayFixture::make_var_list());
-const RangeMathFixture::fake_annotation RangeMathFixture::fa(a, RangeMathFixture::vars);
 
 BOOST_FIXTURE_TEST_SUITE( range_math_suite, RangeMathFixture )
 
