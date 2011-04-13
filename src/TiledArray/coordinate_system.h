@@ -559,15 +559,46 @@ namespace TiledArray {
     // The following code is designed to check for the sameness of the different
     // coordinate system properties at compile time.
 
+    /// Compile-time coordinate system dimension check.
+
+    /// This class is inherited from \c std::true_type when the dimensions are
+    /// the same, otherwise it is inherited from \c std::false_type.
+    /// \tparam T1 A CoordinateSystem<> type or a type with \c typename
+    /// \c T1::coordinate_system, where \c coordinate_system is a
+    /// \c CoordinateSystem<>.
     template <typename T1, typename T2>
     struct same_cs_dim : public madness::if_c<cs_dim<T1>::value == cs_dim<T2>::value, std::true_type, std::false_type >::type { };
 
+    /// Compile-time coordinate system level check.
+
+    /// This class is inherited from \c std::true_type when the orders are the
+    /// same, otherwise it is inherited from \c std::false_type.
+    /// \tparam T1 A CoordinateSystem<> type or a type with \c typename
+    /// \c T1::coordinate_system, where \c coordinate_system is a
+    /// \c CoordinateSystem<>.
+    /// \tparam T2 Same as T1.
     template <typename T1, typename T2>
     struct same_cs_level : public madness::if_c<cs_level<T1>::value == cs_level<T2>::value, std::true_type, std::false_type >::type { };
 
+    /// Compile-time coordinate system dimension ordering check.
+
+    /// This class is inherited from \c std::true_type when the orders are the
+    /// same, otherwise it is inherited from \c std::false_type.
+    /// \tparam T1 A CoordinateSystem<> type or a type with \c typename
+    /// \c T1::coordinate_system, where \c coordinate_system is a
+    /// \c CoordinateSystem<>.
+    /// \tparam T2 Same as T1.
     template <typename T1, typename T2>
     struct same_cs_order : public madness::if_c<cs_order<T1>::value == cs_order<T2>::value, std::true_type, std::false_type >::type { };
 
+    /// Compile-time coordinate system index type check.
+
+    /// This class is inherited from \c std::true_type when the ordinal_index
+    /// types are the same, otherwise it is inherited from \c std::false_type.
+    /// \tparam T1 A CoordinateSystem<> type or a type with \c typename
+    /// \c T1::coordinate_system, where \c coordinate_system is a
+    /// \c CoordinateSystem<>.
+    /// \tparam T2 Same as T1.
     template <typename T1, typename T2>
     struct same_cs_index : public std::is_same<typename cs_index<T1>::type, typename cs_index<T2>::type> { };
 
