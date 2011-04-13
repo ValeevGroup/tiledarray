@@ -62,7 +62,7 @@ namespace TiledArray {
         result = left.range();
         return result;
       }
-    }; // BinaryOp<Range<typename ArrayType::coordinate_system>, expressions::AnnotatedArray<ArrayType>, expressions::AnnotatedArray<ArrayType>, Op>
+    }; // BinaryOp -- Range
 
 
     /// Contraction operation for \c Range objects
@@ -112,7 +112,7 @@ namespace TiledArray {
         result.resize(start, finish);
         return result;
       }
-    }; // BinaryOp<Range<typename ArrayType::coordinate_system>, expressions::AnnotatedArray<ArrayType>, expressions::AnnotatedArray<ArrayType>, std::multiplies>
+    }; // BinaryOp -- Range w/ std::multiplies
 
     template <typename ArrayType, template <typename> class Op>
     class UnaryOp<Range<typename ArrayType::coordinate_system>, expressions::AnnotatedArray<ArrayType>, Op>
@@ -140,7 +140,7 @@ namespace TiledArray {
         result = arg;
         return result;
       }
-    }; // class UnaryOp<expressions::VariableList, Op>
+    }; // UnaryOp -- Range
 
   } // namespace math
 } // namespace TiledArray
