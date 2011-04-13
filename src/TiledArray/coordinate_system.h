@@ -528,134 +528,48 @@ namespace TiledArray {
       typedef CoordinateSystem<CS::dim, CS::level - 1, CS::order, typename CS::ordinal_index> coordinate_system;
     };
 
+    template <typename T>
+    struct cs_dim : public std::integral_constant<unsigned int, T::coordinate_system::dim> { };
+
+    template <unsigned int D, unsigned int L, detail::DimensionOrderType O, typename I>
+    struct cs_dim<CoordinateSystem<D, L, O, I> > : public std::integral_constant<unsigned int, D> { };
+
+    template <typename T>
+    struct cs_level : public std::integral_constant<unsigned int, T::coordinate_system::level> { };
+
+    template <unsigned int D, unsigned int L, detail::DimensionOrderType O, typename I>
+    struct cs_level<CoordinateSystem<D, L, O, I> > : public std::integral_constant<unsigned int, L> { };
+
+    template <typename T>
+    struct cs_order : public std::integral_constant<DimensionOrderType, T::coordinate_system::order> { };
+
+    template <unsigned int D, unsigned int L, detail::DimensionOrderType O, typename I>
+    struct cs_order<CoordinateSystem<D, L, O, I> > : public std::integral_constant<DimensionOrderType, O> { };
+
+    template <typename T>
+    struct cs_index {
+      typedef typename T::coordinate_system::ordinal_index type;
+    };
+
+    template <unsigned int D, unsigned int L, detail::DimensionOrderType O, typename I>
+    struct cs_index<CoordinateSystem<D, L, O, I> > {
+      typedef I type;
+    };
 
     // The following code is designed to check for the sameness of the different
     // coordinate system properties at compile time.
 
-    /// This class is used for compile-time coordinate system checking.
-
-    /// This class is inherited from \c std::true_type when the dimensions are
-    /// the same, otherwise it is inherited from \c std::false_type.
-    /// \tparam T1 A CoordinateSystem<> type or a type with \c typename
-    /// \c T1::coordinate_system, where \c coordinate_system is a
-    /// \c CoordinateSystem<>.
     template <typename T1, typename T2>
-    struct same_cs_dim : public boost::mpl::equal_to<
-        std::integral_constant<unsigned int, T1::coordinate_system::dim>,
-        std::integral_constant<unsigned int, T2::coordinate_system::dim> >::type
-    { };
+    struct same_cs_dim : public madness::if_c<cs_dim<T1>::value == cs_dim<T2>::value, std::true_type, std::false_type >::type { };
 
-    template <unsigned int D1, unsigned int L1, DimensionOrderType O1, typename I1,
-              unsigned int D2, unsigned int L2, DimensionOrderType O2, typename I2>
-    struct same_cs_dim<CoordinateSystem<D1, L1, O1, I1>, CoordinateSystem<D2, L2, O2, I2> > :
-        public boost::mpl::equal_to<std::integral_constant<unsigned int, D1>,
-        std::integral_constant<unsigned int, D2> >::type
-    { };
-
-    template <unsigned int D1, unsigned int L1, DimensionOrderType O1, typename I1, typename T2>
-    struct same_cs_dim<CoordinateSystem<D1, L1, O1, I1>, T2> :
-        public boost::mpl::equal_to<std::integral_constant<unsigned int, D1>,
-        std::integral_constant<unsigned int, T2::coordinate_system::dim> >::type
-    { };
-
-    template <typename T1, unsigned int D2, unsigned int L2, DimensionOrderType O2, typename I2>
-    struct same_cs_dim<T1, CoordinateSystem<D2, L2, O2, I2> > :
-        public boost::mpl::equal_to<std::integral_constant<unsigned int, T1::coordinate_system::dim>,
-        std::integral_constant<unsigned int, D2> >::type
-    { };
-
-    /// This class is used for compile-time coordinate system checking.
-
-    /// This class is inherited from \c std::true_type when the levels are the
-    /// same, otherwise it is inherited from \c std::false_type.
-    /// \tparam T1 A CoordinateSystem<> type or a type with \c typename
-    /// \c T1::coordinate_system, where \c coordinate_system is a
-    /// \c CoordinateSystem<>.
-    /// \tparam T2 Same as T1.
     template <typename T1, typename T2>
-    struct same_cs_level : public boost::mpl::equal_to<
-        std::integral_constant<unsigned int, T1::coordinate_system::level>,
-        std::integral_constant<unsigned int, T2::coordinate_system::level> >::type
-    { };
+    struct same_cs_level : public madness::if_c<cs_level<T1>::value == cs_level<T2>::value, std::true_type, std::false_type >::type { };
 
-    template <unsigned int D1, unsigned int L1, DimensionOrderType O1, typename I1,
-              unsigned int D2, unsigned int L2, DimensionOrderType O2, typename I2>
-    struct same_cs_level<CoordinateSystem<D1, L1, O1, I1>, CoordinateSystem<D2, L2, O2, I2> > :
-        public boost::mpl::equal_to<std::integral_constant<unsigned int, L1>,
-        std::integral_constant<unsigned int, L2> >::type
-    { };
-
-    template <unsigned int D1, unsigned int L1, DimensionOrderType O1, typename I1, typename T2>
-    struct same_cs_level<CoordinateSystem<D1, L1, O1, I1>, T2> :
-        public boost::mpl::equal_to<std::integral_constant<unsigned int, L1>,
-        std::integral_constant<unsigned int, T2::coordinate_system::dim> >::type
-    { };
-
-    template <typename T1, unsigned int D2, unsigned int L2, DimensionOrderType O2, typename I2>
-    struct same_cs_level<T1, CoordinateSystem<D2, L2, O2, I2> > :
-        public boost::mpl::equal_to<
-        std::integral_constant<unsigned int, T1::coordinate_system::dim>,
-        std::integral_constant<unsigned int, L2> >::type
-    { };
-
-    /// This class is used for compile-time coordinate system checking.
-
-    /// This class is inherited from \c std::true_type when the orders are the
-    /// same, otherwise it is inherited from \c std::false_type.
-    /// \tparam T1 A CoordinateSystem<> type or a type with \c typename
-    /// \c T1::coordinate_system, where \c coordinate_system is a
-    /// \c CoordinateSystem<>.
-    /// \tparam T2 Same as T1.
     template <typename T1, typename T2>
-    struct same_cs_order : public boost::mpl::equal_to<
-        std::integral_constant<DimensionOrderType, T1::coordinate_system::order>,
-        std::integral_constant<DimensionOrderType, T2::coordinate_system::order> >::type
-    { };
+    struct same_cs_order : public madness::if_c<cs_order<T1>::value == cs_order<T2>::value, std::true_type, std::false_type >::type { };
 
-    template <unsigned int D1, unsigned int L1, DimensionOrderType O1, typename I1,
-              unsigned int D2, unsigned int L2, DimensionOrderType O2, typename I2>
-    struct same_cs_order<CoordinateSystem<D1, L1, O1, I1>, CoordinateSystem<D2, L2, O2, I2> > :
-        public boost::mpl::equal_to<
-        std::integral_constant<DimensionOrderType, O1>,
-        std::integral_constant<DimensionOrderType, O2> >::type
-    { };
-
-    template <unsigned int D1, unsigned int L1, DimensionOrderType O1, typename I1, typename T2>
-    struct same_cs_order<CoordinateSystem<D1, L1, O1, I1>, T2> :
-        public boost::mpl::equal_to<std::integral_constant<DimensionOrderType, O1>,
-        std::integral_constant<DimensionOrderType, T2::coordinate_system::order> >::type
-    { };
-
-    template <typename T1, unsigned int D2, unsigned int L2, DimensionOrderType O2, typename I2>
-    struct same_cs_order<T1, CoordinateSystem<D2, L2, O2, I2> > :
-        public boost::mpl::equal_to<std::integral_constant<DimensionOrderType, T1::coordinate_system::order>,
-        std::integral_constant<DimensionOrderType, O2> >::type
-    { };
-
-    /// This class is used for compile-time coordinate system checking.
-
-    /// This class is inherited from \c std::true_type when the ordinal_index
-    /// types are the same, otherwise it is inherited from \c std::false_type.
-    /// \tparam T1 A CoordinateSystem<> type or a type with \c typename
-    /// \c T1::coordinate_system, where \c coordinate_system is a
-    /// \c CoordinateSystem<>.
-    /// \tparam T2 Same as T1.
     template <typename T1, typename T2>
-    struct same_cs_index : public std::is_same<typename T1::coordinate_system::ordinal_index,
-        typename T2::coordinate_system::ordinal_index> { };
-
-    template <unsigned int D1, unsigned int L1, DimensionOrderType O1, typename I1,
-              unsigned int D2, unsigned int L2, DimensionOrderType O2, typename I2>
-    struct same_cs_index<CoordinateSystem<D1, L1, O1, I1>, CoordinateSystem<D2, L2, O2, I2> > :
-        public std::is_same<I1, I2> { };
-
-    template <unsigned int D1, unsigned int L1, DimensionOrderType O1, typename I1, typename T2>
-    struct same_cs_index<CoordinateSystem<D1, L1, O1, I1>, T2> :
-        public std::is_same<I1, typename T2::coordinate_system::ordinal_index> { };
-
-    template <typename T1, unsigned int D2, unsigned int L2, DimensionOrderType O2, typename I2>
-    struct same_cs_index<T1, CoordinateSystem<D2, L2, O2, I2> > :
-        public std::is_same<typename T1::coordinate_system::ordinal_index, I2> { };
+    struct same_cs_index : public std::is_same<typename cs_index<T1>::type, typename cs_index<T2>::type> { };
 
     /// This class is used for compile-time coordinate system checking.
 
