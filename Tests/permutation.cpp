@@ -149,9 +149,4 @@ BOOST_AUTO_TEST_CASE( vector_permutation )
   BOOST_CHECK(a3 == ar); // check in-place permutation
 }
 
-BOOST_AUTO_TEST_CASE( permute_op )
-{
-
-}
-
 BOOST_AUTO_TEST_SUITE_END()
