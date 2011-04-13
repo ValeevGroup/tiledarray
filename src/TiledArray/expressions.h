@@ -2,6 +2,7 @@
 #define TILEDARRAY_EXPRESSIONS_H__INCLUDED
 
 #include <TiledArray/math.h>
+#include <functional>
 
 namespace TiledArray {
 
