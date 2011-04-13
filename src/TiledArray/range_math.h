@@ -4,6 +4,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/variable_list.h>
+#include <TiledArray/math.h>
 
 namespace TiledArray {
 
@@ -19,13 +20,6 @@ namespace TiledArray {
 
   namespace math {
 
-    // Forward declarations
-    template <typename, typename, typename, template <typename> class>
-    class BinaryOp;
-
-    template <typename, typename, template <typename> class>
-    class UnaryOp;
-
     /// Default binary operation for \c Range objects
 
     /// \tparam ArrayType The array type of the annotated array objects
@@ -34,7 +28,7 @@ namespace TiledArray {
         Range<typename ArrayType::coordinate_system>,
         expressions::AnnotatedArray<ArrayType>,
         expressions::AnnotatedArray<ArrayType>,
-        Op>
+        Op, typename boost::disable_if<std::is_same<Op<int>, std::multiplies<int> > >::type >
     {
     public:
       typedef const TiledArray::expressions::AnnotatedArray<ArrayType>& first_argument_type;

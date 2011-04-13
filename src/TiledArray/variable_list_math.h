@@ -3,6 +3,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/variable_list.h>
+#include <TiledArray/math.h>
 
 namespace TiledArray {
 
@@ -16,13 +17,6 @@ namespace TiledArray {
 
   namespace math {
 
-    // Forward declarations
-    template <typename, typename, typename, template <typename> class>
-    class BinaryOp;
-
-    template <typename, typename, template <typename> class>
-    class UnaryOp;
-
     /// Default binary operation for \c VariableList objects
 
     /// \tparam The operation type to be performed on two data elements.
@@ -31,7 +25,7 @@ namespace TiledArray {
         expressions::VariableList,
         expressions::AnnotatedArray<ArrayType>,
         expressions::AnnotatedArray<ArrayType>,
-        Op>
+        Op, typename boost::disable_if<std::is_same<Op<int>, std::multiplies<int> > >::type >
     {
     public:
       typedef const expressions::AnnotatedArray<ArrayType>& first_argument_type;
