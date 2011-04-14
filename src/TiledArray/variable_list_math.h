@@ -21,11 +21,11 @@ namespace TiledArray {
 
     /// \tparam The operation type to be performed on two data elements.
     template <typename ArrayType, template <typename> class Op>
-    class BinaryOp<
+    class BinaryOpImpl<
         expressions::VariableList,
         expressions::AnnotatedArray<ArrayType>,
         expressions::AnnotatedArray<ArrayType>,
-        Op, typename boost::disable_if<std::is_same<Op<int>, std::multiplies<int> > >::type >
+        Op, linear_tag>
     {
     public:
       typedef const expressions::AnnotatedArray<ArrayType>& first_argument_type;
@@ -54,11 +54,11 @@ namespace TiledArray {
 
     /// Contraction operation for \c VariableList objects
     template <typename ArrayType1, typename ArrayType2>
-    class BinaryOp<
+    class BinaryOpImpl<
         expressions::VariableList,
         expressions::AnnotatedArray<ArrayType1>,
         expressions::AnnotatedArray<ArrayType2>,
-        std::multiplies>
+        std::multiplies, contract_tag>
     {
     public:
       typedef const expressions::AnnotatedArray<ArrayType1>& first_argument_type;

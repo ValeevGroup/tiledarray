@@ -24,11 +24,11 @@ namespace TiledArray {
 
     /// \tparam ArrayType The array type of the annotated array objects
     template <typename ArrayType, template <typename> class Op>
-    class BinaryOp<
+    class BinaryOpImpl<
         Range<typename ArrayType::coordinate_system>,
         expressions::AnnotatedArray<ArrayType>,
         expressions::AnnotatedArray<ArrayType>,
-        Op, typename boost::disable_if<std::is_same<Op<int>, std::multiplies<int> > >::type >
+        Op, linear_tag >
     {
     public:
       typedef const TiledArray::expressions::AnnotatedArray<ArrayType>& first_argument_type;
@@ -69,8 +69,11 @@ namespace TiledArray {
 
     /// \tparam ArrayType The array type of the annotated array objects
     template <typename CS, typename LeftArrayType, typename RightArrayType>
-    class BinaryOp<Range<CS>,
-        expressions::AnnotatedArray<LeftArrayType>, expressions::AnnotatedArray<RightArrayType>, std::multiplies>
+    class BinaryOpImpl<
+        Range<CS>,
+        expressions::AnnotatedArray<LeftArrayType>,
+        expressions::AnnotatedArray<RightArrayType>,
+        std::multiplies, contract_tag>
     {
       // Check that the coordinate systems are compatible.
       TA_STATIC_ASSERT( (detail::compatible_coordinate_system<LeftArrayType, RightArrayType>::value) );
@@ -115,7 +118,10 @@ namespace TiledArray {
     }; // BinaryOp -- Range w/ std::multiplies
 
     template <typename ArrayType, template <typename> class Op>
-    class UnaryOp<Range<typename ArrayType::coordinate_system>, expressions::AnnotatedArray<ArrayType>, Op>
+    class UnaryOpImpl<
+        Range<typename ArrayType::coordinate_system>,
+        expressions::AnnotatedArray<ArrayType>,
+        Op, linear_tag>
     {
     public:
       typedef const expressions::AnnotatedArray<ArrayType>& argument_type;
