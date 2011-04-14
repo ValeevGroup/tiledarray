@@ -65,21 +65,22 @@ namespace TiledArray {
     /// Constructs a tile with zero size.
     /// \note You must call resize() before attempting to access any elements.
     Tile() :
-        alloc_type(), range_(std::make_shared<range_type>()), first_(NULL), last_(NULL)
+        alloc_type(), range_(), first_(NULL), last_(NULL)
     { }
 
     /// Copy constructor
 
     /// \param other The tile to be copied.
     Tile(const Tile_& other) :
-        alloc_type(other), range_(std::make_shared<range_type>(* other.range_)),
-        first_(alloc_type::allocate(other.range_->volume())),
-        last_(first_ + other.range_->volume())
+        alloc_type(other),
+        range_(other.range_),
+        first_(alloc_type::allocate(other.range_.volume())),
+        last_(first_ + other.range_.volume())
     {
       try {
         std::uninitialized_copy(other.first_, other.last_, first_);
       } catch(...) {
-        alloc_type::deallocate(first_, other.range_->volume());
+        alloc_type::deallocate(first_, other.range_.volume());
         throw;
       }
     }
@@ -96,14 +97,16 @@ namespace TiledArray {
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     /// \throw anything Any exception that can be thrown by \c T type default or
     /// copy constructors
-    Tile(const std::shared_ptr<range_type>& r, const value_type& val = value_type(), const alloc_type& a = alloc_type()) :
-        alloc_type(a), range_(r), first_(alloc_type::allocate(r->volume())),
-        last_(first_ + r->volume())
+    Tile(const range_type& r, const value_type& val = value_type(), const alloc_type& a = alloc_type()) :
+        alloc_type(a),
+        range_(r),
+        first_(alloc_type::allocate(r.volume())),
+        last_(first_ + r.volume())
     {
       try {
         std::uninitialized_fill(first_, last_, val);
       } catch (...) {
-        alloc_type::deallocate(first_, r->volume());
+        alloc_type::deallocate(first_, r.volume());
         throw;
       }
     }
@@ -125,16 +128,18 @@ namespace TiledArray {
     /// \throw anything Any exceptions that can be thrown by \c T type default
     /// or copy constructors
     template <typename InIter>
-    Tile(const std::shared_ptr<range_type>& r, InIter first, InIter last, const alloc_type& a = alloc_type()) :
-        alloc_type(a), range_(r), first_(alloc_type::allocate(r->volume())),
-        last_(first_ + r->volume())
+    Tile(const range_type& r, InIter first, InIter last, const alloc_type& a = alloc_type()) :
+        alloc_type(a),
+        range_(r),
+        first_(alloc_type::allocate(r.volume())),
+        last_(first_ + r.volume())
     {
       try {
-        TA_ASSERT(volume_type(std::distance(first, last)) == r->volume(), std::runtime_error,
+        TA_ASSERT(volume_type(std::distance(first, last)) == r.volume(), std::runtime_error,
             "The distance between initialization iterators must be equal to the tile volume.");
         std::uninitialized_copy(first, last, first_);
       } catch (...) {
-        alloc_type::deallocate(first_, r->volume());
+        alloc_type::deallocate(first_, r.volume());
         throw;
       }
     }
@@ -154,7 +159,7 @@ namespace TiledArray {
     /// destructor
     ~Tile() {
       destroy_(first_, last_);
-      alloc_type::deallocate(first_, range_->volume());
+      alloc_type::deallocate(first_, range_.volume());
     }
 
     /// In-place permutation of tile elements.
@@ -165,8 +170,8 @@ namespace TiledArray {
     Tile_& operator ^=(const Permutation<coordinate_system::dim>& p) {
       typedef detail::UninitializedCopy<typename Tile<T,CS,A>::const_iterator, A> copy_op;
 
-      const typename range_type::volume_type v = range_->volume();
-      range_type r(p ^ *range_);
+      const typename range_type::volume_type v = range_.volume();
+      range_type r(p ^ range_);
 
       // Allocate some space for the permuted data.
       pointer result_first = alloc_type::allocate(v);
@@ -174,22 +179,22 @@ namespace TiledArray {
 
       try {
         // create a permuted copy of the tile data
-        detail::Permute<CS, copy_op> f_perm(*range_, copy_op(first_, last_, *this));
+        detail::Permute<CS, copy_op> f_perm(range_, copy_op(first_, last_, *this));
         f_perm(p, result_first, result_last);
 
       } catch(...) {
-        alloc_type::deallocate(result_first, range_->volume());
+        alloc_type::deallocate(result_first, range_.volume());
         throw;
       }
 
       // Swap the current range and data with the permuted copies.
-      TiledArray::swap(*range_, r);
+      TiledArray::swap(range_, r);
       std::swap(first_, result_first);
       std::swap(last_, result_last);
 
       // clean-up the temporary storage (which now holds the old data).
       destroy_(result_first, result_last);
-      alloc_type::deallocate(result_first, range_->volume());
+      alloc_type::deallocate(result_first, range_.volume());
 
       return *this;
     }
@@ -202,11 +207,11 @@ namespace TiledArray {
     /// \return A reference to this object.
     /// \note The current data common to both arrays is maintained.
     /// \note This function cannot change the number of tile dimensions.
-    Tile_& resize(const std::shared_ptr<range_type>& r, value_type val = value_type()) {
+    Tile_& resize(const range_type& r, value_type val = value_type()) {
       Tile_ temp(r, val);
       if(first_ != NULL) {
         // replace Range with ArrayDim?
-        range_type range_common = *r & (*range_);
+        range_type range_common = r & (range_);
 
         for(typename range_type::const_iterator it = range_common.begin(); it != range_common.end(); ++it)
           temp[ *it ] = operator[]( *it ); // copy common data.
@@ -251,7 +256,7 @@ namespace TiledArray {
     /// thrown. Valid types for Index are ordinal_type and index_type.
     template <typename Index>
     reference at(const Index& i) {
-      if(! range_->includes(i))
+      if(! range_.includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...): Element is not in range.");
 
       return first_[ord_(i)];
@@ -296,13 +301,7 @@ namespace TiledArray {
 
     /// \return A const reference to the tile range object.
     /// \throw nothing
-    const range_type& range() const { return *range_; }
-
-    /// Tile range shared pointer accessor
-
-    /// \return A shared pointer to the tile's range object.
-    /// \throw nothing
-    std::shared_ptr<range_type> range_ptr() const { return range_; }
+    const range_type& range() const { return range_; }
 
     /// Create an annotated tile
 
@@ -363,7 +362,7 @@ namespace TiledArray {
     /// \throw nothing
     /// \note No range checking is done in this function.
     inline ordinal_index ord_(const index& i) const {
-      return coordinate_system::calc_ordinal(i, range_->weight(), range_->start());
+      return coordinate_system::calc_ordinal(i, range_.weight(), range_.start());
     }
 
     /// Call the destructor for a range of data.
@@ -399,9 +398,9 @@ namespace TiledArray {
     template <class, class>
     friend struct madness::archive::ArchiveLoadImpl;
 
-    std::shared_ptr<range_type> range_; ///< Shared pointer to the range data for this tile
-    pointer first_;                       ///< Pointer to the beginning of the data range
-    pointer last_;                        ///< Pointer to the end of the data range
+    range_type range_;  ///< Shared pointer to the range data for this tile
+    pointer first_;     ///< Pointer to the beginning of the data range
+    pointer last_;      ///< Pointer to the end of the data range
   }; // class Tile
 
 
@@ -416,8 +415,7 @@ namespace TiledArray {
   Tile<T,CS,A> operator ^(const Permutation<CS::dim>& p, const Tile<T,CS,A>& t) {
     typedef detail::AssignmentOp<typename Tile<T,CS,A>::iterator, typename Tile<T,CS,A>::const_iterator> assign_op;
 
-    std::shared_ptr<typename Tile<T,CS,A>::range_type> r =
-        std::make_shared<typename Tile<T,CS,A>::range_type>(p ^ t.range());
+    typename Tile<T,CS,A>::range_type r(p ^ t.range());
     Tile<T,CS,A> result(r);
 
     // create a permuted copy of the tile data

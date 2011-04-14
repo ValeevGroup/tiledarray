@@ -112,7 +112,7 @@ namespace TiledArray {
     /// \param i The ordinal index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
-    std::shared_ptr<tile_range_type> make_tile_range(const ordinal_index& i) const {
+    tile_range_type make_tile_range(const ordinal_index& i) const {
       TA_ASSERT(range_.includes(i), std::runtime_error, "Index i is not included in the range.");
       return make_tile_range(coordinate_system::calc_index(i, range_.weight()));
     }
@@ -122,7 +122,7 @@ namespace TiledArray {
     /// \param i The index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
-    std::shared_ptr<tile_range_type> make_tile_range(const index& i) const {
+    tile_range_type make_tile_range(const index& i) const {
       TA_ASSERT(range_.includes(i), std::runtime_error, "Index i is not included in the range.");
       tile_index start;
       tile_index finish;
@@ -131,7 +131,7 @@ namespace TiledArray {
         finish[d] = ranges_[d].tile(i[d]).finish();
       }
 
-      return std::make_shared<tile_range_type>(start, finish);
+      return tile_range_type(start, finish);
     }
 
   private:
