@@ -2,6 +2,7 @@
 #define TILEDARRAY_RANGE_ITERATOR_H__INCLUDED
 
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/iterator/iterator_traits.hpp>
 
 namespace TiledArray {
   namespace detail {
