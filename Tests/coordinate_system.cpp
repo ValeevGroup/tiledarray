@@ -1,9 +1,9 @@
 #include "TiledArray/coordinate_system.h"
 #include "unit_test_config.h"
+#include "math_fixture.h"
 
-using TiledArray::detail::DimensionOrderType;
-using TiledArray::detail::increasing_dimension_order;
-using TiledArray::detail::decreasing_dimension_order;
+using namespace TiledArray;
+using namespace TiledArray::detail;
 
 struct CoordinateSystemFixture {
   typedef GlobalFixture::coordinate_system CoordSysN;
@@ -40,20 +40,54 @@ struct CoordinateSystemFixture {
 
 BOOST_FIXTURE_TEST_SUITE( coord_sys_suite , CoordinateSystemFixture )
 
-// Check same_cs_dim
-// Todo: Check the 4 variants with TA_STATIC_ASSERT
+BOOST_AUTO_TEST_CASE( same_dim )
+{
+   BOOST_CHECK((same_cs_dim<CoordinateSystem<3>, CoordinateSystem<3> >::value));
+   BOOST_CHECK(! (same_cs_dim<CoordinateSystem<3>, CoordinateSystem<2> >::value));
 
-// Check same_cs_level
-// Todo: Check the 4 variants with TA_STATIC_ASSERT
+   BOOST_CHECK((same_cs_dim<FakeArray<int,CoordinateSystem<3> >, FakeArray<int,CoordinateSystem<3> > >::value));
+   BOOST_CHECK(! (same_cs_dim<FakeArray<int,CoordinateSystem<3> >, FakeArray<int,CoordinateSystem<2> > >::value));
+}
 
-// Check same_cs_order
-// Todo: Check the 4 variants with TA_STATIC_ASSERT
+BOOST_AUTO_TEST_CASE( same_level )
+{
+   BOOST_CHECK((same_cs_level<CoordinateSystem<3, 1>, CoordinateSystem<3, 1> >::value));
+   BOOST_CHECK(! (same_cs_level<CoordinateSystem<3, 1>, CoordinateSystem<3, 0> >::value));
 
-// Check same_cs_index
-// Todo: Check the 4 variants with TA_STATIC_ASSERT
+   BOOST_CHECK((same_cs_level<FakeArray<int,CoordinateSystem<3> >, FakeArray<int,CoordinateSystem<3> > >::value));
+   BOOST_CHECK(! (same_cs_level<FakeArray<int,CoordinateSystem<3, 0> >, FakeArray<int,CoordinateSystem<3> > >::value));
+}
 
-// Check compatible_coordinate_system
-// Todo: Check the 4 variants with TA_STATIC_ASSERT
+BOOST_AUTO_TEST_CASE( same_order )
+{
+   BOOST_CHECK((same_cs_order<CoordinateSystem<3>, CoordinateSystem<3> >::value));
+   BOOST_CHECK(! (same_cs_order<CoordinateSystem<3, 1, decreasing_dimension_order>,
+       CoordinateSystem<3, 1, increasing_dimension_order> >::value));
+
+   BOOST_CHECK((same_cs_order<FakeArray<int,CoordinateSystem<3> >, FakeArray<int,CoordinateSystem<3> > >::value));
+   BOOST_CHECK(! (same_cs_order<FakeArray<int,CoordinateSystem<3, 1, decreasing_dimension_order> >,
+       FakeArray<int,CoordinateSystem<3, 1, increasing_dimension_order> > >::value));
+}
+
+BOOST_AUTO_TEST_CASE( same_index )
+{
+   BOOST_CHECK((same_cs_index<CoordinateSystem<3>, CoordinateSystem<3> >::value));
+   BOOST_CHECK(! (same_cs_index<CoordinateSystem<3, 1, decreasing_dimension_order>,
+       CoordinateSystem<3, 1, decreasing_dimension_order, int> >::value));
+
+   BOOST_CHECK((same_cs_index<FakeArray<int,CoordinateSystem<3> >, FakeArray<int,CoordinateSystem<3> > >::value));
+   BOOST_CHECK(! (same_cs_index<FakeArray<int,CoordinateSystem<3, 1, decreasing_dimension_order> >,
+       FakeArray<int,CoordinateSystem<3, 1, decreasing_dimension_order, int> > >::value));
+}
+
+BOOST_AUTO_TEST_CASE( compatible )
+{
+ BOOST_CHECK((compatible_coordinate_system<CoordinateSystem<3>, CoordinateSystem<3> >::value));
+ BOOST_CHECK((compatible_coordinate_system<CoordinateSystem<3>, CoordinateSystem<2> >::value));
+ BOOST_CHECK(! (compatible_coordinate_system<CoordinateSystem<3, 0>, CoordinateSystem<3> >::value));
+ BOOST_CHECK(! (compatible_coordinate_system<CoordinateSystem<3, 1, increasing_dimension_order>, CoordinateSystem<3> >::value));
+ BOOST_CHECK(! (compatible_coordinate_system<CoordinateSystem<3, 1, decreasing_dimension_order, int>, CoordinateSystem<3> >::value));
+}
 
 BOOST_AUTO_TEST_CASE( coord_iterator )
 {
@@ -72,20 +106,34 @@ BOOST_AUTO_TEST_CASE( coord_iterator )
 
 BOOST_AUTO_TEST_CASE( iterator_selector )
 {
-  // Check CoordSysN::begin() returns an iterator to the least significant element
-  // Todo: Test non-const and const versions of CoordSysN::begin()
-
-
-  // Check CoordSysN::end() returns an iterator to one past the most significant element
-  // Todo: Test non-const and const versions of CoordSysN::end()
-
-
-  // Check CoordSysN::begin() returns an iterator to the most significant element
-  // Todo: Test non-const and const versions of CoordSysN::rbegin()
-
+  std::array<int, 3> a;
+  const std::array<int, 3>& ca = a;
+  for(int i = 0; i != a.size(); ++i)
+    a[i] = i;
 
   // Check CoordSysN::end() returns an iterator to one past the least significant element
-  // Todo: Test non-const and const versions of CoordSysN::rend()
+  BOOST_CHECK((CoordinateSystem<3,1,increasing_dimension_order>::begin(a) == a.begin()));
+  BOOST_CHECK((CoordinateSystem<3,1,increasing_dimension_order>::begin(ca) == ca.begin()));
+  BOOST_CHECK((CoordinateSystem<3,1,increasing_dimension_order>::end(a) == a.end()));
+  BOOST_CHECK((CoordinateSystem<3,1,increasing_dimension_order>::end(ca) == ca.end()));
+
+  // Check CoordSysN::begin() returns an iterator to the most significant element
+  BOOST_CHECK((CoordinateSystem<3,1,increasing_dimension_order>::rbegin(a) == a.rbegin()));
+  BOOST_CHECK((CoordinateSystem<3,1,increasing_dimension_order>::rbegin(ca) == ca.rbegin()));
+  BOOST_CHECK((CoordinateSystem<3,1,increasing_dimension_order>::rend(a) == a.rend()));
+  BOOST_CHECK((CoordinateSystem<3,1,increasing_dimension_order>::rend(ca) == ca.rend()));
+
+  // Check CoordSysN::end() returns an iterator to one past the most significant element
+  BOOST_CHECK((CoordinateSystem<3>::begin(a) == a.rbegin()));
+  BOOST_CHECK((CoordinateSystem<3>::begin(ca) == ca.rbegin()));
+  BOOST_CHECK((CoordinateSystem<3>::end(a) == a.rend()));
+  BOOST_CHECK((CoordinateSystem<3>::end(ca) == ca.rend()));
+
+  // Check CoordSysN::begin() returns an iterator to the least significant element
+  BOOST_CHECK((CoordinateSystem<3>::rbegin(a) == a.begin()));
+  BOOST_CHECK((CoordinateSystem<3>::rbegin(ca) == ca.begin()));
+  BOOST_CHECK((CoordinateSystem<3>::rend(a) == a.end()));
+  BOOST_CHECK((CoordinateSystem<3>::rend(ca) == ca.end()));
 }
 
 BOOST_AUTO_TEST_CASE( calc_weight )
