@@ -21,7 +21,6 @@ library_include_HEADERS = annotated_array.h \
                           permutation.h \
                           predicate.h \
                           range_iterator.h \
-                          range_math.h \
                           range.h \
                           shape_math.h \
                           shape.h \
