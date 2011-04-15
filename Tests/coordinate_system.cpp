@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE( iterator_selector )
 {
   std::array<int, 3> a;
   const std::array<int, 3>& ca = a;
-  for(int i = 0; i != a.size(); ++i)
+  for(std::size_t i = 0; i != a.size(); ++i)
     a[i] = i;
 
   // Check CoordSysN::end() returns an iterator to one past the least significant element
