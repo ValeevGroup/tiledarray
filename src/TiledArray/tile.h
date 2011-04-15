@@ -6,6 +6,7 @@
 #include <TiledArray/annotated_array.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/functional.h>
+#include <TiledArray/math.h>
 #include <Eigen/Core>
 #include <boost/iterator/transform_iterator.hpp>
 #include <world/sharedptr.h>
@@ -527,6 +528,27 @@ namespace TiledArray {
         boost::make_transform_iterator(left.begin(), std::bind2nd<T>(std::multiplies<T>(), right)),
         boost::make_transform_iterator(left.end(), std::bind2nd<T>(std::multiplies<T>(), right))
     );
+  }
+
+  template <typename T, typename ResCS, typename LeftCS, typename RightCS, typename A>
+  expressions::VariableList contract(Tile<T, ResCS, A>& res, const Tile<T, LeftCS, A>& left,
+      expressions::VariableList lvar, const Tile<T, RightCS, A>& right, expressions::VariableList rvar) {
+
+    math::ContractedArray<typename ResCS::ordinal_index>
+    contract_data(left.range(), lvar, right.range(), right.range());
+
+    typedef typename Tile<T, ResCS, A>::range_type range_type;
+    typedef typename Tile<T, ResCS, A>::index index;
+
+    TA_ASSERT( (Tile<T, ResCS, A>::coordinate_system::dim == contract_data.dim()) , std::runtime_error,
+        "The dimension of the result tile does not match the contraction size.");
+
+    res.resize(range_type(index(contract_data.start().begin()),
+        index(contract_data.finish().begin())));
+
+    contract<Tile<T, ResCS, A>::coordinate_system::order>(contract_data.m(),
+        contract_data.n(), contract_data.o(), contract_data.o(), contract_data.i(),
+        left.data(), right.data(), res.data());
   }
 
 
