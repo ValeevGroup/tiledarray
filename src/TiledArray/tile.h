@@ -5,7 +5,9 @@
 #include <TiledArray/range.h>
 #include <TiledArray/annotated_array.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/functional.h>
 #include <Eigen/Core>
+#include <boost/iterator/transform_iterator.hpp>
 #include <world/sharedptr.h>
 #include <world/archive.h>
 #include <iterator>
@@ -424,6 +426,110 @@ namespace TiledArray {
 
     return result;
   }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator+(const Tile<T, CS, A>& left, const Tile<T, CS, A>& right) {
+    if(left.range().volume() == 0 && right.range().volume())
+      return Tile<T, CS, A>();
+    else if(left.range().volume() == 0)
+      return right;
+    else if(right.range().volume() == 0)
+      return left;
+
+    TA_ASSERT(left.range() == right.range(), std::range_error, "The tile ranges must match.");
+
+    return Tile<T, CS, A>(left.range(),
+        boost::make_transform_iterator(
+            boost::make_zip_iterator(boost::make_tuple(left.begin(), right.end())),
+            detail::make_zip_op(std::plus<T>())
+        ),
+        boost::make_transform_iterator(
+            boost::make_zip_iterator(boost::make_tuple(left.end(), right.end())),
+            detail::make_zip_op(std::plus<T>())
+        )
+    );
+  }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator-(const Tile<T, CS, A>& left, const Tile<T, CS, A>& right) {
+    if(left.range().volume() == 0)
+      return -right;
+    else if(right.range().volume() == 0)
+      return left;
+
+    TA_ASSERT(left.range() == right.range(), std::range_error, "The tile ranges must match.");
+    return Tile<T, CS, A>(left.range(),
+        boost::make_transform_iterator(
+            boost::make_zip_iterator(boost::make_tuple(left.begin(), right.end())),
+            detail::make_zip_op(std::minus<T>())
+        ),
+        boost::make_transform_iterator(
+            boost::make_zip_iterator(boost::make_tuple(left.end(), right.end())),
+            detail::make_zip_op(std::minus<T>())
+        )
+    );
+  }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator-(const Tile<T, CS, A>& arg) {
+    if(arg.range().volume() == 0)
+      return Tile<T, CS, A>();
+
+    return Tile<T, CS, A>(arg.range(),
+        boost::make_transform_iterator(arg.begin(), std::negate<T>()),
+        boost::make_transform_iterator(arg.end(), std::negate<T>())
+    );
+  }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator+(const T& left, const Tile<T, CS, A>& right) {
+    return Tile<T, CS, A>(right.range(),
+        boost::make_transform_iterator(right.begin(), std::bind1st<T>(std::plus<T>(), left)),
+        boost::make_transform_iterator(right.end(), std::bind1st<T>(std::plus<T>(), left))
+    );
+  }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator+(const Tile<T, CS, A>& left, const T& right) {
+    return Tile<T, CS, A>(right.range(),
+        boost::make_transform_iterator(left.begin(), std::bind2nd<T>(std::plus<T>(), right)),
+        boost::make_transform_iterator(left.end(), std::bind2nd<T>(std::plus<T>(), right))
+    );
+  }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator-(const T& left, const Tile<T, CS, A>& right) {
+    return Tile<T, CS, A>(right.range(),
+        boost::make_transform_iterator(right.begin(), std::bind1st<T>(std::minus<T>(), left)),
+        boost::make_transform_iterator(right.end(), std::bind1st<T>(std::minus<T>(), left))
+    );
+  }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator-(const Tile<T, CS, A>& left, const T& right) {
+    return Tile<T, CS, A>(right.range(),
+        boost::make_transform_iterator(left.begin(), std::bind2nd<T>(std::minus<T>(), right)),
+        boost::make_transform_iterator(left.end(), std::bind2nd<T>(std::minus<T>(), right))
+    );
+  }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator*(const T& left, const Tile<T, CS, A>& right) {
+    return Tile<T, CS, A>(right.range(),
+        boost::make_transform_iterator(right.begin(), std::bind1st<T>(std::multiplies<T>(), left)),
+        boost::make_transform_iterator(right.end(), std::bind1st<T>(std::multiplies<T>(), left))
+    );
+  }
+
+  template <typename T, typename CS, typename A>
+  Tile<T, CS, A> operator*(const Tile<T, CS, A>& left, const T& right) {
+    return Tile<T, CS, A>(right.range(),
+        boost::make_transform_iterator(left.begin(), std::bind2nd<T>(std::multiplies<T>(), right)),
+        boost::make_transform_iterator(left.end(), std::bind2nd<T>(std::multiplies<T>(), right))
+    );
+  }
+
+
 
   /// ostream output orperator.
   template <typename T, typename CS, typename A>

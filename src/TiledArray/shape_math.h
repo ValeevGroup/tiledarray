@@ -4,7 +4,6 @@
 #include <TiledArray/dense_shape.h>
 #include <TiledArray/pred_shape.h>
 #include <TiledArray/sparse_shape.h>
-#include <TiledArray/tile_math.h>
 #include <world/sharedptr.h>
 #include <algorithm>
 

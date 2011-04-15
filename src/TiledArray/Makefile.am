@@ -12,6 +12,7 @@ library_include_HEADERS = annotated_array.h \
                           dense_shape.h \
                           error.h \
                           expressions.h \
+                          functional.h \
                           indexed_iterator.h \
                           key.h \
                           madness_runtime.h \
@@ -24,7 +25,6 @@ library_include_HEADERS = annotated_array.h \
                           range.h \
                           shape_math.h \
                           shape.h \
-                          tile_math.h \
                           tile_slice.h \
                           tile.h \
                           tiled_range_math.h \
@@ -33,7 +33,6 @@ library_include_HEADERS = annotated_array.h \
                           transform_iterator.h \
                           type_traits.h \
                           utility.h \
-                          variable_list_math.h \
                           variable_list.h \
                           versioned_pmap.h \
                           config.h

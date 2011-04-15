@@ -25,10 +25,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   indexed_iterator.cpp \
                   array.cpp \
                   math.cpp \
-                  variable_list_math.cpp \
-                  range_math.cpp \
                   tiled_range_math.cpp \
-                  tile_math.cpp \
                   shape_math.cpp \
                   array_math.cpp \
                   expressions.cpp \
