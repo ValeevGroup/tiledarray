@@ -4,7 +4,6 @@
 #include <TiledArray/error.h>
 #include <TiledArray/permutation.h>
 //#include <TiledArray/coordinate_system.h>
-//#include <boost/iterator/transform_iterator.hpp>
 #include <vector>
 #include <string>
 #include <map>
