@@ -29,10 +29,10 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename, typename, typename, template <typename> class>
-    class BinaryOp;
+    struct BinaryOp;
 
     template <typename, typename, template <typename> class>
-    class UnaryOp;
+    struct UnaryOp;
 
 
     /// Default binary operation for \c Array objects
@@ -49,7 +49,7 @@ namespace TiledArray {
                           typename CSL, typename PL,
                           typename CSR, typename PR,
               template <typename> class Op>
-    class BinaryOp<
+    struct BinaryOp<
         expressions::AnnotatedArray<Array<T, CSO, PO> >,
         expressions::AnnotatedArray<Array<T, CSL, PL> >,
         expressions::AnnotatedArray<Array<T, CSR, PR> >,
@@ -236,7 +236,7 @@ namespace TiledArray {
     template <typename T, typename CSO, typename PO,
                           typename CSL, typename PL,
                           typename CSR, typename PR>
-    class BinaryOp<
+    struct BinaryOp<
         expressions::AnnotatedArray<Array<T, CSO, PO> >,
         expressions::AnnotatedArray<Array<T, CSL, PL> >,
         expressions::AnnotatedArray<Array<T, CSR, PR> >,
@@ -281,7 +281,7 @@ namespace TiledArray {
     /// \tparam PR Right-hand argument array policy type
     /// \tparam Op The binary operation to be performed
     template <typename T, typename CS, typename PR, typename PA, template <typename> class Op>
-    class UnaryOp<
+    struct UnaryOp<
         expressions::AnnotatedArray<Array<T, CS, PR> >,
         expressions::AnnotatedArray<Array<T, CS, PA> >,
         Op>

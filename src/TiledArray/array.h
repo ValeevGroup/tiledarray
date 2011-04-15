@@ -15,10 +15,10 @@ namespace TiledArray {
 
   namespace math {
     template <typename, typename, typename, template <typename> class>
-    class BinaryOp;
+    struct BinaryOp;
 
     template <typename, typename, template <typename> class>
-    class UnaryOp;
+    struct UnaryOp;
   }
 
 
