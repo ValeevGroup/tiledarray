@@ -30,17 +30,19 @@ namespace TiledArray {
       typedef std::vector<I> size_array;
       typedef std::array<I, 3> packed_size_array;
 
-      template<typename LeftSize, typename RightSize>
-      ContractedArray(const LeftSize& lsize, const expressions::VariableList& lvars,
-          const RightSize& rsize, const expressions::VariableList& rvars,
+      template<typename LeftRange, typename RightRange>
+      ContractedArray(const LeftRange& lrange, const expressions::VariableList& lvars,
+          const RightRange& rrange, const expressions::VariableList& rvars,
           detail::DimensionOrderType o) :
           vars_(lvars * rvars),
           order_(o)
       {
         typedef std::pair<expressions::VariableList::const_iterator,
             expressions::VariableList::const_iterator> vars_iter_pair;
-        typedef std::pair<typename LeftSize::const_iterator, typename LeftSize::const_iterator> lsize_iter_pair;
-        typedef std::pair<typename RightSize::const_iterator, typename RightSize::const_iterator> rsize_iter_pair;
+        typedef std::pair<typename LeftRange::index::const_iterator,
+            typename LeftRange::index::const_iterator> lindex_iter_pair;
+        typedef std::pair<typename RightRange::index::const_iterator,
+            typename RightRange::index::const_iterator> rindex_iter_pair;
 
         // find common variable lists
         vars_iter_pair lvars_common;
@@ -48,90 +50,17 @@ namespace TiledArray {
         expressions::detail::find_common(lvars.begin(), lvars.end(), rvars.begin(),
             rvars.end(), lvars_common, rvars_common);
 
-        lsize_iter_pair lsize_common = get_common_range_iterators(lsize.begin(),
+        lindex_iter_pair lstart_common = get_common_range_iterators(lrange.start().begin(),
             std::distance(lvars.begin(), lvars_common.first),
             std::distance(lvars.begin(), lvars_common.second));
-        rsize_iter_pair rsize_common = get_common_range_iterators(rsize.begin(),
+        rindex_iter_pair rstart_common = get_common_range_iterators(rrange.start().begin(),
             std::distance(rvars.begin(), rvars_common.first),
             std::distance(rvars.begin(), rvars_common.second));
 
-        TA_ASSERT(std::lexicographical_compare(lsize_common.first,
-            lsize_common.second, rsize_common.first, rsize_common.second),
-            std::runtime_error, "The common start dimensions do not match.");
-
-        // find dimensions of the result tile
-        size_.resize(vars_.dim(), 0);
-        start_.resize(vars_.dim(), 0);
-        finish_.resize(vars_.dim(), 0);
-        typename size_array::iterator size_it = size_.begin();
-        typename size_array::iterator size_end = size_.end();
-        typename size_array::iterator finish_it = finish_it.begin();
-        expressions::VariableList::const_iterator v_it = vars_.begin();
-        expressions::VariableList::const_iterator lvar_begin = lvars.begin();
-        expressions::VariableList::const_iterator lvar_end = lvars.end();
-        expressions::VariableList::const_iterator rvar_begin = rvars.begin();
-        expressions::VariableList::const_iterator rvar_end = rvars.end();
-        expressions::VariableList::const_iterator find_it;
-        std::iterator_traits<expressions::VariableList::const_iterator>::difference_type n = 0;
-        for(; size_it != size_end; ++size_it, ++finish_it, ++v_it) {
-          if((find_it = std::find(lvar_begin, lvar_end, *v_it)) != lvars.end()) {
-            n  = std::distance(lvar_begin, find_it);
-            *size_it = *finish_it = lsize[n];
-          } else {
-            find_it = std::find(rvar_begin, rvar_end, *v_it);
-            n  = std::distance(rvar_begin, find_it);
-            *size_it = *finish_it = lsize[n];
-          }
-        }
-
-        // calculate packed tile dimensions
-        const I init = 1;
-        packed_left_size_[0] = std::accumulate(lsize.begin(), lsize_common.first,
-            init, std::multiplies<I>());
-        packed_left_size_[2] = std::accumulate(lsize_common.second, lsize.end(),
-            init, std::multiplies<I>());
-        packed_right_size_[0] = std::accumulate(rsize.begin(), rsize_common.fist,
-            init, std::multiplies<I>());
-        packed_right_size_[2] = std::accumulate(rsize_common.second, rsize.end(),
-            init, std::multiplies<I>());
-        packed_left_size_[1] = std::accumulate(lsize_common.first, lsize_common.second,
-            init, std::multiplies<std::size_t>());
-        packed_right_size_[1] = packed_left_size_[1];
-      }
-
-      template<typename LeftIndex, typename RightIndex>
-      ContractedArray(const LeftIndex& lstart, const LeftIndex& lfinish,
-          const expressions::VariableList& lvars,
-          const RightIndex& rstart, const RightIndex& rfinish,
-          const expressions::VariableList& rvars,
-          detail::DimensionOrderType o) :
-          vars_(lvars * rvars),
-          order_(o)
-      {
-        typedef std::pair<expressions::VariableList::const_iterator,
-            expressions::VariableList::const_iterator> vars_iter_pair;
-        typedef std::pair<typename LeftIndex::const_iterator,
-            typename LeftIndex::const_iterator> lindex_iter_pair;
-        typedef std::pair<typename RightIndex::const_iterator,
-            typename RightIndex::const_iterator> rindex_iter_pair;
-
-        // find common variable lists
-        vars_iter_pair lvars_common;
-        vars_iter_pair rvars_common;
-        expressions::detail::find_common(lvars.begin(), lvars.end(), rvars.begin(),
-            rvars.end(), lvars_common, rvars_common);
-
-        lindex_iter_pair lstart_common = get_common_range_iterators(lstart.begin(),
+        lindex_iter_pair lfinish_common = get_common_range_iterators(lrange.finish().begin(),
             std::distance(lvars.begin(), lvars_common.first),
             std::distance(lvars.begin(), lvars_common.second));
-        rindex_iter_pair rstart_common = get_common_range_iterators(rstart.begin(),
-            std::distance(rvars.begin(), rvars_common.first),
-            std::distance(rvars.begin(), rvars_common.second));
-
-        lindex_iter_pair lfinish_common = get_common_range_iterators(lfinish.begin(),
-            std::distance(lvars.begin(), lvars_common.first),
-            std::distance(lvars.begin(), lvars_common.second));
-        rindex_iter_pair rfinish_common = get_common_range_iterators(rfinish.begin(),
+        rindex_iter_pair rfinish_common = get_common_range_iterators(rrange.finish().begin(),
             std::distance(rvars.begin(), rvars_common.first),
             std::distance(rvars.begin(), rvars_common.second));
 
@@ -161,23 +90,23 @@ namespace TiledArray {
         for(; size_it != size_end; ++size_it, ++start_it, ++finish_it, ++v_it) {
           if((find_it = std::find(lvar_begin, lvar_end, *v_it)) != lvars.end()) {
             n  = std::distance(lvar_begin, find_it);
-            *start_it = lstart[n];
-            *finish_it = lfinish[n];
+            *start_it = lrange.start()[n];
+            *finish_it = lrange.finish()[n];
             *size_it = *finish_it - *start_it;
           } else {
             find_it = std::find(rvar_begin, rvar_end, *v_it);
             n  = std::distance(rvar_begin, find_it);
-            *start_it = rstart[n];
-            *finish_it = rfinish[n];
+            *start_it = rrange.start()[n];
+            *finish_it = rrange.finish()[n];
             *size_it = *finish_it - *start_it;
           }
         }
 
         // calculate packed tile dimensions
-        packed_left_size_[0] = accumulate<I>(lfinish.begin(), lfinish_common.first, lstart.begin());
-        packed_left_size_[2] = accumulate<I>(lfinish_common.second, lfinish.end(), lstart_common.second);
-        packed_right_size_[0] = accumulate<I>(rfinish.begin(), rfinish_common.first, rstart.begin());
-        packed_right_size_[2] = accumulate<I>(rfinish_common.second, rfinish.end(), rstart_common.second);
+        packed_left_size_[0] = accumulate<I>(lrange.finish().begin(), lfinish_common.first, lrange.start().begin());
+        packed_left_size_[2] = accumulate<I>(lfinish_common.second, lrange.finish().end(), lstart_common.second);
+        packed_right_size_[0] = accumulate<I>(rrange.finish().begin(), rfinish_common.first, rrange.start().begin());
+        packed_right_size_[2] = accumulate<I>(rfinish_common.second, rrange.finish().end(), rstart_common.second);
         packed_left_size_[1] = accumulate<I>(lfinish_common.first, lfinish_common.second, lstart_common.first);
         packed_right_size_[1] = packed_left_size_[1];
       }
