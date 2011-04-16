@@ -626,15 +626,15 @@ namespace madness {
       static void load(const Archive& ar, tile_type& t) {
         if(t.first_ != NULL) {
           t.destroy_(t.first_, t.last_);
-          t.deallocate(t.first_, t.range_->volume());
+          t.deallocate(t.first_, t.range_.volume());
         }
 
         ar & static_cast<typename TiledArray::Tile<T, CS, A>::alloc_type&>(t);
-        ar & (* t.range_);
-        t.first_ = t.allocate(t.range_->volume());
-        t.last_ = t.first_ + t.range_->volume();
-        t.uninitialized_fill_(t.first_, t.last_, typename TiledArray::Tile<T, CS, A>::value_type());
-        ar & wrap(t.first_, t.range_->volume());
+        ar & t.range_;
+        t.first_ = t.allocate(t.range_.volume());
+        t.last_ = t.first_ + t.range_.volume();
+        std::uninitialized_fill(t.first_, t.last_, typename TiledArray::Tile<T, CS, A>::value_type());
+        ar & wrap(t.first_, t.range_.volume());
       }
     };
 

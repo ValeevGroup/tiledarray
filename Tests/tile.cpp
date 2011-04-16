@@ -4,6 +4,7 @@
 #include <utility>
 #include "unit_test_config.h"
 #include "range_fixture.h"
+#include <world/bufar.h>
 
 //using namespace TiledArray;
 
@@ -233,6 +234,26 @@ BOOST_AUTO_TEST_CASE( ostream )
   BOOST_CHECK( !output.is_empty( false ) ); // check for correct output.
   BOOST_CHECK( output.check_length( 80, false ) );
   BOOST_CHECK( output.is_equal("{{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}}") );
+}
+
+BOOST_AUTO_TEST_CASE( serialization )
+{
+  std::size_t buf_size = (t.range().volume() * sizeof(int) + sizeof(TileN))*2;
+  unsigned char* buf = new unsigned char[buf_size];
+  madness::archive::BufferOutputArchive oar(buf, buf_size);
+  oar & t;
+  std::size_t nbyte = oar.size();
+  oar.close();
+
+  TileN ts;
+  madness::archive::BufferInputArchive iar(buf,nbyte);
+  iar & ts;
+  iar.close();
+
+  delete [] buf;
+
+  BOOST_CHECK_EQUAL(t.range(), ts.range());
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.begin(), t.end(), ts.begin(), ts.end());
 }
 
 BOOST_AUTO_TEST_CASE( addition )
