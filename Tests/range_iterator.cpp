@@ -7,8 +7,8 @@ using TiledArray::detail::RangeIterator;
 // Fake container for iterator tests
 struct FakeRange {
   typedef RangeIterator<int, FakeRange> iterator;
-  iterator begin() { return iterator(0, this); }
-  iterator end() { return iterator(10, this); }
+  iterator begin() const { return iterator(0, this); }
+  iterator end() const { return iterator(10, this); }
   void increment(iterator::value_type& i) const { ++i; }
 };
 
