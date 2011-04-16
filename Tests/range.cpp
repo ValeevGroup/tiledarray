@@ -3,6 +3,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include <sstream>
+#include <world/bufar.h>
 
 using namespace TiledArray;
 
@@ -325,6 +326,30 @@ BOOST_AUTO_TEST_CASE( iteration )
 
   Range3F rf(Range3F::index(1,1,1),Range3F::index(3,3,3));
   BOOST_CHECK_EQUAL_COLLECTIONS(rf.begin(), rf.end(), tf.begin(), tf.end());
+}
+
+BOOST_AUTO_TEST_CASE( serialization )
+{
+  std::size_t buf_size = sizeof(RangeN) * 2;
+  unsigned char* buf = new unsigned char[buf_size];
+  madness::archive::BufferOutputArchive oar(buf, buf_size);
+  oar & r;
+  std::size_t nbyte = oar.size();
+  oar.close();
+
+  RangeN rs;
+  madness::archive::BufferInputArchive iar(buf,nbyte);
+  iar & rs;
+  iar.close();
+
+  delete [] buf;
+
+  BOOST_CHECK_EQUAL(rs.start(), r.start());   // check start()
+  BOOST_CHECK_EQUAL(rs.finish(), r.finish()); // check finish()
+  BOOST_CHECK_EQUAL(rs.size(), r.size());     // check size()
+  BOOST_CHECK_EQUAL(rs.weight(), r.weight()); // check weight()
+  BOOST_CHECK_EQUAL(rs.volume(), r.volume()); // check volume()
+  BOOST_CHECK_EQUAL(rs, r);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
