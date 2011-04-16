@@ -2,6 +2,7 @@
 #include "TiledArray/permutation.h"
 #include <iostream>
 #include "unit_test_config.h"
+#include <world/bufar.h>
 
 using namespace TiledArray;
 using TiledArray::detail::LevelTag;
@@ -166,6 +167,25 @@ BOOST_AUTO_TEST_CASE( permutation )
   BOOST_CHECK_EQUAL(p1, pr);
   BOOST_CHECK_EQUAL(perm ^ p2, pr); // check permutation
   BOOST_CHECK_EQUAL(p2, p);         // check that p2 is not modified
+}
+
+BOOST_AUTO_TEST_CASE( serialization )
+{
+  std::size_t buf_size = sizeof(Point3) * 2;
+  unsigned char* buf = new unsigned char[buf_size];
+  madness::archive::BufferOutputArchive oar(buf, buf_size);
+  oar & p;
+  std::size_t nbyte = oar.size();
+  oar.close();
+
+  Point3 ps;
+  madness::archive::BufferInputArchive iar(buf,nbyte);
+  iar & ps;
+  iar.close();
+
+  delete [] buf;
+
+  BOOST_CHECK_EQUAL(ps, p);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
