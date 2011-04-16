@@ -5,10 +5,8 @@
 #include <TiledArray/range.h>
 #include <TiledArray/annotated_array.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/functional.h>
 #include <TiledArray/math.h>
 #include <Eigen/Core>
-#include <boost/iterator/transform_iterator.hpp>
 #include <world/sharedptr.h>
 #include <world/archive.h>
 #include <iterator>
@@ -198,6 +196,56 @@ namespace TiledArray {
       // clean-up the temporary storage (which now holds the old data).
       destroy_(result_first, result_last);
       alloc_type::deallocate(result_first, range_.volume());
+
+      return *this;
+    }
+
+    Tile_& operator+=(const Tile_& other) {
+      if(range().volume() == 0)
+        *this = other;
+      else if(other.range().volume() != 0ul) {
+        TA_ASSERT(range() == other.range(), std::runtime_error, "The ranges must be equal.");
+        const_iterator other_it = other.begin();
+        for(iterator it = begin(); it != end(); ++it)
+          *it += *other_it++;
+      }
+
+      return *this;
+    }
+
+    Tile_& operator+=(const value_type& value) {
+      if(range().volume() != 0)
+        for(iterator it = begin(); it != end(); ++it)
+          *it += value;
+
+      return *this;
+    }
+
+    Tile_& operator-=(const Tile_& other) {
+      if(range().volume() == 0)
+        *this = -other;
+      else if(other.range().volume() != 0ul) {
+        TA_ASSERT(range() == other.range(), std::runtime_error, "The ranges must be equal.");
+        const_iterator other_it = other.begin();
+        for(iterator it = begin(); it != end(); ++it)
+          *it -= *other_it++;
+      }
+
+      return *this;
+    }
+
+    Tile_& operator-=(const value_type& value) {
+      if(range().volume() != 0)
+        for(iterator it = begin(); it != end(); ++it)
+          *it -= value;
+
+      return *this;
+    }
+
+    Tile_& operator*=(const value_type& value) {
+      if(range().volume() != 0)
+        for(iterator it = begin(); it != end(); ++it)
+          *it *= value;
 
       return *this;
     }
@@ -413,6 +461,30 @@ namespace TiledArray {
     first.swap(second);
   }
 
+  namespace math {
+
+    template <typename TRange, typename ResTile, typename LeftTile, typename RightTile, template <typename> class Op>
+    struct BinaryTileOp {
+      TA_STATIC_ASSERT((std::is_same<ResTile, LeftTile>::value && std::is_same<ResTile, LeftTile>::value));
+      typedef TRange tiled_range_type;
+      typedef typename TRange::index index;
+      typedef Op<ResTile> op;
+      typedef ResTile& result_type;
+      typedef const LeftTile& first_argument_type;
+      typedef const RightTile& second_argument_type;
+
+
+      result_type operator()(first_argument_type left, second_argument_type right) const {
+        return op_(left, right);
+      }
+
+    private:
+
+
+    }; // struct BinaryOp
+
+  } // namespace math
+
   /// Permutes the content of the n-dimensional array.
   template <typename T, typename CS, typename A>
   Tile<T,CS,A> operator ^(const Permutation<CS::dim>& p, const Tile<T,CS,A>& t) {
@@ -429,105 +501,51 @@ namespace TiledArray {
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator+(const Tile<T, CS, A>& left, const Tile<T, CS, A>& right) {
-    if(left.range().volume() == 0 && right.range().volume())
-      return Tile<T, CS, A>();
-    else if(left.range().volume() == 0)
-      return right;
-    else if(right.range().volume() == 0)
-      return left;
-
-    TA_ASSERT(left.range() == right.range(), std::range_error, "The tile ranges must match.");
-
-    return Tile<T, CS, A>(left.range(),
-        boost::make_transform_iterator(
-            boost::make_zip_iterator(boost::make_tuple(left.begin(), right.end())),
-            detail::make_zip_op(std::plus<T>())
-        ),
-        boost::make_transform_iterator(
-            boost::make_zip_iterator(boost::make_tuple(left.end(), right.end())),
-            detail::make_zip_op(std::plus<T>())
-        )
-    );
+  inline Tile<T, CS, A> operator+(Tile<T, CS, A> left, const Tile<T, CS, A>& right) {
+    return left += right;
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator-(const Tile<T, CS, A>& left, const Tile<T, CS, A>& right) {
-    if(left.range().volume() == 0)
-      return -right;
-    else if(right.range().volume() == 0)
-      return left;
-
-    TA_ASSERT(left.range() == right.range(), std::range_error, "The tile ranges must match.");
-    return Tile<T, CS, A>(left.range(),
-        boost::make_transform_iterator(
-            boost::make_zip_iterator(boost::make_tuple(left.begin(), right.end())),
-            detail::make_zip_op(std::minus<T>())
-        ),
-        boost::make_transform_iterator(
-            boost::make_zip_iterator(boost::make_tuple(left.end(), right.end())),
-            detail::make_zip_op(std::minus<T>())
-        )
-    );
+  inline Tile<T, CS, A> operator-(Tile<T, CS, A> left, const Tile<T, CS, A>& right) {
+    return left -= right;
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator-(const Tile<T, CS, A>& arg) {
-    if(arg.range().volume() == 0)
-      return Tile<T, CS, A>();
+  inline Tile<T, CS, A> operator-(Tile<T, CS, A> arg) {
+    if(arg.range().volume() != 0)
+      std::transform(arg.begin(), arg.end(), arg.begin(), std::negate<T>());
 
-    return Tile<T, CS, A>(arg.range(),
-        boost::make_transform_iterator(arg.begin(), std::negate<T>()),
-        boost::make_transform_iterator(arg.end(), std::negate<T>())
-    );
+    return arg;
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator+(const T& left, const Tile<T, CS, A>& right) {
-    return Tile<T, CS, A>(right.range(),
-        boost::make_transform_iterator(right.begin(), std::bind1st<T>(std::plus<T>(), left)),
-        boost::make_transform_iterator(right.end(), std::bind1st<T>(std::plus<T>(), left))
-    );
+  inline Tile<T, CS, A> operator+(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
+    return right += left;
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator+(const Tile<T, CS, A>& left, const T& right) {
-    return Tile<T, CS, A>(right.range(),
-        boost::make_transform_iterator(left.begin(), std::bind2nd<T>(std::plus<T>(), right)),
-        boost::make_transform_iterator(left.end(), std::bind2nd<T>(std::plus<T>(), right))
-    );
+  inline Tile<T, CS, A> operator+(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
+    return left += right;
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator-(const T& left, const Tile<T, CS, A>& right) {
-    return Tile<T, CS, A>(right.range(),
-        boost::make_transform_iterator(right.begin(), std::bind1st<T>(std::minus<T>(), left)),
-        boost::make_transform_iterator(right.end(), std::bind1st<T>(std::minus<T>(), left))
-    );
+  inline Tile<T, CS, A> operator-(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
+    return (-right) += right;
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator-(const Tile<T, CS, A>& left, const T& right) {
-    return Tile<T, CS, A>(right.range(),
-        boost::make_transform_iterator(left.begin(), std::bind2nd<T>(std::minus<T>(), right)),
-        boost::make_transform_iterator(left.end(), std::bind2nd<T>(std::minus<T>(), right))
-    );
+  inline Tile<T, CS, A> operator-(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
+    return left -= right;
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator*(const T& left, const Tile<T, CS, A>& right) {
-    return Tile<T, CS, A>(right.range(),
-        boost::make_transform_iterator(right.begin(), std::bind1st<T>(std::multiplies<T>(), left)),
-        boost::make_transform_iterator(right.end(), std::bind1st<T>(std::multiplies<T>(), left))
-    );
+  inline Tile<T, CS, A> operator*(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
+    return right *= left;
   }
 
   template <typename T, typename CS, typename A>
-  Tile<T, CS, A> operator*(const Tile<T, CS, A>& left, const T& right) {
-    return Tile<T, CS, A>(right.range(),
-        boost::make_transform_iterator(left.begin(), std::bind2nd<T>(std::multiplies<T>(), right)),
-        boost::make_transform_iterator(left.end(), std::bind2nd<T>(std::multiplies<T>(), right))
-    );
+  inline Tile<T, CS, A> operator*(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
+    return (left *= right);
   }
 
   template <typename T, typename ResCS, typename LeftCS, typename RightCS, typename A>

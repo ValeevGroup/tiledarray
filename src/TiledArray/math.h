@@ -9,7 +9,6 @@
 namespace TiledArray {
   namespace math {
 
-
     template <typename Res, typename LeftArg, typename RightArg, template <typename> class Op>
     struct BinaryOp { };
 

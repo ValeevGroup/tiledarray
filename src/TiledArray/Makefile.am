@@ -12,7 +12,6 @@ library_include_HEADERS = annotated_array.h \
                           dense_shape.h \
                           error.h \
                           expressions.h \
-                          functional.h \
                           indexed_iterator.h \
                           key.h \
                           madness_runtime.h \
