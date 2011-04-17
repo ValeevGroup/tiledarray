@@ -241,7 +241,7 @@ namespace TiledArray {
     template <typename T, typename CS>
     struct DefaultArrayPolicy {
       typedef Eigen::aligned_allocator<T> allocator;
-      typedef typename TileCoordinateSystem<CS>::coordinate_system tile_coordinate_system;
+      typedef typename ChildCoordinateSystem<CS>::coordinate_system tile_coordinate_system;
       typedef Tile<T, tile_coordinate_system, allocator> value_type;
       typedef Range<tile_coordinate_system> range_type;
 

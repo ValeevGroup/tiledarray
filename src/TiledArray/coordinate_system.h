@@ -524,8 +524,13 @@ namespace TiledArray {
   namespace detail {
 
     template <typename CS>
-    struct TileCoordinateSystem {
+    struct ChildCoordinateSystem {
       typedef CoordinateSystem<CS::dim, CS::level - 1, CS::order, typename CS::ordinal_index> coordinate_system;
+    };
+
+    template <typename CS>
+    struct ParentCoordinateSystem {
+      typedef CoordinateSystem<CS::dim, CS::level + 1, CS::order, typename CS::ordinal_index> coordinate_system;
     };
 
     template <typename T>
