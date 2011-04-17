@@ -31,8 +31,7 @@ namespace TiledArray {
 
       template<typename LeftRange, typename RightRange>
       PackedSizePair(const LeftRange& lrange, const expressions::VariableList& lvars,
-          const RightRange& rrange, const expressions::VariableList& rvars,
-          detail::DimensionOrderType o)
+          const RightRange& rrange, const expressions::VariableList& rvars)
       {
         typedef std::pair<expressions::VariableList::const_iterator,
             expressions::VariableList::const_iterator> vars_iter_pair;
@@ -112,41 +111,55 @@ namespace TiledArray {
     }; // class ContractedData
 
 
-    template <typename Res, typename Left, typename Right>
+    template <typename T>
     struct TilePlus {
-      typedef Res& result_type;
-      typedef const Left& first_argument_type;
-      typedef const Right& second_argument_type;
+      typedef T tile_type;
+      typedef typename tile_type::value_type value_type;
 
-      result_type operator()(first_argument_type left, second_argument_type right) const {
+      tile_type operator()(const tile_type& left, const tile_type& right) const {
         return left + right;
       }
 
+      tile_type operator()(const value_type& left, const tile_type& right) const {
+        return left + right;
+      }
+
+      tile_type operator()(const tile_type& left, const value_type& right) const {
+        return left + right;
+      }
     }; // struct TilePlus
 
-    template <typename Res, typename Left, typename Right>
+    template <typename T>
     struct TileMinus {
-      typedef Res& result_type;
-      typedef const Left& first_argument_type;
-      typedef const Right& second_argument_type;
+      typedef T tile_type;
+      typedef typename tile_type::value_type value_type;
 
-      result_type operator()(first_argument_type left, second_argument_type right) const {
+      tile_type operator()(const tile_type& left, const tile_type& right) const {
         return left - right;
       }
 
+      tile_type operator()(const value_type& left, const tile_type& right) const {
+        return left - right;
+      }
+
+      tile_type operator()(const tile_type& left, const value_type& right) const {
+        return left - right;
+      }
     }; // struct TileMinus
 
-    template <typename Res, typename Left, typename Right>
+    template <typename T>
     struct TileScale {
-      typedef Res& result_type;
-      typedef const Left& first_argument_type;
-      typedef const Right& second_argument_type;
+      typedef T tile_type;
+      typedef typename tile_type::value_type value_type;
 
-      result_type operator()(first_argument_type left, second_argument_type right) const {
+      tile_type operator()(const value_type& left, const tile_type& right) const {
         return left * right;
       }
 
-    }; // struct TileScale
+      tile_type operator()(const tile_type& left, const value_type& right) const {
+        return left * right;
+      }
+    }; // struct TileMinus
 
     template <typename Res, typename Left, typename Right>
     struct TileContract {
@@ -166,15 +179,22 @@ namespace TiledArray {
       typedef typename result_type::ordinal_index ordinal_index;
       typedef typename result_type::value_type value_type;
 
-      TileContract(const tiled_range_type& tr, const index& i, const PackedSizePair<ordinal_index>& psp) :
-          trange_(&tr), index_(i), packed_sizes_(psp)
+      TileContract(const tiled_range_type& tr, const index& i,
+        const std::shared_ptr<expressions::VariableList>& lvar,
+        const std::shared_ptr<expressions::VariableList>& rvar) :
+          trange_(&tr), index_(i), left_var_(lvar), right_var_(rvar)
       { }
 
       result_type operator()(first_argument_type left, second_argument_type right) const {
         result_type result(trange_->tile(index_));
 
-        contract(packed_sizes_.m(), packed_sizes_.n(), packed_sizes_.o(),
-            packed_sizes_.p(), packed_sizes_.i(), left.data(), right.data(), result.data());
+
+        PackedSizePair<ordinal_index> packed_sizes(left.range(), *left_var_,
+            right.range(), *right_var_);
+
+        contract(packed_sizes.m(), packed_sizes.n(), packed_sizes.o(),
+            packed_sizes.p(), packed_sizes.i(), left.data(), right.data(),
+            result.data());
         return left + right;
       }
 
@@ -222,7 +242,8 @@ namespace TiledArray {
 
       tiled_range_type trange_;
       index index_;
-      PackedSizePair<ordinal_index> packed_sizes_;
+      std::shared_ptr<expressions::VariableList> left_var_;
+      std::shared_ptr<expressions::VariableList> right_var_;
 
     }; // struct Contract
 

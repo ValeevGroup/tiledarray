@@ -4,6 +4,7 @@
 #include <cstddef>
 #include "unit_test_config.h"
 #include "TiledArray/range.h"
+#include "TiledArray/tile.h"
 #include "TiledArray/annotated_array.h"
 
 // Emulate an N-dimensional array class
@@ -78,7 +79,7 @@ private:
 };
 
 struct MathFixture {
-  typedef FakeArray<int, GlobalFixture::coordinate_system> array_type;
+  typedef TiledArray::Tile<int, GlobalFixture::coordinate_system> array_type;
   typedef TiledArray::CoordinateSystem<GlobalFixture::coordinate_system::dim + 1,
         GlobalFixture::coordinate_system::level,
         GlobalFixture::coordinate_system::order,

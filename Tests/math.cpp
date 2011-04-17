@@ -1,7 +1,11 @@
 #include "math_fixture.h"
+#include "TiledArray/tile.h"
 #include <assert.h>
+#include "unit_test_config.h"
 
 using TiledArray::expressions::VariableList;
+using namespace TiledArray;
+using namespace TiledArray::math;
 
 const VariableList MathFixture::vars(make_var_list());
 const MathFixture::range_type MathFixture::r(
@@ -32,3 +36,103 @@ std::string MathFixture::make_var_list(std::size_t first, std::size_t last) {
   return result;
 }
 
+BOOST_FIXTURE_TEST_SUITE( tile_math_suite, MathFixture)
+
+BOOST_AUTO_TEST_CASE( construct_tile_plus )
+{
+  BOOST_CHECK_NO_THROW((TilePlus<array_type>()));
+  BOOST_CHECK_NO_THROW((TileMinus<array_type>()));
+  BOOST_CHECK_NO_THROW((TileScale<array_type>()));
+}
+
+
+BOOST_AUTO_TEST_CASE( addition )
+{
+  array_type t(r, 0);
+
+  TilePlus<array_type> plus;
+
+
+  // Check plus operation
+  t = plus(f1, f2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 3);
+
+  t = plus(f1, array_type());
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 1);
+
+  t = plus(array_type(), f2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 2);
+
+  t = plus(f1, 2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 3);
+
+  t = plus(2, f2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 4);
+}
+
+BOOST_AUTO_TEST_CASE( subtraction )
+{
+  array_type t(r, 0);
+
+  TileMinus<array_type> minus;
+
+
+  // Check minus operation
+  t = minus(f1, f2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, -1);
+
+  t = minus(f1, array_type());
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 1);
+
+  t = minus(array_type(), f2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, -2);
+
+  t = minus(f1, 2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, -1);
+
+  t = minus(3, f2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 1);
+}
+
+BOOST_AUTO_TEST_CASE( scalar_multiplication )
+{
+  array_type t(r, 0);
+
+  TileScale<array_type> scale;
+
+
+  // Check scale operation
+  t = scale(f1, 2);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 2);
+
+  t = scale(3, f1);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 3);
+}
+
+BOOST_AUTO_TEST_CASE( negation )
+{
+  array_type t(r, 0);
+
+  std::negate<array_type> negate;
+
+
+  // Check scale operation
+  t = negate(f1);
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, -1);
+}
+
+
+BOOST_AUTO_TEST_SUITE_END()
