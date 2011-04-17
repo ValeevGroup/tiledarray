@@ -2,6 +2,7 @@
 #define TILEDARRAY_ANNOTATED_ARRAY_H__INCLUDED
 
 #include <TiledArray/variable_list.h>
+#include <world/sharedptr.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -48,7 +49,7 @@ namespace TiledArray {
       /// \throw std::runtime_error When the dimensions of the array and
       /// variable list are not equal.
       AnnotatedArray(array_type& a, const VariableList& v) :
-          array_(&a), vars_(v)
+          array_(&a), vars_(new VariableList(v))
       {
         TA_ASSERT(array_type::coordinate_system::dim == v.dim(), std::runtime_error,
             "The dimensions of the array do not match the dimensions of the variable list.");
@@ -61,7 +62,7 @@ namespace TiledArray {
       /// \throw std::runtime_error When the dimensions of the array and
       /// variable list are not equal.
       AnnotatedArray(const array_type& a, const VariableList& v) :
-          array_(const_cast<array_type*>(&a)), vars_(v)
+          array_(const_cast<array_type*>(&a)), vars_(new VariableList(v))
       {
         TA_ASSERT(array_type::coordinate_system::dim == v.dim(), std::runtime_error,
             "The dimensions of the array do not match the dimensions of the variable list.");
@@ -135,19 +136,21 @@ namespace TiledArray {
       const_iterator end() const { return array_->end(); }
 
       /// Variable annotation for the array.
-      const VariableList& vars() const { return vars_; }
+      const VariableList& vars() const { return *vars_; }
+
+      const std::shared_ptr<VariableList>& var_ptr() const { return vars_; }
 
     private:
 
       void swap_(AnnotatedArray& other) {
         std::swap(array_, other.array_);
-        TiledArray::expressions::swap(vars_, other.vars_);
+        std::swap(vars_, other.vars_);
       }
 
       friend void swap<>(AnnotatedArray_&, AnnotatedArray_&);
 
       array_type* array_;       ///< pointer to the array object
-      VariableList vars_;        ///< variable list
+      std::shared_ptr<VariableList> vars_;        ///< variable list
     }; // class AnnotatedArray
 
     /// Exchange the values of a0 and a1.

@@ -24,6 +24,13 @@ BOOST_AUTO_TEST_CASE( range_accessor )
   BOOST_CHECK_EQUAL(a.range(), r);
 }
 
+BOOST_AUTO_TEST_CASE( vars_accessor )
+{
+  VariableList v(make_var_list());
+  BOOST_CHECK_EQUAL(a.vars(), v);
+  BOOST_CHECK_EQUAL(* a.var_ptr(), v);
+}
+
 BOOST_AUTO_TEST_CASE( iterators )
 {
   BOOST_CHECK( a.begin() == f1.begin() );
