@@ -506,7 +506,7 @@ namespace TiledArray {
 
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator-(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
-    return (-right) += right;
+    return (-right) += left;
   }
 
   template <typename T, typename CS, typename A>
