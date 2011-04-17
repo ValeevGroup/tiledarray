@@ -2,6 +2,7 @@
 #define TILEDARRAY_MATH_H__INCLUDED
 
 #include <TiledArray/annotated_array.h>
+#include <TiledArray/tiled_range.h>
 #include <world/typestuff.h>
 #include <Eigen/Core>
 #include <functional>
@@ -24,17 +25,14 @@ namespace TiledArray {
     };
 
     template<typename I>
-    class ContractedArray {
+    class PackedSizePair {
     public:
-      typedef std::vector<I> size_array;
       typedef std::array<I, 3> packed_size_array;
 
       template<typename LeftRange, typename RightRange>
-      ContractedArray(const LeftRange& lrange, const expressions::VariableList& lvars,
+      PackedSizePair(const LeftRange& lrange, const expressions::VariableList& lvars,
           const RightRange& rrange, const expressions::VariableList& rvars,
-          detail::DimensionOrderType o) :
-          vars_(lvars * rvars),
-          order_(o)
+          detail::DimensionOrderType o)
       {
         typedef std::pair<expressions::VariableList::const_iterator,
             expressions::VariableList::const_iterator> vars_iter_pair;
@@ -71,36 +69,6 @@ namespace TiledArray {
             lfinish_common.second, rfinish_common.first, rfinish_common.second),
             std::runtime_error, "The common finish dimensions do not match.");
 
-        // find dimensions of the result tile
-        size_.resize(vars_.dim(), 0);
-        start_.resize(vars_.dim(), 0);
-        finish_.resize(vars_.dim(), 0);
-        typename size_array::iterator size_it = size_.begin();
-        typename size_array::iterator start_it = start_.begin();
-        typename size_array::iterator finish_it = finish_it.begin();
-        typename size_array::iterator size_end = size_.end();
-        expressions::VariableList::const_iterator v_it = vars_.begin();
-        expressions::VariableList::const_iterator lvar_begin = lvars.begin();
-        expressions::VariableList::const_iterator lvar_end = lvars.end();
-        expressions::VariableList::const_iterator rvar_begin = rvars.begin();
-        expressions::VariableList::const_iterator rvar_end = rvars.end();
-        expressions::VariableList::const_iterator find_it;
-        std::iterator_traits<expressions::VariableList::const_iterator>::difference_type n = 0;
-        for(; size_it != size_end; ++size_it, ++start_it, ++finish_it, ++v_it) {
-          if((find_it = std::find(lvar_begin, lvar_end, *v_it)) != lvars.end()) {
-            n  = std::distance(lvar_begin, find_it);
-            *start_it = lrange.start()[n];
-            *finish_it = lrange.finish()[n];
-            *size_it = *finish_it - *start_it;
-          } else {
-            find_it = std::find(rvar_begin, rvar_end, *v_it);
-            n  = std::distance(rvar_begin, find_it);
-            *start_it = rrange.start()[n];
-            *finish_it = rrange.finish()[n];
-            *size_it = *finish_it - *start_it;
-          }
-        }
-
         // calculate packed tile dimensions
         packed_left_size_[0] = accumulate<I>(lrange.finish().begin(), lfinish_common.first, lrange.start().begin());
         packed_left_size_[2] = accumulate<I>(lfinish_common.second, lrange.finish().end(), lstart_common.second);
@@ -110,13 +78,8 @@ namespace TiledArray {
         packed_right_size_[1] = packed_left_size_[1];
       }
 
-      const size_array& size() const { return size_; }
-      const size_array& start() const { return start_; }
-      const size_array& finish() const { return finish_; }
       const packed_size_array& packed_left_size() const { return packed_left_size_; }
       const packed_size_array& packed_right_size() const { return packed_right_size_; }
-      const expressions::VariableList& vars() const { return vars_; }
-      detail::DimensionOrderType& order() const { return order_; }
 
       I m() const { return packed_left_size_[0]; }
       I n() const { return packed_left_size_[2]; }
@@ -144,53 +107,124 @@ namespace TiledArray {
         return result;
       }
 
-      expressions::VariableList vars_;
-      size_array size_;
-      size_array start_;
-      size_array finish_;
       packed_size_array packed_left_size_;
       packed_size_array packed_right_size_;
-      detail::DimensionOrderType order_;
     }; // class ContractedData
 
-    /// Contract a and b, and place the results into c.
-    /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
-    template<detail::DimensionOrderType D, typename I, typename T>
-    void contract(const I& m, const I& n, const I& o,
-        const I& p, const I& i, const T* a, const T* b, T* c)
-    {
-      typedef Eigen::Matrix< T , Eigen::Dynamic , Eigen::Dynamic,
-          (D == detail::decreasing_dimension_order ? Eigen::RowMajor : Eigen::ColMajor) | Eigen::AutoAlign > matrix_type;
 
-      // determine the lower order dimension size
-      const std::size_t ma1 = ( D == detail::increasing_dimension_order ? m : n );
-      const std::size_t mb1 = ( D == detail::increasing_dimension_order ? o : p );
+    template <typename Res, typename Left, typename Right>
+    struct TilePlus {
+      typedef Res& result_type;
+      typedef const Left& first_argument_type;
+      typedef const Right& second_argument_type;
 
-      // calculate iterator step sizes.
-      const std::size_t a_step = i * ma1;
-      const std::size_t b_step = i * mb1;
-      const std::size_t c_step = ma1 * mb1;
+      result_type operator()(first_argument_type left, second_argument_type right) const {
+        return left + right;
+      }
 
-      // calculate iterator boundaries
-      const T* a_begin = NULL;
-      const T* b_begin = NULL;
-      T* c_begin = c;
-      const T* const a_end = a + (m * i * n);
-      const T* const b_end = b + (o * i * p);
-//      const T* const c_end = c + (m * n * o * p);
+    }; // struct TilePlus
 
-      // iterate over the highest order dimensions of a and b, and store the
-      // results of the matrix-matrix multiplication.
-      for(a_begin = a; a_begin != a_end; a_begin += a_step) {
-        Eigen::Map<matrix_type> ma(a_begin, i, ma1);
-        for(b_begin = b; b_begin != b_end; b_begin += b_step, c_begin += c_step) {
-          Eigen::Map<matrix_type> mb(b_begin, i, mb1);
-          Eigen::Map<matrix_type> mc(c_begin, ma1, mb1);
+    template <typename Res, typename Left, typename Right>
+    struct TileMinus {
+      typedef Res& result_type;
+      typedef const Left& first_argument_type;
+      typedef const Right& second_argument_type;
 
-          mc = ma.transpose() * mb;
+      result_type operator()(first_argument_type left, second_argument_type right) const {
+        return left - right;
+      }
+
+    }; // struct TileMinus
+
+    template <typename Res, typename Left, typename Right>
+    struct TileScale {
+      typedef Res& result_type;
+      typedef const Left& first_argument_type;
+      typedef const Right& second_argument_type;
+
+      result_type operator()(first_argument_type left, second_argument_type right) const {
+        return left * right;
+      }
+
+    }; // struct TileScale
+
+    template <typename Res, typename Left, typename Right>
+    struct TileContract {
+      typedef Res& result_type;
+      typedef const Left& first_argument_type;
+      typedef const Right& second_argument_type;
+
+    private:
+      typedef typename detail::ParentCoordinateSystem<
+          typename result_type::coordinate_system>::coordinate_system coordinate_system;
+      typedef std::array<typename coordinate_system::ordinal_index, 3> packed_size_array;
+
+    public:
+
+      typedef TiledRange<coordinate_system> tiled_range_type;
+      typedef typename coordinate_system::index index;
+      typedef typename result_type::ordinal_index ordinal_index;
+      typedef typename result_type::value_type value_type;
+
+      TileContract(const tiled_range_type& tr, const index& i, const PackedSizePair<ordinal_index>& psp) :
+          trange_(&tr), index_(i), packed_sizes_(psp)
+      { }
+
+      result_type operator()(first_argument_type left, second_argument_type right) const {
+        result_type result(trange_->tile(index_));
+
+        contract(packed_sizes_.m(), packed_sizes_.n(), packed_sizes_.o(),
+            packed_sizes_.p(), packed_sizes_.i(), left.data(), right.data(), result.data());
+        return left + right;
+      }
+
+    private:
+
+      /// Contract a and b, and place the results into c.
+      /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
+      void contract(const ordinal_index m, const ordinal_index n, const ordinal_index o,
+          const ordinal_index p, const ordinal_index i, const value_type* a,
+          const value_type* b, value_type* c)
+      {
+        typedef Eigen::Matrix< value_type , Eigen::Dynamic , Eigen::Dynamic,
+            (coordinate_system::order == detail::decreasing_dimension_order ?
+            Eigen::RowMajor : Eigen::ColMajor) | Eigen::AutoAlign > matrix_type;
+
+        // determine the lower order dimension size
+        const std::size_t ma1 = ( coordinate_system::order == detail::increasing_dimension_order ? m : n );
+        const std::size_t mb1 = ( coordinate_system::order == detail::increasing_dimension_order ? o : p );
+
+        // calculate iterator step sizes.
+        const std::size_t a_step = i * ma1;
+        const std::size_t b_step = i * mb1;
+        const std::size_t c_step = ma1 * mb1;
+
+        // calculate iterator boundaries
+        const value_type* a_begin = NULL;
+        const value_type* b_begin = NULL;
+        value_type* c_begin = c;
+        const value_type* const a_end = a + (m * i * n);
+        const value_type* const b_end = b + (o * i * p);
+//        const T* const c_end = c + (m * n * o * p);
+
+        // iterate over the highest order dimensions of a and b, and store the
+        // results of the matrix-matrix multiplication.
+        for(a_begin = a; a_begin != a_end; a_begin += a_step) {
+          Eigen::Map<matrix_type> ma(a_begin, i, ma1);
+          for(b_begin = b; b_begin != b_end; b_begin += b_step, c_begin += c_step) {
+            Eigen::Map<matrix_type> mb(b_begin, i, mb1);
+            Eigen::Map<matrix_type> mc(c_begin, ma1, mb1);
+
+            mc = ma.transpose() * mb;
+          }
         }
       }
-    }
+
+      tiled_range_type trange_;
+      index index_;
+      PackedSizePair<ordinal_index> packed_sizes_;
+
+    }; // struct Contract
 
   } // namespace math
 } // namespace TiledArray

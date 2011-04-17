@@ -461,30 +461,6 @@ namespace TiledArray {
     first.swap(second);
   }
 
-  namespace math {
-
-    template <typename TRange, typename ResTile, typename LeftTile, typename RightTile, template <typename> class Op>
-    struct BinaryTileOp {
-      TA_STATIC_ASSERT((std::is_same<ResTile, LeftTile>::value && std::is_same<ResTile, LeftTile>::value));
-      typedef TRange tiled_range_type;
-      typedef typename TRange::index index;
-      typedef Op<ResTile> op;
-      typedef ResTile& result_type;
-      typedef const LeftTile& first_argument_type;
-      typedef const RightTile& second_argument_type;
-
-
-      result_type operator()(first_argument_type left, second_argument_type right) const {
-        return op_(left, right);
-      }
-
-    private:
-
-
-    }; // struct BinaryOp
-
-  } // namespace math
-
   /// Permutes the content of the n-dimensional array.
   template <typename T, typename CS, typename A>
   Tile<T,CS,A> operator ^(const Permutation<CS::dim>& p, const Tile<T,CS,A>& t) {
@@ -547,29 +523,6 @@ namespace TiledArray {
   inline Tile<T, CS, A> operator*(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
     return (left *= right);
   }
-
-  template <typename T, typename ResCS, typename LeftCS, typename RightCS, typename A>
-  expressions::VariableList contract(Tile<T, ResCS, A>& res, const Tile<T, LeftCS, A>& left,
-      expressions::VariableList lvar, const Tile<T, RightCS, A>& right, expressions::VariableList rvar) {
-
-    math::ContractedArray<typename ResCS::ordinal_index>
-    contract_data(left.range(), lvar, right.range(), right.range());
-
-    typedef typename Tile<T, ResCS, A>::range_type range_type;
-    typedef typename Tile<T, ResCS, A>::index index;
-
-    TA_ASSERT( (Tile<T, ResCS, A>::coordinate_system::dim == contract_data.dim()) , std::runtime_error,
-        "The dimension of the result tile does not match the contraction size.");
-
-    res.resize(range_type(index(contract_data.start().begin()),
-        index(contract_data.finish().begin())));
-
-    contract<Tile<T, ResCS, A>::coordinate_system::order>(contract_data.m(),
-        contract_data.n(), contract_data.o(), contract_data.o(), contract_data.i(),
-        left.data(), right.data(), res.data());
-  }
-
-
 
   /// ostream output orperator.
   template <typename T, typename CS, typename A>
