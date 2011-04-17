@@ -361,30 +361,30 @@ BOOST_AUTO_TEST_CASE( scalar_subtraction )
 {
 
   // Check that += operator
-  t += 1;
+  t -= 1;
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 2);
+    BOOST_CHECK_EQUAL(*it, 0);
 
 
   t.resize(RangeN());
-  t += 1;
+  t -= 1;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 
 
   // Check + operator
   t.resize(r, 1);
-  t = t + 2;
+  t = t - 2;
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 3);
+    BOOST_CHECK_EQUAL(*it, -1);
 
-  t = 2 + t;
+  t = 3 - t;
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 5);
+    BOOST_CHECK_EQUAL(*it, -2);
 
-  t = TileN() + 1;
+  t = TileN() - 1;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 
-  t = 1 + TileN();
+  t = 1 - TileN();
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
 
