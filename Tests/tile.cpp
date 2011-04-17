@@ -379,7 +379,7 @@ BOOST_AUTO_TEST_CASE( scalar_subtraction )
 
   t = 3 - t;
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, -2);
+    BOOST_CHECK_EQUAL(*it, 4);
 
   t = TileN() - 1;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
