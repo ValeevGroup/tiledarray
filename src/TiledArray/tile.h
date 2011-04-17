@@ -31,11 +31,10 @@ namespace TiledArray {
 
   /// Tile is an N-dimensional, dense array.
 
-  /// \tparam T The value type of the array.
-  /// \tparam CS The coordinate system type (it must conform to TiledArray
-  /// coordinate system requirements)
-  /// \tparam A The allocator type that conforms to standard C++ allocator
-  /// requirements (Default: Eigen::aligned_allocator<T>)
+  /// \tparam T Tile element type.
+  /// \tparam CS A \c CoordinateSystem type
+  /// \tparam A A C++ standard library compliant allocator (Default:
+  /// \c Eigen::aligned_allocator<T>)
   template <typename T, typename CS, typename A = Eigen::aligned_allocator<T> >
   class Tile : private A {
   private:
@@ -456,12 +455,22 @@ namespace TiledArray {
 
 
   /// Swap the data of the two arrays.
+
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param first The first tile to swap
+  /// \param second The second tile to swap
   template <typename T, typename CS, typename A>
   void swap(Tile<T, CS, A>& first, Tile<T, CS, A>& second) { // no throw
     first.swap(second);
   }
 
   /// Permutes the content of the n-dimensional array.
+
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
   template <typename T, typename CS, typename A>
   Tile<T,CS,A> operator ^(const Permutation<CS::dim>& p, const Tile<T,CS,A>& t) {
     typedef detail::AssignmentOp<typename Tile<T,CS,A>::iterator, typename Tile<T,CS,A>::const_iterator> assign_op;
@@ -476,16 +485,44 @@ namespace TiledArray {
     return result;
   }
 
+  /// Tile addition operator
+
+  /// Add the elements of two tiles together.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param left The left-hand, tile argument
+  /// \param right The right-hand, tile argument
+  /// \return A new tile where: \c result[i] \c == \c left[i] \c + \c right[i]
+  /// \note The range of the two tiles must be equivalent
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator+(Tile<T, CS, A> left, const Tile<T, CS, A>& right) {
     return left += right;
   }
 
+  /// Tile subtraction operator
+
+  /// Subtract the elements of two tiles together.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param left The left-hand, tile argument
+  /// \param right The right-hand, tile argument
+  /// \return A new tile where: \c result[i] \c == \c left[i] \c - \c right[i]
+  /// \note The range of the two tiles must be equivalent
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator-(Tile<T, CS, A> left, const Tile<T, CS, A>& right) {
     return left -= right;
   }
 
+  /// Tile negation operator
+
+  /// Negate each element of the tile.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param arg The tile argument
+  /// \return A new tile where: \c result[i] \c == \c -arg[i]
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator-(Tile<T, CS, A> arg) {
     if(arg.range().volume() != 0)
@@ -494,37 +531,99 @@ namespace TiledArray {
     return arg;
   }
 
+
+  /// Tile scalar addition operator
+
+  /// Add a scalar value to each element of a tile.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param left The left-hand, scalar argument
+  /// \param right The right-hand, tile argument
+  /// \return A new tile where: \c result[i] \c == \c left \c + \c right[i]
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator+(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
     return right += left;
   }
 
+  /// Tile scalar addition operator
+
+  /// Add a scalar value to each element of a tile.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param left The left-hand, tile argument
+  /// \param right The right-hand, scalar argument
+  /// \return A new tile where: \c result[i] \c == \c left[i] \c + \c right
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator+(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
     return left += right;
   }
 
+  /// Tile scalar subtraction operator
+
+  /// Subtract a scalar value to each element of a tile.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param left The left-hand, scalar argument
+  /// \param right The right-hand, tile argument
+  /// \return A new tile where: \c result[i] \c == \c left \c - \c right[i]
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator-(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
     return (-right) += left;
   }
 
+  /// Tile scalar subtraction operator
+
+  /// Subtract a scalar value to each element of a tile.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param left The left-hand, tile argument
+  /// \param right The right-hand, scalar argument
+  /// \return A new tile where: \c result[i] \c == \c left[i] \c - \c right
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator-(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
     return left -= right;
   }
 
+  /// Tile scale operator
+
+  /// Scale the elements of the tile by the given scalar value.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param left The left-hand, scalar argument
+  /// \param right The right-hand, tile argument
+  /// \return A new tile where: \c result[i] \c == \c left \c - \c right[i]
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator*(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
     return right *= left;
   }
 
+  /// Tile scale operator
+
+  /// Scale the elements of the tile by the given scalar value.
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param left The left-hand, tile argument
+  /// \param right The right-hand, scalar argument
+  /// \return A new tile where: \c result[i] \c == \c left[i] \c + \c right
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator*(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
     return (left *= right);
   }
 
-  /// ostream output orperator.
+  /// ostream output operator.
+
+  /// \tparam T Tile element type
+  /// \tparam CS Tile coordinate system type
+  /// \tparam A Tile allocator
+  /// \param out The output stream that will hold the tile output.
+  /// \param t The tile to be place in the output stream.
+  /// \return The modified \c out .
   template <typename T, typename CS, typename A>
   std::ostream& operator <<(std::ostream& out, const Tile<T, CS, A>& t) {
     typedef Tile<T, CS, A> tile_type;
