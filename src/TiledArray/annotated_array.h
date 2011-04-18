@@ -140,14 +140,12 @@ namespace TiledArray {
 
       const std::shared_ptr<VariableList>& var_ptr() const { return vars_; }
 
-    private:
-
-      void swap_(AnnotatedArray& other) {
+      void swap(AnnotatedArray& other) {
         std::swap(array_, other.array_);
         std::swap(vars_, other.vars_);
       }
 
-      friend void swap<>(AnnotatedArray_&, AnnotatedArray_&);
+    private:
 
       array_type* array_;       ///< pointer to the array object
       std::shared_ptr<VariableList> vars_;        ///< variable list
@@ -156,7 +154,7 @@ namespace TiledArray {
     /// Exchange the values of a0 and a1.
     template<typename I>
     void swap(AnnotatedArray<I>& a0, AnnotatedArray<I>& a1) {
-      a0.swap_(a1);
+      a0.swap(a1);
     }
 
   } // namespace expressions
