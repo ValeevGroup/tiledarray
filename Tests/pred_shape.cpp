@@ -78,5 +78,18 @@ BOOST_AUTO_TEST_CASE( probe )
   }
 }
 
+BOOST_AUTO_TEST_CASE( array )
+{
+  PredShapeT::array_type a = ps.make_shape_map();
+
+  ordinal_index o = 0ul;
+  for(PredShapeT::array_type::const_iterator it = a.begin(); it != a.end(); ++it, ++o) {
+    if(ps.probe(o))
+      BOOST_CHECK_EQUAL(*it, 1);
+    else
+      BOOST_CHECK_EQUAL(*it, 0);
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 

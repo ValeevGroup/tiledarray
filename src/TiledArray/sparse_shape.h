@@ -24,8 +24,9 @@ namespace TiledArray {
     typedef typename Shape_::key_type key_type;           ///< The pmap key type
     typedef typename Shape_::index index;                 ///< index type
     typedef typename Shape_::ordinal_index ordinal_index; ///< ordinal index type
-    typedef typename Shape_::range_type range_type;       ///< Range type of shape
-    typedef typename Shape_::pmap_type pmap_type;         ///< Process map interface type
+    typedef typename Shape_::range_type range_type;       ///< Range type
+    typedef typename Shape_::pmap_type pmap_type;         ///< Process map type
+    typedef typename Shape_::array_type array_type;       ///< Dense array type
 
   private:
     // not allowed
@@ -51,8 +52,8 @@ namespace TiledArray {
     /// \note Tiles in the list that are not owned by this process (according to
     /// the process map) are ignored.
     template <typename InIter>
-    SparseShape(const madness::World& w, const range_type& r,
-        const pmap_type& m, InIter first, InIter last) :
+    SparseShape(const madness::World& w, const range_type& r, const pmap_type& m,
+        InIter first, InIter last) :
       Shape_(r,m),
       world_(w),
       tiles_(r.volume())
@@ -72,13 +73,53 @@ namespace TiledArray {
       world_.gop.bit_or(tiles_.get(), tiles_.num_blocks());
     }
 
+    /// Map constructor constructor
+
+    /// \param w The world where this shape lives
+    /// \param r The range object associated with this shape
+    /// \param m The process map for this shape
+    /// \param first First element of a list of tiles that will be stored locally
+    /// \param last Last element of a list of tiles that will be stored locally
+    /// \note Tiles in the list that are not owned by this process (according to
+    /// the process map) are ignored.
+    SparseShape(const madness::World& w, const range_type& r, const pmap_type& m,
+        const array_type a) :
+      Shape_(r,m),
+      world_(w),
+      tiles_(r.volume())
+    {
+
+      ordinal_index o = 0;
+      for(typename array_type::const_iterator it = a.begin(); it != a.end(); ++it, ++o) {
+        if(*it != 0)
+          tiles_.set(o);
+      }
+    }
+
     virtual ~SparseShape() { }
 
+    /// Construct a copy of this shape
+
+    /// \return A shared pointer to a copy of this object
     virtual std::shared_ptr<Shape_> clone() const {
       return std::shared_ptr<Shape_>(static_cast<Shape_*>(new SparseShape_(*this)));
     }
 
+    /// Type info accessor for derived class
     virtual const std::type_info& type() const { return typeid(SparseShape_); }
+
+    /// Construct a shape map
+
+    /// \return A dense array that contains 1 where tiles exist in the shape and
+    /// 0 where tiles do not exist in the shape.
+    virtual array_type make_shape_map() const {
+      array_type result(this->range(), 0);
+      std::size_t vol = this->range().volume();
+      for(std::size_t i = 0; i < vol; ++i)
+        if(tiles_[i])
+          result[i] = 1;
+      return result;
+    }
 
   private:
 

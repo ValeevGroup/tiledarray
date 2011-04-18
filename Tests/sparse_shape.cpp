@@ -13,7 +13,10 @@ BOOST_FIXTURE_TEST_SUITE( sparse_shape_suite, SparseShapeFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(SparseShapeT s(* GlobalFixture::world, r, m, list.begin(), list.end()));
+  BOOST_REQUIRE_NO_THROW((SparseShapeT(* GlobalFixture::world, r, m, list.begin(), list.end())));
+  SparseShapeT::array_type a(r, 1);
+  BOOST_REQUIRE_NO_THROW((SparseShapeT(* GlobalFixture::world, r, m, a)));
+
 }
 
 BOOST_AUTO_TEST_CASE( clone )
@@ -80,7 +83,22 @@ BOOST_AUTO_TEST_CASE( probe )
       }
     }
   }
+}
 
+BOOST_AUTO_TEST_CASE( array )
+{
+  SparseShapeT::array_type a = ss.make_shape_map();
+
+  ordinal_index o = 0ul;
+  for(SparseShapeT::array_type::const_iterator it = a.begin(); it != a.end(); ++it, ++o) {
+    if(ss.is_local(o)) { // Only some of the data is local and we can only check local data.
+      if(ss.probe(o)) {
+        BOOST_CHECK_EQUAL(a[o], 1);
+      } else {
+        BOOST_CHECK_EQUAL(a[o], 0);
+      }
+    }
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

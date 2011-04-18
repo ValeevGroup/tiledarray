@@ -30,10 +30,11 @@ namespace TiledArray {
   public:
     typedef CS coordinate_system;                         ///< Shape coordinate system
     typedef typename Shape_::key_type key_type;           ///< The pmap key type
-    typedef typename Shape_::index index;
-    typedef typename Shape_::ordinal_index ordinal_index;
-    typedef typename Shape_::range_type range_type;
-    typedef typename Shape_::pmap_type pmap_type;
+    typedef typename Shape_::index index;                 ///< index type
+    typedef typename Shape_::ordinal_index ordinal_index; ///< ordinal index type
+    typedef typename Shape_::range_type range_type;       ///< Range type
+    typedef typename Shape_::pmap_type pmap_type;         ///< Process map type
+    typedef typename Shape_::array_type array_type;       ///< Dense array type
 
   private:
 
@@ -73,7 +74,14 @@ namespace TiledArray {
     DenseShape_& operator=(const DenseShape_&);
 
   public:
+    /// Type info accessor for derived class
     virtual const std::type_info& type() const { return typeid(DenseShape_); }
+
+    /// Construct a shape map
+
+    /// \return A dense array that contains 1 where tiles exist in the shape and
+    /// 0 where tiles do not exist in the shape.
+    virtual array_type make_shape_map() const { return array_type(this->range(), 1); }
 
   }; // class DenseShape
 

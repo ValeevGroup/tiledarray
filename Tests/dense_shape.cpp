@@ -60,5 +60,12 @@ BOOST_AUTO_TEST_CASE( probe )
 
 }
 
+BOOST_AUTO_TEST_CASE( array )
+{
+  DenseShapeT::array_type a = ds.make_shape_map();
+  for(DenseShapeT::array_type::const_iterator it = a.begin(); it != a.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 1);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 

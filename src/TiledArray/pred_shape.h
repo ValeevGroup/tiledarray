@@ -36,7 +36,8 @@ namespace TiledArray {
     typedef typename Shape_::ordinal_index ordinal_index; ///< ordinal index type
     typedef typename Shape_::range_type range_type;       ///< Range type
     typedef typename Shape_::pmap_type pmap_type;         ///< Process map type
-    typedef Pred pred_type;
+    typedef typename Shape_::array_type array_type;       ///< Dense array type
+    typedef Pred pred_type;                               ///< Predicate type
 
   private:
     // Default constructor not allowed
@@ -77,6 +78,19 @@ namespace TiledArray {
 
     /// Type info accessor for derived class
     virtual const std::type_info& type() const { return typeid(PredShape_); }
+
+    /// Construct a shape map
+
+    /// \return A dense array that contains 1 where tiles exist in the shape and
+    /// 0 where tiles do not exist in the shape.
+    virtual array_type make_shape_map() const {
+      array_type result(this->range(), 0);
+      std::size_t vol = this->range().volume();
+      for(std::size_t i = 0; i < vol; ++i)
+        if(pred_(this->key(i)))
+          result[i] = 1;
+      return result;
+    }
 
   private:
 
