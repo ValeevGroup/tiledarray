@@ -289,6 +289,9 @@ BOOST_AUTO_TEST_CASE( addition )
   t = TileN() + t1;
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, 1);
+
+  t = TileN() + TileN();
+  BOOST_CHECK_EQUAL(t.range().volume(), 0);
 }
 
 BOOST_AUTO_TEST_CASE( subtraction )
@@ -324,6 +327,9 @@ BOOST_AUTO_TEST_CASE( subtraction )
   t = TileN() - t1;
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, -1);
+
+  t = TileN() + TileN();
+  BOOST_CHECK_EQUAL(t.range().volume(), 0);
 }
 
 BOOST_AUTO_TEST_CASE( scalar_addition )
@@ -426,6 +432,9 @@ BOOST_AUTO_TEST_CASE( negation )
   TileN tn = -t;
   for(TileN::const_iterator it = tn.begin(); it != tn.end(); ++it)
     BOOST_CHECK_EQUAL(*it, -1);
+
+  tn = - TileN();
+  BOOST_CHECK_EQUAL(tn.range().volume(), 0ul);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
