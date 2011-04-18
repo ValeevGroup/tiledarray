@@ -55,11 +55,11 @@ namespace TiledArray {
             std::runtime_error, "The common finish dimensions do not match.");
 
         // calculate packed tile dimensions
-        packed_left_size_[0] = accumulate<I>(lrange.finish().begin(), lfinish_common.first, lrange.start().begin());
-        packed_left_size_[2] = accumulate<I>(lfinish_common.second, lrange.finish().end(), lstart_common.second);
-        packed_right_size_[0] = accumulate<I>(rrange.finish().begin(), rfinish_common.first, rrange.start().begin());
-        packed_right_size_[2] = accumulate<I>(rfinish_common.second, rrange.finish().end(), rstart_common.second);
-        packed_left_size_[1] = accumulate<I>(lfinish_common.first, lfinish_common.second, lstart_common.first);
+        packed_left_size_[0] = accumulate(lrange.finish().begin(), lfinish_common.first, lrange.start().begin());
+        packed_left_size_[2] = accumulate(lfinish_common.second, lrange.finish().end(), lstart_common.second);
+        packed_right_size_[0] = accumulate(rrange.finish().begin(), rfinish_common.first, rrange.start().begin());
+        packed_right_size_[2] = accumulate(rfinish_common.second, rrange.finish().end(), rstart_common.second);
+        packed_left_size_[1] = accumulate(lfinish_common.first, lfinish_common.second, lstart_common.first);
         packed_right_size_[1] = packed_left_size_[1];
       }
 
@@ -74,9 +74,9 @@ namespace TiledArray {
 
     private:
 
-      template<typename T, typename InIter1, typename InIter2, typename AccOp, typename BinOp>
-      static T accumulate(InIter1 first1, InIter1 last1, InIter2 first2) {
-        T initial = 1;
+      template<typename InIter1, typename InIter2>
+      static I accumulate(InIter1 first1, InIter1 last1, InIter2 first2) {
+        I initial = 1;
         while(first1 != last1)
           initial *= *first1++ - *first2++;
 
@@ -155,7 +155,7 @@ namespace TiledArray {
 
     template <typename Res, typename Left, typename Right>
     struct TileContract {
-      typedef Res& result_type;
+      typedef Res result_type;
       typedef const Left& first_argument_type;
       typedef const Right& second_argument_type;
       typedef typename result_type::range_type range_type;
@@ -177,14 +177,14 @@ namespace TiledArray {
         contract(packed_sizes.m(), packed_sizes.n(), packed_sizes.o(),
             packed_sizes.p(), packed_sizes.i(), left.data(), right.data(),
             result.data());
-        return left + right;
+        return result;
       }
 
     private:
 
       /// Contract a and b, and place the results into c.
       /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
-      void contract(const ordinal_index m, const ordinal_index n, const ordinal_index o,
+      static void contract(const ordinal_index m, const ordinal_index n, const ordinal_index o,
           const ordinal_index p, const ordinal_index i, const value_type* a,
           const value_type* b, value_type* c)
       {
