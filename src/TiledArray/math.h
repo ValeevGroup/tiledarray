@@ -10,20 +10,6 @@
 namespace TiledArray {
   namespace math {
 
-    template <typename Res, typename LeftArg, typename RightArg, template <typename> class Op>
-    struct BinaryOp { };
-
-    template <typename Res, typename Arg, template <typename> class Op>
-    struct UnaryOp {
-
-      template <typename ResArray, typename ArgArray>
-      void operator()(Res& res, const Arg& arg) {
-
-      }
-
-
-    };
-
     template<typename I>
     class PackedSizePair {
     public:
@@ -116,6 +102,8 @@ namespace TiledArray {
       typedef T tile_type;
       typedef typename tile_type::value_type value_type;
 
+      // Compiler generated functions are OK here.
+
       tile_type operator()(const tile_type& left, const tile_type& right) const {
         return left + right;
       }
@@ -133,6 +121,8 @@ namespace TiledArray {
     struct TileMinus {
       typedef T tile_type;
       typedef typename tile_type::value_type value_type;
+
+      // Compiler generated functions are OK here.
 
       tile_type operator()(const tile_type& left, const tile_type& right) const {
         return left - right;
@@ -152,6 +142,8 @@ namespace TiledArray {
       typedef T tile_type;
       typedef typename tile_type::value_type value_type;
 
+      // Compiler generated functions are OK here.
+
       tile_type operator()(const value_type& left, const tile_type& right) const {
         return left * right;
       }
@@ -166,28 +158,18 @@ namespace TiledArray {
       typedef Res& result_type;
       typedef const Left& first_argument_type;
       typedef const Right& second_argument_type;
-
-    private:
-      typedef typename detail::ParentCoordinateSystem<
-          typename result_type::coordinate_system>::coordinate_system coordinate_system;
-      typedef std::array<typename coordinate_system::ordinal_index, 3> packed_size_array;
-
-    public:
-
-      typedef TiledRange<coordinate_system> tiled_range_type;
-      typedef typename coordinate_system::index index;
+      typedef typename result_type::range_type range_type;
       typedef typename result_type::ordinal_index ordinal_index;
       typedef typename result_type::value_type value_type;
 
-      TileContract(const tiled_range_type& tr, const index& i,
+      TileContract(const range_type& r,
         const std::shared_ptr<expressions::VariableList>& lvar,
         const std::shared_ptr<expressions::VariableList>& rvar) :
-          trange_(&tr), index_(i), left_var_(lvar), right_var_(rvar)
+          range_(r), left_var_(lvar), right_var_(rvar)
       { }
 
       result_type operator()(first_argument_type left, second_argument_type right) const {
-        result_type result(trange_->tile(index_));
-
+        result_type result(range_);
 
         PackedSizePair<ordinal_index> packed_sizes(left.range(), *left_var_,
             right.range(), *right_var_);
@@ -207,12 +189,12 @@ namespace TiledArray {
           const value_type* b, value_type* c)
       {
         typedef Eigen::Matrix< value_type , Eigen::Dynamic , Eigen::Dynamic,
-            (coordinate_system::order == detail::decreasing_dimension_order ?
+            (result_type::coordinate_system::order == detail::decreasing_dimension_order ?
             Eigen::RowMajor : Eigen::ColMajor) | Eigen::AutoAlign > matrix_type;
 
         // determine the lower order dimension size
-        const std::size_t ma1 = ( coordinate_system::order == detail::increasing_dimension_order ? m : n );
-        const std::size_t mb1 = ( coordinate_system::order == detail::increasing_dimension_order ? o : p );
+        const std::size_t ma1 = ( result_type::coordinate_system::order == detail::increasing_dimension_order ? m : n );
+        const std::size_t mb1 = ( result_type::coordinate_system::order == detail::increasing_dimension_order ? o : p );
 
         // calculate iterator step sizes.
         const std::size_t a_step = i * ma1;
@@ -240,8 +222,7 @@ namespace TiledArray {
         }
       }
 
-      tiled_range_type trange_;
-      index index_;
+      const range_type range_;
       std::shared_ptr<expressions::VariableList> left_var_;
       std::shared_ptr<expressions::VariableList> right_var_;
 
