@@ -13,8 +13,7 @@ const MathFixture::range_type MathFixture::r(
     MathFixture::index(5));
 const MathFixture::array_type MathFixture::f1(r, 1);
 const MathFixture::array_type MathFixture::f2(r, 2);
-const MathFixture::array_type MathFixture::f3(MathFixture::range_type(
-    MathFixture::index(0), MathFixture::index(6)), 3);
+const MathFixture::array_type MathFixture::f3(r, 3);
 
 
 const MathFixture::array_annotation MathFixture::a1(f1, VariableList(make_var_list()));
@@ -132,6 +131,21 @@ BOOST_AUTO_TEST_CASE( negation )
   t = negate(f1);
   for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, -1);
+}
+
+BOOST_AUTO_TEST_CASE( contract )
+{
+  typedef array2_type::range_type range2_type;
+  typedef array2_type::index index2;
+  range2_type r2(index2(0), index2(a1.range().finish()[0],a2.range().finish()[0]));
+  array2_type t;
+
+  TileContract<array2_type, array_type, array_type> cont(a1.var_ptr(), a3.var_ptr());
+
+  // Check scale operation
+  t = cont(a1.array(), a3.array());
+  for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
+    BOOST_CHECK_EQUAL(*it, 75);
 }
 
 

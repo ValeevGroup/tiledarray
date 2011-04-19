@@ -80,11 +80,11 @@ private:
 
 struct MathFixture {
   typedef TiledArray::Tile<int, GlobalFixture::coordinate_system> array_type;
-  typedef TiledArray::CoordinateSystem<GlobalFixture::coordinate_system::dim + 1,
+  typedef TiledArray::CoordinateSystem<2,
         GlobalFixture::coordinate_system::level,
         GlobalFixture::coordinate_system::order,
-        GlobalFixture::coordinate_system::ordinal_index> coordinate_system1;
-  typedef FakeArray<int, coordinate_system1> array1_type;
+        GlobalFixture::coordinate_system::ordinal_index> coordinate_system2;
+  typedef TiledArray::Tile<int, coordinate_system2> array2_type;
   typedef array_type::range_type range_type;
   typedef TiledArray::expressions::AnnotatedArray<array_type > array_annotation;
   typedef array_annotation::index index;

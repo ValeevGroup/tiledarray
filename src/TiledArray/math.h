@@ -6,6 +6,7 @@
 #include <world/typestuff.h>
 #include <Eigen/Core>
 #include <functional>
+#include <iostream>
 
 namespace TiledArray {
   namespace math {
@@ -13,6 +14,7 @@ namespace TiledArray {
     template<typename I>
     class PackedSizePair {
     public:
+      typedef std::vector<I> size_array;
       typedef std::array<I, 3> packed_size_array;
 
       template<typename LeftRange, typename RightRange>
@@ -25,6 +27,8 @@ namespace TiledArray {
             typename LeftRange::index::const_iterator> lindex_iter_pair;
         typedef std::pair<typename RightRange::index::const_iterator,
             typename RightRange::index::const_iterator> rindex_iter_pair;
+
+        expressions::VariableList vars = lvars * rvars;
 
         // find common variable lists
         vars_iter_pair lvars_common;
@@ -46,13 +50,46 @@ namespace TiledArray {
             std::distance(rvars.begin(), rvars_common.first),
             std::distance(rvars.begin(), rvars_common.second));
 
-
-        TA_ASSERT(std::lexicographical_compare(lstart_common.first,
-            lstart_common.second, rstart_common.first, rstart_common.second),
+        TA_ASSERT((std::distance(lstart_common.first, lstart_common.second) ==
+            std::distance(rstart_common.first, rstart_common.second)), std::runtime_error,
+            "The size of the common start index does not match.");
+        TA_ASSERT(std::equal(lstart_common.first, lstart_common.second, rstart_common.first),
             std::runtime_error, "The common start dimensions do not match.");
-        TA_ASSERT(std::lexicographical_compare(lfinish_common.first,
-            lfinish_common.second, rfinish_common.first, rfinish_common.second),
+        TA_ASSERT((std::distance(lfinish_common.first, lfinish_common.second) ==
+            std::distance(rfinish_common.first, rfinish_common.second)), std::runtime_error,
+            "The size of the common start index does not match.");
+        TA_ASSERT(std::equal(lfinish_common.first, lfinish_common.second, rfinish_common.first),
             std::runtime_error, "The common finish dimensions do not match.");
+
+        // find dimensions of the result tile
+        size_.resize(vars.dim(), 0);
+        start_.resize(vars.dim(), 0);
+        finish_.resize(vars.dim(), 0);
+        typename size_array::iterator size_it = size_.begin();
+        typename size_array::iterator start_it = start_.begin();
+        typename size_array::iterator finish_it = finish_.begin();
+        typename size_array::iterator size_end = size_.end();
+        expressions::VariableList::const_iterator v_it = vars.begin();
+        expressions::VariableList::const_iterator lvar_begin = lvars.begin();
+        expressions::VariableList::const_iterator lvar_end = lvars.end();
+        expressions::VariableList::const_iterator rvar_begin = rvars.begin();
+        expressions::VariableList::const_iterator rvar_end = rvars.end();
+        expressions::VariableList::const_iterator find_it;
+        std::iterator_traits<expressions::VariableList::const_iterator>::difference_type n = 0;
+        for(; size_it != size_end; ++size_it, ++start_it, ++finish_it, ++v_it) {
+          if((find_it = std::find(lvar_begin, lvar_end, *v_it)) != lvars.end()) {
+            n  = std::distance(lvar_begin, find_it);
+            *start_it = lrange.start()[n];
+            *finish_it = lrange.finish()[n];
+            *size_it = *finish_it - *start_it;
+          } else {
+            find_it = std::find(rvar_begin, rvar_end, *v_it);
+            n  = std::distance(rvar_begin, find_it);
+            *start_it = rrange.start()[n];
+            *finish_it = rrange.finish()[n];
+            *size_it = *finish_it - *start_it;
+          }
+        }
 
         // calculate packed tile dimensions
         packed_left_size_[0] = accumulate(lrange.finish().begin(), lfinish_common.first, lrange.start().begin());
@@ -63,6 +100,9 @@ namespace TiledArray {
         packed_right_size_[1] = packed_left_size_[1];
       }
 
+      const size_array& size() const { return size_; }
+      const size_array& start() const { return start_; }
+      const size_array& finish() const { return finish_; }
       const packed_size_array& packed_left_size() const { return packed_left_size_; }
       const packed_size_array& packed_right_size() const { return packed_right_size_; }
 
@@ -92,6 +132,9 @@ namespace TiledArray {
         return result;
       }
 
+      size_array size_;
+      size_array start_;
+      size_array finish_;
       packed_size_array packed_left_size_;
       packed_size_array packed_right_size_;
     }; // class ContractedData
@@ -159,20 +202,23 @@ namespace TiledArray {
       typedef const Left& first_argument_type;
       typedef const Right& second_argument_type;
       typedef typename result_type::range_type range_type;
+      typedef typename result_type::index index;
       typedef typename result_type::ordinal_index ordinal_index;
       typedef typename result_type::value_type value_type;
 
-      TileContract(const range_type& r,
-        const std::shared_ptr<expressions::VariableList>& lvar,
+      TileContract(const std::shared_ptr<expressions::VariableList>& lvar,
         const std::shared_ptr<expressions::VariableList>& rvar) :
-          range_(r), left_var_(lvar), right_var_(rvar)
+          left_var_(lvar), right_var_(rvar)
       { }
 
       result_type operator()(first_argument_type left, second_argument_type right) const {
-        result_type result(range_);
-
         PackedSizePair<ordinal_index> packed_sizes(left.range(), *left_var_,
             right.range(), *right_var_);
+
+        ;
+
+        result_type result(range_type(index(packed_sizes.start().begin()),
+            index(packed_sizes.finish().begin())));
 
         contract(packed_sizes.m(), packed_sizes.n(), packed_sizes.o(),
             packed_sizes.p(), packed_sizes.i(), left.data(), right.data(),
@@ -222,7 +268,6 @@ namespace TiledArray {
         }
       }
 
-      const range_type range_;
       std::shared_ptr<expressions::VariableList> left_var_;
       std::shared_ptr<expressions::VariableList> right_var_;
 
