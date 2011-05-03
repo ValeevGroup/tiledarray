@@ -10,7 +10,7 @@
 #include <TiledArray/dense_shape.h>
 #include <TiledArray/sparse_shape.h>
 #include <TiledArray/pred_shape.h>
-#include <world/worldobj.h>
+#include <world/worldreduce.h>
 #include <boost/noncopyable.hpp>
 #include <boost/scoped_ptr.hpp>
 
@@ -18,7 +18,7 @@ namespace TiledArray {
   namespace detail {
 
     template <typename T, typename CS, typename P >
-    class ArrayImpl : public madness::WorldObject<ArrayImpl<T,CS,P> >, private boost::noncopyable {
+    class ArrayImpl : public madness::WorldReduce<ArrayImpl<T,CS,P> >, private boost::noncopyable {
     private:
       typedef P policy;
 
@@ -29,6 +29,7 @@ namespace TiledArray {
     private:
       typedef ArrayImpl<T, CS, P> ArrayImpl_;
       typedef madness::WorldObject<ArrayImpl_> WorldObject_;
+      typedef madness::WorldReduce<ArrayImpl_> WorldReduce_;
       typedef typename coordinate_system::key_type key_type;
       typedef madness::Future<typename policy::value_type> data_type;
       typedef madness::ConcurrentHashMap<key_type, data_type> container_type;
@@ -57,7 +58,7 @@ namespace TiledArray {
       /// \param tr The tiled range object that will be used to set the array tiling.
       /// \param v The version number of the array
       ArrayImpl(madness::World& w, const tiled_range_type& tr, unsigned int v) :
-          WorldObject_(w),
+          WorldReduce_(w),
           tiled_range_(tr),
           pmap_(w.size(), v),
           shape_(static_cast<shape_type*>(new dense_shape_type(tiled_range_.tiles(), pmap_))),
@@ -75,7 +76,7 @@ namespace TiledArray {
       /// \param v The version number of the array
       template <typename InIter>
       ArrayImpl(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, unsigned int v) :
-          WorldObject_(w),
+          WorldReduce_(w),
           tiled_range_(tr),
           pmap_(w.size(), v),
           shape_(static_cast<shape_type*>(new sparse_shape_type(w, tiled_range_.tiles(), pmap_, first, last))),
@@ -90,12 +91,14 @@ namespace TiledArray {
       /// \param v The version number for the array
       template <typename Pred>
       ArrayImpl(madness::World& w, const tiled_range_type& tr, const Pred& p, unsigned int v) :
-          WorldObject_(w),
+          WorldReduce_(w),
           tiled_range_(tr),
           pmap_(w.size(), v),
           shape_(static_cast<shape_type*>(new PredShape<coordinate_system, Pred>(tiled_range_.tiles(), pmap_, p))),
           tiles_()
       { initialize_(); }
+
+      virtual ~ArrayImpl() { }
 
       /// Version number accessor
 
@@ -178,12 +181,7 @@ namespace TiledArray {
       /// volume of the tile at \c i
       template <typename Index, typename InIter>
       void set(const Index& i, InIter first, InIter last) {
-        std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
-
-        TA_ASSERT(volume_type(std::distance(first, last)) == r->volume(), std::runtime_error,
-            "The number of elements in [first, last) is not equal to the tile volume.");
-
-        set(policy::construct_value(r, first, last));
+        set_value(policy::construct_value(tiled_range_.make_tile_range(i), first, last));
       }
 
 
@@ -200,7 +198,7 @@ namespace TiledArray {
       void set(const Index& i, const T& v) {
         std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
 
-        set(i, policy::construct_value(r, v));
+        set_value(i, policy::construct_value(r, v));
       }
 
       /// Insert a tile into the array
@@ -210,19 +208,20 @@ namespace TiledArray {
       /// \tparam InIter Input iterator type for the data
       /// \param i The index where the tile will be inserted
       /// \param t The value that will be used to initialize the tile data
-      /// \throw std::out_of_range When \c i is not included in the array range
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
-      void set(const Index& i, const value_type& t) {
-        TA_ASSERT(is_local(i), std::runtime_error,
-            "You cannot set a non-local tile.");
-        TA_ASSERT(shape_->probe(i), std::runtime_error,
-            "The given index i is not included in the array shape.");
+      void set_value(const Index& i, const value_type& t) {
+        if(is_local(i)) {
+          TA_ASSERT(shape_->probe(i), std::runtime_error,
+              "The given index i is not included in the array shape.");
 
-        typename container_type::accessor acc;
-        bool found = tiles_.find(acc, i);
-        TA_ASSERT(found, std::runtime_error, "The tile should be present,");
-        acc->set(t);
+          typename container_type::accessor acc;
+          const bool found = tiles_.find(acc, i);
+          TA_ASSERT(found, std::runtime_error, "The tile should be present,");
+          acc->set(t);
+        } else {
+          WorldObject_::send(owner(i), & set_value<Index>, i, t);
+        }
       }
 
       /// Tiled range accessor
