@@ -13,16 +13,6 @@ namespace TiledArray {
     struct DefaultArrayPolicy;
   }
 
-  namespace math {
-    template <typename, typename, typename, template <typename> class>
-    struct BinaryOp;
-
-    template <typename, typename, template <typename> class>
-    struct UnaryOp;
-  }
-
-
-
   /// An n-dimensional, tiled array
 
   /// Array is considered a global object
@@ -59,11 +49,11 @@ namespace TiledArray {
 
   private:
 
-    template <typename, typename, typename, template <typename> class>
-    friend class math::BinaryOp;
-
-    template <typename, typename, template <typename> class>
-    friend class math::UnaryOp;
+//    template <typename, typename, typename, template <typename> class>
+//    friend class math::BinaryOp;
+//
+//    template <typename, typename, template <typename> class>
+//    friend class math::UnaryOp;
 
     // not allowed
     Array(const Array_& other);
@@ -154,7 +144,7 @@ namespace TiledArray {
 
     /// \return A const reference to the tiled range object for the array
     /// \throw nothing
-    const tiled_range_type& tiling() const { return pimpl_->tiling(); }
+    const tiled_range_type& range() const { return pimpl_->tiling(); }
 
     /// Tile range accessor
 
@@ -227,6 +217,11 @@ namespace TiledArray {
         return pimpl_->shape()->probe(i);
       else
         return false;
+    }
+
+    template <typename Archive>
+    void serialize(const Archive& ar) {
+      ar & pimpl_;
     }
 
   private:
