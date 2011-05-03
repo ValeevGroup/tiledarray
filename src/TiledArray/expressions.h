@@ -1,6 +1,6 @@
 #ifndef TILEDARRAY_EXPRESSIONS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_H__INCLUDED
-
+/*
 #include <TiledArray/math.h>
 #include <functional>
 
@@ -39,6 +39,9 @@ namespace TiledArray {
     template <typename LeftExp, typename RightExp, template <typename> class Op>
     class BinaryExpression : public Expression<BinaryExpression<LeftExp, RightExp, Op> > {
     public:
+      typedef typedef LeftExp::result_array_type left_array_type;
+      typedef typedef RightExp::result_array_type right_array_type;
+      typedef left_array_type result_array_type;
       typedef LeftExp left_argument_type;
       typedef RightExp right_argument_type;
 
@@ -56,7 +59,8 @@ namespace TiledArray {
       /// \param r The a non-const reference to the result object
       template <typename Result>
       Result& eval(Result& r) const {
-        math::BinaryOp<Result, left_argument_type, right_argument_type, Op> op;
+        math::BinaryOp<typename Result::array_type, typename left_argument_type::array_type,
+          typename right_argument_type::array_type, Op> op;
         op(r, left_, right_);
 
         return r;
@@ -136,5 +140,5 @@ namespace TiledArray {
   }  // namespace expressions
 
 }  // namespace TiledArray
-
+*/
 #endif // TILEDARRAY_EXPRESSIONS_H__INCLUDED
