@@ -224,6 +224,11 @@ namespace TiledArray {
     template <typename Index>
     ProcessID owner(const Index& i) const { return pimpl_->owner(i); }
 
+    template <typename Index>
+    bool is_local(const Index& i) {
+      return owner(i) == get_world().rank();
+    }
+
     /// Check for zero tiles
 
     /// \return \c true if tile at index \c i is zero, false if the tile is
@@ -266,7 +271,7 @@ namespace TiledArray {
         return value_type(r, first, last);
       }
 
-      static value_type construct_value(const std::shared_ptr<range_type>& r, T value) {
+      static value_type construct_value(const range_type& r, T value) {
         return value_type(r, value);
       }
 

@@ -34,4 +34,12 @@ BOOST_AUTO_TEST_CASE( constructors )
 
 }
 
+BOOST_AUTO_TEST_CASE( fill_tiles )
+{
+  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
+    if(a.is_local(*it))
+      a.set(*it, 0);
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

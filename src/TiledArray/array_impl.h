@@ -195,10 +195,9 @@ namespace TiledArray {
       /// \throw std::out_of_range When \c i is not included in the array range
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
-      void set(const Index& i, const T& v) {
-        std::shared_ptr<tile_range_type> r = tiled_range_.make_tile_range(i);
-
-        set_value(i, policy::construct_value(r, v));
+      madness::Void set(const Index& i, const T& v) {
+        set_value(i, policy::construct_value(tiled_range_.make_tile_range(i), v));
+        return madness::None;
       }
 
       /// Insert a tile into the array
@@ -210,18 +209,20 @@ namespace TiledArray {
       /// \param t The value that will be used to initialize the tile data
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
-      void set_value(const Index& i, const value_type& t) {
+      madness::Void set_value(const Index& i, const value_type& t) {
         if(is_local(i)) {
           TA_ASSERT(shape_->probe(i), std::runtime_error,
               "The given index i is not included in the array shape.");
 
           typename container_type::accessor acc;
-          const bool found = tiles_.find(acc, i);
+          const bool found = tiles_.find(acc, key_(i));
           TA_ASSERT(found, std::runtime_error, "The tile should be present,");
-          acc->set(t);
+          acc->second.set(t);
         } else {
-          WorldObject_::send(owner(i), & set_value<Index>, i, t);
+          WorldObject_::send(owner(i), & ArrayImpl_::template set_value<Index>, i, t);
         }
+
+        return madness::None;
       }
 
       /// Tiled range accessor
@@ -262,7 +263,7 @@ namespace TiledArray {
       bool insert_tile(const key_type& key) {
         TA_ASSERT(key.keys() & 3, std::runtime_error,
             "A full key must be used to insert a tile into the array.");
-        TA_ASSERT(owner(key), std::runtime_error,
+        TA_ASSERT(is_local(key), std::runtime_error,
             "Tile must be owned by this node.");
 
         std::pair<typename container_type::iterator, bool> result =
@@ -275,10 +276,12 @@ namespace TiledArray {
         ordinal_index o = 0;
         for(typename tiled_range_type::range_type::const_iterator it = tiled_range_.tiles().begin(); it != tiled_range_.tiles().end(); ++it, ++o) {
           key_type key(o, *it);
-          if(pmap_.owner(key) && shape_->probe(key)) {
-            bool success = insert_tile(key_(key));
-            TA_ASSERT(success, std::runtime_error,
-                "For some reason the tile was not inserted into the container.");
+          if(is_local(key) && shape_->is_local(key)) {
+            if(shape_->probe(key)) {
+              bool success = insert_tile(key_(key));
+              TA_ASSERT(success, std::runtime_error,
+                  "For some reason the tile was not inserted into the container.");
+            }
           }
         }
 
