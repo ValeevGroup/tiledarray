@@ -8,6 +8,12 @@
 
 namespace TiledArray {
 
+  namespace math {
+    template <typename, typename, typename, typename>
+    struct BinaryOp;
+
+  }  // namespace math
+
   namespace detail {
     template <typename, typename>
     struct DefaultArrayPolicy;
@@ -49,8 +55,8 @@ namespace TiledArray {
 
   private:
 
-//    template <typename, typename, typename, template <typename> class>
-//    friend class math::BinaryOp;
+    template <typename, typename, typename, typename>
+    friend class math::BinaryOp;
 //
 //    template <typename, typename, template <typename> class>
 //    friend class math::UnaryOp;
@@ -139,6 +145,17 @@ namespace TiledArray {
 
     template <typename Index>
     void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }
+
+    template <typename Index>
+    void set(const Index& i, const madness::Future<value_type>& f) {
+      if(f.probe()) {
+        pimpl_->set_value(i, f);
+      } else {
+        madness::TaskAttributes attr;
+        attr.set_highpriority(true);
+        get_world().taskq.add(pimpl_.get(), & impl_type::template set_value<Index>, i, f, attr);
+      }
+    }
 
     /// Tiled range accessor
 

@@ -18,7 +18,7 @@ namespace TiledArray {
   namespace detail {
 
     template <typename T, typename CS, typename P >
-    class ArrayImpl : public madness::WorldReduce<ArrayImpl<T,CS,P> >, private boost::noncopyable {
+    class ArrayImpl : public madness::WorldReduce<ArrayImpl<T,CS,P>, typename CS::ordinal_index>, private boost::noncopyable {
     private:
       typedef P policy;
 
@@ -29,9 +29,9 @@ namespace TiledArray {
     private:
       typedef ArrayImpl<T, CS, P> ArrayImpl_;
       typedef madness::WorldObject<ArrayImpl_> WorldObject_;
-      typedef madness::WorldReduce<ArrayImpl_> WorldReduce_;
+      typedef madness::WorldReduce<ArrayImpl_, typename CS::ordinal_index> WorldReduce_;
       typedef typename coordinate_system::key_type key_type;
-      typedef madness::Future<typename policy::value_type> data_type;
+      typedef madness::Future<value_type> data_type;
       typedef madness::ConcurrentHashMap<key_type, data_type> container_type;
       typedef detail::VersionedPmap<key_type> pmap_type;
       typedef Shape<CS> shape_type;
@@ -255,8 +255,7 @@ namespace TiledArray {
       /// Shape accessor
       const shape_type& get_shape() const { return shape_; }
 
-      /// World accessor
-      madness::World& get_world() const { return WorldObject_::get_world(); }
+      using WorldObject_::get_world;
 
     private:
 
