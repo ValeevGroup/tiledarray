@@ -133,14 +133,14 @@ namespace TiledArray {
       template <typename Index>
       madness::Future<value_type> local_find(const Index& i) const {
         key_type key = key_(i);
-        TA_ASSERT(pmap_.owner(key) == get_world().rank(), std::runtime_error,
+        TA_ASSERT(is_local(key), std::runtime_error,
             "Do not do a remote find on local tiles.");
         TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
-            "Element is out of range.");
+            "Tile is out of range.");
 
         typename container_type::const_iterator it = tiles_.find(key);
 
-        TA_ASSERT(it == tiles_.end(), std::runtime_error,
+        TA_ASSERT(it != tiles_.end(), std::runtime_error,
             "A tile that should have been in the array was not found.");
 
         return it->second;
@@ -163,7 +163,7 @@ namespace TiledArray {
             return madness::Future<value_type>(value_type());
 
         madness::Future<value_type> result;
-        WorldObject_::send(dest, & find_handler, key, result.remote_ref(get_world()));
+        WorldObject_::send(dest, & ArrayImpl_::find_handler, key, result.remote_ref(get_world()));
         return result;
       }
 
@@ -181,7 +181,7 @@ namespace TiledArray {
       /// volume of the tile at \c i
       template <typename Index, typename InIter>
       void set(const Index& i, InIter first, InIter last) {
-        set_value(policy::construct_value(tiled_range_.make_tile_range(i), first, last));
+        set_value(i, policy::construct_value(tiled_range_.make_tile_range(i), first, last));
       }
 
 
@@ -276,9 +276,9 @@ namespace TiledArray {
         ordinal_index o = 0;
         for(typename tiled_range_type::range_type::const_iterator it = tiled_range_.tiles().begin(); it != tiled_range_.tiles().end(); ++it, ++o) {
           key_type key(o, *it);
-          if(is_local(key) && shape_->is_local(key)) {
+          if(is_local(key)) {
             if(shape_->probe(key)) {
-              bool success = insert_tile(key_(key));
+              const bool success = insert_tile(key_(key));
               TA_ASSERT(success, std::runtime_error,
                   "For some reason the tile was not inserted into the container.");
             }
@@ -332,23 +332,31 @@ namespace TiledArray {
             tiled_range_.tiles().start());
       }
 
-      value_type find_handler(const typename container_type::iterator& it) const {
-        if(it == tiles_.end())
-          return value_type();
-
-        return it->second;
+      static const value_type& find_return(const value_type& value) {
+        return value;
       }
 
       /// Handles find request
-      void find_handler(const key_type& key, const madness::RemoteReference< madness::FutureImpl<value_type> >& ref) const {
+      madness::Void find_handler(const key_type& key, const madness::RemoteReference< madness::FutureImpl<value_type> >& ref) const {
         typename container_type::const_iterator it = tiles_.find(key);
         data_type result(ref);
 
         // Since the tile is local, shape will definitely contain local existence data.
-        if(shape_->probe(key))
-          result.set(local_find(key));
-        else
+        if(shape_->probe(key)) {
+          data_type local_tile = local_find(key);
+          if(local_tile.probe())
+            result.set(local_tile);
+          else {
+            madness::TaskAttributes attr;
+            attr.set_highpriority(true);
+            get_world().taskq.add(new madness::TaskFn<const value_type&(*)(const value_type&),
+                madness::Future<value_type> >(result, & ArrayImpl_::find_return, local_tile, attr));
+          }
+
+        } else
           result.set(policy::construct_value());
+
+        return madness::None;
       }
 
       tiled_range_type tiled_range_;        ///< Tiled range object

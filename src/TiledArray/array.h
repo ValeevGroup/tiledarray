@@ -125,7 +125,7 @@ namespace TiledArray {
     /// \tparam Index The index type
     template <typename Index>
     madness::Future<value_type> find(const Index& i) const {
-      if(owner(i) == rank())
+      if(pimpl_->is_local(i))
         return pimpl_->local_find(i);
 
       return pimpl_->remote_find(i);
@@ -138,8 +138,6 @@ namespace TiledArray {
     void set(const Index& i, InIter first, InIter last) {
       typedef typename std::iterator_traits<InIter>::value_type it_value_type;
       TA_STATIC_ASSERT((std::is_same<it_value_type, index>::value || std::is_integral<it_value_type>::value));
-      TA_ASSERT(std::distance(first, last) > long(pimpl_->tile(i).volume()), std::runtime_error,
-          "The number of elements assigned to tile i must be equal to the tile volume.");
       pimpl_->set(i, first, last);
     }
 
@@ -267,7 +265,7 @@ namespace TiledArray {
       }
 
       template <typename InIter>
-      static value_type construct_value(const std::shared_ptr<range_type>& r, InIter first, InIter last) {
+      static value_type construct_value(const range_type& r, InIter first, InIter last) {
         return value_type(r, first, last);
       }
 
