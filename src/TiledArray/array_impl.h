@@ -11,6 +11,8 @@
 #include <TiledArray/sparse_shape.h>
 #include <TiledArray/pred_shape.h>
 #include <world/worldreduce.h>
+#include <world/make_task.h>
+#include <world/functional.h>
 #include <boost/noncopyable.hpp>
 #include <boost/scoped_ptr.hpp>
 
@@ -137,34 +139,36 @@ namespace TiledArray {
             "Do not do a remote find on local tiles.");
         TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
             "Tile is out of range.");
-
-        typename container_type::const_iterator it = tiles_.find(key);
-
-        TA_ASSERT(it != tiles_.end(), std::runtime_error,
-            "A tile that should have been in the array was not found.");
-
-        return it->second;
       }
 
       template <typename Index>
-      madness::Future<value_type> remote_find(const Index& i) const {
+      madness::Future<value_type> find(const Index& i) const {
         key_type key = key_(i);
         const ProcessID me = get_world().rank();
-        const ProcessID dest = owner(key);
-        TA_ASSERT(dest != me, std::runtime_error,
-            "Do not do a remote find on local tiles.");
+        const ProcessID tile_owner = owner(key);
+
         TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
             "Element is out of range.");
 
-        // If the tile existence data is stored locally and shape says it does
-        // not exist, then we return an empty tile.
+        // Find zero tiles
         if(shape_->is_local(key))
           if(!shape_->probe(key))
             return madness::Future<value_type>(value_type());
 
-        madness::Future<value_type> result;
-        WorldObject_::send(dest, & ArrayImpl_::find_handler, key, result.remote_ref(get_world()));
-        return result;
+        // Find local tiles
+        if(tile_owner == me) {
+          typename container_type::const_iterator it = tiles_.find(key);
+
+          // This should never happen, because zero tiles should be caught in
+          // the first check and non-zero tiles are always present.
+          TA_ASSERT(it != tiles_.end(), std::runtime_error,
+              "A tile that should have been in the array was not found.");
+
+          return it->second;
+        }
+
+        // Find remote tiles (which may or may not be zero tiles).
+        return WorldObject_::task(tile_owner, & ArrayImpl_::find<key_type>, key);
       }
 
       /// Set the data of a tile in the array
@@ -332,29 +336,26 @@ namespace TiledArray {
             tiled_range_.tiles().start());
       }
 
-      static const value_type& find_return(const value_type& value) {
-        return value;
+      static void find_return(const typename data_type::remote_refT& ref, const value_type& value) {
+        data_type result(ref);
+        result.set(value);
       }
 
       /// Handles find request
-      madness::Void find_handler(const key_type& key, const madness::RemoteReference< madness::FutureImpl<value_type> >& ref) const {
-        typename container_type::const_iterator it = tiles_.find(key);
-        data_type result(ref);
-
-        // Since the tile is local, shape will definitely contain local existence data.
+      madness::Void find_handler(const key_type& key, const typename data_type::remote_refT& ref) const {
+        // Since the tile is local, shape will definitely contain existence data.
         if(shape_->probe(key)) {
           data_type local_tile = local_find(key);
           if(local_tile.probe())
-            result.set(local_tile);
-          else {
-            madness::TaskAttributes attr;
-            attr.set_highpriority(true);
-            get_world().taskq.add(new madness::TaskFn<const value_type&(*)(const value_type&),
-                madness::Future<value_type> >(result, & ArrayImpl_::find_return, local_tile, attr));
-          }
+            // The local tile is ready, send it back now.
+            find_return(ref, local_tile);
+          else
+            get_world().taskq.add(madness::make_task(& ArrayImpl_::find_return,
+                ref, local_tile, madness::TaskAttributes::hipri()));
 
         } else
-          result.set(policy::construct_value());
+          // Tile is zero.
+          find_return(ref, policy::construct_value());
 
         return madness::None;
       }

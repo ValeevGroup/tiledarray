@@ -72,8 +72,9 @@ namespace TiledArray {
     ///
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
-    Array(madness::World& w, const tiled_range_type& tr) :
-        pimpl_(new impl_type(w, tr, 0u), madness::make_deferred_deleter<impl_type>(w))
+    /// \param v Array version number.
+    Array(madness::World& w, const tiled_range_type& tr, unsigned int v = 0u) :
+        pimpl_(new impl_type(w, tr, v), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Sparse array constructor
@@ -86,8 +87,8 @@ namespace TiledArray {
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
     template <typename InIter>
-    Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last) :
-        pimpl_(new impl_type(w, tr, first, last, 0u), madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, unsigned int v = 0u) :
+        pimpl_(new impl_type(w, tr, first, last, v), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Predicated array constructor
@@ -96,8 +97,8 @@ namespace TiledArray {
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param p The shape predicate.
     template <typename Pred>
-    Array(madness::World& w, const tiled_range_type& tr, Pred p) :
-        pimpl_(new impl_type(w, tr, p, 0u), madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const tiled_range_type& tr, Pred p, unsigned int v = 0u) :
+        pimpl_(new impl_type(w, tr, p, v), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Begin iterator factory function
@@ -125,10 +126,7 @@ namespace TiledArray {
     /// \tparam Index The index type
     template <typename Index>
     madness::Future<value_type> find(const Index& i) const {
-      if(pimpl_->is_local(i))
-        return pimpl_->local_find(i);
-
-      return pimpl_->remote_find(i);
+      return pimpl_->find(i);
     }
     /// Set the data of tile \c i
 
@@ -159,7 +157,7 @@ namespace TiledArray {
 
     /// \return A const reference to the tiled range object for the array
     /// \throw nothing
-    const tiled_range_type& range() const { return pimpl_->tiling(); }
+    const tiled_range_type& tiling() const { return pimpl_->tiling(); }
 
     /// Tile range accessor
 
