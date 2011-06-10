@@ -8,73 +8,6 @@
 namespace TiledArray {
   namespace detail {
 
-    template<typename, typename>
-    class Key;
-    template<typename Key1, typename Key2>
-    bool operator ==(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator ==(const Key<Key1, Key2>&, const Key1&);
-    template<typename Key1, typename Key2>
-    bool operator ==(const Key1&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator ==(const Key<Key1, Key2>&, const Key2&);
-    template<typename Key1, typename Key2>
-    bool operator ==(const Key2&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator !=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator !=(const Key<Key1, Key2>&, const Key1&);
-    template<typename Key1, typename Key2>
-    bool operator !=(const Key1&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator !=(const Key<Key1, Key2>&, const Key2&);
-    template<typename Key1, typename Key2>
-    bool operator !=(const Key2&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator <(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator <(const Key<Key1, Key2>&, const Key1&);
-    template<typename Key1, typename Key2>
-    bool operator <(const Key1&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator <(const Key<Key1, Key2>&, const Key2&);
-    template<typename Key1, typename Key2>
-    bool operator <(const Key2&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator <=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator <=(const Key<Key1, Key2>&, const Key1&);
-    template<typename Key1, typename Key2>
-    bool operator <=(const Key1&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator <=(const Key<Key1, Key2>&, const Key2&);
-    template<typename Key1, typename Key2>
-    bool operator <=(const Key2&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator >(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator >(const Key<Key1, Key2>&, const Key1&);
-    template<typename Key1, typename Key2>
-    bool operator >(const Key1&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator >(const Key<Key1, Key2>&, const Key2&);
-    template<typename Key1, typename Key2>
-    bool operator >(const Key2&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator >=(const Key<Key1, Key2>&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator >=(const Key<Key1, Key2>&, const Key1&);
-    template<typename Key1, typename Key2>
-    bool operator >=(const Key1&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    bool operator >=(const Key<Key1, Key2>&, const Key2&);
-    template<typename Key1, typename Key2>
-    bool operator >=(const Key2&, const Key<Key1, Key2>&);
-    template<typename Key1, typename Key2>
-    std::ostream& operator<<(std::ostream&, const Key<Key1, Key2>&);
-    template <typename Key1, typename Key2>
-    std::size_t hash_value(const Key<Key1,Key2>&);
-
     /// Key class that holds two arbitrary key types.
 
     /// Contains two arbitrary key values. It provides methods of comparing the
@@ -201,13 +134,6 @@ namespace TiledArray {
 
     private:
 
-      friend bool operator == <>(const Key_& l, const Key_&);
-      friend bool operator != <>(const Key_& l, const Key_&);
-      friend bool operator < <>(const Key_& l, const Key_&);
-      friend bool operator <= <>(const Key_& l, const Key_&);
-      friend bool operator > <>(const Key_& l, const Key_&);
-      friend bool operator >= <>(const Key_& l, const Key_&);
-
       key1_type k1_;        ///< Key 1
       key2_type k2_;        ///< Key 2
       unsigned int k_;      ///< Flags for keys that are assigned.
@@ -216,189 +142,193 @@ namespace TiledArray {
 
     /// Compare two keys for equality (only compares key1).
     template<typename Key1, typename Key2>
-    bool operator ==(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ == r.k1_)) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ == r.k2_));
+    inline bool operator ==(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
+      TA_ASSERT((l.keys() & r.keys()) != 0u, std::runtime_error,
+          "No common keys available for comparison.");
+      if((l.keys() & r.keys()) & 1u)
+        return (l.key1() == r.key1());
+
+      return (l.key2() == r.key2());
     }
 
     /// Compare the key with a key1 type for equality.
     template<typename Key1, typename Key2>
-    bool operator ==(const Key<Key1, Key2>& l, const Key1& r) {
+    inline bool operator ==(const Key<Key1, Key2>& l, const Key1& r) {
       return l.key1() == r;
     }
 
     /// Compare the key with a key1 type for equality.
     template<typename Key1, typename Key2>
-    bool operator ==(const Key1& l, const Key<Key1, Key2>& r) {
+    inline bool operator ==(const Key1& l, const Key<Key1, Key2>& r) {
       return l == r.key1();
     }
 
     /// Compare the key with a key2 type for equality.
     template<typename Key1, typename Key2>
-    bool operator ==(const Key<Key1, Key2>& l, const Key2& r) {
+    inline bool operator ==(const Key<Key1, Key2>& l, const Key2& r) {
       return l.key2() == r;
     }
 
     /// Compare the key with a key2 type for equality.
     template<typename Key1, typename Key2>
-    bool operator ==(const Key2& l, const Key<Key1, Key2>& r) {
+    inline bool operator ==(const Key2& l, const Key<Key1, Key2>& r) {
       return l == r.key2();
     }
 
 
     /// Compare two keys for inequality (only compares key1).
     template<typename Key1, typename Key2>
-    bool operator !=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ != r.k1_)) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ != r.k2_));
+    inline bool operator !=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
+      return !(l == r);
     }
 
     /// Compare the key with a key1 type for inequality.
     template<typename Key1, typename Key2>
-    bool operator !=(const Key<Key1, Key2>& l, const Key1& r) {
-      return l.key1() != r;
+    inline bool operator !=(const Key<Key1, Key2>& l, const Key1& r) {
+      return !(l.key1() == r);
     }
 
     /// Compare the key with a key1 type for inequality.
     template<typename Key1, typename Key2>
-    bool operator !=(const Key1& l, const Key<Key1, Key2>& r) {
-      return l != r.key1();
+    inline bool operator !=(const Key1& l, const Key<Key1, Key2>& r) {
+      return !(l == r.key1());
     }
 
     /// Compare the key with a key2 type for inequality.
     template<typename Key1, typename Key2>
-    bool operator !=(const Key<Key1, Key2>& l, const Key2& r) {
-      return l.key2() != r;
+    inline bool operator !=(const Key<Key1, Key2>& l, const Key2& r) {
+      return !(l.key2() == r);
     }
 
     /// Compare the key with a key2 type for inequality.
     template<typename Key1, typename Key2>
-    bool operator !=(const Key2& l, const Key<Key1, Key2>& r) {
-      return l != r.key2();
+    inline bool operator !=(const Key2& l, const Key<Key1, Key2>& r) {
+      return !(l == r.key2());
     }
 
     /// Less-than comparison of two keys (only compares key1).
     template<typename Key1, typename Key2>
-    bool operator <(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ < r.k1_)) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ < r.k2_));
+    inline bool operator <(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
+      TA_ASSERT((l.keys() & r.keys()) != 0u, std::runtime_error,
+          "No common keys available for comparison.");
+      if((l.keys() & r.keys()) & 1u)
+        return (l.key1() < r.key1());
+
+      return (l.key2() < r.key2());
     }
 
     /// Less-than comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator <(const Key<Key1, Key2>& l, const Key1& r) {
+    inline bool operator <(const Key<Key1, Key2>& l, const Key1& r) {
       return l.key1() < r;
     }
 
     /// Less-than comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator <(const Key1& l, const Key<Key1, Key2>& r) {
+    inline bool operator <(const Key1& l, const Key<Key1, Key2>& r) {
       return l < r.key1();
     }
 
     /// Less-than comparison of a key with a key2 type.
     template<typename Key1, typename Key2>
-    bool operator <(const Key<Key1, Key2>& l, const Key2& r) {
+    inline bool operator <(const Key<Key1, Key2>& l, const Key2& r) {
       return l.key2() < r;
     }
 
     /// Less-than comparison of a key with a key2 type.
     template<typename Key1, typename Key2>
-    bool operator <(const Key2& l, const Key<Key1, Key2>& r) {
+    inline bool operator <(const Key2& l, const Key<Key1, Key2>& r) {
       return l < r.key2();
     }
 
     /// Less-than or equal-to comparison with two keys (only compares key1).
     template<typename Key1, typename Key2>
-    bool operator <=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ <= r.k1_)) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ <= r.k2_));
+    inline bool operator <=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
+      return ! (r < l);
     }
 
     /// Less-than or equal-to comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator <=(const Key<Key1, Key2>& l, const Key1& r) {
-      return l.key1() <= r;
+    inline bool operator <=(const Key<Key1, Key2>& l, const Key1& r) {
+      return ! (r < l.key1());
     }
 
     /// Less-than or equal-to comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator <=(const Key1& l, const Key<Key1, Key2>& r) {
-      return l <= r.key1();
+    inline bool operator <=(const Key1& l, const Key<Key1, Key2>& r) {
+      return ! (r.key1() < l);
     }
 
     /// Less-than or equal-to comparison of a key with a key2 type.
     template<typename Key1, typename Key2>
-    bool operator <=(const Key<Key1, Key2>& l, const Key2& r) {
-      return l.key2() <= r;
+    inline bool operator <=(const Key<Key1, Key2>& l, const Key2& r) {
+      return ! (r < l.key2());
     }
 
     /// Less-than or equal-to comparison of a key with a key2 type.
     template<typename Key1, typename Key2>
-    bool operator <=(const Key2& l, const Key<Key1, Key2>& r) {
-      return l <= r.key2();
+    inline bool operator <=(const Key2& l, const Key<Key1, Key2>& r) {
+      return ! (r.key2() < l);
     }
 
     /// Greater-than comparison with two keys (only compares key1).
     template<typename Key1, typename Key2>
-    bool operator >(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ > r.k1_)) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ > r.k2_));
+    inline bool operator >(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
+      return r < l;
     }
 
     /// Greater-than comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator >(const Key<Key1, Key2>& l, const Key1& r) {
-      return l.key1() > r;
+    inline bool operator >(const Key<Key1, Key2>& l, const Key1& r) {
+      return r < l.key1();
     }
 
     /// Greater-than comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator >(const Key1& l, const Key<Key1, Key2>& r) {
-      return l > r.key1();
+    inline bool operator >(const Key1& l, const Key<Key1, Key2>& r) {
+      return r.key1() < l;
     }
 
     /// Greater-than comparison of a key with a key2 type.
     template<typename Key1, typename Key2>
-    bool operator >(const Key<Key1, Key2>& l, const Key2& r) {
-      return l.key2() > r;
+    inline bool operator >(const Key<Key1, Key2>& l, const Key2& r) {
+      return r < l.key2();
     }
 
     /// Greater-than comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator >(const Key2& l, const Key<Key1, Key2>& r) {
-      return l > r.key2();
+    inline bool operator >(const Key2& l, const Key<Key1, Key2>& r) {
+      return r.key2() < l;
     }
 
     /// Greater-than or equal-to comparison with two keys (only compares key1).
     template<typename Key1, typename Key2>
-    bool operator >=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
-      return (((l.keys() & 1) && (r.keys() & 1)) && (l.k1_ >= r.k1_)) ||
-          (((l.keys() & 2) && (r.keys() & 2)) && (l.k2_ >= r.k2_));
+    inline bool operator >=(const Key<Key1, Key2>& l, const Key<Key1, Key2>& r) {
+      return ! (l < r);
     }
 
     /// Greater-than or equal-to comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator >=(const Key<Key1, Key2>& l, const Key1& r) {
-      return l.key1() >= r;
+    inline bool operator >=(const Key<Key1, Key2>& l, const Key1& r) {
+      return ! (l.key1() < r);
     }
 
     /// Greater-than or equal-to comparison of a key with a key1 type.
     template<typename Key1, typename Key2>
-    bool operator >=(const Key1& l, const Key<Key1, Key2>& r) {
-      return l >= r.key1();
+    inline bool operator >=(const Key1& l, const Key<Key1, Key2>& r) {
+      return ! (l < r.key1());
     }
 
     /// Greater-than or equal-to comparison of a key with a key2 type.
     template<typename Key1, typename Key2>
-    bool operator >=(const Key<Key1, Key2>& l, const Key2& r) {
-      return l.key2() >= r;
+    inline bool operator >=(const Key<Key1, Key2>& l, const Key2& r) {
+      return ! (l.key2() < r);
     }
 
     /// Greater-than or equal-to comparison of a key with a key2 type.
     template<typename Key1, typename Key2>
-    bool operator >=(const Key2& l, const Key<Key1, Key2>& r) {
-      return l >= r.key2();
+    inline bool operator >=(const Key2& l, const Key<Key1, Key2>& r) {
+      return ! (l < r.key2());
     }
 
     /// Hash function for array coordinates

@@ -168,7 +168,9 @@ BOOST_AUTO_TEST_CASE( equal_comp )
   BOOST_CHECK(! (k == kohi));
   BOOST_CHECK(k == ki);
   BOOST_CHECK(! (k == kihi));
-  BOOST_CHECK(! (ko == ki));
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ko == ki, std::runtime_error);
+#endif // TA_EXCEPTION_ERROR
 
   BOOST_CHECK(k == o); // check bool operator ==(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(! (k == ohi));
@@ -192,7 +194,9 @@ BOOST_AUTO_TEST_CASE( ne_comp )
   BOOST_CHECK(k != kohi);
   BOOST_CHECK(! (k != ki));
   BOOST_CHECK(k != kihi);
-  BOOST_CHECK(! (ko != ki));
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ko != ki, std::runtime_error);
+#endif // TA_EXCEPTION_ERROR
 
   BOOST_CHECK(! (k != o)); // check bool operator !=(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(k != ohi);
@@ -215,7 +219,9 @@ BOOST_AUTO_TEST_CASE( lt_comp )
   BOOST_CHECK(! (kohi < k));
   BOOST_CHECK(kilow < k);
   BOOST_CHECK(! (kihi < k));
-  BOOST_CHECK(! (ko < ki));
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ko < ki, std::runtime_error);
+#endif // TA_EXCEPTION_ERROR
 
   BOOST_CHECK(klow < o); // check bool operator <(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(! (khi < o));
@@ -242,7 +248,9 @@ BOOST_AUTO_TEST_CASE( le_comp )
   BOOST_CHECK(kilow <= k);
   BOOST_CHECK(ki <= k);
   BOOST_CHECK(! (kihi <= k));
-  BOOST_CHECK(! (ko <= ki));
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ko <= ki, std::runtime_error);
+#endif // TA_EXCEPTION_ERROR
 
   BOOST_CHECK(klow <= o); // check bool operator <=(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(k <= o);
@@ -269,7 +277,9 @@ BOOST_AUTO_TEST_CASE( gt_comp )
   BOOST_CHECK(! (kolow > k));
   BOOST_CHECK(kihi > k);
   BOOST_CHECK(! (kilow > k));
-  BOOST_CHECK(! (ko > ki));
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ko > ki, std::runtime_error);
+#endif // TA_EXCEPTION_ERROR
 
   BOOST_CHECK(khi > o); // check bool operator >(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(! (klow > o));
@@ -296,7 +306,9 @@ BOOST_AUTO_TEST_CASE( ge_comp )
   BOOST_CHECK(kihi >= k);
   BOOST_CHECK(ki >= k);
   BOOST_CHECK(! (kilow >= k));
-  BOOST_CHECK(! (ko >= ki));
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ko >= ki, std::runtime_error);
+#endif // TA_EXCEPTION_ERROR
 
   BOOST_CHECK(khi >= o); // check bool operator >=(const Key<Key1, Key2>&, const Key1&);
   BOOST_CHECK(k >= o);
