@@ -12,10 +12,6 @@ namespace TiledArray {
 
   namespace detail {
 
-    // Forward declarations
-    template<typename Key1, typename Key2>
-    class Key;
-
     // Local forward declarations
     template<typename Op, typename F0, typename F1>
     struct binary_transform;
