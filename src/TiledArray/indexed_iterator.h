@@ -2,6 +2,7 @@
 #define TILEDARRAY_INDEXED_ITERATOR_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
+#include <TiledArray/key.h>
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/iterator/iterator_traits.hpp>
 #include <boost/utility/enable_if.hpp>
@@ -14,9 +15,6 @@ namespace TiledArray {
   class ArrayCoordinate;
 
   namespace detail {
-
-    template <typename, typename>
-    class Key;
 
     template <typename Iterator>
     struct BaseIteratorTraits {
