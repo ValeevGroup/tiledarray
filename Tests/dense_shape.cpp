@@ -31,12 +31,6 @@ BOOST_AUTO_TEST_CASE( is_local )
     BOOST_CHECK(ds.is_local(o));
     // with an index
     BOOST_CHECK(ds.is_local(*it));
-    // with a key initialized with an ordianl_index
-    BOOST_CHECK(ds.is_local(key_type(o)));
-    // with a key initalized with a index
-    BOOST_CHECK(ds.is_local(key_type(*it)));
-    // with a key initialized with an ordianl_index and an index
-    BOOST_CHECK(ds.is_local(key_type(o, *it)));
   }
 }
 
@@ -50,12 +44,6 @@ BOOST_AUTO_TEST_CASE( probe )
     BOOST_CHECK(ds.probe(o));
     // with an index
     BOOST_CHECK(ds.probe(*it));
-    // with a key initialized with an ordianl_index
-    BOOST_CHECK(ds.probe(key_type(o)));
-    // with a key initalized with a index
-    BOOST_CHECK(ds.probe(key_type(*it)));
-    // with a key initialized with an ordianl_index and an index
-    BOOST_CHECK(ds.probe(key_type(o, *it)));
   }
 
 }

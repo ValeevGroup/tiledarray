@@ -2,7 +2,6 @@
 #define TILEDARRAY_INDEXED_ITERATOR_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
-#include <TiledArray/key.h>
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/iterator/iterator_traits.hpp>
 #include <boost/utility/enable_if.hpp>
@@ -57,54 +56,9 @@ namespace TiledArray {
       // Used to selectively enable functions with boost::enable_if
       struct Enabler { };
 
-      // This set of classes are used to ensure that TiledArray::detail::Key
-      // index types are handled correctly. The default behavior is to use
-      // Iterator::value_type::first_type as the index type. But when that type
-      // is a TiledArray::detail::Key<T1,T2> type, we need to select one of the
-      // two Key types. The default behavior in this case is to select
-      // Key::key1_type. If one of the two key types is a
-      // TiledArray::ArrayCoordinate type, then that type is used.
-      template <typename T>
-      struct IndexType {
-        typedef T type;
-
-        static type& get_index(const Iterator& it) {
-          return it->first;
-        }
-      };
-
-      template <typename T1, typename T2>
-      struct IndexType<const Key<T1, T2> > {
-        typedef const T1 type;
-
-        static type& get_index(const Iterator& it) {
-          return it->first.key1();
-        }
-      };
-
-      template <typename I, unsigned int DIM, typename Tag, typename T2>
-      struct IndexType<const Key<ArrayCoordinate<I, DIM, Tag>, T2> > {
-        typedef const ArrayCoordinate<I, DIM, Tag> type;
-
-        static type& get_index(const Iterator& it) {
-          return it->first.key1();
-        }
-      };
-
-      template <typename T1, typename I, unsigned int DIM, typename Tag>
-      struct IndexType<const Key<T1, ArrayCoordinate<I, DIM, Tag> > > {
-        typedef const ArrayCoordinate<I, DIM, Tag> type;
-
-        static type& get_index(const Iterator& it) {
-          return it->first.key2();
-        }
-      };
-
-      typedef IndexType<typename std::iterator_traits<Iterator>::value_type::first_type> indexer;
-
     public:
       typedef IndexedIterator<Iterator> IndexedIterator_; ///< this object type
-      typedef typename indexer::type index_type; ///< The index (or key) type for the iterator
+      typedef typename std::iterator_traits<Iterator>::value_type::first_type index_type; ///< The index (or key) type for the iterator
       typedef typename iterator_adaptor_::base_type base_type; ///< The base iterator type
       typedef typename iterator_adaptor_::value_type value_type; ///< iterator value_type
       typedef typename iterator_adaptor_::reference reference; ///< iterator reference type
@@ -189,7 +143,7 @@ namespace TiledArray {
 
       /// \return The index associated with the iterator.
       index_type& index() const {
-        return indexer::get_index(iterator_adaptor_::base_reference());
+        return iterator_adaptor_::base_reference()->first;
       }
 
       reference operator[] (difference_type n) const

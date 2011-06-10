@@ -31,7 +31,6 @@ namespace TiledArray {
 
   public:
     typedef CS coordinate_system;                         ///< Shape coordinate system
-    typedef typename Shape_::key_type key_type;           ///< The pmap key type
     typedef typename Shape_::index index;                 ///< index type
     typedef typename Shape_::ordinal_index ordinal_index; ///< ordinal index type
     typedef typename Shape_::range_type range_type;       ///< Range type
@@ -85,9 +84,9 @@ namespace TiledArray {
     /// 0 where tiles do not exist in the shape.
     virtual array_type make_shape_map() const {
       array_type result(this->range(), 0);
-      std::size_t vol = this->range().volume();
-      for(std::size_t i = 0; i < vol; ++i)
-        if(pred_(this->key(i)))
+      ordinal_index vol = this->range().volume();
+      for(ordinal_index i = 0; i < vol; ++i)
+        if(pred_(i))
           result[i] = 1;
       return result;
     }
@@ -97,8 +96,8 @@ namespace TiledArray {
     /// Probe for tile existence
 
     /// \param k The index to be probed.
-    virtual bool local_probe(const key_type& k) const {
-      return pred_(k);
+    virtual bool local_probe(const ordinal_index& i) const {
+      return pred_(i);
     }
 
     pred_type pred_; ///< The shape predicate

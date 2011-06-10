@@ -46,7 +46,6 @@ namespace TiledArray {
     typedef typename CS::volume_type volume_type;
     typedef typename CS::index index;
     typedef typename CS::ordinal_index ordinal_index;
-    typedef typename CS::key_type key_type;
     typedef typename CS::size_array size_array;
 
     typedef detail::RangeIterator<index, Range_> const_iterator;
@@ -116,17 +115,6 @@ namespace TiledArray {
     /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
     bool includes(const ordinal_index& i) const {
       return include_ordinal_(i);
-    }
-
-    /// Check the ordinal index to make sure it is within the range.
-
-    /// \param k The ordinal index to check for inclusion in the range
-    /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
-    bool includes(const key_type& k) const {
-      if(k.keys() & 1)
-        return includes(k.key1());
-      else
-        return includes(k.key2());
     }
 
     /// Assignment Operator.

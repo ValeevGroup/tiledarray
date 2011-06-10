@@ -5,7 +5,7 @@
 #include "TiledArray/versioned_pmap.h"
 
 struct VersionedPmapFixture {
-  typedef TiledArray::detail::VersionedPmap<GlobalFixture::coordinate_system::key_type> pmap_type;
+  typedef TiledArray::detail::VersionedPmap<GlobalFixture::coordinate_system::ordinal_index> pmap_type;
 
   VersionedPmapFixture() : m(GlobalFixture::world->size()) { }
 

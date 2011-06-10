@@ -42,11 +42,10 @@ namespace TiledArray {
 
   public:
     typedef CS coordinate_system;
-    typedef typename coordinate_system::key_type key_type;           ///< The pmap key type
     typedef typename coordinate_system::index index;
     typedef typename coordinate_system::ordinal_index ordinal_index;
     typedef Range<coordinate_system> range_type;  ///< Range object type
-    typedef detail::VersionedPmap<key_type> pmap_type; ///< The process map interface type
+    typedef detail::VersionedPmap<ordinal_index> pmap_type; ///< The process map interface type
     typedef Tile<int, CS> array_type;
 
   protected:
@@ -84,7 +83,7 @@ namespace TiledArray {
     bool is_local(const Index& i) const {
       TA_ASSERT(range_.includes(i), std::out_of_range,
           "Cannot check for tiles that are not in the range.");
-      return this->local_data(key(i));
+      return this->local_data(ord(i));
     }
 
     /// Probe for the presence of an element at key
@@ -92,7 +91,7 @@ namespace TiledArray {
     bool probe(const Index& i) const {
       TA_ASSERT(this->is_local(i), std::runtime_error,
           "You cannot probe data that is not stored locally.");
-      return  this->local_probe(key(i));
+      return  this->local_probe(ord(i));
     }
 
     /// Shape range accessor
@@ -111,30 +110,20 @@ namespace TiledArray {
     ordinal_index ord(ordinal_index o) const { return o; }
 
     ordinal_index ord(const index& i) const {
-      return coordinate_system::ord(i, range_.weight(), range_.start());
+      return coordinate_system::calc_ordinal(i, range_.weight(), range_.start());
     }
-
-    ordinal_index ord(const key_type& k) const {
-      if(k.keys() & 1)
-        return k.key1();
-      else
-        return coordinate_system::calc_ordinal(k.key2(), range_.weight(), range_.start());
-    }
-
-    template <typename Index>
-    key_type key(const Index& i) const { return coordinate_system::key(i, range_.weight(), range_.start()); }
 
     typename range_type::volume_type volume() { return range_.volume(); }
 
     template <typename Index>
     ProcessID owner(const Index& i) const {
-      return pmap_.owner(coordinate_system::key(i));
+      return pmap_.owner(ord(i));
     }
 
   private:
 
-    virtual bool local_data(const key_type&) const { return true; }
-    virtual bool local_probe(const key_type&) const { return true; }
+    virtual bool local_data(const ordinal_index&) const { return true; }
+    virtual bool local_probe(const ordinal_index&) const { return true; }
 
     const range_type& range_; ///< The range object associated with this shape.
     const pmap_type& pmap_;   ///< The process map for the shape.

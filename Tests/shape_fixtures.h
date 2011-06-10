@@ -11,10 +11,9 @@
 struct BaseShapeFixture {
   typedef GlobalFixture::coordinate_system::index index;
   typedef GlobalFixture::coordinate_system::ordinal_index ordinal_index;
-  typedef GlobalFixture::coordinate_system::key_type key_type;
   typedef TiledArray::Range<GlobalFixture::coordinate_system> RangeN;
-  typedef TiledArray::detail::VersionedPmap<GlobalFixture::coordinate_system::key_type> PmapT;
   typedef TiledArray::Shape<GlobalFixture::coordinate_system> ShapeT;
+  typedef ShapeT::pmap_type PmapT;
 
 
   // Common data for shape tests.
@@ -66,8 +65,7 @@ struct PredShapeFixture : public virtual BaseShapeFixture {
 
     Even(const size_array& w) : weight(w) { }
 
-    bool operator()(const key_type& k) const {
-      ordinal_index i = (k.keys() & 1 ? k.key1() : GlobalFixture::coordinate_system::calc_ordinal(k.key2(), weight));
+    bool operator()(const ordinal_index& i) const {
       return (i % 2) == 0;
     }
 

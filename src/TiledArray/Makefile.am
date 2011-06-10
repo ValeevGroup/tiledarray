@@ -13,7 +13,6 @@ library_include_HEADERS = annotated_array.h \
                           error.h \
                           expressions.h \
                           indexed_iterator.h \
-                          key.h \
                           madness_runtime.h \
                           math.h \
                           packed_tile.h \

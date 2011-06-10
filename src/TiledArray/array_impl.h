@@ -32,10 +32,9 @@ namespace TiledArray {
       typedef ArrayImpl<T, CS, P> ArrayImpl_;
       typedef madness::WorldObject<ArrayImpl_> WorldObject_;
       typedef madness::WorldReduce<ArrayImpl_, typename CS::ordinal_index> WorldReduce_;
-      typedef typename coordinate_system::key_type key_type;
       typedef madness::Future<value_type> data_type;
-      typedef madness::ConcurrentHashMap<key_type, data_type> container_type;
-      typedef detail::VersionedPmap<key_type> pmap_type;
+      typedef madness::ConcurrentHashMap<typename coordinate_system::ordinal_index, data_type> container_type;
+      typedef detail::VersionedPmap<typename coordinate_system::ordinal_index> pmap_type;
       typedef Shape<CS> shape_type;
       typedef DenseShape<CS> dense_shape_type;
       typedef SparseShape<CS> sparse_shape_type;
@@ -128,9 +127,9 @@ namespace TiledArray {
       /// \return A const iterator to one past the last local tile.
       const_iterator end() const { return const_iterator(tiles_.end()); }
 
-      data_type local_find(const key_type& k) const {
+      data_type local_find(const ordinal_index& i) const {
         // Find local tiles
-        typename container_type::const_iterator it = tiles_.find(k);
+        typename container_type::const_iterator it = tiles_.find(i);
 
         // This should never happen, because zero tiles should be caught in
         // the first check and non-zero tiles are always present.
@@ -140,11 +139,11 @@ namespace TiledArray {
         return it->second;
       }
 
-      data_type remote_find(const key_type& k) const {
+      data_type remote_find(const ordinal_index& i) const {
         // Find remote tiles (which may or may not be zero tiles).
 //        std::cout << "ArrayImpl::find(" << i << "): Request remote tile from node " << tile_owner << ".\n";
         data_type result;
-        WorldObject_::task(owner(k), & ArrayImpl_::find_handler, k,
+        WorldObject_::task(owner(i), & ArrayImpl_::find_handler, i,
             result.remote_ref(WorldObject_::get_world()));
 
         return result;
@@ -152,17 +151,17 @@ namespace TiledArray {
 
       template <typename Index>
       data_type find(const Index& i) const {
-        const key_type key = key_(i);
+        const ordinal_index o = ord_(i);
 
-        TA_ASSERT(tiled_range_.tiles().includes(key), std::out_of_range,
+        TA_ASSERT(tiled_range_.tiles().includes(o), std::out_of_range,
             "Element is out of range.");
 
         // Check for zero tiles
-        if(shape_->is_local(key))
-          if(!shape_->probe(key))
+        if(shape_->is_local(o))
+          if(!shape_->probe(o))
             return madness::Future<value_type>(value_type());
 
-        return (is_local(key) ? local_find(key) : remote_find(key));
+        return (is_local(o) ? local_find(o) : remote_find(o));
       }
 
       /// Set the data of a tile in the array
@@ -213,7 +212,7 @@ namespace TiledArray {
               "The given index i is not included in the array shape.");
 
           typename container_type::accessor acc;
-          TA_TEST(tiles_.find(acc, key_(i)), std::runtime_error,
+          TA_TEST(tiles_.find(acc, ord_(i)), std::runtime_error,
               "The tile should be present.");
           acc->second.set(t);
         } else {
@@ -246,7 +245,7 @@ namespace TiledArray {
       /// \return A const shared pointer reference to the array process map
       /// \throw nothing
       template <typename Index>
-      ProcessID owner(const Index& i) const { return pmap_.owner(key_(i)); }
+      ProcessID owner(const Index& i) const { return pmap_.owner(ord_(i)); }
 
       template <typename Index>
       bool is_local(const Index& i) const { return owner(i) == get_world().rank(); }
@@ -266,26 +265,24 @@ namespace TiledArray {
 
     private:
 
-      bool insert_tile(const key_type& key) {
-        TA_ASSERT(key.keys() & 3, std::runtime_error,
-            "A full key must be used to insert a tile into the array.");
-        TA_ASSERT(is_local(key), std::runtime_error,
+      bool insert_tile(const ordinal_index& i) {
+        TA_ASSERT(is_local(i), std::runtime_error,
             "Tile must be owned by this node.");
-        TA_ASSERT(shape_->probe(key), std::runtime_error,);
+        TA_ASSERT(shape_->probe(i), std::runtime_error,
+            "Tile is not included in the shape");
 
 //        std::cout << get_world().rank() << ": ArrayImpl::insert_tile(" << key << ")\n";
         std::pair<typename container_type::iterator, bool> result =
-            tiles_.insert(typename container_type::datumT(key, data_type()));
+            tiles_.insert(typename container_type::datumT(i, data_type()));
         return result.second;
       }
 
       /// Initialize the array container by inserting local tiles.
       void initialize_() {
-        ordinal_index o = 0;
-        for(typename tiled_range_type::range_type::const_iterator it = tiled_range_.tiles().begin(); it != tiled_range_.tiles().end(); ++it, ++o) {
-          if(is_local(o)) {
-            if(shape_->probe(o)) {
-              TA_TEST(insert_tile(key_type(o, *it)), std::runtime_error,
+        for(typename tiled_range_type::range_type::volume_type it = 0; it != tiled_range_.tiles().volume(); ++it) {
+          if(is_local(it)) {
+            if(shape_->probe(it)) {
+              TA_TEST(insert_tile(it), std::runtime_error,
                   "For some reason the tile was not inserted into the container.");
             }
           }
@@ -313,41 +310,16 @@ namespace TiledArray {
             tiled_range_.tiles().start());
       }
 
-      /// Calculate the ordinal index
-
-      /// \param k The key to convert to an ordinal index
-      /// \return The ordinal index of \c k
-      /// \note No range checking is done in this function.
-      ordinal_index ord_(const key_type& k) const {
-        if((k.keys() & 1u) == 0u)
-          return ord_(k.key2());
-
-        return k.key1();
-      }
-
-      /// Construct a complete key
-
-      /// \c k may contain key1, key2, or both. If one of the keys is missing, it
-      /// is added to the key before being returned. If both keys are present, it
-      /// is returned as is.
-      /// \param k The key to convert to a complete key
-      /// \return A key that contains both key1 and key2
-      template <typename Index>
-      key_type key_(const Index& i) const {
-        return coordinate_system::key(i, tiled_range_.tiles().weight(),
-            tiled_range_.tiles().start());
-      }
-
       static void find_return(const typename data_type::remote_refT& ref, const value_type& value) {
         data_type result(ref);
         result.set(value);
       }
 
       /// Handles find request
-      madness::Void find_handler(const key_type& key, const typename data_type::remote_refT& ref) const {
-        TA_ASSERT(is_local(key), std::runtime_error, "Cannot find");
-        if(shape_->probe(key)) {
-          data_type local_tile = local_find(key);
+      madness::Void find_handler(const ordinal_index& i, const typename data_type::remote_refT& ref) const {
+        TA_ASSERT(is_local(i), std::runtime_error, "Requested tile is not owned by this process.");
+        if(shape_->probe(i)) {
+          data_type local_tile = local_find(i);
           if(local_tile.probe())
             // The local tile is ready, send it back now.
             find_return(ref, local_tile);

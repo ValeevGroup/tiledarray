@@ -29,7 +29,6 @@ namespace TiledArray {
 
   public:
     typedef CS coordinate_system;                         ///< Shape coordinate system
-    typedef typename Shape_::key_type key_type;           ///< The pmap key type
     typedef typename Shape_::index index;                 ///< index type
     typedef typename Shape_::ordinal_index ordinal_index; ///< ordinal index type
     typedef typename Shape_::range_type range_type;       ///< Range type

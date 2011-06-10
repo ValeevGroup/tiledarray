@@ -3,7 +3,6 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/config.h>
-#include <TiledArray/key.h>
 #include <TiledArray/coordinates.h>
 #include <TiledArray/type_traits.h>
 #include <boost/mpl/equal_to.hpp>
@@ -178,7 +177,6 @@ namespace TiledArray {
     typedef I ordinal_index;                    ///< Linear ordinal index type for ranges and arrays
     typedef ArrayCoordinate<I, DIM,
         detail::LevelTag<Level> > index;        ///< Coordinate index type for ranges and arrays
-    typedef detail::Key<ordinal_index, index> key_type; ///< Key type that wraps both ordinal index and index data
     typedef std::array<I, DIM> size_array;      ///< Array type for size and weight of ranges and arrays
 
     static const unsigned int dim = DIM;                ///< The number of dimensions in the coordinate system
@@ -228,62 +226,6 @@ namespace TiledArray {
     static ordinal_index calc_ordinal(const index& i, const size_array& w, const index& s) {
       return calc_ordinal_(begin(i), end(i), begin(w), begin(s));
     }
-
-    /// Construct a complete key
-
-    /// \c k may contain key1, key2, or both. If one of the keys is missing, it
-    /// is added to the key before being returned. If both keys are present, it
-    /// is returned as is.
-    /// \param k The key to convert to a complete key
-    /// \param w The weight array of the range
-    /// \param s The starting index of the range
-    /// \return A key that contains both key1 and key2
-    static key_type key(const key_type& k, const size_array& w, const index& s) {
-      if(k.keys() == 1)
-        return key(k.key1(), w, s);
-      else if(k.keys() == 2)
-        return key(k.key2(), w, s);
-
-      return k;
-    }
-
-    /// Construct a complete key from an index
-
-    /// \param k The index of the key
-    /// \param w The weight array of the range
-    /// \param s The starting index of the range
-    /// \return A key that contains both key1 and key2
-    static key_type key(const index& i, const size_array& w, const index& s) {
-      return key_type(calc_ordinal(i, w, s), i);
-    }
-
-    /// Construct a complete key from an ordinal index
-
-    /// \param k The ordinal index of the key
-    /// \param w The weight array of the range
-    /// \param s The starting index of the range
-    /// \return A key that contains both key1 and key2
-    static key_type key(const ordinal_index& i, const size_array& w, const index& s) {
-      return key_type(i, calc_index(i, w) + s);
-    }
-
-    /// Forward a key
-
-    /// \param k The key to forward
-    /// \return \c k , which is unchanged
-    static const key_type& key(const key_type& k) { return k; }
-
-    /// Convert an index to a key
-
-    /// \param i The index that will be placed in the key
-    /// \return A partial key that contains index \c i
-    static key_type key(const index& i) { return key_type(i); }
-
-    /// Convert an ordinal index to a key
-
-    /// \param i The ordinal index that will be placed in the key
-    /// \return A partial key that contains ordinal index \c i
-    static key_type key(ordinal_index i) { return key_type(i); }
 
     /// Calculate the volume of an N-dimensional range.
 

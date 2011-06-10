@@ -73,20 +73,9 @@ BOOST_AUTO_TEST_CASE( owner )
 
   ordinal_index o = 0;
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it, ++o) {
-    // make a key for the current ordinal index and index pair
-    GlobalFixture::coordinate_system::key_type k1(o);
-    GlobalFixture::coordinate_system::key_type k2(*it);
-    GlobalFixture::coordinate_system::key_type k3(o, *it);
-    BOOST_CHECK_EQUAL(k3.key1(), o);
-    BOOST_CHECK_EQUAL(k3.key2(), *it);
-    BOOST_CHECK_EQUAL(k3.keys(), 3u);
-
     // Check that local ownership agrees
     const int owner = a.owner(*it);
     BOOST_CHECK_EQUAL(a.owner(o), owner);
-    BOOST_CHECK_EQUAL(a.owner(k1), owner);
-    BOOST_CHECK_EQUAL(a.owner(k2), owner);
-    BOOST_CHECK_EQUAL(a.owner(k3), owner);
 
     // Get the owner from all other processes
     MPI::COMM_WORLD.Allgather(& owner, 1, MPI::INT, group_owner.get(), 1, MPI::INT);
@@ -104,18 +93,10 @@ BOOST_AUTO_TEST_CASE( is_local )
 
   ordinal_index o = 0;
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it, ++o) {
-    // make a key for the current ordinal index and index pair
-    GlobalFixture::coordinate_system::key_type k1(o);
-    GlobalFixture::coordinate_system::key_type k2(*it);
-    GlobalFixture::coordinate_system::key_type k3(o, *it);
-
     // Check that local ownership agrees
     const bool local_tile = a.owner(o) == world.rank();
     BOOST_CHECK_EQUAL(a.is_local(*it), local_tile);
     BOOST_CHECK_EQUAL(a.is_local(o), local_tile);
-    BOOST_CHECK_EQUAL(a.is_local(k1), local_tile);
-    BOOST_CHECK_EQUAL(a.is_local(k2), local_tile);
-    BOOST_CHECK_EQUAL(a.is_local(k3), local_tile);
 
     // Find out how many claim ownership
     int count = (local_tile ? 1 : 0);
@@ -145,11 +126,11 @@ BOOST_AUTO_TEST_CASE( find_local )
 BOOST_AUTO_TEST_CASE( find_remote )
 {
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
-    const int owner = a.owner(*it);
 
     if(! a.is_local(*it)) {
       madness::Future<ArrayN::value_type> tile = a.find(*it);
 
+      const int owner = a.owner(*it);
       for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
         BOOST_CHECK_EQUAL(*it, owner);
     }
