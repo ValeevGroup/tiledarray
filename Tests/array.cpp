@@ -3,12 +3,14 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include "shape_fixtures.h"
+#include <world/sharedptr.h>
 
 using namespace TiledArray;
 
 struct ArrayFixture : public TiledRangeFixture, public ShapeFixture {
   typedef Array<int, GlobalFixture::coordinate_system> ArrayN;
   typedef ArrayN::index index;
+  typedef ArrayN::ordinal_index ordinal_index;
   typedef ArrayN::value_type tile_type;
 
   ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
@@ -54,15 +56,103 @@ BOOST_AUTO_TEST_CASE( constructors )
 
 }
 
-BOOST_AUTO_TEST_CASE( find_tiles )
+BOOST_AUTO_TEST_CASE( all_owned )
+{
+  int count = std::distance(a.begin(), a.end());
+  world.gop.sum(count);
+
+  // Check that all tiles are in the array
+  BOOST_CHECK_EQUAL(tr.tiles().volume(), count);
+}
+
+BOOST_AUTO_TEST_CASE( owner )
+{
+  // Test to make sure everyone agrees who owns which tiles.
+  std::shared_ptr<ProcessID> group_owner(new ProcessID[world.size()],
+      & madness::detail::checked_array_delete<ProcessID>);
+
+  ordinal_index o = 0;
+  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it, ++o) {
+    // make a key for the current ordinal index and index pair
+    GlobalFixture::coordinate_system::key_type k1(o);
+    GlobalFixture::coordinate_system::key_type k2(*it);
+    GlobalFixture::coordinate_system::key_type k3(o, *it);
+    BOOST_CHECK_EQUAL(k3.key1(), o);
+    BOOST_CHECK_EQUAL(k3.key2(), *it);
+    BOOST_CHECK_EQUAL(k3.keys(), 3u);
+
+    // Check that local ownership agrees
+    const int owner = a.owner(*it);
+    BOOST_CHECK_EQUAL(a.owner(o), owner);
+    BOOST_CHECK_EQUAL(a.owner(k1), owner);
+    BOOST_CHECK_EQUAL(a.owner(k2), owner);
+    BOOST_CHECK_EQUAL(a.owner(k3), owner);
+
+    // Get the owner from all other processes
+    MPI::COMM_WORLD.Allgather(& owner, 1, MPI::INT, group_owner.get(), 1, MPI::INT);
+
+    // Check that everyone agrees who the owner of the tile is.
+    BOOST_CHECK((std::find_if(group_owner.get(), group_owner.get() + world.size(),
+        std::bind1st(std::not_equal_to<ProcessID>(), owner)) == (group_owner.get() + world.size())));
+
+  }
+}
+
+BOOST_AUTO_TEST_CASE( is_local )
+{
+  // Test to make sure everyone agrees who owns which tiles.
+
+  ordinal_index o = 0;
+  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it, ++o) {
+    // make a key for the current ordinal index and index pair
+    GlobalFixture::coordinate_system::key_type k1(o);
+    GlobalFixture::coordinate_system::key_type k2(*it);
+    GlobalFixture::coordinate_system::key_type k3(o, *it);
+
+    // Check that local ownership agrees
+    const bool local_tile = a.owner(o) == world.rank();
+    BOOST_CHECK_EQUAL(a.is_local(*it), local_tile);
+    BOOST_CHECK_EQUAL(a.is_local(o), local_tile);
+    BOOST_CHECK_EQUAL(a.is_local(k1), local_tile);
+    BOOST_CHECK_EQUAL(a.is_local(k2), local_tile);
+    BOOST_CHECK_EQUAL(a.is_local(k3), local_tile);
+
+    // Find out how many claim ownership
+    int count = (local_tile ? 1 : 0);
+    world.gop.sum(count);
+
+    // Check how many process claim ownership
+    // "There can be only one!"
+    BOOST_CHECK_EQUAL(count, 1);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( find_local )
+{
+  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
+
+    if(a.is_local(*it)) {
+      madness::Future<ArrayN::value_type> tile = a.find(*it);
+
+      BOOST_CHECK(tile.probe());
+
+      for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
+        BOOST_CHECK_EQUAL(*it, world.rank());
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( find_remote )
 {
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
     const int owner = a.owner(*it);
 
-    madness::Future<ArrayN::value_type> tile = a.find(*it);
+    if(! a.is_local(*it)) {
+      madness::Future<ArrayN::value_type> tile = a.find(*it);
 
-    for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
-      BOOST_CHECK_EQUAL(*it, owner);
+      for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
+        BOOST_CHECK_EQUAL(*it, owner);
+    }
   }
 }
 
@@ -75,7 +165,6 @@ BOOST_AUTO_TEST_CASE( fill_tiles )
       a.set(*it, 0); // Fill the tile at *it (the index) with 0
 
       madness::Future<ArrayN::value_type> tile = a.find(*it);
-      BOOST_CHECK(tile.probe());
 
       for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
         BOOST_CHECK_EQUAL(*it, 0);
