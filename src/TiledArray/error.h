@@ -56,18 +56,22 @@ namespace TiledArray {
       TA_EXCEPTION( e , m ) ; \
     }
 
+#define TA_TEST( a , e , m )  TA_ASSERT( a , e , m )
+
 #elif defined(TA_ASSERT_ERROR)
 // This sections defines behavior for TiledArray assertion error checking which
 // uses assertions.
 #include <cassert>
 #define TA_ASSERT( a , e , m ) assert( a )
 #define TA_EXCEPTION( e , m ) exit(1)
+#define TA_TEST( a , e , m )  TA_ASSERT( a , e , m )
 #else
 // This section defines behavior for TiledArray assertion error checking which
 // does no error checking.
 // WARNING: TiledArray will perform no error checking.
 #define TA_ASSERT( a , e , m ) { ; }
 #define TA_EXCEPTION( e , m ) exit(1)
+#define TA_TEST( a , e , m )  a
 
 #endif //TA_EXCEPTION_ERROR
 
