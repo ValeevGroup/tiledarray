@@ -1,5 +1,5 @@
 .PHONY: doc
-doc:
+doc: Doxyfile
 	$(DOXYGEN) Doxyfile
 
 .PHONY: clean-local
