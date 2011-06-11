@@ -69,7 +69,6 @@ namespace TiledArray {
 
     /// Dense array constructor
 
-    ///
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param v The array version number.
@@ -173,7 +172,7 @@ namespace TiledArray {
     /// \throw nothing
     const tile_range_type& elements() const { return pimpl_->elements(); }
 
-    /// Create an annotated tile
+    /// Create an annotated array
 
     /// \param v A string with a comma-separated list of variables
     /// \return An annotated array object that references this array
@@ -182,7 +181,7 @@ namespace TiledArray {
           expressions::VariableList(v));
     }
 
-    /// Create an annotated tile
+    /// Create an annotated array
 
     /// \param v A string with a comma-separated list of variables
     /// \return An annotated array object that references this array
@@ -191,7 +190,7 @@ namespace TiledArray {
           expressions::VariableList(v));
     }
 
-    /// Create an annotated tile
+    /// Create an annotated array
 
     /// \param v A variable list object
     /// \return An annotated array object that references this array
@@ -199,7 +198,7 @@ namespace TiledArray {
       return expressions::AnnotatedArray<Array_>(*this, v);
     }
 
-    /// Create an annotated tile
+    /// Create an annotated array
 
     /// \param v A variable list object
     /// \return An annotated array object that references this array
