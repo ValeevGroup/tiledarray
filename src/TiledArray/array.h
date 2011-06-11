@@ -72,7 +72,7 @@ namespace TiledArray {
     ///
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
-    /// \param v Array version number.
+    /// \param v The array version number.
     Array(madness::World& w, const tiled_range_type& tr, unsigned int v = 0u) :
         pimpl_(new impl_type(w, tr, v), madness::make_deferred_deleter<impl_type>(w))
     { }
@@ -86,6 +86,7 @@ namespace TiledArray {
     /// added to the sparse array.
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
+    /// \param v The array version number.
     template <typename InIter>
     Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, unsigned int v = 0u) :
         pimpl_(new impl_type(w, tr, first, last, v), madness::make_deferred_deleter<impl_type>(w))
@@ -96,6 +97,7 @@ namespace TiledArray {
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param p The shape predicate.
+    /// \param v The array version number.
     template <typename Pred>
     Array(madness::World& w, const tiled_range_type& tr, Pred p, unsigned int v = 0u) :
         pimpl_(new impl_type(w, tr, p, v), madness::make_deferred_deleter<impl_type>(w))

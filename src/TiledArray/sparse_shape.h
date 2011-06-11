@@ -77,8 +77,7 @@ namespace TiledArray {
     /// \param w The world where this shape lives
     /// \param r The range object associated with this shape
     /// \param m The process map for this shape
-    /// \param first First element of a list of tiles that will be stored locally
-    /// \param last Last element of a list of tiles that will be stored locally
+    /// \param a A dense array that contains sparse tile shape data.
     /// \note Tiles in the list that are not owned by this process (according to
     /// the process map) are ignored.
     SparseShape(const madness::World& w, const range_type& r, const pmap_type& m,
