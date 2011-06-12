@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE( constructors )
 
 BOOST_AUTO_TEST_CASE( all_owned )
 {
-  int count = std::distance(a.begin(), a.end());
+  unsigned int count = std::distance(a.begin(), a.end());
   world.gop.sum(count);
 
   // Check that all tiles are in the array
