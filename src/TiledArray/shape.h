@@ -189,36 +189,6 @@ namespace TiledArray {
     return true;
   }
 
-  /// Runtime type checking for predicated shape
-
-  /// \tparam CS Coordinate system type of shape
-  /// \param s The shape to check
-  /// \return If shape is a \c PredShape class return \c true , otherwise \c false .
-  template <typename T>
-  inline bool is_pred_shape(const std::shared_ptr<T>& s) {
-    return false;
-  }
-
-  /// Runtime type checking for predicated shape
-
-  /// \tparam CS Coordinate system type of shape
-  /// \param s The shape to check
-  /// \return If shape is a \c PredShape class return \c true , otherwise \c false .
-  template <typename CS>
-  inline bool is_pred_shape(const std::shared_ptr<Shape<CS> >& s) {
-    return (! is_dense_shape(s)) && (! is_sparse_shape(s));
-  }
-
-  /// Runtime type checking for predicated shape
-
-  /// \tparam CS Coordinate system type of shape
-  /// \param s The shape to check
-  /// \return If shape is a \c PredShape class return \c true , otherwise \c false .
-  template <typename CS, typename Pred>
-  inline bool is_pred_shape(const std::shared_ptr<PredShape<CS, Pred> >& s) {
-    return (! is_dense_shape(s)) && (! is_sparse_shape(s));
-  }
-
 } // namespace TiledArray
 
 #endif // TILEDARRAY_SHAPE_H__INCLUDED

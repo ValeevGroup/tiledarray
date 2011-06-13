@@ -6,7 +6,6 @@
 #include "versioned_pmap_fixture.h"
 #include "TiledArray/sparse_shape.h"
 #include "TiledArray/dense_shape.h"
-#include "TiledArray/pred_shape.h"
 
 struct BaseShapeFixture {
   typedef GlobalFixture::coordinate_system::index index;
@@ -59,36 +58,7 @@ struct SparseShapeFixture : public virtual BaseShapeFixture {
   SparseShapeT ss;
 };
 
-struct PredShapeFixture : public virtual BaseShapeFixture {
-  struct Even {
-    typedef GlobalFixture::coordinate_system::size_array size_array;
-
-    Even(const size_array& w) : weight(w) { }
-
-    bool operator()(const ordinal_index& i) const {
-      return (i % 2) == 0;
-    }
-
-    template<typename InIter>
-    bool operator()(InIter first, InIter last) const {
-      return operator()(std::inner_product(first, last, weight.begin(), std::size_t(0)));
-    }
-
-    size_array weight;
-  }; // struct Even
-
-  typedef TiledArray::PredShape<GlobalFixture::coordinate_system, Even> PredShapeT;
-
-  PredShapeFixture() :
-      p(r.weight()),
-      ps(r, m, p)
-  { }
-
-  Even p;
-  PredShapeT ps;
-};
-
-struct ShapeFixture : public DenseShapeFixture, public SparseShapeFixture, public PredShapeFixture {
+struct ShapeFixture : public DenseShapeFixture, public SparseShapeFixture {
   typedef ShapeT* ShapePtr;
 
   ShapeFixture() { }

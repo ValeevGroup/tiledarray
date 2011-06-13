@@ -17,7 +17,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   versioned_pmap.cpp \
                   dense_shape.cpp \
                   sparse_shape.cpp \
-                  pred_shape.cpp \
                   shape.cpp \
                   variable_list.cpp \
                   annotated_array.cpp \
@@ -25,7 +24,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   array.cpp \
                   math.cpp \
                   tiled_range_math.cpp \
-                  shape_math.cpp \
                   array_math.cpp \
                   expressions.cpp \
                   array_fixtures.h \

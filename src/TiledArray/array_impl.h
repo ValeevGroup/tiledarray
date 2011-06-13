@@ -9,7 +9,6 @@
 #include <TiledArray/versioned_pmap.h>
 #include <TiledArray/dense_shape.h>
 #include <TiledArray/sparse_shape.h>
-#include <TiledArray/pred_shape.h>
 #include <world/worldreduce.h>
 #include <world/make_task.h>
 #include <world/functional.h>
@@ -35,11 +34,11 @@ namespace TiledArray {
       typedef madness::Future<value_type> data_type;
       typedef madness::ConcurrentHashMap<typename coordinate_system::ordinal_index, data_type> container_type;
       typedef detail::VersionedPmap<typename coordinate_system::ordinal_index> pmap_type;
+
+    public:
       typedef Shape<CS> shape_type;
       typedef DenseShape<CS> dense_shape_type;
       typedef SparseShape<CS> sparse_shape_type;
-
-    public:
       typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
       typedef typename coordinate_system::index index; ///< Array coordinate index type
       typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
@@ -66,7 +65,7 @@ namespace TiledArray {
           tiles_()
       { initialize_(); }
 
-      /// Dense array constructor
+      /// Sparse array constructor
 
       /// \param w The world where the array will live.
       /// \param tr The tiled range object that will be used to set the array tiling.
@@ -84,22 +83,23 @@ namespace TiledArray {
           tiles_()
       { initialize_(); }
 
-      /// Dense array constructor
+      /// Sparse array constructor
 
       /// \param w The world where the array will live.
       /// \param tr The tiled range object that will be used to set the array tiling.
-      /// \param p The predicate for the array shape
-      /// \param v The version number for the array
-      template <typename Pred>
-      ArrayImpl(madness::World& w, const tiled_range_type& tr, const Pred& p, unsigned int v) :
+      /// \param first An input iterator that points to the a list of tiles to be
+      /// added to the sparse array.
+      /// \param last An input iterator that points to the last position in a list
+      /// of tiles to be added to the sparse array.
+      /// \param v The version number of the array
+      template <typename InIter>
+      ArrayImpl(madness::World& w, const tiled_range_type& tr, const typename shape_type::array_type& m, unsigned int v) :
           WorldReduce_(w),
           tiled_range_(tr),
           pmap_(w.size(), v),
-          shape_(static_cast<shape_type*>(new PredShape<coordinate_system, Pred>(tiled_range_.tiles(), pmap_, p))),
+          shape_(static_cast<shape_type*>(new sparse_shape_type(w, tiled_range_.tiles(), pmap_, m))),
           tiles_()
       { initialize_(); }
-
-      virtual ~ArrayImpl() { }
 
       /// Version number accessor
 

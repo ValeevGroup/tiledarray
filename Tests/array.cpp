@@ -45,15 +45,6 @@ BOOST_AUTO_TEST_CASE( constructors )
   for(ArrayN::const_iterator it = as.begin(); it != as.end(); ++it)
     BOOST_CHECK(! it->probe());
 
-
-  // Construct a predicated array
-  BOOST_REQUIRE_NO_THROW(ArrayN ap(world, tr, p));
-  ArrayN ap(world, tr, p);
-
-  // Check that none of the tiles have been set.
-  for(ArrayN::const_iterator it = ap.begin(); it != ap.end(); ++it)
-    BOOST_CHECK(! it->probe());
-
 }
 
 BOOST_AUTO_TEST_CASE( all_owned )

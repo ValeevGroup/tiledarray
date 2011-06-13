@@ -61,9 +61,20 @@ namespace TiledArray {
 //    template <typename, typename, template <typename> class>
 //    friend class math::UnaryOp;
 
-    // not allowed
-    Array(const Array_& other);
-    Array_& operator=(const Array_& other);
+    /// Sparse array constructor
+
+    /// \tparam InIter Input iterator type
+    /// \param w The world where the array will live.
+    /// \param tr The tiled range object that will be used to set the array tiling.
+    /// \param first An input iterator that points to the a list of tiles to be
+    /// added to the sparse array.
+    /// \param last An input iterator that points to the last position in a list
+    /// of tiles to be added to the sparse array.
+    /// \param v The array version number.
+    template <typename InIter>
+    Array(madness::World& w, const tiled_range_type& tr, const typename impl_type::shape_type::array_type& m, unsigned int v = 0u) :
+        pimpl_(new impl_type(w, tr, m, v), madness::make_deferred_deleter<impl_type>(w))
+    { }
 
   public:
 
@@ -101,6 +112,23 @@ namespace TiledArray {
     Array(madness::World& w, const tiled_range_type& tr, Pred p, unsigned int v = 0u) :
         pimpl_(new impl_type(w, tr, p, v), madness::make_deferred_deleter<impl_type>(w))
     { }
+
+    /// Copy constructor
+
+    /// This is a shallow copy, that is no data is copied.
+    /// \param other The array to be copied
+    Array(const Array_& other) :
+      pimpl_(other.pimpl_)
+    { }
+
+    /// Copy constructor
+
+    /// This is a shallow copy, that is no data is copied.
+    /// \param other The array to be copied
+    Array_& operator=(const Array_& other) {
+      pimpl_ = other.pimpl_;
+      return *this;
+    }
 
     /// Begin iterator factory function
 
@@ -223,7 +251,7 @@ namespace TiledArray {
 
     template <typename Index>
     bool is_local(const Index& i) {
-      return owner(i) == get_world().rank();
+      return pimpl_->is_local(i);
     }
 
     /// Check for zero tiles
@@ -238,10 +266,29 @@ namespace TiledArray {
         return false;
     }
 
-    template <typename Archive>
-    void serialize(const Archive& ar) {
-      ar & pimpl_;
+    /// Serialize array
+
+    /// Interprocess serialization communication only!
+    /// \param ar Output archive
+    void serialize(const madness::archive::BufferOutputArchive& ar) {
+        ar & static_cast<madness::WorldObject<impl_type>*>(pimpl_.get());
     }
+
+    /// Deserialize array
+
+    /// Interprocess serialization communication only!
+    /// \param ar Input archive
+    void serialize(const madness::archive::BufferInputArchive& ar) {
+        madness::WorldObject<impl_type>* ptr = NULL;
+        ar & ptr;
+        TA_ASSERT(ptr, std::runtime_error, "WorldObject pointer not found.");
+        pimpl_.reset(static_cast<impl_type*>(ptr), & madness::detail::no_delete<impl_type>);
+    }
+
+    /// Swap this array with \c other
+
+    /// \param other The array to be swapped with this array.
+    void swap(Array_& other) { std::swap(pimpl_, other.pimpl_); }
 
   private:
 

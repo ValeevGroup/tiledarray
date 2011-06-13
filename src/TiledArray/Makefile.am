@@ -17,11 +17,10 @@ library_include_HEADERS = annotated_array.h \
                           math.h \
                           packed_tile.h \
                           permutation.h \
-                          predicate.h \
                           range_iterator.h \
                           range.h \
-                          shape_math.h \
                           shape.h \
+                          sparse_shape.h \
                           tile_slice.h \
                           tile.h \
                           tiled_range_math.h \
