@@ -84,15 +84,8 @@ namespace TiledArray {
         const array_type a) :
       Shape_(r,m),
       world_(w),
-      tiles_(r.volume())
-    {
-
-      ordinal_index o = 0;
-      for(typename array_type::const_iterator it = a.begin(); it != a.end(); ++it, ++o) {
-        if(*it != 0)
-          tiles_.set(o);
-      }
-    }
+      tiles_(a.begin(), a.end())
+    { }
 
     virtual ~SparseShape() { }
 
