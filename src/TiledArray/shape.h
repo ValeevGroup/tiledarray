@@ -18,8 +18,6 @@ namespace TiledArray {
   class DenseShape;
   template <typename>
   class SparseShape;
-  template <typename, typename>
-  class PredShape;
   template <typename>
   class Shape;
 
@@ -30,7 +28,7 @@ namespace TiledArray {
   /// available.
   /// \tparam CS The \c Shape coordinate system type
   /// \note This is an interface class only and cannot be constructed directly.
-  /// Insted use DenseShape, SparseShape, or PredShape.
+  /// Insted use DenseShape or SparseShape.
   template <typename CS>
   class Shape {
   private:
