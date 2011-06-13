@@ -30,14 +30,5 @@ BOOST_AUTO_TEST_CASE( cast_sparse_shape )
 //  BOOST_CHECK(sparse_shape != NULL);
 }
 
-BOOST_AUTO_TEST_CASE( cast_pred_shape )
-{
-//  ShapePtr shape = dynamic_cast<ShapePtr>(&ps);
-//  BOOST_REQUIRE(shape != NULL);
-//
-//  PredShapeT* pred_shape = dynamic_cast<PredShapeT*>(shape);
-//  BOOST_CHECK(pred_shape != NULL);
-}
-
 BOOST_AUTO_TEST_SUITE_END()
 
