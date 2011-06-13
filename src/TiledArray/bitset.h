@@ -39,6 +39,24 @@ namespace TiledArray {
         std::fill_n(set_.get(), num_blocks(), block_type(0));
       }
 
+      /// Construct a bitset that contains \c s bits.
+
+      /// \param s The number of bits
+      /// \throw std::bad_alloc If bitset allocation fails.
+      template <typename InIter>
+      Bitset(InIter first, InIter last) :
+          size_(std::distance(first, last)),
+          blocks_((size_ / block_bits) + (size_ % block_bits ? 1 : 0)),
+          set_(new block_type[blocks_])
+      {
+        // Initialize to zero
+        std::fill_n(set_.get(), num_blocks(), block_type(0));
+
+        for(std::size_t i = 0; first != last; ++i, ++last)
+          if(*first)
+            set(i);
+      }
+
       /// Copy constructor for bitset
 
       /// \param other The bitset to copy
