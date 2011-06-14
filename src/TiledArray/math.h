@@ -258,10 +258,10 @@ namespace TiledArray {
         // iterate over the highest order dimensions of a and b, and store the
         // results of the matrix-matrix multiplication.
         for(a_begin = a; a_begin != a_end; a_begin += a_step) {
-          Eigen::Map<matrix_type> ma(a_begin, i, ma1);
+          Eigen::Map<const matrix_type, Eigen::Aligned> ma(a_begin, i, ma1);
           for(b_begin = b; b_begin != b_end; b_begin += b_step, c_begin += c_step) {
-            Eigen::Map<matrix_type> mb(b_begin, i, mb1);
-            Eigen::Map<matrix_type> mc(c_begin, ma1, mb1);
+            Eigen::Map<const matrix_type, Eigen::Aligned> mb(b_begin, i, mb1);
+            Eigen::Map<matrix_type, Eigen::Aligned> mc(c_begin, ma1, mb1);
 
             mc = ma.transpose() * mb;
           }
