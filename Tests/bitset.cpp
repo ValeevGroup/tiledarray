@@ -331,5 +331,78 @@ BOOST_AUTO_TEST_CASE( bit_assignment )
 #endif // TA_EXCEPTION_ERROR
 }
 
+BOOST_AUTO_TEST_CASE( bit_operators )
+{
+  Bitset even(size);
+  Bitset odd(size);
+  for(std::size_t i = 0; i < set.size(); ++i) {
+    set.set(i);
+    if(i % 2)
+      even.set(i);
+    else
+      odd.set(i);
+  }
+
+
+  // Check and-operator
+  set = even & even;
+
+  // Check for correct and-assignement (evens are set)
+  for(std::size_t i = 0; i < set.size(); ++i) {
+    if(i % 2)
+      BOOST_CHECK(set[i]);
+    else
+      BOOST_CHECK(! set[i]);
+  }
+
+  set = even & odd;
+
+  // Check for correct and-assignement (evens are set)
+  for(std::size_t i = 0; i < set.size(); ++i) {
+    BOOST_CHECK(! set[i]);
+  }
+
+  // Check or-operator
+  set = even | even;
+
+  // Check for correct and-assignement (evens are set)
+  for(std::size_t i = 0; i < set.size(); ++i) {
+    if(i % 2)
+      BOOST_CHECK(set[i]);
+    else
+      BOOST_CHECK(! set[i]);
+  }
+
+  set = even | odd;
+
+  // Check for correct and-assignement (evens are set)
+  for(std::size_t i = 0; i < set.size(); ++i) {
+    BOOST_CHECK(set[i]);
+  }
+
+  // Check xor-operator
+  set = even ^ even;
+
+  // Check for correct and-assignement (evens are set)
+  for(std::size_t i = 0; i < set.size(); ++i) {
+    BOOST_CHECK(! set[i]);
+  }
+
+  set = even ^ odd;
+
+  // Check for correct and-assignement (evens are set)
+  for(std::size_t i = 0; i < set.size(); ++i) {
+    BOOST_CHECK(set[i]);
+  }
+
+  // Check that assignment of bitsets with different size throws.
+#ifdef TA_EXCEPTION_ERROR
+  Bitset bad(size / 2);
+  BOOST_CHECK_THROW(bad & set, std::range_error);
+  BOOST_CHECK_THROW(bad | set, std::range_error);
+  BOOST_CHECK_THROW(bad ^ set, std::range_error);
+#endif // TA_EXCEPTION_ERROR
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 

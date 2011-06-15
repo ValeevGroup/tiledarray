@@ -241,6 +241,43 @@ namespace TiledArray {
     template <typename Block>
     const std::size_t Bitset<Block>::block_bits = 8 * sizeof(typename Bitset<Block>::block_type);
 
+    /// Bitwise and operator of bitset.
+
+    /// \tparam Block The bitset block type
+    /// \param left The left-hand bitset
+    /// \param right The right-hand bitset
+    /// \return The a intersection of the \c left and \c right bitsets
+    template <typename Block>
+    Bitset<Block> operator&(Bitset<Block> left, const Bitset<Block>& right) {
+      left &= right;
+      return left;
+    }
+
+    /// Bitwise or operator of bitset.
+
+    /// \tparam Block The bitset block type
+    /// \param left The left-hand bitset
+    /// \param right The right-hand bitset
+    /// \return The union of the \c left and \c right bitsets
+    template <typename Block>
+    Bitset<Block> operator|(Bitset<Block> left, const Bitset<Block>& right) {
+      left |= right;
+      return left;
+    }
+
+
+    /// Bitwise xor operator of bitset.
+
+    /// \tparam Block The bitset block type
+    /// \param left The left-hand bitset
+    /// \param right The right-hand bitset
+    /// \return The union of the \c left and \c right bitsets
+    template <typename Block>
+    Bitset<Block> operator^(Bitset<Block> left, const Bitset<Block>& right) {
+      left ^= right;
+      return left;
+    }
+
   } // namespace detail
 
 } // namespace TiledArray
