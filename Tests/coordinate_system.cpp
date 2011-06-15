@@ -5,6 +5,12 @@
 using namespace TiledArray;
 using namespace TiledArray::detail;
 
+template <typename T, typename CS>
+class FakeArray {
+public:
+  typedef CS coordinate_system;
+};
+
 struct CoordinateSystemFixture {
   typedef GlobalFixture::coordinate_system CoordSysN;
   typedef GlobalFixture::element_coordinate_system ECoordSys;
@@ -156,15 +162,6 @@ BOOST_AUTO_TEST_CASE( calc_ordinal )
   // Check that CoordSysN::calc_ordinal() calculates the correct ordinal index
   // when a start index is given
   // Todo: That the entire range of coordinate indexes for a given size array produce correct coordinate indexes
-}
-
-BOOST_AUTO_TEST_CASE( key )
-{
-  // Check that CoordSysN::key() returns a complete key
-  // Todo: All three complete key functions work correctly
-
-  // Check that CoordSysN::key() returns a partial key
-  // Todo: All three incomplete key functions work correctly
 }
 
 BOOST_AUTO_TEST_CASE( calc_volume )
