@@ -32,8 +32,6 @@ namespace TiledArray {
 
       typedef T array_type;
       typedef typename array_type::value_type           value_type;
-      typedef typename array_type::reference            reference;
-      typedef typename array_type::const_reference      const_reference;
       typedef typename array_type::iterator             iterator;
       typedef typename array_type::const_iterator       const_iterator;
       typedef typename array_type::range_type           range_type;
@@ -152,8 +150,8 @@ namespace TiledArray {
     }; // class AnnotatedArray
 
     /// Exchange the values of a0 and a1.
-    template<typename I>
-    void swap(AnnotatedArray<I>& a0, AnnotatedArray<I>& a1) {
+    template<typename T>
+    void swap(AnnotatedArray<T>& a0, AnnotatedArray<T>& a1) {
       a0.swap(a1);
     }
 
