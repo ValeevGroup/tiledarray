@@ -39,7 +39,7 @@ namespace TiledArray {
         /// Increment the version counter
 
         /// \return The new version number for the pmap
-        std::size_t version() { return version_; }
+        std::size_t version() const { return version_; }
 
         /// Owner of an index
 
