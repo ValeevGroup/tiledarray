@@ -165,8 +165,8 @@ namespace TiledArray {
       if(f.probe()) {
         pimpl_->set_value(i, f);
       } else {
-        get_world().taskq.add(madness::make_task(madness::function(& impl_type::template set_value<Index>), pimpl_,
-            i, f, madness::TaskAttributes::hipri()));
+        pimpl_->task(pimpl_->owner(i), & impl_type::template set_value<Index>,
+            i, f, madness::TaskAttributes::hipri());
       }
     }
 
@@ -248,8 +248,8 @@ namespace TiledArray {
     /// non-zero or remote existence data is not available.
     template <typename Index>
     bool zero(const Index& i) const {
-      if(pimpl_->shape()->is_local(i))
-        return pimpl_->shape()->probe(i);
+      if(pimpl_->get_shape().is_local(i))
+        return pimpl_->get_shape().probe(i);
       else
         return false;
     }

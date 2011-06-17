@@ -201,9 +201,8 @@ namespace TiledArray {
       /// \throw std::out_of_range When \c i is not included in the array range
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
-      madness::Void set(const Index& i, const T& v) {
+      void set(const Index& i, const T& v) {
         set_value(i, policy::construct_value(tiled_range_.make_tile_range(i), v));
-        return madness::None;
       }
 
       /// Insert a tile into the array
@@ -260,7 +259,7 @@ namespace TiledArray {
       bool is_local(const Index& i) const { return owner(i) == get_world().rank(); }
 
       /// Shape accessor
-      const shape_type& get_shape() const { return shape_; }
+      const shape_type& get_shape() const { return *shape_; }
 
       template <typename Index>
       bool is_zero(const Index& i) const {
