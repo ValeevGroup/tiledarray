@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_RANGE_FIXTURE_H__INCLUDED
 #define TILEDARRAY_RANGE_FIXTURE_H__INCLUDED
 
+#include "global_fixture.h"
 #include "TiledArray/range.h"
 #include "TiledArray/tiled_range1.h"
 #include "TiledArray/tiled_range.h"
