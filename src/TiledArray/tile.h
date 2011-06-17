@@ -41,23 +41,23 @@ namespace TiledArray {
     typedef A alloc_type;
 
   public:
-    typedef Tile<T,CS> Tile_;                         ///< This object's type
-    typedef CS coordinate_system;                     ///< The array coordinate system
+    typedef Tile<T,CS> Tile_;                                     ///< This object's type
+    typedef CS coordinate_system;                                 ///< The array coordinate system
 
-    typedef typename CS::volume_type volume_type;     ///< Array volume type
-    typedef typename CS::index index;                 ///< Array coordinate index type
-    typedef typename CS::ordinal_index ordinal_index; ///< Array ordinal index type
-    typedef typename CS::size_array size_array;       ///< Size array type
+    typedef typename CS::volume_type volume_type;                 ///< Array volume type
+    typedef typename CS::index index;                             ///< Array coordinate index type
+    typedef typename CS::ordinal_index ordinal_index;             ///< Array ordinal index type
+    typedef typename CS::size_array size_array;                   ///< Size array type
 
-    typedef T value_type;                             ///< Array element type
-    typedef T * iterator;                             ///< Element iterator type
-    typedef const T * const_iterator;                 ///< Element const iterator type
-    typedef T & reference;                            ///< Element reference type
-    typedef const T & const_reference;                ///< Element reference type
-    typedef typename alloc_type::pointer pointer;     ///< Element pointer type
-    typedef typename alloc_type::const_pointer const_pointer; ///< Element const pointer type
+    typedef typename alloc_type::value_type value_type;           ///< Array element type
+    typedef typename alloc_type::reference reference;             ///< Element reference type
+    typedef typename alloc_type::const_reference const_reference; ///< Element reference type
+    typedef typename alloc_type::pointer pointer;                 ///< Element pointer type
+    typedef typename alloc_type::const_pointer const_pointer;     ///< Element const pointer type
+    typedef pointer iterator;                                     ///< Element iterator type
+    typedef const_pointer const_iterator;                         ///< Element const iterator type
 
-    typedef Range<coordinate_system> range_type;      ///< Tile range type
+    typedef Range<coordinate_system> range_type;                  ///< Tile range type
 
   public:
     /// Default constructor
