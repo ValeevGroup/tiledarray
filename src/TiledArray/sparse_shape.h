@@ -72,7 +72,7 @@ namespace TiledArray {
       world_.gop.bit_or(tiles_.get(), tiles_.num_blocks());
     }
 
-    /// Map constructor constructor
+    /// Map constructor
 
     /// \param w The world where this shape lives
     /// \param r The range object associated with this shape
@@ -85,6 +85,22 @@ namespace TiledArray {
       Shape_(r,m),
       world_(w),
       tiles_(a.begin(), a.end())
+    { }
+
+    /// Shape union constructor
+
+    /// \param w The world where this shape lives
+    /// \param r The range object associated with this shape
+    /// \param m The process map for this shape
+    /// \param left The left sparse shape
+    /// \param right The right sparse shape
+    /// \note Tiles in the list that are not owned by this process (according to
+    /// the process map) are ignored.
+    SparseShape(const madness::World& w, const range_type& r, const pmap_type& m,
+        const SparseShape_& left, const SparseShape_& right) :
+      Shape_(r,m),
+      world_(w),
+      tiles_(left.tiles_ | right.tiles_)
     { }
 
     virtual ~SparseShape() { }

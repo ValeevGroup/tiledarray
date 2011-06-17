@@ -133,7 +133,7 @@ namespace TiledArray {
   /// \param s The shape to check
   /// \return If shape is a \c DenseShape class return \c true , otherwise \c false .
   template <typename T>
-  inline bool is_dense_shape(const std::shared_ptr<T>&) {
+  inline bool is_dense_shape(const T&) {
     return false;
   }
 
@@ -143,8 +143,8 @@ namespace TiledArray {
   /// \param s The shape to check
   /// \return If shape is a \c DenseShape class return \c true , otherwise \c false .
   template <typename CS>
-  inline bool is_dense_shape(const std::shared_ptr<Shape<CS> >& s) {
-    return s->type() == typeid(DenseShape<CS>);
+  inline bool is_dense_shape(const Shape<CS>& s) {
+    return s.type() == typeid(DenseShape<CS>);
   }
 
   /// Runtime type checking for dense shape
@@ -153,7 +153,7 @@ namespace TiledArray {
   /// \param s The shape to check
   /// \return If shape is a \c DenseShape class return \c true , otherwise \c false .
   template <typename CS>
-  inline bool is_dense_shape(const std::shared_ptr<DenseShape<CS> >&) {
+  inline bool is_dense_shape(const DenseShape<CS>&) {
     return true;
   }
 
@@ -163,7 +163,7 @@ namespace TiledArray {
   /// \param s The shape to check
   /// \return If shape is a \c SparseShape class return \c true , otherwise \c false .
   template <typename T>
-  inline bool is_sparse_shape(const std::shared_ptr<T>&) {
+  inline bool is_sparse_shape(const T&) {
     return false;
   }
 
@@ -173,7 +173,7 @@ namespace TiledArray {
   /// \param s The shape to check
   /// \return If shape is a \c SparseShape class return \c true , otherwise \c false .
   template <typename CS>
-  inline bool is_sparse_shape(const std::shared_ptr<Shape<CS> >& s) {
+  inline bool is_sparse_shape(const Shape<CS>& s) {
     return s->type() == typeid(SparseShape<CS>);
   }
 
@@ -183,8 +183,28 @@ namespace TiledArray {
   /// \param s The shape to check
   /// \return If shape is a \c SparseShape class return \c true , otherwise \c false .
   template <typename CS>
-  inline bool is_sparse_shape(const std::shared_ptr<SparseShape<CS> >&) {
+  inline bool is_sparse_shape(const SparseShape<CS>&) {
     return true;
+  }
+
+
+  template <typename CS>
+  Shape<CS>* shape_union(madness::World& world, const typename Shape<CS>::range_type& range,
+      const typename Shape<CS>::pmap_type& pmap, const Shape<CS>& left,
+      const Shape<CS>& right)
+  {
+    TA_ASSERT(left.range() == right.range(), std::range_error, "The range of the shapes must match.");
+
+    Shape<CS>* result = NULL;
+
+    if(is_dense_shape(left) || is_dense_shape(right))
+      result = new DenseShape<CS>(range, pmap);
+    else
+      result = new SparseShape<CS>(world, range, pmap,
+          static_cast<const SparseShape<CS>&>(left),
+          static_cast<const SparseShape<CS>&>(right));
+
+    return result;
   }
 
 } // namespace TiledArray
