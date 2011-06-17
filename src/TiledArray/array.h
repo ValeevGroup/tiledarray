@@ -71,9 +71,9 @@ namespace TiledArray {
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
     /// \param v The array version number.
-    template <typename InIter>
-    Array(madness::World& w, const tiled_range_type& tr, const typename impl_type::shape_type::array_type& m, unsigned int v = 0u) :
-        pimpl_(new impl_type(w, tr, m, v), madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const tiled_range_type& tr, const Array_& left, const Array_& right, unsigned int v = 0u) :
+        pimpl_(new impl_type(w, tr, left.pimpl_, right.pimpl_, v),
+            madness::make_deferred_deleter<impl_type>(w))
     { }
 
   public:
@@ -100,17 +100,6 @@ namespace TiledArray {
     template <typename InIter>
     Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, unsigned int v = 0u) :
         pimpl_(new impl_type(w, tr, first, last, v), madness::make_deferred_deleter<impl_type>(w))
-    { }
-
-    /// Predicated array constructor
-
-    /// \param w The world where the array will live.
-    /// \param tr The tiled range object that will be used to set the array tiling.
-    /// \param p The shape predicate.
-    /// \param v The array version number.
-    template <typename Pred>
-    Array(madness::World& w, const tiled_range_type& tr, Pred p, unsigned int v = 0u) :
-        pimpl_(new impl_type(w, tr, p, v), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Copy constructor
@@ -176,9 +165,8 @@ namespace TiledArray {
       if(f.probe()) {
         pimpl_->set_value(i, f);
       } else {
-        madness::TaskAttributes attr;
-        attr.set_highpriority(true);
-        get_world().taskq.add(pimpl_.get(), & impl_type::template set_value<Index>, i, f, attr);
+        get_world().taskq.add(madness::make_task(madness::function(& impl_type::template set_value<Index>), pimpl_,
+            i, f, madness::TaskAttributes::hipri()));
       }
     }
 
@@ -265,6 +253,8 @@ namespace TiledArray {
       else
         return false;
     }
+
+    unsigned int version() const { return pimpl_->version(); }
 
     /// Serialize array
 

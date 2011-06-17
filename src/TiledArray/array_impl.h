@@ -25,7 +25,7 @@ namespace TiledArray {
 
     public:
       typedef CS coordinate_system; ///< The array coordinate system
-      typedef typename policy::value_type value_type;
+      typedef typename policy::value_type value_type; ///< The tile type
 
     private:
       typedef ArrayImpl<T, CS, P> ArrayImpl_;
@@ -34,15 +34,15 @@ namespace TiledArray {
       typedef madness::Future<value_type> data_type;
       typedef madness::ConcurrentHashMap<typename coordinate_system::ordinal_index, data_type> container_type;
       typedef detail::VersionedPmap<typename coordinate_system::ordinal_index> pmap_type;
-
-    public:
-      typedef Shape<CS> shape_type;
       typedef DenseShape<CS> dense_shape_type;
       typedef SparseShape<CS> sparse_shape_type;
+
+    public:
       typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
       typedef typename coordinate_system::index index; ///< Array coordinate index type
       typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
       typedef typename coordinate_system::size_array size_array; ///< Size array type
+      typedef Shape<CS> shape_type; ///< Shape type
       typedef detail::IndexedIterator<typename container_type::iterator> iterator; ///< Local tile iterator
       typedef detail::IndexedIterator<typename container_type::const_iterator> const_iterator; ///< Local tile const iterator
       typedef detail::IndexedIterator<typename container_type::accessor> accessor; ///< Local tile accessor
@@ -67,6 +67,7 @@ namespace TiledArray {
 
       /// Sparse array constructor
 
+      /// \tparam InIter The input iterator type
       /// \param w The world where the array will live.
       /// \param tr The tiled range object that will be used to set the array tiling.
       /// \param first An input iterator that points to the a list of tiles to be
@@ -92,12 +93,12 @@ namespace TiledArray {
       /// \param last An input iterator that points to the last position in a list
       /// of tiles to be added to the sparse array.
       /// \param v The version number of the array
-      template <typename InIter>
-      ArrayImpl(madness::World& w, const tiled_range_type& tr, const typename shape_type::array_type& m, unsigned int v) :
+      ArrayImpl(madness::World& w, const tiled_range_type& tr, const std::shared_ptr<ArrayImpl_>& left,
+        const std::shared_ptr<ArrayImpl_>& right, unsigned int v) :
           WorldReduce_(w),
-          tiled_range_(tr),
+          tiled_range_(left->tiling()),
           pmap_(w.size(), v),
-          shape_(static_cast<shape_type*>(new sparse_shape_type(w, tiled_range_.tiles(), pmap_, m))),
+          shape_(shape_union<CS>(w, tiled_range_.tiles(), pmap_, *(left->shape_), *(right->shape_))),
           tiles_()
       { initialize_(); }
 
@@ -149,6 +150,14 @@ namespace TiledArray {
         return result;
       }
 
+      /// Find a tile at index \c i
+
+      /// \tparam Index The type of the tile index
+      /// \param i The index of the tile to search for
+      /// \return A future to the tile. If it is a zero tile, the future is set
+      /// to an empty tile. If the tile is local, the future points to the tile
+      /// at \c i . If the tile is not local, a message is sent to the tile owner
+      /// and the result will be placed in the returned future.
       template <typename Index>
       data_type find(const Index& i) const {
         const ordinal_index o = ord_(i);
@@ -265,6 +274,13 @@ namespace TiledArray {
 
     private:
 
+      /// Add an empty tile to the array
+
+      /// \param i The index of the new tile
+      /// \return True if the tile is successfully added to the array, false
+      /// otherwise.
+      /// \throw std::runtime_error If the tile is not local.
+      /// \throw std::runtime_error If the tile is not included in the shape.
       bool insert_tile(const ordinal_index& i) {
         TA_ASSERT(is_local(i), std::runtime_error,
             "Tile must be owned by this node.");
@@ -278,6 +294,8 @@ namespace TiledArray {
       }
 
       /// Initialize the array container by inserting local tiles.
+
+      /// \throw std::runtime_error If a tile is not added array.
       void initialize_() {
         for(typename tiled_range_type::range_type::volume_type it = 0; it != tiled_range_.tiles().volume(); ++it) {
           if(is_local(it)) {
