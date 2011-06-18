@@ -32,16 +32,16 @@ BOOST_FIXTURE_TEST_SUITE( array_math_suite , ArrayMathFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW( (BinaryOp<ArrayN, ArrayN, ArrayN, std::plus<ArrayN::value_type> >(c(vars), std::plus<ArrayN::value_type>())) );
+//  BOOST_REQUIRE_NO_THROW( (BinaryOp<ArrayN, ArrayN, ArrayN, std::plus<ArrayN::value_type> > x(world, std::plus<ArrayN::value_type>())) );
 
 }
 
 BOOST_AUTO_TEST_CASE( addition )
 {
   BinaryOp<ArrayN, ArrayN, ArrayN, std::plus<ArrayN::value_type> >
-    op(c(vars), std::plus<ArrayN::value_type>());
+    op(world, c.version(), std::plus<ArrayN::value_type>());
 
-  op(a(vars), b(vars));
+  c = op(a(vars), b(vars));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
