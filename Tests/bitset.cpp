@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE( array_constructor )
   BOOST_CHECK_EQUAL(b.num_blocks(), 2ul);
 
   // check that all bits are correctly initialized to false.
-  for(std::size_t i = 0; i < ba.size(); ++i)
+  for(std::size_t i = 0; i < b.size(); ++i)
     BOOST_CHECK(b[i]);
 
 }
