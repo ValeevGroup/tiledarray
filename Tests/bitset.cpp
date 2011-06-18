@@ -1,6 +1,8 @@
 #include "unit_test_config.h"
 #include "global_fixture.h"
 #include "TiledArray/bitset.h"
+#include <world/array.h>
+#include <algorithm>
 
 struct BitsetFixture {
   typedef TiledArray::detail::Bitset<> Bitset;
@@ -21,35 +23,54 @@ const std::size_t BitsetFixture::blocks = 11;
 
 BOOST_FIXTURE_TEST_SUITE( bitset_suite, BitsetFixture )
 
-BOOST_AUTO_TEST_CASE( constructor )
+BOOST_AUTO_TEST_CASE( size_constructor )
 {
   // Check for error free construction
-  BOOST_REQUIRE_NO_THROW(Bitset b(32));
+  BOOST_REQUIRE_NO_THROW(Bitset b(64));
 
-  Bitset b64(64);
+  Bitset b(64);
   // Check that the size of the bitset is correct
-  BOOST_CHECK_EQUAL(b64.size(), 64ul);
-  BOOST_CHECK_EQUAL(b64.num_blocks(), 1ul);
+  BOOST_CHECK_EQUAL(b.size(), 64ul);
+  BOOST_CHECK_EQUAL(b.num_blocks(), 1ul);
 
   // check that all bits are correctly initialized to false.
-  for(std::size_t i = 0; i < b64.size(); ++i)
-    BOOST_CHECK(! b64[i]);
+  for(std::size_t i = 0; i < b.size(); ++i)
+    BOOST_CHECK(! b[i]);
+}
 
-
+BOOST_AUTO_TEST_CASE( array_constructor )
+{
+  std::array<int, 125> a;
+  std::fill(a.begin(), a.end(), 1);
   // Check for error free copy construction
-  BOOST_REQUIRE_NO_THROW(Bitset bc(set));
+  BOOST_REQUIRE_NO_THROW(Bitset b(a.begin(), a.end()));
 
-
-  Bitset bc(set);
+  Bitset b(a.begin(), a.end());
   // Check that the size of the bitset is correct
-  BOOST_CHECK_EQUAL(bc.size(), size);
-  BOOST_CHECK_EQUAL(bc.size(), set.size());
-  BOOST_CHECK_EQUAL(bc.num_blocks(), blocks);
-  BOOST_CHECK_EQUAL(bc.num_blocks(), set.num_blocks());
+  BOOST_CHECK_EQUAL(b.size(), 125ul);
+  BOOST_CHECK_EQUAL(b.num_blocks(), 2ul);
 
   // check that all bits are correctly initialized to false.
-  for(std::size_t i = 0; i < bc.size(); ++i)
-    BOOST_CHECK(! bc[i]);
+  for(std::size_t i = 0; i < ba.size(); ++i)
+    BOOST_CHECK(b[i]);
+
+}
+
+BOOST_AUTO_TEST_CASE( copy_constructor )
+{
+  // Check for error free copy construction
+  BOOST_REQUIRE_NO_THROW(Bitset b(set));
+
+  Bitset b(set);
+  // Check that the size of the bitset is correct
+  BOOST_CHECK_EQUAL(b.size(), size);
+  BOOST_CHECK_EQUAL(b.size(), set.size());
+  BOOST_CHECK_EQUAL(b.num_blocks(), blocks);
+  BOOST_CHECK_EQUAL(b.num_blocks(), set.num_blocks());
+
+  // check that all bits are correctly initialized to false.
+  for(std::size_t i = 0; i < b.size(); ++i)
+    BOOST_CHECK(! b[i]);
 }
 
 BOOST_AUTO_TEST_CASE( get )

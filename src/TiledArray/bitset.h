@@ -52,7 +52,7 @@ namespace TiledArray {
         // Initialize to zero
         std::fill_n(set_.get(), num_blocks(), block_type(0));
 
-        for(std::size_t i = 0; first != last; ++i, ++last)
+        for(std::size_t i = 0; first != last; ++i, ++first)
           if(*first)
             set(i);
       }
