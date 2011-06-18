@@ -60,11 +60,9 @@ namespace TiledArray {
         ResArray result(*world_, left.array().tiling(), left.array(), right.array(),
             version_);
 
-        LeftOp left_op(world_, result, right, op_);
-        world_->taskq.for_each(madness::Range<typename left_array_type::const_iterator>(left.begin(), left.end()), left_op);
-
-        RightOp right_op(world_, result, left, op_);
-        world_->taskq.for_each(madness::Range<typename right_array_type::const_iterator>(right.begin(), right.end()), right_op);
+        ArrayOp array_op(result, left, right, op_);
+        world_->taskq.for_each(madness::Range<typename left_array_type::range_type::volume_type>(0,
+            result.tiles().volume()), array_op);
 
         return result;
       }
@@ -76,72 +74,45 @@ namespace TiledArray {
 
     private:
 
-      struct LeftOp {
-        LeftOp(madness::World* world, const ResArray& result, const right_array_type& right, op_type op) :
-            world_(world), result_(result), right_(right), op_(op)
+      struct ArrayOp {
+        ArrayOp(const ResArray& result, const left_array_type& left, const right_array_type& right, op_type op) :
+            world_(& result.get_world()), result_(result), left_(left), right_(right), op_(op)
         { }
 
-        LeftOp(const LeftOp& other) :
-            world_(other.world_), result_(other.result_), right_(other.right_), op_(other.op_)
+        ArrayOp(const ArrayOp& other) :
+            world_(other.world_), result_(other.result_), left_(other.left_), right_(other.right_), op_(other.op_)
         { }
 
-        LeftOp& operator=(const LeftOp& other) {
+        ArrayOp& operator=(const ArrayOp& other) {
           world_ = other.world_;
           result_ = other.result_;
+          left_ = other.left_;
           right_ = other.right_;
 
           return *this;
         }
 
-        bool operator()(typename left_array_type::const_iterator it) const {
-          if(! right_.array().zero(it.index()))
-            result_.set(it.index(), world_->taskq.add(madness::make_task(op_,
-                *it, right_.array().find(it.index()))));
-          else
-            result_.set(it.index(), world_->taskq.add(madness::make_task(op_,
-                *it, typename right_array_type::array_type::value_type())));
+        bool operator()(typename ResArray::range_type::volume_type i) const {
+          if(result_.is_local(i))
+            if(! result_.is_zero(i))
+              result_.set(i, world_->taskq.add(madness::make_task(op_,
+                  left_.array().find(i), right_.array().find(i))));
 
           return true;
         }
 
-      private:
-        madness::World* world_;
-        mutable ResArray result_;
-        right_array_type right_;
-        op_type op_;
-      }; // struct LeftOp
-
-      struct RightOp {
-        RightOp(madness::World* world, const ResArray& result, const left_array_type& left, op_type op) :
-            world_(world), result_(result), left_(left), op_(op)
-        { }
-
-        RightOp(const RightOp& other) :
-            world_(other.world_), result_(other.result_), left_(other.left_), op_(other.op_)
-        { }
-
-        RightOp& operator=(const RightOp& other) {
-          world_ = other.world_;
-          result_ = other.result_;
-          left_ = other.left_;
-
-          return *this;
-        }
-
-        bool operator()(typename right_array_type::const_iterator it) const {
-          if(left_.array().zero(it.index()))
-            result_.set(it.index(), world_->taskq.add(madness::make_task(op_,
-                typename left_array_type::array_type::value_type(), *it)));
-
-          return true;
+        template <typename Archive>
+        void serialize(const Archive& ar) {
+          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
         }
 
       private:
         madness::World* world_;
         mutable ResArray result_;
         left_array_type left_;
+        right_array_type right_;
         op_type op_;
-      }; // struct LeftOp
+      }; // struct ArrayOp
 
       madness::World* world_;
       unsigned int version_;

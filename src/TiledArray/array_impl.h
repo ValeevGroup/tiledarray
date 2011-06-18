@@ -222,6 +222,8 @@ namespace TiledArray {
           typename container_type::accessor acc;
           TA_TEST(tiles_.find(acc, ord_(i)), std::runtime_error,
               "The tile should be present.");
+          TA_ASSERT(! acc->second.probe(), std::runtime_error,
+              "Tile value has already been set.");
           acc->second.set(t);
         } else {
           WorldObject_::send(owner(i), & ArrayImpl_::template set_value<Index>, i, t);
@@ -264,7 +266,7 @@ namespace TiledArray {
       template <typename Index>
       bool is_zero(const Index& i) const {
         if(shape_->is_local(i))
-          return shape_->probe(i);
+          return ! shape_->probe(i);
 
         return false;
       }

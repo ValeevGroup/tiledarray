@@ -247,11 +247,8 @@ namespace TiledArray {
     /// \return \c true if tile at index \c i is zero, false if the tile is
     /// non-zero or remote existence data is not available.
     template <typename Index>
-    bool zero(const Index& i) const {
-      if(pimpl_->get_shape().is_local(i))
-        return pimpl_->get_shape().probe(i);
-      else
-        return false;
+    bool is_zero(const Index& i) const {
+      return pimpl_->is_zero(i);
     }
 
     unsigned int version() const { return pimpl_->version(); }
