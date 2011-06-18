@@ -81,7 +81,7 @@ namespace TiledArray {
     /// \note Tiles in the list that are not owned by this process (according to
     /// the process map) are ignored.
     SparseShape(const madness::World& w, const range_type& r, const pmap_type& m,
-        const array_type a) :
+        const array_type& a) :
       Shape_(r,m),
       world_(w),
       tiles_(a.begin(), a.end())
