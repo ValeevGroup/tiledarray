@@ -38,11 +38,8 @@ namespace TiledArray {
     typedef typename tile_coordinate_system::index tile_index;
     typedef typename coordinate_system::ordinal_index ordinal_index;
     typedef typename coordinate_system::size_array size_array;
-
-	private:
     typedef std::array<tiled_range1_type,coordinate_system::dim> Ranges;
 
-	public:
     /// Default constructor
     TiledRange() : range_(), element_range_(), ranges_() { }
 
