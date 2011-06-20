@@ -139,11 +139,13 @@ BOOST_AUTO_TEST_CASE( contract )
   typedef array2_type::index index2;
   range2_type r2(index2(0), index2(a1.range().finish()[0],a2.range().finish()[0]));
   array2_type t;
-
-  TileContract<array2_type, array_type, array_type> cont(a1.var_ptr(), a3.var_ptr());
+  std::shared_ptr<Contraction<std::size_t> > cont(new Contraction<std::size_t>(a1.vars(), a3.vars()));
+  array2_type::range_type r;
+  cont->contract_range(r, a1.range(), a3.range());
+  TileContract<array2_type, array_type, array_type> cont_op(cont, r);
 
   // Check scale operation
-  t = cont(a1.array(), a3.array());
+  t = cont_op(a1.array(), a3.array());
   for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, 75);
 }
