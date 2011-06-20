@@ -54,6 +54,12 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL_COLLECTIONS(p7.data().begin(), p7.data().end(), a.begin(), a.end());
 }
 
+
+BOOST_AUTO_TEST_CASE( size )
+{
+  BOOST_CHECK_EQUAL( p.size() , 3ul );
+}
+
 BOOST_AUTO_TEST_CASE( element_access )
 {
   BOOST_CHECK_EQUAL( p[0], 1u);            // correct element access

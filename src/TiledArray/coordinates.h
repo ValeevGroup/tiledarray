@@ -248,6 +248,11 @@ namespace TiledArray {
     /// \throw nothing
     array_type& data() { return r_; }
 
+    /// Coordinate size (aka dimension)
+
+    /// \return The number of dimensions in the coordinate
+    std::size_t size() const { return r_.size(); }
+
     /// Coordinate permutation operator
 
     /// Permute this coordinate.
