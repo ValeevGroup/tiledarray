@@ -23,7 +23,6 @@ library_include_HEADERS = annotated_array.h \
                           sparse_shape.h \
                           tile_slice.h \
                           tile.h \
-                          tiled_range_math.h \
                           tiled_range.h \
                           tiled_range1.h \
                           transform_iterator.h \

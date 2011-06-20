@@ -23,7 +23,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   indexed_iterator.cpp \
                   array.cpp \
                   math.cpp \
-                  tiled_range_math.cpp \
                   array_math.cpp \
                   expressions.cpp \
                   array_fixtures.h \
