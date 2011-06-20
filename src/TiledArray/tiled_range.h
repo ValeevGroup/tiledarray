@@ -131,6 +131,12 @@ namespace TiledArray {
       return tile_range_type(start, finish);
     }
 
+    /// Tile dimension boundary array accessor
+
+    /// \return A reference to the array of Range1 objects.
+    /// \throw nothing
+    const Ranges& data() const { return ranges_; }
+
   private:
     /// precomputes useful data listed below
     void init_() {
