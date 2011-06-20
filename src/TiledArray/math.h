@@ -189,12 +189,12 @@ namespace TiledArray {
       typedef typename result_type::value_type value_type;
 
       TileContract(const std::shared_ptr<Contraction<ordinal_index> >& c, const typename result_type::range_type& r) :
-          constraction_(c), range_(r)
+          contraction_(c), range_(r)
       { }
 
       result_type operator()(first_argument_type left, second_argument_type right) const {
         typename Contraction<ordinal_index>::packed_size_array size =
-            constraction_->pack_arrays(left.range().size(), right.range().size());
+            contraction_->pack_arrays(left.range().size(), right.range().size());
 
         result_type result(range_);
 
@@ -245,7 +245,7 @@ namespace TiledArray {
         }
       }
 
-      std::shared_ptr<Contraction<ordinal_index> > constraction_;
+      std::shared_ptr<Contraction<ordinal_index> > contraction_;
       typename result_type::range_type range_;
     }; // struct Contract
 
