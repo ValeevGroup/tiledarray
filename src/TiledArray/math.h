@@ -11,12 +11,13 @@
 namespace TiledArray {
   namespace math {
 
+    /// A utility class for contraction operations.
+
+    /// \param I The index type
     template<typename I>
     class Contraction {
     public:
-      typedef std::vector<I> size_array;
       typedef std::array<I, 5> packed_size_array;
-      typedef std::array<std::size_t, 3> pack_boundary_array;
 
       Contraction(const expressions::VariableList& left,
           const expressions::VariableList& right)
@@ -76,6 +77,10 @@ namespace TiledArray {
         return result;
       }
 
+      /// Contract array
+
+      /// a{{a1...ai},{ai+1...aj-1},{aj...ak}} + b{{b1...bi},{bi+1...bj-1},{bj...bk}}
+      /// ==> c{{a1...ai},{b1...bi},{aj...ak},{bj...bk}}
       template <typename ResArray, typename LeftArray, typename RightArray>
       void contract_array(ResArray& res, const LeftArray& left, const RightArray& right) {
         TA_ASSERT(left.size() == left_[2], std::range_error,
@@ -85,18 +90,12 @@ namespace TiledArray {
         TA_ASSERT(res.size() == (left_[2] - left_[1] + left_[0] + right_[2] - right_[1] + right_[0]),
             std::range_error, "The dimensions of the result array do not match the dimensions of the packing.");
 
-        std::size_t l = 0;
-        std::size_t r = 0;
-        for(std::size_t i = 0; i < res.size(); ++i) {
-          // skip common indexes
-          if(l == left_[0])
-            l = left_[1];
-          if(r == right_[0])
-            r = right_[1];
+        std::size_t l, r, i = 0;
 
-          // copy the current index
-          res[i] = ( ((left.size() - l) >= (right.size() - r)) ? left[l++] : right[r++] );
-        }
+        for(l = 0; l < left_[0]; ++l) res[i++] = left[l];
+        for(r = 0; r < right_[0]; ++r) res[i++] = right[r];
+        for(l = left_[1]; l < left_[2]; ++l) res[i++] = left[l];
+        for(r = right_[1]; r < right_[2]; ++r) res[i++] = right[r];
       }
 
       template <typename ResRange, typename LeftRange, typename RightRange>
@@ -115,6 +114,9 @@ namespace TiledArray {
       }
 
     private:
+
+
+      typedef std::array<std::size_t, 3> pack_boundary_array;
 
       pack_boundary_array left_;
       pack_boundary_array right_;
