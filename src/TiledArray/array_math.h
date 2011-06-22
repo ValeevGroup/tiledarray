@@ -95,7 +95,7 @@ namespace TiledArray {
           return *this;
         }
 
-        bool operator()(typename ResArray::range_type::volume_type i) const {
+        bool operator()(typename ResArray::ordinal_index i) const {
           if(result_.is_local(i))
             if(! result_.is_zero(i))
               result_.set(i, world_->taskq.add(madness::make_task(op_,
@@ -173,7 +173,7 @@ namespace TiledArray {
 
         std::shared_ptr<cont_type> cont(new cont_type(left.vars(), right.vars()));
 
-        // Construct the new array
+        // Construct the contracted tile map
         typename ResArray::impl_type::array_type result_map =
             make_contraction_map(left.pimpl_->get_shape().make_shape_map(),
             right.pimpl_->get_shape().make_shape_map());
@@ -183,7 +183,9 @@ namespace TiledArray {
 
         ResArray result(*world_, tiling, result_map, version_);
 
-        contract(cont, left.array(), right.array(), result);
+        ArrayOp array_op(cont, left.array(), right.array(), result);
+
+        world_->taskq.for_each(array_op.range(), array_op);
 
         return result;
       }
@@ -210,63 +212,148 @@ namespace TiledArray {
         return map_op(left, right);
       }
 
-      /// Contract a and b, and place the results into c.
-      /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
-      void contract(const std::shared_ptr<cont_type>& cont, const LeftArray& A,
-          const RightArray& B, ResArray& C)
-      {
-        // Get packed sizes
-        const typename cont_type::packed_size_array size =
-            cont->pack_arrays(A.range().size(), B.range().size());
 
-        // Contraction loop variables
-        std::vector<ProcessID> reduce_grp;
-        reduce_grp.reserve(world_->size());
+      struct ArrayOpImpl {
+        typedef typename Range<res_packed_cs>::index res_packed_index;
+        typedef typename Range<left_packed_cs>::index left_packed_index;
+        typedef typename Range<right_packed_cs>::index right_packed_index;
+        typedef madness::Range<typename Range<res_packed_cs>::const_iterator> range_type;
 
-        Range<res_packed_cs> c_range(typename res_packed_cs::index(0),
-            res_packed_cs::index(size[0], size[2], size[1], size[3]));
+        ArrayOpImpl(const std::shared_ptr<cont_type>& cont, const ResArray& result,
+          const left_array_type& left, const right_array_type& right) :
+            world_(& result.get_world()),
+            contraction_(cont),
+            result_(result),
+            left_(left),
+            right_(right),
+            res_range_(),
+            left_range_(),
+            right_range_()
+        {
+          // Get packed sizes
+          const typename cont_type::packed_size_array size =
+              cont->pack_arrays(left_.range().size(), right_.range().size());
 
-        // Get the size and weights for A and B.
-        const typename left_packed_cs::size_array a_size = {{size[0], size[4], size[1]}};
-        const typename right_packed_cs::size_array b_size = {{size[2], size[4], size[3]}};
-        const typename left_packed_cs::size_array a_weight = left_packed_cs::calc_weight(a_size);
-        const typename right_packed_cs::size_array b_weight = right_packed_cs::calc_weight(b_size);
+          // Set packed range dimensions
+          res_range_.resize(res_packed_index(0),
+              res_packed_index(size[0], size[2], size[1], size[3]));
+          left_range_.resize(left_packed_index(0),
+              left_packed_index(size[0], size[4], size[1]));
+          right_range_.resize(right_packed_index(0),
+              right_packed_index(size[2], size[4], size[3]));
+        }
 
-        ordinal_index a_index = 0;
-        ordinal_index b_index = 0;
-        for(typename Range<res_packed_cs>::const_iterator c_index = c_range.begin(); c_index < c_range.end(); ++c_index) {
-          if(! C.is_zero(c_index)) {
+        range_type range() const {
+          return range_type(res_range_.begin(), res_range_.end());
+        }
 
-            detail::ReduceTask<typename ResArray::value_type, addtion_op_type > local_reduce_op;
-            for(ordinal_index i = 0; i < size[4]; ++i) {
-              // Get the a and b index
-              const ordinal_index a_index = (*c_index)[0] * a_weight[0] + i * a_weight[1] + (*c_index)[2] * a_weight[2];
-              const ordinal_index b_index = (*c_index)[1] * a_weight[0] + i * a_weight[1] + (*c_index)[3] * a_weight[2];
+        void generate_tasks(const typename Range<res_packed_cs>::const_iterator& it) const {
+          const ordinal_index c_index = res_ord(*it);
 
-              // Check for non-zero contraction.
-              if((! A.is_zero(a_index)) && (! B.is_zero(b_index))) {
+          // Check that the result tile has a value
+          if(result_.is_zero(c_index))
+            return;
 
-                // Add the owner to the reduction group
-                reduce_grp.push_back(A.owner(a_index));
+          ordinal_index I = left_range_.size()[1];
+          // Reduction objects
+          std::vector<ProcessID> reduce_grp;
+          reduce_grp.reserve(I);
+          detail::ReduceTask<typename ResArray::value_type, addtion_op_type > local_reduce_op;
 
-                if(A.is_local(a_index)) {
-                  // Do the tile-tile contraction
-                  contraction_op_type contract_op(cont, C.tiling().make_tile_range(c_index));
-                  local_reduce_op.add(world_->taskq.add(madness::make_task(contract_op, A.find(a_index), B.find(b_index))));
-                }
+          for(ordinal_index i = 0; i < I; ++i) {
+            // Get the a and b index
+            const ordinal_index a_index = left_ord(*it, i);
+            const ordinal_index b_index = right_ord(*it, i);
+
+            // Check for non-zero contraction.
+            if((! left_.is_zero(a_index)) && (! left_.is_zero(b_index))) {
+
+              // Add to the list nodes involved in the reduction reduction group
+              reduce_grp.push_back(left_.owner(a_index));
+
+              if(result_.is_local(a_index)) {
+                // Do the tile-tile contraction and add to local reduction list
+                local_reduce_op.add(world_->taskq.add(madness::make_task(make_cont_op(c_index),
+                    left_.find(a_index), right_.find(b_index))));
               }
             }
+          }
 
-            // Do tile-contraction reduction
-            if(local_reduce_op.size() != 0) {
-              C.reduce(c_index, reduce_grp.begin(), reduce_grp.end(),
-                  world_->taskq.reduce(local_reduce_op.range(), local_reduce_op));
-            }
-
-            reduce_grp.resize(0);
+          // Do tile-contraction reduction
+          if(local_reduce_op.size() != 0) {
+            result_.reduce(c_index, reduce_grp.begin(), reduce_grp.end(),
+                world_->taskq.reduce(local_reduce_op.range(), local_reduce_op));
           }
         }
-      }
+
+        template <typename Archive>
+        void serialize(const Archive& ar) {
+          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+        }
+
+      private:
+
+        /// Contraction operation factory
+
+        /// \param index The ordinal index of the result tile
+        /// \retur The contraction operation for \c index
+        contraction_op_type make_cont_op(const ordinal_index& index) {
+          return contraction_op_type(contraction_,
+              result_.tiling().make_tile_range(index));
+        }
+
+        ordinal_index res_ord(const typename Range<res_packed_cs>::index& res_index) {
+          return res_packed_cs::calc_ordinal(res_index, res_range_.weight());
+        }
+
+        ordinal_index left_ord(const res_packed_index& res_index, ordinal_index i) {
+          const typename Range<left_packed_cs>::size_array& weight = left_range_.weight();
+          return res_index[0] * weight[0] + i * weight[1] + res_index[2] * weight[2];
+        }
+
+        ordinal_index right_ord(const res_packed_index& res_index, ordinal_index i) {
+          const typename Range<right_packed_cs>::size_array& weight = right_range_.weight();
+          return res_index[1] * weight[0] + i * weight[1] + res_index[3] * weight[2];
+        }
+
+        madness::World* world_;
+        std::shared_ptr<cont_type> contraction_;
+        mutable ResArray result_;
+        left_array_type left_;
+        right_array_type right_;
+        Range<res_packed_cs> res_range_;
+        Range<left_packed_cs> left_range_;
+        Range<right_packed_cs> right_range_;
+      }; // struct ArrayOpImpl
+
+      struct ArrayOp {
+
+        ArrayOp(const std::shared_ptr<cont_type>& cont, const ResArray& result,
+          const left_array_type& left, const right_array_type& right) :
+            pimpl_(new ArrayOpImpl(cont, result, left, right))
+        { }
+
+        ArrayOp(const ArrayOp& other) :
+            pimpl_(other.pimpl_)
+        { }
+
+        ArrayOp& operator=(const ArrayOp& other) {
+          pimpl_ = other.pimpl_;
+          return *this;
+        }
+
+        typename ArrayOpImpl::range_type range() const { return pimpl_->range(); }
+
+        bool operator()(const typename Range<res_packed_cs>::const_iterator& it) const {
+          pimpl_->generate_tasks(it);
+          return true;
+        }
+
+      private:
+
+        std::shared_ptr<ArrayOpImpl> pimpl_;
+
+      };
 
 
       madness::World* world_;
