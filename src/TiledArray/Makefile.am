@@ -19,6 +19,7 @@ library_include_HEADERS = annotated_array.h \
                           permutation.h \
                           range_iterator.h \
                           range.h \
+                          reduce_task.h \
                           shape.h \
                           sparse_shape.h \
                           tile_slice.h \
