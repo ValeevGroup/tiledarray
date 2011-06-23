@@ -56,4 +56,23 @@ BOOST_AUTO_TEST_CASE( addition )
   }
 }
 
+
+BOOST_AUTO_TEST_CASE( contraction )
+{
+  BinaryOp<ArrayN, ArrayN, ArrayN, TileContract<ArrayN::value_type, ArrayN::value_type, ArrayN::value_type> >
+    op(world, c.version());
+
+  c = op(a(vars), b(vars));
+
+  for(ArrayN::range_type::const_iterator it = c.tiles().begin(); it != c.tiles().end(); ++it) {
+
+    if(c.is_local(*it)) {
+      madness::Future<ArrayN::value_type> tile = c.find(*it);
+
+      for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
+        BOOST_CHECK_EQUAL(*it, 5);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -173,17 +173,12 @@ namespace TiledArray {
 
         std::shared_ptr<cont_type> cont(new cont_type(left.vars(), right.vars()));
 
-        // Construct the contracted tile map
-        typename ResArray::impl_type::array_type result_map =
-            make_contraction_map(left.pimpl_->get_shape().make_shape_map(),
-            right.pimpl_->get_shape().make_shape_map());
-
         typename ResArray::tiled_range_type tiling;
         cont->contract_trange(tiling, left.array().tiling(), right.array().tiling());
 
-        ResArray result(*world_, tiling, result_map, version_);
+        ResArray result(*world_, tiling, cont, left.array(), right.array(), version_);
 
-        ArrayOp array_op(cont, left.array(), right.array(), result);
+        ArrayOp array_op(cont, result, left, right);
 
         world_->taskq.for_each(array_op.range(), array_op);
 
@@ -197,22 +192,6 @@ namespace TiledArray {
 
     private:
 
-      static typename ResArray::impl_type::array_type
-      make_contraction_map(const std::shared_ptr<cont_type>& contraction,
-          const typename LeftArray::impl_type::array_type& left,
-          const typename RightArray::impl_type::array_type& right)
-      {
-        typename ResArray::impl_type::array_type::range_type map_range;
-        contraction->contract_range(map_range, left.range(), right.range());
-        TileContract<typename ResArray::impl_type::array_type,
-            typename LeftArray::impl_type::array_type,
-            typename RightArray::impl_type::array_type>
-        map_op(contraction, map_range);
-
-        return map_op(left, right);
-      }
-
-
       struct ArrayOpImpl {
         typedef typename Range<res_packed_cs>::index res_packed_index;
         typedef typename Range<left_packed_cs>::index left_packed_index;
@@ -224,8 +203,8 @@ namespace TiledArray {
             world_(& result.get_world()),
             contraction_(cont),
             result_(result),
-            left_(left),
-            right_(right),
+            left_(left.array()),
+            right_(right.array()),
             res_range_(),
             left_range_(),
             right_range_()
@@ -266,7 +245,7 @@ namespace TiledArray {
             const ordinal_index b_index = right_ord(*it, i);
 
             // Check for non-zero contraction.
-            if((! left_.is_zero(a_index)) && (! left_.is_zero(b_index))) {
+            if((! left_.is_zero(a_index)) && (! right_.is_zero(b_index))) {
 
               // Add to the list nodes involved in the reduction reduction group
               reduce_grp.push_back(left_.owner(a_index));
@@ -281,14 +260,9 @@ namespace TiledArray {
 
           // Do tile-contraction reduction
           if(local_reduce_op.size() != 0) {
-            result_.reduce(c_index, reduce_grp.begin(), reduce_grp.end(),
-                world_->taskq.reduce(local_reduce_op.range(), local_reduce_op));
+            result_.reduce(c_index, world_->taskq.reduce<typename ResArray::value_type>(local_reduce_op.range(),
+                local_reduce_op), reduce_grp.begin(), reduce_grp.end(), addtion_op_type());
           }
-        }
-
-        template <typename Archive>
-        void serialize(const Archive& ar) {
-          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
         }
 
       private:
@@ -297,21 +271,21 @@ namespace TiledArray {
 
         /// \param index The ordinal index of the result tile
         /// \retur The contraction operation for \c index
-        contraction_op_type make_cont_op(const ordinal_index& index) {
+        contraction_op_type make_cont_op(const ordinal_index& index) const {
           return contraction_op_type(contraction_,
               result_.tiling().make_tile_range(index));
         }
 
-        ordinal_index res_ord(const typename Range<res_packed_cs>::index& res_index) {
+        ordinal_index res_ord(const typename Range<res_packed_cs>::index& res_index) const {
           return res_packed_cs::calc_ordinal(res_index, res_range_.weight());
         }
 
-        ordinal_index left_ord(const res_packed_index& res_index, ordinal_index i) {
+        ordinal_index left_ord(const res_packed_index& res_index, ordinal_index i) const {
           const typename Range<left_packed_cs>::size_array& weight = left_range_.weight();
           return res_index[0] * weight[0] + i * weight[1] + res_index[2] * weight[2];
         }
 
-        ordinal_index right_ord(const res_packed_index& res_index, ordinal_index i) {
+        ordinal_index right_ord(const res_packed_index& res_index, ordinal_index i) const {
           const typename Range<right_packed_cs>::size_array& weight = right_range_.weight();
           return res_index[1] * weight[0] + i * weight[1] + res_index[3] * weight[2];
         }
@@ -319,8 +293,8 @@ namespace TiledArray {
         madness::World* world_;
         std::shared_ptr<cont_type> contraction_;
         mutable ResArray result_;
-        left_array_type left_;
-        right_array_type right_;
+        LeftArray left_;
+        RightArray right_;
         Range<res_packed_cs> res_range_;
         Range<left_packed_cs> left_range_;
         Range<right_packed_cs> right_range_;
@@ -347,6 +321,11 @@ namespace TiledArray {
         bool operator()(const typename Range<res_packed_cs>::const_iterator& it) const {
           pimpl_->generate_tasks(it);
           return true;
+        }
+
+        template <typename Archive>
+        void serialize(const Archive& ar) {
+          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
         }
 
       private:

@@ -9,6 +9,9 @@
 namespace TiledArray {
 
   namespace math {
+    template <typename>
+    class Contraction;
+
     template <typename, typename, typename, typename>
     struct BinaryOp;
 
@@ -71,8 +74,15 @@ namespace TiledArray {
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
     /// \param v The array version number.
-    Array(madness::World& w, const tiled_range_type& tr, const Array_& left, const Array_& right, unsigned int v = 0u) :
+    Array(madness::World& w, const tiled_range_type& tr, const Array_& left, const Array_& right, unsigned int v) :
         pimpl_(new impl_type(w, tr, left.pimpl_, right.pimpl_, v),
+            madness::make_deferred_deleter<impl_type>(w))
+    { }
+
+    Array(madness::World& w, const tiled_range_type& tr,
+      const std::shared_ptr<math::Contraction<ordinal_index> >& cont,
+      const Array_& left, const Array_& right, unsigned int v) :
+        pimpl_(new impl_type(w, tr, cont, left.pimpl_, right.pimpl_, v),
             madness::make_deferred_deleter<impl_type>(w))
     { }
 
@@ -170,6 +180,14 @@ namespace TiledArray {
       }
     }
 
+    template <typename Index, typename Value, typename InIter, typename Op>
+    void reduce(const Index& i, const Value& value, InIter first, InIter last, Op op) {
+      ordinal_index o = tiles().ord(i);
+      madness::Future<value_type> result = pimpl_->reduce(o, value, op, first, last, owner(o));
+      if(is_local(o))
+        set(o, result);
+    }
+
     /// Tiled range accessor
 
     /// \return A const reference to the tiled range object for the array
@@ -181,6 +199,12 @@ namespace TiledArray {
     /// \return A const reference to the range object for the array tiles
     /// \throw nothing
     const range_type& tiles() const { return pimpl_->tiles(); }
+
+    /// Tile range accessor
+
+    /// \return A const reference to the range object for the array tiles
+    /// \throw nothing
+    const range_type& range() const { return pimpl_->tiles(); }
 
     /// Element range accessor
 

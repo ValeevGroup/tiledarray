@@ -102,6 +102,17 @@ namespace TiledArray {
           tiles_()
       { initialize_(); }
 
+      ArrayImpl(madness::World& w, const tiled_range_type& tr,
+        const std::shared_ptr<math::Contraction<ordinal_index> >& cont,
+        const std::shared_ptr<ArrayImpl_>& left, const std::shared_ptr<ArrayImpl_>& right,
+        unsigned int v) :
+          WorldReduce_(w),
+          tiled_range_(left->tiling()),
+          pmap_(w.size(), v),
+          shape_(shape_contract<CS>(w, tiled_range_.tiles(), pmap_, cont, *(left->shape_), *(right->shape_))),
+          tiles_()
+      { initialize_(); }
+
       /// Version number accessor
 
       /// \return The current version number
@@ -160,7 +171,7 @@ namespace TiledArray {
       /// and the result will be placed in the returned future.
       template <typename Index>
       data_type find(const Index& i) const {
-        const ordinal_index o = ord_(i);
+        const ordinal_index o = ord(i);
 
         TA_ASSERT(tiled_range_.tiles().includes(o), std::out_of_range,
             "Element is out of range.");
@@ -220,7 +231,7 @@ namespace TiledArray {
               "The given index i is not included in the array shape.");
 
           typename container_type::accessor acc;
-          TA_TEST(tiles_.find(acc, ord_(i)), std::runtime_error,
+          TA_TEST(tiles_.find(acc, ord(i)), std::runtime_error,
               "The tile should be present.");
           TA_ASSERT(! acc->second.probe(), std::runtime_error,
               "Tile value has already been set.");
@@ -255,7 +266,7 @@ namespace TiledArray {
       /// \return A const shared pointer reference to the array process map
       /// \throw nothing
       template <typename Index>
-      ProcessID owner(const Index& i) const { return pmap_.owner(ord_(i)); }
+      ProcessID owner(const Index& i) const { return pmap_.owner(ord(i)); }
 
       template <typename Index>
       bool is_local(const Index& i) const { return owner(i) == get_world().rank(); }
@@ -312,21 +323,13 @@ namespace TiledArray {
 
       /// Calculate the ordinal index
 
-      /// \param i The ordinal index to convert
-      /// \return The ordinal index of \c i
-      /// \note This function is a pass through function. It is only here to make
-      /// life easier with templates.
-      /// \note No range checking is done in this function.
-      ordinal_index ord_(const ordinal_index& i) const { return i; }
-
-      /// Calculate the ordinal index
-
-      /// \param i The coordinate index to convert
+      /// \tparam Index The index type, either index or ordinal_index type.
+      /// \param i The index to convert
       /// \return The ordinal index of \c i
       /// \note No range checking is done in this function.
-      ordinal_index ord_(const index& i) const {
-        return coordinate_system::calc_ordinal(i, tiled_range_.tiles().weight(),
-            tiled_range_.tiles().start());
+      template <typename Index>
+      ordinal_index ord(const Index& i) const {
+        return tiled_range_.tiles().ord(i);
       }
 
       static void find_return(const typename data_type::remote_refT& ref, const value_type& value) {
