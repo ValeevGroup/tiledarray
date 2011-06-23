@@ -6,6 +6,7 @@
 #include <TiledArray/range.h>
 #include <TiledArray/versioned_pmap.h>
 #include <TiledArray/tile.h>
+#include <TiledArray/math.h>
 #include <world/sharedptr.h>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/iterator_traits.hpp>
@@ -203,6 +204,26 @@ namespace TiledArray {
       result = new SparseShape<CS>(world, range, pmap,
           static_cast<const SparseShape<CS>&>(left),
           static_cast<const SparseShape<CS>&>(right));
+
+    return result;
+  }
+
+  template <typename ResCS, typename I, typename LeftCS, typename RightCS>
+  Shape<ResCS>* shape_contract(madness::World& world, const typename Shape<ResCS>::range_type& range,
+      const typename Shape<ResCS>::pmap_type& pmap, const std::shared_ptr<math::Contraction<I> >& cont,
+      const Shape<LeftCS>& left, const Shape<RightCS>& right)
+  {
+    Shape<ResCS>* result = NULL;
+
+    if(is_dense_shape(left) && is_dense_shape(right))
+      result = new DenseShape<ResCS>(range, pmap);
+    else {
+      math::TileContract<typename Shape<ResCS>::array_type, typename Shape<LeftCS>::array_type,
+        typename Shape<RightCS>::array_type> cont_op(cont, range);
+
+      result = new SparseShape<ResCS>(world, range, pmap,
+          cont_op(left.make_shape_map(), right.make_shape_map()));
+    }
 
     return result;
   }
