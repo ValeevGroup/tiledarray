@@ -160,7 +160,7 @@ namespace TiledArray {
     /// \return The ordinal index of the index \c i
     ordinal_index ord(const index& i) const {
       TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
-      return coordinate_system::calc_ordinal(i - start_, weight_);
+      return coordinate_system::calc_ordinal(i, weight_.data(), start_);
     }
 
     /// calculate the index of /c i
@@ -170,7 +170,7 @@ namespace TiledArray {
     /// \return The index of the ordinal index
     index idx(ordinal_index i) const {
       TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
-      return coordinate_system::calc_index(i, weight_) + start_;
+      return coordinate_system::calc_index(i, weight_.data()) + start_;
     }
 
     /// calculate the index of /c i
