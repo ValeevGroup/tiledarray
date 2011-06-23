@@ -142,6 +142,48 @@ namespace TiledArray {
       return *this;
     }
 
+    /// calculate the ordinal index of /c i
+
+    /// This function is just a pass-through so the user can call \c ord() on
+    /// a template parameter that can be an index or an ordinal_index.
+    /// \param i Ordinal index
+    /// \return \c i (unchanged)
+    ordinal_index ord(ordinal_index i) const {
+      TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
+      return i;
+    }
+
+    /// calculate the ordinal index of /c i
+
+    /// Convert an index to an ordinal index.
+    /// \param i The index to be converted to an ordinal index
+    /// \return The ordinal index of the index \c i
+    ordinal_index ord(const index& i) const {
+      TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
+      return coordinate_system::calc_ordinal(i - start_, weight_);
+    }
+
+    /// calculate the index of /c i
+
+    /// Convert an ordinal index to an index.
+    /// \param i Ordinal index
+    /// \return The index of the ordinal index
+    index idx(ordinal_index i) const {
+      TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
+      return coordinate_system::calc_index(i, weight_) + start_;
+    }
+
+    /// calculate the index of /c i
+
+    /// This function is just a pass-through so the user can call \c idx() on
+    /// a template parameter that can be an index or an ordinal_index.
+    /// \param i The index
+    /// \return \c i (unchanged)
+    const index& idx(const index& i) const {
+      TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
+      return i;
+    }
+
     template <typename Archive>
     void serialize(const Archive& ar) {
       ar & start_ & finish_ & size_ & weight_;
