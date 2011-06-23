@@ -10,6 +10,10 @@ struct FakeRange {
   iterator begin() const { return iterator(0, this); }
   iterator end() const { return iterator(10, this); }
   void increment(iterator::value_type& i) const { ++i; }
+  void advance(iterator::value_type& i, std::ptrdiff_t n) const { i += n; }
+  std::ptrdiff_t distance_to(const iterator::value_type& first, const iterator::value_type& last) const {
+    return last - first;
+  }
 };
 
 // Another fake container for iterator tests
@@ -18,6 +22,10 @@ struct FakePairRange {
   iterator begin() { return iterator(std::make_pair(0,0), this); }
   iterator end() { return iterator(std::make_pair(10,10), this); }
   void increment(iterator::value_type& i) const { ++(i.first); ++(i.second); }
+  void advance(iterator::value_type& i, std::ptrdiff_t n) const { i.first += n; i.second += n; }
+  std::ptrdiff_t distance_to(const iterator::value_type& first, const iterator::value_type& last) const {
+    return last.first - first.first + last.second - last.second;
+  }
 };
 
 // Range iterator fixture class
@@ -97,6 +105,20 @@ BOOST_AUTO_TEST_CASE( assignement_copy )
   BOOST_CHECK(it == r.end());
   BOOST_CHECK(it != r.begin());
   BOOST_CHECK_EQUAL(*it, 10);
+}
+
+BOOST_AUTO_TEST_CASE( advance )
+{
+  // Check preconditions
+  BOOST_CHECK_EQUAL(*it, 0);
+
+  std::advance(it, 5);
+  BOOST_CHECK_EQUAL(*it, 5);
+}
+
+BOOST_AUTO_TEST_CASE( distance )
+{
+  BOOST_CHECK_EQUAL(std::distance(r.begin(), r.end()), 10);
 }
 
 BOOST_AUTO_TEST_CASE( constructor )

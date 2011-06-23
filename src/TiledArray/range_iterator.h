@@ -3,6 +3,28 @@
 
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/iterator_traits.hpp>
+#include <TiledArray/error.h>
+
+namespace TiledArray {
+  namespace detail {
+
+    template <typename, typename>
+    class RangeIterator;
+
+  } // namespace detail
+} // namespace TiledArray
+
+namespace std {
+  template <typename Value, typename Container>
+  void advance(TiledArray::detail::RangeIterator<Value, Container>&,
+      typename TiledArray::detail::RangeIterator<Value, Container>::difference_type );
+
+  template <typename Value, typename Container>
+  typename TiledArray::detail::RangeIterator<Value, Container>::difference_type
+  distance(const TiledArray::detail::RangeIterator<Value, Container>&,
+      const TiledArray::detail::RangeIterator<Value, Container>&);
+
+} // namespace std
 
 namespace TiledArray {
   namespace detail {
@@ -60,6 +82,16 @@ namespace TiledArray {
         return *this;
       }
 
+      void advance(difference_type n) {
+        container_->advance(current_, n);
+      }
+
+      difference_type distance_to(const RangeIterator_& other) const {
+        TA_ASSERT(container_ == other.container_, std::runtime_error,
+            "You cannot get the distance between to iterators that point to different containers.");
+        return container_->distance_to(current_, other.current_);
+      }
+
     private:
 
       /// Compare this iterator with \c other for equality
@@ -68,7 +100,7 @@ namespace TiledArray {
       /// \return \c true when the value of the two iterators are the same and
       /// they point to the same container, otherwise \c false
       bool equal(const RangeIterator_ & other) const {
-        return current_ == other.current_ && container_ == other.container_;
+        return (current_ == other.current_) && (container_ == other.container_);
       }
 
       /// Increment the current value
@@ -86,8 +118,6 @@ namespace TiledArray {
         return current_;
       }
 
-      RangeIterator();
-
       // boost::iterator_core_access requires access to private members for
       // boost::iterator_facade to function correctly.
       friend class boost::iterator_core_access;
@@ -98,5 +128,23 @@ namespace TiledArray {
 
   } // namespace detail
 } // namespace TiledArray
+
+namespace std {
+  template <typename Value, typename Container>
+  void advance(TiledArray::detail::RangeIterator<Value, Container>& it,
+      typename TiledArray::detail::RangeIterator<Value, Container>::difference_type n)
+  {
+    it.advance(n);
+  }
+
+  template <typename Value, typename Container>
+  typename TiledArray::detail::RangeIterator<Value, Container>::difference_type
+  distance(const TiledArray::detail::RangeIterator<Value, Container>& first,
+      const TiledArray::detail::RangeIterator<Value, Container>& last)
+  {
+    return first.distance_to(last);
+  }
+
+} // namespace std
 
 #endif // TILEDARRAY_RANGE_ITERATOR_H__INCLUDED

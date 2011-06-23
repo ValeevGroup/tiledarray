@@ -214,6 +214,19 @@ namespace TiledArray {
       coordinate_system::increment_coordinate(i, start_, finish_);
     }
 
+    void advance(index& i, std::ptrdiff_t n) const {
+      const ordinal_index o = ord(i) + n;
+
+      if(n >= volume())
+        std::copy(finish_.begin(), finish_.end(), i.begin());
+      else
+        i = idx(o);
+    }
+
+    std::ptrdiff_t distance_to(const index& first, const index& last) const {
+      return ord(last) - ord(first);
+    }
+
     index start_;    ///< Tile origin
     index finish_;   ///< Tile upper bound
     index size_;     ///< Dimension sizes
