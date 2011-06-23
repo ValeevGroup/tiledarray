@@ -16,6 +16,7 @@ namespace TiledArray {
       typedef madness::Future<value_type> data_type;  ///< The data type that is added
       typedef std::list<data_type> container_type;    ///< The reduction object container
       typedef typename container_type::const_iterator iterator; ///< Reduction iterator
+      typedef madness::Range<iterator> range_type;    ///< Iterator range type
       typedef Op op_type;                             ///< The reduction function type
 
     private:
@@ -43,10 +44,8 @@ namespace TiledArray {
 
       /// \param chunk The chunk size of the reduction operation
       /// \return An iterator range for reduction task
-      Range<typename std::list<data_type>::const_iterator>
-      range(int chunk) const {
-        return Range<typename std::vector<data_type>::const_iterator>(data_.begin(),
-            data_.end(), chunk);
+      range_type range(int chunk) const {
+        return range_type(data_.begin(), data_.end(), chunk);
       }
 
       std::size_t size() const { return data_.size(); }
@@ -68,6 +67,8 @@ namespace TiledArray {
       typedef T value_type;                           ///< The type to be reduced
       typedef madness::Future<value_type> data_type;  ///< The data type that is added
       typedef Op op_type;                             ///< The reduction function type
+      typedef value_type result_type;                 ///< The result type of the operation
+      typedef typename ReduceTaskImpl<T,Op>::range_type range_type; ///< The iterator range type
 
       /// Constructor
 
@@ -97,8 +98,7 @@ namespace TiledArray {
 
       /// \param chunk The chunk size of the reduction operation
       /// \return An iterator range for reduction task
-      Range<typename std::list<data_type>::const_iterator>
-      range(int chunk = 1) const {
+      range_type range(int chunk = 1) const {
         return pimpl_->range(chunk);
       }
 
@@ -112,6 +112,15 @@ namespace TiledArray {
       /// \return The reduction of left and right
       value_type operator()(const value_type& left, const value_type& right) const {
         return pimpl_->reduce(left, right);
+      }
+
+      const value_type& operator()(const typename range_type::iterator& it) const {
+        return *it;
+      }
+
+      template <typename Archive>
+      void serialize(const Archive&) {
+        TA_ASSERT(false, std::runtime_error, "Serialization of ReduceTask not implemented.");
       }
 
     private:
