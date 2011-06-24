@@ -227,10 +227,10 @@ namespace TiledArray {
         }
 
         void generate_tasks(const typename Range<res_packed_cs>::const_iterator& it) const {
-          const ordinal_index c_index = res_range_.ord(*it);
+          const ordinal_index res_index = res_range_.ord(*it);
 
           // Check that the result tile has a value
-          if(result_.is_zero(c_index))
+          if(result_.is_zero(res_index))
             return;
 
           ordinal_index I = left_range_.size()[1];
@@ -241,26 +241,26 @@ namespace TiledArray {
 
           for(ordinal_index i = 0; i < I; ++i) {
             // Get the a and b index
-            const ordinal_index a_index = left_ord(*it, i);
-            const ordinal_index b_index = right_ord(*it, i);
+            const ordinal_index left_index = left_ord(*it, i);
+            const ordinal_index right_index = right_ord(*it, i);
 
             // Check for non-zero contraction.
-            if((! left_.is_zero(a_index)) && (! right_.is_zero(b_index))) {
+            if((! left_.is_zero(left_index)) && (! right_.is_zero(right_index))) {
 
               // Add to the list nodes involved in the reduction reduction group
-              reduce_grp.push_back(left_.owner(a_index));
+              reduce_grp.push_back(left_.owner(left_index));
 
-              if(result_.is_local(a_index)) {
+              if(result_.is_local(res_index)) {
                 // Do the tile-tile contraction and add to local reduction list
-                local_reduce_op.add(world_->taskq.add(madness::make_task(make_cont_op(c_index),
-                    left_.find(a_index), right_.find(b_index))));
+                local_reduce_op.add(world_->taskq.add(madness::make_task(make_cont_op(res_index),
+                    left_.find(left_index), right_.find(right_index))));
               }
             }
           }
 
           // Do tile-contraction reduction
           if(local_reduce_op.size() != 0) {
-            result_.reduce(c_index, world_->taskq.reduce<typename ResArray::value_type>(local_reduce_op.range(),
+            result_.reduce(res_index, world_->taskq.reduce<typename ResArray::value_type>(local_reduce_op.range(),
                 local_reduce_op), reduce_grp.begin(), reduce_grp.end(), addtion_op_type());
           }
         }
