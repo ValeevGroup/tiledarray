@@ -227,7 +227,7 @@ namespace TiledArray {
         }
 
         void generate_tasks(const typename Range<res_packed_cs>::const_iterator& it) const {
-          const ordinal_index c_index = res_ord(*it);
+          const ordinal_index c_index = res_range_.ord(*it);
 
           // Check that the result tile has a value
           if(result_.is_zero(c_index))
@@ -274,10 +274,6 @@ namespace TiledArray {
         contraction_op_type make_cont_op(const ordinal_index& index) const {
           return contraction_op_type(contraction_,
               result_.tiling().make_tile_range(index));
-        }
-
-        ordinal_index res_ord(const typename Range<res_packed_cs>::index& res_index) const {
-          return res_packed_cs::calc_ordinal(res_index, res_range_.weight());
         }
 
         ordinal_index left_ord(const res_packed_index& res_index, ordinal_index i) const {

@@ -88,7 +88,7 @@ namespace TiledArray {
         TA_ASSERT(right.size() == right_[2], std::range_error,
             "The dimensions of the left array do not match the dimensions of the packing.");
         TA_ASSERT(res.size() == (left_[2] - left_[1] + left_[0] + right_[2] - right_[1] + right_[0]),
-            std::range_error, "The dimensions of the result array do not match the dimensions of the packing.");
+            std::range_error, "The dimensions of the result array do not match the dimensions of the contraction.");
 
         std::size_t l, r, i = 0;
 

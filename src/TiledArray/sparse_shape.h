@@ -62,7 +62,7 @@ namespace TiledArray {
 //      const int rank = world_.rank();
       for(; first != last; ++first) {
 //        if(Shape_::owner(*first) == rank) {
-          o = Shape_::ord(*first);
+          o = Shape_::range().ord(*first);
           tiles_.set(o);
 //        }
       }

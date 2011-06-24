@@ -82,7 +82,7 @@ namespace TiledArray {
     bool is_local(const Index& i) const {
       TA_ASSERT(range_.includes(i), std::out_of_range,
           "Cannot check for tiles that are not in the range.");
-      return this->local_data(ord(i));
+      return this->local_data(range_.ord(i));
     }
 
     /// Probe for the presence of an element at key
@@ -90,7 +90,7 @@ namespace TiledArray {
     bool probe(const Index& i) const {
       TA_ASSERT(this->is_local(i), std::runtime_error,
           "You cannot probe data that is not stored locally.");
-      return  this->local_probe(ord(i));
+      return  this->local_probe(range_.ord(i));
     }
 
     /// Shape range accessor
@@ -105,12 +105,6 @@ namespace TiledArray {
     virtual array_type make_shape_map() const = 0;
 
   protected:
-
-    ordinal_index ord(ordinal_index o) const { return o; }
-
-    ordinal_index ord(const index& i) const {
-      return coordinate_system::calc_ordinal(i, range_.weight(), range_.start());
-    }
 
     typename range_type::volume_type volume() { return range_.volume(); }
 

@@ -309,7 +309,7 @@ namespace TiledArray {
       if(! range_.includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...): Element is not in range.");
 
-      return first_[ord_(i)];
+      return first_[range_.ord(i)];
     }
 
     /// Returns a constant reference to element i (range checking is performed).
@@ -322,7 +322,7 @@ namespace TiledArray {
       if(! range_->includes(i))
         throw std::out_of_range("DenseArrayStorage<...>::at(...) const: Element is not in range.");
 
-      return first_[ord_(i)];
+      return first_[range_.ord(i)];
     }
 
     /// Returns a reference to the element at i.
@@ -331,7 +331,7 @@ namespace TiledArray {
     template <typename Index>
     reference operator[](const Index& i) { // no throw for non-debug
 #ifdef NDEBUG
-      return first_[ord_(i)];
+      return first_[range_.ord(i)];
 #else
       return at(i);
 #endif
@@ -395,25 +395,6 @@ namespace TiledArray {
     }
 
   private:
-
-    /// Forwards the ordinal index.
-
-    /// \param i An ordinal index
-    /// \return The given ordinal index i.
-    /// \throw nothing
-    /// \note No range checking is done in this function.
-    inline const ordinal_index& ord_(const ordinal_index& i) const { return i; }
-
-    /// Convert an index to an ordinal index
-
-    /// This function converts a coordinate index to the equivalent ordinal index.
-    /// \param i index to be converted to an ordinal index
-    /// \return The ordinal index of the index.
-    /// \throw nothing
-    /// \note No range checking is done in this function.
-    inline ordinal_index ord_(const index& i) const {
-      return coordinate_system::calc_ordinal(i, range_.weight(), range_.start());
-    }
 
     /// Call the destructor for a range of data.
 
