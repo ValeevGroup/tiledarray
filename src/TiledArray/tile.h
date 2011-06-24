@@ -74,14 +74,18 @@ namespace TiledArray {
     Tile(const Tile_& other) :
         alloc_type(other),
         range_(other.range_),
-        first_(alloc_type::allocate(other.range_.volume())),
-        last_(first_ + other.range_.volume())
+        first_(NULL),
+        last_(NULL)
     {
-      try {
-        std::uninitialized_copy(other.first_, other.last_, first_);
-      } catch(...) {
-        alloc_type::deallocate(first_, other.range_.volume());
-        throw;
+      if(range_.volume()) {
+        first_ = alloc_type::allocate(range_.volume());
+        last_ = first_ + range_.volume();
+        try {
+          std::uninitialized_copy(other.first_, other.last_, first_);
+        } catch(...) {
+          alloc_type::deallocate(first_, other.range_.volume());
+          throw;
+        }
       }
     }
 
@@ -100,14 +104,18 @@ namespace TiledArray {
     Tile(const range_type& r, const value_type& val = value_type(), const alloc_type& a = alloc_type()) :
         alloc_type(a),
         range_(r),
-        first_(alloc_type::allocate(r.volume())),
-        last_(first_ + r.volume())
+        first_(NULL),
+        last_(NULL)
     {
-      try {
-        std::uninitialized_fill(first_, last_, val);
-      } catch (...) {
-        alloc_type::deallocate(first_, r.volume());
-        throw;
+      if(range_.volume()) {
+        first_ = alloc_type::allocate(range_.volume());
+        last_ = first_ + range_.volume();
+        try {
+          std::uninitialized_fill(first_, last_, val);
+        } catch (...) {
+          alloc_type::deallocate(first_, r.volume());
+          throw;
+        }
       }
     }
 
@@ -131,16 +139,20 @@ namespace TiledArray {
     Tile(const range_type& r, InIter first, InIter last, const alloc_type& a = alloc_type()) :
         alloc_type(a),
         range_(r),
-        first_(alloc_type::allocate(r.volume())),
-        last_(first_ + r.volume())
+        first_(NULL),
+        last_(NULL)
     {
-      try {
-        TA_ASSERT(volume_type(std::distance(first, last)) == r.volume(), std::runtime_error,
-            "The distance between initialization iterators must be equal to the tile volume.");
-        std::uninitialized_copy(first, last, first_);
-      } catch (...) {
-        alloc_type::deallocate(first_, r.volume());
-        throw;
+      if(range_.volume()) {
+        first_ = alloc_type::allocate(range_.volume());
+        last_ = first_ + range_.volume();
+        try {
+          TA_ASSERT(volume_type(std::distance(first, last)) == r.volume(), std::runtime_error,
+              "The distance between initialization iterators must be equal to the tile volume.");
+          std::uninitialized_copy(first, last, first_);
+        } catch (...) {
+          alloc_type::deallocate(first_, r.volume());
+          throw;
+        }
       }
     }
 
