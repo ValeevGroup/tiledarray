@@ -237,7 +237,8 @@ namespace TiledArray {
           // Reduction objects
           std::vector<ProcessID> reduce_grp;
           reduce_grp.reserve(I);
-          detail::ReduceTask<typename ResArray::value_type, addtion_op_type > local_reduce_op;
+          detail::ReduceTask<typename ResArray::value_type, addtion_op_type >
+              local_reduce_op(*world_, addtion_op_type());
 
           for(ordinal_index i = 0; i < I; ++i) {
             // Get the a and b index
@@ -260,8 +261,8 @@ namespace TiledArray {
 
           // Do tile-contraction reduction
           if(local_reduce_op.size() != 0) {
-            result_.reduce(res_index, world_->taskq.reduce<typename ResArray::value_type>(local_reduce_op.range(),
-                local_reduce_op), reduce_grp.begin(), reduce_grp.end(), addtion_op_type());
+            result_.reduce(res_index, local_reduce_op(), reduce_grp.begin(),
+                reduce_grp.end(), addtion_op_type());
           }
         }
 

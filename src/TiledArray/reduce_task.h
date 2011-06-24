@@ -3,6 +3,7 @@
 
 #include <world/worldfut.h>
 #include <world/worldrange.h>
+#include <world/make_task.h>
 #include <list>
 
 namespace TiledArray {
@@ -11,73 +12,55 @@ namespace TiledArray {
     template <typename T, typename Op>
     class ReduceTaskImpl {
     public:
-      typedef ReduceTaskImpl<T, Op> ReduceTaskImpl_;  ///< This object type
-      typedef T value_type;                           ///< The type to be reduced
-      typedef madness::Future<value_type> data_type;  ///< The data type that is added
-      typedef std::list<data_type> container_type;    ///< The reduction object container
-      typedef typename container_type::const_iterator iterator; ///< Reduction iterator
-      typedef madness::Range<iterator> range_type;    ///< Iterator range type
-      typedef Op op_type;                             ///< The reduction function type
+      typedef T value_type;
+      typedef std::list<madness::Future<value_type> > container_type;
+      typedef madness::Range<typename container_type::iterator> range_type;
+      typedef Op op_type;
 
-    private:
-      // Not allowed
-      ReduceTaskImpl(const ReduceTaskImpl_&);
-      ReduceTaskImpl_& operator=(const ReduceTaskImpl_&);
-
-    public:
-
-      /// Constructor
-
-      /// \param op The reduction operation
-      ReduceTaskImpl(const op_type& op) :
-          data_(), op_(op)
+      ReduceTaskImpl(madness::World& world, const op_type& op) :
+          world_(world), list_(), op_(op)
       { }
 
-      /// Add an element to the reduction
-
-      /// \param data The element to be added
-      void add(const data_type& data) {
-        data_.push_back(data);
+      void add(madness::Future<value_type> f) {
+        list_.push_back(f);
       }
 
-      /// Add an element to the reduction
+      std::size_t size() const { return list_.size(); }
 
-      /// \param chunk The chunk size of the reduction operation
-      /// \return An iterator range for reduction task
-      range_type range(int chunk) const {
-        return range_type(data_.begin(), data_.end(), chunk);
+      range_type range(const int chunk) const {
+        return range_type(list_.begin(), list_.end(), chunk);
       }
 
-      std::size_t size() const { return data_.size(); }
-
-      /// Reduction operation function
-      value_type reduce(const value_type& left, const value_type& right) const {
-        return op_(left, right);
+      value_type reduce(const value_type& value1, const value_type& value2) const {
+        return op_(value1, value2);
       }
+
+      madness::World& get_world() const { return world_; }
 
     private:
-      std::list<data_type> data_;   ///< The data to be reduced
-      op_type op_;                  ///< The reduction operation
+      madness::World& world_;
+      mutable container_type list_;
+      op_type op_;
+
     }; // class ReduceTaskImpl
 
     template <typename T, typename Op>
     class ReduceTask {
+    private:
+      typedef ReduceTaskImpl<T, Op> impl_type;
+      typedef ReduceTask<T, Op> ReduceTask_;
+
     public:
-      typedef ReduceTask<T, Op> ReduceTask_;          ///< This object type
-      typedef T value_type;                           ///< The type to be reduced
-      typedef madness::Future<value_type> data_type;  ///< The data type that is added
-      typedef Op op_type;                             ///< The reduction function type
-      typedef value_type result_type;                 ///< The result type of the operation
-      typedef typename ReduceTaskImpl<T,Op>::range_type range_type; ///< The iterator range type
+      typedef typename impl_type::value_type value_type;
+      typedef typename impl_type::range_type range_type;
+      typedef typename impl_type::op_type op_type;
 
-      /// Constructor
+      typedef value_type result_type;
 
-      /// \param op The reduction operation
-      ReduceTask(const op_type& op = op_type()) :
-          pimpl_(new ReduceTaskImpl<value_type, op_type>(op))
+      ReduceTask(madness::World& world, const op_type& op) :
+          pimpl_(new impl_type(world, op))
       { }
 
-      /// Copy constructor
       ReduceTask(const ReduceTask_& other) :
           pimpl_(other.pimpl_)
       { }
@@ -87,45 +70,62 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Add an element to the reduction
-
-      /// \param data The element to be added
-      void add(const data_type& data) {
-        pimpl_->add(data);
+      void add(const madness::Future<value_type>& f) {
+        pimpl_->add(f);
       }
 
-      /// Add an element to the reduction
-
-      /// \param chunk The chunk size of the reduction operation
-      /// \return An iterator range for reduction task
-      range_type range(int chunk = 1) const {
-        return pimpl_->range(chunk);
+      void add(const value_type& value) {
+        add(madness::Future<value_type>(value));
       }
 
-      /// Return the number of object in the reduction.
       std::size_t size() const { return pimpl_->size(); }
 
-      /// Reduction operation function
-
-      /// \param left The left object to reduce
-      /// \param right The right object to reduce
-      /// \return The reduction of left and right
-      value_type operator()(const value_type& left, const value_type& right) const {
-        return pimpl_->reduce(left, right);
+      madness::Future<value_type> operator()() const {
+        return (*this)(pimpl_->range(8));
       }
 
-      const value_type& operator()(const typename range_type::iterator& it) const {
-        return *it;
+      value_type operator()(const value_type& value1, const value_type& value2) const {
+        return pimpl_->reduce(value1, value2);
       }
 
-      template <typename Archive>
-      void serialize(const Archive&) {
-        TA_ASSERT(false, std::runtime_error, "Serialization of ReduceTask not implemented.");
+      madness::Future<value_type> operator()(const range_type& range) const {
+        if (range.size() <= range.get_chunksize()) {
+          value_type result = value_type();
+          for(typename range_type::iterator it = range.begin(); it != range.end(); ++it) {
+            TA_ASSERT(it->probe(), std::runtime_error, "Future is not ready.");
+            result = (*this)(result, *it);
+          }
+          return madness::Future<value_type>(result);
+        } else {
+          range_type left = range;
+          range_type right(left, madness::Split());
+
+          madness::Future<value_type> left_red = make_task(left);
+          madness::Future<value_type> right_red = make_task(right);
+          return pimpl_->get_world().taskq.add(madness::make_task(*this, left_red, right_red));
+        }
       }
 
     private:
-      std::shared_ptr<ReduceTaskImpl<value_type, op_type> > pimpl_; ///< The implementation object
-    }; // class ReduceTaskImpl
+
+      madness::Future<value_type> make_task(range_type range) const {
+        madness::TaskFn<ReduceTask, range_type>* task = madness::make_task(*this, range);
+
+        if(range.size() <= range.get_chunksize()) {
+          for(typename range_type::iterator it = range.begin(); it != range.end(); ++it) {
+            if(! (it->probe())) {
+                task->inc();
+                it->register_callback(task);
+            }
+          }
+        }
+
+        return pimpl_->get_world().taskq.add(task);
+      }
+
+      std::shared_ptr<impl_type> pimpl_;
+
+    }; // class ReduceTask
 
   }  // namespace detail
 }  // namespace TiledArray
