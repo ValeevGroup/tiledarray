@@ -10,6 +10,13 @@ using namespace TiledArray::math;
 struct ArrayMathFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::coordinate_system> ArrayN;
 
+  typedef TiledArray::CoordinateSystem<2,
+        GlobalFixture::coordinate_system::level,
+        GlobalFixture::coordinate_system::order,
+        GlobalFixture::coordinate_system::ordinal_index> coordinate_system2;
+
+  typedef Array<int, coordinate_system2> Array2;
+
 
   ArrayMathFixture() : world(*GlobalFixture::world), a(world, tr), b(world, tr), c(world, tr) {
     for(ArrayN::range_type::volume_type i = 0; i < a.tiles().volume(); ++i) {
@@ -59,17 +66,17 @@ BOOST_AUTO_TEST_CASE( addition )
 
 BOOST_AUTO_TEST_CASE( contraction )
 {
-  BinaryOp<ArrayN, ArrayN, ArrayN, TileContract<ArrayN::value_type, ArrayN::value_type, ArrayN::value_type> >
+  BinaryOp<Array2, ArrayN, ArrayN, TileContract<Array2::value_type, ArrayN::value_type, ArrayN::value_type> >
     op(world, c.version());
 
-  c = op(a(vars), b(vars));
+  Array2 c2 = op(a(vars), b(MathFixture::make_var_list(1, GlobalFixture::element_coordinate_system::dim + 1)));
 
-  for(ArrayN::range_type::const_iterator it = c.tiles().begin(); it != c.tiles().end(); ++it) {
+  for(Array2::range_type::const_iterator it = c2.tiles().begin(); it != c2.tiles().end(); ++it) {
 
-    if(c.is_local(*it)) {
-      madness::Future<ArrayN::value_type> tile = c.find(*it);
+    if(c2.is_local(*it)) {
+      madness::Future<Array2::value_type> tile = c2.find(*it);
 
-      for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
+      for(Array2::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
         BOOST_CHECK_EQUAL(*it, 5);
     }
   }

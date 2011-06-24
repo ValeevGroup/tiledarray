@@ -49,6 +49,8 @@ namespace TiledArray {
     typedef typename range_type::index range_index;
     typedef typename tile_range_type::index tile_range_index;
 
+    template <typename> friend class TiledRange1;
+
   public:
 
     /// Default constructor, range of 0 tiles and elements.
@@ -70,7 +72,14 @@ namespace TiledArray {
     }
 
     /// Copy constructor
-    TiledRange1(const TiledRange1& rng) : range_(rng.range_), element_range_(rng.element_range_),
+    TiledRange1(const TiledRange1<CS>& rng) : range_(rng.range_), element_range_(rng.element_range_),
+      tile_ranges_(rng.tile_ranges_), elem2tile_(rng.elem2tile_)
+    { }
+
+    /// Copy constructor
+    template <typename OtherCS>
+    TiledRange1(const TiledRange1<OtherCS>& rng) :
+      range_(rng.range_), element_range_(rng.element_range_),
       tile_ranges_(rng.tile_ranges_), elem2tile_(rng.elem2tile_)
     { }
 
@@ -105,8 +114,16 @@ namespace TiledArray {
     }
 
     /// Assignment operator
-    TiledRange1& operator =(const TiledRange1& rng) {
-      TiledRange1 temp(rng);
+    TiledRange1& operator =(const TiledRange1<CS>& rng) {
+      TiledRange1<CS> temp(rng);
+      swap(*this, temp);
+      return *this;
+    }
+
+    /// Assignment operator
+    template <typename OtherCS>
+    TiledRange1& operator =(const TiledRange1<OtherCS>& rng) {
+      TiledRange1<CS> temp(rng);
       swap(*this, temp);
       return *this;
     }

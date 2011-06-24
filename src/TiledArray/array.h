@@ -64,6 +64,8 @@ namespace TiledArray {
 //    template <typename, typename, template <typename> class>
 //    friend class math::UnaryOp;
 
+    template <typename, typename, typename> friend class Array;
+
     /// Sparse array constructor
 
     /// \tparam InIter Input iterator type
@@ -79,9 +81,10 @@ namespace TiledArray {
             madness::make_deferred_deleter<impl_type>(w))
     { }
 
+    template <typename LeftArray, typename RightArray>
     Array(madness::World& w, const tiled_range_type& tr,
       const std::shared_ptr<math::Contraction<ordinal_index> >& cont,
-      const Array_& left, const Array_& right, unsigned int v) :
+      const LeftArray& left, const RightArray& right, unsigned int v) :
         pimpl_(new impl_type(w, tr, cont, left.pimpl_, right.pimpl_, v),
             madness::make_deferred_deleter<impl_type>(w))
     { }

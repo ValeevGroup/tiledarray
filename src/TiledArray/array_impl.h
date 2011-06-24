@@ -23,6 +23,8 @@ namespace TiledArray {
     private:
       typedef P policy;
 
+      template <typename, typename, typename> friend class ArrayImpl;
+
     public:
       typedef CS coordinate_system; ///< The array coordinate system
       typedef typename policy::value_type value_type; ///< The tile type
@@ -96,18 +98,19 @@ namespace TiledArray {
       ArrayImpl(madness::World& w, const tiled_range_type& tr, const std::shared_ptr<ArrayImpl_>& left,
         const std::shared_ptr<ArrayImpl_>& right, unsigned int v) :
           WorldReduce_(w),
-          tiled_range_(left->tiling()),
+          tiled_range_(tr),
           pmap_(w.size(), v),
           shape_(shape_union<CS>(w, tiled_range_.tiles(), pmap_, *(left->shape_), *(right->shape_))),
           tiles_()
       { initialize_(); }
 
+      template <typename LeftArrayImpl, typename RightArrayImpl>
       ArrayImpl(madness::World& w, const tiled_range_type& tr,
         const std::shared_ptr<math::Contraction<ordinal_index> >& cont,
-        const std::shared_ptr<ArrayImpl_>& left, const std::shared_ptr<ArrayImpl_>& right,
+        const std::shared_ptr<LeftArrayImpl>& left, const std::shared_ptr<RightArrayImpl>& right,
         unsigned int v) :
           WorldReduce_(w),
-          tiled_range_(left->tiling()),
+          tiled_range_(tr),
           pmap_(w.size(), v),
           shape_(shape_contract<CS>(w, tiled_range_.tiles(), pmap_, cont, *(left->shape_), *(right->shape_))),
           tiles_()
