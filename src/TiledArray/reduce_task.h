@@ -1,9 +1,10 @@
 #ifndef TILEDARRAY_REDUCE_TASK_H__INCLUDED
 #define TILEDARRAY_REDUCE_TASK_H__INCLUDED
 
+#include <TiledArray/error.h>
+#include <world/make_task.h>
 #include <world/worldfut.h>
 #include <world/worldrange.h>
-#include <world/make_task.h>
 #include <list>
 
 namespace TiledArray {
