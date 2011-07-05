@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE( contraction )
 
   for(Array2::range_type::const_iterator it = c2.tiles().begin(); it != c2.tiles().end(); ++it) {
 
-    if(c2.is_local(*it)) {
+    if(c2.is_local(*it) && (! c2.is_zero(*it))) {
       madness::Future<Array2::value_type> tile = c2.find(*it);
 
       for(Array2::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)

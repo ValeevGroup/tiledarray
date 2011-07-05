@@ -156,7 +156,6 @@ namespace TiledArray {
 
       data_type remote_find(const ordinal_index& i) const {
         // Find remote tiles (which may or may not be zero tiles).
-//        std::cout << "ArrayImpl::find(" << i << "): Request remote tile from node " << tile_owner << ".\n";
         data_type result;
         WorldObject_::task(owner(i), & ArrayImpl_::find_handler, i,
             result.remote_ref(WorldObject_::get_world()));
@@ -219,31 +218,22 @@ namespace TiledArray {
         set_value(i, policy::construct_value(tiled_range_.make_tile_range(i), v));
       }
 
-      /// Insert a tile into the array
+      /// Set the data of a tile in the array
 
       /// \tparam Index The type of the index (valid types are: Array::index or
       /// Array::ordinal_index)
       /// \tparam InIter Input iterator type for the data
       /// \param i The index where the tile will be inserted
-      /// \param t The value that will be used to initialize the tile data
+      /// \param v The value that will be used to initialize the tile data
+      /// \throw std::out_of_range When \c i is not included in the array range
       /// \throw std::range_error When \c i is not included in the array shape
       template <typename Index>
-      madness::Void set_value(const Index& i, const value_type& t) {
-        if(is_local(i)) {
-          TA_ASSERT(shape_->probe(i), std::runtime_error,
-              "The given index i is not included in the array shape.");
-
-          typename container_type::accessor acc;
-          TA_TEST(tiles_.find(acc, ord(i)), std::runtime_error,
-              "The tile should be present.");
-          TA_ASSERT(! acc->second.probe(), std::runtime_error,
-              "Tile value has already been set.");
-          acc->second.set(t);
-        } else {
-          WorldObject_::send(owner(i), & ArrayImpl_::template set_value<Index>, i, t);
-        }
-
-        return madness::None;
+      void set(const Index& i, const madness::Future<value_type>& f) {
+        if(f.probe())
+          set_value(i, f);
+        else
+          task(get_world().rank(), & ArrayImpl_::template set_value<Index>,
+              i, f, madness::TaskAttributes::hipri());
       }
 
       /// Tiled range accessor
@@ -286,8 +276,37 @@ namespace TiledArray {
       }
 
       using WorldObject_::get_world;
+      using WorldObject_::task;
+      using WorldObject_::send;
 
     private:
+
+      /// Insert a tile into the array
+
+      /// \tparam Index The type of the index (valid types are: Array::index or
+      /// Array::ordinal_index)
+      /// \tparam InIter Input iterator type for the data
+      /// \param i The index where the tile will be inserted
+      /// \param t The value that will be used to initialize the tile data
+      /// \throw std::range_error When \c i is not included in the array shape
+      template <typename Index>
+      madness::Void set_value(const Index& i, const value_type& t) {
+        if(is_local(i)) {
+          TA_ASSERT(shape_->probe(i), std::runtime_error,
+              "The given index i is not included in the array shape.");
+
+          typename container_type::accessor acc;
+          TA_TEST(tiles_.find(acc, ord(i)), std::runtime_error,
+              "The tile that should be present was not found.");
+          TA_ASSERT(! acc->second.probe(), std::runtime_error,
+              "Tile value has already been set.");
+          acc->second.set(t);
+        } else {
+          send(owner(i), & ArrayImpl_::template set_value<Index>, i, t);
+        }
+
+        return madness::None;
+      }
 
       /// Add an empty tile to the array
 
@@ -302,7 +321,6 @@ namespace TiledArray {
         TA_ASSERT(shape_->probe(i), std::runtime_error,
             "Tile is not included in the shape");
 
-//        std::cout << get_world().rank() << ": ArrayImpl::insert_tile(" << key << ")\n";
         std::pair<typename container_type::iterator, bool> result =
             tiles_.insert(typename container_type::datumT(i, data_type()));
         return result.second;

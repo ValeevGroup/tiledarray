@@ -165,8 +165,6 @@ namespace TiledArray {
     /// \tparam InIter An input iterator
     template <typename Index, typename InIter>
     void set(const Index& i, InIter first, InIter last) {
-      typedef typename std::iterator_traits<InIter>::value_type it_value_type;
-      TA_STATIC_ASSERT((std::is_same<it_value_type, index>::value || std::is_integral<it_value_type>::value));
       pimpl_->set(i, first, last);
     }
 
@@ -174,21 +172,37 @@ namespace TiledArray {
     void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }
 
     template <typename Index>
-    void set(const Index& i, const madness::Future<value_type>& f) {
-      if(f.probe()) {
-        pimpl_->set_value(i, f);
-      } else {
-        pimpl_->task(pimpl_->owner(i), & impl_type::template set_value<Index>,
-            i, f, madness::TaskAttributes::hipri());
-      }
-    }
+    void set(const Index& i, const madness::Future<value_type>& f) { pimpl_->set(i, f); }
 
     template <typename Index, typename Value, typename InIter, typename Op>
     void reduce(const Index& i, const Value& value, InIter first, InIter last, Op op) {
+      TA_ASSERT(! (pimpl_->is_zero(i)), std::runtime_error, "Cannot assign a zero tile.");
       ordinal_index o = tiles().ord(i);
+
+      std::stringstream ss;
+
+      ss << get_world().rank() << ": starting remote reduce for " << i << "\n";
+      std::cout << ss.str();
+      ss.str("");
       madness::Future<value_type> result = pimpl_->reduce(o, value, op, first, last, owner(o));
-      if(is_local(o))
+
+      ss << get_world().rank() << ": waiting for remote reduce " << i << "...\n";
+      std::cout << ss.str();
+      ss.str("");
+      result.get();
+
+      ss << get_world().rank() << ": remote reduce for " << i << " done\n";
+      std::cout << ss.str();
+      ss.str("");
+
+
+      // Result returned on all nodes but only the root node has the final value.
+      if(is_local(o)) {
+        ss << pimpl_->get_world().rank() << ": setting reduced value for " << i << " to " << owner(o) << "\n";
+        std::cout << ss.str();
+        ss.str("");
         set(o, result);
+      }
     }
 
     /// Tiled range accessor
@@ -207,7 +221,7 @@ namespace TiledArray {
 
     /// \return A const reference to the range object for the array tiles
     /// \throw nothing
-    const range_type& range() const { return pimpl_->tiles(); }
+    const range_type& range() const { return tiles(); }
 
     /// Element range accessor
 
@@ -265,7 +279,7 @@ namespace TiledArray {
     ProcessID owner(const Index& i) const { return pimpl_->owner(i); }
 
     template <typename Index>
-    bool is_local(const Index& i) {
+    bool is_local(const Index& i) const {
       return pimpl_->is_local(i);
     }
 

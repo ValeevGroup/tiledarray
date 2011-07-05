@@ -103,14 +103,16 @@ namespace TiledArray {
 
           madness::Future<value_type> left_red = make_task(left);
           madness::Future<value_type> right_red = make_task(right);
-          return pimpl_->get_world().taskq.add(madness::make_task(*this, left_red, right_red));
+          return pimpl_->get_world().taskq.add(madness::make_task(*this, left_red,
+              right_red, madness::TaskAttributes::hipri()));
         }
       }
 
     private:
 
       madness::Future<value_type> make_task(range_type range) const {
-        madness::TaskFn<ReduceTask, range_type>* task = madness::make_task(*this, range);
+        madness::TaskFn<ReduceTask, range_type>* task = madness::make_task(*this,
+            range, madness::TaskAttributes::hipri());
 
         if(range.size() <= range.get_chunksize()) {
           for(typename range_type::iterator it = range.begin(); it != range.end(); ++it) {
