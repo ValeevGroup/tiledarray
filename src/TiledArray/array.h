@@ -186,16 +186,6 @@ namespace TiledArray {
       ss.str("");
       madness::Future<value_type> result = pimpl_->reduce(o, value, op, first, last, owner(o));
 
-      ss << get_world().rank() << ": waiting for remote reduce " << i << "...\n";
-      std::cout << ss.str();
-      ss.str("");
-      result.get();
-
-      ss << get_world().rank() << ": remote reduce for " << i << " done\n";
-      std::cout << ss.str();
-      ss.str("");
-
-
       // Result returned on all nodes but only the root node has the final value.
       if(is_local(o)) {
         ss << pimpl_->get_world().rank() << ": setting reduced value for " << i << " to " << owner(o) << "\n";
