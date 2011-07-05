@@ -82,7 +82,7 @@ namespace TiledArray {
       std::size_t size() const { return pimpl_->size(); }
 
       madness::Future<value_type> operator()() const {
-        return (*this)(pimpl_->range(8));
+        return make_task(pimpl_->range(8));
       }
 
       value_type operator()(const value_type& value1, const value_type& value2) const {
