@@ -346,6 +346,89 @@ namespace TiledArray {
       unsigned int version_;
     }; // class BinaryOp
 
+    /// Default binary operation for \c Array objects
+    template <typename ResArray, typename ArgArray, typename Op>
+    struct UnaryOp {
+      typedef Op op_type;
+      typedef UnaryOp<ResArray, ArgArray, Op> UnaryOp_;
+      typedef expressions::AnnotatedArray<ResArray> result_array_type;
+      typedef expressions::AnnotatedArray<ArgArray> arg_array_type;
+
+      UnaryOp(madness::World& world, unsigned int version, const Op& op) :
+          world_(&world), version_(version), op_(op)
+      {}
+
+      UnaryOp(const UnaryOp_& other) :
+          world_(other.world_), version_(other.version_), op_(other.op_)
+      {}
+
+      UnaryOp_& operator=(const UnaryOp_& other) {
+        world_ = other.world_;
+        version_ = other.version_;
+        op_ = other.op_;
+        return *this;
+      }
+
+      ResArray operator()(const arg_array_type& arg) {
+
+        // Construct the new array
+        ResArray result(*world_, arg.array().tiling(), arg.array(), version_);
+
+        ArrayOp array_op(result, arg, op_);
+        world_->taskq.for_each(madness::Range<typename ResArray::iterator>(
+            result.begin(), result.end()), array_op);
+
+        return result;
+      }
+
+      template <typename Archive>
+      void serialize(const Archive& ar) {
+        TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+      }
+
+    private:
+
+      struct ArrayOp {
+        ArrayOp(const ResArray& result, const arg_array_type& arg, op_type op) :
+            world_(& result.get_world()), result_(result), arg_(arg), op_(op)
+        { }
+
+        ArrayOp(const ArrayOp& other) :
+            world_(other.world_), result_(other.result_), arg_(other.arg_), op_(other.op_)
+        { }
+
+        ArrayOp& operator=(const ArrayOp& other) {
+          world_ = other.world_;
+          result_ = other.result_;
+          arg_ = other.arg_;
+
+          return *this;
+        }
+
+        bool operator()(typename ResArray::iterator it) const {
+          it->set(world_->taskq.add(madness::make_task(op_,
+              arg_.array().find(it.index()))));
+
+          return true;
+        }
+
+        template <typename Archive>
+        void serialize(const Archive& ar) {
+          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+        }
+
+      private:
+        madness::World* world_;
+        mutable ResArray result_;
+        arg_array_type arg_;
+        op_type op_;
+      }; // struct ArrayOp
+
+      madness::World* world_;
+      unsigned int version_;
+      Op op_;
+    }; // class BinaryOp
+
   } // namespace math
 } // namespace TiledArray
 
