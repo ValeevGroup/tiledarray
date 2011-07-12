@@ -103,6 +103,21 @@ namespace TiledArray {
       tiles_(left.tiles_ | right.tiles_)
     { }
 
+    /// Shape copy constructor
+
+    /// \param w The world where this shape lives
+    /// \param r The range object associated with this shape
+    /// \param m The process map for this shape
+    /// \param other The sparse shape to copy
+    /// \note Tiles in the list that are not owned by this process (according to
+    /// the process map) are ignored.
+    SparseShape(const madness::World& w, const range_type& r, const pmap_type& m,
+        const SparseShape_& other) :
+      Shape_(r,m),
+      world_(w),
+      tiles_(other.tiles_)
+    { }
+
     virtual ~SparseShape() { }
 
     /// Construct a copy of this shape
