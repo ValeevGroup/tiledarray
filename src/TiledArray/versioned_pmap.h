@@ -16,43 +16,46 @@ namespace TiledArray {
     template <typename Key, typename Hasher = madness::Hash<Key> >
     class VersionedPmap : public madness::WorldDCPmapInterface<Key> {
     private:
-        const int size_;       ///< The number of processes in the world
-        std::size_t version_;  ///< The process map version
-        Hasher hashfun_;        ///< The hashing function
+      const int size_;        ///< The number of processes in the world
+      std::size_t version_;   ///< The process map version
+      madness::hashT seed_;   ///<
+      Hasher hashfun_;        ///< The hashing function
 
     public:
-        typedef Key key_type;
+      typedef Key key_type;
 
-        /// Primary constructor
+      /// Primary constructor
 
-        /// \param s The world size
-        /// \param v The initial version number for this pmap (Default = 0 )
-        /// \param h The hashing function used to hash (Default = Hasher() )
-        VersionedPmap(std::size_t s, unsigned int v = 0, const Hasher& h = Hasher()) :
-            size_(s), version_(v), hashfun_(h)
-        { }
+      /// \param s The world size
+      /// \param v The initial version number for this pmap (Default = 0 )
+      /// \param h The hashing function used to hash (Default = Hasher() )
+      VersionedPmap(std::size_t s, unsigned int v = 0, const Hasher& h = Hasher()) :
+          size_(s), version_(v), seed_(0), hashfun_(h)
+      {
+        seed_ = hashfun_(version_);
+      }
 
-        virtual ~VersionedPmap() { }
+      virtual ~VersionedPmap() { }
 
-        // Compiler generated copy constructor and assignment operator are fine here
+      // Compiler generated copy constructor and assignment operator are fine here
 
-        /// Increment the version counter
+      /// Increment the version counter
 
-        /// \return The new version number for the pmap
-        std::size_t version() const { return version_; }
+      /// \return The new version number for the pmap
+      std::size_t version() const { return version_; }
 
-        /// Owner of an index
+      /// Owner of an index
 
-        /// This function calculates the owning process of an index value by
-        /// hashing the given index and the pmap version number.
-        /// \param k The key to be mapped to a process.
-        /// \return The process number associated with the given index. This
-        /// process number is less-than-or-equal-to world size.
-        virtual ProcessID owner(const key_type& k) const {
-          madness::hashT seed = hashfun_(k);
-          madness::hash_combine(seed, version_);
-          return (seed % size_);
-        }
+      /// This function calculates the owning process of an index value by
+      /// hashing the given index and the pmap version number.
+      /// \param k The key to be mapped to a process.
+      /// \return The process number associated with the given index. This
+      /// process number is less-than-or-equal-to world size.
+      virtual ProcessID owner(const key_type& k) const {
+        madness::hashT seed = seed_;
+        madness::detail::combine_hash(seed, hashfun_(k));
+        return (seed % size_);
+      }
     }; // class VersionedPmap
 
   } // namespace detail
