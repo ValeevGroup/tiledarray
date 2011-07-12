@@ -16,7 +16,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW((SparseShapeT(* GlobalFixture::world, r, m, list.begin(), list.end())));
   SparseShapeT::array_type a(r, 1);
   BOOST_REQUIRE_NO_THROW((SparseShapeT(* GlobalFixture::world, r, m, a)));
-
+  BOOST_REQUIRE_NO_THROW((SparseShapeT(* GlobalFixture::world, r, m, ss, ss)));
+  BOOST_REQUIRE_NO_THROW((SparseShapeT(* GlobalFixture::world, r, m, ss)));
 }
 
 BOOST_AUTO_TEST_CASE( clone )
