@@ -12,22 +12,38 @@ using namespace TiledArray;
 
 BOOST_FIXTURE_TEST_SUITE( shape_suite, ShapeFixture )
 
-BOOST_AUTO_TEST_CASE( cast_dense_shape )
+BOOST_AUTO_TEST_CASE( is_dense )
 {
-//  ShapePtr shape = dynamic_cast<ShapePtr>(&ds);
-//  BOOST_REQUIRE(shape != NULL);
-//
-//  DenseShapeT* dense_shape = dynamic_cast<DenseShapeT*>(shape);
-//  BOOST_CHECK(dense_shape != NULL);
+
+  BOOST_CHECK(is_dense_shape(ds));
+  BOOST_CHECK(! is_dense_shape(ss));
+
+  ShapeT& s1 = ds;
+  ShapeT& s2 = ss;
+
+  BOOST_CHECK(is_dense_shape(s1));
+  BOOST_CHECK(! is_dense_shape(s2));
+
+  int i = 0;
+
+  BOOST_CHECK(! is_dense_shape(i));
 }
 
-BOOST_AUTO_TEST_CASE( cast_sparse_shape )
+BOOST_AUTO_TEST_CASE( is_sparse )
 {
-//  ShapePtr shape = dynamic_cast<ShapePtr>(&ss);
-//  BOOST_REQUIRE(shape != NULL);
-//
-//  SparseShapeT* sparse_shape = dynamic_cast<SparseShapeT*>(shape);
-//  BOOST_CHECK(sparse_shape != NULL);
+
+  BOOST_CHECK(is_sparse_shape(ss));
+  BOOST_CHECK(! is_sparse_shape(ds));
+
+  ShapeT& s1 = ss;
+  ShapeT& s2 = ds;
+
+  BOOST_CHECK(is_sparse_shape(s1));
+  BOOST_CHECK(! is_sparse_shape(s2));
+
+  int i = 0;
+
+  BOOST_CHECK(! is_sparse_shape(i));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
