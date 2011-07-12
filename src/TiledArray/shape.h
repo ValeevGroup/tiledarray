@@ -169,7 +169,7 @@ namespace TiledArray {
   /// \return If shape is a \c SparseShape class return \c true , otherwise \c false .
   template <typename CS>
   inline bool is_sparse_shape(const Shape<CS>& s) {
-    return s->type() == typeid(SparseShape<CS>);
+    return s.type() == typeid(SparseShape<CS>);
   }
 
   /// Runtime type checking for sparse shape
@@ -182,13 +182,42 @@ namespace TiledArray {
     return true;
   }
 
+  /// Create a copy of the shape
+
+  /// The new shape has the same tiles as the original but may refer to different
+  /// process maps and range object.
+  /// \tparam CS The shape coordiante system type
+  /// \param world The world where the shape exists
+  /// \param range The range of the result shape
+  /// \param pmap The range process map
+  /// \param other The shape to be copied
+  template <typename CS>
+  Shape<CS>* shape_copy(madness::World& world, const typename Shape<CS>::range_type& range,
+      const typename Shape<CS>::pmap_type& pmap, const Shape<CS>& other)
+  {
+    TA_ASSERT(other.range() == range, std::range_error,
+        "The range of the other shapes must match the given range.");
+
+    Shape<CS>* result = NULL;
+
+    if(is_dense_shape(other))
+      result = new DenseShape<CS>(range, pmap);
+    else
+      result = new SparseShape<CS>(world, range, pmap,
+          static_cast<const SparseShape<CS>&>(other));
+
+    return result;
+  }
 
   template <typename CS>
   Shape<CS>* shape_union(madness::World& world, const typename Shape<CS>::range_type& range,
       const typename Shape<CS>::pmap_type& pmap, const Shape<CS>& left,
       const Shape<CS>& right)
   {
-    TA_ASSERT(left.range() == right.range(), std::range_error, "The range of the shapes must match.");
+    TA_ASSERT(range == left.range(), std::range_error,
+        "The left shape range must match the given range.");
+    TA_ASSERT(range == right.range(), std::range_error,
+        "The right shape range must match the given range.");
 
     Shape<CS>* result = NULL;
 
