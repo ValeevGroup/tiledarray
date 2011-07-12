@@ -116,6 +116,15 @@ namespace TiledArray {
           tiles_()
       { initialize_(); }
 
+      ArrayImpl(madness::World& w, const tiled_range_type& tr,
+        const std::shared_ptr<ArrayImpl_>& arg, unsigned int v) :
+          WorldReduce_(w),
+          tiled_range_(tr),
+          pmap_(w.size(), v),
+          shape_(shape_copy<CS>(w, tiled_range_.tiles(), pmap_, *(arg->shape_))),
+          tiles_()
+      { initialize_(); }
+
       /// Version number accessor
 
       /// \return The current version number

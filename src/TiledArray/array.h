@@ -89,6 +89,11 @@ namespace TiledArray {
             madness::make_deferred_deleter<impl_type>(w))
     { }
 
+    Array(madness::World& w, const tiled_range_type& tr, const Array_& arg, unsigned int v) :
+        pimpl_(new impl_type(w, tr, arg.pimpl_, v),
+            madness::make_deferred_deleter<impl_type>(w))
+    { }
+
   public:
 
     /// Dense array constructor
@@ -179,20 +184,11 @@ namespace TiledArray {
       TA_ASSERT(! (pimpl_->is_zero(i)), std::runtime_error, "Cannot assign a zero tile.");
       ordinal_index o = tiles().ord(i);
 
-      std::stringstream ss;
-
-      ss << get_world().rank() << ": starting remote reduce for " << i << "\n";
-      std::cout << ss.str();
-      ss.str("");
       madness::Future<value_type> result = pimpl_->reduce(o, value, op, first, last, owner(o));
 
       // Result returned on all nodes but only the root node has the final value.
-      if(is_local(o)) {
-        ss << pimpl_->get_world().rank() << ": setting reduced value for " << i << " to " << owner(o) << "\n";
-        std::cout << ss.str();
-        ss.str("");
+      if(is_local(o))
         set(o, result);
-      }
     }
 
     /// Tiled range accessor
