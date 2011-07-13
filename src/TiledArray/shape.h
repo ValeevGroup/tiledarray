@@ -7,6 +7,7 @@
 #include <TiledArray/versioned_pmap.h>
 #include <TiledArray/tile.h>
 #include <TiledArray/math.h>
+#include <TiledArray/permutation.h>
 #include <world/sharedptr.h>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/iterator_traits.hpp>
@@ -205,6 +206,32 @@ namespace TiledArray {
     else
       result = new SparseShape<CS>(world, range, pmap,
           static_cast<const SparseShape<CS>&>(other));
+
+    return result;
+  }
+
+  /// Create a copy of the shape
+
+  /// The new shape has the same tiles as the original but may refer to different
+  /// process maps and range object.
+  /// \tparam CS The shape coordiante system type
+  /// \param world The world where the shape exists
+  /// \param range The range of the result shape
+  /// \param pmap The range process map
+  /// \param other The shape to be copied
+  template <typename CS>
+  Shape<CS>* shape_permute(madness::World& world, const typename Shape<CS>::range_type& range,
+      const typename Shape<CS>::pmap_type& pmap, const Permutation<CS::dim>& p, const Shape<CS>& other)
+  {
+    TA_ASSERT(other.range() == range, std::range_error,
+        "The range of the other shapes must match the given range.");
+
+    Shape<CS>* result = NULL;
+
+    if(is_dense_shape(other))
+      result = new DenseShape<CS>(range, pmap);
+    else
+      result = new SparseShape<CS>(world, range, pmap, p ^ other.make_shape_map());
 
     return result;
   }
