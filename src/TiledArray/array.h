@@ -15,6 +15,9 @@ namespace TiledArray {
     template <typename, typename, typename, typename>
     struct BinaryOp;
 
+    template <typename, typename, typename>
+    struct UnaryOp;
+
   }  // namespace math
 
   namespace detail {
@@ -60,9 +63,9 @@ namespace TiledArray {
 
     template <typename, typename, typename, typename>
     friend class math::BinaryOp;
-//
-//    template <typename, typename, template <typename> class>
-//    friend class math::UnaryOp;
+
+    template <typename, typename, typename>
+    friend class math::UnaryOp;
 
     template <typename, typename, typename> friend class Array;
 
@@ -76,7 +79,8 @@ namespace TiledArray {
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
     /// \param v The array version number.
-    Array(madness::World& w, const tiled_range_type& tr, const Array_& left, const Array_& right, unsigned int v) :
+    template <typename LeftArray, typename RightArray>
+    Array(madness::World& w, const tiled_range_type& tr, const LeftArray& left, const RightArray& right, unsigned int v) :
         pimpl_(new impl_type(w, tr, left.pimpl_, right.pimpl_, v),
             madness::make_deferred_deleter<impl_type>(w))
     { }
@@ -101,8 +105,8 @@ namespace TiledArray {
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param v The array version number.
-    Array(madness::World& w, const tiled_range_type& tr, unsigned int v = 0u) :
-        pimpl_(new impl_type(w, tr, v), madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const tiled_range_type& tr) :
+        pimpl_(new impl_type(w, tr, 0u), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Sparse array constructor
@@ -116,8 +120,8 @@ namespace TiledArray {
     /// of tiles to be added to the sparse array.
     /// \param v The array version number.
     template <typename InIter>
-    Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, unsigned int v = 0u) :
-        pimpl_(new impl_type(w, tr, first, last, v), madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last) :
+        pimpl_(new impl_type(w, tr, first, last, 0u), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Copy constructor
