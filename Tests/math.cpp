@@ -2,6 +2,7 @@
 #include "TiledArray/tile.h"
 #include <assert.h>
 #include "unit_test_config.h"
+#include <numeric>
 
 using TiledArray::expressions::VariableList;
 using namespace TiledArray;
@@ -41,7 +42,7 @@ BOOST_AUTO_TEST_CASE( construct_tile_plus )
 {
   BOOST_CHECK_NO_THROW((TilePlus<array_type>()));
   BOOST_CHECK_NO_THROW((TileMinus<array_type>()));
-  BOOST_CHECK_NO_THROW((TileScale<array_type>()));
+  BOOST_CHECK_NO_THROW((TileScale<array_type>(2)));
 }
 
 
@@ -107,17 +108,17 @@ BOOST_AUTO_TEST_CASE( scalar_multiplication )
 {
   array_type t(r, 0);
 
-  TileScale<array_type> scale;
+  TileScale<array_type> scale(2);
 
 
   // Check scale operation
-  t = scale(f1, 2);
+  t = scale(f1);
   for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, 2);
 
-  t = scale(3, f1);
+  t = scale(f1);
   for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 3);
+    BOOST_CHECK_EQUAL(*it, 2);
 }
 
 BOOST_AUTO_TEST_CASE( negation )
@@ -135,17 +136,38 @@ BOOST_AUTO_TEST_CASE( negation )
 
 BOOST_AUTO_TEST_CASE( contract )
 {
+  // Calculate the dimensions of the packed contraction
+  const int M = a2.range().finish().data().front();
+  const int N = a3.range().finish().data().back();
+  const int I = std::accumulate(a2.range().finish().begin() + 1,
+      a2.range().finish().end(), 1, std::multiplies<int>());
+
+  // Construct matrixes that match the packed dimensions of the to tiles.
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m2(M, I);
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m3(I, N);
+
+  for(int m = 0; m < M; ++m)
+    for(int i = 0; i < I; ++i)
+      m2(m, i) = 2;
+
+  for(int i = 0; i < I; ++i)
+    for(int n = 0; n < N; ++n)
+      m3(i, n) = 3;
+
+  // Do a test contraction.
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> mc = m2 * m3;
+
   typedef array2_type::range_type range2_type;
   typedef array2_type::index index2;
-  range2_type r2(index2(0), index2(a1.range().finish()[0],a2.range().finish()[0]));
+  range2_type r2(index2(0), index2(M, N));
   array2_type t;
-  std::shared_ptr<Contraction<std::size_t> > cont(new Contraction<std::size_t>(a1.vars(), a3.vars()));
+  std::shared_ptr<Contraction<std::size_t> > cont(new Contraction<std::size_t>(a2.vars(), a3.vars()));
   TileContract<array2_type, array_type, array_type> cont_op(cont);
 
   // Check scale operation
-  t = cont_op(a1.array(), a3.array());
+  t = cont_op(a2.array(), a3.array());
   for(array_type::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 75);
+    BOOST_CHECK_EQUAL(*it, mc(0,0));
 }
 
 

@@ -129,6 +129,8 @@ namespace TiledArray {
       typedef T tile_type;
       typedef typename tile_type::value_type value_type;
 
+      typedef tile_type result_type;
+
       // Compiler generated functions are OK here.
 
       tile_type operator()(const tile_type& left, const tile_type& right) const {
@@ -148,6 +150,8 @@ namespace TiledArray {
     struct TileMinus {
       typedef T tile_type;
       typedef typename tile_type::value_type value_type;
+
+      typedef tile_type result_type;
 
       // Compiler generated functions are OK here.
 
@@ -169,16 +173,20 @@ namespace TiledArray {
       typedef T tile_type;
       typedef typename tile_type::value_type value_type;
 
+      typedef tile_type result_type;
+      typedef const tile_type& argument_type;
+
+      TileScale(const value_type& value) : value_(value) { }
+
       // Compiler generated functions are OK here.
 
-      tile_type operator()(const value_type& left, const tile_type& right) const {
-        return left * right;
+      result_type operator()(argument_type arg) const {
+        return value_ * arg;
       }
 
-      tile_type operator()(const tile_type& left, const value_type& right) const {
-        return left * right;
-      }
-    }; // struct TileMinus
+    private:
+      value_type value_;
+    }; // struct TileScale
 
     template <typename Res, typename Left, typename Right>
     struct TileContract {
