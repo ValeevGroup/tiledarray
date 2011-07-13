@@ -45,7 +45,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 }
 
-BOOST_AUTO_TEST_CASE( addition )
+BOOST_AUTO_TEST_CASE( binary_addition )
 {
   BinaryOp<ArrayN, ArrayN, ArrayN, std::plus<ArrayN::value_type> >
     op(world, c.version(), std::plus<ArrayN::value_type>());
@@ -64,8 +64,29 @@ BOOST_AUTO_TEST_CASE( addition )
 }
 
 
-BOOST_AUTO_TEST_CASE( contraction )
+BOOST_AUTO_TEST_CASE( binary_contraction )
 {
+  // Calculate the dimensions of the packed contraction
+  const int M = a.elements().finish().data().front();
+  const int N = b.elements().finish().data().back();
+  const int I = std::accumulate(a.elements().finish().begin() + 1,
+      a.elements().finish().end(), 1, std::multiplies<int>());
+
+  // Construct matrixes that match the packed dimensions of the to tiles.
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m2(M, I);
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m3(I, N);
+
+  for(int m = 0; m < M; ++m)
+    for(int i = 0; i < I; ++i)
+      m2(m, i) = 2;
+
+  for(int i = 0; i < I; ++i)
+    for(int n = 0; n < N; ++n)
+      m3(i, n) = 3;
+
+  // Do a test contraction.
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> mc = m2 * m3;
+
   BinaryOp<Array2, ArrayN, ArrayN, TileContract<Array2::value_type, ArrayN::value_type, ArrayN::value_type> >
     op(world, c.version());
 
@@ -77,7 +98,25 @@ BOOST_AUTO_TEST_CASE( contraction )
       madness::Future<Array2::value_type> tile = c2.find(*it);
 
       for(Array2::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
-        BOOST_CHECK_EQUAL(*it, 5);
+        BOOST_CHECK_EQUAL(*it, mc(0,0));
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( unary_scale )
+{
+  UnaryOp<ArrayN, ArrayN, TileScale<ArrayN::value_type> >
+    op(world, c.version(), TileScale<ArrayN::value_type>(2));
+
+  c = op(a(vars));
+
+  for(ArrayN::range_type::const_iterator it = c.tiles().begin(); it != c.tiles().end(); ++it) {
+
+    if(c.is_local(*it)) {
+      madness::Future<ArrayN::value_type> tile = c.find(*it);
+
+      for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
+        BOOST_CHECK_EQUAL(*it, 6);
     }
   }
 }
