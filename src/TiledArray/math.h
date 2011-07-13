@@ -3,6 +3,7 @@
 
 #include <TiledArray/annotated_array.h>
 #include <TiledArray/tiled_range.h>
+#include <TiledArray/permutation.h>
 #include <world/typestuff.h>
 #include <Eigen/Core>
 #include <functional>
@@ -178,14 +179,32 @@ namespace TiledArray {
 
       TileScale(const value_type& value) : value_(value) { }
 
-      // Compiler generated functions are OK here.
-
       result_type operator()(argument_type arg) const {
         return value_ * arg;
       }
 
     private:
       value_type value_;
+    }; // struct TileScale
+
+    template <typename T>
+    struct TilePermute {
+      typedef T tile_type;
+      typedef Permutation<tile_type::coordinate_system::dim> perm_type;
+
+      typedef tile_type result_type;
+      typedef const tile_type& argument_type;
+
+      TilePermute(const perm_type& p) : perm_(p) { }
+
+      result_type operator()(argument_type arg) const {
+        return perm_ ^ arg;
+      }
+
+      const perm_type& permu() const { return perm_; }
+
+    private:
+      perm_type perm_;
     }; // struct TileScale
 
     template <typename Res, typename Left, typename Right>
