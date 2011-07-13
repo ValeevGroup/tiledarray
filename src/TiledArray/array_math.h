@@ -251,6 +251,7 @@ namespace TiledArray {
               // Add to the list nodes involved in the reduction reduction group
               reduce_grp.push_back(left_.owner(left_index));
 
+              // Do the contraction on the left node.
               if(left_.is_local(left_index)) {
                 // Do the tile-tile contraction and add to local reduction list
                 local_reduce_op.add(world_->taskq.add(madness::make_task(make_cont_op(res_index),
@@ -259,21 +260,14 @@ namespace TiledArray {
             }
           }
 
-          // Do tile-contraction reduction
-          std::stringstream ss;
-
+          // Reduce contracted tile pairs
           if(local_reduce_op.size() != 0) {
-            TA_ASSERT(std::find_if(reduce_grp.begin(), reduce_grp.end(),
-                std::bind2nd(std::equal_to<ProcessID>(), world_->rank())) != reduce_grp.end(),
-                std::runtime_error, "This node is not in the group to be reduced.");
-
+            // Local reduction
             madness::Future<typename ResArray::value_type> local_red = local_reduce_op();
 
+            // Remote reduction
             result_.reduce(res_index, local_red, reduce_grp.begin(),
                 reduce_grp.end(), addtion_op_type());
-          } else {
-            TA_ASSERT(std::find_if(reduce_grp.begin(), reduce_grp.end(), std::bind2nd(std::equal_to<ProcessID>(), world_->rank())) == reduce_grp.end(),
-                std::runtime_error, "This node is not in the group to be reduced.");
           }
         }
 
@@ -339,7 +333,7 @@ namespace TiledArray {
       private:
 
         std::shared_ptr<ArrayOpImpl> pimpl_;
-      };
+      }; // struct ArrayOp
 
 
       madness::World* world_;
