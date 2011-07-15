@@ -167,22 +167,29 @@ namespace TiledArray {
         return *this;
       }
 
-      ResArray operator()(const left_array_type& left, const right_array_type& right) {
+      result_array_type operator()(const left_array_type& left, const right_array_type& right) {
         TA_ASSERT(left.array().tiling() == right.array().tiling(), std::runtime_error,
             "The tiling of left and right arrays in binary operations must be identical.");
 
+        // Construct the contraction definition.
         std::shared_ptr<cont_type> cont(new cont_type(left.vars(), right.vars()));
 
+        // Construct the result array.
         typename ResArray::tiled_range_type tiling;
         cont->contract_trange(tiling, left.array().tiling(), right.array().tiling());
-
         ResArray result(*world_, tiling, cont, left.array(), right.array(), version_);
 
+        // Contract the variable list
+        std::array<std::string, ResArray::coordinate_system::dim> vars;
+        cont->contract_array(vars, left.vars().data(), right.vars().data());
+
+        // Construct the array contraction operation
         ArrayOp array_op(cont, result, left, right);
 
+        // Submit the array and operation to the task queue.
         world_->taskq.for_each(array_op.range(), array_op);
 
-        return result;
+        return result(expressions::VariableList(vars.begin(),vars.end()));
       }
 
       template <typename Archive>

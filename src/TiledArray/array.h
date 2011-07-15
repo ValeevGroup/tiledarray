@@ -139,6 +139,10 @@ namespace TiledArray {
       pimpl_(other.pimpl_)
     { }
 
+    Array(const expressions::AnnotatedArray<Array_>& other) :
+      pimpl_(other.array().pimpl_)
+    { }
+
     /// Copy constructor
 
     /// This is a shallow copy, that is no data is copied.
