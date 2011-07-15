@@ -47,7 +47,7 @@ namespace TiledArray {
       /// \throw std::runtime_error When the dimensions of the array and
       /// variable list are not equal.
       AnnotatedArray(array_type& a, const VariableList& v) :
-          array_(&a), vars_(new VariableList(v))
+          array_(a), vars_(v)
       {
         TA_ASSERT(array_type::coordinate_system::dim == v.dim(), std::runtime_error,
             "The dimensions of the array do not match the dimensions of the variable list.");
@@ -60,7 +60,7 @@ namespace TiledArray {
       /// \throw std::runtime_error When the dimensions of the array and
       /// variable list are not equal.
       AnnotatedArray(const array_type& a, const VariableList& v) :
-          array_(const_cast<array_type*>(&a)), vars_(new VariableList(v))
+          array_(a), vars_(v)
       {
         TA_ASSERT(array_type::coordinate_system::dim == v.dim(), std::runtime_error,
             "The dimensions of the array do not match the dimensions of the variable list.");
@@ -100,43 +100,41 @@ namespace TiledArray {
       /// Array object accessor
 
       /// \return A reference to the array object
-      array_type& array() { return *array_; }
+      array_type& array() { return array_; }
 
       /// Array object const accessor
 
       /// \return A const reference to the array object
-      const array_type& array() const { return *array_; }
+      const array_type& array() const { return array_; }
 
       /// Array range accessor
 
       /// \return A const reference to the range object.
-      const range_type& range() const { return array_->range(); }
+      const range_type& range() const { return array_.range(); }
 
       /// Array begin iterator
 
       /// \return An iterator to the first element of the array.
-      iterator begin() { return array_->begin(); }
+      iterator begin() { return array_.begin(); }
 
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return array_->begin(); }
+      const_iterator begin() const { return array_.begin(); }
 
       /// Array end iterator
 
       /// \return An iterator to one past the last element of the array.
-      iterator end() { return array_->end(); }
+      iterator end() { return array_.end(); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return array_->end(); }
+      const_iterator end() const { return array_.end(); }
 
       /// Variable annotation for the array.
-      const VariableList& vars() const { return *vars_; }
-
-      const std::shared_ptr<VariableList>& var_ptr() const { return vars_; }
+      const VariableList& vars() const { return vars_; }
 
       void swap(AnnotatedArray& other) {
         std::swap(array_, other.array_);
@@ -145,8 +143,8 @@ namespace TiledArray {
 
     private:
 
-      array_type* array_;       ///< pointer to the array object
-      std::shared_ptr<VariableList> vars_;        ///< variable list
+      array_type array_;  ///< pointer to the array object
+      VariableList vars_; ///< variable list
     }; // class AnnotatedArray
 
     /// Exchange the values of a0 and a1.

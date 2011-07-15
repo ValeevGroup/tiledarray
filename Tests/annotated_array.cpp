@@ -28,22 +28,6 @@ BOOST_AUTO_TEST_CASE( vars_accessor )
 {
   VariableList v(make_var_list());
   BOOST_CHECK_EQUAL(a.vars(), v);
-  BOOST_CHECK_EQUAL(* a.var_ptr(), v);
-}
-
-BOOST_AUTO_TEST_CASE( iterators )
-{
-  BOOST_CHECK( a.begin() == f1.begin() );
-  BOOST_CHECK( a.end() == f1.end() );
-}
-
-BOOST_AUTO_TEST_CASE( const_iterators )
-{
-  const array_type& cf1 = f1;
-  const array_annotation ca = a;
-
-  BOOST_CHECK( ca.begin() == cf1.begin() );
-  BOOST_CHECK( ca.end() == cf1.end() );
 }
 
 BOOST_AUTO_TEST_CASE( tile_data )
