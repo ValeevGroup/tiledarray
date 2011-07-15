@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
     if(a.is_local(*it)) {
       if(data.size() < range.volume())
         data.resize(range.volume(), 1);
-      a.set(*it, data.begin(), data.begin() + range.volume());
+      a.set(*it, data.begin());
 
       madness::Future<ArrayN::value_type> tile = a.find(*it);
       BOOST_CHECK(tile.probe());

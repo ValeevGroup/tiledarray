@@ -78,7 +78,8 @@ namespace TiledArray {
       /// of tiles to be added to the sparse array.
       /// \param v The version number of the array
       template <typename InIter>
-      ArrayImpl(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, unsigned int v) :
+      ArrayImpl(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, unsigned int v,
+        typename madness::enable_if<is_iterator<InIter>, void*>::type = NULL) :
           WorldReduce_(w),
           tiled_range_(tr),
           pmap_(w.size(), v),
@@ -95,8 +96,10 @@ namespace TiledArray {
       /// \param last An input iterator that points to the last position in a list
       /// of tiles to be added to the sparse array.
       /// \param v The version number of the array
-      ArrayImpl(madness::World& w, const tiled_range_type& tr, const std::shared_ptr<ArrayImpl_>& left,
-        const std::shared_ptr<ArrayImpl_>& right, unsigned int v) :
+      template <typename LT, typename LCS, typename LP, typename RT, typename RCS, typename RP>
+      ArrayImpl(madness::World& w, const tiled_range_type& tr,
+        const std::shared_ptr<ArrayImpl<LT, LCS, LP> >& left,
+        const std::shared_ptr<ArrayImpl<RT, RCS, RP> >& right, unsigned int v) :
           WorldReduce_(w),
           tiled_range_(tr),
           pmap_(w.size(), v),
@@ -116,12 +119,24 @@ namespace TiledArray {
           tiles_()
       { initialize_(); }
 
+      template <typename ArrayArgImpl>
       ArrayImpl(madness::World& w, const tiled_range_type& tr,
-        const std::shared_ptr<ArrayImpl_>& arg, unsigned int v) :
+        const std::shared_ptr<ArrayArgImpl>& arg, unsigned int v) :
           WorldReduce_(w),
           tiled_range_(tr),
           pmap_(w.size(), v),
           shape_(shape_copy<CS>(w, tiled_range_.tiles(), pmap_, *(arg->shape_))),
+          tiles_()
+      { initialize_(); }
+
+      template <typename ArrayArgImpl>
+      ArrayImpl(madness::World& w, const tiled_range_type& tr,
+        const Permutation<coordinate_system::dim>& perm,
+        const std::shared_ptr<ArrayArgImpl>& arg, unsigned int v) :
+          WorldReduce_(w),
+          tiled_range_(tr),
+          pmap_(w.size(), v),
+          shape_(shape_permute<CS>(w, tiled_range_.tiles(), pmap_, perm, *(arg->shape_))),
           tiles_()
       { initialize_(); }
 
@@ -208,8 +223,8 @@ namespace TiledArray {
       /// \throw std::runtime_error When \c first \c - \c last is not equal to the
       /// volume of the tile at \c i
       template <typename Index, typename InIter>
-      void set(const Index& i, InIter first, InIter last) {
-        set_value(i, policy::construct_value(tiled_range_.make_tile_range(i), first, last));
+      void set(const Index& i, InIter first) {
+        set_value(i, policy::construct_value(tiled_range_.make_tile_range(i), first));
       }
 
 

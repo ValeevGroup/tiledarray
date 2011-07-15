@@ -98,6 +98,13 @@ namespace TiledArray {
             madness::make_deferred_deleter<impl_type>(w))
     { }
 
+    Array(madness::World& w, const tiled_range_type& tr,
+      const Permutation<coordinate_system::dim>& perm, const Array_& arg,
+      unsigned int v) :
+        pimpl_(new impl_type(w, tr, perm, arg.pimpl_, v),
+            madness::make_deferred_deleter<impl_type>(w))
+    { }
+
   public:
 
     /// Dense array constructor
@@ -173,8 +180,8 @@ namespace TiledArray {
     /// \tparam Index \c index or an integral type
     /// \tparam InIter An input iterator
     template <typename Index, typename InIter>
-    void set(const Index& i, InIter first, InIter last) {
-      pimpl_->set(i, first, last);
+    void set(const Index& i, InIter first) {
+      pimpl_->set(i, first);
     }
 
     template <typename Index>
@@ -329,8 +336,8 @@ namespace TiledArray {
       }
 
       template <typename InIter>
-      static value_type construct_value(const range_type& r, InIter first, InIter last) {
-        return value_type(r, first, last);
+      static value_type construct_value(const range_type& r, InIter first) {
+        return value_type(r, first);
       }
 
       static value_type construct_value(const range_type& r, T value) {

@@ -12,6 +12,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   range.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
+                  transform_iterator.cpp \
                   tile.cpp \
                   bitset.cpp \
                   versioned_pmap.cpp \

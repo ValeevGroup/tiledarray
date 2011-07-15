@@ -6,6 +6,7 @@
 #include <TiledArray/annotated_array.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/math.h>
+#include <TiledArray/transform_iterator.h>
 #include <Eigen/Core>
 #include <world/sharedptr.h>
 #include <world/archive.h>
@@ -77,13 +78,14 @@ namespace TiledArray {
         first_(NULL),
         last_(NULL)
     {
-      if(range_.volume()) {
-        first_ = alloc_type::allocate(range_.volume());
-        last_ = first_ + range_.volume();
+      const volume_type n = range_.volume();
+      if(n) {
+        first_ = alloc_type::allocate(n);
+        last_ = first_ + n;
         try {
           std::uninitialized_copy(other.first_, other.last_, first_);
         } catch(...) {
-          alloc_type::deallocate(first_, other.range_.volume());
+          alloc_type::deallocate(first_, n);
           throw;
         }
       }
@@ -107,13 +109,14 @@ namespace TiledArray {
         first_(NULL),
         last_(NULL)
     {
-      if(range_.volume()) {
-        first_ = alloc_type::allocate(range_.volume());
-        last_ = first_ + range_.volume();
+      const volume_type n = range_.volume();
+      if(n) {
+        first_ = alloc_type::allocate(n);
+        last_ = first_ + n;
         try {
           std::uninitialized_fill(first_, last_, val);
         } catch (...) {
-          alloc_type::deallocate(first_, r.volume());
+          alloc_type::deallocate(first_, n);
           throw;
         }
       }
@@ -136,21 +139,23 @@ namespace TiledArray {
     /// \throw anything Any exceptions that can be thrown by \c T type default
     /// or copy constructors
     template <typename InIter>
-    Tile(const range_type& r, InIter first, InIter last, const alloc_type& a = alloc_type()) :
+    Tile(const range_type& r, InIter first, const alloc_type& a = alloc_type()) :
         alloc_type(a),
         range_(r),
         first_(NULL),
         last_(NULL)
     {
-      if(range_.volume()) {
-        first_ = alloc_type::allocate(range_.volume());
-        last_ = first_ + range_.volume();
+      const volume_type n = range_.volume();
+      if(n) {
+        first_ = alloc_type::allocate(n);
+        last_ = first_ + n;
+        pointer it = first_;
         try {
-          TA_ASSERT(volume_type(std::distance(first, last)) == r.volume(), std::runtime_error,
-              "The distance between initialization iterators must be equal to the tile volume.");
-          std::uninitialized_copy(first, last, first_);
+          for(; it != last_; ++it)
+            alloc_type::construct(it, *first++);
         } catch (...) {
-          alloc_type::deallocate(first_, r.volume());
+          destroy_(first_, it);
+          alloc_type::deallocate(first_, n);
           throw;
         }
       }
@@ -489,8 +494,14 @@ namespace TiledArray {
   /// \return A new tile where: \c result[i] \c == \c left[i] \c + \c right[i]
   /// \note The range of the two tiles must be equivalent
   template <typename T, typename CS, typename A>
-  inline Tile<T, CS, A> operator+(Tile<T, CS, A> left, const Tile<T, CS, A>& right) {
-    return left += right;
+  inline Tile<T, CS, A> operator+(const Tile<T, CS, A>& left, const Tile<T, CS, A>& right) {
+    if(left.range().volume() && right.range().volume()) {
+      TA_ASSERT(left.range() == right.range(), std::range_error, "Tile range must be equal.");
+      return Tile<T, CS, A>(left.range(), detail::make_tran_it(left.begin(), right.begin(),
+          std::plus<typename Tile<T, CS, A>::value_type>()));
+    }
+
+    return (left.range().volume() ? left : right);
   }
 
   /// Tile subtraction operator
@@ -504,8 +515,14 @@ namespace TiledArray {
   /// \return A new tile where: \c result[i] \c == \c left[i] \c - \c right[i]
   /// \note The range of the two tiles must be equivalent
   template <typename T, typename CS, typename A>
-  inline Tile<T, CS, A> operator-(Tile<T, CS, A> left, const Tile<T, CS, A>& right) {
-    return left -= right;
+  inline Tile<T, CS, A> operator-(const Tile<T, CS, A>& left, const Tile<T, CS, A>& right) {
+    if(left.range().volume() && right.range().volume()) {
+      TA_ASSERT(left.range() == right.range(), std::range_error, "Tile range must be equal.");
+      return Tile<T, CS, A>(left.range(), detail::make_tran_it(left.begin(), right.begin(),
+          std::minus<typename Tile<T, CS, A>::value_type>()));
+    }
+
+    return (left.range().volume() ? left : -right);
   }
 
   /// Tile negation operator
@@ -518,10 +535,8 @@ namespace TiledArray {
   /// \return A new tile where: \c result[i] \c == \c -arg[i]
   template <typename T, typename CS, typename A>
   inline Tile<T, CS, A> operator-(Tile<T, CS, A> arg) {
-    if(arg.range().volume() != 0)
-      std::transform(arg.begin(), arg.end(), arg.begin(), std::negate<T>());
-
-    return arg;
+    return Tile<T, CS, A>(arg.range(), detail::make_tran_it(arg.begin(),
+        std::negate<typename Tile<T, CS, A>::value_type>()));
   }
 
 
@@ -535,8 +550,9 @@ namespace TiledArray {
   /// \param right The right-hand, tile argument
   /// \return A new tile where: \c result[i] \c == \c left \c + \c right[i]
   template <typename T, typename CS, typename A>
-  inline Tile<T, CS, A> operator+(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
-    return right += left;
+  inline Tile<T, CS, A> operator+(const typename Tile<T, CS, A>::value_type& left, const Tile<T, CS, A>& right) {
+    return Tile<T, CS, A>(right.range(), detail::make_tran_it(right.begin(),
+        std::bind1st(std::plus<typename Tile<T, CS, A>::value_type>(), left)));
   }
 
   /// Tile scalar addition operator
@@ -549,8 +565,9 @@ namespace TiledArray {
   /// \param right The right-hand, scalar argument
   /// \return A new tile where: \c result[i] \c == \c left[i] \c + \c right
   template <typename T, typename CS, typename A>
-  inline Tile<T, CS, A> operator+(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
-    return left += right;
+  inline Tile<T, CS, A> operator+(const Tile<T, CS, A>& left, const typename Tile<T, CS, A>::value_type& right) {
+    return Tile<T, CS, A>(left.range(), detail::make_tran_it(left.begin(),
+        std::bind2nd(std::plus<typename Tile<T, CS, A>::value_type>(), right)));
   }
 
   /// Tile scalar subtraction operator
@@ -563,8 +580,9 @@ namespace TiledArray {
   /// \param right The right-hand, tile argument
   /// \return A new tile where: \c result[i] \c == \c left \c - \c right[i]
   template <typename T, typename CS, typename A>
-  inline Tile<T, CS, A> operator-(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
-    return (-right) += left;
+  inline Tile<T, CS, A> operator-(const typename Tile<T, CS, A>::value_type& left, const Tile<T, CS, A>& right) {
+    return Tile<T, CS, A>(right.range(), detail::make_tran_it(right.begin(),
+        std::bind1st(std::minus<typename Tile<T, CS, A>::value_type>(), left)));
   }
 
   /// Tile scalar subtraction operator
@@ -577,8 +595,9 @@ namespace TiledArray {
   /// \param right The right-hand, scalar argument
   /// \return A new tile where: \c result[i] \c == \c left[i] \c - \c right
   template <typename T, typename CS, typename A>
-  inline Tile<T, CS, A> operator-(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
-    return left -= right;
+  inline Tile<T, CS, A> operator-(const Tile<T, CS, A>& left, const typename Tile<T, CS, A>::value_type& right) {
+    return Tile<T, CS, A>(left.range(), detail::make_tran_it(left.begin(),
+        std::bind2nd(std::minus<typename Tile<T, CS, A>::value_type>(), right)));
   }
 
   /// Tile scale operator
@@ -591,8 +610,9 @@ namespace TiledArray {
   /// \param right The right-hand, tile argument
   /// \return A new tile where: \c result[i] \c == \c left \c - \c right[i]
   template <typename T, typename CS, typename A>
-  inline Tile<T, CS, A> operator*(const typename Tile<T, CS, A>::value_type& left, Tile<T, CS, A> right) {
-    return right *= left;
+  inline Tile<T, CS, A> operator*(const typename Tile<T, CS, A>::value_type& left, const Tile<T, CS, A>& right) {
+    return Tile<T, CS, A>(right.range(), detail::make_tran_it(right.begin(),
+        std::bind1st(std::multiplies<typename Tile<T, CS, A>::value_type>(), left)));
   }
 
   /// Tile scale operator
@@ -605,8 +625,9 @@ namespace TiledArray {
   /// \param right The right-hand, scalar argument
   /// \return A new tile where: \c result[i] \c == \c left[i] \c + \c right
   template <typename T, typename CS, typename A>
-  inline Tile<T, CS, A> operator*(Tile<T, CS, A> left, const typename Tile<T, CS, A>::value_type& right) {
-    return (left *= right);
+  inline Tile<T, CS, A> operator*(const Tile<T, CS, A>& left, const typename Tile<T, CS, A>::value_type& right) {
+    return Tile<T, CS, A>(left.range(), detail::make_tran_it(left.begin(),
+        std::bind2nd(std::multiplies<typename Tile<T, CS, A>::value_type>(), right)));
   }
 
   /// ostream output operator.

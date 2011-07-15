@@ -1,140 +1,411 @@
 #ifndef TILEDARRAY_TRANSFORM_ITERATOR_H__INCLUDED
 #define TILEDARRAY_TRANSFORM_ITERATOR_H__INCLUDED
 
-#include <TiledArray/error.h>
+#include <cstddef>
 #include <TiledArray/type_traits.h>
-#include <typeinfo>
-#include <iterator>
-#include <boost/iterator/iterator_facade.hpp>
-#include <boost/iterator/iterator_traits.hpp>
-#include <boost/scoped_ptr.hpp>
 
 namespace TiledArray {
   namespace detail {
 
-    /// Polymorphic transform iterator
+    namespace {
 
-    /// This iterator will transform an arbitrary iterator with an arbitrary
-    /// transformation function. The Value template parameter must be compatible
-    /// with the return type of the transformation function.
-    template<typename Value>
-    class PolyTransformIterator : public boost::iterator_facade<PolyTransformIterator<Value>,
-        Value, std::input_iterator_tag, Value>
-    {
-      // Convenience typedefs.
-      typedef boost::iterator_facade<PolyTransformIterator<Value>, Value, std::input_iterator_tag, Value> iterator_facade_;
-      typedef PolyTransformIterator<Value> PolyTransformIterator_;
+      /// Pointer proxy
 
-      // Forward declarations of internal classes
-      class HolderBase;
-      template<typename Iterator, typename Functor>
-      class Holder;
+      /// This object is a proxy object for the iterator pointer dereference.
+      /// It is necessary to for the transform iterators because they are
+      /// dereferenced to values, which is not compatible with the standard
+      /// iterator interface.
+      /// \tparam T The value type of the pointer proxy
+      template <typename T>
+      class PointerProxy {
+      public:
+        /// Constructor
 
-      /// Default constructor not allowed.
-      PolyTransformIterator();
+        /// \param value The pointer value
+        PointerProxy(const T& value) : value_(value) { }
+
+        /// Arrow operator
+
+        /// \return A pointer to the value
+        T* operator->() const { return &value_; }
+
+        /// Type conversion operator
+        operator T*() const { return &value_; }
+      private:
+        mutable T value_; ///< The value of the pointer
+      }; // class PointerProxy
+    } // namespace
+
+
+    /// Binary transform iterator
+
+    /// This iterator holds a pair of iterators that are transformed when
+    /// dereferenced with a binary transform object that is provided by the user.
+    /// The first iterator is the left-hand argument and the second is the
+    /// right-hand argument for the transform operator. The iterator dereferences
+    /// to the result type of the transform operations.
+    /// \tparam Iter1 First base iterator type of the transform iterator.
+    /// \tparam Iter1 Second base iterator type of the transform iterator.
+    /// \tparam Op The transform operator type.
+    template <typename Iter1, typename Iter2, typename Op>
+    class BinaryTransformIterator {
+    private:
+      // Give access to other Transform iterator types.
+      template <typename, typename, typename>
+      friend class BinaryTransformIterator;
 
     public:
-      // Iterator typedefs
-      typedef typename iterator_facade_::difference_type difference_type;
-      typedef typename iterator_facade_::value_type value_type;
-      typedef typename iterator_facade_::pointer pointer;
-      typedef typename iterator_facade_::reference reference;
-      typedef std::input_iterator_tag iterator_category;
+      typedef std::ptrdiff_t difference_type;                     ///< Difference type
+      typedef typename madness::result_of<Op>::type value_type;   ///< Iterator dereference value type
+      typedef PointerProxy<value_type> pointer;                   ///< Pointer type to iterator value
+      typedef value_type reference;                               ///< Reference type to iterator value
+      typedef std::input_iterator_tag iterator_category;          ///< Iterator category type
+      typedef BinaryTransformIterator<Iter1, Iter2, Op> this_type;///< This object type
+      typedef Iter1 base_iterator1;                               ///< First base iterator type
+      typedef Iter2 base_iterator2;                               ///< Second base iterator type
 
-      /// Construct from an iterator
-      template<typename Iterator, typename Functor>
-      PolyTransformIterator(const Iterator& it, const Functor& f) : holder_(new Holder<Iterator, Functor>(it, f)) {
-        TA_STATIC_ASSERT((std::is_same<typename std::iterator_traits<Iterator>::value_type, value_type>::value));
-      }
+      /// Constructor
+
+      /// \param it1 First base iterator
+      /// \param it2 Second base iterator
+      /// \param op The transform operator
+      BinaryTransformIterator(Iter1 it1, Iter2 it2, Op op = Op()) :
+          it1_(it1), it2_(it2), op_(op)
+      { }
 
       /// Copy constructor
-      PolyTransformIterator(const PolyTransformIterator_& other) : holder_(other.holder_->clone()) { }
 
-      /// Destructor
-      ~PolyTransformIterator() { delete holder_; }
+      /// \param other The transform iterator to copy
+      BinaryTransformIterator(const this_type& other) :
+          it1_(other.it1_), it2_(other.it2_), op_(other.op_)
+      { }
 
-      /// Assignment operator
-      PolyTransformIterator_& operator =(const PolyTransformIterator_& other) {
-        if(this != &other) {
-          delete holder_;
-          holder_ = other.holder_->clone();
-        }
+      /// Copy conversion constructor
+
+      /// This constructor allows copying when the base iterators are implicitly
+      /// convertible with each other.
+      /// \tparam It1 An iterator type that is implicitly convertible to
+      /// \c base_iterator1 type.
+      /// \tparam It2 An iterator type that is implicitly convertible to
+      /// \c base_iterator2 type.
+      /// \param other The transform iterator to copy
+      /// \note The operation type must be the same for both transform iterators.
+      template <typename It1, typename It2>
+      BinaryTransformIterator(const BinaryTransformIterator<It1, It2, Op>& other) :
+          it1_(other.it1_), it2_(other.it2_), op_(other.op_)
+      { }
+
+      /// Copy operator
+
+      /// \param other The transform iterator to copy
+      /// \return A reference to this object
+      this_type& operator=(const this_type& other) {
+        it1_ = other.it1_;
+        it2_ = other.it2_;
+        op_ = other.op_;
 
         return *this;
       }
 
+      /// Copy conversion operator
+
+      /// This operator allows copying when the base iterators are implicitly
+      /// convertible with each other.
+      /// \tparam It1 An iterator type that is implicitly convertible to
+      /// \c base_iterator1 type.
+      /// \tparam It2 An iterator type that is implicitly convertible to
+      /// \c base_iterator2 type.
+      /// \param other The transform iterator to copy
+      /// \note The operation type must be the same for both transform iterators.
+      template <typename It1, typename It2>
+      this_type& operator=(const BinaryTransformIterator<It1, It2, Op>& other) {
+        it1_ = other.it1_;
+        it2_ = other.it2_;
+        op_ = other.op_;
+
+        return *this;
+      }
+
+      /// Prefix increment operator
+
+      /// \return A reference to this object after it has been incremented.
+      this_type& operator++() {
+        increment();
+        return *this;
+      }
+
+      /// Postfix increment operator
+
+      /// \return A copy of this object before it is incremented.
+      this_type operator++(int) {
+        this_type tmp(*this);
+        increment();
+        return tmp;
+      }
+
+      /// Equality operator
+
+      /// \tparam It1 An iterator type that is implicitly convertible to
+      /// \c base_iterator1 type.
+      /// \tparam It2 An iterator type that is implicitly convertible to
+      /// \c base_iterator2 type.
+      /// \param other The iterator to compare to this iterator.
+      /// \return True when both base iterators are equal to that of \c other,
+      /// otherwise false.
+      template <typename It1, typename It2>
+      bool operator==(const BinaryTransformIterator<It1, It2, Op>& other) const {
+        return equal(other);
+      }
+
+      /// Inequality operator
+
+      /// \tparam It1 An iterator type that is implicitly convertible to
+      /// \c base_iterator1 type.
+      /// \tparam It2 An iterator type that is implicitly convertible to
+      /// \c base_iterator2 type.
+      /// \param other The iterator to compare to this iterator.
+      /// \return True when both base iterators are not equal to that of \c other,
+      /// otherwise false.
+      template <typename It1, typename It2>
+      bool operator!=(const BinaryTransformIterator<It1, It2, Op>& other) const {
+        return ! equal(other);
+      }
+
+      /// Dereference operator
+
+      /// \return A transformed copy of the current base iterators.
+      reference operator*() { return dereference(); }
+
+      /// Arrow dereference operator
+
+      /// \return A pointer to a transformed copy of the current base iterators.
+      pointer operator->() { return pointer(dereference()); }
+
+      /// First base iterator accessor
+
+      /// \return A copy of the first base iterator.
+      base_iterator1 base1() const { return it1_; }
+
+      /// Second base iterator accessor
+
+      /// \return A copy of the second base iterator.
+      base_iterator2 base2() const { return it2_; }
+
     private:
-      // Give boost::iterator_facade access to private member functions.
-      friend class boost::iterator_core_access;
+      /// Increment the base iterators
+      void increment() { ++it1_; ++it2_; }
 
-      /// Return a transformed object.
-      reference dereference() const {
-        return holder_->dereference();
+      /// Compare base iterators
+
+      /// \tparam It1 An iterator type that is implicitly convertible to
+      /// \c base_iterator1 type.
+      /// \tparam It2 An iterator type that is implicitly convertible to
+      /// \c base_iterator2 type.
+      /// \param other The iterator to compare to this iterator.
+      /// \return True when the base iterators are equal to each other, otherwise
+      /// false.
+      template <typename It1, typename It2>
+      bool equal(const BinaryTransformIterator<It1, It2, Op>& other) const {
+        return (it1_ == other.it1_) && (it2_ == other.it2_);
       }
 
-      /// Compare this iterator with another iterator
+      /// Iterator dereference
 
-      /// If the base iterators used to construct the transformation iterator
-      /// have the same type, then the iterators are compared using the ==
-      /// operator. Otherwise, they are compared with void pointers to the base
-      /// iterator's to the data pointed to by those iterators.
-      template<typename OtherValue>
-      bool equal(const PolyTransformIterator<OtherValue>& other) const {
-        if(holder_->type() == other.holder_->type())
-          return holder_->equal(other.holder_);
+      /// \return A transformed copy of the current base iterators.
+      reference dereference() const { return op_(*it1_, *it2_); }
 
-        return holder_->void_ptr() == other.holder_->void_ptr();
+      base_iterator1 it1_;  ///< First base iterator
+      base_iterator2 it2_;  ///< Second base iterator
+      Op op_;               ///< Transform operation object
+    }; // class BinaryTransformIterator
+
+
+    /// Unary transform iterator
+
+    /// This iterator holds an iterator that is transformed when dereferenced
+    /// with a unary transform object that is provided by the user. The iterator
+    /// dereferences to the result type of the transform operations.
+    /// \tparam Iter The base iterator type of the transform iterator.
+    /// \tparam Op The transform operator type.
+    template <typename Iter, typename Op>
+    class UnaryTransformIterator {
+    private:
+      // Give access to other Transform iterator types.
+      template <typename, typename>
+      friend class UnaryTransformIterator;
+
+    public:
+      typedef ptrdiff_t difference_type;                        ///< Difference type
+      typedef typename madness::result_of<Op>::type value_type; ///< Iterator dereference value type
+      typedef PointerProxy<value_type> pointer;                 ///< Pointer type to iterator value
+      typedef value_type reference;                             ///< Reference type to iterator value
+      typedef std::input_iterator_tag iterator_category;        ///< Iterator category type
+      typedef UnaryTransformIterator<Iter, Op> this_type;       ///< This object type
+      typedef Iter base_iterator;                               ///< The base iterator type
+
+      /// Constructor
+
+      /// \param it The base iterator
+      /// \param op The transform operator
+      UnaryTransformIterator(Iter it, Op op = Op()) :
+          it_(it), op_(op)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The transform iterator to copy
+      UnaryTransformIterator(const this_type& other) :
+          it_(other.it_), op_(other.op_)
+      { }
+
+      /// Copy conversion constructor
+
+      /// This constructor allows copying when the base iterators are implicitly
+      /// convertible with each other.
+      /// \tparam It An iterator type that is implicitly convertible to
+      /// \c base_iterator type.
+      /// \param other The transform iterator to copy
+      /// \note The operation type must be the same for both transform iterators.
+      template <typename It>
+      UnaryTransformIterator(const UnaryTransformIterator<It, Op>& other) :
+          it_(other.it_), op_(other.op_)
+      { }
+
+      /// Copy operator
+
+      /// \param other The transform iterator to copy
+      /// \return A reference to this object
+      this_type& operator=(const this_type& other) {
+        it_ = other.it_;
+        op_ = other.op_;
+
+        return *this;
       }
 
-      /// Increment the base pointer.
-      void increment() {
-        holder_->increment();
+      /// Copy conversion operator
+
+      /// This operator allows copying when the base iterators are implicitly
+      /// convertible with each other.
+      /// \tparam It An iterator type that is implicitly convertible to
+      /// \c base_iterator .
+      /// \param other The transform iterator to copy
+      /// \note The operation type must be the same for both transform iterators.
+      template <typename It>
+      this_type& operator=(const UnaryTransformIterator<It, Op>& other) {
+        it_ = other.it_;
+        op_ = other.op_;
+
+        return *this;
       }
 
-      HolderBase* holder_;  ///< Base pointer to the iterator/transform function holder.
+      /// Prefix increment operator
 
-      /// Provides the interface to the iterator/transformation function holder.
-      class HolderBase
-      {
-      public:
-        virtual ~HolderBase() { }
+      /// \return A reference to this object after it has been incremented.
+      this_type& operator++() {
+        increment();
+        return *this;
+      }
 
-        /// Returns the type_info object of the base iterator.
-        virtual const std::type_info& type() const = 0;
-        /// Returns a base pointer to a copy of the actual object.
-        virtual HolderBase* clone() const = 0;
-        virtual reference dereference() const = 0;
-        virtual bool equal(const HolderBase* other) const = 0;
-        virtual const void* void_ptr() const = 0;
-        virtual void increment() = 0;
-      }; // class holder_base
+      /// Postfix increment operator
 
-      template<typename Iterator, typename Functor>
-      class Holder : public HolderBase
-      {
-        typedef Iterator iterator_type;
-        typedef Functor functor_type;
-        typedef Holder<Iterator, Functor> Holder_;
-      public:
+      /// \return A copy of this object before it is incremented.
+      this_type operator++(int) {
+        this_type tmp(*this);
+        increment();
+        return tmp;
+      }
 
-        Holder(const iterator_type& iter, const functor_type& f) : it_(iter), f_(f) { }
-        virtual ~Holder() { }
+      /// Equality operator
 
-        virtual const std::type_info& type() const { return typeid(it_); }
-        virtual HolderBase* clone() const { return new Holder_(it_, f_); }
-        virtual reference dereference() const { return f_(*it_); }
-        virtual void increment() { ++it_; }
-        virtual bool equal(const HolderBase* other) const {
-          const Holder_* h = dynamic_cast<const Holder_*>(other);
-          return it_ == h->it_;
-        }
-        virtual const void* void_ptr() const { return static_cast<const void*>(&(*it_)); }
+      /// \tparam It An iterator type that is implicitly convertible to
+      /// \c base_iterator type.
+      /// \param other The iterator to compare to this iterator.
+      /// \return True when the base iterators are equal to each other, otherwise
+      /// false.
+      template <typename It>
+      bool operator==(const UnaryTransformIterator<It, Op>& other) const {
+        return equal(other);
+      }
 
-        iterator_type it_;
-        functor_type f_;
-      }; // class holder
+      /// Inequality operator
 
-    }; // class PolyTransformIterator
+      /// \tparam It An iterator type that is implicitly convertible to
+      /// \c base_iterator type.
+      /// \param other The iterator to compare to this iterator.
+      /// \return True when the base iterators are not equal to each other,
+      /// otherwise false.
+      template <typename It>
+      bool operator!=(const UnaryTransformIterator<It, Op>& other) const {
+        return ! equal(other);
+      }
+
+      /// Dereference operator
+
+      /// \return A transformed copy of the current base iterator value.
+      reference operator*() const { return dereference(); }
+
+      /// Arrow dereference operator
+
+      /// \return A pointer to a transformed copy of the current base iterator
+      /// value.
+      pointer operator->() const { return pointer(dereference()); }
+
+      /// Base iterator accessor
+
+      /// \return A copy of the base iterator.
+      base_iterator base() const { return it_; }
+
+    private:
+
+      /// Increment the base iterator
+      void increment() { ++it_; }
+
+      /// Compare base iterators
+
+      /// \tparam It An iterator type that is implicitly convertible to
+      /// \c base_iterator type.
+      /// \param other The iterator to compare to this iterator.
+      /// \return True when the base iterators are equal to each other, otherwise
+      /// false.
+      template <typename It>
+      bool equal(const UnaryTransformIterator<It, Op>& other) const {
+        return it_ == other.it_;
+      }
+
+      /// Iterator dereference
+
+      /// \return A transformed copy of the current value of the base iterator.
+      reference dereference() const { return op_(*it_); }
+
+      base_iterator it_;  ///< The base iterator
+      Op op_;             ///< The transform operation object
+    }; // class BinaryTransformIterator
+
+    /// Binary Transform iterator factory
+
+    /// \tparam Iter1 First iterator type
+    /// \tparam Iter2 Second iterator type
+    /// \tparam Op The binary transform type
+    /// \param it1 First iterator
+    /// \param it2 Second iterator
+    /// \param op The binary transform object
+    /// \return A binary transform iterator
+    template <typename Iter1, typename Iter2, typename Op>
+    BinaryTransformIterator<Iter1, Iter2, Op> make_tran_it(Iter1 it1, Iter2 it2, Op op) {
+      return BinaryTransformIterator<Iter1, Iter2, Op>(it1, it2, op);
+    }
+
+    /// Unary Transform iterator factory
+
+    /// \tparam Iter The iterator type
+    /// \tparam Op The binary transform type
+    /// \param it The iterator
+    /// \param op The binary transform object
+    /// \return A unary transform iterator
+    template <typename Iter, typename Op>
+    UnaryTransformIterator<Iter, Op> make_tran_it(Iter it, Op op) {
+      return UnaryTransformIterator<Iter, Op>(it, op);
+    }
 
   } // namespace detail
 } // namespace TiledArray
