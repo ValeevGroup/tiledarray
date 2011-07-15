@@ -42,11 +42,11 @@ namespace TiledArray {
 
       BinaryOp(madness::World& world, unsigned int version, const Op& op) :
           world_(&world), version_(version + 1), op_(op)
-      {}
+      { }
 
       BinaryOp(const BinaryOp_& other) :
           world_(other.world_), version_(other.version_), op_(other.op_)
-      {}
+      { }
 
       BinaryOp_& operator=(const BinaryOp_& other) {
         world_ = other.world_;
@@ -55,7 +55,7 @@ namespace TiledArray {
         return *this;
       }
 
-      ResArray operator()(const left_array_type& left, const right_array_type& right) {
+      result_array_type operator()(const left_array_type& left, const right_array_type& right) {
         TA_ASSERT(left.array().tiling() == right.array().tiling(), std::runtime_error,
             "The tiling of left and right arrays in binary operations must be identical.");
 
@@ -67,7 +67,7 @@ namespace TiledArray {
         world_->taskq.for_each(madness::Range<typename left_array_type::range_type::volume_type>(0,
             result.tiles().volume()), array_op);
 
-        return result;
+        return result(left.vars());
       }
 
       template <typename Archive>
@@ -363,7 +363,7 @@ namespace TiledArray {
         return *this;
       }
 
-      ResArray operator()(const arg_array_type& arg) {
+      result_array_type operator()(const arg_array_type& arg) {
 
         // Construct the new array
         ResArray result(*world_, arg.array().tiling(), arg.array(), version_);
@@ -372,7 +372,7 @@ namespace TiledArray {
         world_->taskq.for_each(madness::Range<typename ResArray::iterator>(
             result.begin(), result.end()), array_op);
 
-        return result;
+        return result(arg.vars());
       }
 
       template <typename Archive>
@@ -447,7 +447,7 @@ namespace TiledArray {
         return *this;
       }
 
-      ResArray operator()(const arg_array_type& arg) {
+      result_array_type operator()(const arg_array_type& arg) {
         std::vector<typename ArgArray::ordinal_index> local_tiles;
 
 
@@ -455,11 +455,15 @@ namespace TiledArray {
         ResArray result(*world_, op_.perm() ^ arg.array().tiling(), op_.perm(),
             arg.array(), version_);
 
+        // Construct result variable list
+        std::array<std::string, ResArray::coordinate_system> vars;
+
+
         ArrayOp array_op(result, arg, op_);
         world_->taskq.for_each(madness::Range<typename ResArray::iterator>(
             result.begin(), result.end()), array_op);
 
-        return result;
+        return result(op_.perm() ^ arg.vars());
       }
 
       template <typename Archive>

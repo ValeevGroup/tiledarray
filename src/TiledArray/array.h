@@ -148,6 +148,10 @@ namespace TiledArray {
       return *this;
     }
 
+    Array_& operator=(const expressions::AnnotatedArray<Array_>& other) {
+      return operator=(other.array());
+    }
+
     /// Begin iterator factory function
 
     /// \return An iterator to the first local tile.
