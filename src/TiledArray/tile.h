@@ -370,36 +370,6 @@ namespace TiledArray {
     /// \throw nothing
     const range_type& range() const { return range_; }
 
-    /// Create an annotated tile
-
-    /// \param v A string with a comma-separated list of variables.
-    expressions::AnnotatedArray<Tile_> operator ()(const std::string& v) {
-      return expressions::AnnotatedArray<Tile_>(*this,
-          expressions::VariableList(v));
-    }
-
-    /// Create an annotated tile
-
-    /// \param v A string with a comma-separated list of variables.
-    const expressions::AnnotatedArray<Tile_> operator ()(const std::string& v) const {
-      return expressions::AnnotatedArray<Tile_>(* const_cast<Tile_*>(this),
-          expressions::VariableList(v));
-    }
-
-    /// Create an annotated tile
-
-    /// \param v A variable list object.
-    expressions::AnnotatedArray<Tile_> operator ()(const expressions::VariableList& v) {
-      return expressions::AnnotatedArray<Tile_>(*this, v);
-    }
-
-    /// Create an annotated tile
-
-    /// \param v A variable list object.
-    const expressions::AnnotatedArray<Tile_> operator ()(const expressions::VariableList& v) const {
-      return expressions::AnnotatedArray<Tile_>(* const_cast<Tile_*>(this), v);
-    }
-
     /// Exchange the content of this object with other.
 
     /// \param other The other Tile to swap with this object
