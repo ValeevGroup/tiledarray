@@ -115,19 +115,6 @@ namespace TiledArray {
       typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
     }; // struct binary_functor_types
 
-    template <typename C>
-    struct ContainerTraits {
-      typedef typename C::value_type              value_type;
-      typedef typename C::iterator                iterator;
-      typedef typename C::const_iterator          const_iterator;
-      typedef typename C::reverse_iterator        reverse_iterator;
-      typedef typename C::const_reverse_iterator  const_reverse_iterator;
-      typedef typename C::reference               reference;
-      typedef typename C::const_reference         const_reference;
-      typedef typename C::size_type               size_type;
-      typedef typename C::difference_type         difference_type;
-    }; // ContainerTraits
-
   } // namespace detail
 } // namespace TiledArray
 #endif // TILEDARRAY_TYPE_TRAITS_H__INCLUDED
