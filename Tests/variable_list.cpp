@@ -326,46 +326,4 @@ BOOST_AUTO_TEST_CASE( common )
   BOOST_CHECK(p2.second == v_i.end());
 }
 
-BOOST_AUTO_TEST_CASE( math_functors ) {
-
-  // check variable list contractions
-  VariableList vr3;
-  vr3 = v_aib * v_xiy;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a,x,b,y"));
-  vr3 = v_aib * v_xi;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a,x,b"));
-  vr3 = v_aib * v_ix;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a,b,x"));
-  vr3 = v_aib * v_i;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a,b"));
-  vr3 = v_aib * v_0;
-  BOOST_CHECK_EQUAL(vr3, v_aib);
-  vr3 = v_ai * v_xiy;
-  BOOST_CHECK_EQUAL(vr3, VariableList("x,a,y"));
-  vr3 = v_ai * v_xi;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a,x"));
-  vr3 = v_ai * v_ix;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a,x"));
-  vr3 = v_ai * v_i;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a"));
-  vr3 = v_ia * v_xiy;
-  BOOST_CHECK_EQUAL(vr3, VariableList("x,a,y"));
-  vr3 = v_ia * v_xi;
-  BOOST_CHECK_EQUAL(vr3, VariableList("x,a"));
-  vr3 = v_ia * v_ix;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a,x"));
-  vr3 = v_ia * v_i;
-  BOOST_CHECK_EQUAL(vr3, VariableList("a"));
-  vr3 = v_ia * v_0;
-  BOOST_CHECK_EQUAL(vr3, VariableList("i,a"));
-  vr3 = v_i * v_xiy;
-  BOOST_CHECK_EQUAL(vr3, VariableList("x,y"));
-  vr3 = v_i * v_xi;
-  BOOST_CHECK_EQUAL(vr3, VariableList("x"));
-  vr3 = v_i * v_ix;
-  BOOST_CHECK_EQUAL(vr3, VariableList("x"));
-  vr3 = v_i * v_i;
-  BOOST_CHECK_EQUAL(vr3, v_0);
-}
-
 BOOST_AUTO_TEST_SUITE_END()
