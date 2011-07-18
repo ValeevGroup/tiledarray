@@ -3,7 +3,6 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/range.h>
-#include <TiledArray/annotated_array.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/math.h>
 #include <TiledArray/transform_iterator.h>
