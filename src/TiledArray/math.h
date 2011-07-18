@@ -1,9 +1,9 @@
 #ifndef TILEDARRAY_MATH_H__INCLUDED
 #define TILEDARRAY_MATH_H__INCLUDED
 
-#include <TiledArray/annotated_array.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/variable_list.h>
 #include <world/typestuff.h>
 #include <Eigen/Core>
 #include <functional>
