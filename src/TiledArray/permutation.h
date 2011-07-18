@@ -4,9 +4,8 @@
 #include <TiledArray/error.h>
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/utility.h>
-#include <boost/utility/enable_if.hpp>
+#include <world/enable_if.h>
 #include <TiledArray/type_traits.h>
-#include <boost/concept_check.hpp>
 //#include <iosfwd>
 //#include <algorithm>
 #include <vector>
@@ -62,7 +61,7 @@ namespace TiledArray {
     }
 
     template <typename InIter>
-    Permutation(InIter first, typename boost::enable_if<detail::is_input_iterator<InIter>, Enabler >::type = Enabler()) {
+    Permutation(InIter first, typename madness::enable_if<detail::is_input_iterator<InIter>, Enabler >::type = Enabler()) {
       for(std::size_t d = 0; d < DIM; ++d, ++first)
         p_[d] = *first;
       TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
@@ -348,11 +347,11 @@ namespace TiledArray {
 
     private:
       template <typename T>
-      typename boost::enable_if<std::is_fundamental<T> >::type
+      typename madness::enable_if<std::is_fundamental<T> >::type
       copy_data(T* p) { *p = *current_++; }
 
       template <typename T>
-      typename boost::disable_if<std::is_fundamental<T> >::type
+      typename madness::disable_if<std::is_fundamental<T> >::type
       copy_data(T* p) { alloc_.construct(p, *current_++); }
 
       InIter current_;
