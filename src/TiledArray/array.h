@@ -4,6 +4,7 @@
 #include <TiledArray/tile.h>
 #include <TiledArray/array_impl.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/annotated_array.h>
 #include <world/sharedptr.h>
 
 namespace TiledArray {
