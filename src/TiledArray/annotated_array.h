@@ -2,6 +2,7 @@
 #define TILEDARRAY_ANNOTATED_ARRAY_H__INCLUDED
 
 #include <TiledArray/variable_list.h>
+#include <TiledArray/expressions.h>
 #include <world/sharedptr.h>
 
 namespace TiledArray {
@@ -9,8 +10,6 @@ namespace TiledArray {
 
     template <typename>
     class AnnotatedArray;
-    template <typename>
-    class Expression;
     template <typename T>
     void swap(AnnotatedArray<T>&, AnnotatedArray<T>&);
 
@@ -30,30 +29,20 @@ namespace TiledArray {
       typedef typename coordinate_system::ordinal_index ordinal_index;
       typedef typename coordinate_system::size_array    size_array;
 
-      typedef T array_type;
+      typedef T                                         array_type;
       typedef typename array_type::value_type           value_type;
       typedef typename array_type::iterator             iterator;
       typedef typename array_type::const_iterator       const_iterator;
       typedef typename array_type::range_type           range_type;
 
+      typedef const AnnotatedArray_& result_type;
+
     private:
       AnnotatedArray();
 
     public:
-      /// Primary constructor
 
-      /// \param a A const reference to an array_type object
-      /// \param v A const reference to a variable list object
-      /// \throw std::runtime_error When the dimensions of the array and
-      /// variable list are not equal.
-      AnnotatedArray(array_type& a, const VariableList& v) :
-          array_(a), vars_(v)
-      {
-        TA_ASSERT(array_type::coordinate_system::dim == v.dim(), std::runtime_error,
-            "The dimensions of the array do not match the dimensions of the variable list.");
-      }
-
-      /// Default constructor
+      /// Constructor
 
       /// \param a A const reference to an array_type object
       /// \param v A const reference to a variable list object
@@ -85,17 +74,7 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Assign the result of the given expression to this object.
-
-      /// The expression is evaluated and the results are assigned the array
-      /// here.
-      /// \tparam ExpType The type of the expression
-      /// \param exp The expression that will be evaluated and assigned to the array
-      /// \return This annotated array object
-      template <typename ExpType>
-      AnnotatedArray_& operator =(const Expression<ExpType>& exp) {
-        return exp.eval(*this);
-      }
+      result_type eval() const { return *this; }
 
       /// Array object accessor
 
