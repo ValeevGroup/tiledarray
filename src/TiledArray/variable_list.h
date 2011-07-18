@@ -3,10 +3,8 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/permutation.h>
-//#include <TiledArray/coordinate_system.h>
 #include <vector>
 #include <string>
-#include <map>
 #include <algorithm>
 #include <iosfwd>
 
@@ -279,49 +277,6 @@ namespace TiledArray {
         return Permutation<DIM>(a.begin());
       }
     } // namespace detail
-
-    inline VariableList operator *(const VariableList& left, const VariableList& right) {
-      typedef VariableList::const_iterator iterator;
-      typedef std::pair<iterator, iterator> it_pair;
-
-      it_pair c0(left.end(), left.end());
-      it_pair c1(right.end(), right.end());
-      detail::find_common(left.begin(), left.end(), right.begin(), right.end(), c0, c1);
-
-      std::size_t n0 = 2 * left.dim() + 1;
-      std::size_t n1 = 2 * right.dim();
-
-      std::map<std::size_t, std::string> v;
-      std::pair<std::size_t, std::string> p;
-      for(iterator it = left.begin(); it != c0.first; ++it, n0 -= 2) {
-        p.first = n0;
-        p.second = *it;
-        v.insert(p);
-      }
-      for(iterator it = right.begin(); it != c1.first; ++it, n1 -= 2) {
-        p.first = n1;
-        p.second = *it;
-        v.insert(p);
-      }
-      n0 -= 2 * (c0.second - c0.first);
-      n1 -= 2 * (c1.second - c1.first);
-      for(iterator it = c0.second; it != left.end(); ++it, n0 -= 2) {
-        p.first = n0;
-        p.second = *it;
-        v.insert(p);
-      }
-      for(iterator it = c1.second; it != right.end(); ++it, n1 -= 2) {
-        p.first = n1;
-        p.second = *it;
-        v.insert(p);
-      }
-
-      std::vector<std::string> temp;
-      for(std::map<std::size_t, std::string>::reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
-        temp.push_back(it->second);
-
-      return expressions::VariableList(temp.begin(), temp.end());
-    }
 
     /// ostream VariableList output orperator.
     inline std::ostream& operator <<(std::ostream& out, const VariableList& v) {
