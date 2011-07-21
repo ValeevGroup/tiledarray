@@ -187,7 +187,8 @@ namespace TiledArray {
 
     /// \param s The size array for which the weight will be calculated
     /// \return The range weight array
-    static size_array calc_weight(const size_array& s) { // no throw
+    template <typename SArray>
+    static size_array calc_weight(const SArray& s) { // no throw
       size_array r;
       calc_weight_(begin(s), end(s), begin(r));
       return r;
@@ -201,7 +202,8 @@ namespace TiledArray {
     /// \note The returned ordinal index assumes the range start is at
     /// (0,0,...,0). If this is not the case, the start coordinate should be
     /// added to the returned index.
-    static index calc_index(ordinal_index i, const size_array& w) {
+    template <typename SArray>
+    static index calc_index(ordinal_index i, const SArray& w) {
       index r;
       calc_index_(i, rbegin(w), rend(w), rbegin(r));
       return r;
@@ -213,7 +215,8 @@ namespace TiledArray {
     /// calculated.
     /// \param w The weight array for the range.
     /// \return The coordinate index that corresponds to \c i
-    static ordinal_index calc_ordinal(const index& i, const size_array& w) {
+    template <typename IArray, typename WArray>
+    static ordinal_index calc_ordinal(const IArray& i, const WArray& w) {
       return calc_ordinal_(begin(i), end(i), begin(w));
     }
 
@@ -223,7 +226,8 @@ namespace TiledArray {
     /// \param w The weight array for the range
     /// \param s The start index of the range
     /// \return The ordinal index that corresponds to \c i
-    static ordinal_index calc_ordinal(const index& i, const size_array& w, const index& s) {
+    template <typename IArray, typename WArray, typename SArray>
+    static ordinal_index calc_ordinal(const IArray& i, const WArray& w, const SArray& s) {
       return calc_ordinal_(begin(i), end(i), begin(w), begin(s));
     }
 
@@ -231,7 +235,8 @@ namespace TiledArray {
 
     /// \param s The size array of the range
     /// \return The volume of the range
-    static volume_type calc_volume(const size_array& s) { // no throw
+    template <typename SArray>
+    static volume_type calc_volume(const SArray& s) { // no throw
       return std::accumulate(s.begin(), s.end(), volume_type(1), std::multiplies<volume_type>());
     }
 
@@ -243,11 +248,12 @@ namespace TiledArray {
     /// \param[in] s The start index of the range.
     /// \param[in] f The finish index of the range.
     /// \throw std::runtime_error When current is not bounded by \c [s, \c f)
-    static void increment_coordinate(index& c, const index& s, const index& f) {
-      TA_ASSERT(s <= c, std::runtime_error,
-          "Current coordinate is less than start coordinate.");
-      TA_ASSERT(c < f, std::runtime_error,
-          "Current coordinate is less than start coordinate.");
+    template <typename CArray, typename SArray, typename FArray>
+    static void increment_coordinate(CArray& c, const SArray& s, const FArray& f) {
+      TA_ASSERT(std::equal(s.begin(), s.end(), c.begin(), std::less_equal<typename CArray::value_type>()),
+          std::runtime_error, "Current coordinate is less than start coordinate.");
+      TA_ASSERT(std::equal(c.begin(), c.end(), f.begin(), std::less<typename CArray::value_type>()),
+          std::runtime_error, "Current coordinate is less than start coordinate.");
 
       increment_coordinate_(begin(c), end(c), begin(s), begin(f));
 
