@@ -78,7 +78,7 @@ struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
 
   ~TiledRangeFixture() { }
 
-  static tile_index fill_tile_index(tile_index::index);
+  static tile_index fill_tile_index(tile_index::value_type);
 
   TRangeN tr;
 };

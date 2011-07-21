@@ -4,6 +4,7 @@
 #include <TiledArray/config.h>
 #include <TiledArray/utility.h>
 #include <TiledArray/error.h>
+#include <TiledArray/permutation.h>
 #include <boost/operators.hpp>
 #include <world/array.h>
 #include <boost/utility/enable_if.hpp>
@@ -19,14 +20,6 @@ namespace boost {
 } // namespace boost
 
 namespace TiledArray {
-  // Forward declarations.
-  template <unsigned int DIM>
-  class Permutation;
-  namespace detail {
-    template <typename InIter0, typename InIter1, typename RandIter>
-    void permute(InIter0, InIter0, InIter1, RandIter);
-  }  // namespace detail
-
 
   /// ArrayCoordinate represents a coordinate index of an DIM-dimensional orthogonal tensor.
 
@@ -50,7 +43,10 @@ namespace TiledArray {
 
     typedef ArrayCoordinate<I,DIM,Tag> ArrayCoordinate_;                        ///< This type
     typedef std::array<I,DIM> array_type;                                       ///< array_type type used to store coordinates
-    typedef I index;                                                            ///< Coordinate element type
+    typedef typename array_type::value_type value_type;                         ///< Coordinate element type
+    typedef typename array_type::reference reference;
+    typedef typename array_type::const_reference const_reference;
+    typedef typename array_type::size_type size_type;
     typedef typename array_type::iterator iterator;                             ///< Coordinate element iterator
     typedef typename array_type::const_iterator const_iterator;                 ///< Coordinate element const iterator
     typedef typename array_type::reverse_iterator reverse_iterator;             ///< Coordinate element reverse iterator
@@ -59,7 +55,7 @@ namespace TiledArray {
     /// Default constructor
 
     /// All coordinate elements are initialized to 0.
-    ArrayCoordinate() { std::fill(r_.begin(), r_.end(), index(0)); }
+    ArrayCoordinate() { std::fill(r_.begin(), r_.end(), value_type(0)); }
 
     /// Initialize coordinate with an iterator
 
@@ -82,14 +78,14 @@ namespace TiledArray {
     /// Copy constructor
 
     /// \throw nothing
-    ArrayCoordinate(const ArrayCoordinate& a) : r_(a.r_) { }
+    ArrayCoordinate(const ArrayCoordinate_& a) : r_(a.r_) { }
 
     /// Initialize coordinate with a given value
 
     /// All elements of the coordinate are initialized to the value of \c i
     /// \param i The value that will be assigned to all coordinate elements
     /// \throw nothing
-    explicit ArrayCoordinate(index i) {
+    explicit ArrayCoordinate(value_type i) {
       std::fill_n(r_.begin(), DIM, i);
     }
 
@@ -98,7 +94,7 @@ namespace TiledArray {
     /// Constructs an ArrayCoordinate with the specified constants. For example,
     /// ArrayCoordinate<std::size_t, 4, ...> p(0, 1, 2, 3); would construct a
     /// point with the coordinates (0, 1, 2, 3).
-    explicit ArrayCoordinate(const index c0, const index c1, ...) {
+    explicit ArrayCoordinate(const value_type c0, const value_type c1, ...) {
       std::fill_n(r_.begin(), DIM, 0ul);
       va_list ap;
       va_start(ap, c1);
@@ -107,7 +103,7 @@ namespace TiledArray {
       r_[1] = c1;
       unsigned int ci = 0; // ci is used as an intermediate
       for(unsigned int i = 2; i < DIM; ++i) {
-        ci = va_arg(ap, index);
+        ci = va_arg(ap, value_type);
         r_[i] = ci;
       }
 
@@ -167,8 +163,7 @@ namespace TiledArray {
     /// \param other The other coordinate to be copied
     /// \return A reference to this object
     /// \throw nothing
-    ArrayCoordinate_&
-    operator =(const ArrayCoordinate_& other) {
+    ArrayCoordinate_& operator =(const ArrayCoordinate_& other) {
       r_ = other.r_;
 
       return (*this);
@@ -191,7 +186,7 @@ namespace TiledArray {
     /// \param other The coordinate to be subtracted from this coordinate
     /// \return A reference to this object
     /// \throw nothing
-    ArrayCoordinate_ operator-=(const ArrayCoordinate_& other) {
+    ArrayCoordinate_& operator-=(const ArrayCoordinate_& other) {
       const_iterator other_it = other.begin();
       for(iterator it = r_.begin(); it != r_.end(); ++it, ++other_it)
         *it -= *other_it;
@@ -203,7 +198,7 @@ namespace TiledArray {
     /// \param n The element to access
     /// \return A const reference to element \c n
     /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
-    const index& operator[](std::size_t n) const {
+    const_reference operator[](std::size_t n) const {
       return r_[n];
     }
 
@@ -212,7 +207,7 @@ namespace TiledArray {
     /// \param d The dimension index
     /// \return A reference to element \c n
     /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
-    index& operator[](std::size_t d) {
+    reference operator[](std::size_t d) {
       return r_[d];
     }
 
@@ -221,7 +216,7 @@ namespace TiledArray {
     /// \param d The dimension index
     /// \return A const reference to element \c n
     /// \throw std::out_of_range When \c n \c >= \c DIM
-    const index& at(std::size_t d) const {
+    const_reference at(std::size_t d) const {
       TA_CHECK(d < DIM,  std::out_of_range, "dimension out of range.");
       return r_[d];
     }
@@ -231,7 +226,7 @@ namespace TiledArray {
     /// \param d The dimension index
     /// \return A reference to element \c n
     /// \throw std::out_of_range When \c n \c >= \c DIM
-    index& at(std::size_t d) {
+    reference at(std::size_t d) {
       TA_CHECK(d < DIM,  std::out_of_range, "dimension out of range.");
       return r_[d];
     }
@@ -251,7 +246,7 @@ namespace TiledArray {
     /// Coordinate size (aka dimension)
 
     /// \return The number of dimensions in the coordinate
-    std::size_t size() const { return r_.size(); }
+    size_type size() const { return r_.size(); }
 
     /// Coordinate permutation operator
 
@@ -260,7 +255,7 @@ namespace TiledArray {
     /// \return A reference to this object
     ArrayCoordinate_& operator ^= (const Permutation<DIM>& p) {
       array_type temp;
-      detail::permute(p.begin(), p.end(), r_.begin(), temp.begin());
+      detail::permute_array(p.begin(), p.end(), r_.begin(), temp.begin());
       std::swap(r_, temp);
       return *this;
     }
@@ -373,7 +368,7 @@ namespace TiledArray {
   template <typename I, unsigned int DIM, typename Tag>
   ArrayCoordinate<I,DIM,Tag> operator ^(const Permutation<DIM>& p, const ArrayCoordinate<I,DIM,Tag>& c) {
     ArrayCoordinate<I,DIM,Tag> result;
-    detail::permute(p.begin(), p.end(), c.begin(), result.begin());
+    detail::permute_array(p.begin(), p.end(), c.begin(), result.begin());
     return result;
   }
 

@@ -16,7 +16,7 @@ struct ArrayCoordinateFixture {
   }
   ~ArrayCoordinateFixture() {}
 
-  std::array<Point3::index, 3> a;
+  std::array<Point3::value_type, 3> a;
   Point3 p;
 };
 

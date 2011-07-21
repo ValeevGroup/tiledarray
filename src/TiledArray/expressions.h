@@ -1,7 +1,8 @@
 #ifndef TILEDARRAY_EXPRESSIONS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_H__INCLUDED
-/*
-#include <TiledArray/math.h>
+
+#include <TiledArray/array_math.h>
+#include <world/array.h>
 #include <functional>
 
 namespace TiledArray {
@@ -23,122 +24,257 @@ namespace TiledArray {
     /// };
     /// \endcode
     /// \tparam ExpType The derived expression class type
-    template <typename ExpType>
+    template <typename E>
     class Expression {
-    private:
-      Expression();
     public:
-      template <typename Result>
-      Result& eval(Result& r) const { return ExpType::eval(r); }
+      typedef E type;
+
+    protected:
+      Expression() { }
+      ~Expression() { }
 
     private:
-      template <typename Result>
-      Result& eval(const Result& r) const;
+      Expression& operator=(const Expression<E>&);
     };
 
-    template <typename LeftExp, typename RightExp, template <typename> class Op>
+    template<class E>
+    class ScalarExpression : public Expression<E> {
+    public:
+      typedef E exp_type;
+
+      inline const exp_type& eval() const {
+        return *static_cast<const exp_type*> (this);
+      }
+
+      inline exp_type& eval() {
+        return *static_cast<exp_type*> (this);
+      }
+    };
+
+    template <typename T>
+    class ScalarReference : public ScalarExpression<ScalarReference<T> > {
+    public:
+      typedef ScalarReference<T> ScalarReference_;
+
+      typedef T value_type;
+      typedef const value_type& const_reference;
+      typedef typename madness::if_<std::is_const<T>,
+          const_reference,
+          value_type &>::type reference;
+
+      // Construction and destruction
+      inline explicit ScalarReference(reference ref) : ref_(ref) { }
+
+      // Conversion
+      inline operator value_type () const {
+        return ref_;
+      }
+
+      // Assignment
+      inline ScalarReference_& operator=(const ScalarReference_& other) {
+        ref_ = other.ref_;
+        return *this;
+      }
+
+      template <typename E>
+      inline ScalarReference_& operator=(const ScalarExpression<E> &other) {
+        ref_ = other;
+        return *this;
+      }
+
+    private:
+      reference ref_;
+    };
+
+    template <typename T>
+    class ScalarValue : public ScalarExpression<ScalarValue<T> > {
+
+      typedef ScalarValue<T> ScalarValue_;
+    public:
+      typedef T value_type;
+      typedef const value_type &const_reference;
+      typedef typename madness::if_<std::is_const<T>,
+          const_reference,
+          value_type &>::type reference;
+
+      // Construction and destruction
+      inline ScalarValue() : value_ () {}
+      inline ScalarValue(const value_type &value) : value_(value) {}
+
+      inline operator value_type () const { return value_; }
+
+      // Assignment
+      inline ScalarValue_& operator=(const ScalarValue_& other) {
+        value_ = other.value_;
+        return *this;
+      }
+      template <typename E>
+      inline ScalarValue_& operator=(const ScalarExpression<E>& other) {
+        value_ = other;
+        return *this;
+      }
+
+    private:
+      value_type value_;
+    };
+/*
+    template <typename E>
+    class DimExpression : public Expression<E> {
+    public:
+      typedef E exp_type;
+
+      static inline unsigned int dim() { return exp_type::dim(); }
+    };
+
+    template <typename E>
+    class ArrayExpression : public Expression<E> {
+    public:
+      typedef E exp_type;
+
+      inline const exp_type& operator()() const { return *static_cast<const exp_type*>(this); }
+      inline exp_type& operator()() { return *static_cast<exp_type*>(this); }
+
+    };
+
+    template <typename T, std::size_t N>
+    class ArrayReference : public ArrayExpression<ArrayReference<T, N> > {
+    public:
+      typedef ScalarReference<T, N> ScalarReference_;
+
+      typedef std::array<T, N> value_type;
+      typedef const value_type& const_reference;
+      typedef typename madness::if_<std::is_const<T>,
+          const_reference,
+          value_type &>::type reference;
+
+      // Construction and destruction
+      inline explicit ArrayReference(reference ref) : ref_(ref) { }
+
+      // Conversion
+      inline operator value_type () const {
+        return ref_;
+      }
+
+      // Assignment
+      inline ScalarReference_& operator=(const ScalarReference_& other) {
+        ref_ = other.ref_;
+        return *this;
+      }
+
+      template <typename E>
+      inline ScalarReference_& operator=(const ScalarExpression<E> &other) {
+        ref_ = other;
+        return *this;
+      }
+
+    private:
+      reference ref_;
+    };
+
+    template <typename T, std::size_t N>
+    class ArrayValue : public ArrayExpression<ArrayValue<T, N> > {
+    public:
+      typedef ArrayValue<T, N> ArrayValue_;
+
+      typedef std::array<T, N> value_type;
+      typedef const value_type &const_reference;
+      typedef typename madness::if_<std::is_const<T>,
+          const_reference,
+          value_type &>::type reference;
+
+      // Construction and destruction
+      inline ArrayValue() : value_ () {}
+      inline ArrayValue(const value_type &value) : value_(value) {}
+
+      inline operator value_type () const { return value_; }
+
+      // Assignment
+      inline ScalarValue_& operator=(const ScalarValue_& other) {
+        value_ = other.value_;
+        return *this;
+      }
+      template <typename E>
+      inline ScalarValue_& operator=(const ScalarExpression<E>& other) {
+        value_ = other;
+        return *this;
+      }
+
+    private:
+      value_type value_;
+    };
+
+
+    template <typename R>
+    class RangeExpression : public DimExpression<R> {
+    public:
+      typedef R exp_type;
+
+      unsigned int dim() const { return exp_type::dim(); }
+
+    };
+
+    template <typename T>
+    class TileExpression : public Expression<T> {
+    public:
+      typedef T exp_type;
+
+      unsigned int dim() const { return exp_type::dim(); }
+
+      inline const exp_type& eval() const { return *static_cast<const exp_type*>(this); }
+
+      inline exp_type& eval() { return *static_cast<exp_type*>(this); }
+    };
+
+    template <typename A>
+    class ArrayExpression : public Expression<A> {
+    public:
+      typedef A exp_type;
+
+    };
+
+
+    template <typename LeftExp, typename RightExp, typename Op>
     class BinaryExpression : public Expression<BinaryExpression<LeftExp, RightExp, Op> > {
     public:
-      typedef typedef LeftExp::result_array_type left_array_type;
-      typedef typedef RightExp::result_array_type right_array_type;
-      typedef left_array_type result_array_type;
       typedef LeftExp left_argument_type;
       typedef RightExp right_argument_type;
+
+      typedef typename madness::result_of<Op>::type result_type;
 
       /// Constructs a binary expression
 
       /// \param left The left-hand argument of the expression
       /// \param right The right-hand argument of the expression
-      BinaryExpression(const left_argument_type& left, const right_argument_type& right) :
-          left_(left), right_(right)
+      BinaryExpression(const left_argument_type& left, const right_argument_type& right, Op op = Op()) :
+          left_(left), right_(right), op_(op)
       { }
 
-      /// Evaluate this expression and place the result into \c r
+      result_type eval() { return op_(left_.eval(), right_.eval()); }
 
-      /// \tparam Result The result object type
-      /// \param r The a non-const reference to the result object
-      template <typename Result>
-      Result& eval(Result& r) const {
-        math::BinaryOp<typename Result::array_type, typename left_argument_type::array_type,
-          typename right_argument_type::array_type, Op> op;
-        op(r, left_, right_);
-
-        return r;
-      }
-
-    private:
+    public:
       const left_argument_type& left_;    ///< The left-hand argument
       const right_argument_type& right_;  ///< The right-hand argument
+      Op op_;
     };
 
-    template <typename Exp, template <typename> class Op>
+    template <typename Exp, typename Op>
     class UnaryExpression : public Expression<UnaryExpression<Exp, Op> >{
     public:
       typedef Exp argument_type;
 
-      UnaryExpression(const argument_type& a) : arg_(a) { }
+      typedef typename madness::result_of<Op>::type result_type;
 
-      /// Evaluate this expression and place the result into \c r
+      UnaryExpression(const argument_type& a, Op op = Op()) : arg_(a), op_(op) { }
 
-      /// \tparam Result The result object type
-      /// \param r The a non-const reference to the result object
-      template <typename Result>
-      Result& eval(Result& r) const {
-        math::UnaryOp<Result, argument_type, Op> op;
-        op(r, arg_);
-
-        return r;
-      }
+      result_type eval() const { return op_(arg_); }
 
     private:
       const argument_type& arg_;
+      Op op_;
     };
-
-    /// Constructs an addition expression
-
-    /// \tparam LeftExp The left-hand expression type
-    /// \tparam RightExp The right-hand expression type
-    /// \param left A const reference to the left-hand expression object.
-    /// \param right A const reference to the right-hand expression object.
-    template<typename LeftExp, typename RightExp>
-    Expression<BinaryExpression<LeftExp, RightExp, std::plus> >
-    operator +(const LeftExp& left, const RightExp& right) {
-      return Expression<BinaryExpression<LeftExp, RightExp, std::plus> >(left, right);
-    }
-
-    /// Constructs a subtraction expression
-
-    /// \tparam LeftExp The left-hand expression type
-    /// \tparam RightExp The right-hand expression type
-    /// \param left A const reference to the left-hand expression object.
-    /// \param right A const reference to the right-hand expression object.
-    template<typename LeftExp, typename RightExp>
-    Expression<BinaryExpression<LeftExp, RightExp, std::minus> >
-    operator -(const LeftExp& left, const RightExp& right) {
-      return Expression<BinaryExpression<LeftExp, RightExp, std::minus> >(left, right);
-    }
-
-    /// Constructs a contraction expression
-
-    /// \tparam LeftExp The left-hand expression type
-    /// \tparam RightExp The right-hand expression type
-    /// \param left A const reference to the left-hand expression object.
-    /// \param right A const reference to the right-hand expression object.
-    template<typename LeftExp, typename RightExp>
-    Expression<BinaryExpression<LeftExp, RightExp, std::multiplies> >
-    operator *(const LeftExp& left, const RightExp& right) {
-      return Expression<BinaryExpression<LeftExp, RightExp, std::minus> >(left, right);
-    }
-
-    /// Constructs a negation expression
-    template<typename Exp>
-    Expression<UnaryExpression<Exp, std::negate> >
-    operator -(const Exp& e) {
-      return Expression<UnaryExpression<Exp, std::negate> >(e);
-    }
-
+*/
   }  // namespace expressions
 
 }  // namespace TiledArray
-*/
+
 #endif // TILEDARRAY_EXPRESSIONS_H__INCLUDED

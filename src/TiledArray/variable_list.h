@@ -2,21 +2,13 @@
 #define TILEDARRAY_VARIABLE_LIST_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <TiledArray/permutation.h>
+#include <TiledArray/perm_algorithm.h>
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <iosfwd>
 
 namespace TiledArray {
-
-  template<unsigned int DIM>
-  class Permutation;
-  template <unsigned int DIM, typename T>
-  std::vector<T> operator^(const Permutation<DIM>&, const std::vector<T>&);
-  template <unsigned int DIM, typename T>
-  std::vector<T> operator^=(std::vector<T>&, const Permutation<DIM>&);
-
   namespace expressions {
 
     class VariableList;

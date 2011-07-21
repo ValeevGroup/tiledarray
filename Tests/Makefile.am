@@ -7,12 +7,12 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   permutation.cpp \
                   coordinates.cpp \
                   coordinate_system.cpp \
-                  algorithm.cpp \
                   range_iterator.cpp \
                   range.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
                   transform_iterator.cpp \
+                  tile_base.cpp \
                   tile.cpp \
                   bitset.cpp \
                   versioned_pmap.cpp \

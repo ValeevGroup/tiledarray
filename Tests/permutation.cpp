@@ -1,4 +1,5 @@
 #include "TiledArray/permutation.h"
+#include "TiledArray/perm_algorithm.h"
 #include "TiledArray/coordinates.h" // for boost array output
 #include "unit_test_config.h"
 
@@ -91,14 +92,14 @@ BOOST_AUTO_TEST_CASE( permute_function )
     std::vector<int> a1(3); int a1v[3] = {1, 2, 3}; std::copy(a1v, a1v+3, a1.begin());
     std::vector<int> ar(3); int arv[3] = {2, 3, 1}; std::copy(arv, arv+3, ar.begin());
     std::vector<int> a2(3);
-    detail::permute(p.begin(), p.end(), a1.begin(), a2.begin());
+    detail::permute_array(p.begin(), p.end(), a1.begin(), a2.begin());
     BOOST_CHECK(a2 == ar); // check permutation applied via detail::permute()
   }
   {
     std::array<int, 3> a1 = {{1, 2, 3}};
     std::array<int, 3> ar = {{2, 3, 1}};
     std::array<int, 3> a2;
-    detail::permute(p.begin(), p.end(), a1.begin(), a2.begin());
+    detail::permute_array(p.begin(), p.end(), a1.begin(), a2.begin());
     BOOST_CHECK_EQUAL(a2, ar); // check permutation applied via detail::permute()
   }
 }

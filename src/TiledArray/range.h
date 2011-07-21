@@ -350,7 +350,7 @@ namespace TiledArray {
   Range<CS> operator &(const Range<CS>& b1, const Range<CS>& b2) {
     Range<CS> result;
     typename Range<CS>::index start, finish;
-    typename Range<CS>::index::index s1, s2, f1, f2;
+    typename Range<CS>::index::value_type s1, s2, f1, f2;
     for(unsigned int d = 0; d < CS::dim; ++d) {
       s1 = b1.start()[d];
       f1 = b1.finish()[d];
