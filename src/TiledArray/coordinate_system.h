@@ -185,6 +185,7 @@ namespace TiledArray {
 
     /// Calculate the weighted dimension values.
 
+    /// \tparam SArray Size array type
     /// \param s The size array for which the weight will be calculated
     /// \return The range weight array
     template <typename SArray>
@@ -196,6 +197,7 @@ namespace TiledArray {
 
     /// Calculate the coordinate index of an ordinal index
 
+    /// \tparam SArray Size array type
     /// \param i The ordinal index that will be converted to a coordinate index
     /// \param w The weight array of the range.
     /// \return The coordinate index that corresponds to \c i
@@ -211,6 +213,8 @@ namespace TiledArray {
 
     /// Calculate the coordinate index of an ordinal index given a start index
 
+    /// \tparam IArray Index array type
+    /// \tparam SArray Weight array type
     /// \param i The coordinate index for which the ordinal index will be
     /// calculated.
     /// \param w The weight array for the range.
@@ -222,6 +226,9 @@ namespace TiledArray {
 
     /// Calculate the ordinal index of an array.
 
+    /// \tparam IArray Index array type
+    /// \tparam WArray Weight array type
+    /// \tparam SArray Start array type
     /// \param i The coordinate index to be converted into an ordinal index
     /// \param w The weight array for the range
     /// \param s The start index of the range
@@ -233,6 +240,7 @@ namespace TiledArray {
 
     /// Calculate the volume of an N-dimensional range.
 
+    /// \tparam SArray Size array type
     /// \param s The size array of the range
     /// \return The volume of the range
     template <typename SArray>
@@ -242,6 +250,9 @@ namespace TiledArray {
 
     /// Increment a coordinate index within a range.
 
+    /// \tparam CArray Coordinate array type
+    /// \tparam SArray Start array type
+    /// \tparam FArray Finish array type
     /// This will increment a coordinate within the range \c [s, \c f).
     /// If the end of the range is reached, current will be equal to finish.
     /// \param[out] c The current coordinate index to be incremented.
