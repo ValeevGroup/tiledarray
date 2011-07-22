@@ -116,16 +116,6 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Assignment operator
-
-    /// \param other The tile object to be moved
-    /// \return A reference to this object
-    /// \throw std::bad_alloc There is not enough memory available for the target tile
-//    TileProxy_& operator =(const ArrayMove& a) {
-//      TileProxy_ temp;.swap(*this);
-//      return *this;
-//    }
-
     /// destructor
     ~TileProxy() { }
 
