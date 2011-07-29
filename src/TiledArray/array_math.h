@@ -5,7 +5,6 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/variable_list.h>
 #include <TiledArray/madness_runtime.h>
-#include <TiledArray/math.h>
 #include <TiledArray/reduce_task.h>
 #include <world/worldrange.h>
 #include <world/make_task.h>

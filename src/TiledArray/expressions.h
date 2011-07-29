@@ -1,126 +1,93 @@
 #ifndef TILEDARRAY_EXPRESSIONS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_H__INCLUDED
 
-#include <TiledArray/array_math.h>
-#include <world/array.h>
-#include <functional>
+
+#include <TiledArray/binary_tensor.h>
+#include <TiledArray/unary_tensor.h>
+#include <TiledArray/permute_tensor.h>
+#include <TiledArray/contraction_tensor.h>
+#include <TiledArray/type_traits.h>
 
 namespace TiledArray {
-
   namespace expressions {
 
-    /// A general expression object
+    template <typename LeftExp, typename RightExp>
+    typename madness::enable_if_c<!(std::is_scalar<LeftExp>::value || std::is_scalar<RightExp>::value),
+        BinaryTensor<LeftExp, RightExp, std::plus<typename LeftExp::value_type> > >::type
+    operator+(const LeftExp& left, const RightExp& right) {
+      return BinaryTensor<LeftExp, RightExp, std::plus<typename LeftExp::value_type> >(left,
+          right, std::plus<typename LeftExp::value_type>());
+    }
 
-    /// All expression objects are derived from this class, and must implement
-    /// an eval() function. The eval() function accepts a single, non-const
-    /// argument, which is the result type of the expression. For example:
-    /// \code
-    /// class MyExpression : public Expression<MyExpression> {
-    /// public:
-    ///   template <typename Result>
-    ///   Result& eval(Result& r) const {
-    ///     // ...
-    ///   }
-    /// };
-    /// \endcode
-    /// \tparam ExpType The derived expression class type
-    template <typename E>
-    class Expression {
-    public:
-      typedef E type;
+    template <typename LeftExp, typename RightExp>
+    typename madness::enable_if_c<std::is_scalar<LeftExp>::value && (! std::is_scalar<RightExp>::value),
+        UnaryTensor<RightExp, std::binder1st<std::plus<typename RightExp::value_type> > > >::type
+    operator+(const LeftExp& left, const RightExp& right) {
+      return UnaryTensor<RightExp, std::binder1st<std::plus<typename RightExp::value_type> > >(right,
+          std::bind1st(std::plus<typename RightExp::value_type>(), left));
+    }
 
-    protected:
-      Expression() { }
-      ~Expression() { }
+    template <typename LeftExp, typename RightExp>
+    typename madness::enable_if_c<(! std::is_scalar<LeftExp>::value) && std::is_scalar<RightExp>::value,
+        UnaryTensor<LeftExp, std::binder2nd<std::plus<typename LeftExp::value_type> > > >::type
+    operator+(const LeftExp& left, const RightExp& right) {
+      return UnaryTensor<LeftExp, std::binder2nd<std::plus<typename LeftExp::value_type> > >(left,
+          std::bind2nd(std::plus<typename LeftExp::value_type>(), right));
+    }
 
-    private:
-      Expression& operator=(const Expression<E>&);
-    };
+    template <typename LeftExp, typename RightExp>
+    typename madness::enable_if_c<!(std::is_scalar<LeftExp>::value || std::is_scalar<RightExp>::value),
+        BinaryTensor<LeftExp, RightExp, std::minus<typename LeftExp::value_type> > >::type
+    operator-(const LeftExp& left, const RightExp& right) {
+      return BinaryTensor<LeftExp, RightExp, std::minus<typename LeftExp::value_type> >(left,
+          right, std::minus<typename LeftExp::value_type>());
+    }
 
-    template<class E>
-    class ScalarExpression : public Expression<E> {
-    public:
-      typedef E exp_type;
+    template <typename LeftExp, typename RightExp>
+    typename madness::enable_if_c<std::is_scalar<LeftExp>::value && (! std::is_scalar<RightExp>::value),
+        UnaryTensor<RightExp, std::binder1st<std::minus<typename RightExp::value_type> > > >::type
+    operator-(const LeftExp& left, const RightExp& right) {
+      return UnaryTensor<RightExp, std::binder1st<std::minus<typename RightExp::value_type> > >(right,
+          std::bind1st(std::minus<typename RightExp::value_type>(), left));
+    }
 
-      inline const exp_type& eval() const {
-        return *static_cast<const exp_type*> (this);
-      }
+    template <typename LeftExp, typename RightExp>
+    typename madness::enable_if_c<(! std::is_scalar<LeftExp>::value) && std::is_scalar<RightExp>::value,
+        UnaryTensor<LeftExp, std::binder2nd<std::minus<typename LeftExp::value_type> > > >::type
+    operator-(const LeftExp& left, const RightExp& right) {
+      return UnaryTensor<LeftExp, std::binder2nd<std::minus<typename LeftExp::value_type> > >(left,
+          std::bind2nd(std::minus<typename LeftExp::value_type>(), right));
+    }
 
-      inline exp_type& eval() {
-        return *static_cast<exp_type*> (this);
-      }
-    };
+    template <typename LeftExp, typename RightExp>
+    typename madness::enable_if_c<std::is_scalar<LeftExp>::value && (! std::is_scalar<RightExp>::value),
+        UnaryTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type> > > >::type
+    operator*(const LeftExp& left, const RightExp& right) {
+      return UnaryTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type> > >(right,
+          std::bind1st(std::multiplies<typename RightExp::value_type>(), left));
+    }
 
-    template <typename T>
-    class ScalarReference : public ScalarExpression<ScalarReference<T> > {
-    public:
-      typedef ScalarReference<T> ScalarReference_;
+    template <typename LeftExp, typename RightExp>
+    typename madness::enable_if_c<(! std::is_scalar<LeftExp>::value) && std::is_scalar<RightExp>::value,
+        UnaryTensor<LeftExp, std::binder2nd<std::multiplies<typename LeftExp::value_type> > > >::type
+    operator*(const LeftExp& left, const RightExp& right) {
+      return UnaryTensor<LeftExp, std::binder2nd<std::multiplies<typename LeftExp::value_type> > >(left,
+          std::bind2nd(std::multiplies<typename LeftExp::value_type>(), right));
+    }
 
-      typedef T value_type;
-      typedef const value_type& const_reference;
-      typedef typename madness::if_<std::is_const<T>,
-          const_reference,
-          value_type &>::type reference;
+    template <typename ArgExp>
+    UnaryTensor<ArgExp, std::negate<typename ArgExp::value_type> >
+    operator-(const ArgExp& arg) {
+      return UnaryTensor<ArgExp, std::negate<typename ArgExp::value_type> >(arg, std::negate<typename ArgExp::value_type>());
+    }
 
-      // Construction and destruction
-      inline explicit ScalarReference(reference ref) : ref_(ref) { }
+    template <unsigned int DIM, typename ArgExp>
+    PermuteTensor<ArgExp, DIM>
+    operator^(const Permutation<DIM>& p, const ArgExp& arg) {
+      return PermuteTensor<ArgExp, DIM>(arg, p);
+    }
 
-      // Conversion
-      inline operator value_type () const {
-        return ref_;
-      }
-
-      // Assignment
-      inline ScalarReference_& operator=(const ScalarReference_& other) {
-        ref_ = other.ref_;
-        return *this;
-      }
-
-      template <typename E>
-      inline ScalarReference_& operator=(const ScalarExpression<E> &other) {
-        ref_ = other;
-        return *this;
-      }
-
-    private:
-      reference ref_;
-    };
-
-    template <typename T>
-    class ScalarValue : public ScalarExpression<ScalarValue<T> > {
-
-      typedef ScalarValue<T> ScalarValue_;
-    public:
-      typedef T value_type;
-      typedef const value_type &const_reference;
-      typedef typename madness::if_<std::is_const<T>,
-          const_reference,
-          value_type &>::type reference;
-
-      // Construction and destruction
-      inline ScalarValue() : value_ () {}
-      inline ScalarValue(const value_type &value) : value_(value) {}
-
-      inline operator value_type () const { return value_; }
-
-      // Assignment
-      inline ScalarValue_& operator=(const ScalarValue_& other) {
-        value_ = other.value_;
-        return *this;
-      }
-      template <typename E>
-      inline ScalarValue_& operator=(const ScalarExpression<E>& other) {
-        value_ = other;
-        return *this;
-      }
-
-    private:
-      value_type value_;
-    };
-
-
-  }  // namespace expressions
-
-}  // namespace TiledArray
+  } // namespace expressions
+} // namespace TiledArray
 
 #endif // TILEDARRAY_EXPRESSIONS_H__INCLUDED

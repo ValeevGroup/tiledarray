@@ -2,6 +2,7 @@
 #define TILEDARRAY_CONTRACTION_H__INCLUDED
 
 #include <TiledArray/error.h>
+#include <TiledArray/variable_list.h>
 #include <world/array.h>
 #include <iterator>
 #include <numeric>

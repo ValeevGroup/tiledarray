@@ -14,7 +14,6 @@ library_include_HEADERS = annotated_array.h \
                           expressions.h \
                           indexed_iterator.h \
                           madness_runtime.h \
-                          math.h \
                           packed_tile.h \
                           permutation.h \
                           perm_algorithm.h \
