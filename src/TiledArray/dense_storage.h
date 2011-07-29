@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <TiledArray/type_traits.h>
 #include <world/archive.h>
+#include <Eigen/Core>
 
 namespace madness {
   namespace archive {
@@ -19,16 +20,16 @@ namespace madness {
 
 namespace TiledArray {
 
-  /// TileBase is an N-dimensional, dense array.
+  /// DenseStorage is an N-dimensional, dense array.
 
-  /// \tparam T TileBase element type.
+  /// \tparam T DenseStorage element type.
   /// \tparam CS A \c CoordinateSystem type
   /// \tparam A A C++ standard library compliant allocator (Default:
   /// \c Eigen::aligned_allocator<T>)
-  template <typename T, typename A >
-  class TileBase : private A {
+  template <typename T, typename A = Eigen::aligned_allocator<T> >
+  class DenseStorage : private A {
   public:
-    typedef TileBase<T,A> TileBase_;                                  ///< This object's type
+    typedef DenseStorage<T,A> DenseStorage_;                          ///< This object's type
 
     typedef std::size_t size_type;                                    ///< Array volume type
     typedef A allocator_type;                                         ///< Allocator type
@@ -50,12 +51,12 @@ namespace TiledArray {
 
     /// Constructs a tile with zero size.
     /// \note You must call resize() before attempting to access any elements.
-    TileBase() : allocator_type(), first_(NULL), last_(NULL) { }
+    DenseStorage() : allocator_type(), first_(NULL), last_(NULL) { }
 
     /// Copy constructor
 
     /// \param other The tile to be copied.
-    TileBase(const TileBase_& other) :
+    DenseStorage(const DenseStorage_& other) :
         allocator_type(other),
         first_(NULL),
         last_(NULL)
@@ -85,7 +86,7 @@ namespace TiledArray {
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     /// \throw anything Any exception that can be thrown by \c T type default or
     /// copy constructors
-    TileBase(size_type n, const value_type& val = value_type(), const allocator_type& a = allocator_type()) :
+    DenseStorage(size_type n, const value_type& val = value_type(), const allocator_type& a = allocator_type()) :
         allocator_type(a),
         first_(NULL),
         last_(NULL)
@@ -119,7 +120,7 @@ namespace TiledArray {
     /// \throw anything Any exceptions that can be thrown by \c T type default
     /// or copy constructors
     template <typename InIter>
-    TileBase(size_type n, InIter first, const allocator_type& a = allocator_type(),
+    DenseStorage(size_type n, InIter first, const allocator_type& a = allocator_type(),
         typename madness::enable_if<detail::is_iterator<InIter>, Enabler>::type = Enabler()) :
         allocator_type(a),
         first_(NULL),
@@ -138,7 +139,7 @@ namespace TiledArray {
     }
 
     /// destructor
-    ~TileBase() {
+    ~DenseStorage() {
       destroy_(*this, first_, last_);
       allocator_type::deallocate(first_, size());
     }
@@ -148,7 +149,7 @@ namespace TiledArray {
     /// \param other The tile object to be moved
     /// \return A reference to this object
     /// \throw std::bad_alloc There is not enough memory available for the target tile
-    TileBase_& operator =(const TileBase_& other) {
+    DenseStorage_& operator =(const DenseStorage_& other) {
       *this = static_cast<const allocator_type&>(other);
 
       // Allocate memory for new object
@@ -171,6 +172,45 @@ namespace TiledArray {
       // cleanup old data
       if(temp_first)
         allocator_type::deallocate(temp_first, n);
+
+      return *this;
+    }
+
+    template <typename Arg>
+    DenseStorage_& operator+=(const Arg& other) {
+      typename Arg::const_iterator it_other = other.begin();
+      for(iterator it = begin(); it != end(); ++it, ++it_other)
+        *it += *it_other;
+
+      return *this;
+    }
+
+    template <typename Arg>
+    DenseStorage_& operator-=(const Arg& other) {
+      typename Arg::const_iterator it_other = other.begin();
+      for(iterator it = begin(); it != end(); ++it, ++it_other)
+        *it -= *it_other;
+
+      return *this;
+    }
+
+    DenseStorage_& operator+=(const value_type& value) {
+      for(iterator it = begin(); it != end(); ++it)
+        *it += value;
+
+      return *this;
+    }
+
+    DenseStorage_& operator-=(const value_type& value) {
+      for(iterator it = begin(); it != end(); ++it)
+        *it -= value;
+
+      return *this;
+    }
+
+    DenseStorage_& operator*=(const value_type& value) {
+      for(iterator it = begin(); it != end(); ++it)
+        *it *= value;
 
       return *this;
     }
@@ -233,29 +273,33 @@ namespace TiledArray {
 #endif
     }
 
-    /// TileBase range accessor
+    /// DenseStorage size accessor
 
-    /// \return A const reference to the tile range object.
+    /// \return The number of elemenst stored
     /// \throw nothing
     size_type size() const { return last_ - first_; }
 
+    /// DenseStorage volume accessor
+
+    /// \return The number of elemenst stored
+    /// \throw nothing
+    size_type volume() const { return size(); }
+
     /// Exchange the content of this object with other.
 
-    /// \param other The other TileBase to swap with this object
+    /// \param other The other DenseStorage to swap with this object
     /// \throw nothing
-    void swap(TileBase_& other) {
+    void swap(DenseStorage_& other) {
       std::swap<allocator_type>(*this, other);
       std::swap(first_, other.first_);
       std::swap(last_, other.last_);
     }
 
-  protected:
-
     template <typename Archive>
     void load(const Archive& ar) {
       size_type n = 0;
       ar & n;
-      TileBase_ temp(n);
+      DenseStorage_ temp(n);
       ar & madness::archive::wrap(temp.data(), temp.size());
       temp.swap(*this);
     }
@@ -324,10 +368,10 @@ namespace TiledArray {
 
     pointer first_;     ///< Pointer to the beginning of the data range
     pointer last_;      ///< Pointer to the end of the data range
-  }; // class TileBase
+  }; // class DenseStorage
 
   template <typename T, typename A>
-  void swap(TileBase<T, A> t1, TileBase<T, A> t2) {
+  void swap(DenseStorage<T, A> t1, DenseStorage<T, A> t2) {
     t1.swap(t2);
   }
 

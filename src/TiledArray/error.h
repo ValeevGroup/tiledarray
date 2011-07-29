@@ -34,51 +34,62 @@
 #undef TA_ASSERT_ERROR
 // WARNING: TA_EXCEPTION_ERROR supersedes TA_ASSERT_ERROR.
 #endif
-#include <stdexcept>
+#include <exception>
 namespace TiledArray {
+
+  class Exception : public std::exception {
+  public:
+    Exception(const char* m) : message_(m) { }
+
+    virtual const char* what() const throw() { return message_; }
+
+  private:
+    const char* message_;
+  }; // class Exception
+
   /// Place a break point on this function to stop before TiledArray exceptions are thrown.
   inline void exception_break() { }
-}
+} // namespace TiledArray
 
 
 #define TA_STRINGIZE( s ) #s
 
 #define TA_EXCEPTION_MESSAGE( file , line , mess ) \
-  "TiledArray: exception at " TA_STRINGIZE( file ) "(" TA_STRINGIZE( line ) "): " mess
+  "TiledArray: exception at " file "(" TA_STRINGIZE( line ) "): " mess
 
 #define TA_EXCEPTION( e , m ) \
     throw e ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , m ) )
 
-#define TA_ASSERT( a , e , m )  \
+#define TA_ASSERT( a )  \
   if(! ( a ) ) \
     { \
       TiledArray::exception_break(); \
-      TA_EXCEPTION( e , m ) ; \
+      TA_EXCEPTION( TiledArray::Exception , "assertion failure" ) ; \
     }
 
-#define TA_TEST( a , e , m )  TA_ASSERT( a , e , m )
+#define TA_TEST( a )  TA_ASSERT( a )
 
 #elif defined(TA_ASSERT_ERROR)
 // This sections defines behavior for TiledArray assertion error checking which
 // uses assertions.
 #include <cassert>
-#define TA_ASSERT( a , e , m ) assert( a )
+#define TA_ASSERT( a ) assert( a )
 #define TA_EXCEPTION( e , m ) exit(1)
-#define TA_TEST( a , e , m )  TA_ASSERT( a , e , m )
+#define TA_TEST( a )  TA_ASSERT( a )
 #else
 // This section defines behavior for TiledArray assertion error checking which
 // does no error checking.
 // WARNING: TiledArray will perform no error checking.
-#define TA_ASSERT( a , e , m ) { ; }
+#define TA_ASSERT( a ) { ; }
 #define TA_EXCEPTION( e , m ) exit(1)
-#define TA_TEST( a , e , m )  a
+#define TA_TEST( a )  a
 
 #endif //TA_EXCEPTION_ERROR
 
-#define TA_CHECK( a , e , m )  \
+#define TA_CHECK( a )  \
   if(! ( a ) ) \
     { \
-      TA_EXCEPTION( e , m ) ; \
+      TA_EXCEPTION( TiledArray::Exception , "assertion failure" ) ; \
     }
 
 #endif // TILEDARRAY_ERROR_H__INCLUDED

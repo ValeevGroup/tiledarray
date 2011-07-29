@@ -201,7 +201,7 @@ namespace TiledArray {
 
     template <typename Index, typename Value, typename InIter, typename Op>
     void reduce(const Index& i, const Value& value, InIter first, InIter last, Op op) {
-      TA_ASSERT(! (pimpl_->is_zero(i)), std::runtime_error, "Cannot assign a zero tile.");
+      TA_ASSERT(! (pimpl_->is_zero(i)));
       ordinal_index o = tiles().ord(i);
 
       madness::Future<value_type> result = pimpl_->reduce(o, value, op, first, last, owner(o));
@@ -315,8 +315,8 @@ namespace TiledArray {
     void serialize(const madness::archive::BufferInputArchive& ar) {
         madness::WorldObject<impl_type>* ptr = NULL;
         ar & ptr;
-        TA_ASSERT(ptr, std::runtime_error, "WorldObject pointer not found.");
-        pimpl_.reset(static_cast<impl_type*>(ptr), & madness::detail::no_delete<impl_type>);
+        TA_ASSERT(ptr);
+        pimpl_ = std::static_pointer_cast<impl_type>(ptr->shared_from_this());
     }
 
     /// Swap this array with \c other
@@ -337,7 +337,7 @@ namespace TiledArray {
     struct DefaultArrayPolicy {
       typedef Eigen::aligned_allocator<T> allocator;
       typedef typename ChildCoordinateSystem<CS>::coordinate_system tile_coordinate_system;
-      typedef Tile<T, tile_coordinate_system, allocator> value_type;
+      typedef expressions::Tile<T, tile_coordinate_system, allocator> value_type;
       typedef Range<tile_coordinate_system> range_type;
 
       static value_type construct_value() {

@@ -48,8 +48,7 @@ namespace TiledArray {
     template <typename InIter>
     TiledRange(InIter first, InIter last) {
       TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-      TA_ASSERT(std::distance(first, last) == coordinate_system::dim, std::runtime_error,
-          "Tiling for all dimensions must be specified.");
+      TA_ASSERT(std::distance(first, last) == coordinate_system::dim);
       std::copy(first, last, ranges_.begin());
       init_();
     }
@@ -111,7 +110,7 @@ namespace TiledArray {
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
     tile_range_type make_tile_range(const ordinal_index& i) const {
-      TA_ASSERT(range_.includes(i), std::runtime_error, "Index i is not included in the range.");
+      TA_ASSERT(range_.includes(i));
       return make_tile_range(coordinate_system::calc_index(i, range_.weight()));
     }
 
@@ -121,7 +120,7 @@ namespace TiledArray {
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
     tile_range_type make_tile_range(const index& i) const {
-      TA_ASSERT(range_.includes(i), std::runtime_error, "Index i is not included in the range.");
+      TA_ASSERT(range_.includes(i));
       tile_index start;
       tile_index finish;
       for(unsigned int d = 0; d < coordinate_system::dim; ++d) {

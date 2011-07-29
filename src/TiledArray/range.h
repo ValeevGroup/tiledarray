@@ -61,8 +61,8 @@ namespace TiledArray {
     Range(const index& start, const index& finish) :
         start_(start), finish_(finish), size_(finish - start), weight_(coordinate_system::calc_weight(size_.data()))
     {
-      TA_ASSERT( (std::equal(start_.begin(), start_.end(), finish_.begin(), std::less_equal<typename coordinate_system::ordinal_index>())) ,
-          std::runtime_error, "Finish is less than start.");
+      TA_ASSERT( (std::equal(start_.begin(), start_.end(), finish_.begin(),
+          std::less_equal<typename coordinate_system::ordinal_index>())) );
 
     }
 
@@ -149,7 +149,7 @@ namespace TiledArray {
     /// \param i Ordinal index
     /// \return \c i (unchanged)
     ordinal_index ord(ordinal_index i) const {
-      TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
+      TA_ASSERT(includes(i));
       return i;
     }
 
@@ -159,7 +159,7 @@ namespace TiledArray {
     /// \param i The index to be converted to an ordinal index
     /// \return The ordinal index of the index \c i
     ordinal_index ord(const index& i) const {
-      TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
+      TA_ASSERT(includes(i));
       return coordinate_system::calc_ordinal(i, weight_.data(), start_);
     }
 
@@ -169,7 +169,7 @@ namespace TiledArray {
     /// \param i Ordinal index
     /// \return The index of the ordinal index
     index idx(ordinal_index i) const {
-      TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
+      TA_ASSERT(includes(i));
       return coordinate_system::calc_index(i, weight_.data()) + start_;
     }
 
@@ -180,7 +180,7 @@ namespace TiledArray {
     /// \param i The index
     /// \return \c i (unchanged)
     const index& idx(const index& i) const {
-      TA_ASSERT(includes(i), std::out_of_range, "The index is not included in the range.");
+      TA_ASSERT(includes(i));
       return i;
     }
 
@@ -261,8 +261,7 @@ namespace TiledArray {
     Range(const index start, const index finish) :
         start_(start), finish_(finish), size_(finish - start)
     {
-      TA_ASSERT( start <= finish ,
-          std::runtime_error, "Finish is less than start.");
+      TA_ASSERT( start <= finish );
     }
 
     /// Copy Constructor

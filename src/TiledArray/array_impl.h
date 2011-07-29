@@ -172,8 +172,7 @@ namespace TiledArray {
 
         // This should never happen, because zero tiles should be caught in
         // the first check and non-zero tiles are always present.
-        TA_ASSERT(it != tiles_.end(), std::runtime_error,
-            "A tile that should have been in the array was not found.");
+        TA_ASSERT(it != tiles_.end());
 
         return it->second;
       }
@@ -199,8 +198,7 @@ namespace TiledArray {
       data_type find(const Index& i) const {
         const ordinal_index o = ord(i);
 
-        TA_ASSERT(tiled_range_.tiles().includes(o), std::out_of_range,
-            "Element is out of range.");
+        TA_ASSERT(tiled_range_.tiles().includes(o));
 
         // Check for zero tiles
         if(shape_->is_local(o))
@@ -316,14 +314,11 @@ namespace TiledArray {
       template <typename Index>
       madness::Void set_value(const Index& i, const value_type& t) {
         if(is_local(i)) {
-          TA_ASSERT(shape_->probe(i), std::runtime_error,
-              "The given index i is not included in the array shape.");
+          TA_ASSERT(shape_->probe(i));
 
           typename container_type::accessor acc;
-          TA_TEST(tiles_.find(acc, ord(i)), std::runtime_error,
-              "The tile that should be present was not found.");
-          TA_ASSERT(! acc->second.probe(), std::runtime_error,
-              "Tile value has already been set.");
+          TA_TEST(tiles_.find(acc, ord(i)));
+          TA_ASSERT(! acc->second.probe());
           acc->second.set(t);
         } else {
           send(owner(i), & ArrayImpl_::template set_value<Index>, i, t);
@@ -340,10 +335,8 @@ namespace TiledArray {
       /// \throw std::runtime_error If the tile is not local.
       /// \throw std::runtime_error If the tile is not included in the shape.
       bool insert_tile(const ordinal_index& i) {
-        TA_ASSERT(is_local(i), std::runtime_error,
-            "Tile must be owned by this node.");
-        TA_ASSERT(shape_->probe(i), std::runtime_error,
-            "Tile is not included in the shape");
+        TA_ASSERT(is_local(i));
+        TA_ASSERT(shape_->probe(i));
 
         std::pair<typename container_type::iterator, bool> result =
             tiles_.insert(typename container_type::datumT(i, data_type()));
@@ -357,8 +350,7 @@ namespace TiledArray {
         for(typename tiled_range_type::range_type::volume_type it = 0; it != tiled_range_.tiles().volume(); ++it) {
           if(is_local(it)) {
             if(shape_->probe(it)) {
-              TA_TEST(insert_tile(it), std::runtime_error,
-                  "For some reason the tile was not inserted into the container.");
+              TA_TEST(insert_tile(it));
             }
           }
         }
@@ -384,7 +376,7 @@ namespace TiledArray {
 
       /// Handles find request
       madness::Void find_handler(const ordinal_index& i, const typename data_type::remote_refT& ref) const {
-        TA_ASSERT(is_local(i), std::runtime_error, "Requested tile is not owned by this process.");
+        TA_ASSERT(is_local(i));
         if(shape_->probe(i)) {
           data_type local_tile = local_find(i);
           if(local_tile.probe())

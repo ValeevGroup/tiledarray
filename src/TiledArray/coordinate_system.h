@@ -261,10 +261,8 @@ namespace TiledArray {
     /// \throw std::runtime_error When current is not bounded by \c [s, \c f)
     template <typename CArray, typename SArray, typename FArray>
     static void increment_coordinate(CArray& c, const SArray& s, const FArray& f) {
-      TA_ASSERT(std::equal(s.begin(), s.end(), c.begin(), std::less_equal<typename CArray::value_type>()),
-          std::runtime_error, "Current coordinate is less than start coordinate.");
-      TA_ASSERT(std::equal(c.begin(), c.end(), f.begin(), std::less<typename CArray::value_type>()),
-          std::runtime_error, "Current coordinate is less than start coordinate.");
+      TA_ASSERT(std::equal(s.begin(), s.end(), c.begin(), std::less_equal<typename CArray::value_type>()));
+      TA_ASSERT(std::equal(c.begin(), c.end(), f.begin(), std::less<typename CArray::value_type>()));
 
       increment_coordinate_(begin(c), end(c), begin(s), begin(f));
 
@@ -464,8 +462,8 @@ namespace TiledArray {
     /// \param start The first iterator pointing to the least significant
     /// element of the finish index
     /// \throw nothing
-    template <typename ForIter, typename InIter>
-    static void increment_coordinate_(ForIter first_cur, ForIter last_cur, InIter start, InIter finish) {
+    template <typename ForIter, typename InIterStart, typename InIterFinish>
+    static void increment_coordinate_(ForIter first_cur, ForIter last_cur, InIterStart start, InIterFinish finish) {
       for(; first_cur != last_cur; ++first_cur, ++start, ++finish) {
         // increment coordinate
         ++(*first_cur);

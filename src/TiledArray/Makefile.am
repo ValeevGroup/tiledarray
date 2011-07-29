@@ -26,7 +26,6 @@ library_include_HEADERS = annotated_array.h \
                           tile_slice.h \
                           tile.h \
                           tile_base.h \
-                          tile_proxy.h \
                           tiled_range.h \
                           tiled_range1.h \
                           transform_iterator.h \

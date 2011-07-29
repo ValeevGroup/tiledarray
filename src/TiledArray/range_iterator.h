@@ -87,8 +87,7 @@ namespace TiledArray {
       }
 
       difference_type distance_to(const RangeIterator_& other) const {
-        TA_ASSERT(container_ == other.container_, std::runtime_error,
-            "You cannot get the distance between to iterators that point to different containers.");
+        TA_ASSERT(container_ == other.container_);
         return container_->distance_to(current_, other.current_);
       }
 

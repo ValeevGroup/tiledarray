@@ -20,8 +20,7 @@ namespace TiledArray {
   /// permute a std::vector<T>
   template <unsigned int DIM, typename T>
   std::vector<T> operator^(const Permutation<DIM>& perm, const std::vector<T>& orig) {
-    TA_ASSERT((orig.size() == DIM), std::runtime_error,
-        "The permutation dimension is not equal to the vector size.");
+    TA_ASSERT((orig.size() == DIM));
     std::vector<T> result(DIM);
     detail::permute_array<typename Permutation<DIM>::const_iterator, typename std::vector<T>::const_iterator, typename std::vector<T>::iterator>
       (perm.begin(), perm.end(), orig.begin(), result.begin());

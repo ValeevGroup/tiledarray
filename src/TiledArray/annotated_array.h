@@ -51,8 +51,7 @@ namespace TiledArray {
       AnnotatedArray(const array_type& a, const VariableList& v) :
           array_(a), vars_(v)
       {
-        TA_ASSERT(array_type::coordinate_system::dim == v.dim(), std::runtime_error,
-            "The dimensions of the array do not match the dimensions of the variable list.");
+        TA_ASSERT(array_type::coordinate_system::dim == v.dim());
       }
 
       /// Copy constructor

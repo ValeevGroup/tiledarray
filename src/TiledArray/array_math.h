@@ -28,7 +28,7 @@ namespace TiledArray {
     class VariableList;
 
   }  // namespace expressions
-
+/*
   namespace math {
 
     /// Default binary operation for \c Array objects
@@ -56,8 +56,7 @@ namespace TiledArray {
       }
 
       result_array_type operator()(const left_array_type& left, const right_array_type& right) {
-        TA_ASSERT(left.array().tiling() == right.array().tiling(), std::runtime_error,
-            "The tiling of left and right arrays in binary operations must be identical.");
+        TA_ASSERT(left.array().tiling() == right.array().tiling());
 
         // Construct the new array
         ResArray result(*world_, left.array().tiling(), left.array(), right.array(),
@@ -72,7 +71,7 @@ namespace TiledArray {
 
       template <typename Archive>
       void serialize(const Archive& ar) {
-        TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+        TA_ASSERT(false);
       }
 
     private:
@@ -106,7 +105,7 @@ namespace TiledArray {
 
         template <typename Archive>
         void serialize(const Archive& ar) {
-          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+          TA_ASSERT(false);
         }
 
       private:
@@ -168,8 +167,7 @@ namespace TiledArray {
       }
 
       result_array_type operator()(const left_array_type& left, const right_array_type& right) {
-        TA_ASSERT(left.array().tiling() == right.array().tiling(), std::runtime_error,
-            "The tiling of left and right arrays in binary operations must be identical.");
+        TA_ASSERT(left.array().tiling() == right.array().tiling());
 
         // Construct the contraction definition.
         std::shared_ptr<cont_type> cont(new cont_type(left.vars(), right.vars()));
@@ -194,7 +192,7 @@ namespace TiledArray {
 
       template <typename Archive>
       void serialize(const Archive& ar) {
-        TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+        TA_ASSERT(false);
       }
 
     private:
@@ -334,7 +332,7 @@ namespace TiledArray {
 
         template <typename Archive>
         void serialize(const Archive& ar) {
-          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+          TA_ASSERT(false);
         }
 
       private:
@@ -384,7 +382,7 @@ namespace TiledArray {
 
       template <typename Archive>
       void serialize(const Archive& ar) {
-        TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+        TA_ASSERT(false);
       }
 
     private:
@@ -416,7 +414,7 @@ namespace TiledArray {
 
         template <typename Archive>
         void serialize(const Archive& ar) {
-          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+          TA_ASSERT(false);
         }
 
       private:
@@ -475,7 +473,7 @@ namespace TiledArray {
 
       template <typename Archive>
       void serialize(const Archive& ar) {
-        TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+        TA_ASSERT(false);
       }
 
     private:
@@ -508,7 +506,7 @@ namespace TiledArray {
 
         template <typename Archive>
         void serialize(const Archive& ar) {
-          TA_ASSERT(false, std::runtime_error, "Serialization not allowed.");
+          TA_ASSERT(false);
         }
 
       private:
@@ -524,6 +522,7 @@ namespace TiledArray {
     }; // class UnaryOp
 
   } // namespace math
+  */
 } // namespace TiledArray
 
 #endif // TILEDARRAY_ARRAY_MATH_H__INCLUDED

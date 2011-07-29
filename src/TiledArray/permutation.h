@@ -63,13 +63,11 @@ namespace TiledArray {
     Permutation(InIter first, typename madness::enable_if<detail::is_input_iterator<InIter>, Enabler >::type = Enabler()) {
       for(std::size_t d = 0; d < DIM; ++d, ++first)
         p_[d] = *first;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
-          "Invalid permutation supplied." );
+      TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
 
     Permutation(const Array& source) : p_(source) {
-      TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
-          "Invalid permutation supplied.");
+      TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
 
     Permutation(const Permutation& other) : p_(other.p_) { }
@@ -77,8 +75,7 @@ namespace TiledArray {
 
     Permutation(index_type v) {
       p_[0] = v;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
-          "Invalid permutation supplied." );
+      TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
 
     Permutation(const index_type p0, const index_type p1, ...) {
@@ -95,8 +92,7 @@ namespace TiledArray {
       }
 
       va_end(ap);
-      TA_ASSERT( valid_(p_.begin(), p_.end()) , std::runtime_error,
-          "Invalid permutation supplied." );
+      TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
 
     ~Permutation() {}

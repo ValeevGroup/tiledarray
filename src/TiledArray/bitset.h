@@ -76,7 +76,7 @@ namespace TiledArray {
       /// \param other The bitset to copy
       /// \throw std::runtime_error If the bitset sizes are not equal.
       Bitset<Block>& operator=(const Bitset<Block>& other) {
-        TA_ASSERT(size_ == other.size_, std::range_error, "The sizes must match.");
+        TA_ASSERT(size_ == other.size_);
         if(this != &other)
           std::copy(other.set_.get(), other.set_.get() + blocks_, set_.get());
 
@@ -89,7 +89,7 @@ namespace TiledArray {
       /// \param other The bitset to be or-assigned to this bitset
       /// \throw std::range_error If the bitset sizes are not equal.
       Bitset<Block>& operator|=(const Bitset<Block>& other) {
-        TA_ASSERT(size_ == other.size_, std::range_error, "The sizes must match.");
+        TA_ASSERT(size_ == other.size_);
         for(std::size_t i = 0; i < blocks_; ++i)
           set_[i] |= other.set_[i];
 
@@ -102,7 +102,7 @@ namespace TiledArray {
       /// \param other The bitset to be and-assigned to this bitset
       /// \throw std::range_error If the bitset sizes are not equal.
       Bitset<Block>& operator&=(const Bitset<Block>& other) {
-        TA_ASSERT(size_ == other.size_, std::range_error, "The sizes must match.");
+        TA_ASSERT(size_ == other.size_);
         for(std::size_t i = 0; i < blocks_; ++i)
           set_[i] &= other.set_[i];
 
@@ -116,7 +116,7 @@ namespace TiledArray {
       /// \param other The bitset to be and-assigned to this bitset
       /// \throw std::range_error If the bitset sizes are not equal.
       Bitset<Block>& operator^=(const Bitset<Block>& other) {
-        TA_ASSERT(size_ == other.size_, std::range_error, "The sizes must match.");
+        TA_ASSERT(size_ == other.size_);
         for(std::size_t i = 0; i < blocks_; ++i)
           set_[i] ^= other.set_[i];
 
@@ -129,7 +129,7 @@ namespace TiledArray {
       /// \return The value of i-th bit of the bit set
       /// \throw std::out_of_range If \c i is greater than or equal to the size
       const_reference operator[](std::size_t i) const {
-        TA_ASSERT(i < size_, std::out_of_range, "Bit i is out of range.");
+        TA_ASSERT(i < size_);
         return mask(i) & set_[block_index(i)];
       }
 
@@ -139,7 +139,7 @@ namespace TiledArray {
       /// \param value The new value of the bit
       /// \throw std::out_of_range When \c i is >= size.
       void set(std::size_t i, bool value = true) {
-        TA_ASSERT(i < size_, std::out_of_range, "Bit i is out of range.");
+        TA_ASSERT(i < size_);
         if(value)
           set_[block_index(i)] |= mask(i);
         else
@@ -156,7 +156,7 @@ namespace TiledArray {
       /// \param i The bit to be reset
       /// \throw std::out_of_range When \c i is >= size.
       void reset(std::size_t i) {
-        TA_ASSERT(i < size_, std::out_of_range, "Bit i is out of range.");
+        TA_ASSERT(i < size_);
         set_[block_index(i)] &= ~mask(i);
       }
 
@@ -172,7 +172,7 @@ namespace TiledArray {
       /// \param i The bit to be flipped
       /// \throw std::out_of_range When \c i is >= size.
       void flip(std::size_t i) {
-        TA_ASSERT(i < size_, std::out_of_range, "Bit i is out of range.");
+        TA_ASSERT(i < size_);
         set_[block_index(i)] ^= mask(i);
       }
 

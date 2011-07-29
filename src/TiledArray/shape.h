@@ -46,7 +46,7 @@ namespace TiledArray {
     typedef typename coordinate_system::ordinal_index ordinal_index;
     typedef Range<coordinate_system> range_type;  ///< Range object type
     typedef detail::VersionedPmap<ordinal_index> pmap_type; ///< The process map interface type
-    typedef Tile<int, CS> array_type;
+    typedef expressions::Tile<int, CS> array_type;
 
   protected:
     /// Shape constructor
@@ -81,16 +81,14 @@ namespace TiledArray {
     /// otherwise \c false.
     template <typename Index>
     bool is_local(const Index& i) const {
-      TA_ASSERT(range_.includes(i), std::out_of_range,
-          "Cannot check for tiles that are not in the range.");
+      TA_ASSERT(range_.includes(i));
       return this->local_data(range_.ord(i));
     }
 
     /// Probe for the presence of an element at key
     template <typename Index>
     bool probe(const Index& i) const {
-      TA_ASSERT(this->is_local(i), std::runtime_error,
-          "You cannot probe data that is not stored locally.");
+      TA_ASSERT(this->is_local(i));
       return  this->local_probe(range_.ord(i));
     }
 
@@ -196,8 +194,7 @@ namespace TiledArray {
   Shape<CS>* shape_copy(madness::World& world, const typename Shape<CS>::range_type& range,
       const typename Shape<CS>::pmap_type& pmap, const Shape<CS>& other)
   {
-    TA_ASSERT(other.range() == range, std::range_error,
-        "The range of the other shapes must match the given range.");
+    TA_ASSERT(other.range() == range);
 
     Shape<CS>* result = NULL;
 
@@ -223,8 +220,7 @@ namespace TiledArray {
   Shape<CS>* shape_permute(madness::World& world, const typename Shape<CS>::range_type& range,
       const typename Shape<CS>::pmap_type& pmap, const Permutation<CS::dim>& p, const Shape<CS>& other)
   {
-    TA_ASSERT(other.range() == range, std::range_error,
-        "The range of the other shapes must match the given range.");
+    TA_ASSERT(other.range() == range);
 
     Shape<CS>* result = NULL;
 
@@ -241,10 +237,8 @@ namespace TiledArray {
       const typename Shape<CS>::pmap_type& pmap, const Shape<CS>& left,
       const Shape<CS>& right)
   {
-    TA_ASSERT(range == left.range(), std::range_error,
-        "The left shape range must match the given range.");
-    TA_ASSERT(range == right.range(), std::range_error,
-        "The right shape range must match the given range.");
+    TA_ASSERT(range == left.range());
+    TA_ASSERT(range == right.range());
 
     Shape<CS>* result = NULL;
 
@@ -268,11 +262,11 @@ namespace TiledArray {
     if(is_dense_shape(left) && is_dense_shape(right))
       result = new DenseShape<ResCS>(range, pmap);
     else {
-      math::TileContract<typename Shape<ResCS>::array_type, typename Shape<LeftCS>::array_type,
-        typename Shape<RightCS>::array_type> cont_op(cont, range);
+      expressions::ContractionTensor<typename Shape<LeftCS>::array_type,
+        typename Shape<RightCS>::array_type> contracted(left.make_shape_map(),
+        right.make_shape_map(), cont);
 
-      result = new SparseShape<ResCS>(world, range, pmap,
-          cont_op(left.make_shape_map(), right.make_shape_map()));
+      result = new SparseShape<ResCS>(world, range, pmap, contracted);
     }
 
     return result;

@@ -37,8 +37,7 @@ namespace TiledArray {
       template<typename InIter>
       VariableList(InIter first, InIter last) {
         TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-        TA_ASSERT( unique_(first, last), std::runtime_error,
-            "Duplicate variable names not allowed.");
+        TA_ASSERT( unique_(first, last) );
 
         for(; first != last; ++first)
           vars_.push_back(trim_spaces_(first->begin(), first->end()));
@@ -60,8 +59,7 @@ namespace TiledArray {
 
       template<unsigned int DIM>
       VariableList& operator ^=(const Permutation<DIM>& p) {
-        TA_ASSERT(DIM == dim(), std::runtime_error,
-            "The permutation dimensions are not equal to the variable list dimensions.");
+        TA_ASSERT(DIM == dim());
         vars_ ^= p;
         return *this;
       }
@@ -101,15 +99,13 @@ namespace TiledArray {
       }
 
       std::vector<std::size_t> permutation(const VariableList& other) {
-        TA_ASSERT(dim() == other.dim(), std::runtime_error,
-            "The variable list dimensions are not equal.");
+        TA_ASSERT(dim() == other.dim());
         std::vector<std::size_t> p(dim(), 0);
         const_iterator other_it;
         const_iterator this_it = begin();
         for(std::vector<std::size_t>::iterator it = p.begin(); it != p.end(); ++it, ++this_it) {
           other_it = std::find(other.begin(), other.end(), *this_it);
-          TA_ASSERT(other_it != other.end(), std::runtime_error,
-              "Variable name not found in other variable list.");
+          TA_ASSERT(other_it != other.end());
           *it = std::distance(other.begin(), other_it);
         }
 
@@ -131,25 +127,21 @@ namespace TiledArray {
         }
         vars_.push_back(trim_spaces_(start, finish));
 
-        TA_ASSERT( (unique_(vars_.begin(), vars_.end())), std::runtime_error,
-            "Duplicate variables not allowed in variable list.");
+        TA_ASSERT( (unique_(vars_.begin(), vars_.end())));
       }
 
       /// Returns a string with all the spaces ( ' ' ) removed from the string
       /// defined by the start and finish iterators.
       static std::string trim_spaces_(std::string::const_iterator first, std::string::const_iterator last) {
-        TA_ASSERT( (first != last), std::runtime_error,
-            "Zero length variable string not allowed.");
+        TA_ASSERT(first != last);
         std::string result = "";
         for(;first != last; ++first) {
-          TA_ASSERT( valid_char_(*first), std::runtime_error,
-              "Variable names may only contain letters and numbers.");
+          TA_ASSERT( valid_char_(*first));
           if(*first != ' ' && *first != '\0')
             result.append(1, *first);
         }
 
-        TA_ASSERT( (result.length() != 0) , std::runtime_error,
-            "Blank variable string not allowed.");
+        TA_ASSERT(result.length() != 0);
 
         return result;
       }

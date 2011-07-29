@@ -93,7 +93,7 @@ namespace TiledArray {
         if (range.size() <= range.get_chunksize()) {
           value_type result = value_type();
           for(typename range_type::iterator it = range.begin(); it != range.end(); ++it) {
-            TA_ASSERT(it->probe(), std::runtime_error, "Future is not ready.");
+            TA_ASSERT(it->probe());
             result = (*this)(result, *it);
           }
           return madness::Future<value_type>(result);

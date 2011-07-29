@@ -93,7 +93,7 @@ namespace TiledArray {
     /// \param t0 The first lower bound
     /// \param t1 ... are the tile boundaries.
     explicit TiledRange1(const ordinal_index start_tile_index, const std::size_t n, const ordinal_index t0, const ordinal_index t1, ...) {
-      TA_ASSERT(n >= 1, std::runtime_error, "There must be at least one tile.");
+      TA_ASSERT(n >= 1);
       va_list ap;
       va_start(ap, t1);
 
@@ -163,14 +163,12 @@ namespace TiledArray {
     /// \return A const reference to a the tile range for tile \c i
     /// \throw std::out_of_range When \c i \c >= \c tiles().size()
     const tile_range_type& tile(const index i) const {
-      TA_ASSERT(range_.includes(i), std::out_of_range,
-          "The index i is out of range.");
+      TA_ASSERT(range_.includes(i));
       return tile_ranges_.at(i - range_.start());
     }
 
     const ordinal_index& element2tile(const ordinal_index& e) const {
-      TA_ASSERT( element_range_.includes(tile_range_index(e)) ,
-          std::out_of_range, "Element index is out of range.");
+      TA_ASSERT( element_range_.includes(tile_range_index(e)) );
       std::size_t i = e - element_range_.start();
       return elem2tile_[i];
     }
@@ -193,8 +191,7 @@ namespace TiledArray {
     /// Initialize tiles use a set of tile offsets
     template <typename RandIter>
     void init_tiles_(RandIter first, RandIter last, ordinal_index start_tile_index) {
-      TA_ASSERT( valid_(first, last) , std::runtime_error,
-          "Tile boundaries do not have the expected structure.");
+      TA_ASSERT( valid_(first, last) );
       range_.resize(range_index(start_tile_index), range_index(start_tile_index + last - first - 1));
       element_range_.resize(tile_range_index(*first), tile_range_index(*(last - 1)));
       for (; first != (last - 1); ++first)

@@ -1,5 +1,6 @@
 #include "TiledArray/tile.h"
 #include "TiledArray/permutation.h"
+#include "TiledArray/math.h"
 #include <math.h>
 #include <utility>
 #include "unit_test_config.h"
@@ -26,7 +27,7 @@ public:
 };
 
 struct TileFixture {
-  typedef TiledArray::Tile<int, GlobalFixture::element_coordinate_system> TileN;
+  typedef TiledArray::expressions::Tile<int, GlobalFixture::element_coordinate_system> TileN;
   typedef TileN::index index;
   typedef TileN::volume_type volume_type;
   typedef TileN::size_array size_array;
@@ -216,12 +217,12 @@ BOOST_AUTO_TEST_CASE( permutation )
   //         destination       {{0,100,200,300,  1,101,201,301,  2,102,202,302, 10,110,210,310, 11,111,211,311, 12,112,212,312}}
   //         permuted index    {{0,  1,  2, 10, 11, 12,100,101,102,110,111,112,200,201,202,210,211,212,300,301,302,310,311,312}}
   std::array<double, 24> pval = {{0, 10, 20,100,110,120,  1, 11, 21,101,111,121,  2, 12, 22,102,112,122,  3, 13, 23,103,113,123}};
-  Tile<int, cs3> t1(r1, val.begin());
-  Tile<int, cs3> t2 = p ^ t1;
+  expressions::Tile<int, cs3> t1(r1, val.begin());
+  expressions::Tile<int, cs3> t2 = (p ^ t1);
   BOOST_CHECK_EQUAL(t2.range(), p ^ t1.range()); // check that the dimensions were correctly permuted.
   BOOST_CHECK_EQUAL_COLLECTIONS(t2.begin(), t2.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
 
-  Tile<int, cs3> t3(r3, val.begin());
+  expressions::Tile<int, cs3> t3(r3, val.begin());
   t3 ^= p;
   BOOST_CHECK_EQUAL(t3.range(), p ^ t1.range()); // check that the dimensions were correctly permuted.
   BOOST_CHECK_EQUAL_COLLECTIONS(t3.begin(), t3.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
@@ -231,7 +232,7 @@ BOOST_AUTO_TEST_CASE( ostream )
 {
   typedef TiledArray::CoordinateSystem<3> cs3;
   Range<cs3> r1(Range<cs3>::index(0), Range<cs3>::index(3));
-  Tile<int, cs3> t1(r1, 1);
+  expressions::Tile<int, cs3> t1(r1, 1);
   boost::test_tools::output_test_stream output;
   output << t1;
   BOOST_CHECK( !output.is_empty( false ) ); // check for correct output.
