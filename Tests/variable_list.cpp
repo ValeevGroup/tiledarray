@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE( accessors )
   BOOST_CHECK_EQUAL(v.at(3), "d"); // check last variable access
   BOOST_CHECK_EQUAL(v[0], "a"); // check 1st variable access
   BOOST_CHECK_EQUAL(v[3], "d"); // check last variable access
-  BOOST_CHECK_THROW(v.at(4), Exception); // check for out of range throw.
+  BOOST_CHECK_THROW(v.at(4), std::out_of_range); // check for out of range throw.
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
