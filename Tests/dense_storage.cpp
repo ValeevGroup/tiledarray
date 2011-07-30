@@ -1,6 +1,4 @@
 #include "TiledArray/dense_storage.h"
-#include <math.h>
-#include <utility>
 #include "unit_test_config.h"
 #include <world/bufar.h>
 
@@ -71,19 +69,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( assignment_operator )
-{
-  Storage t1;
-  BOOST_CHECK_EQUAL(t1.size(), 0);
-  BOOST_CHECK_EQUAL(t.size(), 10);
-  BOOST_CHECK_EQUAL(t1.begin(), t1.end());
-
-  t1 = t;
-  BOOST_CHECK_EQUAL(t1.size(), t.size());
-  BOOST_CHECK_EQUAL_COLLECTIONS(t1.begin(), t1.end(), t.begin(), t.end());
-  BOOST_CHECK_NE(t1.begin(), t.begin());
-}
-
 BOOST_AUTO_TEST_CASE( size_accessor )
 {
   BOOST_CHECK_EQUAL(t.size(), 10);    // check size accessor
@@ -141,6 +126,79 @@ BOOST_AUTO_TEST_CASE( element_assignment )
   BOOST_CHECK_EQUAL(t[1] = 2, 2) ;
   // check for correct assignment.
   BOOST_CHECK_EQUAL(t[1], 2);
+}
+
+BOOST_AUTO_TEST_CASE( assignment_operator )
+{
+  Storage t1;
+  BOOST_CHECK_EQUAL(t1.size(), 0);
+  BOOST_CHECK_EQUAL(t.size(), 10);
+  BOOST_CHECK_EQUAL(t1.begin(), t1.end());
+
+  t1 = t;
+  BOOST_CHECK_EQUAL(t1.size(), t.size());
+  BOOST_CHECK_EQUAL_COLLECTIONS(t1.begin(), t1.end(), t.begin(), t.end());
+  BOOST_CHECK_NE(t1.begin(), t.begin());
+}
+
+BOOST_AUTO_TEST_CASE( plus_assignment_operator )
+{
+  Storage t1(10, 1);
+  t += t1;
+  for(size_type i = 0; i < 10; ++ i)
+    BOOST_CHECK_EQUAL(t[i], i + 1);
+}
+
+BOOST_AUTO_TEST_CASE( plus_assignment_value_operator )
+{
+  t += 1;
+  for(size_type i = 0; i < 10; ++ i)
+    BOOST_CHECK_EQUAL(t[i], i + 1);
+}
+
+BOOST_AUTO_TEST_CASE( minus_assignment_operator )
+{
+  t += 2;
+  Storage t1(10, 1);
+  t -= t1;
+  for(size_type i = 0; i < 10; ++ i)
+    BOOST_CHECK_EQUAL(t[i], i + 1);
+}
+
+BOOST_AUTO_TEST_CASE( minus_assignment_value_operator )
+{
+  t += 2;
+
+  t -= 1;
+  for(size_type i = 0; i < 10; ++ i)
+    BOOST_CHECK_EQUAL(t[i], i + 1);
+}
+
+BOOST_AUTO_TEST_CASE( scale_assignment_operator )
+{
+  t *= 2;
+  for(size_type i = 0; i < 10; ++ i)
+    BOOST_CHECK_EQUAL(t[i], i * 2);
+}
+
+
+BOOST_AUTO_TEST_CASE( serialize )
+{
+
+  unsigned char buf[4*(sizeof(Storage::size_type)+(sizeof(Storage::value_type)*10))];
+  madness::archive::BufferOutputArchive oar(buf,sizeof(buf));
+  t.store(oar);
+  std::size_t nbyte = oar.size();
+  BOOST_CHECK_GT(oar.size(), 0);
+
+  // Deserialize 2 pointers from a buffer
+  madness::archive::BufferInputArchive iar(buf,nbyte);
+  Storage t1;
+  t1.load(iar);
+  iar.close();
+
+  BOOST_CHECK_EQUAL(t1.size(), t.size());
+  BOOST_CHECK_EQUAL_COLLECTIONS(t1.begin(), t1.end(), t.begin(), t.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
