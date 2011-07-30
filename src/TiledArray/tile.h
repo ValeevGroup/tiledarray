@@ -94,6 +94,7 @@ namespace TiledArray {
       Tile(const TensorBase<Derived>& other) :
           range_(index(0), index(other.size().begin())), data_()
       {
+        storage_type(volume()).swap(data_);
         other.eval_to(data_);
       }
 
@@ -162,6 +163,8 @@ namespace TiledArray {
       template <typename Arg>
       typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
       operator=(const Arg& other) {
+        if(volume() != other.volume())
+          storage_type(other.volume()).swap(data_);
         other.eval_to(data_);
         return *this;
       }
