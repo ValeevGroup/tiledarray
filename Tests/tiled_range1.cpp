@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_CHECK_EQUAL(r.tiles(), range1_type::range_type(0,0));
     BOOST_CHECK_EQUAL(r.elements(), range1_type::tile_range_type(0,0));
 #ifdef TA_EXCEPTION_ERROR
-    BOOST_CHECK_THROW(r.tile(0), std::out_of_range);
+    BOOST_CHECK_THROW(r.tile(0), Exception);
 #endif
   }
 

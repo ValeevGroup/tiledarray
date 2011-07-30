@@ -86,11 +86,11 @@ BOOST_AUTO_TEST_CASE( element_access )
   BOOST_CHECK_EQUAL(t[r.volume() - 1], 1);
 
   // check out of range error
-  BOOST_CHECK_THROW(t.at(r.finish()), std::out_of_range);
-  BOOST_CHECK_THROW(t.at(r.volume()), std::out_of_range);
+  BOOST_CHECK_THROW(t.at(r.finish()), Exception);
+  BOOST_CHECK_THROW(t.at(r.volume()), Exception);
 #ifndef NDEBUG
-  BOOST_CHECK_THROW(t[r.finish()], std::out_of_range);
-  BOOST_CHECK_THROW(t[r.volume()], std::out_of_range);
+  BOOST_CHECK_THROW(t[r.finish()], Exception);
+  BOOST_CHECK_THROW(t[r.volume()], Exception);
 #endif
 }
 
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(TileN t0);
   TileN t0;
   BOOST_CHECK_EQUAL(t0.range().volume(), 0u);
-  BOOST_CHECK_THROW(t0.at(index(0,0,0)), std::out_of_range);
+  BOOST_CHECK_THROW(t0.at(index(0,0,0)), Exception);
   BOOST_CHECK_EQUAL(t0.begin(), t0.end());
 
   // check copy constructor

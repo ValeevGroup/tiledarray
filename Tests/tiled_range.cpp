@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(r4.elements(), tr.elements());
 
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(TRangeN r5(dims3.begin(), dims3.end() - 1), std::runtime_error);
+  BOOST_CHECK_THROW(TRangeN r5(dims3.begin(), dims3.end() - 1), Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 

@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE( element_access )
   BOOST_CHECK_EQUAL( p.at(0), 1u);         // correct element access
   BOOST_CHECK_EQUAL( p.at(1), 2u);
   BOOST_CHECK_EQUAL( p.at(2), 3u);
-  BOOST_CHECK_THROW( p.at(3), std::out_of_range);
+  BOOST_CHECK_THROW( p.at(3), Exception);
 }
 
 BOOST_AUTO_TEST_CASE( iteration )

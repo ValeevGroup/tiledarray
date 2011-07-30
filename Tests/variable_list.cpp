@@ -3,7 +3,7 @@
 #include "unit_test_config.h"
 
 //using namespace TiledArray;
-using TiledArray::Permutation;
+using namespace TiledArray;
 using TiledArray::expressions::VariableList;
 using TiledArray::expressions::detail::find_common;
 
@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE( accessors )
   BOOST_CHECK_EQUAL(v.at(3), "d"); // check last variable access
   BOOST_CHECK_EQUAL(v[0], "a"); // check 1st variable access
   BOOST_CHECK_EQUAL(v[3], "d"); // check last variable access
-  BOOST_CHECK_THROW(v.at(4), std::out_of_range); // check for out of range throw.
+  BOOST_CHECK_THROW(v.at(4), Exception); // check for out of range throw.
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -144,12 +144,12 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(v10.at(2), "c");
   BOOST_CHECK_EQUAL(v10.at(3), "d");
 
-  BOOST_CHECK_THROW(VariableList v3(",a,b,c"), std::runtime_error); // check invalid input
-  BOOST_CHECK_THROW(VariableList v4("a,,b,c"), std::runtime_error);
-  BOOST_CHECK_THROW(VariableList v5(" ,a,b"), std::runtime_error);
-  BOOST_CHECK_THROW(VariableList v6("a,  b,   , c"), std::runtime_error);
-  BOOST_CHECK_THROW(VariableList v8("a,b,a,c"), std::runtime_error);
-  BOOST_CHECK_THROW(VariableList v9("a,a,b,c"), std::runtime_error);
+  BOOST_CHECK_THROW(VariableList v3(",a,b,c"), Exception); // check invalid input
+  BOOST_CHECK_THROW(VariableList v4("a,,b,c"), Exception);
+  BOOST_CHECK_THROW(VariableList v5(" ,a,b"), Exception);
+  BOOST_CHECK_THROW(VariableList v6("a,  b,   , c"), Exception);
+  BOOST_CHECK_THROW(VariableList v8("a,b,a,c"), Exception);
+  BOOST_CHECK_THROW(VariableList v9("a,a,b,c"), Exception);
 
   VariableList v7(" a , b, c, d , e e ,f f, g10,h, i "); // check input with various spacings.
   BOOST_CHECK_EQUAL(v7.at(0), "a");

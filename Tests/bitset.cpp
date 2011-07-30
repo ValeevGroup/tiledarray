@@ -4,6 +4,8 @@
 #include <world/array.h>
 #include <algorithm>
 
+using namespace TiledArray;
+
 struct BitsetFixture {
   typedef TiledArray::detail::Bitset<> Bitset;
 
@@ -96,8 +98,8 @@ BOOST_AUTO_TEST_CASE( accessor )
 
   // Check that exceptions are thrown when accessing an element that is out of range.
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(set[set.size()], std::out_of_range);
-  BOOST_CHECK_THROW(set[set.size() + 1], std::out_of_range);
+  BOOST_CHECK_THROW(set[set.size()], Exception);
+  BOOST_CHECK_THROW(set[set.size() + 1], Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
@@ -141,8 +143,8 @@ BOOST_AUTO_TEST_CASE( set_bit )
 
   // Check that exceptions are thrown when accessing an element that is out of range.
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(set.set(set.size()), std::out_of_range);
-  BOOST_CHECK_THROW(set.set(set.size() + 1), std::out_of_range);
+  BOOST_CHECK_THROW(set.set(set.size()), Exception);
+  BOOST_CHECK_THROW(set.set(set.size() + 1), Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
@@ -192,8 +194,8 @@ BOOST_AUTO_TEST_CASE( reset_bit )
 
   // Check that exceptions are thrown when accessing an element that is out of range.
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(set.reset(set.size()), std::out_of_range);
-  BOOST_CHECK_THROW(set.reset(set.size() + 1), std::out_of_range);
+  BOOST_CHECK_THROW(set.reset(set.size()), Exception);
+  BOOST_CHECK_THROW(set.reset(set.size() + 1), Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
@@ -246,8 +248,8 @@ BOOST_AUTO_TEST_CASE( bit_flip )
 
   // Check that exceptions are thrown when accessing an element that is out of range.
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(set.flip(set.size()), std::out_of_range);
-  BOOST_CHECK_THROW(set.flip(set.size() + 1), std::out_of_range);
+  BOOST_CHECK_THROW(set.flip(set.size()), Exception);
+  BOOST_CHECK_THROW(set.flip(set.size() + 1), Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
@@ -299,7 +301,7 @@ BOOST_AUTO_TEST_CASE( assignment )
   // Check that assignment of bitsets with different size throws.
 #ifdef TA_EXCEPTION_ERROR
   Bitset bad(size / 2);
-  BOOST_CHECK_THROW(bad = set, std::range_error);
+  BOOST_CHECK_THROW(bad = set, Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
@@ -346,9 +348,9 @@ BOOST_AUTO_TEST_CASE( bit_assignment )
   // Check that assignment of bitsets with different size throws.
 #ifdef TA_EXCEPTION_ERROR
   Bitset bad(size / 2);
-  BOOST_CHECK_THROW(bad &= set, std::range_error);
-  BOOST_CHECK_THROW(bad |= set, std::range_error);
-  BOOST_CHECK_THROW(bad ^= set, std::range_error);
+  BOOST_CHECK_THROW(bad &= set, Exception);
+  BOOST_CHECK_THROW(bad |= set, Exception);
+  BOOST_CHECK_THROW(bad ^= set, Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
@@ -419,9 +421,9 @@ BOOST_AUTO_TEST_CASE( bit_operators )
   // Check that assignment of bitsets with different size throws.
 #ifdef TA_EXCEPTION_ERROR
   Bitset bad(size / 2);
-  BOOST_CHECK_THROW(bad & set, std::range_error);
-  BOOST_CHECK_THROW(bad | set, std::range_error);
-  BOOST_CHECK_THROW(bad ^ set, std::range_error);
+  BOOST_CHECK_THROW(bad & set, Exception);
+  BOOST_CHECK_THROW(bad | set, Exception);
+  BOOST_CHECK_THROW(bad ^ set, Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
