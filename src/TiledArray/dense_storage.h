@@ -1,11 +1,12 @@
 #ifndef TILEDARRAY_TILE_BASE_H__INCLUDED
 #define TILEDARRAY_TILE_BASE_H__INCLUDED
 
-#include <cstddef>
-#include <stdexcept>
+#include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
 #include <world/archive.h>
 #include <Eigen/Core>
+#include <cstddef>
+#include <stdexcept>
 
 namespace madness {
   namespace archive {
@@ -150,7 +151,7 @@ namespace TiledArray {
     /// \return A reference to this object
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     DenseStorage_& operator =(const DenseStorage_& other) {
-      *this = static_cast<const allocator_type&>(other);
+      allocator_type::operator=(other);
 
       // Allocate memory for new object
       const size_type n = other.size();
@@ -236,7 +237,7 @@ namespace TiledArray {
     /// thrown. Valid types for Index are ordinal_type and index_type.
     reference at(size_type i) {
       if(i >= size())
-        throw std::out_of_range("Element is out of range.");
+        TA_EXCEPTION("Element is out of range.");
 
       return first_[i];
     }
@@ -248,7 +249,7 @@ namespace TiledArray {
     /// thrown. Valid types for Index are ordinal_type and index_type.
     const_reference at(size_type i) const {
       if(i >= size())
-        throw std::out_of_range("Element is out of range.");
+        throw Exception("Element is out of range.");
 
       return first_[i];
     }
