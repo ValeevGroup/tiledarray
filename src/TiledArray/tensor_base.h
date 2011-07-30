@@ -21,10 +21,12 @@
 
 #define TILEDARRAY_DIRECT_READABLE_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
       TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
+      typedef typename base::difference_type difference_type; \
       typedef typename base::const_pointer const_pointer;
 
 #define TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
       TILEDARRAY_WRITABLE_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
+      typedef typename base::difference_type difference_type; \
       typedef typename base::const_pointer const_pointer; \
       typedef typename base::pointer pointer;
 
@@ -147,6 +149,7 @@ namespace TiledArray {
     class DirectReadableTensor : public ReadableTensor<Derived> {
     public:
       TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF(ReadableTensor<Derived>, Derived)
+      typedef typename TensorTraits<Derived>::difference_type difference_type;
       typedef typename TensorTraits<Derived>::const_pointer const_pointer;
 
       TILEDARRAY_READABLE_TENSOR_INHEIRATE_MEMBER(ReadableTensor<Derived>, Derived)
@@ -159,6 +162,7 @@ namespace TiledArray {
     class DirectWritableTensor : public WritableTensor<Derived> {
     public:
       TILEDARRAY_WRITABLE_TENSOR_INHEIRATE_TYPEDEF(WritableTensor<Derived>, Derived)
+      typedef typename TensorTraits<Derived>::difference_type difference_type;
       typedef typename TensorTraits<Derived>::const_pointer const_pointer;
       typedef typename TensorTraits<Derived>::pointer pointer;
 

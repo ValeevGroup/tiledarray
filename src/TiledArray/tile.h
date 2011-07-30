@@ -27,6 +27,7 @@ namespace TiledArray {
       typedef typename storage_type::const_reference const_reference;
       typedef typename storage_type::iterator iterator;
       typedef typename storage_type::const_iterator const_iterator;
+      typedef typename storage_type::difference_type difference_type;
       typedef typename storage_type::pointer pointer;
       typedef typename storage_type::const_pointer const_pointer;
     }; // struct TensorTraits<Tile<T,CS,A> >
@@ -44,32 +45,27 @@ namespace TiledArray {
     /// \tparam A A C++ standard library compliant allocator (Default:
     /// \c Eigen::aligned_allocator<T>)
     template <typename T, typename CS, typename A = Eigen::aligned_allocator<T> >
-    class Tile : public expressions::DirectWritableTensor<Tile<T,CS,A> > {
+    class Tile : public DirectWritableTensor<Tile<T,CS,A> > {
     public:
-      typedef DenseStorage<T,A> storage_type;
       typedef Tile<T,CS,A> Tile_;                             ///< This object's type
+      typedef DenseStorage<T,A> storage_type;                 ///< Raw data storage type
+      TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHEIRATE_TYPEDEF( DirectWritableTensor<Tile_> , Tile_ );
 
       typedef CS coordinate_system;                           ///< The array coordinate system
-
       typedef typename CS::volume_type volume_type;           ///< Array volume type
       typedef typename CS::index index;                       ///< Array coordinate index type
       typedef typename CS::ordinal_index ordinal_index;       ///< Array ordinal index type
-      typedef typename CS::size_array size_array;             ///< Size array type
-
-      typedef typename storage_type::allocator_type allocator_type;   ///< Allocator type
-      typedef typename storage_type::size_type size_type;             ///< Size type
-      typedef typename storage_type::difference_type difference_type; ///< difference type
-      typedef typename storage_type::value_type value_type;           ///< Array element type
-      typedef typename storage_type::reference reference;             ///< Element reference type
-      typedef typename storage_type::const_reference const_reference; ///< Element reference type
-      typedef typename storage_type::pointer pointer;                 ///< Element pointer type
-      typedef typename storage_type::const_pointer const_pointer;     ///< Element const pointer type
-      typedef typename storage_type::iterator iterator;               ///< Element iterator type
-      typedef typename storage_type::const_iterator const_iterator;   ///< Element const iterator type
-
+      typedef typename storage_type::allocator_type allocator_type;///< Allocator type
       typedef Range<coordinate_system> range_type;            ///< Tile range type
 
+      /// Tile dimension accessor
+
+      /// \return The number of dimensions in the Tile
       static unsigned int dim() { return coordinate_system::dim; }
+
+      /// Dimension ordering accessor
+
+      /// \return The dimension ordering
       static TiledArray::detail::DimensionOrderType order() { return coordinate_system::order; }
 
       /// Default constructor
