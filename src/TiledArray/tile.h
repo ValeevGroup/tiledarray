@@ -172,7 +172,8 @@ namespace TiledArray {
       /// \return A reference to this object
       /// \throw std::bad_alloc There is not enough memory available for the target tile
       Tile_& operator=(const Tile_& other) {
-        other.eval_to(data_);
+        range_ = other.range_;
+        data_ = other.data_;
         return *this;
       }
 
