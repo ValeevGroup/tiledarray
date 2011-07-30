@@ -38,18 +38,10 @@ namespace TiledArray {
     template <typename Arg, typename Op>
     class UnaryTensor : public ReadableTensor<UnaryTensor<Arg, Op> > {
     public:
-      typedef ReadableTensor<UnaryTensor<Arg, Op> > base;
       typedef UnaryTensor<Arg, Op> UnaryTensor_;
       typedef Arg arg_tensor_type;
-
-      typedef typename TensorSize::size_type size_type; ///< Tensor size type
-      typedef typename TensorSize::size_array size_array; ///< Tensor size array type
-      typedef typename madness::result_of<Op>::type value_type; ///< The tensor value type
-      typedef TiledArray::detail::UnaryTransformIterator<typename arg_tensor_type::const_iterator,
-          Op> const_iterator; ///< Tensor const iterator
-      typedef value_type const_reference; ///< Element constant reference type
+      TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF(ReadableTensor<UnaryTensor_>, UnaryTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
-
       typedef Op op_type; ///< The transform operation type
 
       /// Construct a binary tensor op

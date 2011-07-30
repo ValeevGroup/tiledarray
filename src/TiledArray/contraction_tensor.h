@@ -20,19 +20,11 @@ namespace TiledArray {
     template <typename LeftArg, typename RightArg>
     class ContractionTensor : public DirectReadableTensor<ContractionTensor<LeftArg, RightArg> > {
     public:
-      typedef DirectReadableTensor<ContractionTensor<LeftArg, RightArg> > base;
       typedef ContractionTensor<LeftArg, RightArg> ContractionTensor_;
       typedef LeftArg left_tensor_type;
       typedef RightArg right_tensor_type;
-
-      typedef typename TensorSize::size_type size_type; ///< Tensor size type
-      typedef typename TensorSize::size_array size_array; ///< Tensor size array type
-      typedef typename left_tensor_type::value_type value_type; ///< The tensor value type
+      TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<ContractionTensor_>, ContractionTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
-      typedef typename storage_type::const_iterator const_iterator; ///< Tensor const iterator
-      typedef typename storage_type::const_reference const_reference; ///< Element constant reference type
-      typedef typename storage_type::const_pointer const_pointer; ///< Const pointer to tensor memory
-
       typedef math::Contraction<size_type> contract_type; ///< Contraction type
 
       /// Construct a binary tensor op

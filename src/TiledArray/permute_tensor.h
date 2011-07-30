@@ -19,6 +19,7 @@ namespace TiledArray {
       typedef typename Arg::value_type value_type;
       typedef typename DenseStorage<value_type>::const_reference const_reference;
       typedef typename DenseStorage<value_type>::const_iterator const_iterator;
+      typedef typename DenseStorage<value_type>::difference_type difference_type;
       typedef typename DenseStorage<value_type>::const_pointer const_pointer;
     }; // struct TensorTraits<PermuteTensor<Arg, DIM>> >
 
@@ -34,17 +35,10 @@ namespace TiledArray {
     template <typename Arg, unsigned int DIM>
     class PermuteTensor : public DirectReadableTensor<PermuteTensor<Arg, DIM> > {
     public:
-      typedef DirectReadableTensor<PermuteTensor<Arg, DIM> > base;
       typedef PermuteTensor<Arg, DIM> PermuteTensor_;
       typedef Arg arg_tensor_type;
-
-      typedef typename TensorSize::size_type size_type; ///< Tensor size type
-      typedef typename TensorSize::size_array size_array; ///< Tensor size array type
-      typedef typename arg_tensor_type::value_type value_type; ///< The tensor value type
+      TILEDARRAY_DIRECT_READABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<PermuteTensor_>, PermuteTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
-      typedef typename storage_type::const_reference const_reference;
-      typedef typename storage_type::const_iterator const_iterator;
-      typedef typename storage_type::const_pointer const_pointer;
 
       typedef Permutation<DIM> perm_type; ///< Permutation type
 
