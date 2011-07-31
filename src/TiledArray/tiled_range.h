@@ -2,7 +2,7 @@
 #define RANGE_H__INCLUDED
 
 #include <TiledArray/tiled_range1.h>
-#include <TiledArray/perm_algorithm.h>
+#include <TiledArray/permutation.h>
 #include <iterator>
 #include <iosfwd>
 #include <world/sharedptr.h>

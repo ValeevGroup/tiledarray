@@ -60,6 +60,8 @@ namespace TiledArray {
         size_ = other.size_;
         perm_ = other.perm_;
         data_ = other.data_;
+
+        return *this;
       }
 
       /// Evaluate this tensor
@@ -138,13 +140,15 @@ namespace TiledArray {
       template <typename SizeArray>
       static size_array permute_size(const perm_type& p, const SizeArray& s) {
         size_array result(DIM);
-        TiledArray::detail::permute_array(p.begin(), p.end(), s.begin(), result.end());
+        TiledArray::detail::permute_array(p.begin(), p.end(), s.begin(), result.begin());
         return result;
       }
 
       void lazy_eval() const {
-        if((! data_.data()) && (volume() != 0)) {
-          permute(data_);
+        if(volume() != data_.volume()) {
+          storage_type temp(volume());
+          permute(temp);
+          temp.swap(data_);
         }
       }
 

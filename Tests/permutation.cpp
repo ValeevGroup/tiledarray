@@ -1,5 +1,4 @@
 #include "TiledArray/permutation.h"
-#include "TiledArray/perm_algorithm.h"
 #include "TiledArray/coordinates.h" // for boost array output
 #include "unit_test_config.h"
 

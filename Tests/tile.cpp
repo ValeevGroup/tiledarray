@@ -227,39 +227,39 @@ BOOST_AUTO_TEST_CASE( resize )
 //  BOOST_CHECK_EQUAL(t3.range(), p ^ t1.range()); // check that the dimensions were correctly permuted.
 //  BOOST_CHECK_EQUAL_COLLECTIONS(t3.begin(), t3.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
 //}
-//
-//BOOST_AUTO_TEST_CASE( ostream )
-//{
-//  typedef TiledArray::CoordinateSystem<3> cs3;
-//  Range<cs3> r1(Range<cs3>::index(0), Range<cs3>::index(3));
-//  expressions::Tile<int, cs3> t1(r1, 1);
-//  boost::test_tools::output_test_stream output;
-//  output << t1;
-//  BOOST_CHECK( !output.is_empty( false ) ); // check for correct output.
-//  BOOST_CHECK( output.check_length( 80, false ) );
-//  BOOST_CHECK( output.is_equal("{{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}}") );
-//}
-//
-//BOOST_AUTO_TEST_CASE( serialization )
-//{
-//  std::size_t buf_size = (t.range().volume() * sizeof(int) + sizeof(TileN))*2;
-//  unsigned char* buf = new unsigned char[buf_size];
-//  madness::archive::BufferOutputArchive oar(buf, buf_size);
-//  oar & t;
-//  std::size_t nbyte = oar.size();
-//  oar.close();
-//
-//  TileN ts;
-//  madness::archive::BufferInputArchive iar(buf,nbyte);
-//  iar & ts;
-//  iar.close();
-//
-//  delete [] buf;
-//
-//  BOOST_CHECK_EQUAL(t.range(), ts.range());
-//  BOOST_CHECK_EQUAL_COLLECTIONS(t.begin(), t.end(), ts.begin(), ts.end());
-//}
-//
+
+BOOST_AUTO_TEST_CASE( ostream )
+{
+  typedef TiledArray::CoordinateSystem<3> cs3;
+  Range<cs3> r1(Range<cs3>::index(0), Range<cs3>::index(3));
+  expressions::Tile<int, cs3> t1(r1, 1);
+  boost::test_tools::output_test_stream output;
+  output << t1;
+  BOOST_CHECK( !output.is_empty( false ) ); // check for correct output.
+  BOOST_CHECK( output.check_length( 80, false ) );
+  BOOST_CHECK( output.is_equal("{{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}{{1 1 1 }{1 1 1 }{1 1 1 }}}") );
+}
+
+BOOST_AUTO_TEST_CASE( serialization )
+{
+  std::size_t buf_size = (t.range().volume() * sizeof(int) + sizeof(TileN))*2;
+  unsigned char* buf = new unsigned char[buf_size];
+  madness::archive::BufferOutputArchive oar(buf, buf_size);
+  oar & t;
+  std::size_t nbyte = oar.size();
+  oar.close();
+
+  TileN ts;
+  madness::archive::BufferInputArchive iar(buf,nbyte);
+  iar & ts;
+  iar.close();
+
+  delete [] buf;
+
+  BOOST_CHECK_EQUAL(t.range(), ts.range());
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.begin(), t.end(), ts.begin(), ts.end());
+}
+
 //BOOST_AUTO_TEST_CASE( addition )
 //{
 //  const TileN t1(r, 1);

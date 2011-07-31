@@ -2,7 +2,7 @@
 #define TILEDARRAY_VARIABLE_LIST_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <TiledArray/perm_algorithm.h>
+#include <TiledArray/permutation.h>
 #include <vector>
 #include <string>
 #include <algorithm>

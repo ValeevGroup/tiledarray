@@ -193,10 +193,47 @@ namespace TiledArray {
       TA_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
       TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
       for(; first_p != last_p; ++first_p)
-        (* (first_r + *first_p)) = *first_o++;
+        first_r[*first_p] = *first_o++;
     }
 
   } // namespace detail
+
+  /// permute a std::array
+  template <unsigned int DIM, typename T>
+  std::array<T,DIM> operator^(const Permutation<DIM>& perm, const std::array<T, static_cast<std::size_t>(DIM) >& orig) {
+    std::array<T,DIM> result;
+    detail::permute_array(perm.begin(), perm.end(), orig.begin(), result.begin());
+    return result;
+  }
+
+  /// permute a std::vector<T>
+  template <unsigned int DIM, typename T>
+  std::vector<T> operator^(const Permutation<DIM>& perm, const std::vector<T>& orig) {
+    TA_ASSERT((orig.size() == DIM));
+    std::vector<T> result(DIM);
+    detail::permute_array<typename Permutation<DIM>::const_iterator, typename std::vector<T>::const_iterator, typename std::vector<T>::iterator>
+      (perm.begin(), perm.end(), orig.begin(), result.begin());
+    return result;
+  }
+
+  template <unsigned int DIM, typename T>
+  std::vector<T> operator^=(std::vector<T>& orig, const Permutation<DIM>& perm) {
+    orig = perm ^ orig;
+
+    return orig;
+  }
+
+  template<unsigned int DIM>
+  Permutation<DIM> operator ^(const Permutation<DIM>& perm, const Permutation<DIM>& p) {
+    Permutation<DIM> result(perm ^ p.data());
+    return result;
+  }
+
+  template <unsigned int DIM, typename T>
+  std::array<T,DIM> operator ^=(std::array<T, static_cast<std::size_t>(DIM) >& a, const Permutation<DIM>& perm) {
+    return (a = perm ^ a);
+  }
+
 
 } // namespace TiledArray
 
