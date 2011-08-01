@@ -1,16 +1,117 @@
 #include "TiledArray/unary_tensor.h"
+#include "TiledArray/tile.h"
 #include "unit_test_config.h"
 
-struct UnaryTensorFixture {
+using namespace TiledArray;
+using namespace TiledArray::expressions;
 
+struct UnaryTensorFixture {
+  typedef Tile<int, GlobalFixture::coordinate_system> TileN;
+  typedef TileN::range_type range_type;
+  typedef TileN::index index;
+  typedef std::binder1st<std::multiplies<TileN::value_type> > scale_op;
+  typedef UnaryTensor<TileN,scale_op> UnaryT;
+  typedef UnaryT::value_type value_type;
+
+  UnaryTensorFixture() : ut(t, op) { }
+
+  // make a tile to be permuted
+  static TileN make_tile() {
+    index start(0);
+    index finish(0);
+    index::value_type i = 3;
+    for(index::iterator it = finish.begin(); it != finish.end(); ++it, ++i)
+      *it = i;
+
+    range_type r(start, finish);
+
+    return TileN(r, 3);
+  }
+
+
+  static const TileN t;
+  static const scale_op op;
+
+  UnaryT ut;
 }; // struct UnaryTensorFixture
+
+
+const UnaryTensorFixture::TileN UnaryTensorFixture::t = make_tile();
+const UnaryTensorFixture::scale_op UnaryTensorFixture::op =
+    scale_op(std::multiplies<UnaryTensorFixture::TileN::value_type>(), 2);
 
 
 BOOST_FIXTURE_TEST_SUITE( unary_tensor_suite , UnaryTensorFixture )
 
+BOOST_AUTO_TEST_CASE( dimension_accessor )
+{
+  BOOST_CHECK_EQUAL(ut.dim(), t.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(ut.size().begin(), ut.size().end(), t.size().begin(), t.size().end());
+  BOOST_CHECK_EQUAL(ut.volume(), t.volume());
+  BOOST_CHECK_EQUAL(ut.order(), t.order());
+}
+
 BOOST_AUTO_TEST_CASE( constructor )
 {
+  // Test primary constructor
+  {
+    BOOST_REQUIRE_NO_THROW(UnaryT x(t, op));
+    UnaryT x(t, op);
+    BOOST_CHECK_EQUAL(x.dim(), t.dim());
+    BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), t.size().begin(), t.size().end());
+    BOOST_CHECK_EQUAL(x.volume(), t.volume());
+    BOOST_CHECK_EQUAL(x.order(), t.order());
+  }
 
+  // test copy constructor
+  {
+    BOOST_REQUIRE_NO_THROW(UnaryT x(ut));
+    UnaryT x(ut);
+    BOOST_CHECK_EQUAL(x.dim(), t.dim());
+    BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), t.size().begin(), t.size().end());
+    BOOST_CHECK_EQUAL(x.volume(), t.volume());
+    BOOST_CHECK_EQUAL(x.order(), t.order());
+  }
+}
+
+BOOST_AUTO_TEST_CASE( assignment_operator )
+{
+  TileN t1;
+  UnaryT x(t1, op);
+
+  // Check initial conditions
+  BOOST_CHECK_EQUAL(x.dim(), t1.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), t1.size().begin(), t1.size().end());
+  BOOST_CHECK_EQUAL(x.volume(), 0ul);
+  BOOST_CHECK(x.begin() == x.end());
+  BOOST_CHECK_EQUAL(x.order(), t1.order());
+
+  x = ut;
+
+  // Check that the tensor was copied.
+  BOOST_CHECK_EQUAL(x.dim(), ut.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), ut.size().begin(), ut.size().end());
+  BOOST_CHECK_EQUAL(x.volume(), ut.volume());
+  BOOST_CHECK_EQUAL(x.order(), ut.order());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.begin(), x.end(), ut.begin(), ut.end());
+}
+
+BOOST_AUTO_TEST_CASE( element_accessor )
+{
+
+  for(UnaryT::size_type i = 0; i < ut.volume(); ++i) {
+    // Check that each element is correct
+    BOOST_CHECK_EQUAL(ut[i], op(t[i]));
+  }
+}
+
+BOOST_AUTO_TEST_CASE( iterator )
+{
+  TileN::size_type i = 0;
+  for(UnaryT::const_iterator it = ut.begin(); it != ut.end(); ++it, ++i) {
+    // Check that iteration works correctly
+    BOOST_CHECK_EQUAL(*it, op(t[i]));
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -61,6 +61,8 @@ namespace TiledArray {
         arg_ = other.arg_;
         size_ = other.size_;
         op_ = other.op_;
+
+        return *this;
       }
 
       /// Evaluate this tensor
@@ -115,7 +117,7 @@ namespace TiledArray {
 
       /// \return The element at the \c i position.
       const_reference operator[](size_type i) const {
-        return op_(*arg_[i]);
+        return op_((*arg_)[i]);
       }
 
     private:

@@ -127,7 +127,7 @@ namespace TiledArray {
 
       /// \return The element at the \c i position.
       const_reference operator[](size_type i) const {
-        return op_(*left_[i], *right_[i]);
+        return op_((*left_)[i], (*right_)[i]);
       }
 
     private:
