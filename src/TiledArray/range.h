@@ -51,6 +51,9 @@ namespace TiledArray {
     typedef detail::RangeIterator<index, Range_> const_iterator;
     friend class detail::RangeIterator< index , Range_ >;
 
+    static unsigned int dim() { return coordinate_system::dim; }
+    static detail::DimensionOrderType order() { return coordinate_system::order; }
+
     /// Default constructor. The range has 0 size and the origin is set at 0.
     Range() :
         start_(), finish_(), size_(), weight_()
