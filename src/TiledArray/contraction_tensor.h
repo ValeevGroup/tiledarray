@@ -10,6 +10,43 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename, typename>
+    class ContractionTensor;
+
+    namespace {
+      template <typename T, typename U, typename Enable = void>
+      struct ContractionValue {
+        typedef T type;
+      };
+
+      template <typename T>
+      struct ContractionValue<T, std::complex<T> > {
+        typedef std::complex<T> type;
+      };
+
+      template <typename T>
+      struct ContractionValue<std::complex<T>, T> {
+        typedef std::complex<T> type;
+      };
+    } // namespace
+
+    template <typename LeftArg, typename RightArg>
+    struct TensorTraits<ContractionTensor<LeftArg, RightArg> > {
+      typedef typename TensorSize::size_type size_type;
+      typedef typename TensorSize::size_array size_array;
+      typedef typename ContractionValue<typename LeftArg::value_type,
+          typename RightArg::value_type>::type value_type;
+      typedef typename DenseStorage<value_type>::const_reference const_reference;
+      typedef typename DenseStorage<value_type>::const_iterator const_iterator;
+      typedef typename DenseStorage<value_type>::difference_type difference_type;
+      typedef typename DenseStorage<value_type>::const_pointer const_pointer;
+    }; // struct TensorTraits<ContractionTensor<LeftArg, RightArg> >
+
+    template <typename LeftArg, typename RightArg>
+    struct Eval<ContractionTensor<LeftArg, RightArg> > {
+      typedef const ContractionTensor<LeftArg, RightArg>& type;
+    }; // struct Eval<ContractionTensor<LeftArg, RightArg> >
+
     /// Tensor that is composed from two contracted argument tensors
 
     /// The tensor elements are constructed using a binary transformation
@@ -33,8 +70,8 @@ namespace TiledArray {
       /// \param right The right argument
       /// \param c Shared pointer to contraction object
       ContractionTensor(const left_tensor_type& left, const right_tensor_type& right, const std::shared_ptr<contract_type>& c) :
-        left_(left),
-        right_(right),
+        left_(&left),
+        right_(&right),
         size_(constract_size(left.size(), right.size(), c), left.order()),
         data_(),
         contraction_(c)
@@ -42,12 +79,25 @@ namespace TiledArray {
         TA_ASSERT(left.order() == right.order());
       }
 
-    private:
-      // Not allowed
-      ContractionTensor(const ContractionTensor_&);
-      ContractionTensor_& operator=(const ContractionTensor_&);
+      /// Copy constructor
+      ContractionTensor(const ContractionTensor_& other) :
+        left_(other.left_),
+        right_(other.right_),
+        size_(other.size_),
+        data_(other.data_),
+        contraction_(other.contraction_)
+      { }
 
-    public:
+      ContractionTensor_& operator=(const ContractionTensor_& other) {
+        left_ = other.left_;
+        right_ = other.right_;
+        size_ = other.size_;
+        data_ = other.data_;
+        contraction_ = other.contraction_;
+
+        return *this;
+      }
+
 
       /// Evaluate this tensor
 
@@ -159,16 +209,16 @@ namespace TiledArray {
 
       /// Evaluate the tensor only when the data is needed
       void lazy_eval() const {
-        if((! data_.data()) && (volume() != 0)) {
+        if(data_.volume() != volume()) {
           const size_type v = volume();
 
           typename contract_type::packed_size_array packed_size =
-              contraction_->pack_arrays(left_.size(), right_.size());
+              contraction_->pack_arrays(left_->size(), right_->size());
 
           // We need to allocate storage and evaluate
           storage_type temp(v);
-          typename Eval<left_tensor_type>::type left_eval = left_.eval();
-          typename Eval<left_tensor_type>::type right_eval = right_.eval();
+          typename Eval<left_tensor_type>::type left_eval = left_->eval();
+          typename Eval<left_tensor_type>::type right_eval = right_->eval();
 
           if(order() == TiledArray::detail::decreasing_dimension_order) {
             typedef Eigen::Matrix< value_type , Eigen::Dynamic , Eigen::Dynamic,
@@ -194,27 +244,12 @@ namespace TiledArray {
       static const DirectWritableTensor<Derived>&
       eval_arg(const DirectWritableTensor<Derived>& arg) { return arg; }
 
-      left_tensor_type& left_; ///< Left argument
-      right_tensor_type& right_; ///< Right argument
+      const left_tensor_type* left_; ///< Left argument
+      const right_tensor_type* right_; ///< Right argument
       TensorSize size_; ///< Tensor size info
       mutable storage_type data_;
       std::shared_ptr<contract_type> contraction_;
     }; // class ContractionTensor
-
-    template <typename LeftArg, typename RightArg>
-    struct TensorTraits<ContractionTensor<LeftArg, RightArg> > {
-      typedef typename ContractionTensor<LeftArg, RightArg>::size_type size_type;
-      typedef typename ContractionTensor<LeftArg, RightArg>::size_array size_array;
-      typedef typename ContractionTensor<LeftArg, RightArg>::value_type value_type;
-      typedef typename ContractionTensor<LeftArg, RightArg>::const_reference const_reference;
-      typedef typename ContractionTensor<LeftArg, RightArg>::const_iterator const_iterator;
-      typedef typename ContractionTensor<LeftArg, RightArg>::const_pointer const_pointer;
-    }; // struct TensorTraits<ContractionTensor<LeftArg, RightArg> >
-
-    template <typename LeftArg, typename RightArg>
-    struct Eval<ContractionTensor<LeftArg, RightArg> > {
-      typedef const ContractionTensor<LeftArg, RightArg>& type;
-    }; // struct Eval<ContractionTensor<LeftArg, RightArg> >
 
   } // namespace expressions
 } // namespace TiledArray

@@ -56,9 +56,6 @@ namespace TiledArray {
       { }
 
       PermuteTensor_& operator=(const PermuteTensor_& other) {
-        // Do the eval first to avoid duplicate work later.
-        lazy_eval();
-
         arg_ = other.arg_;
         size_ = other.size_;
         perm_ = other.perm_;

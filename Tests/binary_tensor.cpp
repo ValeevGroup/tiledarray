@@ -44,6 +44,7 @@ const BinaryTensorFixture::plus_op BinaryTensorFixture::op =
     BinaryTensorFixture::plus_op();
 
 BOOST_FIXTURE_TEST_SUITE( binary_tensor_suite , BinaryTensorFixture )
+
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
   BOOST_CHECK_EQUAL(bt.dim(), t2.dim());
