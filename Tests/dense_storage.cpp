@@ -181,7 +181,6 @@ BOOST_AUTO_TEST_CASE( scale_assignment_operator )
     BOOST_CHECK_EQUAL(t[i], i * 2);
 }
 
-
 BOOST_AUTO_TEST_CASE( serialize )
 {
 
@@ -199,6 +198,23 @@ BOOST_AUTO_TEST_CASE( serialize )
 
   BOOST_CHECK_EQUAL(t1.size(), t.size());
   BOOST_CHECK_EQUAL_COLLECTIONS(t1.begin(), t1.end(), t.begin(), t.end());
+}
+
+BOOST_AUTO_TEST_CASE( swap )
+{
+  Storage t1;
+  Storage::const_iterator t1_begin = t1.begin();
+  Storage::const_iterator t1_end = t1.end();
+
+  Storage::const_iterator t_begin = t.begin();
+  Storage::const_iterator t_end = t.end();
+
+  t.swap(t1);
+
+  BOOST_CHECK_EQUAL(t1_begin, t.begin());
+  BOOST_CHECK_EQUAL(t1_end, t.end());
+  BOOST_CHECK_EQUAL(t_begin, t1.begin());
+  BOOST_CHECK_EQUAL(t_end, t1.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
