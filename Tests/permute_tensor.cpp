@@ -28,7 +28,13 @@ struct PermuteTensorFixture {
   }
 
   static TileN make_tile() {
-    range_type r(index(0), index(5));
+    index start(0);
+    index finish(0);
+    index::value_type i = 3;
+    for(index::iterator it = finish.begin(); it != finish.end(); ++it, ++i)
+      *it = i;
+
+    range_type r(start, finish);
     TileN result(r);
     for(range_type::const_iterator it = r.begin(); it != r.end(); ++it)
       result[*it] = get_value(*it);
@@ -57,6 +63,15 @@ const PermuteTensorFixture::PermN PermuteTensorFixture::p(make_perm());
 
 
 BOOST_FIXTURE_TEST_SUITE( permute_tensor_suite , PermuteTensorFixture )
+
+BOOST_AUTO_TEST_CASE( dimension_accessor )
+{
+  range_type pr = p ^ t.range();
+  BOOST_CHECK_EQUAL(pt.dim(), pr.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(pt.size().begin(), pt.size().end(), pr.size().begin(), pr.size().end());
+  BOOST_CHECK_EQUAL(pt.volume(), pr.volume());
+  BOOST_CHECK_EQUAL(pt.order(), pr.order());
+}
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
@@ -102,29 +117,31 @@ BOOST_AUTO_TEST_CASE( assignment_operator )
   BOOST_CHECK_EQUAL(x.volume(), pt.volume());
   BOOST_CHECK_EQUAL(x.order(), pt.order());
   BOOST_CHECK_EQUAL_COLLECTIONS(x.begin(), x.end(), pt.begin(), pt.end());
-
 }
 
-//
-//BOOST_AUTO_TEST_CASE( permutation )
-//{
-//  typedef TiledArray::CoordinateSystem<3, 0> cs3;
-//  Permutation<3> p(1,2,0);
-//  Range<cs3> r1(Range<cs3>::index(0,0,0), Range<cs3>::index(2,3,4));
-//  Range<cs3> r3(r1);
-//  std::array<double, 24> val =  {{0,  1,  2,  3, 10, 11, 12, 13, 20, 21, 22, 23,100,101,102,103,110,111,112,113,120,121,122,123}};
-//  //         destination       {{0,100,200,300,  1,101,201,301,  2,102,202,302, 10,110,210,310, 11,111,211,311, 12,112,212,312}}
-//  //         permuted index    {{0,  1,  2, 10, 11, 12,100,101,102,110,111,112,200,201,202,210,211,212,300,301,302,310,311,312}}
-//  std::array<double, 24> pval = {{0, 10, 20,100,110,120,  1, 11, 21,101,111,121,  2, 12, 22,102,112,122,  3, 13, 23,103,113,123}};
-//  expressions::Tile<int, cs3> t1(r1, val.begin());
-//  expressions::Tile<int, cs3> t2 = (p ^ t1);
-//  BOOST_CHECK_EQUAL(t2.range(), p ^ t1.range()); // check that the dimensions were correctly permuted.
-//  BOOST_CHECK_EQUAL_COLLECTIONS(t2.begin(), t2.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
-//
-//  expressions::Tile<int, cs3> t3(r3, val.begin());
-//  t3 ^= p;
-//  BOOST_CHECK_EQUAL(t3.range(), p ^ t1.range()); // check that the dimensions were correctly permuted.
-//  BOOST_CHECK_EQUAL_COLLECTIONS(t3.begin(), t3.end(), pval.begin(), pval.end()); // check that the values were correctly permuted.
-//}
+BOOST_AUTO_TEST_CASE( permute_data )
+{
+  index i;
+  range_type pr = p ^ t.range();
+
+  for(range_type::const_iterator it = t.range().begin(); it != t.range().end(); ++it) {
+    i = p ^ *it;
+    BOOST_CHECK_EQUAL(pt[pr.ord(i)], t[*it]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( iterator )
+{
+  index start(0);
+  index finish(0);
+  std::copy(pt.size().begin(), pt.size().end(), finish.begin());
+
+  range_type r(start, finish);
+
+  range_type::const_iterator rit = r.begin();
+  for(PermT::const_iterator it = pt.begin(); it != pt.end(); ++it, ++rit) {
+    BOOST_CHECK_EQUAL(*it, t[-p ^ *rit]);
+  }
+}
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -56,6 +56,9 @@ namespace TiledArray {
       { }
 
       PermuteTensor_& operator=(const PermuteTensor_& other) {
+        // Do the eval first to avoid duplicate work later.
+        lazy_eval();
+
         arg_ = other.arg_;
         size_ = other.size_;
         perm_ = other.perm_;
@@ -152,17 +155,15 @@ namespace TiledArray {
         }
       }
 
-      template <typename CS, typename EvalArg, typename ResArray>
-      void permute_helper(const EvalArg& arg, ResArray& result) const {
-        typename CS::size_array p_size;
-        TiledArray::detail::permute_array(perm_.begin(), perm_.end(), size_.size().begin(), p_size.begin());
-        typename CS::size_array invp_weight = -perm_ ^ CS::calc_weight(p_size);
+      template <typename CS, typename ResArray>
+      void permute_helper(ResArray& result) const {
+        typename CS::size_array invp_weight = -perm_ ^ CS::calc_weight(size());
 
         typename CS::index i(0);
         const typename CS::index start(0);
 
-        for(typename arg_tensor_type::const_iterator it = arg.begin(); it != arg.end();
-            ++it, CS::increment_coordinate(i, start, size_.size()))
+        for(typename arg_tensor_type::const_iterator it = arg_->begin(); it != arg_->end();
+            ++it, CS::increment_coordinate(i, start, arg_->size()))
           result[CS::calc_ordinal(i, invp_weight)] = *it;
       }
 
@@ -170,10 +171,10 @@ namespace TiledArray {
       void permute(ResArray& result) const {
         if(order() == TiledArray::detail::decreasing_dimension_order) {
           permute_helper<CoordinateSystem<DIM, 0ul, TiledArray::detail::decreasing_dimension_order,
-            size_type> >(arg_->eval(), result);
+            size_type> >(result);
         } else {
           permute_helper<CoordinateSystem<DIM, 0ul, TiledArray::detail::increasing_dimension_order,
-            size_type> >(arg_->eval(), result);
+            size_type> >(result);
         }
       }
 
