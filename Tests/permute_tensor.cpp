@@ -14,10 +14,9 @@ struct PermuteTensorFixture {
   typedef PermuteTensor<TileN,GlobalFixture::coordinate_system::dim> PermT;
   typedef PermT::value_type value_type;
 
-  PermuteTensorFixture() : pt(t, p) {
+  PermuteTensorFixture() : pt(t, p) { }
 
-  }
-
+  // get a unique value for the given index
   static value_type get_value(const index i) {
     index::value_type x = 1;
     value_type result = 0;
@@ -27,6 +26,7 @@ struct PermuteTensorFixture {
     return result;
   }
 
+  // make a tile to be permuted
   static TileN make_tile() {
     index start(0);
     index finish(0);
@@ -42,6 +42,7 @@ struct PermuteTensorFixture {
     return result;
   }
 
+  // make permutation definition object
   static PermN make_perm() {
     std::array<std::size_t, GlobalFixture::coordinate_system::dim> temp;
     for(std::size_t i = 0; i < temp.size(); ++i)
@@ -78,8 +79,9 @@ BOOST_AUTO_TEST_CASE( constructor )
   PermT::size_array s(t.size().begin(), t.size().end());
   s ^= p;
 
+  // Test primary constructor
   {
-    BOOST_CHECK_NO_THROW(PermT x(t,p));
+    BOOST_REQUIRE_NO_THROW(PermT x(t,p));
     PermT x(t,p);
     BOOST_CHECK_EQUAL(x.dim(), t.dim());
     BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), s.begin(), s.end());
@@ -87,8 +89,9 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_CHECK_EQUAL(x.order(), t.order());
   }
 
+  // test copy constructor
   {
-    BOOST_CHECK_NO_THROW(PermT x(pt));
+    BOOST_REQUIRE_NO_THROW(PermT x(pt));
     PermT x(pt);
     BOOST_CHECK_EQUAL(x.dim(), t.dim());
     BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), s.begin(), s.end());
@@ -119,13 +122,15 @@ BOOST_AUTO_TEST_CASE( assignment_operator )
   BOOST_CHECK_EQUAL_COLLECTIONS(x.begin(), x.end(), pt.begin(), pt.end());
 }
 
-BOOST_AUTO_TEST_CASE( permute_data )
+BOOST_AUTO_TEST_CASE( element_accessor )
 {
   index i;
   range_type pr = p ^ t.range();
 
   for(range_type::const_iterator it = t.range().begin(); it != t.range().end(); ++it) {
     i = p ^ *it;
+
+    // Check that each element is correct
     BOOST_CHECK_EQUAL(pt[pr.ord(i)], t[*it]);
   }
 }
@@ -140,6 +145,7 @@ BOOST_AUTO_TEST_CASE( iterator )
 
   range_type::const_iterator rit = r.begin();
   for(PermT::const_iterator it = pt.begin(); it != pt.end(); ++it, ++rit) {
+    // Check that iteration works correctly
     BOOST_CHECK_EQUAL(*it, t[-p ^ *rit]);
   }
 }
