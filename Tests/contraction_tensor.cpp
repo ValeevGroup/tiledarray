@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE( contraction )
   const int M = t2.size().front();
   const int N = t3.size().back();
   const int I = std::accumulate(t2.size().begin() + 1,
-      t2.range().finish().end(), 1, std::multiplies<int>());
+      t2.size().end(), 1, std::multiplies<int>());
 
   // Construct matrixes that match the packed dimensions of the to tiles.
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m2(M, I);
