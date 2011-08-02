@@ -79,6 +79,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   PermT::size_array s(t.size().begin(), t.size().end());
   s ^= p;
 
+  BOOST_REQUIRE_NO_THROW(PermT x());
+
   // Test primary constructor
   {
     BOOST_REQUIRE_NO_THROW(PermT x(t,p));

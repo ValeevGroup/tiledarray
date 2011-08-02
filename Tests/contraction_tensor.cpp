@@ -72,6 +72,9 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
+  // Test default constructor
+  BOOST_REQUIRE_NO_THROW(ContT x());
+
   // Test primary constructor
   {
     BOOST_REQUIRE_NO_THROW(ContT x(t2, t3, cont));

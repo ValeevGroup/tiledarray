@@ -55,6 +55,9 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
+  // Test the default constructor
+  BOOST_REQUIRE_NO_THROW(BinaryT x());
+
   // Test primary constructor
   {
     BOOST_REQUIRE_NO_THROW(BinaryT x(t2, t3, op));

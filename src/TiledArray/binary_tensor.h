@@ -49,6 +49,10 @@ namespace TiledArray {
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef Op op_type; ///< The transform operation type
 
+      BinaryTensor() :
+        left_(NULL), right_(NULL), size_(), op_()
+      { }
+
       /// Construct a binary tensor op
 
       /// \param left The left argument
@@ -79,6 +83,8 @@ namespace TiledArray {
 
       /// \return An evaluated tensor object
       EvalTensor<value_type> eval() const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
         typename EvalTensor<value_type>::storage_type data(volume(), begin());
         return EvalTensor<value_type>(size(), order(), data);
       }
@@ -89,6 +95,8 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
         TA_ASSERT(volume() == dest.volume());
         std::copy(begin(), end(), dest.begin());
       }
@@ -96,37 +104,63 @@ namespace TiledArray {
       /// Tensor dimension accessor
 
       /// \return The number of dimensions
-      unsigned int dim() const { return size_.dim(); }
+      unsigned int dim() const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
+        return size_.dim();
+      }
 
       /// Data ordering
 
       /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const { return size_.order(); }
+      TiledArray::detail::DimensionOrderType order() const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
+        return size_.order();
+      }
 
       /// Tensor dimension size accessor
 
       /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const { return size_.size(); }
+      const size_array& size() const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
+        return size_.size();
+      }
 
       /// Tensor volume
 
       /// \return The total number of elements in the tensor
-      size_type volume() const { return size_.volume(); }
+      size_type volume() const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
+        return size_.volume();
+      }
 
       /// Iterator factory
 
       /// \return An iterator to the first data element
-      const_iterator begin() const { return TiledArray::detail::make_tran_it(left_->begin(), right_->begin(), op_); }
+      const_iterator begin() const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
+        return TiledArray::detail::make_tran_it(left_->begin(), right_->begin(), op_);
+      }
 
       /// Iterator factory
 
       /// \return An iterator to the last data element }
-      const_iterator end() const { return TiledArray::detail::make_tran_it(left_->end(), right_->end(), op_); }
+      const_iterator end() const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
+        return TiledArray::detail::make_tran_it(left_->end(), right_->end(), op_);
+      }
 
       /// Element accessor
 
       /// \return The element at the \c i position.
       const_reference operator[](size_type i) const {
+        TA_ASSERT(left_);
+        TA_ASSERT(right_);
         return op_((*left_)[i], (*right_)[i]);
       }
 

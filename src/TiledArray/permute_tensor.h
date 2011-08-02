@@ -42,6 +42,10 @@ namespace TiledArray {
 
       typedef Permutation<DIM> perm_type; ///< Permutation type
 
+      PermuteTensor() :
+        arg_(NULL), size_(), perm_(), data_()
+      { }
+
       /// Construct a binary tensor op
 
       /// \param left The left argument
@@ -78,6 +82,7 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
+        TA_ASSERT(arg_);
         TA_ASSERT(volume() == dest.volume());
         if(static_cast<const void*>(arg_) != static_cast<void*>(&dest))
           permute(dest);
@@ -88,22 +93,33 @@ namespace TiledArray {
       /// Tensor dimension accessor
 
       /// \return The number of dimensions
-      static unsigned int dim() { return DIM; }
+      static unsigned int dim() {
+        return DIM;
+      }
 
       /// Data ordering
 
       /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const { return size_.order(); }
+      TiledArray::detail::DimensionOrderType order() const {
+        TA_ASSERT(arg_);
+        return size_.order();
+      }
 
       /// Tensor dimension size accessor
 
       /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const { return size_.size(); }
+      const size_array& size() const {
+        TA_ASSERT(arg_);
+        return size_.size();
+      }
 
       /// Tensor volume
 
       /// \return The total number of elements in the tensor
-      size_type volume() const { return size_.volume(); }
+      size_type volume() const {
+        TA_ASSERT(arg_);
+        return size_.volume();
+      }
 
       /// Iterator factory
 
@@ -145,6 +161,7 @@ namespace TiledArray {
       }
 
       void lazy_eval() const {
+        TA_ASSERT(arg_);
         if(volume() != data_.volume()) {
           storage_type temp(volume());
           permute(temp);
