@@ -15,11 +15,40 @@ namespace TiledArray {
       typedef std::size_t size_type;  ///< The size type
       typedef std::vector<size_type> size_array; ///< Tensor sizes array
 
+      TensorSize() :
+        size_(), order_(TiledArray::detail::decreasing_dimension_order)
+      { }
+
       /// Construct
       template <typename SizeArray>
       TensorSize(const SizeArray& s, TiledArray::detail::DimensionOrderType o) :
         size_(s.begin(), s.end()), order_(o)
       { }
+
+      TensorSize(const TensorSize& other) :
+        size_(other.size_), order_(other.order_)
+      { }
+
+      template <typename T>
+      TensorSize(const T& other) :
+        size_(other.size().begin(), other.size().end()), order_(other.order())
+      { }
+
+      TensorSize& operator=(const TensorSize& other) {
+        size_ = other.size_;
+        order_ = other.order_;
+
+        return *this;
+      }
+
+      template <typename T>
+      TensorSize& operator=(const T& other) {
+        size_.resize(other.dim());
+        std::copy(other.size().begin(), other.size().end(), size_.begin());
+        order_ = other.order();
+
+        return *this;
+      }
 
       /// Tensor dimension accessor
 
@@ -41,6 +70,11 @@ namespace TiledArray {
       /// \return The total number of elements in the tensor
       size_type volume() const {
         return std::accumulate(size_.begin(), size_.end(), size_type(1), std::multiplies<size_type>());
+      }
+
+      template <typename Archive>
+      void serialize(const Archive& ar) {
+        ar & size_ & order_;
       }
 
     protected:

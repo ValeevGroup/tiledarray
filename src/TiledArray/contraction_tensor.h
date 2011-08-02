@@ -64,6 +64,15 @@ namespace TiledArray {
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef math::Contraction<size_type> contract_type; ///< Contraction type
 
+      /// Default constructor
+      ContractionTensor() :
+        left_(NULL),
+        right_(NULL),
+        size_(),
+        data_(),
+        contraction_()
+      { }
+
       /// Construct a binary tensor op
 
       /// \param left The left argument
@@ -112,7 +121,7 @@ namespace TiledArray {
       /// \tparam Dest The destination object type
       /// \param dest The destination object
       template <typename Dest>
-      void eval_to(const Dest& dest) const {
+      void eval_to(Dest& dest) const {
         TA_ASSERT(volume() == dest.volume());
         std::copy(begin(), end(), dest.begin());
       }
@@ -209,6 +218,8 @@ namespace TiledArray {
 
       /// Evaluate the tensor only when the data is needed
       void lazy_eval() const {
+        TA_ASSERT(left_ != NULL);
+        TA_ASSERT(right_ != NULL);
         if(data_.volume() != volume()) {
           const size_type v = volume();
 
