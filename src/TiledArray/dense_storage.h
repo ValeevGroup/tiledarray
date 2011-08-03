@@ -151,28 +151,8 @@ namespace TiledArray {
     /// \return A reference to this object
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     DenseStorage_& operator =(const DenseStorage_& other) {
-      allocator_type::operator=(other);
-
-      // Allocate memory for new object
-      const size_type n = other.size();
-      pointer temp_first = allocator_type::allocate(n);
-      pointer temp_last = temp_first + n;
-
-      // copy the data
-      try {
-        construct_iterator(temp_first, temp_last, other.begin());
-      } catch(...) {
-        allocator_type::deallocate(temp_first, n);
-        throw;
-      }
-
-      // Take ownership of new data
-      std::swap(first_, temp_first);
-      last_ = temp_last;
-
-      // cleanup old data
-      if(temp_first)
-        allocator_type::deallocate(temp_first, n);
+      if(this != &other) // check for self assignment
+        DenseStorage_(other).swap(*this);
 
       return *this;
     }
