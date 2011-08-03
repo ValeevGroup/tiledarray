@@ -43,8 +43,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(Storage t1(10));
     Storage t1(10);
-    BOOST_CHECK_EQUAL(t1.size(), 10);
-    BOOST_CHECK_EQUAL(t1.volume(), 10);
+    BOOST_CHECK_EQUAL(t1.size(), 10u);
+    BOOST_CHECK_EQUAL(t1.volume(), 10u);
     for(Storage::const_iterator it = t1.begin(); it != t1.end(); ++it)
       BOOST_CHECK_EQUAL(*it, int());
   }
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE( size_accessor )
 
 BOOST_AUTO_TEST_CASE( element_access )
 {
-  for(size_type i = 0; i < 10; ++i) {
+  for(int i = 0; i < 10; ++i) {
     // check at()
     BOOST_CHECK_EQUAL(t.at(i), i);
     // check operator[]
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE( serialize )
   madness::archive::BufferOutputArchive oar(buf,sizeof(buf));
   t.store(oar);
   std::size_t nbyte = oar.size();
-  BOOST_CHECK_GT(oar.size(), 0);
+  BOOST_CHECK_GT(oar.size(), 0u);
 
   // Deserialize 2 pointers from a buffer
   madness::archive::BufferInputArchive iar(buf,nbyte);
