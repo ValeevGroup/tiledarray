@@ -39,11 +39,6 @@ namespace TiledArray {
 
       // Compiler generated copy constructor and assignment operator are fine here
 
-      /// Increment the version counter
-
-      /// \return The new version number for the pmap
-      std::size_t version() const { return version_; }
-
       /// Owner of an index
 
       /// This function calculates the owning process of an index value by
