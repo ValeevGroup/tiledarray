@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(Storage t1(10, 1));
     Storage t1(10, 1);
-    BOOST_CHECK_EQUAL(t1.size(), 10);
+    BOOST_CHECK_EQUAL(t1.size(), 10u);
     BOOST_CHECK_EQUAL(t1.volume(), 10);
     for(Storage::const_iterator it = t1.begin(); it != t1.end(); ++it)
       BOOST_CHECK_EQUAL(*it, 1);
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE( element_access )
 
 BOOST_AUTO_TEST_CASE( iteration )
 {
-  size_type i = 0;
+  int i = 0;
   for(Storage::const_iterator it = t.begin(); it != t.end(); ++it, ++i)
     BOOST_CHECK_EQUAL(*it, i);
 

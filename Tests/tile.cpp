@@ -149,7 +149,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   // check constructing with range and iterators.
   {
     std::vector<int> data;
-    for(int i = 0; i < r.volume(); ++i)
+    int v = r.volume();
+    for(int i = 0; i < v; ++i)
       data.push_back(i);
 
     BOOST_REQUIRE_NO_THROW(TileN t3(r, data.begin()));
