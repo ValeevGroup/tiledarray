@@ -187,11 +187,7 @@ namespace TiledArray {
       template <typename Index>
       bool is_zero(const Index& i) const {
         TA_ASSERT(includes(i));
-        ordinal_index o = ord(i);
-        if(is_local(o))
-          return true;
-
-        return this->probe_remote_tile(o);
+        return !(this->probe_remote_tile(ord(i)));
       }
 
       madness::World& get_world() const { return data_.get_world(); }
@@ -212,7 +208,7 @@ namespace TiledArray {
     private:
 
 
-      virtual bool probe_remote_tile(ordinal_index i) const { return true; }
+      virtual bool probe_remote_tile(ordinal_index) const { return true; }
 
     protected:
 
@@ -231,6 +227,10 @@ namespace TiledArray {
       template <typename Index>
       void insert(const Index& i) {
         data_.insert(ord(i));
+      }
+
+      void process_pending() {
+        data_.process_pending();
       }
 
     }; // class ArrayImpl
@@ -267,6 +267,8 @@ namespace TiledArray {
         for(ordinal_index i = 0; i < v; ++i)
           if(ArrayImpl_::is_local(i))
             ArrayImpl_::insert(i);
+
+        ArrayImpl_::process_pending();
       }
 
     };
@@ -325,6 +327,8 @@ namespace TiledArray {
         // Construct the bitset for remote data
 
         ArrayImpl_::get_world().gop.bit_or(shape_map_.get(), shape_map_.num_blocks());
+
+        ArrayImpl_::process_pending();
       }
 
     private:
