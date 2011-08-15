@@ -26,22 +26,61 @@ public:
 
 struct TileFixture {
   typedef TiledArray::expressions::Tile<int, GlobalFixture::element_coordinate_system> TileN;
+  typedef TileN::value_type value_type;
   typedef TileN::index index;
   typedef TileN::volume_type volume_type;
   typedef TileN::size_array size_array;
-  typedef TileN::range_type RangeN;
+  typedef TileN::range_type range_type;
+  typedef Permutation<GlobalFixture::coordinate_system::dim> PermN;
 
-  static const RangeN r;
+  static const range_type r;
 
   TileFixture() : t(r, 1) {
   }
 
   ~TileFixture() { }
 
+  // get a unique value for the given index
+  static value_type get_value(const index i) {
+    index::value_type x = 1;
+    value_type result = 0;
+    for(index::const_iterator it = i.begin(); it != i.end(); ++it, x *= 10)
+      result += *it * x;
+
+    return result;
+  }
+
+  // make a tile to be permuted
+  static TileN make_tile() {
+    index start(0);
+    index finish(0);
+    index::value_type i = 3;
+    for(index::iterator it = finish.begin(); it != finish.end(); ++it, ++i)
+      *it = i;
+
+    range_type r(start, finish);
+    TileN result(r);
+    for(range_type::const_iterator it = r.begin(); it != r.end(); ++it)
+      result[*it] = get_value(*it);
+
+    return result;
+  }
+
+  // make permutation definition object
+  static PermN make_perm() {
+    std::array<std::size_t, GlobalFixture::coordinate_system::dim> temp;
+    for(std::size_t i = 0; i < temp.size(); ++i)
+      temp[i] = i + 1;
+
+    temp.back() = 0;
+
+    return PermN(temp.begin());
+  }
+
   TileN t;
 };
 
-const TileFixture::RangeN TileFixture::r = TileFixture::RangeN(index(0), index(5));
+const TileFixture::range_type TileFixture::r = TileFixture::range_type(index(0), index(5));
 
 
 template<typename InIter, typename T>
@@ -194,11 +233,11 @@ BOOST_AUTO_TEST_CASE( resize )
   BOOST_CHECK_EQUAL(std::find_if(t2.begin(), t2.end(), std::bind1st(std::not_equal_to<int>(), 1)), t2.end());
 
   // Check that the common elements are maintained in resize operation.
-  RangeN r2(index(0), index(6));
+  range_type r2(index(0), index(6));
   t2.resize(r2, 2);
   BOOST_CHECK_EQUAL(t2.range(), r2); // check new dimensions
   BOOST_CHECK_EQUAL(static_cast<std::size_t>(std::distance(t2.begin(), t2.end())), r2.volume());
-  for(RangeN::const_iterator it = r2.begin(); it != r2.end(); ++it) {
+  for(range_type::const_iterator it = r2.begin(); it != r2.end(); ++it) {
     if(r.includes(*it))
       BOOST_CHECK_EQUAL(t2[*it], 1);
     else
@@ -238,6 +277,19 @@ BOOST_AUTO_TEST_CASE( serialization )
   BOOST_CHECK_EQUAL_COLLECTIONS(t.begin(), t.end(), ts.begin(), ts.end());
 }
 
+BOOST_AUTO_TEST_CASE( permutation )
+{
+  index i;
+  TileN pt = t;
+  PermN p = make_perm();
+  pt ^= p;
+
+  for(range_type::const_iterator it = t.range().begin(); it != t.range().end(); ++it) {
+    // Check that each element is correct
+    BOOST_CHECK_EQUAL(pt[p ^ *it], t[*it]);
+  }
+}
+
 BOOST_AUTO_TEST_CASE( addition )
 {
   const TileN t1(r, 1);
@@ -252,7 +304,7 @@ BOOST_AUTO_TEST_CASE( addition )
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, 2);
 
-  t.resize(RangeN());
+  t.resize(range_type());
   t += t1;
   BOOST_CHECK_EQUAL(t.range(), t1.range());
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
@@ -273,7 +325,7 @@ BOOST_AUTO_TEST_CASE( subtraction )
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, -1);
 
-  t.resize(RangeN());
+  t.resize(range_type());
   t -= t2;
   BOOST_CHECK_EQUAL(t.range(), t1.range());
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
@@ -289,7 +341,7 @@ BOOST_AUTO_TEST_CASE( scalar_addition )
     BOOST_CHECK_EQUAL(*it, 2);
 
 
-  t.resize(RangeN());
+  t.resize(range_type());
   t += 1;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
@@ -303,7 +355,7 @@ BOOST_AUTO_TEST_CASE( scalar_subtraction )
     BOOST_CHECK_EQUAL(*it, 0);
 
 
-  t.resize(RangeN());
+  t.resize(range_type());
   t -= 1;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
@@ -317,7 +369,7 @@ BOOST_AUTO_TEST_CASE( scalar_multiplication )
     BOOST_CHECK_EQUAL(*it, 2);
 
 
-  t.resize(RangeN());
+  t.resize(range_type());
   t *= 2;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
