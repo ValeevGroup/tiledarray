@@ -4,6 +4,7 @@
 #include <TiledArray/range.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/tensor_base.h>
+#include <TiledArray/transform_iterator.h>
 #include <world/archive.h>
 #include <TiledArray/dense_storage.h>
 #include <algorithm>
@@ -187,8 +188,14 @@ namespace TiledArray {
 
       template <typename Arg>
       Tile_& operator+=(const Arg& other) {
-        TA_ASSERT(volume() == other.volume());
-        data_ += other;
+        if(other.volume() != 0) {
+          if(volume() != 0) {
+            TA_ASSERT(volume() == other.volume());
+            data_ += other;
+          } else
+            *this = other;
+        }
+
         return *this;
       }
 
@@ -199,8 +206,15 @@ namespace TiledArray {
 
       template <typename Arg>
       Tile_& operator-=(const Arg& other) {
-        TA_ASSERT(volume() == other.volume());
-        data_ -= other;
+        if(other.volume() != 0) {
+          if(volume() != 0) {
+            TA_ASSERT(volume() == other.volume());
+            data_ -= other;
+          } else {
+            *this = other;
+            data_ *= -1;
+          }
+        }
 
         return *this;
       }
