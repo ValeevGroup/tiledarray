@@ -5,6 +5,7 @@
 #include <TiledArray/type_traits.h>
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/transform_iterator.h>
+#include <TiledArray/expressions.h>
 #include <world/archive.h>
 #include <TiledArray/dense_storage.h>
 #include <algorithm>
