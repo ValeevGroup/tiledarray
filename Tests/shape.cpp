@@ -7,6 +7,9 @@
 
 using namespace TiledArray;
 
+const BaseShapeFixture::RangeN BaseShapeFixture::r(index(0), index(5));
+const BaseShapeFixture::PmapT BaseShapeFixture::m(GlobalFixture::world);
+
 // =============================================================================
 // Shape Test Suite
 

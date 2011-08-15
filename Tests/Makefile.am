@@ -13,6 +13,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   tiled_range.cpp \
                   transform_iterator.cpp \
                   dense_storage.cpp \
+                  distributed_storage.cpp \
                   tile.cpp \
                   unary_tensor.cpp \
                   binary_tensor.cpp \
@@ -20,9 +21,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   contraction_tensor.cpp \
                   bitset.cpp \
                   versioned_pmap.cpp \
-                  dense_shape.cpp \
-                  sparse_shape.cpp \
-                  shape.cpp \
                   variable_list.cpp \
                   annotated_array.cpp \
                   indexed_iterator.cpp \

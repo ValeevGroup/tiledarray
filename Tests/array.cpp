@@ -2,12 +2,11 @@
 #include "TiledArray/utility.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
-#include "shape_fixtures.h"
 #include <world/sharedptr.h>
 
 using namespace TiledArray;
 
-struct ArrayFixture : public TiledRangeFixture, public ShapeFixture {
+struct ArrayFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::coordinate_system> ArrayN;
   typedef ArrayN::index index;
   typedef ArrayN::ordinal_index ordinal_index;
@@ -19,8 +18,14 @@ struct ArrayFixture : public TiledRangeFixture, public ShapeFixture {
         a.set(*it, world.rank()); // Fill the tile at *it (the index)
       }
     }
+
+    for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+      if(i % 3)
+        list.push_back(i);
   }
 
+
+  std::vector<std::size_t> list;
   madness::World& world;
   ArrayN a;
 }; // struct ArrayFixture

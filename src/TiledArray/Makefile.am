@@ -2,6 +2,7 @@
 
 library_includedir = $(includedir)/TiledArray
 library_include_HEADERS = annotated_array.h \
+													array_base.h \
                           array_impl.h \
                           array_math.h \
                           array_slice.h \
@@ -12,8 +13,8 @@ library_include_HEADERS = annotated_array.h \
                           contraction.h \
                           coordinate_system.h \
                           coordinates.h \
-                          dense_shape.h \
                           dense_storage.h \
+                          distributed_storage.h \
                           error.h \
                           eval_tensor.h \
                           expressions.h \
@@ -25,8 +26,6 @@ library_include_HEADERS = annotated_array.h \
                           range_iterator.h \
                           range.h \
                           reduce_task.h \
-                          shape.h \
-                          sparse_shape.h \
                           tensor_base.h \
                           tile_slice.h \
                           tile.h \

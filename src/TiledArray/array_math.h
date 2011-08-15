@@ -12,7 +12,7 @@
 
 namespace TiledArray {
 
-  template <typename, typename, typename>
+  template <typename, typename>
   class Array;
 
   template <typename>

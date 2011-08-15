@@ -9,45 +9,30 @@
 
 namespace TiledArray {
 
-  namespace math {
-    template <typename>
-    class Contraction;
-
-    template <typename, typename, typename, typename>
-    struct BinaryOp;
-
-    template <typename, typename, typename>
-    struct UnaryOp;
-
-  }  // namespace math
-
-  namespace detail {
-    template <typename, typename>
-    struct DefaultArrayPolicy;
-  }
-
   /// An n-dimensional, tiled array
 
   /// Array is considered a global object
   /// \tparam T The element type of for array tiles
   /// \tparam Coordinate system type
   /// \tparam Policy class for the array
-  template <typename T, typename CS, typename P = detail::DefaultArrayPolicy<T, CS> >
+  template <typename T, typename CS>
   class Array {
   private:
-    typedef P array_policy;
-    typedef detail::ArrayImpl<T, CS, P> impl_type;
+    typedef detail::ArrayImpl<T, CS> impl_type;
+    typedef detail::DenseArrayImpl<T,CS> dense_impl_type;
+    typedef detail::SparseArrayImpl<T,CS> sparse_impl_type;
 
   public:
-    typedef Array<T, CS, P> Array_; ///< This object's type
+    typedef Array<T, CS> Array_; ///< This object's type
     typedef CS coordinate_system; ///< The array coordinate system
 
     typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
     typedef typename coordinate_system::index index; ///< Array coordinate index type
     typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
+    typedef typename coordinate_system::volume_type size_type; ///< Size type
     typedef typename coordinate_system::size_array size_array; ///< Size array type
 
-    typedef typename array_policy::value_type value_type; ///< Tile type
+    typedef typename impl_type::value_type value_type; ///< Tile type
 //    typedef value_type& reference; ///< Reference to tile type
 //    typedef const value_type& const_reference; ///< Const reference to tile type
 
@@ -57,56 +42,8 @@ namespace TiledArray {
 
     typedef typename impl_type::iterator iterator; ///< Local tile iterator
     typedef typename impl_type::const_iterator const_iterator; ///< Local tile const iterator
-    typedef typename impl_type::accessor accessor; ///< Local tile accessor
-    typedef typename impl_type::const_accessor const_accessor; ///< Local tile const accessor
 
-  private:
-
-    template <typename, typename, typename, typename>
-    friend class math::BinaryOp;
-
-    template <typename, typename, typename>
-    friend class math::UnaryOp;
-
-    template <typename, typename, typename> friend class Array;
-
-    /// Sparse array constructor
-
-    /// \tparam InIter Input iterator type
-    /// \param w The world where the array will live.
-    /// \param tr The tiled range object that will be used to set the array tiling.
-    /// \param first An input iterator that points to the a list of tiles to be
-    /// added to the sparse array.
-    /// \param last An input iterator that points to the last position in a list
-    /// of tiles to be added to the sparse array.
-    /// \param v The array version number.
-    template <typename LeftArray, typename RightArray>
-    Array(madness::World& w, const tiled_range_type& tr, const LeftArray& left, const RightArray& right, unsigned int v) :
-        pimpl_(new impl_type(w, tr, left.pimpl_, right.pimpl_, v),
-            madness::make_deferred_deleter<impl_type>(w))
-    { }
-
-    template <typename LeftArray, typename RightArray>
-    Array(madness::World& w, const tiled_range_type& tr,
-      const std::shared_ptr<math::Contraction<ordinal_index> >& cont,
-      const LeftArray& left, const RightArray& right, unsigned int v) :
-        pimpl_(new impl_type(w, tr, cont, left.pimpl_, right.pimpl_, v),
-            madness::make_deferred_deleter<impl_type>(w))
-    { }
-
-    Array(madness::World& w, const tiled_range_type& tr, const Array_& arg, unsigned int v) :
-        pimpl_(new impl_type(w, tr, arg.pimpl_, v),
-            madness::make_deferred_deleter<impl_type>(w))
-    { }
-
-    Array(madness::World& w, const tiled_range_type& tr,
-      const Permutation<coordinate_system::dim>& perm, const Array_& arg,
-      unsigned int v) :
-        pimpl_(new impl_type(w, tr, perm, arg.pimpl_, v),
-            madness::make_deferred_deleter<impl_type>(w))
-    { }
-
-  public:
+    typedef typename impl_type::pmap_interface pmap_interface;
 
     /// Dense array constructor
 
@@ -114,7 +51,11 @@ namespace TiledArray {
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param v The array version number.
     Array(madness::World& w, const tiled_range_type& tr) :
-        pimpl_(new impl_type(w, tr, 0u), madness::make_deferred_deleter<impl_type>(w))
+        pimpl_(new dense_impl_type(w, tr, make_pmap(w)), madness::make_deferred_deleter<impl_type>(w))
+    { }
+
+    Array(madness::World& w, const tiled_range_type& tr, const std::shared_ptr<pmap_interface>& pmap) :
+        pimpl_(new dense_impl_type(w, tr, pmap), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Sparse array constructor
@@ -129,7 +70,12 @@ namespace TiledArray {
     /// \param v The array version number.
     template <typename InIter>
     Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last) :
-        pimpl_(new impl_type(w, tr, first, last, 0u), madness::make_deferred_deleter<impl_type>(w))
+        pimpl_(new sparse_impl_type(w, tr, make_pmap(w), first, last), madness::make_deferred_deleter<impl_type>(w))
+    { }
+
+    template <typename InIter>
+    Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap) :
+        pimpl_(new sparse_impl_type(w, tr, first, last, pmap), madness::make_deferred_deleter<impl_type>(w))
     { }
 
     /// Copy constructor
@@ -201,14 +147,7 @@ namespace TiledArray {
 
     template <typename Index, typename Value, typename InIter, typename Op>
     void reduce(const Index& i, const Value& value, InIter first, InIter last, Op op) {
-      TA_ASSERT(! (pimpl_->is_zero(i)));
-      ordinal_index o = tiles().ord(i);
-
-      madness::Future<value_type> result = pimpl_->reduce(o, value, op, first, last, owner(o));
-
-      // Result returned on all nodes but only the root node has the final value.
-      if(is_local(o))
-        set(o, result);
+      pimpl_->reduce(i, value, op, first, last);
     }
 
     /// Tiled range accessor
@@ -325,6 +264,10 @@ namespace TiledArray {
     void swap(Array_& other) { std::swap(pimpl_, other.pimpl_); }
 
   private:
+
+    static std::shared_ptr<pmap_interface> make_pmap(madness::World& w) {
+      return std::make_shared<detail::VersionedPmap<size_type> >(w.size(), 0);
+    }
 
     ProcessID rank() const { return pimpl_->get_world().rank(); }
 

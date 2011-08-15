@@ -6,22 +6,46 @@
 #include "versioned_pmap_fixture.h"
 #include "TiledArray/sparse_shape.h"
 #include "TiledArray/dense_shape.h"
+#include <world/worlddc.h>
+
+class FakeArray {
+public:
+  typedef TiledArray::Range<GlobalFixture::coordinate_system> range_type;
+  typedef range_type::index index;
+  typedef range_type::ordinal_index ordinal_index;
+  typedef madness::WorldDCDefaultPmap<std::size_t> pmap_type;
+  typedef madness::WorldDCPmapInterface<std::size_t> pmap_interface;
+
+  FakeArray() :
+    range_(index(0), index(5)), pmap_(new pmap_type(& GlobalFixture::world))
+  { }
+
+  template <typename Index>
+  bool includes(const Index& i) const { return range_.includes(i); }
+
+
+
+  const range_type& range() const { return range_; }
+
+  const std::shared_ptr<pmap_interface>& get_pmap() const {
+    return std::static_pointer_cast<pmap_interface>(pmap_);
+  }
+
+private:
+  range_type range_;
+  std::shared_ptr<pmap_type> pmap_;
+};
 
 struct BaseShapeFixture {
-  typedef GlobalFixture::coordinate_system::index index;
-  typedef GlobalFixture::coordinate_system::ordinal_index ordinal_index;
+  typedef expressions::Tile<int, typename GlobalFixture::coordinate_system> TileN;
+  typedef TileN::index index;
+  typedef TileN::ordinal_index ordinal_index;
   typedef TiledArray::Range<GlobalFixture::coordinate_system> RangeN;
   typedef TiledArray::Shape<GlobalFixture::coordinate_system> ShapeT;
-  typedef ShapeT::pmap_type PmapT;
+  typedef madness::WorldDCDefaultPmap<std::size_t> PmapT;
 
-
-  // Common data for shape tests.
-  BaseShapeFixture() :
-      r(index(0), index(5)), m(GlobalFixture::world->size())
-  {}
-
-  const RangeN r;
-  const PmapT m;
+  static const RangeN r;
+  static const PmapT m;
 };
 
 struct DenseShapeFixture : public virtual BaseShapeFixture {
