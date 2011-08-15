@@ -262,7 +262,7 @@ namespace TiledArray {
           if(acc->second.probe())
             find_return(ref, acc->second);
           else
-            WorldObject_::get_world().taskq.add(& DistributedStorage_::find_return, ref, acc->second,
+            get_world().taskq.add(& DistributedStorage_::find_return, ref, acc->second,
                 madness::TaskAttributes::hipri());
         } else {
           find_return(ref, value_type());
