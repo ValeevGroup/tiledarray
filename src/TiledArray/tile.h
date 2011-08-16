@@ -187,14 +187,32 @@ namespace TiledArray {
         return (*this = p ^ *this);
       }
 
+
       template <typename Arg>
-      Tile_& operator+=(const Arg& other) {
+      typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
+      operator+=(const ReadableTensor<Arg>& other) {
         if(other.volume() != 0) {
-          if(volume() != 0) {
-            TA_ASSERT(volume() == other.volume());
-            data_ += other;
-          } else
-            *this = other;
+          TA_ASSERT(dim() == other.dim());
+          if(volume() == 0ul) {
+            range_.resize(index(0), index(other.size().begin()));
+            storage_type(other.volume()).swap(data_);
+          }
+          TA_ASSERT(std::equal(size().begin(), size().end(), other.size().begin()))
+          data_ += other;
+        }
+
+        return *this;
+      }
+
+      template <typename U, typename AA>
+      Tile_& operator+=(const Tile<U,CS,AA>& other) {
+        if(other.volume() != 0) {
+          if(volume() == 0ul) {
+            range_ = other.range();
+            storage_type(other.volume()).swap(data_);
+          }
+          TA_ASSERT(range_ == other.range());
+          data_ += other;
         }
 
         return *this;
@@ -206,15 +224,30 @@ namespace TiledArray {
       }
 
       template <typename Arg>
-      Tile_& operator-=(const Arg& other) {
-        if(other.volume() != 0) {
-          if(volume() != 0) {
-            TA_ASSERT(volume() == other.volume());
-            data_ -= other;
-          } else {
-            *this = other;
-            data_ *= -1;
+      typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
+      operator-=(const ReadableTensor<Arg>& other) {
+        if (other.volume() != 0) {
+          TA_ASSERT(dim() == other.dim());
+          if(volume() == 0ul) {
+            range_.resize(index(0), index(other.size().begin()));
+            storage_type(other.volume()).swap(data_);
           }
+          TA_ASSERT(std::equal(size().begin(), size().end(), other.size().begin()))
+          data_ -= other;
+        }
+
+        return *this;
+      }
+
+      template <typename U, typename AA>
+      Tile_& operator-=(const Tile<U,CS,AA>& other) {
+        if (other.volume() != 0) {
+          if(volume() == 0ul) {
+            range_ = other.range();
+            storage_type(other.volume()).swap(data_);
+          }
+          TA_ASSERT(range_ == other.range());
+          data_ -= other;
         }
 
         return *this;
