@@ -94,14 +94,14 @@ BOOST_AUTO_TEST_CASE( addition )
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, 3);
 
-  t = t1 + TileN();
-  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 1);
-
-  t.resize(range_type());
-  t = TileN() + t1;
-  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 1);
+//  t = t1 + TileN();
+//  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
+//    BOOST_CHECK_EQUAL(*it, 1);
+//
+//  t.resize(range_type());
+//  t = TileN() + t1;
+//  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
+//    BOOST_CHECK_EQUAL(*it, 1);
 
   t = TileN() + TileN();
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
@@ -117,14 +117,14 @@ BOOST_AUTO_TEST_CASE( subtraction )
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, -1);
 
-  t = t1 - TileN();
-  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, 1);
-
-  t.resize(range_type());
-  t = TileN() - t1;
-  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
-    BOOST_CHECK_EQUAL(*it, -1);
+//  t = t1 - TileN();
+//  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
+//    BOOST_CHECK_EQUAL(*it, 1);
+//
+//  t.resize(range_type());
+//  t = TileN() - t1;
+//  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
+//    BOOST_CHECK_EQUAL(*it, -1);
 
   t = TileN() + TileN();
   BOOST_CHECK_EQUAL(t.range().volume(), 0);
