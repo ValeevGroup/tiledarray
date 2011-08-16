@@ -89,7 +89,7 @@ namespace TiledArray {
       void eval_to(Dest& dest) const { derived().eval_to(dest); }
 
       template<typename Dest>
-      inline void add_to(Dest& dest) const {
+      void add_to(Dest& dest) const {
         // This is the default implementation,
         // derived class can reimplement it in a more optimized way.
         TA_ASSERT(volume() == dest.volume());
@@ -99,12 +99,12 @@ namespace TiledArray {
       }
 
       template<typename Dest>
-      void sub_to(Dest& dst) const {
+      void sub_to(Dest& dest) const {
         // This is the default implementation,
         // derived class can reimplement it in a more optimized way.
         typename Dest::storage_type temp(volume());
         eval_to(temp);
-        dst -= temp;
+        dest -= temp;
       }
 
     }; // class TensorBase
