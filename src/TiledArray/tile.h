@@ -160,10 +160,20 @@ namespace TiledArray {
       /// \throw std::bad_alloc There is not enough memory available for the target tile
       template <typename Arg>
       typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
-      operator=(const Arg& other) {
-        if(volume() != other.volume())
-          storage_type(other.volume()).swap(data_);
-        other.eval_to(data_);
+      operator=(const ReadableTensor<Arg>& other) {
+        if(other.volume() != 0ul) {
+          TA_ASSERT(dim() == other.dim());
+          if(volume() == 0ul) {
+            range_.resize(index(0), index(other.size().begin()));
+            storage_type(other.volume()).swap(data_);
+          }
+          TA_ASSERT(volume() == other.volume());
+          other.eval_to(data_);
+        } else {
+          range_ = range_type();
+          storage_type().swap(data_);
+        }
+
         return *this;
       }
 
