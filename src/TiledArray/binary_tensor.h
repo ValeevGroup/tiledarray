@@ -19,8 +19,8 @@ namespace TiledArray {
 
     template <typename LeftArg, typename RightArg, typename Op>
     struct TensorTraits<BinaryTensor<LeftArg, RightArg, Op> > {
-      typedef typename TensorSize::size_type size_type;
-      typedef typename TensorSize::size_array size_array;
+      typedef typename LeftArg::size_type size_type;
+      typedef typename LeftArg::size_array size_array;
       typedef typename madness::result_of<Op>::type value_type;
       typedef TiledArray::detail::BinaryTransformIterator<typename LeftArg::const_iterator,
           typename RightArg::const_iterator, Op> const_iterator;
@@ -50,7 +50,7 @@ namespace TiledArray {
       typedef Op op_type; ///< The transform operation type
 
       BinaryTensor() :
-        left_(NULL), right_(NULL), size_(), op_()
+        left_(NULL), right_(NULL), op_()
       { }
 
       /// Construct a binary tensor op
@@ -58,21 +58,23 @@ namespace TiledArray {
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
+      /// \throw TiledArray::Exception When left and right argument orders,
+      /// dimensions, or sizes are not equal.
       BinaryTensor(const left_tensor_type& left, const right_tensor_type& right, const op_type& op) :
-        left_(&left), right_(&right), size_(left.size(), left.order()), op_(op)
+        left_(&left), right_(&right), op_(op)
       {
         TA_ASSERT(left.order() == right.order());
+        TA_ASSERT(left.dim() == right.dim());
         TA_ASSERT(std::equal(left.size().begin(), left.size().end(), right.size().begin()));
       }
 
       BinaryTensor(const BinaryTensor_& other) :
-        left_(other.left_), right_(other.right_), size_(other.size_), op_(other.op_)
+        left_(other.left_), right_(other.right_), op_(other.op_)
       { }
 
       BinaryTensor_& operator=(const BinaryTensor_& other) {
         left_ = other.left_;
         right_ = other.right_;
-        size_ = other.size_;
         op_ = other.op_;
 
         return *this;
@@ -107,7 +109,7 @@ namespace TiledArray {
       unsigned int dim() const {
         TA_ASSERT(left_);
         TA_ASSERT(right_);
-        return size_.dim();
+        return left_->dim();
       }
 
       /// Data ordering
@@ -116,7 +118,7 @@ namespace TiledArray {
       TiledArray::detail::DimensionOrderType order() const {
         TA_ASSERT(left_);
         TA_ASSERT(right_);
-        return size_.order();
+        return left_->order();
       }
 
       /// Tensor dimension size accessor
@@ -125,7 +127,7 @@ namespace TiledArray {
       const size_array& size() const {
         TA_ASSERT(left_);
         TA_ASSERT(right_);
-        return size_.size();
+        return left_->size();
       }
 
       /// Tensor volume
@@ -134,7 +136,7 @@ namespace TiledArray {
       size_type volume() const {
         TA_ASSERT(left_);
         TA_ASSERT(right_);
-        return size_.volume();
+        return left_->volume();
       }
 
       /// Iterator factory
@@ -167,7 +169,6 @@ namespace TiledArray {
     private:
       const left_tensor_type* left_; ///< Left argument
       const right_tensor_type* right_; ///< Right argument
-      TensorSize size_; ///< Tensor size info
       op_type op_; ///< Transform operation
     }; // class BinaryTensor
 
