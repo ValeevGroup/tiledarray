@@ -24,7 +24,7 @@ Prerequisites:
     BLAS is optional for TiledArray, but BLAS and LAPACK are required by m-a-d-n-e-s-s.
     You can use your favorite implementation for this.
       
-  - Eigen
+  - Eigen 3
     This is an open source c++ template library which is a c++ replacement for
     BLAS and LAPACK. It is the default math library for TiledArray, but you may
     replace it with BLAS. You can download a copy of it here:
@@ -34,7 +34,6 @@ Prerequisites:
     This is a semi-standard open source c++ template library. It contains many
     useful generic template libraries you can use with your programs. You can
     download a copy of it here: http://www.boost.org/ .
-
 
   - TCMalloc (optional)
     This is a fast memory allocation tool designed by Google. It is an optional
@@ -62,7 +61,7 @@ Building:
   Next, you need to specify the include paths for each of the following:
   libraries:
     - m-a-d-n-e-s-s
-    - Eigen
+    - Eigen 3
     - Boost
     - BLAS (optional)
   For GCC the include paths will look something like the following:
