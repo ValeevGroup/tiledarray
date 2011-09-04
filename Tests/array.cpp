@@ -1,34 +1,18 @@
-#include "TiledArray/array.h"
-#include "TiledArray/utility.h"
+#include "array_fixture.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
-#include <world/sharedptr.h>
 
 using namespace TiledArray;
 
-struct ArrayFixture : public TiledRangeFixture {
-  typedef Array<int, GlobalFixture::coordinate_system> ArrayN;
-  typedef ArrayN::index index;
-  typedef ArrayN::ordinal_index ordinal_index;
-  typedef ArrayN::value_type tile_type;
+ArrayFixture::ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
+  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it)
+    if(a.is_local(*it))
+      a.set(*it, world.rank()); // Fill the tile at *it (the index)
 
-  ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
-    for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
-      if(a.is_local(*it)) {
-        a.set(*it, world.rank()); // Fill the tile at *it (the index)
-      }
-    }
+  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+    if(i % 3)
+      list.push_back(i);
+}
 
-    for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
-      if(i % 3)
-        list.push_back(i);
-  }
-
-
-  std::vector<std::size_t> list;
-  madness::World& world;
-  ArrayN a;
-}; // struct ArrayFixture
 
 BOOST_FIXTURE_TEST_SUITE( array_suite , ArrayFixture )
 

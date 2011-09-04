@@ -1,6 +1,5 @@
 #include "TiledArray/coordinate_system.h"
 #include "unit_test_config.h"
-#include "math_fixture.h"
 
 using namespace TiledArray;
 using namespace TiledArray::detail;

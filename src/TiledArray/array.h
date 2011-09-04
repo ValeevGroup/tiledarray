@@ -33,8 +33,8 @@ namespace TiledArray {
     typedef typename coordinate_system::size_array size_array; ///< Size array type
 
     typedef typename impl_type::value_type value_type; ///< Tile type
-//    typedef value_type& reference; ///< Reference to tile type
-//    typedef const value_type& const_reference; ///< Const reference to tile type
+    typedef madness::Future<value_type> reference; ///< Reference to tile type
+    typedef madness::Future<value_type> const_reference; ///< Const reference to tile type
 
     typedef TiledRange<CS> tiled_range_type; ///< Tile range type
     typedef typename tiled_range_type::range_type range_type; ///< Range type for tiles
@@ -173,6 +173,10 @@ namespace TiledArray {
     /// \return A const reference to the range object for the array elements
     /// \throw nothing
     const tile_range_type& elements() const { return pimpl_->elements(); }
+
+    const size_array& size() const { return pimpl_->tiles().size(); }
+
+    volume_type volume() const { return pimpl_->tiles().volume(); }
 
     /// Create an annotated array
 

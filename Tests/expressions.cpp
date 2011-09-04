@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE( subtraction )
 //    BOOST_CHECK_EQUAL(*it, -1);
 
   t = TileN() + TileN();
-  BOOST_CHECK_EQUAL(t.range().volume(), 0);
+  BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
 
 BOOST_AUTO_TEST_CASE( scalar_addition )

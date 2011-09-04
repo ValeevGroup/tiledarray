@@ -25,11 +25,10 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   annotated_array.cpp \
                   indexed_iterator.cpp \
                   array.cpp \
-                  math.cpp \
                   reduce_task.cpp \
                   array_math.cpp \
                   expressions.cpp \
-                  array_fixtures.h \
+                  array_fixture.h \
                   range_fixture.h \
                   shape_fixtures.h \
                   iteration_test.h \

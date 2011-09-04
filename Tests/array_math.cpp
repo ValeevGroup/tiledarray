@@ -1,7 +1,6 @@
 #include "TiledArray/array_math.h"
 #include "TiledArray/array.h"
 #include "range_fixture.h"
-#include "math_fixture.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
@@ -31,11 +30,7 @@ struct ArrayMathFixture : public TiledRangeFixture {
   ArrayN a;
   ArrayN b;
   ArrayN c;
-
-  static const std::string vars;
 };
-
-const std::string ArrayMathFixture::vars = MathFixture::make_var_list();
 
 BOOST_FIXTURE_TEST_SUITE( array_math_suite , ArrayMathFixture )
 
