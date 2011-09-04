@@ -15,8 +15,8 @@ namespace TiledArray {
 
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTensor<Arg, Op> > {
-      typedef typename TensorSize::size_type size_type;
-      typedef typename TensorSize::size_array size_array;
+      typedef typename Arg::size_type size_type;
+      typedef typename Arg::size_array size_array;
       typedef typename madness::result_of<Op>::type value_type;
       typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
           Op> const_iterator; ///< Tensor const iterator
@@ -45,7 +45,7 @@ namespace TiledArray {
       typedef Op op_type; ///< The transform operation type
 
       UnaryTensor() :
-        arg_(NULL), size_(), op_()
+        arg_(NULL), op_()
       { }
 
       /// Construct a binary tensor op
@@ -54,16 +54,15 @@ namespace TiledArray {
       /// \param right The right argument
       /// \param op The element transform operation
       UnaryTensor(const arg_tensor_type& arg, const op_type& op) :
-        arg_(&arg), size_(arg.size(), arg.order()), op_(op)
+        arg_(&arg), op_(op)
       {}
 
       UnaryTensor(const UnaryTensor_& other) :
-        arg_(other.arg_), size_(other.size_), op_(other.op_)
+        arg_(other.arg_), op_(other.op_)
       { }
 
       UnaryTensor_& operator=(const UnaryTensor_& other) {
         arg_ = other.arg_;
-        size_ = other.size_;
         op_ = other.op_;
 
         return *this;
@@ -94,7 +93,7 @@ namespace TiledArray {
       /// \return The number of dimensions
       unsigned int dim() const {
         TA_ASSERT(arg_);
-        return size_.dim();
+        return arg_->dim();
       }
 
       /// Data ordering
@@ -102,7 +101,7 @@ namespace TiledArray {
       /// \return The data ordering type
       TiledArray::detail::DimensionOrderType order() const {
         TA_ASSERT(arg_);
-        return size_.order();
+        return arg_->order();
       }
 
       /// Tensor dimension size accessor
@@ -110,7 +109,7 @@ namespace TiledArray {
       /// \return An array that contains the sizes of each tensor dimension
       const size_array& size() const {
         TA_ASSERT(arg_);
-        return size_.size();
+        return arg_->size();
       }
 
       /// Tensor volume
@@ -118,7 +117,7 @@ namespace TiledArray {
       /// \return The total number of elements in the tensor
       size_type volume() const {
         TA_ASSERT(arg_);
-        return size_.volume();
+        return arg_->volume();
       }
 
       /// Iterator factory
@@ -147,7 +146,6 @@ namespace TiledArray {
 
     private:
       const arg_tensor_type* arg_; ///< Argument
-      TensorSize size_; ///< Tensor size info
       op_type op_; ///< Transform operation
     }; // class UnaryTensor
 
