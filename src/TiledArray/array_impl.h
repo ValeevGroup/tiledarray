@@ -210,8 +210,8 @@ namespace TiledArray {
       virtual const detail::Bitset<>& get_shape() const = 0;
 
       template <typename Index>
-      void insert(const Index& i) {
-        data_.insert(ord(i));
+      bool insert(const Index& i) {
+        return data_.insert(ord(i));
       }
 
       void process_pending() {
