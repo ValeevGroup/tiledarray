@@ -36,27 +36,72 @@ namespace TiledArray {
     typedef madness::Future<value_type> reference; ///< Reference to tile type
     typedef madness::Future<value_type> const_reference; ///< Const reference to tile type
 
-    typedef TiledRange<CS> tiled_range_type; ///< Tile range type
-    typedef typename tiled_range_type::range_type range_type; ///< Range type for tiles
-    typedef typename tiled_range_type::tile_range_type tile_range_type; ///< Range type for elements
+    typedef TiledRange<CS> trange_type; ///< Tile range type
+    typedef typename trange_type::range_type range_type; ///< Range type for tiles
+    typedef typename trange_type::tile_range_type tile_range_type; ///< Range type for elements
 
     typedef typename impl_type::iterator iterator; ///< Local tile iterator
     typedef typename impl_type::const_iterator const_iterator; ///< Local tile const iterator
 
     typedef typename impl_type::pmap_interface pmap_interface;
 
+  private:
+
+    class InsertElement {
+    public:
+      InsertElement(Array_* a) : array_(a) { }
+
+      template <typename It>
+      typename madness::disable_if<std::is_integral<It>, bool>::type
+      operator()(const It& it) const { return insert(*it); }
+      bool operator()(ordinal_index i) const { return insert(i); }
+      bool operator()(const index& i) const { return insert(i); }
+
+    private:
+
+      template<typename Index>
+      bool insert(const Index& i) const {
+        TA_ASSERT(array_->range().includes(i));
+
+        if(array_->is_local(i))
+          array_->pimpl_->insert(i);
+
+        return true;
+      }
+
+      Array_* array_;
+    };
+
+    template <typename It>
+    void init(const madness::Range<It>& range) {
+      madness::Future<bool> done = get_world().taskq.for_each(range, InsertElement(this));
+      get_world().taskq.add(*this, & Array_::process_pending, done, madness::TaskAttributes::hipri());
+    }
+
+    madness::Void process_pending(bool) {
+      pimpl_->process_pending();
+      return madness::None;
+    }
+
+
+  public:
+
     /// Dense array constructor
 
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param v The array version number.
-    Array(madness::World& w, const tiled_range_type& tr) :
+    Array(madness::World& w, const trange_type& tr) :
         pimpl_(new dense_impl_type(w, tr, make_pmap(w)), madness::make_deferred_deleter<impl_type>(w))
-    { }
+    {
+      init(madness::Range<ProcessID>(0, range().volume()));
+    }
 
-    Array(madness::World& w, const tiled_range_type& tr, const std::shared_ptr<pmap_interface>& pmap) :
+    Array(madness::World& w, const trange_type& tr, const std::shared_ptr<pmap_interface>& pmap) :
         pimpl_(new dense_impl_type(w, tr, pmap), madness::make_deferred_deleter<impl_type>(w))
-    { }
+    {
+      init(madness::Range<ProcessID>(0, range().volume()));
+    }
 
     /// Sparse array constructor
 
@@ -69,14 +114,18 @@ namespace TiledArray {
     /// of tiles to be added to the sparse array.
     /// \param v The array version number.
     template <typename InIter>
-    Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last) :
+    Array(madness::World& w, const trange_type& tr, InIter first, InIter last) :
         pimpl_(new sparse_impl_type(w, tr, make_pmap(w), first, last), madness::make_deferred_deleter<impl_type>(w))
-    { }
+    {
+      init(madness::Range<InIter>(first, last));
+    }
 
     template <typename InIter>
-    Array(madness::World& w, const tiled_range_type& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap) :
+    Array(madness::World& w, const trange_type& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap) :
         pimpl_(new sparse_impl_type(w, tr, first, last, pmap), madness::make_deferred_deleter<impl_type>(w))
-    { }
+    {
+      init(madness::Range<InIter>(first, last));
+    }
 
     /// Copy constructor
 
@@ -86,9 +135,17 @@ namespace TiledArray {
       pimpl_(other.pimpl_)
     { }
 
-    Array(const expressions::AnnotatedArray<Array_>& other) :
-      pimpl_(other.array().pimpl_)
-    { }
+    template <typename Derived>
+    Array(const expressions::TiledTensor<Derived>& other) :
+      pimpl_((other.is_dense() ?
+          new dense_impl_type(other.get_world(), trange_type(other.trange()), other.get_pmap())
+        :
+          new sparse_impl_type(other.get_world(), trange_type(other.trange()), other.get_shape(), other.get_pmap())),
+        madness::make_deferred_deleter<impl_type>(other.get_world()))
+    {
+      other.eval_to(*this);
+      pimpl_->process_pending();
+    }
 
     /// Copy constructor
 
@@ -99,8 +156,11 @@ namespace TiledArray {
       return *this;
     }
 
-    Array_& operator=(const expressions::AnnotatedArray<Array_>& other) {
-      return operator=(other.array());
+    template <typename Derived>
+    Array_& operator=(const expressions::TiledTensor<Derived>& other) {
+      Array_(other).swap(*this);
+
+      return *this;
     }
 
     /// Begin iterator factory function
@@ -154,7 +214,7 @@ namespace TiledArray {
 
     /// \return A const reference to the tiled range object for the array
     /// \throw nothing
-    const tiled_range_type& tiling() const { return pimpl_->tiling(); }
+    const trange_type& tiling() const { return pimpl_->tiling(); }
 
     /// Tile range accessor
 
@@ -216,6 +276,23 @@ namespace TiledArray {
 
     /// \return A reference to the world that owns this array.
     madness::World& get_world() const { return pimpl_->get_world(); }
+
+    /// Check dense/sparse quary
+
+    /// \return \c true when \c Array is dense, \c false otherwise.
+    bool is_dense() const { return pimpl_->is_dense(); }
+
+
+    /// Shape map accessor
+
+    /// Bits are \c true when the tile exists, ether locally or remotely. No
+    /// no communication required.
+    /// \return A bitset that maps the existence of tiles.
+    /// \throw TiledArray::Exception When the Array is dense.
+    const detail::Bitset<>& get_shape() const {
+      TA_ASSERT(! is_dense());
+      return pimpl_->get_shape();
+    }
 
     /// Tile ownership
 

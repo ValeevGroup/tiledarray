@@ -4,13 +4,17 @@
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/variable_list.h>
 #include <TiledArray/tensor_base.h>
+#include <TiledArray/bitset.h>
 #include <world/worldtypes.h>
+#include <world/sharedptr.h>
 
 #define TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED )  \
     TILEDARRAY_TENSOR_BASE_INHEIRATE_TYPEDEF( BASE , DERIVED )
 
 #define TILEDARRAY_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED )
+    TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
+    typedef typename base::pmap_interface pmap_interface; \
+    typedef typename base::trange_type trange_type;
 
 #define TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
     TILEDARRAY_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
@@ -32,8 +36,13 @@
     inline ProcessID owner(size_type i) const { return base::owner(i); } \
     inline bool is_local(size_type i) const { return base::is_local(i); } \
     inline bool is_zero(size_type i) const { return base::is_zero(i); } \
+    inline madness::World& get_world() const { return base::get_world(); } \
+    inline std::shared_ptr<pmap_interface> get_pmap() const { return base::get_pmap(); } \
+    inline bool is_dense() const { return base::is_dense(); } \
+    inline const TiledArray::detail::Bitset<>& get_shape() const { return base::get_shape(); } \
     inline size_array size(size_type i) const { return base::size(i); } \
-    inline size_type volume(size_type i) const { return base::volume(i); }
+    inline size_type volume(size_type i) const { return base::volume(i); } \
+    inline trange_type trange() const { return base::trange(); }
 
 #define TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
@@ -46,6 +55,13 @@
     inline reference operator[](size_type i) { return base::operator[](i); } \
     inline iterator begin() { return base::begin(); } \
     inline iterator end() { return base::end(); }
+
+namespace madness {
+  // Forward declaration
+  class World;
+  template <typename> class WorldDCPmapInterface;
+  template <typename> class Future;
+} // namespace madness
 
 namespace TiledArray {
   namespace expressions {
@@ -66,16 +82,24 @@ namespace TiledArray {
     public:
 
       TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_TYPEDEF(AnnotatedTensor<Derived>, Derived)
+      typedef madness::WorldDCPmapInterface<size_type> pmap_interface;
+      typedef typename TensorTraits<Derived>::trange_type trange_type;
+
       TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_MEMBER(AnnotatedTensor<Derived>, Derived)
 
       // Tile locality info
       inline ProcessID owner(size_type i) const { return derived().owner(i); }
       inline bool is_local(size_type i) const { return derived().is_local(i); }
       inline bool is_zero(size_type i) const { return derived().is_zero(i); }
+      inline madness::World& get_world() const { return derived().get_world(); }
+      inline std::shared_ptr<pmap_interface> get_pmap() const { return derived().get_pmap(); }
+      inline bool is_dense() const { return derived().is_dense(); }
+      inline const TiledArray::detail::Bitset<>& get_shape() const { return derived().get_shape(); }
 
       // Tile dimension info
       inline size_array size(size_type i) const { return derived().size(i); }
       inline size_type volume(size_type i) const { return derived().volume(i); }
+      inline trange_type trange() const { return derived().trange(); }
 
     }; // class TiledTensor
 

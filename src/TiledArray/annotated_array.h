@@ -16,6 +16,7 @@ namespace TiledArray {
     struct TensorTraits<AnnotatedArray<T> > {
       typedef typename T::size_type size_type;
       typedef typename T::size_array size_array;
+      typedef typename T::trange_type trange_type;
       typedef typename T::value_type value_type;
       typedef typename T::const_reference const_reference;
       typedef typename T::reference reference;
@@ -27,6 +28,7 @@ namespace TiledArray {
     struct TensorTraits<AnnotatedArray<const T> > {
       typedef typename T::size_type size_type;
       typedef typename T::size_array size_array;
+      typedef typename T::trange_type trange_type;
       typedef typename T::value_type value_type;
       typedef typename T::const_reference const_reference;
       typedef typename T::const_iterator const_iterator;
@@ -63,6 +65,9 @@ namespace TiledArray {
       ProcessID owner(size_type i) const { return array_.owner(i); }
       bool is_local(size_type i) const { return array_.is_local(i); }
       bool is_zero(size_type i) const { return array_.is_zero(i); }
+
+      madness::World& get_world() const { return array_.get_world(); }
+      std::shared_ptr<pmap_interface> get_pmap() const { return array_.get_pmap(); }
 
       // Tile dimension info
       size_array size(size_type i) const { return array_.make_range(i).size(); }

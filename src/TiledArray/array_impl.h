@@ -205,6 +205,19 @@ namespace TiledArray {
         return result;
       }
 
+      virtual bool is_dense() const = 0;
+
+      virtual const detail::Bitset<>& get_shape() const = 0;
+
+      template <typename Index>
+      void insert(const Index& i) {
+        data_.insert(ord(i));
+      }
+
+      void process_pending() {
+        data_.process_pending();
+      }
+
     private:
 
 
@@ -224,19 +237,15 @@ namespace TiledArray {
         return trange_.tiles().ord(i);
       }
 
-      template <typename Index>
-      void insert(const Index& i) {
-        data_.insert(ord(i));
-      }
-
-      void process_pending() {
-        data_.process_pending();
-      }
-
     }; // class ArrayImpl
 
     template <typename T, typename CS>
     class DenseArrayImpl : public ArrayImpl<T, CS> {
+    private:
+      // shape_map_ is just a place holder. It should never be used since the
+      // shape is always known.
+      static const detail::Bitset<> shape_map_; ///< Empty bitset for all dense
+
     public:
 
       typedef ArrayImpl<T, CS> ArrayImpl_;
@@ -271,7 +280,16 @@ namespace TiledArray {
         ArrayImpl_::process_pending();
       }
 
-    };
+
+      virtual bool is_dense() const { return true; }
+
+      virtual const detail::Bitset<>& get_shape() const { return shape_map_; }
+
+    }; // class DenseArrayImpl
+
+    // DenseArrayImpl static member instantiation
+    template <typename T, typename CS>
+    const detail::Bitset<> DenseArrayImpl<T,CS>::shape_map_(0);
 
     template <typename T, typename CS>
     class SparseArrayImpl : public ArrayImpl<T, CS> {
@@ -327,14 +345,22 @@ namespace TiledArray {
         // Construct the bitset for remote data
 
         ArrayImpl_::get_world().gop.bit_or(shape_map_.get(), shape_map_.num_blocks());
-
-        ArrayImpl_::process_pending();
       }
+
+      SparseArrayImpl(madness::World& w, const trange_type& tr,
+          const std::shared_ptr<pmap_interface>& pmap, const Bitset<>& shape) :
+          ArrayImpl_(w, tr, pmap),
+          shape_map_(shape)
+      { }
+
+      virtual bool is_dense() const { return false; }
+
+      virtual const detail::Bitset<>& get_shape() const { return shape_map_; }
 
     private:
 
       virtual bool probe_remote_tile(ordinal_index i) const { return shape_map_[i]; }
-    };
+    }; // class SparseArrayImpl
 
   } // detail
 } // namespace TiledArray
