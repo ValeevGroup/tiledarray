@@ -47,9 +47,9 @@ namespace TiledArray {
 
   private:
 
-    class InsertElement {
+    class InsertTiles {
     public:
-      InsertElement(Array_* a) : array_(a) { }
+      InsertTiles(Array_* a) : array_(a) { }
 
       template <typename It>
       typename madness::disable_if<std::is_integral<It>, bool>::type
@@ -72,13 +72,19 @@ namespace TiledArray {
       Array_* array_;
     };
 
+
+
     template <typename It>
     void init(const madness::Range<It>& range) {
-      madness::Future<bool> done = get_world().taskq.for_each(range, InsertElement(this));
+      madness::Future<bool> done = get_world().taskq.for_each(range, InsertTiles(this));
       get_world().taskq.add(*this, & Array_::process_pending, done, madness::TaskAttributes::hipri());
+
+      // Wait for everyone to finish
+      done.get();
     }
 
-    madness::Void process_pending(bool) {
+    madness::Void process_pending(bool done) {
+      TA_ASSERT(done);
       pimpl_->process_pending();
       return madness::None;
     }
