@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE( subtraction )
 //  for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
 //    BOOST_CHECK_EQUAL(*it, -1);
 
-  t = TileN() + TileN();
+  t = TileN() - TileN();
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
 
