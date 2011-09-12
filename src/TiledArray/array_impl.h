@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_ARRAY_IMPL_H__INCLUDED
 #define TILEDARRAY_ARRAY_IMPL_H__INCLUDED
 
+// This needs to be defined before world/worldreduce.h
 #define WORLD_INSTANTIATE_STATIC_TEMPLATES
 
 #include <TiledArray/error.h>
