@@ -58,7 +58,15 @@ BOOST_AUTO_TEST_CASE( owner )
     BOOST_CHECK_EQUAL(a.owner(o), owner);
 
     // Get the owner from all other processes
-    MPI::COMM_WORLD.Allgather(& owner, 1, MPI::INT, group_owner.get(), 1, MPI::INT);
+    int count = (owner == world.rank() ? 1 : 0);
+    world.gop.sum(count);
+    // Check that only one node claims ownership
+    BOOST_CHECK_EQUAL(count, 1);
+
+    std::fill_n(group_owner.get(), world.size(), 0);
+    group_owner.get()[world.rank()] = owner;
+    world.gop.reduce(group_owner.get(), world.size(), std::plus<ProcessID>());
+
 
     // Check that everyone agrees who the owner of the tile is.
     BOOST_CHECK((std::find_if(group_owner.get(), group_owner.get() + world.size(),
