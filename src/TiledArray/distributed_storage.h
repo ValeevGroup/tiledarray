@@ -1,11 +1,12 @@
 #ifndef TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 #define TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 
+// This needs to be defined before world/worldreduce.h and world/worlddc.h
+#define WORLD_INSTANTIATE_STATIC_TEMPLATES
+
 #include <TiledArray/error.h>
 #include <TiledArray/indexed_iterator.h>
-#include <TiledArray/bitset.h>
-#include <TiledArray/tile.h>
-#include <world/world.h>
+//#include <world/world.h>
 #include <world/worlddc.h>
 #include <world/worldreduce.h>
 
