@@ -127,13 +127,15 @@ namespace TiledArray {
       /// Add element \c i to the container. If it is not local, a message is
       /// sent to the owner to insert it.
       /// \param i The element to be inserted.
-      void insert(size_type i) {
+      /// \return true if the tile was inserted locally, otherwise false.
+      bool insert(size_type i) {
         if(is_local(i)) {
           const_accessor acc;
-          data_.insert(acc, i);
-        } else {
-          WorldObject_::task(owner(i), & DistributedStorage_::remote_insert, i, madness::TaskAttributes::hipri());
+          return data_.insert(acc, i);
         }
+
+        WorldObject_::task(owner(i), & DistributedStorage_::remote_insert, i, madness::TaskAttributes::hipri());
+        return false;
       }
 
       /// Insert LOCAL element and acquire a read lock
