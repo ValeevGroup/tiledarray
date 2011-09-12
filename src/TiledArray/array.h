@@ -47,25 +47,47 @@ namespace TiledArray {
 
   private:
 
-    // Task functor used to initialize tiles.
+    /// Task functor used to initialize Array tiles.
     class InsertTiles {
     public:
+      /// Constructor
+
+      /// \param a A pointer to the array to initialize
       InsertTiles(Array_* a) : array_(a) { }
 
+      /// Initialize the tile given by the iterator \c it
+
+      /// \tparam It The iterator type
+      /// \param it The iterator that points to the tile to initialize
+      /// \return true
       template <typename It>
       typename madness::disable_if<std::is_integral<It>, bool>::type
       operator()(const It& it) const { return insert(*it); }
+
+      /// Initialize the tile given by the ordinal index \c i
+
+      /// \param i The ordinal index of the tile to initialize
+      /// \return true
       bool operator()(ordinal_index i) const { return insert(i); }
+
+      /// Initialize the tile given by the index \c i
+
+      /// \param i The index of the tile to initialize
+      /// \return true
       bool operator()(const index& i) const { return insert(i); }
 
     private:
 
+      /// Insert tile \c i into the array
+
+      /// \tparam Index The index type
+      /// \param
       template<typename Index>
       bool insert(const Index& i) const {
         TA_ASSERT(array_->range().includes(i));
 
         if(array_->is_local(i))
-          array_->pimpl_->insert(i);
+          return array_->pimpl_->insert(i);
 
         return true;
       }
@@ -79,19 +101,14 @@ namespace TiledArray {
     void init(const madness::Range<It>& range) {
       // Spawn tasks to initialize the tiles
       madness::Future<bool> done = get_world().taskq.for_each(range, InsertTiles(this));
-      get_world().taskq.add(*this, & Array_::process_pending, done, madness::TaskAttributes::hipri());
 
-      // Wait for everyone to finish (work while we wait) ;-)
+      // Wait for everyone to finish initializing tiles (work while we wait).
       done.get();
-    }
+      TA_ASSERT(done.get());
 
-    // Once all the tiles are initialized call process pending.
-    madness::Void process_pending(bool done) {
-      TA_ASSERT(done);
+      // Process pending messages.
       pimpl_->process_pending();
-      return madness::None;
     }
-
 
   public:
 
@@ -204,9 +221,7 @@ namespace TiledArray {
     /// \tparam Index \c index or an integral type
     /// \tparam InIter An input iterator
     template <typename Index, typename InIter>
-    void set(const Index& i, InIter first) {
-      pimpl_->set(i, first);
-    }
+    void set(const Index& i, InIter first) { pimpl_->set(i, first); }
 
     template <typename Index>
     void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }
