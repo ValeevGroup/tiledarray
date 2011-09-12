@@ -47,6 +47,7 @@ namespace TiledArray {
 
   private:
 
+    // Task functor used to initialize tiles.
     class InsertTiles {
     public:
       InsertTiles(Array_* a) : array_(a) { }
@@ -73,16 +74,18 @@ namespace TiledArray {
     };
 
 
-
+    // Initialize the array tiles.
     template <typename It>
     void init(const madness::Range<It>& range) {
+      // Spawn tasks to initialize the tiles
       madness::Future<bool> done = get_world().taskq.for_each(range, InsertTiles(this));
       get_world().taskq.add(*this, & Array_::process_pending, done, madness::TaskAttributes::hipri());
 
-      // Wait for everyone to finish
+      // Wait for everyone to finish (work while we wait) ;-)
       done.get();
     }
 
+    // Once all the tiles are initialized call process pending.
     madness::Void process_pending(bool done) {
       TA_ASSERT(done);
       pimpl_->process_pending();

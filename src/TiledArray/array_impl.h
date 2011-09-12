@@ -271,14 +271,7 @@ namespace TiledArray {
       DenseArrayImpl(madness::World& w, const trange_type& tr,
           const std::shared_ptr<pmap_interface>& pmap) :
           ArrayImpl_(w, tr, pmap)
-      {
-        const ordinal_index v = ArrayImpl_::tiles().volume();
-        for(ordinal_index i = 0; i < v; ++i)
-          if(ArrayImpl_::is_local(i))
-            ArrayImpl_::insert(i);
-
-        ArrayImpl_::process_pending();
-      }
+      { }
 
 
       virtual bool is_dense() const { return true; }
@@ -336,11 +329,8 @@ namespace TiledArray {
           shape_map_(tr.tiles().volume())
       {
 
-        for(; first != last; ++first) {
-          const ordinal_index o = ArrayImpl_::ord(*first);
-          shape_map_.set(o);
-          ArrayImpl_::insert(o);
-        }
+        for(; first != last; ++first)
+          shape_map_.set(ArrayImpl_::ord(*first));
 
         // Construct the bitset for remote data
 
