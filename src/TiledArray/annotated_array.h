@@ -219,11 +219,18 @@ namespace TiledArray {
       bool is_local(size_type i) const { return array_.is_local(i); }
       bool is_zero(size_type i) const { return array_.is_zero(i); }
 
+      madness::World& get_world() const { return array_.get_world(); }
+      std::shared_ptr<pmap_interface> get_pmap() const { return array_.get_pmap(); }
+
+      bool is_dense() const { return array_.is_dense(); }
+      const TiledArray::detail::Bitset<>& get_shape() const { return array_.get_shape(); }
+
       // Tile dimension info
       size_array size(size_type i) const { return array_.make_range(i).size(); }
       size_type volume(size_type i) const { return array_.make_range(i).volume(); }
+      trange_type trange() const { return array_.trange(); }
 
-      const_reference operator[](size_type i) const { return array_.find(i); }
+      const_reference operator[](size_type i) const { return op_(array_.find(i)); }
 
       const AnnotatedArray_& eval() const { return *this; }
 
