@@ -99,30 +99,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   }
 }
 
-
-BOOST_AUTO_TEST_CASE( assignment_operator )
-{
-  TileN t0;
-  ContT x(t0, t0, cont);
-
-  // Check initial conditions
-  BOOST_CHECK_EQUAL(x.dim(), 2u);
-  BOOST_CHECK_EQUAL(x.size().front(), 0ul);
-  BOOST_CHECK_EQUAL(x.size().back(), 0ul);
-  BOOST_CHECK_EQUAL(x.volume(), 0ul);
-  BOOST_CHECK(x.begin() == x.end());
-  BOOST_CHECK_EQUAL(x.order(), t0.order());
-
-  x = ct;
-
-  // Check that the tensor was copied.
-  BOOST_CHECK_EQUAL(x.dim(), ct.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), ct.size().begin(), ct.size().end());
-  BOOST_CHECK_EQUAL(x.volume(), ct.volume());
-  BOOST_CHECK_EQUAL(x.order(), ct.order());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.begin(), x.end(), ct.begin(), ct.end());
-}
-
 BOOST_AUTO_TEST_CASE( contraction )
 {
   // Calculate the dimensions of the packed contraction

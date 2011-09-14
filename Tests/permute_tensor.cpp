@@ -102,28 +102,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( assignment_operator )
-{
-  TileN t1;
-  PermT x(t1, PermN());
-
-  // Check initial conditions
-  BOOST_CHECK_EQUAL(x.dim(), t1.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), t1.size().begin(), t1.size().end());
-  BOOST_CHECK_EQUAL(x.volume(), 0ul);
-  BOOST_CHECK(x.begin() == x.end());
-  BOOST_CHECK_EQUAL(x.order(), t1.order());
-
-  x = pt;
-
-  // Check that the tensor was copied.
-  BOOST_CHECK_EQUAL(x.dim(), pt.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), pt.size().begin(), pt.size().end());
-  BOOST_CHECK_EQUAL(x.volume(), pt.volume());
-  BOOST_CHECK_EQUAL(x.order(), pt.order());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.begin(), x.end(), pt.begin(), pt.end());
-}
-
 BOOST_AUTO_TEST_CASE( element_accessor )
 {
   index i;

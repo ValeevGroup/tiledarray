@@ -33,8 +33,9 @@ namespace TiledArray {
     typedef typename coordinate_system::size_array size_array; ///< Size array type
 
     typedef typename impl_type::value_type value_type; ///< Tile type
-    typedef madness::Future<value_type> reference; ///< Reference to tile type
-    typedef madness::Future<value_type> const_reference; ///< Const reference to tile type
+    typedef typename impl_type::future future; ///< Future of \c value_type
+    typedef future reference; ///< \c future type
+    typedef future const_reference; ///< \c future type
 
     typedef TiledRange<CS> trange_type; ///< Tile range type
     typedef typename trange_type::range_type range_type; ///< Range type for tiles

@@ -49,9 +49,11 @@ namespace TiledArray {
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef Op op_type; ///< The transform operation type
 
-      BinaryTensor() :
-        left_(NULL), right_(NULL), op_()
-      { }
+    private:
+      // Not allowed
+      BinaryTensor_& operator=(const BinaryTensor_&);
+
+    public:
 
       /// Construct a binary tensor op
 
@@ -60,8 +62,8 @@ namespace TiledArray {
       /// \param op The element transform operation
       /// \throw TiledArray::Exception When left and right argument orders,
       /// dimensions, or sizes are not equal.
-      BinaryTensor(const left_tensor_type& left, const right_tensor_type& right, const op_type& op) :
-        left_(&left), right_(&right), op_(op)
+      BinaryTensor(typename TensorArg<left_tensor_type>::type left, typename TensorArg<right_tensor_type>::type right, const op_type& op) :
+        left_(left), right_(right), op_(op)
       {
         TA_ASSERT(left.order() == right.order());
         TA_ASSERT(left.dim() == right.dim());
@@ -72,21 +74,10 @@ namespace TiledArray {
         left_(other.left_), right_(other.right_), op_(other.op_)
       { }
 
-      BinaryTensor_& operator=(const BinaryTensor_& other) {
-        left_ = other.left_;
-        right_ = other.right_;
-        op_ = other.op_;
-
-        return *this;
-      }
-
-
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
       EvalTensor<value_type> eval() const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
         typename EvalTensor<value_type>::storage_type data(volume(), begin());
         return EvalTensor<value_type>(size(), order(), data);
       }
@@ -97,8 +88,6 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
         TA_ASSERT(volume() == dest.volume());
         std::copy(begin(), end(), dest.begin());
       }
@@ -107,68 +96,59 @@ namespace TiledArray {
 
       /// \return The number of dimensions
       unsigned int dim() const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
-        return left_->dim();
+        return left_.dim();
       }
 
       /// Data ordering
 
       /// \return The data ordering type
       TiledArray::detail::DimensionOrderType order() const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
-        return left_->order();
+        return left_.order();
       }
 
       /// Tensor dimension size accessor
 
       /// \return An array that contains the sizes of each tensor dimension
       const size_array& size() const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
-        return left_->size();
+        return left_.size();
       }
 
       /// Tensor volume
 
       /// \return The total number of elements in the tensor
       size_type volume() const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
-        return left_->volume();
+        return left_.volume();
       }
 
       /// Iterator factory
 
       /// \return An iterator to the first data element
       const_iterator begin() const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
-        return TiledArray::detail::make_tran_it(left_->begin(), right_->begin(), op_);
+        return TiledArray::detail::make_tran_it(left_.begin(), right_.begin(), op_);
       }
 
       /// Iterator factory
 
       /// \return An iterator to the last data element }
       const_iterator end() const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
-        return TiledArray::detail::make_tran_it(left_->end(), right_->end(), op_);
+        return TiledArray::detail::make_tran_it(left_.end(), right_.end(), op_);
       }
 
       /// Element accessor
 
       /// \return The element at the \c i position.
       const_reference operator[](size_type i) const {
-        TA_ASSERT(left_);
-        TA_ASSERT(right_);
-        return op_((*left_)[i], (*right_)[i]);
+        return op_(left_[i], right_[i]);
+      }
+
+      void check_dependancies(madness::TaskInterface* task) const {
+        left_.check_dependancies(task);
+        right_.check_dependancies(task);
       }
 
     private:
-      const left_tensor_type* left_; ///< Left argument
-      const right_tensor_type* right_; ///< Right argument
+      typename TensorMem<left_tensor_type>::type left_; ///< Left argument
+      typename TensorMem<right_tensor_type>::type right_; ///< Right argument
       op_type op_; ///< Transform operation
     }; // class BinaryTensor
 

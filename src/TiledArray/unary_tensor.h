@@ -10,8 +10,7 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename, typename>
-    class UnaryTensor;
+    template <typename, typename> class UnaryTensor;
 
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTensor<Arg, Op> > {
@@ -29,6 +28,7 @@ namespace TiledArray {
     }; // struct Eval<UnaryTensor<Arg, Op> >
 
 
+
     /// Tensor that is composed from an argument tensor
 
     /// The tensor elements are constructed using a unary transformation
@@ -44,35 +44,29 @@ namespace TiledArray {
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef Op op_type; ///< The transform operation type
 
-      UnaryTensor() :
-        arg_(NULL), op_()
-      { }
+    private:
+      // Not allowed
+      UnaryTensor_& operator=(const UnaryTensor_&);
+
+    public:
 
       /// Construct a binary tensor op
 
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
-      UnaryTensor(const arg_tensor_type& arg, const op_type& op) :
-        arg_(&arg), op_(op)
+      UnaryTensor(typename TensorArg<arg_tensor_type>::type arg, const op_type& op) :
+        arg_(arg), op_(op)
       {}
 
       UnaryTensor(const UnaryTensor_& other) :
         arg_(other.arg_), op_(other.op_)
       { }
 
-      UnaryTensor_& operator=(const UnaryTensor_& other) {
-        arg_ = other.arg_;
-        op_ = other.op_;
-
-        return *this;
-      }
-
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
       EvalTensor<value_type> eval() const {
-        TA_ASSERT(arg_);
         typename EvalTensor<value_type>::storage_type data(volume(), begin());
         return EvalTensor<value_type>(size(), order(), data);
       }
@@ -83,7 +77,6 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(arg_);
         TA_ASSERT(volume() == dest.volume());
         std::copy(begin(), end(), dest.begin());
       }
@@ -92,60 +85,57 @@ namespace TiledArray {
 
       /// \return The number of dimensions
       unsigned int dim() const {
-        TA_ASSERT(arg_);
-        return arg_->dim();
+        return arg_.dim();
       }
 
       /// Data ordering
 
       /// \return The data ordering type
       TiledArray::detail::DimensionOrderType order() const {
-        TA_ASSERT(arg_);
-        return arg_->order();
+        return arg_.order();
       }
 
       /// Tensor dimension size accessor
 
       /// \return An array that contains the sizes of each tensor dimension
       const size_array& size() const {
-        TA_ASSERT(arg_);
-        return arg_->size();
+        return arg_.size();
       }
 
       /// Tensor volume
 
       /// \return The total number of elements in the tensor
       size_type volume() const {
-        TA_ASSERT(arg_);
-        return arg_->volume();
+        return arg_.volume();
       }
 
       /// Iterator factory
 
       /// \return An iterator to the first data element
       const_iterator begin() const {
-        TA_ASSERT(arg_);
-        return TiledArray::detail::make_tran_it(arg_->begin(), op_);
+        return TiledArray::detail::make_tran_it(arg_.begin(), op_);
       }
 
       /// Iterator factory
 
       /// \return An iterator to the last data element }
       const_iterator end() const {
-        TA_ASSERT(arg_);
-        return TiledArray::detail::make_tran_it(arg_->end(), op_);
+        return TiledArray::detail::make_tran_it(arg_.end(), op_);
       }
 
       /// Element accessor
 
       /// \return The element at the \c i position.
       const_reference operator[](size_type i) const {
-        TA_ASSERT(arg_);
-        return op_((*arg_)[i]);
+        return op_(arg_[i]);
+      }
+
+      void check_dependancies(madness::TaskInterface* task) const {
+        arg_.check_dependancies(task);
       }
 
     private:
-      const arg_tensor_type* arg_; ///< Argument
+      typename TensorMem<arg_tensor_type>::type arg_; ///< Argument
       op_type op_; ///< Transform operation
     }; // class UnaryTensor
 

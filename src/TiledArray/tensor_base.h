@@ -59,12 +59,25 @@
     const_pointer data() const { return base::data(); } \
     pointer data() { return base::data(); }
 
+namespace madness {
+  class TaskInterface;
+}  // namespace madness
 
 namespace TiledArray {
   namespace expressions {
 
     template <typename> struct TensorTraits;
     template <typename> struct Eval;
+
+    template <typename T>
+    struct TensorArg {
+      typedef const T& type;
+    };
+
+    template <typename T>
+    struct TensorMem {
+      typedef const T type;
+    };
 
 
     template <typename Derived>
@@ -125,6 +138,8 @@ namespace TiledArray {
       // iterator factory
       const_iterator begin() const { return derived().begin(); }
       const_iterator end() const { return derived().end(); }
+
+      void check_dependency(madness::TaskInterface* task) const { derived().check_dependency(task); }
 
     }; // class ReadableTensor
 

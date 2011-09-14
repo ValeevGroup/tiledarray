@@ -2,13 +2,14 @@
 #define TILEDARRAY_ANNOTATED_ARRAY_H__INCLUDED
 
 #include <TiledArray/array_base.h>
+#include <TiledArray/future_tensor.h>
 #include <world/sharedptr.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    template <typename>
-    class AnnotatedArray;
+    // Forward declaration
+    template <typename> class AnnotatedArray;
     template <typename T>
     void swap(AnnotatedArray<T>&, AnnotatedArray<T>&);
 
@@ -17,9 +18,9 @@ namespace TiledArray {
       typedef typename T::size_type size_type;
       typedef typename T::size_array size_array;
       typedef typename T::trange_type trange_type;
-      typedef typename T::value_type value_type;
-      typedef typename T::const_reference const_reference;
-      typedef typename T::reference reference;
+      typedef FutureTensor<typename T::value_type> value_type;
+      typedef value_type const_reference;
+      typedef value_type reference;
       typedef typename T::const_iterator const_iterator;
       typedef typename T::iterator iterator;
     }; //  struct TensorTraits<AnnotatedArray<T> >

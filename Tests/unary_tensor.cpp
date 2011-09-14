@@ -77,28 +77,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( assignment_operator )
-{
-  TileN t1;
-  UnaryT x(t1, op);
-
-  // Check initial conditions
-  BOOST_CHECK_EQUAL(x.dim(), t1.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), t1.size().begin(), t1.size().end());
-  BOOST_CHECK_EQUAL(x.volume(), 0ul);
-  BOOST_CHECK(x.begin() == x.end());
-  BOOST_CHECK_EQUAL(x.order(), t1.order());
-
-  x = ut;
-
-  // Check that the tensor was copied.
-  BOOST_CHECK_EQUAL(x.dim(), ut.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), ut.size().begin(), ut.size().end());
-  BOOST_CHECK_EQUAL(x.volume(), ut.volume());
-  BOOST_CHECK_EQUAL(x.order(), ut.order());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.begin(), x.end(), ut.begin(), ut.end());
-}
-
 BOOST_AUTO_TEST_CASE( element_accessor )
 {
 

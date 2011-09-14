@@ -64,23 +64,20 @@ namespace TiledArray {
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef math::Contraction<size_type> contract_type; ///< Contraction type
 
-      /// Default constructor
-      ContractionTensor() :
-        left_(NULL),
-        right_(NULL),
-        size_(),
-        data_(),
-        contraction_()
-      { }
+    private:
+      // not allowed
+      ContractionTensor_& operator=(const ContractionTensor_&);
+
+    public:
 
       /// Construct a binary tensor op
 
       /// \param left The left argument
       /// \param right The right argument
       /// \param c Shared pointer to contraction object
-      ContractionTensor(const left_tensor_type& left, const right_tensor_type& right, const std::shared_ptr<contract_type>& c) :
-        left_(&left),
-        right_(&right),
+      ContractionTensor(typename TensorArg<left_tensor_type>::type left, typename TensorArg<right_tensor_type>::type right, const std::shared_ptr<contract_type>& c) :
+        left_(left),
+        right_(right),
         size_(constract_size(left.size(), right.size(), c), left.order()),
         data_(),
         contraction_(c)
@@ -96,17 +93,6 @@ namespace TiledArray {
         data_(other.data_),
         contraction_(other.contraction_)
       { }
-
-      ContractionTensor_& operator=(const ContractionTensor_& other) {
-        left_ = other.left_;
-        right_ = other.right_;
-        size_ = other.size_;
-        data_ = other.data_;
-        contraction_ = other.contraction_;
-
-        return *this;
-      }
-
 
       /// Evaluate this tensor
 
@@ -170,6 +156,11 @@ namespace TiledArray {
         return data_[i];
       }
 
+      void check_dependancies(madness::TaskInterface* task) const {
+        left_.check_dependancies(task);
+        right_.check_dependancies(task);
+      }
+
     private:
 
 
@@ -218,18 +209,16 @@ namespace TiledArray {
 
       /// Evaluate the tensor only when the data is needed
       void lazy_eval() const {
-        TA_ASSERT(left_ != NULL);
-        TA_ASSERT(right_ != NULL);
         if(data_.volume() != volume()) {
           const size_type v = volume();
 
           typename contract_type::packed_size_array packed_size =
-              contraction_->pack_arrays(left_->size(), right_->size());
+              contraction_->pack_arrays(left_.size(), right_.size());
 
           // We need to allocate storage and evaluate
           storage_type temp(v);
-          typename Eval<left_tensor_type>::type left_eval = left_->eval();
-          typename Eval<left_tensor_type>::type right_eval = right_->eval();
+          typename Eval<left_tensor_type>::type left_eval = left_.eval();
+          typename Eval<left_tensor_type>::type right_eval = right_.eval();
 
           if(order() == TiledArray::detail::decreasing_dimension_order) {
             typedef Eigen::Matrix< value_type , Eigen::Dynamic , Eigen::Dynamic,
@@ -255,8 +244,8 @@ namespace TiledArray {
       static const DirectWritableTensor<Derived>&
       eval_arg(const DirectWritableTensor<Derived>& arg) { return arg; }
 
-      const left_tensor_type* left_; ///< Left argument
-      const right_tensor_type* right_; ///< Right argument
+      typename TensorMem<left_tensor_type>::type left_; ///< Left argument
+      typename TensorMem<right_tensor_type>::type right_; ///< Right argument
       TensorSize size_; ///< Tensor size info
       mutable storage_type data_;
       std::shared_ptr<contract_type> contraction_;

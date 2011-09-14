@@ -40,6 +40,17 @@ namespace TiledArray {
     }; // struct TensorTraits<Tile<T,CS,A> >
 
 
+    template <typename T, typename CS, typename A>
+    struct TensorArg<Tile<T,CS,A> > {
+      typedef const Tile<T,CS,A>& type;
+    };
+
+    template <typename T, typename CS, typename A>
+    struct TensorMem<Tile<T,CS,A> > {
+      typedef const Tile<T,CS,A>& type;
+    };
+
+
     /// Tile is an N-dimensional, dense array.
 
     /// \tparam T Tile element type.
@@ -347,6 +358,8 @@ namespace TiledArray {
         data_.swap(other.data_);
         std::swap(range_, other.range_);
       }
+
+      void check_dependancies(madness::TaskInterface*) const { }
 
     protected:
 

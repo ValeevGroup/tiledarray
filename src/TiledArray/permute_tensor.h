@@ -42,31 +42,24 @@ namespace TiledArray {
 
       typedef Permutation<DIM> perm_type; ///< Permutation type
 
-      PermuteTensor() :
-        arg_(NULL), size_(), perm_(), data_()
-      { }
+    private:
+      // not allowed
+      PermuteTensor_& operator=(const PermuteTensor_& other);
+
+    public:
 
       /// Construct a binary tensor op
 
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
-      PermuteTensor(const arg_tensor_type& arg, const perm_type& p) :
-        arg_(&arg), size_(permute_size(p, arg.size()), arg.order()), perm_(p), data_()
+      PermuteTensor(typename TensorArg<arg_tensor_type>::type arg, const perm_type& p) :
+        arg_(arg), size_(permute_size(p, arg.size()), arg.order()), perm_(p), data_()
       { }
 
       PermuteTensor(const PermuteTensor_& other) :
         arg_(other.arg_), size_(other.size_), perm_(other.perm_), data_(other.data_)
       { }
-
-      PermuteTensor_& operator=(const PermuteTensor_& other) {
-        arg_ = other.arg_;
-        size_ = other.size_;
-        perm_ = other.perm_;
-        data_ = other.data_;
-
-        return *this;
-      }
 
       /// Evaluate this tensor
 
@@ -82,9 +75,8 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(arg_);
         TA_ASSERT(volume() == dest.volume());
-        if(static_cast<const void*>(arg_) != static_cast<void*>(&dest))
+        if(static_cast<const void*>(&arg_) != static_cast<void*>(&dest))
           permute(dest);
         else
           std::copy(begin(), end(), dest.begin());
@@ -101,7 +93,6 @@ namespace TiledArray {
 
       /// \return The data ordering type
       TiledArray::detail::DimensionOrderType order() const {
-        TA_ASSERT(arg_);
         return size_.order();
       }
 
@@ -109,7 +100,6 @@ namespace TiledArray {
 
       /// \return An array that contains the sizes of each tensor dimension
       const size_array& size() const {
-        TA_ASSERT(arg_);
         return size_.size();
       }
 
@@ -117,7 +107,6 @@ namespace TiledArray {
 
       /// \return The total number of elements in the tensor
       size_type volume() const {
-        TA_ASSERT(arg_);
         return size_.volume();
       }
 
@@ -145,6 +134,10 @@ namespace TiledArray {
         return data_[i];
       }
 
+      void check_dependancies(madness::TaskInterface* task) const {
+        arg_.check_dependancies(task);
+      }
+
     private:
 
       /// Make a permuted size array
@@ -161,7 +154,6 @@ namespace TiledArray {
       }
 
       void lazy_eval() const {
-        TA_ASSERT(arg_);
         if(volume() != data_.volume()) {
           storage_type temp(volume());
           permute(temp);
@@ -176,8 +168,8 @@ namespace TiledArray {
         typename CS::index i(0);
         const typename CS::index start(0);
 
-        for(typename arg_tensor_type::const_iterator it = arg_->begin(); it != arg_->end();
-            ++it, CS::increment_coordinate(i, start, arg_->size()))
+        for(typename arg_tensor_type::const_iterator it = arg_.begin(); it != arg_.end();
+            ++it, CS::increment_coordinate(i, start, arg_.size()))
           result[CS::calc_ordinal(i, invp_weight)] = *it;
       }
 
@@ -192,7 +184,7 @@ namespace TiledArray {
         }
       }
 
-      const arg_tensor_type* arg_; ///< Argument
+      typename TensorMem<arg_tensor_type>::type arg_; ///< Argument
       TensorSize size_; ///< Tensor size info
       perm_type perm_; ///< Transform operation
       mutable storage_type data_;
