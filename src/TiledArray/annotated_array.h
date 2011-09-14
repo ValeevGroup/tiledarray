@@ -3,6 +3,7 @@
 
 #include <TiledArray/array_base.h>
 #include <TiledArray/future_tensor.h>
+#include <TiledArray/transform_iterator.h>
 #include <world/sharedptr.h>
 
 namespace TiledArray {
@@ -10,8 +11,16 @@ namespace TiledArray {
 
     // Forward declaration
     template <typename> class AnnotatedArray;
+
     template <typename T>
-    void swap(AnnotatedArray<T>&, AnnotatedArray<T>&);
+    struct MakeFutTensor {
+      typedef const madness::Future<T>& argument_type;
+      typedef FutureTensor<T> result_type;
+
+      result_type operator()(argument_type future) const {
+        return result_type(future);
+      }
+    };
 
     template <typename T>
     struct TensorTraits<AnnotatedArray<T> > {
@@ -21,8 +30,10 @@ namespace TiledArray {
       typedef FutureTensor<typename T::value_type> value_type;
       typedef value_type const_reference;
       typedef value_type reference;
-      typedef typename T::const_iterator const_iterator;
-      typedef typename T::iterator iterator;
+      typedef TiledArray::detail::UnaryTransformIterator<typename T::const_iterator,
+          MakeFutTensor<typename T::value_type> > const_iterator;
+      typedef TiledArray::detail::UnaryTransformIterator<typename T::iterator,
+          MakeFutTensor<typename T::value_type> > iterator;
     }; //  struct TensorTraits<AnnotatedArray<T> >
 
     template <typename T>
@@ -30,9 +41,10 @@ namespace TiledArray {
       typedef typename T::size_type size_type;
       typedef typename T::size_array size_array;
       typedef typename T::trange_type trange_type;
-      typedef typename T::value_type value_type;
-      typedef typename T::const_reference const_reference;
-      typedef typename T::const_iterator const_iterator;
+      typedef FutureTensor<typename T::value_type> value_type;
+      typedef value_type const_reference;
+      typedef TiledArray::detail::UnaryTransformIterator<typename T::const_iterator,
+          MakeFutTensor<typename T::value_type> > const_iterator;
     }; // struct TensorTraits<AnnotatedArray<const T> >
 
     template <typename T>
@@ -58,6 +70,8 @@ namespace TiledArray {
       // not allowed
       AnnotatedArray_& operator =(const AnnotatedArray_& other);
 
+      typedef MakeFutTensor<typename T::value_type> transform_op;
+
     public:
       /// Constructor
 
@@ -66,7 +80,7 @@ namespace TiledArray {
       /// \throw std::runtime_error When the dimensions of the array and
       /// variable list are not equal.
       AnnotatedArray(const array_type& a, const VariableList& v) :
-          array_(a), vars_(v)
+          array_(a), vars_(v), op_()
       {
         TA_ASSERT(array_type::coordinate_system::dim == v.dim());
       }
@@ -75,7 +89,7 @@ namespace TiledArray {
 
       /// \param other The AnnotatedArray to be copied
       AnnotatedArray(const AnnotatedArray_& other) :
-          array_(other.array_), vars_(other.vars_)
+          array_(other.array_), vars_(other.vars_), op_(other.op_)
       { }
 
       /// Destructor
@@ -104,8 +118,8 @@ namespace TiledArray {
       size_type volume(size_type i) const { return array_.make_range(i).volume(); }
       trange_type trange() const { return array_.trange(); }
 
-      reference operator[](size_type i) { return value_type(array_.find(i)); }
-      const_reference operator[](size_type i) const { return value_type(array_.find(i)); }
+      reference operator[](size_type i) { return op_(array_.find(i)); }
+      const_reference operator[](size_type i) const { return op_(array_.find(i)); }
 
       const AnnotatedArray_& eval() const { return *this; }
 
@@ -123,23 +137,22 @@ namespace TiledArray {
       /// Array begin iterator
 
       /// \return An iterator to the first element of the array.
-      iterator begin() { return array_.begin(); }
-
+      iterator begin() { return iterator(array_.begin(), op_); }
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return array_.begin(); }
+      const_iterator begin() const { return const_iterator(array_.begin(), op_); }
 
       /// Array end iterator
 
       /// \return An iterator to one past the last element of the array.
-      iterator end() { return array_.end(); }
+      iterator end() { return iterator(array_.end(), op_); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return array_.end(); }
+      const_iterator end() const { return const_iterator(array_.end(), op_); }
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return vars_; }
@@ -148,6 +161,7 @@ namespace TiledArray {
 
       array_type array_;  ///< pointer to the array object
       VariableList vars_; ///< variable list
+      transform_op op_;   ///< Tile conversion operator
     }; // class AnnotatedArray
 
     /// AnnotatedArray for array objects.
@@ -164,6 +178,34 @@ namespace TiledArray {
       typedef typename T::coordinate_system             coordinate_system;
       typedef T                                         array_type;
 
+    private:
+      // not allowed
+      AnnotatedArray_& operator =(const AnnotatedArray_& other);
+
+      typedef MakeFutTensor<typename T::value_type> transform_op;
+
+    public:
+      /// Constructor
+
+      /// \param a A const reference to an array_type object
+      /// \param v A const reference to a variable list object
+      /// \throw std::runtime_error When the dimensions of the array and
+      /// variable list are not equal.
+      AnnotatedArray(const array_type& a, const VariableList& v) :
+          array_(a), vars_(v), op_()
+      {
+        TA_ASSERT(array_type::coordinate_system::dim == v.dim());
+      }
+
+      /// Copy constructor
+
+      /// \param other The AnnotatedArray to be copied
+      AnnotatedArray(const AnnotatedArray_& other) :
+          array_(other.array_), vars_(other.vars_), op_(other.op_)
+      { }
+
+      /// Destructor
+      ~AnnotatedArray() { }
 
       // dimension information
       unsigned int dim() const { return coordinate_system::dim; }
@@ -183,37 +225,6 @@ namespace TiledArray {
 
       const_reference operator[](size_type i) const { return array_.find(i); }
 
-      /// Constructor
-
-      /// \param a A const reference to an array_type object
-      /// \param v A const reference to a variable list object
-      /// \throw std::runtime_error When the dimensions of the array and
-      /// variable list are not equal.
-      AnnotatedArray(const array_type& a, const VariableList& v) :
-          array_(a), vars_(v)
-      {
-        TA_ASSERT(array_type::coordinate_system::dim == v.dim());
-      }
-
-      /// Copy constructor
-
-      /// \param other The AnnotatedArray to be copied
-      AnnotatedArray(const AnnotatedArray_& other) :
-          array_(other.array_), vars_(other.vars_)
-      { }
-
-      /// Destructor
-      ~AnnotatedArray() { }
-
-      /// AnnotatedArray assignment operator.
-
-      /// \param other The AnnotatedArray to be copied
-      AnnotatedArray_& operator =(const AnnotatedArray_& other) {
-        array_ = other.array_;
-        vars_ = other.vars_;
-        return *this;
-      }
-
       const AnnotatedArray_& eval() const { return *this; }
 
       /// Array object accessor
@@ -229,12 +240,12 @@ namespace TiledArray {
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return array_.begin(); }
+      const_iterator begin() const { return const_iterator(array_.begin(), op_); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return array_.end(); }
+      const_iterator end() const { return const_iterator(array_.end(), op_); }
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return vars_; }
@@ -243,6 +254,7 @@ namespace TiledArray {
 
       array_type array_;  ///< pointer to the array object
       VariableList vars_; ///< variable list
+      transform_op op_;   ///< Tile conversion operator
     }; // class AnnotatedArray<const T>
 
   } // namespace expressions
