@@ -54,29 +54,11 @@ namespace TiledArray {
       typedef typename T::coordinate_system             coordinate_system;
       typedef T                                         array_type;
 
+    private:
+      // not allowed
+      AnnotatedArray_& operator =(const AnnotatedArray_& other);
 
-      // dimension information
-      unsigned int dim() const { return coordinate_system::dim; }
-      TiledArray::detail::DimensionOrderType order() const { return coordinate_system::order; }
-      const size_array& size() const { return array_.range().size(); }
-      size_type volume() const { return array_.range().volume(); }
-
-
-      // Tile locality info
-      ProcessID owner(size_type i) const { return array_.owner(i); }
-      bool is_local(size_type i) const { return array_.is_local(i); }
-      bool is_zero(size_type i) const { return array_.is_zero(i); }
-
-      madness::World& get_world() const { return array_.get_world(); }
-      std::shared_ptr<pmap_interface> get_pmap() const { return array_.get_pmap(); }
-
-      // Tile dimension info
-      size_array size(size_type i) const { return array_.make_range(i).size(); }
-      size_type volume(size_type i) const { return array_.make_range(i).volume(); }
-
-      reference operator[](size_type i) { return array_.find(i); }
-      const_reference operator[](size_type i) const { return array_.find(i); }
-
+    public:
       /// Constructor
 
       /// \param a A const reference to an array_type object
@@ -99,14 +81,31 @@ namespace TiledArray {
       /// Destructor
       ~AnnotatedArray() { }
 
-      /// AnnotatedArray assignment operator.
+      // dimension information
+      unsigned int dim() const { return coordinate_system::dim; }
+      TiledArray::detail::DimensionOrderType order() const { return coordinate_system::order; }
+      const size_array& size() const { return array_.range().size(); }
+      size_type volume() const { return array_.range().volume(); }
 
-      /// \param other The AnnotatedArray to be copied
-      AnnotatedArray_& operator =(const AnnotatedArray_& other) {
-        array_ = other.array_;
-        vars_ = other.vars_;
-        return *this;
-      }
+
+      // Tile locality info
+      ProcessID owner(size_type i) const { return array_.owner(i); }
+      bool is_local(size_type i) const { return array_.is_local(i); }
+      bool is_zero(size_type i) const { return array_.is_zero(i); }
+
+      madness::World& get_world() const { return array_.get_world(); }
+      std::shared_ptr<pmap_interface> get_pmap() const { return array_.get_pmap(); }
+
+      bool is_dense() const { return array_.is_dense(); }
+      const TiledArray::detail::Bitset<>& get_shape() const { return array_.get_shape(); }
+
+      // Tile dimension info
+      size_array size(size_type i) const { return array_.make_range(i).size(); }
+      size_type volume(size_type i) const { return array_.make_range(i).volume(); }
+      trange_type trange() const { return array_.trange(); }
+
+      reference operator[](size_type i) { return value_type(array_.find(i)); }
+      const_reference operator[](size_type i) const { return value_type(array_.find(i)); }
 
       const AnnotatedArray_& eval() const { return *this; }
 
@@ -144,11 +143,6 @@ namespace TiledArray {
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return vars_; }
-
-      void swap(AnnotatedArray& other) {
-        std::swap(array_, other.array_);
-        std::swap(vars_, other.vars_);
-      }
 
     private:
 
@@ -245,23 +239,11 @@ namespace TiledArray {
       /// Variable annotation for the array.
       const VariableList& vars() const { return vars_; }
 
-      void swap(AnnotatedArray& other) {
-        std::swap(array_, other.array_);
-        std::swap(vars_, other.vars_);
-      }
-
     private:
 
       array_type array_;  ///< pointer to the array object
       VariableList vars_; ///< variable list
-    }; // class AnnotatedArray
-
-
-    /// Exchange the values of a0 and a1.
-    template<typename T>
-    void swap(AnnotatedArray<T>& a0, AnnotatedArray<T>& a1) {
-      a0.swap(a1);
-    }
+    }; // class AnnotatedArray<const T>
 
   } // namespace expressions
 } //namespace TiledArray
