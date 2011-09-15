@@ -5,7 +5,6 @@ library_include_HEADERS = annotated_array.h \
 													array_base.h \
                           array_impl.h \
                           array_math.h \
-                          array_slice.h \
                           array.h \
                           binary_tensor.h \
                           bitset.h \
@@ -16,8 +15,10 @@ library_include_HEADERS = annotated_array.h \
                           dense_storage.h \
                           distributed_storage.h \
                           error.h \
+                          eval_task.h \
                           eval_tensor.h \
                           expressions.h \
+                          future_tensor.h \
                           indexed_iterator.h \
                           madness_runtime.h \
                           packed_tile.h \
