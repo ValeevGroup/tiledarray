@@ -4,6 +4,7 @@
 #include <TiledArray/array_base.h>
 #include <TiledArray/future_tensor.h>
 #include <TiledArray/transform_iterator.h>
+#include <TiledArray/eval_task.h>
 #include <world/sharedptr.h>
 
 namespace TiledArray {
@@ -12,15 +13,19 @@ namespace TiledArray {
     // Forward declaration
     template <typename> class AnnotatedArray;
 
-    template <typename T>
-    struct MakeFutTensor {
-      typedef const madness::Future<T>& argument_type;
-      typedef FutureTensor<T> result_type;
+    namespace detail {
 
-      result_type operator()(argument_type future) const {
-        return result_type(future);
-      }
-    };
+      template <typename T>
+      struct MakeFutTensor {
+        typedef const madness::Future<T>& argument_type;
+        typedef FutureTensor<T> result_type;
+
+        result_type operator()(argument_type future) const {
+          return result_type(future);
+        }
+      }; // struct MakeFutTensor
+
+    }  // namespace detail
 
     template <typename T>
     struct TensorTraits<AnnotatedArray<T> > {
@@ -31,9 +36,9 @@ namespace TiledArray {
       typedef value_type const_reference;
       typedef value_type reference;
       typedef TiledArray::detail::UnaryTransformIterator<typename T::const_iterator,
-          MakeFutTensor<typename T::value_type> > const_iterator;
+          detail::MakeFutTensor<typename T::value_type> > const_iterator;
       typedef TiledArray::detail::UnaryTransformIterator<typename T::iterator,
-          MakeFutTensor<typename T::value_type> > iterator;
+          detail::MakeFutTensor<typename T::value_type> > iterator;
     }; //  struct TensorTraits<AnnotatedArray<T> >
 
     template <typename T>
@@ -44,7 +49,7 @@ namespace TiledArray {
       typedef FutureTensor<typename T::value_type> value_type;
       typedef value_type const_reference;
       typedef TiledArray::detail::UnaryTransformIterator<typename T::const_iterator,
-          MakeFutTensor<typename T::value_type> > const_iterator;
+          detail::MakeFutTensor<typename T::value_type> > const_iterator;
     }; // struct TensorTraits<AnnotatedArray<const T> >
 
     template <typename T>
@@ -52,25 +57,22 @@ namespace TiledArray {
       typedef const AnnotatedArray<T>& type;
     }; // struct Eval<AnnotatedArray<T> >
 
-    /// AnnotatedArray for array objects.
+    /// Wrapper object that adds annotation to tiled tensor objects.
 
-    /// This object binds array dimension annotations to an array object.
     /// \tparam T The array object type.
     template <typename T>
     class AnnotatedArray : public WritableTiledTensor<AnnotatedArray<T> > {
     public:
-      typedef AnnotatedArray<T>                         AnnotatedArray_;
-
+      typedef AnnotatedArray<T>               AnnotatedArray_; ///< This object type
       TILEDARRAY_WRITABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(WritableTiledTensor<AnnotatedArray<T> >, AnnotatedArray<T>)
-
-      typedef typename T::coordinate_system             coordinate_system;
-      typedef T                                         array_type;
+      typedef typename T::coordinate_system   coordinate_system; ///< The array coordinate system type
+      typedef T                               array_type; ///< The array type
 
     private:
       // not allowed
       AnnotatedArray_& operator =(const AnnotatedArray_& other);
 
-      typedef MakeFutTensor<typename T::value_type> transform_op;
+      typedef detail::MakeFutTensor<typename T::value_type> transform_op; ///< The tile transform operation type
 
     public:
       /// Constructor
@@ -95,33 +97,115 @@ namespace TiledArray {
       /// Destructor
       ~AnnotatedArray() { }
 
-      // dimension information
+      /// Evaluate tensor
+
+      /// \return The evaluated tensor
+      const AnnotatedArray_& eval() const { return *this; }
+
+      /// Evaluate tensor to destination
+
+      /// \tparam Dest The destination tensor type
+      /// \param dest The destination to evaluate this tensor to
+      template <typename Dest>
+      void eval_to(Dest& dest) const {
+        TA_ASSERT(volume() == dest.volume());
+
+        // Add result tiles to dest and wait for all tiles to be added.
+        madness::Future<bool> done =
+            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
+            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
+        done.get();
+      }
+
+      /// Tensor dimension accessor
+
+      /// \return The number of dimension in the tensor
       unsigned int dim() const { return coordinate_system::dim; }
+
+
+      /// Tensor data and tile ordering accessor
+
+      /// \return The tensor data and tile ordering
       TiledArray::detail::DimensionOrderType order() const { return coordinate_system::order; }
+
+      /// Tensor tile size array accessor
+
+      /// \return The size array of the tensor tiles
       const size_array& size() const { return array_.range().size(); }
+
+      /// Tensor tile volume accessor
+
+      /// \return The number of tiles in the tensor
       size_type volume() const { return array_.range().volume(); }
 
+      /// Query a tile owner
 
-      // Tile locality info
+      /// \param i The tile index to query
+      /// \return The process ID of the node that owns tile \c i
       ProcessID owner(size_type i) const { return array_.owner(i); }
+
+      /// Query for a locally owned tile
+
+      /// \param i The tile index to query
+      /// \return \c true if the tile is owned by this node, otherwise \c false
       bool is_local(size_type i) const { return array_.is_local(i); }
+
+      /// Query for a zero tile
+
+      /// \param i The tile index to query
+      /// \return \c true if the tile is zero, otherwise \c false
       bool is_zero(size_type i) const { return array_.is_zero(i); }
 
+      /// World object accessor
+
+      /// \return A reference to the world where tensor lives
       madness::World& get_world() const { return array_.get_world(); }
+
+      /// Tensor process map accessor
+
+      /// \return A shared pointer to the process map of this tensor
       std::shared_ptr<pmap_interface> get_pmap() const { return array_.get_pmap(); }
 
+      /// Query the density of the tensor
+
+      /// \return \c true if the tensor is dense, otherwise false
       bool is_dense() const { return array_.is_dense(); }
+
+      /// Tensor shape accessor
+
+      /// \return A reference to the tensor shape map
       const TiledArray::detail::Bitset<>& get_shape() const { return array_.get_shape(); }
 
       // Tile dimension info
+
+      /// Tile tensor size array accessor
+
+      /// \param i The tile index
+      /// \return The size array of tile \c i
       size_array size(size_type i) const { return array_.make_range(i).size(); }
+
+      /// Tile tensor volume accessor
+
+      /// \param i The tile index
+      /// \return The number of elements in tile \c i
       size_type volume(size_type i) const { return array_.make_range(i).volume(); }
+
+      /// Tiled range accessor
+
+      /// \return The tiled range of the tensor
       trange_type trange() const { return array_.trange(); }
 
-      reference operator[](size_type i) { return op_(array_.find(i)); }
-      const_reference operator[](size_type i) const { return op_(array_.find(i)); }
+      /// Tile accessor
 
-      const AnnotatedArray_& eval() const { return *this; }
+      /// \param i The tile index
+      /// \return Tile \c i
+      reference operator[](size_type i) { return op_(array_.find(i)); }
+
+      /// Tile accessor
+
+      /// \param i The tile index
+      /// \return Tile \c i
+      const_reference operator[](size_type i) const { return op_(array_.find(i)); }
 
       /// Array object accessor
 
@@ -182,7 +266,7 @@ namespace TiledArray {
       // not allowed
       AnnotatedArray_& operator =(const AnnotatedArray_& other);
 
-      typedef MakeFutTensor<typename T::value_type> transform_op;
+      typedef detail::MakeFutTensor<typename T::value_type> transform_op;
 
     public:
       /// Constructor
@@ -206,6 +290,22 @@ namespace TiledArray {
 
       /// Destructor
       ~AnnotatedArray() { }
+
+      /// Evaluate tensor to destination
+
+      /// \tparam Dest The destination tensor type
+      /// \param dest The destination to evaluate this tensor to
+      template <typename Dest>
+      void eval_to(Dest& dest) const {
+        TA_ASSERT(volume() == dest.volume());
+
+        // Add result tiles to dest and wait for all tiles to be added.
+        madness::Future<bool> done =
+            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
+            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
+        done.get();
+      }
+
 
       // dimension information
       unsigned int dim() const { return coordinate_system::dim; }

@@ -52,9 +52,7 @@
 
 #define TILEDARRAY_WRITABLE_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    inline reference operator[](size_type i) { return base::operator[](i); } \
-    inline iterator begin() { return base::begin(); } \
-    inline iterator end() { return base::end(); }
+    inline void set(size_type i, const madness::Future<value_type>& f) { return base::insert(i, f); }
 
 namespace madness {
   // Forward declaration
@@ -134,11 +132,7 @@ namespace TiledArray {
       TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER(ReadableTiledTensor<Derived>, Derived)
 
       // element access
-      reference operator[](size_type i) { return derived()[i]; }
-
-      // iterator factory
-      iterator begin() { return derived().begin(); }
-      iterator end() { return derived().end(); }
+      void set(size_type i, const madness::Future<value_type>& f) { return derived().insert(i, f); }
 
     }; // class WritableTiledTensor
 
