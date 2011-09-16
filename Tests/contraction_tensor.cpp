@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
   BOOST_CHECK_EQUAL(ct.size().front(), t2.size().front());
   BOOST_CHECK_EQUAL(ct.size().back(), t3.size().back());
 
-  const int I = std::accumulate(t2.range().finish().begin() + 1,
+  const std::size_t I = std::accumulate(t2.range().finish().begin() + 1,
       t2.range().finish().end(), 1, std::multiplies<int>());
   BOOST_CHECK_EQUAL(ct.volume(), I);
   BOOST_CHECK_EQUAL(ct.order(), t2.order());
@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_CHECK_EQUAL(x.dim(), 2u);
     BOOST_CHECK_EQUAL(x.size().front(), t2.size().front());
     BOOST_CHECK_EQUAL(x.size().back(), t3.size().back());
-    const int I = std::accumulate(t2.range().finish().begin() + 1,
+    const std::size_t I = std::accumulate(t2.range().finish().begin() + 1,
         t2.range().finish().end(), 1, std::multiplies<int>());
     BOOST_CHECK_EQUAL(x.volume(), I);
     BOOST_CHECK_EQUAL(x.order(), t2.order());

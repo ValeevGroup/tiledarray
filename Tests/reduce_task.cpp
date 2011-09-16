@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE( impl_add_future )
 {
   ReduceTaskImpl<int, std::plus<int> > impl(world, std::plus<int>());
 
-  BOOST_CHECK_EQUAL(impl.size(), 0);
+  BOOST_CHECK_EQUAL(impl.size(), 0ul);
 
   for(int i = 1; i < 10; ++i) {
     madness::Future<int> f;

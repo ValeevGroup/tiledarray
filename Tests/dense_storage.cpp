@@ -53,8 +53,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(Storage t1(10, 1));
     Storage t1(10, 1);
-    BOOST_CHECK_EQUAL(t1.size(), 10u);
-    BOOST_CHECK_EQUAL(t1.volume(), 10);
+    BOOST_CHECK_EQUAL(t1.size(), 10ul);
+    BOOST_CHECK_EQUAL(t1.volume(), 10ul);
     for(Storage::const_iterator it = t1.begin(); it != t1.end(); ++it)
       BOOST_CHECK_EQUAL(*it, 1);
   }
@@ -63,16 +63,16 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(Storage t3(10, t.begin()));
     Storage t3(10, t.begin());
-    BOOST_CHECK_EQUAL(t3.size(), 10);
-    BOOST_CHECK_EQUAL(t3.volume(), 10);
+    BOOST_CHECK_EQUAL(t3.size(), 10ul);
+    BOOST_CHECK_EQUAL(t3.volume(), 10ul);
     BOOST_CHECK_EQUAL_COLLECTIONS(t3.begin(), t3.end(), t.begin(), t.end());
   }
 }
 
 BOOST_AUTO_TEST_CASE( size_accessor )
 {
-  BOOST_CHECK_EQUAL(t.size(), 10);    // check size accessor
-  BOOST_CHECK_EQUAL(t.volume(), 10);  // check volume accessor
+  BOOST_CHECK_EQUAL(t.size(), 10ul);    // check size accessor
+  BOOST_CHECK_EQUAL(t.volume(), 10ul);  // check volume accessor
 }
 
 BOOST_AUTO_TEST_CASE( element_access )
@@ -131,8 +131,8 @@ BOOST_AUTO_TEST_CASE( element_assignment )
 BOOST_AUTO_TEST_CASE( assignment_operator )
 {
   Storage t1;
-  BOOST_CHECK_EQUAL(t1.size(), 0);
-  BOOST_CHECK_EQUAL(t.size(), 10);
+  BOOST_CHECK_EQUAL(t1.size(), 0ul);
+  BOOST_CHECK_EQUAL(t.size(), 10ul);
   BOOST_CHECK_EQUAL(t1.begin(), t1.end());
 
   t1 = t;
@@ -145,14 +145,14 @@ BOOST_AUTO_TEST_CASE( plus_assignment_operator )
 {
   Storage t1(10, 1);
   t += t1;
-  for(size_type i = 0; i < 10; ++ i)
+  for(int i = 0; i < 10; ++ i)
     BOOST_CHECK_EQUAL(t[i], i + 1);
 }
 
 BOOST_AUTO_TEST_CASE( plus_assignment_value_operator )
 {
   t += 1;
-  for(size_type i = 0; i < 10; ++ i)
+  for(int i = 0; i < 10; ++ i)
     BOOST_CHECK_EQUAL(t[i], i + 1);
 }
 
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE( minus_assignment_operator )
   t += 2;
   Storage t1(10, 1);
   t -= t1;
-  for(size_type i = 0; i < 10; ++ i)
+  for(int i = 0; i < 10; ++ i)
     BOOST_CHECK_EQUAL(t[i], i + 1);
 }
 
@@ -170,14 +170,14 @@ BOOST_AUTO_TEST_CASE( minus_assignment_value_operator )
   t += 2;
 
   t -= 1;
-  for(size_type i = 0; i < 10; ++ i)
+  for(int i = 0; i < 10; ++ i)
     BOOST_CHECK_EQUAL(t[i], i + 1);
 }
 
 BOOST_AUTO_TEST_CASE( scale_assignment_operator )
 {
   t *= 2;
-  for(size_type i = 0; i < 10; ++ i)
+  for(int i = 0; i < 10; ++ i)
     BOOST_CHECK_EQUAL(t[i], i * 2);
 }
 
