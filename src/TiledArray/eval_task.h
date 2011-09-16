@@ -55,7 +55,7 @@ namespace TiledArray {
         bool operator()(It it) {
           eval_task* task = new eval_task(dest_.tiling().make_tile_range(it.index()), *it);
           try {
-            dest_.insert(it.index(), task->result());
+            dest_.set(it.index(), task->result());
             world_.taskq.add(task);
           } catch(...) {
             delete task;
