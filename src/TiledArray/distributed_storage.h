@@ -173,7 +173,7 @@ namespace TiledArray {
       /// \return \c true if a new element was inserted, otherwise false.
       bool insert(accessor& acc, size_type i, const future& f) {
         TA_ASSERT(is_local(i));
-        return data_.insert(acc, container_type::datumT(i, f));
+        return data_.insert(acc, typename container_type::datumT(i, f));
       }
 
       /// Insert LOCAL element and acquire a write lock
@@ -186,7 +186,7 @@ namespace TiledArray {
       /// \return \c true if a new element was inserted, otherwise false.
       bool insert(const_accessor& acc, size_type i, const future& f) {
         TA_ASSERT(is_local(i));
-        return data_.insert(acc, container_type::datumT(i, f));
+        return data_.insert(acc, typename container_type::datumT(i, f));
       }
 
       void set(size_type i, const value_type& value) {
@@ -196,8 +196,8 @@ namespace TiledArray {
       void set(size_type i, const future& f) {
         if(is_local(i)) {
           accessor acc;
-          insert(acc, i);
-          acc->second.set(f);
+          if(! insert(acc, i, f))
+            acc->second.set(f);
         } else {
           WorldObject_::task(get_world().rank(), & DistributedStorage_::set_value,
               i, f, madness::TaskAttributes::hipri());
