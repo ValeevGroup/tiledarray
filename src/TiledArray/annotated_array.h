@@ -168,13 +168,13 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return The size array of tile \c i
-      size_array size(size_type i) const { return array_.make_range(i).size(); }
+      size_array size(size_type i) const { return array_.tiling().make_range(i).size(); }
 
       /// Tile tensor volume accessor
 
       /// \param i The tile index
       /// \return The number of elements in tile \c i
-      size_type volume(size_type i) const { return array_.make_range(i).volume(); }
+      size_type volume(size_type i) const { return array_.tiling().make_range(i).volume(); }
 
       /// Tiled range accessor
 
@@ -209,6 +209,8 @@ namespace TiledArray {
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return vars_; }
+
+      void set(size_type i, value_type tile) { array_.set(i, tile); }
 
     private:
       array_type array_;  ///< pointer to the array object
@@ -344,13 +346,13 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return The size array of tile \c i
-      size_array size(size_type i) const { return array_.make_range(i).size(); }
+      size_array size(size_type i) const { return array_.tiling().make_range(i).size(); }
 
       /// Tile tensor volume accessor
 
       /// \param i The tile index
       /// \return The number of elements in tile \c i
-      size_type volume(size_type i) const { return array_.make_range(i).volume(); }
+      size_type volume(size_type i) const { return array_.tiling().make_range(i).volume(); }
 
       /// Tiled range accessor
 
