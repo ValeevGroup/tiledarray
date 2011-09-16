@@ -162,6 +162,10 @@ namespace TiledArray {
       /// \return A reference to the tensor future
       future& get_future() { return tensor_; }
 
+      operator future&() { return tensor_; }
+
+      operator const future&() const { return tensor_; }
+
       /// Check if the tensor future has been evaluated.
 
       /// \return \c true if the future has been evaluated, \c false otherwise.
