@@ -9,8 +9,31 @@
 namespace TiledArray {
   namespace expressions {
 
+    // Forward declaration
     template <typename, typename>
     class UnaryTiledTensor;
+
+    namespace detail {
+
+      /// Tile generator functor
+      template <typename Arg, typename Op>
+      class MakeUnaryTensor {
+      public:
+        MakeUnaryTensor(const Op& op) : op_(op) { }
+
+        typedef const Arg& argument_type;
+        typedef UnaryTensor<Arg, Op> result_type;
+
+        result_type operator()(argument_type arg_tile) const {
+          return result_type(arg_tile, op_);
+        }
+
+      private:
+        Op op_;
+      }; // struct MakeFutTensor
+
+    }  // namespace detail
+
 
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTiledTensor<Arg, Op> > {
@@ -19,7 +42,7 @@ namespace TiledArray {
       typedef typename Arg::trange_type trange_type;
       typedef UnaryTensor<typename Arg::value_type, Op> value_type;
       typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
-          Op> const_iterator; ///< Tensor const iterator
+          detail::MakeUnaryTensor<typename Arg::value_type, Op> > const_iterator; ///< Tensor const iterator
       typedef value_type const_reference;
     }; // struct TensorTraits<UnaryTiledTensor<Arg, Op> >
 
@@ -42,83 +65,153 @@ namespace TiledArray {
       typedef Arg arg_tensor_type;
       TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<UnaryTiledTensor_>, UnaryTiledTensor_);
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
-      typedef Op op_type; ///< The transform operation type
 
     private:
       // Not allowed
-      UnaryTiledTensor(const UnaryTiledTensor_&);
       UnaryTiledTensor_& operator=(const UnaryTiledTensor_&);
 
+      typedef detail::MakeUnaryTensor<typename Arg::value_type, Op> op_type; ///< The transform operation type
+
     public:
+
 
       /// Construct a binary tiled tensor op
 
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
-      UnaryTiledTensor(const arg_tensor_type& arg, const op_type& op) :
+      UnaryTiledTensor(const arg_tensor_type& arg, const Op& op) :
         arg_(arg), op_(op)
       { }
 
-      /// Evaluate this tensor and store the results in \c dest
+      /// Copy constructor
 
-      /// \tparam Dest The destination object type
-      /// \param dest The destination object
+      /// \param other The unary tensor to be copied
+      UnaryTiledTensor(const UnaryTiledTensor_& other) :
+        arg_(other.arg_), op_(other.op_)
+      { }
+
+
+      /// Evaluate tensor
+
+      /// \return The evaluated tensor
+      const UnaryTiledTensor_& eval() const { return *this; }
+
+      /// Evaluate tensor to destination
+
+      /// \tparam Dest The destination tensor type
+      /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(dim() == dest.dim());
+        TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
+
+        // Add result tiles to dest and wait for all tiles to be added.
+        madness::Future<bool> done =
+            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
+            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
+        done.get();
       }
+
 
       /// Tensor dimension accessor
 
-      /// \return The number of dimensions
-      unsigned int dim() const {
-        return arg_.dim();
-      }
+      /// \return The number of dimension in the tensor
+      unsigned int dim() const { return arg_.dim(); }
 
-      /// Data ordering
 
-      /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const {
-        return arg_.order();
-      }
+      /// Tensor data and tile ordering accessor
 
-      /// Tensor dimension size accessor
+      /// \return The tensor data and tile ordering
+      TiledArray::detail::DimensionOrderType order() const { return arg_.order(); }
 
-      /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const {
-        return arg_.size();
-      }
+      /// Tensor tile size array accessor
 
-      /// Tensor volume
+      /// \return The size array of the tensor tiles
+      const size_array& size() const { return arg_.range().size(); }
 
-      /// \return The total number of elements in the tensor
-      size_type volume() const { return arg_.volume(); }
+      /// Tensor tile volume accessor
 
-      const trange_type& trange() const { return arg_.trange(); }
+      /// \return The number of tiles in the tensor
+      size_type volume() const { return arg_.range().volume(); }
 
-      /// Iterator factory
+      /// Query a tile owner
 
-      /// \return An iterator to the first data element
-      const_iterator begin() const {
-        return TiledArray::detail::make_tran_it(arg_.begin(), op_);
-      }
+      /// \param i The tile index to query
+      /// \return The process ID of the node that owns tile \c i
+      ProcessID owner(size_type i) const { return arg_.owner(i); }
 
-      /// Iterator factory
+      /// Query for a locally owned tile
 
-      /// \return An iterator to the last data element }
-      const_iterator end() const {
-        return TiledArray::detail::make_tran_it(arg_.end(), op_);
-      }
+      /// \param i The tile index to query
+      /// \return \c true if the tile is owned by this node, otherwise \c false
+      bool is_local(size_type i) const { return arg_.is_local(i); }
 
-      /// Element accessor
+      /// Query for a zero tile
 
-      /// \return The element at the \c i position.
-      const_reference operator[](size_type i) const {
-        return op_((*arg_)[i]);
-      }
+      /// \param i The tile index to query
+      /// \return \c true if the tile is zero, otherwise \c false
+      bool is_zero(size_type i) const { return arg_.is_zero(i); }
 
+      /// World object accessor
+
+      /// \return A reference to the world where tensor lives
+      madness::World& get_world() const { return arg_.get_world(); }
+
+      /// Tensor process map accessor
+
+      /// \return A shared pointer to the process map of this tensor
       std::shared_ptr<pmap_interface> get_pmap() const { return arg_.get_pmap(); }
+
+      /// Query the density of the tensor
+
+      /// \return \c true if the tensor is dense, otherwise false
+      bool is_dense() const { return arg_.is_dense(); }
+
+      /// Tensor shape accessor
+
+      /// \return A reference to the tensor shape map
+      const TiledArray::detail::Bitset<>& get_shape() const { return arg_.get_shape(); }
+
+      // Tile dimension info
+
+      /// Tile tensor size array accessor
+
+      /// \param i The tile index
+      /// \return The size array of tile \c i
+      size_array size(size_type i) const { return arg_.size(i); }
+
+      /// Tile tensor volume accessor
+
+      /// \param i The tile index
+      /// \return The number of elements in tile \c i
+      size_type volume(size_type i) const { return arg_.volume(i); }
+
+      /// Tiled range accessor
+
+      /// \return The tiled range of the tensor
+      trange_type trange() const { return arg_.trange(); }
+
+      /// Tile accessor
+
+      /// \param i The tile index
+      /// \return Tile \c i
+      const_reference operator[](size_type i) const { return op_(arg_[i]); }
+
+
+      /// Array begin iterator
+
+      /// \return A const iterator to the first element of the array.
+      const_iterator begin() const { return const_iterator(arg_.begin(), op_); }
+
+      /// Array end iterator
+
+      /// \return A const iterator to one past the last element of the array.
+      const_iterator end() const { return const_iterator(arg_.end(), op_); }
+
+      /// Variable annotation for the array.
+      const VariableList& vars() const { return arg_.vars(); }
+
 
     private:
       arg_tensor_type arg_; ///< Argument
