@@ -80,9 +80,6 @@ namespace TiledArray {
           array_(other.array_), vars_(other.vars_), op_(other.op_)
       { }
 
-      /// Destructor
-      ~AnnotatedArray() { }
-
       /// Evaluate tensor
 
       /// \return The evaluated tensor
@@ -257,9 +254,6 @@ namespace TiledArray {
       AnnotatedArray(const AnnotatedArray_& other) :
           array_(other.array_), vars_(other.vars_), op_(other.op_)
       { }
-
-      /// Destructor
-      ~AnnotatedArray() { }
 
       /// Evaluate tensor
 
