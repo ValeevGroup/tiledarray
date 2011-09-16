@@ -4,7 +4,7 @@
 //#include <TiledArray/annotated_array.h>
 #include <TiledArray/array_base.h>
 #include <TiledArray/unary_tensor.h>
-#include <TiledArray/distributed_storage.h>
+#include <TiledArray/eval_task.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -64,7 +64,6 @@ namespace TiledArray {
       typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
       typedef Arg arg_tensor_type;
       TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<UnaryTiledTensor_>, UnaryTiledTensor_);
-      typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
 
     private:
       // Not allowed
