@@ -44,8 +44,8 @@ namespace TiledArray {
 
         /// \param world The world which will evaluate the tasks.
         /// \param dest The destination tensor
-        EvalTo(madness::World& world, Dest& dest) :
-          world_(world), dest_(dest)
+        EvalTo(Dest& dest) :
+          world_(dest.get_world()), dest_(dest)
         { }
 
         /// Generate the tile evaluation task
