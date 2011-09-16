@@ -91,7 +91,8 @@ namespace TiledArray {
       /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(dim() == dest.dim());
+        TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
 
         // Add result tiles to dest and wait for all tiles to be added.
         madness::Future<bool> done =
@@ -266,7 +267,8 @@ namespace TiledArray {
       /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(dim() == dest.dim());
+        TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
 
         // Add result tiles to dest and wait for all tiles to be added.
         madness::Future<bool> done =
