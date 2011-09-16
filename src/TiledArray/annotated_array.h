@@ -210,7 +210,7 @@ namespace TiledArray {
       /// Variable annotation for the array.
       const VariableList& vars() const { return vars_; }
 
-      void set(size_type i, value_type tile) { array_.set(i, tile); }
+      void set(size_type i, const value_type& tile) { array_.set(i, tile); }
 
     private:
       array_type array_;  ///< pointer to the array object

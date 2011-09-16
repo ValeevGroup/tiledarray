@@ -128,7 +128,7 @@ namespace TiledArray {
       TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER(ReadableTiledTensor<Derived>, Derived)
 
       // element access
-      void set(size_type i, const madness::Future<value_type>& f) { return derived().insert(i, f); }
+      void set(size_type i, const value_type& f) { return derived().insert(i, f); }
 
     }; // class WritableTiledTensor
 
