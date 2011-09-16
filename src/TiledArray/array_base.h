@@ -23,9 +23,7 @@
     typedef typename base::const_iterator const_iterator;
 
 #define TILEDARRAY_WRITABLE_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
-    typedef typename base::reference reference; \
-    typedef typename base::iterator iterator;
+    TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED )
 
 #define TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TENSOR_BASE_INHEIRATE_MEMBER( BASE , DERIVED ) \
@@ -126,8 +124,6 @@ namespace TiledArray {
     public:
 
       TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<Derived>, Derived)
-      typedef typename TensorTraits<Derived>::reference reference;
-      typedef typename TensorTraits<Derived>::iterator iterator;
 
       TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER(ReadableTiledTensor<Derived>, Derived)
 

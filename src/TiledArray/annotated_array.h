@@ -34,23 +34,9 @@ namespace TiledArray {
       typedef typename T::trange_type trange_type;
       typedef FutureTensor<typename T::value_type> value_type;
       typedef value_type const_reference;
-      typedef value_type reference;
       typedef TiledArray::detail::UnaryTransformIterator<typename T::const_iterator,
           detail::MakeFutTensor<typename T::value_type> > const_iterator;
-      typedef TiledArray::detail::UnaryTransformIterator<typename T::iterator,
-          detail::MakeFutTensor<typename T::value_type> > iterator;
     }; //  struct TensorTraits<AnnotatedArray<T> >
-
-    template <typename T>
-    struct TensorTraits<AnnotatedArray<const T> > {
-      typedef typename T::size_type size_type;
-      typedef typename T::size_array size_array;
-      typedef typename T::trange_type trange_type;
-      typedef FutureTensor<typename T::value_type> value_type;
-      typedef value_type const_reference;
-      typedef TiledArray::detail::UnaryTransformIterator<typename T::const_iterator,
-          detail::MakeFutTensor<typename T::value_type> > const_iterator;
-    }; // struct TensorTraits<AnnotatedArray<const T> >
 
     template <typename T>
     struct Eval<AnnotatedArray<T> > {
@@ -199,12 +185,6 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return Tile \c i
-      reference operator[](size_type i) { return op_(array_.find(i)); }
-
-      /// Tile accessor
-
-      /// \param i The tile index
-      /// \return Tile \c i
       const_reference operator[](size_type i) const { return op_(array_.find(i)); }
 
       /// Array object accessor
@@ -217,21 +197,10 @@ namespace TiledArray {
       /// \return A const reference to the array object
       const array_type& array() const { return array_; }
 
-
-      /// Array begin iterator
-
-      /// \return An iterator to the first element of the array.
-      iterator begin() { return iterator(array_.begin(), op_); }
-
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
       const_iterator begin() const { return const_iterator(array_.begin(), op_); }
-
-      /// Array end iterator
-
-      /// \return An iterator to one past the last element of the array.
-      iterator end() { return iterator(array_.end(), op_); }
 
       /// Array end iterator
 
@@ -242,7 +211,6 @@ namespace TiledArray {
       const VariableList& vars() const { return vars_; }
 
     private:
-
       array_type array_;  ///< pointer to the array object
       VariableList vars_; ///< variable list
       transform_op op_;   ///< Tile conversion operator
@@ -266,7 +234,7 @@ namespace TiledArray {
       // not allowed
       AnnotatedArray_& operator =(const AnnotatedArray_& other);
 
-      typedef detail::MakeFutTensor<typename T::value_type> transform_op;
+      typedef detail::MakeFutTensor<typename T::value_type> transform_op; ///< The tile transform operation type
 
     public:
       /// Constructor
@@ -291,6 +259,11 @@ namespace TiledArray {
       /// Destructor
       ~AnnotatedArray() { }
 
+      /// Evaluate tensor
+
+      /// \return The evaluated tensor
+      const AnnotatedArray_& eval() const { return *this; }
+
       /// Evaluate tensor to destination
 
       /// \tparam Dest The destination tensor type
@@ -306,33 +279,89 @@ namespace TiledArray {
         done.get();
       }
 
+      /// Tensor dimension accessor
 
-      // dimension information
+      /// \return The number of dimension in the tensor
       unsigned int dim() const { return coordinate_system::dim; }
+
+
+      /// Tensor data and tile ordering accessor
+
+      /// \return The tensor data and tile ordering
       TiledArray::detail::DimensionOrderType order() const { return coordinate_system::order; }
+
+      /// Tensor tile size array accessor
+
+      /// \return The size array of the tensor tiles
       const size_array& size() const { return array_.range().size(); }
+
+      /// Tensor tile volume accessor
+
+      /// \return The number of tiles in the tensor
       size_type volume() const { return array_.range().volume(); }
 
+      /// Query a tile owner
 
-      // Tile locality info
+      /// \param i The tile index to query
+      /// \return The process ID of the node that owns tile \c i
       ProcessID owner(size_type i) const { return array_.owner(i); }
+
+      /// Query for a locally owned tile
+
+      /// \param i The tile index to query
+      /// \return \c true if the tile is owned by this node, otherwise \c false
       bool is_local(size_type i) const { return array_.is_local(i); }
+
+      /// Query for a zero tile
+
+      /// \param i The tile index to query
+      /// \return \c true if the tile is zero, otherwise \c false
       bool is_zero(size_type i) const { return array_.is_zero(i); }
 
+      /// World object accessor
+
+      /// \return A reference to the world where tensor lives
       madness::World& get_world() const { return array_.get_world(); }
+
+      /// Tensor process map accessor
+
+      /// \return A shared pointer to the process map of this tensor
       std::shared_ptr<pmap_interface> get_pmap() const { return array_.get_pmap(); }
 
+      /// Query the density of the tensor
+
+      /// \return \c true if the tensor is dense, otherwise false
       bool is_dense() const { return array_.is_dense(); }
+
+      /// Tensor shape accessor
+
+      /// \return A reference to the tensor shape map
       const TiledArray::detail::Bitset<>& get_shape() const { return array_.get_shape(); }
 
       // Tile dimension info
+
+      /// Tile tensor size array accessor
+
+      /// \param i The tile index
+      /// \return The size array of tile \c i
       size_array size(size_type i) const { return array_.make_range(i).size(); }
+
+      /// Tile tensor volume accessor
+
+      /// \param i The tile index
+      /// \return The number of elements in tile \c i
       size_type volume(size_type i) const { return array_.make_range(i).volume(); }
+
+      /// Tiled range accessor
+
+      /// \return The tiled range of the tensor
       trange_type trange() const { return array_.trange(); }
 
-      const_reference operator[](size_type i) const { return op_(array_.find(i)); }
+      /// Tile accessor
 
-      const AnnotatedArray_& eval() const { return *this; }
+      /// \param i The tile index
+      /// \return Tile \c i
+      const_reference operator[](size_type i) const { return op_(array_.find(i)); }
 
       /// Array object accessor
 
@@ -358,7 +387,6 @@ namespace TiledArray {
       const VariableList& vars() const { return vars_; }
 
     private:
-
       array_type array_;  ///< pointer to the array object
       VariableList vars_; ///< variable list
       transform_op op_;   ///< Tile conversion operator
