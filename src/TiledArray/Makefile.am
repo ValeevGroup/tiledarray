@@ -21,9 +21,9 @@ library_include_HEADERS = annotated_array.h \
                           future_tensor.h \
                           indexed_iterator.h \
                           madness_runtime.h \
-                          packed_tile.h \
                           permutation.h \
                           permute_tensor.h \
+                          permute_tiled_tensor.h \
                           range_iterator.h \
                           range.h \
                           reduce_task.h \
