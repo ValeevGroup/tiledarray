@@ -91,10 +91,6 @@ namespace TiledArray {
       inline std::shared_ptr<pmap_interface> get_pmap() const { return derived().get_pmap(); }
       inline bool is_dense() const { return derived().is_dense(); }
       inline const TiledArray::detail::Bitset<>& get_shape() const { return derived().get_shape(); }
-
-      // Tile dimension info
-      inline size_array size(size_type i) const { return derived().size(i); }
-      inline size_type volume(size_type i) const { return derived().volume(i); }
       inline trange_type trange() const { return derived().trange(); }
 
     }; // class TiledTensor

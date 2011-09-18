@@ -160,20 +160,6 @@ namespace TiledArray {
       /// \return A reference to the tensor shape map
       const TiledArray::detail::Bitset<>& get_shape() const { return array_.get_shape(); }
 
-      // Tile dimension info
-
-      /// Tile tensor size array accessor
-
-      /// \param i The tile index
-      /// \return The size array of tile \c i
-      size_array size(size_type i) const { return array_.tiling().make_range(i).size(); }
-
-      /// Tile tensor volume accessor
-
-      /// \param i The tile index
-      /// \return The number of elements in tile \c i
-      size_type volume(size_type i) const { return array_.tiling().make_range(i).volume(); }
-
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
@@ -335,20 +321,6 @@ namespace TiledArray {
 
       /// \return A reference to the tensor shape map
       const TiledArray::detail::Bitset<>& get_shape() const { return array_.get_shape(); }
-
-      // Tile dimension info
-
-      /// Tile tensor size array accessor
-
-      /// \param i The tile index
-      /// \return The size array of tile \c i
-      size_array size(size_type i) const { return array_.tiling().make_range(i).size(); }
-
-      /// Tile tensor volume accessor
-
-      /// \param i The tile index
-      /// \return The number of elements in tile \c i
-      size_type volume(size_type i) const { return array_.tiling().make_range(i).volume(); }
 
       /// Tiled range accessor
 

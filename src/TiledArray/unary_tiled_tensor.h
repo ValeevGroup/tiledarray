@@ -74,10 +74,9 @@ namespace TiledArray {
     public:
 
 
-      /// Construct a binary tiled tensor op
+      /// Construct a unary tiled tensor op
 
-      /// \param left The left argument
-      /// \param right The right argument
+      /// \param arg The argument
       /// \param op The element transform operation
       UnaryTiledTensor(const arg_tensor_type& arg, const Op& op) :
         arg_(arg), op_(op)
@@ -171,20 +170,6 @@ namespace TiledArray {
 
       /// \return A reference to the tensor shape map
       const TiledArray::detail::Bitset<>& get_shape() const { return arg_.get_shape(); }
-
-      // Tile dimension info
-
-      /// Tile tensor size array accessor
-
-      /// \param i The tile index
-      /// \return The size array of tile \c i
-      size_array size(size_type i) const { return arg_.size(i); }
-
-      /// Tile tensor volume accessor
-
-      /// \param i The tile index
-      /// \return The number of elements in tile \c i
-      size_type volume(size_type i) const { return arg_.volume(i); }
 
       /// Tiled range accessor
 
