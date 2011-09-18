@@ -35,7 +35,6 @@ library_include_HEADERS = annotated_array.h \
                           transform_iterator.h \
                           type_traits.h \
                           unary_tensor.h \
-                          utility.h \
                           variable_list.h \
                           versioned_pmap.h \
                           config.h

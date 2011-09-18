@@ -2,7 +2,6 @@
 #define TILEDARRAY_COORDINATES_H__INCLUDED
 
 #include <TiledArray/config.h>
-#include <TiledArray/utility.h>
 #include <TiledArray/error.h>
 #include <TiledArray/permutation.h>
 #include <boost/operators.hpp>
