@@ -33,8 +33,8 @@ namespace TiledArray {
       /// \throw std::bad_alloc If bitset allocation fails.
       Bitset(std::size_t s) :
           size_(s),
-          blocks_((s / block_bits) + (s % block_bits ? 1 : 0)),
-          set_(new block_type[blocks_])
+          blocks_((size_ / block_bits) + (size_ % block_bits ? 1 : 0)),
+          set_((size_ ? new block_type[blocks_] : NULL))
       {
         std::fill_n(set_.get(), num_blocks(), block_type(0));
       }
@@ -47,7 +47,7 @@ namespace TiledArray {
       Bitset(InIter first, InIter last) :
           size_(std::distance(first, last)),
           blocks_((size_ / block_bits) + (size_ % block_bits ? 1 : 0)),
-          set_(new block_type[blocks_])
+          set_((size_ ? new block_type[blocks_] : NULL))
       {
         // Initialize to zero
         std::fill_n(set_.get(), num_blocks(), block_type(0));
@@ -64,7 +64,7 @@ namespace TiledArray {
       Bitset(const Bitset<Block>& other) :
           size_(other.size_),
           blocks_(other.blocks_),
-          set_(new block_type[other.blocks_])
+          set_((size_ ? new block_type[blocks_] : NULL))
       {
         std::copy(other.set_.get(), other.set_.get() + blocks_, set_.get());
       }
