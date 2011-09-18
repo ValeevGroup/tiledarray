@@ -69,6 +69,8 @@ namespace TiledArray {
         std::copy(other.set_.get(), other.set_.get() + blocks_, set_.get());
       }
 
+      ~Bitset() { delete [] set_; }
+
       /// Assignment operator
 
       /// This will only copy the data from \c other. It will not change the size
