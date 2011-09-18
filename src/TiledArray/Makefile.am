@@ -28,7 +28,6 @@ library_include_HEADERS = annotated_array.h \
                           range.h \
                           reduce_task.h \
                           tensor_base.h \
-                          tile_slice.h \
                           tile.h \
                           tiled_range.h \
                           tiled_range1.h \
