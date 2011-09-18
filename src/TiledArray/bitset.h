@@ -2,11 +2,8 @@
 #define TILEDARRAY_BITSET_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <boost/scoped_array.hpp>
-#include <boost/dynamic_bitset.hpp>
 
 namespace TiledArray {
-
   namespace detail {
 
     /// Fixed size bitset
@@ -36,7 +33,7 @@ namespace TiledArray {
           blocks_((size_ / block_bits) + (size_ % block_bits ? 1 : 0)),
           set_((size_ ? new block_type[blocks_] : NULL))
       {
-        std::fill_n(set_.get(), num_blocks(), block_type(0));
+        std::fill_n(set_, blocks_, block_type(0));
       }
 
       /// Construct a bitset that contains \c s bits.
@@ -50,7 +47,7 @@ namespace TiledArray {
           set_((size_ ? new block_type[blocks_] : NULL))
       {
         // Initialize to zero
-        std::fill_n(set_.get(), num_blocks(), block_type(0));
+        std::fill_n(set_, blocks_, block_type(0));
 
         for(std::size_t i = 0; first != last; ++i, ++first)
           if(*first)
@@ -66,7 +63,7 @@ namespace TiledArray {
           blocks_(other.blocks_),
           set_((size_ ? new block_type[blocks_] : NULL))
       {
-        std::copy(other.set_.get(), other.set_.get() + blocks_, set_.get());
+        std::copy(other.set_, other.set_ + blocks_, set_);
       }
 
       ~Bitset() { delete [] set_; }
@@ -80,7 +77,7 @@ namespace TiledArray {
       Bitset<Block>& operator=(const Bitset<Block>& other) {
         TA_ASSERT(size_ == other.size_);
         if(this != &other)
-          std::copy(other.set_.get(), other.set_.get() + blocks_, set_.get());
+          std::copy(other.set_, other.set_ + blocks_, set_);
 
         return *this;
       }
@@ -151,7 +148,7 @@ namespace TiledArray {
       /// Set all bits
 
       /// \throw nothing
-      void set() { std::fill_n(set_.get(), blocks_, ~block_type(0)); }
+      void set() { std::fill_n(set_, blocks_, ~block_type(0)); }
 
       /// Reset a bit
 
@@ -166,7 +163,7 @@ namespace TiledArray {
 
       /// \throw nothing
       void reset() {
-        std::fill_n(set_.get(), blocks_, block_type(0));
+        std::fill_n(set_, blocks_, block_type(0));
       }
 
       /// Flip a bit
@@ -192,7 +189,7 @@ namespace TiledArray {
       /// \c block_type that contains \c num_blocks() elements.
       /// \return A pointer to the first element of the bitset data
       /// \throw nothing
-      const block_type* get() const { return set_.get(); }
+      const block_type* get() const { return set_; }
 
 
       /// Data pointer accessor
@@ -201,7 +198,7 @@ namespace TiledArray {
       /// \c block_type that contains \c num_blocks() elements.
       /// \return A pointer to the first element of the bitset data
       /// \throw nothing
-      block_type* get() { return set_.get(); }
+      block_type* get() { return set_; }
 
       /// Bitset size
 
@@ -235,9 +232,9 @@ namespace TiledArray {
       /// bit index.
       static block_type mask(std::size_t i) { return block_type(1) << bit_index(i); }
 
-      std::size_t size_;                    ///< The number of bits in the set
-      std::size_t blocks_;                  ///< The number of blocks used to store the bits
-      boost::scoped_array<block_type> set_; ///< An array that store the bits
+      std::size_t size_;    ///< The number of bits in the set
+      std::size_t blocks_;  ///< The number of blocks used to store the bits
+      block_type* set_;     ///< An array that store the bits
     }; // class Bitset
 
     template <typename Block>
@@ -281,7 +278,6 @@ namespace TiledArray {
     }
 
   } // namespace detail
-
 } // namespace TiledArray
 
 #endif // TILEDARRAY_BITSET_H__INCLUDED
