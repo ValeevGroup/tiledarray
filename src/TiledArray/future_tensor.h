@@ -152,19 +152,19 @@ namespace TiledArray {
         }
       }
 
-      /// Future accessor
-
-      /// \return A const reference to the tensor future
-      const future& get_future() const { return tensor_; }
-
-      /// Future accessor
-
-      /// \return A reference to the tensor future
-      future& get_future() { return tensor_; }
-
-      operator future&() { return tensor_; }
-
-      operator const future&() const { return tensor_; }
+//      /// Future accessor
+//
+//      /// \return A const reference to the tensor future
+//      const future& get_future() const { return tensor_; }
+//
+//      /// Future accessor
+//
+//      /// \return A reference to the tensor future
+//      future& get_future() { return tensor_; }
+//
+//      operator future&() { return tensor_; }
+//
+//      operator const future&() const { return tensor_; }
 
       /// Check if the tensor future has been evaluated.
 
