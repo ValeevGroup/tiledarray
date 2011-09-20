@@ -358,4 +358,29 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
+namespace madness {
+  namespace archive {
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl;
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl;
+
+    template <typename Archive, typename T, typename A>
+    struct ArchiveStoreImpl<Archive, TiledArray::DenseStorage<T, A> > {
+      static void store(const Archive& ar, const TiledArray::DenseStorage<T, A>& t) {
+        t.store(ar);
+      }
+    };
+
+    template <typename Archive, typename T, typename A>
+    struct ArchiveLoadImpl<Archive, TiledArray::DenseStorage<T, A> > {
+
+      static void load(const Archive& ar, TiledArray::DenseStorage<T, A>& t) {
+        t.load(ar);
+      }
+    };
+  } // namespace archive
+} // namespace madness
+
 #endif // TILEDARRAY_TILE_BASE_H__INCLUDED
