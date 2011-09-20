@@ -34,6 +34,7 @@ namespace TiledArray {
       typedef typename T::trange_type trange_type;
       typedef FutureTensor<typename T::value_type> value_type;
       typedef value_type const_reference;
+      typedef value_type remote_type;
       typedef TiledArray::detail::UnaryTransformIterator<typename T::const_iterator,
           detail::MakeFutTensor<typename T::value_type> > const_iterator;
     }; //  struct TensorTraits<AnnotatedArray<T> >
@@ -165,11 +166,27 @@ namespace TiledArray {
       /// \return The tiled range of the tensor
       trange_type trange() const { return array_.trange(); }
 
-      /// Tile accessor
+      /// Local tile accessor
 
+      /// Access a tensor that is available locally.
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference operator[](size_type i) const { return op_(array_.find(i)); }
+      /// \throw TiledArray::Exception When \c is_local(i) returns \c false .
+      const_reference get_local(size_type i) const {
+        TA_ASSERT(is_local(i));
+        return op_(array_.find(i));
+      }
+
+      /// Remote tile accessor
+
+      /// Access a tensor that is available remotely.
+      /// \param i The tile index
+      /// \return Tile \c i
+      /// \throw TiledArray::Exception When \c is_local(i) returns \c true .
+      remote_type get_remote(size_type i) const {
+        TA_ASSERT(! is_local(i));
+        return op_(array_.find(i));
+      }
 
       /// Array object accessor
 

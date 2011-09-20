@@ -20,6 +20,7 @@
     TILEDARRAY_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
     typedef typename base::value_type value_type; \
     typedef typename base::const_reference const_reference; \
+    typedef typename base::remote_type remote_type; \
     typedef typename base::const_iterator const_iterator;
 
 #define TILEDARRAY_WRITABLE_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
@@ -44,7 +45,8 @@
 
 #define TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    inline const_reference operator[](size_type i) const { return base::operator[](i); } \
+    inline const_reference get_local(size_type i) const { return base::get_local(i); } \
+    inline remote_type get_remote(size_type i) const { return base::get_remote(i); } \
     inline const_iterator begin() const { return base::begin(); } \
     inline const_iterator end() const { return base::end(); }
 
@@ -101,13 +103,15 @@ namespace TiledArray {
 
       TILEDARRAY_TILED_TENSOR_INHEIRATE_TYPEDEF(TiledTensor<Derived>, Derived)
       typedef typename TensorTraits<Derived>::value_type value_type;
+      typedef typename TensorTraits<Derived>::remote_type remote_type;
       typedef typename TensorTraits<Derived>::const_reference const_reference;
       typedef typename TensorTraits<Derived>::const_iterator const_iterator;
 
       TILEDARRAY_TILED_TENSOR_INHEIRATE_MEMBER(TiledTensor<Derived>, Derived)
 
       // element access
-      const_reference operator[](size_type i) const { return derived()[i]; }
+      const_reference get_local(size_type i) const { return derived().get_local(i); }
+      remote_type get_remote(size_type i) const { return derived().get_remote(i); }
 
       // iterator factory
       const_iterator begin() const { return derived().begin(); }
@@ -124,7 +128,7 @@ namespace TiledArray {
       TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER(ReadableTiledTensor<Derived>, Derived)
 
       // element access
-      void set(size_type i, const value_type& f) { return derived().insert(i, f); }
+      void set(size_type i, const value_type& v) { return derived().insert(i, v); }
 
     }; // class WritableTiledTensor
 
