@@ -359,6 +359,9 @@ namespace TiledArray {
         std::swap(range_, other.range_);
       }
 
+      /// Check the tensor dependancies
+
+      /// Evaluate this tensor's dependancies and add them to the task object
       void check_dependancies(madness::TaskInterface*) const { }
 
     protected:
