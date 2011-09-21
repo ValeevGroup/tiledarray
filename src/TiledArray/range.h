@@ -62,9 +62,9 @@ namespace TiledArray {
     inline void calc_weight(WArray& weight, const SArray& size, detail::DimensionOrderType order) {
       TA_ASSERT(weight.size() == size.size());
       if(order == detail::increasing_dimension_order)
-        calc_weight_helper(size.begin(), size.begin(), weight.begin());
+        calc_weight_helper(size.begin(), size.end(), weight.begin());
       else
-        calc_weight_helper(size.rbegin(), size.rbegin(), weight.rbegin());
+        calc_weight_helper(size.rbegin(), size.rend(), weight.rbegin());
     }
 
     template <typename Index, typename SizeArray>
