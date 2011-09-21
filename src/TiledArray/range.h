@@ -69,10 +69,10 @@ namespace TiledArray {
 
     template <typename Index, typename SizeArray>
     inline typename Index::value_type calc_ordinal(const Index& index, const SizeArray& weight, const SizeArray& start) {
-      typename Index::value_type o = 1;
+      typename Index::value_type o = 0;
       const typename Index::value_type dim = index.size();
       for(std::size_t i = 0ul; i < dim; ++i)
-        o *= (index[i] - start[i]) * weight[i];
+        o += (index[i] - start[i]) * weight[i];
 
       return o;
     }
@@ -279,9 +279,9 @@ namespace TiledArray {
     ord(const Index& index) const {
       TA_ASSERT(index.size() == dim());
       TA_ASSERT(includes(index));
-      ordinal_index o = 1;
+      ordinal_index o = 0;
       for(std::size_t i = 0ul; i < dim(); ++i)
-        o *= (index[i] - start()[i]) * weight()[i];
+        o += (index[i] - start()[i]) * weight()[i];
 
       return o;
     }
@@ -398,7 +398,7 @@ namespace TiledArray {
     {
       TA_ASSERT(order() == o);
       TA_ASSERT(start.size() == finish.size());
-      TA_ASSERT( (std::equal(start_.begin(), start_.end(), finish_.begin(),
+      TA_ASSERT( (std::equal(start.begin(), start.end(), finish.begin(),
           std::less_equal<typename coordinate_system::ordinal_index>())) );
 
       for(std::size_t i = 0; i < dim(); ++i) {
@@ -445,6 +445,25 @@ namespace TiledArray {
     }
 
     ~StaticRange() { }
+
+    StaticRange_& operator=(const StaticRange_& other) {
+      start_ = other.start_;
+      finish_ = other.finish_;
+      size_ = other.size_;
+      weight_ = other.weight_;
+
+      return *this;
+    }
+
+    template <typename D>
+    StaticRange_& operator=(const Range<D>& other) {
+      std::copy(other.start().begin(), other.start().end(), start_.begin());
+      std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
+      std::copy(other.size().begin(), other.size().end(), size_.begin());
+      std::copy(other.weight().begin(), other.weight().end(), weight_.begin());
+
+      return *this;
+    }
 
     static unsigned int dim() { return coordinate_system::dim; }
 
@@ -646,6 +665,25 @@ namespace TiledArray {
     {}
 
     ~DynamicRange() {}
+
+    DynamicRange_& operator=(const DynamicRange_& other) {
+      start_ = other.start_;
+      finish_ = other.finish_;
+      size_ = other.size_;
+      weight_ = other.weight_;
+
+      return *this;
+    }
+
+    template <typename D>
+    DynamicRange_& operator=(const Range<D>& other) {
+      std::copy(other.start().begin(), other.start().end(), start_.begin());
+      std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
+      std::copy(other.size().begin(), other.size().end(), size_.begin());
+      std::copy(other.weight().begin(), other.weight().end(), weight_.begin());
+
+      return *this;
+    }
 
     unsigned int dim() const { return size_.size(); }
 
