@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE( element_access )
   BOOST_CHECK_EQUAL(t[index(4)], 1);
 
   // check at() with ordinal index
-  BOOST_CHECK_EQUAL(t.at(0), 1);
+  BOOST_CHECK_EQUAL(t.at(0ul), 1);
   BOOST_CHECK_EQUAL(t.at(r.volume() - 1), 1);
 
   // check operator[] with ordinal index
@@ -214,41 +214,41 @@ BOOST_AUTO_TEST_CASE( element_assignment )
   BOOST_CHECK_EQUAL(t[1], 2);
 }
 
-BOOST_AUTO_TEST_CASE( resize )
-{
-  TileN t1;
-  BOOST_CHECK_EQUAL(t1.range().volume(), 0u);
-  t1.resize(r);
-  // check new dimensions.
-  BOOST_CHECK_EQUAL(t1.range(), r);
-  // check new element initialization
-  BOOST_CHECK_EQUAL(std::find_if(t1.begin(), t1.end(), std::bind1st(std::not_equal_to<int>(), int())), t1.end());
-
-  TileN t2;
-  BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), 0);
-  t2.resize(r, 1);
-  BOOST_CHECK_EQUAL(t2.range(), r);
-  BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), static_cast<long>(r.volume()));
-  // check for new element initialization
-  BOOST_CHECK_EQUAL(std::find_if(t2.begin(), t2.end(), std::bind1st(std::not_equal_to<int>(), 1)), t2.end());
-
-  // Check that the common elements are maintained in resize operation.
-  range_type r2(index(0), index(6));
-  t2.resize(r2, 2);
-  BOOST_CHECK_EQUAL(t2.range(), r2); // check new dimensions
-  BOOST_CHECK_EQUAL(static_cast<std::size_t>(std::distance(t2.begin(), t2.end())), r2.volume());
-  for(range_type::const_iterator it = r2.begin(); it != r2.end(); ++it) {
-    if(r.includes(*it))
-      BOOST_CHECK_EQUAL(t2[*it], 1);
-    else
-      BOOST_CHECK_EQUAL(t2[*it], 2);
-  }
-}
+//BOOST_AUTO_TEST_CASE( resize )
+//{
+//  TileN t1;
+//  BOOST_CHECK_EQUAL(t1.range().volume(), 0u);
+//  t1.resize(r);
+//  // check new dimensions.
+//  BOOST_CHECK_EQUAL(t1.range(), r);
+//  // check new element initialization
+//  BOOST_CHECK_EQUAL(std::find_if(t1.begin(), t1.end(), std::bind1st(std::not_equal_to<int>(), int())), t1.end());
+//
+//  TileN t2;
+//  BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), 0);
+//  t2.resize(r, 1);
+//  BOOST_CHECK_EQUAL(t2.range(), r);
+//  BOOST_CHECK_EQUAL(std::distance(t2.begin(), t2.end()), static_cast<long>(r.volume()));
+//  // check for new element initialization
+//  BOOST_CHECK_EQUAL(std::find_if(t2.begin(), t2.end(), std::bind1st(std::not_equal_to<int>(), 1)), t2.end());
+//
+//  // Check that the common elements are maintained in resize operation.
+//  range_type r2(index(0), index(6));
+//  t2.resize(r2, 2);
+//  BOOST_CHECK_EQUAL(t2.range(), r2); // check new dimensions
+//  BOOST_CHECK_EQUAL(static_cast<std::size_t>(std::distance(t2.begin(), t2.end())), r2.volume());
+//  for(range_type::const_iterator it = r2.begin(); it != r2.end(); ++it) {
+//    if(r.includes(*it))
+//      BOOST_CHECK_EQUAL(t2[*it], 1);
+//    else
+//      BOOST_CHECK_EQUAL(t2[*it], 2);
+//  }
+//}
 
 BOOST_AUTO_TEST_CASE( ostream )
 {
   typedef TiledArray::CoordinateSystem<3> cs3;
-  Range<cs3> r1(Range<cs3>::index(0), Range<cs3>::index(3));
+  StaticRange<cs3> r1(StaticRange<cs3>::index(0), StaticRange<cs3>::index(3));
   expressions::Tile<int, cs3> t1(r1, 1);
   boost::test_tools::output_test_stream output;
   output << t1;
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE( addition )
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, 2);
 
-  t.resize(range_type());
+  TileN().swap(t);
   t += t1;
   BOOST_CHECK_EQUAL(t.range(), t1.range());
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
@@ -325,7 +325,7 @@ BOOST_AUTO_TEST_CASE( subtraction )
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, -1);
 
-  t.resize(range_type());
+  TileN().swap(t);
   t -= t2;
   BOOST_CHECK_EQUAL(t.range(), t1.range());
   for(TileN::const_iterator it = t.begin(); it != t.end(); ++it)
@@ -341,7 +341,7 @@ BOOST_AUTO_TEST_CASE( scalar_addition )
     BOOST_CHECK_EQUAL(*it, 2);
 
 
-  t.resize(range_type());
+  TileN().swap(t);
   t += 1;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE( scalar_subtraction )
     BOOST_CHECK_EQUAL(*it, 0);
 
 
-  t.resize(range_type());
+  TileN().swap(t);
   t -= 1;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
@@ -369,7 +369,7 @@ BOOST_AUTO_TEST_CASE( scalar_multiplication )
     BOOST_CHECK_EQUAL(*it, 2);
 
 
-  t.resize(range_type());
+  TileN().swap(t);
   t *= 2;
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }

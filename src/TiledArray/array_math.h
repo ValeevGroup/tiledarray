@@ -197,9 +197,9 @@ namespace TiledArray {
     private:
 
       struct ArrayOpImpl {
-        typedef typename Range<res_packed_cs>::index res_packed_index;
-        typedef typename Range<left_packed_cs>::index left_packed_index;
-        typedef typename Range<right_packed_cs>::index right_packed_index;
+        typedef typename StaticRange<res_packed_cs>::index res_packed_index;
+        typedef typename StaticRange<left_packed_cs>::index left_packed_index;
+        typedef typename StaticRange<right_packed_cs>::index right_packed_index;
         typedef madness::Range<typename Range<res_packed_cs>::const_iterator> range_type;
 
         ArrayOpImpl(const std::shared_ptr<cont_type>& cont, const ResArray& result,
@@ -230,7 +230,7 @@ namespace TiledArray {
           return range_type(res_range_.begin(), res_range_.end());
         }
 
-        void generate_tasks(const typename Range<res_packed_cs>::const_iterator& it) const {
+        void generate_tasks(const typename StaticRange<res_packed_cs>::const_iterator& it) const {
           const ordinal_index res_index = res_range_.ord(*it);
 
           // Check that the result tile has a value
@@ -287,12 +287,12 @@ namespace TiledArray {
         }
 
         ordinal_index left_ord(const res_packed_index& res_index, ordinal_index i) const {
-          const typename Range<left_packed_cs>::size_array& weight = left_range_.weight();
+          const typename StaticRange<left_packed_cs>::size_array& weight = left_range_.weight();
           return res_index[0] * weight[0] + i * weight[1] + res_index[2] * weight[2];
         }
 
         ordinal_index right_ord(const res_packed_index& res_index, ordinal_index i) const {
-          const typename Range<right_packed_cs>::size_array& weight = right_range_.weight();
+          const typename StaticRange<right_packed_cs>::size_array& weight = right_range_.weight();
           return res_index[1] * weight[0] + i * weight[1] + res_index[3] * weight[2];
         }
 
@@ -301,9 +301,9 @@ namespace TiledArray {
         mutable ResArray result_;
         LeftArray left_;
         RightArray right_;
-        Range<res_packed_cs> res_range_;
-        Range<left_packed_cs> left_range_;
-        Range<right_packed_cs> right_range_;
+        StaticRange<res_packed_cs> res_range_;
+        StaticRange<left_packed_cs> left_range_;
+        StaticRange<right_packed_cs> right_range_;
       }; // struct ArrayOpImpl
 
       struct ArrayOp {
@@ -324,7 +324,7 @@ namespace TiledArray {
 
         typename ArrayOpImpl::range_type range() const { return pimpl_->range(); }
 
-        bool operator()(const typename Range<res_packed_cs>::const_iterator& it) const {
+        bool operator()(const typename StaticRange<res_packed_cs>::const_iterator& it) const {
           pimpl_->generate_tasks(it);
           return true;
         }

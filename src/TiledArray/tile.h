@@ -69,7 +69,7 @@ namespace TiledArray {
       typedef typename CS::index index;                       ///< Array coordinate index type
       typedef typename CS::ordinal_index ordinal_index;       ///< Array ordinal index type
       typedef typename storage_type::allocator_type allocator_type;///< Allocator type
-      typedef Range<coordinate_system> range_type;            ///< Tile range type
+      typedef StaticRange<coordinate_system> range_type;            ///< Tile range type
 
       /// Tile dimension accessor
 
@@ -285,26 +285,26 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Resize the array to the specified dimensions.
-
-      /// \param r The range object that specifies the new size.
-      /// \param val The value that will fill any new elements in the array
-      /// ( default: value_type() ).
-      /// \return A reference to this object.
-      /// \note The current data common to both arrays is maintained.
-      /// \note This function cannot change the number of tile dimensions.
-      Tile_& resize(const range_type& r, value_type val = value_type()) {
-        Tile_ temp(r, val);
-        if(data_.data()) {
-          // replace Range with ArrayDim?
-          range_type range_common = r & (range_);
-
-          for(typename range_type::const_iterator it = range_common.begin(); it != range_common.end(); ++it)
-            temp[*it] = data_[range_.ord(*it)]; // copy common data.
-        }
-        swap(temp);
-        return *this;
-      }
+//      /// Resize the array to the specified dimensions.
+//
+//      /// \param r The range object that specifies the new size.
+//      /// \param val The value that will fill any new elements in the array
+//      /// ( default: value_type() ).
+//      /// \return A reference to this object.
+//      /// \note The current data common to both arrays is maintained.
+//      /// \note This function cannot change the number of tile dimensions.
+//      Tile_& resize(const range_type& r, value_type val = value_type()) {
+//        Tile_ temp(r, val);
+//        if(data_.data()) {
+//          // replace Range with ArrayDim?
+//          range_type range_common = r & (range_);
+//
+//          for(typename range_type::const_iterator it = range_common.begin(); it != range_common.end(); ++it)
+//            temp[*it] = data_[range_.ord(*it)]; // copy common data.
+//        }
+//        swap(temp);
+//        return *this;
+//      }
 
       pointer data() { return data_.data(); }
       const_pointer data() const { return data_.data(); }

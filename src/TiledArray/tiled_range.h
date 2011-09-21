@@ -31,8 +31,8 @@ namespace TiledArray {
     typedef CoordinateSystem<CS::dim, CS::level - 1, CS::order, typename CS::ordinal_index> tile_coordinate_system;
 
     typedef TiledRange1<coordinate_system> tiled_range1_type;
-    typedef Range<coordinate_system> range_type;
-    typedef Range<tile_coordinate_system> tile_range_type;
+    typedef StaticRange<coordinate_system> range_type;
+    typedef StaticRange<tile_coordinate_system> tile_range_type;
 
     typedef typename coordinate_system::volume_type volume_type;
     typedef typename coordinate_system::index index;

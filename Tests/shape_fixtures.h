@@ -10,7 +10,7 @@
 
 class FakeArray {
 public:
-  typedef TiledArray::Range<GlobalFixture::coordinate_system> range_type;
+  typedef TiledArray::StaticRange<GlobalFixture::coordinate_system> range_type;
   typedef range_type::index index;
   typedef range_type::ordinal_index ordinal_index;
   typedef madness::WorldDCDefaultPmap<std::size_t> pmap_type;

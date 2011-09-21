@@ -10,7 +10,7 @@
 using namespace TiledArray;
 
 struct RangeFixture {
-  typedef Range<GlobalFixture::coordinate_system> RangeN;
+  typedef StaticRange<GlobalFixture::coordinate_system> RangeN;
   typedef RangeN::size_array size_array;
   typedef RangeN::index index;
   typedef RangeN::ordinal_index ordinal_index;

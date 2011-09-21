@@ -83,6 +83,40 @@ namespace TiledArray {
     }; // class TensorSize
 
 
+    template <typename, typename>
+    class EvalTensor;
+
+    template <typename T, typename A>
+    struct TensorTraits<EvalTensor<T, A> > {
+      typedef DenseStorage<T,A> storage_type;
+      typedef typename TensorSize::size_type size_type;
+      typedef typename TensorSize::size_array size_array;
+      typedef typename storage_type::value_type value_type;
+      typedef typename storage_type::reference reference;
+      typedef typename storage_type::const_reference const_reference;
+      typedef typename storage_type::iterator iterator;
+      typedef typename storage_type::const_iterator const_iterator;
+      typedef typename storage_type::difference_type difference_type;
+      typedef typename storage_type::pointer pointer;
+      typedef typename storage_type::const_pointer const_pointer;
+    };  // struct TensorTraits<EvalTensor<T, A> >
+
+    template <typename T, typename A>
+    struct Eval<EvalTensor<T, A> > {
+      typedef const EvalTensor<T, A>& type;
+    }; // struct Eval<EvalTensor<T, A> >
+
+
+    template <typename T, typename A>
+    struct TensorArg<EvalTensor<T, A> > {
+      typedef const EvalTensor<T, A>& type;
+    }; // struct TensorArg<EvalTensor<T, A> >
+
+    template <typename T, typename A>
+    struct TensorMem<EvalTensor<T, A> > {
+      typedef const EvalTensor<T, A>& type;
+    }; // struct TensorMem<EvalTensor<T, A> >
+
     template <typename T, typename A = Eigen::aligned_allocator<T> >
     class EvalTensor : public DirectReadableTensor<EvalTensor<T, A> > {
     public:
@@ -174,25 +208,20 @@ namespace TiledArray {
       /// \return A const pointer to the tensor data
       const_pointer data() const { return data_.data(); }
 
+      /// Check the tensor dependancies
+
+      /// Evaluate this tensor's dependancies and add them to the task object
+      void check_dependancies(madness::TaskInterface*) const { }
+
+      template <typename Archive>
+      void load(Archive& ar) {
+
+      }
+
     private:
       TensorSize size_; ///< Tensor size info
       storage_type data_; ///< Tensor data
     };
-
-    template <typename T, typename A>
-    struct TensorTraits<EvalTensor<T, A> > {
-      typedef typename EvalTensor<T, A>::size_type size_type;
-      typedef typename EvalTensor<T, A>::size_array size_array;
-      typedef typename EvalTensor<T, A>::value_type value_type;
-      typedef typename EvalTensor<T, A>::const_reference const_reference;
-      typedef typename EvalTensor<T, A>::const_iterator const_iterator;
-      typedef typename EvalTensor<T, A>::const_pointer const_pointer;
-    }; // struct TensorTraits<EvalTensor<T, A> >
-
-    template <typename T, typename A>
-    struct Eval<EvalTensor<T, A> > {
-      typedef const EvalTensor<T, A>& type;
-    }; // struct Eval<EvalTensor<T, A> >
 
   } // namespace expressions
 }  // namespace TiledArray

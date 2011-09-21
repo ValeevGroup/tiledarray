@@ -17,8 +17,6 @@
 namespace TiledArray {
 
   // weirdly necessary forward declarations
-  template <typename>
-  class Range;
   template <unsigned int>
   class Permutation;
   template <unsigned int DIM>
