@@ -97,9 +97,9 @@ BOOST_FIXTURE_TEST_SUITE( tile_suite , TileFixture )
 
 BOOST_AUTO_TEST_CASE( range_accessor )
 {
-  BOOST_CHECK_EQUAL(t.range().start(), r.start());  // check start accessor
-  BOOST_CHECK_EQUAL(t.range().finish(), r.finish());// check finish accessor
-  BOOST_CHECK_EQUAL(t.range().size(), r.size());    // check size accessor
+  TA_CHECK_ARRAY(t.range().start(), r.start());  // check start accessor
+  TA_CHECK_ARRAY(t.range().finish(), r.finish());// check finish accessor
+  TA_CHECK_ARRAY(t.range().size(), r.size());    // check size accessor
   BOOST_CHECK_EQUAL(t.range().volume(), r.volume());// check volume accessor
   BOOST_CHECK_EQUAL(t.range(), r);          // check range accessof
 }

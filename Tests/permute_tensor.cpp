@@ -59,6 +59,8 @@ struct PermuteTensorFixture {
   PermT pt;
 }; // struct PermuteTensorFixture
 
+using madness::operator<<;
+
 const PermuteTensorFixture::TileN PermuteTensorFixture::t(make_tile());
 const PermuteTensorFixture::PermN PermuteTensorFixture::p(make_perm());
 

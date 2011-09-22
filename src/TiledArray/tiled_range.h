@@ -5,7 +5,7 @@
 #include <TiledArray/permutation.h>
 #include <iterator>
 #include <iosfwd>
-#include <world/sharedptr.h>
+#include <world/shared_ptr.h>
 #include <boost/utility/enable_if.hpp>
 
 namespace TiledArray {

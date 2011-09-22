@@ -21,7 +21,7 @@ namespace TiledArray {
     struct TensorTraits<BinaryTensor<LeftArg, RightArg, Op> > {
       typedef typename LeftArg::size_type size_type;
       typedef typename LeftArg::size_array size_array;
-      typedef typename madness::result_of<Op>::type value_type;
+      typedef typename madness::detail::result_of<Op>::type value_type;
       typedef TiledArray::detail::BinaryTransformIterator<typename LeftArg::const_iterator,
           typename RightArg::const_iterator, Op> const_iterator;
       typedef value_type const_reference;
@@ -29,7 +29,7 @@ namespace TiledArray {
 
     template <typename LeftArg, typename RightArg, typename Op>
     struct Eval<BinaryTensor<LeftArg, RightArg, Op> > {
-      typedef EvalTensor<typename madness::result_of<Op>::type> type;
+      typedef EvalTensor<typename madness::detail::result_of<Op>::type> type;
     }; // struct Eval<BinaryTensor<LeftArg, RightArg, Op> >
 
     /// Tensor that is composed from two argument tensors

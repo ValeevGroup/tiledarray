@@ -16,7 +16,7 @@ namespace TiledArray {
     struct TensorTraits<UnaryTensor<Arg, Op> > {
       typedef typename Arg::size_type size_type;
       typedef typename Arg::size_array size_array;
-      typedef typename madness::result_of<Op>::type value_type;
+      typedef typename madness::detail::result_of<Op>::type value_type;
       typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
           Op> const_iterator; ///< Tensor const iterator
       typedef value_type const_reference;
@@ -24,7 +24,7 @@ namespace TiledArray {
 
     template <typename Arg, typename Op>
     struct Eval<UnaryTensor<Arg, Op> > {
-      typedef EvalTensor<typename madness::result_of<Op>::type> type;
+      typedef EvalTensor<typename madness::detail::result_of<Op>::type> type;
     }; // struct Eval<UnaryTensor<Arg, Op> >
 
 

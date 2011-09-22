@@ -29,10 +29,10 @@ BOOST_FIXTURE_TEST_SUITE( range_suite, RangeFixture )
 
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
-  BOOST_CHECK_EQUAL(r.start(), start);   // check start()
-  BOOST_CHECK_EQUAL(r.finish(), finish);  // check finish()
-  BOOST_CHECK_EQUAL(r.size(), size); // check size()
-  BOOST_CHECK_EQUAL(r.weight(), weight); // check weight()
+  TA_CHECK_ARRAY(r.start(), start);   // check start()
+  TA_CHECK_ARRAY(r.finish(), finish);  // check finish()
+  TA_CHECK_ARRAY(r.size(), size); // check size()
+  TA_CHECK_ARRAY(r.weight(), weight); // check weight()
   BOOST_CHECK_EQUAL(r.volume(), volume);  // check volume()
 }
 
@@ -40,9 +40,10 @@ BOOST_AUTO_TEST_CASE( constructors )
 {
   BOOST_REQUIRE_NO_THROW(RangeN r0); // Default Constructor
   RangeN r0;
-  BOOST_CHECK_EQUAL(r0.start(), start);
-  BOOST_CHECK_EQUAL(r0.finish(), start);
-  BOOST_CHECK_EQUAL(r0.size(), start.data());
+  TA_CHECK_ARRAY(r0.start(), start);
+  TA_CHECK_ARRAY(r0.finish(), start);
+  TA_CHECK_ARRAY(r0.size(), start);
+  TA_CHECK_ARRAY(r0.weight(), start);
   BOOST_CHECK_EQUAL(r0.volume(), 0u);
 
   BOOST_REQUIRE_NO_THROW(RangeN r2(p2, p2 + finish)); // Start/Finish Constructor
@@ -50,23 +51,25 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_THROW(RangeN r2(p2 + finish, p2), Exception);
 #endif
   RangeN r2(p2, p2 + finish);
-  BOOST_CHECK_EQUAL(r2.start(), p2);
-  BOOST_CHECK_EQUAL(r2.finish(), p2 + finish);
-  BOOST_CHECK_EQUAL(r2.size(), size);
+  TA_CHECK_ARRAY(r2.start(), p2);
+  TA_CHECK_ARRAY(r2.finish(), (p2 + finish));
+  TA_CHECK_ARRAY(r2.size(), size);
+  TA_CHECK_ARRAY(r2.weight(), weight);
   BOOST_CHECK_EQUAL(r2.volume(), volume);
 
   BOOST_REQUIRE_NO_THROW(RangeN r4(r)); // Copy Constructor
   RangeN r4(r);
-  BOOST_CHECK_EQUAL(r4.start(), start);
-  BOOST_CHECK_EQUAL(r4.finish(), finish);
-  BOOST_CHECK_EQUAL(r4.size(), size);
+  TA_CHECK_ARRAY(r4.start(), start);
+  TA_CHECK_ARRAY(r4.finish(), finish);
+  TA_CHECK_ARRAY(r4.size(), size);
   BOOST_CHECK_EQUAL(r4.volume(), volume);
 
   BOOST_REQUIRE_NO_THROW(RangeN r5(p2, p2)); // Zero Size Construction
   RangeN r5(p2, p2);
-  BOOST_CHECK_EQUAL(r5.start(), p2);
-  BOOST_CHECK_EQUAL(r5.finish(), p2);
-  BOOST_CHECK_EQUAL(r5.size(), start.data());
+  TA_CHECK_ARRAY(r5.start(), p2);
+  TA_CHECK_ARRAY(r5.finish(), p2);
+  TA_CHECK_ARRAY(r5.size(), start);
+  TA_CHECK_ARRAY(r5.weight(), start);
   BOOST_CHECK_EQUAL(r5.volume(), 0u);
 }
 
@@ -112,9 +115,9 @@ BOOST_AUTO_TEST_CASE( resize )
   // check resize and return value
   BOOST_CHECK_EQUAL(r1.resize(start, finish), r);
   // check that size was correctly recalculated
-  BOOST_CHECK_EQUAL(r1.size(), r.size());
+  TA_CHECK_ARRAY(r1.size(), r.size());
   // Check that weight was correctly recalculated
-  BOOST_CHECK_EQUAL(r1.weight(), r.weight());
+  TA_CHECK_ARRAY(r1.weight(), r.weight());
   // Check that volume was correctly recalculated
   BOOST_CHECK_EQUAL(r1.volume(), r.volume());
 }
@@ -144,15 +147,15 @@ BOOST_AUTO_TEST_CASE( permutation )
                                 r2.size().begin(),  r2.size().end());
   BOOST_CHECK_EQUAL(r2.volume(), r1.volume());
 
-  BOOST_CHECK_EQUAL(r2.weight(), GlobalFixture::coordinate_system::calc_weight(r2.size()));
+  TA_CHECK_ARRAY(r2.weight(), GlobalFixture::coordinate_system::calc_weight(r2.size()));
 
   // check for correct finish permutation
   BOOST_CHECK_EQUAL(r3 ^= p, r2);
-  BOOST_CHECK_EQUAL(r3.start(), r2.start());
-  BOOST_CHECK_EQUAL(r3.finish(), r2.finish());
-  BOOST_CHECK_EQUAL(r3.size(), r2.size());
+  TA_CHECK_ARRAY(r3.start(), r2.start());
+  TA_CHECK_ARRAY(r3.finish(), r2.finish());
+  TA_CHECK_ARRAY(r3.size(), r2.size());
   BOOST_CHECK_EQUAL(r3.volume(), r2.volume());
-  BOOST_CHECK_EQUAL(r3.weight(), r2.weight());
+  TA_CHECK_ARRAY(r3.weight(), r2.weight());
   BOOST_CHECK_EQUAL(r3, r2);
 }
 
@@ -301,7 +304,7 @@ BOOST_AUTO_TEST_CASE( iteration )
   tf[7] = Range3F::index(2,2,2);
 
   Range3F rf(Range3F::index(1,1,1),Range3F::index(3,3,3));
-  BOOST_CHECK_EQUAL_COLLECTIONS(rf.begin(), rf.end(), tf.begin(), tf.end());
+  TA_CHECK_ARRAY(rf, tf);
 }
 
 BOOST_AUTO_TEST_CASE( serialization )
@@ -320,12 +323,12 @@ BOOST_AUTO_TEST_CASE( serialization )
 
   delete [] buf;
 
-  BOOST_CHECK_EQUAL(rs.start(), r.start());   // check start()
-  BOOST_CHECK_EQUAL(rs.finish(), r.finish()); // check finish()
-  BOOST_CHECK_EQUAL(rs.size(), r.size());     // check size()
-  BOOST_CHECK_EQUAL(rs.weight(), r.weight()); // check weight()
+  TA_CHECK_ARRAY(rs.start(), r.start());   // check start()
+  TA_CHECK_ARRAY(rs.finish(), r.finish()); // check finish()
+  TA_CHECK_ARRAY(rs.size(), r.size());     // check size()
+  TA_CHECK_ARRAY(rs.weight(), r.weight()); // check weight()
   BOOST_CHECK_EQUAL(rs.volume(), r.volume()); // check volume()
-  BOOST_CHECK_EQUAL(rs, r);
+  TA_CHECK_ARRAY(rs, r);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

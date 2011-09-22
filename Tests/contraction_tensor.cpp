@@ -1,7 +1,7 @@
 #include "TiledArray/contraction_tensor.h"
 #include "TiledArray/tile.h"
 #include "TiledArray/contraction.h"
-#include <world/tr1/memory.h>
+#include <world/shared_ptr.h>
 #include "unit_test_config.h"
 
 

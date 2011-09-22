@@ -57,7 +57,7 @@ namespace TiledArray {
 
     public:
       typedef std::ptrdiff_t difference_type;                     ///< Difference type
-      typedef typename madness::result_of<Op>::type value_type;   ///< Iterator dereference value type
+      typedef typename madness::detail::result_of<Op>::type value_type;///< Iterator dereference value type
       typedef PointerProxy<value_type> pointer;                   ///< Pointer type to iterator value
       typedef value_type reference;                               ///< Reference type to iterator value
       typedef std::input_iterator_tag iterator_category;          ///< Iterator category type
@@ -237,7 +237,7 @@ namespace TiledArray {
 
     public:
       typedef ptrdiff_t difference_type;                        ///< Difference type
-      typedef typename madness::result_of<Op>::type value_type; ///< Iterator dereference value type
+      typedef typename madness::detail::result_of<Op>::type value_type; ///< Iterator dereference value type
       typedef PointerProxy<value_type> pointer;                 ///< Pointer type to iterator value
       typedef value_type reference;                             ///< Reference type to iterator value
       typedef std::input_iterator_tag iterator_category;        ///< Iterator category type
@@ -398,7 +398,7 @@ namespace TiledArray {
 
     public:
       typedef ptrdiff_t difference_type;                        ///< Difference type
-      typedef typename madness::result_of<Op>::type value_type; ///< Iterator dereference value type
+      typedef typename madness::detail::result_of<Op>::type value_type; ///< Iterator dereference value type
       typedef PointerProxy<value_type> pointer;                 ///< Pointer type to iterator value
       typedef value_type reference;                             ///< Reference type to iterator value
       typedef std::input_iterator_tag iterator_category;        ///< Iterator category type

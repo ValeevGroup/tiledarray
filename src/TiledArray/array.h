@@ -5,7 +5,7 @@
 #include <TiledArray/array_impl.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/annotated_array.h>
-#include <world/sharedptr.h>
+#include <world/shared_ptr.h>
 
 namespace TiledArray {
 
@@ -372,7 +372,8 @@ namespace TiledArray {
   private:
 
     static std::shared_ptr<pmap_interface> make_pmap(madness::World& w) {
-      return std::make_shared<detail::VersionedPmap<size_type> >(w.size(), 0);
+      return std::shared_ptr<detail::VersionedPmap<size_type> >(
+          new detail::VersionedPmap<size_type>(w.size(), 0));
     }
 
     ProcessID rank() const { return pimpl_->get_world().rank(); }

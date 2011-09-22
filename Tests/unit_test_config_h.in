@@ -14,4 +14,6 @@
 #include "global_fixture.h"
 #include "iteration_test.h"
 
+#define TA_CHECK_ARRAY( A , B ) BOOST_CHECK_EQUAL_COLLECTIONS( A.begin() , A.end() , B.begin() , B.end() )
+
 #endif // TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED

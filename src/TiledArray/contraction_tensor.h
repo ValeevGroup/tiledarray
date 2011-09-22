@@ -3,7 +3,7 @@
 
 #include <TiledArray/eval_tensor.h>
 #include <TiledArray/contraction.h>
-#include <world/tr1/memory.h>
+#include <world/shared_ptr.h>
 #include <Eigen/Core>
 #include <functional>
 

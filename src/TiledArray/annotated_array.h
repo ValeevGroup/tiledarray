@@ -5,7 +5,7 @@
 #include <TiledArray/future_tensor.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/eval_task.h>
-#include <world/sharedptr.h>
+#include <world/shared_ptr.h>
 
 namespace TiledArray {
   namespace expressions {

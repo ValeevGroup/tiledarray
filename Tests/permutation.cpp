@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE( permute_function )
     std::array<int, 3> ar = {{2, 3, 1}};
     std::array<int, 3> a2;
     detail::permute_array(p.begin(), p.end(), a1.begin(), a2.begin());
-    BOOST_CHECK_EQUAL(a2, ar); // check permutation applied via detail::permute()
+    TA_CHECK_ARRAY(a2, ar); // check permutation applied via detail::permute()
   }
 }
 
@@ -134,8 +134,8 @@ BOOST_AUTO_TEST_CASE( boost_array_permutation )
   std::array<int, 3> a2 = p ^ a1;
   std::array<int, 3> a3 = a1;
   a3 ^= p;
-  BOOST_CHECK_EQUAL(a2, ar); // check assignment permutation
-  BOOST_CHECK_EQUAL(a3, ar); // check in-place permutation
+  TA_CHECK_ARRAY(a2, ar); // check assignment permutation
+  TA_CHECK_ARRAY(a3, ar); // check in-place permutation
 }
 
 BOOST_AUTO_TEST_CASE( vector_permutation )

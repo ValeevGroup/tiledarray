@@ -780,15 +780,15 @@ namespace TiledArray {
   }
 
   /// Returns true if the start and finish are not equal.
-  template <typename CS>
-  bool operator !=(const Range<CS>& r1, const Range<CS>& r2) {
+  template <typename Derived1, typename Derived2>
+  bool operator !=(const Range<Derived1>& r1, const Range<Derived2>& r2) {
     return ! operator ==(r1, r2);
   }
 
   /// Returns a permuted range.
-  template <typename CS>
-  Range<CS> operator ^(const Permutation<1>& perm, const Range<CS>& r) {
-    TA_STATIC_ASSERT(CS::dim == 1);
+  template <typename Derived>
+  Range<Derived> operator ^(const Permutation<1>& perm, const Range<Derived>& r) {
+    TA_ASSERT(r.dim() == 1);
     return r;
   }
 

@@ -6,7 +6,7 @@
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/bitset.h>
 #include <world/worldtypes.h>
-#include <world/sharedptr.h>
+#include <world/shared_ptr.h>
 
 #define TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED )  \
     TILEDARRAY_TENSOR_BASE_INHEIRATE_TYPEDEF( BASE , DERIVED )

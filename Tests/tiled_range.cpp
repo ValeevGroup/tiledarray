@@ -26,8 +26,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(TRangeN r0);
   TRangeN r0;
   TRangeN::size_array s0 = {{0,0,0}};
-  BOOST_CHECK_EQUAL(r0.tiles().size(), s0);
-  BOOST_CHECK_EQUAL(r0.elements().size(), s0);
+  TA_CHECK_ARRAY(r0.tiles().size(), s0);
+  TA_CHECK_ARRAY(r0.elements().size(), s0);
 
   // check ranges constructor
   BOOST_REQUIRE_NO_THROW(TRangeN r1(dims.begin(), dims.end()));
