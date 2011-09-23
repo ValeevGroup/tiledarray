@@ -131,27 +131,25 @@ namespace TiledArray {
         }
       }
 
-      template <typename CS, typename ResArray>
-      void permute_helper(ResArray& result) const {
-        typename range_type::size_array invp_weight = -perm_ ^ range_.weight();
+      /// Tensor permutation
 
-        typename CS::index i(0);
-        const typename CS::index start(0);
+      /// \tparam The result container type
+      /// \param result The container that will hold the permuted tensor data
+      template <typename Res>
+      void permute(Res& result) const {
+        // Construct the inverse permuted weight and size for this tensor
+        const perm_type ip = -perm_;
+        typename range_type::size_array ip_weight = ip ^ range_.weight();
+        const typename range_type::index ip_start = ip ^ arg_.range().start();
 
-        for(typename arg_tensor_type::const_iterator it = arg_.begin(); it != arg_.end();
-            ++it, TiledArray::detail::increment_coordinate(i, range_))
-          result[CS::calc_ordinal(i, invp_weight)] = *it;
-      }
+        // Coordinated iterator for the argument object range
+        typename arg_tensor_type::range_type::const_iterator arg_range_it =
+            arg_.range().begin();
 
-      template <typename ResArray>
-      void permute(ResArray& result) const {
-        if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
-          permute_helper<CoordinateSystem<DIM, 0ul, TiledArray::detail::decreasing_dimension_order,
-            size_type> >(result);
-        } else {
-          permute_helper<CoordinateSystem<DIM, 0ul, TiledArray::detail::increasing_dimension_order,
-            size_type> >(result);
-        }
+        // permute the data
+        for(typename arg_tensor_type::const_iterator arg_it = arg_.begin();
+            arg_it != arg_.end(); ++arg_it, ++arg_range_it)
+          result[TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, ip_start)] = *arg_it;
       }
 
       typename TensorMem<arg_tensor_type>::type arg_; ///< Argument

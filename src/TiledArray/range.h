@@ -67,8 +67,8 @@ namespace TiledArray {
         calc_weight_helper(size.rbegin(), size.rend(), weight.rbegin());
     }
 
-    template <typename Index, typename SizeArray>
-    inline typename Index::value_type calc_ordinal(const Index& index, const SizeArray& weight, const SizeArray& start) {
+    template <typename Index, typename WeightArray, typename StartArray>
+    inline typename Index::value_type calc_ordinal(const Index& index, const WeightArray& weight, const StartArray& start) {
       typename Index::value_type o = 0;
       const typename Index::value_type dim = index.size();
       for(std::size_t i = 0ul; i < dim; ++i)
