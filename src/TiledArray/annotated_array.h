@@ -30,7 +30,7 @@ namespace TiledArray {
     template <typename T>
     struct TensorTraits<AnnotatedArray<T> > {
       typedef typename T::size_type size_type;
-      typedef typename T::size_array size_array;
+      typedef typename T::range_type range_type;
       typedef typename T::trange_type trange_type;
       typedef FutureTensor<typename T::value_type> value_type;
       typedef value_type const_reference;
@@ -92,7 +92,7 @@ namespace TiledArray {
       /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(dim() == dest.dim());
+        TA_ASSERT(range() == dest.range());
         TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
 
         // Add result tiles to dest and wait for all tiles to be added.
@@ -102,26 +102,15 @@ namespace TiledArray {
         done.get();
       }
 
-      /// Tensor dimension accessor
+      /// Tensor tile range object accessor
 
-      /// \return The number of dimension in the tensor
-      unsigned int dim() const { return coordinate_system::dim; }
+      /// \return A const reference to the tensor range object
+      const range_type& range() const { return array_.range(); }
 
-
-      /// Tensor data and tile ordering accessor
-
-      /// \return The tensor data and tile ordering
-      TiledArray::detail::DimensionOrderType order() const { return coordinate_system::order; }
-
-      /// Tensor tile size array accessor
-
-      /// \return The size array of the tensor tiles
-      const size_array& size() const { return array_.range().size(); }
-
-      /// Tensor tile volume accessor
+      /// Tensor tile size accessor
 
       /// \return The number of tiles in the tensor
-      size_type volume() const { return array_.range().volume(); }
+      size_type size() const { return array_.range().volume(); }
 
       /// Query a tile owner
 
@@ -270,7 +259,7 @@ namespace TiledArray {
       /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(dim() == dest.dim());
+        TA_ASSERT(range() == dest.range());
         TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
 
         // Add result tiles to dest and wait for all tiles to be added.
@@ -280,26 +269,15 @@ namespace TiledArray {
         done.get();
       }
 
-      /// Tensor dimension accessor
+      /// Tensor tile range object accessor
 
-      /// \return The number of dimension in the tensor
-      unsigned int dim() const { return coordinate_system::dim; }
-
-
-      /// Tensor data and tile ordering accessor
-
-      /// \return The tensor data and tile ordering
-      TiledArray::detail::DimensionOrderType order() const { return coordinate_system::order; }
-
-      /// Tensor tile size array accessor
-
-      /// \return The size array of the tensor tiles
-      const size_array& size() const { return array_.range().size(); }
+      /// \return The tensor range object
+      const range_type& range() const { return array_.range(); }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type volume() const { return array_.range().volume(); }
+      size_type size() const { return array_.range().volume(); }
 
       /// Query a tile owner
 

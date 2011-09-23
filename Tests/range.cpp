@@ -50,9 +50,10 @@ BOOST_AUTO_TEST_CASE( constructors )
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(RangeN r2(p2 + finish, p2), Exception);
 #endif
-  RangeN r2(p2, p2 + finish);
+  index f2 = p2 + finish;
+  RangeN r2(p2, f2);
   TA_CHECK_ARRAY(r2.start(), p2);
-  TA_CHECK_ARRAY(r2.finish(), (p2 + finish));
+  TA_CHECK_ARRAY(r2.finish(), f2);
   TA_CHECK_ARRAY(r2.size(), size);
   TA_CHECK_ARRAY(r2.weight(), weight);
   BOOST_CHECK_EQUAL(r2.volume(), volume);
@@ -129,7 +130,7 @@ BOOST_AUTO_TEST_CASE( permutation )
   size_array a;
   for(unsigned int d = 0; d < GlobalFixture::coordinate_system::dim; ++d) {
     s[d] = d;
-    f[d] = d + d * 5;
+    f[d] = d + d + 5;
     a[GlobalFixture::coordinate_system::dim - d - 1] = d;
   }
   RangeN r1(s, f);
@@ -147,7 +148,9 @@ BOOST_AUTO_TEST_CASE( permutation )
                                 r2.size().begin(),  r2.size().end());
   BOOST_CHECK_EQUAL(r2.volume(), r1.volume());
 
-  TA_CHECK_ARRAY(r2.weight(), GlobalFixture::coordinate_system::calc_weight(r2.size()));
+  GlobalFixture::coordinate_system::size_array w =
+      GlobalFixture::coordinate_system::calc_weight(r2.size());
+  TA_CHECK_ARRAY(r2.weight(), w);
 
   // check for correct finish permutation
   BOOST_CHECK_EQUAL(r3 ^= p, r2);

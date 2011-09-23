@@ -6,7 +6,7 @@
 #define TILEDARRAY_TENSOR_BASE_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
       typedef BASE base; \
       typedef typename base::size_type size_type; \
-      typedef typename base::size_array size_array;
+      typedef typename base::range_type range_type;
 
 #define TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
       TILEDARRAY_TENSOR_BASE_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
@@ -33,10 +33,8 @@
 #define TILEDARRAY_TENSOR_BASE_INHEIRATE_MEMBER( BASE , DERIVED ) \
     DERIVED& derived() { return base::derived(); } \
     const DERIVED& derived() const { return base::derived(); } \
-    unsigned int dim() const { return base::dim(); } \
-    TiledArray::detail::DimensionOrderType order() const { return base::dim(); } \
-    const size_array& size() const { return base::size(); } \
-    size_type volume() const { return base::volume(); }
+    const range_type& range() const { return base::range(); } \
+    size_type size() const { return base::range().volume(); }
 
 #define TILEDARRAY_READABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TENSOR_BASE_INHEIRATE_MEMBER( BASE , DERIVED ) \
@@ -84,17 +82,15 @@ namespace TiledArray {
     class TensorBase {
     public:
       typedef typename TensorTraits<Derived>::size_type size_type;
-      typedef typename TensorTraits<Derived>::size_array size_array;
+      typedef typename TensorTraits<Derived>::range_type range_type;
 
       // Access this object type
       Derived& derived() { return *static_cast<Derived*>(this); }
       const Derived& derived() const { return *static_cast<const Derived*>(this); }
 
       // dimension information
-      unsigned int dim() const { return derived().dim(); }
-      TiledArray::detail::DimensionOrderType order() const { return derived().order(); }
-      const size_array& size() const { return derived().size(); }
-      size_type volume() const { return derived().volume(); }
+      const range_type& range() const { return derived().range(); }
+      size_type size() const { return derived().size(); }
 
       typename Eval<Derived>::type eval() const { derived().eval(); }
 
@@ -105,8 +101,8 @@ namespace TiledArray {
       void add_to(Dest& dest) const {
         // This is the default implementation,
         // derived class can reimplement it in a more optimized way.
-        TA_ASSERT(volume() == dest.volume());
-        typename Dest::storage_type temp(volume());
+        TA_ASSERT(size() == dest.size());
+        typename Dest::storage_type temp(size());
         eval_to(temp);
         dest += temp;
       }
@@ -115,7 +111,7 @@ namespace TiledArray {
       void sub_to(Dest& dest) const {
         // This is the default implementation,
         // derived class can reimplement it in a more optimized way.
-        typename Dest::storage_type temp(volume());
+        typename Dest::storage_type temp(size());
         eval_to(temp);
         dest -= temp;
       }

@@ -15,7 +15,7 @@ struct ExpressionFixture {
   typedef TileN::value_type value_type;
   typedef TileN::index index;
   typedef TileN::volume_type volume_type;
-  typedef TileN::size_array size_array;
+  typedef TileN::range_type::size_array size_array;
   typedef TileN::range_type range_type;
   typedef Permutation<GlobalFixture::coordinate_system::dim> PermN;
 

@@ -3,85 +3,12 @@
 
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/dense_storage.h>
+#include <TiledArray/range.h>
 #include <vector>
 #include <algorithm>
 
 namespace TiledArray {
   namespace expressions {
-
-    /// Basic tensor size information
-    class TensorSize {
-    public:
-      typedef std::size_t size_type;  ///< The size type
-      typedef std::vector<size_type> size_array; ///< Tensor sizes array
-
-      TensorSize() :
-        size_(), order_(TiledArray::detail::decreasing_dimension_order)
-      { }
-
-      /// Construct
-      template <typename SizeArray>
-      TensorSize(const SizeArray& s, TiledArray::detail::DimensionOrderType o) :
-        size_(s.begin(), s.end()), order_(o)
-      { }
-
-      TensorSize(const TensorSize& other) :
-        size_(other.size_), order_(other.order_)
-      { }
-
-      template <typename T>
-      TensorSize(const T& other) :
-        size_(other.size().begin(), other.size().end()), order_(other.order())
-      { }
-
-      TensorSize& operator=(const TensorSize& other) {
-        size_ = other.size_;
-        order_ = other.order_;
-
-        return *this;
-      }
-
-      template <typename T>
-      TensorSize& operator=(const T& other) {
-        size_.resize(other.dim());
-        std::copy(other.size().begin(), other.size().end(), size_.begin());
-        order_ = other.order();
-
-        return *this;
-      }
-
-      /// Tensor dimension accessor
-
-      /// \return The number of dimensions
-      unsigned int dim() const { return size_.size(); }
-
-      /// Data ordering
-
-      /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const { return order_; }
-
-      /// Tensor dimension size accessor
-
-      /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const { return size_; }
-
-      /// Tensor volume
-
-      /// \return The total number of elements in the tensor
-      size_type volume() const {
-        return std::accumulate(size_.begin(), size_.end(), size_type(1), std::multiplies<size_type>());
-      }
-
-      template <typename Archive>
-      void serialize(const Archive& ar) {
-        ar & size_ & order_;
-      }
-
-    protected:
-      size_array size_; ///< The sizes of each dimension
-      TiledArray::detail::DimensionOrderType order_; ///< Data ordering
-    }; // class TensorSize
-
 
     template <typename, typename>
     class EvalTensor;
@@ -89,8 +16,8 @@ namespace TiledArray {
     template <typename T, typename A>
     struct TensorTraits<EvalTensor<T, A> > {
       typedef DenseStorage<T,A> storage_type;
-      typedef typename TensorSize::size_type size_type;
-      typedef typename TensorSize::size_array size_array;
+      typedef std::size_t size_type;
+      typedef DynamicRange range_type;
       typedef typename storage_type::value_type value_type;
       typedef typename storage_type::reference reference;
       typedef typename storage_type::const_reference const_reference;
@@ -120,15 +47,9 @@ namespace TiledArray {
     template <typename T, typename A = Eigen::aligned_allocator<T> >
     class EvalTensor : public DirectReadableTensor<EvalTensor<T, A> > {
     public:
-      typedef DirectReadableTensor<EvalTensor<T, A> > base;
+      typedef EvalTensor<T, A> EvalTensor_;
+      TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<EvalTensor_> , EvalTensor_ );
       typedef DenseStorage<T,A> storage_type;
-
-      typedef typename TensorSize::size_type size_type;
-      typedef typename TensorSize::size_array size_array;
-      typedef typename storage_type::value_type value_type;
-      typedef typename storage_type::const_reference const_reference;
-      typedef typename storage_type::const_iterator const_iterator;
-      typedef typename storage_type::const_pointer const_pointer;
 
       /// Construct an evaluated tensor
 
@@ -137,15 +58,15 @@ namespace TiledArray {
       /// \param s An array with the size of of each dimension
       /// \param o The dimension ordering
       /// \param d The data for the tensor
-      template <typename SizeArray>
-      EvalTensor(const SizeArray& s, TiledArray::detail::DimensionOrderType o, const storage_type& d) :
-        size_(s, o), data_(d)
+      template <typename D>
+      EvalTensor(const Range<D>& r, const storage_type& d) :
+        range_(r), data_(d)
       { }
 
       /// Construct an evaluated tensor
-      template <typename SizeArray>
-      EvalTensor(const SizeArray& s, TiledArray::detail::DimensionOrderType o, storage_type& d) :
-        size_(s, o), data_()
+      template <typename D>
+      EvalTensor(const Range<D>& r, storage_type& d) :
+        range_(r), data_()
       {
         data_.swap(d);
       }
@@ -164,29 +85,19 @@ namespace TiledArray {
 
       template <typename Dest>
       void eval_to(const Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(size() == dest.size());
         std::copy(begin(), end(), dest.begin());
       }
 
-      /// Tensor dimension accessor
+      /// Tensor range object accessor
 
-      /// \return The number of dimensions
-      unsigned int dim() const { return size_.dim(); }
-
-      /// Data ordering
-
-      /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const { return size_.order(); }
+      /// \return The tensor range object
+      const range_type& range() const { return range_; }
 
       /// Tensor dimension size accessor
 
-      /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const { return size_.size(); }
-
-      /// Tensor volume
-
-      /// \return The total number of elements in the tensor
-      size_type volume() const { return size_.volume(); }
+      /// \return The number of elements in the tensor
+      size_type size() const { return range_.volume(); }
 
       /// Element accessor
 
@@ -214,12 +125,12 @@ namespace TiledArray {
       void check_dependancies(madness::TaskInterface*) const { }
 
       template <typename Archive>
-      void load(Archive& ar) {
-
+      void serialize(Archive& ar) {
+        ar & range_ & data_;
       }
 
     private:
-      TensorSize size_; ///< Tensor size info
+      range_type range_; ///< Tensor size info
       storage_type data_; ///< Tensor data
     };
 

@@ -259,9 +259,7 @@ namespace TiledArray {
     /// \throw nothing
     const tile_range_type& elements() const { return pimpl_->elements(); }
 
-    const size_array& size() const { return pimpl_->tiles().size(); }
-
-    volume_type volume() const { return pimpl_->tiles().volume(); }
+    size_type size() const { return pimpl_->tiles().volume(); }
 
     /// Create an annotated array
 

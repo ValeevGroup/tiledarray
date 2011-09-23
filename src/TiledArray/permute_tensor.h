@@ -5,6 +5,7 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/eval_tensor.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/range.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -14,8 +15,8 @@ namespace TiledArray {
 
     template <typename Arg, unsigned int DIM>
     struct TensorTraits<PermuteTensor<Arg, DIM> > {
-      typedef typename TensorSize::size_type size_type;
-      typedef typename TensorSize::size_array size_array;
+      typedef typename Arg::size_type size_type;
+      typedef typename Arg::range_type range_type;
       typedef typename Arg::value_type value_type;
       typedef typename DenseStorage<value_type>::const_reference const_reference;
       typedef typename DenseStorage<value_type>::const_iterator const_iterator;
@@ -54,11 +55,11 @@ namespace TiledArray {
       /// \param right The right argument
       /// \param op The element transform operation
       PermuteTensor(typename TensorArg<arg_tensor_type>::type arg, const perm_type& p) :
-        arg_(arg), size_(permute_size(p, arg.size()), arg.order()), perm_(p), data_()
+        arg_(arg), range_(p ^ arg.range()), perm_(p), data_()
       { }
 
       PermuteTensor(const PermuteTensor_& other) :
-        arg_(other.arg_), size_(other.size_), perm_(other.perm_), data_(other.data_)
+        arg_(other.arg_), range_(other.range_), perm_(other.perm_), data_(other.data_)
       { }
 
       /// Evaluate this tensor
@@ -75,40 +76,22 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(size() == dest.size());
         if(static_cast<const void*>(&arg_) != static_cast<void*>(&dest))
           permute(dest);
         else
           std::copy(begin(), end(), dest.begin());
       }
 
-      /// Tensor dimension accessor
+      /// Tensor range object accessor
 
-      /// \return The number of dimensions
-      static unsigned int dim() {
-        return DIM;
-      }
+      /// \return The tensor range object
+      const range_type& range() const { return range_; }
 
-      /// Data ordering
+      /// Tile size accessor
 
-      /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const {
-        return size_.order();
-      }
-
-      /// Tensor dimension size accessor
-
-      /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const {
-        return size_.size();
-      }
-
-      /// Tensor volume
-
-      /// \return The total number of elements in the tensor
-      size_type volume() const {
-        return size_.volume();
-      }
+      /// \return The number of elements in the tile
+      size_type size() const { return range_.volume(); }
 
       /// Iterator factory
 
@@ -140,22 +123,9 @@ namespace TiledArray {
 
     private:
 
-      /// Make a permuted size array
-
-      /// \tparam SizeArray The input size array type
-      /// \param p The permutation that will be used to permute \c s
-      /// \param s The size array to be permuted
-      /// \return A permuted copy of \c s
-      template <typename SizeArray>
-      static size_array permute_size(const perm_type& p, const SizeArray& s) {
-        size_array result(DIM);
-        TiledArray::detail::permute_array(p.begin(), p.end(), s.begin(), result.begin());
-        return result;
-      }
-
       void lazy_eval() const {
-        if(volume() != data_.volume()) {
-          storage_type temp(volume());
+        if(size() != data_.size()) {
+          storage_type temp(size());
           permute(temp);
           temp.swap(data_);
         }
@@ -163,19 +133,19 @@ namespace TiledArray {
 
       template <typename CS, typename ResArray>
       void permute_helper(ResArray& result) const {
-        typename CS::size_array invp_weight = -perm_ ^ CS::calc_weight(size());
+        typename range_type::size_array invp_weight = -perm_ ^ range_.weight();
 
         typename CS::index i(0);
         const typename CS::index start(0);
 
         for(typename arg_tensor_type::const_iterator it = arg_.begin(); it != arg_.end();
-            ++it, CS::increment_coordinate(i, start, arg_.size()))
+            ++it, TiledArray::detail::increment_coordinate(i, range_))
           result[CS::calc_ordinal(i, invp_weight)] = *it;
       }
 
       template <typename ResArray>
       void permute(ResArray& result) const {
-        if(order() == TiledArray::detail::decreasing_dimension_order) {
+        if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
           permute_helper<CoordinateSystem<DIM, 0ul, TiledArray::detail::decreasing_dimension_order,
             size_type> >(result);
         } else {
@@ -185,7 +155,7 @@ namespace TiledArray {
       }
 
       typename TensorMem<arg_tensor_type>::type arg_; ///< Argument
-      TensorSize size_; ///< Tensor size info
+      range_type range_; ///< Tensor size info
       perm_type perm_; ///< Transform operation
       mutable storage_type data_;
     }; // class PermuteTensor

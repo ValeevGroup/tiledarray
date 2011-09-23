@@ -70,16 +70,12 @@ BOOST_FIXTURE_TEST_SUITE( permute_tensor_suite , PermuteTensorFixture )
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
   range_type pr = p ^ t.range();
-  BOOST_CHECK_EQUAL(pt.dim(), pr.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(pt.size().begin(), pt.size().end(), pr.size().begin(), pr.size().end());
-  BOOST_CHECK_EQUAL(pt.volume(), pr.volume());
-  BOOST_CHECK_EQUAL(pt.order(), pr.order());
+  BOOST_CHECK_EQUAL(pt.range(), pr);
+  BOOST_CHECK_EQUAL(pt.size(), pr.volume());
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  PermT::size_array s(t.size().begin(), t.size().end());
-  s ^= p;
 
   BOOST_REQUIRE_NO_THROW(PermT x());
 
@@ -87,20 +83,16 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(PermT x(t,p));
     PermT x(t,p);
-    BOOST_CHECK_EQUAL(x.dim(), t.dim());
-    BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), s.begin(), s.end());
-    BOOST_CHECK_EQUAL(x.volume(), t.volume());
-    BOOST_CHECK_EQUAL(x.order(), t.order());
+    BOOST_CHECK_EQUAL(x.range(), t.range());
+    BOOST_CHECK_EQUAL(x.size(), t.size());
   }
 
   // test copy constructor
   {
     BOOST_REQUIRE_NO_THROW(PermT x(pt));
     PermT x(pt);
-    BOOST_CHECK_EQUAL(x.dim(), t.dim());
-    BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), s.begin(), s.end());
-    BOOST_CHECK_EQUAL(x.volume(), t.volume());
-    BOOST_CHECK_EQUAL(x.order(), t.order());
+    BOOST_CHECK_EQUAL(x.range(), t.range());
+    BOOST_CHECK_EQUAL(x.size(), t.size());
   }
 }
 
@@ -119,13 +111,7 @@ BOOST_AUTO_TEST_CASE( element_accessor )
 
 BOOST_AUTO_TEST_CASE( iterator )
 {
-  index start(0);
-  index finish(0);
-  std::copy(pt.size().begin(), pt.size().end(), finish.begin());
-
-  range_type r(start, finish);
-
-  range_type::const_iterator rit = r.begin();
+  range_type::const_iterator rit = t.range().begin();
   for(PermT::const_iterator it = pt.begin(); it != pt.end(); ++it, ++rit) {
     // Check that iteration works correctly
     BOOST_CHECK_EQUAL(*it, t[-p ^ *rit]);

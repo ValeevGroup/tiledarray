@@ -22,8 +22,8 @@ namespace TiledArray {
     template <typename T, typename CS, typename A>
     struct TensorTraits<Tile<T,CS,A> > {
       typedef DenseStorage<T,A> storage_type;
-      typedef typename CS::size_array size_array;
       typedef typename CS::volume_type size_type;
+      typedef StaticRange<CS> range_type;
       typedef typename storage_type::value_type value_type;
       typedef typename storage_type::reference reference;
       typedef typename storage_type::const_reference const_reference;
@@ -69,17 +69,6 @@ namespace TiledArray {
       typedef typename CS::index index;                       ///< Array coordinate index type
       typedef typename CS::ordinal_index ordinal_index;       ///< Array ordinal index type
       typedef typename storage_type::allocator_type allocator_type;///< Allocator type
-      typedef StaticRange<coordinate_system> range_type;            ///< Tile range type
-
-      /// Tile dimension accessor
-
-      /// \return The number of dimensions in the Tile
-      static unsigned int dim() { return coordinate_system::dim; }
-
-      /// Dimension ordering accessor
-
-      /// \return The dimension ordering
-      static TiledArray::detail::DimensionOrderType order() { return coordinate_system::order; }
 
       /// Default constructor
 
@@ -101,16 +90,17 @@ namespace TiledArray {
       /// \param other The tile to be copied.
       template <typename Derived>
       Tile(const TensorBase<Derived>& other) :
-          range_(index(0), index(other.size().begin())), data_()
+          range_(other.range()), data_()
       {
-        storage_type(volume()).swap(data_);
+        storage_type(size()).swap(data_);
         other.eval_to(data_);
       }
 
       /// Copy constructor
 
       /// \param other The tile to be copied.
-      Tile(const range_type& r, const DenseStorage<T,A>& other) :
+      template <typename D>
+      Tile(const Range<D>& r, const DenseStorage<T,A>& other) :
           range_(r), data_(other)
       { }
 
@@ -126,7 +116,8 @@ namespace TiledArray {
       /// \throw std::bad_alloc There is not enough memory available for the target tile
       /// \throw anything Any exception that can be thrown by \c T type default or
       /// copy constructors
-      Tile(const range_type& r, const value_type& val = value_type(), const allocator_type& a = allocator_type()) :
+      template <typename D>
+      Tile(const Range<D>& r, const value_type& val = value_type(), const allocator_type& a = allocator_type()) :
           range_(r), data_(r.volume(), val, a)
       { }
 
@@ -146,8 +137,8 @@ namespace TiledArray {
       /// target tile
       /// \throw anything Any exceptions that can be thrown by \c T type default
       /// or copy constructors
-      template <typename InIter>
-      Tile(const range_type& r, InIter first, const allocator_type& a = allocator_type()) :
+      template <typename D, typename InIter>
+      Tile(const Range<D>& r, InIter first, const allocator_type& a = allocator_type()) :
           range_(r), data_(r.volume(), first, a)
       { }
 
@@ -156,7 +147,7 @@ namespace TiledArray {
 
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(size() == dest.size());
         std::copy(begin(), end(), dest.begin());
       }
 
@@ -172,13 +163,12 @@ namespace TiledArray {
       template <typename Arg>
       typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
       operator=(const ReadableTensor<Arg>& other) {
-        if(other.volume() != 0ul) {
-          TA_ASSERT(dim() == other.dim());
-          if(volume() == 0ul) {
-            range_.resize(index(0), index(other.size().begin()));
-            storage_type(other.volume()).swap(data_);
+        if(other.size() != 0ul) {
+          if(size() == 0ul) {
+            range_ = other.range();
+            storage_type(size()).swap(data_);
           }
-          TA_ASSERT(volume() == other.volume());
+          TA_ASSERT(range_ == other.range());
           other.eval_to(data_);
         } else {
           range_ = range_type();
@@ -212,13 +202,12 @@ namespace TiledArray {
       template <typename Arg>
       typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
       operator+=(const ReadableTensor<Arg>& other) {
-        if(other.volume() != 0) {
-          TA_ASSERT(dim() == other.dim());
-          if(volume() == 0ul) {
-            range_.resize(index(0), index(other.size().begin()));
-            storage_type(other.volume()).swap(data_);
+        if(other.size() != 0) {
+          if(size() == 0ul) {
+            range_ = other.range();
+            storage_type(size()).swap(data_);
           }
-          TA_ASSERT(std::equal(size().begin(), size().end(), other.size().begin()))
+          TA_ASSERT(range_ == other.range());
           data_ += other;
         }
 
@@ -227,10 +216,10 @@ namespace TiledArray {
 
       template <typename U, typename AA>
       Tile_& operator+=(const Tile<U,CS,AA>& other) {
-        if(other.volume() != 0) {
-          if(volume() == 0ul) {
+        if(other.size() != 0) {
+          if(size() == 0ul) {
             range_ = other.range();
-            storage_type(other.volume()).swap(data_);
+            storage_type(size()).swap(data_);
           }
           TA_ASSERT(range_ == other.range());
           data_ += other;
@@ -247,13 +236,12 @@ namespace TiledArray {
       template <typename Arg>
       typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
       operator-=(const ReadableTensor<Arg>& other) {
-        if (other.volume() != 0) {
-          TA_ASSERT(dim() == other.dim());
-          if(volume() == 0ul) {
-            range_.resize(index(0), index(other.size().begin()));
-            storage_type(other.volume()).swap(data_);
+        if (other.size() != 0) {
+          if(size() == 0ul) {
+            range_ = other.range();
+            storage_type(size()).swap(data_);
           }
-          TA_ASSERT(std::equal(size().begin(), size().end(), other.size().begin()))
+          TA_ASSERT(range_ == other.range());
           data_ -= other;
         }
 
@@ -262,10 +250,10 @@ namespace TiledArray {
 
       template <typename U, typename AA>
       Tile_& operator-=(const Tile<U,CS,AA>& other) {
-        if (other.volume() != 0) {
-          if(volume() == 0ul) {
+        if (other.size() != 0) {
+          if(size() == 0ul) {
             range_ = other.range();
-            storage_type(other.volume()).swap(data_);
+            storage_type(size()).swap(data_);
           }
           TA_ASSERT(range_ == other.range());
           data_ -= other;
@@ -346,9 +334,10 @@ namespace TiledArray {
       /// \throw nothing
       const range_type& range() const { return range_; }
 
-      const size_array& size() const { return range_.size(); }
+      /// Tile size accessor
 
-      size_type volume() const { return range_.volume(); }
+      /// \return The number of elements in the tile
+      size_type size() const { return range_.volume(); }
 
       /// Exchange the content of this object with other.
 
@@ -415,7 +404,7 @@ namespace TiledArray {
     template <typename T, typename CS, typename A>
     std::ostream& operator <<(std::ostream& out, const Tile<T, CS, A>& t) {
       typedef Tile<T, CS, A> tile_type;
-      typedef typename TiledArray::detail::CoordIterator<const typename tile_type::size_array,
+      typedef typename TiledArray::detail::CoordIterator<const typename tile_type::range_type::size_array,
           tile_type::coordinate_system::order>::iterator weight_iterator;
 
       typename tile_type::ordinal_index i = 0;

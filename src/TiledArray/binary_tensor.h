@@ -20,7 +20,7 @@ namespace TiledArray {
     template <typename LeftArg, typename RightArg, typename Op>
     struct TensorTraits<BinaryTensor<LeftArg, RightArg, Op> > {
       typedef typename LeftArg::size_type size_type;
-      typedef typename LeftArg::size_array size_array;
+      typedef typename LeftArg::range_type range_type;
       typedef typename madness::detail::result_of<Op>::type value_type;
       typedef TiledArray::detail::BinaryTransformIterator<typename LeftArg::const_iterator,
           typename RightArg::const_iterator, Op> const_iterator;
@@ -65,9 +65,7 @@ namespace TiledArray {
       BinaryTensor(typename TensorArg<left_tensor_type>::type left, typename TensorArg<right_tensor_type>::type right, const op_type& op) :
         left_(left), right_(right), op_(op)
       {
-        TA_ASSERT(left.order() == right.order());
-        TA_ASSERT(left.dim() == right.dim());
-        TA_ASSERT(std::equal(left.size().begin(), left.size().end(), right.size().begin()));
+        TA_ASSERT(left.range() == right.range());
       }
 
       BinaryTensor(const BinaryTensor_& other) :
@@ -78,8 +76,8 @@ namespace TiledArray {
 
       /// \return An evaluated tensor object
       EvalTensor<value_type> eval() const {
-        typename EvalTensor<value_type>::storage_type data(volume(), begin());
-        return EvalTensor<value_type>(size(), order(), data);
+        typename EvalTensor<value_type>::storage_type data(size(), begin());
+        return EvalTensor<value_type>(range(), data);
       }
 
       /// Evaluate this tensor and store the results in \c dest
@@ -88,7 +86,7 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(size() == dest.size());
         std::copy(begin(), end(), dest.begin());
       }
 
@@ -106,18 +104,18 @@ namespace TiledArray {
         return left_.order();
       }
 
-      /// Tensor dimension size accessor
+      /// Tensor range object accessor
 
-      /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const {
-        return left_.size();
+      /// \return The tensor range object
+      const range_type& range() const {
+        return left_.range();
       }
 
-      /// Tensor volume
+      /// Tensor size accessor
 
       /// \return The total number of elements in the tensor
-      size_type volume() const {
-        return left_.volume();
+      size_type size() const {
+        return left_.size();
       }
 
       /// Iterator factory

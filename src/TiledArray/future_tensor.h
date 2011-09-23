@@ -12,7 +12,7 @@ namespace TiledArray {
     template <typename T>
     struct TensorTraits<FutureTensor<T> > {
       typedef typename T::size_type size_type;
-      typedef typename T::size_array size_array;
+      typedef typename T::range_type range_type;
       typedef typename T::value_type value_type;
       typedef typename T::const_iterator const_iterator;
       typedef typename T::const_reference const_reference;
@@ -51,29 +51,11 @@ namespace TiledArray {
         tensor_(other.tensor_)
       { }
 
-      /// Tensor dimension accessor
+      /// Tensor range object accessor
 
-      /// \return The number of dimension in the tensor
+      /// \return The range object of the tensor
       /// \throw TiledArray::Exception If the future has not been evaluated.
-      unsigned int dim() const {
-        TA_ASSERT(tensor_.probe());
-        return tensor_.get().dim();
-      }
-
-      /// Tensor data ordering accessor
-
-      /// \return The tensor data ordering
-      /// \throw TiledArray::Exception If the future has not been evaluated.
-      TiledArray::detail::DimensionOrderType order() const {
-        TA_ASSERT(tensor_.probe());
-        return tensor_.get().order();
-      }
-
-      /// Tensor size array accessor
-
-      /// \return The size array of the tensor
-      /// \throw TiledArray::Exception If the future has not been evaluated.
-      const size_array& size() const {
+      const range_type& range() const {
         TA_ASSERT(tensor_.probe());
         return tensor_.get().size();
       }
@@ -82,7 +64,7 @@ namespace TiledArray {
 
       /// \return The volume of the tensor
       /// \throw TiledArray::Exception If the future has not been evaluated.
-      size_type volume() const {
+      size_type size() const {
         TA_ASSERT(tensor_.probe());
         return tensor_.get().volume();
       }

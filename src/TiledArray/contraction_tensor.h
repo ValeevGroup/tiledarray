@@ -32,8 +32,8 @@ namespace TiledArray {
 
     template <typename LeftArg, typename RightArg>
     struct TensorTraits<ContractionTensor<LeftArg, RightArg> > {
-      typedef typename TensorSize::size_type size_type;
-      typedef typename TensorSize::size_array size_array;
+      typedef std::size_t size_type;
+      typedef DynamicRange range_type;
       typedef typename ContractionValue<typename LeftArg::value_type,
           typename RightArg::value_type>::type value_type;
       typedef typename DenseStorage<value_type>::const_reference const_reference;
@@ -78,18 +78,16 @@ namespace TiledArray {
       ContractionTensor(typename TensorArg<left_tensor_type>::type left, typename TensorArg<right_tensor_type>::type right, const std::shared_ptr<contract_type>& c) :
         left_(left),
         right_(right),
-        size_(constract_size(left.size(), right.size(), c), left.order()),
+        range_(c->contract_range(left.range(), right.range())),
         data_(),
         contraction_(c)
-      {
-        TA_ASSERT(left.order() == right.order());
-      }
+      { }
 
       /// Copy constructor
       ContractionTensor(const ContractionTensor_& other) :
         left_(other.left_),
         right_(other.right_),
-        size_(other.size_),
+        range_(other.range_),
         data_(other.data_),
         contraction_(other.contraction_)
       { }
@@ -108,29 +106,19 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(size() == dest.size());
         std::copy(begin(), end(), dest.begin());
       }
 
-      /// Tensor dimension accessor
+      /// Tensor range object accessor
 
-      /// \return The number of dimensions
-      unsigned int dim() const { return size_.dim(); }
+      /// \return The tensor range object
+      const range_type& range() const { return range_; }
 
-      /// Data ordering
+      /// Tensor size
 
-      /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const { return size_.order(); }
-
-      /// Tensor dimension size accessor
-
-      /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const { return size_.size(); }
-
-      /// Tensor volume
-
-      /// \return The total number of elements in the tensor
-      size_type volume() const { return size_.volume(); }
+      /// \return The number of elements in the tensor
+      size_type size() const { return range_.volume(); }
 
       /// Iterator factory
 
@@ -162,15 +150,6 @@ namespace TiledArray {
       }
 
     private:
-
-
-      template <typename LeftSize, typename RightSize>
-      static size_array constract_size(const LeftSize& left, const RightSize& right, const std::shared_ptr<contract_type>& c) {
-        size_array result(c->dim());
-        c->contract_array(result, left, right);
-        return result;
-      }
-
 
       /// Contract a and b, and place the results into c.
       /// c[m,o,n,p] = a[m,i,n] * b[o,i,p]
@@ -209,18 +188,18 @@ namespace TiledArray {
 
       /// Evaluate the tensor only when the data is needed
       void lazy_eval() const {
-        if(data_.volume() != volume()) {
-          const size_type v = volume();
+        if(data_.size() != size()) {
+          const size_type s = size();
 
           typename contract_type::packed_size_array packed_size =
-              contraction_->pack_arrays(left_.size(), right_.size());
+              contraction_->pack_arrays(left_.range().size(), right_.range().size());
 
           // We need to allocate storage and evaluate
-          storage_type temp(v);
+          storage_type temp(s);
           typename Eval<left_tensor_type>::type left_eval = left_.eval();
           typename Eval<left_tensor_type>::type right_eval = right_.eval();
 
-          if(order() == TiledArray::detail::decreasing_dimension_order) {
+          if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
             typedef Eigen::Matrix< value_type , Eigen::Dynamic , Eigen::Dynamic,
                 Eigen::RowMajor | Eigen::AutoAlign > matrix_type;
             contract<matrix_type>(packed_size[0], packed_size[1], packed_size[2], packed_size[3],
@@ -246,7 +225,7 @@ namespace TiledArray {
 
       typename TensorMem<left_tensor_type>::type left_; ///< Left argument
       typename TensorMem<right_tensor_type>::type right_; ///< Right argument
-      TensorSize size_; ///< Tensor size info
+      range_type range_; ///< Tensor size info
       mutable storage_type data_;
       std::shared_ptr<contract_type> contraction_;
     }; // class ContractionTensor

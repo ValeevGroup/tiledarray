@@ -3,6 +3,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/variable_list.h>
+#include <TiledArray/range.h>
 #include <world/array.h>
 #include <iterator>
 #include <numeric>
@@ -99,12 +100,13 @@ namespace TiledArray {
         for(r = right_[1]; r < right_[2]; ++r) res[i++] = right[r];
       }
 
-      template <typename ResRange, typename LeftRange, typename RightRange>
-      void contract_range(ResRange& res, const LeftRange& left, const RightRange& right) {
-        typename ResRange::index start, finish;
+      template <typename LeftRange, typename RightRange>
+      DynamicRange contract_range(const LeftRange& left, const RightRange& right) {
+        TA_ASSERT(left.order() == right.order());
+        typename DynamicRange::index start(dim_), finish(dim_);
         contract_array(start, left.start(), right.start());
         contract_array(finish, left.finish(), right.finish());
-        res.resize(start, finish);
+        return DynamicRange(start, finish, left.order());
       }
 
       template <typename ResTRange, typename LeftTRange, typename RightTRange>

@@ -53,7 +53,7 @@ namespace TiledArray {
       typedef typename std::iterator_traits<OutIter>::value_type value_type;
 
       for(value_type weight = 1; first != last; ++first, ++result) {
-        *result = weight;
+        *result = (*first != 0ul ? weight : 0);
         weight *= *first;
       }
     }
@@ -113,18 +113,18 @@ namespace TiledArray {
       }
     }
 
-    template <typename Index, typename SizeArray>
-    inline void increment_coordinate(Index& index, const SizeArray& start, const SizeArray& finish, detail::DimensionOrderType order) {
-      if(order == detail::increasing_dimension_order)
-        increment_coordinate_helper(index.begin(), index.end(), start.begin(), finish.begin());
+    template <typename Index, typename RangeType>
+    inline void increment_coordinate(Index& index, const RangeType& range) {
+      if(range.order() == detail::increasing_dimension_order)
+        increment_coordinate_helper(index.begin(), index.end(), range.start().begin(), range.finish().begin());
       else
-        increment_coordinate_helper(index.rbegin(), index.rend(), start.rbegin(), finish.rbegin());
+        increment_coordinate_helper(index.rbegin(), index.rend(), range.start().rbegin(), range.finish().rbegin());
 
 
       // if the current location was set to start then it was at the end and
       // needs to be reset to equal finish.
-      if(std::equal(index.begin(), index.end(), start.begin()))
-        std::copy(finish.begin(), finish.end(), index.begin());
+      if(std::equal(index.begin(), index.end(), range.start().begin()))
+        std::copy(range.finish().begin(), range.finish().end(), index.begin());
     }
 
 
@@ -351,7 +351,7 @@ namespace TiledArray {
     }
 
     void increment(index& i) const {
-      detail::increment_coordinate(i, start(), finish(), order());
+      detail::increment_coordinate(i, *this);
     }
 
     void advance(index& i, std::ptrdiff_t n) const {
@@ -457,6 +457,7 @@ namespace TiledArray {
 
     template <typename D>
     StaticRange_& operator=(const Range<D>& other) {
+      TA_ASSERT(dim() == other.dim());
       std::copy(other.start().begin(), other.start().end(), start_.begin());
       std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
       std::copy(other.size().begin(), other.size().end(), size_.begin());
@@ -677,6 +678,12 @@ namespace TiledArray {
 
     template <typename D>
     DynamicRange_& operator=(const Range<D>& other) {
+      if(dim() != other.dim()) {
+        start_.resize(other.dim());
+        finish_.resize(other.dim());
+        size_.resize(other.dim());
+        weight_.resize(other.dim());
+      }
       std::copy(other.start().begin(), other.start().end(), start_.begin());
       std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
       std::copy(other.size().begin(), other.size().end(), size_.begin());
@@ -699,11 +706,6 @@ namespace TiledArray {
     const size_array& size() const { return size_; } // no throw
 
     const size_array& weight() const { return weight_; } // no throw
-
-    /// Returns the number of elements in the range.
-    volume_type volume() const {
-      return detail::calc_volume(size_);
-    }
 
     template <typename Archive>
     void serialize(const Archive& ar) {

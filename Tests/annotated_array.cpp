@@ -37,10 +37,8 @@ BOOST_FIXTURE_TEST_SUITE( annotated_array_suite , AnnotatedArrayFixture )
 
 BOOST_AUTO_TEST_CASE( range_accessor )
 {
-  BOOST_CHECK(aa.dim() == GlobalFixture::coordinate_system::dim);
-  BOOST_CHECK(aa.order() == GlobalFixture::coordinate_system::order);
-  BOOST_CHECK_EQUAL_COLLECTIONS(aa.size().begin(), aa.size().end(), a.size().begin(), a.size().end());
-  BOOST_CHECK_EQUAL(aa.volume(), a.volume());
+  BOOST_CHECK(aa.range() == a.range());
+  BOOST_CHECK_EQUAL(aa.size(), a.size());
 }
 
 BOOST_AUTO_TEST_CASE( vars_accessor )
@@ -69,16 +67,16 @@ BOOST_AUTO_TEST_CASE( constructors )
   array_annotation at1(a, vars);
   BOOST_CHECK(at1.begin().base() == a.begin());
   BOOST_CHECK(at1.end().base() == a.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(at1.size().begin(), at1.size().end(), a.size().begin(), a.size().end());
-  BOOST_CHECK_EQUAL(at1.volume(), r.volume());
+  BOOST_CHECK_EQUAL(at1.range(), a.range());
+  BOOST_CHECK_EQUAL(at1.size(), r.volume());
   BOOST_CHECK_EQUAL(at1.vars(), vars);
 
   BOOST_REQUIRE_NO_THROW(array_annotation at2(aa));
   array_annotation at2(aa);
   BOOST_CHECK(at2.begin().base() == a.begin());
   BOOST_CHECK(at2.end().base() == a.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(at2.size().begin(), at2.size().end(), a.size().begin(), a.size().end());
-  BOOST_CHECK_EQUAL(at2.volume(), a.volume());
+  BOOST_CHECK_EQUAL(at2.range(), a.range());
+  BOOST_CHECK_EQUAL(at2.size(), a.size());
   BOOST_CHECK_EQUAL(at2.vars(), vars);
 
 }

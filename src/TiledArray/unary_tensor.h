@@ -15,7 +15,7 @@ namespace TiledArray {
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTensor<Arg, Op> > {
       typedef typename Arg::size_type size_type;
-      typedef typename Arg::size_array size_array;
+      typedef typename Arg::range_type range_type;
       typedef typename madness::detail::result_of<Op>::type value_type;
       typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
           Op> const_iterator; ///< Tensor const iterator
@@ -67,8 +67,8 @@ namespace TiledArray {
 
       /// \return An evaluated tensor object
       EvalTensor<value_type> eval() const {
-        typename EvalTensor<value_type>::storage_type data(volume(), begin());
-        return EvalTensor<value_type>(size(), order(), data);
+        typename EvalTensor<value_type>::storage_type data(size(), begin());
+        return EvalTensor<value_type>(range(), data);
       }
 
       /// Evaluate this tensor and store the results in \c dest
@@ -77,37 +77,19 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(volume() == dest.volume());
+        TA_ASSERT(size() == dest.size());
         std::copy(begin(), end(), dest.begin());
       }
 
-      /// Tensor dimension accessor
+      /// Tensor range object accessor
 
-      /// \return The number of dimensions
-      unsigned int dim() const {
-        return arg_.dim();
-      }
+      /// \return The tensor range object
+      const range_type& range() const { return arg_.range(); }
 
-      /// Data ordering
+      /// Tensor size
 
-      /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const {
-        return arg_.order();
-      }
-
-      /// Tensor dimension size accessor
-
-      /// \return An array that contains the sizes of each tensor dimension
-      const size_array& size() const {
-        return arg_.size();
-      }
-
-      /// Tensor volume
-
-      /// \return The total number of elements in the tensor
-      size_type volume() const {
-        return arg_.volume();
-      }
+      /// \return The number of elements in the tensor
+      size_type size() const { return arg_.size(); }
 
       /// Iterator factory
 

@@ -45,10 +45,8 @@ BOOST_FIXTURE_TEST_SUITE( unary_tensor_suite , UnaryTensorFixture )
 
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
-  BOOST_CHECK_EQUAL(ut.dim(), t.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(ut.size().begin(), ut.size().end(), t.size().begin(), t.size().end());
-  BOOST_CHECK_EQUAL(ut.volume(), t.volume());
-  BOOST_CHECK_EQUAL(ut.order(), t.order());
+  BOOST_CHECK_EQUAL(ut.range(), t.range());
+  BOOST_CHECK_EQUAL(ut.size(), t.size());
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -60,27 +58,23 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(UnaryT x(t, op));
     UnaryT x(t, op);
-    BOOST_CHECK_EQUAL(x.dim(), t.dim());
-    BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), t.size().begin(), t.size().end());
-    BOOST_CHECK_EQUAL(x.volume(), t.volume());
-    BOOST_CHECK_EQUAL(x.order(), t.order());
+    BOOST_CHECK_EQUAL(x.range(), t.range());
+    BOOST_CHECK_EQUAL(x.size(), t.size());
   }
 
   // test copy constructor
   {
     BOOST_REQUIRE_NO_THROW(UnaryT x(ut));
     UnaryT x(ut);
-    BOOST_CHECK_EQUAL(x.dim(), t.dim());
-    BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), t.size().begin(), t.size().end());
-    BOOST_CHECK_EQUAL(x.volume(), t.volume());
-    BOOST_CHECK_EQUAL(x.order(), t.order());
+    BOOST_CHECK_EQUAL(x.range(), t.range());
+    BOOST_CHECK_EQUAL(x.size(), t.size());
   }
 }
 
 BOOST_AUTO_TEST_CASE( element_accessor )
 {
 
-  for(UnaryT::size_type i = 0; i < ut.volume(); ++i) {
+  for(UnaryT::size_type i = 0; i < ut.size(); ++i) {
     // Check that each element is correct
     BOOST_CHECK_EQUAL(ut[i], op(t[i]));
   }

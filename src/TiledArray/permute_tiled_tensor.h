@@ -37,8 +37,8 @@ namespace TiledArray {
 
     template <typename Arg, unsigned int DIM>
     struct TensorTraits<PermuteTiledTensor<Arg, DIM> > {
-      typedef typename TensorSize::size_type size_type;
-      typedef typename TensorSize::size_array size_array;
+      typedef typename Arg::size_type size_type;
+      typedef typename Arg::range_type range_type;
       typedef typename Arg::trange_type trange_type;
       typedef PermuteTensor<typename Arg::value_type, DIM> value_type;
       typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
@@ -98,14 +98,14 @@ namespace TiledArray {
       PermuteTiledTensor(const arg_tensor_type& arg, const perm_type& p) :
           perm_(p),
           arg_(arg),
-          size_(permute_size(p, arg.size()), arg.order()),
+          range_(p ^ arg.range()),
           trange_(p ^ arg.trange()),
           shape_((arg_.is_dense() ? arg_.volume() : 0)),
           data_(arg.get_world(), arg.volume(), arg.get_pmap(), false)
       {
         // Initialize the shape
         if(! arg_.is_dense()) {
-          if(order() == TiledArray::detail::decreasing_dimension_order) {
+          if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
             typedef CoordinateSystem<DIM, 0ul, TiledArray::detail::decreasing_dimension_order, size_type> cs;
             init_shape<cs>().get();
           } else {
@@ -128,7 +128,7 @@ namespace TiledArray {
       PermuteTiledTensor(const PermuteTiledTensor_& other) :
         perm_(other.perm_),
         arg_(other.arg_),
-        size_(other.size_),
+        range_(other.range_),
         trange_(other.trange_),
         shape_(other.shape_),
         data_(other.get_world(), other.volume(), other.get_pmap(), false)
@@ -148,7 +148,7 @@ namespace TiledArray {
       /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(dim() == dest.dim());
+        TA_ASSERT(range_.dim() == dest.range().dim());
         TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
 
         // Add result tiles to dest and wait for all tiles to be added.
@@ -159,26 +159,15 @@ namespace TiledArray {
       }
 
 
-      /// Tensor dimension accessor
+      /// The tile tensor range object accessor
 
-      /// \return The number of dimension in the tensor
-      unsigned int dim() const { return size_.dim(); }
-
-
-      /// Tensor data and tile ordering accessor
-
-      /// \return The tensor data and tile ordering
-      TiledArray::detail::DimensionOrderType order() const { return size_.order(); }
-
-      /// Tensor tile size array accessor
-
-      /// \return The size array of the tensor tiles
-      const size_array& size() const { return size_.size(); }
+      /// \return The tensor range object
+      const range_type& range() const { return range_; }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type volume() const { return size_.volume(); }
+      size_type size() const { return range_.size(); }
 
       /// Query a tile owner
 
@@ -252,20 +241,6 @@ namespace TiledArray {
 
     private:
 
-      /// Make a permuted size array
-
-      /// \tparam SizeArray The input size array type
-      /// \param p The permutation that will be used to permute \c s
-      /// \param s The size array to be permuted
-      /// \return A permuted copy of \c s
-      template <typename SizeArray>
-      static size_array permute_size(const perm_type& p, const SizeArray& s) {
-        size_array result(DIM);
-        TiledArray::detail::permute_array(p.begin(), p.end(), s.begin(), result.begin());
-        return result;
-      }
-
-
       template <typename CS>
       struct init_shape_helper {
 
@@ -309,7 +284,7 @@ namespace TiledArray {
 
       perm_type perm_; ///< Transform operation
       arg_tensor_type arg_; ///< Argument
-      TensorSize size_; ///< Tensor size info
+      range_type range_; ///< Tensor size info
       trange_type trange_; ///< Tensor tiled range
       TiledArray::detail::Bitset<> shape_;
       mutable storage_type data_; ///< Tile container

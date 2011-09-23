@@ -38,10 +38,7 @@
     inline madness::World& get_world() const { return base::get_world(); } \
     inline std::shared_ptr<pmap_interface> get_pmap() const { return base::get_pmap(); } \
     inline bool is_dense() const { return base::is_dense(); } \
-    inline const TiledArray::detail::Bitset<>& get_shape() const { return base::get_shape(); } \
-    inline size_array size(size_type i) const { return base::size(i); } \
-    inline size_type volume(size_type i) const { return base::volume(i); } \
-    inline trange_type trange() const { return base::trange(); }
+    inline const TiledArray::detail::Bitset<>& get_shape() const { return base::get_shape(); }
 
 #define TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \

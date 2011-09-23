@@ -38,7 +38,7 @@ namespace TiledArray {
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTiledTensor<Arg, Op> > {
       typedef typename Arg::size_type size_type;
-      typedef typename Arg::size_array size_array;
+      typedef typename Arg::range_type range_type;
       typedef typename Arg::trange_type trange_type;
       typedef UnaryTensor<typename Arg::value_type, Op> value_type;
       typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
@@ -101,8 +101,7 @@ namespace TiledArray {
       /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(dim() == dest.dim());
-        TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
+        TA_ASSERT(range() == dest.range());
 
         // Add result tiles to dest and wait for all tiles to be added.
         madness::Future<bool> done =
@@ -111,27 +110,15 @@ namespace TiledArray {
         done.get();
       }
 
-
-      /// Tensor dimension accessor
-
-      /// \return The number of dimension in the tensor
-      unsigned int dim() const { return arg_.dim(); }
-
-
-      /// Tensor data and tile ordering accessor
-
-      /// \return The tensor data and tile ordering
-      TiledArray::detail::DimensionOrderType order() const { return arg_.order(); }
-
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
-      const size_array& size() const { return arg_.range().size(); }
+      const range_type& range() const { return arg_.range(); }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type volume() const { return arg_.range().volume(); }
+      size_type size() const { return arg_.size(); }
 
       /// Query a tile owner
 

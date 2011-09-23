@@ -60,14 +60,14 @@ BOOST_FIXTURE_TEST_SUITE( contraction_tensor_suite , ContractionTensorFixture )
 
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
-  BOOST_CHECK_EQUAL(ct.dim(), 2u);
-  BOOST_CHECK_EQUAL(ct.size().front(), t2.size().front());
-  BOOST_CHECK_EQUAL(ct.size().back(), t3.size().back());
+  BOOST_CHECK_EQUAL(ct.range().dim(), 2u);
+  BOOST_CHECK_EQUAL(ct.range().size().front(), t2.range().size().front());
+  BOOST_CHECK_EQUAL(ct.range().size().back(), t3.range().size().back());
 
   const std::size_t I = std::accumulate(t2.range().finish().begin() + 1,
       t2.range().finish().end(), 1, std::multiplies<int>());
-  BOOST_CHECK_EQUAL(ct.volume(), I);
-  BOOST_CHECK_EQUAL(ct.order(), t2.order());
+  BOOST_CHECK_EQUAL(ct.size(), I);
+  BOOST_CHECK_EQUAL(ct.range().order(), t2.range().order());
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -79,33 +79,34 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(ContT x(t2, t3, cont));
     ContT x(t2, t3, cont);
-    BOOST_CHECK_EQUAL(x.dim(), 2u);
-    BOOST_CHECK_EQUAL(x.size().front(), t2.size().front());
-    BOOST_CHECK_EQUAL(x.size().back(), t3.size().back());
+    BOOST_CHECK_EQUAL(x.range().dim(), 2u);
+    BOOST_CHECK_EQUAL(x.range().size().front(), t2.range().size().front());
+    BOOST_CHECK_EQUAL(x.range().size().back(), t3.range().size().back());
     const std::size_t I = std::accumulate(t2.range().finish().begin() + 1,
         t2.range().finish().end(), 1, std::multiplies<int>());
-    BOOST_CHECK_EQUAL(x.volume(), I);
-    BOOST_CHECK_EQUAL(x.order(), t2.order());
+    BOOST_CHECK_EQUAL(x.size(), I);
+    BOOST_CHECK_EQUAL(x.range().order(), t2.range().order());
   }
 
   // test copy constructor
   {
     BOOST_REQUIRE_NO_THROW(ContT x(ct));
     ContT x(ct);
-    BOOST_CHECK_EQUAL(x.dim(), ct.dim());
-    BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), ct.size().begin(), ct.size().end());
-    BOOST_CHECK_EQUAL(x.volume(), ct.volume());
-    BOOST_CHECK_EQUAL(x.order(), ct.order());
+    BOOST_CHECK_EQUAL(x.range().dim(), ct.range().dim());
+    BOOST_CHECK_EQUAL_COLLECTIONS(x.range().size().begin(), x.range().size().end(),
+        ct.range().size().begin(), ct.range().size().end());
+    BOOST_CHECK_EQUAL(x.size(), ct.size());
+    BOOST_CHECK_EQUAL(x.range().order(), ct.range().order());
   }
 }
 
 BOOST_AUTO_TEST_CASE( contraction )
 {
   // Calculate the dimensions of the packed contraction
-  const int M = t2.size().front();
-  const int N = t3.size().back();
-  const int I = std::accumulate(t2.size().begin() + 1,
-      t2.size().end(), 1, std::multiplies<int>());
+  const int M = t2.range().size().front();
+  const int N = t3.range().size().back();
+  const int I = std::accumulate(t2.range().size().begin() + 1,
+      t2.range().size().end(), 1, std::multiplies<int>());
 
   // Construct matrixes that match the packed dimensions of the to tiles.
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m2(M, I);
@@ -123,7 +124,7 @@ BOOST_AUTO_TEST_CASE( contraction )
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> mc = m2 * m3;
 
 
-  for(ContT::size_type i = 0; i < ct.volume(); ++i) {
+  for(ContT::size_type i = 0; i < ct.size(); ++i) {
     // Check that each element is correct
     BOOST_CHECK_EQUAL(ct[i], mc(0,0));
   }
