@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( element_accessor )
 
 BOOST_AUTO_TEST_CASE( iterator )
 {
-  range_type::const_iterator rit = t.range().begin();
+  range_type::const_iterator rit = pt.range().begin();
   for(PermT::const_iterator it = pt.begin(); it != pt.end(); ++it, ++rit) {
     // Check that iteration works correctly
     BOOST_CHECK_EQUAL(*it, t[-p ^ *rit]);
