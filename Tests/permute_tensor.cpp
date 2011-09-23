@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(PermT x(t,p));
     PermT x(t,p);
-    BOOST_CHECK_EQUAL(x.range(), t.range());
+    BOOST_CHECK_EQUAL(x.range(), p ^ t.range());
     BOOST_CHECK_EQUAL(x.size(), t.size());
   }
 
@@ -91,21 +91,16 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(PermT x(pt));
     PermT x(pt);
-    BOOST_CHECK_EQUAL(x.range(), t.range());
+    BOOST_CHECK_EQUAL(x.range(), p ^ t.range());
     BOOST_CHECK_EQUAL(x.size(), t.size());
   }
 }
 
 BOOST_AUTO_TEST_CASE( element_accessor )
 {
-  index i;
-  range_type pr = p ^ t.range();
-
   for(range_type::const_iterator it = t.range().begin(); it != t.range().end(); ++it) {
-    i = p ^ *it;
-
     // Check that each element is correct
-    BOOST_CHECK_EQUAL(pt[pr.ord(i)], t[*it]);
+    BOOST_CHECK_EQUAL(pt[pt.range().ord(p ^ *it)], t[*it]);
   }
 }
 
