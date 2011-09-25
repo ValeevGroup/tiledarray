@@ -15,10 +15,9 @@ namespace TiledArray {
     /// A utility class for contraction operations.
 
     /// \param I The index type
-    template<typename I>
     class Contraction {
     public:
-      typedef std::array<I, 5> packed_size_array;
+      typedef std::array<std::size_t, 5> packed_size_array;
 
       Contraction(const expressions::VariableList& left,
           const expressions::VariableList& right)
@@ -42,9 +41,7 @@ namespace TiledArray {
         dim_ = left_[2] - left_[1] + left_[0] + right_[2] - right_[1] + right_[0];
       }
 
-      I dim() const {
-        return dim_;
-      }
+      unsigned int dim() const { return dim_; }
 
       template <typename LeftArray, typename RightArray>
       packed_size_array pack_arrays(const LeftArray& left, const RightArray& right) {
@@ -68,15 +65,15 @@ namespace TiledArray {
         typename RightArray::const_iterator r3 = right.end();
 
         // Make accumulator operation object
-        std::multiplies<I> acc_op;
+        std::multiplies<std::size_t> acc_op;
 
         // Calculate packed dimensions.
         packed_size_array result = {{
-            std::accumulate(l0, l1, I(1), acc_op),
-            std::accumulate(l2, l3, I(1), acc_op),
-            std::accumulate(r0, r1, I(1), acc_op),
-            std::accumulate(r2, r3, I(1), acc_op),
-            std::accumulate(l1, l2, I(1), acc_op)
+            std::accumulate(l0, l1, 1ul, acc_op),
+            std::accumulate(l2, l3, 1ul, acc_op),
+            std::accumulate(r0, r1, 1ul, acc_op),
+            std::accumulate(r2, r3, 1ul, acc_op),
+            std::accumulate(l1, l2, 1ul, acc_op)
           }};
 
         return result;
@@ -123,7 +120,7 @@ namespace TiledArray {
 
       pack_boundary_array left_;
       pack_boundary_array right_;
-      I dim_;
+      unsigned int dim_;
     }; // class Contraction
 
   } // namespace math
