@@ -231,6 +231,28 @@ namespace TiledArray {
     }; // class ContractionTensor
 
   } // namespace expressions
+
+
+
+  namespace math {
+
+    // This function needs to be here to break cyclic dependencies.
+    template <typename LeftTensor, typename RightTensor>
+    inline detail::Bitset<> Contraction::contract_shape(const LeftTensor& left, const RightTensor& right) {
+      typedef expressions::EvalTensor<TiledArray::detail::Bitset<>::value_type > eval_tensor;
+      eval_tensor left_map(left.range(), left.get_shape().begin());
+      eval_tensor right_map(right.range(), right.get_shape().begin());
+
+      expressions::ContractionTensor<eval_tensor, eval_tensor>
+      contract_tensor(left_map, right_map,
+          std::shared_ptr<Contraction>(this, & madness::detail::no_delete<Contraction>));
+
+      return detail::Bitset<>(contract_tensor.begin(), contract_tensor.end());
+    }
+
+  } // namespace math
+
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_CONTRACTION_TENSOR_H__INCLUDED

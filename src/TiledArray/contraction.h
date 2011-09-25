@@ -4,6 +4,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/variable_list.h>
 #include <TiledArray/range.h>
+#include <TiledArray/bitset.h>
 #include <world/array.h>
 #include <iterator>
 #include <numeric>
@@ -112,6 +113,10 @@ namespace TiledArray {
         contract_array(ranges, left.data(), right.data());
         res.resize(ranges.begin(), ranges.end());
       }
+
+      // Definition is in contraction_tensor.h
+      template <typename LeftTensor, typename RightTensor>
+      inline detail::Bitset<> contract_shape(const LeftTensor& left, const RightTensor& right);
 
     private:
 
