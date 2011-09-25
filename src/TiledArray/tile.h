@@ -89,12 +89,9 @@ namespace TiledArray {
 
       /// \param other The tile to be copied.
       template <typename Derived>
-      Tile(const TensorBase<Derived>& other) :
-          range_(other.range()), data_()
-      {
-        storage_type(size()).swap(data_);
-        other.eval_to(data_);
-      }
+      Tile(const ReadableTensor<Derived>& other) :
+          range_(other.range()), data_(other.size(), other.begin())
+      { }
 
       /// Copy constructor
 
