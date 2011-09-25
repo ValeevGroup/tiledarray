@@ -64,12 +64,18 @@ namespace TiledArray {
       { }
 
       /// Construct an evaluated tensor
-      template <typename D>
-      EvalTensor(const Range<D>& r, storage_type& d) :
-        range_(r), data_()
-      {
-        data_.swap(d);
-      }
+      template <typename D, typename InIter>
+      EvalTensor(const Range<D>& r, InIter it) :
+        range_(r), data_(r.volume(), it)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The tile to be copied.
+      template <typename Derived>
+      EvalTensor(const ReadableTensor<Derived>& other) :
+          range_(other.range()), data_(other.size(), other.begin())
+      { }
 
     private:
       // not allowed
