@@ -31,31 +31,25 @@
       typedef typename base::pointer pointer;
 
 #define TILEDARRAY_TENSOR_BASE_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    DERIVED& derived() { return base::derived(); } \
-    const DERIVED& derived() const { return base::derived(); } \
-    const range_type& range() const { return base::range(); } \
-    size_type size() const { return base::range().volume(); }
+    using base::derived; \
+    using base::range; \
+    using base::size;
 
 #define TILEDARRAY_READABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TENSOR_BASE_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    const_reference operator[](size_type i) const { return base::operator[](i); } \
-    const_iterator begin() const { return base::begin(); } \
-    const_iterator end() const { return base::end(); }
+    using base::operator[]; \
+    using base::begin; \
+    using base::end;
 
 #define TILEDARRAY_WRITABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    reference operator[](size_type i) { return base::operator[](i); } \
-    iterator begin() { return base::begin(); } \
-    iterator end() { return base::end(); }
+    TILEDARRAY_READABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED )
 
 #define TILEDARRAY_DIRECT_READABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_READABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    const_pointer data() const { return base::data(); }
+    using base::data;
 
 #define TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_WRITABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    const_pointer data() const { return base::data(); } \
-    pointer data() { return base::data(); }
+    TILEDARRAY_WRITABLE_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED )
 
 namespace madness {
   class TaskInterface;
