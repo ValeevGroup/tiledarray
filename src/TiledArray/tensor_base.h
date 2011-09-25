@@ -75,7 +75,7 @@ namespace TiledArray {
     template <typename Derived>
     class TensorBase {
     public:
-      typedef typename TensorTraits<Derived>::size_type size_type;
+      typedef std::size_t size_type;
       typedef typename TensorTraits<Derived>::range_type range_type;
 
       // Access this object type
