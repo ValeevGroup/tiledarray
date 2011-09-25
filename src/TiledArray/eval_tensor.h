@@ -16,7 +16,6 @@ namespace TiledArray {
     template <typename T, typename A>
     struct TensorTraits<EvalTensor<T, A> > {
       typedef DenseStorage<T,A> storage_type;
-      typedef std::size_t size_type;
       typedef DynamicRange range_type;
       typedef typename storage_type::value_type value_type;
       typedef typename storage_type::reference reference;

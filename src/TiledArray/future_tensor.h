@@ -11,7 +11,6 @@ namespace TiledArray {
 
     template <typename T>
     struct TensorTraits<FutureTensor<T> > {
-      typedef typename T::size_type size_type;
       typedef typename T::range_type range_type;
       typedef typename T::value_type value_type;
       typedef typename T::const_iterator const_iterator;

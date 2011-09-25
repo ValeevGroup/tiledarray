@@ -22,7 +22,6 @@ namespace TiledArray {
     template <typename T, typename CS, typename A>
     struct TensorTraits<Tile<T,CS,A> > {
       typedef DenseStorage<T,A> storage_type;
-      typedef typename CS::volume_type size_type;
       typedef StaticRange<CS> range_type;
       typedef typename storage_type::value_type value_type;
       typedef typename storage_type::reference reference;

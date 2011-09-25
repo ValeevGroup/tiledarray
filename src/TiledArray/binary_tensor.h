@@ -19,7 +19,6 @@ namespace TiledArray {
 
     template <typename LeftArg, typename RightArg, typename Op>
     struct TensorTraits<BinaryTensor<LeftArg, RightArg, Op> > {
-      typedef typename LeftArg::size_type size_type;
       typedef typename LeftArg::range_type range_type;
       typedef typename madness::detail::result_of<Op>::type value_type;
       typedef TiledArray::detail::BinaryTransformIterator<typename LeftArg::const_iterator,

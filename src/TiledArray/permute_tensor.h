@@ -15,7 +15,6 @@ namespace TiledArray {
 
     template <typename Arg, unsigned int DIM>
     struct TensorTraits<PermuteTensor<Arg, DIM> > {
-      typedef typename Arg::size_type size_type;
       typedef typename Arg::range_type range_type;
       typedef typename Arg::value_type value_type;
       typedef typename DenseStorage<value_type>::const_reference const_reference;

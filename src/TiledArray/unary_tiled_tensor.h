@@ -37,7 +37,6 @@ namespace TiledArray {
 
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTiledTensor<Arg, Op> > {
-      typedef typename Arg::size_type size_type;
       typedef typename Arg::range_type range_type;
       typedef typename Arg::trange_type trange_type;
       typedef UnaryTensor<typename Arg::value_type, Op> value_type;
