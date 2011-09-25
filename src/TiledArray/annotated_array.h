@@ -29,7 +29,6 @@ namespace TiledArray {
 
     template <typename T>
     struct TensorTraits<AnnotatedArray<T> > {
-      typedef typename T::size_type size_type;
       typedef typename T::range_type range_type;
       typedef typename T::trange_type trange_type;
       typedef FutureTensor<typename T::value_type> value_type;
