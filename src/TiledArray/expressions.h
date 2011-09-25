@@ -9,6 +9,7 @@
 #include <TiledArray/unary_tiled_tensor.h>
 #include <TiledArray/permute_tiled_tensor.h>
 #include <TiledArray/binary_tiled_tensor.h>
+#include <TiledArray/contraction_tiled_tensor.h>
 #include <TiledArray/type_traits.h>
 
 namespace TiledArray {
