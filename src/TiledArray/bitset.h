@@ -2,9 +2,12 @@
 #define TILEDARRAY_BITSET_H__INCLUDED
 
 #include <TiledArray/error.h>
-
+#include <TiledArray/transform_iterator.h>
+#include <boost/dynamic_bitset.hpp>
 namespace TiledArray {
   namespace detail {
+
+
 
     /// Fixed size bitset
 
@@ -21,14 +24,116 @@ namespace TiledArray {
       static const std::size_t block_bits; ///< The number of bits in a block
 
     public:
+
+      class reference {
+
+        friend class Bitset<Block>;
+
+        reference(Block& block, Block mask) :
+          block_(block), mask_(mask)
+        { }
+
+        // Not allowed
+        void operator&();
+
+      public:
+
+        reference& operator=(bool value) {
+          assign(value);
+          return *this;
+        }
+
+        reference& operator=(const reference& other) {
+          assign(other);
+          return *this;
+        }
+
+        reference& operator|=(bool value) {
+          if(value)
+            set();
+          return *this;
+        }
+
+        reference& operator&=(bool value) {
+          if(!value) reset();
+          return *this;
+        }
+
+        reference& operator^=(bool value) {
+          if(value) flip();
+          return *this;
+        }
+
+        reference& operator-=(bool value) {
+          if(value) reset();
+          return *this;
+        }
+
+        operator bool() const { return block_ & mask_; }
+
+        bool operator~() const { return !(block_ & mask_); }
+
+        reference& flip() {
+          block_ ^= mask_;
+          return *this;
+        }
+
+     private:
+
+        void assign(bool value) {
+          if(value)
+            set();
+          else
+            reset();
+        }
+
+        void set() { block_ |= mask_; }
+
+        void reset() { block_ &= ~mask_; }
+
+        Block& block_;
+        const Block mask_;
+      }; // class reference
+
+    private:
+
+      class ConstTransformOp {
+      public:
+        typedef std::size_t argument_type;
+        typedef Block result_type;
+
+        ConstTransformOp(const Bitset<Block>& bitset) : bitset_(bitset) { }
+
+        Block operator()(std::size_t i) const { return bitset_[i]; }
+
+      private:
+        const Bitset<Block>& bitset_;
+      }; // class ConstTransformOp
+
+      class TransformOp {
+      public:
+        typedef std::size_t argument_type;
+        typedef reference result_type;
+
+        TransformOp(const Bitset<Block>& bitset) : bitset_(bitset) { }
+        reference operator()(std::size_t i) const { return const_cast<Bitset<Block>&>(bitset_)[i]; }
+      private:
+        const Bitset<Block>& bitset_;
+      }; // class TransformOp
+
+    public:
       typedef Block block_type;     ///< The type used to store the data
-      typedef bool const_reference; ///< Constant reference to a bit
+      typedef Block value_type;
+      typedef Block const_reference; ///< Constant reference to a bit
+      typedef std::size_t size_type;
+      typedef UnaryTransformIterator<Block, ConstTransformOp> const_iterator;
+      typedef UnaryTransformIterator<Block, TransformOp> iterator;
 
       /// Construct a bitset that contains \c s bits.
 
       /// \param s The number of bits
       /// \throw std::bad_alloc If bitset allocation fails.
-      Bitset(std::size_t s) :
+      Bitset(size_type s) :
           size_(s),
           blocks_((size_ / block_bits) + (size_ % block_bits ? 1 : 0)),
           set_((size_ ? new block_type[blocks_] : NULL))
@@ -49,7 +154,7 @@ namespace TiledArray {
         // Initialize to zero
         std::fill_n(set_, blocks_, block_type(0));
 
-        for(std::size_t i = 0; first != last; ++i, ++first)
+        for(size_type i = 0; first != last; ++i, ++first)
           if(*first)
             set(i);
       }
@@ -89,7 +194,7 @@ namespace TiledArray {
       /// \throw std::range_error If the bitset sizes are not equal.
       Bitset<Block>& operator|=(const Bitset<Block>& other) {
         TA_ASSERT(size_ == other.size_);
-        for(std::size_t i = 0; i < blocks_; ++i)
+        for(size_type i = 0; i < blocks_; ++i)
           set_[i] |= other.set_[i];
 
         return *this;
@@ -102,7 +207,7 @@ namespace TiledArray {
       /// \throw std::range_error If the bitset sizes are not equal.
       Bitset<Block>& operator&=(const Bitset<Block>& other) {
         TA_ASSERT(size_ == other.size_);
-        for(std::size_t i = 0; i < blocks_; ++i)
+        for(size_type i = 0; i < blocks_; ++i)
           set_[i] &= other.set_[i];
 
         return *this;
@@ -116,7 +221,7 @@ namespace TiledArray {
       /// \throw std::range_error If the bitset sizes are not equal.
       Bitset<Block>& operator^=(const Bitset<Block>& other) {
         TA_ASSERT(size_ == other.size_);
-        for(std::size_t i = 0; i < blocks_; ++i)
+        for(size_type i = 0; i < blocks_; ++i)
           set_[i] ^= other.set_[i];
 
         return *this;
@@ -127,9 +232,30 @@ namespace TiledArray {
       /// \param i The bit to access
       /// \return The value of i-th bit of the bit set
       /// \throw std::out_of_range If \c i is greater than or equal to the size
-      const_reference operator[](std::size_t i) const {
+      const_reference operator[](size_type i) const {
         TA_ASSERT(i < size_);
         return mask(i) & set_[block_index(i)];
+      }
+
+      reference operator[](size_type i) {
+        TA_ASSERT(i < size_);
+        return reference(set_[block_index(i)], mask(i));
+      }
+
+      const_iterator begin() const {
+        return const_iterator(0, ConstTransformOp(*this));
+      }
+
+      iterator begin() {
+        return const_iterator(0, TransformOp(*this));
+      }
+
+      const_iterator end() const {
+        return const_iterator(size_, ConstTransformOp(*this));
+      }
+
+      iterator end() {
+        return const_iterator(size_, TransformOp(*this));
       }
 
       /// Set a bit value
@@ -137,7 +263,7 @@ namespace TiledArray {
       /// \param i The bit to be set
       /// \param value The new value of the bit
       /// \throw std::out_of_range When \c i is >= size.
-      void set(std::size_t i, bool value = true) {
+      void set(size_type i, bool value = true) {
         TA_ASSERT(i < size_);
         if(value)
           set_[block_index(i)] |= mask(i);
@@ -154,7 +280,7 @@ namespace TiledArray {
 
       /// \param i The bit to be reset
       /// \throw std::out_of_range When \c i is >= size.
-      void reset(std::size_t i) {
+      void reset(size_type i) {
         TA_ASSERT(i < size_);
         set_[block_index(i)] &= ~mask(i);
       }
@@ -170,7 +296,7 @@ namespace TiledArray {
 
       /// \param i The bit to be flipped
       /// \throw std::out_of_range When \c i is >= size.
-      void flip(std::size_t i) {
+      void flip(size_type i) {
         TA_ASSERT(i < size_);
         set_[block_index(i)] ^= mask(i);
       }
@@ -179,7 +305,7 @@ namespace TiledArray {
 
       /// \throw nothing
       void flip() {
-        for(std::size_t i = 0; i < blocks_; ++i)
+        for(size_type i = 0; i < blocks_; ++i)
           set_[i] = ~set_[i];
       }
 
@@ -204,13 +330,13 @@ namespace TiledArray {
 
       /// \return Number of bits in the bitset
       /// \throw nothing
-      std::size_t size() const { return size_; }
+      size_type size() const { return size_; }
 
       /// Bitset block size
 
       /// \return Number of block_type elements used to store the bitset array.
       /// \throw nothing
-      std::size_t num_blocks() const { return blocks_; }
+      size_type num_blocks() const { return blocks_; }
 
     private:
 
@@ -218,27 +344,28 @@ namespace TiledArray {
 
       /// \return The block index that contains the i-th bit
       /// \throw nothing
-      static std::size_t block_index(std::size_t i) { return i / block_bits; }
+      static size_type block_index(size_type i) { return i / block_bits; }
 
       /// Calculate the bit index
 
       /// \return The bit index that contains the i-th bit in the block
       /// \throw nothing
-      static std::size_t bit_index(std::size_t i) { return i % block_bits; }
+      static size_type bit_index(size_type i) { return i % block_bits; }
 
       /// Construct a mask
 
       /// \return A \c block_type that contains a single bit "on" bit at the i-th
       /// bit index.
-      static block_type mask(std::size_t i) { return block_type(1) << bit_index(i); }
+      static block_type mask(size_type i) { return block_type(1) << bit_index(i); }
 
-      std::size_t size_;    ///< The number of bits in the set
-      std::size_t blocks_;  ///< The number of blocks used to store the bits
+      size_type size_;    ///< The number of bits in the set
+      size_type blocks_;  ///< The number of blocks used to store the bits
       block_type* set_;     ///< An array that store the bits
     }; // class Bitset
 
     template <typename Block>
-    const std::size_t Bitset<Block>::block_bits = 8 * sizeof(typename Bitset<Block>::block_type);
+    const typename Bitset<Block>::size_type Bitset<Block>::block_bits =
+        8 * sizeof(typename Bitset<Block>::block_type);
 
     /// Bitwise and operator of bitset.
 
