@@ -62,6 +62,11 @@ namespace TiledArray {
       typedef detail::MakeFutTensor<typename T::value_type> transform_op; ///< The tile transform operation type
 
     public:
+
+      using base::get_world;
+      using base::get_remote;
+      using base::process_pending;
+
       /// Constructor
 
       /// \param a A const reference to an array_type object
@@ -69,16 +74,17 @@ namespace TiledArray {
       /// \throw std::runtime_error When the dimensions of the array and
       /// variable list are not equal.
       AnnotatedArray(const array_type& a, const VariableList& v) :
-          array_(a), vars_(v), op_()
+          base(a.get_world()), array_(a), vars_(v), op_()
       {
         TA_ASSERT(array_type::coordinate_system::dim == v.dim());
+        process_pending();
       }
 
       /// Copy constructor
 
       /// \param other The AnnotatedArray to be copied
       AnnotatedArray(const AnnotatedArray_& other) :
-          array_(other.array_), vars_(other.vars_), op_(other.op_)
+          base(other.get_world()), array_(other.array_), vars_(other.vars_), op_(other.op_)
       { }
 
       /// Evaluate tensor
@@ -129,11 +135,6 @@ namespace TiledArray {
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
       bool is_zero(size_type i) const { return array_.is_zero(i); }
-
-      /// World object accessor
-
-      /// \return A reference to the world where tensor lives
-      madness::World& get_world() const { return array_.get_world(); }
 
       /// Tensor process map accessor
 

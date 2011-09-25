@@ -1,7 +1,7 @@
 #ifndef TILEDARRAY_PERMUTE_TILED_TENSOR_H__INCLUDED
 #define TILEDARRAY_PERMUTE_TILED_TENSOR_H__INCLUDED
 
-//#include <TiledArray/annotated_array.h>
+#include <TiledArray/future_tensor.h>
 #include <TiledArray/array_base.h>
 #include <TiledArray/permute_tensor.h>
 #include <TiledArray/distributed_storage.h>
@@ -41,6 +41,7 @@ namespace TiledArray {
       typedef typename Arg::range_type range_type;
       typedef typename Arg::trange_type trange_type;
       typedef PermuteTensor<typename Arg::value_type, DIM> value_type;
+      typedef FutureTensor<EvalTensor<typename value_type::value_type> > remote_type;
       typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
           detail::MakePermuteTensor<typename Arg::value_type, DIM> > const_iterator; ///< Tensor const iterator
       typedef value_type const_reference;
@@ -90,29 +91,24 @@ namespace TiledArray {
 
     public:
 
+      using base::get_world;
+
       /// Construct a permute tiled tensor op
 
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
       PermuteTiledTensor(const arg_tensor_type& arg, const perm_type& p) :
+          base(arg.get_world()),
           perm_(p),
           arg_(arg),
           range_(p ^ arg.range()),
           trange_(p ^ arg.trange()),
-          shape_((arg_.is_dense() ? arg_.volume() : 0)),
-          data_(arg.get_world(), arg.volume(), arg.get_pmap(), false)
+          shape_((arg_.is_dense() ? arg_.size() : 0)),
+          data_(arg.get_world(), arg.size(), arg.get_pmap(), false)
       {
         // Initialize the shape
-        if(! arg_.is_dense()) {
-          if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
-            typedef CoordinateSystem<DIM, 0ul, TiledArray::detail::decreasing_dimension_order, size_type> cs;
-            init_shape<cs>().get();
-          } else {
-            typedef CoordinateSystem<DIM, 0ul, TiledArray::detail::increasing_dimension_order, size_type> cs;
-            init_shape<cs>().get();
-          }
-        }
+        init_shape();
 
         // Initialize the tiles
         // Add result tiles to dest and wait for all tiles to be added.
@@ -126,15 +122,14 @@ namespace TiledArray {
 
       /// \param other The unary tensor to be copied
       PermuteTiledTensor(const PermuteTiledTensor_& other) :
+        base(other.get_world()),
         perm_(other.perm_),
         arg_(other.arg_),
         range_(other.range_),
         trange_(other.trange_),
         shape_(other.shape_),
         data_(other.get_world(), other.volume(), other.get_pmap(), false)
-      {
-
-      }
+      { }
 
 
       /// Evaluate tensor
@@ -193,11 +188,6 @@ namespace TiledArray {
         return shape_[i];
       }
 
-      /// World object accessor
-
-      /// \return A reference to the world where tensor lives
-      madness::World& get_world() const { return arg_.get_world(); }
-
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
@@ -218,12 +208,23 @@ namespace TiledArray {
       /// \return The tiled range of the tensor
       trange_type trange() const { return trange_; }
 
-      /// Tile accessor
+      /// Local tile accessor
 
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference operator[](size_type i) const { return data_[i]; }
+      const_reference get_local(size_type i) const {
+        TA_ASSERT(is_local(i));
+        return data_[i].get();
+      }
 
+      /// Local tile accessor
+
+      /// \param i The tile index
+      /// \return Tile \c i
+      remote_type get_remote(size_type i) const {
+        TA_ASSERT(! is_local(i));
+        return remote_type(data_[i]);
+      }
 
       /// Array begin iterator
 
@@ -241,45 +242,66 @@ namespace TiledArray {
 
     private:
 
-      template <typename CS>
-      struct init_shape_helper {
+//      template <typename CS>
+//      struct init_shape_helper {
+//
+//        static const TiledArray::detail::Bitset<>::block_type count =
+//            8 * sizeof(TiledArray::detail::Bitset<>::block_type);
+//
+//        init_shape_helper(arg_tensor_type& arg, TiledArray::detail::Bitset<>& shape, const typename CS::size_array& invp_weight) :
+//            arg_(arg), shape_(shape), invp_weight_(invp_weight)
+//        { }
+//
+//
+//
+//        bool operator() (std::size_t b) {
+//          if(arg_.get_shape().get()[b]) {
+//
+//            typename CS::index index(0);
+//            const typename CS::index start(0);
+//
+//            std::size_t first = b * count;
+//            const std::size_t last = first + count;
+//            for(; first < last; ++first, CS::increment_coordinate(index, start, arg_.size()))
+//              if(arg_.get_shape()[first])
+//                shape_.set(CS::calc_ordinal(index, invp_weight_));
+//          }
+//
+//          return true;
+//        }
+//      private:
+//
+//        arg_tensor_type& arg_; ///< Argument
+//        TiledArray::detail::Bitset<>& shape_;
+//        typename range_type::size_array ip_weight = ip ^ range_.weight();
+//        const typename range_type::index ip_start = ip ^ arg_.range().start();
+//      }; // struct permute_shape_helper
+//
+//      template <typename CS>
+//      madness::Future<bool> init_shape(TiledArray::detail::Bitset<>& result) {
+//        const perm_type ip = -perm_;
+//        typename range_type::size_array ip_weight = ip ^ range_.weight();
+//        const typename range_type::index ip_start = ip ^ arg_.range().start();
+//        madness::Future<bool> done = get_world().taskq.for_each(
+//            madness::Range<std::size_t>(0, shape_.num_blocks(), 8),
+//            init_shape_helper<CS>(arg_, shape_, invp_weight));
+//        return done;
+//      }
 
-        static const TiledArray::detail::Bitset<>::block_type count =
-            8 * sizeof(TiledArray::detail::Bitset<>::block_type);
+      void init_shape() {
+        // Construct the inverse permuted weight and size for this tensor
+        const perm_type ip = -perm_;
+        typename range_type::size_array ip_weight = ip ^ range_.weight();
+        const typename range_type::index ip_start = ip ^ arg_.range().start();
 
-        init_shape_helper(arg_tensor_type& arg, TiledArray::detail::Bitset<>& shape, const typename CS::size_array& invp_weight) :
-            arg_(arg), shape_(shape), invp_weight_(invp_weight)
-        { }
+        // Coordinated iterator for the argument object range
+        typename arg_tensor_type::range_type::const_iterator arg_range_it =
+            arg_.range().begin();
 
-        bool operator() (std::size_t b) {
-          if(arg_.get_shape().get()[b]) {
-
-            typename CS::index index(0);
-            const typename CS::index start(0);
-
-            std::size_t first = b * count;
-            const std::size_t last = first + count;
-            for(; first < last; ++first, CS::increment_coordinate(index, start, arg_.size()))
-              if(arg_.get_shape()[first])
-                shape_.set(CS::calc_ordinal(index, invp_weight_));
-          }
-
-          return true;
-        }
-      private:
-
-        arg_tensor_type& arg_; ///< Argument
-        TiledArray::detail::Bitset<>& shape_;
-        const typename CS::size_array& invp_weight_;
-      }; // struct permute_shape_helper
-
-      template <typename CS>
-      madness::Future<bool> init_shape(TiledArray::detail::Bitset<>& result) {
-        const typename CS::size_array invp_weight = -perm_ ^ CS::calc_weight(size());
-        madness::Future<bool> done = get_world().taskq.for_each(
-            madness::Range<std::size_t>(0, shape_.num_blocks(), 8),
-            init_shape_helper<CS>(arg_, shape_, invp_weight));
-        return done;
+        // permute the data
+        for(std::size_t i = 0; i < arg_.size(); ++i, ++arg_range_it)
+          if(arg_.get_shape()[i])
+            shape_.set(TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, ip_start));
       }
 
       perm_type perm_; ///< Transform operation

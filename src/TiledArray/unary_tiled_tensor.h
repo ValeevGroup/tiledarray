@@ -73,6 +73,8 @@ namespace TiledArray {
 
     public:
 
+      using base::get_world;
+      using base::get_remote;
 
       /// Construct a unary tiled tensor op
 
@@ -137,11 +139,6 @@ namespace TiledArray {
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
       bool is_zero(size_type i) const { return arg_.is_zero(i); }
-
-      /// World object accessor
-
-      /// \return A reference to the world where tensor lives
-      madness::World& get_world() const { return arg_.get_world(); }
 
       /// Tensor process map accessor
 
