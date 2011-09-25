@@ -343,13 +343,13 @@ namespace TiledArray {
       /// Dereference operator
 
       /// \return A transformed copy of the current base iterator value.
-      reference operator*() const { return dereference(); }
+      reference operator*() const { return dereference(it_); }
 
       /// Arrow dereference operator
 
       /// \return A pointer to a transformed copy of the current base iterator
       /// value.
-      pointer operator->() const { return pointer(dereference()); }
+      pointer operator->() const { return pointer(dereference(it_)); }
 
       /// Base iterator accessor
 
@@ -376,7 +376,17 @@ namespace TiledArray {
       /// Iterator dereference
 
       /// \return A transformed copy of the current value of the base iterator.
-      reference dereference() const { return op_(*it_); }
+      template <typename It>
+      typename madness::disable_if<std::is_integral<It>, reference>::type
+      dereference(It it) const { return op_(*it); }
+
+
+      /// Iterator dereference
+
+      /// \return A transformed copy of the current value of the base iterator.
+      template <typename It>
+      typename madness::enable_if<std::is_integral<It>, reference>::type
+      dereference(It it) const { return op_(it); }
 
       base_iterator it_;  ///< The base iterator
       Op op_;             ///< The transform operation object
