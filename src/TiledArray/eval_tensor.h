@@ -47,7 +47,7 @@ namespace TiledArray {
     class EvalTensor : public DirectReadableTensor<EvalTensor<T, A> > {
     public:
       typedef EvalTensor<T, A> EvalTensor_;
-      TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<EvalTensor_> , EvalTensor_ );
+      TILEDARRAY_DIRECT_READABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<EvalTensor_> , EvalTensor_ );
       typedef DenseStorage<T,A> storage_type;
 
       /// Construct an evaluated tensor
