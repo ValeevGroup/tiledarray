@@ -62,7 +62,7 @@ namespace TiledArray {
       typedef RightArg right_tensor_type;
       TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<ContractionTensor_>, ContractionTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
-      typedef math::Contraction<size_type> contract_type; ///< Contraction type
+      typedef math::Contraction contract_type; ///< Contraction type
 
     private:
       // not allowed

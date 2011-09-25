@@ -12,7 +12,7 @@ struct ContractionTensorFixture {
   typedef Tile<int, GlobalFixture::coordinate_system> TileN;
   typedef TileN::range_type range_type;
   typedef TileN::index index;
-  typedef math::Contraction<std::size_t> cont_op;
+  typedef math::Contraction cont_op;
   typedef ContractionTensor<TileN,TileN> ContT;
 
   ContractionTensorFixture() : ct(t2, t3, cont) { }
@@ -40,7 +40,7 @@ struct ContractionTensorFixture {
     return result;
   }
 
-  static const std::shared_ptr<math::Contraction<std::size_t> > cont;
+  static const std::shared_ptr<math::Contraction> cont;
   static const TileN t2;
   static const TileN t3;
 
@@ -48,7 +48,7 @@ struct ContractionTensorFixture {
 }; // struct ContractionTensorFixture
 
 
-const std::shared_ptr<math::Contraction<std::size_t> > ContractionTensorFixture::cont(new math::Contraction<std::size_t>(
+const std::shared_ptr<math::Contraction> ContractionTensorFixture::cont(new math::Contraction(
     VariableList(ContractionTensorFixture::make_var_list(0, GlobalFixture::coordinate_system::dim)),
     VariableList(ContractionTensorFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1))));
 
