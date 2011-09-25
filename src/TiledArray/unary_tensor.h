@@ -107,7 +107,7 @@ namespace TiledArray {
       /// Element accessor
 
       /// \return The element at the \c i position.
-      const_reference operator[](size_type i) const {
+      const_reference get_local(size_type i) const {
         return op_(arg_[i]);
       }
 
