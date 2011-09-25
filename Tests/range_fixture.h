@@ -13,14 +13,13 @@ struct RangeFixture {
   typedef StaticRange<GlobalFixture::coordinate_system> RangeN;
   typedef RangeN::size_array size_array;
   typedef RangeN::index index;
-  typedef RangeN::ordinal_index ordinal_index;
-  typedef RangeN::volume_type volume_type;
+  typedef RangeN::size_type size_type;
 
   static const index start;
   static const index finish;
   static const size_array size;
   static const size_array weight;
-  static const volume_type volume;
+  static const size_type volume;
   static const index p0;
   static const index p1;
   static const index p2;

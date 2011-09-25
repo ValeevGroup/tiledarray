@@ -18,7 +18,7 @@ struct ArrayMathFixture : public TiledRangeFixture {
 
 
   ArrayMathFixture() : world(*GlobalFixture::world), a(world, tr), b(world, tr), c(world, tr) {
-    for(ArrayN::range_type::volume_type i = 0; i < a.tiles().volume(); ++i) {
+    for(ArrayN::range_type::size_type i = 0; i < a.tiles().volume(); ++i) {
       if(a.is_local(i))
         a.set(i, 3);
       if(b.is_local(i))

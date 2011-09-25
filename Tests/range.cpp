@@ -15,7 +15,7 @@ const RangeFixture::index RangeFixture::start(0);
 const RangeFixture::index RangeFixture::finish(5);
 const RangeFixture::size_array RangeFixture::size     = RangeFixture::finish.data();
 const RangeFixture::size_array RangeFixture::weight   = GlobalFixture::coordinate_system::calc_weight(RangeFixture::size);
-const RangeFixture::volume_type RangeFixture::volume  = GlobalFixture::coordinate_system::calc_volume(RangeFixture::size);
+const RangeFixture::size_type RangeFixture::volume  = GlobalFixture::coordinate_system::calc_volume(RangeFixture::size);
 const RangeFixture::index RangeFixture::p0(0);
 const RangeFixture::index RangeFixture::p1(1);
 const RangeFixture::index RangeFixture::p2(2);
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_CASE( include )
   BOOST_CHECK(r1.includes(t19));  // check corners
   BOOST_CHECK(r1.includes(t20));
 
-  Range3::ordinal_index o = 0;
+  Range3::size_type o = 0;
   for(; o < r.volume(); ++o) {
     BOOST_CHECK(r.includes(o));
   }

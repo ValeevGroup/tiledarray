@@ -135,18 +135,14 @@ namespace TiledArray {
     template <typename CS>
     struct RangeTraits<StaticRange<CS> > {
       typedef CS coordinate_system;
-      typedef typename CS::volume_type volume_type;
       typedef typename CS::index index;
-      typedef typename CS::ordinal_index ordinal_index;
       typedef typename CS::size_array size_array;
     };
 
     template <>
     struct RangeTraits<DynamicRange> {
       typedef void coordinate_system;
-      typedef std::size_t volume_type;
       typedef std::vector<std::size_t> index;
-      typedef std::size_t ordinal_index;
       typedef std::vector<std::size_t> size_array;
     };
 
@@ -159,10 +155,9 @@ namespace TiledArray {
   public:
     typedef Range<Derived> Range_;
 
+    typedef std::size_t size_type;
     typedef typename TiledArray::detail::RangeTraits<Derived>::coordinate_system coordinate_system;
-    typedef typename detail::RangeTraits<Derived>::volume_type volume_type;
     typedef typename detail::RangeTraits<Derived>::index index;
-    typedef typename detail::RangeTraits<Derived>::ordinal_index ordinal_index;
     typedef typename detail::RangeTraits<Derived>::size_array size_array;
 
     typedef detail::RangeIterator<index, Range_> const_iterator;
@@ -207,7 +202,7 @@ namespace TiledArray {
 
 
     /// Returns the number of elements in the range.
-    volume_type volume() const {
+    size_type volume() const {
       return detail::calc_volume(size());
     }
 
@@ -259,7 +254,7 @@ namespace TiledArray {
     /// calculate the ordinal index of /c i
 
     /// This function is just a pass-through so the user can call \c ord() on
-    /// a template parameter that can be an index or an ordinal_index.
+    /// a template parameter that can be an index or a size_type.
     /// \param i Ordinal index
     /// \return \c i (unchanged)
     template <typename Ordinal>
@@ -275,11 +270,11 @@ namespace TiledArray {
     /// \param i The index to be converted to an ordinal index
     /// \return The ordinal index of the index \c i
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, ordinal_index>::type
+    typename madness::disable_if<std::is_integral<Index>, size_type>::type
     ord(const Index& index) const {
       TA_ASSERT(index.size() == dim());
       TA_ASSERT(includes(index));
-      ordinal_index o = 0;
+      size_type o = 0;
       for(std::size_t i = 0ul; i < dim(); ++i)
         o += (index[i] - start()[i]) * weight()[i];
 
@@ -303,7 +298,7 @@ namespace TiledArray {
     /// calculate the index of /c i
 
     /// This function is just a pass-through so the user can call \c idx() on
-    /// a template parameter that can be an index or an ordinal_index.
+    /// a template parameter that can be an index or a size_type.
     /// \param i The index
     /// \return \c i (unchanged)
     template <typename Index>
@@ -355,7 +350,7 @@ namespace TiledArray {
     }
 
     void advance(index& i, std::ptrdiff_t n) const {
-      const ordinal_index o = ord(i) + n;
+      const size_type o = ord(i) + n;
 
       if(n >= volume())
         std::copy(finish().begin(), finish().end(), i.begin());
@@ -379,10 +374,9 @@ namespace TiledArray {
   public:
     typedef StaticRange<CS> StaticRange_;
     typedef Range<StaticRange_> base;
+    typedef typename base::size_type size_type;
     typedef typename base::coordinate_system coordinate_system;
-    typedef typename base::volume_type volume_type;
     typedef typename base::index index;
-    typedef typename base::ordinal_index ordinal_index;
     typedef typename base::size_array size_array;
 
     /// Default constructor. The range has 0 size and the origin is set at 0.
@@ -610,10 +604,9 @@ namespace TiledArray {
   public:
     typedef DynamicRange DynamicRange_;
     typedef Range<DynamicRange_> base;
+    typedef base::size_type size_type;
     typedef base::coordinate_system coordinate_system;
-    typedef base::volume_type volume_type;
     typedef base::index index;
-    typedef base::ordinal_index ordinal_index;
     typedef base::size_array size_array;
 
     /// Default constructor. The range has 0 size and the origin is set at 0.
