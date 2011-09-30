@@ -41,7 +41,7 @@ namespace TiledArray {
       typedef typename storage_type::iterator iterator; ///< Local tile iterator
       typedef typename storage_type::const_iterator const_iterator; ///< Local tile const iterator
 
-      typedef TiledRange<CS> trange_type; ///< Tile range type
+      typedef StaticTiledRange<CS> trange_type; ///< Tile range type
       typedef typename trange_type::range_type range_type; ///< Range type for the array
       typedef typename trange_type::tile_range_type tile_range_type; ///< Range type for elements of individual tiles and all elements
 
@@ -265,7 +265,7 @@ namespace TiledArray {
       typedef typename storage_type::iterator iterator; ///< Local tile iterator
       typedef typename storage_type::const_iterator const_iterator; ///< Local tile const iterator
 
-      typedef TiledRange<CS> trange_type; ///< Tile range type
+      typedef StaticTiledRange<CS> trange_type; ///< Tile range type
       typedef typename trange_type::range_type range_type; ///< Range type for the array
       typedef typename trange_type::tile_range_type tile_range_type; ///< Range type for elements of individual tiles and all elements
 
@@ -308,7 +308,7 @@ namespace TiledArray {
       typedef typename storage_type::iterator iterator; ///< Local tile iterator
       typedef typename storage_type::const_iterator const_iterator; ///< Local tile const iterator
 
-      typedef TiledRange<CS> trange_type; ///< Tile range type
+      typedef StaticTiledRange<CS> trange_type; ///< Tile range type
       typedef typename trange_type::range_type range_type; ///< Range type for the array
       typedef typename trange_type::tile_range_type tile_range_type; ///< Range type for elements of individual tiles and all elements
 

@@ -83,12 +83,13 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \param op The element transform operation
-      ContractionTiledTensor(const left_tensor_type& left, const right_tensor_type& right, const std::shared_ptr<math::Contraction>& cont) :
+      ContractionTiledTensor(const left_tensor_type& left, const right_tensor_type& right) :
+        cont_(new math::Contraction(left.vars(), right.vars())),
         left_(left), right_(right),
-        range_(cont->contract_range(left.range(), right.range())),
-        trange_(left.trange()),
-        shape_((left.is_dense() && right.is_dense() ? 0 : cont->contract_shape(left_.get_shape(), right_.get_shape()))),
-        op_(cont)
+        range_(cont_->contract_range(left.range(), right.range())),
+        trange_(cont_->contract_trange(left.trange(), right.trange())),
+        shape_((left.is_dense() && right.is_dense() ? 0 : cont_->contract_shape(left_.get_shape(), right_.get_shape()))),
+        op_(cont_)
       { }
 
       /// Copy constructor
@@ -199,6 +200,7 @@ namespace TiledArray {
 
 
     private:
+      const std::shared_ptr<math::Contraction>& cont_;
       left_tensor_type left_; ///< Left argument
       right_tensor_type right_; ///< Right argument
       range_type range_;

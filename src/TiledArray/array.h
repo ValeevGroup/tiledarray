@@ -37,7 +37,7 @@ namespace TiledArray {
     typedef future reference; ///< \c future type
     typedef future const_reference; ///< \c future type
 
-    typedef TiledRange<CS> trange_type; ///< Tile range type
+    typedef StaticTiledRange<CS> trange_type; ///< Tile range type
     typedef typename trange_type::range_type range_type; ///< Range type for tiles
     typedef typename trange_type::tile_range_type tile_range_type; ///< Range type for elements
 

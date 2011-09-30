@@ -36,13 +36,10 @@ struct RangeFixture {
 };
 
 struct Range1Fixture {
-  typedef TiledRange1<GlobalFixture::coordinate_system> range1_type;
-  typedef range1_type::ordinal_index ordinal_index;
-  typedef range1_type::tile_coordinate_system::index tile_index;
 
   static const std::array<std::size_t, 6> a;
-  static const range1_type::range_type tiles;
-  static const range1_type::tile_range_type elements;
+  static const TiledRange1::range_type tiles;
+  static const TiledRange1::range_type elements;
 
   Range1Fixture() : tr1(a.begin(), a.end()) { }
   ~Range1Fixture() { }
@@ -56,18 +53,18 @@ struct Range1Fixture {
     return result;
   }
 
-  range1_type tr1;
-  std::array<range1_type::tile_range_type, 5> tile;
+  TiledRange1 tr1;
+  std::array<TiledRange1::range_type, 5> tile;
 };
 
 struct TiledRangeFixtureBase : public Range1Fixture {
-  TiledRangeFixtureBase() : dims(range1_type::coordinate_system::dim, tr1) { }
-  std::vector<range1_type> dims;
+  TiledRangeFixtureBase() : dims(GlobalFixture::coordinate_system::dim, tr1) { }
+  std::vector<TiledRange1> dims;
 }; // struct TiledRangeFixtureBase
 
 struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
-  typedef TiledRange<GlobalFixture::coordinate_system> TRangeN;
-  typedef TRangeN::tile_index tile_index;
+  typedef StaticTiledRange<GlobalFixture::coordinate_system> TRangeN;
+  typedef TRangeN::tile_range_type::index tile_index;
 
   static const TRangeN::range_type tile_range;
   static const TRangeN::tile_range_type element_range;
@@ -77,7 +74,7 @@ struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
 
   ~TiledRangeFixture() { }
 
-  static tile_index fill_tile_index(tile_index::value_type);
+  static tile_index fill_tile_index(TRangeN::tile_range_type::index::value_type);
 
   TRangeN tr;
 };

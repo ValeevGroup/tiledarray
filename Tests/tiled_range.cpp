@@ -35,9 +35,9 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
   BOOST_CHECK_EQUAL(r1.elements(), element_range);
 
-  std::vector<TRangeN::tiled_range1_type> dims2;
+  std::vector<TiledRange1> dims2;
   for(std::size_t i = 0; i < GlobalFixture::coordinate_system::dim; ++i)
-    dims2.push_back(TRangeN::tiled_range1_type(a.begin(), a.end(), 1));
+    dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
   TRangeN::range_type t2(p1, p6);
 
   // check ranges constructor w/ offset tile origin.
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   std::array<std::size_t, 6> a3;
   std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
-  std::vector<TRangeN::tiled_range1_type> dims3(GlobalFixture::coordinate_system::dim, TRangeN::tiled_range1_type(a3.begin(), a3.end()));
+  std::vector<TiledRange1> dims3(GlobalFixture::coordinate_system::dim, TiledRange1(a3.begin(), a3.end()));
   TRangeN::tile_range_type e3 = TRangeN::tile_range_type(tile_index(a3[0]), tile_index(a3[5]));
 
   // check ranges constructor w/ offset element origin.
@@ -90,9 +90,9 @@ BOOST_AUTO_TEST_CASE( comparison ) {
   // check that the inequality operator for identical ranges
   BOOST_CHECK(! (r1 != tr));
 
-  std::vector<TRangeN::tiled_range1_type> dims2;
+  std::vector<TiledRange1> dims2;
   for(std::size_t i = 0; i < GlobalFixture::coordinate_system::dim; ++i)
-    dims2.push_back(TRangeN::tiled_range1_type(a.begin(), a.end(), 1));
+    dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
   TRangeN r2(dims2.begin(), dims2.end());
 
   // comparison w/ offset tile origin.
@@ -101,8 +101,8 @@ BOOST_AUTO_TEST_CASE( comparison ) {
 
   std::array<std::size_t, 6> a3;
   std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
-  std::vector<TRangeN::tiled_range1_type> dims3(GlobalFixture::coordinate_system::dim,
-      TRangeN::tiled_range1_type(a3.begin(), a3.end()));
+  std::vector<TiledRange1> dims3(GlobalFixture::coordinate_system::dim,
+      TiledRange1(a3.begin(), a3.end()));
 
   TRangeN r3(dims3.begin(), dims3.end());
 
@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE( make_tile_range )
   tile_index finish;
 
   // iterate over all the tile indexes in the tiled range.
-  TRangeN::ordinal_index i = 0;
+  TRangeN::size_type i = 0;
   for(RangeN::const_iterator it = tr.tiles().begin(); it != tr.tiles().end(); ++it, ++i) {
     // get the start and finish indexes of the current range.
     for(unsigned int d = 0; d < GlobalFixture::coordinate_system::dim; ++d) {
