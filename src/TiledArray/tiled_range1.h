@@ -160,7 +160,7 @@ namespace TiledArray {
         return;
 
       // initialize elem2tile map
-      elem2tile_.resize(element_range_.second - element_range_.second);
+      elem2tile_.resize(element_range_.second - element_range_.first);
       const size_type end = range_.second - range_.first;
       for(size_type t = 0; t < end; ++t)
         for(size_type e = tile_ranges_[t].first; e < tile_ranges_[t].second; ++e)
