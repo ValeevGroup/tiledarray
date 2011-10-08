@@ -42,6 +42,7 @@ namespace TiledArray {
       typedef EvalTensor<T, R, A> EvalTensor_;
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<EvalTensor_> , EvalTensor_ );
       typedef DenseStorage<T,A> storage_type;
+      typedef EvalTensor_ eval_type;
 
       /// Default constructor
 
@@ -69,7 +70,7 @@ namespace TiledArray {
 
       /// \param other The tile to be copied.
       template <typename Derived>
-      EvalTensor(const ReadableTensor<Derived>& other) :
+      explicit EvalTensor(const ReadableTensor<Derived>& other) :
           range_(other.range()),
             data_(other.size(), TiledArray::detail::make_tran_it(0ul, detail::EvalOp<ReadableTensor<Derived> >(other)))
       { }
@@ -89,7 +90,7 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return A const reference to this object.
-      const EvalTensor_& eval() const { return *this; }
+      const eval_type& eval() const { return *this; }
 
       /// Tensor range object accessor
 
@@ -132,8 +133,8 @@ namespace TiledArray {
       }
 
       void swap(EvalTensor_& other) {
-        range_.swap(other);
-        data_.swap(other);
+        range_.swap(other.range_);
+        data_.swap(other.data_);
       }
 
       bool empty() const { return data_.empty(); }
