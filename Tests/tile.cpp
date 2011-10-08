@@ -106,25 +106,16 @@ BOOST_AUTO_TEST_CASE( range_accessor )
 
 BOOST_AUTO_TEST_CASE( element_access )
 {
-  // check at() with array coordinate index
-  BOOST_CHECK_EQUAL(t.at(index(0)), 1);
-  BOOST_CHECK_EQUAL(t.at(index(4)), 1);
-
   // check operator[] with array coordinate index
   BOOST_CHECK_EQUAL(t[index(0)], 1);
   BOOST_CHECK_EQUAL(t[index(4)], 1);
 
-  // check at() with ordinal index
-  BOOST_CHECK_EQUAL(t.at(0ul), 1);
-  BOOST_CHECK_EQUAL(t.at(r.volume() - 1), 1);
 
   // check operator[] with ordinal index
   BOOST_CHECK_EQUAL(t[0], 1);
   BOOST_CHECK_EQUAL(t[r.volume() - 1], 1);
 
   // check out of range error
-  BOOST_CHECK_THROW(t.at(r.finish()), Exception);
-  BOOST_CHECK_THROW(t.at(r.volume()), Exception);
 #ifndef NDEBUG
   BOOST_CHECK_THROW(t[r.finish()], Exception);
   BOOST_CHECK_THROW(t[r.volume()], Exception);
@@ -142,7 +133,6 @@ BOOST_AUTO_TEST_CASE( iteration )
 
   // check iterator assignment
   BOOST_CHECK_CLOSE(*it1, 2.0, 0.000001);
-  BOOST_CHECK_CLOSE(t1.at(0), 2.0, 0.000001);
   TileN t2;
   BOOST_CHECK_EQUAL(t2.begin(), t2.end());
 }
@@ -153,7 +143,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(TileN t0);
   TileN t0;
   BOOST_CHECK_EQUAL(t0.range().volume(), 0u);
-  BOOST_CHECK_THROW(t0.at(index(0,0,0)), Exception);
   BOOST_CHECK_EQUAL(t0.begin(), t0.end());
 
   // check copy constructor
@@ -199,12 +188,6 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( element_assignment )
 {
-  // verify preassignment conditions
-  BOOST_CHECK_NE(t.at(0), 2);
-  // check that assignment returns itself.
-  BOOST_CHECK_EQUAL(t.at(0) = 2, 2);
-  // check for correct assignment.
-  BOOST_CHECK_EQUAL(t.at(0), 2);
 
   // verify preassignment conditions
   BOOST_CHECK_NE(t[1], 2);
