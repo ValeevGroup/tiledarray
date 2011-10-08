@@ -33,7 +33,8 @@ namespace TiledArray {
       typedef ArgTensor<T> ArgTensor_;
       TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<ArgTensor_>, ArgTensor_);
       typedef T arg_tensor_type;
-      typedef FutureTensor<EvalTensor<typename T::value_type, typename T::range_type> > future_tensor;
+      typedef typename arg_tensor_type::eval_type eval_type;
+      typedef FutureTensor<eval_type> future_tensor;
       typedef typename arg_tensor_type::storage_type storage_type; /// The storage type for this object
 
       /// Construct a tensor from a local argument
@@ -86,7 +87,6 @@ namespace TiledArray {
 
       /// \return The number of elements in the tensor
       /// \throw TiledArray::Exception If the remote has not been evaluated.
-      /// \throw TiledArray::Exception If the tensor is zero.
       size_type size() const {
         return (is_local() ? local()->size() : remote()->size());
       }
@@ -106,6 +106,7 @@ namespace TiledArray {
         remote()->eval_to(dest);
       }
 
+      /// \throw TiledArray::Exception If the future has not been evaluated.
       template<typename Dest>
       void add_to(Dest& dest) const {
         if(is_local())
@@ -113,6 +114,7 @@ namespace TiledArray {
         remote()->add_to(dest);
       }
 
+      /// \throw TiledArray::Exception If the future has not been evaluated.
       template<typename Dest>
       void sub_to(Dest& dest) const {
         if(is_local())
