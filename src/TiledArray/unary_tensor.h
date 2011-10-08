@@ -4,6 +4,7 @@
 #include <TiledArray/eval_tensor.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/arg_tensor.h>
 #include <Eigen/Core>
 #include <functional>
 
@@ -16,14 +17,13 @@ namespace TiledArray {
     struct TensorTraits<UnaryTensor<Arg, Op> > {
       typedef typename Arg::range_type range_type;
       typedef typename madness::detail::result_of<Op>::type value_type;
-      typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
-          Op> const_iterator; ///< Tensor const iterator
       typedef value_type const_reference;
     }; // struct TensorTraits<UnaryTensor<Arg, Op> >
 
     template <typename Arg, typename Op>
     struct Eval<UnaryTensor<Arg, Op> > {
-      typedef EvalTensor<typename madness::detail::result_of<Op>::type> type;
+      typedef EvalTensor<typename madness::detail::result_of<Op>::type,
+          typename Arg::range_type> type;
     }; // struct Eval<UnaryTensor<Arg, Op> >
 
 
@@ -38,8 +38,8 @@ namespace TiledArray {
     class UnaryTensor : public ReadableTensor<UnaryTensor<Arg, Op> > {
     public:
       typedef UnaryTensor<Arg, Op> UnaryTensor_;
-      typedef Arg arg_tensor_type;
-      TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF(ReadableTensor<UnaryTensor_>, UnaryTensor_);
+      typedef ArgTensor<Arg> arg_tensor_type;
+      TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<UnaryTensor_>, UnaryTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef Op op_type; ///< The transform operation type
 
@@ -54,9 +54,9 @@ namespace TiledArray {
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
-      UnaryTensor(typename TensorArg<arg_tensor_type>::type arg, const op_type& op) :
+      UnaryTensor(const Arg& arg, const op_type& op) :
         arg_(arg), op_(op)
-      {}
+      { }
 
       UnaryTensor(const UnaryTensor_& other) :
         arg_(other.arg_), op_(other.op_)
@@ -65,9 +65,8 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
-      EvalTensor<value_type> eval() const {
-        typename EvalTensor<value_type>::storage_type data(size(), begin());
-        return EvalTensor<value_type>(range(), data);
+      EvalTensor<value_type, range_type> eval() const {
+        return EvalTensor<value_type, range_type>(*this);
       }
 
       /// Evaluate this tensor and store the results in \c dest
@@ -77,7 +76,9 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const {
         TA_ASSERT(size() == dest.size());
-        std::copy(begin(), end(), dest.begin());
+        const size_type s = size();
+        for(size_type i = 0; i < s; ++i)
+          dest[i] = operator[](i);
       }
 
       /// Tensor range object accessor
@@ -90,24 +91,10 @@ namespace TiledArray {
       /// \return The number of elements in the tensor
       size_type size() const { return arg_.size(); }
 
-      /// Iterator factory
-
-      /// \return An iterator to the first data element
-      const_iterator begin() const {
-        return TiledArray::detail::make_tran_it(arg_.begin(), op_);
-      }
-
-      /// Iterator factory
-
-      /// \return An iterator to the last data element }
-      const_iterator end() const {
-        return TiledArray::detail::make_tran_it(arg_.end(), op_);
-      }
-
       /// Element accessor
 
       /// \return The element at the \c i position.
-      const_reference get_local(size_type i) const {
+      const_reference operator[](size_type i) const {
         return op_(arg_[i]);
       }
 
@@ -116,7 +103,7 @@ namespace TiledArray {
       }
 
     private:
-      typename TensorMem<arg_tensor_type>::type arg_; ///< Argument
+      arg_tensor_type arg_; ///< Argument
       op_type op_; ///< Transform operation
     }; // class UnaryTensor
 

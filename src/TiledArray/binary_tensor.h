@@ -7,7 +7,8 @@
 #include <TiledArray/eval_tensor.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/contraction.h>
+#include <TiledArray/arg_tensor.h>
+#include <TiledArray/range.h>
 #include <Eigen/Core>
 #include <functional>
 
@@ -17,18 +18,61 @@ namespace TiledArray {
     template <typename, typename, typename>
     class BinaryTensor;
 
+    namespace detail {
+      template <typename LRange, typename RRange>
+      struct range_select {
+        typedef DynamicRange type;
+
+        template <typename L, typename R>
+        static const type& range(const L& l, const R&) {
+          return l.range();
+        }
+      };
+
+      template <typename CS>
+      struct range_select<DynamicRange, StaticRange<CS> > {
+        typedef StaticRange<CS> type;
+
+        template <typename L, typename R>
+        static const type& range(const L&, const R& r) {
+          return r.range();
+        }
+      };
+
+      template <typename CS>
+      struct range_select<StaticRange<CS>, DynamicRange> {
+        typedef StaticRange<CS> type;
+
+        template <typename L, typename R>
+        static const type& range(const L& l, const R&) {
+          return l.range();
+        }
+      };
+
+      template <typename CS>
+      struct range_select<StaticRange<CS>, StaticRange<CS> > {
+        typedef StaticRange<CS> type;
+
+        template <typename L, typename R>
+        static const type& range(const L& l, const R&) {
+          return l.range();
+        }
+      };
+
+    } // namespace detail
+
     template <typename LeftArg, typename RightArg, typename Op>
     struct TensorTraits<BinaryTensor<LeftArg, RightArg, Op> > {
-      typedef typename LeftArg::range_type range_type;
+      typedef typename detail::range_select<typename LeftArg::range_type,
+          typename RightArg::range_type>::type range_type;
       typedef typename madness::detail::result_of<Op>::type value_type;
-      typedef TiledArray::detail::BinaryTransformIterator<typename LeftArg::const_iterator,
-          typename RightArg::const_iterator, Op> const_iterator;
       typedef value_type const_reference;
     }; // struct TensorTraits<EvalTensor<T, A> >
 
     template <typename LeftArg, typename RightArg, typename Op>
     struct Eval<BinaryTensor<LeftArg, RightArg, Op> > {
-      typedef EvalTensor<typename madness::detail::result_of<Op>::type> type;
+      typedef EvalTensor<typename madness::detail::result_of<Op>::type,
+          typename LeftArg::range_type> type;
     }; // struct Eval<BinaryTensor<LeftArg, RightArg, Op> >
 
     /// Tensor that is composed from two argument tensors
@@ -42,10 +86,9 @@ namespace TiledArray {
     class BinaryTensor : public ReadableTensor<BinaryTensor<LeftArg, RightArg, Op> > {
     public:
       typedef BinaryTensor<LeftArg, RightArg, Op>  BinaryTensor_;
-      typedef LeftArg left_tensor_type;
-      typedef RightArg right_tensor_type;
-      TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF(ReadableTensor<BinaryTensor_>, BinaryTensor_)
-      typedef DenseStorage<value_type> storage_type; /// The storage type for this object
+      typedef ArgTensor<LeftArg> left_tensor_type;
+      typedef ArgTensor<RightArg> right_tensor_type;
+      TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<BinaryTensor_>, BinaryTensor_)
       typedef Op op_type; ///< The transform operation type
 
     private:
@@ -61,7 +104,7 @@ namespace TiledArray {
       /// \param op The element transform operation
       /// \throw TiledArray::Exception When left and right argument orders,
       /// dimensions, or sizes are not equal.
-      BinaryTensor(typename TensorArg<left_tensor_type>::type left, typename TensorArg<right_tensor_type>::type right, const op_type& op) :
+      BinaryTensor(const LeftArg& left, const RightArg& right, const op_type& op) :
         left_(left), right_(right), op_(op)
       {
         TA_ASSERT(left.range() == right.range());
@@ -74,9 +117,8 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
-      EvalTensor<value_type> eval() const {
-        typename EvalTensor<value_type>::storage_type data(size(), begin());
-        return EvalTensor<value_type>(range(), data);
+      EvalTensor<value_type, range_type> eval() const {
+        return EvalTensor<value_type, range_type>(*this);
       }
 
       /// Evaluate this tensor and store the results in \c dest
@@ -86,7 +128,9 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const {
         TA_ASSERT(size() == dest.size());
-        std::copy(begin(), end(), dest.begin());
+        const size_type s = size();
+        for(size_type i = 0; i < s; ++i)
+          dest[i] = operator[](i);
       }
 
       /// Tensor dimension accessor
@@ -107,7 +151,8 @@ namespace TiledArray {
 
       /// \return The tensor range object
       const range_type& range() const {
-        return left_.range();
+        return detail::range_select<typename LeftArg::range_type,
+            typename RightArg::range_type>::range(left_, right_);
       }
 
       /// Tensor size accessor
@@ -115,20 +160,6 @@ namespace TiledArray {
       /// \return The total number of elements in the tensor
       size_type size() const {
         return left_.size();
-      }
-
-      /// Iterator factory
-
-      /// \return An iterator to the first data element
-      const_iterator begin() const {
-        return TiledArray::detail::make_tran_it(left_.begin(), right_.begin(), op_);
-      }
-
-      /// Iterator factory
-
-      /// \return An iterator to the last data element }
-      const_iterator end() const {
-        return TiledArray::detail::make_tran_it(left_.end(), right_.end(), op_);
       }
 
       /// Element accessor
@@ -144,8 +175,8 @@ namespace TiledArray {
       }
 
     private:
-      typename TensorMem<left_tensor_type>::type left_; ///< Left argument
-      typename TensorMem<right_tensor_type>::type right_; ///< Right argument
+      left_tensor_type left_; ///< Left argument
+      right_tensor_type right_; ///< Right argument
       op_type op_; ///< Transform operation
     }; // class BinaryTensor
 

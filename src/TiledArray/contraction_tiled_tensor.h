@@ -65,7 +65,7 @@ namespace TiledArray {
       typedef ContractionTiledTensor<Left, Right> ContractionTiledTensor_;
       typedef Left left_tensor_type;
       typedef Right right_tensor_type;
-      TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<ContractionTiledTensor_>, ContractionTiledTensor_);
+      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<ContractionTiledTensor_>, ContractionTiledTensor_);
 
     private:
       // Not allowed

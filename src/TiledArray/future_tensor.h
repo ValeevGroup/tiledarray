@@ -13,10 +13,7 @@ namespace TiledArray {
     struct TensorTraits<FutureTensor<T> > {
       typedef typename T::range_type range_type;
       typedef typename T::value_type value_type;
-      typedef typename T::const_iterator const_iterator;
       typedef typename T::const_reference const_reference;
-      typedef typename T::const_pointer const_pointer;
-      typedef typename T::difference_type difference_type;
     }; // struct TensorTraits<FutureTensor<T> >
 
     template <typename T>
@@ -28,13 +25,12 @@ namespace TiledArray {
 
     /// \tparam T The tensor type
     template <typename T>
-    class FutureTensor : public DirectReadableTensor<FutureTensor<T> > {
+    class FutureTensor : public ReadableTensor<FutureTensor<T> > {
     public:
       typedef FutureTensor<T> FutureTensor_;
-      TILEDARRAY_DIRECT_READABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<FutureTensor_>, FutureTensor_);
+      TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<FutureTensor_>, FutureTensor_);
       typedef T tensor_type;
       typedef madness::Future<tensor_type> future;
-      typedef typename tensor_type::storage_type storage_type; /// The storage type for this object
 
       /// Constructor
 
@@ -56,7 +52,7 @@ namespace TiledArray {
       /// \throw TiledArray::Exception If the future has not been evaluated.
       const range_type& range() const {
         TA_ASSERT(tensor_.probe());
-        return tensor_.get().size();
+        return tensor_.get().range();
       }
 
       /// Tensor volume accessor
@@ -65,7 +61,7 @@ namespace TiledArray {
       /// \throw TiledArray::Exception If the future has not been evaluated.
       size_type size() const {
         TA_ASSERT(tensor_.probe());
-        return tensor_.get().volume();
+        return tensor_.get().size();
       }
 
 
@@ -89,35 +85,6 @@ namespace TiledArray {
       const_reference operator[](size_type i) const {
         TA_ASSERT(tensor_.probe());
         return tensor_.get()[i];
-      }
-
-      // iterator factory
-
-      /// Begin iterator factory
-
-      /// \return A const iterator to the beginning of the tensor data
-      /// \throw TiledArray::Exception If the future has not been evaluated.
-      const_iterator begin() const {
-        TA_ASSERT(tensor_.probe());
-        return tensor_.get().begin();
-      }
-
-      /// End iterator factory
-
-      /// \return A const iterator to the end of the tensor data
-      /// \throw TiledArray::Exception If the future has not been evaluated.
-      const_iterator end() const {
-        TA_ASSERT(tensor_.probe());
-        return tensor_.get().end();
-      }
-
-      /// Tensor data accessor
-
-      /// \return A pointer to the beginning of the tensor data
-      /// \throw TiledArray::Exception If the future has not been evaluated.
-      const_pointer data() const {
-        TA_ASSERT(tensor_.probe());
-        return tensor_.get().data();
       }
 
       /// Check and add dependencies for \c task .

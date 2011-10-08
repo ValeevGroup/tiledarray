@@ -65,7 +65,7 @@ namespace TiledArray {
       typedef BinaryTiledTensor<Left, Right, Op> BinaryTiledTensor_;
       typedef Left left_tensor_type;
       typedef Right right_tensor_type;
-      TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<BinaryTiledTensor_>, BinaryTiledTensor_);
+      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<BinaryTiledTensor_>, BinaryTiledTensor_);
 
     private:
       // Not allowed

@@ -7,6 +7,20 @@ namespace TiledArray {
   namespace expressions {
     namespace detail {
 
+      template <typename T>
+      struct EvalOp {
+        typedef typename T::const_reference result_type;
+        typedef typename T::size_type argument_type;
+        EvalOp(const T& t) : t_(t) { }
+
+        result_type operator()(argument_type i) const {
+          return t_[i];
+        }
+
+      private:
+        const T& t_;
+      };
+
       template <typename Res, typename Arg>
       class EvalTask : public madness::TaskInterface {
       public:

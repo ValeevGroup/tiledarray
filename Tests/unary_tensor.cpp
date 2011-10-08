@@ -80,13 +80,4 @@ BOOST_AUTO_TEST_CASE( element_accessor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( iterator )
-{
-  TileN::size_type i = 0;
-  for(UnaryT::const_iterator it = ut.begin(); it != ut.end(); ++it, ++i) {
-    // Check that iteration works correctly
-    BOOST_CHECK_EQUAL(*it, op(t[i]));
-  }
-}
-
 BOOST_AUTO_TEST_SUITE_END()

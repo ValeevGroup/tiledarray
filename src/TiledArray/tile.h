@@ -6,6 +6,8 @@
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/expressions.h>
+#include <TiledArray/transform_iterator.h>
+#include <TiledArray/eval_task.h>
 #include <world/archive.h>
 #include <TiledArray/dense_storage.h>
 #include <algorithm>
@@ -38,18 +40,6 @@ namespace TiledArray {
       typedef const Tile<T,CS,A>& type;
     }; // struct TensorTraits<Tile<T,CS,A> >
 
-
-    template <typename T, typename CS, typename A>
-    struct TensorArg<Tile<T,CS,A> > {
-      typedef const Tile<T,CS,A>& type;
-    };
-
-    template <typename T, typename CS, typename A>
-    struct TensorMem<Tile<T,CS,A> > {
-      typedef const Tile<T,CS,A>& type;
-    };
-
-
     /// Tile is an N-dimensional, dense array.
 
     /// \tparam T Tile element type.
@@ -61,7 +51,7 @@ namespace TiledArray {
     public:
       typedef Tile<T,CS,A> Tile_;                             ///< This object's type
       typedef DenseStorage<T,A> storage_type;                 ///< Raw data storage type
-      TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHEIRATE_TYPEDEF( DirectWritableTensor<Tile_> , Tile_ );
+      TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHERIT_TYPEDEF( DirectWritableTensor<Tile_> , Tile_ );
 
       typedef CS coordinate_system;                           ///< The array coordinate system
       typedef typename CS::volume_type volume_type;           ///< Array volume type
@@ -89,7 +79,8 @@ namespace TiledArray {
       /// \param other The tile to be copied.
       template <typename Derived>
       Tile(const ReadableTensor<Derived>& other) :
-          range_(other.range()), data_(other.size(), other.begin())
+          range_(other.range()), data_(other.size(),
+              TiledArray::detail::make_tran_it(0ul, detail::EvalOp<ReadableTensor<Derived> >(other)))
       { }
 
       /// Copy constructor
@@ -144,7 +135,8 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const {
         TA_ASSERT(size() == dest.size());
-        std::copy(begin(), end(), dest.begin());
+        std::copy(begin(), end(),
+            TiledArray::detail::make_tran_it(0ul, detail::EvalOp<Dest>(dest)));
       }
 
       const Tile_& eval() const { return *this; }
@@ -165,7 +157,7 @@ namespace TiledArray {
             storage_type(size()).swap(data_);
           }
           TA_ASSERT(range_ == other.range());
-          other.eval_to(data_);
+          other.eval_to(*this);
         } else {
           range_ = range_type();
           storage_type().swap(data_);

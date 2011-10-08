@@ -10,13 +10,13 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename, typename>
+    template <typename, typename, typename>
     class EvalTensor;
 
-    template <typename T, typename A>
-    struct TensorTraits<EvalTensor<T, A> > {
+    template <typename T, typename R, typename A>
+    struct TensorTraits<EvalTensor<T, R, A> > {
       typedef DenseStorage<T,A> storage_type;
-      typedef DynamicRange range_type;
+      typedef R range_type;
       typedef typename storage_type::value_type value_type;
       typedef typename storage_type::reference reference;
       typedef typename storage_type::const_reference const_reference;
@@ -27,28 +27,19 @@ namespace TiledArray {
       typedef typename storage_type::const_pointer const_pointer;
     };  // struct TensorTraits<EvalTensor<T, A> >
 
-    template <typename T, typename A>
-    struct Eval<EvalTensor<T, A> > {
-      typedef const EvalTensor<T, A>& type;
-    }; // struct Eval<EvalTensor<T, A> >
+    template <typename T, typename R, typename A>
+    struct Eval<EvalTensor<T, R, A> > {
+      typedef const EvalTensor<T, R, A>& type;
+    }; // struct Eval<EvalTensor<T, R, A> >
 
-
-    template <typename T, typename A>
-    struct TensorArg<EvalTensor<T, A> > {
-      typedef const EvalTensor<T, A>& type;
-    }; // struct TensorArg<EvalTensor<T, A> >
-
-    template <typename T, typename A>
-    struct TensorMem<EvalTensor<T, A> > {
-      typedef const EvalTensor<T, A>& type;
-    }; // struct TensorMem<EvalTensor<T, A> >
-
-    template <typename T, typename A = Eigen::aligned_allocator<T> >
-    class EvalTensor : public DirectReadableTensor<EvalTensor<T, A> > {
+    template <typename T, typename R = DynamicRange, typename A = Eigen::aligned_allocator<T> >
+    class EvalTensor : public DirectReadableTensor<EvalTensor<T, R, A> > {
     public:
-      typedef EvalTensor<T, A> EvalTensor_;
-      TILEDARRAY_DIRECT_READABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<EvalTensor_> , EvalTensor_ );
+      typedef EvalTensor<T, R, A> EvalTensor_;
+      TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<EvalTensor_> , EvalTensor_ );
       typedef DenseStorage<T,A> storage_type;
+
+      EvalTensor() : range_(), data_() { }
 
       /// Construct an evaluated tensor
 
@@ -76,12 +67,14 @@ namespace TiledArray {
           range_(other.range()), data_(other.size(), other.begin())
       { }
 
-    private:
-      // not allowed
-      EvalTensor<T,A>& operator=(const EvalTensor<T,A>&);
-      EvalTensor(const EvalTensor<T,A>&);
+      EvalTensor(const EvalTensor_& other) :
+        range_(other.range_), data_(other.data_)
+      { }
 
-    public:
+      EvalTensor_& operator=(const EvalTensor_& other) {
+        EvalTensor_(other).swap(*this);
+        return *this;
+      }
 
       /// Evaluate this tensor
 
@@ -91,7 +84,9 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(const Dest& dest) const {
         TA_ASSERT(size() == dest.size());
-        std::copy(begin(), end(), dest.begin());
+        const size_type s = size();
+        for(size_type i = 0; i < s; ++i)
+          dest[i] = data_[i];
       }
 
       /// Tensor range object accessor

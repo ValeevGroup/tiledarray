@@ -62,7 +62,7 @@ namespace TiledArray {
     public:
       typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
       typedef Arg arg_tensor_type;
-      TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<UnaryTiledTensor_>, UnaryTiledTensor_);
+      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<UnaryTiledTensor_>, UnaryTiledTensor_);
 
     private:
       // Not allowed

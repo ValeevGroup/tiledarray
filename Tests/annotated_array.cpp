@@ -52,11 +52,12 @@ BOOST_AUTO_TEST_CASE( tile_data )
   ArrayN::const_iterator a_it = a.begin();
   for(array_annotation::const_iterator aa_it = aa.begin(); aa_it != aa.end(); ++aa_it, ++a_it) {
     BOOST_CHECK(aa_it.base() == a_it);
-    ArrayN::value_type::const_iterator a_tile_it = a_it->get().begin();
     aa_it.base()->get();
-    for(array_annotation::value_type::const_iterator aa_tile_it = aa_it->begin(); aa_tile_it != aa_it->end(); ++aa_tile_it, ++a_tile_it) {
-      BOOST_CHECK(aa_tile_it == a_tile_it);
-      BOOST_CHECK(*aa_tile_it == *a_tile_it);
+    for(std::size_t it = 0; it != aa_it->size(); ++it) {
+      const ArrayN::value_type::value_type& ai = a_it->get()[it];
+      const array_annotation::value_type::value_type& aai = (*aa_it)[it];
+      BOOST_CHECK(&aai == &ai);
+      BOOST_CHECK(aai == ai);
     }
   }
 }

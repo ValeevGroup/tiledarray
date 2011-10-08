@@ -60,7 +60,7 @@ namespace TiledArray {
       typedef ContractionTensor<LeftArg, RightArg> ContractionTensor_;
       typedef LeftArg left_tensor_type;
       typedef RightArg right_tensor_type;
-      TILEDARRAY_READABLE_TENSOR_INHEIRATE_TYPEDEF(DirectReadableTensor<ContractionTensor_>, ContractionTensor_);
+      TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<ContractionTensor_>, ContractionTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef math::Contraction contract_type; ///< Contraction type
 
@@ -106,8 +106,11 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
+        lazy_eval();
         TA_ASSERT(size() == dest.size());
-        std::copy(begin(), end(), dest.begin());
+        const size_type s = size();
+        for(size_type i = 0; i < s; ++i)
+          dest[i] = operator[](i);
       }
 
       /// Tensor range object accessor
@@ -119,22 +122,6 @@ namespace TiledArray {
 
       /// \return The number of elements in the tensor
       size_type size() const { return range_.volume(); }
-
-      /// Iterator factory
-
-      /// \return An iterator to the first data element
-      const_iterator begin() const {
-        lazy_eval();
-        return data_.begin();
-      }
-
-      /// Iterator factory
-
-      /// \return An iterator to the last data element }
-      const_iterator end() const {
-        lazy_eval();
-        return data_.end();
-      }
 
       /// Element accessor
 

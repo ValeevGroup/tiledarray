@@ -63,7 +63,7 @@ namespace TiledArray {
     public:
       typedef PermuteTiledTensor<Arg, DIM> PermuteTiledTensor_;
       typedef Arg arg_tensor_type;
-      TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<PermuteTiledTensor_>, PermuteTiledTensor_);
+      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<PermuteTiledTensor_>, PermuteTiledTensor_);
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
       typedef Permutation<DIM> perm_type;
 

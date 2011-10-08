@@ -50,7 +50,7 @@ namespace TiledArray {
     class AnnotatedArray : public WritableTiledTensor<AnnotatedArray<T> > {
     public:
       typedef AnnotatedArray<T>               AnnotatedArray_; ///< This object type
-      TILEDARRAY_WRITABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(WritableTiledTensor<AnnotatedArray<T> >, AnnotatedArray<T>)
+      TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_TYPEDEF(WritableTiledTensor<AnnotatedArray<T> >, AnnotatedArray<T>)
       typedef typename T::coordinate_system   coordinate_system; ///< The array coordinate system type
       typedef T                               array_type; ///< The array type
 
@@ -217,7 +217,7 @@ namespace TiledArray {
     public:
       typedef AnnotatedArray<const T>                         AnnotatedArray_;
 
-      TILEDARRAY_WRITABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<AnnotatedArray_>, AnnotatedArray_)
+      TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<AnnotatedArray_>, AnnotatedArray_)
 
       typedef typename T::coordinate_system             coordinate_system;
       typedef T                                         array_type;

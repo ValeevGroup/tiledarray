@@ -15,31 +15,31 @@
 #include <world/shared_ptr.h>
 #include <world/worldreduce.h>
 
-#define TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED )  \
-    TILEDARRAY_TENSOR_BASE_INHEIRATE_TYPEDEF( BASE , DERIVED )
+#define TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED )  \
+    TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED )
 
-#define TILEDARRAY_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
+#define TILEDARRAY_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
+    TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
     typedef typename base::wobj_type wobj_type; \
     typedef typename base::pmap_interface pmap_interface; \
     typedef typename base::trange_type trange_type;
 
-#define TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
+#define TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
+    TILEDARRAY_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
     typedef typename base::value_type value_type; \
     typedef typename base::remote_type remote_type; \
     typedef typename base::const_reference const_reference; \
     typedef typename base::const_iterator const_iterator;
 
-#define TILEDARRAY_WRITABLE_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF( BASE , DERIVED )
+#define TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
+    TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED )
 
-#define TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_TENSOR_BASE_INHEIRATE_MEMBER( BASE , DERIVED ) \
+#define TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
+    TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER( BASE , DERIVED ) \
     using base::vars;
 
-#define TILEDARRAY_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
+#define TILEDARRAY_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
+    TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
     using base::owner; \
     using base::is_local; \
     using base::is_zero; \
@@ -48,15 +48,15 @@
     using base::is_dense; \
     using base::get_shape;
 
-#define TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
+#define TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
+    TILEDARRAY_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
     using base::get_local; \
     using base::get_remote; \
     using base::begin; \
     using base::end;
 
-#define TILEDARRAY_WRITABLE_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER( BASE , DERIVED ) \
+#define TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
+    TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
     using base::set;
 
 namespace madness {
@@ -73,8 +73,8 @@ namespace TiledArray {
     class AnnotatedTensor : public TensorBase<Derived> {
     public:
 
-      TILEDARRAY_TENSOR_BASE_INHEIRATE_TYPEDEF(TensorBase<Derived>, Derived)
-      TILEDARRAY_TENSOR_BASE_INHEIRATE_MEMBER(TensorBase<Derived>, Derived)
+      TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF(TensorBase<Derived>, Derived)
+      TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER(TensorBase<Derived>, Derived)
 
       inline const VariableList& vars() const { return derived().vars(); }
 
@@ -84,12 +84,12 @@ namespace TiledArray {
     class TiledTensor : public AnnotatedTensor<Derived>, public madness::WorldReduce<Derived> {
     public:
 
-      TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_TYPEDEF(AnnotatedTensor<Derived>, Derived)
+      TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF(AnnotatedTensor<Derived>, Derived)
       typedef madness::WorldReduce<Derived> wobj_type;
       typedef madness::WorldDCPmapInterface<size_type> pmap_interface;
       typedef typename TensorTraits<Derived>::trange_type trange_type;
 
-      TILEDARRAY_ANNOTATED_TENSOR_INHEIRATE_MEMBER(AnnotatedTensor<Derived>, Derived)
+      TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER(AnnotatedTensor<Derived>, Derived)
 
       TiledTensor(madness::World& world) : wobj_type(world) { }
 
@@ -111,14 +111,14 @@ namespace TiledArray {
     class ReadableTiledTensor : public TiledTensor<Derived> {
     public:
 
-      TILEDARRAY_TILED_TENSOR_INHEIRATE_TYPEDEF(TiledTensor<Derived>, Derived)
+      TILEDARRAY_TILED_TENSOR_INHERIT_TYPEDEF(TiledTensor<Derived>, Derived)
       typedef typename TensorTraits<Derived>::value_type value_type;
       typedef EvalTensor<typename value_type::value_type> eval_tensor;
       typedef FutureTensor<eval_tensor> remote_type;
       typedef typename TensorTraits<Derived>::const_reference const_reference;
       typedef typename TensorTraits<Derived>::const_iterator const_iterator;
 
-      TILEDARRAY_TILED_TENSOR_INHEIRATE_MEMBER(TiledTensor<Derived>, Derived)
+      TILEDARRAY_TILED_TENSOR_INHERIT_MEMBER(TiledTensor<Derived>, Derived)
 
       ReadableTiledTensor(madness::World& world) : base(world) { }
 
@@ -164,9 +164,9 @@ namespace TiledArray {
     class WritableTiledTensor : public ReadableTiledTensor<Derived> {
     public:
 
-      TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_TYPEDEF(ReadableTiledTensor<Derived>, Derived)
+      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<Derived>, Derived)
 
-      TILEDARRAY_READABLE_TILED_TENSOR_INHEIRATE_MEMBER(ReadableTiledTensor<Derived>, Derived)
+      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_MEMBER(ReadableTiledTensor<Derived>, Derived)
 
       WritableTiledTensor(madness::World& world) : base(world) { }
 
