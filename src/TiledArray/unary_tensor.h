@@ -39,6 +39,7 @@ namespace TiledArray {
     public:
       typedef UnaryTensor<Arg, Op> UnaryTensor_;
       typedef ArgTensor<Arg> arg_tensor_type;
+      typedef typename arg_tensor_type::future_tensor future_tensor;
       TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<UnaryTensor_>, UnaryTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef Op op_type; ///< The transform operation type
@@ -50,12 +51,14 @@ namespace TiledArray {
 
     public:
 
-      /// Construct a binary tensor op
+      /// Construct a unary tensor op
 
-      /// \param left The left argument
-      /// \param right The right argument
+      /// The argument may be of type \c Arg or \c FutureTensor<Arg::eval_type>
+      /// \tparam T Tensor argument type
+      /// \param arg The argument
       /// \param op The element transform operation
-      UnaryTensor(const Arg& arg, const op_type& op) :
+      template <typename T>
+      UnaryTensor(const T& arg, const op_type& op) :
         arg_(arg), op_(op)
       { }
 
