@@ -78,7 +78,7 @@ namespace TiledArray {
       ContractionTensor(typename TensorArg<left_tensor_type>::type left, typename TensorArg<right_tensor_type>::type right, const std::shared_ptr<contract_type>& c) :
         left_(left),
         right_(right),
-        range_(c->contract_range(left.range(), right.range())),
+        range_(),
         data_(),
         contraction_(c)
       { }
@@ -116,12 +116,16 @@ namespace TiledArray {
       /// Tensor range object accessor
 
       /// \return The tensor range object
-      const range_type& range() const { return range_; }
+      const range_type& range() const {
+        if((range_.volume() == 0ul) && (contraction_->dim() != 0ul))
+          range_ = contraction_->contract_range(left_.range(), right_.range());
+        return range_;
+      }
 
       /// Tensor size
 
       /// \return The number of elements in the tensor
-      size_type size() const { return range_.volume(); }
+      size_type size() const { return range().volume(); }
 
 
       /// Iterator factory
@@ -230,7 +234,7 @@ namespace TiledArray {
 
       typename TensorMem<left_tensor_type>::type left_; ///< Left argument
       typename TensorMem<right_tensor_type>::type right_; ///< Right argument
-      range_type range_; ///< Tensor size info
+      mutable range_type range_; ///< Tensor size info
       mutable storage_type data_;
       std::shared_ptr<contract_type> contraction_;
     }; // class ContractionTensor
