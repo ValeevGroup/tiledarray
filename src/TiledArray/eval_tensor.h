@@ -4,6 +4,7 @@
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
+#include <TiledArray/eval_task.h>
 #include <vector>
 #include <algorithm>
 
@@ -29,6 +30,12 @@ namespace TiledArray {
       typedef const EvalTensor<T, R, A>& type;
     }; // struct Eval<EvalTensor<T, R, A> >
 
+    /// Evaluation tensor
+
+    /// This tensor is used as an evaluated intermediate for other tensors.
+    /// \tparma T the value type of this tensor
+    /// \tparam R The range type of this tensor (default = DynamicRange)
+    /// \tparam A The allocator type for the data
     template <typename T, typename R = DynamicRange, typename A = Eigen::aligned_allocator<T> >
     class EvalTensor : public DirectReadableTensor<EvalTensor<T, R, A> > {
     public:
@@ -36,14 +43,16 @@ namespace TiledArray {
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<EvalTensor_> , EvalTensor_ );
       typedef DenseStorage<T,A> storage_type;
 
+      /// Default constructor
+
+      /// Construct an empty tensor that has no data or dimensions
       EvalTensor() : range_(), data_() { }
 
       /// Construct an evaluated tensor
 
       /// This will take ownership of the memory held by \c data
-      /// \tparam SizeArray The input size array type.
-      /// \param s An array with the size of of each dimension
-      /// \param o The dimension ordering
+      /// \tparam D The range derived type
+      /// \param r An array with the size of of each dimension
       /// \param d The data for the tensor
       template <typename D>
       EvalTensor(const Range<D>& r, const storage_type& d) :
@@ -61,9 +70,13 @@ namespace TiledArray {
       /// \param other The tile to be copied.
       template <typename Derived>
       EvalTensor(const ReadableTensor<Derived>& other) :
-          range_(other.range()), data_(other.size(), other.begin())
+          range_(other.range()),
+            data_(other.size(), TiledArray::detail::make_tran_it(0ul, detail::EvalOp<ReadableTensor<Derived> >(other)))
       { }
 
+      /// Copy constructor
+
+      /// \param other The tile to be copied.
       EvalTensor(const EvalTensor_& other) :
         range_(other.range_), data_(other.data_)
       { }
@@ -122,6 +135,8 @@ namespace TiledArray {
         range_.swap(other);
         data_.swap(other);
       }
+
+      bool empty() const { return data_.empty(); }
 
     private:
       range_type range_; ///< Tensor size info
