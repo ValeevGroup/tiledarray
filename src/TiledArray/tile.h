@@ -58,6 +58,7 @@ namespace TiledArray {
       typedef typename CS::index index;                       ///< Array coordinate index type
       typedef typename CS::ordinal_index ordinal_index;       ///< Array ordinal index type
       typedef typename storage_type::allocator_type allocator_type;///< Allocator type
+      typedef Tile_ eval_type;
 
       /// Default constructor
 
@@ -132,7 +133,7 @@ namespace TiledArray {
       /// destructor
       ~Tile() { }
 
-      const Tile_& eval() const { return *this; }
+      const eval_type& eval() const { return *this; }
 
       /// Assignment operator
 
