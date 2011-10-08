@@ -3,6 +3,7 @@
 
 #include <TiledArray/eval_tensor.h>
 #include <TiledArray/contraction.h>
+#include <TiledArray/arg_tensor.h>
 #include <world/shared_ptr.h>
 #include <Eigen/Core>
 #include <functional>
@@ -44,7 +45,8 @@ namespace TiledArray {
 
     template <typename LeftArg, typename RightArg>
     struct Eval<ContractionTensor<LeftArg, RightArg> > {
-      typedef const ContractionTensor<LeftArg, RightArg>& type;
+      typedef const EvalTensor<typename ContractionValue<typename LeftArg::value_type,
+          typename RightArg::value_type>::type>& type;
     }; // struct Eval<ContractionTensor<LeftArg, RightArg> >
 
     /// Tensor that is composed from two contracted argument tensors
@@ -58,11 +60,11 @@ namespace TiledArray {
     class ContractionTensor : public DirectReadableTensor<ContractionTensor<LeftArg, RightArg> > {
     public:
       typedef ContractionTensor<LeftArg, RightArg> ContractionTensor_;
-      typedef LeftArg left_tensor_type;
-      typedef RightArg right_tensor_type;
+      typedef ArgTensor<LeftArg> left_tensor_type;
+      typedef ArgTensor<RightArg> right_tensor_type;
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<ContractionTensor_>, ContractionTensor_);
-      typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef math::Contraction contract_type; ///< Contraction type
+      typedef EvalTensor<value_type> eval_type; ///< Evaluated tensor type
 
     private:
       // not allowed
@@ -75,11 +77,10 @@ namespace TiledArray {
       /// \param left The left argument
       /// \param right The right argument
       /// \param c Shared pointer to contraction object
-      ContractionTensor(typename TensorArg<left_tensor_type>::type left, typename TensorArg<right_tensor_type>::type right, const std::shared_ptr<contract_type>& c) :
+      ContractionTensor(const LeftArg& left, const RightArg& right, const std::shared_ptr<contract_type>& c) :
         left_(left),
         right_(right),
-        range_(),
-        data_(),
+        eval_(),
         contraction_(c)
       { }
 
@@ -87,15 +88,14 @@ namespace TiledArray {
       ContractionTensor(const ContractionTensor_& other) :
         left_(other.left_),
         right_(other.right_),
-        range_(other.range_),
-        data_(other.data_),
+        eval_(other.eval_),
         contraction_(other.contraction_)
       { }
 
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
-      const ContractionTensor_& eval() const {
+      const eval_type& eval() const {
         lazy_eval();
         return *this;
       }
@@ -107,19 +107,15 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const {
         lazy_eval();
-        TA_ASSERT(size() == dest.size());
-        const size_type s = size();
-        for(size_type i = 0; i < s; ++i)
-          dest[i] = operator[](i);
+        eval_.eval_to(dest);
       }
 
       /// Tensor range object accessor
 
       /// \return The tensor range object
       const range_type& range() const {
-        if((range_.volume() == 0ul) && (contraction_->dim() != 0ul))
-          range_ = contraction_->contract_range(left_.range(), right_.range());
-        return range_;
+        lazy_eval();
+        return eval_.range();
       }
 
       /// Tensor size
@@ -133,7 +129,7 @@ namespace TiledArray {
       /// \return An iterator to the first data element
       const_iterator begin() const {
         lazy_eval();
-        return data_.begin();
+        return eval_.begin();
       }
 
       /// Iterator factory
@@ -141,7 +137,7 @@ namespace TiledArray {
       /// \return An iterator to the last data element }
       const_iterator end() const {
         lazy_eval();
-        return data_.end();
+        return eval_.end();
       }
 
 
@@ -150,7 +146,7 @@ namespace TiledArray {
       /// \return The element at the \c i position.
       const_reference operator[](size_type i) const {
         lazy_eval();
-        return data_[i];
+        return eval_[i];
       }
 
       void check_dependancies(madness::TaskInterface* task) const {
@@ -193,49 +189,42 @@ namespace TiledArray {
         }
       }
 
-
-
       /// Evaluate the tensor only when the data is needed
       void lazy_eval() const {
-        if(data_.size() != size()) {
-          const size_type s = size();
+        if(eval_.empty()) {
+          DynamicRange range = contraction_->contract_range(left_.range(), right_.range());
 
           typename contract_type::packed_size_array packed_size =
               contraction_->pack_arrays(left_.range().size(), right_.range().size());
 
           // We need to allocate storage and evaluate
-          storage_type temp(s);
-          typename Eval<left_tensor_type>::type left_eval = left_.eval();
-          typename Eval<left_tensor_type>::type right_eval = right_.eval();
+          typename eval_type::storage_type data(range.volume());
 
-          if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
+          // Make sure the arguments are fully evaluated. This is needed to
+          // avoid recalculation due to multiple element access. It also
+          // allows direct memory access.
+          typename Eval<left_tensor_type>::type left_eval = left_.eval();
+          typename Eval<right_tensor_type>::type right_eval = right_.eval();
+
+          if(range.order() == TiledArray::detail::decreasing_dimension_order) {
             typedef Eigen::Matrix< value_type , Eigen::Dynamic , Eigen::Dynamic,
                 Eigen::RowMajor | Eigen::AutoAlign > matrix_type;
             contract<matrix_type>(packed_size[0], packed_size[1], packed_size[2], packed_size[3],
-                packed_size[4], left_eval.data(), right_eval.data(), temp.data());
+                packed_size[4], left_eval.data(), right_eval.data(), data.data());
           } else {
             typedef Eigen::Matrix< value_type , Eigen::Dynamic , Eigen::Dynamic,
                 Eigen::ColMajor | Eigen::AutoAlign > matrix_type;
             contract<matrix_type>(packed_size[1], packed_size[0], packed_size[3], packed_size[2],
-                packed_size[4], left_eval.data(), right_eval.data(), temp.data());
+                packed_size[4], left_eval.data(), right_eval.data(), data.data());
           }
 
-          temp.swap(data_);
+          eval_type(range, data).swap(eval_);
         }
       }
 
-      template <typename Derived>
-      static const DirectReadableTensor<Derived>&
-      eval_arg(const DirectReadableTensor<Derived>& arg) { return arg; }
-
-      template <typename Derived>
-      static const DirectWritableTensor<Derived>&
-      eval_arg(const DirectWritableTensor<Derived>& arg) { return arg; }
-
-      typename TensorMem<left_tensor_type>::type left_; ///< Left argument
-      typename TensorMem<right_tensor_type>::type right_; ///< Right argument
-      mutable range_type range_; ///< Tensor size info
-      mutable storage_type data_;
+      left_tensor_type left_; ///< Left argument
+      right_tensor_type right_; ///< Right argument
+      mutable eval_type eval_; ///< The evaluated tensor data
       std::shared_ptr<contract_type> contraction_;
     }; // class ContractionTensor
 
