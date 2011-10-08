@@ -1,7 +1,7 @@
 #ifndef TILEDARRAY_TENSOR_BASE_H__INCLUDED
 #define TILEDARRAY_TENSOR_BASE_H__INCLUDED
 
-#include <TiledArray/coordinate_system.h>
+#include <cstdlib>
 
 // Inherit
 #define TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED ) \
@@ -54,17 +54,11 @@ namespace TiledArray {
     template <typename> struct TensorTraits;
     template <typename> struct Eval;
 
-    template <typename T>
-    struct TensorArg {
-      typedef const T& type;
-    };
+    /// Tensor base
 
-    template <typename T>
-    struct TensorMem {
-      typedef const T type;
-    };
-
-
+    /// This class is the base class for all tensor expressions. It uses CRTP
+    /// to avoid the overhead that is normally associated with virtual classes.
+    /// \tparam Derived The derived class type
     template <typename Derived>
     class TensorBase {
     public:
@@ -72,23 +66,14 @@ namespace TiledArray {
       typedef typename TensorTraits<Derived>::range_type range_type;
 
       // Access this object type
-      Derived& derived() { return *static_cast<Derived*>(this); }
-      const Derived& derived() const { return *static_cast<const Derived*>(this); }
+      inline Derived& derived() { return *static_cast<Derived*>(this); }
+      inline const Derived& derived() const { return *static_cast<const Derived*>(this); }
 
       // dimension information
-      const range_type& range() const { return derived().range(); }
-      size_type size() const { return derived().size(); }
+      inline const range_type& range() const { return derived().range(); }
+      inline size_type size() const { return derived().size(); }
 
-      typename Eval<Derived>::type eval() const { derived().eval(); }
-
-      template<typename Dest>
-      void eval_to(Dest& dest) const { derived().eval_to(dest); }
-
-      template<typename Dest>
-      void add_to(Dest& dest) const { derived().add_to(dest); }
-
-      template<typename Dest>
-      void sub_to(Dest& dest) const { derived().sub_to(dest); }
+      inline typename Eval<Derived>::type eval() const { derived().eval(); }
 
     }; // class TensorBase
 
@@ -101,16 +86,35 @@ namespace TiledArray {
 
       TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER(TensorBase<Derived>, Derived)
 
+
+      /// Evaluate this tensor to another
+
+      /// This tensor is evaluated and written to \c dest . \c dest[i] must be
+      /// return a non-const reference to the i-th element and \c value_type
+      /// must be implicitly convertible to the value type of \c dest .
+      /// \tparam Dest The destination object type.
+      /// \param dest The destination object that will hold the evaluated tensor.
+      /// \note This is the default implementation, derived class can reimplement
+      /// it in a more optimized way.
       template <typename Dest>
-      void eval_to(Dest& dest) const {
+      inline void eval_to(Dest& dest) const {
         const size_type s = size();
-        TA_ASSERT(s == dest.size());
+//        TA_ASSERT(s == dest.size());
         for(size_type i = 0; i < s; ++i)
           dest[i] = derived()[i];
       }
 
+      /// Add this tensor to another
+
+      /// This tensor is evaluated and added to \c dest . \c dest[i] must be
+      /// return a non-const reference to the i-th element and \c value_type
+      /// must be implicitly convertible to the value type of \c dest .
+      /// \tparam Dest The destination object type.
+      /// \param dest The destination object that will hold the evaluated tensor.
+      /// \note This is the default implementation, derived class can reimplement
+      /// it in a more optimized way.
       template<typename Dest>
-      void add_to(Dest& dest) const {
+      inline void add_to(Dest& dest) const {
         // This is the default implementation,
         // derived class can reimplement it in a more optimized way.
         const size_type s = size();
@@ -119,8 +123,17 @@ namespace TiledArray {
           dest[i] += derived()[i];
       }
 
+      /// Evaluate this tensor to another
+
+      /// This tensor is evaluated and written to \c dest . \c dest[i] must be
+      /// return a non-const reference to the i-th element and \c value_type
+      /// must be implicitly convertible to the value type of \c dest .
+      /// \tparam Dest The destination object type.
+      /// \param dest The destination object that will hold the evaluated tensor.
+      /// \note This is the default implementation, derived class can reimplement
+      /// it in a more optimized way.
       template<typename Dest>
-      void sub_to(Dest& dest) const {
+      inline void sub_to(Dest& dest) const {
         // This is the default implementation,
         // derived class can reimplement it in a more optimized way.
         const size_type s = size();
@@ -129,10 +142,18 @@ namespace TiledArray {
           dest[i] -= derived()[i];
       }
 
-      // element access
-      const_reference operator[](size_type i) const { return derived()[i]; }
+      /// Element accessor
 
-      void check_dependency(madness::TaskInterface* task) const { derived().check_dependency(task); }
+      /// \param i The element to be accessed
+      /// \return const reference to i-th element of this tensor
+      inline const_reference operator[](size_type i) const { return derived()[i]; }
+
+      /// Check the dependencies of this tensor
+
+      /// This function will check its dependencies and increment the task
+      /// dependence counter for each unevaluated dependency.
+      /// \param task The task that depends on this tensor
+      inline void check_dependency(madness::TaskInterface* task) const { derived().check_dependency(task); }
 
     }; // class ReadableTensor
 
@@ -163,6 +184,18 @@ namespace TiledArray {
       typedef typename TensorTraits<Derived>::pointer pointer;
 
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_MEMBER(DirectReadableTensor<Derived>, Derived)
+
+      template <typename D>
+      DirectWritableTensor<Derived>& operator +=(const ReadableTensor<D>& other) {
+        other.derived().add_to(derived());
+        return *this;
+      }
+
+      template <typename D>
+      DirectWritableTensor<Derived>& operator -=(const ReadableTensor<D>& other) {
+        other.derived().sub_to(derived());
+        return *this;
+      }
 
       // iterator factory
       iterator begin() { return derived().begin(); }
