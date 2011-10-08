@@ -132,13 +132,6 @@ namespace TiledArray {
       /// destructor
       ~Tile() { }
 
-      template <typename Dest>
-      void eval_to(Dest& dest) const {
-        TA_ASSERT(size() == dest.size());
-        std::copy(begin(), end(),
-            TiledArray::detail::make_tran_it(0ul, detail::EvalOp<Dest>(dest)));
-      }
-
       const Tile_& eval() const { return *this; }
 
       /// Assignment operator
@@ -187,30 +180,15 @@ namespace TiledArray {
       }
 
 
-      template <typename Arg>
-      typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
-      operator+=(const ReadableTensor<Arg>& other) {
+      template <typename D>
+      Tile_& operator+=(const ReadableTensor<D>& other) {
         if(other.size() != 0) {
           if(size() == 0ul) {
             range_ = other.range();
             storage_type(size()).swap(data_);
           }
           TA_ASSERT(range_ == other.range());
-          data_ += other;
-        }
-
-        return *this;
-      }
-
-      template <typename U, typename AA>
-      Tile_& operator+=(const Tile<U,CS,AA>& other) {
-        if(other.size() != 0) {
-          if(size() == 0ul) {
-            range_ = other.range();
-            storage_type(size()).swap(data_);
-          }
-          TA_ASSERT(range_ == other.range());
-          data_ += other;
+          other.derived().add_to(data_);
         }
 
         return *this;
@@ -221,30 +199,15 @@ namespace TiledArray {
         return *this;
       }
 
-      template <typename Arg>
-      typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
-      operator-=(const ReadableTensor<Arg>& other) {
+      template <typename D>
+      Tile_& operator-=(const ReadableTensor<D>& other) {
         if (other.size() != 0) {
           if(size() == 0ul) {
             range_ = other.range();
             storage_type(size()).swap(data_);
           }
           TA_ASSERT(range_ == other.range());
-          data_ -= other;
-        }
-
-        return *this;
-      }
-
-      template <typename U, typename AA>
-      Tile_& operator-=(const Tile<U,CS,AA>& other) {
-        if (other.size() != 0) {
-          if(size() == 0ul) {
-            range_ = other.range();
-            storage_type(size()).swap(data_);
-          }
-          TA_ASSERT(range_ == other.range());
-          data_ -= other;
+          other.derived().sub_to(data_);
         }
 
         return *this;
@@ -289,22 +252,6 @@ namespace TiledArray {
       const_iterator begin() const { return data_.begin(); }
       iterator end() { return data_.end(); }
       const_iterator end() const { return data_.end(); }
-
-      /// Returns a reference to element i (range checking is performed).
-
-      /// This function provides element access to the element located at index i.
-      /// If i is not included in the range of elements, std::out_of_range will be
-      /// thrown. Valid types for Index are ordinal_type and index_type.
-      template <typename Index>
-      reference at(const Index& i) { return data_.at(range_.ord(i)); }
-
-      /// Returns a constant reference to element i (range checking is performed).
-
-      /// This function provides element access to the element located at index i.
-      /// If i is not included in the range of elements, std::out_of_range will be
-      /// thrown. Valid types for Index are ordinal_type and index_type.
-      template <typename Index>
-      const_reference at(const Index& i) const { return data_.at(range_.ord(i)); }
 
       /// Returns a reference to the element at i.
 
