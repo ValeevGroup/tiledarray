@@ -18,12 +18,9 @@ namespace TiledArray {
       typedef DenseStorage<T,A> storage_type;
       typedef R range_type;
       typedef typename storage_type::value_type value_type;
-      typedef typename storage_type::reference reference;
       typedef typename storage_type::const_reference const_reference;
-      typedef typename storage_type::iterator iterator;
       typedef typename storage_type::const_iterator const_iterator;
       typedef typename storage_type::difference_type difference_type;
-      typedef typename storage_type::pointer pointer;
       typedef typename storage_type::const_pointer const_pointer;
     };  // struct TensorTraits<EvalTensor<T, A> >
 
@@ -79,15 +76,7 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return A const reference to this object.
-      const EvalTensor<T, A>& eval() const { return *this; }
-
-      template <typename Dest>
-      void eval_to(const Dest& dest) const {
-        TA_ASSERT(size() == dest.size());
-        const size_type s = size();
-        for(size_type i = 0; i < s; ++i)
-          dest[i] = data_[i];
-      }
+      const EvalTensor_& eval() const { return *this; }
 
       /// Tensor range object accessor
 
@@ -127,6 +116,11 @@ namespace TiledArray {
       template <typename Archive>
       void serialize(Archive& ar) {
         ar & range_ & data_;
+      }
+
+      void swap(EvalTensor_& other) {
+        range_.swap(other);
+        data_.swap(other);
       }
 
     private:
