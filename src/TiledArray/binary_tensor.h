@@ -3,7 +3,6 @@
 
 
 #include <TiledArray/permutation.h>
-#include <TiledArray/variable_list.h>
 #include <TiledArray/eval_tensor.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
@@ -90,6 +89,7 @@ namespace TiledArray {
       typedef ArgTensor<RightArg> right_tensor_type;
       TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<BinaryTensor_>, BinaryTensor_)
       typedef Op op_type; ///< The transform operation type
+      typedef EvalTensor<value_type, range_type> eval_type;
 
     private:
       // Not allowed
@@ -117,8 +117,8 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
-      EvalTensor<value_type, range_type> eval() const {
-        return EvalTensor<value_type, range_type>(*this);
+      eval_type eval() const {
+        return eval_type(*this);
       }
 
       /// Evaluate this tensor and store the results in \c dest
