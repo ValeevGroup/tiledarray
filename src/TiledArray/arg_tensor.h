@@ -106,6 +106,20 @@ namespace TiledArray {
         remote()->eval_to(dest);
       }
 
+      template<typename Dest>
+      void add_to(Dest& dest) const {
+        if(is_local())
+          local()->add_to(dest);
+        remote()->add_to(dest);
+      }
+
+      template<typename Dest>
+      void sub_to(Dest& dest) const {
+        if(is_local())
+          local()->sub_to(dest);
+        remote()->sub_to(dest);
+      }
+
       // element access
 
       /// \throw TiledArray::Exception If the future has not been evaluated.
