@@ -36,7 +36,7 @@ namespace TiledArray {
 
       template<typename InIter>
       VariableList(InIter first, InIter last) {
-        TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+        TA_STATIC_ASSERT(TiledArray::detail::is_input_iterator<InIter>::value);
         TA_ASSERT( unique_(first, last) );
 
         for(; first != last; ++first)
