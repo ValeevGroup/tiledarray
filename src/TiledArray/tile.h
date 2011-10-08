@@ -148,16 +148,16 @@ namespace TiledArray {
       /// \param other The tile object to be moved
       /// \return A reference to this object
       /// \throw std::bad_alloc There is not enough memory available for the target tile
-      template <typename Arg>
-      typename madness::disable_if<std::is_same<Tile_, Arg>, Tile_&>::type
-      operator=(const ReadableTensor<Arg>& other) {
+      template <typename D>
+      typename madness::disable_if<std::is_same<Tile_, D>, Tile_&>::type
+      operator=(const ReadableTensor<D>& other) {
         if(other.size() != 0ul) {
           if(size() == 0ul) {
             range_ = other.range();
             storage_type(size()).swap(data_);
           }
           TA_ASSERT(range_ == other.range());
-          other.eval_to(*this);
+          other.derived().eval_to(*this);
         } else {
           range_ = range_type();
           storage_type().swap(data_);
