@@ -77,17 +77,22 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const {
         TA_ASSERT(size() == dest.size());
-        if(static_cast<const void*>(&arg_) != static_cast<void*>(&dest))
+        if((static_cast<const void*>(&arg_) != static_cast<void*>(&dest)) && (data_.size() != 0ul))
           permute(dest);
-        else
-          std::copy(begin(), end(), dest.begin());
+        else {
+          lazy_eval();
+          size_type s = size();
+          for(size_type i = 0; i < s; ++i)
+            dest[i] = data_[i];
+        }
       }
 
       /// Tensor range object accessor
 
       /// \return The tensor range object
       const range_type& range() const {
-        lazy_eval();
+        if(range_.volume() == 0ul && arg_.size() != 0ul)
+          range_ = perm_ ^ arg_.range();
         return range_;
       }
 
@@ -95,8 +100,7 @@ namespace TiledArray {
 
       /// \return The number of elements in the tile
       size_type size() const {
-        lazy_eval();
-        return range_.volume();
+        return arg_.size();
       }
 
       /// Iterator factory
@@ -130,7 +134,7 @@ namespace TiledArray {
     private:
 
       void lazy_eval() const {
-        if(range_.volume() != data_.size()) {
+        if(range_.volume() != arg_.size()) {
           range_ = perm_ ^ (arg_.range());
           storage_type temp(range_.volume());
           permute(temp);
