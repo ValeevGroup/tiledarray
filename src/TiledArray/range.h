@@ -26,8 +26,8 @@ namespace TiledArray {
 
     template <typename SizeArray>
     inline std::size_t calc_volume(const SizeArray& size) {
-      return std::accumulate(size.begin(), size.end(), typename SizeArray::value_type(1),
-          std::multiplies<typename SizeArray::value_type>());
+      return size.size() ? std::accumulate(size.begin(), size.end(), typename SizeArray::value_type(1),
+          std::multiplies<typename SizeArray::value_type>()) : 0ul;
     }
 
     template<typename InIter, typename OutIter>
