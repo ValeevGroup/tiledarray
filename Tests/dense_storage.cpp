@@ -25,7 +25,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(Storage t0);
     Storage t0;
     BOOST_CHECK_EQUAL(t0.size(), 0u);
-    BOOST_CHECK_EQUAL(t0.volume(), 0u);
     BOOST_CHECK_THROW(t0.at(0), Exception);
     BOOST_CHECK_EQUAL(t0.begin(), t0.end());
   }
@@ -35,7 +34,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(Storage tc(t));
     Storage tc(t);
     BOOST_CHECK_EQUAL(tc.size(), t.size());
-    BOOST_CHECK_EQUAL(tc.volume(), t.volume());
     BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
   }
 
@@ -44,7 +42,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(Storage t1(10));
     Storage t1(10);
     BOOST_CHECK_EQUAL(t1.size(), 10u);
-    BOOST_CHECK_EQUAL(t1.volume(), 10u);
     for(Storage::const_iterator it = t1.begin(); it != t1.end(); ++it)
       BOOST_CHECK_EQUAL(*it, int());
   }
@@ -54,7 +51,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(Storage t1(10, 1));
     Storage t1(10, 1);
     BOOST_CHECK_EQUAL(t1.size(), 10ul);
-    BOOST_CHECK_EQUAL(t1.volume(), 10ul);
     for(Storage::const_iterator it = t1.begin(); it != t1.end(); ++it)
       BOOST_CHECK_EQUAL(*it, 1);
   }
@@ -64,7 +60,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(Storage t3(10, t.begin()));
     Storage t3(10, t.begin());
     BOOST_CHECK_EQUAL(t3.size(), 10ul);
-    BOOST_CHECK_EQUAL(t3.volume(), 10ul);
     BOOST_CHECK_EQUAL_COLLECTIONS(t3.begin(), t3.end(), t.begin(), t.end());
   }
 }
@@ -72,7 +67,6 @@ BOOST_AUTO_TEST_CASE( constructor )
 BOOST_AUTO_TEST_CASE( size_accessor )
 {
   BOOST_CHECK_EQUAL(t.size(), 10ul);    // check size accessor
-  BOOST_CHECK_EQUAL(t.volume(), 10ul);  // check volume accessor
 }
 
 BOOST_AUTO_TEST_CASE( element_access )
