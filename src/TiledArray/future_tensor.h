@@ -28,6 +28,7 @@ namespace TiledArray {
     class FutureTensor : public ReadableTensor<FutureTensor<T> > {
     public:
       typedef FutureTensor<T> FutureTensor_;
+      typedef typename T::eval_type eval_type;
       TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<FutureTensor_>, FutureTensor_);
       typedef T tensor_type;
       typedef madness::Future<tensor_type> future;
