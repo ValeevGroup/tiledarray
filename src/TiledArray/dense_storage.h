@@ -260,11 +260,10 @@ namespace TiledArray {
     /// \throw nothing
     size_type size() const { return last_ - first_; }
 
-    /// DenseStorage volume accessor
+    /// Empty storage check
 
-    /// \return The number of elemenst stored
-    /// \throw nothing
-    size_type volume() const { return size(); }
+    /// \return \c true when no data is stored, otherwise false.
+    bool empty() const { return first_ == NULL; }
 
     /// Exchange the content of this object with other.
 
