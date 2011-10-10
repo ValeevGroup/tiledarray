@@ -99,12 +99,16 @@ namespace TiledArray {
 
       /// Construct a binary tensor op
 
+      /// The argument may be of type \c Arg or \c FutureTensor<Arg::eval_type>
+      /// \tparam L Left tensor argument type
+      /// \tparam R Right tensor argument type
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
       /// \throw TiledArray::Exception When left and right argument orders,
       /// dimensions, or sizes are not equal.
-      BinaryTensor(const LeftArg& left, const RightArg& right, const op_type& op) :
+      template <typename L, typename R>
+      BinaryTensor(const L& left, const R& right, const op_type& op) :
         left_(left), right_(right), op_(op)
       {
         TA_ASSERT(left.range() == right.range());

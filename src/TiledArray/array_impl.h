@@ -9,6 +9,8 @@
 #include <TiledArray/indexed_iterator.h>
 #include <TiledArray/versioned_pmap.h>
 #include <TiledArray/distributed_storage.h>
+#include <TiledArray/tensor.h>
+#include <TiledArray/bitset.h>
 #include <world/worldreduce.h>
 #include <world/make_task.h>
 #include <world/functional.h>
@@ -33,7 +35,7 @@ namespace TiledArray {
       typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
       typedef typename coordinate_system::size_array size_array; ///< Size array type
 
-      typedef expressions::Tile<T,typename ChildCoordinateSystem<coordinate_system>::coordinate_system > value_type; ///< The tile type
+      typedef expressions::Tensor<T,StaticRange<typename ChildCoordinateSystem<coordinate_system>::coordinate_system> > value_type; ///< The tile type
       typedef DistributedStorage<value_type> storage_type;
       typedef typename storage_type::future future;
       typedef typename storage_type::pmap_interface pmap_interface;
@@ -257,7 +259,7 @@ namespace TiledArray {
       typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
       typedef typename coordinate_system::size_array size_array; ///< Size array type
 
-      typedef expressions::Tile<T,typename ChildCoordinateSystem<coordinate_system>::coordinate_system > value_type; ///< The tile type
+      typedef expressions::Tensor<T,StaticRange<typename ChildCoordinateSystem<coordinate_system>::coordinate_system> > value_type; ///< The tile type
       typedef DistributedStorage<value_type> storage_type;
       typedef typename storage_type::future future;
       typedef typename storage_type::pmap_interface pmap_interface;
@@ -300,7 +302,7 @@ namespace TiledArray {
       typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
       typedef typename coordinate_system::size_array size_array; ///< Size array type
 
-      typedef expressions::Tile<T,typename ChildCoordinateSystem<coordinate_system>::coordinate_system > value_type; ///< The tile type
+      typedef expressions::Tensor<T,StaticRange<typename ChildCoordinateSystem<coordinate_system>::coordinate_system> > value_type; ///< The tile type
       typedef DistributedStorage<value_type> storage_type;
       typedef typename storage_type::future future;
       typedef typename storage_type::pmap_interface pmap_interface;

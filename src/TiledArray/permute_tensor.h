@@ -120,7 +120,7 @@ namespace TiledArray {
         return eval_[i];
       }
 
-      void check_dependancies(madness::TaskInterface* task) const {
+      void check_dependancies(madness::DependencyInterface* task) const {
         arg_.check_dependancies(task);
       }
 

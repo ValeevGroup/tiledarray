@@ -101,10 +101,10 @@ namespace TiledArray {
         TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
 
         // Add result tiles to dest and wait for all tiles to be added.
-        madness::Future<bool> done =
-            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
-            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
-        done.get();
+//        madness::Future<bool> done =
+//            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
+//            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
+//        done.get();
       }
 
       /// Tensor tile range object accessor
@@ -263,10 +263,10 @@ namespace TiledArray {
         TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
 
         // Add result tiles to dest and wait for all tiles to be added.
-        madness::Future<bool> done =
-            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
-            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
-        done.get();
+//        madness::Future<bool> done =
+//            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
+//            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
+//        done.get();
       }
 
       /// Tensor tile range object accessor

@@ -385,7 +385,7 @@ namespace TiledArray {
     struct DefaultArrayPolicy {
       typedef Eigen::aligned_allocator<T> allocator;
       typedef typename ChildCoordinateSystem<CS>::coordinate_system tile_coordinate_system;
-      typedef expressions::Tile<T, tile_coordinate_system, allocator> value_type;
+      typedef expressions::Tensor<T, StaticRange<tile_coordinate_system>, allocator> value_type;
       typedef StaticRange<tile_coordinate_system> range_type;
 
       static value_type construct_value() {

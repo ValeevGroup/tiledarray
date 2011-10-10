@@ -2,6 +2,7 @@
 #define TILEDARRAY_TENSOR_BASE_H__INCLUDED
 
 #include <cstdlib>
+#include <TiledArray/error.h>
 
 // Inherit
 #define TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED ) \
@@ -33,6 +34,9 @@
 
 #define TILEDARRAY_READABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER( BASE , DERIVED ) \
+    using base::eval_to; \
+    using base::add_to; \
+    using base::sub_to; \
     using base::operator[];
 
 #define TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
@@ -42,11 +46,7 @@
     using base::end;
 
 #define TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED )
-
-namespace madness {
-  class TaskInterface;
-}  // namespace madness
+    TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
 
 namespace TiledArray {
   namespace expressions {
@@ -86,7 +86,6 @@ namespace TiledArray {
 
       TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER(TensorBase<Derived>, Derived)
 
-
       /// Evaluate this tensor to another
 
       /// This tensor is evaluated and written to \c dest . \c dest[i] must be
@@ -99,7 +98,7 @@ namespace TiledArray {
       template <typename Dest>
       inline void eval_to(Dest& dest) const {
         const size_type s = size();
-//        TA_ASSERT(s == dest.size());
+        TA_ASSERT(s == dest.size());
         for(size_type i = 0; i < s; ++i)
           dest[i] = derived()[i];
       }
@@ -148,13 +147,6 @@ namespace TiledArray {
       /// \return const reference to i-th element of this tensor
       inline const_reference operator[](size_type i) const { return derived()[i]; }
 
-      /// Check the dependencies of this tensor
-
-      /// This function will check its dependencies and increment the task
-      /// dependence counter for each unevaluated dependency.
-      /// \param task The task that depends on this tensor
-      inline void check_dependency(madness::TaskInterface* task) const { derived().check_dependency(task); }
-
     }; // class ReadableTensor
 
     template <typename Derived>
@@ -168,11 +160,11 @@ namespace TiledArray {
       TILEDARRAY_READABLE_TENSOR_INHERIT_MEMBER(ReadableTensor<Derived>, Derived)
 
       // iterator factory
-      const_iterator begin() const { return derived().begin(); }
-      const_iterator end() const { return derived().end(); }
+      inline const_iterator begin() const { return derived().begin(); }
+      inline const_iterator end() const { return derived().end(); }
 
       // data accessor
-      const_pointer data() const { return derived().data(); }
+      inline const_pointer data() const { return derived().data(); }
     }; // class DirectReadableTensor
 
     template <typename Derived>
@@ -186,9 +178,9 @@ namespace TiledArray {
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_MEMBER(DirectReadableTensor<Derived>, Derived)
 
       template <typename D>
-      DirectWritableTensor<Derived>& operator +=(const ReadableTensor<D>& other) {
+      Derived& operator +=(const ReadableTensor<D>& other) {
         other.derived().add_to(derived());
-        return *this;
+        return derived();
       }
 
       template <typename D>
@@ -198,12 +190,12 @@ namespace TiledArray {
       }
 
       // iterator factory
-      iterator begin() { return derived().begin(); }
-      iterator end() { return derived().end(); }
+      inline iterator begin() { return derived().begin(); }
+      inline iterator end() { return derived().end(); }
 
       // data accessor
-      reference operator[](size_type i) { return derived()[i]; }
-      pointer data() { return derived().data(); }
+      inline reference operator[](size_type i) { return derived()[i]; }
+      inline pointer data() { return derived().data(); }
     }; // class DirectWritableTensor
 
   } // namespace expressions

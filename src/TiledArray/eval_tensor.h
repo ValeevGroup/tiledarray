@@ -5,8 +5,6 @@
 #include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
 #include <TiledArray/eval_task.h>
-#include <vector>
-#include <algorithm>
 
 namespace TiledArray {
   namespace expressions {
@@ -71,9 +69,10 @@ namespace TiledArray {
       /// \param other The tile to be copied.
       template <typename Derived>
       explicit EvalTensor(const ReadableTensor<Derived>& other) :
-          range_(other.range()),
-            data_(other.size(), TiledArray::detail::make_tran_it(0ul, detail::EvalOp<ReadableTensor<Derived> >(other)))
-      { }
+          range_(other.range()), data_(other.size())
+      {
+        other.eval_to(data_);
+      }
 
       /// Copy constructor
 
