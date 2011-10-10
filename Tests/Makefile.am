@@ -14,7 +14,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   transform_iterator.cpp \
                   dense_storage.cpp \
                   distributed_storage.cpp \
-                  tile.cpp \
+                  tensor.cpp \
                   unary_tensor.cpp \
                   binary_tensor.cpp \
                   permute_tensor.cpp \

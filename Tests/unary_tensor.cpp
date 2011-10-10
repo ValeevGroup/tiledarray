@@ -1,22 +1,22 @@
 #include "TiledArray/unary_tensor.h"
-#include "TiledArray/tile.h"
+#include "TiledArray/tensor.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
 struct UnaryTensorFixture {
-  typedef Tile<int, GlobalFixture::coordinate_system> TileN;
-  typedef TileN::range_type range_type;
-  typedef TileN::index index;
-  typedef std::binder1st<std::multiplies<TileN::value_type> > scale_op;
-  typedef UnaryTensor<TileN,scale_op> UnaryT;
+  typedef Tensor<int, StaticRange<GlobalFixture::coordinate_system> > TensorN;
+  typedef TensorN::range_type range_type;
+  typedef TensorN::range_type::index index;
+  typedef std::binder1st<std::multiplies<TensorN::value_type> > scale_op;
+  typedef UnaryTensor<TensorN,scale_op> UnaryT;
   typedef UnaryT::value_type value_type;
 
   UnaryTensorFixture() : ut(t, op) { }
 
   // make a tile to be permuted
-  static TileN make_tile() {
+  static TensorN make_tile() {
     index start(0);
     index finish(0);
     index::value_type i = 3;
@@ -25,20 +25,20 @@ struct UnaryTensorFixture {
 
     range_type r(start, finish);
 
-    return TileN(r, 3);
+    return TensorN(r, 3);
   }
 
 
-  static const TileN t;
+  static const TensorN t;
   static const scale_op op;
 
   UnaryT ut;
 }; // struct UnaryTensorFixture
 
 
-const UnaryTensorFixture::TileN UnaryTensorFixture::t = make_tile();
+const UnaryTensorFixture::TensorN UnaryTensorFixture::t = make_tile();
 const UnaryTensorFixture::scale_op UnaryTensorFixture::op =
-    scale_op(std::multiplies<UnaryTensorFixture::TileN::value_type>(), 2);
+    scale_op(std::multiplies<UnaryTensorFixture::TensorN::value_type>(), 2);
 
 
 BOOST_FIXTURE_TEST_SUITE( unary_tensor_suite , UnaryTensorFixture )

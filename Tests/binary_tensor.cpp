@@ -1,22 +1,22 @@
 #include "TiledArray/binary_tensor.h"
-#include "TiledArray/tile.h"
+#include "TiledArray/tensor.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
 struct BinaryTensorFixture {
-  typedef Tile<int, GlobalFixture::coordinate_system> TileN;
-  typedef TileN::range_type range_type;
-  typedef TileN::index index;
-  typedef std::plus<TileN::value_type> plus_op;
-  typedef BinaryTensor<TileN,TileN,plus_op> BinaryT;
+  typedef Tensor<int, StaticRange<GlobalFixture::coordinate_system> > TensorN;
+  typedef TensorN::range_type range_type;
+  typedef TensorN::range_type::index index;
+  typedef std::plus<TensorN::value_type> plus_op;
+  typedef BinaryTensor<TensorN,TensorN,plus_op> BinaryT;
   typedef BinaryT::value_type value_type;
 
   BinaryTensorFixture() : bt(t2, t3, op) { }
 
   // make a tile to be permuted
-  static TileN make_tile(TileN::value_type value) {
+  static TensorN make_tile(TensorN::value_type value) {
     index start(0);
     index finish(0);
     index::value_type i = 3;
@@ -25,20 +25,20 @@ struct BinaryTensorFixture {
 
     range_type r(start, finish);
 
-    return TileN(r, value);
+    return TensorN(r, value);
   }
 
 
-  static const TileN t2;
-  static const TileN t3;
+  static const TensorN t2;
+  static const TensorN t3;
   static const plus_op op;
 
   BinaryT bt;
 }; // struct BinaryTensorFixture
 
 
-const BinaryTensorFixture::TileN BinaryTensorFixture::t2 = make_tile(2);
-const BinaryTensorFixture::TileN BinaryTensorFixture::t3 = make_tile(3);
+const BinaryTensorFixture::TensorN BinaryTensorFixture::t2 = make_tile(2);
+const BinaryTensorFixture::TensorN BinaryTensorFixture::t3 = make_tile(3);
 
 const BinaryTensorFixture::plus_op BinaryTensorFixture::op =
     BinaryTensorFixture::plus_op();

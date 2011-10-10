@@ -1,5 +1,5 @@
 #include "TiledArray/permute_tensor.h"
-#include "TiledArray/tile.h"
+#include "TiledArray/tensor.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
@@ -7,11 +7,11 @@ using namespace TiledArray::expressions;
 
 
 struct PermuteTensorFixture {
-  typedef Tile<int, GlobalFixture::coordinate_system> TileN;
-  typedef TileN::range_type range_type;
-  typedef TileN::index index;
+  typedef Tensor<int, StaticRange<GlobalFixture::coordinate_system> > TensorN;
+  typedef TensorN::range_type range_type;
+  typedef TensorN::range_type::index index;
   typedef Permutation<GlobalFixture::coordinate_system::dim> PermN;
-  typedef PermuteTensor<TileN,GlobalFixture::coordinate_system::dim> PermT;
+  typedef PermuteTensor<TensorN,GlobalFixture::coordinate_system::dim> PermT;
   typedef PermT::value_type value_type;
 
   PermuteTensorFixture() : pt(t, p) { }
@@ -27,7 +27,7 @@ struct PermuteTensorFixture {
   }
 
   // make a tile to be permuted
-  static TileN make_tile() {
+  static TensorN make_tile() {
     index start(0);
     index finish(0);
     index::value_type i = 3;
@@ -35,7 +35,7 @@ struct PermuteTensorFixture {
       *it = i;
 
     range_type r(start, finish);
-    TileN result(r);
+    TensorN result(r);
     for(range_type::const_iterator it = r.begin(); it != r.end(); ++it)
       result[*it] = get_value(*it);
 
@@ -53,7 +53,7 @@ struct PermuteTensorFixture {
     return PermN(temp.begin());
   }
 
-  static const TileN t;
+  static const TensorN t;
   static const PermN p;
 
   PermT pt;
@@ -61,7 +61,7 @@ struct PermuteTensorFixture {
 
 using madness::operator<<;
 
-const PermuteTensorFixture::TileN PermuteTensorFixture::t(make_tile());
+const PermuteTensorFixture::TensorN PermuteTensorFixture::t(make_tile());
 const PermuteTensorFixture::PermN PermuteTensorFixture::p(make_perm());
 
 

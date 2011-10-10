@@ -1,5 +1,5 @@
 #include "TiledArray/contraction_tensor.h"
-#include "TiledArray/tile.h"
+#include "TiledArray/tensor.h"
 #include "TiledArray/contraction.h"
 #include <world/shared_ptr.h>
 #include "unit_test_config.h"
@@ -9,21 +9,21 @@ using namespace TiledArray;
 using namespace TiledArray::expressions;
 
 struct ContractionTensorFixture {
-  typedef Tile<int, GlobalFixture::coordinate_system> TileN;
-  typedef TileN::range_type range_type;
-  typedef TileN::index index;
+  typedef Tensor<int, StaticRange<GlobalFixture::coordinate_system> > TensorN;
+  typedef TensorN::range_type range_type;
+  typedef TensorN::range_type::index index;
   typedef math::Contraction cont_op;
-  typedef ContractionTensor<TileN,TileN> ContT;
+  typedef ContractionTensor<TensorN,TensorN> ContT;
 
   ContractionTensorFixture() : ct(t2, t3, cont) { }
 
   // make a tile to be permuted
-  static TileN make_tile(TileN::value_type value) {
+  static TensorN make_tile(TensorN::value_type value) {
     index start(0);
     index finish(5);
     range_type r(start, finish);
 
-    return TileN(r, value);
+    return TensorN(r, value);
   }
 
   static std::string make_var_list(std::size_t first, std::size_t last) {
@@ -41,8 +41,8 @@ struct ContractionTensorFixture {
   }
 
   static const std::shared_ptr<math::Contraction> cont;
-  static const TileN t2;
-  static const TileN t3;
+  static const TensorN t2;
+  static const TensorN t3;
 
   ContT ct;
 }; // struct ContractionTensorFixture
@@ -52,8 +52,8 @@ const std::shared_ptr<math::Contraction> ContractionTensorFixture::cont(new math
     VariableList(ContractionTensorFixture::make_var_list(0, GlobalFixture::coordinate_system::dim)),
     VariableList(ContractionTensorFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1))));
 
-const ContractionTensorFixture::TileN ContractionTensorFixture::t2 = make_tile(2);
-const ContractionTensorFixture::TileN ContractionTensorFixture::t3 = make_tile(3);
+const ContractionTensorFixture::TensorN ContractionTensorFixture::t2 = make_tile(2);
+const ContractionTensorFixture::TensorN ContractionTensorFixture::t3 = make_tile(3);
 
 
 BOOST_FIXTURE_TEST_SUITE( contraction_tensor_suite , ContractionTensorFixture )
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE( contraction )
     BOOST_CHECK_EQUAL(ct[i], mc(0,0));
   }
 
-  TileN::size_type i = 0;
+  TensorN::size_type i = 0;
   for(ContT::const_iterator it = ct.begin(); it != ct.end(); ++it, ++i) {
     // Check that iteration works correctly
     BOOST_CHECK_EQUAL(*it, mc(0,0));

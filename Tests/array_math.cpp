@@ -4,7 +4,7 @@
 #include "unit_test_config.h"
 
 using namespace TiledArray;
-using namespace TiledArray::math;
+//using namespace TiledArray::math;
 
 struct ArrayMathFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::coordinate_system> ArrayN;
