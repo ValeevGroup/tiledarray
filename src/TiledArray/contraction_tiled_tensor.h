@@ -3,7 +3,9 @@
 
 //#include <TiledArray/annotated_array.h>
 #include <TiledArray/array_base.h>
+#include <TiledArray/tensor.h>
 #include <TiledArray/contraction_tensor.h>
+#include <TiledArray/tiled_range.h>
 #include <TiledArray/eval_task.h>
 
 namespace TiledArray {
@@ -13,44 +15,16 @@ namespace TiledArray {
     template <typename, typename>
     class ContractionTiledTensor;
 
-    namespace detail {
-
-      /// Tile generator functor
-      template <typename Left, typename Right>
-      class MakeContractionTensor {
-      public:
-        MakeContractionTensor(const std::shared_ptr<math::Contraction>& cont) : cont_(cont) { }
-
-        typedef const Left& first_argument_type;
-        typedef const Right& second_argument_type;
-        typedef ContractionTensor<Left, Right> result_type;
-
-        result_type operator()(first_argument_type left, second_argument_type right) const {
-          return result_type(left, right, cont_);
-        }
-
-      private:
-        std::shared_ptr<math::Contraction> cont_;
-      }; // struct MakeFutTensor
-
-    }  // namespace detail
-
-
     template <typename Left, typename Right>
     struct TensorTraits<ContractionTiledTensor<Left, Right> > {
-      typedef DynamicRange range_type;
-      typedef typename Left::trange_type trange_type;
-      typedef ContractionTensor<typename Left::value_type, typename Right::value_type> value_type;
-      typedef TiledArray::detail::BinaryTransformIterator<typename Left::const_iterator,
-          typename Right::const_iterator, detail::MakeContractionTensor<typename Left::value_type,
-          typename Right::value_type> > const_iterator; ///< Tensor const iterator
-      typedef value_type const_reference;
+      typedef DynamicTiledRange trange_type;
+      typedef typename trange_type::range_type range_type;
+      typedef Tensor<typename ContractionValue<typename Left::value_type::value_type,
+          typename Right::value_type::value_type>::type, range_type> value_type;
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
+      typedef typename storage_type::const_iterator const_iterator; ///< Tensor const iterator
+      typedef typename storage_type::future const_reference;
     }; // struct TensorTraits<ContractionTiledTensor<Arg, Op> >
-
-    template <typename Left, typename Right>
-    struct Eval<ContractionTiledTensor<Left, Right> > {
-      typedef ContractionTiledTensor<Left, Right> type;
-    }; // struct Eval<ContractionTiledTensor<Arg, Op> >
 
 
     /// Tensor that is composed from an argument tensor
@@ -66,46 +40,40 @@ namespace TiledArray {
       typedef Left left_tensor_type;
       typedef Right right_tensor_type;
       TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<ContractionTiledTensor_>, ContractionTiledTensor_);
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
 
     private:
       // Not allowed
+      ContractionTiledTensor(const ContractionTiledTensor_&);
       ContractionTiledTensor_& operator=(const ContractionTiledTensor_&);
 
-      typedef detail::MakeContractionTensor<typename Left::value_type,
-          typename Right::value_type> op_type; ///< The transform operation type
+
+      left_tensor_type left_; ///< Left argument
+      right_tensor_type right_; ///< Right argument
+      trange_type trange_;
+      TiledArray::detail::Bitset<> shape_;
+      VariableList vars_;
+      std::shared_ptr<storage_type> data_;
 
     public:
-
-      using base::get_world;
-      using base::get_remote;
 
       /// Construct a unary tiled tensor op
 
       /// \param arg The argument
       /// \param op The element transform operation
-      ContractionTiledTensor(const left_tensor_type& left, const right_tensor_type& right) :
-        cont_(new math::Contraction(left.vars(), right.vars())),
+      ContractionTiledTensor(const left_tensor_type& left, const right_tensor_type& right, const std::shared_ptr<math::Contraction>& cont) :
         left_(left), right_(right),
-        range_(cont_->contract_range(left.range(), right.range())),
-        trange_(cont_->contract_trange(left.trange(), right.trange())),
-        shape_((left.is_dense() && right.is_dense() ? 0 : cont_->contract_shape(left_.get_shape(), right_.get_shape()))),
-        op_(cont_)
-      { }
+        trange_(cont->contract_trange(left.trange(), right.trange())),
+        shape_((left.is_dense() || right.is_dense() ? 0 : cont->contract_shape(left.get_shape(), right.get_shape()))),
+        vars_(),
+        data_(new storage_type(left.get_world(), trange_.range().volume(), left.get_pmap(), false),
+            madness::make_deferred_deleter<storage_type>(left.get_world()))
+      {
 
-      /// Copy constructor
+        cont->contract_array(vars_, left.vars(), right.vars());
+        data_->process_pending();
+      }
 
-      /// \param other The unary tensor to be copied
-      ContractionTiledTensor(const ContractionTiledTensor_& other) :
-        left_(other.left_), right_(other.right_),
-        range_(other.range_), trange_(other.trange_),
-        shape_(other.shape_), op_(other.op_)
-      { }
-
-
-      /// Evaluate tensor
-
-      /// \return The evaluated tensor
-      const ContractionTiledTensor_& eval() const { return *this; }
 
       /// Evaluate tensor to destination
 
@@ -115,49 +83,48 @@ namespace TiledArray {
       void eval_to(Dest& dest) const {
         TA_ASSERT(range() == dest.range());
 
-        // Add result tiles to dest and wait for all tiles to be added.
-        madness::Future<bool> done =
-            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
-            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
-        done.get();
+        // Add result tiles to dest
+        for(const_iterator it = begin(); it != end(); ++it)
+          dest.set(it.index(), *it);
       }
 
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
-      const range_type& range() const { return left_.range(); }
+      const range_type& range() const { return trange_.range(); }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type size() const { return left_.size(); }
+      size_type size() const { return data_->size(); }
 
       /// Query a tile owner
 
       /// \param i The tile index to query
       /// \return The process ID of the node that owns tile \c i
-      ProcessID owner(size_type i) const { return left_.owner(i); }
+      ProcessID owner(size_type i) const { return data_->owner(i); }
 
       /// Query for a locally owned tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is owned by this node, otherwise \c false
-      bool is_local(size_type i) const { return left_.is_local(i); }
+      bool is_local(size_type i) const { return data_->is_local(i); }
 
       /// Query for a zero tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
       bool is_zero(size_type i) const {
-        TA_ASSERT(! is_dense());
         TA_ASSERT(range().includes(i));
+        if(is_dense())
+          return false;
         return ! (shape_[i]);
       }
 
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
-      std::shared_ptr<pmap_interface> get_pmap() const { return left_.get_pmap(); }
+      std::shared_ptr<pmap_interface> get_pmap() const { return data_->get_pmap(); }
 
       /// Query the density of the tensor
 
@@ -172,7 +139,7 @@ namespace TiledArray {
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
-      trange_type trange() const { return left_.trange(); }
+      trange_type trange() const { return trange_; }
 
       /// Tile accessor
 
@@ -188,25 +155,18 @@ namespace TiledArray {
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return const_iterator(left_.begin(), right_.begin(), op_); }
+      const_iterator begin() const { return data_->begin(); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return const_iterator(left_.end(), right_.end(), op_); }
+      const_iterator end() const { return data_->end(); }
 
       /// Variable annotation for the array.
-      const VariableList& vars() const { return left_.vars(); }
+      const VariableList& vars() const { return vars_; }
 
 
     private:
-      const std::shared_ptr<math::Contraction>& cont_;
-      left_tensor_type left_; ///< Left argument
-      right_tensor_type right_; ///< Right argument
-      range_type range_;
-      trange_type trange_;
-      TiledArray::detail::Bitset<> shape_;
-      op_type op_; ///< Element transform operation
     }; // class ContractionTiledTensor
 
 

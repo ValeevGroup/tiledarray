@@ -4,7 +4,6 @@
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
-#include <world/worlddep.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -48,9 +47,7 @@ namespace TiledArray {
       /// Default constructor
 
       /// Construct an empty tensor that has no data or dimensions
-      Tensor() : range_(), data_(), parent_(NULL) { }
-
-      Tensor(madness::CallbackInterface* parent) : range_(), data_(), parent_(parent) { }
+      Tensor() : range_(), data_(), callback_(NULL) { }
 
       /// Construct an evaluated tensor
 
@@ -60,7 +57,7 @@ namespace TiledArray {
       /// \param d The data for the tensor
       template <typename D>
       Tensor(const Range<D>& r) :
-        range_(r), data_(r.volume()), parent_(NULL)
+        range_(r), data_(r.volume())
       { }
 
       /// Construct an evaluated tensor
@@ -208,11 +205,6 @@ namespace TiledArray {
         ar & range_ & data_;
       }
 
-      void notify() {
-        if(parent_)
-          parent_->notify();
-      }
-
     private:
       void swap(Tensor_& other) {
         range_.swap(other.range_);
@@ -221,7 +213,7 @@ namespace TiledArray {
 
       range_type range_; ///< Tensor size info
       storage_type data_; ///< Tensor data
-      madness::CallbackInterface* parent_;
+      madness::CallbackInterface* callback_;
     };
 
   } // namespace detail

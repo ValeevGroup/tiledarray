@@ -9,48 +9,18 @@
 namespace TiledArray {
   namespace expressions {
 
-    // Forward declaration
     template <typename, unsigned int>
     class PermuteTiledTensor;
-
-    namespace detail {
-
-      /// Tile generator functor
-      template <typename Arg, unsigned int DIM>
-      class MakePermuteTensor {
-      public:
-        MakePermuteTensor(const Permutation<DIM>& perm) : perm_(perm) { }
-
-        typedef const Arg& argument_type;
-        typedef PermuteTensor<Arg, DIM> result_type;
-
-        result_type operator()(argument_type arg_tile) const {
-          return result_type(arg_tile, perm_);
-        }
-
-      private:
-        const Permutation<DIM>& perm_;
-      }; // struct MakeFutTensor
-
-    }  // namespace detail
-
 
     template <typename Arg, unsigned int DIM>
     struct TensorTraits<PermuteTiledTensor<Arg, DIM> > {
       typedef typename Arg::range_type range_type;
       typedef typename Arg::trange_type trange_type;
-      typedef PermuteTensor<typename Arg::value_type, DIM> value_type;
-      typedef FutureTensor<EvalTensor<typename value_type::value_type> > remote_type;
-      typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
-          detail::MakePermuteTensor<typename Arg::value_type, DIM> > const_iterator; ///< Tensor const iterator
-      typedef value_type const_reference;
+      typedef typename Arg::value_type value_type;
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
+      typedef typename storage_type::const_iterator const_iterator; ///< Tensor const iterator
+      typedef typename storage_type::future const_reference;
     }; // struct TensorTraits<PermuteTiledTensor<Arg, Op> >
-
-    template <typename Arg, unsigned int DIM>
-    struct Eval<PermuteTiledTensor<Arg, DIM> > {
-      typedef PermuteTiledTensor<Arg, DIM> type;
-    }; // struct Eval<PermuteTiledTensor<Arg, Op> >
-
 
     /// Tensor that is composed from an argument tensor
 
@@ -69,28 +39,14 @@ namespace TiledArray {
 
     private:
       // Not allowed
+      PermuteTiledTensor(const PermuteTiledTensor_&);
       PermuteTiledTensor_& operator=(const PermuteTiledTensor_&);
 
-      typedef detail::MakePermuteTensor<typename Arg::value_type, DIM> op_type; ///< The transform operation type
-
-      struct InitTiles {
-
-        InitTiles(storage_type& data, const op_type& op) : data_(data), op_(op) { }
-
-        bool operator()(const typename Arg::const_iterator& it) {
-          typename storage_type::const_accessor acc;
-          data_.insert(acc, it.index(), op_(*it));
-          return true;
-        }
-
-      private:
-        storage_type& data_;
-        const op_type& op_;
-      };
+      static value_type eval_tensor(const perm_type& p, const typename arg_tensor_type::value_type& value) {
+        return value_type(PermuteTensor<typename arg_tensor_type::value_type, DIM>(value, p));
+      }
 
     public:
-
-      using base::get_world;
 
       /// Construct a permute tiled tensor op
 
@@ -98,43 +54,23 @@ namespace TiledArray {
       /// \param right The right argument
       /// \param op The element transform operation
       PermuteTiledTensor(const arg_tensor_type& arg, const perm_type& p) :
-          base(arg.get_world()),
           perm_(p),
           arg_(arg),
-          range_(p ^ arg.range()),
           trange_(p ^ arg.trange()),
           shape_((arg_.is_dense() ? arg_.size() : 0)),
-          data_(arg.get_world(), arg.size(), arg.get_pmap(), false)
+          data_(new storage_type(arg.get_world(), arg.size(), arg.get_pmap(), false),
+              madness::make_deferred_deleter<storage_type>(arg.get_world()))
       {
         // Initialize the shape
         init_shape();
 
         // Initialize the tiles
-        // Add result tiles to dest and wait for all tiles to be added.
-        madness::Future<bool> done =
-            get_world().taskq.for_each(madness::Range<const_iterator>(arg.begin(),
-            arg.end(), 8), InitTiles(data_, op_type(p, data_)));
-        done.get();
+        for(typename arg_tensor_type::const_iterator it = arg.begin(); it != arg.end(); ++it) {
+          madness::Future<value_type> value = get_world().taskq.add(& eval_tensor, p, *it);
+          data_.set(range().ord(p ^ arg.range().idx(it.index())), value);
+        }
+        data_.process_pending();
       }
-
-      /// Copy constructor
-
-      /// \param other The unary tensor to be copied
-      PermuteTiledTensor(const PermuteTiledTensor_& other) :
-        base(other.get_world()),
-        perm_(other.perm_),
-        arg_(other.arg_),
-        range_(other.range_),
-        trange_(other.trange_),
-        shape_(other.shape_),
-        data_(other.get_world(), other.volume(), other.get_pmap(), false)
-      { }
-
-
-      /// Evaluate tensor
-
-      /// \return The evaluated tensor
-      const PermuteTiledTensor_& eval() const { return *this; }
 
       /// Evaluate tensor to destination
 
@@ -142,38 +78,35 @@ namespace TiledArray {
       /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        TA_ASSERT(range_.dim() == dest.range().dim());
-        TA_ASSERT(std::equal(size().begin(), size().end(), dest.size().begin()));
+        TA_ASSERT(range() == dest.range());
 
         // Add result tiles to dest and wait for all tiles to be added.
-        madness::Future<bool> done =
-            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
-            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
-        done.get();
+        for(const_iterator it = begin(); it != end(); ++it)
+          dest.set(it.index(), *it);
       }
 
 
       /// The tile tensor range object accessor
 
       /// \return The tensor range object
-      const range_type& range() const { return range_; }
+      const range_type& range() const { return trange_.range(); }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type size() const { return range_.size(); }
+      size_type size() const { return trange_.range().volume(); }
 
       /// Query a tile owner
 
       /// \param i The tile index to query
       /// \return The process ID of the node that owns tile \c i
-      ProcessID owner(size_type i) const { return arg_.owner(i); }
+      ProcessID owner(size_type i) const { return data_.owner(i); }
 
       /// Query for a locally owned tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is owned by this node, otherwise \c false
-      bool is_local(size_type i) const { return arg_.is_local(i); }
+      bool is_local(size_type i) const { return data_.is_local(i); }
 
       /// Query for a zero tile
 
@@ -182,7 +115,7 @@ namespace TiledArray {
       bool is_zero(size_type i) const {
         TA_ASSERT(trange_.includes(i));
         if(is_dense())
-          return true;
+          return false;
 
         return shape_[i];
       }
@@ -190,7 +123,7 @@ namespace TiledArray {
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
-      std::shared_ptr<pmap_interface> get_pmap() const { return arg_.get_pmap(); }
+      std::shared_ptr<pmap_interface> get_pmap() const { return data_.get_pmap(); }
 
       /// Query the density of the tensor
 
@@ -207,22 +140,19 @@ namespace TiledArray {
       /// \return The tiled range of the tensor
       trange_type trange() const { return trange_; }
 
-      /// Local tile accessor
+      /// Tile accessor
 
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference get_local(size_type i) const {
-        TA_ASSERT(is_local(i));
-        return data_[i].get();
-      }
+      const_reference operator[](size_type i) const {
+        TA_ASSERT(! is_zero(i));
+        if(is_local(i)) {
+          typename storage_type::const_accessor acc;
+          data_.insert(acc, i);
+          return acc->second;
+        }
 
-      /// Local tile accessor
-
-      /// \param i The tile index
-      /// \return Tile \c i
-      remote_type get_remote(size_type i) const {
-        TA_ASSERT(! is_local(i));
-        return remote_type(data_[i]);
+        return data_.find(i, true);
       }
 
       /// Array begin iterator
@@ -237,6 +167,8 @@ namespace TiledArray {
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return arg_.vars(); }
+
+      madness::World get_world() const { return data_.get_world(); }
 
 
     private:
@@ -290,7 +222,7 @@ namespace TiledArray {
       void init_shape() {
         // Construct the inverse permuted weight and size for this tensor
         const perm_type ip = -perm_;
-        typename range_type::size_array ip_weight = ip ^ range_.weight();
+        typename range_type::size_array ip_weight = ip ^ range().weight();
         const typename range_type::index ip_start = ip ^ arg_.range().start();
 
         // Coordinated iterator for the argument object range
@@ -304,12 +236,10 @@ namespace TiledArray {
       }
 
       perm_type perm_; ///< Transform operation
-      arg_tensor_type arg_; ///< Argument
-      range_type range_; ///< Tensor size info
+      const arg_tensor_type& arg_; ///< Argument
       trange_type trange_; ///< Tensor tiled range
       TiledArray::detail::Bitset<> shape_;
-      mutable storage_type data_; ///< Tile container
-      op_type op_;
+      std::shared_ptr<storage_type> data_; ///< Tile container
     }; // class PermuteTiledTensor
 
 

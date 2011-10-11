@@ -13,45 +13,15 @@ namespace TiledArray {
     template <typename, typename, typename>
     class BinaryTiledTensor;
 
-    namespace detail {
-
-      /// Tile generator functor
-      template <typename Left, typename Right, typename Op>
-      class MakeBinaryTensor {
-      public:
-        MakeBinaryTensor(const Op& op) : op_(op) { }
-
-        typedef const Left& first_argument_type;
-        typedef const Right& second_argument_type;
-        typedef BinaryTensor<Left, Right, Op> result_type;
-
-        result_type operator()(first_argument_type left, second_argument_type right) const {
-          return result_type(left, right, op_);
-        }
-
-      private:
-        Op op_;
-      }; // struct MakeFutTensor
-
-    }  // namespace detail
-
-
     template <typename Left, typename Right, typename Op>
     struct TensorTraits<BinaryTiledTensor<Left, Right, Op> > {
       typedef typename Left::range_type range_type;
       typedef typename Left::trange_type trange_type;
-      typedef BinaryTensor<typename Left::value_type, typename Right::value_type, Op> value_type;
-      typedef TiledArray::detail::BinaryTransformIterator<typename Left::const_iterator,
-          typename Right::const_iterator, detail::MakeBinaryTensor<typename Left::value_type,
-          typename Right::value_type, Op> > const_iterator; ///< Tensor const iterator
-      typedef value_type const_reference;
+      typedef typename Left::value_type value_type;
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
+      typedef typename storage_type::const_iterator const_iterator; ///< Tensor const iterator
+      typedef typename storage_type::future const_reference;
     }; // struct TensorTraits<BinaryTiledTensor<Arg, Op> >
-
-    template <typename Left, typename Right, typename Op>
-    struct Eval<BinaryTiledTensor<Left, Right, Op> > {
-      typedef BinaryTiledTensor<Left, Right, Op> type;
-    }; // struct Eval<BinaryTiledTensor<Arg, Op> >
-
 
     /// Tensor that is composed from an argument tensor
 
@@ -66,18 +36,20 @@ namespace TiledArray {
       typedef Left left_tensor_type;
       typedef Right right_tensor_type;
       TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<BinaryTiledTensor_>, BinaryTiledTensor_);
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
 
     private:
       // Not allowed
+      BinaryTiledTensor(const BinaryTiledTensor_&);
       BinaryTiledTensor_& operator=(const BinaryTiledTensor_&);
 
-      typedef detail::MakeBinaryTensor<typename Left::value_type,
-          typename Right::value_type, Op> op_type; ///< The transform operation type
+      static value_type eval_tensor(const typename left_tensor_type::value_type& left,
+          const typename right_tensor_type::value_type& right, const Op& op) {
+        return value_type(BinaryTensor<typename left_tensor_type::value_type,
+            typename right_tensor_type::value_type, Op>(left, right, op));
+      }
 
     public:
-
-      using base::get_world;
-      using base::get_remote;
 
       /// Construct a unary tiled tensor op
 
@@ -86,21 +58,30 @@ namespace TiledArray {
       BinaryTiledTensor(const left_tensor_type& left, const right_tensor_type& right, const Op& op) :
         left_(left), right_(right),
         shape_((left.is_dense() || right.is_dense() ? 0 : left_.get_shape() | right_.get_shape())),
-        op_(op)
-      { }
+        data_(new storage_type(left.get_world(), left.size(), left.get_pmap(), false),
+            madness::make_deferred_deleter<storage_type>(left.get_word()))
+      {
 
-      /// Copy constructor
-
-      /// \param other The unary tensor to be copied
-      BinaryTiledTensor(const BinaryTiledTensor_& other) :
-        left_(other.left_), right_(other.right_), shape_(other.shape_), op_(other.op_)
-      { }
-
-
-      /// Evaluate tensor
-
-      /// \return The evaluated tensor
-      const BinaryTiledTensor_& eval() const { return *this; }
+        for(typename left_tensor_type::const_iterator it = left.begin(); it != left.end(); ++it) {
+          if(right.is_zero(it.index())) {
+            madness::Future<value_type> value = get_world().taskq.add(& eval_tensor,
+                *it, left_tensor_type::value_type(), op);
+            data_.set(it.index(), value);
+          } else {
+            madness::Future<value_type> value = get_world().taskq.add(& eval_tensor,
+                *it, right[it.index()], op);
+            data_.set(it.index(), value);
+          }
+        }
+        for(typename right_tensor_type::const_iterator it = right.begin(); it != right.end(); ++it) {
+          if(! left.is_zero(it.index())) {
+            madness::Future<value_type> value = get_world().taskq.add(& eval_tensor,
+                left_tensor_type::value_type(), *it, op);
+            data_.set(it.index(), value);
+          }
+        }
+        data_.process_pending();
+      }
 
       /// Evaluate tensor to destination
 
@@ -110,11 +91,9 @@ namespace TiledArray {
       void eval_to(Dest& dest) const {
         TA_ASSERT(range() == dest.range());
 
-        // Add result tiles to dest and wait for all tiles to be added.
-        madness::Future<bool> done =
-            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
-            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
-        done.get();
+        // Add result tiles to dest
+        for(const_iterator it = begin(); it != end(); ++it)
+          dest.set(it.index(), *it);
       }
 
       /// Tensor tile size array accessor
@@ -144,8 +123,9 @@ namespace TiledArray {
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
       bool is_zero(size_type i) const {
-        TA_ASSERT(! is_dense());
         TA_ASSERT(range().includes(i));
+        if(is_dense())
+          return false;
         return ! (shape_[i]);
       }
 
@@ -173,32 +153,37 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference get_local(size_type i) const {
-        TA_ASSERT(left_.is_local(i));
-        TA_ASSERT(right_.is_local(i));
-        return op_(left_.get_local(i), right_.get_local(i));
-      }
+      const_reference operator[](size_type i) const {
+        TA_ASSERT(! is_zero(i));
+        if(is_local(i)) {
+          typename storage_type::const_accessor acc;
+          data_.insert(acc, i);
+          return acc->second;
+        }
 
+        return data_.find(i, true);
+      }
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return const_iterator(left_.begin(), right_.begin(), op_); }
+      const_iterator begin() const { return data_.begin(); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return const_iterator(left_.end(), right_.end(), op_); }
+      const_iterator end() const { return data_.end(); }
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return left_.vars(); }
 
+      madness::World get_world() const { return data_.get_world(); }
 
     private:
-      left_tensor_type left_; ///< Left argument
-      right_tensor_type right_; ///< Right argument
+      const left_tensor_type& left_; ///< Left argument
+      const right_tensor_type& right_; ///< Right argument
       TiledArray::detail::Bitset<> shape_;
-      op_type op_; ///< Element transform operation
+      std::shared_ptr<storage_type> data_;
     }; // class BinaryTiledTensor
 
 

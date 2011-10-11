@@ -5,6 +5,7 @@
 #include <TiledArray/array_base.h>
 #include <TiledArray/unary_tensor.h>
 #include <TiledArray/eval_task.h>
+#include <TiledArray/distributed_storage.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -13,36 +14,14 @@ namespace TiledArray {
     template <typename, typename>
     class UnaryTiledTensor;
 
-    namespace detail {
-
-      /// Tile generator functor
-      template <typename Arg, typename Op>
-      class MakeUnaryTensor {
-      public:
-        MakeUnaryTensor(const Op& op) : op_(op) { }
-
-        typedef const Arg& argument_type;
-        typedef UnaryTensor<Arg, Op> result_type;
-
-        result_type operator()(argument_type arg_tile) const {
-          return result_type(arg_tile, op_);
-        }
-
-      private:
-        Op op_;
-      }; // struct MakeFutTensor
-
-    }  // namespace detail
-
-
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTiledTensor<Arg, Op> > {
       typedef typename Arg::range_type range_type;
       typedef typename Arg::trange_type trange_type;
-      typedef UnaryTensor<typename Arg::value_type, Op> value_type;
-      typedef TiledArray::detail::UnaryTransformIterator<typename Arg::const_iterator,
-          detail::MakeUnaryTensor<typename Arg::value_type, Op> > const_iterator; ///< Tensor const iterator
-      typedef value_type const_reference;
+      typedef typename Arg::value_type value_type;
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
+      typedef typename storage_type::const_iterator const_iterator; ///< Tensor const iterator
+      typedef typename storage_type::future const_reference;
     }; // struct TensorTraits<UnaryTiledTensor<Arg, Op> >
 
     template <typename Arg, typename Op>
@@ -63,38 +42,34 @@ namespace TiledArray {
       typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
       typedef Arg arg_tensor_type;
       TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<UnaryTiledTensor_>, UnaryTiledTensor_);
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
 
     private:
       // Not allowed
+      UnaryTiledTensor(const UnaryTiledTensor_&);
       UnaryTiledTensor_& operator=(const UnaryTiledTensor_&);
 
-      typedef detail::MakeUnaryTensor<typename Arg::value_type, Op> op_type; ///< The transform operation type
+      static value_type eval_tensor(Op op, const typename arg_tensor_type::value_type& arg) {
+        return value_type(UnaryTensor<typename arg_tensor_type::value_type, Op>(arg, op));
+      }
 
     public:
-
-      using base::get_world;
-      using base::get_remote;
 
       /// Construct a unary tiled tensor op
 
       /// \param arg The argument
       /// \param op The element transform operation
       UnaryTiledTensor(const arg_tensor_type& arg, const Op& op) :
-        arg_(arg), op_(op)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The unary tensor to be copied
-      UnaryTiledTensor(const UnaryTiledTensor_& other) :
-        arg_(other.arg_), op_(other.op_)
-      { }
-
-
-      /// Evaluate tensor
-
-      /// \return The evaluated tensor
-      const UnaryTiledTensor_& eval() const { return *this; }
+        arg_(arg),
+        data_(new storage_type(arg.get_world(), arg.size(), arg.get_pmap(), false),
+            madness::make_deferred_deleter<storage_type>(arg.get_world()))
+      {
+        for(typename arg_tensor_type::const_iterator it = arg.begin(); it != arg.end(); ++it) {
+          madness::Future<value_type> value = get_world().taskq.add(& eval_tensor, op, *it);
+          data_.set(it.index(), value);
+        }
+        data_.process_pending();
+      }
 
       /// Evaluate tensor to destination
 
@@ -104,11 +79,8 @@ namespace TiledArray {
       void eval_to(Dest& dest) const {
         TA_ASSERT(range() == dest.range());
 
-        // Add result tiles to dest and wait for all tiles to be added.
-        madness::Future<bool> done =
-            get_world().taskq.for_each(madness::Range<const_iterator>(begin(),
-            end(), 8), detail::EvalTo<Dest, const_iterator>(dest));
-        done.get();
+        for(const_iterator it = begin(); it != end(); ++it)
+          dest.set(it.index(), *it);
       }
 
       /// Tensor tile size array accessor
@@ -119,19 +91,19 @@ namespace TiledArray {
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type size() const { return arg_.size(); }
+      size_type size() const { return data_.size(); }
 
       /// Query a tile owner
 
       /// \param i The tile index to query
       /// \return The process ID of the node that owns tile \c i
-      ProcessID owner(size_type i) const { return arg_.owner(i); }
+      ProcessID owner(size_type i) const { return data_.owner(i); }
 
       /// Query for a locally owned tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is owned by this node, otherwise \c false
-      bool is_local(size_type i) const { return arg_.is_local(i); }
+      bool is_local(size_type i) const { return data_.is_local(i); }
 
       /// Query for a zero tile
 
@@ -142,7 +114,7 @@ namespace TiledArray {
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
-      std::shared_ptr<pmap_interface> get_pmap() const { return arg_.get_pmap(); }
+      std::shared_ptr<pmap_interface> get_pmap() const { return data_.get_pmap(); }
 
       /// Query the density of the tensor
 
@@ -163,26 +135,37 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference operator[](size_type i) const { return op_(arg_[i]); }
+      const_reference operator[](size_type i) const {
+        TA_ASSERT(! is_zero(i));
+        if(is_local(i)) {
+          typename storage_type::const_accessor acc;
+          data_.insert(acc, i);
+          return acc->second;
+        }
+
+        return data_.find(i, true);
+      }
 
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return const_iterator(arg_.begin(), op_); }
+      const_iterator begin() const { return data_.begin(); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return const_iterator(arg_.end(), op_); }
+      const_iterator end() const { return data_.end(); }
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return arg_.vars(); }
 
+      madness::World get_world() const { return data_.get_world(); }
+
 
     private:
-      arg_tensor_type arg_; ///< Argument
-      op_type op_; ///< Element transform operation
+      const arg_tensor_type& arg_; ///< Argument
+      std::shared_ptr<storage_type> data_;
     }; // class UnaryTiledTensor
 
 
