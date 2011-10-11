@@ -47,7 +47,7 @@ namespace TiledArray {
       /// Default constructor
 
       /// Construct an empty tensor that has no data or dimensions
-      Tensor() : range_(), data_(), callback_(NULL) { }
+      Tensor() : range_(), data_() { }
 
       /// Construct an evaluated tensor
 
@@ -213,7 +213,6 @@ namespace TiledArray {
 
       range_type range_; ///< Tensor size info
       storage_type data_; ///< Tensor data
-      madness::CallbackInterface* callback_;
     };
 
   } // namespace detail
