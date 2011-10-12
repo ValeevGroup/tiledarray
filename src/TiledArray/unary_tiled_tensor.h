@@ -143,7 +143,7 @@ namespace TiledArray {
           return acc->second;
         }
 
-        return data_.find(i, true);
+        return data_.find(i);
       }
 
 

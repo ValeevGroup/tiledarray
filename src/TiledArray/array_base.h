@@ -13,7 +13,6 @@
 #include <TiledArray/eval_tensor.h>
 #include <world/worldtypes.h>
 #include <world/shared_ptr.h>
-#include <world/worldreduce.h>
 
 #define TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED )  \
     TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED )
@@ -46,12 +45,12 @@
     using base::get_world; \
     using base::get_pmap; \
     using base::is_dense; \
-    using base::get_shape;
+    using base::get_shape; \
+    using base::trange;
 
 #define TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    using base::get_local; \
-    using base::get_remote; \
+    using base::operator[]; \
     using base::begin; \
     using base::end;
 
@@ -81,7 +80,7 @@ namespace TiledArray {
     }; // class AnnotatedTensor
 
     template <typename Derived>
-    class TiledTensor : public AnnotatedTensor<Derived>, public madness::WorldReduce<Derived> {
+    class TiledTensor : public AnnotatedTensor<Derived> {
     public:
 
       TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF(AnnotatedTensor<Derived>, Derived)
@@ -91,15 +90,11 @@ namespace TiledArray {
 
       TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER(AnnotatedTensor<Derived>, Derived)
 
-      TiledTensor(madness::World& world) : wobj_type(world) { }
-
-      void process_pending() { wobj_type::process_pending(); }
-
       // Tile locality info
       inline ProcessID owner(size_type i) const { return derived().owner(i); }
       inline bool is_local(size_type i) const { return derived().is_local(i); }
       inline bool is_zero(size_type i) const { return derived().is_zero(i); }
-      inline madness::World& get_world() const { return wobj_type::get_world(); }
+      inline madness::World& get_world() const { return derived().get_world(); }
       inline std::shared_ptr<pmap_interface> get_pmap() const { return derived().get_pmap(); }
       inline bool is_dense() const { return derived().is_dense(); }
       inline const TiledArray::detail::Bitset<>& get_shape() const { return derived().get_shape(); }
@@ -123,40 +118,11 @@ namespace TiledArray {
       ReadableTiledTensor(madness::World& world) : base(world) { }
 
       // element access
-      const_reference get_local(size_type i) const { return derived().get_local(i); }
-
-      remote_type get_remote(size_type i) const {
-        TA_ASSERT(! is_local(i));
-        madness::Future<eval_tensor> result;
-        wobj_type::task(owner(i), & get_remote_handler, i, result.remote_ref(get_world()),
-            madness::TaskAttributes::hipri());
-        return remote_type(result);
-      }
+      const_reference operator[](size_type i) const { return derived()[i]; }
 
       // iterator factory
       const_iterator begin() const { return derived().begin(); }
       const_iterator end() const { return derived().end(); }
-
-    private:
-
-      /// Task function for remote tensor fetch
-
-      /// \tparam i The tensor index
-      madness::Void get_remote_handler(size_type i,
-          const madness::RemoteReference<madness::FutureImpl<eval_tensor> >& ref) {
-        TA_ASSERT(is_local(i));
-        // Construct a task to evaluate the local tensor.
-        typedef detail::EvalTask<eval_tensor, value_type> eval_task;
-        eval_task* task = new eval_task(get_local(i), madness::Future<eval_tensor>(ref));
-        try {
-          get_world().taskq.add(task);
-        } catch(...) {
-          delete task;
-          throw;
-        }
-
-        return madness::None;
-      }
 
     }; // class ReadableTiledTensor
 
@@ -171,7 +137,8 @@ namespace TiledArray {
       WritableTiledTensor(madness::World& world) : base(world) { }
 
       // element access
-      void set(size_type i, const value_type& v) { return derived().insert(i, v); }
+      void set(size_type i, const value_type& v) { return derived().set(i, v); }
+      void set(size_type i, const madness::Future<value_type>& v) { return derived().set(i, v); }
 
     }; // class WritableTiledTensor
 
