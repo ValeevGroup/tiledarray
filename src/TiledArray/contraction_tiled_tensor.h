@@ -6,7 +6,6 @@
 #include <TiledArray/tensor.h>
 #include <TiledArray/contraction_tensor.h>
 #include <TiledArray/tiled_range.h>
-#include <TiledArray/eval_task.h>
 #include <TiledArray/reduce_task.h>
 
 namespace TiledArray {

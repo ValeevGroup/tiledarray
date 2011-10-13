@@ -2,7 +2,6 @@
 #define TILEDARRAY_ANNOTATED_ARRAY_H__INCLUDED
 
 #include <TiledArray/array_base.h>
-#include <TiledArray/eval_task.h>
 #include <world/shared_ptr.h>
 
 namespace TiledArray {

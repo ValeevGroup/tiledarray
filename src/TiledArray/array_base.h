@@ -8,7 +8,6 @@
 #include <TiledArray/variable_list.h>
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/bitset.h>
-#include <TiledArray/eval_task.h>
 #include <world/worldtypes.h>
 #include <world/shared_ptr.h>
 

@@ -4,7 +4,6 @@
 //#include <TiledArray/annotated_array.h>
 #include <TiledArray/array_base.h>
 #include <TiledArray/unary_tensor.h>
-#include <TiledArray/eval_task.h>
 #include <TiledArray/distributed_storage.h>
 
 namespace TiledArray {

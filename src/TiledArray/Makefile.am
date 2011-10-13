@@ -16,11 +16,8 @@ library_include_HEADERS = annotated_array.h \
                           distributed_storage.h \
                           error.h \
                           eval_task.h \
-                          eval_tensor.h \
                           expressions.h \
-                          future_tensor.h \
                           indexed_iterator.h \
-                          madness_runtime.h \
                           permutation.h \
                           permute_tensor.h \
                           permute_tiled_tensor.h \
@@ -35,5 +32,4 @@ library_include_HEADERS = annotated_array.h \
                           type_traits.h \
                           unary_tensor.h \
                           variable_list.h \
-                          versioned_pmap.h \
                           config.h

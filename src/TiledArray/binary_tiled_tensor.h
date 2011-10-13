@@ -4,7 +4,6 @@
 //#include <TiledArray/annotated_array.h>
 #include <TiledArray/array_base.h>
 #include <TiledArray/binary_tensor.h>
-#include <TiledArray/eval_task.h>
 
 namespace TiledArray {
   namespace expressions {
