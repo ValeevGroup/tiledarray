@@ -7,7 +7,6 @@
 #include <TiledArray/error.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/indexed_iterator.h>
-#include <TiledArray/versioned_pmap.h>
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/bitset.h>
