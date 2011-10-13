@@ -26,7 +26,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   indexed_iterator.cpp \
                   array.cpp \
                   reduce_task.cpp \
-                  array_math.cpp \
                   expressions.cpp \
                   array_fixture.h \
                   range_fixture.h \
