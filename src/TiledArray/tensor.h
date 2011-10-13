@@ -205,11 +205,12 @@ namespace TiledArray {
         ar & range_ & data_;
       }
 
-    private:
       void swap(Tensor_& other) {
         range_.swap(other.range_);
         data_.swap(other.data_);
       }
+
+    private:
 
       range_type range_; ///< Tensor size info
       storage_type data_; ///< Tensor data

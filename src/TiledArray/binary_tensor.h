@@ -1,12 +1,9 @@
 #ifndef TILEDARRAY_BINARY_TENSOR_H__INCLUDED
 #define TILEDARRAY_BINARY_TENSOR_H__INCLUDED
 
-
-#include <TiledArray/permutation.h>
-#include <TiledArray/eval_tensor.h>
+#include <TiledArray/tensor.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/arg_tensor.h>
 #include <TiledArray/range.h>
 #include <Eigen/Core>
 #include <functional>
@@ -70,8 +67,9 @@ namespace TiledArray {
 
     template <typename LeftArg, typename RightArg, typename Op>
     struct Eval<BinaryTensor<LeftArg, RightArg, Op> > {
-      typedef EvalTensor<typename madness::detail::result_of<Op>::type,
-          typename LeftArg::range_type> type;
+      typedef Tensor<typename madness::detail::result_of<Op>::type,
+          typename detail::range_select<typename LeftArg::range_type,
+          typename RightArg::range_type>::type> type;
     }; // struct Eval<BinaryTensor<LeftArg, RightArg, Op> >
 
     /// Tensor that is composed from two argument tensors
@@ -85,11 +83,11 @@ namespace TiledArray {
     class BinaryTensor : public ReadableTensor<BinaryTensor<LeftArg, RightArg, Op> > {
     public:
       typedef BinaryTensor<LeftArg, RightArg, Op>  BinaryTensor_;
-      typedef ArgTensor<LeftArg> left_tensor_type;
-      typedef ArgTensor<RightArg> right_tensor_type;
+      typedef LeftArg left_tensor_type;
+      typedef RightArg right_tensor_type;
       TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<BinaryTensor_>, BinaryTensor_)
       typedef Op op_type; ///< The transform operation type
-      typedef EvalTensor<value_type, range_type> eval_type;
+      typedef Tensor<value_type, range_type> eval_type;
 
     private:
       // Not allowed
@@ -107,8 +105,7 @@ namespace TiledArray {
       /// \param op The element transform operation
       /// \throw TiledArray::Exception When left and right argument orders,
       /// dimensions, or sizes are not equal.
-      template <typename L, typename R>
-      BinaryTensor(const L& left, const R& right, const op_type& op) :
+      BinaryTensor(const left_tensor_type& left, const right_tensor_type& right, const op_type& op) :
         left_(left), right_(right), op_(op)
       {
         TA_ASSERT(left.range() == right.range());
@@ -121,9 +118,7 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
-      eval_type eval() const {
-        return eval_type(*this);
-      }
+      eval_type eval() const { return *this; }
 
       /// Evaluate this tensor and store the results in \c dest
 
@@ -135,20 +130,6 @@ namespace TiledArray {
         const size_type s = size();
         for(size_type i = 0; i < s; ++i)
           dest[i] = operator[](i);
-      }
-
-      /// Tensor dimension accessor
-
-      /// \return The number of dimensions
-      unsigned int dim() const {
-        return left_.dim();
-      }
-
-      /// Data ordering
-
-      /// \return The data ordering type
-      TiledArray::detail::DimensionOrderType order() const {
-        return left_.order();
       }
 
       /// Tensor range object accessor
@@ -173,14 +154,9 @@ namespace TiledArray {
         return op_(left_[i], right_[i]);
       }
 
-      void check_dependancies(madness::TaskInterface* task) const {
-        left_.check_dependancies(task);
-        right_.check_dependancies(task);
-      }
-
     private:
-      left_tensor_type left_; ///< Left argument
-      right_tensor_type right_; ///< Right argument
+      const left_tensor_type& left_; ///< Left argument
+      const right_tensor_type& right_; ///< Right argument
       op_type op_; ///< Transform operation
     }; // class BinaryTensor
 

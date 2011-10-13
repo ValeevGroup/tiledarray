@@ -3,8 +3,7 @@
 
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/permutation.h>
-#include <TiledArray/eval_tensor.h>
-#include <TiledArray/arg_tensor.h>
+#include <TiledArray/tensor.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/range.h>
 
@@ -26,7 +25,7 @@ namespace TiledArray {
 
     template <typename Arg, unsigned int DIM>
     struct Eval<PermuteTensor<Arg, DIM> > {
-      typedef const EvalTensor<typename Arg::value_type, typename Arg::range_type>& type;
+      typedef const Tensor<typename Arg::value_type, typename Arg::range_type>& type;
     }; // struct Eval<PermuteTensor<Arg, DIM> >
 
     /// A permutation of an argument tensor
@@ -37,10 +36,10 @@ namespace TiledArray {
     class PermuteTensor : public DirectReadableTensor<PermuteTensor<Arg, DIM> > {
     public:
       typedef PermuteTensor<Arg, DIM> PermuteTensor_;
-      typedef ArgTensor<Arg> arg_tensor_type;
+      typedef Arg arg_tensor_type;
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<PermuteTensor_>, PermuteTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
-      typedef EvalTensor<value_type, range_type> eval_type;
+      typedef Tensor<value_type, range_type> eval_type;
 
       typedef Permutation<DIM> perm_type; ///< Permutation type
 
@@ -120,18 +119,14 @@ namespace TiledArray {
         return eval_[i];
       }
 
-      void check_dependancies(madness::DependencyInterface* task) const {
-        arg_.check_dependancies(task);
-      }
-
     private:
 
       void lazy_eval() const {
-        if(eval_.empty()) {
+        if(eval_.size()) {
           range_type range = perm_ ^ (arg_.range());
           storage_type data(range.volume());
           permute(data, range);
-          eval_type(range, data).swap(eval_);
+          eval_type(range, data.begin()).swap(eval_);
         }
       }
 
@@ -156,7 +151,7 @@ namespace TiledArray {
           result[TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, ip_start)] = arg_[arg_it];
       }
 
-      arg_tensor_type arg_; ///< Argument
+      const arg_tensor_type& arg_; ///< Argument
       perm_type perm_; ///< Transform operation
       mutable eval_type eval_; ///< Evaluated tensor
     }; // class PermuteTensor

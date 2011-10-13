@@ -52,7 +52,7 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename> struct TensorTraits;
-    template <typename> struct Eval;
+    template <typename T> struct Eval { typedef const T& type; };
 
     /// Tensor base
 

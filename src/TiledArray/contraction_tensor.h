@@ -1,9 +1,8 @@
 #ifndef TILEDARRAY_CONTRACTION_TENSOR_H__INCLUDED
 #define TILEDARRAY_CONTRACTION_TENSOR_H__INCLUDED
 
-#include <TiledArray/eval_tensor.h>
+#include <TiledArray/tensor.h>
 #include <TiledArray/contraction.h>
-#include <TiledArray/arg_tensor.h>
 #include <world/shared_ptr.h>
 #include <Eigen/Core>
 #include <functional>
@@ -45,7 +44,7 @@ namespace TiledArray {
 
     template <typename LeftArg, typename RightArg>
     struct Eval<ContractionTensor<LeftArg, RightArg> > {
-      typedef const EvalTensor<typename ContractionValue<typename LeftArg::value_type,
+      typedef const Tensor<typename ContractionValue<typename LeftArg::value_type,
           typename RightArg::value_type>::type>& type;
     }; // struct Eval<ContractionTensor<LeftArg, RightArg> >
 
@@ -60,11 +59,11 @@ namespace TiledArray {
     class ContractionTensor : public DirectReadableTensor<ContractionTensor<LeftArg, RightArg> > {
     public:
       typedef ContractionTensor<LeftArg, RightArg> ContractionTensor_;
-      typedef ArgTensor<LeftArg> left_tensor_type;
-      typedef ArgTensor<RightArg> right_tensor_type;
+      typedef LeftArg left_tensor_type;
+      typedef RightArg right_tensor_type;
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<ContractionTensor_>, ContractionTensor_);
       typedef math::Contraction contract_type; ///< Contraction type
-      typedef EvalTensor<value_type> eval_type; ///< Evaluated tensor type
+      typedef Tensor<value_type, range_type> eval_type; ///< Evaluated tensor type
 
     private:
       // not allowed
@@ -77,7 +76,7 @@ namespace TiledArray {
       /// \param left The left argument
       /// \param right The right argument
       /// \param c Shared pointer to contraction object
-      ContractionTensor(const LeftArg& left, const RightArg& right, const std::shared_ptr<contract_type>& c) :
+      ContractionTensor(const left_tensor_type& left, const right_tensor_type& right, const std::shared_ptr<contract_type>& c) :
         left_(left),
         right_(right),
         eval_(),
@@ -149,11 +148,6 @@ namespace TiledArray {
         return eval_[i];
       }
 
-      void check_dependancies(madness::TaskInterface* task) const {
-        left_.check_dependancies(task);
-        right_.check_dependancies(task);
-      }
-
     private:
 
       /// Contract a and b, and place the results into c.
@@ -191,7 +185,7 @@ namespace TiledArray {
 
       /// Evaluate the tensor only when the data is needed
       void lazy_eval() const {
-        if(eval_.empty()) {
+        if(eval_.size()) {
           DynamicRange range = contraction_->contract_range(left_.range(), right_.range());
 
           typename contract_type::packed_size_array packed_size =
@@ -218,12 +212,12 @@ namespace TiledArray {
                 packed_size[4], left_eval.data(), right_eval.data(), data.data());
           }
 
-          eval_type(range, data).swap(eval_);
+          eval_type(range, data.begin()).swap(eval_);
         }
       }
 
-      left_tensor_type left_; ///< Left argument
-      right_tensor_type right_; ///< Right argument
+      const left_tensor_type& left_; ///< Left argument
+      const right_tensor_type& right_; ///< Right argument
       mutable eval_type eval_; ///< The evaluated tensor data
       std::shared_ptr<contract_type> contraction_;
     }; // class ContractionTensor
@@ -237,7 +231,7 @@ namespace TiledArray {
     // This function needs to be here to break cyclic dependencies.
     template <typename LeftTensor, typename RightTensor>
     inline detail::Bitset<> Contraction::contract_shape(const LeftTensor& left, const RightTensor& right) {
-      typedef expressions::EvalTensor<TiledArray::detail::Bitset<>::value_type > eval_tensor;
+      typedef expressions::Tensor<TiledArray::detail::Bitset<>::value_type > eval_tensor;
       eval_tensor left_map(left.range(), left.get_shape().begin());
       eval_tensor right_map(right.range(), right.get_shape().begin());
 

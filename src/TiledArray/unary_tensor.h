@@ -1,10 +1,10 @@
 #ifndef TILEDARRAY_UNARY_TENSOR_H__INCLUDED
 #define TILEDARRAY_UNARY_TENSOR_H__INCLUDED
 
-#include <TiledArray/eval_tensor.h>
+#include <TiledArray/tensor.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/arg_tensor.h>
+//#include <TiledArray/arg_tensor.h>
 #include <Eigen/Core>
 #include <functional>
 
@@ -22,7 +22,7 @@ namespace TiledArray {
 
     template <typename Arg, typename Op>
     struct Eval<UnaryTensor<Arg, Op> > {
-      typedef EvalTensor<typename madness::detail::result_of<Op>::type,
+      typedef Tensor<typename madness::detail::result_of<Op>::type,
           typename Arg::range_type> type;
     }; // struct Eval<UnaryTensor<Arg, Op> >
 
@@ -38,12 +38,11 @@ namespace TiledArray {
     class UnaryTensor : public ReadableTensor<UnaryTensor<Arg, Op> > {
     public:
       typedef UnaryTensor<Arg, Op> UnaryTensor_;
-      typedef ArgTensor<Arg> arg_tensor_type;
-      typedef typename arg_tensor_type::future_tensor future_tensor;
+      typedef Arg arg_tensor_type;
       TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<UnaryTensor_>, UnaryTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef Op op_type; ///< The transform operation type
-      typedef EvalTensor<value_type, range_type> eval_type;
+      typedef Tensor<value_type, range_type> eval_type;
 
     private:
       // Not allowed
@@ -69,9 +68,7 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
-      eval_type eval() const {
-        return eval_type(*this);
-      }
+      eval_type eval() const { return *this; }
 
       /// Evaluate this tensor and store the results in \c dest
 
@@ -102,12 +99,8 @@ namespace TiledArray {
         return op_(arg_[i]);
       }
 
-      void check_dependancies(madness::TaskInterface* task) const {
-        arg_.check_dependancies(task);
-      }
-
     private:
-      arg_tensor_type arg_; ///< Argument
+      const arg_tensor_type& arg_; ///< Argument
       op_type op_; ///< Transform operation
     }; // class UnaryTensor
 
