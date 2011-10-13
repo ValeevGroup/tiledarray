@@ -51,11 +51,11 @@ BOOST_AUTO_TEST_CASE( tile_data )
 {
   ArrayN::const_iterator a_it = a.begin();
   for(array_annotation::const_iterator aa_it = aa.begin(); aa_it != aa.end(); ++aa_it, ++a_it) {
-    BOOST_CHECK(aa_it.base() == a_it);
-    aa_it.base()->get();
-    for(std::size_t it = 0; it != aa_it->size(); ++it) {
+    BOOST_CHECK(aa_it == a_it);
+    aa_it->get();
+    for(std::size_t it = 0; it != aa_it->get().size(); ++it) {
       const ArrayN::value_type::value_type& ai = a_it->get()[it];
-      const array_annotation::value_type::value_type& aai = (*aa_it)[it];
+      const array_annotation::value_type::value_type& aai = aa_it->get()[it];
       BOOST_CHECK(&aai == &ai);
       BOOST_CHECK(aai == ai);
     }
@@ -66,20 +66,11 @@ BOOST_AUTO_TEST_CASE( constructors )
 {
   BOOST_REQUIRE_NO_THROW(array_annotation at1(a, vars));
   array_annotation at1(a, vars);
-  BOOST_CHECK(at1.begin().base() == a.begin());
-  BOOST_CHECK(at1.end().base() == a.end());
+  BOOST_CHECK(at1.begin() == a.begin());
+  BOOST_CHECK(at1.end() == a.end());
   BOOST_CHECK_EQUAL(at1.range(), a.range());
   BOOST_CHECK_EQUAL(at1.size(), r.volume());
   BOOST_CHECK_EQUAL(at1.vars(), vars);
-
-  BOOST_REQUIRE_NO_THROW(array_annotation at2(aa));
-  array_annotation at2(aa);
-  BOOST_CHECK(at2.begin().base() == a.begin());
-  BOOST_CHECK(at2.end().base() == a.end());
-  BOOST_CHECK_EQUAL(at2.range(), a.range());
-  BOOST_CHECK_EQUAL(at2.size(), a.size());
-  BOOST_CHECK_EQUAL(at2.vars(), vars);
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
