@@ -6,7 +6,6 @@ check_PROGRAMS = ta-test
 ta_test_SOURCES = TiledArrayTest.cpp \
                   permutation.cpp \
                   coordinates.cpp \
-                  coordinate_system.cpp \
                   range_iterator.cpp \
                   range.cpp \
                   tiled_range1.cpp \
@@ -20,7 +19,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   permute_tensor.cpp \
                   contraction_tensor.cpp \
                   bitset.cpp \
-                  versioned_pmap.cpp \
                   variable_list.cpp \
                   annotated_array.cpp \
                   indexed_iterator.cpp \
@@ -29,7 +27,6 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   expressions.cpp \
                   array_fixture.h \
                   range_fixture.h \
-                  shape_fixtures.h \
                   iteration_test.h \
                   global_fixture.h \
                   unit_test_config.h
