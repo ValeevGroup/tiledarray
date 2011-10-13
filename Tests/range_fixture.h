@@ -32,6 +32,12 @@ struct RangeFixture {
 
   ~RangeFixture() { }
 
+  static size_array calc_weight(const size_array& size) {
+    size_array weight;
+    TiledArray::detail::calc_weight(weight, size, GlobalFixture::coordinate_system::order);
+    return weight;
+  }
+
   RangeN r;
 };
 
