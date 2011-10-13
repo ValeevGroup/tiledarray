@@ -1,7 +1,6 @@
 #ifndef TILEDARRAY_PERMUTE_TILED_TENSOR_H__INCLUDED
 #define TILEDARRAY_PERMUTE_TILED_TENSOR_H__INCLUDED
 
-#include <TiledArray/future_tensor.h>
 #include <TiledArray/array_base.h>
 #include <TiledArray/permute_tensor.h>
 #include <TiledArray/distributed_storage.h>
@@ -71,6 +70,8 @@ namespace TiledArray {
         }
         data_.process_pending();
       }
+
+      const PermuteTiledTensor_& eval() const { return *this; }
 
       /// Evaluate tensor to destination
 

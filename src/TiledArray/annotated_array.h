@@ -2,8 +2,6 @@
 #define TILEDARRAY_ANNOTATED_ARRAY_H__INCLUDED
 
 #include <TiledArray/array_base.h>
-#include <TiledArray/future_tensor.h>
-#include <TiledArray/transform_iterator.h>
 #include <TiledArray/eval_task.h>
 #include <world/shared_ptr.h>
 
@@ -38,8 +36,6 @@ namespace TiledArray {
       AnnotatedArray(const AnnotatedArray_&);
       AnnotatedArray_& operator =(const AnnotatedArray_& other);
 
-      typedef detail::MakeFutTensor<typename T::value_type> transform_op; ///< The tile transform operation type
-
     public:
 
       /// Constructor
@@ -49,10 +45,12 @@ namespace TiledArray {
       /// \throw std::runtime_error When the dimensions of the array and
       /// variable list are not equal.
       AnnotatedArray(const array_type& a, const VariableList& v) :
-          array_(a), vars_(v), op_()
+          array_(a), vars_(v)
       {
         TA_ASSERT(array_type::coordinate_system::dim == v.dim());
       }
+
+      const AnnotatedArray_& eval() const { return *this; }
 
       /// Evaluate tensor to destination
 
@@ -119,7 +117,7 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference operator[](size_type i) const { return array_[i]; }
+      const_reference operator[](size_type i) const { return array_.find(i); }
 
       /// Array object accessor
 
