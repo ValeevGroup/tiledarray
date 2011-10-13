@@ -8,7 +8,7 @@
 
 #define BOOST_TEST_MAIN TiledArray Tests
 #include "unit_test_config.h"
-#include "TiledArray/madness_runtime.h"
+#include <world/world.h>
 
 GlobalFixture::GlobalFixture() {
   madness::initialize(boost::unit_test::framework::master_test_suite().argc,
