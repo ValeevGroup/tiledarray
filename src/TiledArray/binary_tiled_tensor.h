@@ -1,9 +1,10 @@
 #ifndef TILEDARRAY_BINARY_TILED_TENSOR_H__INCLUDED
 #define TILEDARRAY_BINARY_TILED_TENSOR_H__INCLUDED
 
-//#include <TiledArray/annotated_array.h>
 #include <TiledArray/array_base.h>
+#include <TiledArray/tiled_range.h>
 #include <TiledArray/binary_tensor.h>
+#include <TiledArray/unary_tensor.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -12,11 +13,51 @@ namespace TiledArray {
     template <typename, typename, typename>
     class BinaryTiledTensor;
 
+    namespace detail {
+
+      /// Select the tiled range type
+
+      /// This helper class selects a tiled range for binary operations. It favors
+      /// \c StaticTiledRange over \c DynamicTiledRange to avoid the dynamic memory
+      /// allocations used in \c DynamicTiledRange.
+      /// \tparam LRange The left tiled range type
+      /// \tparam RRange The right tiled range type
+      template <typename LRange, typename RRange>
+      struct trange_select {
+        typedef LRange type;
+
+        /// Select the tiled range object
+
+        /// \tparam L The left tiled tensor object type
+        /// \tparam R The right tiled tensor object type
+        /// \param l The left tiled tensor object
+        /// \param r The right tiled tensor object
+        /// \return A const reference to the either the \c l or \c r tiled range
+        /// object
+        template <typename L, typename R>
+        static inline const type& trange(const L& l, const R&) {
+          return l.trange();
+        }
+      };
+
+      template <typename CS>
+      struct trange_select<DynamicTiledRange, StaticTiledRange<CS> > {
+        typedef StaticTiledRange<CS> type;
+
+        template <typename L, typename R>
+        static inline const type& trange(const L&, const R& r) {
+          return r.trange();
+        }
+      };
+
+    } // namespace detail
+
     template <typename Left, typename Right, typename Op>
     struct TensorTraits<BinaryTiledTensor<Left, Right, Op> > {
-      typedef typename Left::range_type range_type;
-      typedef typename Left::trange_type trange_type;
-      typedef typename Left::value_type value_type;
+      typedef typename BinaryTensor<Left, Right, Op>::range_type range_type;
+      typedef typename detail::trange_select<typename Left::trange_type,
+          typename Right::trange_type>::type trange_type;
+      typedef typename Eval<BinaryTensor<Left, Right, Op> >::type value_type;
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
       typedef typename storage_type::const_iterator const_iterator; ///< Tensor const iterator
       typedef typename storage_type::future const_reference;
@@ -44,8 +85,26 @@ namespace TiledArray {
 
       static value_type eval_tensor(const typename left_tensor_type::value_type& left,
           const typename right_tensor_type::value_type& right, const Op& op) {
-        return value_type(BinaryTensor<typename left_tensor_type::value_type,
-            typename right_tensor_type::value_type, Op>(left, right, op));
+        if(left.size() == 0ul) {
+          return UnaryTensor<typename right_tensor_type::value_type, std::binder1st<Op> >(op,
+              typename left_tensor_type::value_type::value_type(0));
+        } else if(right.size() == 0ul) {
+          return UnaryTensor<typename left_tensor_type::value_type, std::binder2nd<Op> >(op,
+              typename right_tensor_type::value_type::value_type(0));
+
+        }
+        return BinaryTensor<typename left_tensor_type::value_type,
+            typename right_tensor_type::value_type, Op>(left, right, op);
+      }
+
+      static value_type eval_tensor_left(const typename left_tensor_type::value_type& left, const Op& op) {
+        return UnaryTensor<typename left_tensor_type::value_type, std::binder2nd<Op> >(left,
+            std::binder2nd<Op>(op, 0));
+      }
+
+      static value_type eval_tensor_right(const typename right_tensor_type::value_type& right, const Op& op) {
+        return UnaryTensor<typename right_tensor_type::value_type, std::binder1st<Op> >(right,
+            std::binder1st<Op>(op, 0));
       }
 
     public:
@@ -63,8 +122,8 @@ namespace TiledArray {
 
         for(typename left_tensor_type::const_iterator it = left.begin(); it != left.end(); ++it) {
           if(right.is_zero(it.index())) {
-            madness::Future<value_type> value = get_world().taskq.add(& eval_tensor,
-                *it, left_tensor_type::value_type(), op);
+            madness::Future<value_type> value = get_world().taskq.add(& eval_tensor_left,
+                *it, op);
             data_.set(it.index(), value);
           } else {
             madness::Future<value_type> value = get_world().taskq.add(& eval_tensor,
@@ -74,8 +133,8 @@ namespace TiledArray {
         }
         for(typename right_tensor_type::const_iterator it = right.begin(); it != right.end(); ++it) {
           if(! left.is_zero(it.index())) {
-            madness::Future<value_type> value = get_world().taskq.add(& eval_tensor,
-                left_tensor_type::value_type(), *it, op);
+            madness::Future<value_type> value = get_world().taskq.add(& eval_tensor_right,
+                *it, op);
             data_.set(it.index(), value);
           }
         }
@@ -101,7 +160,10 @@ namespace TiledArray {
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
-      const range_type& range() const { return left_.range(); }
+      const range_type& range() const {
+        return detail::range_select<typename left_tensor_type::range_type,
+            typename right_tensor_type::range_type>::range(left_, right_);
+      }
 
       /// Tensor tile volume accessor
 
@@ -149,7 +211,10 @@ namespace TiledArray {
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
-      trange_type trange() const { return left_.trange(); }
+      trange_type trange() const {
+        return detail::trange_select<typename left_tensor_type::trange_type,
+          typename right_tensor_type::trange_type>::trange(left_, right_);
+      }
 
       /// Tile accessor
 
