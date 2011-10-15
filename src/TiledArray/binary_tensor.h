@@ -15,10 +15,26 @@ namespace TiledArray {
     class BinaryTensor;
 
     namespace detail {
+
+      /// Select the range type
+
+      /// This helper class selects a range for binary operations. It favors
+      /// \c StaticRange over \c DynamicRange to avoid the dynamic memory
+      /// allocations used in \c DynamicRange.
+      /// \tparam LRange The left tiled range type
+      /// \tparam RRange The right tiled range type
       template <typename LRange, typename RRange>
       struct range_select {
-        typedef DynamicRange type;
+        typedef LRange type; ///< The range type to use
 
+        /// Select the range object
+
+        /// \tparam L The left tensor object type
+        /// \tparam R The right tensor object type
+        /// \param l The left tensor object
+        /// \param r The right tensor object
+        /// \return A const reference to the either the \c l or \c r range
+        /// object
         template <typename L, typename R>
         static const type& range(const L& l, const R&) {
           return l.range();
@@ -32,26 +48,6 @@ namespace TiledArray {
         template <typename L, typename R>
         static const type& range(const L&, const R& r) {
           return r.range();
-        }
-      };
-
-      template <typename CS>
-      struct range_select<StaticRange<CS>, DynamicRange> {
-        typedef StaticRange<CS> type;
-
-        template <typename L, typename R>
-        static const type& range(const L& l, const R&) {
-          return l.range();
-        }
-      };
-
-      template <typename CS>
-      struct range_select<StaticRange<CS>, StaticRange<CS> > {
-        typedef StaticRange<CS> type;
-
-        template <typename L, typename R>
-        static const type& range(const L& l, const R&) {
-          return l.range();
         }
       };
 
@@ -87,7 +83,6 @@ namespace TiledArray {
       typedef RightArg right_tensor_type;
       TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<BinaryTensor_>, BinaryTensor_)
       typedef Op op_type; ///< The transform operation type
-      typedef Tensor<value_type, range_type> eval_type;
 
     private:
       // Not allowed

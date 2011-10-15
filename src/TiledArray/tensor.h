@@ -42,7 +42,6 @@ namespace TiledArray {
       typedef Tensor<T, R, A> Tensor_;
       TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHERIT_TYPEDEF(DirectWritableTensor<Tensor_> , Tensor_ );
       typedef DenseStorage<T,A> storage_type;
-      typedef Tensor_ eval_type;
 
       /// Default constructor
 

@@ -84,6 +84,8 @@ namespace TiledArray {
 
       TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER(AnnotatedTensor<Derived>, Derived)
 
+      eval_type eval() const { return derived(); }
+
       // Tile locality info
       inline ProcessID owner(size_type i) const { return derived().owner(i); }
       inline bool is_local(size_type i) const { return derived().is_local(i); }

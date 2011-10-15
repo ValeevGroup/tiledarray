@@ -14,9 +14,13 @@ namespace TiledArray {
     class ContractionTensor;
 
     namespace {
-      template <typename T, typename U, typename Enable = void>
+      /// Contraction type selection for complex numbers
+
+      /// \tparam T The left contraction argument type
+      /// \tparam U The right contraction argument type
+      template <typename T, typename U>
       struct ContractionValue {
-        typedef T type;
+        typedef T type; ///< The result type
       };
 
       template <typename T>
@@ -63,7 +67,7 @@ namespace TiledArray {
       typedef RightArg right_tensor_type;
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<ContractionTensor_>, ContractionTensor_);
       typedef math::Contraction contract_type; ///< Contraction type
-      typedef Tensor<value_type, range_type> eval_type; ///< Evaluated tensor type
+      typedef typename Tensor<value_type, range_type>::storage_type storage_type;
 
     private:
       // not allowed
@@ -192,7 +196,7 @@ namespace TiledArray {
               contraction_->pack_arrays(left_.range().size(), right_.range().size());
 
           // We need to allocate storage and evaluate
-          typename eval_type::storage_type data(range.volume());
+          storage_type data(range.volume());
 
           // Make sure the arguments are fully evaluated. This is needed to
           // avoid recalculation due to multiple element access. It also
@@ -212,14 +216,14 @@ namespace TiledArray {
                 packed_size[4], left_eval.data(), right_eval.data(), data.data());
           }
 
-          eval_type(range, data.begin()).swap(eval_);
+          Tensor<value_type, range_type>(range, data.begin()).swap(eval_);
         }
       }
 
       const left_tensor_type& left_; ///< Left argument
       const right_tensor_type& right_; ///< Right argument
-      mutable eval_type eval_; ///< The evaluated tensor data
-      std::shared_ptr<contract_type> contraction_;
+      mutable Tensor<value_type, range_type> eval_; ///< The evaluated tensor data
+      std::shared_ptr<contract_type> contraction_; ///< Contraction definition
     }; // class ContractionTensor
 
   } // namespace expressions

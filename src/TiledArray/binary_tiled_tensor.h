@@ -24,7 +24,7 @@ namespace TiledArray {
       /// \tparam RRange The right tiled range type
       template <typename LRange, typename RRange>
       struct trange_select {
-        typedef LRange type;
+        typedef LRange type; ///< The tiled range type to use
 
         /// Select the tiled range object
 
@@ -63,12 +63,13 @@ namespace TiledArray {
       typedef typename storage_type::future const_reference;
     }; // struct TensorTraits<BinaryTiledTensor<Arg, Op> >
 
-    /// Tensor that is composed from an argument tensor
+    /// Tensor that is composed from two argument tensors
 
-    /// The tensor elements are constructed using a unary transformation
-    /// operation.
-    /// \tparam Arg The argument type
-    /// \tparam Op The Unary transform operator type.
+    /// The tensor tiles are constructed with \c BinaryTensor. A binary operator
+    /// is used to transform the individual elements of the tiles.
+    /// \tparam Left The left argument type
+    /// \tparam Right The right argument type
+    /// \tparam Op The binary transform operator type.
     template <typename Left, typename Right, typename Op>
     class BinaryTiledTensor : public ReadableTiledTensor<BinaryTiledTensor<Left, Right, Op> > {
     public:
@@ -83,16 +84,12 @@ namespace TiledArray {
       BinaryTiledTensor(const BinaryTiledTensor_&);
       BinaryTiledTensor_& operator=(const BinaryTiledTensor_&);
 
+      // These eval functions are used as task functions to evaluate the tiles
+      // of this tiled tensor. The three different versions are needed for cases
+      // where one of the tiles may be zero.
+
       static value_type eval_tensor(const typename left_tensor_type::value_type& left,
           const typename right_tensor_type::value_type& right, const Op& op) {
-        if(left.size() == 0ul) {
-          return UnaryTensor<typename right_tensor_type::value_type, std::binder1st<Op> >(op,
-              typename left_tensor_type::value_type::value_type(0));
-        } else if(right.size() == 0ul) {
-          return UnaryTensor<typename left_tensor_type::value_type, std::binder2nd<Op> >(op,
-              typename right_tensor_type::value_type::value_type(0));
-
-        }
         return BinaryTensor<typename left_tensor_type::value_type,
             typename right_tensor_type::value_type, Op>(left, right, op);
       }
@@ -119,30 +116,33 @@ namespace TiledArray {
         data_(new storage_type(left.get_world(), left.size(), left.get_pmap(), false),
             madness::make_deferred_deleter<storage_type>(left.get_word()))
       {
-
+        // Iterate over local left tiles and generate binary tile tasks
         for(typename left_tensor_type::const_iterator it = left.begin(); it != left.end(); ++it) {
           if(right.is_zero(it.index())) {
+            // Add a task where the right tile is zero and left tile is non-zero
             madness::Future<value_type> value = get_world().taskq.add(& eval_tensor_left,
                 *it, op);
             data_.set(it.index(), value);
           } else {
+            // Add a task where both the left and right tiles are non-zero
             madness::Future<value_type> value = get_world().taskq.add(& eval_tensor,
                 *it, right[it.index()], op);
             data_.set(it.index(), value);
           }
         }
+
+        // Iterate over local right tiles and generate binary tile tasks
         for(typename right_tensor_type::const_iterator it = right.begin(); it != right.end(); ++it) {
           if(! left.is_zero(it.index())) {
+            // Add tasks where the left tile is zero and the right is non-zero
             madness::Future<value_type> value = get_world().taskq.add(& eval_tensor_right,
                 *it, op);
             data_.set(it.index(), value);
           }
+          // Note: The previous loop will handle non-zero left tiles
         }
         data_.process_pending();
       }
-
-
-      const BinaryTiledTensor_& eval() const { return *this; }
 
       /// Evaluate tensor to destination
 
@@ -206,7 +206,10 @@ namespace TiledArray {
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      const TiledArray::detail::Bitset<>& get_shape() const { return shape_; }
+      const TiledArray::detail::Bitset<>& get_shape() const {
+        TA_ASSERT(! is_dense());
+        return shape_;
+      }
 
       /// Tiled range accessor
 

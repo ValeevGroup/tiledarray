@@ -179,8 +179,6 @@ namespace TiledArray {
         data_->process_pending();
       }
 
-      const ContractionTiledTensor_& eval() const { return *this; }
-
       /// Evaluate tensor to destination
 
       /// \tparam Dest The destination tensor type

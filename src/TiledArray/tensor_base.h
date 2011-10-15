@@ -8,7 +8,8 @@
 #define TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED ) \
     typedef BASE base; \
     typedef typename base::size_type size_type; \
-    typedef typename base::range_type range_type;
+    typedef typename base::range_type range_type; \
+    typedef typename base::eval_type eval_type;
 
 #define TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
     TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED ) \
@@ -64,6 +65,7 @@ namespace TiledArray {
     public:
       typedef std::size_t size_type;
       typedef typename TensorTraits<Derived>::range_type range_type;
+      typedef typename Eval<Derived>::type eval_type;
 
       // Access this object type
       inline Derived& derived() { return *static_cast<Derived*>(this); }
@@ -73,7 +75,7 @@ namespace TiledArray {
       inline const range_type& range() const { return derived().range(); }
       inline size_type size() const { return derived().size(); }
 
-      inline typename Eval<Derived>::type eval() const { derived().eval(); }
+      inline eval_type eval() const { derived().eval(); }
 
     }; // class TensorBase
 

@@ -42,7 +42,6 @@ namespace TiledArray {
       TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<UnaryTensor_>, UnaryTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef Op op_type; ///< The transform operation type
-      typedef Tensor<value_type, range_type> eval_type;
 
     private:
       // Not allowed

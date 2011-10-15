@@ -39,7 +39,6 @@ namespace TiledArray {
       typedef Arg arg_tensor_type;
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<PermuteTensor_>, PermuteTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
-      typedef Tensor<value_type, range_type> eval_type;
 
       typedef Permutation<DIM> perm_type; ///< Permutation type
 
@@ -126,7 +125,7 @@ namespace TiledArray {
           range_type range = perm_ ^ (arg_.range());
           storage_type data(range.volume());
           permute(data, range);
-          eval_type(range, data.begin()).swap(eval_);
+          Tensor<value_type, range_type>(range, data.begin()).swap(eval_);
         }
       }
 
@@ -153,7 +152,7 @@ namespace TiledArray {
 
       const arg_tensor_type& arg_; ///< Argument
       perm_type perm_; ///< Transform operation
-      mutable eval_type eval_; ///< Evaluated tensor
+      mutable Tensor<value_type, range_type> eval_; ///< Evaluated tensor
     }; // class PermuteTensor
 
 
