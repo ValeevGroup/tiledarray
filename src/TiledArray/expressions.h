@@ -84,6 +84,85 @@ namespace TiledArray {
       return PermuteTensor<ArgExp, DIM>(arg.derived(), p);
     }
 
+
+    // Tiled Tensor expression factory functions
+
+    template <typename LeftExp, typename RightExp>
+    BinaryTiledTensor<LeftExp, RightExp, std::plus<typename LeftExp::value_type::value_type> >
+    operator+(const ReadableTiledTensor<LeftExp>& left, const ReadableTiledTensor<RightExp>& right) {
+      return BinaryTiledTensor<LeftExp, RightExp, std::plus<typename LeftExp::value_type::value_type> >(left.derived(),
+          right.derived(), std::plus<typename LeftExp::value_type::value_type>());
+    }
+
+    template <typename RightExp>
+    UnaryTiledTensor<RightExp, std::binder1st<std::plus<typename RightExp::value_type::value_type> > >
+    operator+(const typename ReadableTiledTensor<RightExp>::value_type& left, const ReadableTiledTensor<RightExp>& right) {
+      return UnaryTiledTensor<RightExp, std::binder1st<std::plus<typename RightExp::value_type::value_type> > >(right.derived(),
+          std::bind1st(std::plus<typename RightExp::value_type::value_type>(), left));
+    }
+
+    template <typename LeftExp>
+    UnaryTiledTensor<LeftExp, std::binder2nd<std::plus<typename LeftExp::value_type::value_type> > >
+    operator+(const ReadableTiledTensor<LeftExp>& left, const typename ReadableTiledTensor<LeftExp>::value_type& right) {
+      return UnaryTiledTensor<LeftExp, std::binder2nd<std::plus<typename LeftExp::value_type::value_type> > >(left.derived(),
+          std::bind2nd(std::plus<typename LeftExp::value_type::value_type>(), right));
+    }
+
+    template <typename LeftExp, typename RightExp>
+    BinaryTiledTensor<LeftExp, RightExp, std::minus<typename LeftExp::value_type::value_type> >
+    operator-(const ReadableTiledTensor<LeftExp>& left, const ReadableTiledTensor<RightExp>& right) {
+      return BinaryTiledTensor<LeftExp, RightExp, std::minus<typename LeftExp::value_type::value_type> >(left.derived(),
+          right.derived(), std::minus<typename LeftExp::value_type::value_type>());
+    }
+
+    template <typename RightExp>
+    UnaryTiledTensor<RightExp, std::binder1st<std::minus<typename RightExp::value_type::value_type> > >
+    operator-(const typename ReadableTiledTensor<RightExp>::value_type& left, const ReadableTiledTensor<RightExp>& right) {
+      return UnaryTiledTensor<RightExp, std::binder1st<std::minus<typename RightExp::value_type::value_type> > >(right.derived(),
+          std::bind1st(std::minus<typename RightExp::value_type::value_type>(), left));
+    }
+
+    template <typename LeftExp>
+    UnaryTiledTensor<LeftExp, std::binder2nd<std::minus<typename LeftExp::value_type::value_type> > >
+    operator-(const ReadableTiledTensor<LeftExp>& left, const typename ReadableTiledTensor<LeftExp>::value_type& right) {
+      return UnaryTiledTensor<LeftExp, std::binder2nd<std::minus<typename LeftExp::value_type::value_type> > >(left.derived(),
+          std::bind2nd(std::minus<typename LeftExp::value_type::value_type>(), right));
+    }
+
+    template <typename LeftExp, typename RightExp>
+    ContractionTiledTensor<LeftExp, RightExp>
+    operator*(const ReadableTiledTensor<LeftExp>& left, const ReadableTiledTensor<RightExp>& right) {
+      return ContractionTiledTensor<LeftExp, RightExp>(left.derived(),
+          right.derived(), std::shared_ptr<math::Contraction>(new math::Contraction(left.vars(), right.vars())));
+    }
+
+    template <typename RightExp>
+    UnaryTiledTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type::value_type> > >
+    operator*(const typename ReadableTiledTensor<RightExp>::value_type& left, const ReadableTiledTensor<RightExp>& right) {
+      return UnaryTiledTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type::value_type> > >(right.derived(),
+          std::bind1st(std::multiplies<typename RightExp::value_type::value_type>(), left));
+    }
+
+    template <typename LeftExp>
+    UnaryTiledTensor<LeftExp, std::binder2nd<std::multiplies<typename LeftExp::value_type::value_type> > >
+    operator*(const ReadableTiledTensor<LeftExp>& left, const typename ReadableTiledTensor<LeftExp>::value_type& right) {
+      return UnaryTiledTensor<LeftExp, std::binder2nd<std::multiplies<typename LeftExp::value_type::value_type> > >(left.derived(),
+          std::bind2nd(std::multiplies<typename LeftExp::value_type::value_type>(), right));
+    }
+
+    template <typename ArgExp>
+    UnaryTiledTensor<ArgExp, std::negate<typename ArgExp::value_type::value_type> >
+    operator-(const ReadableTiledTensor<ArgExp>& arg) {
+      return UnaryTiledTensor<ArgExp, std::negate<typename ArgExp::value_type> >(arg.derived(),
+          std::negate<typename ArgExp::value_type::value_type>());
+    }
+
+    template <unsigned int DIM, typename ArgExp>
+    PermuteTiledTensor<ArgExp, DIM>
+    operator^(const Permutation<DIM>& p, const ReadableTiledTensor<ArgExp>& arg) {
+      return PermuteTiledTensor<ArgExp, DIM>(arg.derived(), p);
+    }
+
   } // namespace expressions
 } // namespace TiledArray
 
