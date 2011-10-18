@@ -362,7 +362,7 @@ namespace TiledArray {
     }; // class Bitset
 
     template <typename Block>
-    const typename Bitset<Block>::size_type Bitset<Block>::block_bits =
+    const std::size_t Bitset<Block>::block_bits =
         8 * sizeof(typename Bitset<Block>::block_type);
 
     /// Bitwise and operator of bitset.

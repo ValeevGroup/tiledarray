@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE( impl_add_future )
 
   BOOST_CHECK_EQUAL(impl.size(), 0ul);
 
-  for(int i = 1; i < 10; ++i) {
+  for(unsigned int i = 1; i < 10; ++i) {
     madness::Future<int> f;
     impl.add(f);
 
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE( impl_add_future )
     range = impl.range(8);
 
   // Check the range size
-  BOOST_CHECK_EQUAL(range.size(), 9);
+  BOOST_CHECK_EQUAL(range.size(), 9ul);
   BOOST_CHECK_EQUAL(std::distance(range.begin(), range.end()), 9);
 
   // Check that none of the elements in the range have been set.
@@ -76,9 +76,9 @@ BOOST_AUTO_TEST_CASE( impl_add_future )
 
 BOOST_AUTO_TEST_CASE( add_value )
 {
-  BOOST_CHECK_EQUAL(rt.size(), 0);
+  BOOST_CHECK_EQUAL(rt.size(), 0ul);
 
-  for(int i = 1; i < 10; ++i) {
+  for(unsigned int i = 1; i < 10; ++i) {
     rt.add(i);
 
     BOOST_CHECK_EQUAL(rt.size(), i);
@@ -87,9 +87,9 @@ BOOST_AUTO_TEST_CASE( add_value )
 
 BOOST_AUTO_TEST_CASE( add_future )
 {
-  BOOST_CHECK_EQUAL(rt.size(), 0);
+  BOOST_CHECK_EQUAL(rt.size(), 0ul);
 
-  for(int i = 1; i < 10; ++i) {
+  for(unsigned int i = 1; i < 10; ++i) {
     madness::Future<int> f;
     rt.add(f);
 

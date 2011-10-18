@@ -62,16 +62,6 @@ namespace TiledArray {
     typedef typename RangeTraits<Derived>::size_array size_array;
     typedef typename RangeTraits<Derived>::Ranges Ranges;
 
-	protected:
-    // Only derived classes can construct this object.
-    TiledRange() { }
-
-	private:
-    // Not allowed.
-    TiledRange(const TiledRange_&);
-
-	public:
-
     Derived& derived() { return static_cast<Derived&>(*this); }
     const Derived& derived() const { return static_cast<const Derived&>(*this); }
 
@@ -188,7 +178,7 @@ namespace TiledArray {
 
     /// Constructed with a set of ranges pointed to by [ first, last ).
     template <typename InIter>
-    StaticTiledRange(InIter first, InIter last, detail::DimensionOrderType order = coordinate_system::order) {
+    StaticTiledRange(InIter first, InIter last, detail::DimensionOrderType = coordinate_system::order) {
       TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       TA_ASSERT(std::distance(first, last) == coordinate_system::dim);
       std::copy(first, last, ranges_.begin());

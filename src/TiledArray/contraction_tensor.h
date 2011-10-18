@@ -96,7 +96,7 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return An evaluated tensor object
-      const eval_type& eval() const {
+      eval_type eval() const {
         lazy_eval();
         return *this;
       }

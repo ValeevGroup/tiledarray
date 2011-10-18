@@ -151,7 +151,7 @@ namespace TiledArray {
       /// Evaluate this tensor
 
       /// \return A const reference to this object.
-      const eval_type& eval() const { return *this; }
+      eval_type eval() const { return *this; }
 
       /// Tensor range object accessor
 

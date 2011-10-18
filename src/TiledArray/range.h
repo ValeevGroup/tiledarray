@@ -154,13 +154,7 @@ namespace TiledArray {
     typedef detail::RangeIterator<index, Range_> const_iterator;
     friend class detail::RangeIterator<index, Range_>;
 
-  protected:
-    // Only derived classes can construct this object.
-    Range() { }
-
   private:
-    // Not allowed
-    Range(const Range_&);
 
     // used to access the derived class's data
     Derived& derived() { return static_cast<Derived&>(*this); }

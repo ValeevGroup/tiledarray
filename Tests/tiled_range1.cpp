@@ -45,10 +45,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r);
     TiledRange1 r;
-    BOOST_CHECK_EQUAL(r.tiles().first, 0);
-    BOOST_CHECK_EQUAL(r.tiles().second, 0);
-    BOOST_CHECK_EQUAL(r.elements().first, 0);
-    BOOST_CHECK_EQUAL(r.elements().second, 0);
+    BOOST_CHECK_EQUAL(r.tiles().first, 0ul);
+    BOOST_CHECK_EQUAL(r.tiles().second, 0ul);
+    BOOST_CHECK_EQUAL(r.elements().first, 0ul);
+    BOOST_CHECK_EQUAL(r.elements().second, 0ul);
 #ifdef TA_EXCEPTION_ERROR
     BOOST_CHECK_THROW(r.tile(0), Exception);
 #endif
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r(a.begin(), a.end(), 2));
     TiledRange1 r(a.begin(), a.end(), 2);
-    BOOST_CHECK_EQUAL(r.tiles().first, 2);
+    BOOST_CHECK_EQUAL(r.tiles().first, 2ul);
     BOOST_CHECK_EQUAL(r.tiles().second, 1 + a.size());
     BOOST_CHECK_EQUAL(r.elements().first, elements.first);
     BOOST_CHECK_EQUAL(r.elements().second, elements.second);
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r(a.begin() + 1, a.end()));
     TiledRange1 r(a.begin() + 1, a.end());
-    BOOST_CHECK_EQUAL(r.tiles().first, 0);
+    BOOST_CHECK_EQUAL(r.tiles().first, 0ul);
     BOOST_CHECK_EQUAL(r.tiles().second, a.size() - 2);
     BOOST_CHECK_EQUAL(r.elements().first, a[1]);
     BOOST_CHECK_EQUAL(r.elements().second, a.back());
