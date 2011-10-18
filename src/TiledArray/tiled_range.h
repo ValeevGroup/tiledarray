@@ -4,23 +4,15 @@
 #include <TiledArray/tiled_range1.h>
 #include <TiledArray/permutation.h>
 #include <iterator>
+#include <algorithm>
+#include <vector>
 #include <iosfwd>
-#include <world/shared_ptr.h>
-#include <boost/utility/enable_if.hpp>
 
 namespace TiledArray {
 
-  template <unsigned int>
-  class Permutation;
   template <typename> class TiledRange;
   template <typename> class StaticTiledRange;
   class DynamicTiledRange;
-  template <typename Derived>
-  void swap(StaticTiledRange<Derived>&, StaticTiledRange<Derived>&);
-  template <unsigned int DIM, typename Derived>
-  Derived operator ^(const Permutation<DIM>&, const TiledRange<Derived>&);
-  template <typename D1, typename D2>
-  bool operator ==(const TiledRange<D1>&, const TiledRange<D2>&);
 
 
   template <typename> struct RangeTraits;
@@ -41,7 +33,7 @@ namespace TiledArray {
     typedef void tile_coordinate_system;
     typedef DynamicRange range_type;
     typedef DynamicRange tile_range_type;
-    typedef typename range_type::size_type size_array;
+    typedef range_type::size_type size_array;
     typedef std::vector<TiledRange1> Ranges;
   };
 

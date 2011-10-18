@@ -67,6 +67,8 @@ namespace TiledArray {
 
       /// Copy constructor
 
+      /// Evaluate \c other to this tensor
+      /// \tparam Derived The derived type of the \c ReadableTensor
       /// \param other The tile to be copied.
       template <typename Derived>
       Tensor(const ReadableTensor<Derived>& other) :
@@ -77,11 +79,17 @@ namespace TiledArray {
 
       /// Copy constructor
 
+      /// Do a deep copy of \c other
       /// \param other The tile to be copied.
       Tensor(const Tensor_& other) :
         range_(other.range_), data_(other.data_)
       { }
 
+      /// Copy assignment
+
+      /// Evaluate \c other to this tensor
+      /// \param other The tensor to be copied
+      /// \return this tensor
       Tensor_& operator=(const Tensor_& other) {
         range_ = other.range();
         storage_type temp(other.range().volume());
@@ -91,6 +99,11 @@ namespace TiledArray {
         return *this;
       }
 
+      /// Copy assignment
+
+      /// Evaluate \c other to this tensor
+      /// \param other The tensor to be copied
+      /// \return this tensor
       template <typename D>
       Tensor_& operator=(const ReadableTensor<D>& other) {
         range_ = other.range();
@@ -101,6 +114,12 @@ namespace TiledArray {
         return *this;
       }
 
+
+      /// Copy assignment
+
+      /// Evaluate \c other to this tensor
+      /// \param other The tensor to be copied
+      /// \return this tensor
       template <typename D>
       Tensor_& operator+=(const ReadableTensor<D>& other) {
         if(data_.empty()) {
@@ -199,11 +218,18 @@ namespace TiledArray {
       /// \return A const pointer to the tensor data
       pointer data() { return data_.data(); }
 
+      /// Serialize tensor data
+
+      /// \tparam Archive The serialization archive type
+      /// \param ar The serialization archive
       template <typename Archive>
       void serialize(Archive& ar) {
         ar & range_ & data_;
       }
 
+      /// Swap tensor data
+
+      /// \param other The tensor to swap with this
       void swap(Tensor_& other) {
         range_.swap(other.range_);
         data_.swap(other.data_);

@@ -3,11 +3,9 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/transform_iterator.h>
-#include <boost/dynamic_bitset.hpp>
+
 namespace TiledArray {
   namespace detail {
-
-
 
     /// Fixed size bitset
 

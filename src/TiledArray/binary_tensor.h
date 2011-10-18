@@ -1,12 +1,7 @@
 #ifndef TILEDARRAY_BINARY_TENSOR_H__INCLUDED
 #define TILEDARRAY_BINARY_TENSOR_H__INCLUDED
 
-#include <TiledArray/tensor.h>
-#include <TiledArray/transform_iterator.h>
-#include <TiledArray/type_traits.h>
-#include <TiledArray/range.h>
-#include <Eigen/Core>
-#include <functional>
+#include <TiledArray/tensor.h> // for Tensor, StaticRange, and DynamicRange
 
 namespace TiledArray {
   namespace expressions {

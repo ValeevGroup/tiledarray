@@ -4,8 +4,6 @@
 #include <TiledArray/tensor.h>
 #include <TiledArray/contraction.h>
 #include <world/shared_ptr.h>
-#include <Eigen/Core>
-#include <functional>
 
 namespace TiledArray {
   namespace expressions {

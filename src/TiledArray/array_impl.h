@@ -6,15 +6,11 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/tiled_range.h>
-#include <TiledArray/indexed_iterator.h>
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/bitset.h>
-#include <world/worldreduce.h>
-#include <world/make_task.h>
 #include <world/functional.h>
 #include <world/nodefaults.h>
-#include <boost/scoped_ptr.hpp>
 
 namespace TiledArray {
   namespace detail {

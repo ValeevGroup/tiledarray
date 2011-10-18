@@ -5,7 +5,6 @@
 #define WORLD_INSTANTIATE_STATIC_TEMPLATES
 
 #include <TiledArray/coordinate_system.h>
-#include <TiledArray/variable_list.h>
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/bitset.h>
 #include <world/worldtypes.h>
@@ -62,6 +61,8 @@ namespace madness {
 
 namespace TiledArray {
   namespace expressions {
+
+    class VariableList;
 
     template <typename Derived>
     class AnnotatedTensor : public TensorBase<Derived> {

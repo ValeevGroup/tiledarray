@@ -4,28 +4,16 @@
 #include <TiledArray/type_traits.h>
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/iterator/iterator_traits.hpp>
-#include <boost/mpl/if.hpp>
-#include <iterator>
 
 namespace TiledArray {
-
-  template <typename, unsigned int, typename>
-  class ArrayCoordinate;
-
   namespace detail {
-
-    template <typename>
-    class IndexedIterator;
-
-    template <typename> struct is_index_iterator;
-    template <typename It> struct is_index_iterator<IndexedIterator<It> > : public std::true_type {};
 
     template <typename Iterator>
     struct BaseIteratorTraits {
       typedef typename std::iterator_traits<Iterator>::value_type base_value_type;
       typedef typename std::iterator_traits<Iterator>::reference base_reference;
       typedef typename std::iterator_traits<Iterator>::value_type::second_type value_type;
-      typedef typename boost::mpl::if_<std::is_const<typename std::remove_reference<base_reference>::type >,
+      typedef typename madness::if_<std::is_const<typename std::remove_reference<base_reference>::type >,
           const value_type&, value_type&>::type reference;
     };
 
@@ -163,6 +151,5 @@ namespace TiledArray {
 
   } // namespace detail
 }  // namespace TiledArray
-
 
 #endif // TILEDARRAY_INDEXED_ITERATOR_H__INCLUDED

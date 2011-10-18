@@ -6,18 +6,6 @@
 #include <world/archive.h>
 #include <Eigen/Core>
 #include <cstddef>
-#include <stdexcept>
-
-namespace madness {
-  namespace archive {
-
-    template <class, class>
-    struct ArchiveStoreImpl;
-    template <class, class>
-    struct ArchiveLoadImpl;
-
-  }  // namespace archive
-}  // namespace madness
 
 namespace TiledArray {
 
@@ -111,15 +99,11 @@ namespace TiledArray {
     /// the elements of the new tile will be equal to \c v. The provided
     /// allocator \c a will allocate space for only for the tile data.
     /// \tparam InIter An input iterator type.
-    /// \param r A shared pointer to the range object that will define the tile
-    /// dimensions
-    /// \param first An input iterator to the beginning of the data to copy.
-    /// \param last An input iterator to one past the end of the data to copy.
+    /// \param n the size of the storage area
+    /// \param first An input iterator to the beginning of the data to copy
     /// \param a The allocator object for the tile data ( default: allocator_type() )
     /// \throw std::bad_alloc There is not enough memory available for the
     /// target tile
-    /// \throw anything Any exceptions that can be thrown by \c T type default
-    /// or copy constructors
     template <typename InIter>
     DenseStorage(size_type n, InIter first, const allocator_type& a = allocator_type(),
         typename madness::enable_if<detail::is_iterator<InIter>, Enabler>::type = Enabler()) :

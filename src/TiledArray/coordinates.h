@@ -7,16 +7,9 @@
 #include <boost/operators.hpp>
 #include <world/array.h>
 #include <boost/utility/enable_if.hpp>
-#include <world/worldhash.h>
 #include <iosfwd>
 #include <cstddef>
 #include <stdarg.h>
-
-  // Forward declarations.
-namespace boost {
-  template <typename T, std::size_t D>
-  std::ostream& operator<<(std::ostream&, const std::array<T,D>&);
-} // namespace boost
 
 namespace TiledArray {
 
@@ -369,17 +362,6 @@ namespace TiledArray {
     ArrayCoordinate<I,DIM,Tag> result;
     detail::permute_array(p.begin(), p.end(), c.begin(), result.begin());
     return result;
-  }
-
-  /// Hash function for array coordinates
-
-  /// \tparam I The array coordinate element type
-  /// \tparam DIM The array coordinate dimensions
-  /// \tparam Tag The array coordinate tag type
-  /// \param c The array coordinate to hash
-  template <typename I, unsigned int DIM, typename Tag>
-  madness::hashT hash_value(const ArrayCoordinate<I,DIM,Tag>& c) {
-      return hash_value(c.data());
   }
 
   using madness::operator<<;

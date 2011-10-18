@@ -1,12 +1,8 @@
 #ifndef TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 #define TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
 
-#include <TiledArray/error.h>
 #include <TiledArray/config.h>
 #include <TiledArray/coordinates.h>
-#include <TiledArray/type_traits.h>
-#include <boost/mpl/equal_to.hpp>
-#include <numeric>
 #include <cstddef>
 
 namespace TiledArray {

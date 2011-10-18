@@ -10,18 +10,6 @@
 namespace TiledArray {
   namespace detail {
 
-    template <class T, class U>
-    class is_convertible
-    {
-       typedef char true_t;
-       class false_t { char dummy[2]; };
-       static true_t dispatch(U);
-       static false_t dispatch(...);
-       static T trigger();
-       public:
-       enum { value = sizeof(dispatch(trigger())) == sizeof(true_t) };
-    };
-
     template <typename T>
     struct has_iterator_catagory
     {
@@ -87,33 +75,6 @@ namespace TiledArray {
     struct is_random_iterator :
         public std::is_base_of<std::random_access_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
-
-    template<typename T>
-    struct remove_cr {
-      typedef typename std::remove_const<typename std::remove_reference<T>::type>::type type;
-    };
-
-    template<typename Func>
-    struct unary_functor_types {
-      typedef typename Func::argument_type argument_type;
-      typedef typename Func::result_type result_type;
-      typedef result_type(*func_ptr_type)(argument_type);
-    }; // struct unary_functor_types
-
-    template<typename Arg, typename Res>
-    struct unary_functor_types<Res(*)(Arg)> {
-      typedef Arg argument_type;
-      typedef Res result_type;
-      typedef result_type(*func_ptr_type)(argument_type);
-    }; // struct unary_functor_types<Res(*)(Arg)>
-
-    template<typename Func>
-    struct binary_functor_types {
-      typedef typename Func::first_argument_type first_argument_type;
-      typedef typename Func::second_argument_type second_argument_type;
-      typedef typename Func::result_type result_type;
-      typedef result_type(*func_ptr_type)(first_argument_type, second_argument_type);
-    }; // struct binary_functor_types
 
   } // namespace detail
 } // namespace TiledArray

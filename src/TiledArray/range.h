@@ -3,12 +3,13 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/coordinate_system.h>
-#include <TiledArray/coordinates.h>
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/transform_iterator.h>
-#include <boost/utility/enable_if.hpp>
 #include <algorithm>
+#include <vector>
+#include <iterator>
+#include <functional>
 
 namespace TiledArray {
 
