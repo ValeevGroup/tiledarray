@@ -18,8 +18,8 @@ namespace TiledArray {
 
     /// Dimension order types
     typedef enum {
-      decreasing_dimension_order, ///< c-style dimension ordering
-      increasing_dimension_order  ///< fortran dimension ordering
+      decreasing_dimension_order = 1, ///< c-style dimension ordering
+      increasing_dimension_order = 2  ///< fortran dimension ordering
     } DimensionOrderType;
 
   } // namespace detail
@@ -57,5 +57,35 @@ namespace TiledArray {
   }  // namespace detail
 
 } // namespace TiledArray
+
+
+namespace madness {
+  namespace archive {
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl;
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl;
+
+    template <typename Archive>
+    struct ArchiveStoreImpl<Archive, TiledArray::detail::DimensionOrderType > {
+      static void store(const Archive& ar, const TiledArray::detail::DimensionOrderType& order) {
+        int o = order;
+        ar & o;
+      }
+    };
+
+    template <typename Archive>
+    struct ArchiveLoadImpl<Archive, TiledArray::detail::DimensionOrderType > {
+
+      static void load(const Archive& ar, TiledArray::detail::DimensionOrderType& order) {
+        int o = 0;
+        ar & o;
+        order = (o == 1 ? TiledArray::detail::decreasing_dimension_order :
+            TiledArray::detail::increasing_dimension_order);
+      }
+    };
+  } // namespace archive
+} // namespace madness
 
 #endif // TILEDARRAY_COORDINATE_SYSTEM_H__INCLUDED
