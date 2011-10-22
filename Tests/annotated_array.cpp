@@ -5,32 +5,19 @@
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
-struct AnnotatedArrayFixture : public ArrayFixture {
-  typedef AnnotatedArray<ArrayN> array_annotation;
-  typedef AnnotatedArray<const ArrayN> const_array_annotation;
+std::string AnnotatedArrayFixture::make_var_list(std::size_t first, std::size_t last) {
+  assert(abs(last - first) <= 24);
+  assert(last < 24);
 
-  AnnotatedArrayFixture() : vars(make_var_list()), aa(a, vars) { }
-
-
-  static std::string make_var_list(std::size_t first = 0,
-      std::size_t last = GlobalFixture::element_coordinate_system::dim) {
-    assert(abs(last - first) <= 24);
-    assert(last < 24);
-
-    std::string result;
+  std::string result;
+  result += 'a' + first;
+  for(++first; first != last; ++first) {
+    result += ",";
     result += 'a' + first;
-    for(++first; first != last; ++first) {
-      result += ",";
-      result += 'a' + first;
-    }
-
-    return result;
   }
 
-  VariableList vars;
-  array_annotation aa;
-}; // struct AnnotatedArrayFixture
-
+  return result;
+}
 
 
 BOOST_FIXTURE_TEST_SUITE( annotated_array_suite , AnnotatedArrayFixture )
