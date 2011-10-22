@@ -4,6 +4,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/variable_list.h>
 #include <TiledArray/range.h>
+#include <TiledArray/tiled_range.h>
 #include <TiledArray/bitset.h>
 #include <world/array.h>
 #include <iterator>
@@ -85,7 +86,7 @@ namespace TiledArray {
       /// a{{a1...ai},{ai+1...aj-1},{aj...ak}} + b{{b1...bi},{bi+1...bj-1},{bj...bk}}
       /// ==> c{{a1...ai},{b1...bi},{aj...ak},{bj...bk}}
       template <typename ResArray, typename LeftArray, typename RightArray>
-      void contract_array(ResArray& res, const LeftArray& left, const RightArray& right) {
+      void contract_array(ResArray& res, const LeftArray& left, const RightArray& right) const {
         TA_ASSERT(left.size() == left_[2]);
         TA_ASSERT(right.size() == right_[2]);
         TA_ASSERT(res.size() == dim_);
@@ -98,8 +99,14 @@ namespace TiledArray {
         for(r = right_[1]; r < right_[2]; ++r) res[i++] = right[r];
       }
 
+      expressions::VariableList contract_vars(const expressions::VariableList& left, const expressions::VariableList& right) {
+        std::vector<std::string> res(dim_);
+        contract_array(res, left, right);
+        return expressions::VariableList(res.begin(),res.end());
+      }
+
       template <typename LeftRange, typename RightRange>
-      DynamicRange contract_range(const LeftRange& left, const RightRange& right) {
+      DynamicRange contract_range(const LeftRange& left, const RightRange& right) const {
         TA_ASSERT(left.order() == right.order());
         typename DynamicRange::index start(dim_), finish(dim_);
         contract_array(start, left.start(), right.start());
@@ -107,11 +114,12 @@ namespace TiledArray {
         return DynamicRange(start, finish, left.order());
       }
 
-      template <typename ResTRange, typename LeftTRange, typename RightTRange>
-      void contract_trange(ResTRange& res, const LeftTRange& left, const RightTRange& right) {
-        typename ResTRange::Ranges ranges;
+      template <typename LeftTRange, typename RightTRange>
+      DynamicTiledRange contract_trange(const LeftTRange& left, const RightTRange& right) const {
+        TA_ASSERT(left.tiles().order() == right.tiles().order());
+        typename DynamicTiledRange::Ranges ranges(dim_);
         contract_array(ranges, left.data(), right.data());
-        res.resize(ranges.begin(), ranges.end());
+        return DynamicTiledRange(ranges.begin(), ranges.end(), left.tiles().order());
       }
 
       // Definition is in contraction_tensor.h
