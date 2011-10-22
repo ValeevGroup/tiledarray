@@ -2,11 +2,16 @@
 #define TILEDARRAY_BINARY_TILED_TENSOR_H__INCLUDED
 
 #include <TiledArray/array_base.h>
-#include <TiledArray/tiled_range.h>
+//#include <TiledArray/tiled_range.h>
 #include <TiledArray/binary_tensor.h>
 #include <TiledArray/unary_tensor.h>
+#include <TiledArray/distributed_storage.h>
 
 namespace TiledArray {
+
+  template <typename> class StaticTiledRange;
+  class DynamicTiledRange;
+
   namespace expressions {
 
     // Forward declaration
@@ -114,7 +119,7 @@ namespace TiledArray {
         left_(left), right_(right),
         shape_((left.is_dense() || right.is_dense() ? 0 : left_.get_shape() | right_.get_shape())),
         data_(new storage_type(left.get_world(), left.size(), left.get_pmap(), false),
-            madness::make_deferred_deleter<storage_type>(left.get_word()))
+            madness::make_deferred_deleter<storage_type>(left.get_world()))
       {
         // Iterate over local left tiles and generate binary tile tasks
         for(typename left_tensor_type::const_iterator it = left.begin(); it != left.end(); ++it) {
@@ -122,12 +127,12 @@ namespace TiledArray {
             // Add a task where the right tile is zero and left tile is non-zero
             madness::Future<value_type> value = get_world().taskq.add(& eval_tensor_left,
                 *it, op);
-            data_.set(it.index(), value);
+            data_->set(it.index(), value);
           } else {
             // Add a task where both the left and right tiles are non-zero
             madness::Future<value_type> value = get_world().taskq.add(& eval_tensor,
                 *it, right[it.index()], op);
-            data_.set(it.index(), value);
+            data_->set(it.index(), value);
           }
         }
 
@@ -137,11 +142,11 @@ namespace TiledArray {
             // Add tasks where the left tile is zero and the right is non-zero
             madness::Future<value_type> value = get_world().taskq.add(& eval_tensor_right,
                 *it, op);
-            data_.set(it.index(), value);
+            data_->set(it.index(), value);
           }
           // Note: The previous loop will handle non-zero left tiles
         }
-        data_.process_pending();
+        data_->process_pending();
       }
 
       /// Evaluate tensor to destination
@@ -227,27 +232,27 @@ namespace TiledArray {
         TA_ASSERT(! is_zero(i));
         if(is_local(i)) {
           typename storage_type::const_accessor acc;
-          data_.insert(acc, i);
+          data_->insert(acc, i);
           return acc->second;
         }
 
-        return data_.find(i, true);
+        return data_->find(i, true);
       }
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return data_.begin(); }
+      const_iterator begin() const { return data_->begin(); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return data_.end(); }
+      const_iterator end() const { return data_->end(); }
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return left_.vars(); }
 
-      madness::World get_world() const { return data_.get_world(); }
+      madness::World& get_world() const { return data_->get_world(); }
 
     private:
       const left_tensor_type& left_; ///< Left argument

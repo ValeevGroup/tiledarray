@@ -20,10 +20,11 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   contraction_tensor.cpp \
                   bitset.cpp \
                   variable_list.cpp \
-                  annotated_array.cpp \
                   indexed_iterator.cpp \
                   array.cpp \
+                  annotated_array.cpp \
                   unary_tiled_tensor.cpp \
+                  binary_tiled_tensor.cpp \
                   reduce_task.cpp \
                   expressions.cpp \
                   array_fixture.h \
