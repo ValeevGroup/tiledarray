@@ -94,15 +94,6 @@ BOOST_AUTO_TEST_CASE( addition )
   for(TensorN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, 3);
 
-//  t = t1 + TensorN();
-//  for(TensorN::const_iterator it = t.begin(); it != t.end(); ++it)
-//    BOOST_CHECK_EQUAL(*it, 1);
-//
-//  t.resize(range_type());
-//  t = TensorN() + t1;
-//  for(TensorN::const_iterator it = t.begin(); it != t.end(); ++it)
-//    BOOST_CHECK_EQUAL(*it, 1);
-
   t = TensorN() + TensorN();
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
 }
@@ -116,15 +107,6 @@ BOOST_AUTO_TEST_CASE( subtraction )
   t = t1 - t2;
   for(TensorN::const_iterator it = t.begin(); it != t.end(); ++it)
     BOOST_CHECK_EQUAL(*it, -1);
-
-//  t = t1 - TensorN();
-//  for(TensorN::const_iterator it = t.begin(); it != t.end(); ++it)
-//    BOOST_CHECK_EQUAL(*it, 1);
-//
-//  t.resize(range_type());
-//  t = TensorN() - t1;
-//  for(TensorN::const_iterator it = t.begin(); it != t.end(); ++it)
-//    BOOST_CHECK_EQUAL(*it, -1);
 
   t = TensorN() - TensorN();
   BOOST_CHECK_EQUAL(t.range().volume(), 0ul);
