@@ -300,6 +300,11 @@ namespace TiledArray {
     /// \return A reference to the world that owns this array.
     madness::World& get_world() const { return pimpl_->get_world(); }
 
+    /// Process map accessor
+
+    /// \return A reference to the world that owns this array.
+    const std::shared_ptr<pmap_interface>& get_pmap() const { return pimpl_->get_pmap(); }
+
     /// Check dense/sparse quary
 
     /// \return \c true when \c Array is dense, \c false otherwise.

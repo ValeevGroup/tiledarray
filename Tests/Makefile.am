@@ -23,6 +23,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   annotated_array.cpp \
                   indexed_iterator.cpp \
                   array.cpp \
+                  unary_tiled_tensor.cpp \
                   reduce_task.cpp \
                   expressions.cpp \
                   array_fixture.h \

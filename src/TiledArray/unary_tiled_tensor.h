@@ -36,7 +36,7 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Op The Unary transform operator type.
     template <typename Arg, typename Op>
-    class UnaryTiledTensor : public ReadableTiledTensor<UnaryTiledTensor<Arg, Op> > {
+    class UnaryTiledTensor {
     public:
       typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
       typedef Arg arg_tensor_type;
@@ -65,9 +65,9 @@ namespace TiledArray {
       {
         for(typename arg_tensor_type::const_iterator it = arg.begin(); it != arg.end(); ++it) {
           madness::Future<value_type> value = get_world().taskq.add(& eval_tensor, op, *it);
-          data_.set(it.index(), value);
+          data_->set(it.index(), value);
         }
-        data_.process_pending();
+        data_->process_pending();
       }
 
       /// Evaluate tensor to destination
@@ -90,19 +90,19 @@ namespace TiledArray {
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type size() const { return data_.size(); }
+      size_type size() const { return data_->size(); }
 
       /// Query a tile owner
 
       /// \param i The tile index to query
       /// \return The process ID of the node that owns tile \c i
-      ProcessID owner(size_type i) const { return data_.owner(i); }
+      ProcessID owner(size_type i) const { return data_->owner(i); }
 
       /// Query for a locally owned tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is owned by this node, otherwise \c false
-      bool is_local(size_type i) const { return data_.is_local(i); }
+      bool is_local(size_type i) const { return data_->is_local(i); }
 
       /// Query for a zero tile
 
@@ -113,7 +113,7 @@ namespace TiledArray {
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
-      std::shared_ptr<pmap_interface> get_pmap() const { return data_.get_pmap(); }
+      std::shared_ptr<pmap_interface> get_pmap() const { return data_->get_pmap(); }
 
       /// Query the density of the tensor
 
@@ -138,28 +138,27 @@ namespace TiledArray {
         TA_ASSERT(! is_zero(i));
         if(is_local(i)) {
           typename storage_type::const_accessor acc;
-          data_.insert(acc, i);
+          data_->insert(acc, i);
           return acc->second;
         }
 
-        return data_.find(i);
+        return data_->find(i);
       }
-
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return data_.begin(); }
+      const_iterator begin() const { return data_->begin(); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return data_.end(); }
+      const_iterator end() const { return data_->end(); }
 
       /// Variable annotation for the array.
       const VariableList& vars() const { return arg_.vars(); }
 
-      madness::World get_world() const { return data_.get_world(); }
+      madness::World& get_world() const { return data_->get_world(); }
 
 
     private:

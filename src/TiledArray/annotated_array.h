@@ -33,7 +33,6 @@ namespace TiledArray {
 
     private:
       // not allowed
-      AnnotatedArray(const AnnotatedArray_&);
       AnnotatedArray_& operator =(const AnnotatedArray_& other);
 
     public:
@@ -47,8 +46,13 @@ namespace TiledArray {
       AnnotatedArray(const array_type& a, const VariableList& v) :
           array_(a), vars_(v)
       {
-        TA_ASSERT(array_type::coordinate_system::dim == v.dim());
+        TA_ASSERT(a.range().dim() == v.dim());
       }
+
+
+      AnnotatedArray(const AnnotatedArray_& other) :
+          array_(other.array_), vars_(other.vars_)
+      { }
 
       const AnnotatedArray_& eval() const { return *this; }
 
