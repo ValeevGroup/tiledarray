@@ -239,7 +239,7 @@ namespace TiledArray {
 
     /// \return A const reference to the tiled range object for the array
     /// \throw nothing
-    const trange_type& tiling() const { return pimpl_->tiling(); }
+    const trange_type& trange() const { return pimpl_->tiling(); }
 
     /// Tile range accessor
 
