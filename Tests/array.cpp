@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
   ArrayN a(world, tr);
 
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
-    ArrayN::trange_type::tile_range_type range = a.tiling().make_tile_range(*it);
+    ArrayN::trange_type::tile_range_type range = a.trange().make_tile_range(*it);
     if(a.is_local(*it)) {
       if(data.size() < range.volume())
         data.resize(range.volume(), 1);
@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE( reduce_tiles )
     a.reduce(i, f, nodes.begin(), nodes.end(), std::plus<ArrayN::value_type>());
 
     // set the future for the local contribution.
-    ArrayN::value_type tile(a.tiling().make_tile_range(i), 1);
+    ArrayN::value_type tile(a.trange().make_tile_range(i), 1);
     f.set(tile);
 
     world.gop.fence();
