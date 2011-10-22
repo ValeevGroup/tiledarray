@@ -20,7 +20,7 @@ BOOST_FIXTURE_TEST_SUITE( binary_tiled_tensor_suite, BinaryTiledTensorFixture )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
-  BinaryTiledTensor<array_annotation, array_annotation, std::plus<int> > utt(aa, aa, std::plus<int>());
+  BinaryTiledTensor<array_annotation, array_annotation, std::plus<int> > btt(aa, aa, std::plus<int>());
 }
 
 

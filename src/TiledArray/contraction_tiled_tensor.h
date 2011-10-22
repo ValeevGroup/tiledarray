@@ -7,6 +7,8 @@
 #include <TiledArray/contraction_tensor.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/reduce_task.h>
+#include <TiledArray/distributed_storage.h>
+#include <TiledArray/binary_tensor.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -58,10 +60,16 @@ namespace TiledArray {
         typedef value_type result_type;
         typedef const typename left_tensor_type::value_type& first_argument_type;
         typedef const typename right_tensor_type::value_type& second_argument_type;
+        typedef std::plus<typename left_tensor_type::value_type::value_type> plus_op;
+        typedef BinaryTensor<typename left_tensor_type::value_type,
+            typename right_tensor_type::value_type,  plus_op> plus_tensor;
 
-        result_type operator()(first_argument_type left, second_argument_type right) {
-          return left + right;
+        result_type operator()(first_argument_type left, second_argument_type right) const {
+          return plus_tensor(left, right, plus_op());
         }
+
+        template <typename Archive>
+        void serialize(Archive&) { TA_ASSERT(false); }
       };
 
       static value_type contract(const typename left_tensor_type::value_type& left,
@@ -81,13 +89,12 @@ namespace TiledArray {
       ContractionTiledTensor(const left_tensor_type& left, const right_tensor_type& right, const std::shared_ptr<math::Contraction>& cont) :
         left_(left), right_(right),
         trange_(cont->contract_trange(left.trange(), right.trange())),
-        shape_((left.is_dense() || right.is_dense() ? 0 : cont->contract_shape(left.get_shape(), right.get_shape()))),
-        vars_(),
-        data_(new storage_type(left.get_world(), trange_.range().volume(), left.get_pmap(), false),
+        shape_((left.is_dense() || right.is_dense() ? 0 : cont->contract_shape(left, right))),
+        vars_(cont->contract_vars(left.vars(), right.vars())),
+        data_(new storage_type(left.get_world(), trange_.tiles().volume(), left.get_pmap(), false),
             madness::make_deferred_deleter<storage_type>(left.get_world()))
       {
 
-        cont->contract_array(vars_, left.vars(), right.vars());
         const size_type n = size();
 
         const typename math::Contraction::packed_size_array size =
@@ -160,13 +167,13 @@ namespace TiledArray {
               madness::Future<value_type> local_reduction = local_reduce_op();
 
               // Start the remote reduction and get the result future
-              madness::Future<value_type> remote_reduction = data_.reduce(res_index,
+              madness::Future<value_type> remote_reduction = data_->reduce(res_index,
                   local_reduction, reduce_op(), reduce_grp.begin(), reduce_grp.end(),
-                  data_.owner(res_index));
+                  data_->owner(res_index));
 
               // Result returned on all nodes but only the root node has the final value.
               if(is_local(res_index))
-                data_.set(res_index, remote_reduction);
+                data_->set(res_index, remote_reduction);
             }
 
             // clear the reduce group
@@ -195,7 +202,7 @@ namespace TiledArray {
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
-      const range_type& range() const { return trange_.range(); }
+      const range_type& range() const { return trange_.tiles(); }
 
       /// Tensor tile volume accessor
 
@@ -269,7 +276,7 @@ namespace TiledArray {
       /// Variable annotation for the array.
       const VariableList& vars() const { return vars_; }
 
-      madness::World& get_world() const { return data_.get_world(); }
+      madness::World& get_world() const { return data_->get_world(); }
 
 
     private:
@@ -278,5 +285,30 @@ namespace TiledArray {
 
   }  // namespace expressions
 }  // namespace TiledArray
+
+namespace madness {
+  namespace archive {
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl;
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl;
+
+    template <typename Archive>
+    struct ArchiveStoreImpl<Archive, std::shared_ptr<TiledArray::math::Contraction> > {
+      static void store(const Archive& ar, const std::shared_ptr<TiledArray::math::Contraction>&) {
+        TA_ASSERT(false);
+      }
+    };
+
+    template <typename Archive>
+    struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::math::Contraction> > {
+
+      static void load(const Archive& ar, std::shared_ptr<TiledArray::math::Contraction>&) {
+        TA_ASSERT(false);
+      }
+    };
+  } // namespace archive
+} // namespace madness
 
 #endif // TILEDARRAY_CONTRACTION_TILED_TENSOR_H__INCLUDED
