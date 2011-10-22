@@ -79,6 +79,9 @@ namespace TiledArray {
       /// Returns the number of strings in the variable list.
       unsigned int dim() const { return vars_.size(); }
 
+      /// Returns the number of strings in the variable list.
+      unsigned int size() const { return vars_.size(); }
+
       const std::vector<std::string>& data() const { return vars_; }
 
       std::string string() const {
