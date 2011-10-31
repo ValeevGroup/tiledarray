@@ -138,7 +138,7 @@ namespace TiledArray {
 
         // Iterate over local right tiles and generate binary tile tasks
         for(typename right_tensor_type::const_iterator it = right.begin(); it != right.end(); ++it) {
-          if(! left.is_zero(it.index())) {
+          if(left.is_zero(it.index())) {
             // Add tasks where the left tile is zero and the right is non-zero
             madness::Future<value_type> value = get_world().taskq.add(& eval_tensor_right,
                 *it, op);
