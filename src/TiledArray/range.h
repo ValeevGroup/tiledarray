@@ -332,10 +332,6 @@ namespace TiledArray {
       derived().serialize(ar);
     }
 
-    void swap(Range_& other) {
-      derived().swap(other.derived());
-    }
-
   private:
 
     template <typename T>
