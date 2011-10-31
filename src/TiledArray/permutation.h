@@ -120,6 +120,11 @@ namespace TiledArray {
     Array& data() { return p_; }
     const Array& data() const { return p_; }
 
+    template <typename Archive>
+    void serialize(Archive& ar) {
+      ar & p_;
+    }
+
     friend bool operator== <> (const Permutation<DIM>& p1, const Permutation<DIM>& p2);
     friend std::ostream& operator<< <> (std::ostream& output, const Permutation& p);
 
