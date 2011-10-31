@@ -2,62 +2,47 @@
 #include "TiledArray/tensor.h"
 #include "unit_test_config.h"
 
+#include "tensor_fixture.h"
+
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
+// get a unique value for the given index
+PermuteTensorFixture::value_type PermuteTensorFixture::get_value(const index i) {
+  index::value_type x = 1;
+  value_type result = 0;
+  for(index::const_iterator it = i.begin(); it != i.end(); ++it, x *= 10)
+    result += *it * x;
 
-struct PermuteTensorFixture {
-  typedef Tensor<int, StaticRange<GlobalFixture::coordinate_system> > TensorN;
-  typedef TensorN::range_type range_type;
-  typedef TensorN::range_type::index index;
-  typedef Permutation<GlobalFixture::coordinate_system::dim> PermN;
-  typedef PermuteTensor<TensorN,GlobalFixture::coordinate_system::dim> PermT;
-  typedef PermT::value_type value_type;
+  return result;
+}
 
-  PermuteTensorFixture() : pt(t, p) { }
+// make a tile to be permuted
+PermuteTensorFixture::TensorN PermuteTensorFixture::make_tile() {
+  index start(0);
+  index finish(0);
+  index::value_type i = 3;
+  for(index::iterator it = finish.begin(); it != finish.end(); ++it, ++i)
+    *it = i;
 
-  // get a unique value for the given index
-  static value_type get_value(const index i) {
-    index::value_type x = 1;
-    value_type result = 0;
-    for(index::const_iterator it = i.begin(); it != i.end(); ++it, x *= 10)
-      result += *it * x;
+  range_type r(start, finish);
+  TensorN result(r);
+  for(range_type::const_iterator it = r.begin(); it != r.end(); ++it)
+    result[*it] = get_value(*it);
 
-    return result;
-  }
+  return result;
+}
 
-  // make a tile to be permuted
-  static TensorN make_tile() {
-    index start(0);
-    index finish(0);
-    index::value_type i = 3;
-    for(index::iterator it = finish.begin(); it != finish.end(); ++it, ++i)
-      *it = i;
+// make permutation definition object
+PermuteTensorFixture::PermN PermuteTensorFixture::make_perm() {
+  std::array<std::size_t, GlobalFixture::coordinate_system::dim> temp;
+  for(std::size_t i = 0; i < temp.size(); ++i)
+    temp[i] = i + 1;
 
-    range_type r(start, finish);
-    TensorN result(r);
-    for(range_type::const_iterator it = r.begin(); it != r.end(); ++it)
-      result[*it] = get_value(*it);
+  temp.back() = 0;
 
-    return result;
-  }
-
-  // make permutation definition object
-  static PermN make_perm() {
-    std::array<std::size_t, GlobalFixture::coordinate_system::dim> temp;
-    for(std::size_t i = 0; i < temp.size(); ++i)
-      temp[i] = i + 1;
-
-    temp.back() = 0;
-
-    return PermN(temp.begin());
-  }
-
-  static const TensorN t;
-  static const PermN p;
-
-  PermT pt;
-}; // struct PermuteTensorFixture
+  return PermN(temp.begin());
+}
 
 using madness::operator<<;
 

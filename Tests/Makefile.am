@@ -26,6 +26,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   unary_tiled_tensor.cpp \
                   binary_tiled_tensor.cpp \
                   contraction_tiled_tensor.cpp \
+                  permute_tiled_tensor.cpp \
                   reduce_task.cpp \
                   expressions.cpp \
                   array_fixture.h \
