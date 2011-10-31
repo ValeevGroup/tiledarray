@@ -295,11 +295,11 @@ namespace TiledArray {
 
     /// Constructed with a set of ranges pointed to by [ first, last ).
     template <typename InIter>
-    DynamicTiledRange(InIter first, InIter last, detail::DimensionOrderType order) {
-      const unsigned int dim = std::distance(first, last);
+    DynamicTiledRange(InIter first, InIter last, detail::DimensionOrderType order) :
+      ranges_(first, last)
+    {
       TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-      std::copy(first, last, ranges_.begin());
-      init_(dim, order);
+      init_(order);
     }
 
     /// Copy constructor
@@ -350,7 +350,9 @@ namespace TiledArray {
 
   private:
     /// precomputes useful data listed below
-    void init_(const unsigned int dim, detail::DimensionOrderType order) {
+    void init_(detail::DimensionOrderType order) {
+      const std::size_t dim = ranges_.size();
+
       // Indices used to store range start and finish.
       std::vector<size_type> start(dim, 0);
       std::vector<size_type> finish(dim, 0);
