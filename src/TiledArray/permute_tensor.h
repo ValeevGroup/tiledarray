@@ -121,7 +121,7 @@ namespace TiledArray {
     private:
 
       void lazy_eval() const {
-        if(eval_.size()) {
+        if(! eval_.size()) {
           range_type range = perm_ ^ (arg_.range());
           storage_type data(range.volume());
           permute(data, range);
