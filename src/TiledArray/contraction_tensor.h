@@ -187,7 +187,7 @@ namespace TiledArray {
 
       /// Evaluate the tensor only when the data is needed
       void lazy_eval() const {
-        if(eval_.size()) {
+        if(! eval_.size()) {
           DynamicRange range = contraction_->contract_range(left_.range(), right_.range());
 
           typename contract_type::packed_size_array packed_size =
