@@ -56,12 +56,13 @@ namespace TiledArray {
           perm_(p),
           arg_(arg),
           trange_(p ^ arg.trange()),
-          shape_((arg_.is_dense() ? arg_.size() : 0)),
+          shape_((arg_.is_dense() ? 0 : arg_.size())),
           data_(new storage_type(arg.get_world(), arg.size(), arg.get_pmap(), false),
               madness::make_deferred_deleter<storage_type>(arg.get_world()))
       {
         // Initialize the shape
-        init_shape();
+        if(! arg_.is_dense())
+          init_shape();
 
         // Initialize the tiles
         for(typename arg_tensor_type::const_iterator it = arg.begin(); it != arg.end(); ++it) {
