@@ -364,12 +364,24 @@ namespace TiledArray {
     return result;
   }
 
-  using madness::operator<<;
+  namespace detail {
+    template <typename A>
+    void print_array(std::ostream& out, const A& a) {
+      std::size_t n = a.size();
+      out << "[";
+      for(std::size_t i = 0; i < n; ++i) {
+        out << a[i];
+        if (i != (n - 1))
+          out << ",";
+      }
+      out << "]";
+    }
+  } // namespace detail
 
   /// Append an ArrayCoordinate to an output stream.
   template <typename I, unsigned int DIM, typename Tag>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<I,DIM,Tag>& c) {
-    output << c.data();
+    detail::print_array(output, c.data());
     return output;
   }
 
