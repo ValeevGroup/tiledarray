@@ -25,7 +25,7 @@ namespace TiledArray {
 
     template <typename Arg, unsigned int DIM>
     struct Eval<PermuteTensor<Arg, DIM> > {
-      typedef const Tensor<typename Arg::value_type, typename Arg::range_type>& type;
+      typedef Tensor<typename Arg::value_type, typename Arg::range_type> type;
     }; // struct Eval<PermuteTensor<Arg, DIM> >
 
     /// A permutation of an argument tensor
@@ -54,11 +54,11 @@ namespace TiledArray {
       /// \param right The right argument
       /// \param op The element transform operation
       PermuteTensor(const Arg& arg, const perm_type& p) :
-        arg_(arg),  perm_(p), eval_()
+        arg_(arg),  perm_(p), range_(p ^ arg.range()), data_()
       { }
 
       PermuteTensor(const PermuteTensor_& other) :
-        arg_(other.arg_), perm_(other.perm_), eval_(other.eval_)
+        arg_(other.arg_), perm_(other.perm_), range_(other.range_), data_(other.data_)
       { }
 
       /// Evaluate this tensor
@@ -66,7 +66,7 @@ namespace TiledArray {
       /// \return An evaluated tensor object
       eval_type eval() const {
         lazy_eval();
-        return *this;
+        return Tensor<value_type, range_type>(range_, data_);
       }
 
       /// Evaluate this tensor and store the results in \c dest
@@ -75,23 +75,24 @@ namespace TiledArray {
       /// \param dest The destination object
       template <typename Dest>
       void eval_to(Dest& dest) const {
-        lazy_eval();
-        eval_.eval_to(dest);
+        if(data_.empty())
+          permute(dest);
+        else
+          data_.eval_to(dest);
       }
 
       /// Tensor range object accessor
 
       /// \return The tensor range object
       const range_type& range() const {
-        lazy_eval();
-        return eval_.range();
+        return range_;
       }
 
       /// Tile size accessor
 
       /// \return The number of elements in the tile
       size_type size() const {
-        return arg_.size();
+        return range_.volume();
       }
 
       /// Iterator factory
@@ -99,7 +100,7 @@ namespace TiledArray {
       /// \return An iterator to the first data element
       const_iterator begin() const {
         lazy_eval();
-        return eval_.begin();
+        return data_.begin();
       }
 
       /// Iterator factory
@@ -107,7 +108,7 @@ namespace TiledArray {
       /// \return An iterator to the last data element }
       const_iterator end() const {
         lazy_eval();
-        return eval_.end();
+        return data_.end();
       }
 
       /// Element accessor
@@ -115,17 +116,16 @@ namespace TiledArray {
       /// \return The element at the \c i position.
       const_reference operator[](size_type i) const {
         lazy_eval();
-        return eval_[i];
+        return data_[i];
       }
 
     private:
 
       void lazy_eval() const {
-        if(! eval_.size()) {
-          range_type range = perm_ ^ (arg_.range());
-          storage_type data(range.volume());
-          permute(data, range);
-          Tensor<value_type, range_type>(range, data.begin()).swap(eval_);
+        if(data_.empty()) {
+          storage_type data(size());
+          permute(data);
+          data_.swap(data);
         }
       }
 
@@ -134,25 +134,26 @@ namespace TiledArray {
       /// \tparam The result container type
       /// \param result The container that will hold the permuted tensor data
       template <typename Res>
-      void permute(Res& result, const range_type& range) const {
+      void permute(Res& result) const {
         // Construct the inverse permuted weight and size for this tensor
         const perm_type ip = -perm_;
-        typename range_type::size_array ip_weight = ip ^ range.weight();
-        const typename range_type::index ip_start = ip ^ arg_.range().start();
+        typename range_type::size_array ip_weight = ip ^ range_.weight();
+        const typename arg_tensor_type::range_type::index& start = arg_.range().start();
 
         // Coordinated iterator for the argument object range
         typename arg_tensor_type::range_type::const_iterator arg_range_it =
             arg_.range().begin();
 
         // permute the data
-        const size_type s = arg_.size();
-        for(size_type arg_it = 0ul; arg_it != s; ++arg_it, ++arg_range_it)
-          result[TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, ip_start)] = arg_[arg_it];
+        const size_type end = size();
+        for(size_type arg_it = 0ul; arg_it != end; ++arg_it, ++arg_range_it)
+          result[TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, start)] = arg_[arg_it];
       }
 
       const arg_tensor_type& arg_; ///< Argument
       perm_type perm_; ///< Transform operation
-      mutable Tensor<value_type, range_type> eval_; ///< Evaluated tensor
+      range_type range_; ///< Result tensor range
+      mutable storage_type data_; ///< Result tensor data
     }; // class PermuteTensor
 
 
