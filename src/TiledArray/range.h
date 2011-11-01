@@ -697,10 +697,14 @@ namespace TiledArray {
     return r;
   }
 
-  /// ostream output orperator.
+  /// range output operator.
   template<typename CS>
-  std::ostream& operator<<(std::ostream& out, const Range<CS>& blk) {
-    out << "[ " << blk.start() << ", " << blk.finish() << " )";
+  std::ostream& operator<<(std::ostream& out, const Range<CS>& r) {
+    out << "[ ";
+    detail::print_array(out, r.start());
+    out << ", ";
+    detail::print_array(out, r.finish());
+    out << " )";
     return out;
   }
 
