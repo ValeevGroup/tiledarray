@@ -42,7 +42,7 @@ namespace TiledArray {
       PermuteTiledTensor_& operator=(const PermuteTiledTensor_&);
 
       static value_type eval_tensor(const perm_type& p, const typename arg_tensor_type::value_type& value) {
-        return value_type(PermuteTensor<typename arg_tensor_type::value_type, DIM>(value, p));
+        return PermuteTensor<typename arg_tensor_type::value_type, DIM>(value, p);
       }
 
     public:
