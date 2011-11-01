@@ -74,7 +74,7 @@ namespace TiledArray {
       Tensor(const ReadableTensor<Derived>& other) :
           range_(other.range()), data_(other.size())
       {
-        other.eval_to(data_);
+        other.derived().eval_to(data_);
       }
 
       /// Copy constructor
@@ -108,7 +108,7 @@ namespace TiledArray {
       Tensor_& operator=(const ReadableTensor<D>& other) {
         range_ = other.range();
         storage_type temp(other.range().volume());
-        other.eval_to(temp);
+        other.derived().eval_to(temp);
         temp.swap(data_);
 
         return *this;
@@ -129,7 +129,7 @@ namespace TiledArray {
         }
 
         TA_ASSERT(range_ == other.range());
-        other.add_to(data_);
+        other.derived().add_to(data_);
 
         return *this;
       }
@@ -143,7 +143,7 @@ namespace TiledArray {
         }
 
         TA_ASSERT(range_ == other.range());
-        other.sub_to(data_);
+        other.derived().sub_to(data_);
 
         return *this;
       }
