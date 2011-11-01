@@ -213,7 +213,7 @@ namespace TiledArray {
     /// thrown. Valid types for Index are ordinal_type and index_type.
     const_reference at(size_type i) const {
       if(i >= size())
-        throw Exception("Element is out of range.");
+        TA_EXCEPTION("Element is out of range.");
 
       return first_[i];
     }
