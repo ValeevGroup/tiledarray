@@ -162,7 +162,6 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
 
       // Check that the range for the constructed tile is correct.
       BOOST_CHECK_EQUAL(tile.get().range(), tr.make_tile_range(*it));
-      std::cout << tile.get().range() << "\n";
 
       for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
         BOOST_CHECK_EQUAL(*it, 1);
