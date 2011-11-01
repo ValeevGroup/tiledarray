@@ -180,6 +180,16 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Copy the content of this data into dest
+    template <typename Dest>
+    void eval_to(Dest& dest) const {
+      TA_ASSERT(! empty());
+      const size_type end = size();
+      TA_ASSERT(dest.size() == end);
+      for(size_type i = 0; i < end; ++i)
+        dest[i] = operator[](i);
+    }
+
     /// Returns a raw pointer to the array elements. Elements are ordered from
     /// least significant to most significant dimension.
     pointer data() { return first_; }
