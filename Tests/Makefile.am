@@ -8,20 +8,20 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   coordinates.cpp \
                   range_iterator.cpp \
                   range.cpp \
-                  tiled_range1.cpp \
-                  tiled_range.cpp \
                   transform_iterator.cpp \
                   dense_storage.cpp \
-                  distributed_storage.cpp \
                   tensor.cpp \
                   unary_tensor.cpp \
                   binary_tensor.cpp \
                   permute_tensor.cpp \
                   contraction_tensor.cpp \
                   bitset.cpp \
-                  variable_list.cpp \
+                  tiled_range1.cpp \
+                  tiled_range.cpp \
                   indexed_iterator.cpp \
+                  distributed_storage.cpp \
                   array.cpp \
+                  variable_list.cpp \
                   annotated_array.cpp \
                   unary_tiled_tensor.cpp \
                   binary_tiled_tensor.cpp \
@@ -32,6 +32,7 @@ ta_test_SOURCES = TiledArrayTest.cpp \
                   array_fixture.h \
                   range_fixture.h \
                   iteration_test.h \
+                  tensor_fixture.h \
                   global_fixture.h \
                   unit_test_config.h
 TESTS = $(check_PROGRAMS)
