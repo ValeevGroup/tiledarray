@@ -191,6 +191,7 @@ namespace TiledArray {
 
     template<unsigned int DIM>
     inline VariableList operator ^(const ::TiledArray::Permutation<DIM>& p, const VariableList& v) {
+      TA_ASSERT(p.dim() == v.dim());
       VariableList result;
       result.vars_ = p ^ v.vars_;
 
