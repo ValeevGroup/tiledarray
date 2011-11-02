@@ -4,6 +4,7 @@
 #include <TiledArray/array_base.h>
 #include <TiledArray/permute_tensor.h>
 #include <TiledArray/distributed_storage.h>
+#include <TiledArray/variable_list.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -55,6 +56,7 @@ namespace TiledArray {
       PermuteTiledTensor(const arg_tensor_type& arg, const perm_type& p) :
           perm_(p),
           arg_(arg),
+          vars_(p ^ arg.vars()),
           trange_(p ^ arg.trange()),
           shape_((arg_.is_dense() ? 0 : arg_.size())),
           data_(new storage_type(arg.get_world(), arg.size(), arg.get_pmap(), false),
@@ -133,7 +135,10 @@ namespace TiledArray {
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      const TiledArray::detail::Bitset<>& get_shape() const { return shape_; }
+      const TiledArray::detail::Bitset<>& get_shape() const {
+        TA_ASSERT(! is_dense());
+        return shape_;
+      }
 
       /// Tiled range accessor
 
@@ -166,7 +171,7 @@ namespace TiledArray {
       const_iterator end() const { return data_->end(); }
 
       /// Variable annotation for the array.
-      const VariableList& vars() const { return arg_.vars(); }
+      const VariableList& vars() const { return vars_; }
 
       madness::World& get_world() const { return data_->get_world(); }
 
@@ -237,8 +242,9 @@ namespace TiledArray {
 
       perm_type perm_; ///< Transform operation
       const arg_tensor_type& arg_; ///< Argument
+      VariableList vars_; ///< Tensor annotation
       trange_type trange_; ///< Tensor tiled range
-      TiledArray::detail::Bitset<> shape_;
+      TiledArray::detail::Bitset<> shape_; ///< Tensor shape
       std::shared_ptr<storage_type> data_; ///< Tile container
     }; // class PermuteTiledTensor
 
