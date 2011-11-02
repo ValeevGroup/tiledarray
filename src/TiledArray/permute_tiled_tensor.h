@@ -115,7 +115,7 @@ namespace TiledArray {
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
       bool is_zero(size_type i) const {
-        TA_ASSERT(trange_.includes(i));
+        TA_ASSERT(trange_.tiles().includes(i));
         if(is_dense())
           return false;
 
