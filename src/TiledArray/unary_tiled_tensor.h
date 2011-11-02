@@ -90,7 +90,7 @@ namespace TiledArray {
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type size() const { return data_->size(); }
+      size_type size() const { return arg_.size(); }
 
       /// Query a tile owner
 
