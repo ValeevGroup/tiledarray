@@ -54,8 +54,9 @@ namespace TiledArray {
       /// \param w The world where the array will live.
       /// \param tr The tiled range object that will be used to set the array tiling.
       /// \param v The version number of the array
-      ArrayImpl(madness::World& w, const trange_type& tr, const std::shared_ptr<pmap_interface>& pmap) :
-          trange_(tr),
+      template <typename D>
+      ArrayImpl(madness::World& w, const TiledRange<D>& tr, const std::shared_ptr<pmap_interface>& pmap) :
+          trange_(tr.derived()),
           data_(w, tr.tiles().volume(), pmap, false)
       { }
 
@@ -266,7 +267,8 @@ namespace TiledArray {
       typedef typename trange_type::range_type range_type; ///< Range type for the array
       typedef typename trange_type::tile_range_type tile_range_type; ///< Range type for elements of individual tiles and all elements
 
-      DenseArrayImpl(madness::World& w, const trange_type& tr,
+      template <typename R>
+      DenseArrayImpl(madness::World& w, const TiledRange<R>& tr,
           const std::shared_ptr<pmap_interface>& pmap) :
           ArrayImpl_(w, tr, pmap)
       { }
@@ -320,8 +322,8 @@ namespace TiledArray {
       /// \param last An input iterator that points to the last position in a list
       /// of tiles to be added to the sparse array.
       /// \param v The version number of the array
-      template <typename InIter>
-      SparseArrayImpl(madness::World& w, const trange_type& tr,
+      template <typename R, typename InIter>
+      SparseArrayImpl(madness::World& w, const TiledRange<R>& tr,
           const std::shared_ptr<pmap_interface>& pmap, InIter first, InIter last) :
           ArrayImpl_(w, tr, pmap),
           shape_map_(tr.tiles().volume())
@@ -335,7 +337,8 @@ namespace TiledArray {
         ArrayImpl_::get_world().gop.bit_or(shape_map_.get(), shape_map_.num_blocks());
       }
 
-      SparseArrayImpl(madness::World& w, const trange_type& tr,
+      template <typename R>
+      SparseArrayImpl(madness::World& w, const TiledRange<R>& tr,
           const std::shared_ptr<pmap_interface>& pmap, const Bitset<>& shape) :
           ArrayImpl_(w, tr, pmap),
           shape_map_(shape)

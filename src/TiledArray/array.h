@@ -9,6 +9,12 @@
 
 namespace TiledArray {
 
+  namespace expressions {
+
+    template <typename> class ReadableTiledTensor;
+
+  }  // namespace expressions
+
   /// An n-dimensional, tiled array
 
   /// Array is considered a global object
@@ -118,13 +124,15 @@ namespace TiledArray {
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param v The array version number.
-    Array(madness::World& w, const trange_type& tr) :
+    template <typename R>
+    Array(madness::World& w, const TiledRange<R>& tr) :
         pimpl_(new dense_impl_type(w, tr, make_pmap(w)), madness::make_deferred_deleter<impl_type>(w))
     {
       init(madness::Range<ProcessID>(0, range().volume()));
     }
 
-    Array(madness::World& w, const trange_type& tr, const std::shared_ptr<pmap_interface>& pmap) :
+    template <typename R>
+    Array(madness::World& w, const TiledRange<R>& tr, const std::shared_ptr<pmap_interface>& pmap) :
         pimpl_(new dense_impl_type(w, tr, pmap), madness::make_deferred_deleter<impl_type>(w))
     {
       init(madness::Range<ProcessID>(0, range().volume()));
@@ -140,15 +148,15 @@ namespace TiledArray {
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
     /// \param v The array version number.
-    template <typename InIter>
-    Array(madness::World& w, const trange_type& tr, InIter first, InIter last) :
+    template <typename R, typename InIter>
+    Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last) :
         pimpl_(new sparse_impl_type(w, tr, make_pmap(w), first, last), madness::make_deferred_deleter<impl_type>(w))
     {
       init(madness::Range<InIter>(first, last));
     }
 
-    template <typename InIter>
-    Array(madness::World& w, const trange_type& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap) :
+    template <typename R, typename InIter>
+    Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap) :
         pimpl_(new sparse_impl_type(w, tr, first, last, pmap), madness::make_deferred_deleter<impl_type>(w))
     {
       init(madness::Range<InIter>(first, last));
@@ -163,11 +171,11 @@ namespace TiledArray {
     { }
 
     template <typename Derived>
-    Array(const expressions::TiledTensor<Derived>& other) :
+    Array(const expressions::ReadableTiledTensor<Derived>& other) :
       pimpl_((other.is_dense() ?
-          new dense_impl_type(other.get_world(), trange_type(other.trange()), other.get_pmap())
+          new dense_impl_type(other.get_world(), other.trange(), other.get_pmap())
         :
-          new sparse_impl_type(other.get_world(), trange_type(other.trange()), other.get_shape(), other.get_pmap())),
+          new sparse_impl_type(other.get_world(), other.trange(), other.get_shape(), other.get_pmap())),
         madness::make_deferred_deleter<impl_type>(other.get_world()))
     {
       other.eval_to(*this);
