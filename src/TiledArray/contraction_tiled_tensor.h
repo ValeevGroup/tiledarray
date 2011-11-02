@@ -250,7 +250,7 @@ namespace TiledArray {
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
-      trange_type trange() const { return trange_; }
+      const trange_type& trange() const { return trange_; }
 
       /// Tile accessor
 

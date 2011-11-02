@@ -219,7 +219,7 @@ namespace TiledArray {
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
-      trange_type trange() const {
+      const trange_type& trange() const {
         return detail::trange_select<typename left_tensor_type::trange_type,
           typename right_tensor_type::trange_type>::trange(left_, right_);
       }
