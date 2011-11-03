@@ -58,11 +58,10 @@ namespace TiledArray {
 
       struct reduce_op {
         typedef value_type result_type;
-        typedef const typename left_tensor_type::value_type& first_argument_type;
-        typedef const typename right_tensor_type::value_type& second_argument_type;
-        typedef std::plus<typename left_tensor_type::value_type::value_type> plus_op;
-        typedef BinaryTensor<typename left_tensor_type::value_type,
-            typename right_tensor_type::value_type,  plus_op> plus_tensor;
+        typedef const value_type& first_argument_type;
+        typedef const value_type& second_argument_type;
+        typedef std::plus<typename value_type::value_type> plus_op;
+        typedef BinaryTensor<value_type, value_type,  plus_op> plus_tensor;
 
         result_type operator()(first_argument_type left, second_argument_type right) const {
           return plus_tensor(left, right, plus_op());
@@ -207,7 +206,7 @@ namespace TiledArray {
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type size() const { return data_->size(); }
+      size_type size() const { return trange_.tiles().volume(); }
 
       /// Query a tile owner
 
