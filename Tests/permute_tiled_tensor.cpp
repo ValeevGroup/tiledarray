@@ -1,5 +1,6 @@
 #include "TiledArray/permute_tiled_tensor.h"
 #include "TiledArray/array.h"
+#include "TiledArray/expressions.h"
 #include "unit_test_config.h"
 #include "array_fixture.h"
 #include "tensor_fixture.h"
@@ -9,6 +10,7 @@ using namespace TiledArray::expressions;
 
 struct PermuteTiledTensorFixture : public AnnotatedArrayFixture {
   typedef PermuteTensorFixture::PermN PermN;
+  typedef PermuteTiledTensor<array_annotation, GlobalFixture::coordinate_system::dim> PTT;
 
   PermuteTiledTensorFixture() : ptt(aa, p) { }
 
@@ -16,7 +18,7 @@ struct PermuteTiledTensorFixture : public AnnotatedArrayFixture {
   static const PermN p;
 
 
-  PermuteTiledTensor<array_annotation, GlobalFixture::coordinate_system::dim> ptt;
+  PTT ptt;
 };
 
 
@@ -55,5 +57,24 @@ BOOST_AUTO_TEST_CASE( location )
   }
 }
 
+BOOST_AUTO_TEST_CASE( result )
+{
+  for(PTT::const_iterator it = ptt.begin(); it != ptt.end(); ++it) {
+    // Convert result ordinal index to input ordinal index
+    array_annotation::size_type input_ord = aa.range().ord(-p ^ ptt.range().idx(it.index()));
+
+    // Permute the input tile for comparision with the result.
+    array_annotation::const_reference input = aa[input_ord];
+    array_annotation::value_type ptensor = p ^ input.get();
+
+    // Compare the permuted input with the result.
+    BOOST_CHECK_EQUAL(it->range(), ptensor.range());
+
+    array_annotation::value_type::const_iterator input_it = ptensor.begin();
+    PTT::value_type::const_iterator result_it = it->get().begin();
+    for(; result_it != it->get().end(); ++result_it, ++input_it)
+      BOOST_CHECK_EQUAL(*result_it, 2 * (*input_it));
+  }
+}
 
 BOOST_AUTO_TEST_SUITE_END()
