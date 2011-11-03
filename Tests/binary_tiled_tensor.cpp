@@ -7,12 +7,13 @@ using namespace TiledArray;
 using namespace TiledArray::expressions;
 
 struct BinaryTiledTensorFixture : public AnnotatedArrayFixture {
+  typedef BinaryTiledTensor<array_annotation, array_annotation, std::plus<int> > BTT;
 
   BinaryTiledTensorFixture() : btt(aa, aa, std::plus<int>()) {
 
   }
 
-  BinaryTiledTensor<array_annotation, array_annotation, std::plus<int> > btt;
+  BTT btt;
 };
 
 
@@ -47,6 +48,17 @@ BOOST_AUTO_TEST_CASE( location )
     BOOST_CHECK(! btt.is_zero(i));
     BOOST_CHECK_EQUAL(btt.owner(i), a.owner(i));
     BOOST_CHECK_EQUAL(btt.is_local(i), a.is_local(i));
+  }
+}
+
+BOOST_AUTO_TEST_CASE( result )
+{
+  for(BTT::const_iterator it = btt.begin(); it != btt.end(); ++it) {
+    array_annotation::const_reference input = aa[it.index()];
+    array_annotation::value_type::const_iterator input_it = input.get().begin();
+    BTT::value_type::const_iterator result_it = it->get().begin();
+    for(; result_it != it->get().end(); ++result_it, ++input_it)
+      BOOST_CHECK_EQUAL(*result_it, 2 * (*input_it));
   }
 }
 
