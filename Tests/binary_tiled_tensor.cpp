@@ -13,6 +13,10 @@ struct BinaryTiledTensorFixture : public AnnotatedArrayFixture {
 
   }
 
+  ~BinaryTiledTensorFixture() {
+    GlobalFixture::world->gop.fence();
+  }
+
   BTT btt;
 };
 

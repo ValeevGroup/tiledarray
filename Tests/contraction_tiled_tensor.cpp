@@ -12,6 +12,11 @@ struct ContractionTiledTensorFixture : public AnnotatedArrayFixture {
 
   }
 
+  ~ContractionTiledTensorFixture() {
+    GlobalFixture::world->gop.fence();
+  }
+
+
   static const VariableList left_var;
   static const VariableList right_var;
   static const std::shared_ptr<math::Contraction> cont;

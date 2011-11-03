@@ -14,6 +14,10 @@ struct PermuteTiledTensorFixture : public AnnotatedArrayFixture {
 
   PermuteTiledTensorFixture() : ptt(aa, p) { }
 
+  ~PermuteTiledTensorFixture() {
+    GlobalFixture::world->gop.fence();
+  }
+
 
   static const PermN p;
 
