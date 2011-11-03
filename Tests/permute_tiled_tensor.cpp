@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE( result )
     array_annotation::value_type ptensor = p ^ input.get();
 
     // Compare the permuted input with the result.
-    BOOST_CHECK_EQUAL(it->range(), ptensor.range());
+    BOOST_CHECK_EQUAL(it->get().range(), ptensor.range());
 
     array_annotation::value_type::const_iterator input_it = ptensor.begin();
     PTT::value_type::const_iterator result_it = it->get().begin();
