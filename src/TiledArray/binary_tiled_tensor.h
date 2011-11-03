@@ -59,10 +59,12 @@ namespace TiledArray {
 
     template <typename Left, typename Right, typename Op>
     struct TensorTraits<BinaryTiledTensor<Left, Right, Op> > {
-      typedef typename BinaryTensor<Left, Right, Op>::range_type range_type;
+      typedef typename detail::range_select<typename Left::range_type,
+          typename Right::range_type>::type range_type;
       typedef typename detail::trange_select<typename Left::trange_type,
           typename Right::trange_type>::type trange_type;
-      typedef typename Eval<BinaryTensor<Left, Right, Op> >::type value_type;
+      typedef typename Eval<BinaryTensor<typename Left::value_type,
+          typename Right::value_type, Op> >::type value_type;
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
       typedef typename storage_type::const_iterator const_iterator; ///< Tensor const iterator
       typedef typename storage_type::future const_reference;
