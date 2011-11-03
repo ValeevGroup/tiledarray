@@ -239,12 +239,15 @@ namespace TiledArray {
       /// Query the density of the tensor
 
       /// \return \c true if the tensor is dense, otherwise false
-      bool is_dense() const { return left_.is_dense() || right_.is_dense(); }
+      bool is_dense() const { return left_.is_dense() && right_.is_dense(); }
 
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      const TiledArray::detail::Bitset<>& get_shape() const { return shape_; }
+      const TiledArray::detail::Bitset<>& get_shape() const {
+        TA_ASSERT(! is_dense());
+        return shape_;
+      }
 
       /// Tiled range accessor
 
