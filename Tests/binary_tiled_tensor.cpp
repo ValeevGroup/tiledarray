@@ -55,6 +55,9 @@ BOOST_AUTO_TEST_CASE( result )
 {
   for(BTT::const_iterator it = btt.begin(); it != btt.end(); ++it) {
     array_annotation::const_reference input = aa[it.index()];
+
+    BOOST_CHECK_EQUAL(it->get().range(), input.get().range());
+
     array_annotation::value_type::const_iterator input_it = input.get().begin();
     BTT::value_type::const_iterator result_it = it->get().begin();
     for(; result_it != it->get().end(); ++result_it, ++input_it)
