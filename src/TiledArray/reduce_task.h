@@ -162,18 +162,31 @@ namespace TiledArray {
       /// \return The result of the reduction
       madness::Future<value_type> operator()(const range_type& range) const {
         if (range.size() <= range.get_chunksize()) {
-          value_type result = value_type();
-          for(typename range_type::iterator it = range.begin(); it != range.end(); ++it) {
+          // The first reduction step is done differently here because
+          // BinaryTensor requires result have a fully initialized range.
+          // This is the only way to write it in such a way that it is a general
+          // algorithm.
+          typename range_type::iterator it = range.begin();
+          value_type result;
+          if(it != range.end()) {
+            result = *it++;
+          }
+          for(; it != range.end(); ++it) {
             TA_ASSERT(it->probe());
             result = (*this)(result, *it);
           }
           return madness::Future<value_type>(result);
         } else {
+          // The range is too big, so split it ...
           range_type left = range;
           range_type right(left, madness::Split());
 
+          // and submit them as two new tasks.
           madness::Future<value_type> left_red = make_task(left);
           madness::Future<value_type> right_red = make_task(right);
+
+          // Submit a reduction task for the result of the split and return
+          // the result.
           return pimpl_->get_world().taskq.add(madness::make_task(*this, left_red,
               right_red, madness::TaskAttributes::hipri()));
         }
