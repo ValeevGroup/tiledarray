@@ -7,12 +7,11 @@ using namespace TiledArray;
 using namespace TiledArray::expressions;
 
 struct UnaryTiledTensorFixture : public AnnotatedArrayFixture {
+  typedef UnaryTiledTensor<array_annotation, std::negate<int> > UTT;
 
-  UnaryTiledTensorFixture() : utt(aa, std::negate<int>()) {
+  UnaryTiledTensorFixture() : utt(aa, std::negate<int>()) { }
 
-  }
-
-  UnaryTiledTensor<array_annotation, std::negate<int> > utt;
+  UTT utt;
 };
 
 BOOST_FIXTURE_TEST_SUITE( unary_tiled_tensor_suite, UnaryTiledTensorFixture )
@@ -45,6 +44,17 @@ BOOST_AUTO_TEST_CASE( location )
     BOOST_CHECK(! utt.is_zero(i));
     BOOST_CHECK_EQUAL(utt.owner(i), a.owner(i));
     BOOST_CHECK_EQUAL(utt.is_local(i), a.is_local(i));
+  }
+}
+
+BOOST_AUTO_TEST_CASE( result )
+{
+  for(UTT::const_iterator it = utt.begin(); it != utt.end(); ++it) {
+    array_annotation::const_reference input = aa[it.index()];
+    array_annotation::value_type::const_iterator input_it = input.get().begin();
+    UTT::value_type::const_iterator result_it = it->get().begin();
+    for(; result_it != it->get().end(); ++result_it, ++input_it)
+      BOOST_CHECK_EQUAL(*result_it, -(*input_it));
   }
 }
 
