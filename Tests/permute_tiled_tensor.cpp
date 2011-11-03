@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE( result )
     array_annotation::value_type::const_iterator input_it = ptensor.begin();
     PTT::value_type::const_iterator result_it = it->get().begin();
     for(; result_it != it->get().end(); ++result_it, ++input_it)
-      BOOST_CHECK_EQUAL(*result_it, 2 * (*input_it));
+      BOOST_CHECK_EQUAL(*result_it, (*input_it));
   }
 }
 
