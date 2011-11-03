@@ -53,10 +53,6 @@ BOOST_AUTO_TEST_CASE( location )
     BOOST_CHECK_EQUAL(ptt.owner(i), a.owner(i));
     BOOST_CHECK_EQUAL(ptt.is_local(i), a.is_local(i));
   }
-
-#ifndef NDEBUG
-  BOOST_CHECK_THROW(ptt.get_shape(), TiledArray::Exception);
-#endif
 }
 
 
