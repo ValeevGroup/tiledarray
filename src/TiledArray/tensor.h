@@ -38,6 +38,8 @@ namespace TiledArray {
     /// \tparam A The allocator type for the data
     template <typename T, typename R = DynamicRange, typename A = Eigen::aligned_allocator<T> >
     class Tensor : public DirectWritableTensor<Tensor<T, R, A> > {
+    private:
+      struct Enabler { };
     public:
       typedef Tensor<T, R, A> Tensor_;
       TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHERIT_TYPEDEF(DirectWritableTensor<Tensor_> , Tensor_ );
@@ -55,13 +57,14 @@ namespace TiledArray {
       /// \param r An array with the size of of each dimension
       /// \param d The data for the tensor
       template <typename D>
-      Tensor(const Range<D>& r) :
-        range_(r), data_(r.volume())
+      Tensor(const Range<D>& r, const value_type& v = value_type()) :
+        range_(r), data_(r.volume(), v)
       { }
 
       /// Construct an evaluated tensor
       template <typename D, typename InIter>
-      Tensor(const Range<D>& r, InIter it) :
+      Tensor(const Range<D>& r, InIter it,
+          typename madness::enable_if<TiledArray::detail::is_iterator<InIter>, Enabler>::type = Enabler()) :
         range_(r), data_(r.volume(), it)
       { }
 
