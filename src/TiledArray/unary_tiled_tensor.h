@@ -45,7 +45,6 @@ namespace TiledArray {
 
     private:
       // Not allowed
-      UnaryTiledTensor(const UnaryTiledTensor_&);
       UnaryTiledTensor_& operator=(const UnaryTiledTensor_&);
 
       static value_type eval_tensor(Op op, const typename arg_tensor_type::value_type& arg) {
@@ -69,6 +68,12 @@ namespace TiledArray {
         }
         data_->process_pending();
       }
+
+      /// Copy constructor
+      UnaryTiledTensor(const UnaryTiledTensor_& other) :
+        arg_(other.arg_),
+        data_(other.data_)
+      { }
 
       /// Evaluate tensor to destination
 

@@ -39,7 +39,6 @@ namespace TiledArray {
 
     private:
       // Not allowed
-      PermuteTiledTensor(const PermuteTiledTensor_&);
       PermuteTiledTensor_& operator=(const PermuteTiledTensor_&);
 
       static value_type eval_tensor(const perm_type& p, const typename arg_tensor_type::value_type& value) {
@@ -73,6 +72,16 @@ namespace TiledArray {
         }
         data_->process_pending();
       }
+
+
+      PermuteTiledTensor(const PermuteTiledTensor_& other) :
+          perm_(other.perm_),
+          arg_(other.arg_),
+          vars_(other.vars_),
+          trange_(other.trange_),
+          shape_(other.shape_),
+          data_(other.data_)
+      { }
 
       /// Evaluate tensor to destination
 
@@ -157,7 +166,7 @@ namespace TiledArray {
           return acc->second;
         }
 
-        return data_->find(i, true);
+        return data_->find(i);
       }
 
       /// Array begin iterator

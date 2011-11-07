@@ -88,7 +88,6 @@ namespace TiledArray {
 
     private:
       // Not allowed
-      BinaryTiledTensor(const BinaryTiledTensor_&);
       BinaryTiledTensor_& operator=(const BinaryTiledTensor_&);
 
       // These eval functions are used as task functions to evaluate the tiles
@@ -150,6 +149,16 @@ namespace TiledArray {
         }
         data_->process_pending();
       }
+
+      /// Construct a unary tiled tensor op
+
+      /// \param arg The argument
+      /// \param op The element transform operation
+      BinaryTiledTensor(const BinaryTiledTensor_& other) :
+          left_(other.left_), right_(other.right_),
+          shape_(other.shape_),
+          data_(other.data_)
+      { }
 
       /// Evaluate tensor to destination
 

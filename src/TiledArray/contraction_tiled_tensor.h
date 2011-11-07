@@ -45,7 +45,6 @@ namespace TiledArray {
 
     private:
       // Not allowed
-      ContractionTiledTensor(const ContractionTiledTensor_&);
       ContractionTiledTensor_& operator=(const ContractionTiledTensor_&);
 
 
@@ -184,6 +183,15 @@ namespace TiledArray {
         }
         data_->process_pending();
       }
+
+
+      ContractionTiledTensor(const ContractionTiledTensor_& other) :
+        left_(other.left_), right_(other.right_),
+        trange_(other.trange_),
+        shape_(other.shape_),
+        vars_(other.vars_),
+        data_(other.data_)
+      { }
 
       /// Evaluate tensor to destination
 
