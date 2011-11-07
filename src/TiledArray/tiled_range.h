@@ -120,13 +120,14 @@ namespace TiledArray {
     template <typename Index>
     tile_range_type make_tile_range(const Index& i) const {
       TA_ASSERT(tiles().includes(i));
+      typename range_type::index  idx = tiles().idx(i);
       typename tile_range_type::index start;
       typename tile_range_type::index finish;
       size_index_(start);
       size_index_(finish);
       for(unsigned int d = 0; d < coordinate_system::dim; ++d) {
-        start[d] = data()[d].tile(i[d]).first;
-        finish[d] = data()[d].tile(i[d]).second;
+        start[d] = data()[d].tile(idx[d]).first;
+        finish[d] = data()[d].tile(idx[d]).second;
       }
 
       return tile_range_type(start, finish);
