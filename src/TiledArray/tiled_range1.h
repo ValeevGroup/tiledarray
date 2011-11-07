@@ -15,6 +15,8 @@ namespace TiledArray {
   /// defined as [a0,a1), [a1,a2), ... The number of tiles in the range will be
   /// equal to one less than the number of elements in the array.
   class TiledRange1 {
+  private:
+    struct Enabler { };
   public:
     typedef std::size_t size_type;
     typedef std::pair<size_type, size_type> range_type;
@@ -31,7 +33,8 @@ namespace TiledArray {
     /// Constructs a range with the boundaries provided by [first, last).
     /// Start_tile_index is the index of the first tile.
     template <typename RandIter>
-    TiledRange1(RandIter first, RandIter last, const size_type start_tile_index = 0) :
+    TiledRange1(RandIter first, RandIter last, const size_type start_tile_index = 0,
+        typename madness::enable_if<detail::is_random_iterator<RandIter>, Enabler >::type = Enabler()) :
         range_(), element_range_(), tile_ranges_(), elem2tile_()
     {
       TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
