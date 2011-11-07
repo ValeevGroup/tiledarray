@@ -230,13 +230,17 @@ namespace TiledArray {
     /// \tparam Index \c index or an integral type
     /// \tparam InIter An input iterator
     template <typename Index, typename InIter>
-    void set(const Index& i, InIter first) { pimpl_->set(i, first); }
+    typename madness::enable_if<detail::is_input_iterator<InIter> >::type
+    set(const Index& i, InIter first) { pimpl_->set(i, first); }
 
     template <typename Index>
     void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }
 
     template <typename Index>
     void set(const Index& i, const madness::Future<value_type>& f) { pimpl_->set(i, f); }
+
+    template <typename Index>
+    void set(const Index& i, const value_type& v) { pimpl_->set(i, v); }
 
     template <typename Index, typename Value, typename InIter, typename Op>
     void reduce(const Index& i, const Value& value, InIter first, InIter last, Op op) {

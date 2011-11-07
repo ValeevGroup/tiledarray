@@ -149,6 +149,23 @@ namespace TiledArray {
         data_.set(o, f);
       }
 
+      /// Set the data of a tile in the array
+
+      /// \tparam Index The type of the index (valid types are: Array::index or
+      /// Array::ordinal_index)
+      /// \tparam InIter Input iterator type for the data
+      /// \param i The index where the tile will be inserted
+      /// \param v The value that will be used to initialize the tile data
+      /// \throw std::out_of_range When \c i is not included in the array range
+      /// \throw std::range_error When \c i is not included in the array shape
+      template <typename Index>
+      void set(const Index& i, const value_type& v) {
+        const ordinal_index o = ord(i);
+        TA_ASSERT(includes(i));
+        TA_ASSERT(! is_zero(o));
+        data_.set(o, v);
+      }
+
       template <typename Index>
       bool includes(const Index& i) const { return trange_.tiles().includes(i); }
 
