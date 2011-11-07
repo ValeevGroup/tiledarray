@@ -133,6 +133,22 @@ namespace TiledArray {
       return tile_range_type(start, finish);
     }
 
+    /// Convert an element index to a tile index
+
+    /// \tparam Index the index type
+    /// \param index The element index to convert
+    /// \return The tile index that corresponds to the given element index
+    template <typename Index>
+    typename madness::disable_if<std::is_integral<Index>, typename range_type::index>::type
+    element_to_tile(const Index& index) const {
+      typename range_type::index result = tiles().start();
+      for(size_type i = 0; i < tiles().dim(); ++i) {
+        result[i] = data()[i].element2tile(index[i]);
+      }
+
+      return result;
+    }
+
     /// Tile dimension boundary array accessor
 
     /// \return A reference to the array of Range1 objects.
