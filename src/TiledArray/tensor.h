@@ -64,7 +64,7 @@ namespace TiledArray {
       /// Construct an evaluated tensor
       template <typename D, typename InIter>
       Tensor(const Range<D>& r, InIter it,
-          typename madness::enable_if<TiledArray::detail::is_iterator<InIter>, Enabler>::type = Enabler()) :
+          typename madness::enable_if<TiledArray::detail::is_input_iterator<InIter>, Enabler>::type = Enabler()) :
         range_(r), data_(r.volume(), it)
       { }
 
