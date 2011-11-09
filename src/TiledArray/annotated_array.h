@@ -100,7 +100,7 @@ namespace TiledArray {
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
-      std::shared_ptr<pmap_interface> get_pmap() const { return array_.get_pmap(); }
+      const std::shared_ptr<pmap_interface>& get_pmap() const { return array_.get_pmap(); }
 
       /// Query the density of the tensor
 
