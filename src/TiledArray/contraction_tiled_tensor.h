@@ -306,7 +306,7 @@ namespace madness {
 
     template <typename Archive>
     struct ArchiveStoreImpl<Archive, std::shared_ptr<TiledArray::math::Contraction> > {
-      static void store(const Archive& ar, const std::shared_ptr<TiledArray::math::Contraction>&) {
+      static void store(const Archive&, const std::shared_ptr<TiledArray::math::Contraction>&) {
         TA_ASSERT(false);
       }
     };
@@ -314,7 +314,7 @@ namespace madness {
     template <typename Archive>
     struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::math::Contraction> > {
 
-      static void load(const Archive& ar, std::shared_ptr<TiledArray::math::Contraction>&) {
+      static void load(const Archive&, std::shared_ptr<TiledArray::math::Contraction>&) {
         TA_ASSERT(false);
       }
     };
