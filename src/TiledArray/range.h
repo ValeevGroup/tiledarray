@@ -677,10 +677,15 @@ namespace TiledArray {
   template <typename Derived1, typename Derived2>
   bool operator ==(const Range<Derived1>& r1, const Range<Derived2>& r2) {
 #ifdef NDEBUG
-    return ( r1.start() == r2.start() ) && ( r1.finish() == r2.finish() );
+    return (r1.dim() == r2.dim()) &&
+        ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
+        ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().end()) );
 #else
-    return ( r1.start() == r2.start() ) && ( r1.finish() == r2.finish() ) &&
-        (r1.size() == r2.size()) && (r1.weight() == r2.weight()); // do an extra size check to catch bugs.
+    return (r1.dim() == r2.dim()) &&
+        ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
+        ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().end()) ) &&
+        ( std::equal(r1.size().begin(), r1.size().end(), r2.size().begin()) ) &&
+        ( std::equal(r1.weight().begin(), r1.weight().end(), r2.weight().begin()) ); // do an extra size check to catch bugs.
 #endif
   }
 
