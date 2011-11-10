@@ -36,7 +36,7 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Op The Unary transform operator type.
     template <typename Arg, typename Op>
-    class UnaryTiledTensor : ReadableTiledTensor<UnaryTiledTensor<Arg, Op> >{
+    class UnaryTiledTensor : public ReadableTiledTensor<UnaryTiledTensor<Arg, Op> >{
     public:
       typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
       typedef Arg arg_tensor_type;
