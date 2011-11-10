@@ -137,7 +137,7 @@ namespace TiledArray {
 
     template <typename RightExp>
     UnaryTiledTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type::value_type> > >
-    operator*(const typename ReadableTiledTensor<RightExp>::value_type& left, const ReadableTiledTensor<RightExp>& right) {
+    operator*(const typename ReadableTiledTensor<RightExp>::value_type::value_type& left, const ReadableTiledTensor<RightExp>& right) {
       return UnaryTiledTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type::value_type> > >(right.derived(),
           std::bind1st(std::multiplies<typename RightExp::value_type::value_type>(), left));
     }
