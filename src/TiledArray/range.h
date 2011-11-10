@@ -679,11 +679,11 @@ namespace TiledArray {
 #ifdef NDEBUG
     return (r1.dim() == r2.dim()) &&
         ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
-        ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().end()) );
+        ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().begin()) );
 #else
     return (r1.dim() == r2.dim()) &&
         ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
-        ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().end()) ) &&
+        ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().begin()) ) &&
         ( std::equal(r1.size().begin(), r1.size().end(), r2.size().begin()) ) &&
         ( std::equal(r1.weight().begin(), r1.weight().end(), r2.weight().begin()) ); // do an extra size check to catch bugs.
 #endif
