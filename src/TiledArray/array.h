@@ -239,6 +239,23 @@ namespace TiledArray {
     template <typename Index>
     void set(const Index& i, const madness::Future<value_type>& f) { pimpl_->set(i, f); }
 
+  private:
+    template <typename U>
+    static value_type value_convert(const U& u) {
+      return value_type(u);
+    }
+
+  public:
+    template <typename Index, typename U>
+    void set(const Index& i, const madness::Future<U>& f) {
+      // Todo: There is no way to set a future with with an object that is not
+      // the futures type. So we use a task to make a new future of the correct
+      // type.
+      madness::Future<value_type> result =
+          get_world().taskq.add(&value_convert<U>, f, madness::TaskAttributes::hipri());
+      pimpl_->set(i, result);
+    }
+
     template <typename Index>
     void set(const Index& i, const value_type& v) { pimpl_->set(i, v); }
 
