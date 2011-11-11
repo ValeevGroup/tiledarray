@@ -47,7 +47,7 @@ namespace TiledArray {
       // Not allowed
       UnaryTiledTensor_& operator=(const UnaryTiledTensor_&);
 
-      static value_type eval_tensor(Op op, const typename arg_tensor_type::value_type& arg) {
+      static value_type eval_tensor(const Op& op, const typename arg_tensor_type::value_type& arg) {
         return value_type(UnaryTensor<typename arg_tensor_type::value_type, Op>(arg, op));
       }
 
