@@ -245,7 +245,8 @@ namespace TiledArray {
     /// Permute this coordinate.
     /// \param p Permutation object
     /// \return A reference to this object
-    ArrayCoordinate_& operator ^= (const Permutation<DIM>& p) {
+    ArrayCoordinate_& operator ^= (const Permutation& p) {
+      TA_ASSERT(p.dim() == DIM);
       array_type temp;
       detail::permute_array(p.begin(), p.end(), r_.begin(), temp.begin());
       std::swap(r_, temp);
@@ -358,7 +359,8 @@ namespace TiledArray {
 
   /// Permute an ArrayCoordinate
   template <typename I, unsigned int DIM, typename Tag>
-  ArrayCoordinate<I,DIM,Tag> operator ^(const Permutation<DIM>& p, const ArrayCoordinate<I,DIM,Tag>& c) {
+  ArrayCoordinate<I,DIM,Tag> operator ^(const Permutation& p, const ArrayCoordinate<I,DIM,Tag>& c) {
+    TA_ASSERT(p.dim() == DIM)
     ArrayCoordinate<I,DIM,Tag> result;
     detail::permute_array(p.begin(), p.end(), c.begin(), result.begin());
     return result;

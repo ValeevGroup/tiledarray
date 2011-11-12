@@ -14,7 +14,6 @@
 namespace TiledArray {
 
   // Forward declaration of TiledArray components.
-  template <unsigned int>
   class Permutation;
   template <typename>
   class Range;
@@ -252,9 +251,8 @@ namespace TiledArray {
     }
 
     /// Permute the tile given a permutation.
-    template <unsigned int DIM>
-    Range_& operator ^=(const Permutation<DIM>& p) {
-      TA_ASSERT(DIM == dim());
+    Range_& operator ^=(const Permutation& p) {
+      TA_ASSERT(p.dim() == dim());
       Derived temp(p ^ start(), p ^ finish(), order());
       derived().swap(temp);
 
@@ -667,9 +665,9 @@ namespace TiledArray {
 //  }
 
   /// Returns a permuted range.
-  template <unsigned int DIM, typename Derived>
-  Derived operator ^(const Permutation<DIM>& perm, const Range<Derived>& r) {
-    TA_ASSERT(DIM == r.dim());
+  template <typename Derived>
+  Derived operator ^(const Permutation& perm, const Range<Derived>& r) {
+    TA_ASSERT(perm.dim() == r.dim());
     return Derived(perm ^ r.start(), perm ^ r.finish(), r.order());
   }
 
@@ -693,13 +691,6 @@ namespace TiledArray {
   template <typename Derived1, typename Derived2>
   bool operator !=(const Range<Derived1>& r1, const Range<Derived2>& r2) {
     return ! operator ==(r1, r2);
-  }
-
-  /// Returns a permuted range.
-  template <typename Derived>
-  Range<Derived> operator ^(const Permutation<1>& perm, const Range<Derived>& r) {
-    TA_ASSERT(r.dim() == 1);
-    return r;
   }
 
   /// range output operator.

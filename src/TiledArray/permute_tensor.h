@@ -10,11 +10,11 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename, typename>
+    template <typename>
     class PermuteTensor;
 
-    template <typename Arg, typename Perm>
-    struct TensorTraits<PermuteTensor<Arg, Perm> > {
+    template <typename Arg>
+    struct TensorTraits<PermuteTensor<Arg> > {
       typedef typename Arg::range_type range_type;
       typedef typename Arg::value_type value_type;
       typedef typename DenseStorage<value_type>::const_reference const_reference;
@@ -23,8 +23,8 @@ namespace TiledArray {
       typedef typename DenseStorage<value_type>::const_pointer const_pointer;
     }; // struct TensorTraits<PermuteTensor<Arg, Perm>> >
 
-    template <typename Arg, typename Perm>
-    struct Eval<PermuteTensor<Arg, Perm> > {
+    template <typename Arg>
+    struct Eval<PermuteTensor<Arg> > {
       typedef Tensor<typename Arg::value_type, typename Arg::range_type> type;
     }; // struct Eval<PermuteTensor<Arg, DIM> >
 
@@ -32,15 +32,13 @@ namespace TiledArray {
 
     /// \tparam Arg The argument type
     /// \tparam DIM The permutation dimension.
-    template <typename Arg, typename Perm>
-    class PermuteTensor : public DirectReadableTensor<PermuteTensor<Arg, Perm> > {
+    template <typename Arg>
+    class PermuteTensor : public DirectReadableTensor<PermuteTensor<Arg> > {
     public:
-      typedef PermuteTensor<Arg, Perm> PermuteTensor_;
+      typedef PermuteTensor<Arg> PermuteTensor_;
       typedef Arg arg_tensor_type;
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<PermuteTensor_>, PermuteTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
-
-      typedef Perm perm_type; ///< Permutation type
 
     private:
       // not allowed
@@ -53,7 +51,7 @@ namespace TiledArray {
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
-      PermuteTensor(const Arg& arg, const perm_type& p) :
+      PermuteTensor(const Arg& arg, const Permutation& p) :
         arg_(arg),  perm_(p), range_(p ^ arg.range()), data_()
       { }
 
@@ -150,7 +148,7 @@ namespace TiledArray {
       }
 
       const arg_tensor_type& arg_; ///< Argument
-      perm_type perm_; ///< Transform operation
+      Permutation perm_; ///< Transform operation
       range_type range_; ///< Result tensor range
       mutable storage_type data_; ///< Result tensor data
     }; // class PermuteTensor

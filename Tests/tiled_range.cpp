@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE( assignment )
 
 BOOST_AUTO_TEST_CASE( permutation )
 {
-  Permutation<3> p(2,0,1);
+  Permutation p(2,0,1);
   TRangeN r1 = p ^ tr;
   BOOST_CHECK_EQUAL(r1.tiles(), p ^ tr.tiles()); // check that tile data was permuted properly.
   BOOST_CHECK_EQUAL(r1.elements(), p ^ tr.elements()); // check that element data was permuted properly.

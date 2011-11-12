@@ -7,34 +7,32 @@ using namespace TiledArray;
 struct PermutationFixture {
   PermutationFixture() : p(2,0,1) {}
   ~PermutationFixture() {}
-  Permutation<3> p;
+  Permutation p;
 };
 
 BOOST_FIXTURE_TEST_SUITE( permutation_suite, PermutationFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW( Permutation<3> p0 ); // check default constructor
-  Permutation<3> p0;
-  BOOST_CHECK_EQUAL(p0.data()[0], 0u);
-  BOOST_CHECK_EQUAL(p0.data()[1], 1u);
-  BOOST_CHECK_EQUAL(p0.data()[2], 2u);
+  BOOST_REQUIRE_NO_THROW( Permutation p0 ); // check default constructor
+  Permutation p0;
+  BOOST_CHECK_EQUAL(p0.data().size(), 0ul);
 
-  BOOST_REQUIRE_NO_THROW( Permutation<3> p1(0,1,2) ); // check variable list constructor
-  Permutation<3> p1(0,1,2);
+  BOOST_REQUIRE_NO_THROW( Permutation p1(0,1,2) ); // check variable list constructor
+  Permutation p1(0,1,2);
   BOOST_CHECK_EQUAL(p1.data()[0], 0u);
   BOOST_CHECK_EQUAL(p1.data()[1], 1u);
   BOOST_CHECK_EQUAL(p1.data()[2], 2u);
 
-  Permutation<3>::Array a = {{0, 1, 2}};
-  BOOST_REQUIRE_NO_THROW( Permutation<3> p2(a) ); // check boost array constructor
-  Permutation<3> p2(a);
+  std::array<std::size_t,3> a = {{0, 1, 2}};
+  BOOST_REQUIRE_NO_THROW( Permutation p2(a) ); // check boost array constructor
+  Permutation p2(a);
   BOOST_CHECK_EQUAL(p2.data()[0], 0u);
   BOOST_CHECK_EQUAL(p2.data()[1], 1u);
   BOOST_CHECK_EQUAL(p2.data()[2], 2u);
 
-  BOOST_REQUIRE_NO_THROW( Permutation<3> p3(a.begin()) ); // check iterator constructor
-  Permutation<3> p3(a.begin());
+  BOOST_REQUIRE_NO_THROW( Permutation p3(a.begin(), a.end()) ); // check iterator constructor
+  Permutation p3(a.begin(), a.end());
   BOOST_CHECK_EQUAL(p3.data()[0], 0u);
   BOOST_CHECK_EQUAL(p3.data()[1], 1u);
   BOOST_CHECK_EQUAL(p3.data()[2], 2u);
@@ -42,9 +40,9 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( iteration )
 {
-  Permutation<3>::Array a = {{2, 0, 1}};
-  Permutation<3>::Array::const_iterator a_it = a.begin();
-  for(Permutation<3>::const_iterator it = p.begin(); it != p.end(); ++it, ++a_it)
+  std::array<std::size_t,3> a = {{2, 0, 1}};
+  std::array<std::size_t,3>::const_iterator a_it = a.begin();
+  for(Permutation::const_iterator it = p.begin(); it != p.end(); ++it, ++a_it)
     BOOST_CHECK_EQUAL(*it, *a_it); // check that basic iteration is correct
 }
 
@@ -67,60 +65,52 @@ BOOST_AUTO_TEST_CASE( ostream )
 
 BOOST_AUTO_TEST_CASE( comparision )
 {
-  Permutation<3> p0;
-  Permutation<3> p1(p);
+  Permutation p0(0,1,2);
+  Permutation p1(p);
   BOOST_CHECK( p1 == p );    // check operator==()
   BOOST_CHECK( ! (p1 == p0) );
   BOOST_CHECK( p1 != p0 );   // check operator!=()
   BOOST_CHECK( ! (p1 != p) );
 }
 
-BOOST_AUTO_TEST_CASE( unit_permutation )
-{
-  Permutation<3> p0;
-  BOOST_CHECK_EQUAL(p0[0], 0u); // verify p0 is a unit permutation.
-  BOOST_CHECK_EQUAL(p0[1], 1u);
-  BOOST_CHECK_EQUAL(p0[2], 2u);
-  BOOST_CHECK_EQUAL(p0, Permutation<3>::unit() ); // check unit() is a unit permutation
-  BOOST_CHECK_EQUAL((p0 ^ p0), Permutation<3>::unit());
-}
-
 BOOST_AUTO_TEST_CASE( permute_function )
 {
   {
-    std::vector<int> a1(3); int a1v[3] = {1, 2, 3}; std::copy(a1v, a1v+3, a1.begin());
-    std::vector<int> ar(3); int arv[3] = {2, 3, 1}; std::copy(arv, arv+3, ar.begin());
+    std::vector<int> a1(3);
+    a1[0] = 1; a1[1] = 2; a1[2] = 3;
+    std::vector<int> ar(3);
+    ar[0] = 2; ar[1] = 3; ar[2] = 1;
     std::vector<int> a2(3);
     detail::permute_array(p.begin(), p.end(), a1.begin(), a2.begin());
-    BOOST_CHECK(a2 == ar); // check permutation applied via detail::permute()
+    BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), ar.begin(), ar.end()); // check permutation applied via detail::permute_array()
   }
   {
     std::array<int, 3> a1 = {{1, 2, 3}};
     std::array<int, 3> ar = {{2, 3, 1}};
     std::array<int, 3> a2;
     detail::permute_array(p.begin(), p.end(), a1.begin(), a2.begin());
-    TA_CHECK_ARRAY(a2, ar); // check permutation applied via detail::permute()
+    BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), ar.begin(), ar.end()); // check permutation applied via detail::permute()
   }
 }
 
 BOOST_AUTO_TEST_CASE( permute_permutation )
 {
-  Permutation<3> pr(1,2,0);
-  Permutation<3> p0;
-  Permutation<3> p1 = p ^ p0;
+  Permutation pr(1,2,0);
+  Permutation p0(0,1,2);
+  Permutation p1 = p ^ p0;
   BOOST_CHECK_EQUAL(p1, pr); // check assignment permutation permutation
-  Permutation<3> p2;
+  Permutation p2(0,1,2);
   p2 ^= p;
   BOOST_CHECK_EQUAL(p2, pr); // check in-place permutation permutation.
 }
 
 BOOST_AUTO_TEST_CASE( reverse_permutation )
 {
-  Permutation<3> p0(p);
-  Permutation<3> pr(1,2,0);
+  Permutation p0(p);
+  Permutation pr(1,2,0);
   BOOST_CHECK_EQUAL(-p0, pr);
-  BOOST_CHECK_EQUAL((p0 ^ (p0)), Permutation<3>::unit());
-  Permutation<3> p1(1,2,0);
+  BOOST_CHECK_EQUAL((p0 ^ (p0)), Permutation(0,1,2));
+  Permutation p1(1,2,0);
   p0 ^= p1;
   BOOST_CHECK_NE(p0, p);
   p0 ^= -p1;

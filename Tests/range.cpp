@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE( permutation )
   }
   RangeN r1(s, f);
   // create a reverse order permutation
-  Permutation<3> p(a.begin());
+  Permutation p(a);
   RangeN r2 = p ^ r1;
   RangeN r3 = r1;
 

@@ -10,7 +10,7 @@ using namespace TiledArray::expressions;
 
 struct PermuteTiledTensorFixture : public AnnotatedArrayFixture {
   typedef PermuteTensorFixture::PermN PermN;
-  typedef PermuteTiledTensor<array_annotation, Permutation<GlobalFixture::coordinate_system::dim> > PTT;
+  typedef PermuteTiledTensor<array_annotation> PTT;
 
   PermuteTiledTensorFixture() : ptt(aa, p) { }
 

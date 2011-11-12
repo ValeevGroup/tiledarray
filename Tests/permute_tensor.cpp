@@ -41,7 +41,7 @@ PermuteTensorFixture::PermN PermuteTensorFixture::make_perm() {
 
   temp.back() = 0;
 
-  return PermN(temp.begin());
+  return PermN(temp);
 }
 
 using madness::operator<<;

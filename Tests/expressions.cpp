@@ -17,7 +17,7 @@ struct ExpressionFixture {
   typedef TensorN::size_type size_type;
   typedef TensorN::range_type::size_array size_array;
   typedef TensorN::range_type range_type;
-  typedef Permutation<GlobalFixture::coordinate_system::dim> PermN;
+  typedef Permutation PermN;
 
   static const range_type r;
 
@@ -61,7 +61,7 @@ struct ExpressionFixture {
 
     temp.back() = 0;
 
-    return PermN(temp.begin());
+    return PermN(temp);
   }
 
   TensorN t;

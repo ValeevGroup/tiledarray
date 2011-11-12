@@ -9,11 +9,11 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename, typename>
+    template <typename>
     class PermuteTiledTensor;
 
-    template <typename Arg, typename Perm>
-    struct TensorTraits<PermuteTiledTensor<Arg, Perm> > {
+    template <typename Arg>
+    struct TensorTraits<PermuteTiledTensor<Arg> > {
       typedef typename Arg::range_type range_type;
       typedef typename Arg::trange_type trange_type;
       typedef typename Arg::value_type value_type;
@@ -28,21 +28,20 @@ namespace TiledArray {
     /// operation.
     /// \tparam Arg The argument type
     /// \tparam Op The Unary transform operator type.
-    template <typename Arg, typename Perm>
-    class PermuteTiledTensor : public ReadableTiledTensor<PermuteTiledTensor<Arg, Perm> > {
+    template <typename Arg>
+    class PermuteTiledTensor : public ReadableTiledTensor<PermuteTiledTensor<Arg> > {
     public:
-      typedef PermuteTiledTensor<Arg, Perm> PermuteTiledTensor_;
+      typedef PermuteTiledTensor<Arg> PermuteTiledTensor_;
       typedef Arg arg_tensor_type;
       TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<PermuteTiledTensor_>, PermuteTiledTensor_);
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
-      typedef Perm perm_type;
 
     private:
       // Not allowed
       PermuteTiledTensor_& operator=(const PermuteTiledTensor_&);
 
-      static value_type eval_tensor(const perm_type& p, const typename arg_tensor_type::value_type& value) {
-        return PermuteTensor<typename arg_tensor_type::value_type, perm_type>(value, p);
+      static value_type eval_tensor(const Permutation& p, const typename arg_tensor_type::value_type& value) {
+        return PermuteTensor<typename arg_tensor_type::value_type>(value, p);
       }
 
     public:
@@ -52,7 +51,7 @@ namespace TiledArray {
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
-      PermuteTiledTensor(const arg_tensor_type& arg, const perm_type& p) :
+      PermuteTiledTensor(const arg_tensor_type& arg, const Permutation& p) :
           perm_(p),
           arg_(arg),
           vars_(p ^ arg.vars()),
@@ -224,7 +223,7 @@ namespace TiledArray {
 //
 //      template <typename CS>
 //      madness::Future<bool> init_shape(TiledArray::detail::Bitset<>& result) {
-//        const perm_type ip = -perm_;
+//        const Permutation ip = -perm_;
 //        typename range_type::size_array ip_weight = ip ^ range_.weight();
 //        const typename range_type::index ip_start = ip ^ arg_.range().start();
 //        madness::Future<bool> done = get_world().taskq.for_each(
@@ -235,21 +234,21 @@ namespace TiledArray {
 
       void init_shape() {
         // Construct the inverse permuted weight and size for this tensor
-        const perm_type ip = -perm_;
-        typename range_type::size_array ip_weight = ip ^ range().weight();
-        const typename range_type::index ip_start = ip ^ arg_.range().start();
+        typename range_type::size_array ip_weight = (-perm_) ^ range().weight();
+        const typename arg_tensor_type::range_type::index& start = arg_.range().start();
 
         // Coordinated iterator for the argument object range
         typename arg_tensor_type::range_type::const_iterator arg_range_it =
             arg_.range().begin();
 
         // permute the data
-        for(std::size_t i = 0; i < arg_.size(); ++i, ++arg_range_it)
+        const size_type end = arg_.size();
+        for(std::size_t i = 0; i < end; ++i, ++arg_range_it)
           if(arg_.get_shape()[i])
-            shape_.set(TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, ip_start));
+            shape_.set(TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, start));
       }
 
-      perm_type perm_; ///< Transform operation
+      Permutation perm_; ///< Transform operation
       const arg_tensor_type& arg_; ///< Argument
       VariableList vars_; ///< Tensor annotation
       trange_type trange_; ///< Tensor tiled range

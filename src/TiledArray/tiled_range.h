@@ -13,6 +13,8 @@ namespace TiledArray {
   template <typename> class TiledRange;
   template <typename> class StaticTiledRange;
   class DynamicTiledRange;
+  template <typename Derived>
+  Derived operator ^(const Permutation&, const TiledRange<Derived>&);
 
 
   template <typename> struct RangeTraits;
@@ -75,16 +77,6 @@ namespace TiledArray {
     template <typename D>
     TiledRange_& operator=(const TiledRange<D>& other) {
       derived() = other.derived();
-      return *this;
-    }
-
-    /// In place permutation of this range.
-
-    /// \return A reference to this object
-    template <unsigned int DIM>
-    TiledRange& operator ^=(const Permutation<DIM>& p) {
-      Derived temp = p ^ derived();
-      temp.swap(derived());
       return *this;
     }
 
@@ -231,6 +223,15 @@ namespace TiledArray {
       return *this;
     }
 
+    /// In place permutation of this range.
+
+    /// \return A reference to this object
+    StaticTiledRange_& operator ^=(const Permutation& p) {
+      TA_ASSERT(p.dim() == tiles().dim());
+      StaticTiledRange_(p ^ *this).swap(*this);
+      return *this;
+    }
+
     /// Access the range information on the tiles
 
     /// \return A const reference to the tile range object
@@ -339,6 +340,15 @@ namespace TiledArray {
       return *this;
     }
 
+    /// In place permutation of this range.
+
+    /// \return A reference to this object
+    DynamicTiledRange_& operator ^=(const Permutation& p) {
+      TA_ASSERT(p.dim() == tiles().dim());
+      DynamicTiledRange_(p ^ *this).swap(*this);
+      return *this;
+    }
+
     /// Access the range information on the tiles
 
     /// \return A const reference to the tile range object
@@ -411,9 +421,9 @@ namespace TiledArray {
   /// This function will permute the range. Note: only tiles that are not
   /// being used by other objects will be permuted. The owner of those
   /// objects are
-  template <unsigned int DIM, typename Derived>
-  Derived operator ^(const Permutation<DIM>& p, const TiledRange<Derived>& r) {
-    TA_ASSERT(r.tiles().dim() == DIM);
+  template <typename Derived>
+  Derived operator ^(const Permutation& p, const TiledRange<Derived>& r) {
+    TA_ASSERT(r.tiles().dim() == p.dim());
     typename Derived::Ranges data = p ^ r.data();
 
     return Derived(data.begin(), data.end(), r.tiles().order());

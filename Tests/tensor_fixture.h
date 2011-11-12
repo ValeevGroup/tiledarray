@@ -8,9 +8,8 @@ struct PermuteTensorFixture {
   typedef TiledArray::expressions::Tensor<int, TiledArray::StaticRange<GlobalFixture::coordinate_system> > TensorN;
   typedef TensorN::range_type range_type;
   typedef TensorN::range_type::index index;
-  typedef TiledArray::Permutation<GlobalFixture::coordinate_system::dim> PermN;
-  typedef TiledArray::expressions::PermuteTensor<TensorN,
-      TiledArray::Permutation<GlobalFixture::coordinate_system::dim> > PermT;
+  typedef TiledArray::Permutation PermN;
+  typedef TiledArray::expressions::PermuteTensor<TensorN> PermT;
   typedef PermT::value_type value_type;
 
   PermuteTensorFixture() : pt(t, p) { }

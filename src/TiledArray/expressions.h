@@ -78,10 +78,10 @@ namespace TiledArray {
           std::negate<typename ArgExp::value_type>());
     }
 
-    template <unsigned int DIM, typename ArgExp>
-    PermuteTensor<ArgExp, Permutation<DIM> >
-    operator^(const Permutation<DIM>& p, const ReadableTensor<ArgExp>& arg) {
-      return PermuteTensor<ArgExp, Permutation<DIM> >(arg.derived(), p);
+    template <typename ArgExp>
+    PermuteTensor<ArgExp>
+    operator^(const Permutation& p, const ReadableTensor<ArgExp>& arg) {
+      return PermuteTensor<ArgExp>(arg.derived(), p);
     }
 
 
@@ -157,10 +157,10 @@ namespace TiledArray {
           std::negate<typename ArgExp::value_type::value_type>());
     }
 
-    template <unsigned int DIM, typename ArgExp>
-    PermuteTiledTensor<ArgExp, Permutation<DIM> >
-    operator^(const Permutation<DIM>& p, const ReadableTiledTensor<ArgExp>& arg) {
-      return PermuteTiledTensor<ArgExp, Permutation<DIM> >(arg.derived(), p);
+    template <typename ArgExp>
+    PermuteTiledTensor<ArgExp>
+    operator^(const Permutation& p, const ReadableTiledTensor<ArgExp>& arg) {
+      return PermuteTiledTensor<ArgExp>(arg.derived(), p);
     }
 
   } // namespace expressions

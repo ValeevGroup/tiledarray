@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE( math )
 
 BOOST_AUTO_TEST_CASE( permutation )
 {
-  Permutation<3> perm(2, 0, 1);
+  Permutation perm(2, 0, 1);
   Point3 p1(p);
   Point3 p2(p);
   Point3 pr(2,3,1);

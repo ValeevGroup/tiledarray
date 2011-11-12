@@ -12,8 +12,7 @@ namespace TiledArray {
   namespace expressions {
 
     class VariableList;
-    template<unsigned int DIM>
-    VariableList operator ^(const ::TiledArray::Permutation<DIM>&, const VariableList&);
+    VariableList operator ^(const ::TiledArray::Permutation&, const VariableList&);
     void swap(VariableList&, VariableList&);
 
     /// Variable list manages a list variable strings.
@@ -57,9 +56,8 @@ namespace TiledArray {
         return *this;
       }
 
-      template<unsigned int DIM>
-      VariableList& operator ^=(const Permutation<DIM>& p) {
-        TA_ASSERT(DIM == dim());
+      VariableList& operator ^=(const Permutation& p) {
+        TA_ASSERT(p.dim() == dim());
         vars_ ^= p;
         return *this;
       }
@@ -171,8 +169,7 @@ namespace TiledArray {
 
       std::vector<std::string> vars_;
 
-      template<unsigned int DIM>
-      friend VariableList operator ^(const ::TiledArray::Permutation<DIM>&, const VariableList&);
+      friend VariableList operator ^(const ::TiledArray::Permutation&, const VariableList&);
 
     }; // class VariableList
 
@@ -189,8 +186,7 @@ namespace TiledArray {
       return ! operator ==(v0, v1);
     }
 
-    template<unsigned int DIM>
-    inline VariableList operator ^(const ::TiledArray::Permutation<DIM>& p, const VariableList& v) {
+    inline VariableList operator ^(const ::TiledArray::Permutation& p, const VariableList& v) {
       TA_ASSERT(p.dim() == v.dim());
       VariableList result;
       result.vars_ = p ^ v.vars_;
@@ -254,15 +250,15 @@ namespace TiledArray {
         common2.second = first2;
       }
 
-      template <unsigned int DIM>
-      Permutation<DIM> var_perm(const VariableList& l, const VariableList& r) {
-        std::array<std::size_t, DIM> a;
+      inline Permutation var_perm(const VariableList& l, const VariableList& r) {
+        TA_ASSERT(l.dim() == r.dim());
+        std::vector<std::size_t> a(l.dim());
         VariableList::const_iterator rit = r.begin();
-        for(typename std::array<std::size_t, DIM>::iterator it = a.begin(); it != a.end(); ++it) {
+        for(std::vector<std::size_t>::iterator it = a.begin(); it != a.end(); ++it) {
           VariableList::const_iterator lit = std::find(l.begin(), l.end(), *rit++);
           *it = std::distance(l.begin(), lit);
         }
-        return Permutation<DIM>(a.begin());
+        return Permutation(a);
       }
     } // namespace detail
 
