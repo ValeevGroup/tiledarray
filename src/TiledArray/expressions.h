@@ -79,9 +79,9 @@ namespace TiledArray {
     }
 
     template <unsigned int DIM, typename ArgExp>
-    PermuteTensor<ArgExp, DIM>
+    PermuteTensor<ArgExp, Permutation<DIM> >
     operator^(const Permutation<DIM>& p, const ReadableTensor<ArgExp>& arg) {
-      return PermuteTensor<ArgExp, DIM>(arg.derived(), p);
+      return PermuteTensor<ArgExp, Permutation<DIM> >(arg.derived(), p);
     }
 
 
@@ -158,9 +158,9 @@ namespace TiledArray {
     }
 
     template <unsigned int DIM, typename ArgExp>
-    PermuteTiledTensor<ArgExp, DIM>
+    PermuteTiledTensor<ArgExp, Permutation<DIM> >
     operator^(const Permutation<DIM>& p, const ReadableTiledTensor<ArgExp>& arg) {
-      return PermuteTiledTensor<ArgExp, DIM>(arg.derived(), p);
+      return PermuteTiledTensor<ArgExp, Permutation<DIM> >(arg.derived(), p);
     }
 
   } // namespace expressions

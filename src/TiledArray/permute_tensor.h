@@ -10,21 +10,21 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename, unsigned int>
+    template <typename, typename>
     class PermuteTensor;
 
-    template <typename Arg, unsigned int DIM>
-    struct TensorTraits<PermuteTensor<Arg, DIM> > {
+    template <typename Arg, typename Perm>
+    struct TensorTraits<PermuteTensor<Arg, Perm> > {
       typedef typename Arg::range_type range_type;
       typedef typename Arg::value_type value_type;
       typedef typename DenseStorage<value_type>::const_reference const_reference;
       typedef typename DenseStorage<value_type>::const_iterator const_iterator;
       typedef typename DenseStorage<value_type>::difference_type difference_type;
       typedef typename DenseStorage<value_type>::const_pointer const_pointer;
-    }; // struct TensorTraits<PermuteTensor<Arg, DIM>> >
+    }; // struct TensorTraits<PermuteTensor<Arg, Perm>> >
 
-    template <typename Arg, unsigned int DIM>
-    struct Eval<PermuteTensor<Arg, DIM> > {
+    template <typename Arg, typename Perm>
+    struct Eval<PermuteTensor<Arg, Perm> > {
       typedef Tensor<typename Arg::value_type, typename Arg::range_type> type;
     }; // struct Eval<PermuteTensor<Arg, DIM> >
 
@@ -32,15 +32,15 @@ namespace TiledArray {
 
     /// \tparam Arg The argument type
     /// \tparam DIM The permutation dimension.
-    template <typename Arg, unsigned int DIM>
-    class PermuteTensor : public DirectReadableTensor<PermuteTensor<Arg, DIM> > {
+    template <typename Arg, typename Perm>
+    class PermuteTensor : public DirectReadableTensor<PermuteTensor<Arg, Perm> > {
     public:
-      typedef PermuteTensor<Arg, DIM> PermuteTensor_;
+      typedef PermuteTensor<Arg, Perm> PermuteTensor_;
       typedef Arg arg_tensor_type;
       TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<PermuteTensor_>, PermuteTensor_);
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
 
-      typedef Permutation<DIM> perm_type; ///< Permutation type
+      typedef Perm perm_type; ///< Permutation type
 
     private:
       // not allowed
@@ -136,8 +136,7 @@ namespace TiledArray {
       template <typename Res>
       void permute(Res& result) const {
         // Construct the inverse permuted weight and size for this tensor
-        const perm_type ip = -perm_;
-        typename range_type::size_array ip_weight = ip ^ range_.weight();
+        typename range_type::size_array ip_weight = (-perm_) ^ range_.weight();
         const typename arg_tensor_type::range_type::index& start = arg_.range().start();
 
         // Coordinated iterator for the argument object range

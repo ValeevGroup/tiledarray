@@ -9,18 +9,18 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename, unsigned int>
+    template <typename, typename>
     class PermuteTiledTensor;
 
-    template <typename Arg, unsigned int DIM>
-    struct TensorTraits<PermuteTiledTensor<Arg, DIM> > {
+    template <typename Arg, typename Perm>
+    struct TensorTraits<PermuteTiledTensor<Arg, Perm> > {
       typedef typename Arg::range_type range_type;
       typedef typename Arg::trange_type trange_type;
       typedef typename Arg::value_type value_type;
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
       typedef typename storage_type::const_iterator const_iterator; ///< Tensor const iterator
       typedef typename storage_type::future const_reference;
-    }; // struct TensorTraits<PermuteTiledTensor<Arg, Op> >
+    }; // struct TensorTraits<PermuteTiledTensor<Arg, Perm> >
 
     /// Tensor that is composed from an argument tensor
 
@@ -28,21 +28,21 @@ namespace TiledArray {
     /// operation.
     /// \tparam Arg The argument type
     /// \tparam Op The Unary transform operator type.
-    template <typename Arg, unsigned int DIM>
-    class PermuteTiledTensor : public ReadableTiledTensor<PermuteTiledTensor<Arg, DIM> > {
+    template <typename Arg, typename Perm>
+    class PermuteTiledTensor : public ReadableTiledTensor<PermuteTiledTensor<Arg, Perm> > {
     public:
-      typedef PermuteTiledTensor<Arg, DIM> PermuteTiledTensor_;
+      typedef PermuteTiledTensor<Arg, Perm> PermuteTiledTensor_;
       typedef Arg arg_tensor_type;
       TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<PermuteTiledTensor_>, PermuteTiledTensor_);
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
-      typedef Permutation<DIM> perm_type;
+      typedef Perm perm_type;
 
     private:
       // Not allowed
       PermuteTiledTensor_& operator=(const PermuteTiledTensor_&);
 
       static value_type eval_tensor(const perm_type& p, const typename arg_tensor_type::value_type& value) {
-        return PermuteTensor<typename arg_tensor_type::value_type, DIM>(value, p);
+        return PermuteTensor<typename arg_tensor_type::value_type, perm_type>(value, p);
       }
 
     public:
