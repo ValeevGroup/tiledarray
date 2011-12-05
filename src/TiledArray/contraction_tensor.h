@@ -11,12 +11,19 @@ namespace TiledArray {
     template <typename, typename>
     class ContractionTensor;
 
-    namespace detail {
-      template <typename L, typename R>
-      ContractionTensor<L, R> make_contraction_tensor(const L& l, const R& r, const std::shared_ptr<math::Contraction>& c) {
-        return ContractionTensor<L, R>(l, r, c);
-      }
-    }
+    /// Contraction tensor factory function
+
+    /// Construct a ContractionTensor object.
+    /// \tparam LExp Left expression type
+    /// \tparam RExp Right expression type
+    /// \param left The left expression object
+    /// \param right The right expression object
+    /// \param c A shared pointer to the contraction definition object
+    /// \return A \c ContractionTensor<LExp, RExp> object
+    template <typename LExp, typename RExp>
+    inline ContractionTensor<LExp, RExp> make_contraction_tensor(const ReadableTensor<LExp>& left,
+        const ReadableTensor<RExp>& right, const std::shared_ptr<math::Contraction>& c)
+    { return ContractionTensor<LExp, RExp>(left.derived(), right.derived(), c); }
 
     namespace {
       /// Contraction type selection for complex numbers

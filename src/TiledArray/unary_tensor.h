@@ -13,14 +13,18 @@ namespace TiledArray {
 
     template <typename, typename> class UnaryTensor;
 
-    namespace detail {
+    /// Unary tensor factory function
 
-      template <typename A, typename O>
-      UnaryTensor<A, O> make_unary_tensor(const A& a, const O& o) {
-        return UnaryTensor<A, O>(a, o);
-      }
-
-    }  // namespace detail
+    /// Construct a UnaryTensor object.
+    /// \tparam Exp Argument expression type
+    /// \tparam Op Unary operation type
+    /// \param t The argument expression object
+    /// \param op The unary element operation
+    /// \return A \c UnaryTensor<Exp,Op> object
+    template <typename Exp, typename Op>
+    inline UnaryTensor<Exp, Op> make_unary_tensor(const ReadableTensor<Exp>& t, const Op& op) {
+      return UnaryTensor<Exp, Op>(t.derived(), op);
+    }
 
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTensor<Arg, Op> > {

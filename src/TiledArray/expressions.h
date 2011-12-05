@@ -18,70 +18,66 @@ namespace TiledArray {
     template <typename LeftExp, typename RightExp>
     BinaryTensor<LeftExp, RightExp, std::plus<typename LeftExp::value_type> >
     operator+(const ReadableTensor<LeftExp>& left, const ReadableTensor<RightExp>& right) {
-      return BinaryTensor<LeftExp, RightExp, std::plus<typename LeftExp::value_type> >(left.derived(),
-          right.derived(), std::plus<typename LeftExp::value_type>());
+      return make_binary_tensor(left, right, std::plus<typename LeftExp::value_type>());
     }
 
     template <typename RightExp>
     UnaryTensor<RightExp, std::binder1st<std::plus<typename RightExp::value_type> > >
     operator+(const typename ReadableTensor<RightExp>::value_type& left, const ReadableTensor<RightExp>& right) {
-      return UnaryTensor<RightExp, std::binder1st<std::plus<typename RightExp::value_type> > >(right.derived(),
-          std::bind1st(std::plus<typename RightExp::value_type>(), left));
+      return make_unary_tensor(right, std::bind1st(std::plus<typename RightExp::value_type>(), left));
     }
 
     template <typename LeftExp>
     UnaryTensor<LeftExp, std::binder2nd<std::plus<typename LeftExp::value_type> > >
     operator+(const ReadableTensor<LeftExp>& left, const typename ReadableTensor<LeftExp>::value_type& right) {
-      return UnaryTensor<LeftExp, std::binder2nd<std::plus<typename LeftExp::value_type> > >(left.derived(),
-          std::bind2nd(std::plus<typename LeftExp::value_type>(), right));
+      return make_unary_tensor(left, std::bind2nd(std::plus<typename LeftExp::value_type>(), right));
     }
 
     template <typename LeftExp, typename RightExp>
     BinaryTensor<LeftExp, RightExp, std::minus<typename LeftExp::value_type> >
     operator-(const ReadableTensor<LeftExp>& left, const ReadableTensor<RightExp>& right) {
-      return BinaryTensor<LeftExp, RightExp, std::minus<typename LeftExp::value_type> >(left.derived(),
-          right.derived(), std::minus<typename LeftExp::value_type>());
+      return make_binary_tensor(left, right, std::minus<typename LeftExp::value_type>());
     }
 
     template <typename RightExp>
     UnaryTensor<RightExp, std::binder1st<std::minus<typename RightExp::value_type> > >
     operator-(const typename ReadableTensor<RightExp>::value_type& left, const ReadableTensor<RightExp>& right) {
-      return UnaryTensor<RightExp, std::binder1st<std::minus<typename RightExp::value_type> > >(right.derived(),
-          std::bind1st(std::minus<typename RightExp::value_type>(), left));
+      return make_unary_tensor(right, std::bind1st(std::minus<typename RightExp::value_type>(), left));
     }
 
     template <typename LeftExp>
     UnaryTensor<LeftExp, std::binder2nd<std::minus<typename LeftExp::value_type> > >
     operator-(const ReadableTensor<LeftExp>& left, const typename ReadableTensor<LeftExp>::value_type& right) {
-      return UnaryTensor<LeftExp, std::binder2nd<std::minus<typename LeftExp::value_type> > >(left.derived(),
-          std::bind2nd(std::minus<typename LeftExp::value_type>(), right));
+      return make_unary_tensor(left, std::bind2nd(std::minus<typename LeftExp::value_type>(), right));
     }
 
     template <typename RightExp>
     UnaryTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type> > >
     operator*(const typename ReadableTensor<RightExp>::value_type& left, const ReadableTensor<RightExp>& right) {
-      return UnaryTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type> > >(right.derived(),
-          std::bind1st(std::multiplies<typename RightExp::value_type>(), left));
+      return make_unary_tensor(right, std::bind1st(std::multiplies<typename RightExp::value_type>(), left));
     }
 
     template <typename LeftExp>
     UnaryTensor<LeftExp, std::binder2nd<std::multiplies<typename LeftExp::value_type> > >
     operator*(const ReadableTensor<LeftExp>& left, const typename ReadableTensor<LeftExp>::value_type& right) {
-      return UnaryTensor<LeftExp, std::binder2nd<std::multiplies<typename LeftExp::value_type> > >(left.derived(),
-          std::bind2nd(std::multiplies<typename LeftExp::value_type>(), right));
+      return make_unary_tensor(left, std::bind2nd(std::multiplies<typename LeftExp::value_type>(), right));
     }
 
     template <typename ArgExp>
     UnaryTensor<ArgExp, std::negate<typename ArgExp::value_type> >
     operator-(const ReadableTensor<ArgExp>& arg) {
-      return UnaryTensor<ArgExp, std::negate<typename ArgExp::value_type> >(arg.derived(),
-          std::negate<typename ArgExp::value_type>());
+      return make_unary_tensor(arg, std::negate<typename ArgExp::value_type>());
     }
 
     template <typename ArgExp>
     PermuteTensor<ArgExp>
     operator^(const Permutation& p, const ReadableTensor<ArgExp>& arg) {
-      return PermuteTensor<ArgExp>(arg.derived(), p);
+      return make_permute_tensor(arg, p);
+    }
+
+    template <typename ArgExp>
+    const ArgExp& operator^(const TiledArray::detail::NoPermutation& p, const ReadableTensor<ArgExp>& arg) {
+      return make_permute_tensor(arg, p);
     }
 
 

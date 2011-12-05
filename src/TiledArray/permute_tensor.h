@@ -8,16 +8,42 @@
 #include <TiledArray/range.h>
 
 namespace TiledArray {
+
+  // Forward declarations
+
+  namespace detail {
+    struct NoPermutation;
+  } // namespace detail
+
   namespace expressions {
 
     template <typename>
     class PermuteTensor;
 
-    namespace detail {
-      template <typename T>
-      PermuteTensor<T> make_permute_tensor(const T& t, Permutation p) {
-        return PermuteTensor<T>(t, p);
-      }
+    /// Permutation tensor factory function
+
+    /// Construct a \c PermutationTensor<T> object.
+    /// \tparam Exp The argument expression type
+    /// \param t The argument expression that will be permuted
+    /// \param p The permutation that will be applied to \c t
+    /// \return A PermuteTensor<Exp> object
+    template <typename Exp>
+    PermuteTensor<Exp> make_permute_tensor(const ReadableTensor<Exp>& t, Permutation p) {
+      return PermuteTensor<Exp>(t.derived(), p);
+    }
+
+    /// No permutation factory function
+
+    /// This function overloads the original \c make_permutation_tensor
+    /// function. Since no permutation is needed in this case, a reference to
+    /// the original tensor is passed through.
+    /// \tparam Exp The expression type
+    /// \param t The expression object
+    /// \return A reference to the original expression
+    template <typename Exp>
+    inline const ReadableTensor<Exp>&
+    make_permutation_tensor(const ReadableTensor<Exp>& t, const TiledArray::detail::NoPermutation&) {
+      return t;
     }
 
     template <typename Arg>

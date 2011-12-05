@@ -9,6 +9,22 @@ namespace TiledArray {
     template <typename, typename, typename>
     class BinaryTensor;
 
+    /// Binary tensor factory function
+
+    /// Construct a BinaryTensor object. The constructed object will apply \c op
+    /// to each element of \c left and \c right.
+    /// \tparam LExp Left expression type
+    /// \tparam RExp Right expression type
+    /// \tparam Op Binary operation type
+    /// \param left The left expression object
+    /// \param right The right expression object
+    /// \param op The binary element operation
+    /// \return A \c BinaryTensor object
+    template <typename LExp, typename RExp, typename Op>
+    inline BinaryTensor<LExp, RExp, Op> make_binary_tensor(const ReadableTensor<LExp>& left,
+        const ReadableTensor<RExp>& right, const Op& op)
+    { return BinaryTensor<LExp, RExp, Op>(left.derived(), right.derived(), op); }
+
     namespace detail {
 
       /// Select the range type
@@ -45,11 +61,6 @@ namespace TiledArray {
           return r.range();
         }
       };
-
-      template <typename L, typename R, typename O>
-      BinaryTensor<L, R, O> make_binary_tensor(const L& l, const R& r, const O& o) {
-        return BinaryTensor<L, R, O>(l, r, o);
-      }
 
     } // namespace detail
 
