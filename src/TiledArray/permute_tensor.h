@@ -13,6 +13,13 @@ namespace TiledArray {
     template <typename>
     class PermuteTensor;
 
+    namespace detail {
+      template <typename T>
+      PermuteTensor<T> make_permute_tensor(const T& t, Permutation p) {
+        return PermuteTensor<T>(t, p);
+      }
+    }
+
     template <typename Arg>
     struct TensorTraits<PermuteTensor<Arg> > {
       typedef typename Arg::range_type range_type;

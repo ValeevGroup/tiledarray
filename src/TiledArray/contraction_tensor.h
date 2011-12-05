@@ -11,6 +11,13 @@ namespace TiledArray {
     template <typename, typename>
     class ContractionTensor;
 
+    namespace detail {
+      template <typename L, typename R>
+      ContractionTensor<L, R> make_contraction_tensor(const L& l, const R& r, const std::shared_ptr<math::Contraction>& c) {
+        return ContractionTensor<L, R>(l, r, c);
+      }
+    }
+
     namespace {
       /// Contraction type selection for complex numbers
 

@@ -46,6 +46,11 @@ namespace TiledArray {
         }
       };
 
+      template <typename L, typename R, typename O>
+      BinaryTensor<L, R, O> make_binary_tensor(const L& l, const R& r, const O& o) {
+        return BinaryTensor<L, R, O>(l, r, o);
+      }
+
     } // namespace detail
 
     template <typename LeftArg, typename RightArg, typename Op>
