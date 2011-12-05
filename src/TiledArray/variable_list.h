@@ -99,7 +99,7 @@ namespace TiledArray {
         std::swap(vars_, other.vars_);
       }
 
-      std::vector<std::size_t> permutation(const VariableList& other) {
+      std::vector<std::size_t> permutation(const VariableList& other) const {
         TA_ASSERT(dim() == other.dim());
         std::vector<std::size_t> p(dim(), 0);
         const_iterator other_it;
