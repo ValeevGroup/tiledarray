@@ -23,6 +23,9 @@ namespace TiledArray {
 
   namespace detail {
 
+    /// Place holder object to represent a no permutation operation.
+    struct NoPermutation { };
+
     /// Copies an iterator range into an array type container.
 
     /// Permutes iterator range  \c [first_o, \c last_o) base on the permutation
@@ -282,6 +285,12 @@ namespace TiledArray {
     return result;
   }
 
+  /// permute a std::array
+  template <typename T, std::size_t N>
+  inline const std::array<T,N>& operator^(const detail::NoPermutation&, const std::array<T, N>& orig) {
+    return orig;
+  }
+
   /// permute a std::vector<T>
   template <typename T, typename A>
   inline std::vector<T> operator^(const Permutation& perm, const std::vector<T, A>& orig) {
@@ -291,6 +300,13 @@ namespace TiledArray {
       (perm.begin(), perm.end(), orig.begin(), result.begin());
     return result;
   }
+
+  /// permute a std::vector<T>
+  template <typename T, typename A>
+  inline const std::vector<T>& operator^(const detail::NoPermutation&, const std::vector<T, A>& orig) {
+    return orig;
+  }
+
 
   template <typename T, typename A>
   inline std::vector<T> operator^=(std::vector<T, A>& orig, const Permutation& perm) {
@@ -303,6 +319,10 @@ namespace TiledArray {
   inline Permutation operator ^(const Permutation& perm, const Permutation& p) {
     TA_ASSERT(perm.dim() == p.dim());
     return Permutation(perm ^ p.data());
+  }
+
+  inline const Permutation& operator ^(const detail::NoPermutation&, const Permutation& p) {
+    return p;
   }
 
   template <typename T, std::size_t N>
