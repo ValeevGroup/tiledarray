@@ -27,9 +27,7 @@ namespace TiledArray {
 
         friend class Bitset<Block>;
 
-        reference(Block& block, Block mask) :
-          block_(block), mask_(mask)
-        { }
+        reference(Block& block, Block mask) : block_(block), mask_(mask) { }
 
         // Not allowed
         void operator&();
@@ -47,8 +45,7 @@ namespace TiledArray {
         }
 
         reference& operator|=(bool value) {
-          if(value)
-            set();
+          if(value) set();
           return *this;
         }
 
@@ -120,6 +117,7 @@ namespace TiledArray {
       }; // class TransformOp
 
     public:
+      typedef Bitset<Block> Bitset_;
       typedef Block block_type;     ///< The type used to store the data
       typedef Block value_type;
       typedef Block const_reference; ///< Constant reference to a bit
@@ -336,6 +334,12 @@ namespace TiledArray {
       /// \throw nothing
       size_type num_blocks() const { return blocks_; }
 
+      void swap(Bitset_& other) {
+        std::swap(size_, other.size_);
+        std::swap(blocks_, other.blocks_);
+        std::swap(set_, other.set_);
+      }
+
     private:
 
       /// Calculate block index
@@ -358,8 +362,13 @@ namespace TiledArray {
 
       size_type size_;    ///< The number of bits in the set
       size_type blocks_;  ///< The number of blocks used to store the bits
-      block_type* set_;     ///< An array that store the bits
+      block_type* set_;   ///< An array that store the bits
     }; // class Bitset
+
+    template <typename B>
+    inline void swap(Bitset<B>& b0, Bitset<B>& b1) {
+      b0.swap(b1);
+    }
 
     template <typename Block>
     const std::size_t Bitset<Block>::block_bits =
