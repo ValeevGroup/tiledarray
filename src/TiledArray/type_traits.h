@@ -10,6 +10,12 @@
 namespace TiledArray {
   namespace detail {
 
+    /// Remove const, volatile, and reference qualifiers.
+    template <typename T>
+    struct remove_cvr {
+      typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
+    };
+
     template <typename T>
     struct has_iterator_catagory
     {
