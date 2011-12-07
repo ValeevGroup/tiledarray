@@ -41,13 +41,20 @@ namespace TiledArray {
 
       /// Makes an initialized, empty container with default data distribution (no communication)
 
-      /// A unique ID is associated with every distributed container
-      /// within a world.  In order to avoid synchronization when
-      /// making a container, we have to assume that all processes
-      /// execute this constructor in the same order (does not apply
-      /// to the non-initializing, default constructor).
-      DistributedStorage(madness::World& world, size_type size, const std::shared_ptr<pmap_interface>& pmap, bool do_pending = true) :
-        WorldReduce_(world), size_(size), pmap_(pmap), data_(size / world.size() + 1)
+      /// A unique ID is associated with every distributed container within a
+      /// world.  In order to avoid synchronization when making a container, we
+      /// have to assume that all processes execute this constructor in the same
+      /// order (does not apply to the non-initializing, default constructor).
+      /// \param world The world where the distributed container lives
+      /// \param max_size The maximum capacity of this container.
+      /// \param pmap The process map for the container.
+      /// \param do_pending Process pending messages for the container when this
+      /// is true. If it is false, it is up to the user to explicitly call
+      /// \c process_pending().
+      DistributedStorage(madness::World& world, size_type max_size,
+          const std::shared_ptr<pmap_interface>& pmap, bool do_pending = true) :
+        WorldReduce_(world), max_size_(max_size), pmap_(pmap),
+        data_(max_size / world.size() + 1)
       {
         if(do_pending)
           process_pending();
@@ -100,7 +107,10 @@ namespace TiledArray {
       /// Element owner
 
       /// \return The process that owns element \c i
-      ProcessID owner(size_type i) const { return pmap_->owner(i); }
+      ProcessID owner(size_type i) const {
+        TA_ASSERT(i < max_size_);
+        return pmap_->owner(i);
+      }
 
       /// Local element quary
 
@@ -121,7 +131,12 @@ namespace TiledArray {
       /// \return The number of local elements stored by the container.
       size_type size() const { return data_.size(); }
 
-      size_type volume() const { return size_; }
+      /// Max size accessor
+
+      /// The maximum size is the total number of elements that can be held by
+      /// this container on all nodes, not on each node.
+      /// \return The maximum number of elements.
+      size_type max_size() const { return max_size_; }
 
       /// Insert element
 
@@ -135,68 +150,71 @@ namespace TiledArray {
           return data_.insert(acc, i);
         }
 
-        WorldObject_::task(owner(i), & DistributedStorage_::remote_insert, i, madness::TaskAttributes::hipri());
+        WorldObject_::task(owner(i), & DistributedStorage_::remote_insert, i,
+            madness::TaskAttributes::hipri());
         return false;
       }
-
-      /// Insert LOCAL element and acquire a read lock
-
-      /// Insert element at \c i . If the element already exists, the \c acc is
-      /// set to point at the existing element.
-      /// \param[out] acc Read-lock element accessor
-      /// \param i The element to access
-      /// \return \c true if a new element was inserted, otherwise false.
-      bool insert(const_accessor& acc, size_type i) {
-        TA_ASSERT(is_local(i));
-        return data_.insert(acc, i);
-      }
-
-      /// Insert LOCAL element and acquire a write lock
-
-      /// Insert element at \c i . If the element already exists, the \c acc is
-      /// set to point at the existing element.
-      /// \param[out] acc Write-lock element accessor
-      /// \param i The element to access
-      /// \return \c true if a new element was inserted, otherwise false.
-      bool insert(accessor& acc, size_type i) {
-        TA_ASSERT(is_local(i));
-        return data_.insert(acc, i);
-      }
-
-      /// Insert LOCAL element and acquire a read lock
-
-      /// Insert element at \c i . If the element already exists, the \c acc is
-      /// set to point at the existing element.
-      /// \param[out] acc Read-lock element accessor
-      /// \param i The element to access
-      /// \param f The future that will or is holding the element datum.
-      /// \return \c true if a new element was inserted, otherwise false.
-      bool insert(accessor& acc, size_type i, const future& f) {
-        TA_ASSERT(is_local(i));
-        return data_.insert(acc, typename container_type::datumT(i, f));
-      }
-
-      /// Insert LOCAL element and acquire a write lock
-
-      /// Insert element at \c i . If the element already exists, the \c acc is
-      /// set to point at the existing element.
-      /// \param[out] acc Write-lock element accessor
-      /// \param i The element to access
-      /// \param f The future that will or is holding the element datum.
-      /// \return \c true if a new element was inserted, otherwise false.
-      bool insert(const_accessor& acc, size_type i, const future& f) {
-        TA_ASSERT(is_local(i));
-        return data_.insert(acc, typename container_type::datumT(i, f));
-      }
-
+//
+//      /// Insert LOCAL element and acquire a read lock
+//
+//      /// Insert element at \c i . If the element already exists, the \c acc is
+//      /// set to point at the existing element.
+//      /// \param[out] acc Read-lock element accessor
+//      /// \param i The element to access
+//      /// \return \c true if a new element was inserted, otherwise false.
+//      bool insert(const_accessor& acc, size_type i) {
+//        TA_ASSERT(is_local(i));
+//        return data_.insert(acc, i);
+//      }
+//
+//      /// Insert LOCAL element and acquire a write lock
+//
+//      /// Insert element at \c i . If the element already exists, the \c acc is
+//      /// set to point at the existing element.
+//      /// \param[out] acc Write-lock element accessor
+//      /// \param i The element to access
+//      /// \return \c true if a new element was inserted, otherwise false.
+//      bool insert(accessor& acc, size_type i) {
+//        TA_ASSERT(is_local(i));
+//        return data_.insert(acc, i);
+//      }
+//
+//      /// Insert LOCAL element and acquire a read lock
+//
+//      /// Insert element at \c i . If the element already exists, the \c acc is
+//      /// set to point at the existing element.
+//      /// \param[out] acc Read-lock element accessor
+//      /// \param i The element to access
+//      /// \param f The future that will or is holding the element datum.
+//      /// \return \c true if a new element was inserted, otherwise false.
+//      bool insert(accessor& acc, size_type i, const future& f) {
+//        TA_ASSERT(is_local(i));
+//        return data_.insert(acc, typename container_type::datumT(i, f));
+//      }
+//
+//      /// Insert LOCAL element and acquire a write lock
+//
+//      /// Insert element at \c i . If the element already exists, the \c acc is
+//      /// set to point at the existing element.
+//      /// \param[out] acc Write-lock element accessor
+//      /// \param i The element to access
+//      /// \param f The future that will or is holding the element datum.
+//      /// \return \c true if a new element was inserted, otherwise false.
+//      bool insert(const_accessor& acc, size_type i, const future& f) {
+//        TA_ASSERT(is_local(i));
+//        return data_.insert(acc, typename container_type::datumT(i, f));
+//      }
+//
       void set(size_type i, const value_type& value) {
+        TA_ASSERT(i < max_size_);
         set_value(i, value);
       }
 
       void set(size_type i, const future& f) {
+        TA_ASSERT(i < max_size_);
         if(is_local(i)) {
           accessor acc;
-          if(! insert(acc, i, f))
+          if(! data_.insert(acc, typename container_type::datumT(i, f)))
             acc->second.set(f);
         } else {
           WorldObject_::task(get_world().rank(), & DistributedStorage_::set_value,
@@ -205,14 +223,17 @@ namespace TiledArray {
       }
 
       bool find(const_accessor& acc, size_type i) const {
+        TA_ASSERT(i < max_size_);
         return data_.find(acc, i);
       }
 
       bool find(accessor& acc, size_type i) {
+        TA_ASSERT(i < max_size_);
         return data_.find(acc, i);
       }
 
-      future find(size_type i) const {
+      future operator[](size_type i) const {
+        TA_ASSERT(i < max_size_);
         if(is_local(i)) {
           const_accessor acc;
           if(find(acc, i))
@@ -228,12 +249,27 @@ namespace TiledArray {
         return result;
       }
 
+      future operator[](size_type i) {
+        TA_ASSERT(i < max_size_);
+        if(is_local(i)) {
+          const_accessor acc;
+          data_.insert(acc, i);
+          return acc->second;
+        }
+
+        future result;
+        WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
+            result.remote_ref(get_world()));
+
+        return result;
+      }
+
     private:
 
       madness::Void set_value(size_type i, const value_type& value) {
         if(is_local(i)) {
           accessor acc;
-          insert(acc, i);
+          data_.insert(acc, i);
           acc->second.set(value);
         } else {
           WorldObject_::task(owner(i), & DistributedStorage_::set_value, i, value, madness::TaskAttributes::hipri());
@@ -261,7 +297,7 @@ namespace TiledArray {
       madness::Void find_handler(size_type i, const typename future::remote_refT& ref) const {
         TA_ASSERT(is_local(i));
         const_accessor acc;
-        if(find(acc, i)) {
+        if(data_.find(acc, i)) {
           if(acc->second.probe())
             find_return(ref, acc->second);
           else
@@ -274,7 +310,7 @@ namespace TiledArray {
         return madness::None;
       }
 
-      const size_type size_;
+      const size_type max_size_;
       std::shared_ptr<pmap_interface> pmap_;
       container_type data_;
     };
