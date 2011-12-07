@@ -25,7 +25,9 @@
     typedef typename base::const_iterator const_iterator;
 
 #define TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED )
+    TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
+    typedef typename base::const_reference reference; \
+    typedef typename base::const_iterator iterator;
 
 #define TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
     TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER( BASE , DERIVED ) \
@@ -124,8 +126,13 @@ namespace TiledArray {
     public:
 
       TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<Derived>, Derived)
+      typedef typename TensorTraits<Derived>::iterator iterator;
 
       TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_MEMBER(ReadableTiledTensor<Derived>, Derived)
+
+      // iterator factory
+      iterator begin() { derived().begin(); }
+      iterator end() { derived().end(); }
 
       // element access
       void set(size_type i, const value_type& v) { return derived().set(i, v); }

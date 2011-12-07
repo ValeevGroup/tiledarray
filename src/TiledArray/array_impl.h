@@ -93,7 +93,7 @@ namespace TiledArray {
       template <typename Index>
       future find(const Index& i) const {
         TA_ASSERT(includes(i));
-        return data_.find(ord(i));
+        return data_[ord(i)];
       }
 
       /// Set the data of a tile in the array
