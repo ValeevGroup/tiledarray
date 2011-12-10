@@ -121,8 +121,8 @@ namespace TiledArray {
           std::shared_ptr<AnnotatedArrayImpl_> pimpl_;
         }; // class Eval
 
-        bool eval_perm_metadata(const Permutation& perm, const VariableList& v) {
-          trange_ = perm ^ array_.trange();
+        bool perm_structure(const Permutation& perm, const VariableList& v) {
+          trange_ = perm ^ trange_;
 
           // construct the shape
           if(! array_.is_dense()) {
@@ -142,14 +142,6 @@ namespace TiledArray {
           }
 
           vars_ = v;
-
-          return true;
-        }
-
-        bool perm_structure() {
-          trange_ = array_.trange();
-          if(! array_.is_dense())
-            TiledArray::detail::Bitset<>(array_.get_shape()).swap(shape_);
 
           return true;
         }
