@@ -37,7 +37,7 @@ namespace TiledArray {
       /// \tparam Arg The argument type
       /// \tparam Op The Unary transform operator type.
       template <typename Arg, typename Op>
-      class UnaryTiledTensorImpl : public std::enable_shared_from_this<UnaryTiledTensorImpl<Arg, Op> > {
+      class UnaryTiledTensorImpl {
       public:
         typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
         typedef UnaryTiledTensorImpl<Arg, Op> UnaryTiledTensorImpl_;
@@ -68,12 +68,9 @@ namespace TiledArray {
           }
 
           result_type operator()(argument_type it) const  {
-            if(pimpl_->left_.is_zero(it.index())) {
-              // Add a task where the right tile is zero and left tile is non-zero
-              madness::Future<value_type> value = pimpl_->get_world().taskq.add(& eval,
-                  *it, pimpl_->op_);
-              pimpl_->data_.set(it.index(), value);
-            }
+            madness::Future<value_type> value = pimpl_->get_world().taskq.add(& eval,
+                *it, pimpl_->op_);
+            pimpl_->data_.set(it.index(), value);
 
             return true;
           }
@@ -97,10 +94,7 @@ namespace TiledArray {
         /// \note: This task cannot return until all other \c for_each() tasks
         /// have completed. get() blocks this task until for_each() is done
         /// while still processing tasks.
-        bool generate_tasks(bool) const {
-          std::shared_ptr<UnaryTiledTensorImpl_> me =
-              std::enable_shared_from_this<UnaryTiledTensorImpl_ >::shared_from_this();
-
+        bool generate_tasks(const std::shared_ptr<UnaryTiledTensorImpl_>& me, bool) const {
           madness::Future<bool> done = get_world().taskq.for_each(
               madness::Range<typename arg_tensor_type::const_iterator>(
                   arg_.begin(), arg_.end(), 8), Eval(me));
@@ -136,11 +130,12 @@ namespace TiledArray {
             dest.set(it.index(), *it);
         }
 
-        madness::Future<bool> eval(const VariableList& v) {
+        madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<UnaryTiledTensorImpl_>& me) {
+          TA_ASSERT(me.get() == this);
           madness::Future<bool> child = arg_.eval(v);
 
           return get_world().taskq.add(
-              *this, & UnaryTiledTensorImpl_::generate_tasks, child,
+              *this, & UnaryTiledTensorImpl_::generate_tasks, me, child,
               madness::TaskAttributes::hipri());
         }
 
@@ -275,7 +270,7 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const { pimpl_->eval_to(dest); }
 
-      madness::Future<bool> eval(const VariableList& v) { return pimpl_->eval(v); }
+      madness::Future<bool> eval(const VariableList& v) { return pimpl_->eval(v, pimpl_); }
 
       /// Tensor tile size array accessor
 
