@@ -15,6 +15,77 @@ namespace TiledArray {
     VariableList operator ^(const ::TiledArray::Permutation&, const VariableList&);
     void swap(VariableList&, VariableList&);
 
+
+    namespace detail {
+      /// Finds the range of common elements for two sets of iterators.
+
+      /// This function finds the first contiguous set of elements equivalent
+      /// in two lists. Two pairs of iterators are returned via output parameters
+      /// \c common1 and \c common2. These two sets of output iterators point to
+      /// the first range of contiguous, equivalent elements in the two lists.
+      /// If no common elements far found; then \c common1.first and \c
+      /// common1.second both are equal to last1, and likewise for common2.
+      /// \tparam InIter1 The input iterator type for the first range of
+      /// elements.
+      /// \tparam InIter2 The input iterator type for the second range of
+      /// elements.
+      /// \param[in] first1 An input iterator pointing to the beginning of the
+      /// first range of elements to be compared.
+      /// \param[in] last1 An input iterator pointing to one past the end of the
+      /// first range of elements to be compared.
+      /// \param[in] first2 An input iterator pointing to the beginning of the
+      /// second range of elements to be compared.
+      /// \param[in] last2 An input iterator pointing to one past the end of the
+      /// second range of elements to be compared.
+      /// \param[out] common1 A pair of iterators where \c common1.first points
+      /// to the first common element, and \c common1.second points to one past
+      /// the last common element in the first list.
+      /// \param[out] common2 A pair of iterators where \c common1.first points
+      /// to the first common element, and \c common1.second points to one past
+      /// the last common element in the second list.
+      template<typename InIter1, typename InIter2>
+      void find_common(InIter1 first1, const InIter1 last1, InIter2 first2, const InIter2 last2,
+          std::pair<InIter1, InIter1>& common1, std::pair<InIter2, InIter2>& common2)
+      {
+        common1.first = last1;
+        common1.second = last1;
+        common2.first = last2;
+        common2.second = last2;
+
+        // find the first common element in the in the two ranges
+        for(; first1 != last1; ++first1) {
+          common2.first = std::find(first2, last2, *first1);
+          if(common2.first != last2)
+            break;
+        }
+        common1.first = first1;
+        first2 = common2.first;
+
+        // find the last common element in the two ranges
+        while((first1 != last1) && (first2 != last2)) {
+          if(*first1 != *first2)
+            break;
+          ++first1;
+          ++first2;
+        }
+        common1.second = first1;
+        common2.second = first2;
+      }
+
+      template <typename VarLeft, typename VarRight>
+      inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
+        TA_ASSERT(l.size() == r.size());
+        std::vector<std::size_t> a(l.size());
+        typename VarRight::const_iterator rit = r.begin();
+        for(std::vector<std::size_t>::iterator it = a.begin(); it != a.end(); ++it) {
+          typename VarLeft::const_iterator lit = std::find(l.begin(), l.end(), *rit++);
+          TA_ASSERT(lit != l.end());
+          *it = std::distance(l.begin(), lit);
+        }
+        return Permutation(a);
+      }
+    } // namespace detail
+
     /// Variable list manages a list variable strings.
 
     /// Each variable is separated by commas. All spaces are ignored and removed
@@ -99,18 +170,16 @@ namespace TiledArray {
         std::swap(vars_, other.vars_);
       }
 
-      std::vector<std::size_t> permutation(const VariableList& other) const {
-        TA_ASSERT(dim() == other.dim());
-        std::vector<std::size_t> p(dim(), 0);
-        const_iterator other_it;
-        const_iterator this_it = begin();
-        for(std::vector<std::size_t>::iterator it = p.begin(); it != p.end(); ++it, ++this_it) {
-          other_it = std::find(other.begin(), other.end(), *this_it);
-          TA_ASSERT(other_it != other.end());
-          *it = std::distance(other.begin(), other_it);
-        }
+      /// Generate permutation relationship for variable lists
 
-        return p;
+      /// The result of this function is a permutation that defines
+      /// \c this=p^other .
+      /// \tparam V An array type
+      /// \param other An array that defines a variable list
+      /// \return \c p as defined by the above relationship
+      template <typename V>
+      Permutation permutation(const V& other) const {
+        return detail::var_perm(*this, other);
       }
 
     private:
@@ -193,74 +262,6 @@ namespace TiledArray {
 
       return result;
     }
-
-    namespace detail {
-      /// Finds the range of common elements for two sets of iterators.
-
-      /// This function finds the first contiguous set of elements equivalent
-      /// in two lists. Two pairs of iterators are returned via output parameters
-      /// \c common1 and \c common2. These two sets of output iterators point to
-      /// the first range of contiguous, equivalent elements in the two lists.
-      /// If no common elements far found; then \c common1.first and \c
-      /// common1.second both are equal to last1, and likewise for common2.
-      /// \tparam InIter1 The input iterator type for the first range of
-      /// elements.
-      /// \tparam InIter2 The input iterator type for the second range of
-      /// elements.
-      /// \param[in] first1 An input iterator pointing to the beginning of the
-      /// first range of elements to be compared.
-      /// \param[in] last1 An input iterator pointing to one past the end of the
-      /// first range of elements to be compared.
-      /// \param[in] first2 An input iterator pointing to the beginning of the
-      /// second range of elements to be compared.
-      /// \param[in] last2 An input iterator pointing to one past the end of the
-      /// second range of elements to be compared.
-      /// \param[out] common1 A pair of iterators where \c common1.first points
-      /// to the first common element, and \c common1.second points to one past
-      /// the last common element in the first list.
-      /// \param[out] common2 A pair of iterators where \c common1.first points
-      /// to the first common element, and \c common1.second points to one past
-      /// the last common element in the second list.
-      template<typename InIter1, typename InIter2>
-      void find_common(InIter1 first1, const InIter1 last1, InIter2 first2, const InIter2 last2,
-          std::pair<InIter1, InIter1>& common1, std::pair<InIter2, InIter2>& common2)
-      {
-        common1.first = last1;
-        common1.second = last1;
-        common2.first = last2;
-        common2.second = last2;
-
-        // find the first common element in the in the two ranges
-        for(; first1 != last1; ++first1) {
-          common2.first = std::find(first2, last2, *first1);
-          if(common2.first != last2)
-            break;
-        }
-        common1.first = first1;
-        first2 = common2.first;
-
-        // find the last common element in the two ranges
-        while((first1 != last1) && (first2 != last2)) {
-          if(*first1 != *first2)
-            break;
-          ++first1;
-          ++first2;
-        }
-        common1.second = first1;
-        common2.second = first2;
-      }
-
-      inline Permutation var_perm(const VariableList& l, const VariableList& r) {
-        TA_ASSERT(l.dim() == r.dim());
-        std::vector<std::size_t> a(l.dim());
-        VariableList::const_iterator rit = r.begin();
-        for(std::vector<std::size_t>::iterator it = a.begin(); it != a.end(); ++it) {
-          VariableList::const_iterator lit = std::find(l.begin(), l.end(), *rit++);
-          *it = std::distance(l.begin(), lit);
-        }
-        return Permutation(a);
-      }
-    } // namespace detail
 
     /// ostream VariableList output orperator.
     inline std::ostream& operator <<(std::ostream& out, const VariableList& v) {
