@@ -97,7 +97,7 @@ namespace TiledArray {
       /// \return An evaluated tensor object
       eval_type eval() const {
         lazy_eval();
-        return Tensor<value_type, range_type>(range_, data_);
+        return Tensor<value_type, range_type>(range_, data_.begin());
       }
 
       /// Evaluate this tensor and store the results in \c dest
