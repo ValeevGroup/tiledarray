@@ -45,6 +45,9 @@ namespace TiledArray {
     static const unsigned int level = Level;            ///< The coordinate system level (used to differentiate types of similar coordinate systems)
     static const detail::DimensionOrderType order = O;  ///< The dimension ordering. This may be decreasing (c-style) or increasing (fortran) dimension ordering.
 
+    static unsigned int get_dim() { return dim; }
+    static unsigned int get_level() { return level; }
+    static detail::DimensionOrderType get_order() { return order; }
   }; // class CoordinateSystem
 
   namespace detail {
