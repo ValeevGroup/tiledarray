@@ -50,7 +50,8 @@ struct ContractionTensorFixture {
 
 const std::shared_ptr<math::Contraction> ContractionTensorFixture::cont(new math::Contraction(
     VariableList(ContractionTensorFixture::make_var_list(0, GlobalFixture::coordinate_system::dim)),
-    VariableList(ContractionTensorFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1))));
+    VariableList(ContractionTensorFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1)),
+    GlobalFixture::coordinate_system::get_order()));
 
 const ContractionTensorFixture::TensorN ContractionTensorFixture::t2 = make_tile(2);
 const ContractionTensorFixture::TensorN ContractionTensorFixture::t3 = make_tile(3);

@@ -9,7 +9,7 @@ using namespace TiledArray::expressions;
 struct ContractionTiledTensorFixture : public AnnotatedArrayFixture {
   typedef ContractionTiledTensor<array_annotation, array_annotation> CTT;
 
-  ContractionTiledTensorFixture() : aar(a, right_var), ctt(aa, aar, cont) { }
+  ContractionTiledTensorFixture() : aar(a, right_var), ctt(aa, aar) { }
 
   ~ContractionTiledTensorFixture() {
     GlobalFixture::world->gop.fence();
@@ -32,7 +32,8 @@ const VariableList ContractionTiledTensorFixture::right_var(
 
 const std::shared_ptr<math::Contraction> ContractionTiledTensorFixture::cont(new math::Contraction(
     VariableList(AnnotatedArrayFixture::make_var_list(0, GlobalFixture::coordinate_system::dim)),
-    VariableList(AnnotatedArrayFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1))));
+    VariableList(AnnotatedArrayFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1)),
+    GlobalFixture::coordinate_system::get_order()));
 
 
 BOOST_FIXTURE_TEST_SUITE( contraction_tiled_tensor_suite, ContractionTiledTensorFixture )
@@ -72,6 +73,7 @@ BOOST_AUTO_TEST_CASE( location )
 
 BOOST_AUTO_TEST_CASE( result )
 {
+  ctt.eval(ctt.vars());
   // Get the dimensions of the contraction
   const array_annotation::size_type A = aa.trange().elements().size().front();
   const array_annotation::size_type B = std::accumulate(aa.trange().elements().size().begin() + 1,
