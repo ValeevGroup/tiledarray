@@ -6,109 +6,106 @@
 #include <TiledArray/range.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/bitset.h>
+#include <TiledArray/permute_tensor.h>
 #include <world/array.h>
 #include <iterator>
 #include <numeric>
 #include <functional>
+#include <list>
 
 namespace TiledArray {
   namespace math {
 
+    namespace {
+      /// Contraction type selection for complex numbers
+
+      /// \tparam T The left contraction argument type
+      /// \tparam U The right contraction argument type
+      template <typename T, typename U>
+      struct ContractionValue {
+        typedef T type; ///< The result type
+      };
+
+      template <typename T>
+      struct ContractionValue<T, std::complex<T> > {
+        typedef std::complex<T> type;
+      };
+
+      template <typename T>
+      struct ContractionValue<std::complex<T>, T> {
+        typedef std::complex<T> type;
+      };
+    } // namespace
+
     /// A utility class for contraction operations.
 
     /// \param I The index type
+    /// \note All algorithms assume the object dimension layout is in the same
+    /// order as the left- and right-hand variable list arguments used to
+    /// construct this object.
     class Contraction {
     public:
-      typedef std::array<std::size_t, 5> packed_size_array;
+      typedef std::vector<std::size_t> map_type;
 
       Contraction(const expressions::VariableList& left,
-          const expressions::VariableList& right)
+          const expressions::VariableList& right, const detail::DimensionOrderType& order)
       {
-        typedef std::pair<expressions::VariableList::const_iterator,
-            expressions::VariableList::const_iterator> vars_iter_pair;
 
-        vars_iter_pair lvars_common;
-        vars_iter_pair rvars_common;
-        expressions::detail::find_common(left.begin(), left.end(), right.begin(),
-            right.end(), lvars_common, rvars_common);
+        // construct the left inner and outer maps.
+        init_inner_outer(left, right, left_inner_, left_outer_);
+        init_inner_outer(right, left, right_inner_, right_outer_);
 
-        left_[0] = std::distance(left.begin(), lvars_common.first);
-        left_[1] = std::distance(left.begin(), lvars_common.second);
-        left_[2] = left.dim();
-
-        right_[0] = std::distance(right.begin(), rvars_common.first);
-        right_[1] = std::distance(right.begin(), rvars_common.second);
-        right_[2] = right.dim();
-
-        dim_ = left_[2] - left_[1] + left_[0] + right_[2] - right_[1] + right_[0];
+        init_permutation(left, left_inner_, left_outer_, order, perm_left_, do_perm_left_);
+        init_permutation(right, right_inner_, right_outer_, order, perm_right_, do_perm_right_);
       }
 
-      unsigned int dim() const { return dim_; }
 
-      template <typename LeftArray, typename RightArray>
-      packed_size_array pack_arrays(const LeftArray& left, const RightArray& right) {
-        TA_ASSERT(left.size() == left_[2]);
-        TA_ASSERT(right.size() == right_[2]);
 
-        // Get the left iterator
-        typename LeftArray::const_iterator l0 = left.begin();
-        typename LeftArray::const_iterator l1 = l0;
-        std::advance(l1, left_[0]);
-        typename LeftArray::const_iterator l2 = l0;
-        std::advance(l2, left_[1]);
-        typename LeftArray::const_iterator l3 = left.end();
+      const Permutation& perm_left() const { return perm_left_; }
+      const Permutation& perm_right() const { return perm_right_; }
 
-        // Get the right array iterator boundaries.
-        typename RightArray::const_iterator r0 = right.begin();
-        typename RightArray::const_iterator r1 = r0;
-        std::advance(r1, right_[0]);
-        typename RightArray::const_iterator r2 = r0;
-        std::advance(r2, right_[1]);
-        typename RightArray::const_iterator r3 = right.end();
 
-        // Make accumulator operation object
-        std::multiplies<std::size_t> acc_op;
-
-        // Calculate packed dimensions.
-        packed_size_array result = {{
-            std::accumulate(l0, l1, 1ul, acc_op),
-            std::accumulate(l2, l3, 1ul, acc_op),
-            std::accumulate(r0, r1, 1ul, acc_op),
-            std::accumulate(r2, r3, 1ul, acc_op),
-            std::accumulate(l1, l2, 1ul, acc_op)
-          }};
-
-        return result;
-      }
 
       /// Contract array
 
-      /// a{{a1...ai},{ai+1...aj-1},{aj...ak}} + b{{b1...bi},{bi+1...bj-1},{bj...bk}}
-      /// ==> c{{a1...ai},{b1...bi},{aj...ak},{bj...bk}}
       template <typename ResArray, typename LeftArray, typename RightArray>
       void contract_array(ResArray& res, const LeftArray& left, const RightArray& right) const {
-        TA_ASSERT(left.size() == left_[2]);
-        TA_ASSERT(right.size() == right_[2]);
-        TA_ASSERT(res.size() == dim_);
+        TA_ASSERT(left.size() == left_dim());
+        TA_ASSERT(right.size() == right_dim());
+        TA_ASSERT(res.size() == dim());
 
-        std::size_t l, r, i = 0;
+        typename ResArray::iterator res_it = res.begin();
 
-        for(l = 0; l < left_[0]; ++l) res[i++] = left[l];
-        for(r = 0; r < right_[0]; ++r) res[i++] = right[r];
-        for(l = left_[1]; l < left_[2]; ++l) res[i++] = left[l];
-        for(r = right_[1]; r < right_[2]; ++r) res[i++] = right[r];
+        for(map_type::const_iterator it = left_outer_.begin(); it != left_outer_.end(); ++it)
+          *res_it++ = left[*it];
+        for(map_type::const_iterator it = right_outer_.begin(); it != right_outer_.end(); ++it)
+          *res_it++ = right[*it];
       }
 
       expressions::VariableList contract_vars(const expressions::VariableList& left, const expressions::VariableList& right) {
-        std::vector<std::string> res(dim_);
-        contract_array(res, left, right);
+        std::vector<std::string> res(dim());
+        contract_array(res, left.data(), right.data());
         return expressions::VariableList(res.begin(),res.end());
       }
 
+      /// Generate a contracted range object
+
+      /// \tparam LeftRange The left-hand range type.
+      /// \tparam RightRange The right-hand range type.
+      /// \param left The left-hand-argument range
+      /// \param right The right-hand-argument range
+      /// \return A contracted range object
+      /// \throw TiledArray::Exception When the order of the ranges do not match
+      /// \throw TiledArray::Exception When the dimension of \c left and \c right
+      /// do not match the dimensions of the variable lists used to construct
+      /// this object.
       template <typename LeftRange, typename RightRange>
       DynamicRange contract_range(const LeftRange& left, const RightRange& right) const {
         TA_ASSERT(left.order() == right.order());
-        typename DynamicRange::index start(dim_), finish(dim_);
+        TA_ASSERT(left.dim() == left_dim());
+        TA_ASSERT(right.dim() == right_dim());
+
+        typename DynamicRange::index start(dim()), finish(dim());
         contract_array(start, left.start(), right.start());
         contract_array(finish, left.finish(), right.finish());
         return DynamicRange(start, finish, left.order());
@@ -117,7 +114,7 @@ namespace TiledArray {
       template <typename LeftTRange, typename RightTRange>
       DynamicTiledRange contract_trange(const LeftTRange& left, const RightTRange& right) const {
         TA_ASSERT(left.tiles().order() == right.tiles().order());
-        typename DynamicTiledRange::Ranges ranges(dim_);
+        typename DynamicTiledRange::Ranges ranges(dim());
         contract_array(ranges, left.data(), right.data());
         return DynamicTiledRange(ranges.begin(), ranges.end(), left.tiles().order());
       }
@@ -126,14 +123,235 @@ namespace TiledArray {
       template <typename LeftTensor, typename RightTensor>
       inline detail::Bitset<> contract_shape(const LeftTensor& left, const RightTensor& right);
 
+      /// Permute tensor contraction
+
+      /// This function permutes the left- and right-hand tensor arguments such
+      /// that the contraction can be performed with a matrix-matrix
+      /// multiplication. The permutation applied to \c left and \c right are
+      /// defined by the variable lists used to construct this object. The data
+      /// layout will match the expected input of the \c contract_tensor()
+      /// function. The resulting variable list can be obtained with the
+      /// \c contract_vars() function.
+      /// \tparam Left The left-hand-side tensor argument type
+      /// \tparam Right The right-hand-side tensor argument type
+      /// \param left The left-hand-side tensor argument
+      /// \param right The right-hand-side tensor argument
+      /// \throw TiledArray::Exception When the orders of left and right are not
+      /// equal
+      template <typename Left, typename Right>
+      expressions::Tensor<typename ContractionValue<typename Left::value_type,
+          typename Right::value_type>::type, DynamicRange>
+      permute_contract_tensor(const Left& left, const Right& right) const {
+        TA_ASSERT(left.range().order() == right.range().order());
+        TA_ASSERT(left.range().dim() == left_dim());
+        TA_ASSERT(right.range().dim() == right_dim());
+
+        if(do_perm_left_) {
+          if(do_perm_right_) {
+            return contract_tensor(
+                expressions::make_permute_tensor(left, perm_left_).eval(),
+                expressions::make_permute_tensor(right, perm_right_).eval());
+          } else {
+            return contract_tensor(
+                expressions::make_permute_tensor(left, perm_left_).eval(),
+                right.eval());
+          }
+        } else {
+          if(do_perm_right_) {
+            return contract_tensor(left.eval(),
+                expressions::make_permute_tensor(right, perm_right_).eval());
+          } else {
+            return contract_tensor(left.eval(), right.eval());
+          }
+        }
+      }
+
+      /// Tensor contraction
+
+      /// The will contract \c left with \c right and return the result tensor.
+      /// The contraction algorithms are: \n
+      /// \c order=detail::decreasing_dimension_order
+      /// \f[
+      /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
+      ///     \sum_{i_1, i_2, \dots}
+      ///         A_{m_1, m_2, \dots, i_1, i_2, \dots}
+      ///         B_{n_1, n_2, \dots, i_1, i_2, \dots}
+      /// \f]
+      /// \c order=detail::increasing_dimension_order
+      /// \f[
+      /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
+      ///     \sum_{i_1, i_2, \dots}
+      ///         A_{i_1, i_2, \dots, m_1, m_2, \dots}
+      ///         B_{i_1, i_2, \dots, n_1, n_2, \dots}
+      /// \f]
+      /// If the data is not in the correct layout, then use the
+      /// \c permute_contract_tensor() function instead.
+      /// \tparam Left The left-hand-side tensor argument type
+      /// \tparam Right The right-hand-side tensor argument type
+      /// \param left The left-hand-side tensor argument
+      /// \param right The right-hand-side tensor argument
+      /// \throw TiledArray::Exception When the orders of left and right are not
+      /// equal
+      template <typename Left, typename Right>
+      expressions::Tensor<typename ContractionValue<typename Left::value_type,
+          typename Right::value_type>::type, DynamicRange>
+      contract_tensor(const Left& left, const Right& right) const {
+        TA_ASSERT(left.range().order() == right.range().order());
+
+        // This function fuses the inner and outer dimensions of the left- and
+        // right-hand tensors such that the contraction can be performed with a
+        // matrix-matrix multiplication.
+
+        // Construct the result tensor
+        typedef typename ContractionValue<typename Left::value_type,
+            typename Right::value_type>::type value_type;
+        expressions::Tensor<value_type, DynamicRange>
+            res(DynamicRange(
+                result_index(left.range().start(), right.range().start(), left.range().order()),
+                result_index(left.range().finish(), right.range().finish(), left.range().order()),
+                left.range().order()));
+
+        if(left.range().order() == detail::decreasing_dimension_order) {
+
+          // Calculate matrix dimensions: m, i, n
+          const std::size_t m =
+              std::accumulate(left.range().size().begin(),
+              left.range().size().begin() + left_outer_dim(), 1ul,
+              std::multiplies<std::size_t>());
+          const std::size_t i =
+              std::accumulate(left.range().size().begin() + left_outer_dim(),
+              left.range().size().end(), 1ul, std::multiplies<std::size_t>());
+          const std::size_t n =
+              std::accumulate(right.range().size().begin(),
+              right.range().size().begin() + right_outer_dim(), 1ul,
+              std::multiplies<std::size_t>());
+
+          // Construct matrix maps for tensors
+          Eigen::Map<const Eigen::Matrix<typename Left::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
+              ma(left.data(), m, i);
+          Eigen::Map<const Eigen::Matrix<typename Right::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
+              mb(right.data(), n, i);
+          Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic ,
+              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
+              mc(res.data(), m, n);
+
+          // Do contraction
+          mc.noalias() = ma * mb.transpose();
+
+        } else {
+
+          // Cacluate matrix dimensions: m, i, n
+          const std::size_t m =
+              std::accumulate(left.range().size().begin() + left_inner_dim(),
+              left.range().size().end(), 1ul, std::multiplies<std::size_t>());
+          const std::size_t i =
+              std::accumulate(left.range().size().begin(),
+              left.range().size().begin() + left_inner_dim(), 1ul,
+              std::multiplies<std::size_t>());
+          const std::size_t n =
+              std::accumulate(right.range().size().begin() + right_inner_dim(),
+              right.range().size().end(), 1ul, std::multiplies<std::size_t>());
+
+          // Construct matrix maps for tensors
+          Eigen::Map<const Eigen::Matrix<typename Left::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
+              ma(left.data(), i, m);
+          Eigen::Map<const Eigen::Matrix<typename Right::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
+              mb(right.data(), i, n);
+          Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic ,
+              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
+              mc(res.data(), m, n);
+
+          // Do contraction
+          mc.noalias() = ma.transpose() * mb;
+        }
+
+        return res;
+      }
+
+
+      unsigned int dim() const { return left_outer_.size() + right_outer_.size(); }
+      std::size_t left_inner_dim() const { return left_inner_.size(); }
+      std::size_t left_outer_dim() const { return left_outer_.size(); }
+      std::size_t right_inner_dim() const { return right_inner_.size(); }
+      std::size_t right_outer_dim() const { return right_outer_.size(); }
+      std::size_t left_dim() const { return left_inner_dim() + left_outer_dim(); }
+      std::size_t right_dim() const { return right_inner_dim() + right_outer_dim(); }
+
     private:
 
+      template <typename LeftIndex, typename RightIndex>
+      DynamicRange::index result_index(const LeftIndex& l_index,
+          const RightIndex& r_index, const detail::DimensionOrderType& order) const {
+        DynamicRange::index result(dim());
 
-      typedef std::array<std::size_t, 3> pack_boundary_array;
+        if(order == detail::decreasing_dimension_order)
+          std::copy(r_index.begin(), r_index.begin() + right_outer_dim(),
+              std::copy(l_index.begin(), l_index.begin() + left_outer_dim(), result.begin()));
+        else
+          std::copy(r_index.begin() + right_inner_dim(), r_index.end(),
+              std::copy(l_index.begin() + left_inner_dim(), l_index.end(), result.begin()));
 
-      pack_boundary_array left_;
-      pack_boundary_array right_;
-      unsigned int dim_;
+        return result;
+      }
+
+
+      static void init_inner_outer(const expressions::VariableList& first,
+          const expressions::VariableList& second, map_type& inner, map_type& outer)
+      {
+        // Reserve storage for maps.
+        inner.reserve(first.dim());
+        outer.reserve(first.dim());
+
+        // construct the left inner and outer maps.
+        for(expressions::VariableList::const_iterator it = first.begin(); it != first.end(); ++it) {
+          expressions::VariableList::const_iterator second_it =
+              std::find(second.begin(), second.end(), *it);
+          if(second_it == second.end())
+            outer.push_back(std::distance(first.begin(), it));
+          else
+            inner.push_back(std::distance(first.begin(), it));
+        }
+      }
+
+      static void init_permutation(const expressions::VariableList& in_vars,
+          const map_type& inner, const map_type& outer, const detail::DimensionOrderType& order,
+          Permutation& perm, bool& do_perm)
+      {
+        std::vector<std::string> vars;
+        vars.reserve(in_vars.size());
+
+        if(order == TiledArray::detail::decreasing_dimension_order) {
+          for(map_type::const_iterator it = outer.begin(); it != outer.end(); ++it)
+            vars.push_back(in_vars[*it]);
+          for(map_type::const_iterator it = inner.begin(); it != inner.end(); ++it)
+            vars.push_back(in_vars[*it]);
+        } else {
+          for(map_type::const_iterator it = inner.begin(); it != inner.end(); ++it)
+            vars.push_back(in_vars[*it]);
+          for(map_type::const_iterator it = outer.begin(); it != outer.end(); ++it)
+            vars.push_back(in_vars[*it]);
+        }
+        expressions::VariableList perm_vars(vars.begin(), vars.end());
+        perm = perm_vars.permutation(in_vars);
+
+        do_perm = perm_vars != in_vars;
+      }
+
+
+      map_type left_inner_;
+      map_type left_outer_;
+      map_type right_inner_;
+      map_type right_outer_;
+
+      Permutation perm_left_;
+      Permutation perm_right_;
+
+      bool do_perm_left_;
+      bool do_perm_right_;
     }; // class Contraction
 
   } // namespace math

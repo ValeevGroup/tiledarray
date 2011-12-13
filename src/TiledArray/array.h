@@ -172,12 +172,17 @@ namespace TiledArray {
 
     template <typename Derived>
     Array(const expressions::ReadableTiledTensor<Derived>& other) :
-      pimpl_((other.is_dense() ?
-          static_cast<impl_type*>(new dense_impl_type(other.get_world(), other.trange(), other.get_pmap()))
-        :
-          static_cast<impl_type*>(new sparse_impl_type(other.get_world(), other.trange(), other.get_pmap(), other.get_shape()))),
-        madness::make_deferred_deleter<impl_type>(other.get_world()))
+      pimpl_()
     {
+      other.eval(other.vars());
+      if(other.is_dense())
+        pimpl_.reset(new dense_impl_type(other.get_world(), other.trange(), other.get_pmap()),
+            madness::make_deferred_deleter<impl_type>(other.get_world()));
+      else
+        pimpl_.reset(new sparse_impl_type(other.get_world(), other.trange(),
+            other.get_pmap(), other.get_shape()),
+            madness::make_deferred_deleter<impl_type>(other.get_world()));
+
       other.derived().eval_to(*this);
       pimpl_->process_pending();
     }
