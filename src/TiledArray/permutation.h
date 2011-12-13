@@ -285,12 +285,6 @@ namespace TiledArray {
     return result;
   }
 
-  /// permute a std::array
-  template <typename T, std::size_t N>
-  inline const std::array<T,N>& operator^(const detail::NoPermutation&, const std::array<T, N>& orig) {
-    return orig;
-  }
-
   /// permute a std::vector<T>
   template <typename T, typename A>
   inline std::vector<T> operator^(const Permutation& perm, const std::vector<T, A>& orig) {
@@ -301,12 +295,37 @@ namespace TiledArray {
     return result;
   }
 
-  /// permute a std::vector<T>
-  template <typename T, typename A>
-  inline const std::vector<T>& operator^(const detail::NoPermutation&, const std::vector<T, A>& orig) {
-    return orig;
+
+
+  inline Permutation operator ^(const Permutation& perm, const Permutation& p) {
+    TA_ASSERT(perm.dim() == p.dim());
+    return Permutation(perm ^ p.data());
   }
 
+  namespace detail {
+    /// permute a std::array
+    template <typename T, std::size_t N>
+    inline const std::array<T,N>& operator^(const NoPermutation&, const std::array<T, N>& orig) {
+      return orig;
+    }
+
+    /// permute a std::vector<T>
+    template <typename T, typename A>
+    inline const std::vector<T>& operator^(const NoPermutation&, const std::vector<T, A>& orig) {
+      return orig;
+    }
+
+    inline const Permutation& operator ^(const NoPermutation&, const Permutation& p) {
+      return p;
+    }
+
+  } // namespace detail
+
+  template <typename T, std::size_t N>
+  inline std::array<T,N> operator ^=(std::array<T,N>& a, const Permutation& perm) {
+    TA_ASSERT(perm.dim() == N);
+    return (a = perm ^ a);
+  }
 
   template <typename T, typename A>
   inline std::vector<T> operator^=(std::vector<T, A>& orig, const Permutation& perm) {
@@ -314,21 +333,6 @@ namespace TiledArray {
     orig = perm ^ orig;
 
     return orig;
-  }
-
-  inline Permutation operator ^(const Permutation& perm, const Permutation& p) {
-    TA_ASSERT(perm.dim() == p.dim());
-    return Permutation(perm ^ p.data());
-  }
-
-  inline const Permutation& operator ^(const detail::NoPermutation&, const Permutation& p) {
-    return p;
-  }
-
-  template <typename T, std::size_t N>
-  inline std::array<T,N> operator ^=(std::array<T,N>& a, const Permutation& perm) {
-    TA_ASSERT(perm.dim() == N);
-    return (a = perm ^ a);
   }
 
 } // namespace TiledArray
