@@ -8,13 +8,6 @@
 #include <TiledArray/range.h>
 
 namespace TiledArray {
-
-  // Forward declarations
-
-  namespace detail {
-    struct NoPermutation;
-  } // namespace detail
-
   namespace expressions {
 
     template <typename>
@@ -28,7 +21,7 @@ namespace TiledArray {
     /// \param p The permutation that will be applied to \c t
     /// \return A PermuteTensor<Exp> object
     template <typename Exp>
-    PermuteTensor<Exp> make_permute_tensor(const ReadableTensor<Exp>& t, Permutation p) {
+    inline PermuteTensor<Exp> make_permute_tensor(const ReadableTensor<Exp>& t, Permutation p) {
       return PermuteTensor<Exp>(t.derived(), p);
     }
 
@@ -42,7 +35,7 @@ namespace TiledArray {
     /// \return A reference to the original expression
     template <typename Exp>
     inline const ReadableTensor<Exp>&
-    make_permutation_tensor(const ReadableTensor<Exp>& t, const TiledArray::detail::NoPermutation&) {
+    make_permute_tensor(const ReadableTensor<Exp>& t, const TiledArray::detail::NoPermutation&) {
       return t;
     }
 
