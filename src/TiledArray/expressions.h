@@ -7,7 +7,6 @@
 #include <TiledArray/permute_tensor.h>
 #include <TiledArray/contraction_tensor.h>
 #include <TiledArray/unary_tiled_tensor.h>
-#include <TiledArray/permute_tiled_tensor.h>
 #include <TiledArray/binary_tiled_tensor.h>
 #include <TiledArray/contraction_tiled_tensor.h>
 #include <TiledArray/functional.h>
@@ -151,12 +150,6 @@ namespace TiledArray {
     operator-(const ReadableTiledTensor<ArgExp>& arg) {
       return UnaryTiledTensor<ArgExp, std::negate<typename ArgExp::value_type> >(arg.derived(),
           std::negate<typename ArgExp::value_type::value_type>());
-    }
-
-    template <typename ArgExp>
-    PermuteTiledTensor<ArgExp>
-    operator^(const Permutation& p, const ReadableTiledTensor<ArgExp>& arg) {
-      return PermuteTiledTensor<ArgExp>(arg.derived(), p);
     }
 
   } // namespace expressions
