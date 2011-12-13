@@ -26,7 +26,13 @@ struct AnnotatedArrayFixture : public ArrayFixture {
   typedef expressions::AnnotatedArray<ArrayN> array_annotation;
   typedef expressions::AnnotatedArray<const ArrayN> const_array_annotation;
 
-  AnnotatedArrayFixture() : vars(make_var_list()), aa(a, vars) { }
+  AnnotatedArrayFixture() : vars(make_var_list()), aa(a, vars), perm() {
+    std::array<std::size_t, GlobalFixture::coordinate_system::dim> p;
+    p[0] = GlobalFixture::coordinate_system::dim - 1;
+    for(std::size_t i = 1; i < GlobalFixture::coordinate_system::dim; ++i)
+      p[i] = i - 1;
+    perm = Permutation(p.begin(), p.end());
+  }
 
 
   static std::string make_var_list(std::size_t first = 0,
@@ -34,6 +40,7 @@ struct AnnotatedArrayFixture : public ArrayFixture {
 
   expressions::VariableList vars;
   array_annotation aa;
+  Permutation perm;
 }; // struct AnnotatedArrayFixture
 
 #endif // TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED

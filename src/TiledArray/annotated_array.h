@@ -97,7 +97,7 @@ namespace TiledArray {
               const std::shared_ptr<AnnotatedArrayImpl_>& pimpl)
           {
             const size_type i =
-                pimpl->trange().tiling().ord(perm ^ pimpl->array().idx(it.index()));
+                pimpl->trange().tiles().ord(perm ^ pimpl->array().range().idx(it.index()));
             madness::Future<value_type> t =
                 pimpl->get_world().taskq.add(& Eval::eval_perm, *it, perm);
 
@@ -117,8 +117,8 @@ namespace TiledArray {
             pimpl->data_.set(it.index(), *it);
           }
 
-          Perm perm_; ///< Permutation that will be applied to the array tiles
           std::shared_ptr<AnnotatedArrayImpl_> pimpl_;
+          Perm perm_; ///< Permutation that will be applied to the array tiles
         }; // class Eval
 
         bool perm_structure(const Permutation& perm, const VariableList& v) {
@@ -127,7 +127,7 @@ namespace TiledArray {
           // construct the shape
           if(! array_.is_dense()) {
             // Construct the inverse permuted weight and size for this tensor
-            typename range_type::size_array ip_weight = (-perm) ^ trange_.tiling().weight();
+            typename range_type::size_array ip_weight = (-perm) ^ trange_.tiles().weight();
             const typename array_type::range_type::index& start = array_.range().start();
 
             // Coordinated iterator for the argument object range
@@ -207,7 +207,7 @@ namespace TiledArray {
         /// \param i The tile index
         /// \return Tile \c i
         const_reference operator[](size_type i) const {
-          TA_ASSERT(is_zero(i));
+          TA_ASSERT(! is_zero(i));
           return data_[i];
         }
 
@@ -368,10 +368,10 @@ namespace TiledArray {
           // Generate the tile permutation tasks.
           madness::Future<bool> tiles_done = get_world().taskq.for_each(
               madness::Range<const_iterator>(pimpl_->array().begin(),
-              pimpl_->array().end(), 8), impl_type::template Eval<Permutation>(pimpl_, perm));
+              pimpl_->array().end(), 8), typename impl_type::template Eval<Permutation>(pimpl_, perm));
 
           // return the Future that indicates the initialization is done.
-          return get_world().taskq.add(& impl_type::eval_done, tiles_done,
+          return get_world().taskq.add(& AnnotatedArray_::eval_done, tiles_done,
               trange_shape_done, madness::TaskAttributes::hipri());
 
         }
@@ -379,7 +379,8 @@ namespace TiledArray {
         // The variables match so no permutation is needed. Just copy the tiles.
         return get_world().taskq.for_each(
             madness::Range<const_iterator>(pimpl_->array().begin(),
-            pimpl_->array().end(), 8), impl_type::template Eval<TiledArray::detail::NoPermutation>(pimpl_,
+            pimpl_->array().end(), 8),
+            typename impl_type::template Eval<TiledArray::detail::NoPermutation>(pimpl_,
             TiledArray::detail::NoPermutation()));
       }
 

@@ -53,11 +53,27 @@ BOOST_AUTO_TEST_CASE( constructors )
 {
   BOOST_REQUIRE_NO_THROW(array_annotation at1(a, vars));
   array_annotation at1(a, vars);
-  BOOST_CHECK(at1.begin() == a.begin());
-  BOOST_CHECK(at1.end() == a.end());
   BOOST_CHECK_EQUAL(at1.range(), a.range());
   BOOST_CHECK_EQUAL(at1.size(), r.volume());
   BOOST_CHECK_EQUAL(at1.vars(), vars);
+}
+
+BOOST_AUTO_TEST_CASE( eval )
+{
+  aa.eval(vars).get();
+  ArrayN::const_iterator a_it = a.begin();
+
+  for(std::size_t i = 0; i < a.size(); ++i) {
+    if(a.is_local(i)) {
+      madness::Future<ArrayN::value_type> a_tile = a.find(i);
+      madness::Future<array_annotation::value_type> aa_tile = aa[i];
+
+      BOOST_CHECK_EQUAL(aa_tile.get().range(), a_tile.get().range());
+      BOOST_CHECK_EQUAL_COLLECTIONS(aa_tile.get().begin(), aa_tile.get().end(),
+          a_tile.get().begin(), a_tile.get().end());
+    }
+
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
