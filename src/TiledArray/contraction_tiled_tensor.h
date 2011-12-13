@@ -84,7 +84,7 @@ namespace TiledArray {
               typedef const value_type& second_argument_type;
               typedef value_type result_type;
 
-              result_type operator()(first_argument_type first, second_argument_type second) {
+              result_type operator()(first_argument_type first, second_argument_type second) const {
                 first += second;
                 return first;
               }
@@ -99,7 +99,7 @@ namespace TiledArray {
                 m_(accumulate(pimpl->left_.range().size().begin(),
                     pimpl_->left_.range().size().begin() + pimpl_->cont_->left_outer_dim())),
                 i_(accumulate(pimpl->left_.range().size().begin() + pimpl->cont_->left_outer_dim(),
-                    pimpl->left_.range().size().end(), 1ul)),
+                    pimpl->left_.range().size().end())),
                 n_(accumulate(pimpl->right_.range().size().begin(),
                     pimpl->right_.range().size().begin() + pimpl->cont_->right_outer_dim())),
                 range_(pimpl->range()),
@@ -145,7 +145,7 @@ namespace TiledArray {
             /// \param a The row/column of the left argument
             /// \param b The column/row of the right argument
             /// \return A \c madness::Future to the dot product result.
-            madness::Future<value_type> dot_product(size_type a, size_type b) {
+            madness::Future<value_type> dot_product(size_type a, size_type b) const {
               // Construct a reduction object
               TiledArray::detail::ReduceTask<value_type, reduce_op >
                   local_reduce_op(pimpl_->get_world(), reduce_op());
@@ -342,11 +342,21 @@ namespace TiledArray {
 
         template <typename Perm>
         bool generate_tasks(const Eval<Perm>& eval_op, bool) {
+          // Divide the result processes among all nodes.
+          const size_type n = trange_.tiles().volume();
+          const ProcessID r = get_world().rank();
+          const ProcessID s = get_world().size();
+
+          const size_type x = n / s;
+          const size_type y = n % s;
+
+          // There are s * x + y tiles in the result
+          const size_type first = r * x + (r < y ? r : 0);
+          const size_type last = first + x + (y ? 1 : 0);
 
           // Generate the tile permutation tasks.
           madness::Future<bool> tiles_done = get_world().taskq.for_each(
-              madness::Range<const_iterator>(left_.begin(),
-              left_.end(), 8), eval_op);
+              madness::Range<size_type>(first, last, 8), eval_op);
           return true;
         }
 
@@ -358,7 +368,7 @@ namespace TiledArray {
             madness::Future<bool> left_done, madness::Future<bool> right_done)
         {
 
-          madness::Future<bool> trange_shape_done = pimpl->get_world().taskq.add(*pimpl,
+          return pimpl->get_world().taskq.add(*pimpl,
               & ContractionTiledTensorImpl_::perm_structure, perm, v, left_done, right_done,
               madness::TaskAttributes::hipri());
         }
@@ -368,7 +378,7 @@ namespace TiledArray {
             const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
             madness::Future<bool> left_done, madness::Future<bool> right_done)
         {
-          madness::Future<bool> trange_shape_done = pimpl->get_world().taskq.add(*pimpl,
+          return pimpl->get_world().taskq.add(*pimpl,
               & ContractionTiledTensorImpl_::structure, left_done, right_done,
               madness::TaskAttributes::hipri());
         }
@@ -584,7 +594,7 @@ namespace TiledArray {
           madness::Future<bool> tiles_done = impl_type::generate_tiles(perm, pimpl_, struct_done);
 
           // Task to permute the vars, shape, and trange.
-          struct_done.set(impl_type::eval_sturct(perm, v, pimpl_, left_child, right_child));
+          struct_done.set(impl_type::eval_struct(perm, v, pimpl_, left_child, right_child));
 
           return tiles_done;
 
@@ -596,7 +606,7 @@ namespace TiledArray {
             struct_done);
 
         // Task to construct the shape the shape.
-        struct_done.set(impl_type::eval_sturct(TiledArray::detail::NoPermutation(),
+        struct_done.set(impl_type::eval_struct(TiledArray::detail::NoPermutation(),
             v, pimpl_, left_child, right_child));
 
         return tiles_done;
