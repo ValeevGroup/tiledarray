@@ -24,7 +24,10 @@ namespace TiledArray {
   namespace detail {
 
     /// Place holder object to represent a no permutation operation.
-    struct NoPermutation { };
+    struct NoPermutation {
+      template <typename Archive>
+      void serialize(Archive&) { TA_ASSERT(false); }
+    };
 
     /// Copies an iterator range into an array type container.
 
