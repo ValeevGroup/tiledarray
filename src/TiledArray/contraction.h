@@ -281,6 +281,26 @@ namespace TiledArray {
       std::size_t left_dim() const { return left_inner_dim() + left_outer_dim(); }
       std::size_t right_dim() const { return right_inner_dim() + right_outer_dim(); }
 
+      /// Get the left argument variable list
+
+      /// \return The permuted left variable list
+      expressions::VariableList left_vars(const expressions::VariableList& v) const {
+        if(do_perm_left_)
+          return perm_left_ ^ v;
+
+        return v;
+      }
+
+      /// Get the right argument variable list
+
+      /// \return The permuted right variable list
+      expressions::VariableList right_vars(const expressions::VariableList& v) const {
+        if(do_perm_right_)
+          return perm_right_ ^ v;
+
+        return v;
+      }
+
     private:
 
       template <typename LeftIndex, typename RightIndex>
@@ -306,7 +326,7 @@ namespace TiledArray {
         inner.reserve(first.dim());
         outer.reserve(first.dim());
 
-        // construct the left inner and outer maps.
+        // construct the inner and outer maps.
         for(expressions::VariableList::const_iterator it = first.begin(); it != first.end(); ++it) {
           expressions::VariableList::const_iterator second_it =
               std::find(second.begin(), second.end(), *it);

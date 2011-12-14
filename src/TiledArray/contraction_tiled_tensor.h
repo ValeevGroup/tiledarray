@@ -97,7 +97,7 @@ namespace TiledArray {
             EvalImpl(const perm_type& perm, const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl) :
                 perm_(perm),
                 m_(accumulate(pimpl->left_.range().size().begin(),
-                    pimpl_->left_.range().size().begin() + pimpl_->cont_->left_outer_dim())),
+                    pimpl->left_.range().size().begin() + pimpl->cont_->left_outer_dim())),
                 i_(accumulate(pimpl->left_.range().size().begin() + pimpl->cont_->left_outer_dim(),
                     pimpl->left_.range().size().end())),
                 n_(accumulate(pimpl->right_.range().size().begin(),
@@ -393,6 +393,14 @@ namespace TiledArray {
               pimpl), struct_done);
         }
 
+        madness::Future<bool> eval_left() {
+          return left_.eval(cont_->left_vars(left_.vars()));
+        }
+
+        madness::Future<bool> eval_right() {
+          return right_.eval(cont_->right_vars(right_.vars()));
+        }
+
         static bool done(bool, bool) { return true; }
 
 
@@ -579,8 +587,9 @@ namespace TiledArray {
 
 
       madness::Future<bool> eval(const VariableList& v) {
-        madness::Future<bool> left_child = pimpl_->left().eval(v);
-        madness::Future<bool> right_child = pimpl_->right().eval(v);
+
+        madness::Future<bool> left_child = pimpl_->eval_left();
+        madness::Future<bool> right_child = pimpl_->eval_right();
 
         madness::Future<bool> struct_done;
 
