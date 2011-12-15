@@ -9,7 +9,7 @@ using namespace TiledArray::expressions;
 struct ContractionTiledTensorFixture : public AnnotatedArrayFixture {
   typedef ContractionTiledTensor<array_annotation, array_annotation> CTT;
 
-  ContractionTiledTensorFixture() : aar(a, right_var), ctt(aa, aar) { }
+  ContractionTiledTensorFixture() : ctt(a(left_var), a(right_var)) { }
 
   ~ContractionTiledTensorFixture() {
     GlobalFixture::world->gop.fence();
@@ -20,8 +20,6 @@ struct ContractionTiledTensorFixture : public AnnotatedArrayFixture {
   static const VariableList right_var;
   static const std::shared_ptr<math::Contraction> cont;
 
-
-  array_annotation aar;
   CTT ctt;
 };
 
@@ -40,7 +38,7 @@ BOOST_FIXTURE_TEST_SUITE( contraction_tiled_tensor_suite, ContractionTiledTensor
 
 BOOST_AUTO_TEST_CASE( range )
 {
-  DynamicTiledRange dtr = cont->contract_trange(aa.trange(), aar.trange());
+  DynamicTiledRange dtr = cont->contract_trange(a.trange(), a.trange());
   BOOST_CHECK_EQUAL(ctt.range(), dtr.tiles());
   BOOST_CHECK_EQUAL(ctt.size(), dtr.tiles().volume());
   BOOST_CHECK_EQUAL(ctt.trange(), dtr);
@@ -48,13 +46,13 @@ BOOST_AUTO_TEST_CASE( range )
 
 BOOST_AUTO_TEST_CASE( vars )
 {
-  VariableList var2(aa.vars().data().front() + "," + aar.vars().data().back());
+  VariableList var2(left_var.data().front() + "," + right_var.data().back());
   BOOST_CHECK_EQUAL(ctt.vars(), var2);
 }
 
 BOOST_AUTO_TEST_CASE( shape )
 {
-  BOOST_CHECK_EQUAL(ctt.is_dense(), aa.is_dense() && aar.is_dense());
+  BOOST_CHECK_EQUAL(ctt.is_dense(), a.is_dense());
 #ifndef NDEBUG
   BOOST_CHECK_THROW(ctt.get_shape(), TiledArray::Exception);
 #endif
@@ -74,10 +72,10 @@ BOOST_AUTO_TEST_CASE( location )
 BOOST_AUTO_TEST_CASE( result )
 {
   // Get the dimensions of the contraction
-  const array_annotation::size_type A = aa.trange().elements().size().front();
-  const array_annotation::size_type B = std::accumulate(aa.trange().elements().size().begin() + 1,
-      aa.trange().elements().size().end(), 1, std::multiplies<array_annotation::size_type>());
-  const array_annotation::size_type C = aar.trange().elements().size().back();
+  const array_annotation::size_type A = a.trange().elements().size().front();
+  const array_annotation::size_type B = std::accumulate(a.trange().elements().size().begin() + 1,
+      a.trange().elements().size().end(), 1, std::multiplies<array_annotation::size_type>());
+  const array_annotation::size_type C = a.trange().elements().size().back();
 
   // Construct equivalent matrix.
   Eigen::MatrixXi left(A, B);
@@ -92,7 +90,7 @@ BOOST_AUTO_TEST_CASE( result )
     }
   }
 
-  for(std::size_t i = 0; i < aar.size(); ++i) {
+  for(std::size_t i = 0; i < a.size(); ++i) {
     array_annotation::const_reference tensor = a.find(i);
     for(array_annotation::value_type::const_iterator it = tensor.get().begin(); it != tensor.get().end(); ++it) {
       right.array()(a.trange().elements().ord(tensor.get().range().idx(it - tensor.get().begin()))) =
