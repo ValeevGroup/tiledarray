@@ -9,7 +9,7 @@ using namespace TiledArray::expressions;
 struct BinaryTiledTensorFixture : public AnnotatedArrayFixture {
   typedef BinaryTiledTensor<array_annotation, array_annotation, std::plus<int> > BTT;
 
-  BinaryTiledTensorFixture() : btt(aa, aa, std::plus<int>()) {
+  BinaryTiledTensorFixture() : btt(a(vars), a(vars), std::plus<int>()) {
 
   }
 
@@ -57,8 +57,9 @@ BOOST_AUTO_TEST_CASE( location )
 
 BOOST_AUTO_TEST_CASE( result )
 {
+  btt.eval(btt.vars()).get();
   for(BTT::const_iterator it = btt.begin(); it != btt.end(); ++it) {
-    array_annotation::const_reference input = aa[it.index()];
+    array_annotation::const_reference input = a.find(it.index());
 
     BOOST_CHECK_EQUAL(it->get().range(), input.get().range());
 
