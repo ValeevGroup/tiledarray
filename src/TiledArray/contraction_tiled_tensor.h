@@ -80,13 +80,12 @@ namespace TiledArray {
 
             class reduce_op {
             public:
-              typedef value_type first_argument_type;
+              typedef const value_type& first_argument_type;
               typedef const value_type& second_argument_type;
               typedef value_type result_type;
 
               result_type operator()(first_argument_type first, second_argument_type second) const {
-                first += second;
-                return first;
+                return make_binary_tensor(first, second, std::plus<typename value_type::value_type>());
               }
             }; // class reduce_op
 
@@ -117,19 +116,23 @@ namespace TiledArray {
 
                 size_type perm_i = pimpl_->range().ord(perm_ ^ range_.idx(i));
 
-                size_type x = 0;
-                size_type y = 0;
+                size_type x = 0; // Row of result matrix
+                size_type y = 0; // Column of result matrix
 
                 // Calculate the matrix coordinates of i
                 if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
+                  // i == x * n + y
                   x = i / n_;
                   y = i % n_;
                 } else {
+                  // i == y * m + x
                   x = i % m_;
                   y = i / m_;
                 }
 
                 // Store the future result
+                // x * i_ == The ordinal index of the first tile in left to be contracted
+                // y * i_ == The ordinal index of the first tile in right to be contracted
                 pimpl_->data_.set(perm_i, dot_product(x * i_, y * i_));
 
               }
@@ -152,7 +155,7 @@ namespace TiledArray {
 
               // Generate tasks that will contract tiles and sum the result
               for(size_type i = 0; i < i_; ++i, ++a, ++b) {
-                if(!(pimpl_->left().is_zero(a) || pimpl_->is_zero(b))) // Ignore zero tiles
+                if(!(pimpl_->left().is_zero(a) || pimpl_->right().is_zero(b))) // Ignore zero tiles
                   local_reduce_op.add(
                       pimpl_->get_world().taskq.add(& EvalImpl::contract,
                       pimpl_->cont_, left(a), right(b)));
@@ -351,8 +354,8 @@ namespace TiledArray {
           const size_type y = n % s;
 
           // There are s * x + y tiles in the result
-          const size_type first = r * x + (r < y ? r : 0);
-          const size_type last = first + x + (y ? 1 : 0);
+          const size_type first = r * x + (r < y ? r : y);
+          const size_type last = first + x + (r < y ? 1 : 0);
 
           // Generate the tile permutation tasks.
           madness::Future<bool> tiles_done = get_world().taskq.for_each(
