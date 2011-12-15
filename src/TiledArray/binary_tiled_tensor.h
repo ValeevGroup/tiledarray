@@ -85,7 +85,7 @@ namespace TiledArray {
       /// \tparam Right The right argument type
       /// \tparam Op The binary transform operator type.
       template <typename Left, typename Right, typename Op>
-      class BinaryTiledTensorImpl : public std::enable_shared_from_this<BinaryTiledTensorImpl<Left, Right, Op> > {
+      class BinaryTiledTensorImpl {
       public:
         typedef BinaryTiledTensorImpl<Left, Right, Op> BinaryTiledTensorImpl_;
         typedef BinaryTiledTensor<Left, Right, Op> BinaryTiledTensor_;
@@ -127,12 +127,12 @@ namespace TiledArray {
             if(pimpl_->right_.is_zero(it.index())) {
               // Add a task where the right tile is zero and left tile is non-zero
               madness::Future<value_type> value =
-                  pimpl_->get_world().taskq.add(& eval_left, *it, pimpl_->op_);
+                  pimpl_->get_world().taskq.add(& EvalLeft::eval_left, *it, pimpl_->op_);
               pimpl_->data_.set(it.index(), value);
             } else {
               // Add a task where both the left and right tiles are non-zero
               madness::Future<value_type> value =
-                  pimpl_->get_world().taskq.add(& eval, *it,
+                  pimpl_->get_world().taskq.add(& EvalLeft::eval, *it,
                       pimpl_->right_[it.index()], pimpl_->op_);
               pimpl_->data_.set(it.index(), value);
             }
@@ -150,7 +150,8 @@ namespace TiledArray {
           }
 
           static value_type eval_left(const typename left_tensor_type::value_type& left, const Op& op) {
-            return make_unary_tensor(left, std::bind2nd(op, typename left_tensor_type::value_type(0)));
+            return make_unary_tensor(left, std::bind2nd(op,
+                typename left_tensor_type::value_type::value_type(0)));
           }
 
           std::shared_ptr<BinaryTiledTensorImpl_> pimpl_; ///< pimpl to the owning expression object
@@ -177,8 +178,9 @@ namespace TiledArray {
           result_type operator()(argument_type it) const  {
             if(pimpl_->left_.is_zero(it.index())) {
               // Add a task where the right tile is zero and left tile is non-zero
-              madness::Future<value_type> value = pimpl_->get_world().taskq.add(& eval_right,
-                  *it, pimpl_->op_);
+              madness::Future<value_type> value =
+                  pimpl_->get_world().taskq.add(& EvalRight::eval_right, *it,
+                  pimpl_->op_);
               pimpl_->data_.set(it.index(), value);
             }
 
@@ -191,7 +193,7 @@ namespace TiledArray {
         private:
 
           static value_type eval_right(const typename right_tensor_type::value_type& right, const Op& op) {
-            return make_unary_tensor(right, std::bind1st(op, typename left_tensor_type::value_type(0)));
+            return make_unary_tensor(right, std::bind1st(op, typename left_tensor_type::value_type::value_type(0)));
           }
 
           std::shared_ptr<BinaryTiledTensorImpl_> pimpl_;
@@ -204,14 +206,10 @@ namespace TiledArray {
         /// \note: This task cannot return until all other \c for_each() tasks
         /// have completed. get() blocks this task until for_each() is done
         /// while still processing tasks.
-        bool generate_left_tasks(bool, bool) const {
-
-          std::shared_ptr<BinaryTiledTensorImpl_> me =
-              std::enable_shared_from_this<BinaryTiledTensorImpl_ >::shared_from_this();
-
-          madness::Future<bool> done = get_world().taskq.for_each(
+        static bool generate_left_tasks(std::shared_ptr<BinaryTiledTensorImpl_> me, bool, bool) {
+          madness::Future<bool> done = me->get_world().taskq.for_each(
               madness::Range<typename left_tensor_type::const_iterator>(
-                  left_.begin(), left_.end(), 8), EvalLeft(me));
+                  me->left_.begin(), me->left_.end(), 8), EvalLeft(me));
 
           // Run other tasks while waiting for for_each() to complete.
           done.get();
@@ -226,13 +224,10 @@ namespace TiledArray {
         /// \note: This task cannot return until all other \c for_each() tasks
         /// have completed. get() blocks this task until for_each() is done
         /// while still processing tasks.
-        bool generate_right_tasks(bool, bool) const {
-          std::shared_ptr<BinaryTiledTensorImpl_> me =
-              std::enable_shared_from_this<BinaryTiledTensorImpl_ >::shared_from_this();
-
-          madness::Future<bool> done = get_world().taskq.for_each(
+        static bool generate_right_tasks(std::shared_ptr<BinaryTiledTensorImpl_> me, bool, bool) {
+          madness::Future<bool> done = me->get_world().taskq.for_each(
               madness::Range<typename right_tensor_type::const_iterator>(
-                  right_.begin(), right_.end(), 8), EvalRight(me));
+                  me->right_.begin(), me->right_.end(), 8), EvalRight(me));
 
           // This task cannot return until all other for_each tasks have completed.
           // Tasks are still being processed.
@@ -241,13 +236,13 @@ namespace TiledArray {
           return true;
         }
 
-        bool eval_shape(bool, bool) const {
+        bool eval_shape(bool, bool) {
           if(! is_dense())
             TiledArray::detail::Bitset<>(left_.get_shape() | right_.get_shape()).swap(shape_);
           return true;
         }
 
-        bool eval_done(bool, bool, bool) const {
+        static bool eval_done(bool, bool, bool) {
           return true;
         }
 
@@ -259,7 +254,7 @@ namespace TiledArray {
         /// \param op The element transform operation
         BinaryTiledTensorImpl(const left_tensor_type& left, const right_tensor_type& right, const Op& op) :
           left_(left), right_(right), op_(op), shape_(0),
-          data_(left.get_world(), left.size(), left.get_pmap(), true)
+          data_(left.get_world(), left.size(), left.get_pmap())
         { }
 
 
@@ -276,7 +271,8 @@ namespace TiledArray {
             dest.set(it.index(), *it);
         }
 
-        madness::Future<bool> eval(const VariableList& v) {
+        madness::Future<bool> eval(const VariableList& v, std::shared_ptr<BinaryTiledTensorImpl_> me) {
+          TA_ASSERT(me.get() == this);
           madness::Future<bool> left_child = left_.eval(v);
           madness::Future<bool> right_child = right_.eval(v);
 
@@ -285,14 +281,14 @@ namespace TiledArray {
               madness::TaskAttributes::hipri());
 
           madness::Future<bool> left_done = get_world().taskq.add(
-              *this, & BinaryTiledTensorImpl_::generate_left_tasks, left_child, right_child,
-              madness::TaskAttributes::hipri());
+              & BinaryTiledTensorImpl_::generate_left_tasks, me, left_child,
+              right_child, madness::TaskAttributes::hipri());
 
           madness::Future<bool> right_done = get_world().taskq.add(
-              *this, & BinaryTiledTensorImpl_::generate_right_tasks, left_child, right_child,
-              madness::TaskAttributes::hipri());
+              & BinaryTiledTensorImpl_::generate_right_tasks, me, left_child,
+              right_child, madness::TaskAttributes::hipri());
 
-          return get_world().taskq.add(*this, & BinaryTiledTensorImpl_::eval_done, shape_done,
+          return get_world().taskq.add(& BinaryTiledTensorImpl_::eval_done, shape_done,
               left_done, right_done, madness::TaskAttributes::hipri());
         }
 
@@ -337,7 +333,7 @@ namespace TiledArray {
         /// Tensor process map accessor
 
         /// \return A shared pointer to the process map of this tensor
-        const std::shared_ptr<pmap_interface>& get_pmap() const { return left_.get_pmap(); }
+        const std::shared_ptr<pmap_interface>& get_pmap() const { return data_.get_pmap(); }
 
         /// Query the density of the tensor
 
@@ -449,7 +445,7 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const { pimpl_->eval_to(dest); }
 
-      madness::Future<bool> eval(const VariableList& v) { return pimpl_->eval(v); }
+      madness::Future<bool> eval(const VariableList& v) { return pimpl_->eval(v, pimpl_); }
 
       /// Tensor tile size array accessor
 
@@ -529,5 +525,30 @@ namespace TiledArray {
 
   }  // namespace expressions
 }  // namespace TiledArray
+
+namespace madness {
+  namespace archive {
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl;
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl;
+
+    template <typename Archive, typename Left, typename Right, typename Op>
+    struct ArchiveStoreImpl<Archive, std::shared_ptr<TiledArray::expressions::BinaryTiledTensorImpl<Left, Right, Op> > > {
+      static void store(const Archive&, const std::shared_ptr<TiledArray::expressions::BinaryTiledTensorImpl<Left, Right, Op> >&) {
+        TA_ASSERT(false);
+      }
+    };
+
+    template <typename Archive, typename Left, typename Right, typename Op>
+    struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::expressions::BinaryTiledTensorImpl<Left, Right, Op> > > {
+
+      static void load(const Archive&, std::shared_ptr<TiledArray::expressions::BinaryTiledTensorImpl<Left, Right, Op> >&) {
+        TA_ASSERT(false);
+      }
+    };
+  } // namespace archive
+} // namespace madness
 
 #endif // TILEDARRAY_BINARY_TILED_TENSOR_H__INCLUDED
