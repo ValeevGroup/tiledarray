@@ -73,7 +73,6 @@ BOOST_AUTO_TEST_CASE( location )
 
 BOOST_AUTO_TEST_CASE( result )
 {
-  ctt.eval(ctt.vars());
   // Get the dimensions of the contraction
   const array_annotation::size_type A = aa.trange().elements().size().front();
   const array_annotation::size_type B = std::accumulate(aa.trange().elements().size().begin() + 1,
@@ -85,23 +84,26 @@ BOOST_AUTO_TEST_CASE( result )
   Eigen::MatrixXi right(B, C);
   Eigen::MatrixXi result(A, C);
 
-  for(std::size_t i = 0; i < aa.size(); ++i) {
-    array_annotation::const_reference tensor = aa[i];
+  for(std::size_t i = 0; i < a.size(); ++i) {
+    array_annotation::const_reference tensor = a.find(i);
     for(array_annotation::value_type::const_iterator it = tensor.get().begin(); it != tensor.get().end(); ++it) {
-      left.array()(aa.trange().elements().ord(tensor.get().range().idx(it - tensor.get().begin()))) =
+      left.array()(a.trange().elements().ord(tensor.get().range().idx(it - tensor.get().begin()))) =
           *it;
     }
   }
 
   for(std::size_t i = 0; i < aar.size(); ++i) {
-    array_annotation::const_reference tensor = aar[i];
+    array_annotation::const_reference tensor = a.find(i);
     for(array_annotation::value_type::const_iterator it = tensor.get().begin(); it != tensor.get().end(); ++it) {
-      right.array()(aar.trange().elements().ord(tensor.get().range().idx(it - tensor.get().begin()))) =
+      right.array()(a.trange().elements().ord(tensor.get().range().idx(it - tensor.get().begin()))) =
           *it;
     }
   }
 
   result = left * right;
+
+
+  ctt.eval(ctt.vars());
 
   for(CTT::const_iterator it = ctt.begin(); it != ctt.end(); ++it) {
     CTT::value_type::const_iterator result_it = it->get().begin();
