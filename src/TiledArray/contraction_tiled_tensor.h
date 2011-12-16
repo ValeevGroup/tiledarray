@@ -155,16 +155,16 @@ namespace TiledArray {
 
               // Generate tasks that will contract tiles and sum the result
               for(size_type i = 0; i < i_; ++i, ++a, ++b) {
-                if(!(pimpl_->left().is_zero(a) || pimpl_->right().is_zero(b))) // Ignore zero tiles
-                  local_reduce_op.add(
-                      pimpl_->get_world().taskq.add(& EvalImpl::contract,
+                if(!(pimpl_->left().is_zero(a) || pimpl_->right().is_zero(b))) { // Ignore zero tiles
+                  local_reduce_op.add(pimpl_->get_world().taskq.add(& EvalImpl::contract,
                       pimpl_->cont_, left(a), right(b)));
+                }
               }
 
               // This will start the reduction tasks, submit the permute task of
               // the result, and return the resulting future
               return pimpl_->get_world().taskq.add(& EvalImpl::permute,
-                  local_reduce_op(), perm_);
+                  local_reduce_op.submit(), perm_);
             }
 
             /// Contract two tiles
