@@ -236,10 +236,8 @@ namespace TiledArray {
         TA_ASSERT(i < max_size_);
         if(is_local(i)) {
           const_accessor acc;
-          if(find(acc, i))
-            return acc->second;
-          else
-            return future(value_type());
+          data_.insert(acc, i);
+          return acc->second;
         }
 
         future result;
@@ -297,22 +295,19 @@ namespace TiledArray {
       madness::Void find_handler(size_type i, const typename future::remote_refT& ref) const {
         TA_ASSERT(is_local(i));
         const_accessor acc;
-        if(data_.find(acc, i)) {
-          if(acc->second.probe())
-            find_return(ref, acc->second);
-          else
-            get_world().taskq.add(& DistributedStorage_::find_return, ref, acc->second,
-                madness::TaskAttributes::hipri());
-        } else {
-          find_return(ref, value_type());
-        }
+        data_.insert(acc, i);
+        if(acc->second.probe())
+          find_return(ref, acc->second);
+        else
+          get_world().taskq.add(& DistributedStorage_::find_return, ref, acc->second,
+              madness::TaskAttributes::hipri());
 
         return madness::None;
       }
 
       const size_type max_size_;
       std::shared_ptr<pmap_interface> pmap_;
-      container_type data_;
+      mutable container_type data_;
     };
 
 
