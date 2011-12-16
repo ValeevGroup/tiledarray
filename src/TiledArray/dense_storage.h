@@ -51,6 +51,7 @@ namespace TiledArray {
         last_(NULL)
     {
       const size_type n = other.size();
+      TA_ASSERT(n < allocator_type::max_size());
       if(n) {
         first_ = allocator_type::allocate(n);
         last_ = first_ + n;
@@ -80,6 +81,7 @@ namespace TiledArray {
         first_(NULL),
         last_(NULL)
     {
+      TA_ASSERT(n < allocator_type::max_size());
       if(n) {
         first_ = allocator_type::allocate(n);
         last_ = first_ + n;
@@ -111,6 +113,7 @@ namespace TiledArray {
         first_(NULL),
         last_(NULL)
     {
+      TA_ASSERT(n < allocator_type::max_size());
       if(n) {
         first_ = allocator_type::allocate(n);
         last_ = first_ + n;
