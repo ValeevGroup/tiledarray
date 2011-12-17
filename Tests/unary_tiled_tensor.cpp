@@ -9,7 +9,7 @@ using namespace TiledArray::expressions;
 struct UnaryTiledTensorFixture : public AnnotatedArrayFixture {
   typedef UnaryTiledTensor<array_annotation, std::negate<int> > UTT;
 
-  UnaryTiledTensorFixture() : utt(aa, std::negate<int>()) { }
+  UnaryTiledTensorFixture() : utt(a(vars), std::negate<int>()) { }
 
   ~UnaryTiledTensorFixture() {
     GlobalFixture::world->gop.fence();
@@ -53,8 +53,9 @@ BOOST_AUTO_TEST_CASE( location )
 
 BOOST_AUTO_TEST_CASE( result )
 {
+  utt.eval(utt.vars());
   for(UTT::const_iterator it = utt.begin(); it != utt.end(); ++it) {
-    array_annotation::const_reference input = aa[it.index()];
+    array_annotation::const_reference input = a.find(it.index());
 
     BOOST_CHECK_EQUAL(it->get().range(), input.get().range());
 
