@@ -110,5 +110,46 @@ BOOST_AUTO_TEST_CASE( result )
   }
 }
 
+BOOST_AUTO_TEST_CASE( permute_result )
+{
+  // Get the dimensions of the contraction
+  const array_annotation::size_type A = a.trange().elements().size().front();
+  const array_annotation::size_type B = std::accumulate(a.trange().elements().size().begin() + 1,
+      a.trange().elements().size().end(), 1, std::multiplies<array_annotation::size_type>());
+  const array_annotation::size_type C = a.trange().elements().size().back();
+
+  // Construct equivalent matrix.
+  Eigen::MatrixXi left(A, B);
+  Eigen::MatrixXi right(B, C);
+  Eigen::MatrixXi result(A, C);
+
+  for(std::size_t i = 0; i < a.size(); ++i) {
+    array_annotation::const_reference tensor = a.find(i);
+    for(array_annotation::value_type::const_iterator it = tensor.get().begin(); it != tensor.get().end(); ++it) {
+      left.array()(a.trange().elements().ord(tensor.get().range().idx(it - tensor.get().begin()))) =
+          *it;
+    }
+  }
+
+  for(std::size_t i = 0; i < a.size(); ++i) {
+    array_annotation::const_reference tensor = a.find(i);
+    for(array_annotation::value_type::const_iterator it = tensor.get().begin(); it != tensor.get().end(); ++it) {
+      right.array()(a.trange().elements().ord(tensor.get().range().idx(it - tensor.get().begin()))) =
+          *it;
+    }
+  }
+
+  result = left * right;
+
+  Permutation p(1,0);
+  ctt.eval(p ^ ctt.vars());
+
+  for(CTT::const_iterator it = ctt.begin(); it != ctt.end(); ++it) {
+    CTT::value_type::const_iterator result_it = it->get().begin();
+    for(; result_it != it->get().end(); ++result_it)
+      BOOST_CHECK_EQUAL(*result_it, result.transpose()(ctt.trange().elements().ord(it->get().range().idx(result_it - it->get().begin()))));
+  }
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
