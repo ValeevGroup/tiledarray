@@ -11,10 +11,6 @@ struct ContractionTiledTensorFixture : public AnnotatedArrayFixture {
 
   ContractionTiledTensorFixture() : ctt(a(left_var), a(right_var)) { }
 
-  ~ContractionTiledTensorFixture() {
-    GlobalFixture::world->gop.fence();
-  }
-
 
   static const VariableList left_var;
   static const VariableList right_var;

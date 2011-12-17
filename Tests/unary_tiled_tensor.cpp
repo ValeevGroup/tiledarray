@@ -11,10 +11,6 @@ struct UnaryTiledTensorFixture : public AnnotatedArrayFixture {
 
   UnaryTiledTensorFixture() : utt(a(vars), std::negate<int>()) { }
 
-  ~UnaryTiledTensorFixture() {
-    GlobalFixture::world->gop.fence();
-  }
-
   UTT utt;
 };
 

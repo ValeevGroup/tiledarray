@@ -15,6 +15,8 @@ struct ArrayFixture : public TiledRangeFixture {
 
   ArrayFixture();
 
+  ~ArrayFixture();
+
 
   std::vector<std::size_t> list;
   madness::World& world;

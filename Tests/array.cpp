@@ -14,6 +14,10 @@ ArrayFixture::ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
       list.push_back(i);
 }
 
+ArrayFixture::~ArrayFixture() {
+  GlobalFixture::world->gop.fence();
+}
+
 
 BOOST_FIXTURE_TEST_SUITE( array_suite , ArrayFixture )
 
