@@ -1,0 +1,3 @@
+# examples
+
+SUBDIRS = ccd
