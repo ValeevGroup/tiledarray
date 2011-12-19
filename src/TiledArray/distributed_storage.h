@@ -15,10 +15,10 @@ namespace TiledArray {
 
     /// Distributed storage container.
 
-    /// Each element in this container is owned by a single node, but any
-    /// may request a copy of the element in the form of a \c madness::Future ,
-    /// which will be set once the element arrives. The owner of each element is
-    /// defined by a process map (pmap), which is passed to the constructor.
+    /// Each element in this container is owned by a single node, but any node
+    /// may request a copy of the element in the form of a \c madness::Future .
+    /// The owner of each element is defined by a process map (pmap), which is
+    /// passed to the constructor.
     /// Elements do not need to be explicitly initialized because they will be
     /// added to the container when the element is first accessed, though you
     /// may manually initialize the an element with the \c insert() function.
@@ -26,9 +26,9 @@ namespace TiledArray {
     /// once.
     /// \note This object is derived from \c madness::WorldObject , which means
     /// the order of construction of object must be the same on all nodes. This
-    /// can most easily be achieved by only constructing world objects in the
-    /// main thread. DO NOT construct world objects within tasks where the order
-    /// of execution is nondeterministic.
+    /// can easily be achieved by only constructing world objects in the main
+    /// thread. DO NOT construct world objects within tasks where the order of
+    /// execution is nondeterministic.
     template <typename T>
     class DistributedStorage : public madness::WorldReduce<DistributedStorage<T> > {
     public:
@@ -66,7 +66,7 @@ namespace TiledArray {
       /// \param pmap The process map for the container.
       /// \param do_pending Process pending messages for the container when this
       /// is true. If it is false, it is up to the user to explicitly call
-      /// \c process_pending().
+      /// \c process_pending(). [default = true]
       DistributedStorage(madness::World& world, size_type max_size,
           const std::shared_ptr<pmap_interface>& pmap, bool do_pending = true) :
         WorldReduce_(world), max_size_(max_size), pmap_(pmap),
@@ -82,6 +82,9 @@ namespace TiledArray {
 
       /// Process any messages that arrived before this object was constructed
       /// locally.
+      /// \note No incoming messages are processed until this routine is invoked.
+      /// It can be invoked in the constructor by passing \c true to the
+      /// \c do_pending argument.
       void process_pending() { WorldObject_::process_pending(); }
 
       /// World accessor
