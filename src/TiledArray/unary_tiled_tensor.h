@@ -85,7 +85,7 @@ namespace TiledArray {
           }
 
           std::shared_ptr<UnaryTiledTensorImpl_> pimpl_;
-        }; // class EvalRight
+        }; // class Eval
 
         /// Task function for generating tile evaluation tasks.
 
