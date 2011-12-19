@@ -9,6 +9,7 @@
 #include <TiledArray/bitset.h>
 #include <world/worldtypes.h>
 #include <world/shared_ptr.h>
+#include <world/world.h>
 
 #define TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED )  \
     TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED )
@@ -58,7 +59,6 @@ namespace madness {
   // Forward declaration
   class World;
   template <typename> class WorldDCPmapInterface;
-  template <typename> class Future;
 } // namespace madness
 
 namespace TiledArray {
@@ -87,7 +87,7 @@ namespace TiledArray {
 
       TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER(AnnotatedTensor<Derived>, Derived)
 
-      eval_type eval() const { return derived(); }
+      madness::Future<bool> eval(const VariableList& v) { return derived().eval(v); }
 
       // Tile locality info
       inline ProcessID owner(size_type i) const { return derived().owner(i); }
