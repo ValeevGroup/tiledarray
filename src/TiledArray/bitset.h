@@ -97,12 +97,19 @@ namespace TiledArray {
         typedef std::size_t argument_type;
         typedef Block result_type;
 
-        ConstTransformOp(const Bitset<Block>& bitset) : bitset_(bitset) { }
+        ConstTransformOp(const Bitset<Block>& bitset) : bitset_(&bitset) { }
 
-        Block operator()(std::size_t i) const { return bitset_[i]; }
+        ConstTransformOp(const ConstTransformOp& other) : bitset_(other.bitset_) { }
+
+
+        ConstTransformOp& operator=(const ConstTransformOp& other) {
+          bitset_ = other.bitset_;
+        }
+
+        Block operator()(std::size_t i) const { return (*bitset_)[i]; }
 
       private:
-        const Bitset<Block>& bitset_;
+        const Bitset<Block>* bitset_;
       }; // class ConstTransformOp
 
       class TransformOp {
