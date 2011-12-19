@@ -112,29 +112,31 @@ namespace TiledArray {
             /// \param i The tile to be evaluated
             /// \return true
             bool operator()(size_type i) const {
-              if(! pimpl_->is_zero(i)) {
+              if(pimpl_->is_local(i)) {
+                if(! pimpl_->is_zero(i)) {
 
-                size_type perm_i = pimpl_->range().ord(perm_ ^ range_.idx(i));
+                  size_type perm_i = pimpl_->range().ord(perm_ ^ range_.idx(i));
 
-                size_type x = 0; // Row of result matrix
-                size_type y = 0; // Column of result matrix
+                  size_type x = 0; // Row of result matrix
+                  size_type y = 0; // Column of result matrix
 
-                // Calculate the matrix coordinates of i
-                if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
-                  // i == x * n + y
-                  x = i / n_;
-                  y = i % n_;
-                } else {
-                  // i == y * m + x
-                  x = i % m_;
-                  y = i / m_;
+                  // Calculate the matrix coordinates of i
+                  if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
+                    // i == x * n + y
+                    x = i / n_;
+                    y = i % n_;
+                  } else {
+                    // i == y * m + x
+                    x = i % m_;
+                    y = i / m_;
+                  }
+
+                  // Store the future result
+                  // x * i_ == The ordinal index of the first tile in left to be contracted
+                  // y * i_ == The ordinal index of the first tile in right to be contracted
+                  pimpl_->data_.set(perm_i, dot_product(x * i_, y * i_));
+
                 }
-
-                // Store the future result
-                // x * i_ == The ordinal index of the first tile in left to be contracted
-                // y * i_ == The ordinal index of the first tile in right to be contracted
-                pimpl_->data_.set(perm_i, dot_product(x * i_, y * i_));
-
               }
 
               return true;
@@ -302,6 +304,10 @@ namespace TiledArray {
           if(! is_dense()) {
             typedef TiledArray::detail::Bitset<>::value_type bool_type;
 
+            // Todo: This algorithm is inherently non-scalable and it is probably
+            // very slow. Since the shape is replicated, there is no other choice
+            // other than iterating over the entire range of the tensor.
+
             Tensor<bool_type, typename left_tensor_type::range_type>
                 left_map(left_.range(), left_.get_shape().begin());
             Tensor<bool_type, typename right_tensor_type::range_type>
@@ -312,9 +318,14 @@ namespace TiledArray {
                   cont_->contract_tensor(left_map, right_map),
                 perm);
 
+            // This could be merged with the tile task initialization, but this
+            // will likely change at some point to be incompatible with that
+            // algorithm.
+
             const size_type n = size();
             for(size_type i = 0; i < n; ++i)
-              shape_.set(i, res[i]);
+              if(res[i])
+                shape_.set(i);
           }
 
           vars_ = v;
@@ -345,21 +356,28 @@ namespace TiledArray {
 
         template <typename Perm>
         bool generate_tasks(const Eval<Perm>& eval_op, bool) {
+          // Todo: This algorithm is inherently non-scalable. It is done this
+          // way because other expressions depend on all the tiles being present
+          // after eval has finished. But there is currently no way to predict
+          // which tiles are local so they can be initialized other than
+          // iterating through all elements. In the future I would like to use
+          // a lazy global synchronization mechanism that will solve this problem.
+
           // Divide the result processes among all nodes.
           const size_type n = trange_.tiles().volume();
-          const ProcessID r = get_world().rank();
-          const ProcessID s = get_world().size();
-
-          const size_type x = n / s;
-          const size_type y = n % s;
-
-          // There are s * x + y tiles in the result
-          const size_type first = r * x + (r < y ? r : y);
-          const size_type last = first + x + (r < y ? 1 : 0);
+//          const ProcessID r = get_world().rank();
+//          const ProcessID s = get_world().size();
+//
+//          const size_type x = n / s;
+//          const size_type y = n % s;
+//
+//          // There are s * x + y tiles in the result
+//          const size_type first = r * x + (r < y ? r : y);
+//          const size_type last = first + x + (r < y ? 1 : 0);
 
           // Generate the tile permutation tasks.
           madness::Future<bool> tiles_done = get_world().taskq.for_each(
-              madness::Range<size_type>(first, last, 8), eval_op);
+              madness::Range<size_type>(0, n, 8), eval_op);
           return true;
         }
 
