@@ -10,6 +10,7 @@
 #include <TiledArray/reduce_task.h>
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/binary_tensor.h>
+#include <TiledArray/array.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -410,7 +411,7 @@ namespace TiledArray {
             const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
             madness::Future<bool> struct_done) {
           return pimpl->get_world().taskq.add(*pimpl,
-              & ContractionTiledTensorImpl_::generate_tasks<Perm>, Eval<Perm>(perm,
+              & ContractionTiledTensorImpl_::template generate_tasks<Perm>, Eval<Perm>(perm,
               pimpl), struct_done);
         }
 
@@ -704,6 +705,21 @@ namespace TiledArray {
       const VariableList& vars() const { return pimpl_->vars(); }
 
       madness::World& get_world() const { return pimpl_->get_world(); }
+
+      template <typename T, typename CS>
+      operator Array<T, CS>()  {
+        madness::Future<bool> eval_done = eval(vars());
+        eval_done.get();
+        if(is_dense()) {
+          Array<T, CS> result(get_world(), trange(), get_pmap());
+          eval_to(result);
+          return result;
+        } else {
+          Array<T, CS> result(get_world(), trange(), get_shape().begin(), get_shape().end(), get_pmap());
+          eval_to(result);
+          return result;
+        }
+      }
     }; // class ContractionTiledTensor
 
 

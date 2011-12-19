@@ -8,6 +8,9 @@
 #include <world/shared_ptr.h>
 
 namespace TiledArray {
+
+  template <typename, typename> class Array;
+
   namespace expressions {
 
     // Forward declaration
@@ -306,7 +309,7 @@ namespace TiledArray {
         madness::Future<bool> child_eval_done = other.eval(pimpl_->vars());
 
         madness::Future<bool> done =
-            get_world().taskq.add(*this, & AnnotatedArray_::eval_to_this<value_type>,
+            get_world().taskq.add(*this, & AnnotatedArray_::template eval_to_this<value_type>,
             other, child_eval_done);
 
         // Wait until evaluation of the result array structure and tiles has been
@@ -471,6 +474,9 @@ namespace TiledArray {
       void set(size_type i, const madness::Future<value_type>& v) {
         return pimpl_->array().set(i, v);
       }
+
+      template <typename T, typename CS>
+      operator Array<T, CS>();
 
     private:
       std::shared_ptr<impl_type> pimpl_; ///< Distributed data container

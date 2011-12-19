@@ -8,6 +8,7 @@
 #include <TiledArray/permute_tensor.h>
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/bitset.h>
+#include <TiledArray/array.h>
 
 namespace TiledArray {
 
@@ -517,6 +518,21 @@ namespace TiledArray {
       const VariableList& vars() const { return pimpl_->vars(); }
 
       madness::World& get_world() const { return pimpl_->get_world(); }
+
+      template <typename T, typename CS>
+      operator Array<T, CS>()  {
+        madness::Future<bool> eval_done = eval(vars());
+        eval_done.get();
+        if(is_dense()) {
+          Array<T, CS> result(get_world(), trange(), get_pmap());
+          eval_to(result);
+          return result;
+        } else {
+          Array<T, CS> result(get_world(), trange(), get_shape().begin(), get_shape().end(), get_pmap());
+          eval_to(result);
+          return result;
+        }
+      }
 
     private:
       std::shared_ptr<impl_type> pimpl_;

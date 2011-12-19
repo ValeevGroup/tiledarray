@@ -117,6 +117,8 @@ namespace TiledArray {
       pimpl_->process_pending();
     }
 
+    struct Enabler { };
+
   public:
 
     /// Dense array constructor
@@ -157,7 +159,7 @@ namespace TiledArray {
 
     template <typename R, typename InIter>
     Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap) :
-        pimpl_(new sparse_impl_type(w, tr, first, last, pmap), madness::make_deferred_deleter<impl_type>(w))
+        pimpl_(new sparse_impl_type(w, tr, pmap, first, last), madness::make_deferred_deleter<impl_type>(w))
     {
       init(madness::Range<InIter>(first, last));
     }
@@ -170,23 +172,6 @@ namespace TiledArray {
       pimpl_(other.pimpl_)
     { }
 
-    template <typename Derived>
-    Array(const expressions::ReadableTiledTensor<Derived>& other) :
-      pimpl_()
-    {
-      other.eval(other.vars());
-      if(other.is_dense())
-        pimpl_.reset(new dense_impl_type(other.get_world(), other.trange(), other.get_pmap()),
-            madness::make_deferred_deleter<impl_type>(other.get_world()));
-      else
-        pimpl_.reset(new sparse_impl_type(other.get_world(), other.trange(),
-            other.get_pmap(), other.get_shape()),
-            madness::make_deferred_deleter<impl_type>(other.get_world()));
-
-      other.derived().eval_to(*this);
-      pimpl_->process_pending();
-    }
-
     /// Copy constructor
 
     /// This is a shallow copy, that is no data is copied.
@@ -197,8 +182,8 @@ namespace TiledArray {
     }
 
     template <typename Derived>
-    Array_& operator=(const expressions::TiledTensor<Derived>& other) {
-      Array_(other).swap(*this);
+    Array_& operator=(expressions::ReadableTiledTensor<Derived>& other) {
+      Array_(other.derived()).swap(*this);
 
       return *this;
     }
@@ -443,6 +428,26 @@ namespace TiledArray {
     }; // class TilePolicy
 
   }  // namespace detail
+
+  namespace expressions {
+
+    template <typename A>
+    template <typename T, typename CS>
+    AnnotatedArray<A>::operator Array<T, CS>()  {
+      madness::Future<bool> eval_done = eval(vars());
+      eval_done.get();
+      if(is_dense()) {
+        Array<T, CS> result(get_world(), trange(), get_pmap());
+        eval_to(result);
+        return result;
+      } else {
+        Array<T, CS> result(get_world(), trange(), get_shape().begin(), get_shape().end(), get_pmap());
+        eval_to(result);
+        return result;
+      }
+    }
+
+  }  // namespace expressions
 } // namespace TiledArray
 
 #endif // TILEDARRAY_ARRAY_H__INCLUDED
