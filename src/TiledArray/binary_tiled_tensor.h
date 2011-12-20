@@ -528,7 +528,7 @@ namespace TiledArray {
           eval_to(result);
           return result;
         } else {
-          Array<T, CS> result(get_world(), trange(), get_shape().begin(), get_shape().end(), get_pmap());
+          Array<T, CS> result(get_world(), trange(), get_shape(), get_pmap());
           eval_to(result);
           return result;
         }

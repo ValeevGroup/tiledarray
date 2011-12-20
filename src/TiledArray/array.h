@@ -68,7 +68,7 @@ namespace TiledArray {
       /// \param it The iterator that points to the tile to initialize
       /// \return true
       template <typename It>
-      typename madness::disable_if<std::is_integral<It>, bool>::type
+      typename madness::enable_if<detail::is_input_iterator<It>, bool>::type
       operator()(const It& it) const { return insert(*it); }
 
       /// Initialize the tile given by the ordinal index \c i
@@ -117,6 +117,16 @@ namespace TiledArray {
       pimpl_->process_pending();
     }
 
+    void init(const detail::Bitset<>& shape) {
+      std::vector<std::size_t> init_list;
+      for(std::size_t i = 0; i < range().volume(); ++i) {
+        if(shape[i])
+          init_list.push_back(i);
+      }
+
+      init(madness::Range<std::vector<std::size_t>::const_iterator >(init_list.begin(), init_list.end()));
+    }
+
     struct Enabler { };
 
   public:
@@ -130,14 +140,14 @@ namespace TiledArray {
     Array(madness::World& w, const TiledRange<R>& tr) :
         pimpl_(new dense_impl_type(w, tr, make_pmap(w)), madness::make_deferred_deleter<impl_type>(w))
     {
-      init(madness::Range<ProcessID>(0, range().volume()));
+//      init(madness::Range<ProcessID>(0, range().volume()));
     }
 
     template <typename R>
     Array(madness::World& w, const TiledRange<R>& tr, const std::shared_ptr<pmap_interface>& pmap) :
         pimpl_(new dense_impl_type(w, tr, pmap), madness::make_deferred_deleter<impl_type>(w))
     {
-      init(madness::Range<ProcessID>(0, range().volume()));
+//      init(madness::Range<ProcessID>(0, range().volume()));
     }
 
     /// Sparse array constructor
@@ -154,14 +164,28 @@ namespace TiledArray {
     Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last) :
         pimpl_(new sparse_impl_type(w, tr, make_pmap(w), first, last), madness::make_deferred_deleter<impl_type>(w))
     {
-      init(madness::Range<InIter>(first, last));
+//      init(madness::Range<InIter>(first, last));
     }
 
     template <typename R, typename InIter>
     Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap) :
         pimpl_(new sparse_impl_type(w, tr, pmap, first, last), madness::make_deferred_deleter<impl_type>(w))
     {
-      init(madness::Range<InIter>(first, last));
+//      init(madness::Range<InIter>(first, last));
+    }
+
+    template <typename R, typename InIter>
+    Array(madness::World& w, const TiledRange<R>& tr, const detail::Bitset<>& shape) :
+        pimpl_(new sparse_impl_type(w, tr, make_pmap(w), shape), madness::make_deferred_deleter<impl_type>(w))
+    {
+//      init(get_shape());
+    }
+
+    template <typename R>
+    Array(madness::World& w, const TiledRange<R>& tr, const detail::Bitset<>& shape, const std::shared_ptr<pmap_interface>& pmap) :
+        pimpl_(new sparse_impl_type(w, tr, pmap, shape), madness::make_deferred_deleter<impl_type>(w))
+    {
+//      init(get_shape());
     }
 
     /// Copy constructor
@@ -441,7 +465,7 @@ namespace TiledArray {
         eval_to(result);
         return result;
       } else {
-        Array<T, CS> result(get_world(), trange(), get_shape().begin(), get_shape().end(), get_pmap());
+        Array<T, CS> result(get_world(), trange(), get_shape(), get_pmap());
         eval_to(result);
         return result;
       }

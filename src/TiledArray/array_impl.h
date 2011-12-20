@@ -57,7 +57,7 @@ namespace TiledArray {
       template <typename D>
       ArrayImpl(madness::World& w, const TiledRange<D>& tr, const std::shared_ptr<pmap_interface>& pmap) :
           trange_(tr.derived()),
-          data_(w, tr.tiles().volume(), pmap, false)
+          data_(w, tr.tiles().volume(), pmap)
       { }
 
       virtual ~ArrayImpl() { }
