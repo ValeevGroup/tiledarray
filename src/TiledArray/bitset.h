@@ -104,6 +104,8 @@ namespace TiledArray {
 
         ConstTransformOp& operator=(const ConstTransformOp& other) {
           bitset_ = other.bitset_;
+
+          return *this;
         }
 
         Block operator()(std::size_t i) const { return (*bitset_)[i]; }
