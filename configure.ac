@@ -26,8 +26,14 @@ ACX_ENABLE_CXXFLAGS_OPT([debugging], [-g], [], [no])
 ACX_ENABLE_CXXFLAGS_OPT([optimization], [-O], [2], [yes])
 
 # Check for mpi c++ compiler.
+initial_CFLAGS="$CFLAGS"
+initial_CXXFLAGS="$CXXFLAGS"
+
 ACX_PROG_MPICXX
 AC_PROG_CXX([$MPICXX])
+
+CFLAGS="$initial_CFLAGS"
+CXXFLAGS="$initial_CXXFLAGS"
 
 # Check for mpi execution command
 AC_ARG_VAR([MPIEXEC], [MPI command used to run parallel/distributed programs.])
