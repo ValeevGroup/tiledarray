@@ -100,8 +100,11 @@ BOOST_AUTO_TEST_CASE( set_value )
 BOOST_AUTO_TEST_CASE( array_operator )
 {
   // Check that elements are inserted properly for access requests.
-  for(std::size_t i = 0; i < t->max_size(); ++i)
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
     (*t)[i].probe();
+    if(t->is_local(i))
+      t->set(i, world.rank());
+  }
 
   world.gop.fence();
   int n = t->size();
