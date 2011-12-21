@@ -103,7 +103,7 @@ namespace TiledArray {
 
 
     Permutation(const index_type v) : p_(1,v) {
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
+      TA_ASSERT( v == 0 ); // The only valid value
     }
 
     Permutation(const index_type p0, const index_type p1) : p_(2) {
