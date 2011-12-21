@@ -441,13 +441,8 @@ namespace TiledArray {
   template <typename D1, typename D2>
   bool operator ==(const TiledRange<D1>& r1, const TiledRange<D2>& r2) {
     return (r1.tiles().dim() == r2.tiles().dim()) && (r1.tiles().order() == r2.tiles().order()) &&
-#ifndef NDEBUG
-        // Do some extra equality checking while debugging. If everything is
-        // working properly, the range data will be consistent with the data in
-        // ranges.
         (r1.tiles() == r2.tiles()) && (r1.elements() == r2.elements()) &&
-#endif
-        std::equal(r1.tiles().begin(), r1.tiles().end(), r2.tiles().begin());
+        std::equal(r1.data().begin(), r1.data().end(), r2.data().begin());
   }
 
   template <typename CS>
