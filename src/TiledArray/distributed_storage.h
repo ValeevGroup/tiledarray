@@ -209,7 +209,7 @@ namespace TiledArray {
         if(is_local(i)) {
           accessor acc;
           if(! data_.insert(acc, typename container_type::datumT(i, f)))
-            acc->second.set(f);
+            acc->second.set(f); // The element was already there.
         } else {
           WorldObject_::task(get_world().rank(), & DistributedStorage_::set_value,
               i, f, madness::TaskAttributes::hipri());
