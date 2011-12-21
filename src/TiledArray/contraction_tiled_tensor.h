@@ -379,7 +379,8 @@ namespace TiledArray {
           // Generate the tile permutation tasks.
           madness::Future<bool> tiles_done = get_world().taskq.for_each(
               madness::Range<size_type>(0, n, 8), eval_op);
-          return true;
+
+          return tiles_done.get(); // Wait for_each to finish while still processing other tasks
         }
 
 
@@ -387,7 +388,7 @@ namespace TiledArray {
 
         static madness::Future<bool> eval_struct(const Permutation& perm, const VariableList& v,
             const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
-            madness::Future<bool> left_done, madness::Future<bool> right_done)
+            const madness::Future<bool>& left_done, const madness::Future<bool>& right_done)
         {
 
           return pimpl->get_world().taskq.add(*pimpl,
@@ -398,7 +399,7 @@ namespace TiledArray {
         static madness::Future<bool> eval_struct(const TiledArray::detail::NoPermutation&,
             const VariableList&,
             const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
-            madness::Future<bool> left_done, madness::Future<bool> right_done)
+            const madness::Future<bool>& left_done, const madness::Future<bool>& right_done)
         {
           return pimpl->get_world().taskq.add(*pimpl,
               & ContractionTiledTensorImpl_::structure, left_done, right_done,
@@ -613,32 +614,31 @@ namespace TiledArray {
         madness::Future<bool> left_child = pimpl_->eval_left();
         madness::Future<bool> right_child = pimpl_->eval_right();
 
-        madness::Future<bool> struct_done;
-
         if(v != pimpl_->vars()) {
 
           // Get the permutation for the results
           Permutation perm = pimpl_->vars().permutation(v);
 
+          // Task to set the variable list, trange, and shape.
+          madness::Future<bool> struct_done = impl_type::eval_struct(perm, v, pimpl_, left_child, right_child);
+
           // Generate tile tasks
           // This needs to be done before eval structure.
           madness::Future<bool> tiles_done = impl_type::generate_tiles(perm, pimpl_, struct_done);
 
-          // Task to permute the vars, shape, and trange.
-          struct_done.set(impl_type::eval_struct(perm, v, pimpl_, left_child, right_child));
-
           return tiles_done;
 
         }
+
+        // Task to construct the shape.
+        madness::Future<bool> struct_done = impl_type::eval_struct(TiledArray::detail::NoPermutation(),
+            v, pimpl_, left_child, right_child);
 
         // This needs to be done before eval structure.
         madness::Future<bool> tiles_done =
             impl_type::generate_tiles(TiledArray::detail::NoPermutation(), pimpl_,
             struct_done);
 
-        // Task to construct the shape the shape.
-        struct_done.set(impl_type::eval_struct(TiledArray::detail::NoPermutation(),
-            v, pimpl_, left_child, right_child));
 
         return tiles_done;
       }
