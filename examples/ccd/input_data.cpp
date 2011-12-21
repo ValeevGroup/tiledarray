@@ -63,30 +63,30 @@ InputData::trange(const Spin s1, const Spin s2, const RangeOV ov1, const RangeOV
 }
 
 InputData::InputData(std::ifstream& input) {
-  std::string lable;
-  input >> lable >> name_;
-//  std::cout << lable << name_ << "\n";
-  input >> lable >> nirreps_;
-//  std::cout << lable << " " << nirreps_ << "\n";
-  input >> lable >> nmo_;
-//  std::cout << lable << " " << nmo_ << "\n";
-  input >> lable >> nocc_act_alpha_;
-//  std::cout << lable << " " << nocc_act_alpha_ << "\n";
-  input >> lable >> nocc_act_beta_;
-//  std::cout << lable << " " << nocc_act_beta_ << "\n";
-  input >> lable >> nvir_act_alpha_;
-//  std::cout << lable << " " << nvir_act_alpha_ << "\n";
-  input >> lable >> nvir_act_beta_;
-//  std::cout << lable << " " << nvir_act_beta_ << "\n";
-  input >> lable;
-//  std::cout << lable << "\n";
+  std::string label;
+  input >> label >> name_;
+//  std::cout << label << name_ << "\n";
+  input >> label >> nirreps_;
+//  std::cout << label << " " << nirreps_ << "\n";
+  input >> label >> nmo_;
+//  std::cout << label << " " << nmo_ << "\n";
+  input >> label >> nocc_act_alpha_;
+//  std::cout << label << " " << nocc_act_alpha_ << "\n";
+  input >> label >> nocc_act_beta_;
+//  std::cout << label << " " << nocc_act_beta_ << "\n";
+  input >> label >> nvir_act_alpha_;
+//  std::cout << label << " " << nvir_act_alpha_ << "\n";
+  input >> label >> nvir_act_beta_;
+//  std::cout << label << " " << nvir_act_beta_ << "\n";
+  input >> label;
+//  std::cout << label << "\n";
   obs_mosym_alpha_.resize(nmo_, 0);
   for(obs_mosym::iterator it = obs_mosym_alpha_.begin(); it != obs_mosym_alpha_.end(); ++it) {
     input >> *it;
 //    std::cout << *it << "\n";
   }
-  input >> lable;
-//  std::cout << lable << "\n";
+  input >> label;
+//  std::cout << label << "\n";
   obs_mosym_beta_.resize(nmo_, 0);
   for(obs_mosym::iterator it = obs_mosym_beta_.begin(); it != obs_mosym_beta_.end(); ++it) {
     input >> *it;
