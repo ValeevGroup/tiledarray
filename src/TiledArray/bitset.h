@@ -252,7 +252,7 @@ namespace TiledArray {
       }
 
       iterator begin() {
-        return const_iterator(0, TransformOp(*this));
+        return iterator(0, TransformOp(*this));
       }
 
       const_iterator end() const {
@@ -260,7 +260,7 @@ namespace TiledArray {
       }
 
       iterator end() {
-        return const_iterator(size_, TransformOp(*this));
+        return iterator(size_, TransformOp(*this));
       }
 
       /// Set a bit value
