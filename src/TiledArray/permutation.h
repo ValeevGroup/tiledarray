@@ -95,7 +95,7 @@ namespace TiledArray {
     }
 
     template <typename A>
-    Permutation(const A& a) : p_(a.begin(), a.end()) {
+    explicit Permutation(const A& a) : p_(a.begin(), a.end()) {
       TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
 
