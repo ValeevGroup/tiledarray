@@ -211,15 +211,15 @@ namespace TiledArray {
 
     /// \return A reference to this object
     StaticTiledRange_& operator =(const StaticTiledRange_& other) {
-      StaticTiledRange_(other).swap(*this);
+      if(this != &other)
+        StaticTiledRange_(other).swap(*this);
       return *this;
     }
 
     template <typename D>
     StaticTiledRange_& operator =(const TiledRange<D>& other) {
-      range_ = other.tiles();
-      element_range_ = other.elements();
-      StaticTiledRange_(other).swap(*this);
+      if(this != &(other.derived()))
+        StaticTiledRange_(other).swap(*this);
       return *this;
     }
 
@@ -336,7 +336,16 @@ namespace TiledArray {
 
     /// \return A reference to this object
     DynamicTiledRange_& operator =(const DynamicTiledRange_& other) {
-      DynamicTiledRange_(other).swap(*this);
+      if(this != &other)
+        DynamicTiledRange_(other).swap(*this);
+      return *this;
+    }
+
+
+    template <typename D>
+    DynamicTiledRange_& operator =(const TiledRange<D>& other) {
+      if(this != &(other.derived()))
+        DynamicTiledRange_(other).swap(*this);
       return *this;
     }
 
