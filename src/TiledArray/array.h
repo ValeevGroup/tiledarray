@@ -212,6 +212,10 @@ namespace TiledArray {
       return *this;
     }
 
+    madness::Future<bool> eval() {
+      return pimpl_->eval(pimpl_);
+    }
+
     /// Begin iterator factory function
 
     /// \return An iterator to the first local tile.
