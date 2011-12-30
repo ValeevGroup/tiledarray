@@ -49,8 +49,6 @@ namespace TiledArray {
         AnnotatedArrayImpl_& operator=(const AnnotatedArrayImpl_&);
         AnnotatedArrayImpl(const AnnotatedArrayImpl_& other);
 
-      public:
-
         /// Tile evaluation task generator
 
         /// This object is used by the MADNESS \c for_each() to generate evaluation
@@ -77,6 +75,11 @@ namespace TiledArray {
             make_task(it, perm_, pimpl_);
             return true;
           }
+
+          /// Permutation accessor
+
+          /// \return The evaluation permuation
+          const Perm& perm() const { return perm_; }
 
         private:
           /// Evaluate the tensor permutation
@@ -124,29 +127,59 @@ namespace TiledArray {
           Perm perm_; ///< Permutation that will be applied to the array tiles
         }; // class Eval
 
-        bool perm_structure(const Permutation& perm, const VariableList& v) {
-          trange_ = perm ^ trange_;
-
-          // construct the shape
-          if(! array_.is_dense()) {
-            // Construct the inverse permuted weight and size for this tensor
-            typename range_type::size_array ip_weight = (-perm) ^ trange_.tiles().weight();
-            const typename array_type::range_type::index& start = array_.range().start();
-
-            // Coordinated iterator for the argument object range
-            typename array_type::range_type::const_iterator arg_range_it =
-                array_.range().begin();
-
-            // permute the data
-            const size_type end = array_.size();
-            for(std::size_t i = 0; i < end; ++i, ++arg_range_it)
-              if(array_.get_shape()[i])
-                shape_.set(TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, start));
-          }
-
+        void eval_structure(const Permutation& perm, const VariableList& v) {
+          perm_ = perm;
+          trange_ = perm_ ^ trange_;
           vars_ = v;
+        }
 
-          return true;
+        void eval_structure(const TiledArray::detail::NoPermutation&, const VariableList&) { }
+
+        size_type translate_index(size_type i, const Permutation& p) const {
+          return trange_.tiles().ord(p ^ array_.range().idx(i));
+        }
+
+        size_type translate_index(size_type i, const TiledArray::detail::NoPermutation&) {
+          return i;
+        }
+
+        template <typename Perm>
+        bool generate_tasks(const Eval<Perm>& eval_op, const VariableList& v, bool) {
+          std::cout << get_world().rank() << ": Process AnnotatedArray::eval()\n";
+
+          eval_structure(eval_op.perm(), v);
+
+          madness::Future<bool> tiles_done = get_world().taskq.for_each(
+              madness::Range<const_iterator>(array_.begin(), array_.end()), eval_op);
+
+          // Todo: Iterating through all tiles is not scalable. This needs to be
+          // fixed.
+
+          // Make sure all local tiles are present.
+          size_type end = trange_.tiles().volume();
+          for(size_type i = 0; i < end; ++i) {
+            if(! array_.is_zero(i)) {
+              size_type ii = translate_index(i, eval_op.perm());
+              if(is_local(ii))
+                data_.insert(ii);
+            }
+          }
+          tiles_done.get();
+          std::cout << get_world().rank() << ": Done AnnotatedArray::eval() size = " << data_.size() << "\n";
+
+          return tiles_done.get(); // Wait for_each to finish while still processing other tasks
+        }
+
+      public:
+
+        template <typename Perm>
+        static madness::Future<bool>
+        generate_tiles(const Perm& perm, const VariableList& v,
+            const std::shared_ptr<AnnotatedArrayImpl_>& pimpl,
+            madness::Future<bool> arg_done) {
+          return pimpl->get_world().taskq.add(*pimpl,
+              & AnnotatedArrayImpl_::template generate_tasks<Perm>, Eval<Perm>(pimpl,
+              perm), v, arg_done);
         }
 
         /// Construct a permute tiled tensor op
@@ -183,7 +216,10 @@ namespace TiledArray {
           if(array_.is_dense())
             return false;
 
-          return get_shape()[i];
+          if(perm_.dim() == trange_.tiles().dim())
+            return array_.is_zero(array_.range().ord(perm_ ^ trange_.tiles().idx(i)));
+
+          return array_.is_zero(i);
         }
 
         /// Tensor process map accessor
@@ -195,9 +231,29 @@ namespace TiledArray {
         /// Tensor shape accessor
 
         /// \return A reference to the tensor shape map
-        const TiledArray::detail::Bitset<>& get_shape() const {
+        TiledArray::detail::Bitset<> get_shape() const {
           TA_ASSERT(! array_.is_dense());
-          return shape_;
+          if(perm_.dim() == trange_.tiles().dim()) {
+            TiledArray::detail::Bitset<> shape(array_.size());
+
+            // Construct the inverse permuted weight and size for this tensor
+            typename range_type::size_array ip_weight = (-perm_) ^ trange_.tiles().weight();
+            const typename array_type::range_type::index& start = array_.range().start();
+
+            // Coordinated iterator for the argument object range
+            typename array_type::range_type::const_iterator arg_range_it =
+                array_.range().begin();
+
+            // permute the data
+            const size_type end = array_.size();
+            for(std::size_t i = 0; i < end; ++i, ++arg_range_it)
+              if(array_.get_shape()[i])
+                shape.set(TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, start));
+
+            return shape;
+          }
+
+          return array_.get_shape();
         }
 
         /// Tiled range accessor
@@ -249,6 +305,7 @@ namespace TiledArray {
         trange_type trange_; ///< Tensor tiled range
         TiledArray::detail::Bitset<> shape_; ///< Tensor shape
         mutable storage_type data_; ///< Tile container
+        Permutation perm_;
       }; // class PermuteTiledTensor
 
     } // namespace
@@ -358,33 +415,20 @@ namespace TiledArray {
       /// \param v The target variable list.
       /// \return A future that indicates the tensor evaluation is complete
       madness::Future<bool> eval(const VariableList& v) {
-        // No call to array_.eval() is needed because it is initialized before use.
+        madness::Future<bool> array_done = pimpl_->array().eval();
 
         if(v != pimpl_->vars()) {
 
           Permutation perm = pimpl_->vars().permutation(v);
 
-          // Task to permute the vars, shape, and trange.
-          madness::Future<bool> trange_shape_done = get_world().taskq.add(*pimpl_,
-              & impl_type::perm_structure, perm, v, madness::TaskAttributes::hipri());
-
           // Generate the tile permutation tasks.
-          madness::Future<bool> tiles_done = get_world().taskq.for_each(
-              madness::Range<const_iterator>(pimpl_->array().begin(),
-              pimpl_->array().end(), 8), typename impl_type::template Eval<Permutation>(pimpl_, perm));
-
-          // return the Future that indicates the initialization is done.
-          return get_world().taskq.add(& AnnotatedArray_::eval_done, tiles_done,
-              trange_shape_done, madness::TaskAttributes::hipri());
+          return impl_type::generate_tiles(perm, v, pimpl_, array_done);
 
         }
 
         // The variables match so no permutation is needed. Just copy the tiles.
-        return get_world().taskq.for_each(
-            madness::Range<const_iterator>(pimpl_->array().begin(),
-            pimpl_->array().end(), 8),
-            typename impl_type::template Eval<TiledArray::detail::NoPermutation>(pimpl_,
-            TiledArray::detail::NoPermutation()));
+        return impl_type::generate_tiles(TiledArray::detail::NoPermutation(),
+            v, pimpl_, array_done);
       }
 
       /// Tensor tile range object accessor
@@ -428,7 +472,7 @@ namespace TiledArray {
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      const TiledArray::detail::Bitset<>& get_shape() const { return pimpl_->get_shape(); }
+      TiledArray::detail::Bitset<> get_shape() const { return pimpl_->get_shape(); }
 
       /// Tiled range accessor
 
