@@ -166,6 +166,70 @@ namespace TiledArray {
         }
       }
 
+      /// Calculate the outer dimension for the left argument
+
+      /// Assume outer dimensions are all on the left for decreasing
+      /// dimension ordering and to the right for increasing dimension
+      /// ordering.
+      /// \tparam D A range type: StaticRange or DynamicRange
+      /// \param range A range object for the right argument
+      /// \return The size of the fused outer dimensions for the left argument
+      template <typename D>
+      std::size_t left_outer(const Range<D>& range) const {
+        if(range.order() == TiledArray::detail::decreasing_dimension_order)
+          return accumulate(range.size().begin(), range.size().begin() + left_outer_dim());
+        else
+          return accumulate(range.size().begin() + left_inner_dim(), range.size().end());
+      }
+
+      /// Calculate the inner dimension for the left argument
+
+      /// Assume inner dimensions are all on the right for decreasing
+      /// dimension ordering and to the left for increasing dimension
+      /// ordering.
+      /// \tparam D A range type: StaticRange or DynamicRange
+      /// \param range A range object for the right argument
+      /// \return The size of the fused inner dimensions for the left argument
+      template <typename D>
+      std::size_t left_inner(const Range<D>& range) const {
+        if(range.order() == TiledArray::detail::decreasing_dimension_order)
+          return accumulate(range.size().begin() + left_outer_dim(), range.size().end());
+        else
+          return accumulate(range.size().begin(), range.size().begin() + left_inner_dim());
+      }
+
+      /// Calculate the outer dimension for the right argument
+
+      /// Assume outer dimensions are all on the left for decreasing
+      /// dimension ordering and to the right for increasing dimension
+      /// ordering.
+      /// \tparam D A range type: StaticRange or DynamicRange
+      /// \param range A range object for the right argument
+      /// \return The size of the fused outer dimensions for the right argument
+      template <typename D>
+      std::size_t right_outer(const Range<D>& range) const {
+        if(range.order() == TiledArray::detail::decreasing_dimension_order)
+          return accumulate(range.size().begin(), range.size().begin() + right_outer_dim());
+        else
+          return accumulate(range.size().begin() + right_inner_dim(), range.size().end());
+      }
+
+      /// Calculate the inner dimension for the right argument
+
+      /// Assume inner dimensions are all on the right for decreasing
+      /// dimension ordering and to the left for increasing dimension
+      /// ordering.
+      /// \tparam D A range type: StaticRange or DynamicRange
+      /// \param range A range object for the right argument
+      /// \return The size of the fused inner dimensions for the right argument
+      template <typename D>
+      std::size_t right_inner(const Range<D>& range) const {
+        if(range.order() == TiledArray::detail::decreasing_dimension_order)
+          return accumulate(range.size().begin() + right_outer_dim(), range.size().end());
+        else
+          return accumulate(range.size().begin(), range.size().begin() + right_inner_dim());
+      }
+
       /// Tensor contraction
 
       /// The will contract \c left with \c right and return the result tensor.
@@ -196,7 +260,14 @@ namespace TiledArray {
       expressions::Tensor<typename ContractionValue<typename Left::value_type,
           typename Right::value_type>::type, DynamicRange>
       contract_tensor(const Left& left, const Right& right) const {
+        // Check that the order and dimensions of the left and right tensors are correct.
         TA_ASSERT(left.range().order() == right.range().order());
+        TA_ASSERT(left.range().dim() == left_dim());
+        TA_ASSERT(right.range().dim() == right_dim());
+        TA_ASSERT(std::equal(
+            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() + left_outer_dim() : left.range().size().begin()),
+            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().end() : left.range().size().begin() + left_inner_dim()),
+            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() + right_outer_dim() : right.range().size().begin())));
 
         // This function fuses the inner and outer dimensions of the left- and
         // right-hand tensors such that the contraction can be performed with a
@@ -211,20 +282,11 @@ namespace TiledArray {
                 result_index(left.range().finish(), right.range().finish(), left.range().order()),
                 left.range().order()));
 
-        if(left.range().order() == detail::decreasing_dimension_order) {
+        const std::size_t m = left_outer(left.range());
+        const std::size_t i = left_inner(left.range());
+        const std::size_t n = right_outer(right.range());
 
-          // Calculate matrix dimensions: m, i, n
-          const std::size_t m =
-              std::accumulate(left.range().size().begin(),
-              left.range().size().begin() + left_outer_dim(), 1ul,
-              std::multiplies<std::size_t>());
-          const std::size_t i =
-              std::accumulate(left.range().size().begin() + left_outer_dim(),
-              left.range().size().end(), 1ul, std::multiplies<std::size_t>());
-          const std::size_t n =
-              std::accumulate(right.range().size().begin(),
-              right.range().size().begin() + right_outer_dim(), 1ul,
-              std::multiplies<std::size_t>());
+        if(left.range().order() == detail::decreasing_dimension_order) {
 
           // Construct matrix maps for tensors
           Eigen::Map<const Eigen::Matrix<typename Left::value_type, Eigen::Dynamic,
@@ -241,18 +303,6 @@ namespace TiledArray {
           mc.noalias() = ma * mb.transpose();
 
         } else {
-
-          // Cacluate matrix dimensions: m, i, n
-          const std::size_t m =
-              std::accumulate(left.range().size().begin() + left_inner_dim(),
-              left.range().size().end(), 1ul, std::multiplies<std::size_t>());
-          const std::size_t i =
-              std::accumulate(left.range().size().begin(),
-              left.range().size().begin() + left_inner_dim(), 1ul,
-              std::multiplies<std::size_t>());
-          const std::size_t n =
-              std::accumulate(right.range().size().begin() + right_inner_dim(),
-              right.range().size().end(), 1ul, std::multiplies<std::size_t>());
 
           // Construct matrix maps for tensors
           Eigen::Map<const Eigen::Matrix<typename Left::value_type, Eigen::Dynamic,
@@ -302,6 +352,21 @@ namespace TiledArray {
       }
 
     private:
+
+      /// Product accumulation
+
+      ///
+      /// \tparam InIter The input iterator type
+      /// \param first The start of the iterator range to be accumulated
+      /// \param first The end of the iterator range to be accumulated
+      /// \return The product of each value in the iterator range.
+      template <typename InIter>
+      static typename std::iterator_traits<InIter>::value_type accumulate(InIter first, InIter last) {
+        typename std::iterator_traits<InIter>::value_type result = 1ul;
+        for(; first != last; ++first)
+          result *= *first;
+        return result;
+      }
 
       template <typename LeftIndex, typename RightIndex>
       DynamicRange::index result_index(const LeftIndex& l_index,
