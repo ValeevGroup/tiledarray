@@ -131,14 +131,17 @@ namespace TiledArray {
             dest.set(it.index(), *it);
         }
 
-        madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<UnaryTiledTensorImpl_>& me) {
-          TA_ASSERT(me.get() == this);
-          madness::Future<bool> child = arg_.eval(v);
-
-          return get_world().taskq.add(
-              *this, & UnaryTiledTensorImpl_::generate_tasks, me, child,
-              madness::TaskAttributes::hipri());
+        madness::Future<bool> eval_arg(const VariableList& v) {
+          return arg_.eval(v);
         }
+
+        static madness::Future<bool> generate_tiles(const std::shared_ptr<UnaryTiledTensorImpl_>& me,
+            madness::Future<bool> arg_done)
+        {
+          return me->get_world().taskq.add(*me, & UnaryTiledTensorImpl_::generate_tasks,
+              me, arg_done, madness::TaskAttributes::hipri());
+        }
+
 
         /// Tensor tile size array accessor
 
@@ -181,7 +184,7 @@ namespace TiledArray {
         /// Tensor shape accessor
 
         /// \return A reference to the tensor shape map
-        const TiledArray::detail::Bitset<>& get_shape() const { return arg_.get_shape(); }
+        TiledArray::detail::Bitset<> get_shape() const { return arg_.get_shape(); }
 
         /// Tiled range accessor
 
@@ -271,7 +274,16 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const { pimpl_->eval_to(dest); }
 
-      madness::Future<bool> eval(const VariableList& v) { return pimpl_->eval(v, pimpl_); }
+      /// Evaluate this tiled tensor object with the given result variable list
+
+      /// V is the data layout that the parent tiled tensor operation expects.
+      /// The returned future will be evaluated once the tensor has been evaluated.
+      /// \param v The expected data layout of this tensor.
+      /// \return A Future bool that will be assigned once this tensor has been
+      /// evaluated.
+      madness::Future<bool> eval(const VariableList& v) {
+        return impl_type::generate_tiles(pimpl_, pimpl_->eval_arg(v));
+      }
 
       /// Tensor tile size array accessor
 
@@ -314,7 +326,7 @@ namespace TiledArray {
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      const TiledArray::detail::Bitset<>& get_shape() const { return pimpl_->get_shape(); }
+      const TiledArray::detail::Bitset<> get_shape() const { return pimpl_->get_shape(); }
 
       /// Tiled range accessor
 
