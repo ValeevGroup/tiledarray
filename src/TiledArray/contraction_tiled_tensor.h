@@ -90,18 +90,14 @@ namespace TiledArray {
               }
             }; // class reduce_op
 
-
           public:
 
             /// Construct
             EvalImpl(const perm_type& perm, const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl) :
                 perm_(perm),
-                m_(accumulate(pimpl->left_.range().size().begin(),
-                    pimpl->left_.range().size().begin() + pimpl->cont_->left_outer_dim())),
-                i_(accumulate(pimpl->left_.range().size().begin() + pimpl->cont_->left_outer_dim(),
-                    pimpl->left_.range().size().end())),
-                n_(accumulate(pimpl->right_.range().size().begin(),
-                    pimpl->right_.range().size().begin() + pimpl->cont_->right_outer_dim())),
+                m_(pimpl->cont_->left_outer(pimpl->left_.range())),
+                i_(pimpl->cont_->left_inner(pimpl->left_.range())),
+                n_(pimpl->cont_->right_outer(pimpl->right_.range())),
                 range_(pimpl->range()),
                 pimpl_(pimpl),
                 left_cache_(pimpl->left().range().volume()),
@@ -143,6 +139,8 @@ namespace TiledArray {
               return true;
             }
 
+            const perm_type& perm() const { return perm_; }
+
           private:
 
             /// Compute the dot_product tensor tiles
@@ -157,15 +155,13 @@ namespace TiledArray {
                   local_reduce_op(pimpl_->get_world(), reduce_op());
 
               // Generate tasks that will contract tiles and sum the result
-              for(size_type i = 0; i < i_; ++i, ++a, ++b) {
-                if(!(pimpl_->left().is_zero(a) || pimpl_->right().is_zero(b))) { // Ignore zero tiles
+              for(size_type i = 0; i < i_; ++i, ++a, ++b)
+                if(!(pimpl_->left().is_zero(a) || pimpl_->right().is_zero(b))) // Ignore zero tiles
                   local_reduce_op.add(pimpl_->get_world().taskq.add(& EvalImpl::contract,
                       pimpl_->cont_, left(a), right(b)));
-                }
-              }
 
               // This will start the reduction tasks, submit the permute task of
-              // the result, and return the resulting future
+              // the result of the reduction, and return the resulting future
               return pimpl_->get_world().taskq.add(& EvalImpl::permute,
                   local_reduce_op.submit(), perm_);
             }
@@ -190,21 +186,6 @@ namespace TiledArray {
             /// \param p The permutation to be applied to \c t
             static value_type permute(const value_type& t, const perm_type& p) {
               return make_permute_tensor(t, p);
-            }
-
-            /// Product accumulation
-
-            ///
-            /// \tparam InIter The input iterator type
-            /// \param first The start of the iterator range to be accumulated
-            /// \param first The end of the iterator range to be accumulated
-            /// \return The product of each value in the iterator range.
-            template <typename InIter>
-            static typename std::iterator_traits<InIter>::value_type accumulate(InIter first, InIter last) {
-              typename std::iterator_traits<InIter>::value_type result = 1ul;
-              for(; first != last; ++first)
-                result *= *first;
-              return result;
             }
 
             // Container types for holding cached remote tiles.
@@ -292,13 +273,15 @@ namespace TiledArray {
             return (*pimpl_)(arg);
           }
 
+          const Perm& perm() const { return pimpl_->perm(); }
+
         private:
           std::shared_ptr<EvalImpl> pimpl_;
         }; // class Eval
 
 
 
-        bool perm_structure(const Permutation& perm, const VariableList& v, bool, bool) {
+        bool perm_structure(const Permutation& perm, const VariableList& v) {
           trange_ ^= perm;
 
           // construct the shape
@@ -334,7 +317,7 @@ namespace TiledArray {
           return true;
         }
 
-        bool structure(bool, bool) {
+        bool perm_structure(const TiledArray::detail::NoPermutation&, const VariableList&) {
           // construct the shape
           if(! is_dense()) {
             typedef TiledArray::detail::Bitset<>::value_type bool_type;
@@ -356,7 +339,9 @@ namespace TiledArray {
         }
 
         template <typename Perm>
-        bool generate_tasks(const Eval<Perm>& eval_op, bool) {
+        bool generate_tasks(const VariableList& v, const Eval<Perm>& eval_op, bool, bool) {
+          perm_structure(eval_op.perm(), v);
+
           // Todo: This algorithm is inherently non-scalable. It is done this
           // way because other expressions depend on all the tiles being present
           // after eval has finished. But there is currently no way to predict
@@ -377,43 +362,22 @@ namespace TiledArray {
 //          const size_type last = first + x + (r < y ? 1 : 0);
 
           // Generate the tile permutation tasks.
-          madness::Future<bool> tiles_done = get_world().taskq.for_each(
-              madness::Range<size_type>(0, n, 8), eval_op);
-
-          return tiles_done.get(); // Wait for_each to finish while still processing other tasks
+          return get_world().taskq.for_each(madness::Range<size_type>(0, n),
+              eval_op).get(); // Wait for for_each() to finish while still processing other tasks
         }
 
 
       public:
 
-        static madness::Future<bool> eval_struct(const Permutation& perm, const VariableList& v,
-            const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
-            const madness::Future<bool>& left_done, const madness::Future<bool>& right_done)
-        {
-
-          return pimpl->get_world().taskq.add(*pimpl,
-              & ContractionTiledTensorImpl_::perm_structure, perm, v, left_done, right_done,
-              madness::TaskAttributes::hipri());
-        }
-
-        static madness::Future<bool> eval_struct(const TiledArray::detail::NoPermutation&,
-            const VariableList&,
-            const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
-            const madness::Future<bool>& left_done, const madness::Future<bool>& right_done)
-        {
-          return pimpl->get_world().taskq.add(*pimpl,
-              & ContractionTiledTensorImpl_::structure, left_done, right_done,
-              madness::TaskAttributes::hipri());
-        }
-
         template <typename Perm>
         static madness::Future<bool>
-        generate_tiles(const Perm& perm,
+        generate_tiles(const Perm& perm, const VariableList& v,
             const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
-            madness::Future<bool> struct_done) {
+            const madness::Future<bool>& left_done, const madness::Future<bool>& right_done) {
           return pimpl->get_world().taskq.add(*pimpl,
-              & ContractionTiledTensorImpl_::template generate_tasks<Perm>, Eval<Perm>(perm,
-              pimpl), struct_done);
+              & ContractionTiledTensorImpl_::template generate_tasks<Perm>, v,
+              Eval<Perm>(perm, pimpl), left_done, right_done,
+              madness::TaskAttributes::hipri());
         }
 
         madness::Future<bool> eval_left() {
@@ -610,37 +574,21 @@ namespace TiledArray {
 
 
       madness::Future<bool> eval(const VariableList& v) {
-
-        madness::Future<bool> left_child = pimpl_->eval_left();
-        madness::Future<bool> right_child = pimpl_->eval_right();
-
         if(v != pimpl_->vars()) {
 
           // Get the permutation for the results
           Permutation perm = pimpl_->vars().permutation(v);
 
-          // Task to set the variable list, trange, and shape.
-          madness::Future<bool> struct_done = impl_type::eval_struct(perm, v, pimpl_, left_child, right_child);
-
           // Generate tile tasks
           // This needs to be done before eval structure.
-          madness::Future<bool> tiles_done = impl_type::generate_tiles(perm, pimpl_, struct_done);
-
-          return tiles_done;
+          return impl_type::generate_tiles(perm, v, pimpl_, 
+              pimpl_->eval_left(), pimpl_->eval_right());;
 
         }
 
-        // Task to construct the shape.
-        madness::Future<bool> struct_done = impl_type::eval_struct(TiledArray::detail::NoPermutation(),
-            v, pimpl_, left_child, right_child);
-
         // This needs to be done before eval structure.
-        madness::Future<bool> tiles_done =
-            impl_type::generate_tiles(TiledArray::detail::NoPermutation(), pimpl_,
-            struct_done);
-
-
-        return tiles_done;
+        return impl_type::generate_tiles(TiledArray::detail::NoPermutation(), v, pimpl_,
+            pimpl_->eval_left(), pimpl_->eval_right());
       }
 
       /// Tensor tile size array accessor
