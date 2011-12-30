@@ -145,8 +145,6 @@ namespace TiledArray {
 
         template <typename Perm>
         bool generate_tasks(const Eval<Perm>& eval_op, const VariableList& v, bool) {
-          std::cout << get_world().rank() << ": Process AnnotatedArray::eval()\n";
-
           eval_structure(eval_op.perm(), v);
 
           madness::Future<bool> tiles_done = get_world().taskq.for_each(
@@ -164,8 +162,6 @@ namespace TiledArray {
                 data_.insert(ii);
             }
           }
-          tiles_done.get();
-          std::cout << get_world().rank() << ": Done AnnotatedArray::eval() size = " << data_.size() << "\n";
 
           return tiles_done.get(); // Wait for_each to finish while still processing other tasks
         }
