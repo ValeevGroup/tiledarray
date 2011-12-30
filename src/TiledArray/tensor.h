@@ -242,9 +242,21 @@ namespace TiledArray {
 
       range_type range_; ///< Tensor size info
       storage_type data_; ///< Tensor data
-    };
+    }; // class Tensor
 
-  } // namespace detail
+    template <typename T, typename R, typename A>
+    std::ostream& operator<<(std::ostream& os, const Tensor<T, R, A>& t) {
+      os << t.range() << " { ";
+      for(typename Tensor<T, R, A>::const_iterator it = t.begin(); it != t.end(); ++it) {
+        os << *it << " ";
+      }
+
+      os << "}";
+
+      return os;
+    }
+
+  } // namespace expressions
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TENSOR_H__INCLUDED
