@@ -42,10 +42,12 @@ namespace TiledArray {
       typedef typename trange_type::range_type range_type; ///< Range type for the array
       typedef typename trange_type::tile_range_type tile_range_type; ///< Range type for elements of individual tiles and all elements
 
-    private:
+    protected:
 
       trange_type trange_;  ///< Tiled range object
       storage_type data_;   ///< Distributed container that holds tiles
+      madness::Future<bool> ready_; ///< A future that is set once the array has been evaluated
+      madness::AtomicInt initialized_; ///< A flag that indicates when the evaluation has started
 
     public:
 
@@ -57,10 +59,26 @@ namespace TiledArray {
       template <typename D>
       ArrayImpl(madness::World& w, const TiledRange<D>& tr, const std::shared_ptr<pmap_interface>& pmap) :
           trange_(tr.derived()),
-          data_(w, tr.tiles().volume(), pmap)
-      { }
+          data_(w, tr.tiles().volume(), pmap),
+          ready_(),
+          initialized_()
+      {
+        initialized_ = 0;
+      }
 
       virtual ~ArrayImpl() { }
+
+      /// Execute one time initialization of this object. It is safe to call
+      /// this function any number of times concurrently. The returned future
+      /// will be called once the initialization has finished.
+      madness::Future<bool> eval(const std::shared_ptr<ArrayImpl_>& pimpl) {
+        // The initial value of initialized_ is zero. If it has any other value
+        // then the initialization is running or has finished.
+        if(! (initialized_++))
+          ready_.set(this->initialize(pimpl));
+
+        return ready_;
+      }
 
       /// Begin iterator factory function
 
@@ -93,6 +111,7 @@ namespace TiledArray {
       template <typename Index>
       future find(const Index& i) const {
         TA_ASSERT(includes(i));
+        TA_ASSERT(! is_zero(i));
         return data_[ord(i)];
       }
 
@@ -226,16 +245,11 @@ namespace TiledArray {
       virtual const detail::Bitset<>& get_shape() const = 0;
 
       template <typename Index>
-      bool insert(const Index& i) {
-        return data_.insert(ord(i));
-      }
-
-      void process_pending() {
-        data_.process_pending();
-      }
+      bool insert(const Index& i) { return data_.insert(ord(i)); }
 
     private:
 
+      virtual madness::Future<bool> initialize(const std::shared_ptr<ArrayImpl_>&) = 0;
 
       virtual bool probe_remote_tile(ordinal_index) const { return true; }
 
@@ -265,6 +279,7 @@ namespace TiledArray {
     public:
 
       typedef ArrayImpl<T, CS> ArrayImpl_;
+      typedef DenseArrayImpl<T, CS> DenseArrayImpl_;
 
       typedef CS coordinate_system; ///< The array coordinate system
       typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
@@ -290,10 +305,73 @@ namespace TiledArray {
           ArrayImpl_(w, tr, pmap)
       { }
 
-
       virtual bool is_dense() const { return true; }
 
       virtual const detail::Bitset<>& get_shape() const { return shape_map_; }
+
+    private:
+
+      /// One time initialization
+
+      /// Submit a task that will initialize the local tiles. The returned
+      /// madness::Future will be set once the initialization has finished.
+      /// \return A future to the initialization task.
+      virtual madness::Future<bool> initialize(const std::shared_ptr<ArrayImpl_>& pimpl) {
+        std::cout << ArrayImpl_::get_world().rank() << ": Start Array::eval()\n";
+
+        return ArrayImpl_::get_world().taskq.add(*this, & DenseArrayImpl_::insert_tiles,
+            std::static_pointer_cast<DenseArrayImpl_>(pimpl),
+            madness::TaskAttributes::hipri());
+      }
+
+      /// Parallel initialization operation functor
+      struct InitLocalTiles {
+        /// Construct the initialization functor
+
+        /// \param pimpl The implementation pointer to the object that will be
+        /// initialized
+        InitLocalTiles(const std::shared_ptr<DenseArrayImpl_>& pimpl) : pimpl_(pimpl) { }
+
+        /// Insert a local tile
+
+        /// Insert tile \c i , if it is local.
+        /// \param i The tile to be inserted
+        /// \return \c true
+        bool operator()(std::size_t i) const {
+          if(pimpl_->is_local(i))
+            pimpl_->insert(i);
+
+          return true;
+        }
+
+        /// Serialization of this functor
+
+        /// Serialization has not been implemented.
+        /// \throw TiledArray::Exception always.
+        template <typename Archive> void serialize(Archive&) { TA_ASSERT(false); }
+
+
+      private:
+        std::shared_ptr<DenseArrayImpl_> pimpl_; ///< shared pointer to the implementation object of the array that is being initialized.
+      }; // struct InitLocalTiles
+
+      /// Insert local tiles into the array.
+
+      /// The inserted tiles are unassigned futures. It is the responsibility of
+      /// the user to ensure that the tiles are eventually set. This function
+      /// does not return until the parallel initialization has completed. It
+      /// block and run tasks until the initialization has finished.
+      /// \return true
+      bool insert_tiles(const std::shared_ptr<DenseArrayImpl_>& pimpl) {
+        std::cout << ArrayImpl_::get_world().rank() << ": Process Array::eval()\n";
+        madness::Future<bool> done = ArrayImpl_::get_world().taskq.for_each(
+            madness::Range<std::size_t>(0, pimpl->tiling().tiles().volume()),
+            InitLocalTiles(pimpl));
+        done.get();
+        std::cout << ArrayImpl_::get_world().rank() << ": Done Array::eval() size = " << pimpl->data_.size() << "\n";
+
+        return done.get();
+      }
 
     }; // class DenseArrayImpl
 
@@ -309,6 +387,7 @@ namespace TiledArray {
     public:
 
       typedef ArrayImpl<T, CS> ArrayImpl_;
+      typedef SparseArrayImpl<T, CS> SparseArrayImpl_;
 
       typedef CS coordinate_system; ///< The array coordinate system
       typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
@@ -350,7 +429,6 @@ namespace TiledArray {
           shape_map_.set(ArrayImpl_::ord(*first));
 
         // Construct the bitset for remote data
-
         ArrayImpl_::get_world().gop.bit_or(shape_map_.get(), shape_map_.num_blocks());
       }
 
@@ -359,13 +437,81 @@ namespace TiledArray {
           const std::shared_ptr<pmap_interface>& pmap, const Bitset<>& shape) :
           ArrayImpl_(w, tr, pmap),
           shape_map_(shape)
-      { }
+      {
+        TA_ASSERT(shape.size() == ArrayImpl_::trange().tiles().volume());
+        // Construct the bitset for remote data
+        ArrayImpl_::get_world().gop.bit_or(shape_map_.get(), shape_map_.num_blocks());
+      }
 
       virtual bool is_dense() const { return false; }
 
       virtual const detail::Bitset<>& get_shape() const { return shape_map_; }
 
     private:
+
+      /// One time initialization task
+
+      /// Submit a task that will initialize the local tiles. The returned
+      /// madness::Future will be set once the initialization has finished.
+      /// \return A future to the initialization task.
+      virtual madness::Future<bool> initialize(const std::shared_ptr<ArrayImpl_>& pimpl) {
+        std::cout << ArrayImpl_::get_world().rank() << ": Start Array::eval()\n";
+
+        return this->get_world().taskq.add(*this, & SparseArrayImpl_::insert_tiles,
+            std::static_pointer_cast<SparseArrayImpl_>(pimpl),
+            madness::TaskAttributes::hipri());
+      }
+
+      /// Parallel initialization operation functor
+      struct InitLocalTiles {
+
+        /// Construct the initialization functor
+
+        /// \param pimpl The implementation pointer to the object that will be
+        /// initialized
+        InitLocalTiles(const std::shared_ptr<SparseArrayImpl_>& pimpl) : pimpl_(pimpl) { }
+
+        /// Insert a local tile
+
+        /// Insert tile \c i , if it is local and non-zero.
+        /// \param i The tile to be inserted
+        /// \return \c true
+        bool operator()(std::size_t i) const {
+          if(pimpl_->is_local(i))
+            if(pimpl_->shape_map_[i])
+              pimpl_->insert(i);
+
+          return true;
+        }
+
+        /// Serialization of this functor
+
+        /// Serialization has not been implemented.
+        /// \throw TiledArray::Exception always.
+        template <typename Archive> void serialize(Archive&) { TA_ASSERT(false); }
+
+      private:
+        std::shared_ptr<SparseArrayImpl_> pimpl_;
+      }; // struct InitLocalTiles
+
+
+      /// Insert local tiles into the array.
+
+      /// The inserted tiles are unassigned futures. It is the responsibility of
+      /// the user to ensure that the tiles are eventually set. This function
+      /// does not return until the parallel initialization has completed. It
+      /// block and run tasks until the initialization has finished.
+      /// \return true
+      bool insert_tiles(const std::shared_ptr<SparseArrayImpl_>& pimpl) {
+        std::cout << ArrayImpl_::get_world().rank() << ": Processing Array::eval()\n";
+        madness::Future<bool> done = ArrayImpl_::get_world().taskq.for_each(
+            madness::Range<std::size_t>(0, pimpl->tiling().tiles().volume()),
+            InitLocalTiles(pimpl));
+        done.get();
+        std::cout << ArrayImpl_::get_world().rank() << ": Done Array::eval() size = " << pimpl->data_.size() << "\n";
+
+        return done.get();
+      }
 
       virtual bool probe_remote_tile(ordinal_index i) const { return shape_map_[i]; }
     }; // class SparseArrayImpl
