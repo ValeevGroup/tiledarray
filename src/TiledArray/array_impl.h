@@ -498,12 +498,9 @@ namespace TiledArray {
       /// block and run tasks until the initialization has finished.
       /// \return true
       bool insert_tiles(const std::shared_ptr<SparseArrayImpl_>& pimpl) {
-        std::cout << ArrayImpl_::get_world().rank() << ": Processing Array::eval()\n";
         madness::Future<bool> done = ArrayImpl_::get_world().taskq.for_each(
             madness::Range<std::size_t>(0, pimpl->tiling().tiles().volume()),
             InitLocalTiles(pimpl));
-        done.get();
-        std::cout << ArrayImpl_::get_world().rank() << ": Done Array::eval() size = " << pimpl->data_.size() << "\n";
 
         return done.get();
       }
