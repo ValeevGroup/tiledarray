@@ -452,8 +452,6 @@ namespace TiledArray {
       /// madness::Future will be set once the initialization has finished.
       /// \return A future to the initialization task.
       virtual madness::Future<bool> initialize(const std::shared_ptr<ArrayImpl_>& pimpl) {
-        std::cout << ArrayImpl_::get_world().rank() << ": Start Array::eval()\n";
-
         return this->get_world().taskq.add(*this, & SparseArrayImpl_::insert_tiles,
             std::static_pointer_cast<SparseArrayImpl_>(pimpl),
             madness::TaskAttributes::hipri());
