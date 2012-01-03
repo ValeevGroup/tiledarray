@@ -7,7 +7,7 @@ using namespace TiledArray;
 ArrayFixture::ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it)
     if(a.is_local(*it))
-      a.set(*it, world.rank()); // Fill the tile at *it (the index)
+      a.set(*it, world.rank() + 1); // Fill the tile at *it (the index)
 
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
     if(i % 3)
@@ -110,14 +110,17 @@ BOOST_AUTO_TEST_CASE( find_local )
 
       BOOST_CHECK(tile.probe());
 
+      const int value = world.rank() + 1;
       for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
-        BOOST_CHECK_EQUAL(*it, world.rank());
+        BOOST_CHECK_EQUAL(*it, value);
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE( find_remote )
 {
+  a.eval().get();
+
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
 
     if(! a.is_local(*it)) {
@@ -125,7 +128,7 @@ BOOST_AUTO_TEST_CASE( find_remote )
 
       const int owner = a.owner(*it);
       for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
-        BOOST_CHECK_EQUAL(*it, owner);
+        BOOST_CHECK_EQUAL(*it, owner + 1);
     }
   }
 }
@@ -133,6 +136,7 @@ BOOST_AUTO_TEST_CASE( find_remote )
 BOOST_AUTO_TEST_CASE( fill_tiles )
 {
   ArrayN a(world, tr);
+  a.eval().get();
 
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
     if(a.is_local(*it)) {
@@ -153,6 +157,7 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
 {
   std::vector<int> data;
   ArrayN a(world, tr);
+  a.eval().get();
 
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
     ArrayN::trange_type::tile_range_type range = a.trange().make_tile_range(*it);
