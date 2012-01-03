@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
     Array<double, CoordinateSystem<4> > v_ab_oooo = data.make_v_ab(world, occ, occ, occ, occ);
     Array<double, CoordinateSystem<4> > v_ab_oovv = data.make_v_ab(world, occ, occ, vir, vir);
     Array<double, CoordinateSystem<4> > v_ab_vovo = data.make_v_ab(world, vir, occ, vir, occ);
+    Array<double, CoordinateSystem<4> > v_ab_voov = data.make_v_ab(world, vir, occ, occ, vir);
     Array<double, CoordinateSystem<4> > v_ab_vvvv = data.make_v_ab(world, vir, vir, vir, vir);
 
     // Fence to make sure data on all nodes has been initialized
@@ -54,12 +55,12 @@ int main(int argc, char** argv) {
 
     Array<double, CoordinateSystem<4> > v_aa_oooo = v_ab_oooo("i,j,k,l") - v_ab_oooo("i,j,l,k");
     Array<double, CoordinateSystem<4> > v_aa_oovv = v_ab_oovv("i,j,a,b") - v_ab_oovv("i,j,b,a");
-//    Array<double, CoordinateSystem<4> > v_aa_vovo = v_ab_vovo("a,i,b,j") - v_ab_vovo("a,i,j,b");
+    Array<double, CoordinateSystem<4> > v_aa_vovo = v_ab_vovo("a,i,b,j") - v_ab_voov("a,i,j,b");
     Array<double, CoordinateSystem<4> > v_aa_vvvv = v_ab_vvvv("a,b,c,d") - v_ab_vvvv("a,b,d,c");
     // Just make references to the data since the input is closed shell.
     Array<double, CoordinateSystem<4> >& v_bb_oooo = v_aa_oooo;
     Array<double, CoordinateSystem<4> >& v_bb_oovv = v_aa_oovv;
-//    Array<double, CoordinateSystem<4> >& v_bb_vovo = v_aa_vovo;
+    Array<double, CoordinateSystem<4> >& v_bb_vovo = v_aa_vovo;
     Array<double, CoordinateSystem<4> >& v_bb_vvvv = v_aa_vvvv;
 
     // Fence again to make sure data all the integral tensors have been initialized
