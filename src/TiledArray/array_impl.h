@@ -433,7 +433,7 @@ namespace TiledArray {
           ArrayImpl_(w, tr, pmap),
           shape_map_(shape)
       {
-        TA_ASSERT(shape.size() == ArrayImpl_::trange().tiles().volume());
+        TA_ASSERT(shape.size() == ArrayImpl_::tiling().tiles().volume());
         // Construct the bitset for remote data
         ArrayImpl_::get_world().gop.bit_or(shape_map_.get(), shape_map_.num_blocks());
       }
