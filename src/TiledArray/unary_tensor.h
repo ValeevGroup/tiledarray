@@ -52,7 +52,12 @@ namespace TiledArray {
     public:
       typedef UnaryTensor<Arg, Op> UnaryTensor_;
       typedef Arg arg_tensor_type;
-      TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<UnaryTensor_>, UnaryTensor_);
+      typedef ReadableTensor<UnaryTensor_> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
       typedef DenseStorage<value_type> storage_type; /// The storage type for this object
       typedef Op op_type; ///< The transform operation type
 

@@ -42,7 +42,18 @@ namespace TiledArray {
       struct Enabler { };
     public:
       typedef Tensor<T, R, A> Tensor_;
-      TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHERIT_TYPEDEF(DirectWritableTensor<Tensor_> , Tensor_ );
+      typedef DirectWritableTensor<Tensor_> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
+      typedef typename base::difference_type difference_type;
+      typedef typename base::const_iterator const_iterator;
+      typedef typename base::const_pointer const_pointer;
+      typedef typename base::reference reference;
+      typedef typename base::iterator iterator;
+      typedef typename base::pointer pointer;
       typedef DenseStorage<T,A> storage_type;
 
       /// Default constructor
@@ -52,10 +63,9 @@ namespace TiledArray {
 
       /// Construct an evaluated tensor
 
-      /// This will take ownership of the memory held by \c data
       /// \tparam D The range derived type
       /// \param r An array with the size of of each dimension
-      /// \param d The data for the tensor
+      /// \param v The value of the tensor elements
       template <typename D>
       Tensor(const Range<D>& r, const value_type& v = value_type()) :
         range_(r), data_(r.volume(), v)

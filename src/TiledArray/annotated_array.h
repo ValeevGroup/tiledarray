@@ -41,7 +41,16 @@ namespace TiledArray {
         typedef AnnotatedArrayImpl<A> AnnotatedArrayImpl_;
         typedef AnnotatedArray<A> AnnotatedArray_;
         typedef A array_type;
-        TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_TYPEDEF(WritableTiledTensor<AnnotatedArray_>, AnnotatedArray_);
+        typedef WritableTiledTensor<AnnotatedArray_> base;
+        typedef typename base::size_type size_type;
+        typedef typename base::range_type range_type;
+        typedef typename base::eval_type eval_type;
+        typedef typename base::pmap_interface pmap_interface;
+        typedef typename base::trange_type trange_type;
+        typedef typename base::value_type value_type;
+        typedef typename base::const_reference const_reference;
+        typedef typename base::const_iterator const_iterator;
+        typedef typename base::iterator iterator;
         typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
 
       private:
@@ -321,7 +330,16 @@ namespace TiledArray {
 
       typedef AnnotatedArray<A> AnnotatedArray_; ///< This object type
       typedef AnnotatedArrayImpl<A> impl_type; ///< This object type
-      TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_TYPEDEF(WritableTiledTensor<AnnotatedArray_ >, AnnotatedArray_)
+      typedef WritableTiledTensor<AnnotatedArray_> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::pmap_interface pmap_interface;
+      typedef typename base::trange_type trange_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
+      typedef typename base::const_iterator const_iterator;
+      typedef typename base::iterator iterator;
       typedef A array_type; ///< The array type
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
 

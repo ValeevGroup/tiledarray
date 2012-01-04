@@ -11,50 +11,6 @@
 #include <world/shared_ptr.h>
 #include <world/world.h>
 
-#define TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED )  \
-    TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED )
-
-#define TILEDARRAY_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    typedef typename base::pmap_interface pmap_interface; \
-    typedef typename base::trange_type trange_type;
-
-#define TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    typedef typename base::value_type value_type; \
-    typedef typename base::const_reference const_reference; \
-    typedef typename base::const_iterator const_iterator;
-
-#define TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    typedef typename base::const_reference reference; \
-    typedef typename base::const_iterator iterator;
-
-#define TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER( BASE , DERIVED ) \
-    using base::vars;
-
-#define TILEDARRAY_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    using base::owner; \
-    using base::is_local; \
-    using base::is_zero; \
-    using base::get_world; \
-    using base::get_pmap; \
-    using base::is_dense; \
-    using base::get_shape; \
-    using base::trange;
-
-#define TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    using base::operator[]; \
-    using base::begin; \
-    using base::end;
-
-#define TILEDARRAY_WRITABLE_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    using base::set;
-
 namespace madness {
   // Forward declaration
   class World;
@@ -70,8 +26,14 @@ namespace TiledArray {
     class AnnotatedTensor : public TensorBase<Derived> {
     public:
 
-      TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF(TensorBase<Derived>, Derived)
-      TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER(TensorBase<Derived>, Derived)
+      typedef TensorBase<Derived> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+
+      using base::derived;
+      using base::range;
+      using base::size;
 
       inline const VariableList& vars() const { return derived().vars(); }
 
@@ -81,11 +43,17 @@ namespace TiledArray {
     class TiledTensor : public AnnotatedTensor<Derived> {
     public:
 
-      TILEDARRAY_ANNOTATED_TENSOR_INHERIT_TYPEDEF(AnnotatedTensor<Derived>, Derived)
+      typedef AnnotatedTensor<Derived> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
       typedef madness::WorldDCPmapInterface<size_type> pmap_interface;
       typedef typename TensorTraits<Derived>::trange_type trange_type;
 
-      TILEDARRAY_ANNOTATED_TENSOR_INHERIT_MEMBER(AnnotatedTensor<Derived>, Derived)
+      using base::derived;
+      using base::range;
+      using base::size;
+      using base::vars;
 
       madness::Future<bool> eval(const VariableList& v) { return derived().eval(v); }
 
@@ -105,12 +73,28 @@ namespace TiledArray {
     class ReadableTiledTensor : public TiledTensor<Derived> {
     public:
 
-      TILEDARRAY_TILED_TENSOR_INHERIT_TYPEDEF(TiledTensor<Derived>, Derived)
+      typedef TiledTensor<Derived> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::pmap_interface pmap_interface;
+      typedef typename base::trange_type trange_type;
       typedef typename TensorTraits<Derived>::value_type value_type;
       typedef typename TensorTraits<Derived>::const_reference const_reference;
       typedef typename TensorTraits<Derived>::const_iterator const_iterator;
 
-      TILEDARRAY_TILED_TENSOR_INHERIT_MEMBER(TiledTensor<Derived>, Derived)
+      using base::derived;
+      using base::range;
+      using base::size;
+      using base::vars;
+      using base::owner;
+      using base::is_local;
+      using base::is_zero;
+      using base::get_world;
+      using base::get_pmap;
+      using base::is_dense;
+      using base::get_shape;
+      using base::trange;
 
       // element access
       const_reference operator[](size_type i) const { return derived()[i]; }
@@ -125,10 +109,32 @@ namespace TiledArray {
     class WritableTiledTensor : public ReadableTiledTensor<Derived> {
     public:
 
-      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<Derived>, Derived)
+      typedef ReadableTiledTensor<Derived> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::pmap_interface pmap_interface;
+      typedef typename base::trange_type trange_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
+      typedef typename base::const_iterator const_iterator;
       typedef typename TensorTraits<Derived>::iterator iterator;
 
-      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_MEMBER(ReadableTiledTensor<Derived>, Derived)
+      using base::derived;
+      using base::range;
+      using base::size;
+      using base::vars;
+      using base::owner;
+      using base::is_local;
+      using base::is_zero;
+      using base::get_world;
+      using base::get_pmap;
+      using base::is_dense;
+      using base::get_shape;
+      using base::trange;
+      using base::operator[];
+      using base::begin;
+      using base::end;
 
       // iterator factory
       iterator begin() { derived().begin(); }

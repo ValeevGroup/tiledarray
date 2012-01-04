@@ -43,7 +43,15 @@ namespace TiledArray {
         typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
         typedef UnaryTiledTensorImpl<Arg, Op> UnaryTiledTensorImpl_;
         typedef Arg arg_tensor_type;
-        TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<UnaryTiledTensor_>, UnaryTiledTensor_);
+        typedef ReadableTiledTensor<UnaryTiledTensor_> base;
+        typedef typename base::size_type size_type;
+        typedef typename base::range_type range_type;
+        typedef typename base::eval_type eval_type;
+        typedef typename base::pmap_interface pmap_interface;
+        typedef typename base::trange_type trange_type;
+        typedef typename base::value_type value_type;
+        typedef typename base::const_reference const_reference;
+        typedef typename base::const_iterator const_iterator;
         typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
 
       private:
@@ -237,7 +245,15 @@ namespace TiledArray {
       typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
       typedef UnaryTiledTensorImpl<Arg, Op> impl_type;
       typedef Arg arg_tensor_type;
-      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<UnaryTiledTensor_>, UnaryTiledTensor_);
+      typedef ReadableTiledTensor<UnaryTiledTensor_> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::pmap_interface pmap_interface;
+      typedef typename base::trange_type trange_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
+      typedef typename base::const_iterator const_iterator;
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
 
       /// Construct a unary tiled tensor op

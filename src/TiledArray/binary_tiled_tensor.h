@@ -91,7 +91,15 @@ namespace TiledArray {
         typedef BinaryTiledTensor<Left, Right, Op> BinaryTiledTensor_;
         typedef Left left_tensor_type;
         typedef Right right_tensor_type;
-        TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<BinaryTiledTensor_>, BinaryTiledTensor_);
+        typedef ReadableTiledTensor<BinaryTiledTensor_> base;
+        typedef typename base::size_type size_type;
+        typedef typename base::range_type range_type;
+        typedef typename base::eval_type eval_type;
+        typedef typename base::pmap_interface pmap_interface;
+        typedef typename base::trange_type trange_type;
+        typedef typename base::value_type value_type;
+        typedef typename base::const_reference const_reference;
+        typedef typename base::const_iterator const_iterator;
         typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
 
       private:
@@ -383,7 +391,15 @@ namespace TiledArray {
       typedef BinaryTiledTensor<Left, Right, Op> BinaryTiledTensor_;
       typedef Left left_tensor_type;
       typedef Right right_tensor_type;
-      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<BinaryTiledTensor_>, BinaryTiledTensor_);
+      typedef ReadableTiledTensor<BinaryTiledTensor_> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::pmap_interface pmap_interface;
+      typedef typename base::trange_type trange_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
+      typedef typename base::const_iterator const_iterator;
 
     private:
       typedef BinaryTiledTensorImpl<Left, Right, Op> impl_type;

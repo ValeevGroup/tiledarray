@@ -43,7 +43,6 @@ namespace TiledArray {
         /// \tparam L The left tensor object type
         /// \tparam R The right tensor object type
         /// \param l The left tensor object
-        /// \param r The right tensor object
         /// \return A const reference to the either the \c l or \c r range
         /// object
         template <typename L, typename R>
@@ -92,7 +91,12 @@ namespace TiledArray {
       typedef BinaryTensor<LeftArg, RightArg, Op>  BinaryTensor_;
       typedef LeftArg left_tensor_type;
       typedef RightArg right_tensor_type;
-      TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<BinaryTensor_>, BinaryTensor_)
+      typedef ReadableTensor<BinaryTensor_> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
       typedef Op op_type; ///< The transform operation type
 
     private:

@@ -4,51 +4,6 @@
 #include <cstdlib>
 #include <TiledArray/error.h>
 
-// Inherit
-#define TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    typedef BASE base; \
-    typedef typename base::size_type size_type; \
-    typedef typename base::range_type range_type; \
-    typedef typename base::eval_type eval_type;
-
-#define TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    typedef typename base::value_type value_type; \
-    typedef typename base::const_reference const_reference;
-
-#define TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    typedef typename base::difference_type difference_type; \
-    typedef typename base::const_iterator const_iterator; \
-    typedef typename base::const_pointer const_pointer;
-
-#define TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF( BASE , DERIVED ) \
-    typedef typename base::reference reference; \
-    typedef typename base::iterator iterator; \
-    typedef typename base::pointer pointer;
-
-#define TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER( BASE , DERIVED ) \
-    using base::derived; \
-    using base::range; \
-    using base::size;
-
-#define TILEDARRAY_READABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER( BASE , DERIVED ) \
-    using base::eval_to; \
-    using base::add_to; \
-    using base::sub_to; \
-    using base::operator[];
-
-#define TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_READABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    using base::data; \
-    using base::begin; \
-    using base::end;
-
-#define TILEDARRAY_DIRECT_WRITABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-    TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_MEMBER( BASE , DERIVED ) \
-
 namespace TiledArray {
   namespace expressions {
 
@@ -82,11 +37,16 @@ namespace TiledArray {
     template <typename Derived>
     class ReadableTensor : public TensorBase<Derived> {
     public:
-      TILEDARRAY_TENSOR_BASE_INHERIT_TYPEDEF(TensorBase<Derived>, Derived)
+      typedef TensorBase<Derived> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
       typedef typename TensorTraits<Derived>::value_type value_type;
       typedef typename TensorTraits<Derived>::const_reference const_reference;
 
-      TILEDARRAY_TENSOR_BASE_INHERIT_MEMBER(TensorBase<Derived>, Derived)
+      using base::derived;
+      using base::range;
+      using base::size;
 
       /// Evaluate this tensor to another
 
@@ -154,12 +114,23 @@ namespace TiledArray {
     template <typename Derived>
     class DirectReadableTensor : public ReadableTensor<Derived> {
     public:
-      TILEDARRAY_READABLE_TENSOR_INHERIT_TYPEDEF(ReadableTensor<Derived>, Derived)
+      typedef ReadableTensor<Derived> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
       typedef typename TensorTraits<Derived>::difference_type difference_type;
       typedef typename TensorTraits<Derived>::const_iterator const_iterator;
       typedef typename TensorTraits<Derived>::const_pointer const_pointer;
 
-      TILEDARRAY_READABLE_TENSOR_INHERIT_MEMBER(ReadableTensor<Derived>, Derived)
+      using base::derived;
+      using base::range;
+      using base::size;
+      using base::eval_to;
+      using base::add_to;
+      using base::sub_to;
+      using base::operator[];
 
       // iterator factory
       inline const_iterator begin() const { return derived().begin(); }
@@ -172,12 +143,29 @@ namespace TiledArray {
     template <typename Derived>
     class DirectWritableTensor : public DirectReadableTensor<Derived> {
     public:
-      TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<Derived>, Derived)
+      typedef DirectReadableTensor<Derived> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
+      typedef typename base::difference_type difference_type;
+      typedef typename base::const_iterator const_iterator;
+      typedef typename base::const_pointer const_pointer;
       typedef typename TensorTraits<Derived>::reference reference;
       typedef typename TensorTraits<Derived>::iterator iterator;
       typedef typename TensorTraits<Derived>::pointer pointer;
 
-      TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_MEMBER(DirectReadableTensor<Derived>, Derived)
+      using base::derived;
+      using base::range;
+      using base::size;
+      using base::eval_to;
+      using base::add_to;
+      using base::sub_to;
+      using base::operator[];
+      using base::data;
+      using base::begin;
+      using base::end;
 
       template <typename D>
       Derived& operator +=(const ReadableTensor<D>& other) {

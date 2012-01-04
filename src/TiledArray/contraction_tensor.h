@@ -57,7 +57,15 @@ namespace TiledArray {
       typedef ContractionTensor<LeftArg, RightArg> ContractionTensor_;
       typedef LeftArg left_tensor_type;
       typedef RightArg right_tensor_type;
-      TILEDARRAY_DIRECT_READABLE_TENSOR_INHERIT_TYPEDEF(DirectReadableTensor<ContractionTensor_>, ContractionTensor_);
+      typedef DirectReadableTensor<ContractionTensor_> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
+      typedef typename base::difference_type difference_type;
+      typedef typename base::const_iterator const_iterator;
+      typedef typename base::const_pointer const_pointer;
       typedef math::Contraction contract_type; ///< Contraction type
       typedef typename Tensor<value_type, range_type>::storage_type storage_type;
 

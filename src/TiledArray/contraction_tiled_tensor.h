@@ -44,7 +44,15 @@ namespace TiledArray {
         typedef ContractionTiledTensor<Left, Right> ContractionTiledTensor_;
         typedef Left left_tensor_type;
         typedef Right right_tensor_type;
-        TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<ContractionTiledTensor_>, ContractionTiledTensor_);
+        typedef ReadableTiledTensor<ContractionTiledTensor_> base;
+        typedef typename base::size_type size_type;
+        typedef typename base::range_type range_type;
+        typedef typename base::eval_type eval_type;
+        typedef typename base::pmap_interface pmap_interface;
+        typedef typename base::trange_type trange_type;
+        typedef typename base::value_type value_type;
+        typedef typename base::const_reference const_reference;
+        typedef typename base::const_iterator const_iterator;
         typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
 
       private:
@@ -524,7 +532,15 @@ namespace TiledArray {
       typedef ContractionTiledTensorImpl<Left, Right> impl_type;
       typedef Left left_tensor_type;
       typedef Right right_tensor_type;
-      TILEDARRAY_READABLE_TILED_TENSOR_INHERIT_TYPEDEF(ReadableTiledTensor<ContractionTiledTensor_>, ContractionTiledTensor_);
+      typedef ReadableTiledTensor<ContractionTiledTensor_> base;
+      typedef typename base::size_type size_type;
+      typedef typename base::range_type range_type;
+      typedef typename base::eval_type eval_type;
+      typedef typename base::pmap_interface pmap_interface;
+      typedef typename base::trange_type trange_type;
+      typedef typename base::value_type value_type;
+      typedef typename base::const_reference const_reference;
+      typedef typename base::const_iterator const_iterator;
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
 
     private:
@@ -581,7 +597,7 @@ namespace TiledArray {
 
           // Generate tile tasks
           // This needs to be done before eval structure.
-          return impl_type::generate_tiles(perm, v, pimpl_, 
+          return impl_type::generate_tiles(perm, v, pimpl_,
               pimpl_->eval_left(), pimpl_->eval_right());;
 
         }

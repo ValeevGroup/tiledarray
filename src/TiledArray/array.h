@@ -135,7 +135,6 @@ namespace TiledArray {
 
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
-    /// \param v The array version number.
     template <typename R>
     Array(madness::World& w, const TiledRange<R>& tr) :
         pimpl_(new dense_impl_type(w, tr, make_pmap(w)), madness::make_deferred_deleter<impl_type>(w))
@@ -152,6 +151,7 @@ namespace TiledArray {
 
     /// Sparse array constructor
 
+    /// \tparam R The tiled range derived type
     /// \tparam InIter Input iterator type
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
@@ -159,7 +159,6 @@ namespace TiledArray {
     /// added to the sparse array.
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
-    /// \param v The array version number.
     template <typename R, typename InIter>
     Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last) :
         pimpl_(new sparse_impl_type(w, tr, make_pmap(w), first, last), madness::make_deferred_deleter<impl_type>(w))

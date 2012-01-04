@@ -234,14 +234,14 @@ namespace TiledArray {
 
       /// The will contract \c left with \c right and return the result tensor.
       /// The contraction algorithms are: \n
-      /// \c order=detail::decreasing_dimension_order
+      /// \c order=TiledArray::detail::decreasing_dimension_order
       /// \f[
       /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
       ///     \sum_{i_1, i_2, \dots}
       ///         A_{m_1, m_2, \dots, i_1, i_2, \dots}
       ///         B_{n_1, n_2, \dots, i_1, i_2, \dots}
       /// \f]
-      /// \c order=detail::increasing_dimension_order
+      /// \c order=TiledArray::detail::increasing_dimension_order
       /// \f[
       /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
       ///     \sum_{i_1, i_2, \dots}

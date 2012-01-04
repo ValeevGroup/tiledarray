@@ -64,11 +64,10 @@ namespace TiledArray {
       }
     }
 
-    /// Constructs a new tile
+    /// Constructs dense storage object
 
-    /// The tile will have the dimensions specified by the range object \c r and
-    /// the elements of the new tile will be equal to \c v. The provided
-    /// allocator \c a will allocate space for only for the tile data.
+    /// The storage object will contain \c n elements that have \c val , and are
+    /// allocated with the allocator \c a .
     /// \param r A shared pointer to the range object that will define the tile
     /// dimensions
     /// \param val The fill value for the new tile elements ( default: value_type() )
