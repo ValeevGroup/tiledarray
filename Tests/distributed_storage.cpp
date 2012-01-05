@@ -32,8 +32,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_NO_THROW(s.reset(new Storage(world, 10, pmap),
       madness::make_deferred_deleter<Storage>(world)));
 
-  BOOST_CHECK_EQUAL(s->size(), 0);
-  BOOST_CHECK_EQUAL(s->max_size(), 10);
+  BOOST_CHECK_EQUAL(s->size(), 0ul);
+  BOOST_CHECK_EQUAL(s->max_size(), 10ul);
   BOOST_CHECK(s->begin() == s->end());
 
 }
@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE( insert )
   t->insert(0);
 
   world.gop.fence();
-  int n = t->size();
+  std::size_t n = t->size();
   world.gop.sum(n);
 
   BOOST_CHECK_EQUAL(n, 1);

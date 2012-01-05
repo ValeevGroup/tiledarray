@@ -145,11 +145,11 @@ BOOST_AUTO_TEST_CASE( result )
 
   // Check that the range is unchanged
   BOOST_CHECK_EQUAL(ctt.trange(), r0);
-  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], result.rows());
-  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], result.cols());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], std::size_t(result.rows()));
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], std::size_t(result.cols()));
 
   // Check that all the tiles have been evaluated.
-  int n = std::distance(ctt.begin(), ctt.end());
+  std::size_t n = std::distance(ctt.begin(), ctt.end());
   world.gop.sum(n);
   BOOST_CHECK_EQUAL(ctt.size(), n);
 
@@ -185,11 +185,11 @@ BOOST_AUTO_TEST_CASE( permute_result )
 
   // Check that the range has been permuted correctly.
   BOOST_CHECK_EQUAL(ctt.trange(), r0);
-  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], result.rows());
-  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], result.cols());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], std::size_t(result.rows()));
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], std::size_t(result.cols()));
 
   // Check that all the tiles have been evaluated.
-  int n = std::distance(ctt.begin(), ctt.end());
+  std::size_t n = std::distance(ctt.begin(), ctt.end());
   world.gop.sum(n);
   BOOST_CHECK_EQUAL(ctt.size(), n);
 
