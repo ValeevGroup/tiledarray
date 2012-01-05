@@ -385,6 +385,18 @@ namespace TiledArray {
         add(madness::Future<value_type>(value));
       }
 
+      /// Add an object to the reduction list
+
+      /// This is the same as
+      /// \tparam InIter An input iterator type
+      /// \param first The first element in the iterator range
+      /// \param last The last element in the iterator range
+      template <typename InIter>
+      void add(InIter first, InIter last) {
+        for(; first != last; ++first)
+          add(*first);
+      }
+
       /// The number of objects to be reduced
 
       /// This is here for debugging purposes but it may be useful.
@@ -394,8 +406,8 @@ namespace TiledArray {
       /// Start the reduction
 
       /// \return A future to the result
-      madness::Future<value_type> submit() const {
-        return make_task(pimpl_->range(8));
+      madness::Future<value_type> submit(const int chunk = 8) const {
+        return make_task(pimpl_->range(chunk));
       }
 
 
