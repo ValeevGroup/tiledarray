@@ -22,6 +22,12 @@ namespace TiledArray {
     template <typename, typename, typename>
     class BinaryTiledTensor;
 
+    template <typename LExp, typename RExp, typename Op>
+    BinaryTiledTensor<LExp, RExp, Op>
+    make_binary_tiled_tensor(const ReadableTiledTensor<LExp>& left, const ReadableTiledTensor<RExp>& right, const Op& op) {
+      return BinaryTiledTensor<LExp, RExp, Op>(left.derived(), right.derived(), op);
+    }
+
     namespace {
 
       /// Select the tiled range type
@@ -47,7 +53,7 @@ namespace TiledArray {
         static inline const type& trange(const L& l, const R&) {
           return l.trange();
         }
-      };
+      }; // struct trange_select
 
       template <typename CS>
       struct trange_select<DynamicTiledRange, StaticTiledRange<CS> > {
@@ -57,7 +63,62 @@ namespace TiledArray {
         static inline const type& trange(const L&, const R& r) {
           return r.trange();
         }
-      };
+      }; // struct trange_select
+
+      /// Select logical and bitwise operation
+
+      /// This class selects the correct bitwise and operation that correspond to
+      /// the algebraic addition and subtraction operations.
+      /// \tparam Op The binary element operation
+      template <typename Op>
+      struct shape_select {
+        /// is_zero quarry
+
+        /// Comparing two tiles for is_zero() quarry.
+        /// \param l Left tile is_zero result.
+        /// \param r Right tile is_zero result.
+        /// \return True if l and r are true.
+        static inline bool is_zero(bool l, bool r) { return l && r; }
+
+        /// Construct a shape
+
+        /// Construct a new bitset for shape.
+        /// \param l The left argument shape.
+        /// \param r The right argument shape.
+        /// \return The result shape.
+        static inline TiledArray::detail::Bitset<>
+        get_shape(const TiledArray::detail::Bitset<>& l, const TiledArray::detail::Bitset<>& r) {
+          return l | r;
+        }
+      }; // struct shape_select
+
+
+      /// Select logical and bitwise operation
+
+      /// This class selects the correct bitwise and operation that correspond to
+      /// the algebraic multiplication operation.
+      /// \tparam Op The binary element operation
+      template <typename T>
+      struct shape_select<std::multiplies<T> > {
+        /// is_zero quarry
+
+        /// Comparing two tiles for is_zero() quarry.
+        /// \param l Left tile is_zero result.
+        /// \param r Right tile is_zero result.
+        /// \return True if l or r are true.
+        static bool is_zero(bool l, bool r) { return l || r; }
+
+        /// Construct a shape
+
+        /// Construct a new bitset for shape.
+        /// \param l The left argument shape.
+        /// \param r The right argument shape.
+        /// \return The result shape.
+        static TiledArray::detail::Bitset<>
+        get_shape(const TiledArray::detail::Bitset<>& l, const TiledArray::detail::Bitset<>& r) {
+          return l & r;
+        }
+      }; // struct shape_select
 
     } // namespace
 
@@ -306,7 +367,7 @@ namespace TiledArray {
           TA_ASSERT(range().includes(i));
           if(is_dense())
             return false;
-          return is_zero(left_, i) && is_zero(right_, i);
+          return shape_select<Op>::is_zero(is_zero(left_, i), is_zero(right_, i));
         }
 
         /// Tensor process map accessor
@@ -324,7 +385,7 @@ namespace TiledArray {
         /// \return A reference to the tensor shape map
         TiledArray::detail::Bitset<> get_shape() const {
           TA_ASSERT(! is_dense());
-          return (left_.get_shape() | right_.get_shape());
+          return shape_select<Op>::get_shape(left_.get_shape(), right_.get_shape());
         }
 
         /// Tiled range accessor
@@ -556,7 +617,6 @@ namespace madness {
 
     template <typename Archive, typename Left, typename Right, typename Op>
     struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> > > {
-
       static void load(const Archive&, std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> >&) {
         TA_ASSERT(false);
       }

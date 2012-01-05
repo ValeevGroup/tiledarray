@@ -19,6 +19,12 @@ namespace TiledArray {
     template <typename, typename>
     class ContractionTiledTensor;
 
+    template <typename LExp, typename RExp>
+    ContractionTiledTensor<LExp, RExp>
+    make_contraction_tiled_tensor(const ReadableTiledTensor<LExp>& left, const ReadableTiledTensor<RExp>& right) {
+      return ContractionTiledTensor<LExp, RExp>(left.derived(), right.derived());
+    }
+
     template <typename Left, typename Right>
     struct TensorTraits<ContractionTiledTensor<Left, Right> > {
       typedef DynamicTiledRange trange_type;

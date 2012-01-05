@@ -311,34 +311,16 @@ namespace TiledArray {
 
     /// \param v A string with a comma-separated list of variables
     /// \return An annotated array object that references this array
-    expressions::AnnotatedArray<Array_> operator ()(const std::string& v) {
-      return expressions::AnnotatedArray<Array_>(*this,
-          expressions::VariableList(v));
-    }
-
-    /// Create an annotated array
-
-    /// \param v A string with a comma-separated list of variables
-    /// \return An annotated array object that references this array
-    const expressions::AnnotatedArray<Array_> operator ()(const std::string& v) const {
-      return expressions::AnnotatedArray<Array_>(* const_cast<Array_*>(this),
-          expressions::VariableList(v));
+    expressions::AnnotatedArray<Array_> operator ()(const std::string& v) const {
+      return expressions::make_annotatied_array(*this, v);
     }
 
     /// Create an annotated array
 
     /// \param v A variable list object
     /// \return An annotated array object that references this array
-    expressions::AnnotatedArray<Array_> operator ()(const expressions::VariableList& v) {
-      return expressions::AnnotatedArray<Array_>(*this, v);
-    }
-
-    /// Create an annotated array
-
-    /// \param v A variable list object
-    /// \return An annotated array object that references this array
-    const expressions::AnnotatedArray<Array_> operator ()(const expressions::VariableList& v) const {
-      return expressions::AnnotatedArray<Array_>(* const_cast<Array_*>(this), v);
+    expressions::AnnotatedArray<Array_> operator ()(const expressions::VariableList& v) const {
+      return expressions::make_annotatied_array(*this, v);
     }
 
     /// World accessor
@@ -391,8 +373,6 @@ namespace TiledArray {
     bool is_zero(const Index& i) const {
       return pimpl_->is_zero(i);
     }
-
-    unsigned int version() const { return pimpl_->version(); }
 
     /// Serialize array
 

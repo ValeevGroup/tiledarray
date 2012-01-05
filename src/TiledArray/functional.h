@@ -25,7 +25,7 @@ namespace TiledArray {
       void serialize(Archive& ar) const {
         ar & boost::binder1st<Op>::op & boost::binder1st<Op>::value;
       }
-    };
+    }; // class Binder1st
 
     template <class Op>
     class Binder2nd : public boost::binder2nd<Op> {
@@ -45,7 +45,17 @@ namespace TiledArray {
       void serialize(Archive& ar) const {
         ar & boost::binder1st<Op>::op & boost::binder1st<Op>::value;
       }
-    };
+    }; // class Binder2nd
+
+    template <typename Op, typename T>
+    inline Binder1st<Op> bind1st(const Op& op, const T& t) {
+      return Binder1st<Op>(op, t);
+    }
+
+    template <typename Op, typename T>
+    inline Binder2nd<Op> bind2nd(const Op& op, const T& t) {
+      return Binder2nd<Op>(op, t);
+    }
 
   }  // namespace detail
 }  // namespace TiledArray

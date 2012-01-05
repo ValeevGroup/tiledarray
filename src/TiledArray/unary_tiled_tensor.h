@@ -14,6 +14,11 @@ namespace TiledArray {
     template <typename, typename>
     class UnaryTiledTensor;
 
+    template <typename Exp, typename Op>
+    UnaryTiledTensor<Exp, Op> make_unary_tiled_tensor(const ReadableTiledTensor<Exp>& arg, const Op& op) {
+      return UnaryTiledTensor<Exp, Op>(arg.derived(), op);
+    }
+
     template <typename Arg, typename Op>
     struct TensorTraits<UnaryTiledTensor<Arg, Op> > {
       typedef typename Arg::range_type range_type;

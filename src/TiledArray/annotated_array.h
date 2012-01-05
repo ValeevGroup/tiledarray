@@ -16,6 +16,16 @@ namespace TiledArray {
     // Forward declaration
     template <typename> class AnnotatedArray;
 
+    template <typename T, typename CS>
+    AnnotatedArray<Array<T, CS> > make_annotatied_array(const Array<T, CS>& array, const VariableList& vars) {
+      return AnnotatedArray<Array<T, CS> >(const_cast<Array<T, CS>&>(array), vars);
+    }
+
+    template <typename T, typename CS>
+    AnnotatedArray<Array<T, CS> > make_annotatied_array(const Array<T, CS>& array, const std::string& vars) {
+      return AnnotatedArray<Array<T, CS> >(const_cast<Array<T, CS>&>(array), VariableList(vars));
+    }
+
     template <typename Arg>
     struct TensorTraits<AnnotatedArray<Arg> > {
       typedef typename Arg::range_type range_type;
