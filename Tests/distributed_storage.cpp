@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE( insert )
   std::size_t n = t->size();
   world.gop.sum(n);
 
-  BOOST_CHECK_EQUAL(n, 1);
+  BOOST_CHECK_EQUAL(n, 1ul);
 
   for(std::size_t i = 0; i < t->max_size(); ++i)
     t->insert(i);
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE( set_value )
       t->set(i, world.rank());
 
   world.gop.fence();
-  int n = t->size();
+  std::size_t n = t->size();
   world.gop.sum(n);
 
   BOOST_CHECK_EQUAL(n, t->max_size());
@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE( array_operator )
   }
 
   world.gop.fence();
-  int n = t->size();
+  std::size_t n = t->size();
   world.gop.sum(n);
 
   BOOST_CHECK_EQUAL(n, t->max_size());
