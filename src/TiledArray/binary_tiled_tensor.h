@@ -75,7 +75,7 @@ namespace TiledArray {
       typedef typename storage_type::future const_reference;
     }; // struct TensorTraits<BinaryTiledTensor<Arg, Op> >
 
-    namespace {
+    namespace detail {
 
       /// Tensor that is composed from two argument tensors
 
@@ -375,7 +375,7 @@ namespace TiledArray {
         storage_type data_; ///< Store temporary data
       }; // class BinaryTiledTensorImpl
 
-    } // namespace
+    } // namespace detail
 
 
     /// Tensor that is composed from two argument tensors
@@ -402,7 +402,7 @@ namespace TiledArray {
       typedef typename base::const_iterator const_iterator;
 
     private:
-      typedef BinaryTiledTensorImpl<Left, Right, Op> impl_type;
+      typedef detail::BinaryTiledTensorImpl<Left, Right, Op> impl_type;
 
     public:
 
@@ -548,16 +548,16 @@ namespace madness {
     struct ArchiveLoadImpl;
 
     template <typename Archive, typename Left, typename Right, typename Op>
-    struct ArchiveStoreImpl<Archive, std::shared_ptr<TiledArray::expressions::BinaryTiledTensorImpl<Left, Right, Op> > > {
-      static void store(const Archive&, const std::shared_ptr<TiledArray::expressions::BinaryTiledTensorImpl<Left, Right, Op> >&) {
+    struct ArchiveStoreImpl<Archive, std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> > > {
+      static void store(const Archive&, const std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> >&) {
         TA_ASSERT(false);
       }
     };
 
     template <typename Archive, typename Left, typename Right, typename Op>
-    struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::expressions::BinaryTiledTensorImpl<Left, Right, Op> > > {
+    struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> > > {
 
-      static void load(const Archive&, std::shared_ptr<TiledArray::expressions::BinaryTiledTensorImpl<Left, Right, Op> >&) {
+      static void load(const Archive&, std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> >&) {
         TA_ASSERT(false);
       }
     };

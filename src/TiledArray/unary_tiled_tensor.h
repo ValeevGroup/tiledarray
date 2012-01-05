@@ -29,7 +29,7 @@ namespace TiledArray {
       typedef UnaryTiledTensor<Arg, Op> type;
     }; // struct Eval<UnaryTiledTensor<Arg, Op> >
 
-    namespace {
+    namespace detail {
 
       /// Tensor that is composed from an argument tensor
 
@@ -230,7 +230,7 @@ namespace TiledArray {
         Op op_; ///< The unary element opertation
       }; // class UnaryTiledTensorImpl
 
-    } // namespace
+    } // namespace detail
 
 
     /// Tensor that is composed from an argument tensor
@@ -243,7 +243,7 @@ namespace TiledArray {
     class UnaryTiledTensor : public ReadableTiledTensor<UnaryTiledTensor<Arg, Op> >{
     public:
       typedef UnaryTiledTensor<Arg, Op> UnaryTiledTensor_;
-      typedef UnaryTiledTensorImpl<Arg, Op> impl_type;
+      typedef detail::UnaryTiledTensorImpl<Arg, Op> impl_type;
       typedef Arg arg_tensor_type;
       typedef ReadableTiledTensor<UnaryTiledTensor_> base;
       typedef typename base::size_type size_type;

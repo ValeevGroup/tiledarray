@@ -30,7 +30,7 @@ namespace TiledArray {
       typedef typename storage_type::future const_reference;
     }; // struct TensorTraits<ContractionTiledTensor<Arg, Op> >
 
-    namespace {
+    namespace detail {
       /// Tensor that is composed from an argument tensor
 
       /// The tensor elements are constructed using a unary transformation
@@ -517,7 +517,7 @@ namespace TiledArray {
         right_tensor_type& right() { return right_; }
       }; // class ContractionTiledTensorImpl
 
-    } // namespace
+    } // namespace detail
 
     /// Tensor that is composed from an argument tensor
 
@@ -529,7 +529,7 @@ namespace TiledArray {
     class ContractionTiledTensor : public ReadableTiledTensor<ContractionTiledTensor<Left, Right> > {
     public:
       typedef ContractionTiledTensor<Left, Right> ContractionTiledTensor_;
-      typedef ContractionTiledTensorImpl<Left, Right> impl_type;
+      typedef detail::ContractionTiledTensorImpl<Left, Right> impl_type;
       typedef Left left_tensor_type;
       typedef Right right_tensor_type;
       typedef ReadableTiledTensor<ContractionTiledTensor_> base;

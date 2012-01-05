@@ -27,7 +27,7 @@ namespace TiledArray {
       typedef typename storage_type::future const_reference;
     }; // struct TensorTraits<AnnotatedArray<Arg> >
 
-    namespace {
+    namespace detail {
 
       /// Tensor that is composed from an argument tensor
 
@@ -313,7 +313,7 @@ namespace TiledArray {
         Permutation perm_;
       }; // class PermuteTiledTensor
 
-    } // namespace
+    } // detail namespace
 
     /// Wrapper object that adds annotation to tiled tensor objects.
 
@@ -329,7 +329,7 @@ namespace TiledArray {
       // is needed for argument expressions.
 
       typedef AnnotatedArray<A> AnnotatedArray_; ///< This object type
-      typedef AnnotatedArrayImpl<A> impl_type; ///< This object type
+      typedef detail::AnnotatedArrayImpl<A> impl_type; ///< This object type
       typedef WritableTiledTensor<AnnotatedArray_> base;
       typedef typename base::size_type size_type;
       typedef typename base::range_type range_type;
