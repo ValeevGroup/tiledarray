@@ -10,6 +10,7 @@
 #include <TiledArray/binary_tiled_tensor.h>
 #include <TiledArray/contraction_tiled_tensor.h>
 #include <TiledArray/functional.h>
+#include <world/typestuff.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -146,6 +147,102 @@ namespace TiledArray {
     UnaryTiledTensor<ArgExp, std::negate<typename ArgExp::value_type::value_type> >
     operator-(const ReadableTiledTensor<ArgExp>& arg) {
       return make_unary_tiled_tensor(arg, std::negate<typename ArgExp::value_type::value_type>());
+    }
+
+    namespace detail {
+
+      /// Task function for reducing a tile
+
+      /// \tparam T The \c Tensor value type
+      /// \tparam R The \c Tensor range type
+      /// \tparam A The \c Tensor allocator type
+      /// \tparam Op The reduction operation type
+      /// \param t The tensor to be reduced
+      /// \param op The reduction operation
+      /// \return The reduced value of \c t
+      template <typename T, typename R, typename A, typename Op>
+      typename madness::detail::result_of<Op>::type reduce_tile(const Tensor<T, R, A>& t, const Op& op) {
+        typename Tensor<T, R, A>::value_type result = typename Tensor<T, R, A>::value_type();
+        for(typename Tensor<T, R, A>::const_iterator it = t.begin(); it != t.end(); ++it)
+          result = op(result, *it);
+
+        return result;
+      }
+
+      /// Task function for reducing tiles
+
+      /// \tparam Arg The arg type: \c Array or \c \c ReadableTiledTensor
+      /// \tparam Op The reduction operation type
+      /// \param arg The array or tile tensor object to be reduced
+      /// \param op The reduction operation
+      /// \return The reduced value of all local tiles.
+      /// \note The last unused parameter is used to set the dependency between
+      /// the evaluation of \c arg and this task.
+      template <typename Arg, typename Op>
+      typename madness::detail::result_of<Op>::type reduce_tiles(const Arg& arg, const Op& op, bool) {
+        TiledArray::detail::ReduceTask<typename madness::detail::result_of<Op>::type, Op> reduce_task(op);
+        typename Arg::const_iterator end = arg.end();
+        for(typename Arg::const_iterator it = arg.begin(); it != end; ++it)
+          reduce_task.add(arg.get_world().taskq.add(& reduce_tile<typename Arg::value_type, Op>,
+              *it, op, madness::TaskAttributes::hipri()));
+
+        return reduce_task.submit().get();
+      }
+
+      /// Evaluate a \c ReadableTiledTensor
+
+      /// \tparam Exp The readable tiled tensor expression type
+      /// \param arg The tiled tensor to evaluate
+      /// \return A future to a bool that will be set once \c arg has been evaluated.
+      template <typename Exp>
+      inline madness::Future<bool> eval(const ReadableTiledTensor<Exp>& arg) { return arg.eval(arg.vars()); }
+
+      /// Evaluate an \c Array
+
+      /// \tparam T The array element type
+      /// \tparam CS The array coordinate system type
+      /// \param arg The array to evaluate
+      /// \return A future to a bool that will be set once \c arg has been evaluated.
+      template <typename T, typename CS>
+      inline madness::Future<bool> eval(const Array<T, CS>& array) { return array.eval(); }
+
+
+
+    } // namespace detail
+
+    /// Task function for reducing a tile
+
+    /// \tparam T The \c Tensor value type
+    /// \tparam R The \c Tensor range type
+    /// \tparam A The \c Tensor allocator type
+    /// \tparam Op The reduction operation type
+    /// \param t The tensor to be reduced
+    /// \param op The reduction operation
+    /// \return The reduced value of \c t
+    template <typename T, typename R, typename A, typename Op>
+    typename madness::detail::result_of<Op>::type reduce(const Tensor<T, R, A>& t, const Op& op) {
+      return detail::reduce_tile(t, op);
+    }
+
+    /// Reduce an \c Array or a \c ReadableTiledTensor
+
+    /// This function will reduce all elements of \c arg . The result of the
+    /// reduction is returned on all nodes. The function will block, until the
+    /// reduction is complete, but it will continue to process tasks while
+    /// waiting.
+    /// \tparam Arg The \c Array or \c ReadableTiledTensor type
+    /// \tparam Op The reduction operation type
+    /// \param arg The array or tile tensor object to be reduced
+    /// \param op The reduction operation
+    /// \return The reduced value of the tensor.
+    template <typename Arg, typename Op>
+    inline typename madness::detail::result_of<Op>::type
+    reduce(const Arg& arg, const Op& op) {
+      typename madness::detail::result_of<Op>::type result =
+          arg.get_world().taskq.add(& detail::reduce_tile<Arg, Op>, arg, op,
+          detail::eval(arg), madness::TaskAttributes::hipri()).get();
+
+      return arg.get_world().gop.reduce(& result, 1, op);
     }
 
   } // namespace expressions
