@@ -1,12 +1,5 @@
-/*
- * lazy_sync.h
- *
- *  Created on: Jan 9, 2012
- *      Author: justus
- */
-
-#ifndef MADNESS_WORLD_LAZY_SYNC_H__INCLUDED
-#define MADNESS_WORLD_LAZY_SYNC_H__INCLUDED
+#ifndef TILEDARRAY_LAZY_SYNC_H__INCLUDED
+#define TILEDARRAY_LAZY_SYNC_H__INCLUDED
 
 #include <world/world.h>
 #include <world/worldptr.h>
@@ -383,6 +376,6 @@ namespace TiledArray {
     }
 
 
-}  // namespace madness
+}  // namespace TiledArray
 
-#endif // MADNESS_WORLD_LAZY_SYNC_H__INCLUDED
+#endif // TILEDARRAY_LAZY_SYNC_H__INCLUDED
