@@ -376,9 +376,9 @@ namespace TiledArray {
       template <typename D>
       bool eval_to_this(const D& other, bool) {
         if(other.is_dense())
-          array_type(other.get_world(), other.trange(), other.get_map()).swap(pimpl_->array());
+          array_type(other.get_world(), other.trange(), other.get_pmap()).swap(pimpl_->array());
         else
-          array_type(other.get_world(), other.trange(), other.get_shape(), other.get_map()).swap(pimpl_->array());
+          array_type(other.get_world(), other.trange(), other.get_shape(), other.get_pmap()).swap(pimpl_->array());
         other.eval_to(pimpl_->array());
 
         return true;
@@ -387,10 +387,10 @@ namespace TiledArray {
       template <typename D>
       AnnotatedArray_& assign(const D& other) {
 
-        madness::Future<bool> child_eval_done = other.eval(pimpl_->vars());
+        madness::Future<bool> child_eval_done = const_cast<D&>(other).eval(pimpl_->vars());
 
         madness::Future<bool> done =
-            get_world().taskq.add(*this, & AnnotatedArray_::template eval_to_this<value_type>,
+            get_world().taskq.add(*this, & AnnotatedArray_::template eval_to_this<D>,
             other, child_eval_done);
 
         // Wait until evaluation of the result array structure and tiles has been
