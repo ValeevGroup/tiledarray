@@ -131,6 +131,8 @@ namespace TiledArray {
 
   public:
 
+    Array() : pimpl_() { }
+
     /// Dense array constructor
 
     /// \param w The world where the array will live.
@@ -173,7 +175,7 @@ namespace TiledArray {
 //      init(madness::Range<InIter>(first, last));
     }
 
-    template <typename R, typename InIter>
+    template <typename R>
     Array(madness::World& w, const TiledRange<R>& tr, const detail::Bitset<>& shape) :
         pimpl_(new sparse_impl_type(w, tr, make_pmap(w), shape), madness::make_deferred_deleter<impl_type>(w))
     {
@@ -375,23 +377,8 @@ namespace TiledArray {
     }
 
     /// Serialize array
-
-    /// Interprocess serialization communication only!
-    /// \param ar Output archive
-    void serialize(const madness::archive::BufferOutputArchive& ar) {
-        ar & static_cast<madness::WorldObject<impl_type>*>(pimpl_.get());
-    }
-
-    /// Deserialize array
-
-    /// Interprocess serialization communication only!
-    /// \param ar Input archive
-    void serialize(const madness::archive::BufferInputArchive& ar) {
-        madness::WorldObject<impl_type>* ptr = NULL;
-        ar & ptr;
-        TA_ASSERT(ptr);
-        pimpl_ = std::static_pointer_cast<impl_type>(ptr->shared_from_this());
-    }
+    template <typename Archive>
+    void serialize(const Archive& ar) { TA_ASSERT(false); }
 
     /// Swap this array with \c other
 
@@ -456,5 +443,6 @@ namespace TiledArray {
 
   }  // namespace expressions
 } // namespace TiledArray
+
 
 #endif // TILEDARRAY_ARRAY_H__INCLUDED
