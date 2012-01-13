@@ -173,5 +173,11 @@ BOOST_AUTO_TEST_CASE( negation )
   BOOST_CHECK_EQUAL(tn.range().volume(), 0ul);
 }
 
+BOOST_AUTO_TEST_CASE( reduce )
+{
+  std::size_t sum = expressions::reduce(t, std::plus<int>());
+  BOOST_CHECK_EQUAL(sum, t.range().volume());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
