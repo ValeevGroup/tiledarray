@@ -235,6 +235,9 @@ namespace TiledArray {
     /// reduction is returned on all nodes. The function will block, until the
     /// reduction is complete, but it will continue to process tasks while
     /// waiting.
+    /// \f[
+    /// C = \sum_{i_1, i_2, \dots}  A_{i_1, i_2, \dots}
+    /// \f]
     /// \tparam Arg The \c Array or \c ReadableTiledTensor type
     /// \tparam Op The reduction operation type
     /// \param arg The array or tile tensor object to be reduced
@@ -251,12 +254,20 @@ namespace TiledArray {
       return result;
     }
 
+    /// Calculate the dot product of two tiled tensors
+
+    /// \f[
+    /// C = \sum_{i_1, i_2, \dots}  A_{i_1, i_2, \dots} B_{i_1, i_2, \dots}
+    /// \f]
+    /// \param left The left tensor argument ( \c A )
+    /// \param right The right tiled tensor argument ( \c B )
+    /// \return The sum of the products of each element in \c left and \c right ( \c C )
     template <typename LeftArg, typename RightArg>
-    inline typename math::ContractionValue<typename LeftArg::value_type,
-        typename RightArg::value_type>::type
+    inline typename math::ContractionValue<typename LeftArg::value_type::value_type,
+        typename RightArg::value_type::value_type>::type
     dot(const ReadableTiledTensor<LeftArg>& left, const ReadableTiledTensor<RightArg>& right) {
-      typedef typename math::ContractionValue<typename LeftArg::value_type,
-              typename RightArg::value_type>::type result_type;
+      typedef typename math::ContractionValue<typename LeftArg::value_type::value_type,
+              typename RightArg::value_type::value_type>::type result_type;
       return reduce(make_binary_tiled_tensor(left.derived(), right.derived(),
           std::multiplies<result_type>()), std::plus<result_type>());
     }
