@@ -428,6 +428,7 @@ namespace TiledArray {
     template <typename A>
     template <typename T, typename CS>
     AnnotatedArray<A>::operator Array<T, CS>()  {
+      TA_ASSERT(pimpl_);
       madness::Future<bool> eval_done = eval(vars());
       eval_done.get();
       if(is_dense()) {

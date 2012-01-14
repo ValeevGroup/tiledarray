@@ -467,6 +467,8 @@ namespace TiledArray {
 
     public:
 
+      BinaryTiledTensor() : pimpl_() { }
+
       /// Construct a unary tiled tensor op
 
       /// \param arg The argument
@@ -499,9 +501,13 @@ namespace TiledArray {
       /// \tparam Dest The destination tensor type
       /// \param dest The destination to evaluate this tensor to
       template <typename Dest>
-      void eval_to(Dest& dest) const { pimpl_->eval_to(dest); }
+      void eval_to(Dest& dest) const {
+        TA_ASSERT(pimpl_);
+        pimpl_->eval_to(dest);
+      }
 
       madness::Future<bool> eval(const VariableList& v) {
+        TA_ASSERT(pimpl_);
         return impl_type::generate_tiles(pimpl_, pimpl_->eval_left(v),
             pimpl_->eval_right(v));
       }
@@ -509,50 +515,75 @@ namespace TiledArray {
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
-      const range_type& range() const { return pimpl_->range(); }
+      const range_type& range() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->range();
+      }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type size() const { return pimpl_->size(); }
+      size_type size() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->size();
+      }
 
       /// Query a tile owner
 
       /// \param i The tile index to query
       /// \return The process ID of the node that owns tile \c i
-      ProcessID owner(size_type i) const { return pimpl_->owner(i); }
+      ProcessID owner(size_type i) const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->owner(i);
+      }
 
       /// Query for a locally owned tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is owned by this node, otherwise \c false
-      bool is_local(size_type i) const { return pimpl_->is_local(i); }
+      bool is_local(size_type i) const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->is_local(i);
+      }
 
       /// Query for a zero tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
-      bool is_zero(size_type i) const {  return pimpl_->is_zero(i); }
+      bool is_zero(size_type i) const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->is_zero(i);
+      }
 
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
-      const std::shared_ptr<pmap_interface>& get_pmap() const { return pimpl_->get_pmap(); }
+      const std::shared_ptr<pmap_interface>& get_pmap() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->get_pmap();
+      }
 
       /// Query the density of the tensor
 
       /// \return \c true if the tensor is dense, otherwise false
-      bool is_dense() const { return pimpl_->is_dense(); }
+      bool is_dense() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->is_dense();
+      }
 
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      TiledArray::detail::Bitset<> get_shape() const { return pimpl_->get_shape(); }
+      TiledArray::detail::Bitset<> get_shape() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->get_shape();
+      }
 
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
       const trange_type& trange() const {
+        TA_ASSERT(pimpl_);
         return pimpl_->trange();
       }
 
@@ -560,25 +591,41 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference operator[](size_type i) const { return pimpl_->operator[](i); }
+      const_reference operator[](size_type i) const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->operator[](i);
+      }
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return pimpl_->begin(); }
+      const_iterator begin() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->begin();
+      }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return pimpl_->end(); }
+      const_iterator end() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->end();
+      }
 
       /// Variable annotation for the array.
-      const VariableList& vars() const { return pimpl_->vars(); }
+      const VariableList& vars() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->vars();
+      }
 
-      madness::World& get_world() const { return pimpl_->get_world(); }
+      madness::World& get_world() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->get_world();
+      }
 
       template <typename T, typename CS>
-      operator Array<T, CS>()  {
+      operator Array<T, CS>() {
+        TA_ASSERT(pimpl_);
         madness::Future<bool> eval_done = eval(vars());
         eval_done.get();
         if(is_dense()) {
@@ -591,6 +638,9 @@ namespace TiledArray {
           return result;
         }
       }
+
+      template <typename Archive>
+      void serialize(const Archive&) { TA_ASSERT(false); }
 
     private:
       std::shared_ptr<impl_type> pimpl_;
