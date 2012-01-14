@@ -160,10 +160,10 @@ namespace TiledArray {
       /// \param t The tensor to be reduced
       /// \param op The reduction operation
       /// \return The reduced value of \c t
-      template <typename T, typename R, typename A, typename Op>
-      typename madness::detail::result_of<Op>::type reduce_tile(const Tensor<T, R, A>& t, const Op& op) {
-        typename Tensor<T, R, A>::value_type result = typename Tensor<T, R, A>::value_type();
-        for(typename Tensor<T, R, A>::const_iterator it = t.begin(); it != t.end(); ++it)
+      template <typename T, typename Op>
+      typename madness::detail::result_of<Op>::type reduce_tile(const T& t, const Op& op) {
+        typename T::value_type result = typename T::value_type();
+        for(typename T::const_iterator it = t.begin(); it != t.end(); ++it)
           result = op(result, *it);
 
         return result;
@@ -180,7 +180,8 @@ namespace TiledArray {
       /// the evaluation of \c arg and this task.
       template <typename Arg, typename Op>
       typename madness::detail::result_of<Op>::type reduce_tiles(const Arg& arg, const Op& op, bool) {
-        TiledArray::detail::ReduceTask<typename madness::detail::result_of<Op>::type, Op> reduce_task(op);
+        TiledArray::detail::ReduceTask<typename madness::detail::result_of<Op>::type, Op>
+            reduce_task(arg.get_world(), op);
         typename Arg::const_iterator end = arg.end();
         for(typename Arg::const_iterator it = arg.begin(); it != end; ++it)
           reduce_task.add(arg.get_world().taskq.add(& reduce_tile<typename Arg::value_type, Op>,
@@ -195,7 +196,9 @@ namespace TiledArray {
       /// \param arg The tiled tensor to evaluate
       /// \return A future to a bool that will be set once \c arg has been evaluated.
       template <typename Exp>
-      inline madness::Future<bool> eval(const ReadableTiledTensor<Exp>& arg) { return arg.eval(arg.vars()); }
+      inline madness::Future<bool> eval(const ReadableTiledTensor<Exp>& arg) {
+        return const_cast<ReadableTiledTensor<Exp>& >(arg).derived().eval(arg.vars());
+      }
 
       /// Evaluate an \c Array
 
@@ -204,7 +207,9 @@ namespace TiledArray {
       /// \param arg The array to evaluate
       /// \return A future to a bool that will be set once \c arg has been evaluated.
       template <typename T, typename CS>
-      inline madness::Future<bool> eval(const Array<T, CS>& array) { return array.eval(); }
+      inline madness::Future<bool> eval(const Array<T, CS>& array) {
+        return const_cast<Array<T, CS>&>(array).eval();
+      }
 
 
 
@@ -235,14 +240,25 @@ namespace TiledArray {
     /// \param arg The array or tile tensor object to be reduced
     /// \param op The reduction operation
     /// \return The reduced value of the tensor.
-    template <typename Arg, typename Op>
+    template <typename Exp, typename Op>
     inline typename madness::detail::result_of<Op>::type
-    reduce(const Arg& arg, const Op& op) {
+    reduce(const ReadableTiledTensor<Exp>& arg, const Op& op) {
       typename madness::detail::result_of<Op>::type result =
-          arg.get_world().taskq.add(& detail::reduce_tile<Arg, Op>, arg, op,
-          detail::eval(arg), madness::TaskAttributes::hipri()).get();
+          arg.get_world().taskq.add(arg.get_world().rank(),
+          detail::reduce_tiles<Exp, Op>, arg.derived(), op, detail::eval(arg),
+          madness::TaskAttributes::hipri()).get();
+      arg.get_world().gop.reduce(& result, 1, op);
+      return result;
+    }
 
-      return arg.get_world().gop.reduce(& result, 1, op);
+    template <typename LeftArg, typename RightArg>
+    inline typename math::ContractionValue<typename LeftArg::value_type,
+        typename RightArg::value_type>::type
+    dot(const ReadableTiledTensor<LeftArg>& left, const ReadableTiledTensor<RightArg>& right) {
+      typedef typename math::ContractionValue<typename LeftArg::value_type,
+              typename RightArg::value_type>::type result_type;
+      return reduce(make_binary_tiled_tensor(left.derived(), right.derived(),
+          std::multiplies<result_type>()), std::plus<result_type>());
     }
 
   } // namespace expressions
