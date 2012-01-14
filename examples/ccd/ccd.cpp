@@ -172,9 +172,9 @@ int main(int argc, char** argv) {
         + t_bb_vvoo("a,b,i,j");
 
     double energy =
-        - TiledArray::expressions::dot(t_aa_vvoo("a,b,i,j"), v_aa_vvoo("a,b,i,j"));
-//        - TiledArray::expressions::dot(t_ab_vvoo("a,b,i,j"), v_ab_vvoo("a,b,i,j"))
-//        - TiledArray::expressions::dot(t_bb_vvoo("a,b,i,j"), v_bb_vvoo("a,b,i,j"));
+        - TiledArray::expressions::dot(t_aa_vvoo("a,b,i,j"), v_aa_vvoo("a,b,i,j"))
+        - TiledArray::expressions::dot(t_ab_vvoo("a,b,i,j"), v_ab_vvoo("a,b,i,j"))
+        - TiledArray::expressions::dot(t_bb_vvoo("a,b,i,j"), v_bb_vvoo("a,b,i,j"));
 
     std::cout << "Done!\n";
 
