@@ -600,6 +600,9 @@ namespace TiledArray {
       template <typename T, typename CS>
       operator Array<T, CS>();
 
+      template <typename Archive>
+      void serialize(const Archive&) { TA_ASSERT(false); }
+
     private:
       std::shared_ptr<impl_type> pimpl_; ///< Distributed data container
     }; // class AnnotatedArray

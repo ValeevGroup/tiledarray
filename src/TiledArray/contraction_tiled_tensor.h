@@ -734,6 +734,10 @@ namespace TiledArray {
           return result;
         }
       }
+
+      template <typename Archive>
+      void serialize(const Archive&) { TA_ASSERT(false); }
+
     }; // class ContractionTiledTensor
 
 
