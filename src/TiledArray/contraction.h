@@ -282,6 +282,18 @@ namespace TiledArray {
                 result_index(left.range().finish(), right.range().finish(), left.range().order()),
                 left.range().order()));
 
+        TA_ASSERT(res.range().dim() == res_dim());
+
+        TA_ASSERT(std::equal(
+            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() : left.range().size().begin() + left_inner_dim()),
+            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() + left_inner_dim() : left.range().size().end()),
+            res.range().size().begin()));
+
+        TA_ASSERT(std::equal(
+            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() : right.range().size().begin() + left_inner_dim()),
+            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() + left_inner_dim() : right.range().size().end()),
+            res.range().size().begin() + left_outer_dim()));
+
         const std::size_t m = left_outer(left.range());
         const std::size_t i = left_inner(left.range());
         const std::size_t n = right_outer(right.range());
@@ -330,6 +342,7 @@ namespace TiledArray {
       std::size_t right_outer_dim() const { return right_outer_.size(); }
       std::size_t left_dim() const { return left_inner_dim() + left_outer_dim(); }
       std::size_t right_dim() const { return right_inner_dim() + right_outer_dim(); }
+      std::size_t res_dim() const { return left_outer_dim() + right_outer_dim(); }
 
       /// Get the left argument variable list
 
