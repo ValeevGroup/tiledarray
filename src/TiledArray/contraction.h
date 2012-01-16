@@ -255,7 +255,14 @@ namespace TiledArray {
       /// \param left The left-hand-side tensor argument
       /// \param right The right-hand-side tensor argument
       /// \throw TiledArray::Exception When the orders of left and right are not
-      /// equal
+      /// equal.
+      /// \throw TiledArray::Exception  When the number of dimensions of the
+      /// \c left tensor is not equal to \c left_dim() .
+      /// \throw TiledArray::Exception  When the number of dimensions of the
+      /// \c right tensor is not equal to \c right_dim() .
+      /// \throw TiledArray::Exception When the inner dimensions of \c A and
+      /// \c B are not coformal (i.e. the number and range of the inner
+      /// dimensions are not the same).
       template <typename Left, typename Right>
       expressions::Tensor<typename ContractionValue<typename Left::value_type,
           typename Right::value_type>::type, DynamicRange>
@@ -264,10 +271,7 @@ namespace TiledArray {
         TA_ASSERT(left.range().order() == right.range().order());
         TA_ASSERT(left.range().dim() == left_dim());
         TA_ASSERT(right.range().dim() == right_dim());
-        TA_ASSERT(std::equal(
-            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() + left_outer_dim() : left.range().size().begin()),
-            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().end() : left.range().size().begin() + left_inner_dim()),
-            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() + right_outer_dim() : right.range().size().begin())));
+        TA_ASSERT(check_coformal(left.range(), right.range()));
 
         // This function fuses the inner and outer dimensions of the left- and
         // right-hand tensors such that the contraction can be performed with a
@@ -281,18 +285,6 @@ namespace TiledArray {
                 result_index(left.range().start(), right.range().start(), left.range().order()),
                 result_index(left.range().finish(), right.range().finish(), left.range().order()),
                 left.range().order()));
-
-        TA_ASSERT(res.range().dim() == res_dim());
-
-        TA_ASSERT(std::equal(
-            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() : left.range().size().begin() + left_inner_dim()),
-            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() + left_outer_dim() : left.range().size().end()),
-            res.range().size().begin()));
-
-        TA_ASSERT(std::equal(
-            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() : right.range().size().begin() + right_inner_dim()),
-            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() + right_outer_dim() : right.range().size().end()),
-            res.range().size().begin() + left_outer_dim()));
 
         const std::size_t m = left_outer(left.range());
         const std::size_t i = left_inner(left.range());
@@ -365,6 +357,22 @@ namespace TiledArray {
       }
 
     private:
+
+      /// Check that the left and right arrays are coformal
+
+      ///
+      template <typename LeftRange, typename RightRange>
+      bool check_coformal(const LeftRange& left, const RightRange& right) const {
+        const TiledArray::detail::DimensionOrderType order = left.order();
+        return std::equal(
+            (order == TiledArray::detail::decreasing_dimension_order ? left.start().begin() + left_outer_dim() : left.start().begin()),
+            (order == TiledArray::detail::decreasing_dimension_order ? left.start().end() : left.start().begin() + left_inner_dim()),
+            (order == TiledArray::detail::decreasing_dimension_order ? right.start().begin() + right_outer_dim() : right.start().begin()))
+            && std::equal(
+            (order == TiledArray::detail::decreasing_dimension_order ? left.finish().begin() + left_outer_dim() : left.finish().begin()),
+            (order == TiledArray::detail::decreasing_dimension_order ? left.finish().end() : left.finish().begin() + left_inner_dim()),
+            (order == TiledArray::detail::decreasing_dimension_order ? right.finish().begin() + right_outer_dim() : right.finish().begin()));
+      }
 
       /// Product accumulation
 
