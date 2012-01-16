@@ -286,12 +286,12 @@ namespace TiledArray {
 
         TA_ASSERT(std::equal(
             (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() : left.range().size().begin() + left_inner_dim()),
-            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() + left_inner_dim() : left.range().size().end()),
+            (left.range().order() == detail::decreasing_dimension_order ? left.range().size().begin() + left_outer_dim() : left.range().size().end()),
             res.range().size().begin()));
 
         TA_ASSERT(std::equal(
-            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() : right.range().size().begin() + left_inner_dim()),
-            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() + left_inner_dim() : right.range().size().end()),
+            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() : right.range().size().begin() + right_inner_dim()),
+            (left.range().order() == detail::decreasing_dimension_order ? right.range().size().begin() + right_outer_dim() : right.range().size().end()),
             res.range().size().begin() + left_outer_dim()));
 
         const std::size_t m = left_outer(left.range());
