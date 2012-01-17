@@ -124,7 +124,7 @@ TiledArray::Array<double, TiledArray::CoordinateSystem<2> >
 InputData::make_f(madness::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2) {
   // Construct the array
   TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<2> > tr = trange(s, ov1, ov2);
-  std::cout << tr << "\n";
+//  std::cout << tr << "\n";
   std::vector<std::size_t> sparse_list = make_sparse_list(tr, f_);
   TiledArray::Array<double, TiledArray::CoordinateSystem<2> > f(w, tr, sparse_list.begin(), sparse_list.end());
 
@@ -151,7 +151,7 @@ TiledArray::Array<double, TiledArray::CoordinateSystem<4> >
 InputData::make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) {
   // Construct the array
   TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<4> > tr = trange(alpha, beta, ov1, ov2, ov3, ov4);
-  std::cout << tr << "\n";
+//  std::cout << tr << "\n";
   std::vector<std::size_t> sparse_list = make_sparse_list(tr, v_ab_);
   TiledArray::Array<double, TiledArray::CoordinateSystem<4> > v_ab(w, tr, sparse_list.begin(), sparse_list.end());
 
