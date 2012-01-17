@@ -90,6 +90,19 @@ public:
   TiledArray::Array<double, TiledArray::CoordinateSystem<4> >
   make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4);
 
+  TiledArray::Array<double, TiledArray::CoordinateSystem<4> >::value_type
+  make_D_tile(const TiledArray::Array<double, TiledArray::CoordinateSystem<4> >::trange_type::tile_range_type& range) const {
+    typedef TiledArray::Array<double, TiledArray::CoordinateSystem<4> >::value_type tile_type;
+    typedef tile_type::range_type range_type;
+
+    tile_type tile(range, 0.0);
+    for(range_type::const_iterator it = tile.range().begin(); it != tile.range().end(); ++it)
+      tile[*it] = 1.0 / (f_[(*it)[0]].second + f_[(*it)[1]].second
+          + f_[(*it)[2]].second + f_[(*it)[3]].second);
+
+    return tile;
+  }
+
   /// Release allocated data
   void clear() {
     f_.clear();
