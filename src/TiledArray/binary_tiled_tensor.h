@@ -276,6 +276,9 @@ namespace TiledArray {
         /// have completed. get() blocks this task until for_each() is done
         /// while still processing tasks.
         static bool generate_tasks(std::shared_ptr<BinaryTiledTensorImpl_> me, bool, bool) {
+          TA_ASSERT(me->left_.vars() == me->right_.vars());
+          TA_ASSERT(me->left_.trange() == me->right_.trange());
+
           madness::Future<bool> left_done = me->get_world().taskq.for_each(
               madness::Range<typename left_tensor_type::const_iterator>(
                   me->left_.begin(), me->left_.end()), EvalLeft(me));
@@ -298,7 +301,9 @@ namespace TiledArray {
         BinaryTiledTensorImpl(const left_tensor_type& left, const right_tensor_type& right, const Op& op) :
           left_(left), right_(right), op_(op),
           data_(left.get_world(), left.size(), left.get_pmap())
-        { }
+        {
+          TA_ASSERT(left_.size() == right_.size());
+        }
 
 
         /// Evaluate tensor to destination
@@ -327,7 +332,6 @@ namespace TiledArray {
         static madness::Future<bool> generate_tiles(std::shared_ptr<BinaryTiledTensorImpl_> me,
             const madness::Future<bool>& left_done, const madness::Future<bool>& right_done)
         {
-
           return me->get_world().taskq.add(& BinaryTiledTensorImpl_::generate_tasks, me,
               left_done, right_done, madness::TaskAttributes::hipri());
         }
