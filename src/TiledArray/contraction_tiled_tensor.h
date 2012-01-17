@@ -613,8 +613,10 @@ namespace TiledArray {
         TA_ASSERT(pimpl_);
         if(v != pimpl_->vars()) {
 
-          // Get the permutation for the results
-          Permutation perm = pimpl_->vars().permutation(v);
+          // Get the permutation to go from the current variable list to v such
+          // that:
+          //   v = perm ^ pimpl_->vars()
+          Permutation perm = v.permutation(pimpl_->vars());
 
           // Generate tile tasks
           // This needs to be done before eval structure.
