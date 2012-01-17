@@ -454,8 +454,8 @@ namespace TiledArray {
         std::equal(r1.data().begin(), r1.data().end(), r2.data().begin());
   }
 
-  template <typename CS>
-  bool operator !=(const TiledRange<CS>& r1, const TiledRange<CS>& r2) {
+  template <typename D1, typename D2>
+  bool operator !=(const TiledRange<D1>& r1, const TiledRange<D2>& r2) {
     return ! operator ==(r1, r2);
   }
 
