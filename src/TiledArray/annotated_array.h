@@ -232,7 +232,7 @@ namespace TiledArray {
             return false;
 
           if(perm_.dim() == trange_.tiles().dim())
-            return array_.is_zero(array_.range().ord(-perm_ ^ trange_.tiles().idx(i)));
+            return array_.is_zero(array_.range().ord((-perm_) ^ trange_.tiles().idx(i)));
 
           return array_.is_zero(i);
         }
