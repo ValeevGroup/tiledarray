@@ -95,7 +95,6 @@ int main(int argc, char** argv) {
     world.gop.fence();
     std::cout << " done.\n";
 
-    input.clear();
 
     Array<double, CoordinateSystem<4> > t_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = t_aa_vvoo.range().begin(); it != t_aa_vvoo.range().end(); ++it)
@@ -105,8 +104,7 @@ int main(int argc, char** argv) {
     Array<double, CoordinateSystem<4> > D_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = D_aa_vvoo.range().begin(); it != D_aa_vvoo.range().end(); ++it)
       if(D_aa_vvoo.is_local(*it) && (! D_aa_vvoo.is_zero(*it)))
-        D_aa_vvoo.set(*it, world.taskq.add(world.rank(),
-            &make_D_tile, D_aa_vvoo.trange().make_tile_range(*it), f_a_vv, f_a_vv, f_a_oo, f_a_oo));
+        D_aa_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_tile, D_aa_vvoo.trange().make_tile_range(*it)));
 
     Array<double, CoordinateSystem<4> > t_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = t_ab_vvoo.range().begin(); it != t_ab_vvoo.range().end(); ++it)
@@ -116,8 +114,7 @@ int main(int argc, char** argv) {
     Array<double, CoordinateSystem<4> > D_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = D_ab_vvoo.range().begin(); it != D_ab_vvoo.range().end(); ++it)
       if(D_ab_vvoo.is_local(*it) && (! D_ab_vvoo.is_zero(*it)))
-        D_ab_vvoo.set(*it, world.taskq.add(world.rank(),
-            &make_D_tile, D_ab_vvoo.trange().make_tile_range(*it), f_a_vv, f_b_vv, f_a_oo, f_b_oo));
+        D_ab_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_tile, D_ab_vvoo.trange().make_tile_range(*it)));
 
     Array<double, CoordinateSystem<4> > t_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = t_bb_vvoo.range().begin(); it != t_bb_vvoo.range().end(); ++it)
@@ -127,11 +124,14 @@ int main(int argc, char** argv) {
     Array<double, CoordinateSystem<4> > D_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = D_bb_vvoo.range().begin(); it != D_bb_vvoo.range().end(); ++it)
       if(D_bb_vvoo.is_local(*it) && (! D_bb_vvoo.is_zero(*it)))
-        D_bb_vvoo.set(*it, world.taskq.add(world.rank(),
-            &make_D_tile, D_bb_vvoo.trange().make_tile_range(*it), f_b_vv, f_b_vv, f_b_oo, f_b_oo));
+        D_bb_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_tile, D_bb_vvoo.trange().make_tile_range(*it)));
 
 
     world.gop.fence();
+
+    data.clear();
+
+    std::cout << f_a_vv.trange() << " " << t_aa_vvoo.trange() << "\n";
 
     Array<double, CoordinateSystem<4> >r_aa_vvoo =
          v_aa_vvoo("p1a,p2a,h1a,h2a")
@@ -176,6 +176,7 @@ int main(int argc, char** argv) {
         - TiledArray::expressions::dot(t_ab_vvoo("a,b,i,j"), v_ab_vvoo("a,b,i,j"))
         - TiledArray::expressions::dot(t_bb_vvoo("a,b,i,j"), v_bb_vvoo("a,b,i,j"));
 
+    std::cout << "Energy = " << energy << "\n";
     std::cout << "Done!\n";
 
   } else  {
