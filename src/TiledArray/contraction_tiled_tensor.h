@@ -123,10 +123,10 @@ namespace TiledArray {
             /// \param i The tile to be evaluated
             /// \return true
             bool operator()(size_type i) const {
-              if(pimpl_->is_local(i)) {
-                if(! pimpl_->is_zero(i)) {
+              size_type perm_i = pimpl_->range().ord(perm_ ^ range_.idx(i));
 
-                  size_type perm_i = pimpl_->range().ord(perm_ ^ range_.idx(i));
+              if(pimpl_->is_local(perm_i)) {
+                if(! pimpl_->is_zero(perm_i)) {
 
                   size_type x = 0; // Row of result matrix
                   size_type y = 0; // Column of result matrix
@@ -176,8 +176,7 @@ namespace TiledArray {
 
               // This will start the reduction tasks, submit the permute task of
               // the result of the reduction, and return the resulting future
-              return pimpl_->get_world().taskq.add(& EvalImpl::permute,
-                  local_reduce_op.submit(), perm_);
+              return make_permute_task(local_reduce_op.submit(), perm_);
             }
 
             /// Contract two tiles
@@ -198,9 +197,22 @@ namespace TiledArray {
             /// This function is used as a task function for evaluating permutations.
             /// \param t The tensor to be permuted
             /// \param p The permutation to be applied to \c t
-            static value_type permute(const value_type& t, const perm_type& p) {
+            static value_type permute(const value_type& t, const Permutation& p) {
+              if(t.range().dim() != p.dim())
+                std::cout << t << " " << p << "\n";
               return make_permute_tensor(t, p);
             }
+
+            madness::Future<value_type> make_permute_task(const madness::Future<value_type>& tile, const Permutation& p) const {
+              return pimpl_->get_world().taskq.add(& EvalImpl::permute,
+                  tile, perm_);
+            }
+
+            const madness::Future<value_type>&
+            make_permute_task(const madness::Future<value_type>& tile, const TiledArray::detail::NoPermutation&) const {
+              return tile;
+            }
+
 
             // Container types for holding cached remote tiles.
             typedef madness::ConcurrentHashMap<size_type,
@@ -287,8 +299,6 @@ namespace TiledArray {
             return (*pimpl_)(arg);
           }
 
-          const Perm& perm() const { return pimpl_->perm(); }
-
         private:
           std::shared_ptr<EvalImpl> pimpl_;
         }; // class Eval
@@ -353,8 +363,10 @@ namespace TiledArray {
         }
 
         template <typename Perm>
-        bool generate_tasks(const VariableList& v, const Eval<Perm>& eval_op, bool, bool) {
-          perm_structure(eval_op.perm(), v);
+        bool generate_tasks(const Perm& perm, const VariableList& v,
+            const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl, bool, bool) {
+          Eval<Perm> eval_op(perm, pimpl);
+          perm_structure(perm, v);
 
           // Todo: This algorithm is inherently non-scalable. It is done this
           // way because other expressions depend on all the tiles being present
@@ -364,7 +376,7 @@ namespace TiledArray {
           // a lazy global synchronization mechanism that will solve this problem.
 
           // Divide the result processes among all nodes.
-          const size_type n = trange_.tiles().volume();
+          const size_type n = size();
 //          const ProcessID r = get_world().rank();
 //          const ProcessID s = get_world().size();
 //
@@ -389,8 +401,8 @@ namespace TiledArray {
             const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
             const madness::Future<bool>& left_done, const madness::Future<bool>& right_done) {
           return pimpl->get_world().taskq.add(*pimpl,
-              & ContractionTiledTensorImpl_::template generate_tasks<Perm>, v,
-              Eval<Perm>(perm, pimpl), left_done, right_done,
+              & ContractionTiledTensorImpl_::template generate_tasks<Perm>, perm,
+              v, pimpl, left_done, right_done,
               madness::TaskAttributes::hipri());
         }
 
@@ -492,10 +504,9 @@ namespace TiledArray {
 
         /// \param i The tile index
         /// \return Tile \c i
-        const_reference get_local(size_type i) const {
-          TA_ASSERT(left_.is_local(i));
-          TA_ASSERT(right_.is_local(i));
-          return op_(left_.get_local(i), right_.get_local(i));
+        const_reference operator[](size_type i) const {
+          TA_ASSERT(! is_zero(i));
+          return data_[i];
         }
 
 
@@ -717,6 +728,16 @@ namespace TiledArray {
       madness::World& get_world() const {
         TA_ASSERT(pimpl_);
         return pimpl_->get_world();
+      }
+
+
+      /// Tile accessor
+
+      /// \param i The tile index
+      /// \return Tile \c i
+      const_reference operator[](size_type i) const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->operator[](i);
       }
 
       template <typename T, typename CS>
