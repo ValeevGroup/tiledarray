@@ -113,7 +113,10 @@ InputData::InputData(std::ifstream& input) {
       break;
     std::istringstream iss(line);
     array4d::value_type data;
-    iss >> data.first[0] >> data.first[1] >> data.first[2] >> data.first[3] >> data.second;
+
+    // Note: Input data is in chemist notation order, but we want physicist notation.
+    // So we swap index 1 and 2
+    iss >> data.first[0] >> data.first[2] >> data.first[1] >> data.first[3] >> data.second;
     v_ab_.push_back(data);
 //      std::cout << "(" << data.first[0] << ", " << data.first[1] << ", " << data.first[2]
 //          << ", " << data.first[3] << ") " << data.second << "\n";
