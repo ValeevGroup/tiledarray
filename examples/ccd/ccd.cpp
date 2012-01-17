@@ -11,34 +11,6 @@
 
 using namespace TiledArray;
 
-
-Array<double, CoordinateSystem<4> >::value_type make_D_tile(const Array<double, CoordinateSystem<4> >::trange_type::tile_range_type& range,
-    const Array<double, CoordinateSystem<2> > f_a, const Array<double, CoordinateSystem<2> > f_b,
-    const Array<double, CoordinateSystem<2> > f_i, const Array<double, CoordinateSystem<2> > f_j) {
-  typedef Array<double, CoordinateSystem<4> >::value_type::range_type range_type;
-  typedef Array<double, CoordinateSystem<4> >::value_type tile_type;
-  typedef range_type::index tile_index;
-  typedef Array<double, CoordinateSystem<2> >::range_type::index array_index;
-
-  tile_type tile(range, 0.0);
-  for(range_type::const_iterator it = tile.range().begin(); it != tile.range().end(); ++it) {
-    tile_type::value_type value = 0.0;
-    array_index f_index;
-    f_index[0] = f_index[1] = (*it)[0];
-    value += f_a.find(f_a.trange().element_to_tile(f_index)).get()[f_index];
-    f_index[0] = f_index[1] = (*it)[1];
-    value += f_b.find(f_b.trange().element_to_tile(f_index)).get()[f_index];
-    f_index[0] = f_index[1] = (*it)[2];
-    value += f_i.find(f_i.trange().element_to_tile(f_index)).get()[f_index];
-    f_index[0] = f_index[1] = (*it)[3];
-    value += f_j.find(f_j.trange().element_to_tile(f_index)).get()[f_index];
-
-    tile[*it] = 1.0 / value;
-  }
-
-  return tile;
-}
-
 int main(int argc, char** argv) {
   // Initialize madness runtime
   madness::initialize(argc,argv);
@@ -131,14 +103,13 @@ int main(int argc, char** argv) {
 
     data.clear();
 
-    std::cout << f_a_vv.trange() << " " << t_aa_vvoo.trange() << "\n";
-
     Array<double, CoordinateSystem<4> >r_aa_vvoo =
          v_aa_vvoo("p1a,p2a,h1a,h2a")
         -f_a_vv("p1a,p3a")*t_aa_vvoo("p2a,p3a,h1a,h2a")
         +f_a_vv("p2a,p3a")*t_aa_vvoo("p1a,p3a,h1a,h2a")
         +f_a_oo("h3a,h1a")*t_aa_vvoo("p1a,p2a,h2a,h3a")
-        -f_a_oo("h3a,h2a")*t_aa_vvoo("p1a,p2a,h1a,h3a");
+        -f_a_oo("h3a,h2a")*t_aa_vvoo("p1a,p2a,h1a,h3a")
+        ;
 
     Array<double, CoordinateSystem<4> >r_ab_vvoo =
          v_ab_vvoo("p1a,p2b,h1a,h2b")
@@ -176,7 +147,7 @@ int main(int argc, char** argv) {
         - TiledArray::expressions::dot(t_ab_vvoo("a,b,i,j"), v_ab_vvoo("a,b,i,j"))
         - TiledArray::expressions::dot(t_bb_vvoo("a,b,i,j"), v_bb_vvoo("a,b,i,j"));
 
-    std::cout << "Energy = " << energy << "\n";
+    std::cout << "Energy = " << std::scientific << energy << "\n";
     std::cout << "Done!\n";
 
   } else  {
