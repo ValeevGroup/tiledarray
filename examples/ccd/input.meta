@@ -1,0 +1,94 @@
+Pai-Wei,
+
+attached is a file with the input tensors you need + all the metadata. This is for water molecule with cc-pVDZ basis.
+Here's a short primer:
+
+nirreps: number of symmetry blocks (of occupied and virtual indices)
+nmo: total number of indices = O + V
+nocc_act_alpha: O for alpha spin
+nocc_act_beta: O for beta spin
+nvir_act_alpha: V for alpha spin
+nvir_act_beta: V for beta spin
+obs_mosym_alpha: symmetry block of each alpha spin index; these values can be [0,nirreps-1];
+        occupied come first (e,g, the occupied orbitals have symmetries 0, 0, 3, 0, 2)
+obs_mosym_beta: symmetry block of each beta spin index
+
+next come nonzero elements of f tensor. In this case it is diagonal, but you cannot assume that it is
+in general CC method. I did not split it up into blocks (oo, ov, vv, etc.), but that's straightforward: indices
+of the given tensor are combined o+v indices, i.e. 0 is the first O index, 1 is the second O index, … 4 is the 5th
+O index, 5 is the first V index, etc. These indices were described by obs_mosym_alpha and obs_mosym_beta.
+Also, in this case f tensor is the same for alpha and beta spin, but you cannot use this fact and should treat them
+separately (if you consider a different molecule alpha and beta spins will no longer be equivalent).
+
+next are nonzero elements of v tensor. Again, it's given in combined o+v form.
+
+**WARNING: v tensor is given in so-called chemists notation, whereas all equations you have use v tensor in physicist's notation. When you read v tensor just
+swap second and third indices, that will convert to physicists notation. Henceforth in this document I use physicists notation.**
+
+There is an additional complication regarding spin.
+What is given is alpha-beta v tensor (v_ab), but you can compute v_aa from it (in this case v_aa and v_bb are the same, but you cannot
+use this fact -- you must treat them separately):
+
+v_aa [p1][p2][p3][p4] = v_ab[p1][p2][p3][p4] - v_ab[p1][p2][p4][p3]
+
+Note that v_aa is therefore antisymmetric with respect to permutation of indices p3 and p4. It is also antisymmetric with
+respect to permutation of indices p1 and p2 because v_ab has what you guys called "vertex" symmetry:
+
+v_ab[p1][p2][p3][p4] = v_ab[p2][p1][p4][p3]
+
+------------------
+
+Lastly, about how to do CC iterations. It's very simple. Set initial t amplitudes to zero. Changes in t1 and t2 amplitudes are obtained
+by scaling the residuals of the CC amplitude equations as follows:
+
+delta_t1_a[o1][v1] = r1_a[o1][v1] / ( f_a_o[o1][o1] - f_a_v[v1][v1] )
+t1_a += delta_t1_a;
+same for beta spin
+
+delta_t2_ab[o1][o2][v1][v2] = r2_ab[o1][o2][v1][v2] / ( f_a_o[o1][o1] + f_b_o[o2][o2] - f_a_v[v1][v1] - f_b_v[v2][v2] )
+t2_ab += delta_t2_ab;
+
+same for aa and ab
+
+The interpretation is that residuals are like gradients of t amplitudes and the differences of diagonal f tensor elements are
+like approximate hessian for t amplitudes. So this is an inexact Newton update.
+
+Do this until norms of the residuals fall below a certain small threshold, like 10^-10. You should also compute the CC energy
+after each iteration to monitor progress.
+
+To help troubleshooting: the first iteration residual r1 should be zero and r2 should equal corresponding v tensor.
+Hence after the first iteration t1 will still be zero but t2 will not be.
+
+Good luck!
+
+Ed.
+
+P.S. Molecular geometry:
+   unit = bohr
+H [ 0.000000000 -1.430129828 0.983062487 ]
+H [ 0.000000000 1.430129828 0.983062487 ]
+O [ 0.000000000 0.000000000 -0.123863145 ]
+
+P.P.S. Reference energies:
+E(nucl rep) = 9.1968871381
+E(HF) = -76.0268078691
+  iter      CCSD energy        residual RMS        Wall
+  ======================================================
+     0    -0.2089129826632     0.0003843661760      0.23
+     1    -0.2128381951574     0.0000692168122      0.21
+     2    -0.2132011089634     0.0000414116502      0.19
+     3    -0.2132690605106     0.0000063919035      0.18
+     4    -0.2132691174800     0.0000053098418      0.18
+     5    -0.2132697629510     0.0000024172773      0.23
+     6    -0.2132698525217     0.0000009594535      0.18
+     7    -0.2132699188466     0.0000004035898      0.17
+     8    -0.2132699194842     0.0000002637598      0.20
+     9    -0.2132699498062     0.0000000828022      0.18
+    10    -0.2132699333151     0.0000000213339      0.84
+    11    -0.2132699352275     0.0000000022403      0.19
+    12    -0.2132699349395     0.0000000025833      0.31
+    13    -0.2132699349021     0.0000000017643      0.19
+    14    -0.2132699349371     0.0000000010290      0.16
+    15    -0.2132699349939     0.0000000000330      0.16
+  ======================================================
+

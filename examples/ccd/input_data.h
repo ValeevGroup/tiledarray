@@ -95,9 +95,10 @@ public:
     typedef TiledArray::Array<double, TiledArray::CoordinateSystem<4> >::value_type tile_type;
     typedef tile_type::range_type range_type;
 
+    // computes tiles of  D(v,v,o,o)
     tile_type tile(range, 0.0);
     for(range_type::const_iterator it = tile.range().begin(); it != tile.range().end(); ++it)
-      tile[*it] = 1.0 / (f_[(*it)[0]].second + f_[(*it)[1]].second
+      tile[*it] = 1.0 / (- f_[(*it)[0]].second - f_[(*it)[1]].second
           + f_[(*it)[2]].second + f_[(*it)[3]].second);
 
     return tile;

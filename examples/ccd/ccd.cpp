@@ -6,6 +6,7 @@
 // Description : Hello World in C, Ansi-style
 //============================================================================
 
+#include <iomanip>
 #include <tiled_array.h>
 #include "input_data.h"
 
@@ -125,29 +126,32 @@ int main(int argc, char** argv) {
         +f_b_oo("h3b,h1b")*t_bb_vvoo("p1b,p2b,h2b,h3b")
         -f_b_oo("h3b,h2b")*t_bb_vvoo("p1b,p2b,h1b,h3b");
 
-    t_aa_vvoo("a,b,i,j") =
+    Array<double, CoordinateSystem<4> > rr_aa_vvoo =
+//        t_ab_vvoo("a,b,i,j") =
         TiledArray::expressions::make_binary_tiled_tensor(D_aa_vvoo("a,b,i,j"),
         r_aa_vvoo("a,b,i,j"), std::multiplies<double>())
         + t_aa_vvoo("a,b,i,j");
 
-
-    t_ab_vvoo("a,b,i,j") =
+    Array<double, CoordinateSystem<4> > rr_ab_vvoo =
+//    t_ab_vvoo("a,b,i,j") =
         TiledArray::expressions::make_binary_tiled_tensor(D_ab_vvoo("a,b,i,j"),
         r_ab_vvoo("a,b,i,j"), std::multiplies<double>())
         + t_ab_vvoo("a,b,i,j");
 
-
-    t_bb_vvoo("a,b,i,j") =
+    Array<double, CoordinateSystem<4> > rr_bb_vvoo =
+//    t_bb_vvoo("a,b,i,j") =
         TiledArray::expressions::make_binary_tiled_tensor(D_bb_vvoo("a,b,i,j"),
         r_bb_vvoo("a,b,i,j"), std::multiplies<double>())
         + t_bb_vvoo("a,b,i,j");
 
     double energy =
-        - TiledArray::expressions::dot(t_aa_vvoo("a,b,i,j"), v_aa_vvoo("a,b,i,j"))
-        - TiledArray::expressions::dot(t_ab_vvoo("a,b,i,j"), v_ab_vvoo("a,b,i,j"))
-        - TiledArray::expressions::dot(t_bb_vvoo("a,b,i,j"), v_bb_vvoo("a,b,i,j"));
+         0.25 * (  TiledArray::expressions::dot(rr_aa_vvoo("a,b,i,j"), v_aa_vvoo("a,b,i,j"))
+                 + TiledArray::expressions::dot(rr_bb_vvoo("a,b,i,j"), v_bb_vvoo("a,b,i,j"))
+                )
+        + TiledArray::expressions::dot(rr_ab_vvoo("a,b,i,j"), v_ab_vvoo("a,b,i,j"))
+    ;
 
-    std::cout << "Energy = " << std::scientific << energy << "\n";
+    std::cout << "MP2 energy = " << std::setprecision(12) << energy << "\n";
     std::cout << "Done!\n";
 
   } else  {
