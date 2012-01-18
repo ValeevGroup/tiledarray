@@ -11,6 +11,7 @@
 #include "input_data.h"
 
 using namespace TiledArray;
+using namespace TiledArray::expressions;
 
 int main(int argc, char** argv) {
   // Initialize madness runtime
@@ -74,30 +75,20 @@ int main(int argc, char** argv) {
       if(t_aa_vvoo.is_local(*it) && (! t_aa_vvoo.is_zero(*it)))
         t_aa_vvoo.set(*it, 0.0);
 
-    Array<double, CoordinateSystem<4> > D_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.get_shape());
-    for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = D_aa_vvoo.range().begin(); it != D_aa_vvoo.range().end(); ++it)
-      if(D_aa_vvoo.is_local(*it) && (! D_aa_vvoo.is_zero(*it)))
-        D_aa_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_tile, D_aa_vvoo.trange().make_tile_range(*it)));
-
     Array<double, CoordinateSystem<4> > t_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = t_ab_vvoo.range().begin(); it != t_ab_vvoo.range().end(); ++it)
       if(t_ab_vvoo.is_local(*it) && (! t_ab_vvoo.is_zero(*it)))
         t_ab_vvoo.set(*it, 0.0);
-
-    Array<double, CoordinateSystem<4> > D_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
-    for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = D_ab_vvoo.range().begin(); it != D_ab_vvoo.range().end(); ++it)
-      if(D_ab_vvoo.is_local(*it) && (! D_ab_vvoo.is_zero(*it)))
-        D_ab_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_tile, D_ab_vvoo.trange().make_tile_range(*it)));
 
     Array<double, CoordinateSystem<4> > t_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = t_bb_vvoo.range().begin(); it != t_bb_vvoo.range().end(); ++it)
       if(t_bb_vvoo.is_local(*it) && (! t_bb_vvoo.is_zero(*it)))
         t_bb_vvoo.set(*it, 0.0);
 
-    Array<double, CoordinateSystem<4> > D_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
-    for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = D_bb_vvoo.range().begin(); it != D_bb_vvoo.range().end(); ++it)
-      if(D_bb_vvoo.is_local(*it) && (! D_bb_vvoo.is_zero(*it)))
-        D_bb_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_tile, D_bb_vvoo.trange().make_tile_range(*it)));
+    Array<double, CoordinateSystem<4> > D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
+    for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
+      if(D_vvoo.is_local(*it) && (! D_vvoo.is_zero(*it)))
+        D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_tile, D_vvoo.trange().make_tile_range(*it)));
 
 
     world.gop.fence();
@@ -126,29 +117,26 @@ int main(int argc, char** argv) {
         +f_b_oo("h3b,h1b")*t_bb_vvoo("p1b,p2b,h2b,h3b")
         -f_b_oo("h3b,h2b")*t_bb_vvoo("p1b,p2b,h1b,h3b");
 
-    Array<double, CoordinateSystem<4> > rr_aa_vvoo =
-//        t_ab_vvoo("a,b,i,j") =
-        TiledArray::expressions::make_binary_tiled_tensor(D_aa_vvoo("a,b,i,j"),
+    t_aa_vvoo("a,b,i,j") =
+        make_binary_tiled_tensor(D_vvoo("a,b,i,j"),
         r_aa_vvoo("a,b,i,j"), std::multiplies<double>())
         + t_aa_vvoo("a,b,i,j");
 
-    Array<double, CoordinateSystem<4> > rr_ab_vvoo =
-//    t_ab_vvoo("a,b,i,j") =
-        TiledArray::expressions::make_binary_tiled_tensor(D_ab_vvoo("a,b,i,j"),
+    t_ab_vvoo("a,b,i,j") =
+        make_binary_tiled_tensor(D_vvoo("a,b,i,j"),
         r_ab_vvoo("a,b,i,j"), std::multiplies<double>())
         + t_ab_vvoo("a,b,i,j");
 
-    Array<double, CoordinateSystem<4> > rr_bb_vvoo =
-//    t_bb_vvoo("a,b,i,j") =
-        TiledArray::expressions::make_binary_tiled_tensor(D_bb_vvoo("a,b,i,j"),
+    t_bb_vvoo("a,b,i,j") =
+        make_binary_tiled_tensor(D_vvoo("a,b,i,j"),
         r_bb_vvoo("a,b,i,j"), std::multiplies<double>())
         + t_bb_vvoo("a,b,i,j");
 
     double energy =
-         0.25 * (  TiledArray::expressions::dot(rr_aa_vvoo("a,b,i,j"), v_aa_vvoo("a,b,i,j"))
-                 + TiledArray::expressions::dot(rr_bb_vvoo("a,b,i,j"), v_bb_vvoo("a,b,i,j"))
+         0.25 * (  dot(t_aa_vvoo("a,b,i,j"), v_aa_vvoo("a,b,i,j"))
+                 + dot(t_bb_vvoo("a,b,i,j"), v_bb_vvoo("a,b,i,j"))
                 )
-        + TiledArray::expressions::dot(rr_ab_vvoo("a,b,i,j"), v_ab_vvoo("a,b,i,j"))
+        + dot(t_ab_vvoo("a,b,i,j"), v_ab_vvoo("a,b,i,j"))
     ;
 
     std::cout << "MP2 energy = " << std::setprecision(12) << energy << "\n";
