@@ -397,6 +397,26 @@ namespace TiledArray {
     std::shared_ptr<impl_type> pimpl_;
   }; // class Array
 
+  /// Add the tensor to an output stream
+
+  /// This function will iterate through all tiles on node 0 and print non-zero
+  /// tiles. It will wait for each tile to be evaluated (i.e. it is a blocking
+  /// function). Tasks will continue to be processed.
+  /// \tparam T The element type of Array
+  /// \tparam CS The coordinate system type of Array
+  /// \param os The output stream
+  /// \param a The array to be put in the output stream
+  /// \return A reference to the output stream
+  template <typename T, typename CS>
+  inline std::ostream& operator<<(std::ostream& os, const Array<T, CS>& a) {
+    if(a.get_world().rank() == 0) {
+      for(std::size_t i = 0; i < a.size(); ++i)
+        if(! a.is_zero(i))
+          os << i << ": " << a.find(i).get() << "\n";
+    }
+    return os;
+  }
+
   namespace detail {
 
     template <typename T, typename CS>
