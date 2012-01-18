@@ -203,7 +203,7 @@ namespace TiledArray {
         /// \param right The right argument
         /// \param op The element transform operation
         AnnotatedArrayImpl(const array_type& array, const VariableList& vars) :
-            array_(array),
+            array_(const_cast<array_type&>(array)),
             vars_(vars),
             trange_(array.trange()),
             shape_((array.is_dense() ? 0 : array.size())),
@@ -315,7 +315,7 @@ namespace TiledArray {
 
       private:
 
-        array_type array_; ///< The referenced array
+        array_type& array_; ///< The referenced array
         VariableList vars_; ///< Tensor annotation
         trange_type trange_; ///< Tensor tiled range
         TiledArray::detail::Bitset<> shape_; ///< Tensor shape
