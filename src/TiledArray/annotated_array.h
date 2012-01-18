@@ -375,8 +375,8 @@ namespace TiledArray {
 
       /// This function will construct a new from the \c other expression,
       /// evaluate it to the array and
-      template <typename D>
-      bool eval_to_this(const D& other, bool) {
+      template <typename T>
+      bool eval_to_this(const T& other, bool) {
         if(other.is_dense())
           array_type(other.get_world(), other.trange(), other.get_pmap()).swap(pimpl_->array());
         else
@@ -386,18 +386,13 @@ namespace TiledArray {
         return true;
       }
 
-      template <typename D>
-      AnnotatedArray_& assign(const D& other) {
-
-        madness::Future<bool> child_eval_done = const_cast<D&>(other).eval(pimpl_->vars());
-
-        madness::Future<bool> done =
-            get_world().taskq.add(*this, & AnnotatedArray_::template eval_to_this<D>,
-            other, child_eval_done);
+      template <typename T>
+      AnnotatedArray_& assign(const T& other) {
 
         // Wait until evaluation of the result array structure and tiles has been
         // completed. Tasks are processed by get() until this happens.
-        done.get();
+        get_world().taskq.add(*this, & AnnotatedArray_::template eval_to_this<T>,
+            other, const_cast<T&>(other).eval(pimpl_->vars())).get();
 
         return *this;
       }
@@ -428,7 +423,6 @@ namespace TiledArray {
       void eval_to(Dest& dest) const {
         TA_ASSERT(pimpl_);
         TA_ASSERT(trange() == dest.trange());
-        TA_ASSERT(vars() == dest.vars());
 
         // Add result tiles to dest and wait for all tiles to be added.
         for(const_iterator it = begin(); it != end(); ++it)
