@@ -57,6 +57,18 @@ namespace TiledArray {
       return Binder2nd<Op>(op, t);
     }
 
+    template <typename T>
+    struct Square {
+      typedef T result_type;
+      typedef T argument_type;
+
+      result_type operator()(argument_type t) const { return t * t; }
+
+      template <typename Archive>
+      void serialize(const Archive&) { }
+    }; // class Square
+
+
   }  // namespace detail
 }  // namespace TiledArray
 

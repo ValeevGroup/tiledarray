@@ -272,18 +272,6 @@ namespace TiledArray {
           std::multiplies<result_type>()), std::plus<result_type>());
     }
 
-    namespace detail {
-
-      template <typename T>
-      struct Square {
-        typedef T result_type;
-        typedef T argument_type;
-
-        result_type operator()(argument_type t) const { return t * t; }
-      };
-
-    }  // namespace detail
-
     template <typename Arg>
     typename Arg::value_type::value_type
     norm2(const ReadableTiledTensor<Arg>& arg) {
