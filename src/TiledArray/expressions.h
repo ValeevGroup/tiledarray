@@ -276,7 +276,7 @@ namespace TiledArray {
     typename Arg::value_type::value_type
     norm2(const ReadableTiledTensor<Arg>& arg) {
       return std::sqrt(reduce(make_unary_tiled_tensor(arg.derived(),
-          detail::Square<typename Arg::value_type::value_type>()),
+          TiledArray::detail::Square<typename Arg::value_type::value_type>()),
           std::plus<typename Arg::value_type::value_type>()));
     }
 
