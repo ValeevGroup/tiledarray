@@ -131,8 +131,6 @@ namespace TiledArray {
 
   public:
 
-    Array() : pimpl_() { }
-
     /// Dense array constructor
 
     /// \param w The world where the array will live.
@@ -209,77 +207,50 @@ namespace TiledArray {
     template <typename Derived>
     Array_& operator=(expressions::ReadableTiledTensor<Derived>& other) {
       Array_(other.derived()).swap(*this);
-
       return *this;
     }
 
-    madness::Future<bool> eval() {
-      TA_ASSERT(pimpl_);
-      return pimpl_->eval(pimpl_);
-    }
+    madness::Future<bool> eval() { return pimpl_->eval(pimpl_); }
 
     /// Begin iterator factory function
 
     /// \return An iterator to the first local tile.
-    iterator begin() {
-      TA_ASSERT(pimpl_);
-      return pimpl_->begin();
-    }
+    iterator begin() { return pimpl_->begin(); }
 
     /// Begin const iterator factory function
 
     /// \return A const iterator to the first local tile.
-    const_iterator begin() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->begin();
-    }
+    const_iterator begin() const { return pimpl_->begin(); }
 
     /// End iterator factory function
 
     /// \return An iterator to one past the last local tile.
-    iterator end() {
-      TA_ASSERT(pimpl_);
-      return pimpl_->end();
-    }
+    iterator end() { return pimpl_->end(); }
 
     /// End const iterator factory function
 
     /// \return A const iterator to one past the last local tile.
-    const_iterator end() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->end();
-    }
+    const_iterator end() const { return pimpl_->end(); }
 
     /// Find local or remote tile
 
     /// \tparam Index The index type
     template <typename Index>
-    madness::Future<value_type> find(const Index& i) const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->find(i);
-    }
+    madness::Future<value_type> find(const Index& i) const { return pimpl_->find(i); }
+
     /// Set the data of tile \c i
 
     /// \tparam Index \c index or an integral type
     /// \tparam InIter An input iterator
     template <typename Index, typename InIter>
     typename madness::enable_if<detail::is_input_iterator<InIter> >::type
-    set(const Index& i, InIter first) {
-      TA_ASSERT(pimpl_);
-      pimpl_->set(i, first);
-    }
+    set(const Index& i, InIter first) { pimpl_->set(i, first); }
 
     template <typename Index>
-    void set(const Index& i, const T& v = T()) {
-      TA_ASSERT(pimpl_);
-      pimpl_->set(i, v);
-    }
+    void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }
 
     template <typename Index>
-    void set(const Index& i, const madness::Future<value_type>& f) {
-      TA_ASSERT(pimpl_);
-      pimpl_->set(i, f);
-    }
+    void set(const Index& i, const madness::Future<value_type>& f) { pimpl_->set(i, f); }
 
   private:
     template <typename U>
@@ -290,7 +261,6 @@ namespace TiledArray {
   public:
     template <typename Index, typename U>
     void set(const Index& i, const madness::Future<U>& f) {
-      TA_ASSERT(pimpl_);
       if(f.probe())
         pimpl_->set(i, value_type(f.get()));
       else {
@@ -304,10 +274,7 @@ namespace TiledArray {
     }
 
     template <typename Index>
-    void set(const Index& i, const value_type& v) {
-      TA_ASSERT(pimpl_);
-      pimpl_->set(i, v);
-    }
+    void set(const Index& i, const value_type& v) { pimpl_->set(i, v); }
 
     template <typename Index, typename Value, typename InIter, typename Op>
     void reduce(const Index& i, const Value& value, InIter first, InIter last, Op op) {
@@ -328,10 +295,7 @@ namespace TiledArray {
 
     /// \return A const reference to the range object for the array tiles
     /// \throw nothing
-    const range_type& tiles() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->tiles();
-    }
+    const range_type& tiles() const { return pimpl_->tiles(); }
 
     /// Tile range accessor
 
@@ -343,15 +307,9 @@ namespace TiledArray {
 
     /// \return A const reference to the range object for the array elements
     /// \throw nothing
-    const tile_range_type& elements() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->elements();
-    }
+    const tile_range_type& elements() const { return pimpl_->elements(); }
 
-    size_type size() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->tiles().volume();
-    }
+    size_type size() const { return pimpl_->tiles().volume(); }
 
     /// Create an annotated array
 
@@ -372,26 +330,17 @@ namespace TiledArray {
     /// World accessor
 
     /// \return A reference to the world that owns this array.
-    madness::World& get_world() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->get_world();
-    }
+    madness::World& get_world() const { return pimpl_->get_world(); }
 
     /// Process map accessor
 
     /// \return A reference to the world that owns this array.
-    const std::shared_ptr<pmap_interface>& get_pmap() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->get_pmap();
-    }
+    const std::shared_ptr<pmap_interface>& get_pmap() const { return pimpl_->get_pmap(); }
 
     /// Check dense/sparse quary
 
     /// \return \c true when \c Array is dense, \c false otherwise.
-    bool is_dense() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->is_dense();
-    }
+    bool is_dense() const { return pimpl_->is_dense(); }
 
 
     /// Shape map accessor
@@ -401,7 +350,6 @@ namespace TiledArray {
     /// \return A bitset that maps the existence of tiles.
     /// \throw TiledArray::Exception When the Array is dense.
     const detail::Bitset<>& get_shape() const {
-      TA_ASSERT(pimpl_);
       TA_ASSERT(! is_dense());
       return pimpl_->get_shape();
     }
@@ -414,30 +362,17 @@ namespace TiledArray {
     /// \note This does not indicate whether a tile exists or not. Only, who
     /// would own it if it does exist.
     template <typename Index>
-    ProcessID owner(const Index& i) const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->owner(i);
-    }
+    ProcessID owner(const Index& i) const { return pimpl_->owner(i); }
 
     template <typename Index>
-    bool is_local(const Index& i) const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->is_local(i);
-    }
+    bool is_local(const Index& i) const { return pimpl_->is_local(i); }
 
     /// Check for zero tiles
 
     /// \return \c true if tile at index \c i is zero, false if the tile is
     /// non-zero or remote existence data is not available.
     template <typename Index>
-    bool is_zero(const Index& i) const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->is_zero(i);
-    }
-
-    /// Serialize array
-    template <typename Archive>
-    void serialize(const Archive& ar) { TA_ASSERT(false); }
+    bool is_zero(const Index& i) const { return pimpl_->is_zero(i); }
 
     /// Swap this array with \c other
 
