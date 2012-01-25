@@ -51,9 +51,30 @@ namespace TiledArray {
           const expressions::VariableList& right, const detail::DimensionOrderType& order)
       {
 
-        // construct the left inner and outer maps.
-        init_inner_outer(left, right, left_inner_, left_outer_);
-        init_inner_outer(right, left, right_inner_, right_outer_);
+        // Reserve storage for maps.
+        left_inner_.reserve(left.dim());
+        left_outer_.reserve(left.dim());
+        right_inner_.reserve(right.dim());
+        right_outer_.reserve(right.dim());
+
+        // construct the inner and outer maps.
+        for(expressions::VariableList::const_iterator it = left.begin(); it != left.end(); ++it) {
+          expressions::VariableList::const_iterator right_it =
+              std::find(right.begin(), right.end(), *it);
+          if(right_it == right.end())
+            left_outer_.push_back(std::distance(left.begin(), it));
+          else {
+            left_inner_.push_back(std::distance(left.begin(), it));
+            right_inner_.push_back(std::distance(right.begin(), right_it));
+          }
+        }
+
+        for(expressions::VariableList::const_iterator it = right.begin(); it != right.end(); ++it) {
+          expressions::VariableList::const_iterator left_it =
+              std::find(left.begin(), left.end(), *it);
+          if(left_it == left.end())
+            right_outer_.push_back(std::distance(right.begin(), it));
+        }
 
         init_permutation(left, left_inner_, left_outer_, order, perm_left_, do_perm_left_);
         init_permutation(right, right_inner_, right_outer_, order, perm_right_, do_perm_right_);
