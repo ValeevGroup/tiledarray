@@ -257,10 +257,10 @@ int main(int argc, char** argv) {
         break;
     }
 
-
-
-    std::cout << "CCD energy = " << std::setprecision(12) << energy << "\n";
-    std::cout << "Done!\n";
+    if(world.rank() == 0) {
+      std::cout << "CCD energy = " << std::setprecision(12) << energy << "\n";
+      std::cout << "Done!\n";
+    }
 
   } else  {
     std::cout << "Unable to open file: " << file_name << "\n";
