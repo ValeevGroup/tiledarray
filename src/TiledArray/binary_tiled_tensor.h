@@ -319,12 +319,18 @@ namespace TiledArray {
             dest.set(it.index(), *it);
         }
 
+        /// Evaluate the left argument
 
+        /// \return A future to a bool that will be set once the argument has
+        /// been evaluated.
         madness::Future<bool> eval_left(const VariableList& v) {
           return left_.eval(v);
         }
 
+        /// Evaluate the right argument
 
+        /// \return A future to a bool that will be set once the argument has
+        /// been evaluated.
         madness::Future<bool> eval_right(const VariableList& v) {
           return right_.eval(v);
         }
@@ -424,6 +430,13 @@ namespace TiledArray {
 
         madness::World& get_world() const { return data_.get_world(); }
 
+        /// Clear the tile data
+
+        /// Remove all tiles from the tensor.
+        /// \note: Any tiles will remain in memory until the last reference
+        /// is destroyed.
+        void clear() { data_.clear(); }
+
       private:
 
         template <typename A>
@@ -436,8 +449,8 @@ namespace TiledArray {
 
         left_tensor_type left_; ///< Left argument
         right_tensor_type right_; ///< Right argument
-        Op op_;
         storage_type data_; ///< Store temporary data
+        Op op_; ///< binary element operator
       }; // class BinaryTiledTensorImpl
 
     } // namespace detail
@@ -627,19 +640,14 @@ namespace TiledArray {
         return pimpl_->get_world();
       }
 
-      template <typename T, typename CS>
-      operator Array<T, CS>() {
-        TA_ASSERT(pimpl_);
-        madness::Future<bool> eval_done = eval(vars());
-        eval_done.get();
-        if(is_dense()) {
-          Array<T, CS> result(get_world(), trange(), get_pmap());
-          eval_to(result);
-          return result;
-        } else {
-          Array<T, CS> result(get_world(), trange(), get_shape(), get_pmap());
-          eval_to(result);
-          return result;
+      /// Release tensor data
+
+      /// Clear all tensor data from memory. This is equivalent to
+      /// \c BinaryTiledTensor().swap(*this) .
+      void release() {
+        if(pimpl_) {
+          pimpl_->clear();
+          pimpl_.reset();
         }
       }
 

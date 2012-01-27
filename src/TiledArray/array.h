@@ -413,19 +413,19 @@ namespace TiledArray {
 
   namespace expressions {
 
-    template <typename A>
+    template <typename Derived>
     template <typename T, typename CS>
-    AnnotatedArray<A>::operator Array<T, CS>()  {
-      TA_ASSERT(pimpl_);
-      madness::Future<bool> eval_done = eval(vars());
-      eval_done.get();
+    TiledTensor<Derived>::operator Array<T, CS>()  {
+      // Evaluate this tensor and wait
+      derived().eval(derived().vars()).get();
+
       if(is_dense()) {
-        Array<T, CS> result(get_world(), trange(), get_pmap());
-        eval_to(result);
+        Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_pmap());
+        derived().eval_to(result);
         return result;
       } else {
-        Array<T, CS> result(get_world(), trange(), get_shape(), get_pmap());
-        eval_to(result);
+        Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_shape(), derived().get_pmap());
+        derived().eval_to(result);
         return result;
       }
     }

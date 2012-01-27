@@ -144,6 +144,10 @@ namespace TiledArray {
             dest.set(it.index(), *it);
         }
 
+        /// Evaluate the argument
+
+        /// \return A future to a bool that will be set once the argument has
+        /// been evaluated.
         madness::Future<bool> eval_arg(const VariableList& v) {
           return arg_.eval(v);
         }
@@ -228,6 +232,12 @@ namespace TiledArray {
 
         madness::World& get_world() const { return data_.get_world(); }
 
+        /// Clear the tile data
+
+        /// Remove all tiles from the tensor.
+        /// \note: Any tiles will remain in memory until the last reference
+        /// is destroyed.
+        void clear() { data_.clear(); }
 
       private:
         arg_tensor_type arg_; ///< Argument
@@ -423,19 +433,14 @@ namespace TiledArray {
         return pimpl_->get_world();
       }
 
-      template <typename T, typename CS>
-      operator Array<T, CS>() {
-        TA_ASSERT(pimpl_);
-        madness::Future<bool> eval_done = eval(vars());
-        eval_done.get();
-        if(is_dense()) {
-          Array<T, CS> result(get_world(), trange(), get_pmap());
-          eval_to(result);
-          return result;
-        } else {
-          Array<T, CS> result(get_world(), trange(), get_shape(), get_pmap());
-          eval_to(result);
-          return result;
+      /// Release tensor data
+
+      /// Clear all tensor data from memory. This is equivalent to
+      /// \c UnaryTiledTensor().swap(*this) .
+      void release() {
+        if(pimpl_) {
+          pimpl_->clear();
+          pimpl_.reset();
         }
       }
 

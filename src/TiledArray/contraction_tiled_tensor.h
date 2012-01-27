@@ -532,6 +532,15 @@ namespace TiledArray {
         const right_tensor_type& right() const { return right_; }
 
         right_tensor_type& right() { return right_; }
+
+
+        /// Clear the tile data
+
+        /// Remove all tiles from the tensor.
+        /// \note: Any tiles will remain in memory until the last reference
+        /// is destroyed.
+        void clear() { data_.clear(); }
+
       }; // class ContractionTiledTensorImpl
 
     } // namespace detail
@@ -742,19 +751,14 @@ namespace TiledArray {
         return pimpl_->operator[](i);
       }
 
-      template <typename T, typename CS>
-      operator Array<T, CS>()  {
-        TA_ASSERT(pimpl_);
-        madness::Future<bool> eval_done = eval(vars());
-        eval_done.get();
-        if(is_dense()) {
-          Array<T, CS> result(get_world(), trange(), get_pmap());
-          eval_to(result);
-          return result;
-        } else {
-          Array<T, CS> result(get_world(), trange(), get_shape(), get_pmap());
-          eval_to(result);
-          return result;
+      /// Release tensor data
+
+      /// Clear all tensor data from memory. This is equivalent to
+      /// \c ContractionTiledTensor().swap(*this) .
+      void release() {
+        if(pimpl_) {
+          pimpl_->clear();
+          pimpl_.reset();
         }
       }
 

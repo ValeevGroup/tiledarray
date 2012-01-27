@@ -122,7 +122,7 @@ namespace TiledArray {
               const std::shared_ptr<AnnotatedArrayImpl_>& pimpl)
           {
             const size_type i =
-                pimpl->trange().tiles().ord(perm ^ pimpl->array().range().idx(it.index()));
+                pimpl->trange().tiles().ord(perm ^ pimpl->array_.range().idx(it.index()));
             madness::Future<value_type> t =
                 pimpl->get_world().taskq.add(& Eval::eval_perm, *it, perm);
 
@@ -210,6 +210,12 @@ namespace TiledArray {
             data_(array.get_world(), array.size(), array.get_pmap())
         { }
 
+        /// Evaluate the array
+
+        /// \return A future to a bool that will be set once array has been
+        /// evaluated.
+        madness::Future<bool> eval_array() { return array_.eval(); }
+
         /// Query a tile owner
 
         /// \param i The tile index to query
@@ -236,6 +242,8 @@ namespace TiledArray {
 
           return array_.is_zero(i);
         }
+
+        bool is_dense() const { return array_.is_dense(); }
 
         /// Tensor process map accessor
 
@@ -309,9 +317,16 @@ namespace TiledArray {
 
         madness::World& get_world() const { return data_.get_world(); }
 
-        array_type& array() { return array_; }
+				array_type& array() { return array_; }
 
         const array_type& array() const { return array_; }
+        
+        /// Clear the tile data
+
+        /// Remove all tiles from the tensor.
+        /// \note: Any tiles will remain in memory until the last reference
+        /// is destroyed.
+        void clear() { data_.clear(); }
 
       private:
 
@@ -437,7 +452,7 @@ namespace TiledArray {
       /// \return A future that indicates the tensor evaluation is complete
       madness::Future<bool> eval(const VariableList& v) {
         TA_ASSERT(pimpl_);
-        madness::Future<bool> array_done = pimpl_->array().eval();
+        madness::Future<bool> array_done = pimpl_->eval_array();
 
         if(v != pimpl_->vars()) {
 
@@ -512,7 +527,7 @@ namespace TiledArray {
       /// \return \c true if the tensor is dense, otherwise false
       bool is_dense() const {
         TA_ASSERT(pimpl_);
-        return pimpl_->array().is_dense();
+        return pimpl_->is_dense();
       }
 
       /// Tensor shape accessor
@@ -594,8 +609,16 @@ namespace TiledArray {
         return pimpl_->array().set(i, v);
       }
 
-      template <typename T, typename CS>
-      operator Array<T, CS>();
+      /// Release tensor data
+
+      /// Clear all tensor data from memory. This is equivalent to
+      /// \c AnnotatedArray().swap(*this) .
+      void release() {
+        if(pimpl_) {
+          pimpl_->clear();
+          pimpl_.reset();
+        }
+      }
 
       template <typename Archive>
       void serialize(const Archive&) { TA_ASSERT(false); }

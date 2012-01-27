@@ -18,6 +18,9 @@ namespace madness {
 } // namespace madness
 
 namespace TiledArray {
+
+  template <typename, typename> class Array;
+
   namespace expressions {
 
     class VariableList;
@@ -66,6 +69,15 @@ namespace TiledArray {
       inline bool is_dense() const { return derived().is_dense(); }
       inline const TiledArray::detail::Bitset<>& get_shape() const { return derived().get_shape(); }
       inline trange_type trange() const { return derived().trange(); }
+
+      /// Conversion operator
+
+      /// \tparam T The array element type
+      /// \tparam CS The array coordinates system
+      /// Evaluate this object and convert it to array type.
+      /// \return Return an \c Array<T,CS> object that matches this object.
+      template <typename T, typename CS>
+      operator Array<T, CS>();
 
     }; // class TiledTensor
 
