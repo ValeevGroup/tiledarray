@@ -70,8 +70,9 @@ namespace TiledArray {
       DistributedStorage(madness::World& world, size_type max_size,
           const std::shared_ptr<pmap_interface>& pmap, bool do_pending = true) :
         WorldReduce_(world), max_size_(max_size), pmap_(pmap),
-        data_(max_size / world.size() + 1)
+        data_((max_size / world.size()) + 11)
       {
+        TA_ASSERT(pmap_);
         if(do_pending)
           process_pending();
       }
