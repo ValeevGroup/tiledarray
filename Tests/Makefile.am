@@ -38,3 +38,5 @@ TESTS = $(check_PROGRAMS)
 
 check_parallel: $(TESTS)
 	$(MPIEXEC) -n 4 ./ta-test
+	
+all-local: ta-test

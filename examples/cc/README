@@ -1,0 +1,3 @@
+This directory contains a proof of concept program for performs a CCD and CCSD
+calculation on H2O. It is not optimal and is not designed to anything more than
+these two calculations.

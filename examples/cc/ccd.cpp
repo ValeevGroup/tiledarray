@@ -1,11 +1,3 @@
-//============================================================================
-// Name        : CCD.cpp
-// Author      : Justus Calvin
-// Version     :
-// Copyright   :
-// Description : Hello World in C, Ansi-style
-//============================================================================
-
 #include <iomanip>
 #include <tiled_array.h>
 #include "input_data.h"

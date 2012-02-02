@@ -95,5 +95,13 @@ AC_CONFIG_HEADERS([src/config.h:src/config_h.in])
 AC_CONFIG_HEADERS([src/TiledArray/config.h:src/TiledArray/config_h.in])
 AC_CONFIG_HEADERS([Tests/unit_test_config.h:Tests/unit_test_config_h.in])
 AC_CONFIG_FILES([doc/Doxyfile])
-AC_CONFIG_FILES([Makefile src/Makefile src/TiledArray/Makefile Tests/Makefile examples/Makefile examples/cc/Makefile doc/Makefile])
+AC_CONFIG_FILES([
+  Makefile
+    src/Makefile
+      src/TiledArray/Makefile
+    Tests/Makefile
+    examples/Makefile
+      examples/cc/Makefile
+      examples/dgemm/Makefile
+    doc/Makefile])
 AC_OUTPUT
