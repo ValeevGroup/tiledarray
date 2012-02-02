@@ -509,4 +509,25 @@ namespace TiledArray {
   } // detail
 } // namespace TiledArray
 
+namespace madness {
+  namespace archive {
+
+    template <typename Archive, typename T, typename CS>
+    struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::detail::ArrayImpl<T,CS> > > {
+      static inline void load(const Archive& ar, std::shared_ptr<TiledArray::detail::ArrayImpl<T,CS> > & ptr) {
+        TA_ASSERT(false);
+      }
+    };
+
+    template <typename Archive, typename T, typename CS>
+    struct ArchiveStoreImpl<Archive,std::shared_ptr<TiledArray::detail::ArrayImpl<T,CS> > > {
+      static inline void store(const Archive& ar, const std::shared_ptr<TiledArray::detail::ArrayImpl<T,CS> >&  ptr) {
+        TA_ASSERT(false);
+      }
+    };
+
+
+  }  // namespace archive
+}  // namespace madness
+
 #endif // TILEDARRAY_ARRAY_IMPL_H__INCLUDED

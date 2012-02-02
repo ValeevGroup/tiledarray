@@ -276,6 +276,11 @@ namespace TiledArray {
     template <typename Index>
     void set(const Index& i, const value_type& v) { pimpl_->set(i, v); }
 
+    void set_all_local(const T& v = T()) {
+      pimpl_->get_world().taskq.add(& init_tiles, pimpl_, v, pimpl_->eval(pimpl_),
+          madness::TaskAttributes::hipri());
+    }
+
     template <typename Index, typename Value, typename InIter, typename Op>
     void reduce(const Index& i, const Value& value, InIter first, InIter last, Op op) {
       TA_ASSERT(pimpl_);
@@ -380,6 +385,26 @@ namespace TiledArray {
     void swap(Array_& other) { std::swap(pimpl_, other.pimpl_); }
 
   private:
+
+    class InitTile {
+    public:
+      InitTile(const std::shared_ptr<impl_type>& pimpl, const T& v) : pimpl_(pimpl), value_(v) { }
+
+      bool operator()(iterator it) const {
+        it->set(value_type(pimpl_->tiling().make_tile_range(it.index()), value_));
+        return true;
+      }
+
+    private:
+      std::shared_ptr<impl_type> pimpl_;
+      T value_;
+    }; // class InitTile
+
+    static madness::Void init_tiles(const std::shared_ptr<impl_type>& pimpl, const T& value, bool) {
+      pimpl->get_world().taskq.for_each(madness::Range<iterator>(pimpl->begin(),
+          pimpl->end()), InitTile(pimpl, value));
+      return madness::None;
+    }
 
     static std::shared_ptr<pmap_interface> make_pmap(madness::World& w) {
       return std::shared_ptr<madness::WorldDCDefaultPmap<size_type> >(
