@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
     Array<double, CoordinateSystem<4> > D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
     for(Array<double, CoordinateSystem<4> >::range_type::const_iterator it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
       if(D_vvoo.is_local(*it) && (! D_vvoo.is_zero(*it)))
-        D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_tile, D_vvoo.trange().make_tile_range(*it)));
+        D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_vvoo_tile, D_vvoo.trange().make_tile_range(*it)));
 
 
     world.gop.fence();

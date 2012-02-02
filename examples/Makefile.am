@@ -1,3 +1,3 @@
 # examples
 
-SUBDIRS = ccd
+SUBDIRS = cc
