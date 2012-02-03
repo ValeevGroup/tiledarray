@@ -2,11 +2,9 @@
 
 SUBDIRS = cc dgemm
 
-ccd:
-	cd cc && $(MAKE) ccd
+ccd ccsd:
+	$(MAKE) -C cc $@
 
-ccsd:
-	cd cc && $(MAKE) ccsd
 
 dgemm:
-	cd dgemm && $(MAKE) dgemm
+	$(MAKE) -C dgemm $@

@@ -1,17 +1,11 @@
 SUBDIRS = src Tests examples
 ACLOCAL_AMFLAGS = -I config
 
-ccd:
-	cd examples && $(MAKE) ccd
-
-ccsd:
-	cd examples && $(MAKE) ccsd
-
-dgemm:
-	cd examples && $(MAKE) dgemm
+ccd ccsd dgemm:
+	$(MAKE) -C examples $@
 
 ta-test:
-	cd Tests && $(MAKE) ta-test
+	$(MAKE) -C Tests
 
 doc:
-	cd Doc && $(MAKE) doc
+	$(MAKE) -C doc
