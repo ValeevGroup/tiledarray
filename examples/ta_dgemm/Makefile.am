@@ -1,4 +1,4 @@
-# examples/dgemm
+# examples/ta_dgemm
 
 AM_CPPFLAGS = -I$(top_srcdir)/src/
 

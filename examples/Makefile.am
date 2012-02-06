@@ -1,10 +1,10 @@
 # examples
 
-SUBDIRS = cc dgemm
+SUBDIRS = cc ta_dgemm
 
 ccd ccsd:
-	$(MAKE) -C cc $@
+	$(MAKE) -C ./cc $@
 
 
 dgemm:
-	$(MAKE) -C dgemm $@
+	$(MAKE) -C ./ta_dgemm $@
