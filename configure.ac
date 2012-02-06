@@ -93,15 +93,15 @@ AC_MSG_NOTICE([LIBS     = $LIBS])
 # Output files
 AC_CONFIG_HEADERS([src/config.h:src/config_h.in])
 AC_CONFIG_HEADERS([src/TiledArray/config.h:src/TiledArray/config_h.in])
-AC_CONFIG_HEADERS([Tests/unit_test_config.h:Tests/unit_test_config_h.in])
+AC_CONFIG_HEADERS([tests/unit_test_config.h:tests/unit_test_config_h.in])
 AC_CONFIG_FILES([doc/Doxyfile])
 AC_CONFIG_FILES([
   Makefile
     src/Makefile
       src/TiledArray/Makefile
-    Tests/Makefile
+    tests/Makefile
     examples/Makefile
       examples/cc/Makefile
-      examples/dgemm/Makefile
+      examples/ta_dgemm/Makefile
     doc/Makefile])
 AC_OUTPUT
