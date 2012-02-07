@@ -27,13 +27,6 @@
 # endif // !defined(TA_EXCEPTION_ERROR) && !defined(TA_EXCEPTION_ERROR) && !defined(TA_EXCEPTION_ERROR)
 #endif // TA_DEFAULT_ERROR
 
-#ifdef TA_EXCEPTION_ERROR
-// This section defines the behavior for TiledArray assertion error checking
-// which will throw exceptions.
-#ifdef TA_ASSERT_ERROR
-#undef TA_ASSERT_ERROR
-// WARNING: TA_EXCEPTION_ERROR supersedes TA_ASSERT_ERROR.
-#endif
 #include <exception>
 namespace TiledArray {
 
@@ -51,6 +44,13 @@ namespace TiledArray {
   inline void exception_break() { }
 } // namespace TiledArray
 
+#ifdef TA_EXCEPTION_ERROR
+// This section defines the behavior for TiledArray assertion error checking
+// which will throw exceptions.
+#ifdef TA_ASSERT_ERROR
+#undef TA_ASSERT_ERROR
+// WARNING: TA_EXCEPTION_ERROR supersedes TA_ASSERT_ERROR.
+#endif
 
 #define TA_STRINGIZE( s ) #s
 
