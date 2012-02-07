@@ -25,7 +25,9 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(Storage t0);
     Storage t0;
     BOOST_CHECK_EQUAL(t0.size(), 0u);
+#ifdef TA_EXCEPTION_ERROR
     BOOST_CHECK_THROW(t0.at(0), Exception);
+#endif
     BOOST_CHECK_EQUAL(t0.begin(), t0.end());
   }
 
@@ -83,9 +85,9 @@ BOOST_AUTO_TEST_CASE( element_access )
 
   // check out of range error
   BOOST_CHECK_THROW(t.at(10), Exception);
-#ifndef NDEBUG
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t[10], Exception);
-#endif
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( iteration )

@@ -116,10 +116,10 @@ BOOST_AUTO_TEST_CASE( element_access )
   BOOST_CHECK_EQUAL(t[r.volume() - 1], 1);
 
   // check out of range error
-#ifndef NDEBUG
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t[r.finish()], Exception);
   BOOST_CHECK_THROW(t[r.volume()], Exception);
-#endif
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( iteration )

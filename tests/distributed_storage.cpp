@@ -71,10 +71,10 @@ BOOST_AUTO_TEST_CASE( insert )
 
 
   // Check throw for an out-of-range insert.
-#ifndef NDEBUG
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t->insert(t->max_size()), TiledArray::Exception);
   BOOST_CHECK_THROW(t->insert(t->max_size() + 2), TiledArray::Exception);
-#endif // NDEBUG
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( set_value )
@@ -91,10 +91,10 @@ BOOST_AUTO_TEST_CASE( set_value )
   BOOST_CHECK_EQUAL(n, t->max_size());
 
   // Check throw for an out-of-range set.
-#ifndef NDEBUG
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t->set(t->max_size(), 1), TiledArray::Exception);
   BOOST_CHECK_THROW(t->set(t->max_size() + 2, 1), TiledArray::Exception);
-#endif // NDEBUG
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( array_operator )
@@ -113,10 +113,10 @@ BOOST_AUTO_TEST_CASE( array_operator )
   BOOST_CHECK_EQUAL(n, t->max_size());
 
   // Check throw for an out-of-range set.
-#ifndef NDEBUG
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW((*t)[t->max_size()], TiledArray::Exception);
   BOOST_CHECK_THROW((*t)[t->max_size() + 2], TiledArray::Exception);
-#endif // NDEBUG
+#endif // TA_EXCEPTION_ERROR
 }
 
 

@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_CHECK_EQUAL(r.elements().second, 0ul);
 #ifdef TA_EXCEPTION_ERROR
     BOOST_CHECK_THROW(r.tile(0), Exception);
-#endif
+#endif // TA_EXCEPTION_ERROR
   }
 
   // check construction with a iterators and the range info.

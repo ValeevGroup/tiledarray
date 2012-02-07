@@ -31,9 +31,9 @@ BOOST_AUTO_TEST_CASE( vars )
 BOOST_AUTO_TEST_CASE( shape )
 {
   BOOST_CHECK_EQUAL(utt.is_dense(), a.is_dense());
-#ifndef NDEBUG
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(utt.get_shape(), TiledArray::Exception);
-#endif
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( location )

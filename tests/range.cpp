@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_REQUIRE_NO_THROW(RangeN r2(p2, p2 + finish)); // Start/Finish Constructor
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(RangeN r2(p2 + finish, p2), Exception);
-#endif
+#endif // TA_EXCEPTION_ERROR
   index f2 = p2 + finish;
   RangeN r2(p2, f2);
   TA_CHECK_ARRAY(r2.start(), p2);
