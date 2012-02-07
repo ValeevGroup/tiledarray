@@ -1,4 +1,4 @@
-SUBDIRS = src Tests examples
+SUBDIRS = src tests examples
 ACLOCAL_AMFLAGS = -I config
 
 ccd ccsd dgemm:
