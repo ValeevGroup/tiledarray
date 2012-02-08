@@ -253,24 +253,10 @@ namespace TiledArray {
 
       /// Tensor contraction
 
-      /// The will contract \c left with \c right and return the result tensor.
-      /// The contraction algorithms are: \n
-      /// \c order=TiledArray::detail::decreasing_dimension_order
-      /// \f[
-      /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
-      ///     \sum_{i_1, i_2, \dots}
-      ///         A_{m_1, m_2, \dots, i_1, i_2, \dots}
-      ///         B_{n_1, n_2, \dots, i_1, i_2, \dots}
-      /// \f]
-      /// \c order=TiledArray::detail::increasing_dimension_order
-      /// \f[
-      /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
-      ///     \sum_{i_1, i_2, \dots}
-      ///         A_{i_1, i_2, \dots, m_1, m_2, \dots}
-      ///         B_{i_1, i_2, \dots, n_1, n_2, \dots}
-      /// \f]
-      /// If the data is not in the correct layout, then use the
-      /// \c permute_contract_tensor() function instead.
+      /// This function constructs the result tensor and calls
+      /// \c contract_tensor(res,left,right) . The outer indices of \c left and
+      /// \c right must be to the left.  If the data is not in the correct
+      /// layout, then use the \c permute_contract_tensor() function instead.
       /// \tparam Left The left-hand-side tensor argument type
       /// \tparam Right The right-hand-side tensor argument type
       /// \param left The left-hand-side tensor argument
@@ -292,7 +278,6 @@ namespace TiledArray {
         TA_ASSERT(left.range().order() == right.range().order());
         TA_ASSERT(left.range().dim() == left_dim());
         TA_ASSERT(right.range().dim() == right_dim());
-        TA_ASSERT(check_coformal(left.range(), right.range()));
 
         // This function fuses the inner and outer dimensions of the left- and
         // right-hand tensors such that the contraction can be performed with a
@@ -306,6 +291,66 @@ namespace TiledArray {
                 result_index(left.range().start(), right.range().start(), left.range().order()),
                 result_index(left.range().finish(), right.range().finish(), left.range().order()),
                 left.range().order()));
+
+        contract_tensor(res, left, right);
+
+        return res;
+      }
+
+      /// Tensor contraction
+
+      /// The will contract \c left with \c right and return the result tensor.
+      /// The contraction algorithms are: \n
+      /// \c order=TiledArray::detail::decreasing_dimension_order
+      /// \f[
+      /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
+      ///     \sum_{i_1, i_2, \dots}
+      ///         A_{m_1, m_2, \dots, i_1, i_2, \dots}
+      ///         B_{n_1, n_2, \dots, i_1, i_2, \dots}
+      /// \f]
+      /// \c order=TiledArray::detail::increasing_dimension_order
+      /// \f[
+      /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
+      ///     \sum_{i_1, i_2, \dots}
+      ///         A_{i_1, i_2, \dots, m_1, m_2, \dots}
+      ///         B_{i_1, i_2, \dots, n_1, n_2, \dots}
+      /// \f]
+      /// where \c res is \c C , \c left is \c A , and \c right is \c B .
+      /// If the data is not in the correct layout, then use the
+      /// \c permute_contract_tensor() function instead.
+      /// \tparam Res The result tensor type
+      /// \tparam Left The left-hand-side tensor argument type
+      /// \tparam Right The right-hand-side tensor argument type
+      /// \param left The left-hand-side tensor argument
+      /// \param right The right-hand-side tensor argument
+      /// \throw TiledArray::Exception When the orders of left and right are not
+      /// equal.
+      /// \throw TiledArray::Exception  When the number of dimensions of the
+      /// \c left tensor is not equal to \c left_dim() .
+      /// \throw TiledArray::Exception  When the number of dimensions of the
+      /// \c right tensor is not equal to \c right_dim() .
+      /// \throw TiledArray::Exception When the inner dimensions of \c A and
+      /// \c B are not coformal (i.e. the number and range of the inner
+      /// dimensions are not the same).
+      template <typename Res, typename Left, typename Right>
+      void contract_tensor(Res& res, const Left& left, const Right& right) const {
+        // Check that the order and dimensions of the left and right tensors are correct.
+        TA_ASSERT(res.range().order() == left.range().order());
+        TA_ASSERT(res.range().order() == right.range().order());
+        TA_ASSERT(left.range().dim() == left_dim());
+        TA_ASSERT(right.range().dim() == right_dim());
+        TA_ASSERT(res.range().dim() == res_dim());
+        TA_ASSERT(check_coformal(left.range(), right.range()));
+        TA_ASSERT(check_left_coformal(res.range(), left.range()));
+        TA_ASSERT(check_right_coformal(res.range(), right.range()));
+
+        // This function fuses the inner and outer dimensions of the left- and
+        // right-hand tensors such that the contraction can be performed with a
+        // matrix-matrix multiplication.
+
+        // Construct the result tensor
+        typedef typename ContractionValue<typename Left::value_type,
+            typename Right::value_type>::type value_type;
 
         const std::size_t m = left_outer(left.range());
         const std::size_t i = left_inner(left.range());
@@ -325,7 +370,7 @@ namespace TiledArray {
               mc(res.data(), m, n);
 
           // Do contraction
-          mc.noalias() = ma * mb.transpose();
+          mc.noalias() += ma * mb.transpose();
 
         } else {
 
@@ -341,10 +386,8 @@ namespace TiledArray {
               mc(res.data(), m, n);
 
           // Do contraction
-          mc.noalias() = ma.transpose() * mb;
+          mc.noalias() += ma.transpose() * mb;
         }
-
-        return res;
       }
 
 
@@ -384,15 +427,37 @@ namespace TiledArray {
       ///
       template <typename LeftRange, typename RightRange>
       bool check_coformal(const LeftRange& left, const RightRange& right) const {
+        if(left.order() == TiledArray::detail::decreasing_dimension_order) {
+          return std::equal(left.start().begin() + left_outer_dim(), left.start().end(),
+              right.start().begin() + right_outer_dim())
+              && std::equal(left.finish().begin() + left_outer_dim(), left.finish().end(),
+              right.finish().begin() + right_outer_dim());
+        } else {
+          return std::equal(left.start().begin(), left.start().begin() + left_inner_dim(),
+              right.start().begin())
+              && std::equal(left.finish().begin(), left.finish().begin() + left_inner_dim(),
+              right.finish().begin());
+        }
+      }
+
+      /// Check that the result and left arrays are coformal
+      template <typename ResRange, typename LeftRange>
+      bool check_left_coformal(const ResRange& res, const LeftRange& left) const {
         const TiledArray::detail::DimensionOrderType order = left.order();
-        return std::equal(
-            (order == TiledArray::detail::decreasing_dimension_order ? left.start().begin() + left_outer_dim() : left.start().begin()),
-            (order == TiledArray::detail::decreasing_dimension_order ? left.start().end() : left.start().begin() + left_inner_dim()),
-            (order == TiledArray::detail::decreasing_dimension_order ? right.start().begin() + right_outer_dim() : right.start().begin()))
-            && std::equal(
-            (order == TiledArray::detail::decreasing_dimension_order ? left.finish().begin() + left_outer_dim() : left.finish().begin()),
-            (order == TiledArray::detail::decreasing_dimension_order ? left.finish().end() : left.finish().begin() + left_inner_dim()),
-            (order == TiledArray::detail::decreasing_dimension_order ? right.finish().begin() + right_outer_dim() : right.finish().begin()));
+        return std::equal(res.start().begin(), res.start().begin() + left_outer_dim(),
+            (order == TiledArray::detail::decreasing_dimension_order ? left.start().begin() : left.start().begin() + left_inner_dim()))
+            && std::equal(res.finish().begin(), res.finish().begin() + left_outer_dim(),
+            (order == TiledArray::detail::decreasing_dimension_order ? left.finish().begin() : left.finish().begin() + left_inner_dim()));
+      }
+
+      /// Check that the result and right arrays are coformal
+      template <typename ResRange, typename RightRange>
+      bool check_right_coformal(const ResRange& res, const RightRange& right) const {
+        const TiledArray::detail::DimensionOrderType order = right.order();
+        return std::equal(res.start().begin() + left_outer_dim(), res.start().end(),
+            (order == TiledArray::detail::decreasing_dimension_order ? right.start().begin() : right.start().begin() + right_inner_dim()))
+            && std::equal(res.finish().begin() + left_outer_dim(), res.finish().end(),
+            (order == TiledArray::detail::decreasing_dimension_order ? right.finish().begin() : right.finish().begin() + right_inner_dim()));
       }
 
       /// Product accumulation
