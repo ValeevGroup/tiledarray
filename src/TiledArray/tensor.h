@@ -67,7 +67,7 @@ namespace TiledArray {
       /// \param r An array with the size of of each dimension
       /// \param v The value of the tensor elements
       template <typename D>
-      Tensor(const Range<D>& r, const value_type& v = value_type()) :
+      explicit Tensor(const Range<D>& r, const value_type& v = value_type()) :
         range_(r), data_(r.volume(), v)
       { }
 
