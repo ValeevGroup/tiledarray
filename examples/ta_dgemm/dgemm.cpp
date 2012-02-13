@@ -48,7 +48,10 @@ int main(int argc, char** argv) {
   }
 
   if(world.rank() == 0)
-    std::cout << "Average time = " << avg_time * 0.2 << "\n";
+    std::cout << "Average time = " << avg_time * 0.2 << "\nAverge GFLOPS ="
+        << 2.0 * double(c.trange().elements().volume() * a.trange().elements().size()[1]) / (avg_time * 0.2) / 1000000000.0 << "\n";
+
+
 
   madness::finalize();
   return 0;
