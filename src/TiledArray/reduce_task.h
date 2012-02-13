@@ -262,6 +262,270 @@ namespace TiledArray {
       ReduceTaskImpl<T, Op>* pimpl_; ///< The reduction task object.
     }; // class ReduceTask
 
+
+
+
+    template <typename Op>
+    class ReducePairTaskImpl : public madness::TaskInterface {
+    public:
+      typedef typename Op::result_type result_type;
+      typedef typename Op::first_argument_type first_argument_type;
+      typedef typename Op::second_argument_type second_argument_type;
+      typedef ReducePairTaskImpl<Op> ReducePairTaskImpl_;
+
+    private:
+
+      class ReducePair : public madness::CallbackInterface {
+      public:
+
+        template <typename Left, typename Right>
+        ReducePair(ReducePairTaskImpl_* parent, const Left& left, const Right& right) :
+            parent_(parent), left_(left), right_(right)
+        {
+          TA_ASSERT(parent_);
+          count_ = 0;
+          if(register_callback(left_) && register_callback(right_))
+            parent_->ready(this);
+        }
+
+        virtual ~ReducePair() { }
+
+        virtual void notify() {
+          if(count_-- == 1)
+            parent_->ready(this);
+        }
+
+        const first_argument_type& left() const { return left_.get(); }
+
+        const second_argument_type& right() const { return right_.get(); }
+
+      private:
+
+        template <typename T>
+        bool register_callback(madness::Future<T>& f) {
+          if(f.probe()) {
+            count_++;
+            f.register_callback(this);
+            return false;
+          }
+          return true;
+        }
+
+        ReducePairTaskImpl_* parent_;
+        madness::AtomicInt count_;
+        madness::Future<first_argument_type> left_;
+        madness::Future<second_argument_type> right_;
+      }; // class ReducePairTask
+
+
+      madness::World& world_;
+      Op op_;
+      unsigned long count_;
+      std::shared_ptr<result_type> ready_result_;
+      ReducePair* ready_pair_;
+      madness::Future<result_type> result_;
+      madness::Spinlock lock_;
+
+    public:
+
+      ReducePairTaskImpl(madness::World& world, Op op) :
+          madness::TaskInterface(1, madness::TaskAttributes::hipri()),
+          world_(world), op_(op), count_(0ul), ready_result_(), ready_pair_(NULL),
+          result_(), lock_()
+      { }
+
+      virtual void run(madness::World&) { result_.set(*ready_result_); }
+
+      template <typename Left, typename Right>
+      void add(const Left& left, const Right& right) {
+        ReducePair* rp = new ReducePair(this, left, right);
+        rp = NULL; // Orphan the new pointer, but it can take care of itself.
+        ++count_;
+      }
+
+      void ready(ReducePair* pair) {
+        lock_.lock();
+        if(ready_result_) {
+          std::shared_ptr<result_type> ready_result = ready_result_;
+          ready_result_.reset();
+          lock_.unlock();
+          world_.taskq.add(*this, & ReducePairTaskImpl::reduce_result_pair, ready_result, pair,
+              madness::TaskAttributes::hipri());
+        } else if(ready_pair_) {
+          ReducePair* ready_pair = ready_pair_;
+          ready_pair_ = NULL;
+          lock_.unlock();
+          world_.taskq.add(*this, & ReducePairTaskImpl::reduce_pair_pair, pair, ready_pair,
+              madness::TaskAttributes::hipri());
+        } else {
+          ready_pair_ = pair;
+          lock_.unlock();
+          if(count_ == 1) {
+            // No lock needed here since only one pair is being reduced.
+            ready_pair_ = NULL;
+            world_.taskq.add(*this, & ReducePairTaskImpl::reduce_pair, pair, madness::TaskAttributes::hipri());
+          }
+        }
+      }
+
+      unsigned long count() const { return count_; }
+
+      madness::Future<result_type> result() { return result_; }
+
+    private:
+
+      void reduce(std::shared_ptr<result_type>& result) {
+        while(result) {
+          lock_.lock();
+          if(ready_pair_) {
+            ReducePair* pair = ready_pair_;
+            ready_pair_ = NULL;
+            lock_.unlock();
+            op_(*result, pair->left(), pair->right());
+            delete pair;
+            dec();
+          } else if(ready_result_) {
+            std::shared_ptr<result_type> arg = ready_result_;
+            ready_result_.reset();
+            lock_.unlock();
+            op_(*result, *arg);
+            arg.reset();
+          } else {
+            ready_result_ = result;
+            result.reset();
+            lock_.unlock();
+          }
+        }
+      }
+
+      madness::Void reduce_result_result(std::shared_ptr<result_type> result, std::shared_ptr<result_type>& arg) {
+        op_(*result, *arg);
+        arg.reset();
+        reduce(result);
+
+        return madness::None;
+      }
+
+      madness::Void reduce_result_pair(std::shared_ptr<result_type> result, const ReducePair* pair) {
+        op_(*result, pair->left(), pair->right());
+        delete pair;
+        reduce(result);
+        dec();
+
+        return madness::None;
+      }
+
+      madness::Void reduce_pair(const ReducePair* pair) {
+        std::shared_ptr<result_type> result(new result_type());
+        return reduce_result_pair(result, pair);
+      }
+
+      madness::Void reduce_pair_pair(const ReducePair* pair1, const ReducePair* pair2) {
+        std::shared_ptr<result_type> result(new result_type(op_(pair1->left(),
+            pair1->right(), pair2->left(), pair2->right())));
+        delete pair1;
+        delete pair2;
+        reduce(result);
+        dec();
+        dec();
+
+        return madness::None;
+      }
+    }; // class ReducePairTask
+
+    /// Reduction task
+
+    /// This task will reduce an arbitrary number of objects. This task is
+    /// optimized for reduction of data that is the result of other tasks or
+    /// remote data. Though it can handle data that is not stored in a future,
+    /// it may not be the best choice. The objects are reduced as they become
+    /// ready, which results in non-deterministic reduction order.
+    /// This is theoretically be faster than a simple  binary tree reduction
+    /// since the reduction tasks do not have to wait on any specific object to
+    /// become ready for reduced. \n
+    /// The reduction operation has the following form:
+    /// \code
+    /// first = op(first, second);
+    /// \endcode
+    /// where \c op is the reduction operation given to the constructor
+    /// \tparam T The object type to be reduced
+    /// \tparam Op The reduction operation type
+    template <typename Op>
+    class ReducePairTask {
+    public:
+
+      typedef typename Op::result_type result_type;
+      typedef typename Op::first_argument_type first_argument_type;
+      typedef typename Op::second_argument_type second_argument_type;
+      typedef ReducePairTask<Op> ReducePairTask_;
+
+    private:
+
+      struct Enabler { };
+
+      // Copy not allowed.
+      ReducePairTask(const ReducePairTask_&);
+      ReducePairTask_& operator=(const ReducePairTask_&);
+    public:
+
+
+      ReducePairTask(madness::World& world, const Op& op = Op()) :
+        world_(world), pimpl_(new ReducePairTaskImpl<Op>(world, op))
+      { }
+
+      /// Destructor
+
+      /// If the reduction has not been submitted or \c destroy() has not been
+      /// called, it well be submitted when the the destructor is called.
+      ~ReducePairTask() {
+        if(pimpl_) {
+          if(pimpl_->count())
+            submit();
+          else
+            delete pimpl_;
+        }
+      }
+
+      /// Add an element to the reduction
+
+      /// \c value may be of type \c value_type (or \c T ), \c madness::Future<value_type> ,
+      /// or \c madness::RemoteReference<madness::FutureImpl<value_type>> .
+      /// \tparam Value The type of the object that will be reduced
+      /// \param value The object that will be reduced
+      template <typename Left, typename Right>
+      void add(const Left& left, const Right& right) {
+        TA_ASSERT(pimpl_);
+        pimpl_->add(left, right);
+      }
+
+      /// Submit the reduction task to the task queue
+
+      /// \return The result of the reduction
+      /// \note After submitting the task, objects can no longer be added to the
+      /// reduction.
+      const madness::Future<result_type>& submit() {
+        TA_ASSERT(pimpl_);
+        // Get the result before submitting calling dec(), otherwise the task
+        // could run and be deleted before we are done here.
+        const madness::Future<result_type>& result = pimpl_->result();
+        world_.taskq.add(pimpl_);
+        pimpl_->dec(); // decrement the fake dependency so the task will run.
+        pimpl_ = NULL;
+
+        return result;
+      }
+
+      /// Destroy the reduce task without submitting it to the task queue.
+      void destroy() {
+        TA_ASSERT(pimpl_->count() == 0);
+        delete pimpl_;
+      }
+
+    private:
+      madness::World& world_; ///< The world that owns the task queue.
+      ReducePairTaskImpl<Op>* pimpl_; ///< The reduction task object.
+    }; // class ReduceTask
+
   }  // namespace detail
 }  // namespace TiledArray
 
