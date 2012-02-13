@@ -573,6 +573,7 @@ namespace TiledArray {
       finish_ = other.finish_;
       size_ = other.size_;
       weight_ = other.weight_;
+      order_ = other.order_;
 
       return *this;
     }
@@ -589,6 +590,7 @@ namespace TiledArray {
       std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
       std::copy(other.size().begin(), other.size().end(), size_.begin());
       std::copy(other.weight().begin(), other.weight().end(), weight_.begin());
+      order_ = other.order();
 
       return *this;
     }
