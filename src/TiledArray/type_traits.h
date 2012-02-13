@@ -35,11 +35,11 @@ namespace TiledArray {
         static const bool value = sizeof(test<T>(0)) == sizeof(yes);
     };
 
-    struct none_iterator_tag { };
+    struct non_iterator_tag { };
 
     template <typename T, typename Enabler = void>
     struct is_iterator : public std::false_type {
-      typedef none_iterator_tag iterator_category;
+      typedef non_iterator_tag iterator_category;
     };
 
     template <typename T>
