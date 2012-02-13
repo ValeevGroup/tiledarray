@@ -299,7 +299,7 @@ namespace TiledArray {
 
       /// Tensor contraction
 
-      /// The will contract \c left with \c right and return the result tensor.
+      /// The will contract \c A with \c B and place the result in \c C.
       /// The contraction algorithms are: \n
       /// \c order=TiledArray::detail::decreasing_dimension_order
       /// \f[
@@ -315,7 +315,6 @@ namespace TiledArray {
       ///         A_{i_1, i_2, \dots, m_1, m_2, \dots}
       ///         B_{i_1, i_2, \dots, n_1, n_2, \dots}
       /// \f]
-      /// where \c res is \c C , \c left is \c A , and \c right is \c B .
       /// If the data is not in the correct layout, then use the
       /// \c permute_contract_tensor() function instead.
       /// \tparam Res The result tensor type
@@ -390,6 +389,141 @@ namespace TiledArray {
         }
       }
 
+      /// Tensor contraction
+
+      /// The will contract \c a with \c b , contract \c c with
+      /// \c d , and return the result tensor.
+      /// The contraction algorithms are: \n
+      /// \c order=TiledArray::detail::decreasing_dimension_order
+      /// \f[
+      /// E_{m_1, m_2, \dots , n_1, n_2, \dots} =
+      ///     \sum_{i_1, i_2, \dots}
+      ///         A_{m_1, m_2, \dots, i_1, i_2, \dots}
+      ///         B_{n_1, n_2, \dots, i_1, i_2, \dots}
+      ///   + \sum_{j_1, j_2, \dots}
+      ///         C_{m_1, m_2, \dots, j_1, j_2, \dots}
+      ///         D_{n_1, n_2, \dots, j_1, j_2, \dots}
+      /// \f]
+      /// \c order=TiledArray::detail::increasing_dimension_order
+      /// \f[
+      /// E_{m_1, m_2, \dots , n_1, n_2, \dots} =
+      ///     \sum_{i_1, i_2, \dots}
+      ///         A_{i_1, i_2, \dots, m_1, m_2, \dots}
+      ///         B_{i_1, i_2, \dots, n_1, n_2, \dots}
+      ///    + \sum_{j_1, j_2, \dots}
+      ///         C_{j_1, j_2, \dots, m_1, m_2, \dots}
+      ///         D_{j_1, j_2, \dots, n_1, n_2, \dots}
+      /// \f]
+      /// where E is the result tensor.
+      /// If the data is not in the correct layout, then use the
+      /// \c permute_contract_tensor() function instead.
+      /// \tparam A The left-hand tensor argument type for the first contraction
+      /// \tparam B The right-hand tensor argument type for the first contraction
+      /// \tparam C The left-hand tensor argument type for the second contraction
+      /// \tparam D The right-hand tensor argument type for the second contraction
+      /// \param a The left-hand tensor argument for the first contraction
+      /// \param b The right-hand tensor argument for the first contraction
+      /// \param c The left-hand tensor argument for the second contraction
+      /// \param d The right-hand tensor argument for the second contraction
+      /// \throw TiledArray::Exception When the orders of \c a , \c b , \c c ,
+      /// and \c d are not equal.
+      /// \throw TiledArray::Exception  When the number of dimensions of the
+      /// \c a or \c c tensor is not equal to \c left_dim() .
+      /// \throw TiledArray::Exception  When the number of dimensions of the
+      /// \c b or \c d tensor is not equal to \c right_dim() .
+      /// \throw TiledArray::Exception When the inner dimensions of \c a and
+      /// \c b are not coformal (i.e. the number and range of the inner
+      /// dimensions are not the same).
+      /// \throw TiledArray::Exception When the inner dimensions of \c c and
+      /// \c d are not coformal (i.e. the number and range of the inner
+      /// dimensions are not the same).
+      template <typename A, typename B, typename C, typename D>
+      expressions::Tensor<typename ContractionValue<typename ContractionValue<typename A::value_type,
+          typename B::value_type>::type, typename ContractionValue<typename C::value_type,
+          typename D::value_type>::type>::type, DynamicRange>
+      contract_tensor(const A& a, const B& b, const C& c, const D& d) const {
+        // Check that the order and dimensions of the left and right tensors are correct.
+        TA_ASSERT(a.range().order() == b.range().order());
+        TA_ASSERT(c.range().order() == d.range().order());
+        TA_ASSERT(a.range().order() == c.range().order());
+        TA_ASSERT(a.range().dim() == left_dim());
+        TA_ASSERT(b.range().dim() == right_dim());
+        TA_ASSERT(c.range().dim() == left_dim());
+        TA_ASSERT(d.range().dim() == right_dim());
+        TA_ASSERT(check_coformal(a.range(), b.range()));
+        TA_ASSERT(check_coformal(c.range(), d.range()));
+
+        // This function fuses the inner and outer dimensions of the left- and
+        // right-hand tensors such that the contraction can be performed with a
+        // matrix-matrix multiplication.
+
+        // Construct the result tensor
+        typedef typename ContractionValue<
+              typename ContractionValue<typename A::value_type, typename B::value_type>::type,
+              typename ContractionValue<typename C::value_type, typename D::value_type>::type
+            >::type value_type;
+        expressions::Tensor<value_type, DynamicRange>
+            res(DynamicRange(
+                result_index(a.range().start(), b.range().start(), a.range().order()),
+                result_index(a.range().finish(), b.range().finish(), a.range().order()),
+                a.range().order()));
+
+        // This function fuses the inner and outer dimensions of the left- and
+        // right-hand tensors such that the contraction can be performed with a
+        // matrix-matrix multiplication.
+
+        const std::size_t m = left_outer(a.range());
+        const std::size_t i = left_inner(a.range());
+        const std::size_t j = left_inner(c.range());
+        const std::size_t n = right_outer(b.range());
+
+        if(a.range().order() == detail::decreasing_dimension_order) {
+
+          // Construct matrix maps for tensors
+          Eigen::Map<const Eigen::Matrix<typename A::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
+              ma(a.data(), m, i);
+          Eigen::Map<const Eigen::Matrix<typename B::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
+              mb(b.data(), n, i);
+          Eigen::Map<const Eigen::Matrix<typename C::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
+              mc(c.data(), m, j);
+          Eigen::Map<const Eigen::Matrix<typename D::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
+              md(d.data(), n, j);
+          Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic ,
+              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
+              me(res.data(), m, n);
+
+          // Do contraction
+          me.noalias() = (ma * mb.transpose()) + (mc * md.transpose());
+
+        } else {
+
+          // Construct matrix maps for tensors
+          Eigen::Map<const Eigen::Matrix<typename A::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
+              ma(a.data(), i, m);
+          Eigen::Map<const Eigen::Matrix<typename B::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
+              mb(b.data(), i, n);
+          Eigen::Map<const Eigen::Matrix<typename C::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
+              mc(c.data(), j, m);
+          Eigen::Map<const Eigen::Matrix<typename D::value_type, Eigen::Dynamic,
+              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
+              md(d.data(), j, n);
+          Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic ,
+              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
+              me(res.data(), m, n);
+
+          // Do contraction
+          me.noalias() += (ma.transpose() * mb) + (mc.transpose() * md);
+        }
+
+        return res;
+      }
 
       unsigned int dim() const { return left_outer_.size() + right_outer_.size(); }
       std::size_t left_inner_dim() const { return left_inner_.size(); }
