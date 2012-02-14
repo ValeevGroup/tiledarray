@@ -59,6 +59,12 @@ const ContractionTensorFixture::TensorN ContractionTensorFixture::t3 = make_tile
 
 BOOST_FIXTURE_TEST_SUITE( contraction_tensor_suite , ContractionTensorFixture )
 
+
+BOOST_AUTO_TEST_CASE( eval )
+{
+  BOOST_REQUIRE_NO_THROW(ct.eval());
+}
+
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
   BOOST_CHECK_EQUAL(ct.range().dim(), 2u);
