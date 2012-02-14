@@ -68,15 +68,6 @@ struct DynamicRangeFixture : public RangeFixture {
   DynamicRange r;
 };
 
-namespace std {
-template <typename T, typename A>
-  ostream& operator<<(ostream& os, const vector<T,A>& v) {
-    os << "[";
-    for(typename vector<T,A>::const_iterator it = v.begin(); it != v.end(); ++it)
-      os << *it << (it + 1 == v.end() ? "]" : ", ");
-    return os;
-  }
-}
 struct Range1Fixture {
 
   static const std::array<std::size_t, 6> a;

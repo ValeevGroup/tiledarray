@@ -389,4 +389,12 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
+namespace std {
+template <typename T, typename A>
+  ostream& operator<<(ostream& os, const vector<T,A>& v) {
+    TiledArray::detail::print_array(os, v);
+    return os;
+  }
+} // namespace std
+
 #endif // TILEDARRAY_COORDINATES_H__INCLUDED
