@@ -28,7 +28,7 @@ struct RangeFixture {
   static const index p5;
   static const index p6;
 
-  RangeFixture();
+  RangeFixture() { }
 
   ~RangeFixture() { }
 
@@ -38,9 +38,45 @@ struct RangeFixture {
     return weight;
   }
 
+  static std::vector<std::size_t> calc_weight(const std::vector<std::size_t>& size) {
+    std::vector<std::size_t> weight(size.size());
+    TiledArray::detail::calc_weight(weight, size, GlobalFixture::coordinate_system::order);
+    return weight;
+  }
+
   RangeN r;
 };
 
+struct StaticRangeFixture : public RangeFixture {
+  typedef StaticRange<GlobalFixture::coordinate_system> StaticRangeN;
+  typedef StaticRangeN::size_array size_array;
+  typedef StaticRangeN::index index;
+  typedef StaticRangeN::size_type size_type;
+
+  StaticRangeFixture();
+
+  StaticRangeN r;
+};
+
+
+struct DynamicRangeFixture : public RangeFixture {
+  typedef DynamicRange::size_array size_array;
+  typedef DynamicRange::size_type size_type;
+
+  DynamicRangeFixture();
+
+  DynamicRange r;
+};
+
+namespace std {
+template <typename T, typename A>
+  ostream& operator<<(ostream& os, const vector<T,A>& v) {
+    os << "[";
+    for(typename vector<T,A>::const_iterator it = v.begin(); it != v.end(); ++it)
+      os << *it << (it + 1 == v.end() ? "]" : ", ");
+    return os;
+  }
+}
 struct Range1Fixture {
 
   static const std::array<std::size_t, 6> a;
