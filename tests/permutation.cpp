@@ -124,8 +124,8 @@ BOOST_AUTO_TEST_CASE( boost_array_permutation )
   std::array<int, 3> a2 = p ^ a1;
   std::array<int, 3> a3 = a1;
   a3 ^= p;
-  TA_CHECK_ARRAY(a2, ar); // check assignment permutation
-  TA_CHECK_ARRAY(a3, ar); // check in-place permutation
+  BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), ar.begin(), ar.end()); // check assignment permutation
+  BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), ar.begin(), ar.end()); // check in-place permutation
 }
 
 BOOST_AUTO_TEST_CASE( vector_permutation )

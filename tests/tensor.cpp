@@ -97,9 +97,12 @@ BOOST_FIXTURE_TEST_SUITE( tile_suite , TensorFixture )
 
 BOOST_AUTO_TEST_CASE( range_accessor )
 {
-  TA_CHECK_ARRAY(t.range().start(), r.start());  // check start accessor
-  TA_CHECK_ARRAY(t.range().finish(), r.finish());// check finish accessor
-  TA_CHECK_ARRAY(t.range().size(), r.size());    // check size accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().start().begin(), t.range().start().end(),
+      r.start().begin(), r.start().end());  // check start accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().finish().begin(), t.range().finish().end(),
+      r.finish().begin(), r.finish().end());// check finish accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().size().begin(), t.range().size().end(),
+      r.size().begin(), r.size().end());    // check size accessor
   BOOST_CHECK_EQUAL(t.range().volume(), r.volume());// check volume accessor
   BOOST_CHECK_EQUAL(t.range(), r);          // check range accessof
 }
