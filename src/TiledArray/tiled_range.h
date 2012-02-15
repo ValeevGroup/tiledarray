@@ -117,12 +117,13 @@ namespace TiledArray {
       typename tile_range_type::index finish;
       size_index_(start);
       size_index_(finish);
-      for(unsigned int d = 0; d < coordinate_system::dim; ++d) {
+      const unsigned int dim = derived().tiles().dim();
+      for(unsigned int d = 0; d < dim; ++d) {
         start[d] = data()[d].tile(idx[d]).first;
         finish[d] = data()[d].tile(idx[d]).second;
       }
 
-      return tile_range_type(start, finish);
+      return tile_range_type(start, finish, derived().tiles().order());
     }
 
     /// Convert an element index to a tile index
