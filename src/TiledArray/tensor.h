@@ -231,6 +231,8 @@ namespace TiledArray {
       /// \return A const pointer to the tensor data
       pointer data() { return data_.data(); }
 
+      bool empty() const { return data_.empty(); }
+
       /// Serialize tensor data
 
       /// \tparam Archive The serialization archive type
