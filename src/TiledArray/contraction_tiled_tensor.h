@@ -95,13 +95,45 @@ namespace TiledArray {
 
             class reduce_op {
             public:
-              typedef const value_type& first_argument_type;
-              typedef const value_type& second_argument_type;
+              typedef typename left_tensor_type::value_type first_argument_type;
+              typedef typename right_tensor_type::value_type second_argument_type;
               typedef value_type result_type;
 
-              result_type operator()(first_argument_type first, second_argument_type second) const {
-                return make_binary_tensor(first, second, std::plus<typename value_type::value_type>());
+              explicit reduce_op(const std::shared_ptr<math::Contraction>& cont) :
+                cont_(cont)
+              { }
+
+              reduce_op(const reduce_op& other) : cont_(other.cont_) { }
+
+              reduce_op& operator=(const reduce_op& other) {
+                cont_ = other.cont_;
+                return *this;
               }
+
+              result_type operator()() const {
+                return result_type();
+              }
+
+              void operator()(result_type& result, const result_type& arg) const {
+                result += arg;
+              }
+
+
+              void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
+                if(result.empty())
+                  result = result_type(cont_->result_range(first.range(), second.range()));
+                cont_->contract_tensor(result, first, second);
+              }
+
+
+              result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
+                  const first_argument_type& first2, const second_argument_type& second2) const {
+                return cont_->contract_tensor(first1, second1, first2, second2);
+              }
+
+            private:
+              std::shared_ptr<math::Contraction> cont_;
+              typename value_type::range_type range_;
             }; // class reduce_op
 
           public:
@@ -165,14 +197,13 @@ namespace TiledArray {
             /// \return A \c madness::Future to the dot product result.
             madness::Future<value_type> dot_product(size_type a, size_type b) const {
               // Construct a reduction object
-              TiledArray::detail::ReduceTask<value_type, reduce_op >
-                  local_reduce_op(pimpl_->get_world(), reduce_op());
+              TiledArray::detail::ReducePairTask<reduce_op>
+                  local_reduce_op(pimpl_->get_world(), reduce_op(pimpl_->cont_));
 
               // Generate tasks that will contract tiles and sum the result
-              for(size_type i = 0; i < i_; ++i, ++a, ++b)
+              for(size_type n = 0; n < i_; ++n, ++a, ++b)
                 if(!(pimpl_->left().is_zero(a) || pimpl_->right().is_zero(b))) // Ignore zero tiles
-                  local_reduce_op.add(pimpl_->get_world().taskq.add(& EvalImpl::contract,
-                      pimpl_->cont_, left(a), right(b)));
+                  local_reduce_op.add(left(a), right(b));
 
               // This will start the reduction tasks, submit the permute task of
               // the result of the reduction, and return the resulting future
