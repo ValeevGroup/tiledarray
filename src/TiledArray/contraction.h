@@ -251,6 +251,17 @@ namespace TiledArray {
           return accumulate(range.size().begin(), range.size().begin() + right_inner_dim());
       }
 
+      template <typename LeftRange, typename RightRange>
+      DynamicRange result_range(const LeftRange& left, const RightRange& right) const {
+        // Check that the order and dimensions of the left and right tensors are correct.
+        TA_ASSERT(left.order() == right.order());
+        TA_ASSERT(left.dim() == left_dim());
+        TA_ASSERT(right.dim() == right_dim());
+
+        return DynamicRange(result_index(left.start(), right.start(), left.order()),
+            result_index(left.finish(), right.finish(), left.order()), left.order());
+      }
+
       /// Tensor contraction
 
       /// This function constructs the result tensor and calls
@@ -274,10 +285,6 @@ namespace TiledArray {
       expressions::Tensor<typename ContractionValue<typename Left::value_type,
           typename Right::value_type>::type, DynamicRange>
       contract_tensor(const Left& left, const Right& right) const {
-        // Check that the order and dimensions of the left and right tensors are correct.
-        TA_ASSERT(left.range().order() == right.range().order());
-        TA_ASSERT(left.range().dim() == left_dim());
-        TA_ASSERT(right.range().dim() == right_dim());
 
         // This function fuses the inner and outer dimensions of the left- and
         // right-hand tensors such that the contraction can be performed with a
@@ -287,10 +294,7 @@ namespace TiledArray {
         typedef typename ContractionValue<typename Left::value_type,
             typename Right::value_type>::type value_type;
         expressions::Tensor<value_type, DynamicRange>
-            res(DynamicRange(
-                result_index(left.range().start(), right.range().start(), left.range().order()),
-                result_index(left.range().finish(), right.range().finish(), left.range().order()),
-                left.range().order()));
+            res(result_range(left.range(), right.range()));
 
         contract_tensor(res, left, right);
 
@@ -463,10 +467,7 @@ namespace TiledArray {
               typename ContractionValue<typename C::value_type, typename D::value_type>::type
             >::type value_type;
         expressions::Tensor<value_type, DynamicRange>
-            res(DynamicRange(
-                result_index(a.range().start(), b.range().start(), a.range().order()),
-                result_index(a.range().finish(), b.range().finish(), a.range().order()),
-                a.range().order()));
+            res(result_range(a.range(), b.range()));
 
         // This function fuses the inner and outer dimensions of the left- and
         // right-hand tensors such that the contraction can be performed with a
