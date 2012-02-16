@@ -44,7 +44,6 @@ struct RangeFixture {
     return weight;
   }
 
-  RangeN r;
 };
 
 struct StaticRangeFixture : public RangeFixture {
@@ -95,7 +94,7 @@ struct TiledRangeFixtureBase : public Range1Fixture {
   std::vector<TiledRange1> dims;
 }; // struct TiledRangeFixtureBase
 
-struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
+struct TiledRangeFixture : public StaticRangeFixture, public TiledRangeFixtureBase {
   typedef StaticTiledRange<GlobalFixture::coordinate_system> TRangeN;
   typedef TRangeN::tile_range_type::index tile_index;
 
