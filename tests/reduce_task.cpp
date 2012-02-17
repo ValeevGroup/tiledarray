@@ -106,12 +106,26 @@ BOOST_AUTO_TEST_CASE( reduce_value )
   int sum = 0;
   for(int i = 0; i < 100; ++i) {
     sum += i * i;
+    BOOST_CHECK_EQUAL(rt.count(), i);
     rt.add(i, i);
+    BOOST_CHECK_EQUAL(rt.count(), i + 1);
   }
 
   madness::Future<int> result = rt.submit();
 
   BOOST_CHECK_EQUAL(result.get(), sum);
+}
+
+BOOST_AUTO_TEST_CASE( reduce_one_value )
+{
+
+  BOOST_CHECK_EQUAL(rt.count(), 0);
+  rt.add(2, 3);
+  BOOST_CHECK_EQUAL(rt.count(), 1);
+
+  madness::Future<int> result = rt.submit();
+
+  BOOST_CHECK_EQUAL(result.get(), 6);
 }
 
 BOOST_AUTO_TEST_CASE( reduce_future )
@@ -124,7 +138,9 @@ BOOST_AUTO_TEST_CASE( reduce_future )
     madness::Future<int> f2;
     fut1_vec.push_back(f1);
     fut2_vec.push_back(f2);
+    BOOST_CHECK_EQUAL(rt.count(), i);
     rt.add(f1, f2);
+    BOOST_CHECK_EQUAL(rt.count(), i + 1);
   }
 
   madness::Future<int> result = rt.submit();
@@ -141,6 +157,33 @@ BOOST_AUTO_TEST_CASE( reduce_future )
 
   BOOST_CHECK_EQUAL(result.get(), sum);
 
+}
+
+BOOST_AUTO_TEST_CASE( reduce_one_future )
+{
+
+  madness::Future<int> f1;
+  madness::Future<int> f2;
+  rt.add(f1, f2);
+
+  madness::Future<int> result = rt.submit();
+
+  BOOST_CHECK(!(result.probe()));
+
+  BOOST_CHECK(!(result.probe()));
+  f1.set(2);
+  f2.set(3);
+
+  BOOST_CHECK_EQUAL(result.get(), 6);
+
+}
+
+BOOST_AUTO_TEST_CASE( reduce_zero )
+{
+  BOOST_CHECK_EQUAL(rt.count(), 0);
+  madness::Future<int> result = rt.submit();
+
+  BOOST_CHECK_EQUAL(result.get(), 0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

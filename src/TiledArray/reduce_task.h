@@ -334,6 +334,8 @@ namespace TiledArray {
           ready_pair_(NULL), result_(), lock_()
       { }
 
+      virtual ~ReducePairTaskImpl() { }
+
       virtual void run(madness::World&) {
         TA_ASSERT(ready_result_);
         result_.set(*ready_result_);
@@ -476,6 +478,8 @@ namespace TiledArray {
         ++count_;
       }
 
+      std::size_t count() const { return count_; }
+
       /// Submit the reduction task to the task queue
 
       /// \return The result of the reduction
@@ -488,6 +492,7 @@ namespace TiledArray {
 
         if(count_ == 0ul) {
           pimpl_->run(world_);
+          pimpl_->dec();
           delete pimpl_;
         } else {
           // Get the result before submitting calling dec(), otherwise the task
