@@ -1,6 +1,5 @@
 AC_DEFUN([ACX_WITH_BOOST_TEST_LIB],[
-  AC_ARG_WITH([boost-test-lib], [
-    AS_HELP_STRING([--with-boost-test-lib@<:@=lib-name@:>@],
+  AC_ARG_WITH([boost-test-lib], [AS_HELP_STRING([--with-boost-test-lib@<:@=lib-name@:>@],
       [use Boost.Test library. You may specify a certain library e.g. --with-boost-test-lib=boost_unit_test_framework-gcc-mt ])],
     [
       case $withval in
