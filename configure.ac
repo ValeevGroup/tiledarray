@@ -35,6 +35,8 @@ AC_PROG_CXX([$MPICXX])
 CFLAGS="$initial_CFLAGS"
 CXXFLAGS="$initial_CXXFLAGS"
 
+AC_CHECK_HEADER([mpi.h], [], [AC_MSG_ERROR([Unable to find mpi.h.])])
+
 # Check for mpi execution command
 AC_ARG_VAR([MPIEXEC], [MPI command used to run parallel/distributed programs.])
 AC_CHECK_PROGS([MPIEXEC], [mpiexec mpirun], [:])
@@ -66,24 +68,7 @@ ACX_CHECK_MADNESS
 ACX_CHECK_BOOST
 ACX_WITH_BOOST_TEST_LIB
 
-AC_ARG_WITH([blas],
-            [AS_HELP_STRING([--with-blas@<:@=DIR@:>@], [DIR where the blas library is installed.])],
-            [
-              case $with_blas in
-                yes)
-                ;;
-                no)
-                ;;
-                *)
-                ;;
-              esac
-              if test "$with_blas" != yes; then
-                CPPFLAGS="$CPPFLAGS -I$with_blas/include"
-                LDFLAGS="$LDFLAGS -L$with_blas/lib"
-              fi
-              AC_CHECK_HEADER([cblas.h], [], [AC_MSG_ERROR([Unable to find the cblas header file.])])
-              AC_DEFINE([TA_USE_CBLAS], [1], [TiledArray will use blas for some math operations.])
-            ])
+ACX_WITH_BLAS
 
 # Display options
 AC_MSG_NOTICE([CPPFLAGS = $CPPFLAGS])

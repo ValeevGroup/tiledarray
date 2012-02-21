@@ -7,11 +7,12 @@
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/bitset.h>
 #include <TiledArray/permute_tensor.h>
+#include <TiledArray/cblas.h>
 #include <world/array.h>
 #include <iterator>
 #include <numeric>
 #include <functional>
-#include <list>
+
 
 namespace TiledArray {
   namespace math {
@@ -35,6 +36,7 @@ namespace TiledArray {
       struct ContractionValue<std::complex<T>, T> {
         typedef std::complex<T> type;
       };
+
     } // namespace
 
     /// A utility class for contraction operations.
@@ -359,38 +361,8 @@ namespace TiledArray {
         const std::size_t i = left_inner(left.range());
         const std::size_t n = right_outer(right.range());
 
-        if(left.range().order() == detail::decreasing_dimension_order) {
-
-          // Construct matrix maps for tensors
-          Eigen::Map<const Eigen::Matrix<typename Left::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
-              ma(left.data(), m, i);
-          Eigen::Map<const Eigen::Matrix<typename Right::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
-              mb(right.data(), n, i);
-          Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic ,
-              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
-              mc(res.data(), m, n);
-
-          // Do contraction
-          mc.noalias() += ma * mb.transpose();
-
-        } else {
-
-          // Construct matrix maps for tensors
-          Eigen::Map<const Eigen::Matrix<typename Left::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
-              ma(left.data(), i, m);
-          Eigen::Map<const Eigen::Matrix<typename Right::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
-              mb(right.data(), i, n);
-          Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic ,
-              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
-              mc(res.data(), m, n);
-
-          // Do contraction
-          mc.noalias() += ma.transpose() * mb;
-        }
+        TiledArray::detail::gemm(CblasTrans, CblasNoTrans, m, n, i, value_type(1),
+            left.data(), i, right.data(), i, value_type(1), res.data(), m);
       }
 
       /// Tensor contraction
@@ -478,50 +450,10 @@ namespace TiledArray {
         const std::size_t j = left_inner(c.range());
         const std::size_t n = right_outer(b.range());
 
-        if(a.range().order() == detail::decreasing_dimension_order) {
-
-          // Construct matrix maps for tensors
-          Eigen::Map<const Eigen::Matrix<typename A::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
-              ma(a.data(), m, i);
-          Eigen::Map<const Eigen::Matrix<typename B::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
-              mb(b.data(), n, i);
-          Eigen::Map<const Eigen::Matrix<typename C::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
-              mc(c.data(), m, j);
-          Eigen::Map<const Eigen::Matrix<typename D::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
-              md(d.data(), n, j);
-          Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic ,
-              Eigen::Dynamic, Eigen::RowMajor | Eigen::AutoAlign> >
-              me(res.data(), m, n);
-
-          // Do contraction
-          me.noalias() = (ma * mb.transpose()) + (mc * md.transpose());
-
-        } else {
-
-          // Construct matrix maps for tensors
-          Eigen::Map<const Eigen::Matrix<typename A::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
-              ma(a.data(), i, m);
-          Eigen::Map<const Eigen::Matrix<typename B::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
-              mb(b.data(), i, n);
-          Eigen::Map<const Eigen::Matrix<typename C::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
-              mc(c.data(), j, m);
-          Eigen::Map<const Eigen::Matrix<typename D::value_type, Eigen::Dynamic,
-              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
-              md(d.data(), j, n);
-          Eigen::Map<Eigen::Matrix<value_type, Eigen::Dynamic ,
-              Eigen::Dynamic, Eigen::ColMajor | Eigen::AutoAlign> >
-              me(res.data(), m, n);
-
-          // Do contraction
-          me.noalias() += (ma.transpose() * mb) + (mc.transpose() * md);
-        }
+        TiledArray::detail::gemm(CblasTrans, CblasNoTrans, m, n, i, value_type(1),
+            a.data(), i, b.data(), i, value_type(1), res.data(), m);
+        TiledArray::detail::gemm(CblasTrans, CblasNoTrans, m, n, j, value_type(1),
+            c.data(), j, d.data(), j, value_type(1), res.data(), m);
 
         return res;
       }

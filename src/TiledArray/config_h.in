@@ -4,8 +4,29 @@
 /* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
 #undef TA_DEFAULT_ERROR
 
-/* TiledArray will use blas for some math operations. */
-#undef TA_USE_CBLAS
+/* Define to 1 if you have the <cblas.h> header file. */
+#undef HAVE_CBLAS_H
+
+/* Define to 1 if you have the <mkl.h> header file. */
+#undef HAVE_MKL_H
+
+/* Defines when Fortran BLAS functions are available. */
+#undef TILEDARRAY_HAS_BLAS
+
+/* Defines when cblas functions are available. */
+#undef TILEDARRAY_HAS_CBLAS
+
+/* Set to the Fortran dgemm function name. */
+#undef dgemm
+
+/* Set to the Fortran zgemm function name. */
+#undef zgemm
+
+/* Set to the Fortran sgemm function name. */
+#undef sgemm
+
+/* Set to the Fortran cgemm function name. */
+#undef cgemm
 
 /* define if compiler has std::identity. */
 #undef TILEDARRAY_HAS_STD_IDENTITY
