@@ -133,7 +133,6 @@ namespace TiledArray {
 
             private:
               std::shared_ptr<math::Contraction> cont_;
-              typename value_type::range_type range_;
             }; // class reduce_op
 
           public:
@@ -154,30 +153,29 @@ namespace TiledArray {
 
             /// \param i The tile to be evaluated
             /// \return true
-            bool operator()(size_type i) const {
-              size_type perm_i = pimpl_->range().ord(perm_ ^ range_.idx(i));
-
-              if(pimpl_->is_local(perm_i)) {
-                if(! pimpl_->is_zero(perm_i)) {
+            bool operator()(const size_type i) const {
+              if(pimpl_->is_local(i)) {
+                if(! pimpl_->is_zero(i)) {
+                  const size_type ii = map_ord(i, perm_);
 
                   size_type x = 0; // Row of result matrix
                   size_type y = 0; // Column of result matrix
 
                   // Calculate the matrix coordinates of i
                   if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
-                    // i == x * n + y
-                    x = i / n_;
-                    y = i % n_;
+                    // ii == x * n + y
+                    x = ii / n_;
+                    y = ii % n_;
                   } else {
-                    // i == y * m + x
-                    x = i % m_;
-                    y = i / m_;
+                    // ii == y * m + x
+                    x = ii % m_;
+                    y = ii / m_;
                   }
 
                   // Store the future result
                   // x * i_ == The ordinal index of the first tile in left to be contracted
                   // y * i_ == The ordinal index of the first tile in right to be contracted
-                  pimpl_->data_.set(perm_i, dot_product(x * i_, y * i_));
+                  pimpl_->data_.set(i, dot_product(x * i_, y * i_));
 
                 }
               }
@@ -205,6 +203,7 @@ namespace TiledArray {
                 if(!(pimpl_->left().is_zero(a) || pimpl_->right().is_zero(b))) // Ignore zero tiles
                   local_reduce_op.add(left(a), right(b));
 
+              TA_ASSERT(local_reduce_op.count() != 0ul);
               // This will start the reduction tasks, submit the permute task of
               // the result of the reduction, and return the resulting future
               return make_permute_task(local_reduce_op.submit(), perm_);
@@ -242,6 +241,14 @@ namespace TiledArray {
             const madness::Future<value_type>&
             make_permute_task(const madness::Future<value_type>& tile, const TiledArray::detail::NoPermutation&) const {
               return tile;
+            }
+
+            size_type map_ord(size_type i, const Permutation& p) const {
+              return range_.ord(-perm_ ^ pimpl_->range().idx(i));
+            }
+
+            size_type map_ord(size_type i, const TiledArray::detail::NoPermutation&) const {
+              return i;
             }
 
 
