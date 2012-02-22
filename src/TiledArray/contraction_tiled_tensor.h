@@ -93,51 +93,90 @@ namespace TiledArray {
             EvalImpl(const EvalImpl&);
             EvalImpl& operator=(const EvalImpl&);
 
-            class reduce_op {
-            public:
-              typedef typename left_tensor_type::value_type first_argument_type;
-              typedef typename right_tensor_type::value_type second_argument_type;
-              typedef value_type result_type;
+            /// Contract and reduce operation
 
-              explicit reduce_op(const std::shared_ptr<math::Contraction>& cont) :
+            /// This object handles contraction and reduction of tensor tiles.
+            class contract_reduce_op {
+            public:
+              typedef typename left_tensor_type::value_type first_argument_type; ///< The left tile type
+              typedef typename right_tensor_type::value_type second_argument_type; ///< The right tile type
+              typedef value_type result_type; ///< The result tile type.
+
+              /// Construct contract/reduce functor
+
+              /// \param cont Shared pointer to contraction definition object
+              explicit contract_reduce_op(const std::shared_ptr<math::Contraction>& cont) :
                 cont_(cont)
               { }
 
-              reduce_op(const reduce_op& other) : cont_(other.cont_) { }
+              /// Functor copy constructor
 
-              reduce_op& operator=(const reduce_op& other) {
+              /// Shallow copy of this functor
+              /// \param other The functor to be copied
+              contract_reduce_op(const contract_reduce_op& other) : cont_(other.cont_) { }
+
+              /// Functor assignment operator
+
+              /// Shallow copy of this functor
+              /// \param other The functor to be copied
+              contract_reduce_op& operator=(const contract_reduce_op& other) {
                 cont_ = other.cont_;
                 return *this;
               }
 
+              /// Create a result type object
+
+              /// Initialize a result object for subsequent reductions
               result_type operator()() const {
                 return result_type();
               }
 
+              /// Reduce two result objects
+
+              /// Add \c arg to \c result .
+              /// \param[in,out] result The result object that will be the reduction target
+              /// \param[in] arg The argument that will be added to \c result
               void operator()(result_type& result, const result_type& arg) const {
                 result += arg;
               }
 
 
+              /// Contract a pair of tiles and add to a target tile
+
+              /// Contracte \c left and \c right and add the result to \c result.
+              /// \param[in,out] result The result object that will be the reduction target
+              /// \param[in] left The left-hand tile to be contracted
+              /// \param[in] right The right-hand tile to be contracted
               void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
                 if(result.empty())
                   result = result_type(cont_->result_range(first.range(), second.range()));
                 cont_->contract_tensor(result, first, second);
               }
 
+              /// Contract a pair of tiles and add to a target tile
 
+              /// Contracte \c left1 with \c right1 and \c left2 with \c right2 ,
+              /// and add the two results.
+              /// \param[in] left The first left-hand tile to be contracted
+              /// \param[in] right The first right-hand tile to be contracted
+              /// \param[in] left The second left-hand tile to be contracted
+              /// \param[in] right The second right-hand tile to be contracted
+              /// \return A tile that contains the sum of the two contractions.
               result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
                   const first_argument_type& first2, const second_argument_type& second2) const {
                 return cont_->contract_tensor(first1, second1, first2, second2);
               }
 
             private:
-              std::shared_ptr<math::Contraction> cont_;
-            }; // class reduce_op
+              std::shared_ptr<math::Contraction> cont_; ///< The contraction definition object pointer
+            }; // class contract_reduce_op
 
           public:
 
-            /// Construct
+            /// Constructor
+
+            /// \param perm The permuation that will be applied to the results.
+            /// \param pimpl The implmentation pointer of the ContractionTiledTensor
             EvalImpl(const perm_type& perm, const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl) :
                 perm_(perm),
                 m_(pimpl->cont_->left_outer(pimpl->left_.range())),
@@ -149,7 +188,7 @@ namespace TiledArray {
                 right_cache_(pimpl->right().range().volume())
             { }
 
-            /// Generate an evaluation task for \c it
+            /// Generate tasks to evaluate tile \c i
 
             /// \param i The tile to be evaluated
             /// \return true
@@ -183,8 +222,6 @@ namespace TiledArray {
               return true;
             }
 
-            const perm_type& perm() const { return perm_; }
-
           private:
 
             /// Compute the dot_product tensor tiles
@@ -195,8 +232,8 @@ namespace TiledArray {
             /// \return A \c madness::Future to the dot product result.
             madness::Future<value_type> dot_product(size_type a, size_type b) const {
               // Construct a reduction object
-              TiledArray::detail::ReducePairTask<reduce_op>
-                  local_reduce_op(pimpl_->get_world(), reduce_op(pimpl_->cont_));
+              TiledArray::detail::ReducePairTask<contract_reduce_op>
+                  local_reduce_op(pimpl_->get_world(), contract_reduce_op(pimpl_->cont_));
 
               // Generate tasks that will contract tiles and sum the result
               for(size_type n = 0; n < i_; ++n, ++a, ++b)
