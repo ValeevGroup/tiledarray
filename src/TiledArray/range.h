@@ -153,7 +153,7 @@ namespace TiledArray {
     typedef detail::RangeIterator<index, Range_> const_iterator;
     friend class detail::RangeIterator<index, Range_>;
 
-  public:
+  private:
 
     // used to access the derived class's data
     Derived& derived() { return static_cast<Derived&>(*this); }
@@ -674,8 +674,8 @@ namespace TiledArray {
   }
 
   template <typename Derived>
-  Derived operator ^(const detail::NoPermutation& perm, const Range<Derived>& r) {
-    return r.derived();
+  const Range<Derived>& operator ^(const detail::NoPermutation& perm, const Range<Derived>& r) {
+    return r;
   }
 
   /// Returns true if the start and finish are equal.
