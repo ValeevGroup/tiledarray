@@ -11,7 +11,7 @@ StaticRangeFixture::StaticRangeFixture() : r(RangeFixture::start, RangeFixture::
 
 
 DynamicRangeFixture::DynamicRangeFixture() :
-    r(RangeFixture::start, RangeFixture::finish, GlobalFixture::coordinate_system::order)
+    r(RangeFixture::start, RangeFixture::finish)
 { }
 
 const RangeFixture::index RangeFixture::start(0);
@@ -239,21 +239,6 @@ BOOST_AUTO_TEST_CASE( iteration )
 
   Range3C rc(Range3C::index(1,1,1),Range3C::index(3,3,3));
   BOOST_CHECK_EQUAL_COLLECTIONS(rc.begin(), rc.end(), tc.begin(), tc.end());
-
-  typedef StaticRange<CoordinateSystem<3, 1, TiledArray::detail::increasing_dimension_order> > Range3F;
-  std::vector<Range3F::index> tf(8);
-
-  tf[0] = Range3F::index(1,1,1);
-  tf[1] = Range3F::index(2,1,1);
-  tf[2] = Range3F::index(1,2,1);
-  tf[3] = Range3F::index(2,2,1);
-  tf[4] = Range3F::index(1,1,2);
-  tf[5] = Range3F::index(2,1,2);
-  tf[6] = Range3F::index(1,2,2);
-  tf[7] = Range3F::index(2,2,2);
-
-  Range3F rf(Range3F::index(1,1,1),Range3F::index(3,3,3));
-  BOOST_CHECK_EQUAL_COLLECTIONS(rf.begin(), rf.end(), tf.begin(), tf.end());
 }
 
 BOOST_AUTO_TEST_CASE( serialization )
@@ -303,7 +288,6 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(r0.size().size(), 0ul);
   BOOST_CHECK_EQUAL(r0.weight().size(), 0ul);
   BOOST_CHECK_EQUAL(r0.volume(), 0ul);
-  BOOST_CHECK(r0.order() == TiledArray::detail::decreasing_dimension_order);
 
   BOOST_CHECK_NO_THROW(DynamicRange r00(r0));
   DynamicRange r00(r0);
@@ -313,14 +297,13 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL(r00.size().size(), 0ul);
   BOOST_CHECK_EQUAL(r00.weight().size(), 0ul);
   BOOST_CHECK_EQUAL(r00.volume(), 0ul);
-  BOOST_CHECK(r00.order() == TiledArray::detail::decreasing_dimension_order);
 
-  BOOST_REQUIRE_NO_THROW(DynamicRange r2(p2, p2 + finish, GlobalFixture::coordinate_system::order)); // Start/Finish Constructor
+  BOOST_REQUIRE_NO_THROW(DynamicRange r2(p2, p2 + finish)); // Start/Finish Constructor
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(DynamicRange r2(p2 + finish, p2, GlobalFixture::coordinate_system::order), Exception);
+  BOOST_CHECK_THROW(DynamicRange r2(p2 + finish, p2), Exception);
 #endif // TA_EXCEPTION_ERROR
   index f2 = p2 + finish;
-  DynamicRange r2(p2, f2, GlobalFixture::coordinate_system::order);
+  DynamicRange r2(p2, f2);
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.start().begin(), r2.start().end(), p2.begin(), p2.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.finish().begin(), r2.finish().end(), f2.begin(), f2.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.size().begin(), r2.size().end(), size.begin(), size.end());
@@ -334,8 +317,8 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.size().begin(), r4.size().end(), size.begin(), size.end());
   BOOST_CHECK_EQUAL(r4.volume(), volume);
 
-  BOOST_REQUIRE_NO_THROW(DynamicRange r5(p2, p2, GlobalFixture::coordinate_system::order)); // Zero Size Construction
-  DynamicRange r5(p2, p2, GlobalFixture::coordinate_system::order);
+  BOOST_REQUIRE_NO_THROW(DynamicRange r5(p2, p2)); // Zero Size Construction
+  DynamicRange r5(p2, p2);
   BOOST_CHECK_EQUAL_COLLECTIONS(r5.start().begin(), r5.start().end(), p2.begin(), p2.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r5.finish().begin(), r5.finish().end(), p2.begin(), p2.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r5.size().begin(), r5.size().end(), start.begin(), start.end());
@@ -358,7 +341,7 @@ BOOST_AUTO_TEST_CASE( ostream )
 BOOST_AUTO_TEST_CASE( comparision )
 {
   DynamicRange r1(r);
-  DynamicRange r2(p0, p1, GlobalFixture::coordinate_system::order);
+  DynamicRange r2(p0, p1);
   BOOST_CHECK(r1 == r); // check operator==
   BOOST_CHECK( ! (r2 == r) ); // check for failure
   BOOST_CHECK(r2 != r); // check operator!=
@@ -402,7 +385,7 @@ BOOST_AUTO_TEST_CASE( permutation )
     f[d] = d + d + 5;
     a[GlobalFixture::coordinate_system::dim - d - 1] = d;
   }
-  DynamicRange r1(s, f, GlobalFixture::coordinate_system::order);
+  DynamicRange r1(s, f);
   // create a reverse order permutation
   Permutation p(a);
   DynamicRange r2 = p ^ r1;
@@ -491,35 +474,21 @@ BOOST_AUTO_TEST_CASE( include )
 
 BOOST_AUTO_TEST_CASE( iteration )
 {
-  typedef StaticRange<CoordinateSystem<3> > Range3C;
-  std::vector<Range3C::index> tc(8);
+  std::vector<DynamicRange::index> tc(9, DynamicRange::index(3, 0));
 
-  tc[0] = Range3C::index(1,1,1);
-  tc[1] = Range3C::index(1,1,2);
-  tc[2] = Range3C::index(1,2,1);
-  tc[3] = Range3C::index(1,2,2);
-  tc[4] = Range3C::index(2,1,1);
-  tc[5] = Range3C::index(2,1,2);
-  tc[6] = Range3C::index(2,2,1);
-  tc[7] = Range3C::index(2,2,2);
+  tc[0][0] = 1; tc[0][1] = 1; tc[0][2] = 1;
+  tc[1][0] = 1; tc[1][1] = 1; tc[1][2] = 2;
+  tc[2][0] = 1; tc[2][1] = 2; tc[2][2] = 1;
+  tc[3][0] = 1; tc[3][1] = 2; tc[3][2] = 2;
+  tc[4][0] = 2; tc[4][1] = 1; tc[4][2] = 1;
+  tc[5][0] = 2; tc[5][1] = 1; tc[5][2] = 2;
+  tc[6][0] = 2; tc[6][1] = 2; tc[6][2] = 1;
+  tc[7][0] = 2; tc[7][1] = 2; tc[7][2] = 2;
+  tc[8][0] = 3; tc[8][1] = 3; tc[8][2] = 3;
 
-  Range3C rc(Range3C::index(1,1,1),Range3C::index(3,3,3));
-  BOOST_CHECK_EQUAL_COLLECTIONS(rc.begin(), rc.end(), tc.begin(), tc.end());
 
-  typedef StaticRange<CoordinateSystem<3, 1, TiledArray::detail::increasing_dimension_order> > Range3F;
-  std::vector<Range3F::index> tf(8);
-
-  tf[0] = Range3F::index(1,1,1);
-  tf[1] = Range3F::index(2,1,1);
-  tf[2] = Range3F::index(1,2,1);
-  tf[3] = Range3F::index(2,2,1);
-  tf[4] = Range3F::index(1,1,2);
-  tf[5] = Range3F::index(2,1,2);
-  tf[6] = Range3F::index(1,2,2);
-  tf[7] = Range3F::index(2,2,2);
-
-  Range3F rf(Range3F::index(1,1,1),Range3F::index(3,3,3));
-  BOOST_CHECK_EQUAL_COLLECTIONS(rf.begin(), rf.end(), tf.begin(), tf.end());
+  DynamicRange rc(tc[0],tc[8]);
+  BOOST_CHECK_EQUAL_COLLECTIONS(rc.begin(), rc.end(), tc.begin(), tc.end() - 1);
 }
 
 BOOST_AUTO_TEST_CASE( serialization )

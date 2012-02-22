@@ -34,13 +34,13 @@ struct RangeFixture {
 
   static size_array calc_weight(const size_array& size) {
     size_array weight;
-    TiledArray::detail::calc_weight(weight, size, GlobalFixture::coordinate_system::order);
+    TiledArray::detail::calc_weight(weight, size);
     return weight;
   }
 
   static std::vector<std::size_t> calc_weight(const std::vector<std::size_t>& size) {
     std::vector<std::size_t> weight(size.size());
-    TiledArray::detail::calc_weight(weight, size, GlobalFixture::coordinate_system::order);
+    TiledArray::detail::calc_weight(weight, size);
     return weight;
   }
 

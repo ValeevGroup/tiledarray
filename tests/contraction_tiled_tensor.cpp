@@ -8,9 +8,7 @@ using namespace TiledArray::expressions;
 
 struct ContractionTiledTensorFixture : public AnnotatedArrayFixture {
   typedef ContractionTiledTensor<array_annotation, array_annotation> CTT;
-  typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic,
-      (GlobalFixture::coordinate_system::order == TiledArray::detail::decreasing_dimension_order ?
-      Eigen::RowMajor : Eigen::ColMajor)> matrix_type;
+  typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
   ContractionTiledTensorFixture() : aa_left(a(left_var)), aa_right(a(right_var)), ctt(aa_left, aa_right) { }
 
@@ -46,26 +44,16 @@ struct ContractionTiledTensorFixture : public AnnotatedArrayFixture {
       for(std::size_t i = 0ul; i < tile_rows; ++i) {
         for(std::size_t j = 0ul; j < tile_cols; ++j) {
           // Calculate the ordinal index of the tile element
-          const std::size_t o =
-              (tile.range().order() == TiledArray::detail::decreasing_dimension_order ?
-                  i * tile_cols + j : i + j * tile_rows);
+          const std::size_t o = i * tile_cols + j;
           result(row + i, col + j) = tile[o];
         }
       }
 
       // Increment row and col for next tile
-      if(tile.range().order() == TiledArray::detail::decreasing_dimension_order) {
-        col += tile_cols;
-        if(col >= N) {
-          col = 0;
-          row += tile_rows;
-        }
-      } else {
+      col += tile_cols;
+      if(col >= N) {
+        col = 0;
         row += tile_rows;
-        if(row >= M) {
-          row = 0;
-          col += tile_cols;
-        }
       }
     }
     return result;
@@ -87,8 +75,7 @@ const VariableList ContractionTiledTensorFixture::right_var(
 
 const std::shared_ptr<math::Contraction> ContractionTiledTensorFixture::cont(new math::Contraction(
     VariableList(AnnotatedArrayFixture::make_var_list(0, GlobalFixture::coordinate_system::dim)),
-    VariableList(AnnotatedArrayFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1)),
-    GlobalFixture::coordinate_system::get_order()));
+    VariableList(AnnotatedArrayFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1))));
 
 
 BOOST_FIXTURE_TEST_SUITE( contraction_tiled_tensor_suite, ContractionTiledTensorFixture )

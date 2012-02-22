@@ -113,7 +113,7 @@ namespace TiledArray {
       /// \param left The left argument
       /// \param right The right argument
       /// \param op The element transform operation
-      /// \throw TiledArray::Exception When left and right argument orders,
+      /// \throw TiledArray::Exception When left and right argument
       /// dimensions, or sizes are not equal.
       BinaryTensor(const left_tensor_type& left, const right_tensor_type& right, const op_type& op) :
         left_(left), right_(right), op_(op)

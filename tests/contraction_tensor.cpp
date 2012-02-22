@@ -50,8 +50,7 @@ struct ContractionTensorFixture {
 
 const std::shared_ptr<math::Contraction> ContractionTensorFixture::cont(new math::Contraction(
     VariableList(ContractionTensorFixture::make_var_list(0, GlobalFixture::coordinate_system::dim)),
-    VariableList(ContractionTensorFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1)),
-    GlobalFixture::coordinate_system::get_order()));
+    VariableList(ContractionTensorFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1))));
 
 const ContractionTensorFixture::TensorN ContractionTensorFixture::t2 = make_tile(2);
 const ContractionTensorFixture::TensorN ContractionTensorFixture::t3 = make_tile(3);
@@ -74,7 +73,6 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
   const std::size_t I = std::accumulate(t2.range().finish().begin() + 1,
       t2.range().finish().end(), 1, std::multiplies<int>());
   BOOST_CHECK_EQUAL(ct.size(), I);
-  BOOST_CHECK_EQUAL(ct.range().order(), t2.range().order());
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -92,7 +90,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     const std::size_t I = std::accumulate(t2.range().finish().begin() + 1,
         t2.range().finish().end(), 1, std::multiplies<int>());
     BOOST_CHECK_EQUAL(x.size(), I);
-    BOOST_CHECK_EQUAL(x.range().order(), t2.range().order());
   }
 
   // test copy constructor
@@ -103,7 +100,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_CHECK_EQUAL_COLLECTIONS(x.range().size().begin(), x.range().size().end(),
         ct.range().size().begin(), ct.range().size().end());
     BOOST_CHECK_EQUAL(x.size(), ct.size());
-    BOOST_CHECK_EQUAL(x.range().order(), ct.range().order());
   }
 }
 

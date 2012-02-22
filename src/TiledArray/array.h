@@ -32,10 +32,10 @@ namespace TiledArray {
     typedef Array<T, CS> Array_; ///< This object's type
     typedef CS coordinate_system; ///< The array coordinate system
 
-    typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
+    typedef std::size_t volume_type; ///< Array volume type
     typedef typename coordinate_system::index index; ///< Array coordinate index type
-    typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
-    typedef typename coordinate_system::volume_type size_type; ///< Size type
+    typedef std::size_t ordinal_index; ///< Array ordinal index type
+    typedef std::size_t size_type; ///< Size type
     typedef typename coordinate_system::size_array size_array; ///< Size array type
 
     typedef typename impl_type::value_type value_type; ///< Tile type

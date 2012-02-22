@@ -24,6 +24,15 @@ namespace TiledArray {
 
   namespace detail {
 
+    template <typename R>
+    struct is_range : public std::false_type { };
+    template <typename Derived>
+    struct is_range<Range<Derived> > : public std::true_type { };
+    template <typename CS>
+    struct is_range<StaticRange<CS> > : public std::true_type { };
+    template <>
+    struct is_range<DynamicRange> : public std::true_type { };
+
     template <typename SizeArray>
     inline std::size_t calc_volume(const SizeArray& size) {
       return size.size() ? std::accumulate(size.begin(), size.end(), typename SizeArray::value_type(1),
@@ -41,12 +50,9 @@ namespace TiledArray {
     }
 
     template <typename WArray, typename SArray>
-    inline void calc_weight(WArray& weight, const SArray& size, detail::DimensionOrderType order) {
+    inline void calc_weight(WArray& weight, const SArray& size) {
       TA_ASSERT(weight.size() == size.size());
-      if(order == detail::increasing_dimension_order)
-        calc_weight_helper(size.begin(), size.end(), weight.begin());
-      else
-        calc_weight_helper(size.rbegin(), size.rend(), weight.rbegin());
+      calc_weight_helper(size.rbegin(), size.rend(), weight.rbegin());
     }
 
     template <typename Index, typename WeightArray, typename StartArray>
@@ -60,23 +66,14 @@ namespace TiledArray {
     }
 
 
-    template <typename Index, typename Ordinal, typename RangeType>
-    inline void calc_index(Index& index, Ordinal o, const RangeType& range) {
+    template <typename Index, typename RangeType>
+    inline void calc_index(Index& index, std::size_t o, const RangeType& range) {
       const std::size_t dim = index.size();
 
-      if(range.order() == detail::increasing_dimension_order) {
-        for(std::size_t i = 0; i < dim; ++i) {
-          const std::size_t ii = dim - i;
-          const typename Index::value_type x = (o / range.weight()[ii]);
-          o -= x * range.weight()[ii];
-          index[ii] = x + range.start()[ii];
-        }
-      } else {
-        for(std::size_t i = 0ul; i < dim; ++i) {
-          const typename Index::value_type x = (o / range.weight()[i]);
-          o -= x * range.weight()[i];
-          index[i] = x + range.start()[i];
-        }
+      for(std::size_t i = 0ul; i < dim; ++i) {
+        const typename Index::value_type x = (o / range.weight()[i]);
+        o -= x * range.weight()[i];
+        index[i] = x + range.start()[i];
       }
     }
 
@@ -97,10 +94,7 @@ namespace TiledArray {
 
     template <typename Index, typename RangeType>
     inline void increment_coordinate(Index& index, const RangeType& range) {
-      if(range.order() == detail::increasing_dimension_order)
-        increment_coordinate_helper(index.begin(), index.end(), range.start().begin(), range.finish().begin());
-      else
-        increment_coordinate_helper(index.rbegin(), index.rend(), range.start().rbegin(), range.finish().rbegin());
+      increment_coordinate_helper(index.rbegin(), index.rend(), range.start().rbegin(), range.finish().rbegin());
 
 
       // if the current location was set to start then it was at the end and
@@ -179,11 +173,6 @@ namespace TiledArray {
     /// \return The number of dimensions in the range.
     unsigned int dim() const { return derived().dim(); }
 
-    /// Data ordering accessor
-
-    /// \return The ordering enum for the tensor data
-    detail::DimensionOrderType order() const { return derived().order(); }
-
     /// Start coordinate accessor
 
     /// \return The lower bound of the range
@@ -253,7 +242,7 @@ namespace TiledArray {
     /// Permute the tile given a permutation.
     Range_& operator ^=(const Permutation& p) {
       TA_ASSERT(p.dim() == dim());
-      Derived temp(p ^ start(), p ^ finish(), order());
+      Derived temp(p ^ start(), p ^ finish());
       derived().swap(temp);
 
       return *this;
@@ -262,7 +251,7 @@ namespace TiledArray {
     /// Change the dimensions of the range.
     template <typename Index>
     Range_& resize(const Index& start, const Index& finish) {
-      Derived temp(start, finish, order());
+      Derived temp(start, finish);
       derived().swap(temp);
 
       return *this;
@@ -384,6 +373,10 @@ namespace TiledArray {
   /// information. It also provides index iteration over its range.
   template <typename CS>
   class StaticRange : public Range<StaticRange<CS> > {
+  private:
+
+    struct Enabler { };
+
   public:
     typedef StaticRange<CS> StaticRange_;
     typedef Range<StaticRange_> base;
@@ -400,36 +393,33 @@ namespace TiledArray {
     /// Constructor defined by an upper and lower bound. All elements of
     /// finish must be greater than or equal to those of start.
     template <typename Index>
-    StaticRange(const Index& start, const Index& finish, detail::DimensionOrderType o = coordinate_system::order) :
+    StaticRange(const Index& start, const Index& finish) :
         start_(), finish_(), size_(), weight_()
     {
-      TA_ASSERT(order() == o);
       TA_ASSERT(start.size() == finish.size());
       TA_ASSERT( (std::equal(start.begin(), start.end(), finish.begin(),
-          std::less_equal<typename coordinate_system::ordinal_index>())) );
+          std::less_equal<std::size_t>())) );
 
       for(std::size_t i = 0; i < dim(); ++i) {
         start_[i] = start[i];
         finish_[i] = finish[i];
         size_[i] = finish[i] - start[i];
       }
-      detail::calc_weight(weight_, size_, order());
+      detail::calc_weight(weight_, size_);
     }
 
     /// Constructor defined by an upper and lower bound. All elements of
     /// finish must be greater than or equal to those of start.
     template <typename SizeArray>
-    StaticRange(const SizeArray& size, detail::DimensionOrderType o) :
+    StaticRange(const SizeArray& size, typename madness::disable_if<detail::is_range<SizeArray>, Enabler>::type = Enabler()) :
         start_(), finish_(), size_(), weight_()
     {
-      TA_ASSERT(order() == o);
-
       for(std::size_t i = 0; i < dim(); ++i) {
         start_[i] = 0;
         finish_[i] = size[i];
         size_[i] = size[i];
       }
-      detail::calc_weight(weight_, size_, order());
+      detail::calc_weight(weight_, size_);
     }
 
     /// Copy Constructor
@@ -442,7 +432,6 @@ namespace TiledArray {
     StaticRange(const Range<Derived>& other) : // no throw
       start_(), finish_(), size_(), weight_()
     {
-      TA_ASSERT(order() == other.order());
       TA_ASSERT(dim() == other.dim());
 
       std::copy(other.start().begin(), other.start().end(), start_.begin());
@@ -474,8 +463,6 @@ namespace TiledArray {
     }
 
     static unsigned int dim() { return coordinate_system::dim; }
-
-    static detail::DimensionOrderType order() { return coordinate_system::order; }
 
     /// Returns the lower bound of the range
     const index& start() const { return start_; } // no throw
@@ -519,42 +506,40 @@ namespace TiledArray {
 
     /// Default constructor. The range has 0 size and the origin is set at 0.
     DynamicRange() :
-        start_(), finish_(), size_(), weight_(), order_(detail::decreasing_dimension_order)
+        start_(), finish_(), size_(), weight_()
     {}
 
     /// Constructor defined by an upper and lower bound. All elements of
     /// finish must be greater than or equal to those of start.
     template <typename Index>
-    DynamicRange(const Index& start, const Index& finish, detail::DimensionOrderType order) :
+    DynamicRange(const Index& start, const Index& finish) :
         start_(start.begin(), start.end()),
         finish_(finish.begin(), finish.end()),
         size_(detail::make_tran_it(finish.begin(), start.begin(), std::minus<std::size_t>()),
             detail::make_tran_it(finish.end(), start.end(), std::minus<std::size_t>())),
-        weight_(start.size()),
-        order_(order)
+        weight_(start.size())
     {
       TA_ASSERT(start.size() == finish.size());
       TA_ASSERT( (std::equal(start_.begin(), start_.end(), finish_.begin(),
           std::less_equal<std::size_t>())) );
 
-      detail::calc_weight(weight_, size_, order_);
+      detail::calc_weight(weight_, size_);
     }
 
     template <typename SizeArray>
-    DynamicRange(const SizeArray& size, detail::DimensionOrderType order) :
+    DynamicRange(const SizeArray& size) :
         start_(size.size(), 0ul),
         finish_(size.begin(), size.end()),
         size_(size.begin(), size.end()),
-        weight_(size.size()),
-        order_(order)
+        weight_(size.size())
     {
-      detail::calc_weight(weight_, size_, order_);
+      detail::calc_weight(weight_, size_);
     }
 
     /// Copy Constructor
     DynamicRange(const DynamicRange_& other) : // no throw
         start_(other.start_), finish_(other.finish_), size_(other.size_),
-        weight_(other.weight_), order_(other.order_)
+        weight_(other.weight_)
     {}
 
     template <typename Derived>
@@ -562,8 +547,7 @@ namespace TiledArray {
         start_(other.start().begin(), other.start().end()),
         finish_(other.finish().begin(), other.finish().end()),
         size_(other.size().begin(), other.size().end()),
-        weight_(other.weight().begin(), other.weight().end()),
-        order_(other.order())
+        weight_(other.weight().begin(), other.weight().end())
     {}
 
     ~DynamicRange() {}
@@ -573,7 +557,6 @@ namespace TiledArray {
       finish_ = other.finish_;
       size_ = other.size_;
       weight_ = other.weight_;
-      order_ = other.order_;
 
       return *this;
     }
@@ -590,14 +573,11 @@ namespace TiledArray {
       std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
       std::copy(other.size().begin(), other.size().end(), size_.begin());
       std::copy(other.weight().begin(), other.weight().end(), weight_.begin());
-      order_ = other.order();
 
       return *this;
     }
 
     unsigned int dim() const { return size_.size(); }
-
-    detail::DimensionOrderType order() const { return order_; }
 
     /// Returns the lower bound of the range
     const index& start() const { return start_; } // no throw
@@ -612,7 +592,7 @@ namespace TiledArray {
 
     template <typename Archive>
     void serialize(const Archive& ar) {
-      ar & start_ & finish_ & size_ & weight_ & order_;
+      ar & start_ & finish_ & size_ & weight_;
     }
 
     void swap(DynamicRange_& other) {
@@ -620,7 +600,6 @@ namespace TiledArray {
       std::swap(finish_, other.finish_);
       std::swap(size_, other.size_);
       std::swap(weight_, other.weight_);
-      std::swap(order_, other.order_);
     }
 
   private:
@@ -629,7 +608,6 @@ namespace TiledArray {
     index finish_;   ///< Tile upper bound
     index size_;     ///< Dimension sizes
     index weight_;   ///< Dimension weights
-    detail::DimensionOrderType order_;
   }; // class Range
 
 
@@ -670,7 +648,7 @@ namespace TiledArray {
   template <typename Derived>
   Derived operator ^(const Permutation& perm, const Range<Derived>& r) {
     TA_ASSERT(perm.dim() == r.dim());
-    return Derived(perm ^ r.start(), perm ^ r.finish(), r.order());
+    return Derived(perm ^ r.start(), perm ^ r.finish());
   }
 
   template <typename Derived>
@@ -682,11 +660,11 @@ namespace TiledArray {
   template <typename Derived1, typename Derived2>
   bool operator ==(const Range<Derived1>& r1, const Range<Derived2>& r2) {
 #ifdef NDEBUG
-    return (r1.dim() == r2.dim()) &&  (r1.order() == r2.order()) &&
+    return (r1.dim() == r2.dim()) &&
         ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
         ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().begin()) );
 #else
-    return (r1.dim() == r2.dim()) && (r1.order() == r2.order()) &&
+    return (r1.dim() == r2.dim()) &&
         ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
         ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().begin()) ) &&
         ( std::equal(r1.size().begin(), r1.size().end(), r2.size().begin()) ) &&

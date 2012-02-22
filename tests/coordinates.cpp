@@ -8,7 +8,7 @@ using namespace TiledArray;
 using TiledArray::detail::LevelTag;
 
 struct ArrayCoordinateFixture {
-  typedef ArrayCoordinate<std::size_t, 3, LevelTag<0> > Point3;
+  typedef ArrayCoordinate<3, LevelTag<0> > Point3;
   ArrayCoordinateFixture() : p(1,2,3) {
     a[0] = 1;
     a[1] = 2;
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( ostream )
 BOOST_AUTO_TEST_CASE( c_comparisons )
 {
   // 2D coordinate constructor?
-  typedef ArrayCoordinate<std::size_t, 2, LevelTag<0> > Point2;
+  typedef ArrayCoordinate<2, LevelTag<0> > Point2;
   Point2 p0(0,0);
   Point2 p1(0,1);
   Point2 p2(0,2);

@@ -40,17 +40,12 @@ namespace TiledArray {
     } // namespace
 
     /// A utility class for contraction operations.
-
-    /// \param I The index type
-    /// \note All algorithms assume the object dimension layout is in the same
-    /// order as the left- and right-hand variable list arguments used to
-    /// construct this object.
     class Contraction {
     public:
       typedef std::vector<std::size_t> map_type;
 
       Contraction(const expressions::VariableList& left,
-          const expressions::VariableList& right, const detail::DimensionOrderType& order)
+          const expressions::VariableList& right)
       {
 
         // Reserve storage for maps.
@@ -78,8 +73,8 @@ namespace TiledArray {
             right_outer_.push_back(std::distance(right.begin(), it));
         }
 
-        init_permutation(left, left_inner_, left_outer_, order, perm_left_, do_perm_left_);
-        init_permutation(right, right_inner_, right_outer_, order, perm_right_, do_perm_right_);
+        init_permutation(left, left_inner_, left_outer_, perm_left_, do_perm_left_);
+        init_permutation(right, right_inner_, right_outer_, perm_right_, do_perm_right_);
       }
 
 
@@ -118,28 +113,25 @@ namespace TiledArray {
       /// \param left The left-hand-argument range
       /// \param right The right-hand-argument range
       /// \return A contracted range object
-      /// \throw TiledArray::Exception When the order of the ranges do not match
       /// \throw TiledArray::Exception When the dimension of \c left and \c right
       /// do not match the dimensions of the variable lists used to construct
       /// this object.
       template <typename LeftRange, typename RightRange>
       DynamicRange contract_range(const LeftRange& left, const RightRange& right) const {
-        TA_ASSERT(left.order() == right.order());
         TA_ASSERT(left.dim() == left_dim());
         TA_ASSERT(right.dim() == right_dim());
 
         typename DynamicRange::index start(dim()), finish(dim());
         contract_array(start, left.start(), right.start());
         contract_array(finish, left.finish(), right.finish());
-        return DynamicRange(start, finish, left.order());
+        return DynamicRange(start, finish);
       }
 
       template <typename LeftTRange, typename RightTRange>
       DynamicTiledRange contract_trange(const LeftTRange& left, const RightTRange& right) const {
-        TA_ASSERT(left.tiles().order() == right.tiles().order());
         typename DynamicTiledRange::Ranges ranges(dim());
         contract_array(ranges, left.data(), right.data());
-        return DynamicTiledRange(ranges.begin(), ranges.end(), left.tiles().order());
+        return DynamicTiledRange(ranges.begin(), ranges.end());
       }
 
       // Definition is in contraction_tensor.h
@@ -159,13 +151,10 @@ namespace TiledArray {
       /// \tparam Right The right-hand-side tensor argument type
       /// \param left The left-hand-side tensor argument
       /// \param right The right-hand-side tensor argument
-      /// \throw TiledArray::Exception When the orders of left and right are not
-      /// equal
       template <typename Left, typename Right>
       expressions::Tensor<typename ContractionValue<typename Left::value_type,
           typename Right::value_type>::type, DynamicRange>
       permute_contract_tensor(const Left& left, const Right& right) const {
-        TA_ASSERT(left.range().order() == right.range().order());
         TA_ASSERT(left.range().dim() == left_dim());
         TA_ASSERT(right.range().dim() == right_dim());
 
@@ -191,77 +180,56 @@ namespace TiledArray {
 
       /// Calculate the outer dimension for the left argument
 
-      /// Assume outer dimensions are all on the left for decreasing
-      /// dimension ordering and to the right for increasing dimension
-      /// ordering.
+      /// Assume outer dimensions are all on the left.
       /// \tparam D A range type: StaticRange or DynamicRange
       /// \param range A range object for the right argument
       /// \return The size of the fused outer dimensions for the left argument
       template <typename D>
       std::size_t left_outer(const Range<D>& range) const {
-        if(range.order() == TiledArray::detail::decreasing_dimension_order)
-          return accumulate(range.size().begin(), range.size().begin() + left_outer_dim());
-        else
-          return accumulate(range.size().begin() + left_inner_dim(), range.size().end());
+        return accumulate(range.size().begin(), range.size().begin() + left_outer_dim());
       }
 
       /// Calculate the inner dimension for the left argument
 
-      /// Assume inner dimensions are all on the right for decreasing
-      /// dimension ordering and to the left for increasing dimension
-      /// ordering.
+      /// Assume inner dimensions are all on the right.
       /// \tparam D A range type: StaticRange or DynamicRange
       /// \param range A range object for the right argument
       /// \return The size of the fused inner dimensions for the left argument
       template <typename D>
       std::size_t left_inner(const Range<D>& range) const {
-        if(range.order() == TiledArray::detail::decreasing_dimension_order)
-          return accumulate(range.size().begin() + left_outer_dim(), range.size().end());
-        else
-          return accumulate(range.size().begin(), range.size().begin() + left_inner_dim());
+        return accumulate(range.size().begin() + left_outer_dim(), range.size().end());
       }
 
       /// Calculate the outer dimension for the right argument
 
-      /// Assume outer dimensions are all on the left for decreasing
-      /// dimension ordering and to the right for increasing dimension
-      /// ordering.
+      /// Assume outer dimensions are all on the left.
       /// \tparam D A range type: StaticRange or DynamicRange
       /// \param range A range object for the right argument
       /// \return The size of the fused outer dimensions for the right argument
       template <typename D>
       std::size_t right_outer(const Range<D>& range) const {
-        if(range.order() == TiledArray::detail::decreasing_dimension_order)
-          return accumulate(range.size().begin(), range.size().begin() + right_outer_dim());
-        else
-          return accumulate(range.size().begin() + right_inner_dim(), range.size().end());
+        return accumulate(range.size().begin(), range.size().begin() + right_outer_dim());
       }
 
       /// Calculate the inner dimension for the right argument
 
-      /// Assume inner dimensions are all on the right for decreasing
-      /// dimension ordering and to the left for increasing dimension
-      /// ordering.
+      /// Assume inner dimensions are all on the right.
       /// \tparam D A range type: StaticRange or DynamicRange
       /// \param range A range object for the right argument
       /// \return The size of the fused inner dimensions for the right argument
       template <typename D>
       std::size_t right_inner(const Range<D>& range) const {
-        if(range.order() == TiledArray::detail::decreasing_dimension_order)
-          return accumulate(range.size().begin() + right_outer_dim(), range.size().end());
-        else
-          return accumulate(range.size().begin(), range.size().begin() + right_inner_dim());
+        return accumulate(range.size().begin() + right_outer_dim(), range.size().end());
       }
 
       template <typename LeftRange, typename RightRange>
       DynamicRange result_range(const LeftRange& left, const RightRange& right) const {
-        // Check that the order and dimensions of the left and right tensors are correct.
-        TA_ASSERT(left.order() == right.order());
+        // Check that the dimensions of the left and right tensors are correct.
         TA_ASSERT(left.dim() == left_dim());
         TA_ASSERT(right.dim() == right_dim());
 
-        return DynamicRange(result_index(left.start(), right.start(), left.order()),
-            result_index(left.finish(), right.finish(), left.order()), left.order());
+        return DynamicRange(result_index(left.start(), right.start()),
+            result_index(left.finish(), right.finish()));
       }
 
       /// Tensor contraction
@@ -274,8 +242,6 @@ namespace TiledArray {
       /// \tparam Right The right-hand-side tensor argument type
       /// \param left The left-hand-side tensor argument
       /// \param right The right-hand-side tensor argument
-      /// \throw TiledArray::Exception When the orders of left and right are not
-      /// equal.
       /// \throw TiledArray::Exception  When the number of dimensions of the
       /// \c left tensor is not equal to \c left_dim() .
       /// \throw TiledArray::Exception  When the number of dimensions of the
@@ -307,19 +273,11 @@ namespace TiledArray {
 
       /// The will contract \c A with \c B and place the result in \c C.
       /// The contraction algorithms are: \n
-      /// \c order=TiledArray::detail::decreasing_dimension_order
       /// \f[
       /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
       ///     \sum_{i_1, i_2, \dots}
       ///         A_{m_1, m_2, \dots, i_1, i_2, \dots}
       ///         B_{n_1, n_2, \dots, i_1, i_2, \dots}
-      /// \f]
-      /// \c order=TiledArray::detail::increasing_dimension_order
-      /// \f[
-      /// C_{m_1, m_2, \dots , n_1, n_2, \dots} =
-      ///     \sum_{i_1, i_2, \dots}
-      ///         A_{i_1, i_2, \dots, m_1, m_2, \dots}
-      ///         B_{i_1, i_2, \dots, n_1, n_2, \dots}
       /// \f]
       /// If the data is not in the correct layout, then use the
       /// \c permute_contract_tensor() function instead.
@@ -328,8 +286,6 @@ namespace TiledArray {
       /// \tparam Right The right-hand-side tensor argument type
       /// \param left The left-hand-side tensor argument
       /// \param right The right-hand-side tensor argument
-      /// \throw TiledArray::Exception When the orders of left and right are not
-      /// equal.
       /// \throw TiledArray::Exception  When the number of dimensions of the
       /// \c left tensor is not equal to \c left_dim() .
       /// \throw TiledArray::Exception  When the number of dimensions of the
@@ -339,9 +295,7 @@ namespace TiledArray {
       /// dimensions are not the same).
       template <typename Res, typename Left, typename Right>
       void contract_tensor(Res& res, const Left& left, const Right& right) const {
-        // Check that the order and dimensions of the left and right tensors are correct.
-        TA_ASSERT(res.range().order() == left.range().order());
-        TA_ASSERT(res.range().order() == right.range().order());
+        // Check that the dimensions of the left and right tensors are correct.
         TA_ASSERT(left.range().dim() == left_dim());
         TA_ASSERT(right.range().dim() == right_dim());
         TA_ASSERT(res.range().dim() == res_dim());
@@ -369,7 +323,6 @@ namespace TiledArray {
       /// The will contract \c a with \c b , contract \c c with
       /// \c d , and return the result tensor.
       /// The contraction algorithms are: \n
-      /// \c order=TiledArray::detail::decreasing_dimension_order
       /// \f[
       /// E_{m_1, m_2, \dots , n_1, n_2, \dots} =
       ///     \sum_{i_1, i_2, \dots}
@@ -378,16 +331,6 @@ namespace TiledArray {
       ///   + \sum_{j_1, j_2, \dots}
       ///         C_{m_1, m_2, \dots, j_1, j_2, \dots}
       ///         D_{n_1, n_2, \dots, j_1, j_2, \dots}
-      /// \f]
-      /// \c order=TiledArray::detail::increasing_dimension_order
-      /// \f[
-      /// E_{m_1, m_2, \dots , n_1, n_2, \dots} =
-      ///     \sum_{i_1, i_2, \dots}
-      ///         A_{i_1, i_2, \dots, m_1, m_2, \dots}
-      ///         B_{i_1, i_2, \dots, n_1, n_2, \dots}
-      ///    + \sum_{j_1, j_2, \dots}
-      ///         C_{j_1, j_2, \dots, m_1, m_2, \dots}
-      ///         D_{j_1, j_2, \dots, n_1, n_2, \dots}
       /// \f]
       /// where E is the result tensor.
       /// If the data is not in the correct layout, then use the
@@ -400,8 +343,6 @@ namespace TiledArray {
       /// \param b The right-hand tensor argument for the first contraction
       /// \param c The left-hand tensor argument for the second contraction
       /// \param d The right-hand tensor argument for the second contraction
-      /// \throw TiledArray::Exception When the orders of \c a , \c b , \c c ,
-      /// and \c d are not equal.
       /// \throw TiledArray::Exception  When the number of dimensions of the
       /// \c a or \c c tensor is not equal to \c left_dim() .
       /// \throw TiledArray::Exception  When the number of dimensions of the
@@ -417,10 +358,7 @@ namespace TiledArray {
           typename B::value_type>::type, typename ContractionValue<typename C::value_type,
           typename D::value_type>::type>::type, DynamicRange>
       contract_tensor(const A& a, const B& b, const C& c, const D& d) const {
-        // Check that the order and dimensions of the left and right tensors are correct.
-        TA_ASSERT(a.range().order() == b.range().order());
-        TA_ASSERT(c.range().order() == d.range().order());
-        TA_ASSERT(a.range().order() == c.range().order());
+        // Check that the dimensions of the left and right tensors are correct.
         TA_ASSERT(a.range().dim() == left_dim());
         TA_ASSERT(b.range().dim() == right_dim());
         TA_ASSERT(c.range().dim() == left_dim());
@@ -491,37 +429,28 @@ namespace TiledArray {
       ///
       template <typename LeftRange, typename RightRange>
       bool check_coformal(const LeftRange& left, const RightRange& right) const {
-        if(left.order() == TiledArray::detail::decreasing_dimension_order) {
-          return std::equal(left.start().begin() + left_outer_dim(), left.start().end(),
-              right.start().begin() + right_outer_dim())
-              && std::equal(left.finish().begin() + left_outer_dim(), left.finish().end(),
-              right.finish().begin() + right_outer_dim());
-        } else {
-          return std::equal(left.start().begin(), left.start().begin() + left_inner_dim(),
-              right.start().begin())
-              && std::equal(left.finish().begin(), left.finish().begin() + left_inner_dim(),
-              right.finish().begin());
-        }
+        return std::equal(left.start().begin() + left_outer_dim(), left.start().end(),
+            right.start().begin() + right_outer_dim())
+            && std::equal(left.finish().begin() + left_outer_dim(), left.finish().end(),
+            right.finish().begin() + right_outer_dim());
       }
 
       /// Check that the result and left arrays are coformal
       template <typename ResRange, typename LeftRange>
       bool check_left_coformal(const ResRange& res, const LeftRange& left) const {
-        const TiledArray::detail::DimensionOrderType order = left.order();
         return std::equal(res.start().begin(), res.start().begin() + left_outer_dim(),
-            (order == TiledArray::detail::decreasing_dimension_order ? left.start().begin() : left.start().begin() + left_inner_dim()))
+            left.start().begin())
             && std::equal(res.finish().begin(), res.finish().begin() + left_outer_dim(),
-            (order == TiledArray::detail::decreasing_dimension_order ? left.finish().begin() : left.finish().begin() + left_inner_dim()));
+            left.finish().begin());
       }
 
       /// Check that the result and right arrays are coformal
       template <typename ResRange, typename RightRange>
       bool check_right_coformal(const ResRange& res, const RightRange& right) const {
-        const TiledArray::detail::DimensionOrderType order = right.order();
         return std::equal(res.start().begin() + left_outer_dim(), res.start().end(),
-            (order == TiledArray::detail::decreasing_dimension_order ? right.start().begin() : right.start().begin() + right_inner_dim()))
+            right.start().begin())
             && std::equal(res.finish().begin() + left_outer_dim(), res.finish().end(),
-            (order == TiledArray::detail::decreasing_dimension_order ? right.finish().begin() : right.finish().begin() + right_inner_dim()));
+            right.finish().begin());
       }
 
       /// Product accumulation
@@ -541,15 +470,11 @@ namespace TiledArray {
 
       template <typename LeftIndex, typename RightIndex>
       DynamicRange::index result_index(const LeftIndex& l_index,
-          const RightIndex& r_index, const detail::DimensionOrderType& order) const {
+          const RightIndex& r_index) const {
         DynamicRange::index result(dim());
 
-        if(order == detail::decreasing_dimension_order)
-          std::copy(r_index.begin(), r_index.begin() + right_outer_dim(),
-              std::copy(l_index.begin(), l_index.begin() + left_outer_dim(), result.begin()));
-        else
-          std::copy(r_index.begin() + right_inner_dim(), r_index.end(),
-              std::copy(l_index.begin() + left_inner_dim(), l_index.end(), result.begin()));
+        std::copy(r_index.begin(), r_index.begin() + right_outer_dim(),
+            std::copy(l_index.begin(), l_index.begin() + left_outer_dim(), result.begin()));
 
         return result;
       }
@@ -574,23 +499,16 @@ namespace TiledArray {
       }
 
       static void init_permutation(const expressions::VariableList& in_vars,
-          const map_type& inner, const map_type& outer, const detail::DimensionOrderType& order,
+          const map_type& inner, const map_type& outer,
           Permutation& perm, bool& do_perm)
       {
         std::vector<std::string> vars;
         vars.reserve(in_vars.size());
 
-        if(order == TiledArray::detail::decreasing_dimension_order) {
-          for(map_type::const_iterator it = outer.begin(); it != outer.end(); ++it)
-            vars.push_back(in_vars[*it]);
-          for(map_type::const_iterator it = inner.begin(); it != inner.end(); ++it)
-            vars.push_back(in_vars[*it]);
-        } else {
-          for(map_type::const_iterator it = inner.begin(); it != inner.end(); ++it)
-            vars.push_back(in_vars[*it]);
-          for(map_type::const_iterator it = outer.begin(); it != outer.end(); ++it)
-            vars.push_back(in_vars[*it]);
-        }
+        for(map_type::const_iterator it = outer.begin(); it != outer.end(); ++it)
+          vars.push_back(in_vars[*it]);
+        for(map_type::const_iterator it = inner.begin(); it != inner.end(); ++it)
+          vars.push_back(in_vars[*it]);
         expressions::VariableList perm_vars(vars.begin(), vars.end());
         perm = perm_vars.permutation(in_vars);
 

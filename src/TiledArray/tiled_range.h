@@ -22,7 +22,7 @@ namespace TiledArray {
   template <typename CS>
   struct RangeTraits<StaticTiledRange<CS> > {
     typedef CS coordinate_system;
-    typedef CoordinateSystem<CS::dim, CS::level - 1, CS::order, typename CS::ordinal_index> tile_coordinate_system;
+    typedef CoordinateSystem<CS::dim, CS::level - 1> tile_coordinate_system;
     typedef StaticRange<coordinate_system> range_type;
     typedef StaticRange<tile_coordinate_system> tile_range_type;
     typedef typename range_type::size_array size_array;
@@ -123,7 +123,7 @@ namespace TiledArray {
         finish[d] = data()[d].tile(idx[d]).second;
       }
 
-      return tile_range_type(start, finish, derived().tiles().order());
+      return tile_range_type(start, finish);
     }
 
     /// Convert an element index to a tile index
@@ -188,7 +188,7 @@ namespace TiledArray {
 
     /// Constructed with a set of ranges pointed to by [ first, last ).
     template <typename InIter>
-    StaticTiledRange(InIter first, InIter last, detail::DimensionOrderType = coordinate_system::order) {
+    StaticTiledRange(InIter first, InIter last) {
       TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
       TA_ASSERT(std::distance(first, last) == coordinate_system::dim);
       std::copy(first, last, ranges_.begin());
@@ -314,11 +314,11 @@ namespace TiledArray {
 
     /// Constructed with a set of ranges pointed to by [ first, last ).
     template <typename InIter>
-    DynamicTiledRange(InIter first, InIter last, detail::DimensionOrderType order) :
+    DynamicTiledRange(InIter first, InIter last) :
       ranges_(first, last)
     {
       TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
-      init_(order);
+      init_();
     }
 
     /// Copy constructor
@@ -388,7 +388,7 @@ namespace TiledArray {
 
   private:
     /// precomputes useful data listed below
-    void init_(detail::DimensionOrderType order) {
+    void init_() {
       const std::size_t dim = ranges_.size();
 
       // Indices used to store range start and finish.
@@ -405,8 +405,8 @@ namespace TiledArray {
         start_element[d] = ranges_[d].elements().first;
         finish_element[d] = ranges_[d].elements().second;
       }
-      range_type(start, finish, order).swap(range_);
-      tile_range_type(start_element, finish_element, order).swap(element_range_);
+      range_type(start, finish).swap(range_);
+      tile_range_type(start_element, finish_element).swap(element_range_);
     }
 
     /// Returns the tile index of the tile that contains the given element index.
@@ -436,7 +436,7 @@ namespace TiledArray {
     TA_ASSERT(r.tiles().dim() == p.dim());
     typename Derived::Ranges data = p ^ r.data();
 
-    return Derived(data.begin(), data.end(), r.tiles().order());
+    return Derived(data.begin(), data.end());
   }
 
   /// Exchange the content of the two given TiledRange's.
@@ -450,7 +450,7 @@ namespace TiledArray {
   /// Returns true when all tile and element ranges are the same.
   template <typename D1, typename D2>
   bool operator ==(const TiledRange<D1>& r1, const TiledRange<D2>& r2) {
-    return (r1.tiles().dim() == r2.tiles().dim()) && (r1.tiles().order() == r2.tiles().order()) &&
+    return (r1.tiles().dim() == r2.tiles().dim()) &&
         (r1.tiles() == r2.tiles()) && (r1.elements() == r2.elements()) &&
         std::equal(r1.data().begin(), r1.data().end(), r2.data().begin());
   }

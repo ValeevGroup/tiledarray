@@ -25,9 +25,9 @@ namespace TiledArray {
       typedef ArrayImpl<T, CS> ArrayImpl_;
 
       typedef CS coordinate_system; ///< The array coordinate system
-      typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
+      typedef std::size_t volume_type; ///< Array volume type
       typedef typename coordinate_system::index index; ///< Array coordinate index type
-      typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
+      typedef std::size_t ordinal_index; ///< Array ordinal index type
       typedef typename coordinate_system::size_array size_array; ///< Size array type
 
       typedef expressions::Tensor<T,StaticRange<typename ChildCoordinateSystem<coordinate_system>::coordinate_system> > value_type; ///< The tile type
@@ -282,9 +282,9 @@ namespace TiledArray {
       typedef DenseArrayImpl<T, CS> DenseArrayImpl_;
 
       typedef CS coordinate_system; ///< The array coordinate system
-      typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
+      typedef std::size_t volume_type; ///< Array volume type
       typedef typename coordinate_system::index index; ///< Array coordinate index type
-      typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
+      typedef std::size_t ordinal_index; ///< Array ordinal index type
       typedef typename coordinate_system::size_array size_array; ///< Size array type
 
       typedef expressions::Tensor<T,StaticRange<typename ChildCoordinateSystem<coordinate_system>::coordinate_system> > value_type; ///< The tile type
@@ -385,9 +385,9 @@ namespace TiledArray {
       typedef SparseArrayImpl<T, CS> SparseArrayImpl_;
 
       typedef CS coordinate_system; ///< The array coordinate system
-      typedef typename coordinate_system::volume_type volume_type; ///< Array volume type
+      typedef std::size_t volume_type; ///< Array volume type
       typedef typename coordinate_system::index index; ///< Array coordinate index type
-      typedef typename coordinate_system::ordinal_index ordinal_index; ///< Array ordinal index type
+      typedef std::size_t ordinal_index; ///< Array ordinal index type
       typedef typename coordinate_system::size_array size_array; ///< Size array type
 
       typedef expressions::Tensor<T,StaticRange<typename ChildCoordinateSystem<coordinate_system>::coordinate_system> > value_type; ///< The tile type

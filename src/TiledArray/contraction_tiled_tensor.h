@@ -201,15 +201,9 @@ namespace TiledArray {
                   size_type y = 0; // Column of result matrix
 
                   // Calculate the matrix coordinates of i
-                  if(range_.order() == TiledArray::detail::decreasing_dimension_order) {
-                    // ii == x * n + y
-                    x = ii / n_;
-                    y = ii % n_;
-                  } else {
-                    // ii == y * m + x
-                    x = ii % m_;
-                    y = ii / m_;
-                  }
+                  // ii == x * n + y
+                  x = ii / n_;
+                  y = ii % n_;
 
                   // Store the future result
                   // x * i_ == The ordinal index of the first tile in left to be contracted
@@ -498,7 +492,7 @@ namespace TiledArray {
         /// \param op The element transform operation
         ContractionTiledTensorImpl(const left_tensor_type& left, const right_tensor_type& right) :
           left_(left), right_(right),
-          cont_(new math::Contraction(left.vars(), right.vars(), left.range().order())),
+          cont_(new math::Contraction(left.vars(), right.vars())),
           trange_(cont_->contract_trange(left.trange(), right.trange())),
           shape_((left.is_dense() || right.is_dense() ? 0 : trange_.tiles().volume())),
           vars_(cont_->contract_vars(left.vars(), right.vars())),
