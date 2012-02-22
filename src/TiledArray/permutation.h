@@ -25,6 +25,7 @@ namespace TiledArray {
 
     /// Place holder object to represent a no permutation operation.
     struct NoPermutation {
+      const NoPermutation& operator-() const { return *this; }
       template <typename Archive>
       void serialize(Archive&) { TA_ASSERT(false); }
     };
