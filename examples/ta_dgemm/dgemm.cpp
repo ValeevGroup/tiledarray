@@ -59,7 +59,8 @@ void eigen_dgemm(madness::World& world) {
   const std::size_t size = 4096;
 
   if(world.rank() == 0)
-    std::cout << "Matrix size = " << size << "x" << size << "\n"
+    std::cout << "Eigen instruction set: " << Eigen::SimdInstructionSetsInUse()
+        << "\nMatrix size = " << size << "x" << size << "\n"
         << "Memory per matrix = " << double(size * size * sizeof(double)) / 1000000000.0 << "GB" << std::endl;
 
   Eigen::MatrixXd a(size, size);
