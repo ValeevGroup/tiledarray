@@ -40,40 +40,6 @@ enum CBLAS_TRANSPOSE {CblasNoTrans=0, CblasTrans=1, CblasConjTrans=2};
 namespace TiledArray {
   namespace detail {
 
-    template <typename T>
-    inline void gemm(CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-        const long m, const long n, const long k,
-        const T alpha, const T* a, const long lda, const T*b, const long ldb,
-        const T beta, T* c, const long ldc)
-    {
-      // The ConjTrans operation is not implemented because it is not used.
-      TA_ASSERT(transa != CblasConjTrans);
-      TA_ASSERT(transb != CblasConjTrans);
-
-      typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> matrix_type;
-      typedef Eigen::Map<matrix_type, Eigen::AutoAlign, Eigen::OuterStride<> > map_type;
-      typedef Eigen::Map<const matrix_type, Eigen::AutoAlign, Eigen::OuterStride<> > const_map_type;
-
-      const_map_type A(a, (transa  == CblasNoTrans ? m : k), (transa  == CblasNoTrans ? k : m), Eigen::OuterStride<>(lda));
-      const_map_type B(b, (transb  == CblasNoTrans ? k : n), (transb  == CblasNoTrans ? n : k), Eigen::OuterStride<>(ldb));
-      map_type C(c, m, n, Eigen::OuterStride<>(ldc));
-
-      C *= beta;
-      if(transa == CblasNoTrans) {
-        if(transb == CblasNoTrans) {
-          C.noalias() += alpha * A * B;
-        } else {
-          C.noalias() += alpha * A * B.transpose();
-        }
-      } else {
-        if(transb == CblasNoTrans) {
-          C.noalias() += alpha * A.transpose() * B;
-        } else {
-          C.noalias() += alpha * A.transpose() * B.transpose();
-        }
-      }
-    }
-
 
 #if defined(TILEDARRAY_HAS_CBLAS) || defined(HAVE_MKL_H)
 
@@ -159,6 +125,36 @@ namespace TiledArray {
     }
 
 #endif
+
+    template <typename T>
+    inline void mTxm(const long m, const long n, const long k, const T* a, const T* b, T* c) {
+
+      typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> matrix_type;
+      typedef Eigen::Map<matrix_type, Eigen::AutoAlign> map_type;
+      typedef Eigen::Map<const matrix_type, Eigen::AutoAlign> const_map_type;
+
+      const_map_type A(a, k, m);
+      const_map_type B(b, k, n);
+      map_type C(c, m, n);
+
+      C.noalias() += A.transpose() * B;
+    }
+
+    inline void mTxm(const long m, const long n, const long k, const double* a, const double* b, double* c) {
+      gemm(CblasTrans, CblasNoTrans, m, n, k, 1.0, a, k, b, k, 1.0, c, m);
+    }
+
+    inline void mTxm(const long m, const long n, const long k, const float* a, const float* b, float* c) {
+      gemm(CblasTrans, CblasNoTrans, m, n, k, float(1.0), a, k, b, k, float(1.0), c, m);
+    }
+
+    inline void mTxm(const long m, const long n, const long k, const std::complex<double>* a, const std::complex<double>* b, std::complex<double>* c) {
+      gemm(CblasTrans, CblasNoTrans, m, n, k, std::complex<double>(1.0), a, k, b, k, std::complex<double>(1.0), c, m);
+    }
+
+    inline void mTxm(const long m, const long n, const long k, const std::complex<float>* a, const std::complex<float>* b, std::complex<float>* c) {
+      gemm(CblasTrans, CblasNoTrans, m, n, k, std::complex<float>(1.0), a, k, b, k, std::complex<float>(1.0), c, m);
+    }
 
   }  // namespace detail
 }  // namespace TiledArray

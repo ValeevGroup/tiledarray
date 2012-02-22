@@ -361,8 +361,7 @@ namespace TiledArray {
         const std::size_t i = left_inner(left.range());
         const std::size_t n = right_outer(right.range());
 
-        TiledArray::detail::gemm(CblasTrans, CblasNoTrans, m, n, i, value_type(1),
-            left.data(), i, right.data(), i, value_type(1), res.data(), m);
+        TiledArray::detail::mTxm(m, n, i, left.data(), right.data(), res.data());
       }
 
       /// Tensor contraction
@@ -450,10 +449,8 @@ namespace TiledArray {
         const std::size_t j = left_inner(c.range());
         const std::size_t n = right_outer(b.range());
 
-        TiledArray::detail::gemm(CblasTrans, CblasNoTrans, m, n, i, value_type(1),
-            a.data(), i, b.data(), i, value_type(1), res.data(), m);
-        TiledArray::detail::gemm(CblasTrans, CblasNoTrans, m, n, j, value_type(1),
-            c.data(), j, d.data(), j, value_type(1), res.data(), m);
+        TiledArray::detail::mTxm(m, n, i, a.data(), b.data(), res.data());
+        TiledArray::detail::mTxm(m, n, j, c.data(), d.data(), res.data());
 
         return res;
       }
