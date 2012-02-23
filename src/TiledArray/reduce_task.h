@@ -282,7 +282,8 @@ namespace TiledArray {
         {
           TA_ASSERT(parent_);
           ref_count_ = 0;
-          if((register_callback(left_) + register_callback(right_)) == 0u)
+          const unsigned int dep = register_callback(left_) + register_callback(right_);
+          if(dep == 0u)
             parent_->ready(this);
         }
 
