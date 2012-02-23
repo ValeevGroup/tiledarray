@@ -52,8 +52,8 @@ namespace TiledArray {
     inline void mxmT(const long m, const long n, const long k, const std::complex<double>* a, const std::complex<double>* b, std::complex<double>* c) {
       std::complex<double> one(1.0);
       cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, &one,
-          const_cast<double*>(reinterpret_cast<double*>(a)), k,
-          const_cast<double*>(reinterpret_cast<double*>(b)), k, &one, c, n);
+          const_cast<double*>(reinterpret_cast<const double*>(a)), k,
+          const_cast<double*>(reinterpret_cast<const double*>(b)), k, &one, c, n);
     }
 
     inline void mxmT(const long m, const long n, const long k, const std::complex<float>* a, const std::complex<float>* b, std::complex<float>* c) {
