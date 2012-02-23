@@ -51,17 +51,21 @@ namespace TiledArray {
 
     inline void mxmT(const long m, const long n, const long k, const std::complex<double>* a, const std::complex<double>* b, std::complex<double>* c) {
       std::complex<double> one(1.0);
-      cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, &one,
+      cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k,
+          reinterpret_cast<double*>(&one),
           const_cast<double*>(reinterpret_cast<const double*>(a)), k,
-          const_cast<double*>(reinterpret_cast<const double*>(b)), k, &one,
+          const_cast<double*>(reinterpret_cast<const double*>(b)), k,
+          reinterpret_cast<double*>(&one),
           reinterpret_cast<double*>(c), n);
     }
 
     inline void mxmT(const long m, const long n, const long k, const std::complex<float>* a, const std::complex<float>* b, std::complex<float>* c) {
       std::complex<float> one(1.0);
-      cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, &one,
+      cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k,
+          reinterpret_cast<float*>(&one),
           const_cast<float*>(reinterpret_cast<const float*>(a)), k,
-          const_cast<float*>(reinterpret_cast<const float*>(b)), k, &one,
+          const_cast<float*>(reinterpret_cast<const float*>(b)), k,
+          reinterpret_cast<float*>(&one),
           reinterpret_cast<float*>(c), n);
     }
 
