@@ -9,8 +9,8 @@
 #define MEMORY 1000000000
 
 void ta_dgemm(madness::World& world, const std::size_t block_size) {
-  const std::size_t num_blocks = 4096 / block_size;
-  const std::size_t size = 4096;
+  const std::size_t num_blocks = 8192 / block_size;
+  const std::size_t size = 8192;
 
   if(world.rank() == 0)
     std::cout << "Matrix size = " << size << "x" << size << "\n"
@@ -56,67 +56,67 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
 }
 
 void eigen_dgemm(madness::World& world) {
-  const std::size_t size = 4096;
+  const std::size_t size = 8192;
 
-  if(world.rank() == 0)
+  if(world.rank() == 0) {
     std::cout << "Eigen instruction set: " << Eigen::SimdInstructionSetsInUse()
         << "\nMatrix size = " << size << "x" << size << "\n"
         << "Memory per matrix = " << double(size * size * sizeof(double)) / 1000000000.0 << "GB" << std::endl;
 
-  Eigen::MatrixXd a(size, size);
-  Eigen::MatrixXd b(size, size);
-  Eigen::MatrixXd c(size, size);
-  a.fill(1.0);
-  b.fill(1.0);
-  c.fill(0.0);
+    Eigen::MatrixXd a(size, size);
+    Eigen::MatrixXd b(size, size);
+    Eigen::MatrixXd c(size, size);
+    a.fill(1.0);
+    b.fill(1.0);
+    c.fill(0.0);
 
-  double avg_time = 0.0;
-  for(int i = 0; i < 5; ++i) {
-    const double start = madness::wall_time();
-    c.noalias() += a * b;
-    const double stop = madness::wall_time();
+    double avg_time = 0.0;
+    for(int i = 0; i < 5; ++i) {
+      const double start = madness::wall_time();
+      c.noalias() += a * b;
+      const double stop = madness::wall_time();
 
-    if(world.rank() == 0)
       std::cout << "Iteration: " << i << " time = " << stop - start << "\n";
-    avg_time += stop - start;
-  }
+      avg_time += stop - start;
+    }
 
-  if(world.rank() == 0)
     std::cout << "Average time = " << avg_time * 0.2 << "\nAverge GFLOPS ="
         << 2.0 * double(size * size * size) / (avg_time * 0.2) / 1000000000.0 << "\n";
-
+  }
 }
 
 void blas_dgemm(madness::World& world) {
-  const std::size_t size = 4096;
+  const std::size_t size = 8192;
 
-  if(world.rank() == 0)
+  if(world.rank() == 0) {
     std::cout << "Matrix size = " << size << "x" << size << "\n"
         << "Memory per matrix = " << double(size * size * sizeof(double)) / 1000000000.0 << "GB" << std::endl;
 
-  double* a = new double[size * size];
-  double* b = new double[size * size];
-  double* c = new double[size * size];
-  std::fill_n(a, size * size, 1.0);
-  std::fill_n(b, size * size, 1.0);
-  std::fill_n(c, size * size, 0.0);
+    double* a = new double[size * size];
+    double* b = new double[size * size];
+    double* c = new double[size * size];
+    std::fill_n(a, size * size, 1.0);
+    std::fill_n(b, size * size, 1.0);
+    std::fill_n(c, size * size, 0.0);
 
-  double avg_time = 0.0;
-  for(int i = 0; i < 5; ++i) {
-    const double start = madness::wall_time();
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, size, size, size, 1.0,
-        a, size, b, size, 0.0, c, size);
-    const double stop = madness::wall_time();
+    double avg_time = 0.0;
+    for(int i = 0; i < 5; ++i) {
+      const double start = madness::wall_time();
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, size, size, size, 1.0,
+          a, size, b, size, 0.0, c, size);
+      const double stop = madness::wall_time();
 
-    if(world.rank() == 0)
-      std::cout << "Iteration: " << i << " time = " << stop - start << "\n";
-    avg_time += stop - start;
-  }
+       std::cout << "Iteration: " << i << " time = " << stop - start << "\n";
+      avg_time += stop - start;
+    }
 
-  if(world.rank() == 0)
     std::cout << "Average time = " << avg_time * 0.2 << "\nAverge GFLOPS ="
         << 2.0 * double(size * size * size) / (avg_time * 0.2) / 1000000000.0 << "\n";
 
+    delete [] a;
+    delete [] b;
+    delete [] c;
+  }
 }
 
 int main(int argc, char** argv) {
