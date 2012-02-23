@@ -52,13 +52,13 @@ namespace TiledArray {
     inline void mxmT(const long m, const long n, const long k, const std::complex<double>* a, const std::complex<double>* b, std::complex<double>* c) {
       std::complex<double> one(1.0);
       cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, &one,
-          const_cast<std::complex<double>*>(a), k, const_cast<std::complex<double>*>(b), k, &one, c, n);
+          reinterpret_cast<double*>(a), k, reinterpret_cast<double*>(b), k, &one, c, n);
     }
 
     inline void mxmT(const long m, const long n, const long k, const std::complex<float>* a, const std::complex<float>* b, std::complex<float>* c) {
       std::complex<float> one(1.0);
       cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, &one,
-          const_cast<std::complex<float>*>(a), k, const_cast<std::complex<float>*>(b), k, &one, c, n);
+          reinterpret_cast<float*>(a), k, reinterpret_cast<float*>(b), k, &one, c, n);
     }
 
 #endif // TILEDARRAY_HAS_CBLAS
