@@ -35,7 +35,8 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
   a.set_all_local(1.0);
   b.set_all_local(1.0);
   c.set_all_local(0.0);
-  std::cout << "Number of blocks = " << a.trange().tiles().volume() << std::endl;
+  if(world.rank() == 0)
+    std::cout << "Number of blocks = " << a.trange().tiles().volume() << std::endl;
 
   double avg_time = 0.0;
   for(int i = 0; i < 5; ++i) {
@@ -122,6 +123,8 @@ void blas_dgemm(madness::World& world) {
 int main(int argc, char** argv) {
   madness::initialize(argc,argv);
   madness::World world(MPI::COMM_WORLD);
+  if(world.rank() == 0)
+    std::cout << "Number of nodes = " << world.size();
 
   if(world.rank() == 0)
     std::cout << "TiledArray:" << std::endl;
