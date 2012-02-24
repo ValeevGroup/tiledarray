@@ -281,10 +281,9 @@ namespace TiledArray {
             parent_(parent), left_(left), right_(right)
         {
           TA_ASSERT(parent_);
-          ref_count_ = 0;
-          const unsigned int dep = register_callback(left_) + register_callback(right_);
-          if(dep == 0u)
-            parent_->ready(this);
+          ref_count_ = 2;
+          left_.register_callback(this);
+          right_.register_callback(this);
         }
 
         virtual ~ReducePair() { }
@@ -302,16 +301,6 @@ namespace TiledArray {
         const second_argument_type& right() const { return right_.get(); }
 
       private:
-
-        template <typename T>
-        unsigned int register_callback(madness::Future<T>& f) {
-          if(! f.probe()) {
-            ref_count_++;
-            f.register_callback(this);
-            return 1u;
-          }
-          return 0u;
-        }
 
         ReducePairTaskImpl_* parent_;
         madness::AtomicInt ref_count_;
