@@ -87,6 +87,7 @@ AC_CONFIG_FILES([
     tests/Makefile
     examples/Makefile
       examples/cc/Makefile
+      examples/mpi_tests/Makefile
       examples/ta_dgemm/Makefile
     doc/Makefile])
 AC_OUTPUT
