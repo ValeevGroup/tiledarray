@@ -9,6 +9,7 @@
  ****************************************************************************/
 #include <mpi.h>
 #include <iostream>
+#include <cstdlib>
 
 #define MAXTASKS      8192
 // Change the next four parameters to suit your case
