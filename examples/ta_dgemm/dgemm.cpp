@@ -1,10 +1,6 @@
 #include <iostream>
 #include <tiled_array.h>
-#ifdef __INTEL_COMPILER
-#include <mkl.h>
-#else
-#include <cblas.h>
-#endif
+#include <sys/resource.h>
 
 #define MEMORY 1000000000
 
@@ -40,14 +36,21 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
 
   double avg_time = 0.0;
   for(int i = 0; i < 5; ++i) {
-    const double start = madness::wall_time();
+    const double wall_time_start = madness::wall_time();
+    const double cpu_time_start = madness::cpu_time();
     c("m,n") = a("m,i") * b("i,n");
     world.gop.fence();
-    const double stop = madness::wall_time();
+    const double cpu_time_stop = madness::wall_time();
+    const double wall_time_stop = madness::cpu_time();
 
-    if(world.rank() == 0)
-      std::cout << "Iteration: " << i << " time = " << stop - start << "\n";
-    avg_time += stop - start;
+    if(world.rank() == 0) {
+      const double wall_time = wall_time_stop - wall_time_start;
+      const double cpu_time = cpu_time_stop - cpu_time_start;
+      std::cout << "Iteration: " << i << "wall time = " << wall_time
+        << " cpu time = " << cpu_time << " efficiency = "
+        << cpu_time / wall_time / madness::ThreadPool::size() << "\n";
+      avg_time += cpu_time;
+    }
   }
 
   if(world.rank() == 0)
@@ -73,12 +76,18 @@ void eigen_dgemm(madness::World& world) {
 
     double avg_time = 0.0;
     for(int i = 0; i < 5; ++i) {
-      const double start = madness::wall_time();
+      const double wall_time_start = madness::wall_time();
+      const double cpu_time_start = madness::cpu_time();
       c.noalias() += a * b;
-      const double stop = madness::wall_time();
+      const double cpu_time_stop = madness::wall_time();
+      const double wall_time_stop = madness::cpu_time();
 
-      std::cout << "Iteration: " << i << " time = " << stop - start << "\n";
-      avg_time += stop - start;
+      const double wall_time = wall_time_stop - wall_time_start;
+      const double cpu_time = cpu_time_stop - cpu_time_start;
+      std::cout << "Iteration: " << i << "wall time = " << wall_time
+        << " cpu time = " << cpu_time << " efficiency = "
+        << cpu_time / wall_time / madness::ThreadPool::size() << "\n";
+      avg_time += cpu_time;
     }
 
     std::cout << "Average time = " << avg_time * 0.2 << "\nAverge GFLOPS ="
@@ -102,13 +111,18 @@ void blas_dgemm(madness::World& world) {
 
     double avg_time = 0.0;
     for(int i = 0; i < 5; ++i) {
-      const double start = madness::wall_time();
+      const double wall_time_start = madness::wall_time();
+      const double cpu_time_start = madness::cpu_time();
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, size, size, size, 1.0,
           a, size, b, size, 0.0, c, size);
-      const double stop = madness::wall_time();
+      const double cpu_time_stop = madness::wall_time();
+      const double wall_time_stop = madness::cpu_time();
 
-       std::cout << "Iteration: " << i << " time = " << stop - start << "\n";
-      avg_time += stop - start;
+      const double wall_time = wall_time_stop - wall_time_start;
+      const double cpu_time = cpu_time_stop - cpu_time_start;
+      std::cout << "Iteration: " << i << "wall time = " << wall_time
+        << " cpu time = " << cpu_time << " efficiency = " << cpu_time / wall_time / madness::ThreadPool::size() << "\n";
+      avg_time += cpu_time;
     }
 
     std::cout << "Average time = " << avg_time * 0.2 << "\nAverge GFLOPS ="
