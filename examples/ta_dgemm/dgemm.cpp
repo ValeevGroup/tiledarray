@@ -2,11 +2,18 @@
 #include <tiled_array.h>
 #include <sys/resource.h>
 
-#define MEMORY 1000000000
+#define MATRIX_SIZE 4096
+
+double cpu_time() {
+  rusage r_usage;
+  getrusage(RUSAGE_SELF, &r_usage);
+
+  return r_usage.ru_utime.tv_sec + 1e-6*r_usage.ru_utime.tv_usec + r_usage.ru_stime.tv_sec + 1e-6*r_usage.ru_stime.tv_usec;
+}
 
 void ta_dgemm(madness::World& world, const std::size_t block_size) {
-  const std::size_t num_blocks = 8192 / block_size;
-  const std::size_t size = 8192;
+  const std::size_t size = MATRIX_SIZE;
+  const std::size_t num_blocks = size / block_size;
 
   if(world.rank() == 0)
     std::cout << "Matrix size = " << size << "x" << size << "\n"
@@ -37,17 +44,17 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
   double avg_time = 0.0;
   for(int i = 0; i < 5; ++i) {
     const double wall_time_start = madness::wall_time();
-    const double cpu_time_start = madness::cpu_time();
+    const double cpu_time_start = cpu_time();
     c("m,n") = a("m,i") * b("i,n");
     world.gop.fence();
-    const double cpu_time_stop = madness::wall_time();
-    const double wall_time_stop = madness::cpu_time();
+    const double wall_time_stop = madness::wall_time();
+    const double cpu_time_stop = cpu_time();
 
     if(world.rank() == 0) {
       const double wall_time = wall_time_stop - wall_time_start;
       const double cpu_time = cpu_time_stop - cpu_time_start;
-      std::cout << "Iteration: " << i << "wall time = " << wall_time
-        << " cpu time = " << cpu_time << " efficiency = "
+      std::cout << "Iteration " << i << ": wall time = " << wall_time
+        << ", cpu time = " << cpu_time << ", efficiency = "
         << cpu_time / wall_time / madness::ThreadPool::size() << "\n";
       avg_time += cpu_time;
     }
@@ -60,7 +67,7 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
 }
 
 void eigen_dgemm(madness::World& world) {
-  const std::size_t size = 8192;
+  const std::size_t size = MATRIX_SIZE;
 
   if(world.rank() == 0) {
     std::cout << "Eigen instruction set: " << Eigen::SimdInstructionSetsInUse()
@@ -77,15 +84,15 @@ void eigen_dgemm(madness::World& world) {
     double avg_time = 0.0;
     for(int i = 0; i < 5; ++i) {
       const double wall_time_start = madness::wall_time();
-      const double cpu_time_start = madness::cpu_time();
+      const double cpu_time_start = cpu_time();
       c.noalias() += a * b;
-      const double cpu_time_stop = madness::wall_time();
-      const double wall_time_stop = madness::cpu_time();
+      const double wall_time_stop = madness::wall_time();
+      const double cpu_time_stop = cpu_time();
 
       const double wall_time = wall_time_stop - wall_time_start;
       const double cpu_time = cpu_time_stop - cpu_time_start;
-      std::cout << "Iteration: " << i << "wall time = " << wall_time
-        << " cpu time = " << cpu_time << " efficiency = "
+      std::cout << "Iteration " << i << ": wall time = " << wall_time
+        << ", cpu time = " << cpu_time << ", efficiency = "
         << cpu_time / wall_time / madness::ThreadPool::size() << "\n";
       avg_time += cpu_time;
     }
@@ -96,7 +103,7 @@ void eigen_dgemm(madness::World& world) {
 }
 
 void blas_dgemm(madness::World& world) {
-  const std::size_t size = 8192;
+  const std::size_t size = MATRIX_SIZE;
 
   if(world.rank() == 0) {
     std::cout << "Matrix size = " << size << "x" << size << "\n"
@@ -112,16 +119,16 @@ void blas_dgemm(madness::World& world) {
     double avg_time = 0.0;
     for(int i = 0; i < 5; ++i) {
       const double wall_time_start = madness::wall_time();
-      const double cpu_time_start = madness::cpu_time();
+      const double cpu_time_start = cpu_time();
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, size, size, size, 1.0,
           a, size, b, size, 0.0, c, size);
-      const double cpu_time_stop = madness::wall_time();
-      const double wall_time_stop = madness::cpu_time();
+      const double wall_time_stop = madness::wall_time();
+      const double cpu_time_stop = cpu_time();
 
       const double wall_time = wall_time_stop - wall_time_start;
       const double cpu_time = cpu_time_stop - cpu_time_start;
-      std::cout << "Iteration: " << i << "wall time = " << wall_time
-        << " cpu time = " << cpu_time << " efficiency = " << cpu_time / wall_time / madness::ThreadPool::size() << "\n";
+      std::cout << "Iteration " << i << ": wall time = " << wall_time
+        << ", cpu time = " << cpu_time << ", efficiency = " << cpu_time / wall_time / madness::ThreadPool::size() << "\n";
       avg_time += cpu_time;
     }
 
@@ -138,7 +145,7 @@ int main(int argc, char** argv) {
   madness::initialize(argc,argv);
   madness::World world(MPI::COMM_WORLD);
   if(world.rank() == 0)
-    std::cout << "Number of nodes = " << world.size();
+    std::cout << "Number of nodes = " << world.size() << "\n";
 
   if(world.rank() == 0)
     std::cout << "TiledArray:" << std::endl;
