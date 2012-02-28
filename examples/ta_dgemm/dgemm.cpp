@@ -41,7 +41,9 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
   if(world.rank() == 0)
     std::cout << "Number of blocks = " << a.trange().tiles().volume() << std::endl;
 
-  double avg_time = 0.0;
+  double avg_wall_time = 0.0;
+  double avg_cpu_time = 0.0;
+  double avg_efficiency = 0.0;
   for(int i = 0; i < 5; ++i) {
     const double wall_time_start = madness::wall_time();
     const double cpu_time_start = cpu_time();
@@ -50,19 +52,25 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
     const double wall_time_stop = madness::wall_time();
     const double cpu_time_stop = cpu_time();
 
+    double times[2] = { wall_time_stop - wall_time_start,  cpu_time_stop - cpu_time_start };
+    world.gop.reduce(times,2,std::plus<double>());
+    times[0] /= world.size();
+    times[1] /= world.size();
+    avg_wall_time += times[0];
+    avg_cpu_time += times[1];
+    avg_efficiency += times[1] / times[0] / madness::ThreadPool::size();
     if(world.rank() == 0) {
-      const double wall_time = wall_time_stop - wall_time_start;
-      const double cpu_time = cpu_time_stop - cpu_time_start;
-      std::cout << "Iteration " << i << ": wall time = " << wall_time
-        << ", cpu time = " << cpu_time << ", efficiency = "
-        << cpu_time / wall_time / madness::ThreadPool::size() << "\n";
-      avg_time += cpu_time;
+      std::cout << "Iteration " << i << ": wall time = " << times[0]
+        << ", cpu time = " << times[1] << ", efficiency = "
+        << times[1] / times[0] / madness::ThreadPool::size() << "\n";
     }
   }
 
   if(world.rank() == 0)
-    std::cout << "Average time = " << avg_time * 0.2 << "\nAverge GFLOPS ="
-        << 2.0 * double(size * size * size) / (avg_time * 0.2) / 1000000000.0 << "\n";
+    std::cout << "Average wall time = " << 0.2 * avg_wall_time
+        << ", Average cpu time = " << 0.2 * avg_cpu_time
+        << ", Average efficiency = " << 0.2 * avg_efficiency
+        << "\nAverage GFLOPS =" << 2.0 * double(size * size * size) / (avg_wall_time * 0.2) / 1000000000.0 << "\n";
 
 }
 
