@@ -94,13 +94,24 @@ namespace TiledArray {
 
     template <typename Index, typename RangeType>
     inline void increment_coordinate(Index& index, const RangeType& range) {
-      increment_coordinate_helper(index.rbegin(), index.rend(), range.start().rbegin(), range.finish().rbegin());
 
+      const typename RangeType::index& start = range.start();
+      const typename RangeType::index& finish = range.finish();
+      for(int dim = int(range.dim() - 1); dim >= 0; --dim) {
+        // increment coordinate
+        ++index[dim];
+
+        // break if done
+        if(index[dim] < finish[dim])
+          return;
+
+        // Reset current index to start value.
+        index[dim] = start[dim];
+      }
 
       // if the current location was set to start then it was at the end and
       // needs to be reset to equal finish.
-      if(std::equal(index.begin(), index.end(), range.start().begin()))
-        std::copy(range.finish().begin(), range.finish().end(), index.begin());
+      std::copy(finish.begin(), finish.end(), index.begin());
     }
 
 
