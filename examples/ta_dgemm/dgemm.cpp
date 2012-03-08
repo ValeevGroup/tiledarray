@@ -1,3 +1,9 @@
+#define TILEDARRAY_LOG_EVENTS
+
+#ifdef TILEDARRAY_LOG_EVENTS
+#define TILEDARRAY_INSTANTIATE_STATIC_DATA
+#endif
+
 #include <iostream>
 #include <tiled_array.h>
 #include <sys/resource.h>
@@ -46,11 +52,26 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
   double avg_efficiency = 0.0;
   for(int i = 0; i < 5; ++i) {
     const double wall_time_start = madness::wall_time();
+#ifdef TILEDARRAY_LOG_EVENTS
+    const double cpu_time_start = TiledArray::logging::EventLog::set_start();
+#else
     const double cpu_time_start = cpu_time();
+#endif
     c("m,n") = a("m,i") * b("i,n");
+
+    for(TiledArray::Array<double, TiledArray::CoordinateSystem<2> >::const_iterator it = c.begin(); it != c.end(); ++it)
+      it->get();
+
+#ifdef TILEDARRAY_LOG_EVENTS
+    const double wall_time_stop = TiledArray::logging::EventLog::set_finis();
+    const double cpu_time_stop = cpu_time();
+#endif
     world.gop.fence();
+
+#ifndef TILEDARRAY_LOG_EVENTS
     const double wall_time_stop = madness::wall_time();
     const double cpu_time_stop = cpu_time();
+#endif
 
     double times[2] = { wall_time_stop - wall_time_start,  cpu_time_stop - cpu_time_start };
     world.gop.reduce(times,2,std::plus<double>());
@@ -157,22 +178,22 @@ int main(int argc, char** argv) {
 
   if(world.rank() == 0)
     std::cout << "TiledArray:" << std::endl;
-  ta_dgemm(world, 32);
-  ta_dgemm(world, 64);
-  ta_dgemm(world, 128);
-  ta_dgemm(world, 256);
+//  ta_dgemm(world, 32);
+//  ta_dgemm(world, 64);
+//  ta_dgemm(world, 128);
+//  ta_dgemm(world, 256);
   ta_dgemm(world, 512);
-  ta_dgemm(world, 1024);
+//  ta_dgemm(world, 1024);
 
-  if(world.rank() == 0) {
-    std::cout << "Eigen:" << std::endl;
-    eigen_dgemm(world);
-  }
-
-  if(world.rank() == 0) {
-    std::cout << "Blas:" << std::endl;
-    blas_dgemm(world);
-  }
+//  if(world.rank() == 0) {
+//    std::cout << "Eigen:" << std::endl;
+//    eigen_dgemm(world);
+//  }
+//
+//  if(world.rank() == 0) {
+//    std::cout << "Blas:" << std::endl;
+//    blas_dgemm(world);
+//  }
 
   madness::finalize();
   return 0;

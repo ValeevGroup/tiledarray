@@ -12,6 +12,10 @@
 #include <TiledArray/binary_tensor.h>
 #include <TiledArray/array.h>
 
+#ifdef TILEDARRAY_LOG_EVENTS
+#include <TiledArray/event_log.h>
+#endif
+
 namespace TiledArray {
   namespace expressions {
 
@@ -74,6 +78,14 @@ namespace TiledArray {
         TiledArray::detail::Bitset<> shape_;
         VariableList vars_;
         storage_type data_;
+
+#ifdef TILEDARRAY_LOG_EVENTS
+        static unsigned int log_count_;
+        TiledArray::logging::EventLog result_log_;
+        TiledArray::logging::EventLog request_log_;
+        TiledArray::logging::EventLog receive_log_;
+        unsigned int log_id_;
+#endif
 
         template <typename Perm>
         class Eval {
@@ -208,7 +220,13 @@ namespace TiledArray {
                   // Store the future result
                   // x * i_ == The ordinal index of the first tile in left to be contracted
                   // y * i_ == The ordinal index of the first tile in right to be contracted
+#ifdef TILEDARRAY_LOG_EVENTS
+                  madness::Future<value_type> result = dot_product(x * i_, y * i_);
+                  result.register_callback(&(pimpl_->result_log_));
+                  pimpl_->data_.set(i, result);
+#else
                   pimpl_->data_.set(i, dot_product(x * i_, y * i_));
+#endif
 
                 }
               }
@@ -324,16 +342,21 @@ namespace TiledArray {
             /// requested
             /// \return A \c madness::Future to tile \c i
             template <typename Arg, typename Cache>
-            static madness::Future<typename Arg::value_type>
-            get_cached_value(size_type i, const Arg& arg, Cache& cache) {
+            madness::Future<typename Arg::value_type>
+            get_cached_value(size_type i, const Arg& arg, Cache& cache) const {
               // If the tile is stored locally, return the local copy
               if(arg.is_local(i))
                 return arg[i];
 
               // Get the remote tile
               typename Cache::accessor acc;
-              if(cache.insert(acc, i))
+              if(cache.insert(acc, i)) {
                 acc->second = arg[i];
+#ifdef TILEDARRAY_LOG_EVENTS
+                pimpl_->request_log_.notify();
+                acc->second.register_callback(& (pimpl_->receive_log_));
+#endif // TILEDARRAY_LOG_EVENTS
+              }
               return acc->second;
             }
 
@@ -497,7 +520,25 @@ namespace TiledArray {
           shape_((left.is_dense() || right.is_dense() ? 0 : trange_.tiles().volume())),
           vars_(cont_->contract_vars(left.vars(), right.vars())),
           data_(left.get_world(), trange_.tiles().volume(), left.get_pmap())
+#ifdef TILEDARRAY_LOG_EVENTS
+          , result_log_("ContractTiledTensor: set result tile", cont_->contract_range(left.range(), right.range()).volume())
+          , receive_log_("ContractTiledTensor: receive argument tile", left.range().volume() + right.range().volume())
+          , request_log_("ContractTiledTensor: request argument tile", left.range().volume() + right.range().volume())
+          , log_id_(log_count_++)
+#endif // TILEDARRAY_LOG_EVENTS
         { }
+
+#ifdef TILEDARRAY_LOG_EVENTS
+        ~ContractionTiledTensorImpl() {
+          std::stringstream ss;
+          ss << "contraction" << log_id_ << "-" << get_world().rank() << ".log";
+          std::ofstream file(ss.str().c_str());
+          TA_ASSERT(! file.fail());
+          file << result_log_ << receive_log_ << request_log_;
+          file.close();
+        }
+#endif // TILEDARRAY_LOG_EVENTS
+
 
         /// Evaluate tensor to destination
 
@@ -611,6 +652,12 @@ namespace TiledArray {
         void clear() { data_.clear(); }
 
       }; // class ContractionTiledTensorImpl
+
+
+#ifdef TILEDARRAY_LOG_EVENTS
+      template <typename Left, typename Right>
+      unsigned int ContractionTiledTensorImpl<Left, Right>::log_count_ = 0u;
+#endif // TILEDARRAY_LOG_EVENTS
 
     } // namespace detail
 
@@ -835,7 +882,6 @@ namespace TiledArray {
       void serialize(const Archive&) { TA_ASSERT(false); }
 
     }; // class ContractionTiledTensor
-
 
   }  // namespace expressions
 }  // namespace TiledArray
