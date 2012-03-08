@@ -51,12 +51,12 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
   double avg_cpu_time = 0.0;
   double avg_efficiency = 0.0;
   for(int i = 0; i < 5; ++i) {
-    const double wall_time_start = madness::wall_time();
 #ifdef TILEDARRAY_LOG_EVENTS
-    const double cpu_time_start = TiledArray::logging::EventLog::set_start();
+    const double wall_time_start = TiledArray::logging::EventLog::set_start();
 #else
-    const double cpu_time_start = cpu_time();
+    const double wall_time_start = madness::wall_time();
 #endif
+    const double cpu_time_start = cpu_time();
     c("m,n") = a("m,i") * b("i,n");
 
     for(TiledArray::Array<double, TiledArray::CoordinateSystem<2> >::const_iterator it = c.begin(); it != c.end(); ++it)
