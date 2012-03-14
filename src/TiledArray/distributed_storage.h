@@ -177,8 +177,7 @@ namespace TiledArray {
           return data_.insert(acc, i);
         }
 
-        WorldObject_::task(owner(i), & DistributedStorage_::remote_insert, i,
-            madness::TaskAttributes::hipri());
+        WorldObject_::send(owner(i), & DistributedStorage_::remote_insert, i);
         return false;
       }
 
@@ -212,8 +211,12 @@ namespace TiledArray {
           if(! data_.insert(acc, typename container_type::datumT(i, f)))
             acc->second.set(f); // The element was already there.
         } else {
-          WorldObject_::task(get_world().rank(), & DistributedStorage_::set_value,
-              i, f, madness::TaskAttributes::hipri());
+          if(f.probe()) {
+            set_value(i, f.get());
+          } else {
+            DelayedSet* set_callback = new DelayedSet(*this, i, f);
+            const_cast<future&>(f).register_callback(set_callback);
+          }
         }
       }
 
@@ -234,12 +237,32 @@ namespace TiledArray {
 
         future result;
         WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
-            result.remote_ref(get_world()));
+            result.remote_ref(get_world()), madness::TaskAttributes::hipri());
 
         return result;
       }
 
     private:
+
+      struct DelayedSet : public madness::CallbackInterface {
+      private:
+        DistributedStorage_& ds_;
+        size_type index_;
+        future future_;
+
+      public:
+
+        DelayedSet(DistributedStorage_& ds, size_type i, const future& fut) :
+            ds_(ds), index_(i), future_(fut)
+        { }
+
+        ~DelayedSet() { }
+
+        virtual void notify() {
+          ds_.set_value(index_, future_);
+          delete this;
+        }
+      }; // struct DelayedSet
 
       /// Set the value of an element
       madness::Void set_value(size_type i, const value_type& value) {
@@ -248,8 +271,7 @@ namespace TiledArray {
           data_.insert(acc, i);
           acc->second.set(value);
         } else {
-          WorldObject_::task(owner(i), & DistributedStorage_::set_value, i,
-              value, madness::TaskAttributes::hipri());
+          WorldObject_::send(owner(i), & DistributedStorage_::set_value, i, value);
         }
 
         return madness::None;
@@ -264,23 +286,41 @@ namespace TiledArray {
         return madness::None;
       }
 
-      static madness::Void find_return(const typename future::remote_refT& ref, const value_type& value) {
+      static void find_return(const typename future::remote_refT& ref, const value_type& value) {
         future result(ref);
         result.set(value);
-
-        return madness::None;
       }
 
+      struct DelayedReturn : public madness::CallbackInterface {
+      private:
+        typename future::remote_refT ref_;
+        future future_;
+
+      public:
+
+        DelayedReturn(const typename future::remote_refT& ref, const future& fut) :
+            ref_(ref), future_(fut)
+        { }
+
+        ~DelayedReturn() { }
+
+        virtual void notify() {
+          DistributedStorage_::find_return(ref_, future_);
+          delete this;
+        }
+      }; // struct DelayedReturn
+
       /// Handles find request
-      madness::Void find_handler(size_type i, const typename future::remote_refT& ref) const {
+      madness::Void find_handler(size_type i, const typename future::remote_refT& ref) {
         TA_ASSERT(is_local(i));
-        const_accessor acc;
+        accessor acc;
         data_.insert(acc, i);
-        if(acc->second.probe())
+        if(acc->second.probe()) {
           find_return(ref, acc->second);
-        else
-          get_world().taskq.add(& DistributedStorage_::find_return, ref, acc->second,
-              madness::TaskAttributes::hipri());
+        } else {
+          DelayedReturn* return_callback = new DelayedReturn(ref, acc->second);
+          acc->second.register_callback(return_callback);
+        }
 
         return madness::None;
       }
