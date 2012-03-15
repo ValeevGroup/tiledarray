@@ -208,8 +208,12 @@ namespace TiledArray {
         TA_ASSERT(i < max_size_);
         if(is_local(i)) {
           accessor acc;
-          if(! data_.insert(acc, typename container_type::datumT(i, f)))
-            acc->second.set(f); // The element was already there.
+          if(! data_.insert(acc, typename container_type::datumT(i, f))) {
+            // The element was already in the container.
+            future existing_f = acc->second;
+            acc.release();
+            existing_f.set(f);
+          }
         } else {
           if(f.probe()) {
             set_value(i, f.get());
@@ -267,9 +271,11 @@ namespace TiledArray {
       /// Set the value of an element
       madness::Void set_value(size_type i, const value_type& value) {
         if(is_local(i)) {
-          accessor acc;
+          const_accessor acc;
           data_.insert(acc, i);
-          acc->second.set(value);
+          future f = acc->second;
+          acc.release();
+          f.set(value);
         } else {
           WorldObject_::send(owner(i), & DistributedStorage_::set_value, i, value);
         }
@@ -311,15 +317,17 @@ namespace TiledArray {
       }; // struct DelayedReturn
 
       /// Handles find request
-      madness::Void find_handler(size_type i, const typename future::remote_refT& ref) {
+      madness::Void find_handler(size_type i, const typename future::remote_refT& ref) const {
         TA_ASSERT(is_local(i));
-        accessor acc;
+        const_accessor acc;
         data_.insert(acc, i);
-        if(acc->second.probe()) {
-          find_return(ref, acc->second);
+        future f = acc->second;
+        acc.release();
+        if(f.probe()) {
+          find_return(ref, f);
         } else {
-          DelayedReturn* return_callback = new DelayedReturn(ref, acc->second);
-          acc->second.register_callback(return_callback);
+          DelayedReturn* return_callback = new DelayedReturn(ref, f);
+          f.register_callback(return_callback);
         }
 
         return madness::None;
