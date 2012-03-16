@@ -234,6 +234,10 @@ namespace TiledArray {
               return true;
             }
 
+            std::size_t rows() const { return m_; }
+
+            std::size_t cols() const { return n_; }
+
           private:
 
             /// Compute the dot_product tensor tiles
@@ -391,6 +395,10 @@ namespace TiledArray {
             return (*pimpl_)(arg);
           }
 
+          std::size_t rows() const { return pimpl_->rows(); }
+
+          std::size_t cols() const { return pimpl_->cols(); }
+
         private:
           std::shared_ptr<EvalImpl> pimpl_;
         }; // class Eval
@@ -480,7 +488,7 @@ namespace TiledArray {
 //          const size_type last = first + x + (r < y ? 1 : 0);
 
           // Generate the tile permutation tasks.
-          return get_world().taskq.for_each(madness::Range<size_type>(0, n),
+          return get_world().taskq.for_each(madness::Range<size_type>(0, n, eval_op.rows()),
               eval_op).get(); // Wait for for_each() to finish while still processing other tasks
         }
 
