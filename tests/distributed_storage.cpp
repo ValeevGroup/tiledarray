@@ -24,6 +24,19 @@ struct DistributedStorageFixture {
   std::shared_ptr<Storage> t;
 };
 
+struct DistributeOp {
+  static madness::AtomicInt count;
+
+  void operator()(std::size_t, int) const {
+    ++count;
+  }
+
+  template <typename Archive>
+  void serialize(const Archive&) { }
+};
+
+madness::AtomicInt DistributeOp::count;
+
 BOOST_FIXTURE_TEST_SUITE( distributed_storage_suite , DistributedStorageFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -119,5 +132,37 @@ BOOST_AUTO_TEST_CASE( array_operator )
 #endif // TA_EXCEPTION_ERROR
 }
 
+BOOST_AUTO_TEST_CASE( apply )
+{
+  // Indices to apply an operation to.
+  std::vector<std::size_t> indices;
+  indices.push_back(0);
+  indices.push_back(1);
+  indices.push_back(2);
+  indices.push_back(3);
+  indices.push_back(4);
+
+  // Initialize the count
+  DistributeOp::count = 0;
+
+  world.gop.fence();
+
+  // Apply an operation to the data
+  if(world.rank() == 0)
+    t->apply(indices, DistributeOp());
+
+  // set the data so the operations can run
+  for(std::size_t i = 0; i < t->max_size(); ++i)
+    if(t->is_local(i))
+      t->set(i, world.rank());
+
+  world.gop.fence();
+
+  int n = DistributeOp::count;
+  world.gop.sum(n);
+
+  BOOST_CHECK_EQUAL(n, 5);
+
+}
 
 BOOST_AUTO_TEST_SUITE_END()

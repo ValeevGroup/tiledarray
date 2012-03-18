@@ -246,7 +246,82 @@ namespace TiledArray {
         return result;
       }
 
+      template <typename Op>
+      void apply(const std::vector<size_type>& indices, const Op& op) {
+        // Construct a map of indices to nodes
+        node_map_type node_map;
+        for(std::vector<size_type>::const_iterator it = indices.begin(); it !=indices.end(); ++it)
+          node_map.insert(std::pair<const ProcessID, size_type>(owner(*it), *it));
+
+        // Compile a list of nodes that own the target indices
+        std::vector<ProcessID> nodes;
+        for(node_map_type::const_iterator it = node_map.begin(); it != node_map.end(); it = node_map.upper_bound(it->first))
+          nodes.push_back(it->first);
+
+        // Submit the task(s) to apply op to data of indices
+        const ProcessID rank = WorldObject_::get_world().rank();
+        WorldObject_::task(rank, & DistributedStorage_::template submit_tasks<Op>,
+            nodes, rank, node_map, op, madness::TaskAttributes::hipri());
+      }
+
     private:
+
+      typedef std::multimap<ProcessID, size_type> node_map_type;
+
+      template <typename Op>
+      madness::Void apply_task(size_type i, value_type value, const Op& op) const {
+        op(i, value);
+
+        return madness::None;
+      }
+
+      void binary_tree_info(ProcessID me, ProcessID size, ProcessID root, ProcessID& child0, ProcessID& child1) {
+        // Renumber processes so root has me=0
+        me = (me + size - root) % size;
+
+        // Left child
+        child0 = (me << 1) + 1 + root;
+        if (child0 >= size && child0 < (size + root))
+          child0 -= size;
+        if (child0 >= size)
+          child0 = -1;
+
+        // Right child
+        child1 = (me << 1) + 2 + root;
+        if (child1 >= size && child1 < (size + root))
+          child1 -= size;
+        if (child1 >= size)
+          child1 = -1;
+      }
+
+      template <typename Op>
+      madness::Void submit_tasks(const std::vector<ProcessID>& nodes, ProcessID root,
+          const std::multimap<ProcessID, size_type>& node_map, const Op& op)
+      {
+        // Get rank
+        const ProcessID rank = WorldObject_::get_world().rank();
+
+        // Get the child nodes that will run the following tasks
+        ProcessID child0 = -1;
+        ProcessID child1 = -1;
+        binary_tree_info(rank, nodes.size(), root, child0, child1);
+
+        // Submit task on child nodes
+        if(child0 != -1)
+          WorldObject_::task(child0, & DistributedStorage_::template submit_tasks<Op>,
+              nodes, root, node_map, op, madness::TaskAttributes::hipri());
+        if(child1 != -1)
+          WorldObject_::task(child1, & DistributedStorage_::template submit_tasks<Op>,
+              nodes, root, node_map, op, madness::TaskAttributes::hipri());
+
+        // Submit a local task for each local element.
+        const node_map_type::const_iterator end = node_map.upper_bound(rank);
+        for(node_map_type::const_iterator it = node_map.lower_bound(rank); it != end; ++it)
+          WorldObject_::task(rank, & DistributedStorage_::template apply_task<Op>,
+              it->second, operator[](it->second), op);
+
+        return madness::None;
+      }
 
       struct DelayedSet : public madness::CallbackInterface {
       private:
@@ -341,5 +416,55 @@ namespace TiledArray {
 
   }  // namespace detail
 }  // namespace TiledArray
+
+namespace madness {
+  namespace archive {
+
+    // Forward declarations
+    template <typename, typename>
+    struct ArchiveLoadImpl;
+    template <typename, typename>
+    struct ArchiveStoreImpl;
+
+    template <typename Archive, typename Key, typename T>
+    struct ArchiveLoadImpl<Archive, std::multimap<Key, T> > {
+      static inline void load(const Archive& ar, std::multimap<Key, T>& mmap) {
+        mmap.clear();
+
+        std::size_t size, i = 0ul;
+        Key key;
+        std::size_t n;
+        ar & size;
+
+        while(i < size) {
+          ar & key & n;
+          typename std::multimap<Key, T>::value_type value(key, T());
+          for(std::size_t j = 0; j < n; ++i, ++j) {
+            ar & value.second;
+            mmap.insert(value);
+          }
+        }
+
+
+      }
+    }; // struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::detail::VectorTask> >
+
+    template <typename Archive, typename Key, typename T>
+    struct ArchiveStoreImpl<Archive, std::multimap<Key, T> > {
+      static inline void store(const Archive& ar, const std::multimap<Key, T>& mmap) {
+        ar & mmap.size();
+        typename std::multimap<Key, T>::const_iterator it = mmap.begin();
+        while(it != mmap.end()) {
+          typename std::multimap<Key, T>::const_iterator end = mmap.upper_bound(it->first);
+
+          ar & it->first & std::distance(it, end);
+          for(; it != end; ++it)
+            ar & it->second;
+        }
+      }
+    }; // struct ArchiveStoreImpl<Archive, std::shared_ptr<TiledArray::detail::VectorTask> >
+
+  } // namespace archive
+} // namespace madness
 
 #endif // TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
