@@ -151,6 +151,11 @@ BOOST_AUTO_TEST_CASE( apply )
   if(world.rank() == 0)
     t->apply(indices, DistributeOp());
 
+  int n = DistributeOp::count;
+  world.gop.sum(n);
+
+  BOOST_CHECK_EQUAL(n, 0);
+
   // set the data so the operations can run
   for(std::size_t i = 0; i < t->max_size(); ++i)
     if(t->is_local(i))
@@ -158,7 +163,7 @@ BOOST_AUTO_TEST_CASE( apply )
 
   world.gop.fence();
 
-  int n = DistributeOp::count;
+  n = DistributeOp::count;
   world.gop.sum(n);
 
   BOOST_CHECK_EQUAL(n, 5);

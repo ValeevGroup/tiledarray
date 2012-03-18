@@ -246,9 +246,40 @@ namespace TiledArray {
         return result;
       }
 
+      /// Apply a function to a list of data elements
+
+      /// This function will initiate a task that will run \c op with each
+      /// element listed in \c indices on the owner's node. Op is distributed
+      /// with in a binary tree. \c op must be callable and take \c size_type
+      /// and as its arguments \c value_type . It must also be serializable.
+      /// Example:
+      /// \code
+      /// class DistributedOp {
+      /// public:
+      ///   DistributedOp() {
+      ///     // ...
+      ///   }
+      ///
+      ///   DistributedOp& operator=(const DistributedOp& other) {
+      ///     // ...
+      ///   }
+      ///
+      ///   void operator()(size_type index, value_type value) const {
+      ///     // ...
+      ///   }
+      ///
+      ///   template <typename Archive>
+      ///   void serialize(const Archive&) {
+      ///     // ...
+      ///   }
+      /// }; // struct DistributedOp
+      /// \endcode
+      /// \tparam Op The operation type
+      /// \param indices A list of indices that \c op will be applied to.
+      /// \param op The operation that will be run on the data of \c indices
       template <typename Op>
       void apply(const std::vector<size_type>& indices, const Op& op) {
-        // Construct a map of indices to nodes
+        // Construct a map of nodes to indices
         node_map_type node_map;
         for(std::vector<size_type>::const_iterator it = indices.begin(); it !=indices.end(); ++it)
           node_map.insert(std::pair<const ProcessID, size_type>(owner(*it), *it));
@@ -268,6 +299,13 @@ namespace TiledArray {
 
       typedef std::multimap<ProcessID, size_type> node_map_type;
 
+      /// Task function that runs a distributed task
+
+      /// \tparam Op The operation object to be run on the data element
+      /// \param i The element index
+      /// \param value The value of element \c i
+      /// \param op The operation to be run
+      /// \return madness::None
       template <typename Op>
       madness::Void apply_task(size_type i, value_type value, const Op& op) const {
         op(i, value);
@@ -275,6 +313,13 @@ namespace TiledArray {
         return madness::None;
       }
 
+      /// Get binary tree info
+
+      /// \param me This process node
+      /// \param size Then number of nodes
+      /// \param root The node that the tree starts from
+      /// \param[out] child0 The left child node of \c me
+      /// \param[out] child1 The right child node of \c me
       void binary_tree_info(ProcessID me, ProcessID size, ProcessID root, ProcessID& child0, ProcessID& child1) {
         // Renumber processes so root has me=0
         me = (me + size - root) % size;
@@ -308,10 +353,10 @@ namespace TiledArray {
 
         // Submit task on child nodes
         if(child0 != -1)
-          WorldObject_::task(child0, & DistributedStorage_::template submit_tasks<Op>,
+          WorldObject_::task(nodes[child0], & DistributedStorage_::template submit_tasks<Op>,
               nodes, root, node_map, op, madness::TaskAttributes::hipri());
         if(child1 != -1)
-          WorldObject_::task(child1, & DistributedStorage_::template submit_tasks<Op>,
+          WorldObject_::task(nodes[child1], & DistributedStorage_::template submit_tasks<Op>,
               nodes, root, node_map, op, madness::TaskAttributes::hipri());
 
         // Submit a local task for each local element.
@@ -323,11 +368,18 @@ namespace TiledArray {
         return madness::None;
       }
 
+      /// Set value callback object
+
+      /// This object is used to set a future that is owned by another node.
+      /// Since futures must be set before they can be sent to another node
+      /// this additional logic is needed. A task could be used to accomplish
+      /// the same goal, but this is more efficient since it is done immediately
+      /// when the future is set rather than going through the task queue.
       struct DelayedSet : public madness::CallbackInterface {
       private:
-        DistributedStorage_& ds_;
-        size_type index_;
-        future future_;
+        DistributedStorage_& ds_; ///< A reference to the owning object
+        size_type index_; ///< The index that will own the future
+        future future_; ///< The future that we are waiting on.
 
       public:
 
@@ -335,8 +387,12 @@ namespace TiledArray {
             ds_(ds), index_(i), future_(fut)
         { }
 
-        ~DelayedSet() { }
+        virtual ~DelayedSet() { }
 
+        /// Notify this object when the future is set.
+
+        /// This will set the value of the future on the remote node and delete
+        /// this callback object.
         virtual void notify() {
           ds_.set_value(index_, future_);
           delete this;
@@ -426,18 +482,25 @@ namespace madness {
     template <typename, typename>
     struct ArchiveStoreImpl;
 
+    /// Archive load for a std::multimap
     template <typename Archive, typename Key, typename T>
     struct ArchiveLoadImpl<Archive, std::multimap<Key, T> > {
       static inline void load(const Archive& ar, std::multimap<Key, T>& mmap) {
+        // Clear the map of any existing values
         mmap.clear();
 
-        std::size_t size, i = 0ul;
+        std::size_t size = 0ul, n = 0ul, i = 0ul;
         Key key;
-        std::size_t n;
+
+        // Get the number of elements in the map
         ar & size;
 
+        // iterate over the data elements
         while(i < size) {
+          // Get the key and the number of elements for that key
           ar & key & n;
+
+          // Get the values for the key
           typename std::multimap<Key, T>::value_type value(key, T());
           for(std::size_t j = 0; j < n; ++i, ++j) {
             ar & value.second;
@@ -449,15 +512,22 @@ namespace madness {
       }
     }; // struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::detail::VectorTask> >
 
+    /// Archive store for a std::multimap
     template <typename Archive, typename Key, typename T>
     struct ArchiveStoreImpl<Archive, std::multimap<Key, T> > {
       static inline void store(const Archive& ar, const std::multimap<Key, T>& mmap) {
+
+        // Store the number of elements in the map
         ar & mmap.size();
         typename std::multimap<Key, T>::const_iterator it = mmap.begin();
         while(it != mmap.end()) {
+          // Get an iterator to the end of the first key
           typename std::multimap<Key, T>::const_iterator end = mmap.upper_bound(it->first);
 
+          // Store the key and the number of elements associated with the key
           ar & it->first & std::distance(it, end);
+
+          // Store each data element associated with the key
           for(; it != end; ++it)
             ar & it->second;
         }
