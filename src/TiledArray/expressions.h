@@ -164,7 +164,7 @@ namespace TiledArray {
       typename madness::detail::result_of<Op>::type reduce_tile(const T& t, const Op& op) {
         typename T::value_type result = typename T::value_type();
         for(typename T::const_iterator it = t.begin(); it != t.end(); ++it)
-          result = op(result, *it);
+          op(result, *it);
 
         return result;
       }
@@ -180,7 +180,7 @@ namespace TiledArray {
       /// the evaluation of \c arg and this task.
       template <typename Arg, typename Op>
       typename madness::detail::result_of<Op>::type reduce_tiles(const Arg& arg, const Op& op, bool) {
-        TiledArray::detail::ReduceTask<typename madness::detail::result_of<Op>::type, Op>
+        TiledArray::detail::ReduceTask<Op>
             reduce_task(arg.get_world(), op);
         typename Arg::const_iterator end = arg.end();
         for(typename Arg::const_iterator it = arg.begin(); it != end; ++it)
@@ -211,7 +211,25 @@ namespace TiledArray {
         return const_cast<Array<T, CS>&>(array).eval();
       }
 
+      template <typename T>
+      struct plus {
+        typedef T result_type;
+        typedef T argument_type;
+        typedef std::plus<T> std_op_type;
 
+        result_type operator()() const { return result_type(); }
+
+        void operator()(result_type& result, const argument_type& arg) const {
+          result += arg;
+        }
+
+        void operator()(result_type& result, const argument_type& arg1, const argument_type& arg2) const {
+          result += arg1 + arg2;
+        }
+
+        template <typename Archive>
+        void serialize(const Archive&) { }
+      };
 
     } // namespace detail
 
@@ -250,7 +268,7 @@ namespace TiledArray {
           arg.get_world().taskq.add(arg.get_world().rank(),
           detail::reduce_tiles<Exp, Op>, arg.derived(), op, detail::eval(arg),
           madness::TaskAttributes::hipri()).get();
-      arg.get_world().gop.reduce(& result, 1, op);
+      arg.get_world().gop.reduce(& result, 1, typename Op::std_op_type());
       return result;
     }
 
@@ -269,7 +287,7 @@ namespace TiledArray {
       typedef typename math::ContractionValue<typename LeftArg::value_type::value_type,
               typename RightArg::value_type::value_type>::type result_type;
       return reduce(make_binary_tiled_tensor(left.derived(), right.derived(),
-          std::multiplies<result_type>()), std::plus<result_type>());
+          std::multiplies<result_type>()), detail::plus<result_type>());
     }
 
     template <typename Arg>
@@ -277,7 +295,7 @@ namespace TiledArray {
     norm2(const ReadableTiledTensor<Arg>& arg) {
       return std::sqrt(reduce(make_unary_tiled_tensor(arg.derived(),
           TiledArray::detail::Square<typename Arg::value_type::value_type>()),
-          std::plus<typename Arg::value_type::value_type>()));
+          detail::plus<typename Arg::value_type::value_type>()));
     }
 
   } // namespace expressions

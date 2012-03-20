@@ -8,173 +8,406 @@
 namespace TiledArray {
   namespace detail {
 
-    /// Reduction task implementation object
+//    /// Reduction task implementation object
+//
+//    /// This is the actual task that is submitted to the task queue. This task
+//    /// Will generate subtasks that do the reduction operations.
+//    template <typename T, typename Op>
+//    class ReduceTaskImpl : public madness::TaskInterface {
+//    public:
+//      typedef ReduceTaskImpl<T, Op> ReduceTaskImpl_; ///< This object type
+//      typedef T value_type; ///< The type of objects that will be reduced
+//      typedef madness::Future<value_type> future; ///< Future to an object to be reduce
+//
+//    private:
+//
+//      // Copy not allowed
+//      ReduceTaskImpl(const ReduceTaskImpl<T,Op>&);
+//      ReduceTaskImpl<T,Op> operator=(const ReduceTaskImpl<T,Op>&);
+//
+//      /// Hold the object that will be reduced.
+//      class ReduceObject : public madness::CallbackInterface {
+//      public:
+//
+//        /// Construct the reduce object holder
+//
+//        /// \c value may be of type \c value_type (or \c T ),
+//        /// \c madness::Future<value_type> , or
+//        /// \c madness::RemoteReference<madness::FutureImpl<value_type>> .
+//        /// \tparam Value The type of object to be reduced.
+//        /// \param value The object to be reduced
+//        /// \param parent The task that owns this reduction object
+//        template <typename Value>
+//        ReduceObject(const Value& value, ReduceTaskImpl_* parent) :
+//            future_(value), parent_(parent)
+//        {
+//          TA_ASSERT(parent_);
+//          if(! future_.probe()) {
+//            future_.register_callback(this); // The data is not ready; set a callback.
+//          } else {
+//            ReduceObject::notify(); // The data is ready; do callback.
+//          }
+//        }
+//
+//        /// Virtual destructor
+//        virtual ~ReduceObject() { }
+//
+//        /// Callback function
+//
+//        /// This function is called when the data is ready to be reduced.
+//        virtual void notify() {
+//          TA_ASSERT(parent_);
+//          TA_ASSERT(future_.probe());
+//          parent_->ready(this);
+//        }
+//
+//
+//        /// Const data accessor
+//
+//        /// \return A constant reference to the reduction data.
+//        const value_type& data() const {
+//          TA_ASSERT(future_.probe());
+//          return future_.get();
+//        }
+//
+//        /// Data accessor
+//
+//        /// \return A reference to the reduction data.
+//        value_type& data() {
+//          TA_ASSERT(future_.probe());
+//          return future_.get();
+//        }
+//
+//      private:
+//        madness::Future<value_type> future_; ///< The data that will be reduced
+//        ReduceTaskImpl_* parent_; ///< A pointer to the task that owns this object
+//      }; // class ReduceObject
+//
+//    public:
+//
+//      /// Construct a reduction task
+//
+//      /// \param world The world object that will handle the tasks.
+//      /// \param op The reduction operation
+//      /// \note The dependency counter is initially set to one. \c dec() needs
+//      /// to be called before the task will run.
+//      ReduceTaskImpl(madness::World& world, const Op& op) :
+//        madness::TaskInterface(1, madness::TaskAttributes::HIGHPRIORITY),
+//        world_(world), op_(op), result_(), ready_(NULL), lock_()
+//      { }
+//
+//      virtual ~ReduceTaskImpl() { }
+//
+//      /// Submit a reduction object for reduction when it is ready.
+//      void ready(ReduceObject* ro) {
+//        TA_ASSERT(ro);
+//        lock_.lock(); // <<< BEGIN CRITICAL SECTION
+//        if(ready_) {
+//          // Get the reduce object that is ready
+//          ReduceObject* ready = const_cast<ReduceObject*>(ready_);
+//          ready_ = NULL;
+//          lock_.unlock(); // <<< END CRITICAL SECTION
+//          world_.taskq.add(*this, & ReduceTaskImpl_::reduce_op, ready, ro,
+//              madness::TaskAttributes::hipri());
+//        } else {
+//          // Store the reduce object until the next one is ready
+//          ready_ = ro;
+//          lock_.unlock(); // <<< END CRITICAL SECTION
+//        }
+//      }
+//
+//      /// Add an element to the reduction
+//
+//      /// The task dependency counter will be incremented for each addition.
+//      /// \c value may be of type \c value_type (or \c T ), \c madness::Future<value_type> ,
+//      /// or \c madness::RemoteReference<madness::FutureImpl<value_type>> .
+//      /// \tparam Value The type of the object that will be reduced
+//      /// \param value The object that will be reduced
+//      template <typename Value>
+//      void add(const Value& value) {
+//        inc();
+//        ReduceObject* ro = new ReduceObject(value, this);
+//        ro = NULL; // Orphan the pointer, but it can take care of itself.
+//      }
+//
+//      /// The task result accessor
+//
+//      /// \return A future to the reduction result.
+//      const madness::Future<value_type>& result() const { return result_; }
+//
+//      /// Task run function
+//
+//      /// This function just sets the result to the reduced value, and performs
+//      /// cleanup operations.
+//      virtual void run(madness::World&) {
+//        lock_.lock();
+//        ReduceObject* ready = const_cast<ReduceObject*>(ready_);
+//        ready_ = NULL;
+//        lock_.unlock();
+//        TA_ASSERT(ready);
+//        result_.set(ready->data());
+//        delete ready;
+//      }
+//
+//    private:
+//
+//      void reduce(ReduceObject* ro) {
+//        while(ro) {
+//          lock_.lock(); // <<< BEGIN CRITICAL SECTION
+//          if(ready_)
+//          if(ready_arg_) {
+//            // Get the reduce object that is ready
+//            ReduceObject* ready_arg = const_cast<ReduceObject*>(ready_arg_);
+//            ready_arg_ = NULL;
+//            lock_.unlock(); // <<< END CRITICAL SECTION
+//            world_.taskq.add(*this, & ReduceTaskImpl_::reduce_op, ready, ro,
+//                madness::TaskAttributes::hipri());
+//          } else {
+//            // Store the reduce object until the next one is ready
+//            ready_ = ro;
+//            lock_.unlock(); // <<< END CRITICAL SECTION
+//          }
+//        }
+//      }
+//
+//      madness::Void reduce_op(std::shared_ptr<value_type> result, ReduceObject* arg) {
+//        TA_ASSERT(result);
+//        TA_ASSERT(arg);
+//        op_(*result, arg->data());
+//        reduce(result);
+//        delete arg;
+//        return madness::None;
+//      }
+//
+//      madness::World& world_;
+//      Op op_;
+//      madness::Future<value_type> result_;
+//      volatile ReduceObject* ready_arg_;
+//      std::shared_ptr<value_type> ready_result_;
+//      madness::Spinlock lock_;
+//    }; // class ReduceTaskImpl
+//
+//    /// Reduction task
+//
+//    /// This task will reduce an arbitrary number of objects. This task is
+//    /// optimized for reduction of data that is the result of other tasks or
+//    /// remote data. Though it can handle data that is not stored in a future,
+//    /// it may not be the best choice. The objects are reduced as they become
+//    /// ready, which results in non-deterministic reduction order.
+//    /// This is theoretically be faster than a simple  binary tree reduction
+//    /// since the reduction tasks do not have to wait on any specific object to
+//    /// become ready for reduced. \n
+//    /// The reduction operation has the following form:
+//    /// \code
+//    /// first = op(first, second);
+//    /// \endcode
+//    /// where \c op is the reduction operation given to the constructor
+//    /// \tparam T The object type to be reduced
+//    /// \tparam Op The reduction operation type
+//    template <typename T, typename Op>
+//    class ReduceTask {
+//    private:
+//      // Copy not allowed.
+//      ReduceTask(const ReduceTask<T,Op>&);
+//      ReduceTask<T,Op>& operator=(const ReduceTask<T,Op>&);
+//    public:
+//
+//      typedef T value_type; ///< The type that will be reduced
+//
+//      ReduceTask(madness::World& world, const Op& op = Op()) :
+//        world_(world), pimpl_(new ReduceTaskImpl<T, Op>(world, op))
+//      { }
+//
+//      /// Destructor
+//
+//      /// If the reduction has not been submitted or \c destroy() has not been
+//      /// called, it well be submitted when the the destructor is called.
+//      ~ReduceTask() {
+//        if(pimpl_)
+//          submit();
+//      }
+//
+//      /// Add an element to the reduction
+//
+//      /// \c value may be of type \c value_type (or \c T ), \c madness::Future<value_type> ,
+//      /// or \c madness::RemoteReference<madness::FutureImpl<value_type>> .
+//      /// \tparam Value The type of the object that will be reduced
+//      /// \param value The object that will be reduced
+//      template <typename Value>
+//      void add(const Value& value) {
+//        TA_ASSERT(pimpl_);
+//        pimpl_->add(value);
+//      }
+//
+//      template <typename InIter>
+//      void add(InIter first, InIter last) {
+//        TA_ASSERT(pimpl_);
+//        for(; first != last; ++first)
+//          pimpl_->add(*first);
+//      }
+//
+//      /// Submit the reduction task to the task queue
+//
+//      /// \return The result of the reduction
+//      /// \note After submitting the task, objects can no longer be added to the
+//      /// reduction.
+//      madness::Future<value_type> submit() {
+//        TA_ASSERT(pimpl_);
+//        // Get the result before submitting calling dec(), otherwise the task
+//        // could run and be deleted before we are done here.
+//        madness::Future<value_type> result = pimpl_->result();
+//        world_.taskq.add(pimpl_);
+//        pimpl_->dec(); // decrement the fake dependency so the task will run.
+//        pimpl_ = NULL;
+//
+//        return result;
+//      }
+//
+//      /// Destroy the reduce task without submitting it to the task queue.
+//      void destroy() {
+//        delete pimpl_;
+//      }
+//
+//    private:
+//      madness::World& world_; ///< The world that owns the task queue.
+//      ReduceTaskImpl<T, Op>* pimpl_; ///< The reduction task object.
+//    }; // class ReduceTask
 
-    /// This is the actual task that is submitted to the task queue. This task
-    /// Will generate subtasks that do the reduction operations.
-    template <typename T, typename Op>
+
+    template <typename Op>
     class ReduceTaskImpl : public madness::TaskInterface {
     public:
-      typedef ReduceTaskImpl<T, Op> ReduceTaskImpl_; ///< This object type
-      typedef T value_type; ///< The type of objects that will be reduced
-      typedef madness::Future<value_type> future; ///< Future to an object to be reduce
+      typedef typename Op::result_type result_type;
+      typedef typename Op::argument_type argument_type;
+      typedef ReduceTaskImpl<Op> ReduceTaskImpl_;
 
     private:
 
-      // Copy not allowed
-      ReduceTaskImpl(const ReduceTaskImpl<T,Op>&);
-      ReduceTaskImpl<T,Op> operator=(const ReduceTaskImpl<T,Op>&);
-
-      /// Hold the object that will be reduced.
       class ReduceObject : public madness::CallbackInterface {
       public:
 
-        /// Construct the reduce object holder
-
-        /// \c value may be of type \c value_type (or \c T ),
-        /// \c madness::Future<value_type> , or
-        /// \c madness::RemoteReference<madness::FutureImpl<value_type>> .
-        /// \tparam Value The type of object to be reduced.
-        /// \param value The object to be reduced
-        /// \param parent The task that owns this reduction object
-        template <typename Value>
-        ReduceObject(const Value& value, ReduceTaskImpl_* parent) :
-            future_(value), parent_(parent)
+        template <typename Arg>
+        ReduceObject(ReduceTaskImpl_* parent, const Arg& arg) :
+            parent_(parent), arg_(arg)
         {
           TA_ASSERT(parent_);
-          if(! future_.probe()) {
-            future_.register_callback(this); // The data is not ready; set a callback.
-          } else {
-            ReduceObject::notify(); // The data is ready; do callback.
-          }
+          arg_.register_callback(this);
         }
 
-        /// Virtual destructor
         virtual ~ReduceObject() { }
 
-        /// Callback function
-
-        /// This function is called when the data is ready to be reduced.
         virtual void notify() {
-          TA_ASSERT(parent_);
-          TA_ASSERT(future_.probe());
+          TA_ASSERT(arg_.probe());
           parent_->ready(this);
         }
 
-
-        /// Const data accessor
-
-        /// \return A constant reference to the reduction data.
-        const value_type& data() const {
-          TA_ASSERT(future_.probe());
-          return future_.get();
-        }
-
-        /// Data accessor
-
-        /// \return A reference to the reduction data.
-        value_type& data() {
-          TA_ASSERT(future_.probe());
-          return future_.get();
-        }
+        const argument_type& arg() const { return arg_.get(); }
 
       private:
-        madness::Future<value_type> future_; ///< The data that will be reduced
-        ReduceTaskImpl_* parent_; ///< A pointer to the task that owns this object
-      }; // class ReduceObject
+
+        ReduceTaskImpl_* parent_;
+        madness::Future<argument_type> arg_;
+      }; // class ReducePair
+
+
+      madness::World& world_;
+      Op op_;
+      std::shared_ptr<result_type> ready_result_;
+      volatile ReduceObject* ready_object_;
+      madness::Future<result_type> result_;
+      madness::Spinlock lock_;
 
     public:
 
-      /// Construct a reduction task
-
-      /// \param world The world object that will handle the tasks.
-      /// \param op The reduction operation
-      /// \note The dependency counter is initially set to one. \c dec() needs
-      /// to be called before the task will run.
-      ReduceTaskImpl(madness::World& world, const Op& op) :
-        madness::TaskInterface(1, madness::TaskAttributes::HIGHPRIORITY),
-        world_(world), op_(op), result_(), ready_(NULL), lock_()
+      ReduceTaskImpl(madness::World& world, Op op) :
+          madness::TaskInterface(1, madness::TaskAttributes::hipri()),
+          world_(world), op_(op), ready_result_(new result_type(op())),
+          ready_object_(NULL), result_(), lock_()
       { }
 
       virtual ~ReduceTaskImpl() { }
 
-      /// Submit a reduction object for reduction when it is ready.
-      void ready(ReduceObject* ro) {
-        TA_ASSERT(ro);
-        ReduceObject* next = NULL;
-        lock_.lock(); // <<< BEGIN CRITICAL SECTION
-        if(ready_) {
-          // Get the reduce object that is ready
-          next = const_cast<ReduceObject*>(ready_);
-          ready_ = NULL;
-        } else {
-          // Store the reduce object until the next one is ready
-          ready_ = ro;
-          ro = NULL;
-        }
-        lock_.unlock(); // <<< END CRITICAL SECTION
-
-        // If we have two reduce object ready, add a reduce task to the queue.
-        // Otherwise, decrement the dependency counter since another reduction
-        // has finished
-        if(next)
-          world_.taskq.add(*this, & ReduceTaskImpl_::reduce_op, next, ro,
-              madness::TaskAttributes::hipri());
-        else
-          dec();
-      }
-
-      /// Add an element to the reduction
-
-      /// The task dependency counter will be incremented for each addition.
-      /// \c value may be of type \c value_type (or \c T ), \c madness::Future<value_type> ,
-      /// or \c madness::RemoteReference<madness::FutureImpl<value_type>> .
-      /// \tparam Value The type of the object that will be reduced
-      /// \param value The object that will be reduced
-      template <typename Value>
-      void add(const Value& value) {
-        inc();
-        ReduceObject* ro = new ReduceObject(value, this);
-        ro = NULL; // Orphan the pointer, but it can take care of itself.
-      }
-
-      /// The task result accessor
-
-      /// \return A future to the reduction result.
-      const madness::Future<value_type>& result() const { return result_; }
-
-      /// Task run function
-
-      /// This function just sets the result to the reduced value, and performs
-      /// cleanup operations.
       virtual void run(madness::World&) {
-        lock_.lock();
-        ReduceObject* ready = const_cast<ReduceObject*>(ready_);
-        ready_ = NULL;
-        lock_.unlock();
-        TA_ASSERT(ready);
-        result_.set(ready->data());
-        delete ready;
+        TA_ASSERT(ready_result_);
+        result_.set(*ready_result_);
       }
+
+      template <typename Arg>
+      ReduceObject* add(const Arg& arg) {
+        inc();
+        return new ReduceObject(this, arg);
+      }
+
+      void ready(ReduceObject* object) {
+        TA_ASSERT(object);
+        lock_.lock(); // <<< Begin critical section
+        if(ready_result_) {
+          std::shared_ptr<result_type> ready_result = ready_result_;
+          ready_result_.reset();
+          lock_.unlock(); // <<< End critical section
+          TA_ASSERT(ready_result);
+          world_.taskq.add(*this, & ReduceTaskImpl::reduce_result_object,
+              ready_result, object, madness::TaskAttributes::hipri());
+        } else if(ready_object_) {
+          ReduceObject* ready_object = const_cast<ReduceObject*>(ready_object_);
+          ready_object_ = NULL;
+          lock_.unlock(); // <<< End critical section
+          TA_ASSERT(ready_object);
+          world_.taskq.add(*this, & ReduceTaskImpl::reduce_object_object,
+              object, ready_object, madness::TaskAttributes::hipri());
+        } else {
+          ready_object_ = object;
+          lock_.unlock(); // <<< End critical section
+        }
+      }
+
+      const madness::Future<result_type>& result() const { return result_; }
 
     private:
 
-      madness::Void reduce_op(ReduceObject* first, const ReduceObject* second) {
-        TA_ASSERT(first);
-        TA_ASSERT(second);
-        TA_ASSERT(first != second);
-        first->data() = op_(first->data(), second->data());
-        delete second;
-        first->notify();
+      void reduce(std::shared_ptr<result_type>& result) {
+        while(result) {
+          lock_.lock(); // <<< Begin critical section
+          if(ready_object_) {
+            ReduceObject* ready_object = const_cast<ReduceObject*>(ready_object_);
+            ready_object_ = NULL;
+            lock_.unlock(); // <<< End critical section
+            op_(*result, ready_object->arg());
+            delete ready_object;
+            this->dec();
+          } else if(ready_result_) {
+            std::shared_ptr<result_type> ready_result = ready_result_;
+            ready_result_.reset();
+            lock_.unlock(); // <<< End critical section
+            op_(*result, *ready_result);
+            ready_result.reset();
+          } else {
+            ready_result_ = result;
+            result.reset();
+            lock_.unlock(); // <<< End critical section
+          }
+        }
+      }
+
+      madness::Void reduce_result_object(std::shared_ptr<result_type> result, const ReduceObject* object) {
+        op_(*result, object->arg());
+        delete object;
+        reduce(result);
+        this->dec();
         return madness::None;
       }
 
-      madness::World& world_;
-      Op op_;
-      madness::Future<value_type> result_;
-      volatile ReduceObject* ready_;
-      madness::Spinlock lock_;
-    }; // class ReduceTaskImpl
+      madness::Void reduce_object_object(const ReduceObject* object1, const ReduceObject* object2) {
+        std::shared_ptr<result_type> result(new result_type(op_()));
+        op_(*result, object1->arg(), object2->arg());
+        delete object1;
+        delete object2;
+        reduce(result);
+        this->dec();
+        this->dec();
+        return madness::None;
+      }
+    }; // class ReducePairTask
 
     /// Reduction task
 
@@ -193,28 +426,34 @@ namespace TiledArray {
     /// where \c op is the reduction operation given to the constructor
     /// \tparam T The object type to be reduced
     /// \tparam Op The reduction operation type
-    template <typename T, typename Op>
+    template <typename Op>
     class ReduceTask {
-    private:
-      // Copy not allowed.
-      ReduceTask(const ReduceTask<T,Op>&);
-      ReduceTask<T,Op>& operator=(const ReduceTask<T,Op>&);
     public:
 
-      typedef T value_type; ///< The type that will be reduced
+      typedef typename Op::result_type result_type;
+      typedef typename Op::argument_type argument_type;
+      typedef ReduceTask<Op> ReduceTask_;
+
+    private:
+      madness::World& world_; ///< The world that owns the task queue.
+      ReduceTaskImpl<Op>* pimpl_; ///< The reduction task object.
+      std::size_t count_;
+
+      // Copy not allowed.
+      ReduceTask(const ReduceTask_&);
+      ReduceTask_& operator=(const ReduceTask_&);
+    public:
+
 
       ReduceTask(madness::World& world, const Op& op = Op()) :
-        world_(world), pimpl_(new ReduceTaskImpl<T, Op>(world, op))
+        world_(world), pimpl_(new ReduceTaskImpl<Op>(world, op)), count_(0ul)
       { }
 
       /// Destructor
 
       /// If the reduction has not been submitted or \c destroy() has not been
       /// called, it well be submitted when the the destructor is called.
-      ~ReduceTask() {
-        if(pimpl_)
-          submit();
-      }
+      ~ReduceTask() { if(pimpl_) submit(); }
 
       /// Add an element to the reduction
 
@@ -222,44 +461,40 @@ namespace TiledArray {
       /// or \c madness::RemoteReference<madness::FutureImpl<value_type>> .
       /// \tparam Value The type of the object that will be reduced
       /// \param value The object that will be reduced
-      template <typename Value>
-      void add(const Value& value) {
+      template <typename Arg>
+      void add(const Arg& arg) {
         TA_ASSERT(pimpl_);
-        pimpl_->add(value);
+        pimpl_->add(arg);
+        ++count_;
       }
 
-      template <typename InIter>
-      void add(InIter first, InIter last) {
-        TA_ASSERT(pimpl_);
-        for(; first != last; ++first)
-          pimpl_->add(*first);
-      }
+      std::size_t count() const { return count_; }
 
       /// Submit the reduction task to the task queue
 
       /// \return The result of the reduction
       /// \note After submitting the task, objects can no longer be added to the
       /// reduction.
-      madness::Future<value_type> submit() {
+      madness::Future<result_type> submit() {
         TA_ASSERT(pimpl_);
-        // Get the result before submitting calling dec(), otherwise the task
-        // could run and be deleted before we are done here.
-        madness::Future<value_type> result = pimpl_->result();
-        world_.taskq.add(pimpl_);
-        pimpl_->dec(); // decrement the fake dependency so the task will run.
-        pimpl_ = NULL;
 
+        madness::Future<result_type> result = pimpl_->result();
+
+        if(count_ == 0ul) {
+          pimpl_->run(world_);
+          pimpl_->dec();
+          delete pimpl_;
+        } else {
+          // Get the result before submitting calling dec(), otherwise the task
+          // could run and be deleted before we are done here.
+          world_.taskq.add(pimpl_);
+          pimpl_->dec(); // decrement the fake dependency so the task will run.
+        }
+
+        pimpl_ = NULL;
         return result;
       }
 
-      /// Destroy the reduce task without submitting it to the task queue.
-      void destroy() {
-        delete pimpl_;
-      }
-
-    private:
-      madness::World& world_; ///< The world that owns the task queue.
-      ReduceTaskImpl<T, Op>* pimpl_; ///< The reduction task object.
     }; // class ReduceTask
 
 
@@ -312,7 +547,7 @@ namespace TiledArray {
       madness::World& world_;
       Op op_;
       std::shared_ptr<result_type> ready_result_;
-      ReducePair* ready_pair_;
+      volatile ReducePair* ready_pair_;
       madness::Future<result_type> result_;
       madness::Spinlock lock_;
 
@@ -348,7 +583,7 @@ namespace TiledArray {
           world_.taskq.add(*this, & ReducePairTaskImpl::reduce_result_pair,
               ready_result, pair, madness::TaskAttributes::hipri());
         } else if(ready_pair_) {
-          ReducePair* ready_pair = ready_pair_;
+          ReducePair* ready_pair = const_cast<ReducePair*>(ready_pair_);
           ready_pair_ = NULL;
           lock_.unlock();
           TA_ASSERT(ready_pair);
@@ -368,7 +603,7 @@ namespace TiledArray {
         while(result) {
           lock_.lock();
           if(ready_pair_) {
-            ReducePair* pair = ready_pair_;
+            ReducePair* pair = const_cast<ReducePair*>(ready_pair_);
             ready_pair_ = NULL;
             lock_.unlock();
             op_(*result, pair->left(), pair->right());
@@ -495,7 +730,7 @@ namespace TiledArray {
         return result;
       }
 
-    }; // class ReduceTask
+    }; // class ReducePairTask
 
   }  // namespace detail
 }  // namespace TiledArray

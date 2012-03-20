@@ -5,14 +5,31 @@
 using namespace TiledArray;
 using namespace TiledArray::detail;
 
+template <typename T>
+struct plus {
+  typedef T result_type;
+  typedef T argument_type;
+
+  result_type operator()() const { return result_type(); }
+
+  void operator()(result_type& result, const argument_type& arg) const {
+    result += arg;
+  }
+
+  void operator()(result_type& result, const argument_type& arg1, const argument_type& arg2) const {
+    result += arg1 + arg2;
+  }
+};
+
+
 struct ReduceTaskFixture {
 
-  ReduceTaskFixture() : world(*GlobalFixture::world), rt(world, std::plus<int>()) {
+  ReduceTaskFixture() : world(*GlobalFixture::world), rt(world, plus<int>()) {
 
   }
 
   madness::World& world;
-  ReduceTask<int, std::plus<int> > rt;
+  ReduceTask<plus<int> > rt;
 
 }; // struct ReduceTaskFixture
 

@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE( negation )
 
 BOOST_AUTO_TEST_CASE( reduce )
 {
-  std::size_t sum = expressions::reduce(t, std::plus<int>());
+  std::size_t sum = expressions::reduce(t, TiledArray::expressions::detail::plus<int>());
   BOOST_CHECK_EQUAL(sum, t.range().volume());
 }
 
