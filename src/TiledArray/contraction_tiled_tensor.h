@@ -14,7 +14,7 @@
 
 #ifdef TILEDARRAY_LOG_EVENTS
 #include <TiledArray/event_log.h>
-#endif
+#endif // TILEDARRAY_LOG_EVENTS
 
 namespace TiledArray {
   namespace expressions {
@@ -82,6 +82,7 @@ namespace TiledArray {
 #ifdef TILEDARRAY_LOG_EVENTS
         static unsigned int log_count_;
         TiledArray::logging::EventLog result_log_;
+        TiledArray::logging::EventLog work_log_;
         TiledArray::logging::EventLog request_log_;
         TiledArray::logging::EventLog receive_log_;
         unsigned int log_id_;
@@ -114,6 +115,30 @@ namespace TiledArray {
               typedef typename right_tensor_type::value_type second_argument_type; ///< The right tile type
               typedef value_type result_type; ///< The result tile type.
 
+#ifdef TILEDARRAY_LOG_EVENTS
+              explicit contract_reduce_op(const std::shared_ptr<math::Contraction>& cont, TiledArray::logging::EventLog& work_log) :
+                cont_(cont), work_log_(&work_log)
+              { }
+
+              /// Functor copy constructor
+
+              /// Shallow copy of this functor
+              /// \param other The functor to be copied
+              contract_reduce_op(const contract_reduce_op& other) :
+                cont_(other.cont_), work_log_(other.work_log_)
+              { }
+
+              /// Functor assignment operator
+
+              /// Shallow copy of this functor
+              /// \param other The functor to be copied
+              contract_reduce_op& operator=(const contract_reduce_op& other) {
+                cont_ = other.cont_;
+                work_log_ = other.work_log_;
+                return *this;
+              }
+#else
+
               /// Construct contract/reduce functor
 
               /// \param cont Shared pointer to contraction definition object
@@ -135,6 +160,9 @@ namespace TiledArray {
                 cont_ = other.cont_;
                 return *this;
               }
+#endif // TILEDARRAY_LOG_EVENTS
+
+
 
               /// Create a result type object
 
@@ -150,6 +178,9 @@ namespace TiledArray {
               /// \param[in] arg The argument that will be added to \c result
               void operator()(result_type& result, const result_type& arg) const {
                 result += arg;
+#ifdef TILEDARRAY_LOG_EVENTS
+                work_log_->notify();
+#endif
               }
 
 
@@ -163,6 +194,9 @@ namespace TiledArray {
                 if(result.empty())
                   result = result_type(cont_->result_range(first.range(), second.range()));
                 cont_->contract_tensor(result, first, second);
+#ifdef TILEDARRAY_LOG_EVENTS
+                work_log_->notify();
+#endif
               }
 
               /// Contract a pair of tiles and add to a target tile
@@ -176,11 +210,22 @@ namespace TiledArray {
               /// \return A tile that contains the sum of the two contractions.
               result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
                   const first_argument_type& first2, const second_argument_type& second2) const {
+
+#ifdef TILEDARRAY_LOG_EVENTS
+                result_type result = cont_->contract_tensor(first1, second1, first2, second2);
+                work_log_->notify();
+                work_log_->notify();
+                return result;
+#else
                 return cont_->contract_tensor(first1, second1, first2, second2);
+#endif
               }
 
             private:
               std::shared_ptr<math::Contraction> cont_; ///< The contraction definition object pointer
+#ifdef TILEDARRAY_LOG_EVENTS
+              TiledArray::logging::EventLog* work_log_;
+#endif // TILEDARRAY_LOG_EVENTS
             }; // class contract_reduce_op
 
           public:
@@ -226,7 +271,7 @@ namespace TiledArray {
                   pimpl_->data_.set(i, result);
 #else
                   pimpl_->data_.set(i, dot_product(x * i_, y * i_));
-#endif
+#endif // TILEDARRAY_LOG_EVENTS
 
                 }
               }
@@ -248,8 +293,13 @@ namespace TiledArray {
             /// \return A \c madness::Future to the dot product result.
             madness::Future<value_type> dot_product(size_type a, size_type b) const {
               // Construct a reduction object
+#ifdef TILEDARRAY_LOG_EVENTS
+              TiledArray::detail::ReducePairTask<contract_reduce_op>
+                  local_reduce_op(pimpl_->get_world(), contract_reduce_op(pimpl_->cont_, pimpl_->work_log_));
+#else
               TiledArray::detail::ReducePairTask<contract_reduce_op>
                   local_reduce_op(pimpl_->get_world(), contract_reduce_op(pimpl_->cont_));
+#endif // TILEDARRAY_LOG_EVENTS
 
               // Generate tasks that will contract tiles and sum the result
               for(size_type n = 0; n < i_; ++n, ++a, ++b)
@@ -530,6 +580,7 @@ namespace TiledArray {
           data_(left.get_world(), trange_.tiles().volume(), left.get_pmap())
 #ifdef TILEDARRAY_LOG_EVENTS
           , result_log_("ContractTiledTensor: set result tile", cont_->contract_range(left.range(), right.range()).volume())
+          , work_log_("ContractTiledTensor: contract/reduce tile", std::pow(cont_->contract_range(left.range(), right.range()).volume(),1.5))
           , receive_log_("ContractTiledTensor: receive argument tile", left.range().volume() + right.range().volume())
           , request_log_("ContractTiledTensor: request argument tile", left.range().volume() + right.range().volume())
           , log_id_(log_count_++)
@@ -542,7 +593,7 @@ namespace TiledArray {
           ss << "contraction" << log_id_ << "-" << get_world().rank() << ".log";
           std::ofstream file(ss.str().c_str());
           TA_ASSERT(! file.fail());
-          file << result_log_ << receive_log_ << request_log_;
+          file << request_log_ << receive_log_ << work_log_ << result_log_;
           file.close();
         }
 #endif // TILEDARRAY_LOG_EVENTS
