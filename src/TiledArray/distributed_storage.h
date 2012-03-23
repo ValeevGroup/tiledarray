@@ -84,9 +84,9 @@ namespace TiledArray {
         // Get the parent and children in the binary tree
         binary_tree_info(world_to_group(root), parent_, child0_, child1_);
 
-        map_group(parent_);
-        map_group(child0_);
-        map_group(child1_);
+        parent_ = group_to_world(parent_);
+        child0_ = group_to_world(child0_);
+        child1_ = group_to_world(child1_);
       }
 
     private:
