@@ -411,13 +411,8 @@ namespace TiledArray {
         }
 
         future result;
-#ifdef MADNESS_USE_BSEND_ACKS
-        WorldObject_::send(owner(i), & DistributedStorage_::find_handler, i,
-            result.remote_ref(get_world()));
-#else
         WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
             result.remote_ref(get_world()), madness::TaskAttributes::hipri());
-#endif // MADNESS_USE_BSEND_ACKS
 
         return result;
       }
