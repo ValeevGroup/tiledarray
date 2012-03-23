@@ -6,12 +6,179 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/indexed_iterator.h>
-//#include <world/world.h>
-#include <world/worlddc.h>
-#include <world/worldreduce.h>
+#include <TiledArray/reduce_task.h>
+#include <world/world.h>
 
 namespace TiledArray {
   namespace detail {
+
+    /// Lazy synchronization base
+
+    /// This object handles general synchronization between nodes.
+    /// \tparam Key The synchronization key type
+    template <typename Key>
+    class ReduceGroupBase {
+    protected:
+      typedef ReduceGroupBase<Key> ReduceGroupBase_; ///< This object type
+      typedef madness::ConcurrentHashMap<Key, ReduceGroupBase_*> map_type; ///< LazySync object container
+
+      static map_type map_; ///< Map to sync objects so they are accessible to
+      ///< other nodes via active messages.
+
+      madness::World& world_; ///< The world where the sync object lives
+      Key key_; ///< The sync key
+      std::vector<ProcessID> group_; ///< The group to world process id map
+      ProcessID parent_; ///< The parent node of this node ( = -1 if this is the root node)
+      ProcessID child0_; ///< The first child node of this node (=-1 if there is no first child node)
+      ProcessID child1_; ///< The second child node of this node (=-1 if there is no second child node)
+
+    private:
+      void binary_tree_info(ProcessID root, ProcessID& parent, ProcessID& child0, ProcessID& child1) {
+        const ProcessID size = group_.size();
+        // Renumber processes so root has me=0
+        const ProcessID me = (world_to_group(world_.rank()) + size - root) % size;
+        parent = (((me - 1) >> 1) + root) % size; // Parent in binary tree
+        child0 = (me << 1) + 1 + root; // Left child
+        child1 = (me << 1) + 2 + root; // Right child
+        if (child0 >= size && child0 < (size + root)) child0 -= size;
+        if (child1 >= size && child1 < (size + root)) child1 -= size;
+
+        if (me == 0) parent = -1;
+        if (child0 >= size) child0 = -1;
+        if (child1 >= size) child1 = -1;
+      }
+
+
+      /// Convert group process id to a world process id.
+
+      /// \param[in,out] proc The process id to be converted.
+      ProcessID group_to_world(ProcessID proc) {
+        TA_ASSERT(proc >= -1);
+        TA_ASSERT(proc < group_.size());
+
+        const ProcessID world_proc = (proc != -1 ? group_[proc] : -1);
+        TA_ASSERT(world_proc < world_.size());
+        return world_proc;
+      }
+
+      ProcessID world_to_group(ProcessID proc) {
+        TA_ASSERT(proc < world_.rank());
+        const ProcessID group_proc = (proc != -1 ?
+            std::distance(group_.begin(), std::find(group_.begin(), group_.end(), proc)) :
+            -1);
+        TA_ASSERT(group_proc < group_.size());
+        return group_proc;
+      }
+
+    protected:
+
+      /// Construct a reduce group object
+
+      /// This will store the world reference and sync key as well as
+      /// determine the parent and children of this node.
+      /// \param world The world where this sync object lives
+      /// \param key The sync key
+      ReduceGroupBase(madness::World& world, const Key& key, const std::vector<ProcessID>& group, ProcessID root) :
+        world_(world), key_(key), group_(group), parent_(-1), child0_(-1), child1_(-1)
+      {
+        // Get the parent and children in the binary tree
+        binary_tree_info(world_to_group(root), parent_, child0_, child1_);
+
+        map_group(parent_);
+        map_group(child0_);
+        map_group(child1_);
+      }
+
+    private:
+      // not allowed
+      ReduceGroupBase(const ReduceGroupBase_&);
+      ReduceGroupBase_& operator=(const ReduceGroupBase_&);
+
+    public:
+
+      /// Insert a \c ReduceGroup object into the map
+
+      /// A \c LazySync object is inserted into a map. If the object
+      /// already exists, that object is returned.
+      /// \tparam lsT The \c LazySync type
+      /// \param[out] acc The object accessor.
+      /// \param[in] world The world where the sync object lives
+      /// \param[in] key The sync object key
+      /// \return A pointer to the sync object
+      /// \note The sync object will be write locked until the accessor is
+      /// destroyed or released.
+      template <typename rgT>
+      static rgT* insert(typename map_type::accessor& acc, madness::World& world,
+          const Key& key, const std::vector<ProcessID>& group, ProcessID root,
+          const typename rgT::op_type& op)
+      {
+        if(map_.insert(acc, key))
+          acc->second = new rgT(world, key, group, root, op);
+        return static_cast<rgT*>(acc->second);
+      }
+
+      /// Remove sync object from the sync object map
+
+      /// This function first acquires a write lock on this object to avoid
+      /// possible race conditions.
+      /// \param key The sync key of the sync object to be removed
+      static void erase(const Key& key) {
+        typename map_type::accessor acc;
+        map_.find(acc, key);
+        map_.erase(acc);
+      }
+
+      /// Key accessor
+
+      /// \return The key the key to this object
+      const Key& key() const { return key_; }
+
+      /// World accessor
+
+      /// \return A reference to the world where this sync object lives
+      madness::World& get_world() const { return world_; }
+
+      /// Root node query
+
+      /// \return \c true when this is the root node.
+      bool is_root() const { return parent_ == -1; }
+
+      template <typename Fn>
+      void send_parent(Fn fn, madness::AmArg* args) const {
+        TA_ASSERT(parent_ != -1);
+        get_world().am.send(parent_, fn, args);
+      }
+
+    }; // class ReduceGroupBase
+
+
+    template <typename Key>
+    madness::ConcurrentHashMap<Key, ReduceGroupBase<Key>*> ReduceGroupBase<Key>::map_;
+
+    template <typename Key, typename Op>
+    class ReduceGroup : public ReduceGroupBase<Key> {
+    private:
+      typedef ReduceGroupBase<Key> ReduceGroupBase_;
+
+      ReduceTask<Op> local_reduce_;
+
+      static madness::Void send_parent_handler(const madness::AmArg& args) {
+
+      }
+
+    public:
+
+      /// Construct a reduce group object
+
+      /// This will store the world reference and sync key as well as
+      /// determine the parent and children of this node.
+      /// \param world The world where this sync object lives
+      /// \param key The sync key
+      ReduceGroup(madness::World& world, const Key& key, const std::vector<ProcessID>& group, ProcessID root, const Op& op) :
+        ReduceGroupBase_(world, key, group, root), local_reduce_(world, op)
+      { }
+
+    }; // class ReduceGroup
 
     /// Distributed storage container.
 
@@ -30,10 +197,9 @@ namespace TiledArray {
     /// thread. DO NOT construct world objects within tasks where the order of
     /// execution is nondeterministic.
     template <typename T>
-    class DistributedStorage : public madness::WorldReduce<DistributedStorage<T> > {
+    class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     public:
       typedef DistributedStorage<T> DistributedStorage_;
-      typedef madness::WorldReduce<DistributedStorage_> WorldReduce_;
       typedef madness::WorldObject<DistributedStorage_> WorldObject_;
 
       typedef std::size_t size_type;
@@ -69,7 +235,7 @@ namespace TiledArray {
       /// \c process_pending(). [default = true]
       DistributedStorage(madness::World& world, size_type max_size,
           const std::shared_ptr<pmap_interface>& pmap, bool do_pending = true) :
-        WorldReduce_(world), max_size_(max_size), pmap_(pmap),
+        WorldObject_(world), max_size_(max_size), pmap_(pmap),
         data_((max_size / world.size()) + 11)
       {
         TA_ASSERT(pmap_);
@@ -224,6 +390,11 @@ namespace TiledArray {
         }
       }
 
+      template <typename InIter, typename Op>
+      void reduce(size_type i, std::vector<ProcessID> procs, Op op) {
+
+      }
+
       /// Element accessor
 
       /// This operator returns a future to the local or remote element \c i .
@@ -240,8 +411,13 @@ namespace TiledArray {
         }
 
         future result;
+#ifdef MADNESS_USE_BSEND_ACKS
+        WorldObject_::send(owner(i), & DistributedStorage_::find_handler, i,
+            result.remote_ref(get_world()));
+#else
         WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
             result.remote_ref(get_world()), madness::TaskAttributes::hipri());
+#endif // MADNESS_USE_BSEND_ACKS
 
         return result;
       }
