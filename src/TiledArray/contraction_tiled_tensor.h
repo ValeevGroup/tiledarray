@@ -580,7 +580,7 @@ namespace TiledArray {
           data_(left.get_world(), trange_.tiles().volume(), left.get_pmap())
 #ifdef TILEDARRAY_LOG_EVENTS
           , result_log_("ContractTiledTensor: set result tile", cont_->contract_range(left.range(), right.range()).volume())
-          , work_log_("ContractTiledTensor: contract/reduce tile", std::pow(cont_->contract_range(left.range(), right.range()).volume(),1.5))
+          , work_log_("ContractTiledTensor: contract/reduce tile", std::pow(cont_->contract_range(left.range(), right.range()).volume(),2))
           , receive_log_("ContractTiledTensor: receive argument tile", left.range().volume() + right.range().volume())
           , request_log_("ContractTiledTensor: request argument tile", left.range().volume() + right.range().volume())
           , log_id_(log_count_++)
