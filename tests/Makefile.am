@@ -19,6 +19,7 @@ ta_test_SOURCES = ta_test.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
                   indexed_iterator.cpp \
+                  blocked_pmap.cpp \
                   distributed_storage.cpp \
                   array.cpp \
                   variable_list.cpp \
