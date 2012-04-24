@@ -132,42 +132,42 @@ BOOST_AUTO_TEST_CASE( array_operator )
 #endif // TA_EXCEPTION_ERROR
 }
 
-BOOST_AUTO_TEST_CASE( apply )
-{
-  // Indices to apply an operation to.
-  std::vector<std::size_t> indices;
-  indices.push_back(0);
-  indices.push_back(1);
-  indices.push_back(2);
-  indices.push_back(3);
-  indices.push_back(4);
-
-  // Initialize the count
-  DistributeOp::count = 0;
-
-  world.gop.fence();
-
-  // Apply an operation to the data
-  if(world.rank() == 0)
-    t->apply(indices, DistributeOp());
-
-  int n = DistributeOp::count;
-  world.gop.sum(n);
-
-  BOOST_CHECK_EQUAL(n, 0);
-
-  // set the data so the operations can run
-  for(std::size_t i = 0; i < t->max_size(); ++i)
-    if(t->is_local(i))
-      t->set(i, world.rank());
-
-  world.gop.fence();
-
-  n = DistributeOp::count;
-  world.gop.sum(n);
-
-  BOOST_CHECK_EQUAL(n, 5);
-
-}
+//BOOST_AUTO_TEST_CASE( apply )
+//{
+//  // Indices to apply an operation to.
+//  std::vector<std::size_t> indices;
+//  indices.push_back(0);
+//  indices.push_back(1);
+//  indices.push_back(2);
+//  indices.push_back(3);
+//  indices.push_back(4);
+//
+//  // Initialize the count
+//  DistributeOp::count = 0;
+//
+//  world.gop.fence();
+//
+//  // Apply an operation to the data
+//  if(world.rank() == 0)
+//    t->apply(indices, DistributeOp());
+//
+//  int n = DistributeOp::count;
+//  world.gop.sum(n);
+//
+//  BOOST_CHECK_EQUAL(n, 0);
+//
+//  // set the data so the operations can run
+//  for(std::size_t i = 0; i < t->max_size(); ++i)
+//    if(t->is_local(i))
+//      t->set(i, world.rank());
+//
+//  world.gop.fence();
+//
+//  n = DistributeOp::count;
+//  world.gop.sum(n);
+//
+//  BOOST_CHECK_EQUAL(n, 5);
+//
+//}
 
 BOOST_AUTO_TEST_SUITE_END()
