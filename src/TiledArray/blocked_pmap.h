@@ -26,12 +26,13 @@ namespace TiledArray {
       /// \param seed The hashing seed for sudo random selection of nodes
       /// \param min_block_size The smallest block size allowed [default = 1]
       /// \note \c seed must be the same on all nodes.
-      BlockedPmap(madness::World& world, std::size_t size, madness::hashT seed = 0ul, std::size_t num_blocks = 0ul, std::size_t min_block_size = 1ul) :
+      BlockedPmap(madness::World& world, std::size_t size, std::size_t num_blocks = 0ul, std::size_t min_block_size = 1ul) :
           block_size_(),
           num_blocks_(),
           size_(size),
+          rank_(world.rank()),
           procs_(world.size()),
-          seed_(seed)
+          seed_(0ul)
       {
         TA_ASSERT(size_ > 0ul);
 
@@ -44,11 +45,16 @@ namespace TiledArray {
         TA_ASSERT(block_size_ > 0ul);
 
         num_blocks_ = (size_ / block_size_) + (size_ % block_size_ ? 1 : 0);
+      }
+
+      virtual ~BlockedPmap() { }
+
+      virtual void init(madness::hashT seed = 0ul) {
+        seed_ = seed;
 
         // Construct a map of all local processes
-        const ProcessID rank = world.rank();
         for(std::size_t block = 0; block < num_blocks_; ++block) {
-          if(map_block_to_process(block) == rank) {
+          if(map_block_to_process(block) == rank_) {
             // The block maps to this process so add it to the local list
             local_.reserve(local_.size() + block_size_);
             const std::size_t block_start = block * block_size_;
@@ -58,8 +64,6 @@ namespace TiledArray {
           }
         }
       }
-
-      virtual ~BlockedPmap() { }
 
       /// Maps key to processor
 
@@ -73,28 +77,31 @@ namespace TiledArray {
       /// Local size accessor
 
       /// \return The number of local elements
-      std::size_t local_size() const { return local_.size(); }
+      virtual std::size_t local_size() const { return local_.size(); }
 
       /// Local elements
 
       /// \return \c true when there are no local elements, otherwise \c false .
-      bool empty() const { return local_.empty(); }
+      virtual bool empty() const { return local_.empty(); }
 
       /// Begin local element iterator
 
       /// \return An iterator that points to the beginning of the local element set
-      const_iterator begin() const { return local_.begin(); }
+      virtual const_iterator begin() const { return local_.begin(); }
 
 
       /// End local element iterator
 
       /// \return An iterator that points to the beginning of the local element set
-      const_iterator end() const { return local_.end(); }
+      virtual const_iterator end() const { return local_.end(); }
 
 
     private:
       ProcessID map_block_to_process(std::size_t block) const {
         TA_ASSERT(block < num_blocks_);
+        if(num_blocks_ == procs_)
+          return block;
+
         madness::hashT seed = seed_;
         madness::hash_combine(seed, block);
         return seed_ % procs_;
@@ -103,8 +110,9 @@ namespace TiledArray {
       std::size_t block_size_; ///< block size
       std::size_t num_blocks_; ///< number of blocks in map
       const std::size_t size_; ///< The number of elements to be mapped
+      const std::size_t rank_;
       const std::size_t procs_; ///< The number of processes in the world
-      const madness::hashT seed_; ///< seed for hashing block locations
+      madness::hashT seed_; ///< seed for hashing block locations
       std::vector<std::size_t> local_; ///< A list of local elements
     }; // class MapByRow
 
