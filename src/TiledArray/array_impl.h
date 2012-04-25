@@ -405,28 +405,11 @@ namespace TiledArray {
 
       /// Sparse array constructor
 
-      /// \tparam InIter The input iterator type
+      /// \tparam R The tiled range type
       /// \param w The world where the array will live.
       /// \param tr The tiled range object that will be used to set the array tiling.
-      /// \param first An input iterator that points to the a list of tiles to be
-      /// added to the sparse array.
-      /// \param last An input iterator that points to the last position in a list
-      /// of tiles to be added to the sparse array.
-      /// \param v The version number of the array
-      template <typename R, typename InIter>
-      SparseArrayImpl(madness::World& w, const TiledRange<R>& tr,
-          const std::shared_ptr<pmap_interface>& pmap, InIter first, InIter last) :
-          ArrayImpl_(w, tr, pmap),
-          shape_map_(tr.tiles().volume())
-      {
-
-        for(; first != last; ++first)
-          shape_map_.set(ArrayImpl_::ord(*first));
-
-        // Construct the bitset for remote data
-        ArrayImpl_::get_world().gop.bit_or(shape_map_.get(), shape_map_.num_blocks());
-      }
-
+      /// \param pmap The process map for tile distribution
+      /// \param shape A bitset that defines the sparsity of the tensor.
       template <typename R>
       SparseArrayImpl(madness::World& w, const TiledRange<R>& tr,
           const std::shared_ptr<pmap_interface>& pmap, const Bitset<>& shape) :
@@ -434,8 +417,6 @@ namespace TiledArray {
           shape_map_(shape)
       {
         TA_ASSERT(shape.size() == ArrayImpl_::tiling().tiles().volume());
-        // Construct the bitset for remote data
-        ArrayImpl_::get_world().gop.bit_or(shape_map_.get(), shape_map_.num_blocks());
       }
 
       virtual bool is_dense() const { return false; }

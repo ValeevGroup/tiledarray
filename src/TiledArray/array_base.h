@@ -7,15 +7,10 @@
 #include <TiledArray/coordinate_system.h>
 #include <TiledArray/tensor_base.h>
 #include <TiledArray/bitset.h>
+#include <TiledArray/pmap.h>
 #include <world/worldtypes.h>
 #include <world/shared_ptr.h>
 #include <world/world.h>
-
-namespace madness {
-  // Forward declaration
-  class World;
-  template <typename> class WorldDCPmapInterface;
-} // namespace madness
 
 namespace TiledArray {
 
@@ -50,7 +45,7 @@ namespace TiledArray {
       typedef typename base::size_type size_type;
       typedef typename base::range_type range_type;
       typedef typename base::eval_type eval_type;
-      typedef madness::WorldDCPmapInterface<size_type> pmap_interface;
+      typedef TiledArray::Pmap<size_type> pmap_interface;
       typedef typename TensorTraits<Derived>::trange_type trange_type;
 
       using base::derived;

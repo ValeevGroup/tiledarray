@@ -136,15 +136,9 @@ namespace TiledArray {
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     template <typename R>
-    Array(madness::World& w, const TiledRange<R>& tr) :
-        pimpl_(new dense_impl_type(w, tr, make_pmap(w)), madness::make_deferred_deleter<impl_type>(w))
-    {
-//      init(madness::Range<ProcessID>(0, range().volume()));
-    }
-
-    template <typename R>
-    Array(madness::World& w, const TiledRange<R>& tr, const std::shared_ptr<pmap_interface>& pmap) :
-        pimpl_(new dense_impl_type(w, tr, pmap), madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const TiledRange<R>& tr, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+        pimpl_(new dense_impl_type(w, tr, make_pmap(pmap, w, tr.tiles().volume())),
+            madness::make_deferred_deleter<impl_type>(w))
     {
 //      init(madness::Range<ProcessID>(0, range().volume()));
     }
@@ -160,29 +154,18 @@ namespace TiledArray {
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
     template <typename R, typename InIter>
-    Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last) :
-        pimpl_(new sparse_impl_type(w, tr, make_pmap(w), first, last), madness::make_deferred_deleter<impl_type>(w))
-    {
-//      init(madness::Range<InIter>(first, last));
-    }
-
-    template <typename R, typename InIter>
-    Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap) :
-        pimpl_(new sparse_impl_type(w, tr, pmap, first, last), madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+        pimpl_(new sparse_impl_type(w, tr, make_pmap(pmap, w, tr.tiles().volume()),
+            make_shape(w, tr, first, last)), madness::make_deferred_deleter<impl_type>(w))
     {
 //      init(madness::Range<InIter>(first, last));
     }
 
     template <typename R>
-    Array(madness::World& w, const TiledRange<R>& tr, const detail::Bitset<>& shape) :
-        pimpl_(new sparse_impl_type(w, tr, make_pmap(w), shape), madness::make_deferred_deleter<impl_type>(w))
-    {
-//      init(get_shape());
-    }
-
-    template <typename R>
-    Array(madness::World& w, const TiledRange<R>& tr, const detail::Bitset<>& shape, const std::shared_ptr<pmap_interface>& pmap) :
-        pimpl_(new sparse_impl_type(w, tr, pmap, shape), madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const TiledRange<R>& tr, const detail::Bitset<>& shape,
+        const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+        pimpl_(new sparse_impl_type(w, tr, make_pmap(pmap, w, tr.tiles().volume()), shape),
+            madness::make_deferred_deleter<impl_type>(w))
     {
 //      init(get_shape());
     }
@@ -406,9 +389,23 @@ namespace TiledArray {
       return madness::None;
     }
 
-    static std::shared_ptr<pmap_interface> make_pmap(madness::World& w) {
-      return std::shared_ptr<madness::WorldDCDefaultPmap<size_type> >(
-          new madness::WorldDCDefaultPmap<size_type>(w));
+    static std::shared_ptr<pmap_interface> make_pmap(std::shared_ptr<pmap_interface> pmap, madness::World& w, size_type volume) {
+      if(! pmap)
+        pmap.reset(new detail::BlockedPmap(w, volume));
+      return pmap;
+    }
+
+    template <typename InIter>
+    static detail::Bitset<> make_shape(madness::World& world, const trange_type& tr, InIter first, InIter last) {
+      detail::Bitset<> shape(tr.tiles().volume());
+
+      for(; first != last; ++first)
+        shape.set(tr.tiles().ord(*first));
+
+      // Construct the bitset for remote data
+      world.gop.bit_or(shape.get(), shape.num_blocks());
+
+      return shape;
     }
 
     ProcessID rank() const { return pimpl_->get_world().rank(); }

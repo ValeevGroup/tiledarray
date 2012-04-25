@@ -2,6 +2,7 @@
 #define TILEDARRAY_PMAP_H__INCLUDED
 
 #include <world/worldtypes.h>
+#include <world/worldhash.h>
 #include <vector>
 
 namespace TiledArray {
@@ -14,6 +15,8 @@ namespace TiledArray {
     typedef typename std::vector<key_type>::const_iterator const_iterator;
 
     virtual ~Pmap() { }
+
+    virtual void init(madness::hashT) = 0;
 
     /// Key owner
 

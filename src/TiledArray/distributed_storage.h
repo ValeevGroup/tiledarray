@@ -7,6 +7,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/indexed_iterator.h>
 #include <TiledArray/reduce_group.h>
+#include <TiledArray/pmap.h>
 #include <world/world.h>
 
 namespace TiledArray {
@@ -38,7 +39,7 @@ namespace TiledArray {
       typedef size_type key_type;
       typedef T value_type;
       typedef madness::Future<value_type> future;
-      typedef madness::WorldDCPmapInterface<key_type> pmap_interface;
+      typedef Pmap<key_type> pmap_interface;
 
       typedef madness::ConcurrentHashMap<key_type, future> container_type;
       typedef detail::IndexedIterator<typename container_type::iterator> iterator; ///< Local tile iterator
@@ -71,6 +72,7 @@ namespace TiledArray {
         data_((max_size / world.size()) + 11)
       {
         TA_ASSERT(pmap_);
+        pmap_->init(WorldObject_::id().get_obj_id());
         if(do_pending)
           process_pending();
       }

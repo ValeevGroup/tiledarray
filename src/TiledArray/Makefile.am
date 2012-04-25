@@ -8,6 +8,7 @@ library_include_HEADERS = annotated_array.h \
                           binary_tensor.h \
                           binary_tiled_tensor.h \
                           bitset.h \
+                          blocked_pmap.h \
                           contraction_tensor.h \
                           contraction_tiled_tensor.h \
                           contraction.h \
@@ -20,6 +21,7 @@ library_include_HEADERS = annotated_array.h \
                           indexed_iterator.h \
                           permutation.h \
                           permute_tensor.h \
+                          pmap.h \
                           range_iterator.h \
                           range.h \
                           reduce_task.h \
