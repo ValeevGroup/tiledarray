@@ -6,7 +6,6 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/indexed_iterator.h>
-#include <TiledArray/reduce_group.h>
 #include <TiledArray/pmap.h>
 #include <world/world.h>
 
