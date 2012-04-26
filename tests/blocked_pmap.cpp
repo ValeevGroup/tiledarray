@@ -7,7 +7,7 @@ using namespace TiledArray;
 struct BlockedPmapFixture {
 
   BlockedPmapFixture() : pmap(* GlobalFixture::world, 100ul) {
-    pmap.init();
+    pmap.set_seed();
   }
 
   detail::BlockedPmap pmap;

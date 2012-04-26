@@ -128,9 +128,14 @@ namespace TiledArray {
         /// \param op The element transform operation
         UnaryTiledTensorImpl(const arg_tensor_type& arg, const Op& op) :
             arg_(arg),
-            data_(arg.get_world(), arg.size(), arg.get_pmap(), true),
+            data_(arg.get_world(), arg.size()),
             op_(op)
         { }
+
+
+        void set_pmap(const std::shared_ptr<pmap_interface>& pmap) {
+          data_.init(pmap);
+        }
 
         /// Evaluate tensor to destination
 
@@ -148,8 +153,8 @@ namespace TiledArray {
 
         /// \return A future to a bool that will be set once the argument has
         /// been evaluated.
-        madness::Future<bool> eval_arg(const VariableList& v) {
-          return arg_.eval(v);
+        madness::Future<bool> eval_arg(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
+          return arg_.eval(v, pmap);
         }
 
         static madness::Future<bool> generate_tiles(const std::shared_ptr<UnaryTiledTensorImpl_>& me,
@@ -317,9 +322,10 @@ namespace TiledArray {
       /// \param v The expected data layout of this tensor.
       /// \return A Future bool that will be assigned once this tensor has been
       /// evaluated.
-      madness::Future<bool> eval(const VariableList& v) {
+      madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
         TA_ASSERT(pimpl_);
-        return impl_type::generate_tiles(pimpl_, pimpl_->eval_arg(v));
+        pimpl_->set_pmap(pmap);
+        return impl_type::generate_tiles(pimpl_, pimpl_->eval_arg(v, pmap));
       }
 
       /// Tensor tile size array accessor

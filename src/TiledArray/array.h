@@ -4,6 +4,7 @@
 #include <TiledArray/array_impl.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/annotated_array.h>
+#include <TiledArray/blocked_pmap.h>
 #include <world/shared_ptr.h>
 #include <world/worlddc.h>
 
@@ -439,7 +440,10 @@ namespace TiledArray {
     template <typename T, typename CS>
     TiledTensor<Derived>::operator Array<T, CS>()  {
       // Evaluate this tensor and wait
-      derived().eval(derived().vars()).get();
+      derived().eval(derived().vars(),
+          std::shared_ptr<TiledArray::detail::BlockedPmap>(
+          new TiledArray::detail::BlockedPmap(derived().get_world(),
+          derived().size()))).get();
 
       if(is_dense()) {
         Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_pmap());

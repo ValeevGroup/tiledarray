@@ -102,26 +102,16 @@ BOOST_AUTO_TEST_CASE( shape )
 #endif // TA_EXCEPTION_ERROR
 }
 
-BOOST_AUTO_TEST_CASE( location )
-{
-  BOOST_CHECK((& ctt.get_world()) == (& a.get_world()));
-  BOOST_CHECK(ctt.get_pmap() == a.get_pmap());
-  for(std::size_t i = 0; i < ctt.size(); ++i) {
-    BOOST_CHECK(! ctt.is_zero(i));
-    BOOST_CHECK_EQUAL(ctt.owner(i), a.owner(i));
-    BOOST_CHECK_EQUAL(ctt.is_local(i), a.is_local(i));
-  }
-}
-
 BOOST_AUTO_TEST_CASE( result )
 {
-
-
   // Store a copy of the trange so it can be checked later.
   StaticTiledRange<CoordinateSystem<2> > r0 = ctt.trange();
 
+  const std::size_t size = a.trange().tiles().size().front() * a.trange().tiles().size().back();
+
   // Evaluate and wait for it to finish.
-  ctt.eval(ctt.vars()).get();
+  ctt.eval(ctt.vars(), std::shared_ptr<CTT::pmap_interface>(
+      new TiledArray::detail::BlockedPmap(* GlobalFixture::world, size))).get();
 
   // Construct equivalent matrix.
   matrix_type left = array_to_matrix(aa_left, 1);
@@ -158,9 +148,11 @@ BOOST_AUTO_TEST_CASE( permute_result )
 
   StaticTiledRange<CoordinateSystem<2> > r0 = p ^ ctt.trange();
 
-  // Evaluate and wait for it to finish.
-  ctt.eval(p ^ ctt.vars()).get();
+  const std::size_t size = a.trange().tiles().size().front() * a.trange().tiles().size().back();
 
+  // Evaluate and wait for it to finish.
+  ctt.eval(p ^ ctt.vars(), std::shared_ptr<CTT::pmap_interface>(
+      new TiledArray::detail::BlockedPmap(* GlobalFixture::world, size))).get();
 
   // Construct equivalent matrix.
   matrix_type left = array_to_matrix(aa_left, 1);

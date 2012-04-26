@@ -300,11 +300,14 @@ namespace TiledArray {
         /// \param op The element transform operation
         BinaryTiledTensorImpl(const left_tensor_type& left, const right_tensor_type& right, const Op& op) :
           left_(left), right_(right), op_(op),
-          data_(left.get_world(), left.size(), left.get_pmap())
+          data_(left.get_world(), left.size())
         {
           TA_ASSERT(left_.size() == right_.size());
         }
 
+        void set_pmap(const std::shared_ptr<pmap_interface>& pmap) {
+          data_.init(pmap);
+        }
 
         /// Evaluate tensor to destination
 
@@ -323,16 +326,16 @@ namespace TiledArray {
 
         /// \return A future to a bool that will be set once the argument has
         /// been evaluated.
-        madness::Future<bool> eval_left(const VariableList& v) {
-          return left_.eval(v);
+        madness::Future<bool> eval_left(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
+          return left_.eval(v, pmap);
         }
 
         /// Evaluate the right argument
 
         /// \return A future to a bool that will be set once the argument has
         /// been evaluated.
-        madness::Future<bool> eval_right(const VariableList& v) {
-          return right_.eval(v);
+        madness::Future<bool> eval_right(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
+          return right_.eval(v, pmap);
         }
 
         static madness::Future<bool> generate_tiles(std::shared_ptr<BinaryTiledTensorImpl_> me,
@@ -523,10 +526,11 @@ namespace TiledArray {
         pimpl_->eval_to(dest);
       }
 
-      madness::Future<bool> eval(const VariableList& v) {
+      madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
         TA_ASSERT(pimpl_);
-        return impl_type::generate_tiles(pimpl_, pimpl_->eval_left(v),
-            pimpl_->eval_right(v));
+        pimpl_->set_pmap(pmap);
+        return impl_type::generate_tiles(pimpl_, pimpl_->eval_left(v, pmap),
+            pimpl_->eval_right(v, pmap));
       }
 
       /// Tensor tile size array accessor

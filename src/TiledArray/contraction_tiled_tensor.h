@@ -331,8 +331,6 @@ namespace TiledArray {
             /// \param t The tensor to be permuted
             /// \param p The permutation to be applied to \c t
             static value_type permute(const value_type& t, const Permutation& p) {
-              if(t.range().dim() != p.dim())
-                std::cout << t << " " << p << "\n";
               return make_permute_tensor(t, p);
             }
 
@@ -542,26 +540,34 @@ namespace TiledArray {
               eval_op).get(); // Wait for for_each() to finish while still processing other tasks
         }
 
+#ifdef TILEDARRAY_LOG_EVENTS
+        std::size_t sqr(std::size_t x) {
+          return x * x;
+        }
+#endif // TILEDARRAY_LOG_EVENTS
 
       public:
 
         template <typename Perm>
         static madness::Future<bool>
         generate_tiles(const Perm& perm, const VariableList& v,
-            const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl,
-            const madness::Future<bool>& left_done, const madness::Future<bool>& right_done) {
+            const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl) {
           return pimpl->get_world().taskq.add(*pimpl,
               & ContractionTiledTensorImpl_::template generate_tasks<Perm>, perm,
-              v, pimpl, left_done, right_done,
+              v, pimpl, pimpl->eval_left(), pimpl->eval_right(),
               madness::TaskAttributes::hipri());
         }
 
         madness::Future<bool> eval_left() {
-          return left_.eval(cont_->left_vars(left_.vars()));
+          return left_.eval(cont_->left_vars(left_.vars()),
+              std::shared_ptr<TiledArray::detail::BlockedPmap>(
+              new TiledArray::detail::BlockedPmap(get_world(), left_.size())));
         }
 
         madness::Future<bool> eval_right() {
-          return right_.eval(cont_->right_vars(right_.vars()));
+          return right_.eval(cont_->right_vars(right_.vars()),
+              std::shared_ptr<TiledArray::detail::BlockedPmap>(
+              new TiledArray::detail::BlockedPmap(get_world(), right_.size())));
         }
 
         static bool done(bool, bool) { return true; }
@@ -577,10 +583,10 @@ namespace TiledArray {
           trange_(cont_->contract_trange(left.trange(), right.trange())),
           shape_((left.is_dense() || right.is_dense() ? 0 : trange_.tiles().volume())),
           vars_(cont_->contract_vars(left.vars(), right.vars())),
-          data_(left.get_world(), trange_.tiles().volume(), left.get_pmap())
+          data_(left.get_world(), trange_.tiles().volume())
 #ifdef TILEDARRAY_LOG_EVENTS
           , result_log_("ContractTiledTensor: set result tile", cont_->contract_range(left.range(), right.range()).volume())
-          , work_log_("ContractTiledTensor: contract/reduce tile", std::pow(cont_->contract_range(left.range(), right.range()).volume(),2))
+          , work_log_("ContractTiledTensor: contract/reduce tile", sqr(cont_->contract_range(left.range(), right.range()).volume()))
           , receive_log_("ContractTiledTensor: receive argument tile", left.range().volume() + right.range().volume())
           , request_log_("ContractTiledTensor: request argument tile", left.range().volume() + right.range().volume())
           , log_id_(log_count_++)
@@ -597,6 +603,11 @@ namespace TiledArray {
           file.close();
         }
 #endif // TILEDARRAY_LOG_EVENTS
+
+
+        void set_pmap(const std::shared_ptr<pmap_interface>& pmap) {
+          data_.init(pmap);
+        }
 
 
         /// Evaluate tensor to destination
@@ -793,8 +804,11 @@ namespace TiledArray {
       }
 
 
-      madness::Future<bool> eval(const VariableList& v) {
+      madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
         TA_ASSERT(pimpl_);
+
+        pimpl_->set_pmap(pmap);
+
         if(v != pimpl_->vars()) {
 
           // Get the permutation to go from the current variable list to v such
@@ -804,14 +818,12 @@ namespace TiledArray {
 
           // Generate tile tasks
           // This needs to be done before eval structure.
-          return impl_type::generate_tiles(perm, v, pimpl_,
-              pimpl_->eval_left(), pimpl_->eval_right());;
+          return impl_type::generate_tiles(perm, v, pimpl_);;
 
         }
 
         // This needs to be done before eval structure.
-        return impl_type::generate_tiles(TiledArray::detail::NoPermutation(), v, pimpl_,
-            pimpl_->eval_left(), pimpl_->eval_right());
+        return impl_type::generate_tiles(TiledArray::detail::NoPermutation(), v, pimpl_);
       }
 
       /// Tensor tile size array accessor

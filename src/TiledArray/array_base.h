@@ -53,7 +53,7 @@ namespace TiledArray {
       using base::size;
       using base::vars;
 
-      madness::Future<bool> eval(const VariableList& v) { return derived().eval(v); }
+      madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) { return derived().eval(v, pmap); }
 
       // Tile locality info
       inline ProcessID owner(size_type i) const { return derived().owner(i); }

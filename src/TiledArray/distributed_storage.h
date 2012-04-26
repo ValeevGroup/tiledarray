@@ -63,30 +63,33 @@ namespace TiledArray {
       /// \param world The world where the distributed container lives
       /// \param max_size The maximum capacity of this container.
       /// \param pmap The process map for the container.
-      /// \param do_pending Process pending messages for the container when this
-      /// is true. If it is false, it is up to the user to explicitly call
-      /// \c process_pending(). [default = true]
-      DistributedStorage(madness::World& world, size_type max_size,
-          const std::shared_ptr<pmap_interface>& pmap, bool do_pending = true) :
-        WorldObject_(world), max_size_(max_size), pmap_(pmap),
+      DistributedStorage(madness::World& world, size_type max_size, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+        WorldObject_(world), max_size_(max_size),
+        pmap_(pmap),
         data_((max_size / world.size()) + 11)
       {
-        TA_ASSERT(pmap_);
-        pmap_->init(WorldObject_::id().get_obj_id());
-        if(do_pending)
-          process_pending();
+        if(pmap_) {
+          pmap_->set_seed(WorldObject_::id().get_obj_id());
+          WorldObject_::process_pending();
+        }
       }
 
       virtual ~DistributedStorage() { }
 
-      /// Process pending messages
+      /// Initialize the container
 
       /// Process any messages that arrived before this object was constructed
       /// locally.
       /// \note No incoming messages are processed until this routine is invoked.
       /// It can be invoked in the constructor by passing \c true to the
       /// \c do_pending argument.
-      void process_pending() { WorldObject_::process_pending(); }
+      void init(const std::shared_ptr<pmap_interface>& pmap) {
+        TA_ASSERT(pmap);
+        TA_ASSERT(!pmap_);
+        pmap_ = pmap;
+        pmap_->set_seed(WorldObject_::id().get_obj_id());
+        WorldObject_::process_pending();
+      }
 
       /// World accessor
 
@@ -129,6 +132,7 @@ namespace TiledArray {
       /// \return The process that owns element \c i
       ProcessID owner(size_type i) const {
         TA_ASSERT(i < max_size_);
+        TA_ASSERT(pmap_);
         return pmap_->owner(i);
       }
 
@@ -179,6 +183,31 @@ namespace TiledArray {
 
         WorldObject_::send(owner(i), & DistributedStorage_::remote_insert, i);
         return false;
+      }
+
+      /// Insert an empty future into all locally owned elements
+      void insert_local() {
+        typename pmap_interface::const_iterator end = pmap_->end();
+        for(typename pmap_interface::const_iterator it = pmap_->begin(); it != end; ++it) {
+          const_accessor acc;
+          data_.insert(acc, *it);
+        }
+      }
+
+      /// Insert an empty future into all locally owned elements where \c pred \c true
+
+      /// \tparam Pred A predicate type
+      /// \param pred A predicate that returns true or false for a given element
+      /// index
+      template <typename Pred>
+      void insert_local(const Pred& pred) {
+        typename pmap_interface::const_iterator end = pmap_->end();
+        for(typename pmap_interface::const_iterator it = pmap_->begin(); it != end; ++it) {
+          if(pred(*it)) {
+            const_accessor acc;
+            data_.insert(acc, *it);
+          }
+        }
       }
 
       /// Set element \c i with \c value

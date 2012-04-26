@@ -5,6 +5,7 @@
 #include <TiledArray/variable_list.h>
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/permute_tensor.h>
+#include <TiledArray/blocked_pmap.h>
 #include <world/shared_ptr.h>
 
 namespace TiledArray {
@@ -207,8 +208,12 @@ namespace TiledArray {
             vars_(vars),
             trange_(array.trange()),
             shape_((array.is_dense() ? 0 : array.size())),
-            data_(array.get_world(), array.size(), array.get_pmap())
+            data_(array.get_world(), array.size())
         { }
+
+        void set_pmap(const std::shared_ptr<pmap_interface>& pmap) {
+          data_.init(pmap);
+        }
 
         /// Evaluate the array
 
@@ -320,7 +325,7 @@ namespace TiledArray {
 				array_type& array() { return array_; }
 
         const array_type& array() const { return array_; }
-        
+
         /// Clear the tile data
 
         /// Remove all tiles from the tensor.
@@ -407,7 +412,9 @@ namespace TiledArray {
         // Wait until evaluation of the result array structure and tiles has been
         // completed. Tasks are processed by get() until this happens.
         get_world().taskq.add(*this, & AnnotatedArray_::template eval_to_this<T>,
-            other, const_cast<T&>(other).eval(pimpl_->vars())).get();
+            other, const_cast<T&>(other).eval(pimpl_->vars(),
+            std::shared_ptr<TiledArray::detail::BlockedPmap>(
+            new TiledArray::detail::BlockedPmap(get_world(), size())))).get();
 
         return *this;
       }
@@ -450,9 +457,10 @@ namespace TiledArray {
       /// may result in permutation and storage of the original.
       /// \param v The target variable list.
       /// \return A future that indicates the tensor evaluation is complete
-      madness::Future<bool> eval(const VariableList& v) {
+      madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
         TA_ASSERT(pimpl_);
         madness::Future<bool> array_done = pimpl_->eval_array();
+        pimpl_->set_pmap(pmap);
 
         if(v != pimpl_->vars()) {
 

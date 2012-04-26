@@ -10,7 +10,8 @@ struct BinaryTiledTensorFixture : public AnnotatedArrayFixture {
   typedef BinaryTiledTensor<array_annotation, array_annotation, std::plus<int> > BTT;
 
   BinaryTiledTensorFixture() : btt(a(vars), a(vars), std::plus<int>()) {
-
+    btt.eval(btt.vars(), std::shared_ptr<BTT::pmap_interface>(
+        new TiledArray::detail::BlockedPmap(* GlobalFixture::world, a.size()))).get();
   }
 
   BTT btt;
@@ -43,7 +44,6 @@ BOOST_AUTO_TEST_CASE( shape )
 BOOST_AUTO_TEST_CASE( location )
 {
   BOOST_CHECK((& btt.get_world()) == (& a.get_world()));
-  BOOST_CHECK(btt.get_pmap() == a.get_pmap());
   for(std::size_t i = 0; i < btt.size(); ++i) {
     BOOST_CHECK(! btt.is_zero(i));
     BOOST_CHECK_EQUAL(btt.owner(i), a.owner(i));
@@ -53,7 +53,6 @@ BOOST_AUTO_TEST_CASE( location )
 
 BOOST_AUTO_TEST_CASE( result )
 {
-  btt.eval(btt.vars()).get();
   for(BTT::const_iterator it = btt.begin(); it != btt.end(); ++it) {
     array_annotation::const_reference input = a.find(it.index());
 

@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE( constructors )
 
 BOOST_AUTO_TEST_CASE( eval )
 {
-  aa.eval(vars).get();
+  aa.eval(vars, std::shared_ptr<array_annotation::pmap_interface>(new TiledArray::detail::BlockedPmap(* GlobalFixture::world, a.size()))).get();
   ArrayN::const_iterator a_it = a.begin();
 
   for(std::size_t i = 0; i < a.size(); ++i) {

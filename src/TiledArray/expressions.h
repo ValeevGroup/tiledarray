@@ -197,7 +197,9 @@ namespace TiledArray {
       /// \return A future to a bool that will be set once \c arg has been evaluated.
       template <typename Exp>
       inline madness::Future<bool> eval(const ReadableTiledTensor<Exp>& arg) {
-        return const_cast<ReadableTiledTensor<Exp>& >(arg).derived().eval(arg.vars());
+        return const_cast<ReadableTiledTensor<Exp>& >(arg).derived().eval(arg.vars(),
+            std::shared_ptr<TiledArray::detail::BlockedPmap>(
+            new TiledArray::detail::BlockedPmap(arg.get_world(), arg.size())));
       }
 
       /// Evaluate an \c Array

@@ -16,7 +16,7 @@ namespace TiledArray {
 
     virtual ~Pmap() { }
 
-    virtual void init(madness::hashT) = 0;
+    virtual void set_seed(madness::hashT) = 0;
 
     /// Key owner
 

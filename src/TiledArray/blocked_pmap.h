@@ -37,7 +37,7 @@ namespace TiledArray {
         TA_ASSERT(size_ > 0ul);
 
         // Check for the default value of num_blocks
-        if((num_blocks == 0ul) || (num_blocks > std::size_t(world.size())))
+        if((num_blocks == 0ul) || (num_blocks > procs_))
           num_blocks = world.size();
 
         TA_ASSERT(min_block_size > 0ul);
@@ -47,9 +47,9 @@ namespace TiledArray {
         num_blocks_ = (size_ / block_size_) + (size_ % block_size_ ? 1 : 0);
       }
 
-      virtual ~BlockedPmap() { }
+      ~BlockedPmap() { }
 
-      virtual void init(madness::hashT seed = 0ul) {
+      virtual void set_seed(madness::hashT seed = 0ul) {
         seed_ = seed;
 
         // Construct a map of all local processes
@@ -69,7 +69,7 @@ namespace TiledArray {
 
       /// \param key Key for container
       /// \return Processor that logically owns the key
-      virtual ProcessID owner(const key_type& key) const {
+      ProcessID owner(const key_type& key) const {
         TA_ASSERT(key < size_);
         return map_block_to_process(key / block_size_);
       }
@@ -77,23 +77,23 @@ namespace TiledArray {
       /// Local size accessor
 
       /// \return The number of local elements
-      virtual std::size_t local_size() const { return local_.size(); }
+      std::size_t local_size() const { return local_.size(); }
 
       /// Local elements
 
       /// \return \c true when there are no local elements, otherwise \c false .
-      virtual bool empty() const { return local_.empty(); }
+      bool empty() const { return local_.empty(); }
 
       /// Begin local element iterator
 
       /// \return An iterator that points to the beginning of the local element set
-      virtual const_iterator begin() const { return local_.begin(); }
+      const_iterator begin() const { return local_.begin(); }
 
 
       /// End local element iterator
 
       /// \return An iterator that points to the beginning of the local element set
-      virtual const_iterator end() const { return local_.end(); }
+      const_iterator end() const { return local_.end(); }
 
 
     private:
