@@ -11,6 +11,16 @@ AM_INIT_AUTOMAKE([ -Wall foreign ])
 # Check for BSD style install programs
 AC_PROG_INSTALL
 
+# Check for mpi c++ compiler.
+initial_CFLAGS="$CFLAGS"
+initial_CXXFLAGS="$CXXFLAGS"
+
+ACX_PROG_MPICXX
+AC_PROG_CXX([$MPICXX])
+
+CFLAGS="$initial_CFLAGS"
+CXXFLAGS="$initial_CXXFLAGS"
+
 # Set compiler standard
 ACX_ENABLE_CXXFLAGS_ARG([cplusplus0x], [-std], [c++0x], [no])
 
@@ -24,16 +34,6 @@ ACX_ENABLE_CXXFLAGS_OPT([debugging], [-g], [], [no])
 
 # Set optimization
 ACX_ENABLE_CXXFLAGS_OPT([optimization], [-O], [2], [yes])
-
-# Check for mpi c++ compiler.
-initial_CFLAGS="$CFLAGS"
-initial_CXXFLAGS="$CXXFLAGS"
-
-ACX_PROG_MPICXX
-AC_PROG_CXX([$MPICXX])
-
-CFLAGS="$initial_CFLAGS"
-CXXFLAGS="$initial_CXXFLAGS"
 
 AC_CHECK_HEADER([mpi.h], [], [AC_MSG_ERROR([Unable to find mpi.h.])])
 
@@ -89,5 +89,6 @@ AC_CONFIG_FILES([
       examples/cc/Makefile
       examples/mpi_tests/Makefile
       examples/ta_dgemm/Makefile
+      examples/mmsim/Makefile
     doc/Makefile])
 AC_OUTPUT
