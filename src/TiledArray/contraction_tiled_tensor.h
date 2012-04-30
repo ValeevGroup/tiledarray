@@ -439,8 +439,8 @@ namespace TiledArray {
             return *this;
           }
 
-          result_type operator()(argument_type arg) const {
-            return (*pimpl_)(arg);
+          result_type operator()(typename pmap_interface::const_iterator it) const {
+            return (*pimpl_)(*it);
           }
 
           std::size_t rows() const { return pimpl_->rows(); }
@@ -536,7 +536,7 @@ namespace TiledArray {
 //          const size_type last = first + x + (r < y ? 1 : 0);
 
           // Generate the tile permutation tasks.
-          return get_world().taskq.for_each(madness::Range<size_type>(0, n, eval_op.rows()),
+          return get_world().taskq.for_each(madness::Range<typename pmap_interface::const_iterator>(data_.get_pmap()->begin(), data_.get_pmap()->end(), eval_op.rows()),
               eval_op).get(); // Wait for for_each() to finish while still processing other tasks
         }
 
