@@ -14,6 +14,7 @@ library_include_HEADERS = annotated_array.h \
                           contraction.h \
                           coordinate_system.h \
                           coordinates.h \
+                          cyclic_pmap.h \
                           dense_storage.h \
                           distributed_storage.h \
                           error.h \
