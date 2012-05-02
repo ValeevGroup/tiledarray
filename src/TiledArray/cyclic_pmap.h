@@ -34,8 +34,8 @@ namespace TiledArray {
 
         // Get a rough estimate of the process dimensions
         // The ratios of x_ / y_  and m_ / n_ should be approximately equal.
-        x_ = std::sqrt(procs_ * m / n);
-        y_ = procs_ / x_;
+        x_ = std::max<std::size_t>(std::sqrt(procs_ * m / n), 1ul);
+        y_ = std::max<std::size_t>(procs_ / x_, 1ul);
 
         // Get the number of process not included.
         std::size_t p = procs_ - (x_ * y_);
@@ -62,7 +62,7 @@ namespace TiledArray {
         // Construct the local process map.
         // Todo: This iterates over all elements of the map, but it could be more
         // efficient.
-        local_.resize((m_ / x_) * (n_ / y_), 0);
+        local_.reserve((m_ / x_) * (n_ / y_));
         const key_type size = m_ * n_;
         for(key_type i = 0ul; i < size; ++i) {
           if(this->owner(i) == rank_)
