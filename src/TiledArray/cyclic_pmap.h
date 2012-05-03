@@ -77,11 +77,26 @@ namespace TiledArray {
         // Todo: This iterates over all elements of the map, but it could be more
         // efficient.
         local_.reserve((m_ / x_) * (n_ / y_));
-        const key_type size = m_ * n_;
-        for(key_type i = 0ul; i < size; ++i) {
-          if(this->owner(i) == rank_)
-            local_.push_back(i);
+        const key_type size = x_ * y_;
+        const std::size_t end = m_ * n_;
+        for(std::size_t r = 0ul; r < size; ++r) {
+            if(map_ordinal_to_process(r) == rank_) {
+              const std::size_t m_step = n_ * x_;
+              const std::size_t row_end_offset = n_ - (r % y_);
+              for(std::size_t m = (r / y_) * n_ + (r % y_); m < end; m += m_step) {
+                const std::size_t row_end = m + row_end_offset;
+                for(std::size_t i = m; i < row_end; i += y_)
+                  local_.push_back(i);
+              }
+            }
         }
+
+
+//        const key_type size = m_ * n_;
+//        for(key_type i = 0ul; i < size; ++i) {
+//          if(this->owner(i) == rank_)
+//            local_.push_back(i);
+//        }
       }
 
 
@@ -98,13 +113,16 @@ namespace TiledArray {
       /// \return The \c ProcessID of the process that owns \c key .
       virtual ProcessID owner(const key_type& key) const {
         TA_ASSERT(key < (m_ * n_));
-        // Get the position
-        const std::size_t o = ((key / n_) % x_) * y_ + ((key % n_) % y_);
+        // Get matrix coordinate
+        const std::size_t m = key / n_;
+        const std::size_t n = key % n_;
+        // Get processor coordinate
+        const std::size_t x = m % x_;
+        const std::size_t y = n % y_;
+        // Get processor ordinal
+        const std::size_t o = x * y_ + y;
 
-        // sudo-randomize the owning process
-        madness::hashT seed = seed_;
-        madness::hash_combine(seed, o);
-        return seed % procs_;
+        return map_ordinal_to_process(o);
 
       }
 
@@ -131,6 +149,14 @@ namespace TiledArray {
       virtual const_iterator end() const { return local_.end(); }
 
     private:
+
+      ProcessID map_ordinal_to_process(std::size_t o) const {
+        // sudo-randomize the owning process
+        madness::hashT seed = seed_;
+        madness::hash_combine(seed, o);
+        return seed % procs_;
+      }
+
       std::size_t procs_; ///< Number of processes in the world
       std::size_t rank_; ///< This process's rank
       std::size_t m_; ///< Number of rows to be mapped
