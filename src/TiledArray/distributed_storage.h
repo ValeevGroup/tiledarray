@@ -274,12 +274,67 @@ namespace TiledArray {
 
         future result;
         WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
-            result.remote_ref(get_world()), madness::TaskAttributes::hipri());
+            result.remote_ref(get_world()), false, madness::TaskAttributes::hipri());
+
+        return result;
+      }
+
+      /// The caller takes ownership of element \c i
+
+      /// Ownership can only take place after the element has been set. If the
+      /// element has not been set when this function is called, then the
+      /// transfer of ownership will be delayed (and handled automatically) until
+      /// the element is set.
+      /// \note it is the caller's responsibility to ensure that move is only
+      /// call once. Otherwise, the program will hang.
+      future move(size_type i) const {
+        TA_ASSERT(i < max_size_);
+
+        future result;
+
+        if(is_local(i)) {
+          // Get element i
+          const_accessor acc;
+          data_.insert(acc, i);
+          result = acc->second;
+
+          // Remove the element from this
+          if(result.probe())
+            data_.erase(acc);
+          else
+            result.register_callback(new DelayedMove(this, i));
+        } else {
+          WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
+              result.remote_ref(get_world()), true, madness::TaskAttributes::hipri());
+        }
 
         return result;
       }
 
     private:
+
+      struct DelayedMove : public madness::CallbackInterface {
+      private:
+        DistributedStorage_& ds_; ///< A reference to the owning object
+        size_type index_; ///< The index that will own the future
+
+      public:
+
+        DelayedMove(DistributedStorage_& ds, size_type i) :
+            ds_(ds), index_(i)
+        { }
+
+        virtual ~DelayedMove() { }
+
+        /// Notify this object when the future is set.
+
+        /// This will set the value of the future on the remote node and delete
+        /// this callback object.
+        virtual void notify() {
+          ds_.data_.erase(index_);
+          delete this;
+        }
+      }; // struct DelayedSet
 
       /// Set value callback object
 
@@ -343,34 +398,41 @@ namespace TiledArray {
 
       struct DelayedReturn : public madness::CallbackInterface {
       private:
+        DistributedStorage_& ds_;
+        size_type index_;
         typename future::remote_refT ref_;
         future future_;
+        bool move_;
 
       public:
 
-        DelayedReturn(const typename future::remote_refT& ref, const future& fut) :
-            ref_(ref), future_(fut)
+        DelayedReturn(const DistributedStorage_& ds, size_type index, const typename future::remote_refT& ref, const future& fut, bool move) :
+            ds_(const_cast<DistributedStorage_&>(ds)), index_(index), ref_(ref), future_(fut), move_(move)
         { }
 
         ~DelayedReturn() { }
 
         virtual void notify() {
           DistributedStorage_::find_return(ref_, future_);
+          if(move_)
+            ds_.data_.erase(index_);
           delete this;
         }
       }; // struct DelayedReturn
 
       /// Handles find request
-      madness::Void find_handler(size_type i, const typename future::remote_refT& ref) const {
+      madness::Void find_handler(size_type i, const typename future::remote_refT& ref, bool mover) const {
         TA_ASSERT(is_local(i));
         const_accessor acc;
         data_.insert(acc, i);
         future f = acc->second;
-        acc.release();
         if(f.probe()) {
+          if(mover)
+            data_.erase(acc);
           find_return(ref, f);
         } else {
-          DelayedReturn* return_callback = new DelayedReturn(ref, f);
+          acc.release();
+          DelayedReturn* return_callback = new DelayedReturn(*this, i, ref, f, mover);
           f.register_callback(return_callback);
         }
 
