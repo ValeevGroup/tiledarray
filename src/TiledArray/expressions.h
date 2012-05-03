@@ -198,7 +198,7 @@ namespace TiledArray {
       template <typename Exp>
       inline madness::Future<bool> eval(const ReadableTiledTensor<Exp>& arg) {
         return const_cast<ReadableTiledTensor<Exp>& >(arg).derived().eval(arg.vars(),
-            std::shared_ptr<TiledArray::Pmap>(
+            std::shared_ptr<TiledArray::Pmap<typename Exp::size_type> >(
             new TiledArray::detail::BlockedPmap(arg.get_world(), arg.size())));
       }
 
