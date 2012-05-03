@@ -441,7 +441,7 @@ namespace TiledArray {
     TiledTensor<Derived>::operator Array<T, CS>()  {
       // Evaluate this tensor and wait
       derived().eval(derived().vars(),
-          std::shared_ptr<TiledArray::detail::BlockedPmap>(
+          std::shared_ptr<TiledArray::Pmap<size_type> >(
           new TiledArray::detail::BlockedPmap(derived().get_world(),
           derived().size()))).get();
 
