@@ -413,7 +413,7 @@ namespace TiledArray {
         // completed. Tasks are processed by get() until this happens.
         get_world().taskq.add(*this, & AnnotatedArray_::template eval_to_this<T>,
             other, const_cast<T&>(other).eval(pimpl_->vars(),
-            std::shared_ptr<TiledArray::detail::BlockedPmap>(
+            std::shared_ptr<TiledArray::Pmap>(
             new TiledArray::detail::BlockedPmap(get_world(), size())))).get();
 
         return *this;
