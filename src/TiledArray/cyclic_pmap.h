@@ -52,6 +52,20 @@ namespace TiledArray {
         y_ = std::min<std::size_t>(y_, n_);
       }
 
+    private:
+
+      CyclicPmap(const CyclicPmap& other) :
+          rank_(other.rank_),
+          procs_(other.procs_),
+          m_(other.m_),
+          n_(other.n_),
+          x_(other.x_),
+          y_(other.y_),
+          seed_(0ul),
+          local_()
+      { }
+
+    public:
 
       virtual ~CyclicPmap() { }
 
@@ -68,6 +82,14 @@ namespace TiledArray {
           if(this->owner(i) == rank_)
             local_.push_back(i);
         }
+      }
+
+
+      /// Create a copy of this pmap
+
+      /// \return A shared pointer to the new object
+      virtual std::shared_ptr<Pmap<key_type> > clone() const {
+        return std::shared_ptr<Pmap<key_type> >(new CyclicPmap(*this));
       }
 
       /// Key owner

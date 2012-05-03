@@ -529,8 +529,8 @@ namespace TiledArray {
       madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
         TA_ASSERT(pimpl_);
         pimpl_->set_pmap(pmap);
-        return impl_type::generate_tiles(pimpl_, pimpl_->eval_left(v, pmap),
-            pimpl_->eval_right(v, pmap));
+        return impl_type::generate_tiles(pimpl_, pimpl_->eval_left(v, pmap->clone()),
+            pimpl_->eval_right(v, pmap->clone()));
       }
 
       /// Tensor tile size array accessor

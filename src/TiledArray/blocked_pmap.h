@@ -47,6 +47,19 @@ namespace TiledArray {
         num_blocks_ = (size_ / block_size_) + (size_ % block_size_ ? 1 : 0);
       }
 
+    private:
+
+      BlockedPmap(const BlockedPmap& other) :
+          block_size_(other.block_size_),
+          num_blocks_(other.num_blocks_),
+          size_(other.size_),
+          rank_(other.rank_),
+          procs_(other.procs_),
+          seed_(0ul)
+      { }
+
+    public:
+
       ~BlockedPmap() { }
 
       virtual void set_seed(madness::hashT seed = 0ul) {
@@ -63,6 +76,13 @@ namespace TiledArray {
               local_.push_back(i);
           }
         }
+      }
+
+      /// Create a copy of this pmap
+
+      /// \return A shared pointer to the new object
+      virtual std::shared_ptr<Pmap<key_type> > clone() const {
+        return std::shared_ptr<Pmap<key_type> >(new BlockedPmap(*this));
       }
 
       /// Maps key to processor

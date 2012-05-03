@@ -4,6 +4,7 @@
 #include <world/worldtypes.h>
 #include <world/worldhash.h>
 #include <vector>
+#include <world/shared_ptr.h>
 
 namespace TiledArray {
 
@@ -16,7 +17,13 @@ namespace TiledArray {
 
     virtual ~Pmap() { }
 
+    /// Initialize the hashing seed and local iterator
     virtual void set_seed(madness::hashT) = 0;
+
+    /// Create a copy of this pmap
+
+    /// \return A shared pointer to the new object
+    virtual std::shared_ptr<Pmap<key_type> > clone() const = 0;
 
     /// Key owner
 
