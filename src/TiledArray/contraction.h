@@ -185,6 +185,66 @@ namespace TiledArray {
       /// \param range A range object for the right argument
       /// \return The size of the fused outer dimensions for the left argument
       template <typename D>
+      std::size_t left_outer_init(const Range<D>& range) const {
+        TA_ASSERT(range.dim() == left_dim());
+        std::size_t result = (left_outer_.size() ? 1ul : 0ul);
+        for(map_type::const_iterator it = left_outer_.begin(); it != left_outer_.end(); ++it)
+          result *= range.size()[*it];
+        return result;
+      }
+
+      /// Calculate the inner dimension for the left argument
+
+      /// Assume inner dimensions are all on the right.
+      /// \tparam D A range type: StaticRange or DynamicRange
+      /// \param range A range object for the right argument
+      /// \return The size of the fused inner dimensions for the left argument
+      template <typename D>
+      std::size_t left_inner_init(const Range<D>& range) const {
+        TA_ASSERT(range.dim() == left_dim());
+        std::size_t result = (left_inner_.size() ? 1ul : 0ul);
+        for(map_type::const_iterator it = left_inner_.begin(); it != left_inner_.end(); ++it)
+          result *= range.size()[*it];
+        return result;
+      }
+
+      /// Calculate the outer dimension for the right argument
+
+      /// Assume outer dimensions are all on the left.
+      /// \tparam D A range type: StaticRange or DynamicRange
+      /// \param range A range object for the right argument
+      /// \return The size of the fused outer dimensions for the right argument
+      template <typename D>
+      std::size_t right_outer_init(const Range<D>& range) const {
+        TA_ASSERT(range.dim() == right_dim());
+        std::size_t result = (right_outer_.size() ? 1ul : 0ul);
+        for(map_type::const_iterator it = right_outer_.begin(); it != right_outer_.end(); ++it)
+          result *= range.size()[*it];
+        return result;
+      }
+
+      /// Calculate the inner dimension for the right argument
+
+      /// Assume inner dimensions are all on the right.
+      /// \tparam D A range type: StaticRange or DynamicRange
+      /// \param range A range object for the right argument
+      /// \return The size of the fused inner dimensions for the right argument
+      template <typename D>
+      std::size_t right_inner_init(const Range<D>& range) const {
+        TA_ASSERT(range.dim() == right_dim());
+        std::size_t result = (right_inner_.size() ? 1ul : 0ul);
+        for(map_type::const_iterator it = right_inner_.begin(); it != right_inner_.end(); ++it)
+          result *= range.size()[*it];
+        return result;
+      }
+
+      /// Calculate the outer dimension for the left argument
+
+      /// Assume outer dimensions are all on the left.
+      /// \tparam D A range type: StaticRange or DynamicRange
+      /// \param range A range object for the right argument
+      /// \return The size of the fused outer dimensions for the left argument
+      template <typename D>
       std::size_t left_outer(const Range<D>& range) const {
         return accumulate(range.size().begin(), range.size().begin() + left_outer_dim());
       }
@@ -462,7 +522,7 @@ namespace TiledArray {
       /// \return The product of each value in the iterator range.
       template <typename InIter>
       static typename std::iterator_traits<InIter>::value_type accumulate(InIter first, InIter last) {
-        typename std::iterator_traits<InIter>::value_type result = 1ul;
+        typename std::iterator_traits<InIter>::value_type result = (std::distance(first, last) ? 1ul : 0ul);
         for(; first != last; ++first)
           result *= *first;
         return result;

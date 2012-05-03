@@ -10,6 +10,7 @@
 #include <TiledArray/reduce_task.h>
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/binary_tensor.h>
+#include <TiledArray/cyclic_pmap.h>
 #include <TiledArray/array.h>
 
 #ifdef TILEDARRAY_LOG_EVENTS
@@ -90,9 +91,11 @@ namespace TiledArray {
 
         template <typename Perm>
         class Eval {
-        private:
+        public:
 
           typedef Perm perm_type;
+
+        private:
 
           /// Tile evaluation task generator
 
@@ -236,9 +239,9 @@ namespace TiledArray {
             /// \param pimpl The implmentation pointer of the ContractionTiledTensor
             EvalImpl(const perm_type& perm, const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl) :
                 perm_(perm),
-                m_(pimpl->cont_->left_outer(pimpl->left_.range())),
-                i_(pimpl->cont_->left_inner(pimpl->left_.range())),
-                n_(pimpl->cont_->right_outer(pimpl->right_.range())),
+                m_(pimpl->cont_->left_outer_init(pimpl->left_.range())),
+                i_(pimpl->cont_->left_inner_init(pimpl->left_.range())),
+                n_(pimpl->cont_->right_outer_init(pimpl->right_.range())),
                 range_(pimpl->range()),
                 pimpl_(pimpl),
                 left_cache_(pimpl->left().range().volume()),
@@ -279,9 +282,13 @@ namespace TiledArray {
               return true;
             }
 
+
+            const perm_type& perm() const { return perm_; }
+
             std::size_t rows() const { return m_; }
 
             std::size_t cols() const { return n_; }
+
 
           private:
 
@@ -443,6 +450,8 @@ namespace TiledArray {
             return (*pimpl_)(*it);
           }
 
+          const perm_type& perm() const { return pimpl_->perm(); }
+
           std::size_t rows() const { return pimpl_->rows(); }
 
           std::size_t cols() const { return pimpl_->cols(); }
@@ -511,29 +520,8 @@ namespace TiledArray {
         }
 
         template <typename Perm>
-        bool generate_tasks(const Perm& perm, const VariableList& v,
-            const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl, bool, bool) {
-          Eval<Perm> eval_op(perm, pimpl);
-          perm_structure(perm, v);
-
-          // Todo: This algorithm is inherently non-scalable. It is done this
-          // way because other expressions depend on all the tiles being present
-          // after eval has finished. But there is currently no way to predict
-          // which tiles are local so they can be initialized other than
-          // iterating through all elements. In the future I would like to use
-          // a lazy global synchronization mechanism that will solve this problem.
-
-          // Divide the result processes among all nodes.
-          const size_type n = size();
-//          const ProcessID r = get_world().rank();
-//          const ProcessID s = get_world().size();
-//
-//          const size_type x = n / s;
-//          const size_type y = n % s;
-//
-//          // There are s * x + y tiles in the result
-//          const size_type first = r * x + (r < y ? r : y);
-//          const size_type last = first + x + (r < y ? 1 : 0);
+        bool generate_tasks(const Eval<Perm>& eval_op, const VariableList& v, bool, bool) {
+          perm_structure(eval_op.perm(), v);
 
           // Generate the tile permutation tasks.
           return get_world().taskq.for_each(madness::Range<typename pmap_interface::const_iterator>(data_.get_pmap()->begin(), data_.get_pmap()->end(), eval_op.rows()),
@@ -552,22 +540,27 @@ namespace TiledArray {
         static madness::Future<bool>
         generate_tiles(const Perm& perm, const VariableList& v,
             const std::shared_ptr<ContractionTiledTensorImpl_>& pimpl) {
+          Eval<Perm> eval_op(perm, pimpl);
+
+          const size_type k = pimpl->left_.size() / eval_op.rows();
+
           return pimpl->get_world().taskq.add(*pimpl,
-              & ContractionTiledTensorImpl_::template generate_tasks<Perm>, perm,
-              v, pimpl, pimpl->eval_left(), pimpl->eval_right(),
+              & ContractionTiledTensorImpl_::template generate_tasks<Perm>, eval_op,
+              v, pimpl->eval_left(eval_op.rows(), k),
+              pimpl->eval_right(eval_op.cols(), k),
               madness::TaskAttributes::hipri());
         }
 
-        madness::Future<bool> eval_left() {
+        madness::Future<bool> eval_left(size_type m, size_type n) {
           return left_.eval(cont_->left_vars(left_.vars()),
-              std::shared_ptr<TiledArray::detail::BlockedPmap>(
-              new TiledArray::detail::BlockedPmap(get_world(), left_.size())));
+              std::shared_ptr<TiledArray::Pmap<size_type> >(
+              new TiledArray::detail::CyclicPmap(get_world(), m, n)));
         }
 
-        madness::Future<bool> eval_right() {
+        madness::Future<bool> eval_right(size_type m, size_type n) {
           return right_.eval(cont_->right_vars(right_.vars()),
-              std::shared_ptr<TiledArray::detail::BlockedPmap>(
-              new TiledArray::detail::BlockedPmap(get_world(), right_.size())));
+              std::shared_ptr<TiledArray::Pmap<size_type> >(
+              new TiledArray::detail::CyclicPmap(get_world(), m, n)));
         }
 
         static bool done(bool, bool) { return true; }
