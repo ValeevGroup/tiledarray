@@ -2,6 +2,7 @@
 #define TILEDARRAY_HASH_PMAP_H__INCLUDED
 
 #include <TiledArray/pmap.h>
+#include <world/world.h>
 
 namespace TiledArray {
   namespace detail {
@@ -35,7 +36,7 @@ namespace TiledArray {
       virtual ~HashPmap() { }
 
       /// Initialize the hashing seed and local iterator
-      virtual void set_seed(madness::hashT seed) {
+      virtual void set_seed(madness::hashT seed = 0ul) {
         seed_ = seed;
 
         for(key_type i = 0ul; i < size_; ++i) {
