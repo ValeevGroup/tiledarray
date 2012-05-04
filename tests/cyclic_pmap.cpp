@@ -1,6 +1,6 @@
+#include "TiledArray/cyclic_pmap.h"
 #include "unit_test_config.h"
 #include "global_fixture.h"
-#include "TiledArray/cyclic_pmap.h"
 
 using namespace TiledArray;
 
