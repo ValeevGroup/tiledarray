@@ -18,7 +18,7 @@ namespace TiledArray {
     virtual ~Pmap() { }
 
     /// Initialize the hashing seed and local iterator
-    virtual void set_seed(madness::hashT) = 0;
+    virtual void set_seed(madness::hashT = 0ul) = 0;
 
     /// Create a copy of this pmap
 
