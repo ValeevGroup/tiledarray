@@ -151,6 +151,8 @@ namespace TiledArray {
     private:
 
       ProcessID map_ordinal_to_process(std::size_t o) const {
+        if((x_ * y_) == procs_)
+          return o;
         // sudo-randomize the owning process
         madness::hashT seed = seed_;
         madness::hash_combine(seed, o);
