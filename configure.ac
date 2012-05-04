@@ -90,5 +90,6 @@ AC_CONFIG_FILES([
       examples/mpi_tests/Makefile
       examples/ta_dgemm/Makefile
       examples/mmsim/Makefile
+      examples/pmap_test/Makefile
     doc/Makefile])
 AC_OUTPUT

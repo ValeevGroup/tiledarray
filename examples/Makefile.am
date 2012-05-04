@@ -1,6 +1,6 @@
 # examples
 
-SUBDIRS = cc ta_dgemm mpi_tests
+SUBDIRS = cc ta_dgemm mpi_tests mmsim pmap_test
 
 ccd ccsd:
 	$(MAKE) -C ./cc $@
@@ -13,3 +13,6 @@ mpi_latency mpi_bandwidth:
 	
 mm_sim:
 	$(MAKE) -C ./mmsim $@
+
+pmap:
+	$(MAKE) -C ./pmap_test $@

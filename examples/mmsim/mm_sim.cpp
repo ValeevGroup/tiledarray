@@ -3,7 +3,7 @@
 #include <world/world.h>
 
 void stat(const std::size_t P, const std::size_t M, const std::size_t N,
-    const std::size_t K, const std::size_t* A, const std::size_t* B, const std::size_t C) {
+    const std::size_t K, const std::size_t* A, const std::size_t* B, const std::size_t* C) {
 
   std::vector<std::size_t> contract(P, 0);
   std::vector<std::size_t> reduce(P, 0);
@@ -49,7 +49,7 @@ void stat(const std::size_t P, const std::size_t M, const std::size_t N,
             ++(tempC[left][res_i]);
 
             // Communication cost to get right
-            if(++(cashB[right][right_i]) == 1) {
+            if(++(casheB[right][right_i]) == 1) {
               ++comm_out[right];
               ++comm_in[left];
             }
@@ -67,7 +67,7 @@ void stat(const std::size_t P, const std::size_t M, const std::size_t N,
             ++contract[right];
 
             // Communication cost to get left
-            if(++(cashA[left][left_i]) == 1) {
+            if(++(casheA[left][left_i]) == 1) {
               ++comm_out[left];
               ++comm_in[right];
             }
@@ -89,7 +89,7 @@ void stat(const std::size_t P, const std::size_t M, const std::size_t N,
               ++contract[left];
 
               // Communication cost to get right
-              if(++(cashB[right][right_i]) == 1) {
+              if(++(casheB[right][right_i]) == 1) {
                 ++comm_out[right];
                 ++comm_in[left];
               }
@@ -107,7 +107,7 @@ void stat(const std::size_t P, const std::size_t M, const std::size_t N,
               ++contract[right];
 
               // Communication cost to get left
-              if(++(cashA[left][left_i]) == 1) {
+              if(++(casheA[left][left_i]) == 1) {
                 ++comm_out[left];
                 ++comm_in[right];
               }
