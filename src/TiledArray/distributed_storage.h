@@ -302,7 +302,7 @@ namespace TiledArray {
           if(result.probe())
             data_.erase(acc);
           else
-            result.register_callback(new DelayedMove(this, i));
+            result.register_callback(new DelayedMove(*this, i));
         } else {
           WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
               result.remote_ref(get_world()), true, madness::TaskAttributes::hipri());
@@ -320,8 +320,8 @@ namespace TiledArray {
 
       public:
 
-        DelayedMove(DistributedStorage_& ds, size_type i) :
-            ds_(ds), index_(i)
+        DelayedMove(const DistributedStorage_& ds, size_type i) :
+            ds_(const_cast<DistributedStorage_&>(ds)), index_(i)
         { }
 
         virtual ~DelayedMove() { }

@@ -2,6 +2,7 @@
 #include "TiledArray/blocked_pmap.h"
 #include "unit_test_config.h"
 #include <world/worlddc.h>
+#include <iterator>
 
 using namespace TiledArray;
 
@@ -131,6 +132,131 @@ BOOST_AUTO_TEST_CASE( array_operator )
   BOOST_CHECK_THROW((*t)[t->max_size()], TiledArray::Exception);
   BOOST_CHECK_THROW((*t)[t->max_size() + 2], TiledArray::Exception);
 #endif // TA_EXCEPTION_ERROR
+}
+
+BOOST_AUTO_TEST_CASE( move_local )
+{
+  // Insert all elements
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i))
+      t->insert(i);
+  }
+
+  std::size_t local_size = t->size();
+
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i))
+      t->set(i, world.rank());
+  }
+
+  world.gop.fence();
+
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i)) {
+      madness::Future<int> f = t->move(i);
+      --local_size;
+
+      BOOST_CHECK_EQUAL(f.get(), world.rank());
+      BOOST_CHECK_EQUAL(local_size, t->size());
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( delayed_move_local )
+{
+  // Insert all elements
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i))
+      t->insert(i);
+  }
+
+  std::size_t local_size = t->size();
+
+  std::vector<madness::Future<int> > local_data;
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i))
+      local_data.push_back(t->move(i));
+  }
+
+
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i)) {
+      t->set(i, world.rank());
+      --local_size;
+    }
+
+    BOOST_CHECK_EQUAL(local_size, t->size());
+  }
+
+
+  for(std::vector<madness::Future<int> >::const_iterator it = local_data.begin(); it != local_data.end(); ++it) {
+    BOOST_CHECK_EQUAL(it->get(), world.rank());
+  }
+
+}
+
+BOOST_AUTO_TEST_CASE( move_remote )
+{
+  // Insert all elements
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i))
+      t->set(i, world.rank());
+  }
+
+  std::size_t local_size = t->size();
+
+  world.gop.fence();
+
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(world.rank() == 0) {
+      madness::Future<int> f = t->move(i);
+      BOOST_CHECK_EQUAL(f.get(), t->owner(i));
+    }
+
+    if(t->is_local(i))
+      --local_size;
+
+    world.gop.fence();
+
+    BOOST_CHECK_EQUAL(local_size, t->size());
+  }
+}
+
+
+BOOST_AUTO_TEST_CASE( delayed_move_remote )
+{
+  // Insert all elements
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i))
+      t->insert(i);
+  }
+
+  std::size_t local_size = t->size();
+
+  std::vector<madness::Future<int> > local_data;
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(world.rank() == 0)
+      local_data.push_back(t->move(i));
+  }
+
+
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+
+    world.gop.fence();
+
+    if(t->is_local(i)) {
+      t->set(i, world.rank());
+      --local_size;
+    }
+
+    BOOST_CHECK_EQUAL(local_size, t->size());
+  }
+
+
+  for(std::vector<madness::Future<int> >::iterator it = local_data.begin(); it != local_data.end(); ++it) {
+    BOOST_CHECK_EQUAL(it->get(), t->owner(std::distance(local_data.begin(), it)));
+  }
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
