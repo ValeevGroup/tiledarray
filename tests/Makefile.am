@@ -21,6 +21,7 @@ ta_test_SOURCES = ta_test.cpp \
                   indexed_iterator.cpp \
                   blocked_pmap.cpp \
                   cyclic_pmap.cpp \
+                  hash_pmap.cpp \
                   distributed_storage.cpp \
                   array.cpp \
                   variable_list.cpp \
