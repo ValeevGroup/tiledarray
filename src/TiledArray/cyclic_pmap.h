@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_CYCLIC_PMAP_H__INCLUDED
 #define TILEDARRAY_CYCLIC_PMAP_H__INCLUDED
 
+#include <TiledArray/error.h>
 #include <TiledArray/pmap.h>
 #include <cmath>
 #include <world/world.h>
@@ -151,12 +152,12 @@ namespace TiledArray {
     private:
 
       ProcessID map_ordinal_to_process(std::size_t o) const {
-        if((x_ * y_) == procs_)
+//        if((x_ * y_) == procs_)
           return o;
         // sudo-randomize the owning process
-        madness::hashT seed = seed_;
-        madness::hash_combine(seed, o);
-        return seed % procs_;
+//        madness::hashT seed = seed_;
+//        madness::hash_combine(seed, o);
+//        return seed % procs_;
       }
 
       std::size_t procs_; ///< Number of processes in the world
