@@ -32,7 +32,8 @@ namespace TiledArray {
           size_(size),
           rank_(world.rank()),
           procs_(world.size()),
-          seed_(0ul)
+          seed_(0ul),
+          local_()
       {
         TA_ASSERT(size_ > 0ul);
 
@@ -55,7 +56,8 @@ namespace TiledArray {
           size_(other.size_),
           rank_(other.rank_),
           procs_(other.procs_),
-          seed_(0ul)
+          seed_(0ul),
+          local_()
       { }
 
     public:
