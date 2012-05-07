@@ -612,8 +612,10 @@ namespace TiledArray {
           TA_ASSERT(range() == dest.range());
 
           // Add result tiles to dest
-          for(const_iterator it = begin(); it != end(); ++it)
-            dest.set(it.index(), *it);
+          typename pmap_interface::const_iterator end = data_.get_pmap()->end();
+          for(typename pmap_interface::const_iterator it = data_.get_pmap()->begin(); it != end; ++it)
+            if(! is_zero(*it))
+              dest.set(*it, move(*it));
         }
 
 

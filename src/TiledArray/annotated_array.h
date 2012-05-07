@@ -458,8 +458,10 @@ namespace TiledArray {
         TA_ASSERT(trange() == dest.trange());
 
         // Add result tiles to dest and wait for all tiles to be added.
-        for(const_iterator it = begin(); it != end(); ++it)
-          dest.set(it.index(), *it);
+        typename pmap_interface::const_iterator end = pimpl_->get_pmap()->end();
+        for(typename pmap_interface::const_iterator it = pimpl_->get_pmap()->begin(); it != end; ++it)
+          if(! is_zero(*it))
+            dest.set(*it, move(*it));
       }
 
       /// Evaluate the tensor
