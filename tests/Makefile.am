@@ -29,6 +29,7 @@ ta_test_SOURCES = ta_test.cpp \
                   unary_tiled_tensor.cpp \
                   binary_tiled_tensor.cpp \
                   reduce_task.cpp \
+                  bcast_group.cpp \
                   contraction_tiled_tensor.cpp \
                   expressions.cpp \
                   array_fixture.h \
