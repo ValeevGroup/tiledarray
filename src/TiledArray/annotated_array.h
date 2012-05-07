@@ -298,6 +298,17 @@ namespace TiledArray {
           return data_[i];
         }
 
+        /// Tile move
+
+        /// Tile is removed after it is set.
+        /// \param i The tile index
+        /// \return Tile \c i
+        const_reference move(size_type i) const {
+          TA_ASSERT(! is_zero(i));
+          return data_.move(i);
+        }
+
+
         /// Array begin iterator
 
         /// \return A const iterator to the first element of the array.
@@ -398,9 +409,9 @@ namespace TiledArray {
       template <typename T>
       bool eval_to_this(const T& other, bool) {
         if(other.is_dense())
-          array_type(other.get_world(), other.trange(), other.get_pmap()).swap(pimpl_->array());
+          array_type(other.get_world(), other.trange(), other.get_pmap()->clone()).swap(pimpl_->array());
         else
-          array_type(other.get_world(), other.trange(), other.get_shape(), other.get_pmap()).swap(pimpl_->array());
+          array_type(other.get_world(), other.trange(), other.get_shape(), other.get_pmap()->clone()).swap(pimpl_->array());
         other.eval_to(pimpl_->array());
 
         return true;
@@ -561,6 +572,16 @@ namespace TiledArray {
       const_reference operator[](size_type i) const {
         TA_ASSERT(pimpl_);
         return pimpl_->operator[](i);
+      }
+
+      /// Tile move
+
+      /// Tile is removed after it is set.
+      /// \param i The tile index
+      /// \return Tile \c i
+      const_reference move(size_type i) const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->move(i);
       }
 
       /// Array begin iterator

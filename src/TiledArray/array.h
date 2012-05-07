@@ -446,11 +446,11 @@ namespace TiledArray {
           derived().size()))).get();
 
       if(is_dense()) {
-        Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_pmap());
+        Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_pmap()->clone());
         derived().eval_to(result);
         return result;
       } else {
-        Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_shape(), derived().get_pmap());
+        Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_shape(), derived().get_pmap()->clone());
         derived().eval_to(result);
         return result;
       }
