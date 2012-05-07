@@ -318,8 +318,10 @@ namespace TiledArray {
           TA_ASSERT(range() == dest.range());
 
           // Add result tiles to dest
-          for(const_iterator it = begin(); it != end(); ++it)
-            dest.set(it.index(), *it);
+          typename pmap_interface::const_iterator end = data_.get_pmap()->end();
+          for(typename pmap_interface::const_iterator it = data_.get_pmap()->begin(); it != end; ++it)
+            if(! is_zero(*it))
+              dest.set(*it, move(*it));
         }
 
         /// Evaluate the left argument
@@ -416,6 +418,16 @@ namespace TiledArray {
         const_reference operator[](size_type i) const {
           TA_ASSERT(! is_zero(i));
           return data_[i];
+        }
+
+        /// Tile move
+
+        /// Tile is removed after it is set.
+        /// \param i The tile index
+        /// \return Tile \c i
+        const_reference move(size_type i) const {
+          TA_ASSERT(! is_zero(i));
+          return data_.move(i);
         }
 
         /// Array begin iterator
@@ -615,6 +627,16 @@ namespace TiledArray {
       const_reference operator[](size_type i) const {
         TA_ASSERT(pimpl_);
         return pimpl_->operator[](i);
+      }
+
+      /// Tile move
+
+      /// Tile is removed after it is set.
+      /// \param i The tile index
+      /// \return Tile \c i
+      const_reference move(size_type i) const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->move(i);
       }
 
       /// Array begin iterator

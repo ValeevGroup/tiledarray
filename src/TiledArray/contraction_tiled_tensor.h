@@ -682,6 +682,16 @@ namespace TiledArray {
           return data_[i];
         }
 
+        /// Tile move
+
+        /// Tile is removed after it is set.
+        /// \param i The tile index
+        /// \return Tile \c i
+        const_reference move(size_type i) const {
+          TA_ASSERT(! is_zero(i));
+          return data_.move(i);
+        }
+
 
         /// Array begin iterator
 
@@ -929,6 +939,16 @@ namespace TiledArray {
       const_reference operator[](size_type i) const {
         TA_ASSERT(pimpl_);
         return pimpl_->operator[](i);
+      }
+
+      /// Tile move
+
+      /// Tile is removed after it is set.
+      /// \param i The tile index
+      /// \return Tile \c i
+      const_reference move(size_type i) const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->move(i);
       }
 
       /// Release tensor data
