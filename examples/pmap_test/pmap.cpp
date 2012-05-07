@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     madness::World world(MPI::COMM_WORLD);
 
     std::size_t m = 20;
-    std::size_t n = 20;
+    std::size_t n = 10;
 
     std::shared_ptr<TiledArray::Pmap<std::size_t> > blocked_pmap(new TiledArray::detail::BlockedPmap(world, m * n));
     blocked_pmap->set_seed(0ul);
