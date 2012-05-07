@@ -66,7 +66,7 @@ namespace TiledArray {
 
         class Eval {
         public:
-          typedef typename arg_tensor_type::const_iterator iterator;
+          typedef typename pmap_interface::const_iterator iterator;
           typedef typename arg_tensor_type::value_type arg_type;
 
           typedef const iterator& argument_type;
@@ -82,9 +82,11 @@ namespace TiledArray {
           }
 
           result_type operator()(argument_type it) const  {
-            madness::Future<value_type> value = pimpl_->get_world().taskq.add(& eval,
-                *it, pimpl_->op_);
-            pimpl_->data_.set(it.index(), value);
+            if(! pimpl_->is_zero(*it)) {
+              madness::Future<value_type> value = pimpl_->get_world().taskq.add(& eval,
+                  pimpl_->arg_.move(*it), pimpl_->op_);
+              pimpl_->data_.set(*it, value);
+            }
 
             return true;
           }
@@ -109,15 +111,12 @@ namespace TiledArray {
         /// have completed. get() blocks this task until for_each() is done
         /// while still processing tasks.
         bool generate_tasks(const std::shared_ptr<UnaryTiledTensorImpl_>& me, bool) const {
-          madness::Future<bool> done = get_world().taskq.for_each(
-              madness::Range<typename arg_tensor_type::const_iterator>(
-                  arg_.begin(), arg_.end(), 8), Eval(me));
 
           // This task cannot return until all other for_each tasks have completed.
           // Tasks are still being processed.
-          done.get();
-
-          return true;
+          return get_world().taskq.for_each(
+              madness::Range<typename pmap_interface::const_iterator>(
+                  arg_.get_pmap()->begin(), arg_.get_pmap()->end(), 8), Eval(me)).get();
         }
 
       public:
