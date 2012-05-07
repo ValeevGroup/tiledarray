@@ -35,7 +35,8 @@ namespace TiledArray {
 
         // Get a rough estimate of the process dimensions
         // The ratios of x_ / y_  and m_ / n_ should be approximately equal.
-        x_ = std::max<std::size_t>(std::sqrt(procs_ * m / n), 1ul);
+        // Constraints: 1 <= x_ <= procs_ && 1 <= y_
+        x_ = std::max<std::size_t>(std::min<std::size_t>(std::sqrt(procs_ * m_ / n_), procs_), 1ul);
         y_ = std::max<std::size_t>(procs_ / x_, 1ul);
 
         // Get the number of process not included.
@@ -48,9 +49,11 @@ namespace TiledArray {
           x_ += p / y_;
         }
 
-        // The process map should be no bigger than m x n
+        // The process map should be no bigger than m * n
         x_ = std::min<std::size_t>(x_, m_);
         y_ = std::min<std::size_t>(y_, n_);
+
+        TA_ASSERT(x_ * y_ <= procs_);
       }
 
     private:
@@ -122,6 +125,8 @@ namespace TiledArray {
         const std::size_t y = n % y_;
         // Get processor ordinal
         const std::size_t o = x * y_ + y;
+
+        TA_ASSERT(o < procs_);
 
         return map_ordinal_to_process(o);
 
