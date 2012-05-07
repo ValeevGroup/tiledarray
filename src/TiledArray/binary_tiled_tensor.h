@@ -175,9 +175,12 @@ namespace TiledArray {
         /// \tparam The operations type, which is an instantiation of PermOps.
         class EvalLeft {
         public:
-          typedef typename left_tensor_type::const_iterator iterator;
+          typedef typename pmap_interface::const_iterator iterator;
           typedef typename left_tensor_type::value_type left_arg_type;
           typedef typename right_tensor_type::value_type right_arg_type;
+
+          typedef const iterator& argument_type;
+          typedef bool result_type;
 
           EvalLeft(const std::shared_ptr<BinaryTiledTensorImpl_>& pimpl) :
               pimpl_(pimpl)
@@ -192,18 +195,23 @@ namespace TiledArray {
             return *this;
           }
 
-          bool operator()(const iterator& it) const  {
-            if(pimpl_->right_.is_zero(it.index())) {
-              // Add a task where the right tile is zero and left tile is non-zero
-              madness::Future<value_type> value =
-                  pimpl_->get_world().taskq.add(& EvalLeft::eval_left, *it, pimpl_->op_);
-              pimpl_->data_.set(it.index(), value);
-            } else {
-              // Add a task where both the left and right tiles are non-zero
-              madness::Future<value_type> value =
-                  pimpl_->get_world().taskq.add(& EvalLeft::eval, *it,
-                      pimpl_->right_[it.index()], pimpl_->op_);
-              pimpl_->data_.set(it.index(), value);
+          result_type operator()(argument_type it) const  {
+            const size_type i = *it;
+            if(! pimpl_->is_zero(i)) {
+              if(pimpl_->right_.is_zero(i)) {
+                // Add a task where the right tile is zero and left tile is non-zero
+                madness::Future<value_type> value =
+                    pimpl_->get_world().taskq.add(& EvalLeft::eval_left,
+                        pimpl_->left_.move(i), pimpl_->op_);
+                pimpl_->data_.set(i, value);
+              } else {
+                // Add a task where both the left and right tiles are non-zero
+                madness::Future<value_type> value =
+                    pimpl_->get_world().taskq.add(& EvalLeft::eval,
+                        pimpl_->left_.move(i), pimpl_->right_.move(i),
+                        pimpl_->op_);
+                pimpl_->data_.set(i, value);
+              }
             }
 
             return true;
@@ -228,7 +236,7 @@ namespace TiledArray {
 
         class EvalRight {
         public:
-          typedef typename right_tensor_type::const_iterator iterator;
+          typedef typename pmap_interface::const_iterator iterator;
           typedef typename left_tensor_type::value_type left_arg_type;
           typedef typename right_tensor_type::value_type right_arg_type;
 
@@ -245,12 +253,13 @@ namespace TiledArray {
           }
 
           result_type operator()(argument_type it) const  {
-            if(pimpl_->left_.is_zero(it.index())) {
+            const size_type i = *it;
+            if(pimpl_->left_.is_zero(i) && ! pimpl_->right_.is_zero(i)) {
               // Add a task where the right tile is zero and left tile is non-zero
               madness::Future<value_type> value =
-                  pimpl_->get_world().taskq.add(& EvalRight::eval_right, *it,
-                  pimpl_->op_);
-              pimpl_->data_.set(it.index(), value);
+                  pimpl_->get_world().taskq.add(& EvalRight::eval_right,
+                      pimpl_->right_.move(i), pimpl_->op_);
+              pimpl_->data_.set(i, value);
             }
 
             return true;
@@ -280,12 +289,14 @@ namespace TiledArray {
           TA_ASSERT(me->left_.trange() == me->right_.trange());
 
           madness::Future<bool> left_done = me->get_world().taskq.for_each(
-              madness::Range<typename left_tensor_type::const_iterator>(
-                  me->left_.begin(), me->left_.end()), EvalLeft(me));
+              madness::Range<typename pmap_interface::const_iterator>(
+                  me->left_.get_pmap()->begin(), me->left_.get_pmap()->end()),
+                  EvalLeft(me));
 
           madness::Future<bool> right_done = me->get_world().taskq.for_each(
-              madness::Range<typename right_tensor_type::const_iterator>(
-                  me->right_.begin(), me->right_.end()), EvalRight(me));
+              madness::Range<typename pmap_interface::const_iterator>(
+                  me->right_.get_pmap()->begin(), me->right_.get_pmap()->end()),
+                  EvalRight(me));
 
           // This task cannot return until all other for_each tasks have completed.
           // Tasks are still being processed.
