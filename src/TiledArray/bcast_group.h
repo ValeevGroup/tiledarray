@@ -87,6 +87,8 @@ namespace TiledArray {
               world_id, child1, root, group, op, madness::TaskAttributes::hipri());
 
         op();
+
+        return madness::None;
       }
 
 
