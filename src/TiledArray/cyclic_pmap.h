@@ -36,23 +36,28 @@ namespace TiledArray {
         // Get a rough estimate of the process dimensions
         // The ratios of x_ / y_  and m_ / n_ should be approximately equal.
         // Constraints: 1 <= x_ <= procs_ && 1 <= y_
-        x_ = std::max<std::size_t>(std::min<std::size_t>(std::sqrt(procs_ * m_ / n_), procs_), 1ul);
-        y_ = std::max<std::size_t>(procs_ / x_, 1ul);
-
-        // Get the number of process not included.
-        std::size_t p = procs_ - (x_ * y_);
-
-        // Try and reclaim the remaining processes
-        if(p > x_) {
-          y_ += p / x_;
-        } else if(p > y_) {
-          x_ += p / y_;
-        }
-
         // The process map should be no bigger than m * n
-        x_ = std::min<std::size_t>(x_, m_);
-        y_ = std::min<std::size_t>(y_, n_);
+        y_ = procs_ / std::max(std::min<std::size_t>(
+            std::sqrt(procs_ * m_ / n_), procs_), 1ul);
+        x_ = procs_ / y_;
 
+        // Maximum size is m and n
+        x_ = std::min(x_, m_);
+        y_ = std::min(y_, n_);
+
+        TA_ASSERT(x_ * y_ <= procs_);
+      }
+
+      CyclicPmap(madness::World& world, std::size_t m, std::size_t n, std::size_t x, std::size_t y) :
+          rank_(world.rank()),
+          procs_(world.size()),
+          m_(m),
+          n_(n),
+          x_(std::min<std::size_t>(x,m)),
+          y_(std::min<std::size_t>(y,n)),
+          seed_(0ul),
+          local_()
+      {
         TA_ASSERT(x_ * y_ <= procs_);
       }
 
