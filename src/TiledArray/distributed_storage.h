@@ -287,7 +287,7 @@ namespace TiledArray {
       /// the element is set.
       /// \note it is the caller's responsibility to ensure that move is only
       /// call once. Otherwise, the program will hang.
-      future move(size_type i) const {
+      future move(size_type i) {
         TA_ASSERT(i < max_size_);
 
         future result;
