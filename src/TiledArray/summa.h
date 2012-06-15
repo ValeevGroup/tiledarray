@@ -1,14 +1,37 @@
 #ifndef TILEDARRAY_SUMMA_H__INCLUDED
 #define TILEDARRAY_SUMMA_H__INCLUDED
 
-#include <TiledArray/bcast_group.h>
-#include <TiledArray/cyclic_pmap.h>
+#include <TiledArray/contraction_tensor_impl.h>
 #include <iterator>
 #include <world/world.h>
 #include <vector>
 
 namespace TiledArray {
-  namespace summa {
+  namespace expressions {
+
+    namespace detail {
+
+      template <typename T, typename A = std::allocator<T> >
+      class AllocDeleter : public A {
+      private:
+        std::ptrdiff_t n_;
+
+      public:
+        AllocDeleter(const A& alloc, const std::ptrdiff_t n = 1ul) : A(alloc), n_(n) { }
+
+
+        AllocDeleter(const std::ptrdiff_t n = 1ul) : A(), n_(n) { }
+
+        void operator()(T* ptr) {
+          const T* const end = ptr + n_;
+          for(T* it; it < end; ++it)
+            A::destroy(it);
+
+          A::deallocate(ptr, n_);
+        }
+      }; // class AllocDeleter
+
+    }  // namespace detail
 
     /// Base class for SUMMA
 
@@ -19,24 +42,26 @@ namespace TiledArray {
     /// C_{mn} = \sum_k A_{mk} B_{nk}
     /// \f]
     /// The processor phases for \b C and \b A are \c x by \c y
-    template <typename Impl>
-    class Summa : public madness::WorldObject<Summa<Impl> >, private NO_DEFAULTS {
+    template <typename Left, typename Right>
+    class Summa : public madness::WorldObject<Summa<Left, Right> >, public ContractionTensorImpl<Left, Right> {
     protected:
-      typedef madness::WorldObject<Summa<Impl> > WorldObject_; ///< Madness world object base class
+      typedef madness::WorldObject<Summa<Left, Right> > WorldObject_; ///< Madness world object base class
+      typedef ContractionTensorImpl<Left, Right> ContractionTensorImpl_;
+      typedef typename ContractionTensorImpl_::TensorExpressionImpl_ TensorExpressionImpl_;
 
       // import functions from world object
       using WorldObject_::task;
       using WorldObject_::get_world;
 
     public:
-      typedef Summa<Impl> Summa_; ///< This object type
-      typedef typename Impl::size_type size_type; ///< size type
-      typedef typename Impl::value_type value_type; ///< The result value type
-      typedef typename Impl::left_tensor_type left_tensor_type; ///< The left tensor type
-      typedef typename left_tensor_type::value_type left_value_type; /// The left tensor value type
-      typedef typename Impl::right_tensor_type right_tensor_type; ///< The right tensor type
-      typedef typename right_tensor_type::value_type right_value_type; ///< The right tensor value type
-      typedef typename Impl::pmap_interface pmap_interface; ///< The process map interface type
+      typedef Summa<Left, Right> Summa_; ///< This object type
+      typedef typename ContractionTensorImpl_::size_type size_type; ///< size type
+      typedef typename ContractionTensorImpl_::value_type value_type; ///< The result value type
+      typedef typename ContractionTensorImpl_::left_tensor_type left_tensor_type; ///< The left tensor type
+      typedef typename ContractionTensorImpl_::left_value_type left_value_type; /// The left tensor value type
+      typedef typename ContractionTensorImpl_::right_tensor_type right_tensor_type; ///< The right tensor type
+      typedef typename ContractionTensorImpl_::right_value_type right_value_type; ///< The right tensor value type
+      typedef typename ContractionTensorImpl_::pmap_interface pmap_interface; ///< The process map interface type
 
     private:
       /// The left tensor cache container type
@@ -52,22 +77,6 @@ namespace TiledArray {
       typedef madness::Future<value_ptr> future_value_ptr;
 
     protected:
-      const std::shared_ptr<Impl> pimpl_; ///< Shared pointer to the contraction result tensor
-      const ProcessID rank_; ///< This process's rank
-      const ProcessID size_; ///< Then number of processes
-      const size_type m_; ///< Number of element rows in the result and left matrix
-      const size_type n_; ///< Number of element columns in the result matrix and rows in the right argument matrix
-      const size_type k_; ///< Number of element columns in the left and right argument matrices
-      const size_type mk_; ///< Number of elements in left matrix
-      const size_type nk_; ///< Number of elements in right matrix
-      const size_type proc_cols_; ///< Number of columns in the result process map
-      const size_type proc_rows_; ///< Number of rows in the result process map
-      const size_type proc_size_; ///< Number of process in the process map. This may be
-                         ///< less than the number of processes in world.
-      const ProcessID rank_row_; ///< This node's row in the process map
-      const ProcessID rank_col_; ///< This node's column in the process map
-      const size_type local_rows_; ///< The number of local element rows
-      const size_type local_cols_; ///< The number of local element columns
       std::vector<ProcessID> row_group_; ///< The group of processes included in this node's row
       std::vector<ProcessID> col_group_; ///< The group of processes included in this node's column
       left_container left_cache_; ///< Cache for left bcast tiles
@@ -75,7 +84,7 @@ namespace TiledArray {
 
     private:
       // Not allowed
-      Summa(const Summa<Impl>&);
+      Summa(const Summa_&);
       Summa_& operator=(const Summa_&);
 
       /// Get the child data for teh binary tree
@@ -115,13 +124,13 @@ namespace TiledArray {
       {
         // Get the group child nodes
         ProcessID child0, child1;
-        binary_tree(child0, child1, group_rank, proc_cols_, group_root);
+        binary_tree(child0, child1, group_rank, ContractionTensorImpl_::proc_cols_, group_root);
 
         // Send the data to child nodes
         if(child0 != -1)
-          task(row_group_[child0], & bcast_row_handler, i, value, child0, group_root);
+          task(row_group_[child0], & Summa_::bcast_row_handler, i, value, child0, group_root);
         if(child1 != -1)
-          task(row_group_[child1], & bcast_row_handler, i, value, child1, group_root);
+          task(row_group_[child1], & Summa_::bcast_row_handler, i, value, child1, group_root);
 
         // Copy tile into local cache
         typename left_container::accessor acc;
@@ -141,13 +150,13 @@ namespace TiledArray {
       {
         // Get the group child nodes
         ProcessID child0, child1;
-        binary_tree(child0, child1, group_rank, proc_rows_, group_root);
+        binary_tree(child0, child1, group_rank, ContractionTensorImpl_::proc_rows_, group_root);
 
         // Send the data to child nodes
         if(child0 != -1)
-          task(col_group_[child0], & bcast_col_handler, i, value, child0, group_root);
+          task(col_group_[child0], & Summa_::bcast_col_handler, i, value, child0, group_root);
         if(child1 != -1)
-          task(col_group_[child1], & bcast_col_handler, i, value, child1, group_root);
+          task(col_group_[child1], & Summa_::bcast_col_handler, i, value, child1, group_root);
 
         // Copy tile into local cache
         typename right_container::accessor acc;
@@ -168,21 +177,22 @@ namespace TiledArray {
       std::vector<col_datum> bcast_column_task(size_type k) {
         // Construct the result column vector
         std::vector<col_datum> col;
-        col.reserve(local_rows_);
+        col.reserve(ContractionTensorImpl_::local_rows_);
 
         // Iterate over local tiles of the k-th column of the left argument tensor
-        const size_type step = k_ * proc_rows_;
-        for(; k < mk_; k += step) {
-          if(pimpl_->left().is_local(k)) {
+        const size_type step = ContractionTensorImpl_::k_ * ContractionTensorImpl_::proc_rows_;
+        for(; k < ContractionTensorImpl_::mk_; k += step) {
+          if(ContractionTensorImpl_::left().is_local(k)) {
             // Broadcast the local tile to all nodes in the row
-            col.push_back(col_datum(k, pimpl_->left().move(k)));
+            col.push_back(col_datum(k, ContractionTensorImpl_::left().move(k)));
             if(col.back().second.probe())
               // The data is ready so broadcast it now
-              bcast_row_handler(k, col.back().second.get(), rank_row_, rank_row_);
+              bcast_row_handler(k, col.back().second.get(),
+                  ContractionTensorImpl_::rank_row_, ContractionTensorImpl_::rank_row_);
             else
               // Schedule a task for data that is not ready
-              task(rank_, bcast_row_handler, k, col.back().second,
-                  rank_row_, rank_row_);
+              task(ContractionTensorImpl_::rank_, & Summa_::bcast_row_handler, k, col.back().second,
+                  ContractionTensorImpl_::rank_row_, ContractionTensorImpl_::rank_row_);
           } else {
             // Insert a future into the cache as a placeholder for the broadcast tile.
             typename left_container::const_accessor acc;
@@ -205,22 +215,23 @@ namespace TiledArray {
       std::vector<row_datum> bcast_row_task(size_type k) {
         // Construct the result row vector
         std::vector<row_datum> row;
-        row.reserve(local_cols_);
+        row.reserve(ContractionTensorImpl_::local_cols_);
 
         // Iterate over the k-th column of the right argument tensor
-        const size_type step = k_ * proc_cols_;
-        for(; k < nk_; k += step) {
-          if(pimpl_->right().is_local(k)) {
+        const size_type step = ContractionTensorImpl_::k_ * ContractionTensorImpl_::proc_cols_;
+        for(; k < ContractionTensorImpl_::nk_; k += step) {
+          if(ContractionTensorImpl_::right().is_local(k)) {
             // Broadcast the local tile to all nodes in the row
-            row.push_back(row_datum(k, pimpl_->right().move(k)));
+            row.push_back(row_datum(k, ContractionTensorImpl_::right().move(k)));
 
             if(row.back().second.probe())
               // The data is ready so broadcast it now
-              bcast_col_handler(k, row.back().second.get(), rank_col_, rank_col_);
+              bcast_col_handler(k, row.back().second.get(),
+                  ContractionTensorImpl_::rank_col_, ContractionTensorImpl_::rank_col_);
             else
               // Schedule a task for data that is not ready
-              task(rank_, bcast_col_handler, k, row.back().second,
-                  rank_col_, rank_col_);
+              task(ContractionTensorImpl_::rank_, & Summa_::bcast_col_handler, k, row.back().second,
+                  ContractionTensorImpl_::rank_col_, ContractionTensorImpl_::rank_col_);
           } else {
             // Insert a future into the cache as a placeholder for the broadcast tile.
             typename right_container::const_accessor acc;
@@ -240,10 +251,10 @@ namespace TiledArray {
       /// \param left The left tile to be contracted
       /// \param right The right tile to be contracted
       /// \return The shared pointer to the result.
-      const value_ptr& contract(const value_ptr& result, const left_value_type& left,
+      value_ptr contract(const value_ptr& result, const left_value_type& left,
           const right_value_type& right)
       {
-        pimpl_->contract(*result, left, right);
+        ContractionTensorImpl_::contract(*result, left, right);
         return result;
       }
 
@@ -291,18 +302,20 @@ namespace TiledArray {
         }
       }
 
-      std::vector<future_value_ptr> schedule_contractions(const std::vector<future_value_ptr>& results,
+      std::shared_ptr<future_value_ptr> schedule_contractions(const std::shared_ptr<future_value_ptr>& results,
           const std::vector<col_datum>& col, const std::vector<row_datum>& row)
       {
-        std::vector<future_value_ptr> next_results;
+        std::allocator<future_value_ptr> alloc;
+        std::shared_ptr<future_value_ptr> next_results(
+            alloc.allocate(ContractionTensorImpl_::local_size_),
+            detail::AllocDeleter<future_value_ptr>(alloc, ContractionTensorImpl_::local_size_));
 
         // Schedule contraction tasks
-        typename std::vector<future_value_ptr>::iterator it = results.begin();
-        for(typename std::vector<col_datum>::const_iterator col_it = col.begin(); col_it != col.end(); ++col_it) {
-          for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it, ++it) {
-            next_results.push_back(task(rank_, & contract, *it, col_it->second, row_it->second));
-          }
-        }
+        future_value_ptr* it = results.get();
+        future_value_ptr* next_it = next_results.get();
+        for(typename std::vector<col_datum>::const_iterator col_it = col.begin(); col_it != col.end(); ++col_it)
+          for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it, ++it, ++next_it)
+            alloc.construct(next_it, task(ContractionTensorImpl_::rank_, & Summa_::contract, *it, col_it->second, row_it->second));
 
         // Erase row and column from cache
         erase_cache(const_cast<std::vector<col_datum>&>(col), left_cache_);
@@ -332,7 +345,7 @@ namespace TiledArray {
 
         virtual ~BcastTask() { }
 
-        virtual void run(madness::World&) { results_.set(owner_->*func_(k_)); }
+        virtual void run(madness::World&) { results_.set((owner_->*func_)(k_)); }
 
         template <typename T>
         void add_dependency(madness::Future<T>& f) {
@@ -350,25 +363,28 @@ namespace TiledArray {
       /// \param k The column and row to broadcast
       /// \return A \c std::pair of futures that contain vectors of futures for the column and row tiles
       std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
-      make_bcast_task(const size_type k, std::vector<future_value_ptr>& results) const {
-        typedef BcastTask<std::vector<col_datum> (*)(size_type k)> col_task_type;
-        typedef BcastTask<std::vector<row_datum> (*)(size_type k)> row_task_type;
+      make_bcast_task(const size_type k, const std::shared_ptr<future_value_ptr>& results) const {
+        typedef BcastTask<std::vector<col_datum> (Summa_::*)(size_type)> col_task_type;
+        typedef BcastTask<std::vector<row_datum> (Summa_::*)(size_type)> row_task_type;
 
         // Return empty results if we are at the end of the contraction
-        if(k >= k_)
+        if(k >= ContractionTensorImpl_::k_)
           return std::make_pair(
               madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
               madness::Future<std::vector<row_datum> >(std::vector<row_datum>()));
 
         // Construct the row and column broadcast task
-        col_task_type col_task = new col_task_type(this, & bcast_column_task, k);
-        row_task_type row_task = new row_task_type(this, & bcast_row_task, k);
+        col_task_type* col_task = new col_task_type(const_cast<Summa_*>(this), & Summa_::bcast_column_task, k);
+        row_task_type* row_task = new row_task_type(const_cast<Summa_*>(this), & Summa_::bcast_row_task, k);
 
         // Add callbacks for dependencies.
-        for(typename std::vector<future_value_ptr>::iterator it = results.begin(); it != results.end(); ++it) {
-          if(! it->probe()) {
-            col_task->add_dependency(*it);
-            row_task->add_dependency(*it);
+        if(results) {
+          const future_value_ptr* const end = results.get() + ContractionTensorImpl_::local_size_;
+          for(future_value_ptr* it = results.get(); it != end; ++it) {
+            if(! it->probe()) {
+              col_task->add_dependency(*it);
+              row_task->add_dependency(*it);
+            }
           }
         }
 
@@ -389,8 +405,8 @@ namespace TiledArray {
       /// tensor.
       /// \param i The ordinal index of the result tile
       /// \param ptr A shared pointer to the tile value
-      madness::Void set_value(size_type i, const value_ptr& ptr) const {
-        pimpl_->set(i, *ptr);
+      madness::Void set_value(const size_type i, const value_ptr& ptr) {
+        TensorExpressionImpl_::set(i, *ptr);
         return madness::None;
       }
 
@@ -399,13 +415,13 @@ namespace TiledArray {
       /// This task is spawned by the last SUMMA iteration.
       /// \param results A vector of futures to shared pointers to result tiles
       /// \return madness::None;
-      madness::Void finalize(const std::vector<future_value_ptr>& results) const {
+      madness::Void finalize(const std::shared_ptr<future_value_ptr>& results) const {
 
         // Allocate local result tiles for contraction
-        typename std::vector<future_value_ptr>::const_iterator it = results.begin();
-        for(size_type i = rank_row_; i < m_; i += proc_rows_)
-          for(size_type j = rank_col_; j < n_; j += proc_cols_, ++it)
-            task(rank_, & set_value, i * n_ + j, *it, madness::TaskAttributes::hipri());
+        future_value_ptr* it = results.get();
+        for(size_type i = ContractionTensorImpl_::rank_row_; i < ContractionTensorImpl_::m_; i += ContractionTensorImpl_::proc_rows_)
+          for(size_type j = ContractionTensorImpl_::rank_col_; j < ContractionTensorImpl_::n_; j += ContractionTensorImpl_::proc_cols_, ++it)
+            task(ContractionTensorImpl_::rank_, & Summa_::set_value, i * ContractionTensorImpl_::n_ + j, *it, madness::TaskAttributes::hipri());
 
         return madness::None;
       }
@@ -429,25 +445,25 @@ namespace TiledArray {
       /// \param col_row_k1 The column and row tiles for SUMMA iteration \c k+1
       /// for the left and right tensors respectively.
       /// \return madness::None
-      madness::Void step(const size_type k, const std::vector<future_value_ptr>& results,
+      madness::Void step(const size_type k, const std::shared_ptr<future_value_ptr>& results,
           const std::vector<col_datum>& col_k0, const std::vector<row_datum>& row_k0,
           const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >& col_row_k1)
       {
-        TA_ASSERT(k <= k_);
+        TA_ASSERT(k <= ContractionTensorImpl_::k_);
 
-        if(k < k_) {
+        if(k < ContractionTensorImpl_::k_) {
           // Spawn the task that will spawn contraction tasks.
-          madness::Future<std::vector<future_value_ptr> > next_results =
-              task(rank_, & schedule_contractions, results, col_k0,
+          madness::Future<std::shared_ptr<future_value_ptr> > next_results =
+              task(ContractionTensorImpl_::rank_, & Summa_::schedule_contractions, results, col_k0,
               row_k0, madness::TaskAttributes::hipri());
 
           // Spawn the task for the next iteration
-          task(rank_, & step, k + 1, next_results, col_row_k1.first,
+          task(ContractionTensorImpl_::rank_, & Summa_::step, k + 1, next_results, col_row_k1.first,
               col_row_k1.second, make_bcast_task(k + 2, results),
               madness::TaskAttributes::hipri());
         } else {
           // Spawn the task that will assign the the tile values
-          task(rank_, & finalize, results, madness::TaskAttributes::hipri());
+          task(ContractionTensorImpl_::rank_, & Summa_::finalize, results, madness::TaskAttributes::hipri());
         }
 
         return madness::None;
@@ -455,83 +471,63 @@ namespace TiledArray {
 
     public:
 
-      Summa(const std::shared_ptr<Impl>& pimpl, const size_type pipe_size) :
-          WorldObject_(pimpl->get_world()),
-          pimpl_(pimpl),
-          rank_(get_world().rank()),
-          size_(get_world().size()),
-          n_(pimpl->right_outer()),
-          m_(pimpl->left_outer()),
-          k_(pimpl->left_inner()),
-          mk_(m_ * k_),
-          nk_(n_ * k_),
-          proc_cols_(std::min(size_ / std::max(std::min<std::size_t>(std::sqrt(size_ * m_ / n_), size_), 1ul), n_)),
-          proc_rows_(std::min(size_ / proc_cols_, m_)),
-          proc_size_(proc_cols_ * proc_rows_),
-          rank_row_((rank_ < proc_size_ ? rank_ / proc_cols_ : -1)),
-          rank_col_((rank_ < proc_size_ ? rank_ % proc_cols_ : -1)),
-          local_rows_((rank_ < proc_size_ ? (m_ / proc_rows_) + (m_ % proc_rows_ ? 1 : 0) : 0)),
-          local_cols_((rank_ < proc_size_ ? (n_ / proc_cols_) + (n_ % proc_cols_ ? 1 : 0) : 0)),
+      Summa(const Left& left, const Right& right) :
+          WorldObject_(left.get_world()),
+          ContractionTensorImpl_(left, right,
+              std::shared_ptr<math::Contraction>(new math::Contraction(left.vars(), right.vars()))),
           row_group_(),
           col_group_(),
-          left_cache_(local_rows_ * k_),
-          right_cache_(local_cols_ * k_)
+          left_cache_(ContractionTensorImpl_::local_rows_ * ContractionTensorImpl_::k_),
+          right_cache_(ContractionTensorImpl_::local_cols_ * ContractionTensorImpl_::k_)
       {
-        if(rank_ < proc_size_) {
+        if(ContractionTensorImpl_::rank_ < ContractionTensorImpl_::proc_size_) {
 
           // Fill the row group with all the processes in rank's row
-          row_group_.reserve(proc_cols_);
-          ProcessID row_first = rank_ - rank_col_;
-          const ProcessID row_last = row_first + proc_cols_;
+          row_group_.reserve(ContractionTensorImpl_::proc_cols_);
+          ProcessID row_first = ContractionTensorImpl_::rank_ - ContractionTensorImpl_::rank_col_;
+          const ProcessID row_last = row_first + ContractionTensorImpl_::proc_cols_;
           for(; row_first < row_last; ++row_first)
             row_group_.push_back(row_first);
 
           // Fill the col group with all the processes in rank's col
-          col_group_.reserve(proc_rows_);
-          for(ProcessID col_first = rank_col_; col_first < proc_size_; col_first += proc_cols_)
+          col_group_.reserve(ContractionTensorImpl_::proc_rows_);
+          for(ProcessID col_first = ContractionTensorImpl_::rank_col_; col_first < ContractionTensorImpl_::proc_size_; col_first += ContractionTensorImpl_::proc_cols_)
             col_group_.push_back(col_first);
         }
 
         WorldObject_::process_pending();
       }
 
+      virtual ~Summa() { }
 
-      /// Factory function for the left argument process map
+    private:
 
-      /// \return A shared pointer that contains the left process map
-      std::shared_ptr<pmap_interface> make_left_pmap() const {
-        return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
-            get_world(), m_, k_, proc_rows_, proc_cols_));
-      }
-
-      /// Factory function for the right argument process map
-
-      /// \return A shared pointer that contains the right process map
-      std::shared_ptr<pmap_interface> make_righ_pmap() const {
-        return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
-            get_world(), n_, k_, proc_cols_, proc_rows_));
-      }
-
-      void eval() {
-        if(rank_ < proc_size_) {
-          std::vector<future_value_ptr> results;
+      virtual void eval_tiles() {
+        if(ContractionTensorImpl_::rank_ < ContractionTensorImpl_::proc_size_) {
+          std::shared_ptr<future_value_ptr> results;
 
           // Start broadcast tasks of column and row for k[0]
-          std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<col_datum> > >
+          std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
           col_row_k0 = make_bcast_task(0ul, results);
 
           // Start broadcast tasks of column and row for k[1]
-          std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<col_datum> > >
+          std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
           col_row_k1 = make_bcast_task(1ul, results);
 
           // Allocate local result tiles for contraction
-          for(size_type i = rank_row_; i < m_; i += proc_rows_)
-            for(size_type j = rank_col_; j < n_; j += proc_cols_)
-              results.push_back(madness::Future<value_ptr>(
-                  value_ptr(new value_type(pimpl_->trange().make_range(i * n_ + j)))));
+          std::allocator<future_value_ptr> alloc;
+          std::shared_ptr<future_value_ptr> next_results(
+              alloc.allocate(ContractionTensorImpl_::local_size_),
+              detail::AllocDeleter<future_value_ptr>(alloc, ContractionTensorImpl_::local_size_));
+
+          // Construct local result tiles
+          future_value_ptr* it = results.get();
+          for(size_type i = ContractionTensorImpl_::rank_row_; i < ContractionTensorImpl_::m_; i += ContractionTensorImpl_::proc_rows_)
+            for(size_type j = ContractionTensorImpl_::rank_col_; j < ContractionTensorImpl_::n_; j += ContractionTensorImpl_::proc_cols_)
+              alloc.construct(it, future_value_ptr(value_ptr(new value_type(TensorExpressionImpl_::make_tile_range(i * ContractionTensorImpl_::n_ + j)))));
 
           // Spawn the first step in the summa algorithm
-          task(rank_, & step, 0ul, results, col_row_k0.first, col_row_k0.second,
+          task(ContractionTensorImpl_::rank_, & Summa_::step, 0ul, results, col_row_k0.first, col_row_k0.second,
               col_row_k1, madness::TaskAttributes::hipri());
         }
       }
@@ -540,6 +536,28 @@ namespace TiledArray {
 
   }  // namespace detail
 }  // namespace TiledArray
+
+
+namespace madness {
+  namespace archive {
+
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl<Archive, std::shared_ptr<T> > {
+      static inline void load(const Archive& ar, std::shared_ptr<T> &) {
+        TA_ASSERT(false);
+      }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl<Archive,std::shared_ptr<T> > {
+      static inline void store(const Archive& ar, const std::shared_ptr<T>&) {
+        TA_ASSERT(false);
+      }
+    };
+
+
+  }  // namespace archive
+}  // namespace madness
 
 #endif // TILEDARRAY_SUMMA_H__INCLUDED
 

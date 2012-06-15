@@ -9,7 +9,7 @@ namespace TiledArray {
   namespace detail {
 
     template <typename TRange, typename Tile>
-    class TensorImplBase {
+    class TensorImplBase : private NO_DEFAULTS{
     public:
       typedef std::size_t size_type;
       typedef TRange trange_type;

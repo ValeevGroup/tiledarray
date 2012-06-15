@@ -1,27 +1,30 @@
 #ifndef TILEDARRAY_VSPGEMM_H__INCLUDED
 #define TILEDARRAY_VSPGEMM_H__INCLUDED
 
-#include <TiledArray/contraction_algorithm_base.h>
+#include <TiledArray/contraction_tensor_impl.h>
+#include <TiledArray/lazy_sync.h>
 
 namespace TiledArray {
-  namespace detail {
+  namespace expressions {
 
     /// Very Sparse General Matrix Multiplication
-    template <typename Impl>
-    class VSpGemm : public madness::WorldObject<Summa<Impl> >, public ContractionAlgorithmBase<Impl>, private NO_DEFAULTS {
+    template <typename Left, typename Right>
+    class VSpGemm : public madness::WorldObject<VSpGemm<Left, Right> >, public ContractionTensorImpl<Left, Right> {
     protected:
-      typedef madness::WorldObject<VSpGemm<Impl> > WorldObject_; ///< Madness world object base class
-      typedef ContractionAlgorithmBase<Impl> base;
+      typedef madness::WorldObject<VSpGemm<Left, Right> > WorldObject_; ///< Madness world object base class
+      typedef ContractionTensorImpl<Left, Right> ContractionTensorImpl_;
+      typedef typename ContractionTensorImpl_::TensorExpressionImpl_ TensorExpressionImpl_;
+      typedef typename TensorExpressionImpl_::TensorImplBase_ TensorImplBase_;
 
     public:
-      typedef VSpGemm<Impl> VSpGemm_; ///< This object type
-      typedef typename base::size_type size_type; ///< size type
-      typedef typename base::value_type value_type; ///< The result value type
-      typedef typename base::left_tensor_type left_tensor_type; ///< The left tensor type
-      typedef typename base::left_value_type left_value_type; /// The left tensor value type
-      typedef typename base::right_tensor_type right_tensor_type; ///< The right tensor type
-      typedef typename base::right_value_type right_value_type; ///< The right tensor value type
-      typedef typename base::pmap_interface pmap_interface; ///< The process map interface type
+      typedef VSpGemm<Left, Right> VSpGemm_; ///< This object type
+      typedef typename ContractionTensorImpl_::size_type size_type; ///< size type
+      typedef typename ContractionTensorImpl_::value_type value_type; ///< The result value type
+      typedef typename ContractionTensorImpl_::left_tensor_type left_tensor_type; ///< The left tensor type
+      typedef typename ContractionTensorImpl_::left_value_type left_value_type; /// The left tensor value type
+      typedef typename ContractionTensorImpl_::right_tensor_type right_tensor_type; ///< The right tensor type
+      typedef typename ContractionTensorImpl_::right_value_type right_value_type; ///< The right tensor value type
+      typedef typename ContractionTensorImpl_::pmap_interface pmap_interface; ///< The process map interface type
 
     private:
       /// The left tensor cache container type
@@ -144,11 +147,11 @@ namespace TiledArray {
       }
 
       madness::Future<left_value_type> get_left(const size_type i) {
-        return get_cached_value(i, base::left(), left_cache_);
+        return get_cached_value(i, ContractionTensorImpl_::left(), left_cache_);
       }
 
       madness::Future<right_value_type> get_right(const size_type i) {
-        return get_cached_value(i, base::right(), right_cache_);
+        return get_cached_value(i, ContractionTensorImpl_::right(), right_cache_);
       }
 
       /// Compute result tile for \c i,j
@@ -157,36 +160,37 @@ namespace TiledArray {
       /// \param i The row of the result tile to be computed
       /// \param j The column of the result tile to be computed
       /// \return \c madness::None
-      madness::Void dot_product(size_type i, size_type j) const {
+      madness::Void dot_product(size_type i, size_type j) {
 
         // Construct a reduction object
         TiledArray::detail::ReducePairTask<contract_reduce_op>
-            local_reduce_op(WorldObject_::get_world(), contract_reduce_op(pimpl_->cont_));
+            local_reduce_op(WorldObject_::get_world(), contract_reduce_op(ContractionTensorImpl_::contract()));
 
         // Generate tasks that will contract tiles and sum the result
-        size_type a = i * base::k_;
-        size_type b = j * base::k_;
-        const size_type end = a + base::k_;
+        size_type a = i * ContractionTensorImpl_::k_;
+        size_type b = j * ContractionTensorImpl_::k_;
+        const size_type end = a + ContractionTensorImpl_::k_;
 
         // Contract each pair of tiles in the dot product
         for(; a < end; ++a, ++b)
-          if(!(base::left().is_zero(a) || base::right().is_zero(b)))
+          if(!(ContractionTensorImpl_::left().is_zero(a) || ContractionTensorImpl_::right().is_zero(b)))
             local_reduce_op.add(get_left(a), get_right(b));
 
         TA_ASSERT(local_reduce_op.count() != 0ul);
         // This will start the reduction tasks, submit the permute task of
         // the result of the reduction, and return the resulting future
-        base::set(i * base::n_ + j, local_reduce_op.submit());
+        ContractionTensorImpl_::set(i * ContractionTensorImpl_::n_ + j, local_reduce_op.submit());
 
         return madness::None;
       }
 
     public:
-      VSpGemm(const std::shared_ptr<Impl>& pimpl) :
-          WorldObject_(pimpl->get_world()),
-          base(pimpl),
-          left_cache_(base::local_rows_ * base::k_),
-          right_cache_(base::local_cols_ * base::k_)
+      VSpGemm(const left_tensor_type& left, const right_tensor_type& right) :
+          WorldObject_(left.get_world()),
+          ContractionTensorImpl_(left, right,
+              std::shared_ptr<math::Contraction>(new math::Contraction(left.vars(), right.vars()))),
+          left_cache_(ContractionTensorImpl_::local_rows_ * ContractionTensorImpl_::k_),
+          right_cache_(ContractionTensorImpl_::local_cols_ * ContractionTensorImpl_::k_)
       {
         WorldObject_::process_pending();
       }
@@ -198,22 +202,31 @@ namespace TiledArray {
       /// Cleaup local data for contraction arguments
       class Cleanup {
       private:
-        VSpGemm_& owner_;
+        VSpGemm_* owner_;
       public:
-        Cleanup(VSpGemm_& owner) : owner_(owner) { }
+        Cleanup() : owner_(NULL) { }
+        Cleanup(const Cleanup& other) : owner_(other.owner_) { }
+        Cleanup(VSpGemm_& owner) : owner_(& owner) { }
 
-        void operator()() const {
-          owner_.left().clear();
-          owner_.right().clear();
+        Cleanup& operator=(const Cleanup& other) {
+          owner_ = other.owner_;
+          return *this;
+        }
+
+        void operator()() {
+          TA_ASSERT(owner_);
+          owner_->left().release();
+          owner_->right().release();
         }
       }; // class Cleanup
 
-      virtual void do_eval() {
+    private:
+      virtual void eval_tiles() {
         // Spawn task for local tile evaluation
-        for(size_type i = base::rank_row_; i < base::m_; i += base::proc_rows_) {
-          for(size_type j = base::rank_col_; j < base::n_; j += base::proc_cols_) {
-            if(! base::is_zero(i * base::n_ + j))
-              WorldObject_::task(base::rank_, & VSpGemm_::template dot_product<Perm>, i, j);
+        for(size_type i = ContractionTensorImpl_::rank_row_; i < ContractionTensorImpl_::m_; i += ContractionTensorImpl_::proc_rows_) {
+          for(size_type j = ContractionTensorImpl_::rank_col_; j < ContractionTensorImpl_::n_; j += ContractionTensorImpl_::proc_cols_) {
+            if(! TensorImplBase_::is_zero(TensorExpressionImpl_::perm_index(i * ContractionTensorImpl_::n_ + j)))
+              WorldObject_::task(ContractionTensorImpl_::rank_, & VSpGemm_::dot_product, i, j);
           }
         }
 

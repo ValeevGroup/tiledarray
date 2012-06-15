@@ -9,6 +9,7 @@ library_include_HEADERS = annotated_array.h \
                           binary_tiled_tensor.h \
                           bitset.h \
                           blocked_pmap.h \
+                          contraction_tensor_impl.h \
                           contraction_tensor.h \
                           contraction_tiled_tensor.h \
                           contraction.h \
@@ -26,7 +27,10 @@ library_include_HEADERS = annotated_array.h \
                           range_iterator.h \
                           range.h \
                           reduce_task.h \
+                          summa.h \
                           tensor_base.h \
+                          tensor_expression_impl.h \
+                          tensor_impl_base.h \
                           tensor.h \
                           tiled_range.h \
                           tiled_range1.h \
@@ -35,4 +39,5 @@ library_include_HEADERS = annotated_array.h \
                           unary_tensor.h \
                           unary_tiled_tensor.h \
                           variable_list.h \
+                          vspgemm.h \
                           config.h
