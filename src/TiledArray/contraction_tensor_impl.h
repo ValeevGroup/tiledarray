@@ -63,7 +63,7 @@ namespace TiledArray {
       ContractionTensorImpl(const left_tensor_type& left, const right_tensor_type& right,
         const std::shared_ptr<math::Contraction>& cont) :
           TensorExpressionImpl_(left.get_world(),
-              cont->contract_vars(left_.vars(), right_.vars()),
+              cont->contract_vars(left.vars(), right.vars()),
               cont->contract_trange(left.trange(), right.trange())),
           left_(left), right_(right),
           cont_(cont),
