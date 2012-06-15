@@ -329,7 +329,7 @@ namespace TiledArray {
     /// Copy constructor
     template <typename D>
     DynamicTiledRange(const TiledRange<D>& other) :
-        range_(other.range_), element_range_(other.element_range_),
+        range_(other.tiles()), element_range_(other.elements()),
         ranges_(other.data().begin(), other.data().end())
     { }
 
