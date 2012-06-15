@@ -325,7 +325,7 @@ namespace TiledArray {
         /// \tparam Dest The destination tensor type
         /// \param dest The destination to evaluate this tensor to
         template <typename Dest>
-        void eval_to(Dest& dest) const {
+        void eval_to(Dest& dest) {
           TA_ASSERT(range() == dest.range());
 
           // Add result tiles to dest
@@ -436,7 +436,7 @@ namespace TiledArray {
         /// Tile is removed after it is set.
         /// \param i The tile index
         /// \return Tile \c i
-        const_reference move(size_type i) const {
+        const_reference move(size_type i) {
           TA_ASSERT(! is_zero(i));
           return data_.move(i);
         }

@@ -228,7 +228,7 @@ namespace TiledArray {
         /// Tile is removed after it is set.
         /// \param i The tile index
         /// \return Tile \c i
-        const_reference move(size_type i) const {
+        const_reference move(size_type i) {
           TA_ASSERT(! is_zero(i));
           return data_.move(i);
         }
