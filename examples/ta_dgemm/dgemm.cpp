@@ -1,9 +1,3 @@
-#define TILEDARRAY_LOG_EVENTS
-
-#ifdef TILEDARRAY_LOG_EVENTS
-#define TILEDARRAY_INSTANTIATE_STATIC_DATA
-#endif
-
 #include <iostream>
 #include <tiled_array.h>
 #include <sys/resource.h>
@@ -51,27 +45,19 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
   double avg_cpu_time = 0.0;
   double avg_efficiency = 0.0;
   for(int i = 0; i < 5; ++i) {
-#ifdef TILEDARRAY_LOG_EVENTS
-    const double wall_time_start = TiledArray::logging::EventLog::set_start();
-#else
     const double wall_time_start = madness::wall_time();
-#endif
     const double cpu_time_start = cpu_time();
+//    madness::RMI::set_debug(true);
     c("m,n") = a("m,i") * b("i,n");
+//    madness::RMI::set_debug(false);
 
     for(TiledArray::Array<double, TiledArray::CoordinateSystem<2> >::const_iterator it = c.begin(); it != c.end(); ++it)
       it->get();
 
-#ifdef TILEDARRAY_LOG_EVENTS
-    const double wall_time_stop = TiledArray::logging::EventLog::set_finis();
-    const double cpu_time_stop = cpu_time();
-#endif
     world.gop.fence();
 
-#ifndef TILEDARRAY_LOG_EVENTS
     const double wall_time_stop = madness::wall_time();
     const double cpu_time_stop = cpu_time();
-#endif
 
     double times[2] = { wall_time_stop - wall_time_start,  cpu_time_stop - cpu_time_start };
     world.gop.reduce(times,2,std::plus<double>());
@@ -173,6 +159,7 @@ void blas_dgemm(madness::World& world) {
 int main(int argc, char** argv) {
   madness::initialize(argc,argv);
   madness::World world(MPI::COMM_WORLD);
+
   if(world.rank() == 0)
     std::cout << "Number of nodes = " << world.size() << "\n";
 
