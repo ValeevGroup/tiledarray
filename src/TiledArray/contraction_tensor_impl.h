@@ -21,6 +21,7 @@ namespace TiledArray {
           typename Right::value_type::value_type>::type, typename DynamicTiledRange::range_type> >
           TensorExpressionImpl_;
       typedef typename TensorExpressionImpl_::TensorImplBase_ TensorImplBase_;
+      typedef ContractionTensorImpl<Left, Right> ContractionTensorImpl_;
 
       typedef Left left_tensor_type; ///< The left tensor type
       typedef typename left_tensor_type::value_type left_value_type; /// The left tensor value type
@@ -128,6 +129,8 @@ namespace TiledArray {
       /// \return a shared pointer to the contraction object
       const std::shared_ptr<math::Contraction>& contract() const { return cont_; }
 
+    private:
+
       /// Factory function for the left argument process map
 
       /// \return A shared pointer that contains the left process map
@@ -139,9 +142,15 @@ namespace TiledArray {
       /// Factory function for the right argument process map
 
       /// \return A shared pointer that contains the right process map
-      std::shared_ptr<pmap_interface> make_righ_pmap() const {
+      std::shared_ptr<pmap_interface> make_right_pmap() const {
         return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
             TensorImplBase_::get_world(), n_, k_, proc_cols_, proc_rows_));
+      }
+
+      virtual bool eval_children(const expressions::VariableList& vars,
+          const std::shared_ptr<pmap_interface>&) {
+        return left_.eval(cont_->left_vars(left_.vars()), make_left_pmap()).get()
+            && right_.eval(cont_->right_vars(right_.vars()), make_right_pmap()).get();
       }
     }; // class ContractionAlgorithmBase
 

@@ -128,7 +128,14 @@ namespace TiledArray {
     private:
       virtual void eval_tiles() = 0;
 
-      madness::Void internal_eval_tiles(bool) {
+      virtual bool eval_children(const expressions::VariableList&,
+          const std::shared_ptr<pmap_interface>&) { return true; }
+
+      bool internal_eval_children(const expressions::VariableList& vars,
+          const std::shared_ptr<pmap_interface>& pmap)
+      { return this->eval_children(vars, pmap); }
+
+      madness::Void internal_eval_tiles(bool, bool) {
         evaluated_ = true;
         this->eval_tiles();
         return madness::None;
@@ -136,13 +143,19 @@ namespace TiledArray {
 
     public:
 
-      madness::Future<bool> eval(const expressions::VariableList& vars, const std::shared_ptr<pmap_interface>& pmap) {
+      madness::Future<bool> eval(const expressions::VariableList& vars,
+          const std::shared_ptr<pmap_interface>& pmap)
+      {
         TA_ASSERT(! evaluated_);
+
+        madness::Future<bool> child_eval_done =
+            TensorImplBase_::get_world().taskq.add(*this,
+                & TensorExpressionImpl_::internal_eval_children, vars, pmap);
 
         // Initialize the data container process map
         TensorImplBase_::pmap(pmap);
 
-        madness::Future<bool> ready =
+        madness::Future<bool> structure_eval_done =
             (vars == vars_ ?
                 madness::Future<bool>(true) :
                 TensorImplBase_::get_world().taskq.add(*this,
@@ -150,9 +163,10 @@ namespace TiledArray {
 
         // Do tile evaluation step
         TensorImplBase_::get_world().taskq.add(*this,
-            & TensorExpressionImpl_::internal_eval_tiles, ready);
+            & TensorExpressionImpl_::internal_eval_tiles, structure_eval_done,
+            child_eval_done);
 
-        return ready;
+        return structure_eval_done;
       }
 
     }; // class TensorExpressionImpl
