@@ -516,7 +516,7 @@ namespace TiledArray {
 
           // Allocate local result tiles for contraction
           std::allocator<future_value_ptr> alloc;
-          std::shared_ptr<future_value_ptr> next_results(
+          results.reset(
               alloc.allocate(ContractionTensorImpl_::local_size_),
               detail::AllocDeleter<future_value_ptr>(alloc, ContractionTensorImpl_::local_size_));
 
