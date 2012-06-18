@@ -9,21 +9,28 @@ namespace TiledArray {
     template <typename TRange, typename Tile>
     class TensorExpressionImpl : public TiledArray::detail::TensorImplBase<TRange, Tile> {
     public:
-      typedef TensorExpressionImpl<TRange, Tile> TensorExpressionImpl_;
-      typedef TiledArray::detail::TensorImplBase<TRange, Tile> TensorImplBase_;
+      typedef TensorExpressionImpl<TRange, Tile> TensorExpressionImpl_; ///< This object type
+      typedef TiledArray::detail::TensorImplBase<TRange, Tile> TensorImplBase_; ///< Tensor implementation base class
 
-      typedef typename TensorImplBase_::size_type size_type;
-      typedef typename TensorImplBase_::trange_type trange_type;
-      typedef typename TensorImplBase_::range_type range_type;
-      typedef typename TensorImplBase_::pmap_interface pmap_interface;
-      typedef typename TensorImplBase_::value_type value_type;
+      typedef typename TensorImplBase_::size_type size_type; ///< Size type
+      typedef typename TensorImplBase_::trange_type trange_type; ///< Tiled range type for this object
+      typedef typename TensorImplBase_::range_type range_type; ///< Range type this tensor
+      typedef typename TensorImplBase_::pmap_interface pmap_interface; ///< process map interface type
+      typedef typename TensorImplBase_::value_type value_type; ///< Tile type
 
     private:
-      VariableList vars_;
-      Permutation perm_;
-      const typename TensorImplBase_::trange_type trange_;
-      volatile bool evaluated_;
+      VariableList vars_; ///< The tensor expression variable list
+      Permutation perm_; ///< The permutation to be applied to this tensor
+      const typename TensorImplBase_::trange_type trange_; ///< The original tiled range for this tensor
+      volatile bool evaluated_; ///< A flag to indicate that the tensor has been evaluated.
+                                ///< NOT thread safe.
+                                ///< This is just here as a sanity check to make sure evaluate is only run once.
 
+      /// Permute the range, shape, and variable list of this tensor
+
+      /// \param vars The final variable list order (must be a permutation of
+      /// the current variable list)
+      /// \return \c true when the tensor structure has been permuted
       bool perm_structure(const VariableList& vars) {
         // Get the permutation to go from the current variable list to vars such
         // that:
@@ -58,12 +65,19 @@ namespace TiledArray {
       }
 
       /// Task function for permuting result tensor
+
+      /// \param value The unpermuted result tile
+      /// \return The permuted result tile
       value_type permute_task(const value_type& value) const {
         return expressions::make_permute_tensor(value, perm_);
       }
 
     protected:
 
+      /// Map an index value from the unpermuted index space to the permuted index space
+
+      /// \param i The index in the unpermuted index space
+      /// \return The corresponding index in the permuted index space
       size_type perm_index(size_type i) const {
         TA_ASSERT(evaluated_);
         if(perm_.dim())
@@ -126,10 +140,23 @@ namespace TiledArray {
       }
 
     private:
+      /// Function for evaluating this tensor's tiles
+
+      /// This function is run inside a task, and will run after \c eval_children
+      /// has completed. It should spwan additional tasks that evaluate the
+      /// individule result tiles.
       virtual void eval_tiles() = 0;
 
-      virtual bool eval_children(const expressions::VariableList&,
-          const std::shared_ptr<pmap_interface>&) { return true; }
+      /// Function for evaluating child tensors
+
+      /// This function should return true when the child
+
+      /// This function should evaluate all child tensors.
+      /// \param vars The variable list for this tensor (may be different from
+      /// the variable list used to initialize this tensor).
+      /// \param pmap The process map for this tensor
+      virtual bool eval_children(const expressions::VariableList& vars,
+          const std::shared_ptr<pmap_interface>& pmap) = 0;
 
       bool internal_eval_children(const expressions::VariableList& vars,
           const std::shared_ptr<pmap_interface>& pmap)
@@ -143,6 +170,19 @@ namespace TiledArray {
 
     public:
 
+      /// Evaluate this tensor expression object
+
+      /// This function will:
+      /// \li Evaluate the child tensors using the \c eval_children virtual function
+      /// \li Set the process map for result tiles to \c pmap
+      /// \li Permute the range, shape, and variable list of this tensor if
+      /// \c vars is not equal to the current variable list.
+      /// \li Evaluat result tiles
+      /// \param vars The result variable list for this expression
+      /// \param pmap The process map for storage of result tiles
+      /// \return A future to a bool that will be set once the structure of this
+      /// tensor has been set to its final value. Once the future has been set
+      /// it is safe to access this tensor, but not with the iterator.
       madness::Future<bool> eval(const expressions::VariableList& vars,
           const std::shared_ptr<pmap_interface>& pmap)
       {
