@@ -12,53 +12,6 @@ struct ContractionTiledTensorFixture : public AnnotatedArrayFixture {
 
   ContractionTiledTensorFixture() : aa_left(a(left_var)), aa_right(a(right_var)), ctt(aa_left, aa_right) { }
 
-  matrix_type array_to_matrix(const array_annotation& array, const std::size_t x) {
-    const std::size_t dim = array.trange().elements().dim();
-    assert(x <= dim);
-
-    // Get the result matrix dimensions
-    std::multiplies<std::size_t> mult_op;
-    const std::size_t M = std::accumulate(array.trange().elements().size().begin(),
-        array.trange().elements().size().begin() + x, 1ul, mult_op);
-    const std::size_t N = std::accumulate(array.trange().elements().size().begin() + x,
-        array.trange().elements().size().end(), 1ul, mult_op);
-
-    // Construct the result matrix
-    matrix_type result(M,N);
-
-    // Copy each tile of array into result
-    std::size_t row = 0;
-    std::size_t col = 0;
-    for(std::size_t t = 0; t < array.size(); ++t) {
-      // Get tile i. The future must be held in memory or remote tiles will be
-      // destroyed with the future. Wait for the future to be evaluated and store
-      // a reference for convenience.
-      madness::Future<array_annotation::value_type> f = array[t];
-      const array_annotation::value_type& tile = f.get();
-
-      // Get the number of rows and tiles in the block
-      const std::size_t tile_rows = std::accumulate(tile.range().size().begin(), tile.range().size().begin() + x, 1ul, mult_op);
-      const std::size_t tile_cols = std::accumulate(tile.range().size().begin() + x, tile.range().size().end(), 1ul, mult_op);
-
-      // copy the tile into a matrix block
-      for(std::size_t i = 0ul; i < tile_rows; ++i) {
-        for(std::size_t j = 0ul; j < tile_cols; ++j) {
-          // Calculate the ordinal index of the tile element
-          const std::size_t o = i * tile_cols + j;
-          result(row + i, col + j) = tile[o];
-        }
-      }
-
-      // Increment row and col for next tile
-      col += tile_cols;
-      if(col >= N) {
-        col = 0;
-        row += tile_rows;
-      }
-    }
-    return result;
-  }
-
   static const VariableList left_var;
   static const VariableList right_var;
   static const std::shared_ptr<math::Contraction> cont;
@@ -107,39 +60,71 @@ BOOST_AUTO_TEST_CASE( result )
   // Store a copy of the trange so it can be checked later.
   StaticTiledRange<CoordinateSystem<2> > r0 = ctt.trange();
 
-  const std::size_t size = a.trange().tiles().size().front() * a.trange().tiles().size().back();
+  // Get tiling dimensions for contraction
+  const std::size_t M = a.trange().tiles().size().front();
+  const std::size_t N = a.trange().tiles().size().back();
+  const std::size_t K = a.trange().tiles().volume() / M;
+  const std::size_t size = M * N;
 
   // Evaluate and wait for it to finish.
   ctt.eval(ctt.vars(), std::shared_ptr<CTT::pmap_interface>(
       new TiledArray::detail::BlockedPmap(* GlobalFixture::world, size))).get();
 
-  // Construct equivalent matrix.
-  matrix_type left = array_to_matrix(aa_left, 1);
-  matrix_type right = array_to_matrix(aa_right, 1);
-
-  // Get the result matrix
-  matrix_type result = left * right.transpose();
 
   // Check that the range is unchanged
   BOOST_CHECK_EQUAL(ctt.trange(), r0);
-  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], std::size_t(result.rows()));
-  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], std::size_t(result.cols()));
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], a.trange().elements().size().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], a.trange().elements().size().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().start()[0], a.trange().elements().start().data().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().start()[1], a.trange().elements().start().data().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().finish()[0], a.trange().elements().finish().data().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().finish()[1], a.trange().elements().finish().data().back());
 
   // Check that all the tiles have been evaluated.
-  std::size_t n = std::distance(ctt.begin(), ctt.end());
-  world.gop.sum(n);
-  BOOST_CHECK_EQUAL(ctt.size(), n);
+  world.gop.fence();
+  std::size_t x = std::distance(ctt.begin(), ctt.end());
+  world.gop.sum(x);
+  BOOST_CHECK_EQUAL(ctt.size(), x);
 
-  for(CTT::const_iterator it = ctt.begin(); it != ctt.end(); ++it) {
-    const CTT::value_type& tile = it->get();
 
-    matrix_type block = result.block(
-        tile.range().start()[0], tile.range().start()[1],
-        tile.range().size()[0], tile.range().size()[1]);
+  for(std::size_t m = 0ul; m < M; ++m) {
+    for(std::size_t n = 0ul; n < N; ++n) {
+      const CTT::value_type& tile = ctt[m * N + n].get();
 
-    for(std::size_t i = 0; i < tile.size(); ++i)
-      BOOST_CHECK_EQUAL(tile[i], block(i));
+      // Get tile dimensions
+      const std::size_t I = tile.range().size().front();
+      const std::size_t J = tile.range().size().back();
+
+      // Create a matrix to hold the expected contraction result
+      matrix_type result(I, J);
+      result.fill(0);
+
+      // Compute the expected value of the result tile
+      for(std::size_t k = 0ul; k < K; ++k) {
+        // Get the contraction arguments for contraction k
+        const ArrayN::value_type& left = a.find(m * K + k).get();
+        const ArrayN::value_type& right = a.find(n * K + k).get();
+
+        const std::size_t L = left.range().volume() / I;
+
+        // Construct an equivilant matrix for the left and right argument tiles
+        Eigen::Map<const matrix_type> left_matrix(left.data(), I, L);
+        Eigen::Map<const matrix_type> right_matrix(right.data(), J, L);
+
+        // Add to the contraction result
+        result += left_matrix * right_matrix.transpose();
+
+      }
+
+      // Check that the result tile is correct.
+      for(std::size_t i = 0ul; i < I; ++i) {
+        for(std::size_t j = 0ul; j < J; ++j) {
+          BOOST_CHECK_EQUAL(result(i,j), tile[i * J + j]);
+        }
+      }
+    }
   }
+
 }
 
 BOOST_AUTO_TEST_CASE( permute_result )
@@ -148,40 +133,68 @@ BOOST_AUTO_TEST_CASE( permute_result )
 
   StaticTiledRange<CoordinateSystem<2> > r0 = p ^ ctt.trange();
 
-  const std::size_t size = a.trange().tiles().size().front() * a.trange().tiles().size().back();
+  const std::size_t M = a.trange().tiles().size().front();
+  const std::size_t N = a.trange().tiles().size().back();
+  const std::size_t K = a.trange().tiles().volume() / M;
+  const std::size_t size = M * N;
 
   // Evaluate and wait for it to finish.
   ctt.eval(p ^ ctt.vars(), std::shared_ptr<CTT::pmap_interface>(
       new TiledArray::detail::BlockedPmap(* GlobalFixture::world, size))).get();
 
-  // Construct equivalent matrix.
-  matrix_type left = array_to_matrix(aa_left, 1);
-  matrix_type right = array_to_matrix(aa_right, 1);
-
-  // Get the result matrix
-  matrix_type result = left * right.transpose();
-  result.transposeInPlace();
-
   // Check that the range has been permuted correctly.
   BOOST_CHECK_EQUAL(ctt.trange(), r0);
-  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], std::size_t(result.rows()));
-  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], std::size_t(result.cols()));
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], a.trange().elements().size().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], a.trange().elements().size().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().start()[0], a.trange().elements().start().data().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().start()[1], a.trange().elements().start().data().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().finish()[0], a.trange().elements().finish().data().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().finish()[1], a.trange().elements().finish().data().front());
 
   // Check that all the tiles have been evaluated.
+  world.gop.fence();
   std::size_t n = std::distance(ctt.begin(), ctt.end());
   world.gop.sum(n);
   BOOST_CHECK_EQUAL(ctt.size(), n);
 
-  for(CTT::const_iterator it = ctt.begin(); it != ctt.end(); ++it) {
-    const CTT::value_type& tile = it->get();
+  for(std::size_t m = 0ul; m < M; ++m) {
+    for(std::size_t n = 0ul; n < N; ++n) {
+      const CTT::value_type& tile = ctt[n * M + m].get();
 
-    matrix_type block = result.block(
-        tile.range().start()[0], tile.range().start()[1],
-        tile.range().size()[0], tile.range().size()[1]);
+      // Get tile dimensions
+      const std::size_t I = tile.range().size().back();
+      const std::size_t J = tile.range().size().front();
 
-    for(std::size_t i = 0; i < tile.size(); ++i)
-      BOOST_CHECK_EQUAL(tile[i], block(i));
+      // Create a matrix to hold the expected contraction result
+      matrix_type result(I, J);
+      result.fill(0);
+
+      // Compute the expected value of the result tile
+      for(std::size_t k = 0ul; k < K; ++k) {
+        // Get the contraction arguments for contraction k
+        const ArrayN::value_type& left = a.find(m * K + k).get();
+        const ArrayN::value_type& right = a.find(n * K + k).get();
+
+        const std::size_t L = left.range().volume() / I;
+
+        // Construct an equivilant matrix for the left and right argument tiles
+        Eigen::Map<const matrix_type> left_matrix(left.data(), I, L);
+        Eigen::Map<const matrix_type> right_matrix(right.data(), J, L);
+
+        // Add to the contraction result
+        result += left_matrix * right_matrix.transpose();
+
+      }
+
+      // Check that the result tile is correct.
+      for(std::size_t i = 0ul; i < I; ++i) {
+        for(std::size_t j = 0ul; j < J; ++j) {
+          BOOST_CHECK_EQUAL(result(i,j), tile[j * I + i]);
+        }
+      }
+    }
   }
+
 }
 
 
