@@ -80,8 +80,8 @@ namespace TiledArray {
           proc_size_(proc_cols_ * proc_rows_),
           rank_row_((rank_ < proc_size_ ? rank_ / proc_cols_ : -1)),
           rank_col_((rank_ < proc_size_ ? rank_ % proc_cols_ : -1)),
-          local_rows_((rank_ < proc_size_ ? (m_ / proc_rows_) + (m_ % proc_rows_ ? 1 : 0) : 0)),
-          local_cols_((rank_ < proc_size_ ? (n_ / proc_cols_) + (n_ % proc_cols_ ? 1 : 0) : 0)),
+          local_rows_((rank_ < proc_size_ ? (m_ / proc_rows_) + (rank_row_ < (m_ % proc_rows_) ? 1 : 0) : 0)),
+          local_cols_((rank_ < proc_size_ ? (n_ / proc_cols_) + (rank_col_ < (n_ % proc_cols_) ? 1 : 0) : 0)),
           local_size_(local_rows_ * local_cols_)
       {
         // Initialize the shape if the tensor is not dense
