@@ -218,7 +218,7 @@ namespace TiledArray {
           }
 
           template <typename Archive>
-          void serialize(const Archive& ar) { TA_ASSERT(false); }
+          void serialize(const Archive& ar) { TA_EXCEPTION("Serialization of shared_ptr not supported."); }
 
         private:
 
@@ -266,7 +266,7 @@ namespace TiledArray {
           }
 
           template <typename Archive>
-          void serialize(const Archive& ar) { TA_ASSERT(false); }
+          void serialize(const Archive& ar) { TA_EXCEPTION("Serialization of shared_ptr not supported."); }
 
         private:
 
@@ -689,7 +689,7 @@ namespace TiledArray {
       }
 
       template <typename Archive>
-      void serialize(const Archive&) { TA_ASSERT(false); }
+      void serialize(const Archive&) { TA_EXCEPTION("Serialization not supported."); }
 
     private:
       std::shared_ptr<impl_type> pimpl_;
@@ -710,14 +710,14 @@ namespace madness {
     template <typename Archive, typename Left, typename Right, typename Op>
     struct ArchiveStoreImpl<Archive, std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> > > {
       static void store(const Archive&, const std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> >&) {
-        TA_ASSERT(false);
+        TA_EXCEPTION("Serialization of shared_ptr not supported.");
       }
     };
 
     template <typename Archive, typename Left, typename Right, typename Op>
     struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> > > {
       static void load(const Archive&, std::shared_ptr<TiledArray::expressions::detail::BinaryTiledTensorImpl<Left, Right, Op> >&) {
-        TA_ASSERT(false);
+        TA_EXCEPTION("Serialization of shared_ptr not supported.");
       }
     };
   } // namespace archive

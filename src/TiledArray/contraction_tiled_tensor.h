@@ -264,7 +264,7 @@ namespace TiledArray {
       }
 
       template <typename Archive>
-      void serialize(const Archive&) { TA_ASSERT(false); }
+      void serialize(const Archive&) { TA_EXCEPTION("Serialization not supported."); }
 
     }; // class ContractionTiledTensor
 
@@ -282,7 +282,7 @@ namespace madness {
     template <typename Archive>
     struct ArchiveStoreImpl<Archive, std::shared_ptr<TiledArray::math::Contraction> > {
       static void store(const Archive&, const std::shared_ptr<TiledArray::math::Contraction>&) {
-        TA_ASSERT(false);
+        TA_EXCEPTION("Serialization of shared_ptr not supported.");
       }
     };
 
@@ -290,7 +290,7 @@ namespace madness {
     struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::math::Contraction> > {
 
       static void load(const Archive&, std::shared_ptr<TiledArray::math::Contraction>&) {
-        TA_ASSERT(false);
+        TA_EXCEPTION("Serialization of shared_ptr not supported.");
       }
     };
   } // namespace archive

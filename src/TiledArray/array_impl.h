@@ -346,7 +346,7 @@ namespace TiledArray {
 
         /// Serialization has not been implemented.
         /// \throw TiledArray::Exception always.
-        template <typename Archive> void serialize(Archive&) { TA_ASSERT(false); }
+        template <typename Archive> void serialize(Archive&) { TA_EXCEPTION("Serialization not supported."); }
 
 
       private:
@@ -462,7 +462,7 @@ namespace TiledArray {
 
         /// Serialization has not been implemented.
         /// \throw TiledArray::Exception always.
-        template <typename Archive> void serialize(Archive&) { TA_ASSERT(false); }
+        template <typename Archive> void serialize(Archive&) { TA_EXCEPTION("Serialization not supported."); }
 
       private:
         std::shared_ptr<SparseArrayImpl_> pimpl_;
@@ -496,14 +496,14 @@ namespace madness {
     template <typename Archive, typename T, typename CS>
     struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::detail::ArrayImpl<T,CS> > > {
       static inline void load(const Archive& ar, std::shared_ptr<TiledArray::detail::ArrayImpl<T,CS> > & ptr) {
-        TA_ASSERT(false);
+        TA_EXCEPTION("Serialization of shared_ptr not supported.");
       }
     };
 
     template <typename Archive, typename T, typename CS>
     struct ArchiveStoreImpl<Archive,std::shared_ptr<TiledArray::detail::ArrayImpl<T,CS> > > {
       static inline void store(const Archive& ar, const std::shared_ptr<TiledArray::detail::ArrayImpl<T,CS> >&  ptr) {
-        TA_ASSERT(false);
+        TA_EXCEPTION("Serialization of shared_ptr not supported.");
       }
     };
 

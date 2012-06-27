@@ -125,13 +125,11 @@ namespace TiledArray {
       /// belong to one of the child nodes
       void set_child(const madness::detail::WorldPtr<LazySyncBase_>& wptr) {
         TA_ASSERT(wptr);
+        TA_ASSERT((wptr.owner() == child0_) || (wptr.owner() == child1_));
         if(wptr.owner() == child0_)
           child0_wptr_ = wptr;
-        else if(wptr.owner() == child1_)
+        else
           child1_wptr_ = wptr;
-        else {
-          TA_ASSERT(false); // The world pointer does not correspond to one of our children
-        }
       }
 
       /// Wolrd pointer factory function

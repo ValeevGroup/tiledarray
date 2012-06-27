@@ -27,7 +27,7 @@ namespace TiledArray {
     struct NoPermutation {
       const NoPermutation& operator-() const { return *this; }
       template <typename Archive>
-      void serialize(Archive&) { TA_ASSERT(false); }
+      void serialize(Archive&) { }
     };
 
     /// Copies an iterator range into an array type container.

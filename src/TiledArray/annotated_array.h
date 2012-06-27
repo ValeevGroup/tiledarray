@@ -652,7 +652,7 @@ namespace TiledArray {
       }
 
       template <typename Archive>
-      void serialize(const Archive&) { TA_ASSERT(false); }
+      void serialize(const Archive&) { TA_EXCEPTION("Serialization not supported."); }
 
     private:
       std::shared_ptr<impl_type> pimpl_; ///< Distributed data container
