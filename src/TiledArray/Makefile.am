@@ -27,6 +27,7 @@ library_include_HEADERS = annotated_array.h \
                           range_iterator.h \
                           range.h \
                           reduce_task.h \
+                          ref.h \
                           summa.h \
                           tensor_base.h \
                           tensor_expression_impl.h \
