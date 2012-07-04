@@ -57,9 +57,6 @@ BOOST_AUTO_TEST_CASE( shape )
 
 BOOST_AUTO_TEST_CASE( result )
 {
-  // Store a copy of the trange so it can be checked later.
-  StaticTiledRange<CoordinateSystem<2> > r0 = ctt.trange();
-
   // Get tiling dimensions for contraction
   const std::size_t M = a.trange().tiles().size().front();
   const std::size_t N = a.trange().tiles().size().back();
@@ -72,7 +69,12 @@ BOOST_AUTO_TEST_CASE( result )
 
 
   // Check that the range is unchanged
-  BOOST_CHECK_EQUAL(ctt.trange(), r0);
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().size()[0], a.trange().tiles().size().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().size()[1], a.trange().tiles().size().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().start()[0], a.trange().tiles().start().data().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().start()[1], a.trange().tiles().start().data().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().finish()[0], a.trange().tiles().finish().data().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().finish()[1], a.trange().tiles().finish().data().back());
   BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], a.trange().elements().size().front());
   BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], a.trange().elements().size().back());
   BOOST_CHECK_EQUAL(ctt.trange().elements().start()[0], a.trange().elements().start().data().front());
@@ -89,6 +91,9 @@ BOOST_AUTO_TEST_CASE( result )
 
   for(std::size_t m = 0ul; m < M; ++m) {
     for(std::size_t n = 0ul; n < N; ++n) {
+      if(! ctt.is_local(m * N + n))
+        continue;
+
       const CTT::value_type& tile = ctt[m * N + n].get();
 
       // Get tile dimensions
@@ -103,16 +108,16 @@ BOOST_AUTO_TEST_CASE( result )
       for(std::size_t k = 0ul; k < K; ++k) {
         // Get the contraction arguments for contraction k
         const ArrayN::value_type& left = a.find(m * K + k).get();
-        const ArrayN::value_type& right = a.find(n * K + k).get();
+        const ArrayN::value_type& right = a.find(k * N + n).get();
 
         const std::size_t L = left.range().volume() / I;
 
         // Construct an equivilant matrix for the left and right argument tiles
         Eigen::Map<const matrix_type> left_matrix(left.data(), I, L);
-        Eigen::Map<const matrix_type> right_matrix(right.data(), J, L);
+        Eigen::Map<const matrix_type> right_matrix(right.data(), L, J);
 
         // Add to the contraction result
-        result += left_matrix * right_matrix.transpose();
+        result += left_matrix * right_matrix;
 
       }
 

@@ -4,6 +4,7 @@
 #include <TiledArray/tensor_expression_impl.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/cyclic_pmap.h>
+#include <TiledArray/mxm.h>
 #include <world/shared_ptr.h>
 
 namespace TiledArray {
@@ -37,70 +38,152 @@ namespace TiledArray {
       typedef typename TensorImplBase_::storage_type::future const_reference;
 
     private:
-      left_tensor_type left_;
-      right_tensor_type right_;
-      std::shared_ptr<math::Contraction> cont_;
+      left_tensor_type left_; ///< The left argument tensor
+      right_tensor_type right_; /// < The right argument tensor
+
+      size_type left_inner_; ///< The number of inner indices in the left tensor argument
+      size_type left_outer_; ///< The number of outer indices in the left tensor argument
+      size_type right_inner_; ///< The number of inner indices in the right tensor argument
+      size_type right_outer_; ///< The number of outer indices in the right tensor argument
 
     protected:
       const ProcessID rank_; ///< This process's rank
       const ProcessID size_; ///< Then number of processes
-      const size_type m_; ///< Number of element rows in the result and left matrix
-      const size_type n_; ///< Number of element columns in the result matrix and rows in the right argument matrix
-      const size_type k_; ///< Number of element columns in the left and right argument matrices
-      const size_type mk_; ///< Number of elements in left matrix
-      const size_type nk_; ///< Number of elements in right matrix
-      const size_type proc_cols_; ///< Number of columns in the result process map
-      const size_type proc_rows_; ///< Number of rows in the result process map
-      const size_type proc_size_; ///< Number of process in the process map. This may be
+      size_type m_; ///< Number of element rows in the result and left matrix
+      size_type n_; ///< Number of element columns in the result matrix and rows in the right argument matrix
+      size_type k_; ///< Number of element columns in the left and right argument matrices
+      size_type mk_; ///< Number of elements in left matrix
+      size_type kn_; ///< Number of elements in right matrix
+      size_type proc_cols_; ///< Number of columns in the result process map
+      size_type proc_rows_; ///< Number of rows in the result process map
+      size_type proc_size_; ///< Number of process in the process map. This may be
                          ///< less than the number of processes in world.
-      const ProcessID rank_row_; ///< This node's row in the process map
-      const ProcessID rank_col_; ///< This node's column in the process map
-      const size_type local_rows_; ///< The number of local element rows
-      const size_type local_cols_; ///< The number of local element columns
-      const size_type local_size_; ///< Number of local elements
+      ProcessID rank_row_; ///< This node's row in the process map
+      ProcessID rank_col_; ///< This node's column in the process map
+      size_type local_rows_; ///< The number of local element rows
+      size_type local_cols_; ///< The number of local element columns
+      size_type local_size_; ///< Number of local elements
+
+    private:
+
+      template <typename Pred>
+      class InnerOuterPred {
+      private:
+        const expressions::VariableList& vars_;
+        Pred pred_;
+
+      public:
+        InnerOuterPred(const expressions::VariableList& vars) : vars_(vars), pred_() { }
+
+        bool operator()(const std::string& var) const { return pred_(std::find(vars_.begin(), vars_.end(), var), vars_.end()); }
+      }; // class InnerOuterPred
+
+      typedef InnerOuterPred<std::equal_to<expressions::VariableList::const_iterator> > OuterPred;
+      typedef InnerOuterPred<std::not_equal_to<expressions::VariableList::const_iterator> > InnerPred;
+
+      static expressions::VariableList contract_vars(const Left& left, const Right& right) {
+        std::vector<std::string> vars;
+
+        OuterPred left_pred(right.vars());
+        for(expressions::VariableList::const_iterator it = left.vars().begin(); it != left.vars().end(); ++it)
+          if(left_pred(*it))
+            vars.push_back(*it);
+
+        OuterPred right_pred(left.vars());
+        for(expressions::VariableList::const_iterator it = right.vars().begin(); it != right.vars().end(); ++it)
+          if(right_pred(*it))
+            vars.push_back(*it);
+
+        return expressions::VariableList(vars.begin(), vars.end());
+      }
+
+      static DynamicTiledRange contract_trange(const Left& left, const Right& right) {
+        typename DynamicTiledRange::Ranges ranges;
+
+        OuterPred left_pred(right.vars());
+        for(expressions::VariableList::const_iterator it = left.vars().begin(); it != left.vars().end(); ++it)
+          if(left_pred(*it))
+            ranges.push_back(left.trange().data()[std::distance(left.vars().begin(), it)]);
+
+        OuterPred right_pred(left.vars());
+        for(expressions::VariableList::const_iterator it = right.vars().begin(); it != right.vars().end(); ++it)
+          if(right_pred(*it))
+            ranges.push_back(right.trange().data()[std::distance(right.vars().begin(), it)]);
+
+        return DynamicTiledRange(ranges.begin(), ranges.end());
+      }
 
     public:
 
-      ContractionTensorImpl(const left_tensor_type& left, const right_tensor_type& right,
-        const std::shared_ptr<math::Contraction>& cont) :
-          TensorExpressionImpl_(left.get_world(),
-              cont->contract_vars(left.vars(), right.vars()),
-              cont->contract_trange(left.trange(), right.trange())),
+      ContractionTensorImpl(const left_tensor_type& left, const right_tensor_type& right) :
+          TensorExpressionImpl_(left.get_world(), contract_vars(left, right), contract_trange(left, right)),
           left_(left), right_(right),
-          cont_(cont),
-          rank_(TensorImplBase_::get_world().rank()),
-          size_(TensorImplBase_::get_world().size()),
-          n_(cont->right_outer_init(right_.range())),
-          m_(cont_->left_outer_init(left_.range())),
-          k_(cont_->left_inner_init(left_.range())),
-          mk_(m_ * k_),
-          nk_(n_ * k_),
-          proc_cols_(std::min(size_ / std::max(std::min<std::size_t>(std::sqrt(size_ * m_ / n_), size_), 1ul), n_)),
-          proc_rows_(std::min(size_ / proc_cols_, m_)),
-          proc_size_(proc_cols_ * proc_rows_),
-          rank_row_((rank_ < proc_size_ ? rank_ / proc_cols_ : -1)),
-          rank_col_((rank_ < proc_size_ ? rank_ % proc_cols_ : -1)),
-          local_rows_((rank_ < proc_size_ ? (m_ / proc_rows_) + (rank_row_ < (m_ % proc_rows_) ? 1 : 0) : 0)),
-          local_cols_((rank_ < proc_size_ ? (n_ / proc_cols_) + (rank_col_ < (n_ % proc_cols_) ? 1 : 0) : 0)),
-          local_size_(local_rows_ * local_cols_)
+          left_inner_(0ul), left_outer_(0ul), right_inner_(0ul), right_outer_(0ul),
+          rank_(TensorImplBase_::get_world().rank()), size_(TensorImplBase_::get_world().size()),
+          m_(1ul), n_(1ul), k_(1ul), mk_(1ul), kn_(1ul),
+          proc_cols_(0ul), proc_rows_(0ul), proc_size_(0ul),
+          rank_row_(-1), rank_col_(-1),
+          local_rows_(0ul), local_cols_(0ul), local_size_(0ul)
       {
+        InnerPred left_inner_pred(right_.vars());
+        for(expressions::VariableList::const_iterator it = left_.vars().begin(); it != left_.vars().end(); ++it)
+          if(left_inner_pred(*it)) {
+            ++left_inner_;
+            k_ *= left_.range().size()[std::distance(left_.vars().begin(), it)];
+          }
+
+        // Calculate the dimensions of the inner and outer fused tensors
+        mk_ = left_.range().volume();
+        kn_ = right_.range().volume();
+        m_ = mk_ / k_;
+        n_ = kn_ / k_;
+        left_outer_ = left_.range().dim() - left_inner_;
+        right_inner_ = left_inner_;
+        right_outer_ = right_.range().dim() - right_inner_;
+
+        // Caclulate the process map dimensions and size
+        proc_cols_ = std::min(size_ / std::max(std::min<std::size_t>(std::sqrt(size_ * m_ / n_), size_), 1ul), n_);
+        proc_rows_ = std::min(size_ / proc_cols_, m_);
+        proc_size_ = proc_cols_ * proc_rows_;
+
+        if(rank_ < proc_size_) {
+          // Calculate this rank's row and column
+          rank_row_ = rank_ / proc_cols_;
+          rank_col_ = rank_ % proc_cols_;
+
+          // Calculate the local tile dimensions and size
+          local_rows_ = (m_ / proc_rows_) + (rank_row_ < (m_ % proc_rows_) ? 1 : 0);
+          local_cols_ = (n_ / proc_cols_) + (rank_col_ < (n_ % proc_cols_) ? 1 : 0);
+          local_size_ = local_rows_ * local_cols_;
+        }
+
         // Initialize the shape if the tensor is not dense
         if(! (left.is_dense() || right.is_dense())) {
-          typedef TiledArray::detail::Bitset<>::value_type bool_type;
+          typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
-          // Construct left and right shape maps
-          Tensor<bool_type, typename left_tensor_type::range_type>
-              left_map(left_.range(), left_.get_shape().begin());
-          Tensor<bool_type, typename right_tensor_type::range_type>
-              right_map(right_.range(), right_.get_shape().begin());
+          // Construct map objects for the shapes
+          matrix_type left_map(m_, k_);
+          matrix_type right_map(k_, n_);
+          matrix_type res_map(m_, n_);
 
-          Tensor<bool_type, range_type> res =
-                cont_->contract_tensor(left_map, right_map);
+          // Copy the left shape to its map
+          for(std::size_t i = 0; i < m_; ++i)
+            for(std::size_t j = 0; j < k_; ++j)
+              left_map(i, j) = (left_.get_shape()[i * k_ + j] ? 1 : 0);
 
-          const size_type n = TensorImplBase_::size();
-          TensorImplBase_::shape(TiledArray::detail::Bitset<>(n));
-          for(size_type i = 0; i < n; ++i)
-            TensorImplBase_::shape(i, res[i]);
+          // Copy the right shape to its map
+          for(std::size_t i = 0; i < k_; ++i)
+            for(std::size_t j = 0; j < n_; ++j)
+              right_map(i, j) = (right_.get_shape()[i * k_ + j] ? 1 : 0);
+
+          // Construct the new shape
+          res_map.noalias() = left_map * right_map;
+
+          // Update the shape
+          for(std::size_t i = 0; i < m_; ++i)
+            for(std::size_t j = 0; j < n_; ++j)
+              if(res_map(i,j))
+                TensorImplBase_::shape(i * m_ + j);
         }
       }
 
@@ -114,43 +197,126 @@ namespace TiledArray {
 
       right_tensor_type& right() { return right_; }
 
+    private:
+
+      template <typename InIter>
+      size_type product(InIter first, InIter last) const {
+        size_type result = 1ul;
+
+        for(; first != last; ++first)
+          result *= *first;
+
+        return result;
+      }
+
+    public:
+
       /// Contraction operation
 
       /// Contract \c left and \c right to \c result .
       /// \param[out] result The tensor that will store the result
       /// \param[in] left The left hand tensor argument
       /// \param[in] right The right hand tensor argument
-      void contract(value_type& result, const left_value_type& left, const right_value_type& right) {
-        cont_->contract_tensor(result, left, right);
+      void contract(value_type& result, const left_value_type& left, const right_value_type& right) const {
+        // Allocate the result tile if it is uninitialized
+        if(result.empty()) {
+          // Create the start and finish indices
+          typename value_type::range_type::index start(left_outer_ + right_outer_);
+          typename value_type::range_type::index finish(left_outer_ + right_outer_);
+
+          // Copy the values from left and right ranges to start and finish indices
+          std::copy(right.range().start().begin() + right_inner_, right.range().start().end(),
+              std::copy(left.range().start().begin(), left.range().start().begin() + left_outer_, start.begin()));
+          std::copy(right.range().finish().begin() + right_inner_, right.range().finish().end(),
+              std::copy(left.range().finish().begin(), left.range().finish().begin() + left_outer_, finish.begin()));
+
+          value_type(typename value_type::range_type(start, finish)).swap(result);
+        }
+
+        // Check that all tensors have been allocated at this point
+        TA_ASSERT(!result.empty());
+        TA_ASSERT(!left.empty());
+        TA_ASSERT(!right.empty());
+
+        // The assertions below varify that the argument and result tensors are coformal
+
+        // Check that all tensors have the correct dimension sizes
+        TA_ASSERT(result.range().dim() == (left_outer_ + right_outer_));
+        TA_ASSERT(left.range().dim() == (left_outer_ + left_inner_));
+        TA_ASSERT(right.range().dim() == (right_inner_ + right_outer_));
+
+        // Check that the outer dimensions of left match the the corresponding dimesions in result
+        TA_ASSERT(std::equal(left.range().start().begin(), left.range().start().begin() + left_outer_, result.range().start().begin()));
+        TA_ASSERT(std::equal(left.range().finish().begin(), left.range().finish().begin() + left_outer_, result.range().finish().begin()));
+        TA_ASSERT(std::equal(left.range().size().begin(), left.range().size().begin() + left_outer_, result.range().size().begin()));
+
+        // Check that the outer dimensions of right match the the corresponding dimesions in result
+        TA_ASSERT(std::equal(right.range().start().begin() + right_inner_, right.range().start().end(), result.range().start().begin() + left_outer_));
+        TA_ASSERT(std::equal(right.range().finish().begin() + right_inner_, right.range().finish().end(), result.range().finish().begin() + left_outer_));
+        TA_ASSERT(std::equal(right.range().size().begin() + right_inner_, right.range().size().end(), result.range().size().begin() + left_outer_));
+
+        // Check that the  inner dimensions of left and right match
+        TA_ASSERT(std::equal(left.range().start().begin() + left_outer_, left.range().start().end(), right.range().start().begin()));
+        TA_ASSERT(std::equal(left.range().finish().begin() + left_outer_, left.range().finish().end(), right.range().finish().begin()));
+        TA_ASSERT(std::equal(left.range().size().begin() + left_outer_, left.range().size().end(), right.range().size().begin()));
+
+        // Calculate the fused tile dimension
+        const size_type m = product(left.range().size().begin(), left.range().size().begin() + left_outer_);
+        const size_type k = product(left.range().size().begin() + left_outer_, left.range().size().end());
+        const size_type n = product(right.range().size().begin() + right_inner_, right.range().size().end());
+
+        // Do the contraction
+        TiledArray::detail::mxm(m, n, k, left.data(), right.data(), result.data());
       }
-
-      /// Contraction object accessor
-
-      /// \return a shared pointer to the contraction object
-      const std::shared_ptr<math::Contraction>& contract() const { return cont_; }
 
     private:
 
-      /// Factory function for the left argument process map
-
-      /// \return A shared pointer that contains the left process map
-      std::shared_ptr<pmap_interface> make_left_pmap() const {
-        return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
-            TensorImplBase_::get_world(), m_, k_, proc_rows_, proc_cols_));
-      }
-
-      /// Factory function for the right argument process map
-
-      /// \return A shared pointer that contains the right process map
-      std::shared_ptr<pmap_interface> make_right_pmap() const {
-        return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
-            TensorImplBase_::get_world(), n_, k_, proc_cols_, proc_rows_));
-      }
-
       virtual bool eval_children(const expressions::VariableList& vars,
-          const std::shared_ptr<pmap_interface>&) {
-        return left_.eval(cont_->left_vars(left_.vars()), make_left_pmap()).get()
-            && right_.eval(cont_->right_vars(right_.vars()), make_right_pmap()).get();
+          const std::shared_ptr<pmap_interface>&)
+      {
+
+        std::vector<std::string> left_vars;
+        std::vector<std::string> right_vars;
+
+        // Construct the left variable list and right inner product variable list
+        OuterPred left_outer_pred(right_.vars());
+        for(expressions::VariableList::const_iterator it = left_.vars().begin(); it != left_.vars().end(); ++it)
+          if(left_outer_pred(*it))
+            left_vars.push_back(*it);
+        for(expressions::VariableList::const_iterator it = left_.vars().begin(); it != left_.vars().end(); ++it)
+          if(! left_outer_pred(*it)) {
+            left_vars.push_back(*it);
+            right_vars.push_back(*it);
+          }
+
+        // Construct the left argument process map
+        std::shared_ptr<pmap_interface> left_pmap(new TiledArray::detail::CyclicPmap(
+                    TensorImplBase_::get_world(), m_, k_, proc_rows_, proc_cols_));
+
+        // Start the left tensor evaluation
+        madness::Future<bool> left_done =
+            left_.eval(expressions::VariableList(left_vars.begin(), left_vars.end()),
+            left_pmap);
+
+        // Finish constructing the right variable list with the outer product variables
+        OuterPred right_outer_pred(left_.vars());
+        for(expressions::VariableList::const_iterator it = right_.vars().begin(); it != right_.vars().end(); ++it)
+          if(right_outer_pred(*it))
+            right_vars.push_back(*it);
+
+
+        // Construct the right argument process map
+        std::shared_ptr<pmap_interface> right_pmap(new TiledArray::detail::CyclicPmap(
+                    TensorImplBase_::get_world(), k_, n_, proc_rows_, proc_cols_));
+
+        // Start the right tensor evaluation
+        madness::Future<bool> right_done =
+            right_.eval(expressions::VariableList(right_vars.begin(), right_vars.end()),
+                right_pmap);
+
+        // Wait for the evaluation of the left and right child tensors before returning
+        // Note: This does not include evaluation of tiles, only structure.
+        return left_done.get() && right_done.get();
       }
     }; // class ContractionAlgorithmBase
 

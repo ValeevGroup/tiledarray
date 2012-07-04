@@ -20,7 +20,10 @@ library_include_HEADERS = annotated_array.h \
                           distributed_storage.h \
                           error.h \
                           expressions.h \
+                          functional.h \
                           indexed_iterator.h \
+                          lazy_sync.h \
+                          mxm.h \
                           permutation.h \
                           permute_tensor.h \
                           pmap.h \

@@ -7,7 +7,7 @@
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/bitset.h>
 #include <TiledArray/permute_tensor.h>
-#include <TiledArray/mxmt.h>
+#include <TiledArray/mxm.h>
 #include <world/array.h>
 #include <iterator>
 #include <numeric>
@@ -73,10 +73,36 @@ namespace TiledArray {
             right_outer_.push_back(std::distance(right.begin(), it));
         }
 
-        init_permutation(left, left_inner_, left_outer_, perm_left_, do_perm_left_);
-        init_permutation(right, right_inner_, right_outer_, perm_right_, do_perm_right_);
-      }
+        // construct the permuatation for the left tensor
+        {
+          std::vector<std::string> vars;
+          vars.reserve(left.size());
 
+          for(map_type::const_iterator it = left_outer_.begin(); it != left_outer_.end(); ++it)
+            vars.push_back(left[*it]);
+          for(map_type::const_iterator it = left_inner_.begin(); it != left_inner_.end(); ++it)
+            vars.push_back(left[*it]);
+          expressions::VariableList perm_vars(vars.begin(), vars.end());
+          perm_left_ = perm_vars.permutation(left);
+
+          do_perm_left_ = perm_vars != left;
+        }
+
+        // Construct the permuation for the right tensor
+        {
+          std::vector<std::string> vars;
+          vars.reserve(right.size());
+
+          for(map_type::const_iterator it = right_inner_.begin(); it != right_inner_.end(); ++it)
+            vars.push_back(right[*it]);
+          for(map_type::const_iterator it = right_outer_.begin(); it != right_outer_.end(); ++it)
+            vars.push_back(right[*it]);
+          expressions::VariableList perm_vars(vars.begin(), vars.end());
+          perm_right_ = perm_vars.permutation(right);
+
+          do_perm_right_ = perm_vars != right;
+        }
+      }
 
 
       const Permutation& perm_left() const { return perm_left_; }
@@ -268,7 +294,7 @@ namespace TiledArray {
       /// \return The size of the fused outer dimensions for the right argument
       template <typename D>
       std::size_t right_outer(const Range<D>& range) const {
-        return accumulate(range.size().begin(), range.size().begin() + right_outer_dim());
+        return accumulate(range.size().begin() + right_inner_dim(), range.size().end());
       }
 
       /// Calculate the inner dimension for the right argument
@@ -279,7 +305,7 @@ namespace TiledArray {
       /// \return The size of the fused inner dimensions for the right argument
       template <typename D>
       std::size_t right_inner(const Range<D>& range) const {
-        return accumulate(range.size().begin() + right_outer_dim(), range.size().end());
+        return accumulate(range.size().begin(), range.size().begin() + right_inner_dim());
       }
 
       template <typename LeftRange, typename RightRange>
@@ -375,7 +401,7 @@ namespace TiledArray {
         const std::size_t i = left_inner(left.range());
         const std::size_t n = right_outer(right.range());
 
-        TiledArray::detail::mxmT(m, n, i, left.data(), right.data(), res.data());
+        TiledArray::detail::mxm(m, n, i, left.data(), right.data(), res.data());
       }
 
       /// Tensor contraction
@@ -447,8 +473,8 @@ namespace TiledArray {
         const std::size_t j = left_inner(c.range());
         const std::size_t n = right_outer(b.range());
 
-        TiledArray::detail::mxmT(m, n, i, a.data(), b.data(), res.data());
-        TiledArray::detail::mxmT(m, n, j, c.data(), d.data(), res.data());
+        TiledArray::detail::mxm(m, n, i, a.data(), b.data(), res.data());
+        TiledArray::detail::mxm(m, n, j, c.data(), d.data(), res.data());
 
         return res;
       }
@@ -490,9 +516,9 @@ namespace TiledArray {
       template <typename LeftRange, typename RightRange>
       bool check_coformal(const LeftRange& left, const RightRange& right) const {
         return std::equal(left.start().begin() + left_outer_dim(), left.start().end(),
-            right.start().begin() + right_outer_dim())
+            right.start().begin())
             && std::equal(left.finish().begin() + left_outer_dim(), left.finish().end(),
-            right.finish().begin() + right_outer_dim());
+            right.finish().begin());
       }
 
       /// Check that the result and left arrays are coformal
@@ -508,9 +534,9 @@ namespace TiledArray {
       template <typename ResRange, typename RightRange>
       bool check_right_coformal(const ResRange& res, const RightRange& right) const {
         return std::equal(res.start().begin() + left_outer_dim(), res.start().end(),
-            right.start().begin())
+            right.start().begin() + right_inner_dim())
             && std::equal(res.finish().begin() + left_outer_dim(), res.finish().end(),
-            right.finish().begin());
+            right.finish().begin() + right_inner_dim());
       }
 
       /// Product accumulation
@@ -533,48 +559,11 @@ namespace TiledArray {
           const RightIndex& r_index) const {
         DynamicRange::index result(dim());
 
-        std::copy(r_index.begin(), r_index.begin() + right_outer_dim(),
+        std::copy(r_index.begin() + right_inner_dim(), r_index.end(),
             std::copy(l_index.begin(), l_index.begin() + left_outer_dim(), result.begin()));
 
         return result;
       }
-
-
-      static void init_inner_outer(const expressions::VariableList& first,
-          const expressions::VariableList& second, map_type& inner, map_type& outer)
-      {
-        // Reserve storage for maps.
-        inner.reserve(first.dim());
-        outer.reserve(first.dim());
-
-        // construct the inner and outer maps.
-        for(expressions::VariableList::const_iterator it = first.begin(); it != first.end(); ++it) {
-          expressions::VariableList::const_iterator second_it =
-              std::find(second.begin(), second.end(), *it);
-          if(second_it == second.end())
-            outer.push_back(std::distance(first.begin(), it));
-          else
-            inner.push_back(std::distance(first.begin(), it));
-        }
-      }
-
-      static void init_permutation(const expressions::VariableList& in_vars,
-          const map_type& inner, const map_type& outer,
-          Permutation& perm, bool& do_perm)
-      {
-        std::vector<std::string> vars;
-        vars.reserve(in_vars.size());
-
-        for(map_type::const_iterator it = outer.begin(); it != outer.end(); ++it)
-          vars.push_back(in_vars[*it]);
-        for(map_type::const_iterator it = inner.begin(); it != inner.end(); ++it)
-          vars.push_back(in_vars[*it]);
-        expressions::VariableList perm_vars(vars.begin(), vars.end());
-        perm = perm_vars.permutation(in_vars);
-
-        do_perm = perm_vars != in_vars;
-      }
-
 
       map_type left_inner_;
       map_type left_outer_;
