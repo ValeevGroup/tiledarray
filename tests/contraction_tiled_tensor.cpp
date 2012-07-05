@@ -91,14 +91,17 @@ BOOST_AUTO_TEST_CASE( result )
 
   for(std::size_t m = 0ul; m < M; ++m) {
     for(std::size_t n = 0ul; n < N; ++n) {
-      if(! ctt.is_local(m * N + n))
-        continue;
 
-      const CTT::value_type& tile = ctt[m * N + n].get();
+      madness::Future<CTT::value_type> tile = ctt[m * N + n];
+//      std::stringstream ss;
+//      ss << tile << "\n";
 
       // Get tile dimensions
-      const std::size_t I = tile.range().size().front();
-      const std::size_t J = tile.range().size().back();
+      const std::size_t I = tile.get().range().size()[0];
+      const std::size_t J = tile.get().range().size()[1];
+
+//      ss << "I = " << I << " J = " << J << "\n";
+//      std::cout << ss.str();
 
       // Create a matrix to hold the expected contraction result
       matrix_type result(I, J);
@@ -107,24 +110,24 @@ BOOST_AUTO_TEST_CASE( result )
       // Compute the expected value of the result tile
       for(std::size_t k = 0ul; k < K; ++k) {
         // Get the contraction arguments for contraction k
-        const ArrayN::value_type& left = a.find(m * K + k).get();
-        const ArrayN::value_type& right = a.find(k * N + n).get();
+        madness::Future<ArrayN::value_type> left = a.find(m * K + k);
+        madness::Future<ArrayN::value_type> right = a.find(k * N + n);
 
-        const std::size_t L = left.range().volume() / I;
+        const std::size_t L = left.get().range().volume() / I;
 
         // Construct an equivilant matrix for the left and right argument tiles
-        Eigen::Map<const matrix_type> left_matrix(left.data(), I, L);
-        Eigen::Map<const matrix_type> right_matrix(right.data(), L, J);
+        Eigen::Map<const matrix_type> left_matrix(left.get().data(), I, L);
+        Eigen::Map<const matrix_type> right_matrix(right.get().data(), L, J);
 
         // Add to the contraction result
-        result += left_matrix * right_matrix;
+        result.noalias() += left_matrix * right_matrix;
 
       }
 
       // Check that the result tile is correct.
       for(std::size_t i = 0ul; i < I; ++i) {
         for(std::size_t j = 0ul; j < J; ++j) {
-          BOOST_CHECK_EQUAL(result(i,j), tile[i * J + j]);
+          BOOST_CHECK_EQUAL(result(i,j), tile.get()[i * J + j]);
         }
       }
     }
@@ -136,8 +139,6 @@ BOOST_AUTO_TEST_CASE( permute_result )
 {
   Permutation p(1,0);
 
-  StaticTiledRange<CoordinateSystem<2> > r0 = p ^ ctt.trange();
-
   const std::size_t M = a.trange().tiles().size().front();
   const std::size_t N = a.trange().tiles().size().back();
   const std::size_t K = a.trange().tiles().volume() / M;
@@ -148,7 +149,13 @@ BOOST_AUTO_TEST_CASE( permute_result )
       new TiledArray::detail::BlockedPmap(* GlobalFixture::world, size))).get();
 
   // Check that the range has been permuted correctly.
-  BOOST_CHECK_EQUAL(ctt.trange(), r0);
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().size()[0], a.trange().tiles().size().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().size()[1], a.trange().tiles().size().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().start()[0], a.trange().tiles().start().data().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().start()[1], a.trange().tiles().start().data().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().finish()[0], a.trange().tiles().finish().data().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().finish()[1], a.trange().tiles().finish().data().front());
+
   BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], a.trange().elements().size().back());
   BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], a.trange().elements().size().front());
   BOOST_CHECK_EQUAL(ctt.trange().elements().start()[0], a.trange().elements().start().data().back());
@@ -164,11 +171,12 @@ BOOST_AUTO_TEST_CASE( permute_result )
 
   for(std::size_t m = 0ul; m < M; ++m) {
     for(std::size_t n = 0ul; n < N; ++n) {
-      const CTT::value_type& tile = ctt[n * M + m].get();
+
+      madness::Future<CTT::value_type> tile = ctt[n * M + m];
 
       // Get tile dimensions
-      const std::size_t I = tile.range().size().back();
-      const std::size_t J = tile.range().size().front();
+      const std::size_t I = tile.get().range().size().back();
+      const std::size_t J = tile.get().range().size().front();
 
       // Create a matrix to hold the expected contraction result
       matrix_type result(I, J);
@@ -177,14 +185,14 @@ BOOST_AUTO_TEST_CASE( permute_result )
       // Compute the expected value of the result tile
       for(std::size_t k = 0ul; k < K; ++k) {
         // Get the contraction arguments for contraction k
-        const ArrayN::value_type& left = a.find(m * K + k).get();
-        const ArrayN::value_type& right = a.find(n * K + k).get();
+        madness::Future<ArrayN::value_type> left = a.find(m * K + k);
+        madness::Future<ArrayN::value_type> right = a.find(k * N + n);
 
-        const std::size_t L = left.range().volume() / I;
+        const std::size_t L = left.get().range().volume() / I;
 
         // Construct an equivilant matrix for the left and right argument tiles
-        Eigen::Map<const matrix_type> left_matrix(left.data(), I, L);
-        Eigen::Map<const matrix_type> right_matrix(right.data(), J, L);
+        Eigen::Map<const matrix_type> left_matrix(left.get().data(), I, L);
+        Eigen::Map<const matrix_type> right_matrix(right.get().data(), J, L);
 
         // Add to the contraction result
         result += left_matrix * right_matrix.transpose();
@@ -194,7 +202,7 @@ BOOST_AUTO_TEST_CASE( permute_result )
       // Check that the result tile is correct.
       for(std::size_t i = 0ul; i < I; ++i) {
         for(std::size_t j = 0ul; j < J; ++j) {
-          BOOST_CHECK_EQUAL(result(i,j), tile[j * I + i]);
+          BOOST_CHECK_EQUAL(result(i,j), tile.get()[i * J + j]);
         }
       }
     }
