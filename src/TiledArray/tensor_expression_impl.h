@@ -131,7 +131,7 @@ namespace TiledArray {
       /// \param vars The final variable list order (must be a permutation of
       /// the current variable list)
       /// \return \c true when the tensor structure has been permuted
-      bool internal_eval_structure(const VariableList& vars) {
+      bool internal_eval_structure(const VariableList& vars, bool) {
         // Evaluate the shape of this tensor
         this->eval_shape();
 
@@ -207,7 +207,7 @@ namespace TiledArray {
             (vars == vars_ ?
                 madness::Future<bool>(true) :
                 TensorImplBase_::get_world().taskq.add(*this,
-                    & TensorExpressionImpl_::internal_eval_structure, vars));
+                    & TensorExpressionImpl_::internal_eval_structure, vars, child_eval_done));
 
         // Do tile evaluation step
         TensorImplBase_::get_world().taskq.add(*this,
