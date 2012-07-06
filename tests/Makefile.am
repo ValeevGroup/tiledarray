@@ -23,12 +23,17 @@ ta_test_SOURCES = ta_test.cpp \
                   cyclic_pmap.cpp \
                   hash_pmap.cpp \
                   distributed_storage.cpp \
+                  tensor_impl_base.cpp \
                   array.cpp \
                   variable_list.cpp \
+                  tensor_expression_impl.cpp \
                   annotated_array.cpp \
                   unary_tiled_tensor.cpp \
                   binary_tiled_tensor.cpp \
                   reduce_task.cpp \
+                  contraction_tensor_impl.cpp \
+                  vspgemm.cpp \
+                  summa.cpp \
                   contraction_tiled_tensor.cpp \
                   expressions.cpp \
                   array_fixture.h \

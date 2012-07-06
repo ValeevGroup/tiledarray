@@ -3,6 +3,7 @@
 
 #include <TiledArray/contraction_tensor_impl.h>
 #include <TiledArray/lazy_sync.h>
+#include <TiledArray/reduce_task.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -244,12 +245,10 @@ namespace TiledArray {
     private:
       virtual void eval_tiles() {
         // Spawn task for local tile evaluation
-        for(size_type i = rank_row_; i < m_; i += proc_rows_) {
-          for(size_type j = rank_col_; j < n_; j += proc_cols_) {
+        for(size_type i = rank_row_; i < m_; i += proc_rows_)
+          for(size_type j = rank_col_; j < n_; j += proc_cols_)
             if(! TensorImplBase_::is_zero(TensorExpressionImpl_::perm_index(i * n_ + j)))
               WorldObject_::task(rank_, & VSpGemm_::dot_product, i, j);
-          }
-        }
 
         // Cleanup argument data
         lazy_sync(WorldObject_::get_world(), WorldObject_::id(), Cleanup(*this));

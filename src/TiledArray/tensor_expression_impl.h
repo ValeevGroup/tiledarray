@@ -2,6 +2,8 @@
 #define TILEDARRAY_TENSOR_EXPRESSION_IMPL_H__INCLUDED
 
 #include <TiledArray/tensor_impl_base.h>
+#include <TiledArray/variable_list.h>
+#include <TiledArray/permute_tensor.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -118,22 +120,16 @@ namespace TiledArray {
       virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
           const std::shared_ptr<pmap_interface>& pmap) = 0;
 
-      madness::Void internal_eval_tiles(bool, bool) {
-        evaluated_ = true;
-        this->eval_tiles();
-        return madness::None;
-      }
-
-      virtual void eval_shape() = 0;
+      virtual TiledArray::detail::Bitset<> eval_shape() = 0;
 
       /// Permute the range, shape, and variable list of this tensor
 
       /// \param vars The final variable list order (must be a permutation of
       /// the current variable list)
       /// \return \c true when the tensor structure has been permuted
-      bool internal_eval_structure(const VariableList& vars, bool) {
+      bool internal_eval(const VariableList& vars, bool) {
         // Evaluate the shape of this tensor
-        this->eval_shape();
+
 
         // Permute structure if the current variable list does not match vars
         if(vars != vars_) {
@@ -141,13 +137,16 @@ namespace TiledArray {
           // such that: vars = perm ^ vars_
           perm_ = vars.permutation(vars_);
 
+          // Store the new variable list
+          vars_ = vars;
+
           // Permute the tiled range
           TensorImplBase_::trange(perm_ ^ trange_);
 
           // If not dense, permute the shape
           if(! TensorImplBase_::is_dense()) {
             // Construct the inverse permuted weight and size for this tensor
-            typename range_type::size_array ip_weight = (-perm_) ^ TensorImplBase_::range().weight();
+            typename range_type::size_array ip_weight = (-perm_) ^ TensorImplBase_::trange().tiles().weight();
             const typename range_type::index& start = trange_.tiles().start();
 
             // Get range iterator
@@ -157,23 +156,23 @@ namespace TiledArray {
             // Construct temp shape
             const size_type size = TensorImplBase_::size();
             TiledArray::detail::Bitset<> s(size);
-            {
-              // Get the original shape
-              const TiledArray::detail::Bitset<>& shape = TensorImplBase_::shape();
+            TiledArray::detail::Bitset<> s0(this->eval_shape());
 
-              // Set the temp shape values
-              for(size_type i = 0ul; i != size; ++i, ++range_it)
-                if(shape[i])
-                  s.set(TiledArray::detail::calc_ordinal(*range_it, ip_weight, start));
-            }
+            // Set the temp shape values
+            for(size_type i = 0ul; i < size; ++i, ++range_it)
+              if(s[i] != 0ul)
+                s.set(TiledArray::detail::calc_ordinal(*range_it, ip_weight, start));
 
             // Set the new shape
             TensorImplBase_::shape(s);
           }
 
-          // Store the new variable list
-          vars_ = vars;
+        } else {
+          TensorImplBase_::shape(this->eval_shape());
         }
+
+        evaluated_ = true;
+        this->eval_tiles();
 
         return true;
       }
@@ -204,15 +203,8 @@ namespace TiledArray {
         TensorImplBase_::pmap(pmap);
 
         madness::Future<bool> structure_eval_done =
-            (vars == vars_ ?
-                madness::Future<bool>(true) :
-                TensorImplBase_::get_world().taskq.add(*this,
-                    & TensorExpressionImpl_::internal_eval_structure, vars, child_eval_done));
-
-        // Do tile evaluation step
-        TensorImplBase_::get_world().taskq.add(*this,
-            & TensorExpressionImpl_::internal_eval_tiles, structure_eval_done,
-            child_eval_done);
+            TensorImplBase_::get_world().taskq.add(*this,
+            & TensorExpressionImpl_::internal_eval, vars, child_eval_done);
 
         return structure_eval_done;
       }

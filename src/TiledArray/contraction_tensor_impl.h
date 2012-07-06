@@ -10,15 +10,37 @@
 namespace TiledArray {
   namespace expressions {
 
+    namespace {
+      /// Contraction type selection for complex numbers
+
+      /// \tparam T The left contraction argument type
+      /// \tparam U The right contraction argument type
+      template <typename T, typename U>
+      struct ContractionValue {
+        typedef T type; ///< The result type
+      };
+
+      template <typename T>
+      struct ContractionValue<T, std::complex<T> > {
+        typedef std::complex<T> type;
+      };
+
+      template <typename T>
+      struct ContractionValue<std::complex<T>, T> {
+        typedef std::complex<T> type;
+      };
+
+    } // namespace
+
     template <typename Left, typename Right>
     class ContractionTensorImpl : public TensorExpressionImpl<DynamicTiledRange,
-        Tensor<typename math::ContractionValue<typename Left::value_type::value_type,
+        Tensor<typename ContractionValue<typename Left::value_type::value_type,
         typename Right::value_type::value_type>::type, typename DynamicTiledRange::range_type> >
     {
     public:
       // Base class typedefs
       typedef TensorExpressionImpl<DynamicTiledRange,
-          Tensor<typename math::ContractionValue<typename Left::value_type::value_type,
+          Tensor<typename ContractionValue<typename Left::value_type::value_type,
           typename Right::value_type::value_type>::type, typename DynamicTiledRange::range_type> >
           TensorExpressionImpl_;
       typedef typename TensorExpressionImpl_::TensorImplBase_ TensorImplBase_;
@@ -242,7 +264,9 @@ namespace TiledArray {
 
     private:
 
-      virtual void eval_shape() {
+      virtual TiledArray::detail::Bitset<> eval_shape() {
+        TiledArray::detail::Bitset<> s(0ul);
+
         // Initialize the shape if this tensor is not dense
         if(! (left_.is_dense() && right_.is_dense())) {
           typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
@@ -276,14 +300,14 @@ namespace TiledArray {
           matrix_type res_map = left_map * right_map;
 
           // Update the shape
-          const size_type size = TensorImplBase_::size();
-          TiledArray::detail::Bitset<> s(size);
+          TiledArray::detail::Bitset<>(TensorImplBase_::size()).swap(s);
           for(std::size_t i = 0; i < m_; ++i)
             for(std::size_t j = 0; j < n_; ++j)
               if(res_map(i,j))
                 s.set(i * m_ + j);
-          TensorImplBase_::shape(s);
         }
+
+        return s;
       }
 
       static bool done(const bool left, const bool right) { return left && right; }

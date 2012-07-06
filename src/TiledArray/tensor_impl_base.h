@@ -3,6 +3,8 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/distributed_storage.h>
+#include <TiledArray/tiled_range.h>
+#include <TiledArray/bitset.h>
 #include <cstddef>
 
 namespace TiledArray {
