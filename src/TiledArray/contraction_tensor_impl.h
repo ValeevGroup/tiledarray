@@ -253,19 +253,23 @@ namespace TiledArray {
           matrix_type left_map(m_, k_);
           if(left_.is_dense())
             left_map.fill(1);
-          else
+          else {
+            const TiledArray::detail::Bitset<> left_shape(left_.get_shape());
             for(std::size_t i = 0; i < m_; ++i)
               for(std::size_t j = 0; j < k_; ++j)
-                left_map(i, j) = (left_.get_shape()[i * k_ + j] ? 1 : 0);
+                left_map(i, j) = (left_shape[i * k_ + j] ? 1 : 0);
+          }
 
           // Construct the right shape to its map
           matrix_type right_map(k_, n_);
           if(right_.is_dense())
             right_map.fill(1);
-          else
+          else {
+            const TiledArray::detail::Bitset<> right_shape(right_.get_shape());
             for(std::size_t i = 0; i < k_; ++i)
               for(std::size_t j = 0; j < n_; ++j)
-                right_map(i, j) = (right_.get_shape()[i * n_ + j] ? 1 : 0);
+                right_map(i, j) = (right_shape[i * n_ + j] ? 1 : 0);
+          }
 
           // Construct the new shape
 
