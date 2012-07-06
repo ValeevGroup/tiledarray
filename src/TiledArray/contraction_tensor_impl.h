@@ -156,35 +156,6 @@ namespace TiledArray {
           local_cols_ = (n_ / proc_cols_) + (rank_col_ < (n_ % proc_cols_) ? 1 : 0);
           local_size_ = local_rows_ * local_cols_;
         }
-
-        // Initialize the shape if the tensor is not dense
-        if(! (left.is_dense() || right.is_dense())) {
-          typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
-
-          // Construct map objects for the shapes
-          matrix_type left_map(m_, k_);
-          matrix_type right_map(k_, n_);
-          matrix_type res_map(m_, n_);
-
-          // Copy the left shape to its map
-          for(std::size_t i = 0; i < m_; ++i)
-            for(std::size_t j = 0; j < k_; ++j)
-              left_map(i, j) = (left_.get_shape()[i * k_ + j] ? 1 : 0);
-
-          // Copy the right shape to its map
-          for(std::size_t i = 0; i < k_; ++i)
-            for(std::size_t j = 0; j < n_; ++j)
-              right_map(i, j) = (right_.get_shape()[i * k_ + j] ? 1 : 0);
-
-          // Construct the new shape
-          res_map.noalias() = left_map * right_map;
-
-          // Update the shape
-          for(std::size_t i = 0; i < m_; ++i)
-            for(std::size_t j = 0; j < n_; ++j)
-              if(res_map(i,j))
-                TensorImplBase_::shape(i * m_ + j);
-        }
       }
 
       virtual ~ContractionTensorImpl() { }
@@ -271,7 +242,49 @@ namespace TiledArray {
 
     private:
 
-      virtual bool eval_children(const expressions::VariableList& vars,
+      virtual void eval_shape() {
+        // Initialize the shape if this tensor is not dense
+        if(! (left_.is_dense() && right_.is_dense())) {
+          typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
+
+          // Construct map objects for the shapes
+
+          // Construct the left shape to its map
+          matrix_type left_map(m_, k_);
+          if(left_.is_dense())
+            left_map.fill(1);
+          else
+            for(std::size_t i = 0; i < m_; ++i)
+              for(std::size_t j = 0; j < k_; ++j)
+                left_map(i, j) = (left_.get_shape()[i * k_ + j] ? 1 : 0);
+
+          // Construct the right shape to its map
+          matrix_type right_map(k_, n_);
+          if(right_.is_dense())
+            right_map.fill(1);
+          else
+            for(std::size_t i = 0; i < k_; ++i)
+              for(std::size_t j = 0; j < n_; ++j)
+                right_map(i, j) = (right_.get_shape()[i * n_ + j] ? 1 : 0);
+
+          // Construct the new shape
+
+          matrix_type res_map = left_map * right_map;
+
+          // Update the shape
+          const size_type size = TensorImplBase_::size();
+          TiledArray::detail::Bitset<> s(size);
+          for(std::size_t i = 0; i < m_; ++i)
+            for(std::size_t j = 0; j < n_; ++j)
+              if(res_map(i,j))
+                s.set(i * m_ + j);
+          TensorImplBase_::shape(s);
+        }
+      }
+
+      static bool done(const bool left, const bool right) { return left && right; }
+
+      virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
           const std::shared_ptr<pmap_interface>&)
       {
 
@@ -316,7 +329,8 @@ namespace TiledArray {
 
         // Wait for the evaluation of the left and right child tensors before returning
         // Note: This does not include evaluation of tiles, only structure.
-        return left_done.get() && right_done.get();
+        return TensorImplBase_::get_world().taskq.add(& ContractionTensorImpl_::done,
+            left_done, right_done, madness::TaskAttributes::hipri());
       }
     }; // class ContractionAlgorithmBase
 
