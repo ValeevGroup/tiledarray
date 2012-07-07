@@ -203,7 +203,9 @@ namespace TiledArray {
     /// Copy constructor
     template <typename D>
     StaticTiledRange(const TiledRange<D>& other) :
-        range_(other.tiles()), element_range_(other.elements()), ranges_()
+        range_(other.tiles().start(), other.tiles().finish()),
+        element_range_(other.elements().start(), other.elements().finish()),
+        ranges_()
     {
       std::copy(other.data().begin(), other.data().end(), ranges_.begin());
     }
@@ -329,7 +331,8 @@ namespace TiledArray {
     /// Copy constructor
     template <typename D>
     DynamicTiledRange(const TiledRange<D>& other) :
-        range_(other.tiles()), element_range_(other.elements()),
+        range_(other.tiles().start(), other.tiles().finish()),
+        element_range_(other.elements().start(), other.elements().finish()),
         ranges_(other.data().begin(), other.data().end())
     { }
 
