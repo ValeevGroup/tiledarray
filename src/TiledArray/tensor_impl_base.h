@@ -10,53 +10,80 @@
 namespace TiledArray {
   namespace detail {
 
+    /// Base class for Tensor implementation objects
+
+    /// This is the basis for other tiled tensor implementation objects. It
+    /// provides the basic interface for accessing and setting the tensor's
+    /// tiled range, shape, process map, and data. There are some restrictions
+    /// on how the tensor may be modified. Most significantly, the volume of the
+    /// tiled range's tiles must be constant. This allows the shape to be
+    /// permuted, but not resized. Also, the size of shape must be either zero,
+    /// which indicates the tensor is dense, or it must be exactly equal to the
+    /// volume of the tiled range tiles. It is the responsibility of the derived
+    /// class to ensure data consistancy, that is the derived class must
+    /// explicitly permute the tensor's tiled range, shape, process map, and
+    /// data.
+    /// \tparam TRange The tiled range type
+    /// \tparam Tile The tile or value_type of this tensor
+    /// \note The process map must be set after construction before data elements
+    /// can be set.
     template <typename TRange, typename Tile>
     class TensorImplBase : private NO_DEFAULTS{
     public:
-      typedef std::size_t size_type;
-      typedef TRange trange_type;
-      typedef typename trange_type::range_type range_type;
-      typedef Pmap<size_type> pmap_interface;
-      typedef Tile value_type;
-      typedef TiledArray::detail::DistributedStorage<value_type> storage_type;
-      typedef typename storage_type::const_iterator const_iterator;
-      typedef typename storage_type::iterator iterator;
-      typedef typename storage_type::future const_reference;
-      typedef typename storage_type::future reference;
+      typedef std::size_t size_type; ///< Size type
+      typedef TRange trange_type; ///< Tiled range type
+      typedef typename trange_type::range_type range_type; ///< Tile range type
+      typedef Pmap<size_type> pmap_interface; ///< Process map interface type
+      typedef Tile value_type; ///< Tile or data type
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
+      typedef typename storage_type::const_iterator const_iterator; ///< Constant iterator type
+      typedef typename storage_type::iterator iterator; ///< Iterator type
+      typedef typename storage_type::future const_reference; ///< Constant reference type
+      typedef typename storage_type::future reference; ///< Reference type
 
     private:
 
-      trange_type trange_;
-      Bitset<> shape_;
-      storage_type data_;
+      trange_type trange_; ///< Tiled range type
+      Bitset<> shape_; ///< Tensor shape (zero size == dense)
+      storage_type data_; ///< Tile container
 
     public:
 
-      /// Construct a unary tiled tensor op
+      /// Constructor
 
+      /// The size of shape must be equal to the volume of the tiled range tiles.
+      /// Also, the volume of trange must remain constant. This restriction allows
+      /// the tiled range to be permuted, but not resized.
       /// \param arg The argument
       /// \param op The element transform operation
+      /// \throw TiledArray::Exception When the size of shape is not equal to
+      /// zero
       template <typename TR>
       TensorImplBase(madness::World& world, const TiledRange<TR>& trange, const Bitset<>& shape = Bitset<>(0ul)) :
-        trange_(trange),
-        shape_(shape),
-        data_(world, trange_.tiles().volume())
-      { }
+        trange_(trange), shape_(shape), data_(world, trange_.tiles().volume())
+      {
+        TA_ASSERT((shape.size() == trange.tiles().volume()) || (shape.size() == 0ul));
+      }
 
       /// Initialize pmap
 
       /// \param pmap The process map
+      /// \throw TiledArray::Exception When the process map has already been set
+      /// \throw TiledArray::Exception When \c pmap is \c NULL
       void pmap(const std::shared_ptr<pmap_interface>& pmap) { data_.init(pmap); }
 
       /// Process map accessor
 
       /// \return Shared pointer to pmap
+      /// \throw nothing
       const std::shared_ptr<pmap_interface>& pmap() const { return data_.get_pmap(); }
 
       /// Evaluate tensor to destination
 
       /// \tparam Dest The destination tensor type
       /// \param dest The destination to evaluate this tensor to
+      /// \throw TiledArray::Exception when the trange of \c dest is not equal
+      /// to the trange of this tensor.
       template <typename Dest>
       void eval_to(Dest& dest) const {
         TA_ASSERT(trange() == dest.trange());
@@ -71,29 +98,38 @@ namespace TiledArray {
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
+      /// \throw nothing
       const range_type& range() const { return trange_.tiles(); }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
+      /// \throw nothing
       size_type size() const { return trange_.tiles().volume(); }
 
       /// Query a tile owner
 
       /// \param i The tile index to query
       /// \return The process ID of the node that owns tile \c i
+      /// \throw TiledArray::Exception When \c i is outside the tiled range tile
+      /// range
+      /// \throw TiledArray::Exception When the process map has not been set
       ProcessID owner(size_type i) const { return data_.owner(i); }
 
       /// Query for a locally owned tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is owned by this node, otherwise \c false
+      /// \throw nothing
+      /// \throw TiledArray::Exception When the process map has not been set
       bool is_local(size_type i) const { return data_.is_local(i); }
 
       /// Query for a zero tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
+      /// \throw TiledArray::Exception When \c i is outside the tiled range tile
+      /// range
       bool is_zero(size_type i) const {
         TA_ASSERT(range().includes(i));
         if(is_dense())
@@ -104,23 +140,33 @@ namespace TiledArray {
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
+      /// \throw nothing
       const std::shared_ptr<pmap_interface>& get_pmap() const { return data_.get_pmap(); }
 
       /// Query the density of the tensor
 
       /// \return \c true if the tensor is dense, otherwise false
+      /// \throw nothing
       bool is_dense() const { return shape_.size() == 0ul; }
 
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
+      /// \throw TiledArray::Exception When this tensor is dense
       const TiledArray::detail::Bitset<>& shape() const {
         TA_ASSERT(! is_dense());
         return shape_;
       }
 
       /// Set the shape
-      void shape(const TiledArray::detail::Bitset<>& s) { TiledArray::detail::Bitset<>(s).swap(shape_); }
+
+      /// \param s The new shape
+      /// \throw TiledArray::Exception When the size of this tensor is not equal
+      /// to the size of the new shape.
+      void shape(const TiledArray::detail::Bitset<>& s) {
+        TA_ASSERT(s.size() == trange_.tiles().volume());
+        TiledArray::detail::Bitset<>(s).swap(shape_);
+      }
 
       /// Set shape values
 
@@ -145,6 +191,7 @@ namespace TiledArray {
       /// \param tr Tiled range to set
       template <typename TR>
       void trange(const TiledRange<TR>& tr) {
+        TA_ASSERT(tr.tiles().volume() == trange_.tiles().volume());
         trange_ = tr;
       }
 
@@ -152,6 +199,7 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return Tile \c i
+      /// \throw TiledArray::Exception When tile \c i is zero
       const_reference operator[](size_type i) const {
         TA_ASSERT(! is_zero(i));
         return data_[i];
@@ -161,6 +209,7 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \return Tile \c i
+      /// \throw TiledArray::Exception When tile \c i is zero
       reference operator[](size_type i) {
         TA_ASSERT(! is_zero(i));
         return data_[i];
@@ -171,6 +220,7 @@ namespace TiledArray {
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
+      /// \throw TiledArray::Exception When tile \c i is zero
       const_reference move(size_type i) {
         TA_ASSERT(! is_zero(i));
         return data_.move(i);
