@@ -161,11 +161,11 @@ namespace TiledArray {
       /// Set the shape
 
       /// \param s The new shape
-      /// \throw TiledArray::Exception When the size of this tensor is not equal
-      /// to the size of the new shape.
-      void shape(const TiledArray::detail::Bitset<>& s) {
-        TA_ASSERT(s.size() == trange_.tiles().volume());
-        TiledArray::detail::Bitset<>(s).swap(shape_);
+      /// \throw TiledArray::Exception When the size of \c s is not equal to the
+      /// size of this tensor or zero.
+      void shape(TiledArray::detail::Bitset<> s) {
+        TA_ASSERT((s.size() == trange_.tiles().volume()) || (s.size() == 0ul));
+        s.swap(shape_);
       }
 
       /// Set shape values
