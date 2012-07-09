@@ -65,18 +65,19 @@ namespace TiledArray {
         TA_ASSERT((shape.size() == trange.tiles().volume()) || (shape.size() == 0ul));
       }
 
+
+      /// Tensor process map accessor
+
+      /// \return A shared pointer to the process map of this tensor
+      /// \throw nothing
+      const std::shared_ptr<pmap_interface>& pmap() const { return data_.get_pmap(); }
+
       /// Initialize pmap
 
       /// \param pmap The process map
       /// \throw TiledArray::Exception When the process map has already been set
       /// \throw TiledArray::Exception When \c pmap is \c NULL
       void pmap(const std::shared_ptr<pmap_interface>& pmap) { data_.init(pmap); }
-
-      /// Process map accessor
-
-      /// \return Shared pointer to pmap
-      /// \throw nothing
-      const std::shared_ptr<pmap_interface>& pmap() const { return data_.get_pmap(); }
 
       /// Evaluate tensor to destination
 
@@ -136,12 +137,6 @@ namespace TiledArray {
           return false;
         return ! (shape_[i]);
       }
-
-      /// Tensor process map accessor
-
-      /// \return A shared pointer to the process map of this tensor
-      /// \throw nothing
-      const std::shared_ptr<pmap_interface>& get_pmap() const { return data_.get_pmap(); }
 
       /// Query the density of the tensor
 

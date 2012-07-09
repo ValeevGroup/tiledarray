@@ -178,7 +178,7 @@ namespace TiledArray {
       /// \return A shared pointer to the process map of this tensor
       const std::shared_ptr<pmap_interface>& get_pmap() const {
         TA_ASSERT(pimpl_);
-        return pimpl_->get_pmap();
+        return pimpl_->pmap();
       }
 
       /// Query the density of the tensor
