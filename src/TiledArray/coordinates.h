@@ -4,9 +4,7 @@
 #include <TiledArray/config.h>
 #include <TiledArray/error.h>
 #include <TiledArray/permutation.h>
-#include <boost/operators.hpp>
 #include <world/array.h>
-#include <boost/utility/enable_if.hpp>
 #include <iosfwd>
 #include <cstddef>
 #include <stdarg.h>
@@ -19,13 +17,7 @@ namespace TiledArray {
   /// \tparam DIM The number of dimensions in the coordinate
   /// \tparam Tag Type used to differentiate different coordinate systems.
   template <unsigned int DIM, typename Tag>
-  class ArrayCoordinate : public
-      boost::addable< ArrayCoordinate<DIM,Tag>,                // point + point
-      boost::subtractable< ArrayCoordinate<DIM,Tag>,           // point - point
-      boost::less_than_comparable1< ArrayCoordinate<DIM,Tag>,  // point < point
-      boost::equality_comparable1< ArrayCoordinate<DIM,Tag>    // point == point
-      > > > >
-  {
+  class ArrayCoordinate {
   private:
 
     struct Enabler { };
@@ -56,7 +48,7 @@ namespace TiledArray {
     /// used to initialize the coordinate elements
     /// \throw nothing
     template <typename InIter>
-    explicit ArrayCoordinate(InIter first, typename boost::enable_if<detail::is_input_iterator<InIter>, Enabler >::type = Enabler()) {
+    explicit ArrayCoordinate(InIter first, typename madness::enable_if<detail::is_input_iterator<InIter>, Enabler >::type = Enabler()) {
       for(std::size_t d = 0; d < DIM; ++d, ++first)
         r_[d] = *first;
     }
@@ -268,7 +260,6 @@ namespace TiledArray {
 
   /// Swap the data of \c c1 with \c c2.
 
-  /// \tparam I The coordinate index type
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
   /// \param c1 The first coordinate to be swaped
@@ -281,7 +272,6 @@ namespace TiledArray {
 
   /// Add a constant to a coordinate
 
-  /// \tparam I The coordinate index type
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
   /// \param c The coordinate to be modified
@@ -297,23 +287,33 @@ namespace TiledArray {
 
   /// Add a constant to a coordinate
 
-  /// \tparam I The coordinate index type
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
   /// \param c The coordinate to be modified
   /// \param s The constant to be added to each element of the coordinate
   /// \return A copy of coordinate \c c with the constant \c s added to it
-  template <unsigned int DIM, typename Tag, typename CS>
-  ArrayCoordinate<DIM,Tag> operator +(const ArrayCoordinate<DIM,Tag>& c, const std::size_t& s) {
-    ArrayCoordinate<DIM,Tag> result(c);
-    for(typename ArrayCoordinate<DIM,Tag>::iterator it = result.begin(); it != result.end(); ++it)
+  template <unsigned int DIM, typename Tag>
+  ArrayCoordinate<DIM,Tag> operator +(ArrayCoordinate<DIM,Tag> c, const std::size_t& s) {
+    for(typename ArrayCoordinate<DIM,Tag>::iterator it = c.begin(); it != c.end(); ++it)
       *it += s;
-    return result;
+    return c;
+  }
+
+  /// Add two coordinates
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The left-hand arguemnt to be summed
+  /// \param c2 The right-hand argument to be summed
+  /// \return A copy of coordinate \c c with the constant \c s added to it
+  template <unsigned int DIM, typename Tag>
+  ArrayCoordinate<DIM,Tag> operator +(ArrayCoordinate<DIM,Tag> c1, const ArrayCoordinate<DIM,Tag>& c2) {
+    c1 += c2;
+    return c1;
   }
 
   /// Subtract a constant from a coordinate
 
-  /// \tparam I The coordinate index type
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
   /// \param c The original coordinate
@@ -329,34 +329,110 @@ namespace TiledArray {
 
   /// Subtract a constant from a coordinate
 
-  /// \tparam I The coordinate index type
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
   /// \param c The original coordinate
   /// \param s The constant to be added to each element of the coordinate
   /// \return A copy of coordinate \c c with the constant \c s subtracted from it
   template <unsigned int DIM, typename Tag>
-  ArrayCoordinate<DIM,Tag> operator -(const ArrayCoordinate<DIM,Tag>& c, const std::size_t& s) {
-    ArrayCoordinate<DIM,Tag> result(c);
-    for(typename ArrayCoordinate<DIM,Tag>::iterator it = result.begin(); it != result.end(); ++it)
+  ArrayCoordinate<DIM,Tag> operator -(ArrayCoordinate<DIM,Tag> c, const std::size_t& s) {
+    for(typename ArrayCoordinate<DIM,Tag>::iterator it = c.begin(); it != c.end(); ++it)
       *it -= s;
-    return result;
+    return c;
   }
 
-  /// Lexicographic comparison of two ArrayCoordinates.
+  /// Subtract two coordinates
 
-  /// \return \c true when all elements of
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The left-hand arguemnt to be summed
+  /// \param c2 The right-hand argument to be summed
+  /// \return A copy of coordinate \c c with the constant \c s added to it
+  template <unsigned int DIM, typename Tag>
+  ArrayCoordinate<DIM,Tag> operator -(ArrayCoordinate<DIM,Tag> c1, const ArrayCoordinate<DIM,Tag>& c2) {
+    c1 -= c2;
+    return c1;
+  }
+
+  /// Lexicographic less-than comparison of two ArrayCoordinates.
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c2 The right-hand argument to be compared
+  /// \return \c true when \c c1 is lexicographically less than \c c2
   template <unsigned int DIM, typename Tag>
   bool operator<(const ArrayCoordinate<DIM,Tag>& c1, const ArrayCoordinate<DIM,Tag>& c2) {
     return c1.data() < c2.data();
   }
 
+  /// Lexicographic greater-than comparison of two ArrayCoordinates.
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c2 The right-hand argument to be compared
+  /// \return \c true when \c c1 is lexicographically greater than \c c2
+  template <unsigned int DIM, typename Tag>
+  bool operator>(const ArrayCoordinate<DIM,Tag>& c1, const ArrayCoordinate<DIM,Tag>& c2) {
+    return c2 < c1;
+  }
+
+  /// Lexicographic less-than-or-equal-to comparison of two ArrayCoordinates.
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c2 The right-hand argument to be compared
+  /// \return \c true when \c c1 is lexicographically less than or equal to \c c2
+  template <unsigned int DIM, typename Tag>
+  bool operator<=(const ArrayCoordinate<DIM,Tag>& c1, const ArrayCoordinate<DIM,Tag>& c2) {
+    return ! (c2 < c1);
+  }
+
+  /// Lexicographic greater-than-or-equal-to comparison of two ArrayCoordinates.
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c2 The right-hand argument to be compared
+  /// \return \c true when \c c1 is lexicographically greater than or equal to \c c2
+  template <unsigned int DIM, typename Tag>
+  bool operator>=(const ArrayCoordinate<DIM,Tag>& c1, const ArrayCoordinate<DIM,Tag>& c2) {
+    return ! (c1 < c2);
+  }
+
+  /// Equality compareison operator
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c2 The right-hand argument to be compared
+  /// \return \c true when all elements of \c c1 and \c c2 are equal
   template <unsigned int DIM, typename Tag>
   bool operator==(const ArrayCoordinate<DIM,Tag>& c1, const ArrayCoordinate<DIM,Tag>& c2) {
     return c1.data() == c2.data();
   }
 
+  /// Not-equal compareison operator
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c2 The right-hand argument to be compared
+  /// \return \c true when all elements of \c c1 and \c c2 are not equal
+  template <unsigned int DIM, typename Tag>
+  bool operator!=(const ArrayCoordinate<DIM,Tag>& c1, const ArrayCoordinate<DIM,Tag>& c2) {
+    return ! (c1 == c2);
+  }
+
   /// Permute an ArrayCoordinate
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param p The permutation to be applied to the coordiante
+  /// \param c The coordiante to be permuted
+  /// \return A permuted copy of coordinate \c c
   template <unsigned int DIM, typename Tag>
   ArrayCoordinate<DIM,Tag> operator ^(const Permutation& p, const ArrayCoordinate<DIM,Tag>& c) {
     TA_ASSERT(p.dim() == DIM)
@@ -380,6 +456,12 @@ namespace TiledArray {
   } // namespace detail
 
   /// Append an ArrayCoordinate to an output stream.
+
+  /// \tparam DIM the coordinate dimension
+  /// \tparam Tag The coordinate system tag
+  /// \param output An output stream for the coordinate
+  /// \param c The coordinate to be output
+  /// \return The output stream referenc
   template <unsigned int DIM, typename Tag>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<DIM,Tag>& c) {
     detail::print_array(output, c.data());
@@ -389,7 +471,7 @@ namespace TiledArray {
 } // namespace TiledArray
 
 namespace std {
-template <typename T, typename A>
+  template <typename T, typename A>
   ostream& operator<<(ostream& os, const vector<T,A>& v) {
     TiledArray::detail::print_array(os, v);
     return os;

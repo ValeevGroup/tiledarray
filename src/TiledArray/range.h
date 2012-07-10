@@ -347,13 +347,13 @@ namespace TiledArray {
     }
 
     template <typename Ordinal>
-    typename boost::enable_if<std::is_signed<Ordinal>, bool>::type
+    typename madness::enable_if<std::is_signed<Ordinal>, bool>::type
     include_ordinal_(Ordinal i) const {
       return (i >= 0ul) && (i < volume());
     }
 
     template <typename Ordinal>
-    typename boost::disable_if<std::is_signed<Ordinal>, bool>::type
+    typename madness::disable_if<std::is_signed<Ordinal>, bool>::type
     include_ordinal_(Ordinal i) const {
       return i < volume();
     }
