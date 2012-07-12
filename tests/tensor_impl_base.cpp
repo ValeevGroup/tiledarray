@@ -505,6 +505,28 @@ BOOST_AUTO_TEST_CASE( access_zero_tile ) {
 #endif // TA_EXCEPTION_ERROR
 }
 
+BOOST_AUTO_TEST_CASE( clear )
+{
+  // Insert all local tiles
+  for(std::size_t i = 0; i < impl.size(); ++i) {
+    if(impl.is_local(i))
+      impl[i];
+  }
+
+  // Check that there are tiles inserted locally
+  BOOST_CHECK_EQUAL(impl.local_size(), pmap->local_size());
+  if(impl.local_size() > 0)
+    BOOST_CHECK(impl.begin() != impl.end());
+  else
+    BOOST_CHECK(impl.begin() == impl.end());
+
+  impl.clear();
+
+  BOOST_CHECK_EQUAL(impl.local_size(), 0ul);
+  BOOST_CHECK(impl.begin() == impl.end());
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 
@@ -995,7 +1017,6 @@ BOOST_AUTO_TEST_CASE( delayed_move_remote )
 
 }
 
-
 BOOST_AUTO_TEST_CASE( access_zero_tile ) {
   impl.shape(detail::Bitset<>(impl.size()));
 
@@ -1005,6 +1026,28 @@ BOOST_AUTO_TEST_CASE( access_zero_tile ) {
   // Check that you cannot move a tile that is zero
   BOOST_CHECK_THROW(impl.move(0), TiledArray::Exception);
 #endif // TA_EXCEPTION_ERROR
+}
+
+BOOST_AUTO_TEST_CASE( clear )
+{
+  // Insert all local tiles
+  for(std::size_t i = 0; i < impl.size(); ++i) {
+    if(impl.is_local(i))
+      impl[i];
+  }
+
+  // Check that there are tiles inserted locally
+  BOOST_CHECK_EQUAL(impl.local_size(), pmap->local_size());
+  if(impl.local_size() > 0)
+    BOOST_CHECK(impl.begin() != impl.end());
+  else
+    BOOST_CHECK(impl.begin() == impl.end());
+
+  impl.clear();
+
+  BOOST_CHECK_EQUAL(impl.local_size(), 0ul);
+  BOOST_CHECK(impl.begin() == impl.end());
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
