@@ -106,7 +106,15 @@ namespace TiledArray {
 
       /// \return The number of tiles in the tensor
       /// \throw nothing
-      size_type size() const { return trange_.tiles().volume(); }
+      size_type size() const { return data_.max_size(); }
+
+      /// Local element count
+
+      /// This function is primarily available for debugging  purposes. The
+      /// returned value is volatile and may change at any time; you should not
+      /// rely on it in your algorithms.
+      /// \return The current number of local tiles stored in the tensor.
+      size_type local_size() const { return data_.size(); }
 
       /// Query a tile owner
 
