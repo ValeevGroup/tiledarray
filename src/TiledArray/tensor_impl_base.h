@@ -257,9 +257,9 @@ namespace TiledArray {
 
       /// Clear the tile data
 
-      /// Remove all tiles from the tensor.
+      /// Remove all local tiles from the tensor.
       /// \note: Any tiles will remain in memory until the last reference
-      /// is destroyed.
+      /// is destroyed. This function only removes them from the container.
       void clear() { data_.clear(); }
 
     }; // class TensorImplBase
