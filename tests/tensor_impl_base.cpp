@@ -344,6 +344,7 @@ BOOST_AUTO_TEST_CASE( array_operator )
   std::size_t n = impl.local_size();
   GlobalFixture::world->gop.sum(n);
 
+  // Check that all tiles are accounted for
   BOOST_CHECK_EQUAL(n, impl.size());
 
   // Check throw for an out-of-range set.
@@ -355,12 +356,13 @@ BOOST_AUTO_TEST_CASE( array_operator )
 
 BOOST_AUTO_TEST_CASE( move_local )
 {
-  // Insert all elements
+  // Insert all local tiles
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i))
       impl[i];
   }
 
+  // Get total local tile count
   std::size_t local_size = impl.local_size();
 
   for(std::size_t i = 0; i < impl.size(); ++i) {
@@ -370,6 +372,7 @@ BOOST_AUTO_TEST_CASE( move_local )
 
   GlobalFixture::world->gop.fence();
 
+  // Set all local tiles and check that the tile is removed from the tensor
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i)) {
       madness::Future<value_type> f = impl.move(i);
@@ -383,12 +386,13 @@ BOOST_AUTO_TEST_CASE( move_local )
 
 BOOST_AUTO_TEST_CASE( delayed_move_local )
 {
-  // Insert all elements
+  // Insert all local tiles
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i))
       impl[i];
   }
 
+  // Get total local tile count
   std::size_t local_size = impl.local_size();
 
   // Move all local tiles
@@ -412,7 +416,7 @@ BOOST_AUTO_TEST_CASE( delayed_move_local )
     BOOST_CHECK_EQUAL(impl.local_size(), local_size);
   }
 
-
+  // Check that the moved tiles have the correct value
   for(std::vector<madness::Future<value_type> >::const_iterator it = local_data.begin(); it != local_data.end(); ++it) {
     BOOST_CHECK_EQUAL(it->get()[0], GlobalFixture::world->rank());
   }
@@ -421,16 +425,18 @@ BOOST_AUTO_TEST_CASE( delayed_move_local )
 
 BOOST_AUTO_TEST_CASE( move_remote )
 {
-  // Insert all elements
+  // Insert all local tiles
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i))
       impl.set(i, value_type(impl.trange().make_tile_range(i), GlobalFixture::world->rank()));
   }
 
+  // Get total local tile count
   std::size_t local_size = impl.local_size();
 
   GlobalFixture::world->gop.fence();
 
+  // Move all tiles to node 0 and check that the tile is removed from the local tensor
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(GlobalFixture::world->rank() == 0) {
       madness::Future<value_type> f = impl.move(i);
@@ -449,21 +455,23 @@ BOOST_AUTO_TEST_CASE( move_remote )
 
 BOOST_AUTO_TEST_CASE( delayed_move_remote )
 {
-  // Insert all elements
+  // Insert all local tiles
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i))
       impl[i];
   }
 
+  // Get total local tile count
   std::size_t local_size = impl.local_size();
 
+  // Move all the tiles to node 0
   std::vector<madness::Future<value_type> > local_data;
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(GlobalFixture::world->rank() == 0)
       local_data.push_back(impl.move(i));
   }
 
-
+  // Set each tile and check that it is moved immediately.
   for(std::size_t i = 0; i < impl.size(); ++i) {
 
     GlobalFixture::world->gop.fence();
@@ -476,12 +484,25 @@ BOOST_AUTO_TEST_CASE( delayed_move_remote )
     BOOST_CHECK_EQUAL(local_size, impl.local_size());
   }
 
+  // Check that the moved tiles have the correct value
   if(GlobalFixture::world->rank() == 0) {
     for(std::vector<madness::Future<value_type> >::iterator it = local_data.begin(); it != local_data.end(); ++it) {
       BOOST_CHECK_EQUAL(it->get()[0], impl.owner(std::distance(local_data.begin(), it)));
     }
   }
 
+}
+
+
+BOOST_AUTO_TEST_CASE( access_zero_tile ) {
+  impl.shape(detail::Bitset<>(impl.size()));
+
+#ifdef TA_EXCEPTION_ERROR
+  // Check that you cannot access a tile that is zero
+  BOOST_CHECK_THROW(impl[0], TiledArray::Exception);
+  // Check that you cannot move a tile that is zero
+  BOOST_CHECK_THROW(impl.move(0), TiledArray::Exception);
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_SUITE_END()
