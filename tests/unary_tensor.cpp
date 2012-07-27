@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Test default constructor
-  BOOST_REQUIRE_NO_THROW(UnaryT x);
+  BOOST_REQUIRE_NO_THROW(UnaryT x());
 
   // Test primary constructor
   {

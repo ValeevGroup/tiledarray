@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
 BOOST_AUTO_TEST_CASE( constructor )
 {
 
-  BOOST_REQUIRE_NO_THROW(PermT x);
+  BOOST_REQUIRE_NO_THROW(PermT x());
 
   // Test primary constructor
   {
