@@ -9,7 +9,6 @@
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/bitset.h>
-#include <world/functional.h>
 #include <world/nodefaults.h>
 
 namespace TiledArray {
