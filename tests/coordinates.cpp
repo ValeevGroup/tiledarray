@@ -24,7 +24,7 @@ BOOST_FIXTURE_TEST_SUITE( array_coordinate_suite, ArrayCoordinateFixture )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
-  BOOST_REQUIRE_NO_THROW( Point3 p1() );     // construct without exception
+  BOOST_REQUIRE_NO_THROW(Point3 p1);     // construct without exception
   Point3 p2;                               // default construction
   BOOST_CHECK_EQUAL( p2.data().size(), 3u); // correct size
   BOOST_CHECK_EQUAL( p2.data()[0], 0u);     // correct element initialization
@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_CASE( constructors )
   Point3 p5(p);
   BOOST_CHECK_EQUAL_COLLECTIONS(p5.data().begin(), p5.data().end(), p.begin(), p.end());
 
-  BOOST_REQUIRE_NO_THROW(Point3 p6());  // Assign constant constuctor
+  BOOST_REQUIRE_NO_THROW(Point3 p6);  // Assign constant constuctor
   Point3 p6;
   BOOST_CHECK_EQUAL( p6.data()[0], 0u);     // correct element initialization
   BOOST_CHECK_EQUAL( p6.data()[1], 0u);

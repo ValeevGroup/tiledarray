@@ -69,11 +69,11 @@ BOOST_AUTO_TEST_CASE( constructors )
   // Check default iterator construction and semantics
   {
     BOOST_REQUIRE_NO_THROW(iterator it1);
-    BOOST_REQUIRE_NO_THROW(iterator it2());
+    BOOST_REQUIRE_NO_THROW(iterator it2);
     BOOST_REQUIRE_NO_THROW(iterator it3 = iterator());
 
     BOOST_REQUIRE_NO_THROW(const_iterator it4);
-    BOOST_REQUIRE_NO_THROW(const_iterator it5());
+    BOOST_REQUIRE_NO_THROW(const_iterator it5);
     BOOST_REQUIRE_NO_THROW(const_iterator it6 = const_iterator());
   }
 
