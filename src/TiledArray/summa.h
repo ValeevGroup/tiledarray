@@ -2,7 +2,6 @@
 #define TILEDARRAY_SUMMA_H__INCLUDED
 
 #include <TiledArray/contraction_tensor_impl.h>
-#include <TiledArray/ref.h>
 #include <iterator>
 #include <world/world.h>
 #include <vector>
@@ -142,7 +141,7 @@ namespace TiledArray {
           bcast(handler, i, value, group, rank, rank);
         else
           task(rank_, & Summa_::template bcast<Handler, Value>, handler, i, value,
-              TiledArray::detail::cref(group), rank, rank);
+              group, rank, rank);
       }
 
       /// Task function used for broadcasting tiles along the row
@@ -159,6 +158,7 @@ namespace TiledArray {
         typename left_container::accessor acc;
         left_cache_.insert(acc, i);
         acc->second.set(value); // move
+        acc.release();
 
         return madness::None;
       }
@@ -177,6 +177,7 @@ namespace TiledArray {
         typename right_container::accessor acc;
         right_cache_.insert(acc, i);
         acc->second.set(value); // move
+        acc.release();
 
         return madness::None;
       }
