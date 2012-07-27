@@ -72,4 +72,69 @@ namespace TiledArray {
   }  // namespace detail
 }  // namespace TiledArray
 
+namespace madness {
+  namespace archive {
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl;
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl;
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl<Archive, std::plus<T> > {
+      static void store(const Archive& ar, const std::plus<T>& op) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl<Archive, std::plus<T> > {
+
+      static void load(const Archive& ar, std::plus<T>& t) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl<Archive, std::minus<T> > {
+      static void store(const Archive& ar, const std::minus<T>& op) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl<Archive, std::minus<T> > {
+
+      static void load(const Archive& ar, std::minus<T>& t) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl<Archive, std::multiplies<T> > {
+      static void store(const Archive& ar, const std::multiplies<T>& op) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl<Archive, std::multiplies<T> > {
+
+      static void load(const Archive& ar, std::multiplies<T>& t) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl<Archive, std::divides<T> > {
+      static void store(const Archive& ar, const std::divides<T>& op) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl<Archive, std::divides<T> > {
+
+      static void load(const Archive& ar, std::divides<T>& t) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveStoreImpl<Archive, std::negate<T> > {
+      static void store(const Archive& ar, const std::negate<T>& op) { }
+    };
+
+    template <typename Archive, typename T>
+    struct ArchiveLoadImpl<Archive, std::negate<T> > {
+
+      static void load(const Archive& ar, std::negate<T>& t) { }
+    };
+  } // namespace archive
+} // namespace madness
+
 #endif // TILEDARRAY_FUNCTIONAL_H__INCLUDED

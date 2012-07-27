@@ -1,5 +1,6 @@
 #include "TiledArray/binary_tiled_tensor.h"
 #include "TiledArray/array.h"
+#include "TiledArray/functional.h"
 #include "unit_test_config.h"
 #include "array_fixture.h"
 
