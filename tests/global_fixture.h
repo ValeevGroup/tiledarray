@@ -2,7 +2,7 @@
 #define TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 
 #include "TiledArray/coordinate_system.h"
-#include <boost/array.hpp>
+#include <world/stdarray.h>
 
 namespace madness {
   class World;
