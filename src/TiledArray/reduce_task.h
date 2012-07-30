@@ -2,8 +2,7 @@
 #define TILEDARRAY_REDUCE_TASK_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <world/worldtask.h>
-#include <world/make_task.h>
+#include <world/world.h>
 
 namespace TiledArray {
   namespace detail {
@@ -81,14 +80,14 @@ namespace TiledArray {
           ready_result_.reset();
           lock_.unlock(); // <<< End critical section
           TA_ASSERT(ready_result);
-          world_.taskq.add(*this, & ReduceTaskImpl::reduce_result_object,
+          world_.taskq.add(this, & ReduceTaskImpl::reduce_result_object,
               ready_result, object, madness::TaskAttributes::hipri());
         } else if(ready_object_) {
           ReduceObject* ready_object = const_cast<ReduceObject*>(ready_object_);
           ready_object_ = NULL;
           lock_.unlock(); // <<< End critical section
           TA_ASSERT(ready_object);
-          world_.taskq.add(*this, & ReduceTaskImpl::reduce_object_object,
+          world_.taskq.add(this, & ReduceTaskImpl::reduce_object_object,
               object, ready_object, madness::TaskAttributes::hipri());
         } else {
           ready_object_ = object;
@@ -317,14 +316,14 @@ namespace TiledArray {
           ready_result_.reset();
           lock_.unlock();
           TA_ASSERT(ready_result);
-          world_.taskq.add(*this, & ReducePairTaskImpl::reduce_result_pair,
+          world_.taskq.add(this, & ReducePairTaskImpl::reduce_result_pair,
               ready_result, pair, madness::TaskAttributes::hipri());
         } else if(ready_pair_) {
           ReducePair* ready_pair = const_cast<ReducePair*>(ready_pair_);
           ready_pair_ = NULL;
           lock_.unlock();
           TA_ASSERT(ready_pair);
-          world_.taskq.add(*this, & ReducePairTaskImpl::reduce_pair_pair,
+          world_.taskq.add(this, & ReducePairTaskImpl::reduce_pair_pair,
               pair, ready_pair, madness::TaskAttributes::hipri());
         } else {
           ready_pair_ = pair;
