@@ -6,11 +6,6 @@
 
 using namespace TiledArray;
 
-
-const std::array<std::size_t, 6> Range1Fixture::a = Range1Fixture::init_tiling<6>();
-const TiledRange1::range_type Range1Fixture::tiles(0, Range1Fixture::a.size() - 1);
-const TiledRange1::range_type Range1Fixture::elements(Range1Fixture::a.front(), Range1Fixture::a.back());
-
 BOOST_FIXTURE_TEST_SUITE( range1_suite, Range1Fixture )
 
 BOOST_AUTO_TEST_CASE( range_accessor )

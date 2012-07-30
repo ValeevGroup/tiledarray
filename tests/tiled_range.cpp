@@ -7,11 +7,6 @@
 
 using namespace TiledArray;
 
-const TiledRangeFixture::TRangeN::range_type
-TiledRangeFixture::tile_range(TiledRangeFixture::index(0), TiledRangeFixture::index(5));
-const TiledRangeFixture::TRangeN::tile_range_type
-TiledRangeFixture::element_range(TiledRangeFixture::tile_index(0), TiledRangeFixture::tile_index(a[5]));
-
 BOOST_FIXTURE_TEST_SUITE( tiled_range_suite, TiledRangeFixture )
 
 BOOST_AUTO_TEST_CASE( accessor )
