@@ -290,23 +290,24 @@ namespace TiledArray {
       future move(size_type i) {
         TA_ASSERT(i < max_size_);
 
-        future result;
-
         if(is_local(i)) {
           // Get element i
           const_accessor acc;
           data_.insert(acc, i);
-          result = acc->second;
+          future result = acc->second;
 
           // Remove the element from this
           if(result.probe())
             data_.erase(acc);
           else
             result.register_callback(new DelayedMove(*this, i));
-        } else {
-          WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
-              result.remote_ref(get_world()), true, madness::TaskAttributes::hipri());
+
+          return result;
         }
+
+        future result;
+        WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
+            result.remote_ref(get_world()), true, madness::TaskAttributes::hipri());
 
         return result;
       }
