@@ -152,20 +152,22 @@ namespace TiledArray {
       madness::Void bcast_row_handler(const size_type i, const left_value_type& value,
           const ProcessID group_rank, const ProcessID group_root)
       {
+        // Broadcast this task to the next nodes in the tree
         bcast(& Summa_::bcast_row_handler, i, value, row_group_, group_rank, group_root);
 
         // Copy tile into local cache
         typename left_container::accessor acc;
         const bool erase_cache = ! left_cache_.insert(acc, i);
         madness::Future<left_value_type> tile = acc->second;
-        acc.release();
-
-        // Set the local future with the broadcast value
-        tile.set(value); // Move
 
         // If the local future is already present, the cached value is not needed
         if(erase_cache)
-          left_cache_.erase(i);
+          left_cache_.erase(acc);
+        else
+          acc.release();
+
+        // Set the local future with the broadcast value
+        tile.set(value); // Move
 
         return madness::None;
       }
@@ -178,20 +180,22 @@ namespace TiledArray {
       madness::Void bcast_col_handler(const size_type i, const right_value_type& value,
           const ProcessID group_rank, const ProcessID group_root)
       {
+        // Broadcast this task to the next nodes in the tree
         bcast(& Summa_::bcast_col_handler, i, value, col_group_, group_rank, group_root);
 
         // Copy tile into local cache
         typename right_container::accessor acc;
         const bool erase_cache = ! right_cache_.insert(acc, i);
         madness::Future<right_value_type> tile = acc->second;
-        acc.release();
-
-        // Set the local future with the broadcast value
-        tile.set(value); // Move
 
         // If the local future is already present, the cached value is not needed
         if(erase_cache)
-          right_cache_.erase(i);
+          right_cache_.erase(acc);
+        else
+          acc.release();
+
+        // Set the local future with the broadcast value
+        tile.set(value); // Move
 
         return madness::None;
       }
