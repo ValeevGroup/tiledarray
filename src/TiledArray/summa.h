@@ -156,9 +156,16 @@ namespace TiledArray {
 
         // Copy tile into local cache
         typename left_container::accessor acc;
-        left_cache_.insert(acc, i);
-        acc->second.set(value); // move
+        const bool erase_cache = ! left_cache_.insert(acc, i);
+        madness::Future<left_value_type> tile = acc->second;
         acc.release();
+
+        // Set the local future with the broadcast value
+        tile.set(value); // Move
+
+        // If the local future is already present, the cached value is not needed
+        if(erase_cache)
+          left_cache_.erase(i);
 
         return madness::None;
       }
@@ -175,9 +182,16 @@ namespace TiledArray {
 
         // Copy tile into local cache
         typename right_container::accessor acc;
-        right_cache_.insert(acc, i);
-        acc->second.set(value); // move
+        const bool erase_cache = ! right_cache_.insert(acc, i);
+        madness::Future<right_value_type> tile = acc->second;
         acc.release();
+
+        // Set the local future with the broadcast value
+        tile.set(value); // Move
+
+        // If the local future is already present, the cached value is not needed
+        if(erase_cache)
+          right_cache_.erase(i);
 
         return madness::None;
       }
@@ -196,20 +210,30 @@ namespace TiledArray {
         col.reserve(local_rows_);
 
         // Iterate over local rows of the k-th column of the left argument tensor
+        size_type i = rank_row_ * k_ + k;
         const size_type step = proc_rows_ * k_;
-        for(size_type i = rank_row_ * k_ + k; i < mk_; i += step) {
-          if(ContractionTensorImpl_::left().is_local(i)) {
-            // Broadcast the local tile to all nodes in the row
+        if(ContractionTensorImpl_::left().is_local(i)) {
+          for(; i < mk_; i += step) {
+            // Take the tile's local copy and add it to the column vector
             col.push_back(col_datum(i, ContractionTensorImpl_::left().move(i)));
-            left_cache_.insert(col.back());
 
+            // Broadcast the tile to all nodes in the row
             bcast_task(& Summa_::bcast_row_handler, i, col.back().second, row_group_, rank_col_);
-
-          } else {
+          }
+        } else {
+          for(; i < mk_; i += step) {
             // Insert a future into the cache as a placeholder for the broadcast tile.
             typename left_container::const_accessor acc;
-            left_cache_.insert(acc, i);
-            col.push_back(col_datum(i, acc->second));
+            const bool erase_cache = ! left_cache_.insert(acc, i);
+            madness::Future<left_value_type> tile = acc->second;
+            acc.release();
+
+            // Add tile to column vector
+            col.push_back(col_datum(i, tile));
+
+            // If the local future is already present, the cached value is not needed
+            if(erase_cache)
+              left_cache_.erase(i);
           }
         }
 
@@ -229,21 +253,31 @@ namespace TiledArray {
         std::vector<row_datum> row;
         row.reserve(local_cols_);
 
-        // Iterate over local rows of the k-th column of the right argument tensor
+        // Iterate over local columns of the k-th row of the right argument tensor
+        size_type i = k * n_ + rank_col_;
         const size_type end = (k + 1) * n_;
-        for(size_type i = k * n_ + rank_col_; i < end; i += proc_cols_) {
-          if(ContractionTensorImpl_::right().is_local(i)) {
-            // Broadcast the local tile to all nodes in the row
+        if(ContractionTensorImpl_::right().is_local(i)) {
+          for(; i < end; i += proc_cols_) {
+            // Take the tile's local copy and add it to the row vector
             row.push_back(row_datum(i, ContractionTensorImpl_::right().move(i)));
-            right_cache_.insert(row.back());
 
+            // Broadcast the tile to all nodes in the column
             bcast_task(& Summa_::bcast_col_handler, i, row.back().second, col_group_, rank_row_);
+          }
 
-          } else {
+        } else {
+          for(; i < end; i += proc_cols_) {
             // Insert a future into the cache as a placeholder for the broadcast tile.
             typename right_container::const_accessor acc;
-            right_cache_.insert(acc, i);
-            row.push_back(row_datum(i, acc->second));
+            const bool erase_cache = ! right_cache_.insert(acc, i);
+            madness::Future<right_value_type> tile = acc->second;
+            acc.release();
+
+            // Add tile to row vector
+            row.push_back(row_datum(i, tile));
+
+            if(erase_cache)
+              right_cache_.erase(i); // Bcast data has arived, so erase cache
           }
         }
 
@@ -265,49 +299,6 @@ namespace TiledArray {
         return result;
       }
 
-
-      /// Delayed erase callback object
-
-      /// This callback object removes a tile future from the local cache once
-      /// it has been set.
-      /// \tparam Cache The container type that holds the cached data
-      template <typename Cache>
-      class DelayedErase : public madness::CallbackInterface {
-        size_type index_; ///< The index of the tile to be reomved
-        Cache& cache_; ///< A referece to the tile cache container
-      public:
-        /// Callback object constructor
-
-        ///< \param index The index of the tile to be reomved
-        ///< \param cache A referece to the tile cache container
-        DelayedErase(size_type index, Cache& cache) : index_(index), cache_(cache) { }
-
-        /// Virtual destructor
-        virtual ~DelayedErase() { }
-
-        /// On callback remove tile from cache and delete this object
-        virtual void notify() { cache_.erase(index_); delete this; }
-      }; // class DelayedErase
-
-      template <typename Cont, typename Cache>
-      void erase_cache(Cont& cont, Cache& cache) {
-        for(typename Cont::iterator it = cont.begin(); it != cont.end(); ++it) {
-          if(it->second.probe()) {
-            // Once the future has been set, we can erase it from cache
-            cache.erase(it->first);
-          } else {
-            // The future has not been set, so we need to create a callback that
-            // will erase it from cache once it is set
-            DelayedErase<Cache>* delayed_erase = new DelayedErase<Cache>(it->first, cache);
-            try {
-              it->second.register_callback(delayed_erase);
-            } catch(...) {
-              delete delayed_erase;
-              throw;
-            }
-          }
-        }
-      }
 
       /// Broadcast task for rows or columns
 
@@ -434,9 +425,6 @@ namespace TiledArray {
               const_cast<std::vector<result_datum>&>(results)),
               madness::TaskAttributes::hipri());
 
-          // Erase row and column from cache
-          erase_cache(const_cast<std::vector<col_datum>&>(col_k0), left_cache_);
-          erase_cache(const_cast<std::vector<row_datum>&>(row_k0), right_cache_);
         } else {
           /// Spawn tasks that will assign the final value of the tile
           typename std::vector<result_datum>::const_iterator it = results.begin();
