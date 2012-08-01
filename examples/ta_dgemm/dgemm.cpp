@@ -117,6 +117,7 @@ void eigen_dgemm(madness::World& world) {
   }
 }
 
+#ifdef TILEDARRAY_HAS_CBLAS
 void blas_dgemm(madness::World& world) {
   const std::size_t size = MATRIX_SIZE;
 
@@ -155,6 +156,7 @@ void blas_dgemm(madness::World& world) {
     delete [] c;
   }
 }
+#endif // TILEDARRAY_HAS_CBLAS
 
 int main(int argc, char** argv) {
   madness::initialize(argc,argv);
@@ -176,11 +178,12 @@ int main(int argc, char** argv) {
 //    std::cout << "Eigen:" << std::endl;
 //    eigen_dgemm(world);
 //  }
-//
+#ifdef TILEDARRAY_HAS_CBLAS
 //  if(world.rank() == 0) {
 //    std::cout << "Blas:" << std::endl;
 //    blas_dgemm(world);
 //  }
+#endif // TILEDARRAY_HAS_CBLAS
 
   madness::finalize();
   return 0;
