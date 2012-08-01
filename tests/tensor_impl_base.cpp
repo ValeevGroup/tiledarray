@@ -449,6 +449,8 @@ BOOST_AUTO_TEST_CASE( move_remote )
     GlobalFixture::world->gop.fence();
 
     BOOST_CHECK_EQUAL(local_size, impl.local_size());
+
+    GlobalFixture::world->gop.fence();
   }
 }
 
@@ -973,6 +975,8 @@ BOOST_AUTO_TEST_CASE( move_remote )
     GlobalFixture::world->gop.fence();
 
     BOOST_CHECK_EQUAL(local_size, impl.local_size());
+
+    GlobalFixture::world->gop.fence();
   }
 }
 
