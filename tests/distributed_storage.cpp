@@ -219,6 +219,8 @@ BOOST_AUTO_TEST_CASE( move_remote )
     world.gop.fence();
 
     BOOST_CHECK_EQUAL(local_size, t->size());
+
+    world.gop.fence();
   }
 }
 
