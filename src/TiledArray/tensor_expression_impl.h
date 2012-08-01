@@ -60,8 +60,9 @@ namespace TiledArray {
       /// \note If the shape bitset is zero size, then the tensor is considered
       /// to be dense.
       template <typename TR>
-      TensorExpressionImpl(madness::World& world, const VariableList& vars, const TiledRange<TR>& trange) :
-          TensorImplBase_(world, trange, TiledArray::detail::Bitset<>(0ul)),
+      TensorExpressionImpl(madness::World& world, const VariableList& vars,
+            const TiledRange<TR>& trange, const Bitset<>& shape = Bitset<>(0ul)) :
+          TensorImplBase_(world, trange, shape),
           vars_(vars),
           trange_(trange),
           perm_(),
