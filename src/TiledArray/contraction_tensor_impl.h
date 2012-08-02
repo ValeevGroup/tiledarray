@@ -269,7 +269,8 @@ namespace TiledArray {
 
     private:
 
-      virtual TiledArray::detail::Bitset<> make_shape() {
+      virtual void make_shape(TiledArray::detail::Bitset<>& shape) {
+        TA_ASSERT(shape.size() == (m_ * n_));
 
         typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
@@ -302,13 +303,10 @@ namespace TiledArray {
         matrix_type res_map = left_map * right_map;
 
         // Update the shape
-        TiledArray::detail::Bitset<> s(m_ * n_);
         for(std::size_t i = 0; i < m_; ++i)
           for(std::size_t j = 0; j < n_; ++j)
             if(res_map(i,j))
-              s.set(i * n_ + j);
-
-        return s;
+              shape.set(i * n_ + j);
       }
 
       static bool done(const bool left, const bool right) { return left && right; }

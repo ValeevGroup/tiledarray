@@ -122,7 +122,7 @@ namespace TiledArray {
       virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
           const std::shared_ptr<pmap_interface>& pmap) = 0;
 
-      virtual TiledArray::detail::Bitset<> make_shape() = 0;
+      virtual void make_shape(TiledArray::detail::Bitset<>& shape) = 0;
 
       /// Permute the range, shape, and variable list of this tensor
 
@@ -157,7 +157,8 @@ namespace TiledArray {
 
             // Construct temp shape
             const size_type size = TensorImplBase_::size();
-            TiledArray::detail::Bitset<> s0(this->make_shape());
+            TiledArray::detail::Bitset<> s0(TensorImplBase_::size());
+            this->make_shape(s0);
 
             // Set the new shape
             for(size_type i = 0ul; i < size; ++i, ++range_it)
@@ -166,7 +167,8 @@ namespace TiledArray {
           }
 
         } else {
-          TensorImplBase_::shape(this->make_shape());
+          if(! TensorImplBase_::is_dense())
+            this->make_shape(TensorImplBase_::shape());
         }
 
         evaluated_ = true;
