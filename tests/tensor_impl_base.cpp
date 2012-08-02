@@ -12,7 +12,7 @@ struct StaticTensorImplBaseFixture : public TiledRangeFixture {
   typedef DynamicTiledRange dynamic_trange_type;
   typedef detail::TensorImplBase<trange_type, value_type> tensor_impl_base;
 
-  StaticTensorImplBaseFixture() : impl(* GlobalFixture::world, tr),
+  StaticTensorImplBaseFixture() : impl(* GlobalFixture::world, tr, detail::Bitset<>(0ul)),
       pmap(new detail::HashPmap(* GlobalFixture::world, tr.tiles().volume())) {
     impl.pmap(pmap);
   }
@@ -29,8 +29,8 @@ BOOST_FIXTURE_TEST_SUITE( static_tensor_impl_base_suite , StaticTensorImplBaseFi
 
 BOOST_AUTO_TEST_CASE( constructor_with_static_tiled_range )
 {
-  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, tr));
-  tensor_impl_base x(* GlobalFixture::world, tr);
+  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, tr, detail::Bitset<>(0ul)));
+  tensor_impl_base x(* GlobalFixture::world, tr, detail::Bitset<>(0ul));
 
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
@@ -53,8 +53,8 @@ BOOST_AUTO_TEST_CASE( constructor_with_static_tiled_range )
 
 BOOST_AUTO_TEST_CASE( constructor_with_dyanmic_tiled_range )
 {
-  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr)));
-  tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr));
+  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr), detail::Bitset<>(0ul)));
+  tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr), detail::Bitset<>(0ul));
 
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
@@ -118,55 +118,6 @@ BOOST_AUTO_TEST_CASE( constructor_with_static_tiled_range_and_shape )
   BOOST_CHECK_THROW(x.owner(0ul), Exception);
 #endif // TA_EXCEPTION_ERROR
 }
-
-BOOST_AUTO_TEST_CASE( constructor_with_dyanmic_tiled_range_and_empty_shape )
-{
-  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr), detail::Bitset<>(0)));
-  tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr), detail::Bitset<>(0));
-
-  // Check that the initial conditions are correct after constructution.
-  BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
-  BOOST_CHECK(x.pmap().get() == NULL);
-  BOOST_CHECK_EQUAL(x.range(), tr.tiles());
-  BOOST_CHECK_EQUAL(x.trange(), tr);
-  BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
-  BOOST_CHECK(x.begin() == x.end());
-  BOOST_CHECK(x.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
-    BOOST_CHECK(! x.is_zero(i));
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(x.shape(), Exception);
-  BOOST_CHECK_THROW(x.shape(0ul,true), Exception);
-  BOOST_CHECK_THROW(x.is_local(0ul), Exception);
-  BOOST_CHECK_THROW(x.owner(0ul), Exception);
-#endif // TA_EXCEPTION_ERROR
-}
-
-BOOST_AUTO_TEST_CASE( constructor_with_static_tiled_range_and_empty_shape )
-{
-  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, tr, detail::Bitset<>(0)));
-  tensor_impl_base x(* GlobalFixture::world, tr, detail::Bitset<>(0));
-
-  // Check that the initial conditions are correct after constructution.
-  BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
-  BOOST_CHECK(x.pmap().get() == NULL);
-  BOOST_CHECK_EQUAL(x.range(), tr.tiles());
-  BOOST_CHECK_EQUAL(x.trange(), tr);
-  BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
-  BOOST_CHECK(x.begin() == x.end());
-  BOOST_CHECK(x.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
-    BOOST_CHECK(! x.is_zero(i));
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(x.shape(), Exception);
-  BOOST_CHECK_THROW(x.shape(0ul,true), Exception);
-  BOOST_CHECK_THROW(x.is_local(0ul), Exception);
-  BOOST_CHECK_THROW(x.owner(0ul), Exception);
-#endif // TA_EXCEPTION_ERROR
-}
-
 
 BOOST_AUTO_TEST_CASE( process_map )
 {
@@ -538,7 +489,7 @@ struct DynamicTensorImplBaseFixture : public TiledRangeFixture {
   typedef expressions::Tensor<int, trange_type::tile_range_type> value_type;
   typedef detail::TensorImplBase<trange_type, value_type> tensor_impl_base;
 
-  DynamicTensorImplBaseFixture() : impl(* GlobalFixture::world, tr),
+  DynamicTensorImplBaseFixture() : impl(* GlobalFixture::world, tr, detail::Bitset<>(0ul)),
       pmap(new detail::HashPmap(* GlobalFixture::world, tr.tiles().volume())) {
     impl.pmap(pmap);
   }
@@ -555,8 +506,8 @@ BOOST_FIXTURE_TEST_SUITE( dynamic_tensor_impl_base_suite , DynamicTensorImplBase
 
 BOOST_AUTO_TEST_CASE( constructor_with_static_tiled_range )
 {
-  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, tr));
-  tensor_impl_base x(* GlobalFixture::world, tr);
+  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, tr, detail::Bitset<>(0ul)));
+  tensor_impl_base x(* GlobalFixture::world, tr, detail::Bitset<>(0ul));
 
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
@@ -579,8 +530,8 @@ BOOST_AUTO_TEST_CASE( constructor_with_static_tiled_range )
 
 BOOST_AUTO_TEST_CASE( constructor_with_dyanmic_tiled_range )
 {
-  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr)));
-  tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr));
+  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr), detail::Bitset<>(0ul)));
+  tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr), detail::Bitset<>(0ul));
 
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
@@ -644,55 +595,6 @@ BOOST_AUTO_TEST_CASE( constructor_with_static_tiled_range_and_shape )
   BOOST_CHECK_THROW(x.owner(0ul), Exception);
 #endif // TA_EXCEPTION_ERROR
 }
-
-BOOST_AUTO_TEST_CASE( constructor_with_dyanmic_tiled_range_and_empty_shape )
-{
-  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr), detail::Bitset<>(0)));
-  tensor_impl_base x(* GlobalFixture::world, DynamicTiledRange(tr), detail::Bitset<>(0));
-
-  // Check that the initial conditions are correct after constructution.
-  BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
-  BOOST_CHECK(x.pmap().get() == NULL);
-  BOOST_CHECK_EQUAL(x.range(), tr.tiles());
-  BOOST_CHECK_EQUAL(x.trange(), tr);
-  BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
-  BOOST_CHECK(x.begin() == x.end());
-  BOOST_CHECK(x.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
-    BOOST_CHECK(! x.is_zero(i));
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(x.shape(), Exception);
-  BOOST_CHECK_THROW(x.shape(0ul,true), Exception);
-  BOOST_CHECK_THROW(x.is_local(0ul), Exception);
-  BOOST_CHECK_THROW(x.owner(0ul), Exception);
-#endif // TA_EXCEPTION_ERROR
-}
-
-BOOST_AUTO_TEST_CASE( constructor_with_static_tiled_range_and_empty_shape )
-{
-  BOOST_REQUIRE_NO_THROW(tensor_impl_base x(* GlobalFixture::world, tr, detail::Bitset<>(0)));
-  tensor_impl_base x(* GlobalFixture::world, tr, detail::Bitset<>(0));
-
-  // Check that the initial conditions are correct after constructution.
-  BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
-  BOOST_CHECK(x.pmap().get() == NULL);
-  BOOST_CHECK_EQUAL(x.range(), tr.tiles());
-  BOOST_CHECK_EQUAL(x.trange(), tr);
-  BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
-  BOOST_CHECK(x.begin() == x.end());
-  BOOST_CHECK(x.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
-    BOOST_CHECK(! x.is_zero(i));
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(x.shape(), Exception);
-  BOOST_CHECK_THROW(x.shape(0ul,true), Exception);
-  BOOST_CHECK_THROW(x.is_local(0ul), Exception);
-  BOOST_CHECK_THROW(x.owner(0ul), Exception);
-#endif // TA_EXCEPTION_ERROR
-}
-
 
 BOOST_AUTO_TEST_CASE( process_map )
 {
