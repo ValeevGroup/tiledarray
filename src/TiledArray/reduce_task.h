@@ -123,15 +123,14 @@ namespace TiledArray {
         }
       }
 
-      madness::Void reduce_result_object(std::shared_ptr<result_type> result, const ReduceObject* object) {
+      void reduce_result_object(std::shared_ptr<result_type> result, const ReduceObject* object) {
         op_(*result, object->arg());
         delete object;
         reduce(result);
         this->dec();
-        return madness::None;
       }
 
-      madness::Void reduce_object_object(const ReduceObject* object1, const ReduceObject* object2) {
+      void reduce_object_object(const ReduceObject* object1, const ReduceObject* object2) {
         std::shared_ptr<result_type> result(new result_type(op_()));
         op_(*result, object1->arg(), object2->arg());
         delete object1;
@@ -139,7 +138,6 @@ namespace TiledArray {
         reduce(result);
         this->dec();
         this->dec();
-        return madness::None;
       }
     }; // class ReducePairTask
 
@@ -359,15 +357,14 @@ namespace TiledArray {
         }
       }
 
-      madness::Void reduce_result_pair(std::shared_ptr<result_type> result, const ReducePair* pair) {
+      void reduce_result_pair(std::shared_ptr<result_type> result, const ReducePair* pair) {
         op_(*result, pair->left(), pair->right());
         delete pair;
         reduce(result);
         this->dec();
-        return madness::None;
       }
 
-      madness::Void reduce_pair_pair(const ReducePair* pair1, const ReducePair* pair2) {
+      void reduce_pair_pair(const ReducePair* pair1, const ReducePair* pair2) {
         std::shared_ptr<result_type> result(new result_type(op_(pair1->left(),
             pair1->right(), pair2->left(), pair2->right())));
         delete pair1;
@@ -375,7 +372,6 @@ namespace TiledArray {
         reduce(result);
         this->dec();
         this->dec();
-        return madness::None;
       }
     }; // class ReducePairTask
 

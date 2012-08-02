@@ -88,7 +88,7 @@ namespace TiledArray {
 
       /// This function will broadcast tiles from
       template <typename Handler, typename Value>
-      madness::Void bcast(Handler handler, const size_type i, const Value& value,
+      void bcast(Handler handler, const size_type i, const Value& value,
           const std::vector<ProcessID>& group, const ProcessID rank, const ProcessID root)
       {
         const ProcessID size = group.size();
@@ -118,8 +118,6 @@ namespace TiledArray {
           task(group[child0], handler, i, value, child0, root);
         if(child1 != -1)
           task(group[child1], handler, i, value, child1, root);
-
-        return madness::None;
       }
 
       /// Spawn broadcast task for tile \c i with \c value
@@ -149,7 +147,7 @@ namespace TiledArray {
       /// \param i The tile index
       /// \param group_rank The rank of this node within the group
       /// \param group_root The broadcast group root node
-      madness::Void bcast_row_handler(const size_type i, const left_value_type& value,
+      void bcast_row_handler(const size_type i, const left_value_type& value,
           const ProcessID group_rank, const ProcessID group_root)
       {
         // Broadcast this task to the next nodes in the tree
@@ -168,8 +166,6 @@ namespace TiledArray {
 
         // Set the local future with the broadcast value
         tile.set(value); // Move
-
-        return madness::None;
       }
 
       /// Task function used for broadcasting tiles along the column
@@ -177,7 +173,7 @@ namespace TiledArray {
       /// \param i The tile index
       /// \param group_rank The rank of this node within the group
       /// \param group_root The broadcast group root node
-      madness::Void bcast_col_handler(const size_type i, const right_value_type& value,
+      void bcast_col_handler(const size_type i, const right_value_type& value,
           const ProcessID group_rank, const ProcessID group_root)
       {
         // Broadcast this task to the next nodes in the tree
@@ -196,8 +192,6 @@ namespace TiledArray {
 
         // Set the local future with the broadcast value
         tile.set(value); // Move
-
-        return madness::None;
       }
 
       /// Task function for broadcasting the k-th column of the left tensor argument
@@ -383,9 +377,8 @@ namespace TiledArray {
       /// tensor.
       /// \param i The ordinal index of the result tile
       /// \param ptr A shared pointer to the tile value
-      madness::Void set_value(const size_type i, const value_ptr& ptr) {
+      void set_value(const size_type i, const value_ptr& ptr) {
         TensorExpressionImpl_::set(i, *ptr);
-        return madness::None;
       }
 
       /// Task function that is created for each iteration of the SUMMA algorithm
@@ -407,7 +400,7 @@ namespace TiledArray {
       /// \param col_row_k1 The column and row tiles for SUMMA iteration \c k+1
       /// for the left and right tensors respectively.
       /// \return madness::None
-      madness::Void step(const size_type k, const std::vector<result_datum>& results,
+      void step(const size_type k, const std::vector<result_datum>& results,
           const std::vector<col_datum>& col_k0, const std::vector<row_datum>& row_k0,
           const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >& col_row_k1)
       {
@@ -441,8 +434,6 @@ namespace TiledArray {
                 task(rank_, & Summa_::set_value, index, it->second, madness::TaskAttributes::hipri());
             }
         }
-
-        return madness::None;
       }
 
     public:

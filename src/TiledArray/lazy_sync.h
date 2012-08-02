@@ -270,7 +270,7 @@ namespace TiledArray {
       /// \param p The sync object world pointer for this node
       /// \return None
       /// \throw madness::MadnessException If \c p is not local
-      static madness::Void sync_task(const madness::detail::WorldPtr<LazySyncBase_>& p) {
+      static void sync_task(const madness::detail::WorldPtr<LazySyncBase_>& p) {
         TA_ASSERT(p.is_local());
 
         // Erase first to avoid possible race conditions
@@ -285,8 +285,6 @@ namespace TiledArray {
 
         // Do cleanup
         delete ls;
-
-        return madness::None;
       }
 
       /// Initialize the child world pointer of the parent object

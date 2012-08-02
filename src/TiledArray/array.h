@@ -384,10 +384,9 @@ namespace TiledArray {
       T value_;
     }; // class InitTile
 
-    static madness::Void init_tiles(const std::shared_ptr<impl_type>& pimpl, const T& value, bool) {
+    static void init_tiles(const std::shared_ptr<impl_type>& pimpl, const T& value, bool) {
       pimpl->get_world().taskq.for_each(madness::Range<iterator>(pimpl->begin(),
           pimpl->end()), InitTile(pimpl, value));
-      return madness::None;
     }
 
     static std::shared_ptr<pmap_interface> make_pmap(std::shared_ptr<pmap_interface> pmap, madness::World& w, size_type volume) {

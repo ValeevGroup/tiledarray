@@ -369,7 +369,7 @@ namespace TiledArray {
       }; // struct DelayedSet
 
       /// Set the value of an element
-      madness::Void set_value(size_type i, const value_type& value) {
+      void set_value(size_type i, const value_type& value) {
         if(is_local(i)) {
           const_accessor acc;
           data_.insert(acc, i);
@@ -379,17 +379,13 @@ namespace TiledArray {
         } else {
           WorldObject_::send(owner(i), & DistributedStorage_::set_value, i, value);
         }
-
-        return madness::None;
       }
 
       /// Remote insert without a return message.
-      madness::Void remote_insert(size_type i) {
+      void remote_insert(size_type i) {
         TA_ASSERT(is_local(i));
         const_accessor acc;
         data_.insert(acc, i);
-
-        return madness::None;
       }
 
       static void find_return(const typename future::remote_refT& ref, const value_type& value) {
@@ -422,7 +418,7 @@ namespace TiledArray {
       }; // struct DelayedReturn
 
       /// Handles find request
-      madness::Void find_handler(size_type i, const typename future::remote_refT& ref, bool mover) const {
+      void find_handler(size_type i, const typename future::remote_refT& ref, bool mover) const {
         TA_ASSERT(is_local(i));
         const_accessor acc;
         data_.insert(acc, i);
@@ -436,8 +432,6 @@ namespace TiledArray {
           DelayedReturn* return_callback = new DelayedReturn(*this, i, ref, f, mover);
           f.register_callback(return_callback);
         }
-
-        return madness::None;
       }
 
       const size_type max_size_;
