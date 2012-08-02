@@ -61,7 +61,8 @@ namespace TiledArray {
       /// to be dense.
       template <typename TR>
       TensorExpressionImpl(madness::World& world, const VariableList& vars,
-            const TiledRange<TR>& trange, const Bitset<>& shape = Bitset<>(0ul)) :
+            const TiledRange<TR>& trange,
+            const ::TiledArray::detail::Bitset<>& shape = ::TiledArray::detail::Bitset<>(0ul)) :
           TensorImplBase_(world, trange, shape),
           vars_(vars),
           trange_(trange),
@@ -156,16 +157,12 @@ namespace TiledArray {
 
             // Construct temp shape
             const size_type size = TensorImplBase_::size();
-            TiledArray::detail::Bitset<> s(size);
             TiledArray::detail::Bitset<> s0(this->eval_shape());
 
-            // Set the temp shape values
-            for(size_type i = 0ul; i < size; ++i, ++range_it)
-              if(s[i] != 0ul)
-                s.set(TiledArray::detail::calc_ordinal(*range_it, ip_weight, start));
-
             // Set the new shape
-            TensorImplBase_::shape(s);
+            for(size_type i = 0ul; i < size; ++i, ++range_it)
+              if(s0[i] != 0ul)
+                TensorImplBase_::shape(TiledArray::detail::calc_ordinal(*range_it, ip_weight, start), true);
           }
 
         } else {
