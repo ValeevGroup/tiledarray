@@ -147,6 +147,7 @@ namespace TiledArray {
           rank_row_(-1), rank_col_(-1),
           local_rows_(0ul), local_cols_(0ul), local_size_(0ul)
       {
+        // Calculate the size of the inner dimension, k.
         InnerPred left_inner_pred(right_.vars());
         for(expressions::VariableList::const_iterator it = left_.vars().begin(); it != left_.vars().end(); ++it)
           if(left_inner_pred(*it)) {
@@ -167,6 +168,10 @@ namespace TiledArray {
         proc_cols_ = std::min(size_ / std::max(std::min<std::size_t>(std::sqrt(size_ * m_ / n_), size_), 1ul), n_);
         proc_rows_ = std::min(size_ / proc_cols_, m_);
         proc_size_ = proc_cols_ * proc_rows_;
+
+        // Set an empty shape if sparse
+        if(! (left_.is_dense() && right_.is_dense()))
+          TensorImplBase_::shape(::TiledArray::detail::Bitset<>(m_ * n_));
 
         if(rank_ < proc_size_) {
           // Calculate this rank's row and column
@@ -264,48 +269,44 @@ namespace TiledArray {
 
     private:
 
-      virtual TiledArray::detail::Bitset<> eval_shape() {
-        TiledArray::detail::Bitset<> s(0ul);
+      virtual TiledArray::detail::Bitset<> make_shape() {
 
-        // Initialize the shape if this tensor is not dense
-        if(! (left_.is_dense() && right_.is_dense())) {
-          typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
+        typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
-          // Construct map objects for the shapes
+        // Construct map objects for the shapes
 
-          // Construct the left shape to its map
-          matrix_type left_map(m_, k_);
-          if(left_.is_dense())
-            left_map.fill(1);
-          else {
-            const TiledArray::detail::Bitset<> left_shape(left_.get_shape());
-            for(std::size_t i = 0; i < m_; ++i)
-              for(std::size_t j = 0; j < k_; ++j)
-                left_map(i, j) = (left_shape[i * k_ + j] ? 1 : 0);
-          }
-
-          // Construct the right shape to its map
-          matrix_type right_map(k_, n_);
-          if(right_.is_dense())
-            right_map.fill(1);
-          else {
-            const TiledArray::detail::Bitset<> right_shape(right_.get_shape());
-            for(std::size_t i = 0; i < k_; ++i)
-              for(std::size_t j = 0; j < n_; ++j)
-                right_map(i, j) = (right_shape[i * n_ + j] ? 1 : 0);
-          }
-
-          // Construct the new shape
-
-          matrix_type res_map = left_map * right_map;
-
-          // Update the shape
-          TiledArray::detail::Bitset<>(TensorImplBase_::size()).swap(s);
+        // Construct the left shape to its map
+        matrix_type left_map(m_, k_);
+        if(left_.is_dense())
+          left_map.fill(1);
+        else {
+          const TiledArray::detail::Bitset<> left_shape(left_.get_shape());
           for(std::size_t i = 0; i < m_; ++i)
-            for(std::size_t j = 0; j < n_; ++j)
-              if(res_map(i,j))
-                s.set(i * m_ + j);
+            for(std::size_t j = 0; j < k_; ++j)
+              left_map(i, j) = (left_shape[i * k_ + j] ? 1 : 0);
         }
+
+        // Construct the right shape to its map
+        matrix_type right_map(k_, n_);
+        if(right_.is_dense())
+          right_map.fill(1);
+        else {
+          const TiledArray::detail::Bitset<> right_shape(right_.get_shape());
+          for(std::size_t i = 0; i < k_; ++i)
+            for(std::size_t j = 0; j < n_; ++j)
+              right_map(i, j) = (right_shape[i * n_ + j] ? 1 : 0);
+        }
+
+        // Construct the new shape
+
+        matrix_type res_map = left_map * right_map;
+
+        // Update the shape
+        TiledArray::detail::Bitset<> s(m_ * n_);
+        for(std::size_t i = 0; i < m_; ++i)
+          for(std::size_t j = 0; j < n_; ++j)
+            if(res_map(i,j))
+              s.set(i * n_ + j);
 
         return s;
       }

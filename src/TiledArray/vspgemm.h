@@ -55,6 +55,7 @@ namespace TiledArray {
 
       left_container left_cache_;
       right_container right_cache_;
+      madness::AtomicInt count_;
 
       /// Contract and reduce operation
 
@@ -181,7 +182,7 @@ namespace TiledArray {
       /// \param i The row of the result tile to be computed
       /// \param j The column of the result tile to be computed
       /// \return \c madness::None
-      madness::Void dot_product(const size_type i, const size_type j) {
+      void dot_product(const size_type i, const size_type j) {
 
         // Construct a reduction object
         TiledArray::detail::ReducePairTask<contract_reduce_op>
@@ -202,7 +203,6 @@ namespace TiledArray {
         // the result of the reduction, and return the resulting future
         ContractionTensorImpl_::set(i * n_ + j, local_reduce_op.submit());
 
-        return madness::None;
       }
 
     public:
@@ -212,6 +212,7 @@ namespace TiledArray {
           left_cache_(local_rows_ * k_),
           right_cache_(local_cols_ * k_)
       {
+        count_ = local_rows_ * local_cols_;
         WorldObject_::process_pending();
       }
 
@@ -246,12 +247,14 @@ namespace TiledArray {
       virtual void eval_tiles() {
         // Spawn task for local tile evaluation
         for(size_type i = rank_row_; i < m_; i += proc_rows_)
-          for(size_type j = rank_col_; j < n_; j += proc_cols_)
-            if(! TensorImplBase_::is_zero(TensorExpressionImpl_::perm_index(i * n_ + j)))
+          for(size_type j = rank_col_; j < n_; j += proc_cols_) {
+            if(! TensorImplBase_::is_zero(TensorExpressionImpl_::perm_index(i * n_ + j))) {
               WorldObject_::task(rank_, & VSpGemm_::dot_product, i, j);
-
-        // Cleanup argument data
-        lazy_sync(WorldObject_::get_world(), WorldObject_::id(), Cleanup(*this));
+            } else if((count_--) == 1) {
+              // Cleanup data for children if this is the last tile
+              lazy_sync(WorldObject_::get_world(), WorldObject_::id(), Cleanup(*this));
+            }
+          }
 
         // Cleanup local tile cache
         left_cache_.clear();
