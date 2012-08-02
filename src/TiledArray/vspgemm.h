@@ -238,8 +238,12 @@ namespace TiledArray {
 
         void operator()() {
           TA_ASSERT(owner_);
+          // Release argument data
           owner_->left().release();
           owner_->right().release();
+          // Clear cache data
+          owner_->left_cache_.clear();
+          owner_->right_cache_.clear();
         }
       }; // class Cleanup
 
@@ -255,10 +259,6 @@ namespace TiledArray {
               lazy_sync(WorldObject_::get_world(), WorldObject_::id(), Cleanup(*this));
             }
           }
-
-        // Cleanup local tile cache
-        left_cache_.clear();
-        right_cache_.clear();
       }
 
     }; // class VSpGemm
