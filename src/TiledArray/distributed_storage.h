@@ -369,7 +369,7 @@ namespace TiledArray {
       }; // struct DelayedSet
 
       /// Set the value of an element
-      void set_value(size_type i, const value_type& value) {
+      madness::Void set_value(size_type i, const value_type& value) {
         if(is_local(i)) {
           const_accessor acc;
           data_.insert(acc, i);
@@ -379,13 +379,17 @@ namespace TiledArray {
         } else {
           WorldObject_::send(owner(i), & DistributedStorage_::set_value, i, value);
         }
+
+        return madness::None;
       }
 
       /// Remote insert without a return message.
-      void remote_insert(size_type i) {
+      madness::Void remote_insert(size_type i) {
         TA_ASSERT(is_local(i));
         const_accessor acc;
         data_.insert(acc, i);
+
+        return madness::None;
       }
 
       static void find_return(const typename future::remote_refT& ref, const value_type& value) {
