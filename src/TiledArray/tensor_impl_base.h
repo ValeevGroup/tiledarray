@@ -59,10 +59,10 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When the size of shape is not equal to
       /// zero
       template <typename TR>
-      TensorImplBase(madness::World& world, const TiledRange<TR>& trange, const Bitset<>& shape = Bitset<>(0ul)) :
+      TensorImplBase(madness::World& world, const TiledRange<TR>& trange, const Bitset<>& shape) :
         trange_(trange), shape_(shape), data_(world, trange_.tiles().volume())
       {
-        TA_ASSERT((shape.size() == trange.tiles().volume()) || (shape.size() == 0ul));
+        TA_ASSERT((shape_.size() == trange_.tiles().volume()) || (shape_.size() == 0ul));
       }
 
 
