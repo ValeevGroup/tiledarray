@@ -161,6 +161,15 @@ namespace TiledArray {
         return shape_;
       }
 
+      /// Tensor shape accessor
+
+      /// \return A reference to the tensor shape map
+      /// \throw TiledArray::Exception When this tensor is dense
+      TiledArray::detail::Bitset<>& shape() {
+        TA_ASSERT(! is_dense());
+        return shape_;
+      }
+
       /// Set the shape
 
       /// \param s The new shape
