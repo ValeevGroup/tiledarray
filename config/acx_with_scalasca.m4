@@ -18,7 +18,6 @@ AC_DEFUN([ACX_WITH_SCALASCA],[
     CPPFLAGS="-DEPIK=1 -I$acx_with_scalasca/include $CPPFLAGS"
     AC_CHECK_HEADERS([epik_user.h], 
       [], [AC_MSG_ERROR([Unable to include epic_user.h.])])
-    )
   ;;
   esac
 
