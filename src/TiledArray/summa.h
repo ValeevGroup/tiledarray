@@ -381,7 +381,6 @@ namespace TiledArray {
               row_task->add_dependency(it->second);
             }
           }
-          EPIK_FUNC_END();
         }
 
         // Get the broadcast task results
