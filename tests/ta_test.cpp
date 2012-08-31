@@ -7,7 +7,7 @@ GlobalFixture::GlobalFixture() {
       boost::unit_test::framework::master_test_suite().argv);
 
   if(count == 0) {
-    world = new madness::World(MPI::COMM_WORLD);
+    world = new madness::World(SafeMPI::COMM_WORLD);
     world->args(boost::unit_test::framework::master_test_suite().argc,
         boost::unit_test::framework::master_test_suite().argv);
   }

@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 
   if(! input.fail()) {
     // Make the world
-    madness::World world(MPI::COMM_WORLD);
+    madness::World world(SafeMPI::COMM_WORLD);
 
     // Read input data.
 

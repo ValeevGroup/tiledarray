@@ -35,7 +35,7 @@ void print_local(madness::World& world, const std::shared_ptr<TiledArray::Pmap<s
 int main(int argc, char** argv) {
   madness::initialize(argc,argv);
   {
-    madness::World world(MPI::COMM_WORLD);
+    madness::World world(SafeMPI::COMM_WORLD);
 
     std::size_t m = 20;
     std::size_t n = 10;

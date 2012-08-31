@@ -162,7 +162,7 @@ void blas_dgemm(madness::World& world) {
 int main(int argc, char** argv) {
   EPIK_FUNC_START();
   madness::initialize(argc,argv);
-  madness::World world(MPI::COMM_WORLD);
+  madness::World world(SafeMPI::COMM_WORLD);
 
   if(world.rank() == 0)
     std::cout << "Number of nodes = " << world.size() << "\n";
