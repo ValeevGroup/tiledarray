@@ -3,7 +3,7 @@
 #include <sys/resource.h>
 #include <TiledArray/epik.h>
 
-#define MATRIX_SIZE 4096
+#define MATRIX_SIZE 8192
 
 double cpu_time() {
   rusage r_usage;
@@ -160,9 +160,9 @@ void blas_dgemm(madness::World& world) {
 #endif // TILEDARRAY_HAS_CBLAS
 
 int main(int argc, char** argv) {
-  EPIK_FUNC_START();
   madness::initialize(argc,argv);
   madness::World world(SafeMPI::COMM_WORLD);
+  EPIK_FUNC_START();
 
   if(world.rank() == 0)
     std::cout << "Number of nodes = " << world.size() << "\n";
@@ -187,7 +187,7 @@ int main(int argc, char** argv) {
 //  }
 #endif // TILEDARRAY_HAS_CBLAS
 
-  madness::finalize();
   EPIK_FUNC_END();
+  madness::finalize();
   return 0;
 }
