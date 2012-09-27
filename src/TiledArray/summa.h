@@ -364,10 +364,12 @@ namespace TiledArray {
         typedef BcastTask<std::vector<row_datum> (Summa_::*)(size_type)> row_task_type;
 
         // Return empty results if we are at the end of the contraction
-        if(k >= k_)
+        if(k >= k_) {
+          EPIK_FUNC_END();
           return std::make_pair(
               madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
               madness::Future<std::vector<row_datum> >(std::vector<row_datum>()));
+        }
 
         // Construct the row and column broadcast task
         col_task_type* col_task = new col_task_type(const_cast<Summa_*>(this), & Summa_::bcast_column_task, k);
