@@ -51,6 +51,10 @@ namespace TiledArray {
       madness::Future<result_type> result_;
       madness::Spinlock lock_;
 
+      virtual void get_id(std::pair<const void*,unsigned long>& id) const {
+          return madness::PoolTaskInterface::make_id(id, *this);
+      }
+
     public:
 
       ReduceTaskImpl(madness::World& world, Op op) :
@@ -268,6 +272,10 @@ namespace TiledArray {
         const first_argument_type& left() const { return left_.get(); }
 
         const second_argument_type& right() const { return right_.get(); }
+
+        virtual void get_id(std::pair<const void*,unsigned long>& id) const {
+            return madness::PoolTaskInterface::make_id(id, *this);
+        }
 
       private:
 
