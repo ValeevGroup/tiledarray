@@ -18,7 +18,6 @@ library_include_HEADERS = annotated_array.h \
                           cyclic_pmap.h \
                           dense_storage.h \
                           distributed_storage.h \
-                          epik.h \
                           error.h \
                           expressions.h \
                           functional.h \

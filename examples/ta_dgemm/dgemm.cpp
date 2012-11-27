@@ -1,7 +1,6 @@
 #include <iostream>
 #include <tiled_array.h>
 #include <sys/resource.h>
-#include <TiledArray/epik.h>
 
 #define MATRIX_SIZE 8192
 
@@ -13,7 +12,6 @@ double cpu_time() {
 }
 
 void ta_dgemm(madness::World& world, const std::size_t block_size) {
-//  EPIK_USER_REG(ta_dgemm_iteration,"TiledArray DGEMM iteration loop");
   const std::size_t size = MATRIX_SIZE;
   const std::size_t num_blocks = size / block_size;
 
@@ -47,7 +45,6 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
   double avg_cpu_time = 0.0;
   double avg_efficiency = 0.0;
   for(int i = 0; i < 5; ++i) {
-//    EPIK_USER_START(ta_dgemm_iteration);
     const double wall_time_start = madness::wall_time();
     const double cpu_time_start = cpu_time();
 //    madness::RMI::set_debug(true);
@@ -56,7 +53,6 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
 
     world.gop.fence();
 
-//    EPIK_USER_END(ta_dgemm_iteration);
     const double wall_time_stop = madness::wall_time();
     const double cpu_time_stop = cpu_time();
 
@@ -162,7 +158,6 @@ void blas_dgemm(madness::World& world) {
 int main(int argc, char** argv) {
   madness::initialize(argc,argv);
   madness::World world(SafeMPI::COMM_WORLD);
-//  EPIK_FUNC_START();
 
   if(world.rank() == 0)
     std::cout << "Number of nodes = " << world.size() << "\n";
@@ -187,7 +182,6 @@ int main(int argc, char** argv) {
 //  }
 #endif // TILEDARRAY_HAS_CBLAS
 
-//  EPIK_FUNC_END();
   madness::finalize();
   return 0;
 }

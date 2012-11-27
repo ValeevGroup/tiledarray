@@ -5,7 +5,6 @@
 #include <iterator>
 #include <world/world.h>
 #include <vector>
-#include <TiledArray/epik.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -92,7 +91,6 @@ namespace TiledArray {
       void bcast(Handler handler, const size_type i, const Value& value,
           const std::vector<ProcessID>& group, const ProcessID rank, const ProcessID root)
       {
-//        EPIK_FUNC_START();
         const ProcessID size = group.size();
 
         // Get the group child nodes
@@ -120,7 +118,6 @@ namespace TiledArray {
           task(group[child0], handler, i, value, child0, root);
         if(child1 != -1)
           task(group[child1], handler, i, value, child1, root);
-//        EPIK_FUNC_END();
       }
 
       /// Spawn broadcast task for tile \c i with \c value
@@ -139,13 +136,11 @@ namespace TiledArray {
       void bcast_task(Handler handler, const size_type i, const madness::Future<Value>& value,
           const std::vector<ProcessID>& group, const ProcessID rank)
       {
-//        EPIK_FUNC_START();
         if(value.probe())
           bcast(handler, i, value, group, rank, rank);
         else
           task(rank_, & Summa_::template bcast<Handler, Value>, handler, i, value,
               group, rank, rank);
-//        EPIK_FUNC_END();
       }
 
       /// Task function used for broadcasting tiles along the row
@@ -156,7 +151,6 @@ namespace TiledArray {
       void bcast_row_handler(const size_type i, const left_value_type& value,
           const ProcessID group_rank, const ProcessID group_root)
       {
-//        EPIK_FUNC_START();
         // Broadcast this task to the next nodes in the tree
         bcast(& Summa_::bcast_row_handler, i, value, row_group_, group_rank, group_root);
 
@@ -173,7 +167,6 @@ namespace TiledArray {
 
         // Set the local future with the broadcast value
         tile.set(value); // Move
-//        EPIK_FUNC_END();
       }
 
       /// Task function used for broadcasting tiles along the column
@@ -184,7 +177,6 @@ namespace TiledArray {
       void bcast_col_handler(const size_type i, const right_value_type& value,
           const ProcessID group_rank, const ProcessID group_root)
       {
-//        EPIK_FUNC_START();
         // Broadcast this task to the next nodes in the tree
         bcast(& Summa_::bcast_col_handler, i, value, col_group_, group_rank, group_root);
 
@@ -201,7 +193,6 @@ namespace TiledArray {
 
         // Set the local future with the broadcast value
         tile.set(value); // Move
-//        EPIK_FUNC_END();
       }
 
       /// Task function for broadcasting the k-th column of the left tensor argument
@@ -213,7 +204,6 @@ namespace TiledArray {
       /// \param k The column to be broadcast
       /// \return A vector that contains futures to k-th column tiles
       std::vector<col_datum> bcast_column_task(const size_type k) {
-//        EPIK_FUNC_START();
         // Construct the result column vector
         std::vector<col_datum> col;
         col.reserve(local_rows_);
@@ -246,7 +236,6 @@ namespace TiledArray {
           }
         }
 
-//        EPIK_FUNC_END();
         return col;
       }
 
@@ -259,7 +248,6 @@ namespace TiledArray {
       /// \param k The column to be broadcast
       /// \return A vector that contains futures to k-th column tiles
       std::vector<row_datum> bcast_row_task(const size_type k) {
-//        EPIK_FUNC_START();
         // Construct the result row vector
         std::vector<row_datum> row;
         row.reserve(local_cols_);
@@ -292,7 +280,6 @@ namespace TiledArray {
           }
         }
 
-//        EPIK_FUNC_END();
         return row;
       }
 
@@ -307,9 +294,7 @@ namespace TiledArray {
       value_ptr contract(const value_ptr& result, const left_value_type& left,
           const right_value_type& right)
       {
-//        EPIK_FUNC_START();
         ContractionTensorImpl_::contract(*result, left, right);
-//        EPIK_FUNC_END();
         return result;
       }
 
@@ -340,16 +325,12 @@ namespace TiledArray {
         virtual ~BcastTask() { }
 
         virtual void run(madness::World&) {
-//          EPIK_FUNC_START();
           results_.set((owner_->*func_)(k_));
-//          EPIK_FUNC_END();
         }
 
         void add_dependency(future_value_ptr& f) {
-//          EPIK_FUNC_START();
           DependencyInterface::inc();
           f.register_callback(this);
-//          EPIK_FUNC_END();
         }
 
         const madness::Future<result_type>& result() const { return results_; }
@@ -363,13 +344,11 @@ namespace TiledArray {
       /// \return A \c std::pair of futures that contain vectors of futures for the column and row tiles
       std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
       make_bcast_task(const size_type k, std::vector<result_datum>& results) const {
-//        EPIK_FUNC_START();
         typedef BcastTask<std::vector<col_datum> (Summa_::*)(size_type)> col_task_type;
         typedef BcastTask<std::vector<row_datum> (Summa_::*)(size_type)> row_task_type;
 
         // Return empty results if we are at the end of the contraction
         if(k >= k_) {
-//          EPIK_FUNC_END();
           return std::make_pair(
               madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
               madness::Future<std::vector<row_datum> >(std::vector<row_datum>()));
@@ -397,7 +376,6 @@ namespace TiledArray {
         get_world().taskq.add(col_task);
         get_world().taskq.add(row_task);
 
-//        EPIK_FUNC_END();
         return bcast_results;
       }
 
@@ -408,9 +386,7 @@ namespace TiledArray {
       /// \param i The ordinal index of the result tile
       /// \param ptr A shared pointer to the tile value
       void set_value(const size_type i, const value_ptr& ptr) {
-//        EPIK_FUNC_START();
         TensorExpressionImpl_::set(i, *ptr);
-//        EPIK_FUNC_END();
       }
 
       /// Task function that is created for each iteration of the SUMMA algorithm
@@ -436,7 +412,6 @@ namespace TiledArray {
           const std::vector<col_datum>& col_k0, const std::vector<row_datum>& row_k0,
           const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >& col_row_k1)
       {
-//        EPIK_FUNC_START();
         if(k < k_) {
           // Create results vector for the next iteration
           std::vector<result_datum> next_results;
@@ -467,7 +442,6 @@ namespace TiledArray {
                 task(rank_, & Summa_::set_value, index, it->second, madness::TaskAttributes::hipri());
             }
         }
-//        EPIK_FUNC_END();
       }
 
     public:
@@ -480,7 +454,6 @@ namespace TiledArray {
           left_cache_(local_rows_ * k_),
           right_cache_(local_cols_ * k_)
       {
-//        EPIK_FUNC_START();
         if(rank_ < proc_size_) {
           // Fill the row group with all the processes in rank's row
           row_group_.reserve(proc_cols_);
@@ -496,7 +469,6 @@ namespace TiledArray {
         }
 
         WorldObject_::process_pending();
-//        EPIK_FUNC_END();
       }
 
       virtual ~Summa() { }
@@ -504,7 +476,6 @@ namespace TiledArray {
     private:
 
       virtual void eval_tiles() {
-//        EPIK_FUNC_START();
         if(rank_ < proc_size_) {
           std::vector<result_datum> results;
 
@@ -528,7 +499,6 @@ namespace TiledArray {
           task(rank_, & Summa_::step, 0ul, results, col_row_k0.first, col_row_k0.second,
               col_row_k1, madness::TaskAttributes::hipri());
         }
-//        EPIK_FUNC_END();
       }
 
     }; // class Summa
