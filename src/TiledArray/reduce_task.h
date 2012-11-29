@@ -51,7 +51,7 @@ namespace TiledArray {
       madness::Future<result_type> result_;
       madness::Spinlock lock_;
 
-      virtual void get_id(std::pair<const void*,unsigned long>& id) const {
+      virtual void get_id(std::pair<void*,unsigned long>& id) const {
           return madness::PoolTaskInterface::make_id(id, *this);
       }
 
@@ -273,7 +273,7 @@ namespace TiledArray {
 
         const second_argument_type& right() const { return right_.get(); }
 
-        virtual void get_id(std::pair<const void*,unsigned long>& id) const {
+        virtual void get_id(std::pair<void*,unsigned long>& id) const {
             return madness::PoolTaskInterface::make_id(id, *this);
         }
 

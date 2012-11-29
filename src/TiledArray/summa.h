@@ -312,7 +312,7 @@ namespace TiledArray {
         const size_type k_;
         madness::Future<result_type> results_;
 
-        virtual void get_id(std::pair<const void*,unsigned long>& id) const {
+        virtual void get_id(std::pair<void*,unsigned long>& id) const {
             return madness::PoolTaskInterface::make_id(id, *this);
         }
 
