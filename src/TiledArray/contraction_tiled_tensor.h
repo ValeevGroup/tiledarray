@@ -115,11 +115,7 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const {
         TA_ASSERT(pimpl_);
-        TA_ASSERT(range() == dest.range());
-
-        // Add result tiles to dest
-        for(const_iterator it = begin(); it != end(); ++it)
-          dest.set(it.index(), *it);
+        pimpl_->eval_to(dest);
       }
 
 
