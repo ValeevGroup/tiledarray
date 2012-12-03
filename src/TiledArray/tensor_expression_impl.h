@@ -122,6 +122,12 @@ namespace TiledArray {
       virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
           const std::shared_ptr<pmap_interface>& pmap) = 0;
 
+      /// Construct the shape object
+
+      /// This function is used by derived classes to create a shape object. It
+      /// is run inside a task with the proper dependencies to ensure data
+      /// consistancy. This function is only called when the tensor is not dense.
+      /// \param shape The existing shape object
       virtual void make_shape(TiledArray::detail::Bitset<>& shape) = 0;
 
       /// Permute the range, shape, and variable list of this tensor
@@ -131,7 +137,6 @@ namespace TiledArray {
       /// \return \c true when the tensor structure has been permuted
       bool internal_eval(const VariableList& vars, bool) {
         // Evaluate the shape of this tensor
-
 
         // Permute structure if the current variable list does not match vars
         if(vars != vars_) {
