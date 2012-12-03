@@ -86,14 +86,20 @@ namespace TiledArray {
       /// \throw TiledArray::Exception when the trange of \c dest is not equal
       /// to the trange of this tensor.
       template <typename Dest>
-      void eval_to(Dest& dest) const {
+      void eval_to(Dest& dest) {
         TA_ASSERT(trange() == dest.trange());
 
         // Add result tiles to dest
         typename pmap_interface::const_iterator end = data_.get_pmap()->end();
-        for(typename pmap_interface::const_iterator it = data_.get_pmap()->begin(); it != end; ++it)
-          if(! is_zero(*it))
+        typename pmap_interface::const_iterator it = data_.get_pmap()->begin();
+        if(is_dense()) {
+          for(; it != end; ++it)
             dest.set(*it, move(*it));
+        } else {
+          for(; it != end; ++it)
+            if(! is_zero(*it))
+              dest.set(*it, move(*it));
+        }
       }
 
       /// Tensor tile size array accessor
