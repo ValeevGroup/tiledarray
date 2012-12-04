@@ -169,26 +169,80 @@ namespace TiledArray {
         return result;
       }
 
-      /// Task function for reducing tiles
+      /// This task will reduce the elements of all tile into a scalar value
 
-      /// \tparam Arg The arg type: \c Array or \c \c ReadableTiledTensor
+      /// \tparam Arg The tiled tensor reduction argument type
       /// \tparam Op The reduction operation type
-      /// \param arg The array or tile tensor object to be reduced
-      /// \param op The reduction operation
-      /// \return The reduced value of all local tiles.
-      /// \note The last unused parameter is used to set the dependency between
-      /// the evaluation of \c arg and this task.
       template <typename Arg, typename Op>
-      typename madness::detail::result_of<Op>::type reduce_tiles(const Arg& arg, const Op& op, bool) {
-        TiledArray::detail::ReduceTask<Op>
-            reduce_task(arg.get_world(), op);
-        typename Arg::const_iterator end = arg.end();
-        for(typename Arg::const_iterator it = arg.begin(); it != end; ++it)
-          reduce_task.add(arg.get_world().taskq.add(& reduce_tile<typename Arg::value_type, Op>,
-              *it, op, madness::TaskAttributes::hipri()));
+      class ReduceTiles : public madness::TaskInterface {
+      public:
+        typedef typename madness::detail::result_of<Op>::type result_type;
+      private:
 
-        return reduce_task.submit().get();
-      }
+        const Arg arg_; ///< The tiled tensor argument
+        const Op op_; ///< The reduction operation
+        madness::Future<result_type> result_; ///< The reduction result
+
+        template <typename Exp>
+        static madness::Future<typename Exp::value_type>
+        tile(const ReadableTiledTensor<Exp>& arg, const std::size_t i) {
+          return arg[i];
+        }
+
+        template <typename T, typename CS>
+        static madness::Future<typename Array<T, CS>::value_type>
+        tile(const Array<T, CS>& array, const std::size_t i) {
+          return array.find(i);
+        }
+
+      public:
+
+        /// Constructor
+
+        /// \param arg The tiled tensor to be reduced
+        /// \param op The reduction operatioin
+        /// \param dep The evaluation dependancy
+        ReduceTiles(const Arg& arg, const Op& op, madness::Future<bool>& dep) :
+            madness::TaskInterface(madness::TaskAttributes::hipri()),
+            arg_(arg), op_(op), result_()
+        {
+          if(! dep.probe()) {
+            madness::DependencyInterface::inc();
+            dep.register_callback(this);
+          }
+        }
+
+        /// Result accessor
+
+        /// \return A future for the result of this task
+        const madness::Future<result_type>& result() const {
+          return result_;
+        }
+
+        /// Task function
+        virtual void run(const madness::TaskThreadEnv&) {
+          // Create reduce task object
+          TiledArray::detail::ReduceTask<Op> reduce_task(arg_.get_world(), op_);
+
+          // Spawn reduce tasks for each local tile.
+          typename Arg::pmap_interface::const_iterator end = arg_.get_pmap()->end();
+          typename Arg::pmap_interface::const_iterator it = arg_.get_pmap()->begin();
+          if(arg_.is_dense()) {
+            for(; it != end; ++it)
+              reduce_task.add(arg_.get_world().taskq.add(& reduce_tile<typename Arg::value_type, Op>,
+                  tile(arg_, *it), op_, madness::TaskAttributes::hipri()));
+          } else {
+            for(; it != end; ++it)
+              if(! arg_.is_zero(*it))
+                reduce_task.add(arg_.get_world().taskq.add(& reduce_tile<typename Arg::value_type, Op>,
+                    tile(arg_, *it), op_, madness::TaskAttributes::hipri()));
+          }
+
+          // Set the result future
+          result_.set(reduce_task.submit());
+        }
+      }; // class class ReduceTiles
+
 
       /// Evaluate a \c ReadableTiledTensor
 
@@ -266,11 +320,24 @@ namespace TiledArray {
     template <typename Exp, typename Op>
     inline typename madness::detail::result_of<Op>::type
     reduce(const ReadableTiledTensor<Exp>& arg, const Op& op) {
-      typename madness::detail::result_of<Op>::type result =
-          arg.get_world().taskq.add(arg.get_world().rank(),
-          detail::reduce_tiles<Exp, Op>, arg.derived(), op, detail::eval(arg),
-          madness::TaskAttributes::hipri()).get();
+      // Evaluate the argument tensor
+      madness::Future<bool> arg_eval = detail::eval(arg);
+
+      // Spawn a task that will generate reduction tasks for each local tile
+      detail::ReduceTiles<Exp, Op>* reduce_task =
+          new detail::ReduceTiles<Exp, Op>(arg.derived(), op, arg_eval);
+
+      // Spawn the task
+      madness::Future<typename madness::detail::result_of<Op>::type> local_result =
+          reduce_task->result();
+      arg.get_world().taskq.add(reduce_task);
+
+      // Wait for the local reduction result
+      typename madness::detail::result_of<Op>::type result = local_result.get();
+
+      // All to all global reduction
       arg.get_world().gop.reduce(& result, 1, typename Op::std_op_type());
+
       return result;
     }
 
