@@ -6,6 +6,7 @@
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/permute_tensor.h>
 #include <TiledArray/blocked_pmap.h>
+#include <TiledArray/tensor_expression_impl.h>
 #include <world/shared_ptr.h>
 
 namespace TiledArray {
@@ -47,156 +48,22 @@ namespace TiledArray {
       /// \tparam A The \c Array type
       /// \tparam Op The Unary transform operator type.
       template <typename A>
-      class AnnotatedArrayImpl {
+      class AnnotatedArrayImpl : public TensorExpressionImpl<typename A::trange_type, typename A::value_type> {
       public:
+        typedef TensorExpressionImpl<typename A::trange_type, typename A::value_type> TensorExpressionImpl_;
+        typedef typename TensorExpressionImpl_::TensorImplBase_ TensorImplBase_;
         typedef AnnotatedArrayImpl<A> AnnotatedArrayImpl_;
-        typedef AnnotatedArray<A> AnnotatedArray_;
         typedef A array_type;
-        typedef WritableTiledTensor<AnnotatedArray_> base;
-        typedef typename base::size_type size_type;
-        typedef typename base::range_type range_type;
-        typedef typename base::eval_type eval_type;
-        typedef typename base::pmap_interface pmap_interface;
-        typedef typename base::trange_type trange_type;
-        typedef typename base::value_type value_type;
-        typedef typename base::const_reference const_reference;
-        typedef typename base::const_iterator const_iterator;
-        typedef typename base::iterator iterator;
-        typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
 
-      private:
-        // Not allowed
-        AnnotatedArrayImpl_& operator=(const AnnotatedArrayImpl_&);
-        AnnotatedArrayImpl(const AnnotatedArrayImpl_& other);
-
-        /// Tile evaluation task generator
-
-        /// This object is used by the MADNESS \c for_each() to generate evaluation
-        /// tasks for the tiles. The resulting future is stored in the distributed
-        /// container.
-        /// \tparam Perm The permutation type.
-        template <typename Perm>
-        class Eval {
-        public:
-          typedef typename array_type::const_iterator iterator; // The input tensor iterator type
-          typedef iterator argument_type; // The functor argument type
-          typedef bool result_type; // The functor result type
-
-          /// Construct
-          Eval(const std::shared_ptr<AnnotatedArrayImpl_>& pimpl, const Perm& p) :
-              pimpl_(pimpl), perm_(p)
-          { }
-
-          /// Generate an evaluation task for \c it
-
-          /// \param it The tile to be evaluated
-          /// \return true
-          result_type operator()(argument_type it) const {
-            make_task(it, perm_, pimpl_);
-            return true;
-          }
-
-          /// Permutation accessor
-
-          /// \return The evaluation permuation
-          const Perm& perm() const { return perm_; }
-
-        private:
-          /// Evaluate the tensor permutation
-
-          /// This is the task function used to evaluate a permuted tensor.
-          /// \param t The tensor to be permuted
-          /// \param perm The permutation to be applied to the tensor
-          /// \return An evaluated tensor permutation
-          static value_type eval_perm(const typename array_type::value_type& t,
-              const Permutation& perm) {
-            return make_permute_tensor(t, perm);
-          }
-
-          /// Generate the task that will evaluate the input tensor
-
-          /// Generate an evaluation task for \c it and store the result.
-          /// \param it An iterator that points to the tensor to be permuted
-          /// \param perm The permutation that will be applied to the tensor
-          /// \param pimpl A pointer to the AnnotatedArrayImpl object
-          static void make_task(const iterator& it, const Permutation& perm,
-              const std::shared_ptr<AnnotatedArrayImpl_>& pimpl)
-          {
-            const size_type i =
-                pimpl->trange().tiles().ord(perm ^ pimpl->array_.range().idx(it.index()));
-            madness::Future<value_type> t =
-                pimpl->get_world().taskq.add(& Eval::eval_perm, *it, perm);
-
-            pimpl->data_.set(i, t);
-          }
-
-          /// Generate the task that will evaluate the input tensor
-
-          /// No permutation is needed, so the tile is copied as is. The tile is
-          /// in a Future so the copy is shallow.
-          /// \param it An iterator that points to the tensor to be permuted
-          /// \param perm The permutation that will be applied to the tensor
-          /// \param pimpl A pointer to the AnnotatedArrayImpl object
-          static void make_task(const iterator& it, const TiledArray::detail::NoPermutation&,
-              const std::shared_ptr<AnnotatedArrayImpl_>& pimpl)
-          {
-            pimpl->data_.set(it.index(), *it);
-          }
-
-          std::shared_ptr<AnnotatedArrayImpl_> pimpl_;
-          Perm perm_; ///< Permutation that will be applied to the array tiles
-        }; // class Eval
-
-        void eval_structure(const Permutation& perm, const VariableList& v) {
-          perm_ = perm;
-          trange_ = perm_ ^ trange_;
-          vars_ = v;
-        }
-
-        void eval_structure(const TiledArray::detail::NoPermutation&, const VariableList&) { }
-
-        size_type translate_index(size_type i, const Permutation& p) const {
-          return trange_.tiles().ord(p ^ array_.range().idx(i));
-        }
-
-        size_type translate_index(size_type i, const TiledArray::detail::NoPermutation&) {
-          return i;
-        }
-
-        template <typename Perm>
-        bool generate_tasks(const Eval<Perm>& eval_op, const VariableList& v, bool) {
-          eval_structure(eval_op.perm(), v);
-
-          madness::Future<bool> tiles_done = get_world().taskq.for_each(
-              madness::Range<const_iterator>(array_.begin(), array_.end()), eval_op);
-
-          // Todo: Iterating through all tiles is not scalable. This needs to be
-          // fixed.
-
-          // Make sure all local tiles are present.
-          size_type end = trange_.tiles().volume();
-          for(size_type i = 0; i < end; ++i) {
-            if(! array_.is_zero(i)) {
-              size_type ii = translate_index(i, eval_op.perm());
-              if(is_local(ii))
-                data_.insert(ii);
-            }
-          }
-
-          return tiles_done.get(); // Wait for_each to finish while still processing other tasks
-        }
+        typedef typename TensorImplBase_::size_type size_type; ///< size type
+        typedef typename TensorImplBase_::pmap_interface pmap_interface; ///< The process map interface type
+        typedef typename TensorImplBase_::trange_type trange_type; ///< Tiled range type
+        typedef typename TensorImplBase_::range_type range_type; ///< Tile range type
+        typedef typename TensorImplBase_::value_type value_type; ///< The result value type
+        typedef typename TensorImplBase_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
+        typedef typename TensorImplBase_::storage_type::future const_reference; /// The storage type for this object
 
       public:
-
-        template <typename Perm>
-        static madness::Future<bool>
-        generate_tiles(const Perm& perm, const VariableList& v,
-            const std::shared_ptr<AnnotatedArrayImpl_>& pimpl,
-            madness::Future<bool> arg_done) {
-          return pimpl->get_world().taskq.add(*pimpl,
-              & AnnotatedArrayImpl_::template generate_tasks<Perm>, Eval<Perm>(pimpl,
-              perm), v, arg_done);
-        }
 
         /// Construct a permute tiled tensor op
 
@@ -204,154 +71,57 @@ namespace TiledArray {
         /// \param right The right argument
         /// \param op The element transform operation
         AnnotatedArrayImpl(const array_type& array, const VariableList& vars) :
-            array_(const_cast<array_type&>(array)),
-            vars_(vars),
-            trange_(array.trange()),
-            shape_((array.is_dense() ? 0 : array.size())),
-            data_(array.get_world(), array.size())
+            TensorExpressionImpl_(array.get_world(), vars, array.trange(), (array.is_dense() ? 0 : array.size())),
+            array_(const_cast<array_type&>(array))
         { }
-
-        void set_pmap(const std::shared_ptr<pmap_interface>& pmap) {
-          data_.init(pmap);
-        }
-
-        /// Evaluate the array
-
-        /// \return A future to a bool that will be set once array has been
-        /// evaluated.
-        madness::Future<bool> eval_array() { return array_.eval(); }
-
-        /// Query a tile owner
-
-        /// \param i The tile index to query
-        /// \return The process ID of the node that owns tile \c i
-        ProcessID owner(size_type i) const { return data_.owner(i); }
-
-        /// Query for a locally owned tile
-
-        /// \param i The tile index to query
-        /// \return \c true if the tile is owned by this node, otherwise \c false
-        bool is_local(size_type i) const { return data_.is_local(i); }
-
-        /// Query for a zero tile
-
-        /// \param i The tile index to query
-        /// \return \c true if the tile is zero, otherwise \c false
-        bool is_zero(size_type i) const {
-          TA_ASSERT(trange_.tiles().includes(i));
-          if(array_.is_dense())
-            return false;
-
-          if(perm_.dim() == trange_.tiles().dim())
-            return array_.is_zero(array_.range().ord((-perm_) ^ trange_.tiles().idx(i)));
-
-          return array_.is_zero(i);
-        }
-
-        bool is_dense() const { return array_.is_dense(); }
-
-        /// Tensor process map accessor
-
-        /// \return A shared pointer to the process map of this tensor
-        const std::shared_ptr<pmap_interface>& get_pmap() const { return data_.get_pmap(); }
-
-
-        /// Tensor shape accessor
-
-        /// \return A reference to the tensor shape map
-        TiledArray::detail::Bitset<> get_shape() const {
-          TA_ASSERT(! array_.is_dense());
-          if(perm_.dim() == trange_.tiles().dim()) {
-            TiledArray::detail::Bitset<> shape(array_.size());
-
-            // Construct the inverse permuted weight and size for this tensor
-            typename range_type::size_array ip_weight = (-perm_) ^ trange_.tiles().weight();
-            const typename array_type::range_type::index& start = array_.range().start();
-
-            // Coordinated iterator for the argument object range
-            typename array_type::range_type::const_iterator arg_range_it =
-                array_.range().begin();
-
-            // permute the data
-            const size_type end = array_.size();
-            for(std::size_t i = 0; i < end; ++i, ++arg_range_it)
-              if(array_.get_shape()[i])
-                shape.set(TiledArray::detail::calc_ordinal(*arg_range_it, ip_weight, start));
-
-            return shape;
-          }
-
-          return array_.get_shape();
-        }
-
-        /// Tiled range accessor
-
-        /// \return The tiled range of the tensor
-        const trange_type& trange() const { return trange_; }
-
-        /// Tile accessor
-
-        /// \param i The tile index
-        /// \return Tile \c i
-        const_reference operator[](size_type i) const {
-          TA_ASSERT(! is_zero(i));
-          return data_[i];
-        }
-
-        /// Tile move
-
-        /// Tile is removed after it is set.
-        /// \param i The tile index
-        /// \return Tile \c i
-        const_reference move(size_type i) const {
-          TA_ASSERT(! is_zero(i));
-          return data_.move(i);
-        }
-
-
-        /// Array begin iterator
-
-        /// \return A const iterator to the first element of the array.
-        iterator begin() { return data_.begin(); }
-
-        /// Array end iterator
-
-        /// \return A const iterator to one past the last element of the array.
-        iterator end() { return data_.end(); }
-        /// Array begin iterator
-
-        /// \return A const iterator to the first element of the array.
-        const_iterator begin() const { return data_.begin(); }
-
-        /// Array end iterator
-
-        /// \return A const iterator to one past the last element of the array.
-        const_iterator end() const { return data_.end(); }
-
-        /// Variable annotation for the array.
-        const VariableList& vars() const { return vars_; }
-
-        madness::World& get_world() const { return data_.get_world(); }
 
 				array_type& array() { return array_; }
 
         const array_type& array() const { return array_; }
 
-        /// Clear the tile data
-
-        /// Remove all tiles from the tensor.
-        /// \note: Any tiles will remain in memory until the last reference
-        /// is destroyed.
-        void clear() { data_.clear(); }
-
       private:
 
+        /// Function for evaluating this tensor's tiles
+
+        /// This function is run inside a task, and will run after \c eval_children
+        /// has completed. It should spwan additional tasks that evaluate the
+        /// individule result tiles.
+        virtual void eval_tiles() {
+          // Make sure all local tiles are present.
+          const typename pmap_interface::const_iterator end = TensorImplBase_::pmap()->end();
+          typename pmap_interface::const_iterator it = TensorImplBase_::pmap()->begin();
+          if(array_.is_dense()) {
+            for(; it != end; ++it)
+              TensorExpressionImpl_::set(*it, array_.find(*it));
+          } else {
+            for(; it != end; ++it)
+              if(! array_.is_zero(*it))
+                TensorExpressionImpl_::set(*it, array_.find(*it));
+          }
+        }
+
+        /// Function for evaluating child tensors
+
+        /// This function should return true when the child
+
+        /// This function should evaluate all child tensors.
+        /// \param vars The variable list for this tensor (may be different from
+        /// the variable list used to initialize this tensor).
+        /// \param pmap The process map for this tensor
+        virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
+            const std::shared_ptr<pmap_interface>& pmap) {
+          return array_.eval();
+        }
+
+        /// Construct the shape object
+
+        /// \param shape The existing shape object
+        virtual void make_shape(TiledArray::detail::Bitset<>& shape) {
+          TA_ASSERT(shape.size() == array_.size());
+          shape = array_.get_shape();
+        }
+
         array_type& array_; ///< The referenced array
-        VariableList vars_; ///< Tensor annotation
-        trange_type trange_; ///< Tensor tiled range
-        TiledArray::detail::Bitset<> shape_; ///< Tensor shape
-        mutable storage_type data_; ///< Tile container
-        Permutation perm_;
       }; // class PermuteTiledTensor
 
     } // detail namespace
@@ -384,6 +154,36 @@ namespace TiledArray {
       typedef A array_type; ///< The array type
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; /// The storage type for this object
 
+    private:
+
+      template <typename T>
+      AnnotatedArray_& assign(const T& other) {
+        TA_ASSERT(pimpl_);
+
+        // Construct new pmap
+        std::shared_ptr<TiledArray::Pmap<size_type> >
+            pmap(new TiledArray::detail::BlockedPmap(get_world(), size()));
+
+        // Wait until structure of other has been evaluated; tasks are processed
+        // by get() until this happens.
+        const_cast<T&>(other).eval(pimpl_->vars(), pmap).get();
+
+        // Construct the result arrray
+        if(other.is_dense())
+          array_type(other.get_world(), other.trange(), other.get_pmap()->clone()).swap(pimpl_->array());
+        else
+          array_type(other.get_world(), other.trange(), other.get_shape(), other.get_pmap()->clone()).swap(pimpl_->array());
+
+        // Evaluate this
+        other.eval_to(pimpl_->array());
+
+        return *this;
+      }
+
+      static bool eval_done(bool, bool) { return true; }
+
+    public:
+
       AnnotatedArray() : pimpl_() { }
 
       /// Constructor
@@ -400,40 +200,6 @@ namespace TiledArray {
 
       AnnotatedArray(const AnnotatedArray_& other) : pimpl_(other.pimpl_) { }
 
-    private:
-
-      /// Evaluate other to this array
-
-      /// This function will construct a new from the \c other expression,
-      /// evaluate it to the array and
-      template <typename T>
-      bool eval_to_this(const T& other, bool) {
-        if(other.is_dense())
-          array_type(other.get_world(), other.trange(), other.get_pmap()->clone()).swap(pimpl_->array());
-        else
-          array_type(other.get_world(), other.trange(), other.get_shape(), other.get_pmap()->clone()).swap(pimpl_->array());
-        other.eval_to(pimpl_->array());
-
-        return true;
-      }
-
-      template <typename T>
-      AnnotatedArray_& assign(const T& other) {
-
-        // Wait until evaluation of the result array structure and tiles has been
-        // completed. Tasks are processed by get() until this happens.
-        get_world().taskq.add(*this, & AnnotatedArray_::template eval_to_this<T>,
-            other, const_cast<T&>(other).eval(pimpl_->vars(),
-            std::shared_ptr<TiledArray::Pmap<size_type> >(
-            new TiledArray::detail::BlockedPmap(get_world(), size())))).get();
-
-        return *this;
-      }
-
-      static bool eval_done(bool, bool) { return true; }
-
-    public:
-
       /// Annotated array assignement
 
       /// Shallow copy the array of other into this array.
@@ -442,11 +208,14 @@ namespace TiledArray {
         return assign(other);
       }
 
+      /// Annotated array assignement
+
+      /// Shallow copy the array of other into this array.
+      /// \throw TiledArray::Exception If the variable lists do not match.
       template <typename D>
       AnnotatedArray_& operator =(const ReadableTiledTensor<D>& other) {
         return assign(other.derived());
       }
-
 
       /// Evaluate tensor to destination
 
@@ -455,13 +224,7 @@ namespace TiledArray {
       template <typename Dest>
       void eval_to(Dest& dest) const {
         TA_ASSERT(pimpl_);
-        TA_ASSERT(trange() == dest.trange());
-
-        // Add result tiles to dest and wait for all tiles to be added.
-        typename pmap_interface::const_iterator end = pimpl_->get_pmap()->end();
-        for(typename pmap_interface::const_iterator it = pimpl_->get_pmap()->begin(); it != end; ++it)
-          if(! is_zero(*it))
-            dest.set(*it, move(*it));
+        pimpl_->eval_to(dest);
       }
 
       /// Evaluate the tensor
@@ -472,24 +235,7 @@ namespace TiledArray {
       /// \return A future that indicates the tensor evaluation is complete
       madness::Future<bool> eval(const VariableList& v, const std::shared_ptr<pmap_interface>& pmap) {
         TA_ASSERT(pimpl_);
-        madness::Future<bool> array_done = pimpl_->eval_array();
-        pimpl_->set_pmap(pmap);
-
-        if(v != pimpl_->vars()) {
-
-          // Get the permutation to go from the current variable list to v such
-          // that:
-          //   v = perm ^ pimpl_->vars()
-          Permutation perm = v.permutation(pimpl_->vars());
-
-          // Generate the tile permutation tasks.
-          return impl_type::generate_tiles(perm, v, pimpl_, array_done);
-
-        }
-
-        // The variables match so no permutation is needed. Just copy the tiles.
-        return impl_type::generate_tiles(TiledArray::detail::NoPermutation(),
-            v, pimpl_, array_done);
+        return pimpl_->eval(v, pmap);
       }
 
       /// Tensor tile range object accessor
@@ -540,7 +286,7 @@ namespace TiledArray {
       /// \return A shared pointer to the process map of this tensor
       const std::shared_ptr<pmap_interface>& get_pmap() const {
         TA_ASSERT(pimpl_);
-        return pimpl_->get_pmap();
+        return pimpl_->pmap();
       }
 
       /// Query the density of the tensor
@@ -556,7 +302,7 @@ namespace TiledArray {
       /// \return A reference to the tensor shape map
       TiledArray::detail::Bitset<> get_shape() const {
         TA_ASSERT(pimpl_);
-        return pimpl_->get_shape();
+        return pimpl_->shape();
       }
 
       /// Tiled range accessor
