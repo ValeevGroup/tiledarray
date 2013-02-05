@@ -1,7 +1,6 @@
 #ifndef TILEDARRAY_VARIABLE_LIST_H__INCLUDED
 #define TILEDARRAY_VARIABLE_LIST_H__INCLUDED
 
-#include <TiledArray/error.h>
 #include <TiledArray/permutation.h>
 #include <vector>
 #include <string>

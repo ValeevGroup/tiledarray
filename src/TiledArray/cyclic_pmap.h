@@ -4,7 +4,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/pmap.h>
 #include <cmath>
-#include <world/world.h>
+#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {

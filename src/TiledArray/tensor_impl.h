@@ -1,45 +1,35 @@
-#ifndef TILEDARRAY_TENSOR_IMPL_BASE_H__INCLUDED
-#define TILEDARRAY_TENSOR_IMPL_BASE_H__INCLUDED
+#ifndef TILEDARRAY_TENSOR_IMPL_H__INCLUDED
+#define TILEDARRAY_TENSOR_IMPL_H__INCLUDED
 
-#include <TiledArray/error.h>
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/bitset.h>
-#include <cstddef>
 
 namespace TiledArray {
   namespace detail {
 
-    /// Base class for Tensor implementation objects
+    /// Tensor implementation and base for other tensor implementation objects
 
-    /// This is the basis for other tiled tensor implementation objects. It
-    /// provides the basic interface for accessing and setting the tensor's
-    /// tiled range, shape, process map, and data. There are some restrictions
-    /// on how the tensor may be modified. Most significantly, the volume of the
-    /// tiled range's tiles must be constant. This allows the shape to be
-    /// permuted, but not resized. Also, the size of shape must be either zero,
-    /// which indicates the tensor is dense, or it must be exactly equal to the
-    /// volume of the tiled range tiles. It is the responsibility of the derived
-    /// class to ensure data consistancy, that is the derived class must
-    /// explicitly permute the tensor's tiled range, shape, process map, and
-    /// data.
-    /// \tparam TRange The tiled range type
+    /// This implementation object holds the data for tensor object, which
+    /// includes tiled range, shape, and tiles. The tiles are held in a
+    /// distrbuted container, stored accrding to a given process map.
     /// \tparam Tile The tile or value_type of this tensor
-    /// \note The process map must be set after construction before data elements
-    /// can be set.
-    template <typename TRange, typename Tile>
-    class TensorImplBase : private NO_DEFAULTS{
+    /// \note The process map must be set before data elements can be set.
+    /// \note It is the users responsibility to ensure the process maps on all
+    /// nodes are identical.
+    template <typename Tile>
+    class TensorImpl : private NO_DEFAULTS{
     public:
-      typedef std::size_t size_type; ///< Size type
-      typedef TRange trange_type; ///< Tiled range type
+      typedef TiledRange trange_type; ///< Tiled range type
       typedef typename trange_type::range_type range_type; ///< Tile range type
-      typedef Pmap<size_type> pmap_interface; ///< Process map interface type
       typedef Tile value_type; ///< Tile or data type
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
+      typedef typename storage_type::size_type size_type; ///< Size type
       typedef typename storage_type::const_iterator const_iterator; ///< Constant iterator type
       typedef typename storage_type::iterator iterator; ///< Iterator type
       typedef typename storage_type::future const_reference; ///< Constant reference type
       typedef typename storage_type::future reference; ///< Reference type
+      typedef Pmap<size_type> pmap_interface; ///< Process map interface type
 
     private:
 
@@ -58,13 +48,14 @@ namespace TiledArray {
       /// \param op The element transform operation
       /// \throw TiledArray::Exception When the size of shape is not equal to
       /// zero
-      template <typename TR>
-      TensorImplBase(madness::World& world, const TiledRange<TR>& trange, const Bitset<>& shape) :
+      TensorImpl(madness::World& world, const trange_type& trange, const Bitset<>& shape) :
         trange_(trange), shape_(shape), data_(world, trange_.tiles().volume())
       {
         TA_ASSERT((shape_.size() == trange_.tiles().volume()) || (shape_.size() == 0ul));
       }
 
+      /// Virtual destructor
+      virtual ~TensorImpl() { }
 
       /// Tensor process map accessor
 
@@ -124,32 +115,43 @@ namespace TiledArray {
 
       /// Query a tile owner
 
+      /// \tparam Index The index type
       /// \param i The tile index to query
       /// \return The process ID of the node that owns tile \c i
       /// \throw TiledArray::Exception When \c i is outside the tiled range tile
       /// range
       /// \throw TiledArray::Exception When the process map has not been set
-      ProcessID owner(size_type i) const { return data_.owner(i); }
+      template <typename Index>
+      ProcessID owner(const Index& i) const {
+        TA_ASSERT(trange_.tiles().includes(i));
+        return data_.owner(trange_.tiles().ord(i));
+      }
 
       /// Query for a locally owned tile
 
+      /// \tparam Index The index type
       /// \param i The tile index to query
       /// \return \c true if the tile is owned by this node, otherwise \c false
-      /// \throw nothing
       /// \throw TiledArray::Exception When the process map has not been set
-      bool is_local(size_type i) const { return data_.is_local(i); }
+      template <typename Index>
+      bool is_local(const Index& i) const {
+        TA_ASSERT(trange_.tiles().includes(i));
+        return data_.is_local(trange_.tiles().ord(i));
+      }
 
       /// Query for a zero tile
 
+      /// \tparam Index The index type
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
       /// \throw TiledArray::Exception When \c i is outside the tiled range tile
       /// range
-      bool is_zero(size_type i) const {
-        TA_ASSERT(range().includes(i));
+      template <typename Index>
+      bool is_zero(const Index& i) const {
+        TA_ASSERT(trange_.tiles().includes(i));
         if(is_dense())
           return false;
-        return ! (shape_[i]);
+        return ! (shape_[trange_.tiles().ord(i)]);
       }
 
       /// Query the density of the tensor
@@ -189,13 +191,15 @@ namespace TiledArray {
       /// Set shape values
 
       /// Modify the shape value for tile \c i to \c value
+      /// \tparam Index The index type
       /// \param i Tile index
       /// \param value The value of the tile
       /// \throw TiledArray::Exception When this tensor is dense
-      void shape(size_type i, bool value = true) {
+      template <typename Index>
+      void shape(const Index& i, bool value = true) {
+        TA_ASSERT(trange_.tiles().includes(i));
         TA_ASSERT(! is_dense());
-
-        shape_.set(i, value);
+        shape_.set(trange_.tiles().ord(i), value);
       }
 
       /// Tiled range accessor
@@ -205,22 +209,22 @@ namespace TiledArray {
 
       /// Set tiled range
 
-      /// \tparam TR TiledRange type
       /// \param tr Tiled range to set
-      template <typename TR>
-      void trange(const TiledRange<TR>& tr) {
+      void trange(const trange_type& tr) {
         TA_ASSERT(tr.tiles().volume() == trange_.tiles().volume());
         trange_ = tr;
       }
 
       /// Tile accessor
 
+      /// \tparam Index The index type
       /// \param i The tile index
       /// \return Tile \c i
       /// \throw TiledArray::Exception When tile \c i is zero
-      const_reference operator[](size_type i) const {
+      template <typename Index>
+      const_reference operator[](const Index& i) const {
         TA_ASSERT(! is_zero(i));
-        return data_[i];
+        return data_[trange_.tiles().ord(i)];
       }
 
       /// Tile accessor
@@ -228,22 +232,24 @@ namespace TiledArray {
       /// \param i The tile index
       /// \return Tile \c i
       /// \throw TiledArray::Exception When tile \c i is zero
-      reference operator[](size_type i) {
+      template <typename Index>
+      reference operator[](const Index& i) {
         TA_ASSERT(! is_zero(i));
-        return data_[i];
+        return data_[trange_.tiles().ord(i)];
       }
 
       /// Tile move
 
       /// Tile is removed after it is set.
+      /// \tparam Index The index type
       /// \param i The tile index
       /// \return Tile \c i
       /// \throw TiledArray::Exception When tile \c i is zero
-      const_reference move(size_type i) {
+      template <typename Index>
+      const_reference move(const Index& i) {
         TA_ASSERT(! is_zero(i));
-        return data_.move(i);
+        return data_.move(trange_.tiles().ord(i));
       }
-
 
       /// Array begin iterator
 
@@ -265,10 +271,25 @@ namespace TiledArray {
       /// \return A const iterator to one past the last element of the array.
       iterator end() { return data_.end(); }
 
+      /// World accessor
+
+      /// \return A reference to the world that contains this tensor
       madness::World& get_world() const { return data_.get_world(); }
 
-      template <typename Value>
-      void set(size_type i, const Value& value) { data_.set(i, value); }
+      /// Set tile
+
+      /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,
+      /// \c madness::Future<value_type> , or
+      /// \c madness::detail::MoveWrapper<value_type> .
+      /// \tparam Index The index type
+      /// \tparam Value The value type
+      /// \param i The index of the tile to be set
+      /// \param value The object tat contains the tile value
+      template <typename Index, typename Value>
+      void set(const Index& i, const Value& value) {
+        TA_ASSERT(! is_zero(i));
+        data_.set(trange_.tiles().ord(i), value);
+      }
 
       /// Clear the tile data
 
@@ -283,4 +304,4 @@ namespace TiledArray {
 }  // namespace TiledArray
 
 
-#endif // TILEDARRAY_TENSOR_IMPL_BASE_H__INCLUDED
+#endif // TILEDARRAY_TENSOR_IMPL_H__INCLUDED

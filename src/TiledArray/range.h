@@ -1,37 +1,18 @@
 #ifndef TILEDARRAY_RANGE_H__INCLUDED
 #define TILEDARRAY_RANGE_H__INCLUDED
 
-#include <TiledArray/error.h>
-#include <TiledArray/coordinate_system.h>
 #include <TiledArray/range_iterator.h>
-#include <TiledArray/type_traits.h>
-#include <TiledArray/transform_iterator.h>
+#include <TiledArray/coordinates.h>
 #include <algorithm>
 #include <vector>
-#include <iterator>
 #include <functional>
 
 namespace TiledArray {
 
   // Forward declaration of TiledArray components.
   class Permutation;
-  template <typename>
-  class Range;
-  template <typename>
-  class StaticRange;
-  class DynamicRange;
-
 
   namespace detail {
-
-    template <typename R>
-    struct is_range : public std::false_type { };
-    template <typename Derived>
-    struct is_range<Range<Derived> > : public std::true_type { };
-    template <typename CS>
-    struct is_range<StaticRange<CS> > : public std::true_type { };
-    template <>
-    struct is_range<DynamicRange> : public std::true_type { };
 
     template <typename SizeArray>
     inline std::size_t calc_volume(const SizeArray& size) {
@@ -66,8 +47,8 @@ namespace TiledArray {
     }
 
 
-    template <typename Index, typename RangeType>
-    inline void calc_index(Index& index, std::size_t o, const RangeType& range) {
+    template <typename Index, typename Rng>
+    inline void calc_index(Index& index, std::size_t o, const Rng& range) {
       const std::size_t dim = index.size();
 
       for(std::size_t i = 0ul; i < dim; ++i) {
@@ -92,136 +73,126 @@ namespace TiledArray {
       }
     }
 
-    template <typename Index, typename RangeType>
-    inline void increment_coordinate(Index& index, const RangeType& range) {
-
-      const typename RangeType::index& start = range.start();
-      const typename RangeType::index& finish = range.finish();
+    template <typename Index, typename Rng>
+    inline void increment_coordinate(Index& index, const Rng& range) {
       for(int dim = int(range.dim() - 1); dim >= 0; --dim) {
         // increment coordinate
         ++index[dim];
 
         // break if done
-        if(index[dim] < finish[dim])
+        if(index[dim] < range.finish()[dim])
           return;
 
         // Reset current index to start value.
-        index[dim] = start[dim];
+        index[dim] = range.start()[dim];
       }
 
       // if the current location was set to start then it was at the end and
       // needs to be reset to equal finish.
-      std::copy(finish.begin(), finish.end(), index.begin());
+      std::copy(range.finish().begin(), range.finish().end(), index.begin());
     }
-
-
-    template <typename>
-    struct RangeTraits;
-
-
-    template <typename CS>
-    struct RangeTraits<StaticRange<CS> > {
-      typedef CS coordinate_system;
-      typedef typename CS::index index;
-      typedef typename CS::size_array size_array;
-    };
-
-    template <>
-    struct RangeTraits<DynamicRange> {
-      typedef void coordinate_system;
-      typedef std::vector<std::size_t> index;
-      typedef std::vector<std::size_t> size_array;
-    };
 
   }  // namespace detail
 
-
   /// Range data of an N-dimensional tensor.
-
-  /// \tparam Derived The type of the class that uses this class as a base class
-  /// (i.e. curiously recurring template pattern).
-  /// Range is an interface class for range objects. It handles operations that
-  /// are common to both fixed size and non-fixed dimension ranges.
-  /// \note This object should not be used directly. Instead use \c StaticRange
-  /// for fixed dimension or \c DynamicRange for non-fixed dimension tiled
-  /// ranges.
-  template <typename Derived>
   class Range {
   public:
-    typedef Range<Derived> Range_;
-
+    typedef Range Range_;
     typedef std::size_t size_type;
-    typedef typename TiledArray::detail::RangeTraits<Derived>::coordinate_system coordinate_system;
-    typedef typename detail::RangeTraits<Derived>::index index;
-    typedef typename detail::RangeTraits<Derived>::size_array size_array;
-
+    typedef std::vector<std::size_t> index;
+    typedef std::vector<std::size_t> size_array;
     typedef detail::RangeIterator<index, Range_> const_iterator;
     friend class detail::RangeIterator<index, Range_>;
 
-  private:
+    /// Default constructor. The range has 0 size and the origin is set at 0.
+    Range() :
+        start_(), finish_(), size_(), weight_(), volume_(0ul)
+    {}
 
-    // used to access the derived class's data
-    Derived& derived() { return static_cast<Derived&>(*this); }
-    const Derived& derived() const { return static_cast<const Derived&>(*this); }
+    /// Constructor defined by an upper and lower bound. All elements of
+    /// finish must be greater than or equal to those of start.
+    template <typename Index>
+    Range(const Index& start, const Index& finish) :
+        start_(start.size()),
+        finish_(start.size()),
+        size_(start.size()),
+        weight_(start.size()),
+        volume_(start.size() ? 1ul : 0ul)
+    {
+      TA_ASSERT(start.size() == finish.size());
+      TA_ASSERT( (std::equal(start.begin(), start.end(), finish.begin(),
+          std::less_equal<std::size_t>())) );
 
-  public:
+      for(int i = start.size() - 1; i >= 0; --i) {
+        start_[i] = start[i];
+        finish_[i] = finish[i];
+        size_[i] = finish[i] - start[i];
+        weight_[i] = (size_[i] != 0ul ? volume_ : 0);
+        volume_ *= size_[i];
+      }
+    }
 
-    // Compiler generated destructor is OK
+    template <typename SizeArray>
+    explicit Range(const SizeArray& size) :
+        start_(size.size(), 0ul),
+        finish_(size.begin(), size.end()),
+        size_(size.begin(), size.end()),
+        weight_(size.size()),
+        volume_(detail::calc_volume(size))
+    {
+      detail::calc_weight(weight_, size_);
+    }
+
+    /// Copy Constructor
+    Range(const Range_& other) : // no throw
+        start_(other.start_), finish_(other.finish_), size_(other.size_),
+        weight_(other.weight_), volume_(other.volume_)
+    {}
+
+    ~Range() {}
 
     Range_& operator=(const Range_& other) {
-      derived() = other.derived();
+      start_ = other.start_;
+      finish_ = other.finish_;
+      size_ = other.size_;
+      weight_ = other.weight_;
+      volume_ = other.volume_;
+
       return *this;
     }
 
-    template <typename D>
-    Range_& operator=(const Range<D>& other) {
-      derived() = other.derived();
-      return *this;
-    }
+    unsigned int dim() const { return size_.size(); }
 
-    /// Range dimension accessor
+    /// Returns the lower bound of the range
+    const index& start() const { return start_; } // no throw
 
-    /// \return The number of dimensions in the range.
-    unsigned int dim() const { return derived().dim(); }
+    /// Returns the upper bound of the range
+    const index& finish() const { return finish_; } // no throw
 
-    /// Start coordinate accessor
+    /// Returns an array with the size of each dimension.
+    const size_array& size() const { return size_; } // no throw
 
-    /// \return The lower bound of the range
-    const index& start() const { return derived().start(); } // no throw
+    const size_array& weight() const { return weight_; } // no throw
 
-    /// Finish coordinate accessor
-
-    /// \return The upper bound of the range
-    const index& finish() const { return derived().finish(); } // no throw
-
-    /// Size array accessor
-
-    /// \return An array with the size of each dimension.
-    const size_array& size() const { return derived().size(); } // no throw
-
-    /// Weight array accessor
-
-    /// \return An array with the step size of each dimension
-    const size_array& weight() const { return derived().weight(); } // no throw
 
     /// Range volume accessor
 
     /// \return The total number of elements in the range.
-    size_type volume() const { return detail::calc_volume(size()); }
+    size_type volume() const { return volume_; }
 
     /// Index iterator factory
 
     /// The iterator dereferences to an index. The order of iteration matches
     /// the data layout of a dense tensor.
     /// \return An iterator that holds the start element index of a tensor.
-    const_iterator begin() const { return const_iterator(start(), this); }
+    const_iterator begin() const { return const_iterator(start_, this); }
 
     /// Index iterator factory
 
     /// The iterator dereferences to an index. The order of iteration matches
     /// the data layout of a dense tensor.
     /// \return An iterator that holds the finish element index of a tensor.
-    const_iterator end() const { return const_iterator(finish(), this); }
+    const_iterator end() const { return const_iterator(finish_, this); }
 
     /// Check the coordinate to make sure it is within the range.
 
@@ -233,8 +204,9 @@ namespace TiledArray {
     typename madness::disable_if<std::is_integral<Index>, bool>::type
     includes(const Index& index) const {
       TA_ASSERT(index.size() == dim());
-      for(std::size_t i = 0ul; i < dim(); ++i)
-        if((index[i] < start()[i]) || (index[i] >= finish()[i]))
+      const unsigned int end = dim();
+      for(unsigned int i = 0ul; i < end; ++i)
+        if((index[i] < start_[i]) || (index[i] >= finish_[i]))
           return false;
 
       return true;
@@ -253,8 +225,8 @@ namespace TiledArray {
     /// Permute the tile given a permutation.
     Range_& operator ^=(const Permutation& p) {
       TA_ASSERT(p.dim() == dim());
-      Derived temp(p ^ start(), p ^ finish());
-      derived().swap(temp);
+      Range_ temp(p ^ start_, p ^ finish_);
+      temp.swap(*this);
 
       return *this;
     }
@@ -262,8 +234,8 @@ namespace TiledArray {
     /// Change the dimensions of the range.
     template <typename Index>
     Range_& resize(const Index& start, const Index& finish) {
-      Derived temp(start, finish);
-      derived().swap(temp);
+      Range_ temp(start, finish);
+      temp.swap(*this);
 
       return *this;
     }
@@ -292,8 +264,9 @@ namespace TiledArray {
       TA_ASSERT(index.size() == dim());
       TA_ASSERT(includes(index));
       size_type o = 0;
-      for(std::size_t i = 0ul; i < dim(); ++i)
-        o += (index[i] - start()[i]) * weight()[i];
+      const unsigned int end = dim();
+      for(unsigned int i = 0ul; i < end; ++i)
+        o += (index[i] - start_[i]) * weight_[i];
 
       return o;
     }
@@ -327,7 +300,15 @@ namespace TiledArray {
 
     template <typename Archive>
     void serialize(const Archive& ar) {
-      derived().serialize(ar);
+      ar & start_ & finish_ & size_ & weight_ & volume_;
+    }
+
+    void swap(Range_& other) {
+      std::swap(start_, other.start_);
+      std::swap(finish_, other.finish_);
+      std::swap(size_, other.size_);
+      std::swap(weight_, other.weight_);
+      std::swap(volume_, other.volume_);
     }
 
   private:
@@ -349,13 +330,13 @@ namespace TiledArray {
     template <typename Ordinal>
     typename madness::enable_if<std::is_signed<Ordinal>, bool>::type
     include_ordinal_(Ordinal i) const {
-      return (i >= 0ul) && (i < volume());
+      return (i >= 0ul) && (i < volume_);
     }
 
     template <typename Ordinal>
     typename madness::disable_if<std::is_signed<Ordinal>, bool>::type
     include_ordinal_(Ordinal i) const {
-      return i < volume();
+      return i < volume_;
     }
 
     void increment(index& i) const {
@@ -365,8 +346,8 @@ namespace TiledArray {
     void advance(index& i, std::ptrdiff_t n) const {
       const size_type o = ord(i) + n;
 
-      if(n >= volume())
-        std::copy(finish().begin(), finish().end(), i.begin());
+      if(n >= volume_)
+        std::copy(finish_.begin(), finish_.end(), i.begin());
       else
         i = idx(o);
     }
@@ -374,258 +355,18 @@ namespace TiledArray {
     std::ptrdiff_t distance_to(const index& first, const index& last) const {
       return ord(last) - ord(first);
     }
-  }; // class Range
 
-
-
-  /// Range stores dimension information for a block of tiles or elements.
-
-  /// Range is used to obtain and/or store start, finish, size, and volume
-  /// information. It also provides index iteration over its range.
-  template <typename CS>
-  class StaticRange : public Range<StaticRange<CS> > {
-  private:
-
-    struct Enabler { };
-
-  public:
-    typedef StaticRange<CS> StaticRange_;
-    typedef Range<StaticRange_> base;
-    typedef typename base::size_type size_type;
-    typedef typename base::coordinate_system coordinate_system;
-    typedef typename base::index index;
-    typedef typename base::size_array size_array;
-
-    /// Default constructor. The range has 0 size and the origin is set at 0.
-    StaticRange() :
-        start_(), finish_(), size_(), weight_()
-    {}
-
-    /// Constructor defined by an upper and lower bound. All elements of
-    /// finish must be greater than or equal to those of start.
-    template <typename Index>
-    StaticRange(const Index& start, const Index& finish) :
-        start_(), finish_(), size_(), weight_()
-    {
-      TA_ASSERT(start.size() == finish.size());
-      TA_ASSERT( (std::equal(start.begin(), start.end(), finish.begin(),
-          std::less_equal<std::size_t>())) );
-
-      for(std::size_t i = 0; i < dim(); ++i) {
-        start_[i] = start[i];
-        finish_[i] = finish[i];
-        size_[i] = finish[i] - start[i];
-      }
-      detail::calc_weight(weight_, size_);
-    }
-
-    /// Constructor defined by an upper and lower bound. All elements of
-    /// finish must be greater than or equal to those of start.
-    template <typename SizeArray>
-    StaticRange(const SizeArray& size, typename madness::disable_if<detail::is_range<SizeArray>, Enabler>::type = Enabler()) :
-        start_(), finish_(), size_(), weight_()
-    {
-      for(std::size_t i = 0; i < dim(); ++i) {
-        start_[i] = 0;
-        finish_[i] = size[i];
-        size_[i] = size[i];
-      }
-      detail::calc_weight(weight_, size_);
-    }
-
-    /// Copy Constructor
-    StaticRange(const StaticRange_& other) : // no throw
-        start_(other.start_), finish_(other.finish_), size_(other.size_),
-        weight_(other.weight_)
-    { }
-
-    template <typename Derived>
-    StaticRange(const Range<Derived>& other) : // no throw
-      start_(), finish_(), size_(), weight_()
-    {
-      TA_ASSERT(dim() == other.dim());
-
-      std::copy(other.start().begin(), other.start().end(), start_.begin());
-      std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
-      std::copy(other.size().begin(), other.size().end(), size_.begin());
-      std::copy(other.weight().begin(), other.weight().end(), weight_.begin());
-    }
-
-    ~StaticRange() { }
-
-    StaticRange_& operator=(const StaticRange_& other) {
-      start_ = other.start_;
-      finish_ = other.finish_;
-      size_ = other.size_;
-      weight_ = other.weight_;
-
-      return *this;
-    }
-
-    template <typename D>
-    StaticRange_& operator=(const Range<D>& other) {
-      TA_ASSERT(dim() == other.dim());
-      std::copy(other.start().begin(), other.start().end(), start_.begin());
-      std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
-      std::copy(other.size().begin(), other.size().end(), size_.begin());
-      std::copy(other.weight().begin(), other.weight().end(), weight_.begin());
-
-      return *this;
-    }
-
-    static unsigned int dim() { return coordinate_system::dim; }
-
-    /// Returns the lower bound of the range
-    const index& start() const { return start_; } // no throw
-
-    /// Returns the upper bound of the range
-    const index& finish() const { return finish_; } // no throw
-
-    /// Returns an array with the size of each dimension.
-    const size_array& size() const { return size_.data(); } // no throw
-
-    const size_array& weight() const { return weight_.data(); } // no throw
-
-    template <typename Archive>
-    void serialize(const Archive& ar) {
-      ar & start_ & finish_ & size_ & weight_;
-    }
-
-    void swap(StaticRange_& other) {
-      TiledArray::swap(start_, other.start_);
-      TiledArray::swap(finish_, other.finish_);
-      TiledArray::swap(size_, other.size_);
-      TiledArray::swap(weight_, other.weight_);
-    }
-
-  private:
-
-    index start_;    ///< Tile origin
-    index finish_;   ///< Tile upper bound
-    index size_;     ///< Dimension sizes
-    index weight_;   ///< Dimension weights
-  }; // class Range
-
-  class DynamicRange : public Range<DynamicRange> {
-  public:
-    typedef DynamicRange DynamicRange_;
-    typedef Range<DynamicRange_> base;
-    typedef base::size_type size_type;
-    typedef base::coordinate_system coordinate_system;
-    typedef base::index index;
-    typedef base::size_array size_array;
-
-    /// Default constructor. The range has 0 size and the origin is set at 0.
-    DynamicRange() :
-        start_(), finish_(), size_(), weight_()
-    {}
-
-    /// Constructor defined by an upper and lower bound. All elements of
-    /// finish must be greater than or equal to those of start.
-    template <typename Index>
-    DynamicRange(const Index& start, const Index& finish) :
-        start_(start.begin(), start.end()),
-        finish_(finish.begin(), finish.end()),
-        size_(detail::make_tran_it(finish.begin(), start.begin(), std::minus<std::size_t>()),
-            detail::make_tran_it(finish.end(), start.end(), std::minus<std::size_t>())),
-        weight_(start.size())
-    {
-      TA_ASSERT(start.size() == finish.size());
-      TA_ASSERT( (std::equal(start_.begin(), start_.end(), finish_.begin(),
-          std::less_equal<std::size_t>())) );
-
-      detail::calc_weight(weight_, size_);
-    }
-
-    template <typename SizeArray>
-    DynamicRange(const SizeArray& size) :
-        start_(size.size(), 0ul),
-        finish_(size.begin(), size.end()),
-        size_(size.begin(), size.end()),
-        weight_(size.size())
-    {
-      detail::calc_weight(weight_, size_);
-    }
-
-    /// Copy Constructor
-    DynamicRange(const DynamicRange_& other) : // no throw
-        start_(other.start_), finish_(other.finish_), size_(other.size_),
-        weight_(other.weight_)
-    {}
-
-    template <typename Derived>
-    DynamicRange(const Range<Derived>& other) : // no throw
-        start_(other.start().begin(), other.start().end()),
-        finish_(other.finish().begin(), other.finish().end()),
-        size_(other.size().begin(), other.size().end()),
-        weight_(other.weight().begin(), other.weight().end())
-    {}
-
-    ~DynamicRange() {}
-
-    DynamicRange_& operator=(const DynamicRange_& other) {
-      start_ = other.start_;
-      finish_ = other.finish_;
-      size_ = other.size_;
-      weight_ = other.weight_;
-
-      return *this;
-    }
-
-    template <typename D>
-    DynamicRange_& operator=(const Range<D>& other) {
-      if(dim() != other.dim()) {
-        start_.resize(other.dim());
-        finish_.resize(other.dim());
-        size_.resize(other.dim());
-        weight_.resize(other.dim());
-      }
-      std::copy(other.start().begin(), other.start().end(), start_.begin());
-      std::copy(other.finish().begin(), other.finish().end(), finish_.begin());
-      std::copy(other.size().begin(), other.size().end(), size_.begin());
-      std::copy(other.weight().begin(), other.weight().end(), weight_.begin());
-
-      return *this;
-    }
-
-    unsigned int dim() const { return size_.size(); }
-
-    /// Returns the lower bound of the range
-    const index& start() const { return start_; } // no throw
-
-    /// Returns the upper bound of the range
-    const index& finish() const { return finish_; } // no throw
-
-    /// Returns an array with the size of each dimension.
-    const size_array& size() const { return size_; } // no throw
-
-    const size_array& weight() const { return weight_; } // no throw
-
-    template <typename Archive>
-    void serialize(const Archive& ar) {
-      ar & start_ & finish_ & size_ & weight_;
-    }
-
-    void swap(DynamicRange_& other) {
-      std::swap(start_, other.start_);
-      std::swap(finish_, other.finish_);
-      std::swap(size_, other.size_);
-      std::swap(weight_, other.weight_);
-    }
-
-  private:
-
-    index start_;    ///< Tile origin
-    index finish_;   ///< Tile upper bound
-    index size_;     ///< Dimension sizes
-    index weight_;   ///< Dimension weights
+    index start_;     ///< Tile origin
+    index finish_;    ///< Tile upper bound
+    index size_;      ///< Dimension sizes
+    index weight_;    ///< Dimension weights
+    size_type volume_;///< Total number of elements
   }; // class Range
 
 
 
   /// Exchange the values of the give two ranges.
-  template <typename CS>
-  void swap(Range<CS>& r0, Range<CS>& r1) { // no throw
+  inline void swap(Range& r0, Range& r1) { // no throw
     r0.swap(r1);
   }
 
@@ -656,20 +397,17 @@ namespace TiledArray {
 //  }
 
   /// Returns a permuted range.
-  template <typename Derived>
-  Derived operator ^(const Permutation& perm, const Range<Derived>& r) {
+  inline Range operator ^(const Permutation& perm, const Range& r) {
     TA_ASSERT(perm.dim() == r.dim());
-    return Derived(perm ^ r.start(), perm ^ r.finish());
+    return Range(perm ^ r.start(), perm ^ r.finish());
   }
 
-  template <typename Derived>
-  const Range<Derived>& operator ^(const detail::NoPermutation& perm, const Range<Derived>& r) {
+  inline const Range& operator ^(const detail::NoPermutation& perm, const Range& r) {
     return r;
   }
 
   /// Returns true if the start and finish are equal.
-  template <typename Derived1, typename Derived2>
-  bool operator ==(const Range<Derived1>& r1, const Range<Derived2>& r2) {
+  inline bool operator ==(const Range& r1, const Range& r2) {
 #ifdef NDEBUG
     return (r1.dim() == r2.dim()) &&
         ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
@@ -684,14 +422,12 @@ namespace TiledArray {
   }
 
   /// Returns true if the start and finish are not equal.
-  template <typename Derived1, typename Derived2>
-  bool operator !=(const Range<Derived1>& r1, const Range<Derived2>& r2) {
+  inline bool operator !=(const Range& r1, const Range& r2) {
     return ! operator ==(r1, r2);
   }
 
   /// range output operator.
-  template<typename CS>
-  std::ostream& operator<<(std::ostream& out, const Range<CS>& r) {
+  inline std::ostream& operator<<(std::ostream& out, const Range& r) {
     out << "[ ";
     detail::print_array(out, r.start());
     out << ", ";

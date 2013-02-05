@@ -1,15 +1,18 @@
 #ifndef TILEDARRAY_COORDINATES_H__INCLUDED
 #define TILEDARRAY_COORDINATES_H__INCLUDED
 
-#include <TiledArray/config.h>
-#include <TiledArray/error.h>
 #include <TiledArray/permutation.h>
-#include <world/array.h>
 #include <iosfwd>
 #include <cstddef>
-#include <stdarg.h>
 
 namespace TiledArray {
+
+  namespace detail {
+
+    template <unsigned int Level>
+    struct LevelTag { };
+
+  }  // namespace detail
 
   /// ArrayCoordinate represents a coordinate index of an DIM-dimensional orthogonal tensor.
 

@@ -1,16 +1,17 @@
 #ifndef TILEDARRAY_CONTRACTION_TENSOR_IMPL_H__INCLUDED
 #define TILEDARRAY_CONTRACTION_TENSOR_IMPL_H__INCLUDED
 
-#include <TiledArray/tensor_expression_impl.h>
+#include <TiledArray/tensor_expression.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/cyclic_pmap.h>
-#include <TiledArray/mxm.h>
-#include <world/shared_ptr.h>
+#include <TiledArray/math.h>
+#include <TiledArray/annotated_tensor.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    namespace {
+    namespace detail {
+
       /// Contraction type selection for complex numbers
 
       /// \tparam T The left contraction argument type
@@ -20,30 +21,53 @@ namespace TiledArray {
         typedef T type; ///< The result type
       };
 
-      template <typename T>
-      struct ContractionValue<T, std::complex<T> > {
+      template <typename T, typename U>
+      struct ContractionValue<T, std::complex<U> > {
+        typedef std::complex<U> type;
+      };
+
+      template <typename T, typename U>
+      struct ContractionValue<std::complex<T>, U> {
+        typedef std::complex<T> type;
+      };
+
+      template <typename T, typename U>
+      struct ContractionValue<std::complex<T>, std::complex<U> > {
         typedef std::complex<T> type;
       };
 
       template <typename T>
-      struct ContractionValue<std::complex<T>, T> {
-        typedef std::complex<T> type;
+      struct ValueType {
+        typedef T type;
       };
 
-    } // namespace
+      template <typename Tile>
+      struct ValueType<TensorExpression<Tile> > {
+        typedef typename TensorExpression<Tile>::value_type::value_type type;
+      };
+
+      template <typename LExp, typename RExp>
+      struct ContractionResult {
+        typedef Tensor<typename detail::ContractionValue<typename ValueType<LExp>::type,
+            typename ValueType<RExp>::type>::type> type;
+      }; // struct ContractionResult
+
+      template <typename LExp, typename RExp>
+      struct ContractionExp {
+        typedef TensorExpression<typename detail::ContractionResult<LExp, RExp>::type> type;
+      };
+
+    } // namespace detail
 
     template <typename Left, typename Right>
-    class ContractionTensorImpl : public TensorExpressionImpl<DynamicTiledRange,
-        Tensor<typename ContractionValue<typename Left::value_type::value_type,
-        typename Right::value_type::value_type>::type, typename DynamicTiledRange::range_type> >
+    class ContractionTensorImpl : public detail::TensorExpressionImpl<
+        typename detail::ContractionResult<Left, Right>::type>
     {
     public:
       // Base class typedefs
-      typedef TensorExpressionImpl<DynamicTiledRange,
-          Tensor<typename ContractionValue<typename Left::value_type::value_type,
-          typename Right::value_type::value_type>::type, typename DynamicTiledRange::range_type> >
-          TensorExpressionImpl_;
-      typedef typename TensorExpressionImpl_::TensorImplBase_ TensorImplBase_;
+      typedef detail::TensorExpressionImpl<typename detail::ContractionResult<Left,
+          Right>::type> TensorExpressionImpl_; ///< Base cals type
+      typedef typename TensorExpressionImpl_::TensorImpl_ TensorImpl_;
       typedef ContractionTensorImpl<Left, Right> ContractionTensorImpl_;
 
       typedef Left left_tensor_type; ///< The left tensor type
@@ -51,13 +75,13 @@ namespace TiledArray {
       typedef Right right_tensor_type; ///< The right tensor type
       typedef typename right_tensor_type::value_type right_value_type; ///< The right tensor value type
 
-      typedef typename TensorImplBase_::size_type size_type; ///< size type
-      typedef typename TensorImplBase_::pmap_interface pmap_interface; ///< The process map interface type
-      typedef typename TensorImplBase_::trange_type trange_type;
-      typedef typename TensorImplBase_::range_type range_type;
-      typedef typename TensorImplBase_::value_type value_type; ///< The result value type
-      typedef typename TensorImplBase_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
-      typedef typename TensorImplBase_::storage_type::future const_reference;
+      typedef typename TensorImpl_::size_type size_type; ///< size type
+      typedef typename TensorImpl_::pmap_interface pmap_interface; ///< The process map interface type
+      typedef typename TensorImpl_::trange_type trange_type;
+      typedef typename TensorImpl_::range_type range_type;
+      typedef typename TensorImpl_::value_type value_type; ///< The result value type
+      typedef typename TensorImpl_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
+      typedef typename TensorImpl_::storage_type::future const_reference;
 
     private:
       left_tensor_type left_; ///< The left argument tensor
@@ -119,8 +143,8 @@ namespace TiledArray {
         return expressions::VariableList(vars.begin(), vars.end());
       }
 
-      static DynamicTiledRange contract_trange(const Left& left, const Right& right) {
-        typename DynamicTiledRange::Ranges ranges;
+      static trange_type contract_trange(const Left& left, const Right& right) {
+        typename trange_type::Ranges ranges;
 
         OuterPred left_pred(right.vars());
         for(expressions::VariableList::const_iterator it = left.vars().begin(); it != left.vars().end(); ++it)
@@ -132,7 +156,7 @@ namespace TiledArray {
           if(right_pred(*it))
             ranges.push_back(right.trange().data()[std::distance(right.vars().begin(), it)]);
 
-        return DynamicTiledRange(ranges.begin(), ranges.end());
+        return trange_type(ranges.begin(), ranges.end());
       }
 
     public:
@@ -141,7 +165,7 @@ namespace TiledArray {
           TensorExpressionImpl_(left.get_world(), contract_vars(left, right), contract_trange(left, right)),
           left_(left), right_(right),
           left_inner_(0ul), left_outer_(0ul), right_inner_(0ul), right_outer_(0ul),
-          rank_(TensorImplBase_::get_world().rank()), size_(TensorImplBase_::get_world().size()),
+          rank_(TensorImpl_::get_world().rank()), size_(TensorImpl_::get_world().size()),
           m_(1ul), n_(1ul), k_(1ul), mk_(1ul), kn_(1ul),
           proc_cols_(0ul), proc_rows_(0ul), proc_size_(0ul),
           rank_row_(-1), rank_col_(-1),
@@ -171,7 +195,7 @@ namespace TiledArray {
 
         // Set an empty shape if sparse
         if(! (left_.is_dense() && right_.is_dense()))
-          TensorImplBase_::shape(::TiledArray::detail::Bitset<>(m_ * n_));
+          TensorImpl_::shape(::TiledArray::detail::Bitset<>(m_ * n_));
 
         if(rank_ < proc_size_) {
           // Calculate this rank's row and column
@@ -264,12 +288,13 @@ namespace TiledArray {
         const size_type n = product(right.range().size().begin() + right_inner_, right.range().size().end());
 
         // Do the contraction
-        TiledArray::detail::mxm(m, n, k, left.data(), right.data(), result.data());
+        math::gemm(m, n, k, TensorExpressionImpl_::scale(), left.data(),
+            right.data(), result.data());
       }
 
     private:
 
-      virtual void make_shape(TiledArray::detail::Bitset<>& shape) {
+      virtual void make_shape(TiledArray::detail::Bitset<>& shape) const {
         TA_ASSERT(shape.size() == (m_ * n_));
 
         typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
@@ -314,11 +339,16 @@ namespace TiledArray {
       virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
           const std::shared_ptr<pmap_interface>&)
       {
-
-        std::vector<std::string> left_vars;
-        std::vector<std::string> right_vars;
+        // Factor the scaling values of the arguments
+        // c*(a*A)*(b*B) => (c*a*b)*(A*B)
+        TensorExpressionImpl_::scale(left_.scale());
+        TensorExpressionImpl_::scale(right_.scale());
+        left_.set_scale(1);
+        right_.set_scale(1);
 
         // Construct the left variable list and right inner product variable list
+        std::vector<std::string> left_vars;
+        std::vector<std::string> right_vars;
         OuterPred left_outer_pred(right_.vars());
         for(expressions::VariableList::const_iterator it = left_.vars().begin(); it != left_.vars().end(); ++it)
           if(left_outer_pred(*it))
@@ -331,7 +361,7 @@ namespace TiledArray {
 
         // Construct the left argument process map
         std::shared_ptr<pmap_interface> left_pmap(new TiledArray::detail::CyclicPmap(
-                    TensorImplBase_::get_world(), m_, k_, proc_rows_, proc_cols_));
+                    TensorImpl_::get_world(), m_, k_, proc_rows_, proc_cols_));
 
         // Start the left tensor evaluation
         madness::Future<bool> left_done =
@@ -347,19 +377,18 @@ namespace TiledArray {
 
         // Construct the right argument process map
         std::shared_ptr<pmap_interface> right_pmap(new TiledArray::detail::CyclicPmap(
-                    TensorImplBase_::get_world(), k_, n_, proc_rows_, proc_cols_));
+                    TensorImpl_::get_world(), k_, n_, proc_rows_, proc_cols_));
 
         // Start the right tensor evaluation
         madness::Future<bool> right_done =
             right_.eval(expressions::VariableList(right_vars.begin(), right_vars.end()),
                 right_pmap);
 
-        // Wait for the evaluation of the left and right child tensors before returning
         // Note: This does not include evaluation of tiles, only structure.
-        return TensorImplBase_::get_world().taskq.add(& ContractionTensorImpl_::done,
+        return TensorImpl_::get_world().taskq.add(& ContractionTensorImpl_::done,
             left_done, right_done, madness::TaskAttributes::hipri());
       }
-    }; // class ContractionAlgorithmBase
+    }; // class ContractionTensorImpl
 
   } // namespace detail
 }  // namespace TiledArray

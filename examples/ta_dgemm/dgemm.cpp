@@ -4,13 +4,6 @@
 
 #define MATRIX_SIZE 8192
 
-double cpu_time() {
-  rusage r_usage;
-  getrusage(RUSAGE_SELF, &r_usage);
-
-  return r_usage.ru_utime.tv_sec + 1e-6*r_usage.ru_utime.tv_usec + r_usage.ru_stime.tv_sec + 1e-6*r_usage.ru_stime.tv_usec;
-}
-
 void ta_dgemm(madness::World& world, const std::size_t block_size) {
   const std::size_t size = MATRIX_SIZE;
   const std::size_t num_blocks = size / block_size;
@@ -29,12 +22,12 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
     {{ TiledArray::TiledRange1(blocking.begin(), blocking.end()),
         TiledArray::TiledRange1(blocking.begin(), blocking.end()) }};
 
-  TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<2> >
+  TiledArray::TiledRange
     trange(blocking2.begin(), blocking2.end());
 
-  TiledArray::Array<double, TiledArray::CoordinateSystem<2> > a(world, trange);
-  TiledArray::Array<double, TiledArray::CoordinateSystem<2> > b(world, trange);
-  TiledArray::Array<double, TiledArray::CoordinateSystem<2> > c(world, trange);
+  TiledArray::Array<double, 2> a(world, trange);
+  TiledArray::Array<double, 2> b(world, trange);
+  TiledArray::Array<double, 2> c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
   c.set_all_local(0.0);
@@ -46,7 +39,7 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
   double avg_efficiency = 0.0;
   for(int i = 0; i < 5; ++i) {
     const double wall_time_start = madness::wall_time();
-    const double cpu_time_start = cpu_time();
+    const double cpu_time_start = madness::cpu_time();
 //    madness::RMI::set_debug(true);
     c("m,n") = a("m,i") * b("i,n");
 //    madness::RMI::set_debug(false);
@@ -54,7 +47,7 @@ void ta_dgemm(madness::World& world, const std::size_t block_size) {
     world.gop.fence();
 
     const double wall_time_stop = madness::wall_time();
-    const double cpu_time_stop = cpu_time();
+    const double cpu_time_stop = madness::cpu_time();
 
     double times[2] = { wall_time_stop - wall_time_start,  cpu_time_stop - cpu_time_start };
     world.gop.reduce(times,2,std::plus<double>());
@@ -96,10 +89,10 @@ void eigen_dgemm(madness::World& world) {
     double avg_time = 0.0;
     for(int i = 0; i < 5; ++i) {
       const double wall_time_start = madness::wall_time();
-      const double cpu_time_start = cpu_time();
+      const double cpu_time_start = madness::cpu_time();
       c.noalias() += a * b;
       const double wall_time_stop = madness::wall_time();
-      const double cpu_time_stop = cpu_time();
+      const double cpu_time_stop = madness::cpu_time();
 
       const double wall_time = wall_time_stop - wall_time_start;
       const double cpu_time = cpu_time_stop - cpu_time_start;
@@ -132,11 +125,11 @@ void blas_dgemm(madness::World& world) {
     double avg_time = 0.0;
     for(int i = 0; i < 5; ++i) {
       const double wall_time_start = madness::wall_time();
-      const double cpu_time_start = cpu_time();
+      const double cpu_time_start = madness::cpu_time();
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, size, size, size, 1.0,
           a, size, b, size, 0.0, c, size);
       const double wall_time_stop = madness::wall_time();
-      const double cpu_time_stop = cpu_time();
+      const double cpu_time_stop = madness::cpu_time();
 
       const double wall_time = wall_time_stop - wall_time_start;
       const double cpu_time = cpu_time_stop - cpu_time_start;

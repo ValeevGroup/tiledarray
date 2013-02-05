@@ -1,9 +1,7 @@
 #ifndef TILEDARRAY_LAZY_SYNC_H__INCLUDED
 #define TILEDARRAY_LAZY_SYNC_H__INCLUDED
 
-#include <world/world.h>
-#include <world/worldptr.h>
-#include <world/worldhashmap.h>
+#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {

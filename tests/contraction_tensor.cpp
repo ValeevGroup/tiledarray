@@ -1,142 +1,213 @@
 #include "TiledArray/contraction_tensor.h"
-#include "TiledArray/tensor.h"
-#include "TiledArray/contraction.h"
-#include <world/shared_ptr.h>
+#include "TiledArray/array.h"
 #include "unit_test_config.h"
-
+#include "array_fixture.h"
 
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
-struct ContractionTensorFixture {
-  typedef Tensor<int, StaticRange<GlobalFixture::coordinate_system> > TensorN;
-  typedef TensorN::range_type range_type;
-  typedef TensorN::range_type::index index;
-  typedef math::Contraction cont_op;
-  typedef ContractionTensor<TensorN,TensorN> ContT;
+struct ContractionTensorFixture : public AnnotatedTensorFixture {
+  typedef TensorExpression<array_annotation::value_type> tensor_expression;
+  typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
-  ContractionTensorFixture() : ct(t2, t3, cont) { }
+  ContractionTensorFixture() :
+      aa_left(a(left_var)), aa_right(a(right_var)),
+      ctt(make_contraction_tensor(aa_left, aa_right))
+  { }
 
-  // make a tile to be permuted
-  static TensorN make_tile(TensorN::value_type value) {
-    index start(0);
-    index finish(5);
-    range_type r(start, finish);
+  static const VariableList left_var;
+  static const VariableList right_var;
 
-    return TensorN(r, value);
-  }
+  array_annotation aa_left;
+  array_annotation aa_right;
+  tensor_expression ctt;
+};
 
-  static std::string make_var_list(std::size_t first, std::size_t last) {
-    assert(abs(last - first) <= 24);
-    assert(last < 24);
+const VariableList ContractionTensorFixture::left_var(
+    AnnotatedTensorFixture::make_var_list(0, GlobalFixture::dim));
+const VariableList ContractionTensorFixture::right_var(
+    AnnotatedTensorFixture::make_var_list(1, GlobalFixture::dim + 1));
 
-    std::string result;
-    result += 'a' + first;
-    for(++first; first != last; ++first) {
-      result += ",";
-      result += 'a' + first;
+
+BOOST_FIXTURE_TEST_SUITE( contraction_tensor_suite, ContractionTensorFixture )
+
+BOOST_AUTO_TEST_CASE( range )
+{
+  std::array<TiledRange1, 2> ranges = {{ a.trange().data().front(), a.trange().data().back() }};
+
+  TiledRange dtr(ranges.begin(), ranges.end());
+  BOOST_CHECK_EQUAL(ctt.range(), dtr.tiles());
+  BOOST_CHECK_EQUAL(ctt.size(), dtr.tiles().volume());
+  BOOST_CHECK_EQUAL(ctt.trange(), dtr);
+}
+
+BOOST_AUTO_TEST_CASE( vars )
+{
+  VariableList var2(left_var.data().front() + "," + right_var.data().back());
+  BOOST_CHECK_EQUAL(ctt.vars(), var2);
+}
+
+BOOST_AUTO_TEST_CASE( shape )
+{
+  BOOST_CHECK_EQUAL(ctt.is_dense(), a.is_dense());
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(ctt.get_shape(), TiledArray::Exception);
+#endif // TA_EXCEPTION_ERROR
+}
+
+BOOST_AUTO_TEST_CASE( result )
+{
+  // Get tiling dimensions for contraction
+  const std::size_t M = a.trange().tiles().size().front();
+  const std::size_t N = a.trange().tiles().size().back();
+  const std::size_t K = a.trange().tiles().volume() / M;
+  const std::size_t size = M * N;
+
+  // Evaluate and wait for it to finish.
+  ctt.eval(ctt.vars(), std::shared_ptr<tensor_expression::pmap_interface>(
+      new TiledArray::detail::BlockedPmap(* GlobalFixture::world, size))).get();
+
+
+  // Check that the range is unchanged
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().size()[0], a.trange().tiles().size().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().size()[1], a.trange().tiles().size().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().start()[0], a.trange().tiles().start().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().start()[1], a.trange().tiles().start().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().finish()[0], a.trange().tiles().finish().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().finish()[1], a.trange().tiles().finish().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], a.trange().elements().size().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], a.trange().elements().size().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().start()[0], a.trange().elements().start().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().start()[1], a.trange().elements().start().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().finish()[0], a.trange().elements().finish().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().finish()[1], a.trange().elements().finish().back());
+
+  // Check that all the tiles have been evaluated.
+  world.gop.fence();
+  std::size_t x = std::distance(ctt.begin(), ctt.end());
+  world.gop.sum(x);
+  BOOST_CHECK_EQUAL(ctt.size(), x);
+
+
+  for(std::size_t m = 0ul; m < M; ++m) {
+    for(std::size_t n = 0ul; n < N; ++n) {
+
+      madness::Future<tensor_expression::value_type> tile = ctt[m * N + n];
+//      std::stringstream ss;
+//      ss << tile << "\n";
+
+      // Get tile dimensions
+      const std::size_t I = tile.get().range().size()[0];
+      const std::size_t J = tile.get().range().size()[1];
+
+//      ss << "I = " << I << " J = " << J << "\n";
+//      std::cout << ss.str();
+
+      // Create a matrix to hold the expected contraction result
+      matrix_type result(I, J);
+      result.fill(0);
+
+      // Compute the expected value of the result tile
+      for(std::size_t k = 0ul; k < K; ++k) {
+        // Get the contraction arguments for contraction k
+        madness::Future<ArrayN::value_type> left = a.find(m * K + k);
+        madness::Future<ArrayN::value_type> right = a.find(k * N + n);
+
+        const std::size_t L = left.get().range().volume() / I;
+
+        // Construct an equivilant matrix for the left and right argument tiles
+        Eigen::Map<const matrix_type> left_matrix(left.get().data(), I, L);
+        Eigen::Map<const matrix_type> right_matrix(right.get().data(), L, J);
+
+        // Add to the contraction result
+        result.noalias() += left_matrix * right_matrix;
+
+      }
+
+      // Check that the result tile is correct.
+      for(std::size_t i = 0ul; i < I; ++i) {
+        for(std::size_t j = 0ul; j < J; ++j) {
+          BOOST_CHECK_EQUAL(result(i,j), tile.get()[i * J + j]);
+        }
+      }
     }
-
-    return result;
   }
 
-  static const std::shared_ptr<math::Contraction> cont;
-  static const TensorN t2;
-  static const TensorN t3;
-
-  ContT ct;
-}; // struct ContractionTensorFixture
-
-
-const std::shared_ptr<math::Contraction> ContractionTensorFixture::cont(new math::Contraction(
-    VariableList(ContractionTensorFixture::make_var_list(0, GlobalFixture::coordinate_system::dim)),
-    VariableList(ContractionTensorFixture::make_var_list(1, GlobalFixture::coordinate_system::dim + 1))));
-
-const ContractionTensorFixture::TensorN ContractionTensorFixture::t2 = make_tile(2);
-const ContractionTensorFixture::TensorN ContractionTensorFixture::t3 = make_tile(3);
-
-
-BOOST_FIXTURE_TEST_SUITE( contraction_tensor_suite , ContractionTensorFixture )
-
-
-BOOST_AUTO_TEST_CASE( eval )
-{
-  BOOST_REQUIRE_NO_THROW(ct.eval());
 }
 
-BOOST_AUTO_TEST_CASE( dimension_accessor )
+BOOST_AUTO_TEST_CASE( permute_result )
 {
-  BOOST_CHECK_EQUAL(ct.range().dim(), 2u);
-  BOOST_CHECK_EQUAL(ct.range().size().front(), t2.range().size().front());
-  BOOST_CHECK_EQUAL(ct.range().size().back(), t3.range().size().back());
+  Permutation p(1,0);
 
-  const std::size_t I = std::accumulate(t2.range().finish().begin() + 1,
-      t2.range().finish().end(), 1, std::multiplies<int>());
-  BOOST_CHECK_EQUAL(ct.size(), I);
-}
+  const std::size_t M = a.trange().tiles().size().front();
+  const std::size_t N = a.trange().tiles().size().back();
+  const std::size_t K = a.trange().tiles().volume() / M;
+  const std::size_t size = M * N;
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
-  // Test default constructor
-  BOOST_REQUIRE_NO_THROW(ContT x());
+  // Evaluate and wait for it to finish.
+  ctt.eval(p ^ ctt.vars(), std::shared_ptr<tensor_expression::pmap_interface>(
+      new TiledArray::detail::BlockedPmap(* GlobalFixture::world, size))).get();
 
-  // Test primary constructor
-  {
-    BOOST_REQUIRE_NO_THROW(ContT x(t2, t3, cont));
-    ContT x(t2, t3, cont);
-    BOOST_CHECK_EQUAL(x.range().dim(), 2u);
-    BOOST_CHECK_EQUAL(x.range().size().front(), t2.range().size().front());
-    BOOST_CHECK_EQUAL(x.range().size().back(), t3.range().size().back());
-    const std::size_t I = std::accumulate(t2.range().finish().begin() + 1,
-        t2.range().finish().end(), 1, std::multiplies<int>());
-    BOOST_CHECK_EQUAL(x.size(), I);
+  // Check that the range has been permuted correctly.
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().size()[0], a.trange().tiles().size().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().size()[1], a.trange().tiles().size().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().start()[0], a.trange().tiles().start().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().start()[1], a.trange().tiles().start().front());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().finish()[0], a.trange().tiles().finish().back());
+  BOOST_CHECK_EQUAL(ctt.trange().tiles().finish()[1], a.trange().tiles().finish().front());
+
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[0], a.trange().elements().size().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().size()[1], a.trange().elements().size().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().start()[0], a.trange().elements().start().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().start()[1], a.trange().elements().start().front());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().finish()[0], a.trange().elements().finish().back());
+  BOOST_CHECK_EQUAL(ctt.trange().elements().finish()[1], a.trange().elements().finish().front());
+
+  // Check that all the tiles have been evaluated.
+  world.gop.fence();
+  std::size_t n = std::distance(ctt.begin(), ctt.end());
+  world.gop.sum(n);
+  BOOST_CHECK_EQUAL(ctt.size(), n);
+
+  for(std::size_t m = 0ul; m < M; ++m) {
+    for(std::size_t n = 0ul; n < N; ++n) {
+
+      madness::Future<tensor_expression::value_type> tile = ctt[n * M + m];
+
+      // Get tile dimensions
+      const std::size_t I = tile.get().range().size().back();
+      const std::size_t J = tile.get().range().size().front();
+
+      // Create a matrix to hold the expected contraction result
+      matrix_type result(I, J);
+      result.fill(0);
+
+      // Compute the expected value of the result tile
+      for(std::size_t k = 0ul; k < K; ++k) {
+        // Get the contraction arguments for contraction k
+        madness::Future<ArrayN::value_type> left = a.find(m * K + k);
+        madness::Future<ArrayN::value_type> right = a.find(k * N + n);
+
+        const std::size_t L = left.get().range().volume() / I;
+
+        // Construct an equivilant matrix for the left and right argument tiles
+        Eigen::Map<const matrix_type> left_matrix(left.get().data(), I, L);
+        Eigen::Map<const matrix_type> right_matrix(right.get().data(), J, L);
+
+        // Add to the contraction result
+        result += left_matrix * right_matrix.transpose();
+
+      }
+
+      // Check that the result tile is correct.
+      for(std::size_t i = 0ul; i < I; ++i) {
+        for(std::size_t j = 0ul; j < J; ++j) {
+          BOOST_CHECK_EQUAL(result(i,j), tile.get()[i * J + j]);
+        }
+      }
+    }
   }
 
-  // test copy constructor
-  {
-    BOOST_REQUIRE_NO_THROW(ContT x(ct));
-    ContT x(ct);
-    BOOST_CHECK_EQUAL(x.range().dim(), ct.range().dim());
-    BOOST_CHECK_EQUAL_COLLECTIONS(x.range().size().begin(), x.range().size().end(),
-        ct.range().size().begin(), ct.range().size().end());
-    BOOST_CHECK_EQUAL(x.size(), ct.size());
-  }
-}
-
-BOOST_AUTO_TEST_CASE( contraction )
-{
-  // Calculate the dimensions of the packed contraction
-  const int M = t2.range().size().front();
-  const int N = t3.range().size().back();
-  const int I = std::accumulate(t2.range().size().begin() + 1,
-      t2.range().size().end(), 1, std::multiplies<int>());
-
-  // Construct matrixes that match the packed dimensions of the to tiles.
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m2(M, I);
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> m3(I, N);
-
-  for(int m = 0; m < M; ++m)
-    for(int i = 0; i < I; ++i)
-      m2(m, i) = 2;
-
-  for(int i = 0; i < I; ++i)
-    for(int n = 0; n < N; ++n)
-      m3(i, n) = 3;
-
-  // Do a test contraction.
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> mc = m2 * m3;
-
-
-  for(ContT::size_type i = 0; i < ct.size(); ++i) {
-    // Check that each element is correct
-    BOOST_CHECK_EQUAL(ct[i], mc(0,0));
-  }
-
-  TensorN::size_type i = 0;
-  for(ContT::const_iterator it = ct.begin(); it != ct.end(); ++it, ++i) {
-    // Check that iteration works correctly
-    BOOST_CHECK_EQUAL(*it, mc(0,0));
-  }
 }
 
 

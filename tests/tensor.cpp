@@ -25,7 +25,7 @@ public:
 };
 
 struct TensorFixture {
-  typedef TiledArray::expressions::Tensor<int, StaticRange<GlobalFixture::element_coordinate_system> > TensorN;
+  typedef TiledArray::expressions::Tensor<int> TensorN;
   typedef TensorN::value_type value_type;
   typedef TensorN::range_type::index index;
   typedef TensorN::size_type size_type;
@@ -68,7 +68,7 @@ struct TensorFixture {
 
   // make permutation definition object
   static PermN make_perm() {
-    std::array<std::size_t, GlobalFixture::coordinate_system::dim> temp;
+    std::array<std::size_t, GlobalFixture::dim> temp;
     for(std::size_t i = 0; i < temp.size(); ++i)
       temp[i] = i + 1;
 
@@ -80,7 +80,9 @@ struct TensorFixture {
   TensorN t;
 };
 
-const TensorFixture::range_type TensorFixture::r = TensorFixture::range_type(index(0), index(5));
+const TensorFixture::range_type TensorFixture::r =
+    TensorFixture::range_type(index(GlobalFixture::dim, 0),
+    index(GlobalFixture::dim, 5));
 
 
 template<typename InIter, typename T>
@@ -110,8 +112,8 @@ BOOST_AUTO_TEST_CASE( range_accessor )
 BOOST_AUTO_TEST_CASE( element_access )
 {
   // check operator[] with array coordinate index
-  BOOST_CHECK_EQUAL(t[index(0)], 1);
-  BOOST_CHECK_EQUAL(t[index(4)], 1);
+  BOOST_CHECK_EQUAL(t[index(GlobalFixture::dim, 0)], 1);
+  BOOST_CHECK_EQUAL(t[index(GlobalFixture::dim, 4)], 1);
 
 
   // check operator[] with ordinal index

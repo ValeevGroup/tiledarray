@@ -2,10 +2,6 @@
 #define TILEDARRAY_TILED_RANGE1_H__INCLUDED
 
 #include <TiledArray/range.h>
-//#include <TiledArray/coordinates.h>
-#include <vector>
-//#include <cstddef>
-//#include <iosfwd>
 
 namespace TiledArray {
 

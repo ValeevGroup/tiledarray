@@ -1,20 +1,26 @@
 #ifndef TILEDARRAY_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_H__INCLUDED
 
-#include <TiledArray/tensor_base.h>
 #include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
+#include <world/move.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    template <typename, typename, typename>
-    class Tensor;
+    /// Evaluation tensor
 
-    template <typename T, typename R, typename A>
-    struct TensorTraits<Tensor<T, R, A> > {
+    /// This tensor is used as an evaluated intermediate for other tensors.
+    /// \tparma T the value type of this tensor
+    /// \tparam A The allocator type for the data
+    template <typename T, typename A = Eigen::aligned_allocator<T> >
+    class Tensor {
+    private:
+      struct Enabler { };
+    public:
+      typedef Tensor<T, A> Tensor_;
       typedef DenseStorage<T,A> storage_type;
-      typedef R range_type;
+      typedef Range range_type;
       typedef typename storage_type::value_type value_type;
       typedef typename storage_type::const_reference const_reference;
       typedef typename storage_type::reference reference;
@@ -23,38 +29,7 @@ namespace TiledArray {
       typedef typename storage_type::difference_type difference_type;
       typedef typename storage_type::const_pointer const_pointer;
       typedef typename storage_type::pointer pointer;
-    };  // struct TensorTraits<Tensor<T, A> >
-
-    template <typename T, typename R, typename A>
-    struct Eval<Tensor<T, R, A> > {
-      typedef const Tensor<T, R, A>& type;
-    }; // struct Eval<Tensor<T, R, A> >
-
-    /// Evaluation tensor
-
-    /// This tensor is used as an evaluated intermediate for other tensors.
-    /// \tparma T the value type of this tensor
-    /// \tparam R The range type of this tensor (default = DynamicRange)
-    /// \tparam A The allocator type for the data
-    template <typename T, typename R = DynamicRange, typename A = Eigen::aligned_allocator<T> >
-    class Tensor : public DirectWritableTensor<Tensor<T, R, A> > {
-    private:
-      struct Enabler { };
-    public:
-      typedef Tensor<T, R, A> Tensor_;
-      typedef DirectWritableTensor<Tensor_> base;
-      typedef typename base::size_type size_type;
-      typedef typename base::range_type range_type;
-      typedef typename base::eval_type eval_type;
-      typedef typename base::value_type value_type;
-      typedef typename base::const_reference const_reference;
-      typedef typename base::difference_type difference_type;
-      typedef typename base::const_iterator const_iterator;
-      typedef typename base::const_pointer const_pointer;
-      typedef typename base::reference reference;
-      typedef typename base::iterator iterator;
-      typedef typename base::pointer pointer;
-      typedef DenseStorage<T,A> storage_type;
+      typedef typename storage_type::size_type size_type;
 
       /// Default constructor
 
@@ -63,32 +38,18 @@ namespace TiledArray {
 
       /// Construct an evaluated tensor
 
-      /// \tparam D The range derived type
       /// \param r An array with the size of of each dimension
       /// \param v The value of the tensor elements
-      template <typename D>
-      explicit Tensor(const Range<D>& r, const value_type& v = value_type()) :
+      explicit Tensor(const Range& r, const value_type& v = value_type()) :
         range_(r), data_(r.volume(), v)
       { }
 
       /// Construct an evaluated tensor
-      template <typename D, typename InIter>
-      Tensor(const Range<D>& r, InIter it,
+      template <typename InIter>
+      Tensor(const Range& r, InIter it,
           typename madness::enable_if<TiledArray::detail::is_input_iterator<InIter>, Enabler>::type = Enabler()) :
         range_(r), data_(r.volume(), it)
       { }
-
-      /// Copy constructor
-
-      /// Evaluate \c other to this tensor
-      /// \tparam Derived The derived type of the \c ReadableTensor
-      /// \param other The tile to be copied.
-      template <typename Derived>
-      Tensor(const ReadableTensor<Derived>& other) :
-          range_(other.range()), data_(other.size())
-      {
-        other.derived().eval_to(data_);
-      }
 
       /// Copy constructor
 
@@ -98,16 +59,28 @@ namespace TiledArray {
         range_(other.range_), data_(other.data_)
       { }
 
+      /// Move constructor
+
+      /// Do a shallow copy of \c other
+      /// \param other The tile to be Moved
+      Tensor(const madness::detail::MoveWrapper<Tensor<T, A> >& wrapper) :
+          range_(wrapper.get().range()), data_()
+      {
+        data_.swap(wrapper.get().data_);
+      }
+
       /// Copy assignment
 
       /// Evaluate \c other to this tensor
       /// \param other The tensor to be copied
       /// \return this tensor
       Tensor_& operator=(const Tensor_& other) {
-        range_ = other.range();
-        storage_type temp(other.range().volume());
-        other.eval_to(temp);
-        temp.swap(data_);
+        if(range_ == other.range())
+          std::copy(other.begin(), other.end(), data_.begin());
+        else {
+          range_ = other.range();
+          data_ = other.data_;
+        }
 
         return *this;
       }
@@ -117,24 +90,36 @@ namespace TiledArray {
       /// Evaluate \c other to this tensor
       /// \param other The tensor to be copied
       /// \return this tensor
-      template <typename D>
-      Tensor_& operator=(const ReadableTensor<D>& other) {
-        range_ = other.range();
-        storage_type temp(other.range().volume());
-        other.derived().eval_to(temp);
-        temp.swap(data_);
+      template <typename U, typename AU>
+      Tensor_& operator=(const Tensor<U, AU>& other) {
+        if(range_ == other.range())
+          std::copy(other.begin(), other.end(), data_.begin());
+        else {
+          range_ = other.range();
+          storage_type(other.size(), other.begin()).swap(data_);
+        }
 
         return *this;
       }
 
+      /// Move assignment
 
-      /// Copy assignment
+      /// Evaluate \c other to this tensor
+      /// \param other The tensor to be moved
+      /// \return this tensor
+      Tensor_& operator=(const madness::detail::MoveWrapper<Tensor<T, A> >& other) {
+        range_ = other.get().range();
+        data_.swap(other.get().data_);
+        return *this;
+      }
+
+      /// Plus assignment
 
       /// Evaluate \c other to this tensor
       /// \param other The tensor to be copied
       /// \return this tensor
-      template <typename D>
-      Tensor_& operator+=(const ReadableTensor<D>& other) {
+      template <typename U, typename AU>
+      Tensor_& operator+=(const Tensor<U, AU>& other) {
         if(data_.empty()) {
           range_ = other.range();
           storage_type temp(other.range().volume());
@@ -142,13 +127,17 @@ namespace TiledArray {
         }
 
         TA_ASSERT(range_ == other.range());
-        other.derived().add_to(data_);
-
+        data_ += other;
         return *this;
       }
 
-      template <typename D>
-      Tensor_& operator-=(const ReadableTensor<D>& other) {
+      /// Minus assignment
+
+      /// Evaluate \c other to this tensor
+      /// \param other The tensor to be copied
+      /// \return this tensor
+      template <typename U, typename AU>
+      Tensor_& operator-=(const Tensor<U, AU>& other) {
         if(data_.empty()) {
           range_ = other.range();
           storage_type temp(other.range().volume());
@@ -156,15 +145,29 @@ namespace TiledArray {
         }
 
         TA_ASSERT(range_ == other.range());
-        other.derived().sub_to(data_);
+        data_ -= other;
 
         return *this;
       }
 
-      /// Evaluate this tensor
+      /// Multiply assignment
 
-      /// \return A const reference to this object.
-      eval_type eval() const { return *this; }
+      /// Evaluate \c other to this tensor
+      /// \param other The tensor to be copied
+      /// \return this tensor
+      template <typename U, typename RU, typename AU>
+      Tensor_& operator*=(const Tensor<U, AU>& other) {
+        if(data_.empty()) {
+          range_ = other.range();
+          storage_type temp(other.range().volume());
+          temp.swap(data_);
+        }
+
+        TA_ASSERT(range_ == other.range());
+        data_ *= other;
+
+        return *this;
+      }
 
       /// Tensor range object accessor
 
@@ -256,10 +259,10 @@ namespace TiledArray {
       storage_type data_; ///< Tensor data
     }; // class Tensor
 
-    template <typename T, typename R, typename A>
-    std::ostream& operator<<(std::ostream& os, const Tensor<T, R, A>& t) {
+    template <typename T, typename A>
+    std::ostream& operator<<(std::ostream& os, const Tensor<T, A>& t) {
       os << t.range() << " { ";
-      for(typename Tensor<T, R, A>::const_iterator it = t.begin(); it != t.end(); ++it) {
+      for(typename Tensor<T, A>::const_iterator it = t.begin(); it != t.end(); ++it) {
         os << *it << " ";
       }
 

@@ -20,7 +20,7 @@ InputData::make_trange1(const obs_mosym::const_iterator& begin, obs_mosym::const
   return TiledArray::TiledRange1(tiles.begin(), tiles.end());
 }
 
-TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<2> >
+TiledArray::TiledRange
 InputData::trange(const Spin s, const RangeOV ov1, const RangeOV ov2) const {
 
   const obs_mosym& spin = (s == alpha ? obs_mosym_alpha_ : obs_mosym_beta_);
@@ -34,10 +34,10 @@ InputData::trange(const Spin s, const RangeOV ov1, const RangeOV ov2) const {
       make_trange1(spin.begin(), spin.begin() + first1, spin.begin() + last1),
       make_trange1(spin.begin(), spin.begin() + first2, spin.begin() + last2) }};
 
-  return TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<2> >(tr_list.begin(), tr_list.end());
+  return TiledArray::TiledRange(tr_list.begin(), tr_list.end());
 }
 
-TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<4> >
+TiledArray::TiledRange
 InputData::trange(const Spin s1, const Spin s2, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) const {
 
   const obs_mosym& spin1 = (s1 == alpha ? obs_mosym_alpha_ : obs_mosym_beta_);
@@ -59,7 +59,7 @@ InputData::trange(const Spin s1, const Spin s2, const RangeOV ov1, const RangeOV
       make_trange1(spin1.begin(), spin1.begin() + first3, spin1.begin() + last3),
       make_trange1(spin2.begin(), spin2.begin() + first4, spin2.begin() + last4) }};
 
-  return TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<4> >(tr_list.begin(), tr_list.end());
+  return TiledArray::TiledRange(tr_list.begin(), tr_list.end());
 }
 
 InputData::InputData(std::ifstream& input) {
@@ -123,13 +123,13 @@ InputData::InputData(std::ifstream& input) {
   } while(! input.eof());
 }
 
-TiledArray::Array<double, TiledArray::CoordinateSystem<2> >
+TiledArray::Array<double, 2>
 InputData::make_f(madness::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2) {
   // Construct the array
-  TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<2> > tr = trange(s, ov1, ov2);
+  TiledArray::TiledRange tr = trange(s, ov1, ov2);
 //  std::cout << tr << "\n";
   std::vector<std::size_t> sparse_list = make_sparse_list(tr, f_);
-  TiledArray::Array<double, TiledArray::CoordinateSystem<2> > f(w, tr, sparse_list.begin(), sparse_list.end());
+  TiledArray::Array<double, 2> f(w, tr, sparse_list.begin(), sparse_list.end());
 
   // Initialize tiles
   for(std::vector<std::size_t>::const_iterator it = sparse_list.begin(); it != sparse_list.end(); ++it) {
@@ -138,7 +138,7 @@ InputData::make_f(madness::World& w, const Spin s, const RangeOV ov1, const Rang
   }
 
   // Set the tile data
-  TiledArray::Array<double, TiledArray::CoordinateSystem<2> >::range_type::index index;
+  TiledArray::Array<double, 2>::range_type::index index;
   for(array2d::const_iterator it = f_.begin(); it != f_.end(); ++it) {
     if(f.trange().elements().includes(it->first)) {
       index = f.trange().element_to_tile(it->first);
@@ -150,13 +150,13 @@ InputData::make_f(madness::World& w, const Spin s, const RangeOV ov1, const Rang
   return f;
 }
 
-TiledArray::Array<double, TiledArray::CoordinateSystem<4> >
+TiledArray::Array<double, 4>
 InputData::make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) {
   // Construct the array
-  TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<4> > tr = trange(alpha, beta, ov1, ov2, ov3, ov4);
+  TiledArray::TiledRange tr = trange(alpha, beta, ov1, ov2, ov3, ov4);
 //  std::cout << tr << "\n";
   std::vector<std::size_t> sparse_list = make_sparse_list(tr, v_ab_);
-  TiledArray::Array<double, TiledArray::CoordinateSystem<4> > v_ab(w, tr, sparse_list.begin(), sparse_list.end());
+  TiledArray::Array<double, 4> v_ab(w, tr, sparse_list.begin(), sparse_list.end());
 
   // Initialize tiles
   for(std::vector<std::size_t>::const_iterator it = sparse_list.begin(); it != sparse_list.end(); ++it) {
@@ -165,7 +165,7 @@ InputData::make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, co
   }
 
   // Set the tile data
-  TiledArray::Array<double, TiledArray::CoordinateSystem<4> >::range_type::index index;
+  TiledArray::Array<double, 4>::range_type::index index;
   for(array4d::const_iterator it = v_ab_.begin(); it != v_ab_.end(); ++it) {
     if(v_ab.trange().elements().includes(it->first)) {
       index = v_ab.trange().element_to_tile(it->first);

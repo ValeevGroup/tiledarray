@@ -2,7 +2,6 @@
 #define TILEDARRAY_TRANSFORM_ITERATOR_H__INCLUDED
 
 #include <cstddef>
-#include <TiledArray/type_traits.h>
 #include <TiledArray/indexed_iterator.h>
 
 namespace TiledArray {

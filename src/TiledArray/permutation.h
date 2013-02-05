@@ -2,15 +2,8 @@
 #define TILEDARRAY_PERMUTATION_H__INCLUED
 
 #include <TiledArray/error.h>
-//#include <TiledArray/utility.h>
 #include <TiledArray/type_traits.h>
-#include <world/enable_if.h>
 #include <world/array.h>
-//#include <iosfwd>
-//#include <algorithm>
-#include <stdarg.h>
-//#include <iterator>
-//#include <functional>
 #include <numeric>
 #include <stdarg.h>
 

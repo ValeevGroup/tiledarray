@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE( owner )
   std::shared_ptr<ProcessID> group_owner(new ProcessID[world.size()],
       & madness::detail::checked_array_delete<ProcessID>);
 
-  ordinal_index o = 0;
+  size_type o = 0;
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it, ++o) {
     // Check that local ownership agrees
     const int owner = a.owner(*it);
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE( is_local )
 {
   // Test to make sure everyone agrees who owns which tiles.
 
-  ordinal_index o = 0;
+  size_type o = 0;
   for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it, ++o) {
     // Check that local ownership agrees
     const bool local_tile = a.owner(o) == world.rank();

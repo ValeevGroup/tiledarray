@@ -1,0 +1,92 @@
+Runtime initialized with 4 threads in the pool and affinity -1 -1 -1
+Reading input... done.
+Constructing Fock tensors... done.
+Constructing v_ab tensors... done.
+Constructing v_aa and v_bb tensors... done.
+Calculating t amplitudes...
+Iteration 0
+ error  = 1.94165454689
+ energy = -0.203946171781
+Iteration 1
+ error  = 0.208467880822
+ energy = -0.208912982663
+Iteration 2
+ error  = 0.0446641747755
+ energy = -0.211546519882
+Iteration 3
+ error  = 0.0178233761056
+ energy = -0.212187439034
+Iteration 4
+ error  = 0.00708402069845
+ energy = -0.212410476858
+Iteration 5
+ error  = 0.00294156146653
+ energy = -0.21249009576
+Iteration 6
+ error  = 0.00124075117056
+ energy = -0.212520398825
+Iteration 7
+ error  = 0.000529961629635
+ energy = -0.212532270158
+Iteration 8
+ error  = 0.000228384647466
+ energy = -0.212537040445
+Iteration 9
+ error  = 9.91467848688e-05
+ energy = -0.212538990258
+Iteration 10
+ error  = 4.33052545201e-05
+ energy = -0.212539798308
+Iteration 11
+ error  = 1.90143538164e-05
+ energy = -0.212540136788
+Iteration 12
+ error  = 8.38671560709e-06
+ energy = -0.212540279834
+Iteration 13
+ error  = 3.71377141333e-06
+ energy = -0.212540340735
+Iteration 14
+ error  = 1.65016693525e-06
+ energy = -0.212540366827
+Iteration 15
+ error  = 7.35419016445e-07
+ energy = -0.212540378068
+Iteration 16
+ error  = 3.28597387513e-07
+ energy = -0.212540382934
+Iteration 17
+ error  = 1.47151436285e-07
+ energy = -0.212540385049
+Iteration 18
+ error  = 6.60242675117e-08
+ energy = -0.212540385973
+Iteration 19
+ error  = 2.96732975062e-08
+ energy = -0.212540386377
+Iteration 20
+ error  = 1.33552122392e-08
+ energy = -0.212540386555
+Iteration 21
+ error  = 6.01827088191e-09
+ energy = -0.212540386633
+Iteration 22
+ error  = 2.71489975317e-09
+ energy = -0.212540386668
+Iteration 23
+ error  = 1.22583697181e-09
+ energy = -0.212540386683
+Iteration 24
+ error  = 5.53927975344e-10
+ energy = -0.21254038669
+Iteration 25
+ error  = 2.50477326029e-10
+ energy = -0.212540386693
+Iteration 26
+ error  = 1.13328111764e-10
+ energy = -0.212540386694
+Iteration 27
+ error  = 5.13010653129e-11
+ energy = -0.212540386695
+CCD energy = -0.212540386695
+Done!

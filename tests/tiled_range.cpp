@@ -18,57 +18,55 @@ BOOST_AUTO_TEST_CASE( accessor )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // check default constructor
-  BOOST_REQUIRE_NO_THROW(TRangeN r0);
-  TRangeN r0;
-  TRangeN::size_array s0 = {{0,0,0}};
-  BOOST_CHECK_EQUAL_COLLECTIONS(r0.tiles().size().begin(), r0.tiles().size().end(), s0.begin(), s0.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r0.elements().size().begin(), r0.elements().size().end(), s0.begin(), s0.end());
+  BOOST_REQUIRE_NO_THROW(TiledRange r0);
+  TiledRange r0;
+  TiledRange::size_array s0(3,0);
+  BOOST_CHECK_EQUAL(r0.tiles().size().size(), 0);
+  BOOST_CHECK_EQUAL(r0.elements().size().size(), 0);
 
   // check ranges constructor
-  BOOST_REQUIRE_NO_THROW(TRangeN r1(dims.begin(), dims.end()));
-  TRangeN r1(dims.begin(), dims.end());
+  BOOST_REQUIRE_NO_THROW(TiledRange r1(dims.begin(), dims.end()));
+  TiledRange r1(dims.begin(), dims.end());
   BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
   BOOST_CHECK_EQUAL(r1.elements(), element_range);
 
   std::vector<TiledRange1> dims2;
-  for(std::size_t i = 0; i < GlobalFixture::coordinate_system::dim; ++i)
+  for(std::size_t i = 0; i < GlobalFixture::dim; ++i)
     dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
-  TRangeN::range_type t2(p1, p6);
+  TiledRange::range_type t2(p1, p6);
 
   // check ranges constructor w/ offset tile origin.
-  BOOST_REQUIRE_NO_THROW(TRangeN r2(dims2.begin(), dims2.end()));
-  TRangeN r2(dims2.begin(), dims2.end());
+  BOOST_REQUIRE_NO_THROW(TiledRange r2(dims2.begin(), dims2.end()));
+  TiledRange r2(dims2.begin(), dims2.end());
   BOOST_CHECK_EQUAL(r2.tiles(), t2);
   BOOST_CHECK_EQUAL(r2.elements(), element_range);
 
   std::array<std::size_t, 6> a3;
   std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
-  std::vector<TiledRange1> dims3(GlobalFixture::coordinate_system::dim, TiledRange1(a3.begin(), a3.end()));
-  TRangeN::tile_range_type e3 = TRangeN::tile_range_type(tile_index(a3[0]), tile_index(a3[5]));
+  std::vector<TiledRange1> dims3(GlobalFixture::dim, TiledRange1(a3.begin(), a3.end()));
+  TiledRange::tile_range_type e3 = TiledRange::tile_range_type(
+      tile_index(GlobalFixture::dim,a3[0]),
+      tile_index(GlobalFixture::dim,a3[5]));
 
   // check ranges constructor w/ offset element origin.
-  BOOST_REQUIRE_NO_THROW(TRangeN r3(dims3.begin(), dims3.end()));
-  TRangeN r3(dims3.begin(), dims3.end());
+  BOOST_REQUIRE_NO_THROW(TiledRange r3(dims3.begin(), dims3.end()));
+  TiledRange r3(dims3.begin(), dims3.end());
   BOOST_CHECK_EQUAL(r3.tiles(), tile_range);
   BOOST_CHECK_EQUAL(r3.elements(), e3);
 
   // check copy constructor
-  BOOST_REQUIRE_NO_THROW(TRangeN r4(tr));
-  TRangeN r4(tr);
+  BOOST_REQUIRE_NO_THROW(TiledRange r4(tr));
+  TiledRange r4(tr);
   BOOST_CHECK_EQUAL(r4.tiles(), tr.tiles());
   BOOST_CHECK_EQUAL(r4.elements(), tr.elements());
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(TRangeN r5(dims3.begin(), dims3.end() - 1), Exception);
-#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
 {
 
   std::stringstream stm;
-  stm << "( tiles = " << TRangeN::range_type(tr.tiles().start(), tr.tiles().finish()) <<
-      ", elements = " << TRangeN::tile_range_type(tr.elements().start(), tr.elements().finish()) << " )";
+  stm << "( tiles = " << TiledRange::range_type(tr.tiles().start(), tr.tiles().finish()) <<
+      ", elements = " << TiledRange::tile_range_type(tr.elements().start(), tr.elements().finish()) << " )";
 
   boost::test_tools::output_test_stream output;
   output << tr;
@@ -78,7 +76,7 @@ BOOST_AUTO_TEST_CASE( ostream )
 }
 
 BOOST_AUTO_TEST_CASE( comparison ) {
-  TRangeN r1(tr);
+  TiledRange r1(tr);
 
   // check equality operator for identical ranges
   BOOST_CHECK(r1 == tr);
@@ -86,9 +84,9 @@ BOOST_AUTO_TEST_CASE( comparison ) {
   BOOST_CHECK(! (r1 != tr));
 
   std::vector<TiledRange1> dims2;
-  for(std::size_t i = 0; i < GlobalFixture::coordinate_system::dim; ++i)
+  for(std::size_t i = 0; i < GlobalFixture::dim; ++i)
     dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
-  TRangeN r2(dims2.begin(), dims2.end());
+  TiledRange r2(dims2.begin(), dims2.end());
 
   // comparison w/ offset tile origin.
   BOOST_CHECK(! (r2 == tr));
@@ -96,10 +94,10 @@ BOOST_AUTO_TEST_CASE( comparison ) {
 
   std::array<std::size_t, 6> a3;
   std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
-  std::vector<TiledRange1> dims3(GlobalFixture::coordinate_system::dim,
+  std::vector<TiledRange1> dims3(GlobalFixture::dim,
       TiledRange1(a3.begin(), a3.end()));
 
-  TRangeN r3(dims3.begin(), dims3.end());
+  TiledRange r3(dims3.begin(), dims3.end());
 
   // comparison operators w/ offset elements and different tiling
   BOOST_CHECK(! (r3 == tr));
@@ -108,7 +106,7 @@ BOOST_AUTO_TEST_CASE( comparison ) {
 
 BOOST_AUTO_TEST_CASE( assignment )
 {
-  TRangeN r1;
+  TiledRange r1;
 
   // verify they are not equal before assignment.
   BOOST_CHECK_NE(r1, tr);
@@ -123,35 +121,35 @@ BOOST_AUTO_TEST_CASE( assignment )
 BOOST_AUTO_TEST_CASE( permutation )
 {
   Permutation p(2,0,1);
-  TRangeN r1 = p ^ tr;
+  TiledRange r1 = p ^ tr;
   BOOST_CHECK_EQUAL(r1.tiles(), p ^ tr.tiles()); // check that tile data was permuted properly.
   BOOST_CHECK_EQUAL(r1.elements(), p ^ tr.elements()); // check that element data was permuted properly.
 
-  TRangeN r2(tr);
+  TiledRange r2(tr);
   BOOST_CHECK_EQUAL((r2 ^= p), r1); // check that permutation returns itself.
   BOOST_CHECK_EQUAL(r2, r1);// check that the permutation was assigned correctly.
 }
 
 BOOST_AUTO_TEST_CASE( make_tile_range )
 {
-  tile_index start;
-  tile_index finish;
+  tile_index start(GlobalFixture::dim);
+  tile_index finish(GlobalFixture::dim);
 
   // iterate over all the tile indexes in the tiled range.
-  TRangeN::size_type i = 0;
-  for(RangeN::const_iterator it = tr.tiles().begin(); it != tr.tiles().end(); ++it, ++i) {
+  TiledRange::size_type i = 0;
+  for(Range::const_iterator it = tr.tiles().begin(); it != tr.tiles().end(); ++it, ++i) {
     // get the start and finish indexes of the current range.
-    for(unsigned int d = 0; d < GlobalFixture::coordinate_system::dim; ++d) {
+    for(unsigned int d = 0; d < GlobalFixture::dim; ++d) {
       start[d] = a[ (*it)[d] ];
       finish[d] = a[ (*it)[d] + 1 ];
     }
 
     // construct a range object that should match the range constructed by TiledRange.
-    TRangeN::tile_range_type range(start, finish);
+    TiledRange::tile_range_type range(start, finish);
 
     // Get the two ranges to be tested.
-    TRangeN::tile_range_type range_index = tr.make_tile_range(*it);
-    TRangeN::tile_range_type range_ordinal = tr.make_tile_range(i);
+    TiledRange::tile_range_type range_index = tr.make_tile_range(*it);
+    TiledRange::tile_range_type range_ordinal = tr.make_tile_range(i);
 
     BOOST_CHECK_EQUAL(range_index, range);
     BOOST_CHECK_EQUAL(range_ordinal, range);

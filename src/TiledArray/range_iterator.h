@@ -1,9 +1,8 @@
 #ifndef TILEDARRAY_RANGE_ITERATOR_H__INCLUDED
 #define TILEDARRAY_RANGE_ITERATOR_H__INCLUDED
 
-#include <boost/iterator/iterator_facade.hpp>
-#include <boost/iterator/iterator_traits.hpp>
 #include <TiledArray/error.h>
+#include <iterator>
 
 namespace TiledArray {
   namespace detail {
@@ -39,22 +38,16 @@ namespace TiledArray {
     /// \c Container::increment(Value&) \c const, and be accessible to
     /// \c RangeIterator.
     template <typename Value, typename Container>
-    class RangeIterator : public boost::iterator_facade<
-        RangeIterator<Value,Container>, Value, std::input_iterator_tag, const Value& >
-    {
-    private:
-      typedef boost::iterator_facade<RangeIterator<Value,Container>, Value,
-          std::input_iterator_tag, const Value& > iterator_facade_; ///< Base class
-
+    class RangeIterator {
     public:
       typedef RangeIterator<Value,Container> RangeIterator_; ///< This class type
 
       // Standard iterator typedefs
-      typedef typename iterator_facade_::value_type value_type; ///< Iterator value type
-      typedef typename iterator_facade_::reference reference; ///< Iterator reference type
-      typedef typename iterator_facade_::pointer pointer; ///< Iterator pointer type
-      typedef typename iterator_facade_::iterator_category iterator_category; /// Iterator category tag
-      typedef typename iterator_facade_::difference_type difference_type; ///< Iterator difference type
+      typedef Value value_type; ///< Iterator value type
+      typedef const Value& reference; ///< Iterator reference type
+      typedef const Value* pointer; ///< Iterator pointer type
+      typedef std::input_iterator_tag iterator_category; /// Iterator category tag
+      typedef std::ptrdiff_t difference_type; ///< Iterator difference type
 
       /// Copy constructor
 
@@ -82,6 +75,38 @@ namespace TiledArray {
         return *this;
       }
 
+      const Container* container() const { return container_; }
+
+      /// Dereference operator
+
+      /// \return A \c reference to the current data
+      reference operator*() const { return current_; }
+
+      /// Increment operator
+
+      /// Increment the iterator
+      /// \return The modified iterator
+      RangeIterator_& operator++() {
+        container_->increment(current_);
+        return *this;
+      }
+
+      /// Increment operator
+
+      /// Increment the iterator
+      /// \return An unmodified copy of the iterator
+      RangeIterator_ operator++(int) {
+        RangeIterator_ temp(*this);
+        container_->increment(current_);
+        return temp;
+      }
+
+      /// Pointer operator
+
+      /// \return A \c pointer to the current data
+      pointer operator->() const { return & current_; }
+
+
       void advance(difference_type n) {
         container_->advance(current_, n);
       }
@@ -93,37 +118,40 @@ namespace TiledArray {
 
     private:
 
-      /// Compare this iterator with \c other for equality
-
-      /// \param other The other iterator to be checked for equality
-      /// \return \c true when the value of the two iterators are the same and
-      /// they point to the same container, otherwise \c false
-      bool equal(const RangeIterator_ & other) const {
-        return (current_ == other.current_) && (container_ == other.container_);
-      }
-
-      /// Increment the current value
-
-      /// This calls \c Container::increment(Value&) and passes the current
-      /// value as the function argument.
-      void increment() {
-        container_->increment(current_);
-      }
-
-      /// Dereference the iterator
-
-      /// \return A const reference to the current value
-      reference dereference() const {
-        return current_;
-      }
-
-      // boost::iterator_core_access requires access to private members for
-      // boost::iterator_facade to function correctly.
-      friend class boost::iterator_core_access;
-
       const Container* container_;  ///< The container that the iterator references
       Value current_;               ///< The current value of the iterator
     }; // class RangeIterator
+
+    /// Equality operator
+
+    /// Compares the iterators for equality. They must reference the same range
+    /// object to be considered equal.
+    /// \tparam Value The value type of the iterator
+    /// \tparam Container The container that the iterator references
+    /// \param left_it The left-hand iterator to be compared
+    /// \param right_it The right-hand iterator to be compared
+    /// \return \c true if the the value and container are equal for the \c left_it
+    /// and \c right_it , otherwise \c false .
+    template <typename Value, typename Container>
+    bool operator==(const RangeIterator<Value, Container>& left_it, const RangeIterator<Value, Container>& right_it) {
+      return ((*left_it) == (*right_it)) &&
+          (left_it.container() == right_it.container());
+    }
+
+    /// Inequality operator
+
+    /// Compares the iterators for inequality.
+    /// \tparam Value The value type of the iterator
+    /// \tparam Container The container that the iterator references
+    /// \param left_it The left-hand iterator to be compared
+    /// \param right_it The right-hand iterator to be compared
+    /// \return \c true if the the value or container are not equal for the
+    /// \c left_it and \c right_it , otherwise \c false .
+    template <typename Value, typename Container>
+    bool operator!=(const RangeIterator<Value, Container>& left_it, const RangeIterator<Value, Container>& right_it) {
+      return ((*left_it) != (*right_it)) ||
+          (left_it.container() != right_it.container());
+    }
 
   } // namespace detail
 } // namespace TiledArray

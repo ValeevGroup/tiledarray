@@ -1,4 +1,4 @@
-#include "TiledArray/tensor_expression_impl.h"
+#include "TiledArray/tensor_expression.h"
 #include "unit_test_config.h"
 
 struct TensorExpressionImplFixture {

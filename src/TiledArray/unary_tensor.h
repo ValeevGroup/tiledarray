@@ -1,127 +1,190 @@
 #ifndef TILEDARRAY_UNARY_TENSOR_H__INCLUDED
 #define TILEDARRAY_UNARY_TENSOR_H__INCLUDED
 
+#include <TiledArray/tensor_expression.h>
 #include <TiledArray/tensor.h>
-#include <TiledArray/transform_iterator.h>
-#include <TiledArray/type_traits.h>
-//#include <TiledArray/arg_tensor.h>
-#include <Eigen/Core>
-#include <functional>
 
 namespace TiledArray {
   namespace expressions {
+    namespace detail {
 
-    template <typename, typename> class UnaryTensor;
+      template <typename Op>
+      class UnaryTileOp {
+      public:
+        typedef typename Op::result_type value_type;
+        typedef Tensor<value_type> result_type;
+        typedef const Tensor<value_type>& argument_type;
 
-    /// Unary tensor factory function
+      private:
 
-    /// Construct a UnaryTensor object.
-    /// \tparam Exp Argument expression type
-    /// \tparam Op Unary operation type
-    /// \param t The argument expression object
-    /// \param op The unary element operation
-    /// \return A \c UnaryTensor<Exp,Op> object
-    template <typename Exp, typename Op>
-    inline UnaryTensor<Exp, Op> make_unary_tensor(const ReadableTensor<Exp>& t, const Op& op) {
-      return UnaryTensor<Exp, Op>(t.derived(), op);
+        class transform_op {
+        public:
+          typedef typename Op::result_type result_type;
+          typedef typename Op::argument_type argument_type;
+
+        private:
+          Op op_;
+          result_type scale_;
+
+        public:
+          transform_op(Op op) : op_(op), scale_(1) { }
+          transform_op(const transform_op& other) :
+            op_(other.op_), scale_(other.scale_)
+          { }
+          transform_op& operator=(const transform_op& other) {
+            op_ = other.op_;
+            scale_ = other.scale_;
+            return *this;
+          }
+
+          void scale(const result_type& value) { scale_ = value; }
+
+          result_type operator()(const argument_type& arg) const { return scale_ * op_(arg); }
+        } op_;
+
+      public:
+
+        UnaryTileOp(const Op& op) : op_(op) { }
+        UnaryTileOp(const UnaryTileOp<Op>& other) : op_(other.op_) { }
+        UnaryTileOp<Op>& operator=(const UnaryTileOp<Op>& other) {
+          op_ = other.op_;
+          return *this;
+        }
+
+        void scale(const value_type value) { op_.scale(value); }
+
+        result_type operator()(argument_type arg) const {
+          return result_type(arg.range(), ::TiledArray::detail::make_tran_it(arg.begin(), op_));
+        }
+
+      }; // class UnaryTileOp
+
+    }  // namespace detail
+
+    template <typename Op>
+    detail::UnaryTileOp<Op> make_unary_tile_op(const Op& op) {
+      return detail::UnaryTileOp<Op>(op);
     }
 
-    template <typename Arg, typename Op>
-    struct TensorTraits<UnaryTensor<Arg, Op> > {
-      typedef typename Arg::range_type range_type;
-      typedef typename madness::detail::result_of<Op>::type value_type;
-      typedef value_type const_reference;
-    }; // struct TensorTraits<UnaryTensor<Arg, Op> >
+    namespace detail {
 
-    template <typename Arg, typename Op>
-    struct Eval<UnaryTensor<Arg, Op> > {
-      typedef Tensor<typename madness::detail::result_of<Op>::type,
-          typename Arg::range_type> type;
-    }; // struct Eval<UnaryTensor<Arg, Op> >
+      /// Tensor that is composed from an argument tensor
 
+      /// The tensor elements are constructed using a unary transformation
+      /// operation.
+      /// \tparam Arg The argument type
+      /// \tparam Op The Unary transform operator type.
+      template <typename Exp, typename Op>
+      class UnaryTensorImpl : public TensorExpressionImpl<typename Op::result_type> {
+      public:
+        typedef UnaryTensorImpl<Exp, Op> UnaryTensorImpl_; ///< This object type
+        typedef Exp arg_tensor_type; ///< The argument tensor type
+        typedef TensorExpressionImpl<typename Op::result_type> TensorExpressionImpl_; ///< The base class type
+        typedef typename TensorExpressionImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
+        typedef typename TensorExpressionImpl_::size_type size_type; ///< Size type
+        typedef typename TensorExpressionImpl_::range_type range_type; ///< Range type
+        typedef typename TensorExpressionImpl_::pmap_interface pmap_interface; ///< Process map interface type
+        typedef typename TensorExpressionImpl_::trange_type trange_type; ///< tiled range type
+        typedef typename TensorExpressionImpl_::value_type value_type; ///< value type
+        typedef typename TensorExpressionImpl_::const_reference const_reference; ///< const reference type
+        typedef typename TensorExpressionImpl_::const_iterator const_iterator; ///< const iterator type
 
+      private:
+        // Not allowed
+        UnaryTensorImpl(const UnaryTensorImpl_& other);
+        UnaryTensorImpl_& operator=(const UnaryTensorImpl_&);
 
-    /// Tensor that is composed from an argument tensor
+      public:
 
-    /// The tensor elements are constructed using a unary transformation
-    /// operation.
-    /// \tparam Arg The argument type
-    /// \tparam Op The Unary transform operator type.
-    template <typename Arg, typename Op>
-    class UnaryTensor : public ReadableTensor<UnaryTensor<Arg, Op> > {
-    public:
-      typedef UnaryTensor<Arg, Op> UnaryTensor_;
-      typedef Arg arg_tensor_type;
-      typedef ReadableTensor<UnaryTensor_> base;
-      typedef typename base::size_type size_type;
-      typedef typename base::range_type range_type;
-      typedef typename base::eval_type eval_type;
-      typedef typename base::value_type value_type;
-      typedef typename base::const_reference const_reference;
-      typedef DenseStorage<value_type> storage_type; /// The storage type for this object
-      typedef Op op_type; ///< The transform operation type
+        /// Constructor
 
-    private:
-      // Not allowed
-      UnaryTensor_& operator=(const UnaryTensor_&);
+        /// \param arg The argument
+        /// \param op The element transform operation
+        UnaryTensorImpl(const arg_tensor_type& arg, const Op& op) :
+            TensorExpressionImpl_(arg.get_world(), arg.vars(), arg.trange(),
+                (arg.is_dense() ? 0ul : arg.size())),
+            arg_(arg),
+            op_(op)
+        { }
 
-    public:
+        /// Virtual destructor
+        virtual ~UnaryTensorImpl() { }
 
-      /// Construct a unary tensor op
+      private:
 
-      /// The argument may be of type \c Arg or \c FutureTensor<Arg::eval_type>
-      /// \tparam T Tensor argument type
-      /// \param arg The argument
-      /// \param op The element transform operation
-      template <typename T>
-      UnaryTensor(const T& arg, const op_type& op) :
-        arg_(arg), op_(op)
-      { }
+        void eval_tile(const size_type i, const typename arg_tensor_type::value_type& tile) {
+          value_type result = op_(tile);
+          TensorExpressionImpl_::set(i, madness::move(result));
+        }
 
-      UnaryTensor(const UnaryTensor_& other) :
-        arg_(other.arg_), op_(other.op_)
-      { }
+        /// Function for evaluating this tensor's tiles
 
-      /// Evaluate this tensor
+        /// This function is run inside a task, and will run after \c eval_children
+        /// has completed. It should spwan additional tasks that evaluate the
+        /// individule result tiles.
+        virtual void eval_tiles() {
+          // Set the scale factor
+          op_.scale(TensorExpressionImpl_::scale());
 
-      /// \return An evaluated tensor object
-      eval_type eval() const { return *this; }
+          // Make sure all local tiles are present.
+          const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
+          typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
+          if(arg_.is_dense()) {
+            for(; it != end; ++it)
+              TensorImpl_::get_world().taskq.add(this,
+                  & UnaryTensorImpl_::eval_tile, *it, arg_.move(*it));
+          } else {
+            for(; it != end; ++it)
+              if(! arg_.is_zero(*it))
+                TensorImpl_::get_world().taskq.add(this,
+                    & UnaryTensorImpl_::eval_tile, *it, arg_.move(*it));
+          }
 
-      /// Evaluate this tensor and store the results in \c dest
+          arg_.release();
+        }
 
-      /// \tparam Dest The destination object type
-      /// \param dest The destination object
-      template <typename Dest>
-      void eval_to(Dest& dest) const {
-        TA_ASSERT(size() == dest.size());
-        const size_type s = size();
-        for(size_type i = 0; i < s; ++i)
-          dest[i] = operator[](i);
-      }
+        /// Function for evaluating child tensors
 
-      /// Tensor range object accessor
+        /// This function should return true when the child
 
-      /// \return The tensor range object
-      const range_type& range() const { return arg_.range(); }
+        /// This function should evaluate all child tensors.
+        /// \param vars The variable list for this tensor (may be different from
+        /// the variable list used to initialize this tensor).
+        /// \param pmap The process map for this tensor
+        virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
+            const std::shared_ptr<pmap_interface>& pmap) {
+          TensorExpressionImpl_::vars(vars);
+          return arg_.eval(vars, pmap);
+        }
 
-      /// Tensor size
+        /// Construct the shape object
 
-      /// \return The number of elements in the tensor
-      size_type size() const { return arg_.size(); }
+        /// This function is used by derived classes to create a shape object. It
+        /// is run inside a task with the proper dependencies to ensure data
+        /// consistancy. This function is only called when the tensor is not dense.
+        /// \param shape The existing shape object
+        virtual void make_shape(TiledArray::detail::Bitset<>& shape) const {
+          TA_ASSERT(shape.size() == arg_.size());
+          shape = arg_.get_shape();
+        }
 
-      /// Element accessor
+        arg_tensor_type arg_; ///< Argument
+        Op op_; ///< The unary element opertation
+      }; // class UnaryTensorImpl
 
-      /// \return The element at the \c i position.
-      const_reference operator[](size_type i) const {
-        return op_(arg_[i]);
-      }
+    } // namespace detail
 
-    private:
-      const arg_tensor_type& arg_; ///< Argument
-      op_type op_; ///< Transform operation
-    }; // class UnaryTensor
+    template <typename Exp, typename Op>
+    TensorExpression<typename Op::result_type>
+    make_unary_tensor(const Exp& arg, const Op& op) {
+      typedef detail::UnaryTensorImpl<Exp, Op> impl_type;
+      std::shared_ptr<detail::TensorExpressionImpl<typename Op::result_type> > pimpl(
+          new detail::UnaryTensorImpl<Exp, Op>(arg, op),
+          madness::make_deferred_deleter<detail::UnaryTensorImpl<Exp, Op> >(arg.get_world()));
+      return TensorExpression<typename Op::result_type>(pimpl);
+    }
 
-  } // namespace expressions
-} // namespace TiledArray
+  }  // namespace expressions
+}  // namespace TiledArray
 
 #endif // TILEDARRAY_UNARY_TENSOR_H__INCLUDED

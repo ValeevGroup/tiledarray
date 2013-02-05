@@ -24,8 +24,6 @@ public:
   typedef std::vector<std::size_t> obs_mosym;
   typedef std::vector<std::pair<std::array<std::size_t, 2>, double> > array2d;
   typedef std::vector<std::pair<std::array<std::size_t, 4>, double> > array4d;
-  typedef TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<2> > tr2;
-  typedef TiledArray::StaticTiledRange<TiledArray::CoordinateSystem<4> > tr4;
 
 private:
   std::string name_;
@@ -56,9 +54,9 @@ private:
   static TiledArray::TiledRange1 make_trange1(const obs_mosym::const_iterator& begin,
       obs_mosym::const_iterator first, obs_mosym::const_iterator last);
 
-  tr2 trange(const Spin s, const RangeOV ov1, const RangeOV ov2) const;
+  TiledArray::TiledRange trange(const Spin s, const RangeOV ov1, const RangeOV ov2) const;
 
-  tr4 trange(const Spin s1, const Spin s2, const RangeOV ov1, const RangeOV ov2,
+  TiledArray::TiledRange trange(const Spin s1, const Spin s2, const RangeOV ov1, const RangeOV ov2,
       const RangeOV ov3, const RangeOV ov4) const;
 
   template <typename R, typename T>
@@ -84,15 +82,15 @@ public:
 
   std::string name() const { return name_; }
 
-  TiledArray::Array<double, TiledArray::CoordinateSystem<2> >
+  TiledArray::Array<double, 2>
   make_f(madness::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2);
 
-  TiledArray::Array<double, TiledArray::CoordinateSystem<4> >
+  TiledArray::Array<double, 4>
   make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4);
 
-  TiledArray::Array<double, TiledArray::CoordinateSystem<2> >::value_type
-  make_D_vo_tile(const TiledArray::Array<double, TiledArray::CoordinateSystem<2> >::trange_type::tile_range_type& range) const {
-    typedef TiledArray::Array<double, TiledArray::CoordinateSystem<2> >::value_type tile_type;
+  TiledArray::Array<double, 2>::value_type
+  make_D_vo_tile(const TiledArray::Array<double, 2>::trange_type::tile_range_type& range) const {
+    typedef TiledArray::Array<double, 2>::value_type tile_type;
     typedef tile_type::range_type range_type;
 
     // computes tiles of  D(v,v,o,o)
@@ -103,9 +101,9 @@ public:
     return tile;
   }
 
-  TiledArray::Array<double, TiledArray::CoordinateSystem<4> >::value_type
-  make_D_vvoo_tile(const TiledArray::Array<double, TiledArray::CoordinateSystem<4> >::trange_type::tile_range_type& range) const {
-    typedef TiledArray::Array<double, TiledArray::CoordinateSystem<4> >::value_type tile_type;
+  TiledArray::Array<double, 4>::value_type
+  make_D_vvoo_tile(const TiledArray::Array<double, 4>::trange_type::tile_range_type& range) const {
+    typedef TiledArray::Array<double, 4>::value_type tile_type;
     typedef tile_type::range_type range_type;
 
     // computes tiles of  D(v,v,o,o)

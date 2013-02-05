@@ -1,5 +1,7 @@
 #include "TiledArray/indexed_iterator.h"
+#include "TiledArray/error.h"
 #include "unit_test_config.h"
+#include <world/type_traits.h>
 #include <vector>
 #include <map>
 
@@ -25,31 +27,31 @@ struct IndexedIteratorFixture {
 BOOST_FIXTURE_TEST_SUITE( indexed_iterator_suite , IndexedIteratorFixture )
 
 // Check that iterator typedef's are correct
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::iterator::base_type,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::iterator::base_type,
     IndexedIteratorFixture::container_type::iterator>::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::iterator::value_type,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::iterator::value_type,
     IndexedIteratorFixture::data_type >::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::iterator::pointer,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::iterator::pointer,
     IndexedIteratorFixture::data_type*>::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::iterator::reference,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::iterator::reference,
     IndexedIteratorFixture::data_type&>::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::iterator::iterator_category,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::iterator::iterator_category,
     std::random_access_iterator_tag>::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::iterator::index_type,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::iterator::index_type,
     IndexedIteratorFixture::key_type>::value) );
 
 // Check that const iterator typedef's are correct
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::const_iterator::base_type,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::const_iterator::base_type,
     IndexedIteratorFixture::container_type::const_iterator>::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::const_iterator::value_type,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::const_iterator::value_type,
     IndexedIteratorFixture::data_type >::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::const_iterator::pointer,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::const_iterator::pointer,
     const IndexedIteratorFixture::data_type*>::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::const_iterator::reference,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::const_iterator::reference,
     const IndexedIteratorFixture::data_type&>::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::const_iterator::iterator_category,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::const_iterator::iterator_category,
     std::random_access_iterator_tag>::value) );
-TA_STATIC_ASSERT( (boost::is_same<IndexedIteratorFixture::const_iterator::index_type,
+TA_STATIC_ASSERT( (std::is_same<IndexedIteratorFixture::const_iterator::index_type,
     IndexedIteratorFixture::key_type>::value) );
 
 BOOST_AUTO_TEST_CASE( base_accessor )

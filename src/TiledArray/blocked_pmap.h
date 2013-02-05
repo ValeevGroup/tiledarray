@@ -3,7 +3,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/pmap.h>
-#include <world/world.h>
+#include <TiledArray/madness.h>
 #include <algorithm>
 
 namespace TiledArray {

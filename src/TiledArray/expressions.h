@@ -1,331 +1,366 @@
 #ifndef TILEDARRAY_EXPRESSIONS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_H__INCLUDED
 
-
-#include <TiledArray/binary_tensor.h>
 #include <TiledArray/unary_tensor.h>
-#include <TiledArray/permute_tensor.h>
+#include <TiledArray/binary_tensor.h>
 #include <TiledArray/contraction_tensor.h>
-#include <TiledArray/unary_tiled_tensor.h>
-#include <TiledArray/binary_tiled_tensor.h>
-#include <TiledArray/contraction_tiled_tensor.h>
 #include <TiledArray/functional.h>
+#include <TiledArray/tensor_reduce.h>
 #include <world/typestuff.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    template <typename LeftExp, typename RightExp>
-    BinaryTensor<LeftExp, RightExp, std::plus<typename LeftExp::value_type> >
-    operator+(const ReadableTensor<LeftExp>& left, const ReadableTensor<RightExp>& right) {
-      return make_binary_tensor(left, right, std::plus<typename LeftExp::value_type>());
+    // Tensor expression factory functions
+
+    /// Tensor expression addition operator
+
+    /// Add \c left and \c right tensor expression to give a new tensor
+    /// expression. The variable lists must be the same for the left- and
+    /// right-hand arguments, though the order may differ. The tiled range
+    /// dimensions must match where the variable list for the two expressions
+    /// match.
+    /// \f[
+    /// result_{i_1, i_2, \dots} =  left_{i_1, i_2, \dots} - right_{i_1, i_2, \dots}
+    /// \f]
+    /// \tparam LTile The left-hand tensor expression tile type
+    /// \tparam RTile The right-hand tensor expression tile type
+    /// \param left The left-hand tensor expression
+    /// \param right The right-hand tensor expression
+    /// \return A tensor expression that is the difference of \c left and \c right
+    template <typename LTile, typename RTile>
+    inline TensorExpression<typename BinaryOpSelect<std::plus<typename LTile::value_type> >::type::result_type>
+    operator+(const TensorExpression<LTile>& left, const TensorExpression<RTile>& right) {
+      return make_binary_tensor(left, right, make_binary_tile_op(
+          std::plus<typename LTile::value_type>()));
     }
 
-    template <typename RightExp>
-    UnaryTensor<RightExp, std::binder1st<std::plus<typename RightExp::value_type> > >
-    operator+(const typename ReadableTensor<RightExp>::value_type& left, const ReadableTensor<RightExp>& right) {
-      return make_unary_tensor(right, std::bind1st(std::plus<typename RightExp::value_type>(), left));
+    /// Tensor expression add-scalar operator
+
+    /// \f[
+    /// result_{i_1, i_2, \dots} =  left + right_{i_1, i_2, \dots}
+    /// \f]
+    /// \tparam LValue A numerical type
+    /// \tparam RTile The tensor expression tile type
+    /// \param left A numerical constant
+    /// \param right The value to be subracted from the tensor elements
+    /// \return The tensor expression that is the sum of left and right tensor
+    /// elements.
+    template <typename LValue, typename RTile>
+    inline TensorExpression<RTile>
+    operator+(const LValue& left, const TensorExpression<RTile>& right) {
+      return make_unary_tensor(right, make_unary_tile_op(
+          std::bind1st(std::plus<typename TensorExpression<RTile>::value_type::value_type>(), left)));
     }
 
-    template <typename LeftExp>
-    UnaryTensor<LeftExp, std::binder2nd<std::plus<typename LeftExp::value_type> > >
-    operator+(const ReadableTensor<LeftExp>& left, const typename ReadableTensor<LeftExp>::value_type& right) {
-      return make_unary_tensor(left, std::bind2nd(std::plus<typename LeftExp::value_type>(), right));
+    /// Tensor expression add-scalar operator
+
+    /// \f[
+    /// result_{i_1, i_2, \dots} =  left_{i_1, i_2, \dots} + right
+    /// \f]
+    /// \tparam LTile The tensor expression tile type
+    /// \tparam RValue A numerical type
+    /// \param left The tensor expression to be scaled
+    /// \param right A numerical constant
+    /// \return The tensor expression that is the sum of left tensor elements
+    /// and right.
+    template <typename LTile, typename RValue>
+    inline TensorExpression<LTile>
+    operator+(const TensorExpression<LTile>& left, const RValue& right) {
+      return make_unary_tensor(left, make_unary_tile_op(
+          std::bind2nd(std::plus<typename LTile::value_type>(), right)));
     }
 
-    template <typename LeftExp, typename RightExp>
-    BinaryTensor<LeftExp, RightExp, std::minus<typename LeftExp::value_type> >
-    operator-(const ReadableTensor<LeftExp>& left, const ReadableTensor<RightExp>& right) {
-      return make_binary_tensor(left, right, std::minus<typename LeftExp::value_type>());
+    /// Tensor expression subraction operator
+
+    /// Subtract \c left and \c right tensor expression to give a new tensor
+    /// expression. The variable lists must be the same for the left- and
+    /// right-hand arguments, though the order may differ. The tiled range
+    /// dimensions must match where the variable list for the two expressions
+    /// match.
+    /// \f[
+    /// result_{i_1, i_2, \dots} =  left_{i_1, i_2, \dots} - right_{i_1, i_2, \dots}
+    /// \f]
+    /// \tparam LTile The tensor expression tile type
+    /// \tparam RValue A numerical type
+    /// \param left The value to be subracted from the tensor elements
+    /// \param right The tensor expression to
+    /// \return A tensor expression that is the difference of \c left and
+    /// \c right .
+    template <typename LTile, typename RTile>
+    inline TensorExpression<typename BinaryOpSelect<std::minus<typename LTile::value_type> >::type::result_type>
+    operator-(const TensorExpression<LTile>& left, const TensorExpression<RTile>& right) {
+      return make_binary_tensor(left, right, make_binary_tile_op(
+          std::minus<typename LTile::value_type>()));
     }
 
-    template <typename RightExp>
-    UnaryTensor<RightExp, std::binder1st<std::minus<typename RightExp::value_type> > >
-    operator-(const typename ReadableTensor<RightExp>::value_type& left, const ReadableTensor<RightExp>& right) {
-      return make_unary_tensor(right, std::bind1st(std::minus<typename RightExp::value_type>(), left));
+    /// Tensor expression subtract-scalar operator
+
+    /// \f[
+    /// result_{i_1, i_2, \dots} =  left - right_{i_1, i_2, \dots}
+    /// \f]
+    /// \tparam LValue A numerical type
+    /// \tparam RTile The tensor expression tile type
+    /// \param left A numeric constant
+    /// \param right The tensor expression
+    /// \return The tensor expression that is the difference between the left
+    /// and right tensor elements.
+    template <typename LValue, typename RTile>
+    inline TensorExpression<RTile>
+    operator-(const LValue& left, const TensorExpression<RTile>& right) {
+      return make_unary_tensor(right, make_unary_tile_op(
+          std::bind1st(std::minus<typename RTile::value_type>(), left)));
     }
 
-    template <typename LeftExp>
-    UnaryTensor<LeftExp, std::binder2nd<std::minus<typename LeftExp::value_type> > >
-    operator-(const ReadableTensor<LeftExp>& left, const typename ReadableTensor<LeftExp>::value_type& right) {
-      return make_unary_tensor(left, std::bind2nd(std::minus<typename LeftExp::value_type>(), right));
+    /// Tensor expression subtract-scalar operator
+
+    /// \f[
+    /// result_{i_1, i_2, \dots} =  left_{i_1, i_2, \dots} - right
+    /// \f]
+    /// \tparam LTile The tensor expression tile type
+    /// \tparam RValue A numerical type
+    /// \param left The tensor expression
+    /// \param right A numerical constant
+    /// \return The tensor expression that is the difference between the left
+    /// tensor elements and right.
+    template <typename LTile, typename RValue>
+    inline TensorExpression<LTile>
+    operator-(const TensorExpression<LTile>& left, const RValue& right) {
+      return make_unary_tensor(left, make_unary_tile_op(
+          std::bind2nd(std::minus<typename LTile::value_type>(), right)));
     }
 
-    template <typename RightExp>
-    UnaryTensor<RightExp, std::binder1st<std::multiplies<typename RightExp::value_type> > >
-    operator*(const typename ReadableTensor<RightExp>::value_type& left, const ReadableTensor<RightExp>& right) {
-      return make_unary_tensor(right, std::bind1st(std::multiplies<typename RightExp::value_type>(), left));
+    /// Tensor expression contraction operator
+
+    /// Contract \c left and \c right tensor expression to give a new tensor
+    /// expression. The contracted indices will be the indices that are the
+    /// same variables in the left- and right-hand arguments.
+    /// \f[
+    /// result_{l_1, l_2, \dots, r_1, r_2, \dots} = \sum_{i_1, i_2, \dots}
+    ///   left_{l_1, l_2, \dots, i_1, i_2, \dots} \times right_{i_1, i_2, \dots,
+    ///   r_1, r_2, \dots}
+    /// \f]
+    /// \tparam LTile The left-hand tensor expression tile type
+    /// \tparam RTile The right-hand tensor expression tile type
+    /// \param left The left-hand tensor expression
+    /// \param right The right-hand tensor expression
+    /// \return A tensor contraction expression
+    template <typename LTile, typename RTile>
+    inline typename detail::ContractionExp<TensorExpression<LTile>, TensorExpression<RTile> >::type
+    operator*(const TensorExpression<LTile>& left, const TensorExpression<RTile>& right) {
+      return make_contraction_tensor(left, right);
     }
 
-    template <typename LeftExp>
-    UnaryTensor<LeftExp, std::binder2nd<std::multiplies<typename LeftExp::value_type> > >
-    operator*(const ReadableTensor<LeftExp>& left, const typename ReadableTensor<LeftExp>::value_type& right) {
-      return make_unary_tensor(left, std::bind2nd(std::multiplies<typename LeftExp::value_type>(), right));
+    /// Tensor expression scaling operator
+
+    /// \f[
+    /// result_{i_1, i_2, \dots} =  left \times right_{i_1, i_2, \dots}
+    /// \f]
+    /// \tparam LValue A numerical type
+    /// \tparam RTile The tensor expression tile type
+    /// \param left a numerical constant
+    /// \param right The tensor expression
+    /// \return The right tensor expression that has been scaled by left.
+    template <typename LValue, typename RTile>
+    inline const TensorExpression<RTile>&
+    operator*(const LValue& left, const TensorExpression<RTile>& right) {
+      const_cast<TensorExpression<RTile>&>(right).scale(left);
+      return right;
     }
 
-    template <typename ArgExp>
-    UnaryTensor<ArgExp, std::negate<typename ArgExp::value_type> >
-    operator-(const ReadableTensor<ArgExp>& arg) {
-      return make_unary_tensor(arg, std::negate<typename ArgExp::value_type>());
+    /// Tensor expression scaling operator
+
+    /// \f[
+    /// result_{i_1, i_2, \dots} = left_{i_1, i_2, \dots} \times right
+    /// \f]
+    /// \tparam LTile The tensor expression tile type
+    /// \tparam RValue A numerical type
+    /// \param left The tensor expression to be scaled
+    /// \param right The scaling factor
+    /// \return The left tensor expression that has been scaled by right.
+    template <typename LTile, typename RValue>
+    inline const TensorExpression<LTile>&
+    operator*(const TensorExpression<LTile>& left, const RValue& right) {
+      const_cast<TensorExpression<LTile>&>(left).scale(right);
+      return left;
     }
 
-    template <typename ArgExp>
-    PermuteTensor<ArgExp>
-    operator^(const Permutation& p, const ReadableTensor<ArgExp>& arg) {
-      return make_permute_tensor(arg, p);
-    }
+    /// Tensor expression negate operator
 
-    template <typename ArgExp>
-    const ArgExp& operator^(const TiledArray::detail::NoPermutation& p, const ReadableTensor<ArgExp>& arg) {
-      return make_permute_tensor(arg, p);
-    }
-
-
-    // Tiled Tensor expression factory functions
-
-    template <typename LeftExp, typename RightExp>
-    BinaryTiledTensor<LeftExp, RightExp, std::plus<typename LeftExp::value_type::value_type> >
-    operator+(const ReadableTiledTensor<LeftExp>& left, const ReadableTiledTensor<RightExp>& right) {
-      return make_binary_tiled_tensor(left, right, std::plus<typename LeftExp::value_type::value_type>());
-    }
-
-    template <typename RightExp>
-    UnaryTiledTensor<RightExp, TiledArray::detail::Binder1st<std::plus<typename RightExp::value_type::value_type> > >
-    operator+(const typename ReadableTiledTensor<RightExp>::value_type& left, const ReadableTiledTensor<RightExp>& right) {
-      return make_unary_tiled_tensor(right,
-          TiledArray::detail::bind1st(std::plus<typename RightExp::value_type::value_type>(), left));
-    }
-
-    template <typename LeftExp>
-    UnaryTiledTensor<LeftExp, TiledArray::detail::Binder2nd<std::plus<typename LeftExp::value_type::value_type> > >
-    operator+(const ReadableTiledTensor<LeftExp>& left, const typename ReadableTiledTensor<LeftExp>::value_type& right) {
-      return make_unary_tiled_tensor(left,
-          TiledArray::detail::bind2nd(std::plus<typename LeftExp::value_type::value_type>(), right));
-    }
-
-    template <typename LeftExp, typename RightExp>
-    BinaryTiledTensor<LeftExp, RightExp, std::minus<typename LeftExp::value_type::value_type> >
-    operator-(const ReadableTiledTensor<LeftExp>& left, const ReadableTiledTensor<RightExp>& right) {
-      return make_binary_tiled_tensor(left, right, std::minus<typename LeftExp::value_type::value_type>());
-    }
-
-    template <typename RightExp>
-    UnaryTiledTensor<RightExp, TiledArray::detail::Binder1st<std::minus<typename RightExp::value_type::value_type> > >
-    operator-(const typename ReadableTiledTensor<RightExp>::value_type& left, const ReadableTiledTensor<RightExp>& right) {
-      return make_unary_tiled_tensor(right,
-          TiledArray::detail::bind1st(std::minus<typename RightExp::value_type::value_type>(), left));
-    }
-
-    template <typename LeftExp>
-    UnaryTiledTensor<LeftExp, TiledArray::detail::Binder2nd<std::minus<typename LeftExp::value_type::value_type> > >
-    operator-(const ReadableTiledTensor<LeftExp>& left, const typename ReadableTiledTensor<LeftExp>::value_type& right) {
-      return make_unary_tiled_tensor(left,
-          TiledArray::detail::bind2nd(std::minus<typename LeftExp::value_type::value_type>(), right));
-    }
-
-    template <typename LeftExp, typename RightExp>
-    ContractionTiledTensor<LeftExp, RightExp>
-    operator*(const ReadableTiledTensor<LeftExp>& left, const ReadableTiledTensor<RightExp>& right) {
-      return make_contraction_tiled_tensor(left, right);
-    }
-
-    template <typename RightExp>
-    UnaryTiledTensor<RightExp, TiledArray::detail::Binder1st<std::multiplies<typename RightExp::value_type::value_type> > >
-    operator*(const typename ReadableTiledTensor<RightExp>::value_type::value_type& left, const ReadableTiledTensor<RightExp>& right) {
-      return make_unary_tiled_tensor(right,
-          TiledArray::detail::bind1st(std::multiplies<typename RightExp::value_type::value_type>(), left));
-    }
-
-    template <typename LeftExp>
-    UnaryTiledTensor<LeftExp, TiledArray::detail::Binder2nd<std::multiplies<typename LeftExp::value_type::value_type> > >
-    operator*(const ReadableTiledTensor<LeftExp>& left, const typename ReadableTiledTensor<LeftExp>::value_type& right) {
-      return make_unary_tiled_tensor(left,
-          TiledArray::detail::bind2nd(std::multiplies<typename LeftExp::value_type::value_type>(), right));
-    }
-
-    template <typename ArgExp>
-    UnaryTiledTensor<ArgExp, std::negate<typename ArgExp::value_type::value_type> >
-    operator-(const ReadableTiledTensor<ArgExp>& arg) {
-      return make_unary_tiled_tensor(arg, std::negate<typename ArgExp::value_type::value_type>());
+    /// \f[
+    /// result_{i_1, i_2, \dots} =  -arg_{i_1, i_2, \dots}
+    /// \f]
+    /// \tparam Tile The tensor expression tile type
+    /// \param arg The tensor expression to be negated
+    /// \return A tensor expression that has the negative value of arg.
+    template <typename Tile>
+    inline const TensorExpression<Tile>&
+    operator-(const TensorExpression<Tile>& arg) {
+      const_cast<TensorExpression<Tile>&>(arg).scale(-1);
+      return arg;
     }
 
     namespace detail {
 
-      /// Task function for reducing a tile
+      /// Square norm2 reduction operation
 
-      /// \tparam T The \c Tensor value type
-      /// \tparam R The \c Tensor range type
-      /// \tparam A The \c Tensor allocator type
-      /// \tparam Op The reduction operation type
-      /// \param t The tensor to be reduced
-      /// \param op The reduction operation
-      /// \return The reduced value of \c t
-      template <typename T, typename Op>
-      typename madness::detail::result_of<Op>::type reduce_tile(const T& t, const Op& op) {
-        typename T::value_type result = typename T::value_type();
-        for(typename T::const_iterator it = t.begin(); it != t.end(); ++it)
-          op(result, *it);
-
-        return result;
-      }
-
-      /// This task will reduce the elements of all tile into a scalar value
-
-      /// \tparam Arg The tiled tensor reduction argument type
-      /// \tparam Op The reduction operation type
-      template <typename Arg, typename Op>
-      class ReduceTiles : public madness::TaskInterface {
-      public:
-        typedef typename madness::detail::result_of<Op>::type result_type;
-      private:
-
-        const Arg arg_; ///< The tiled tensor argument
-        const Op op_; ///< The reduction operation
-        madness::Future<result_type> result_; ///< The reduction result
-
-        template <typename Exp>
-        static madness::Future<typename Exp::value_type>
-        tile(const ReadableTiledTensor<Exp>& arg, const std::size_t i) {
-          return arg[i];
-        }
-
-        template <typename T, typename CS>
-        static madness::Future<typename Array<T, CS>::value_type>
-        tile(const Array<T, CS>& array, const std::size_t i) {
-          return array.find(i);
-        }
-
-      public:
-
-        /// Constructor
-
-        /// \param arg The tiled tensor to be reduced
-        /// \param op The reduction operatioin
-        /// \param dep The evaluation dependancy
-        ReduceTiles(const Arg& arg, const Op& op, madness::Future<bool>& dep) :
-            madness::TaskInterface(madness::TaskAttributes::hipri()),
-            arg_(arg), op_(op), result_()
-        {
-          if(! dep.probe()) {
-            madness::DependencyInterface::inc();
-            dep.register_callback(this);
-          }
-        }
-
-        /// Result accessor
-
-        /// \return A future for the result of this task
-        const madness::Future<result_type>& result() const {
-          return result_;
-        }
-
-        /// Task function
-        virtual void run(const madness::TaskThreadEnv&) {
-          // Create reduce task object
-          TiledArray::detail::ReduceTask<Op> reduce_task(arg_.get_world(), op_);
-
-          // Spawn reduce tasks for each local tile.
-          typename Arg::pmap_interface::const_iterator end = arg_.get_pmap()->end();
-          typename Arg::pmap_interface::const_iterator it = arg_.get_pmap()->begin();
-          if(arg_.is_dense()) {
-            for(; it != end; ++it)
-              reduce_task.add(arg_.get_world().taskq.add(& reduce_tile<typename Arg::value_type, Op>,
-                  tile(arg_, *it), op_, madness::TaskAttributes::hipri()));
-          } else {
-            for(; it != end; ++it)
-              if(! arg_.is_zero(*it))
-                reduce_task.add(arg_.get_world().taskq.add(& reduce_tile<typename Arg::value_type, Op>,
-                    tile(arg_, *it), op_, madness::TaskAttributes::hipri()));
-          }
-
-          // Set the result future
-          result_.set(reduce_task.submit());
-        }
-      }; // class class ReduceTiles
-
-
-      /// Evaluate a \c ReadableTiledTensor
-
-      /// \tparam Exp The readable tiled tensor expression type
-      /// \param arg The tiled tensor to evaluate
-      /// \return A future to a bool that will be set once \c arg has been evaluated.
+      /// Reduction operation taht computes the square of the norm2 of a tensor
+      /// expression. This is equal to the dot product of the expression with
+      /// itself.
+      /// \tparam Tile The tensor expression tile type
       template <typename Exp>
-      inline madness::Future<bool> eval(const ReadableTiledTensor<Exp>& arg) {
-        return const_cast<ReadableTiledTensor<Exp>& >(arg).derived().eval(arg.vars(),
-            std::shared_ptr<TiledArray::Pmap<typename Exp::size_type> >(
-            new TiledArray::detail::BlockedPmap(arg.get_world(), arg.size())));
-      }
+      class square_norm2_op {
+      public:
+        typedef typename Exp::value_type argument_type; ///< The tile type
+        typedef typename argument_type::value_type result_type; ///< The result type
+        typedef std::plus<result_type> remote_op_type; ///< Remote reduction operation type
 
-      /// Evaluate an \c Array
+        /// Create a result type object
 
-      /// \tparam T The array element type
-      /// \tparam CS The array coordinate system type
-      /// \param arg The array to evaluate
-      /// \return A future to a bool that will be set once \c arg has been evaluated.
-      template <typename T, typename CS>
-      inline madness::Future<bool> eval(const Array<T, CS>& array) {
-        return const_cast<Array<T, CS>&>(array).eval();
-      }
+        /// Initialize a result object for subsequent reductions
+        result_type operator()() const {
+          return result_type(0);
+        }
 
-      template <typename T>
-      struct plus {
-        typedef T result_type;
-        typedef T argument_type;
-        typedef std::plus<T> std_op_type;
+        /// Reduce two result objects
 
-        result_type operator()() const { return result_type(); }
-
-        void operator()(result_type& result, const argument_type& arg) const {
+        /// Add \c arg to \c result .
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] arg The argument that will be added to \c result
+        void operator()(result_type& result, const result_type& arg) const {
           result += arg;
         }
 
-        void operator()(result_type& result, const argument_type& arg1, const argument_type& arg2) const {
-          result += arg1 + arg2;
+        /// Square norm2 of a pair of tiles
+
+        /// Contracte \c left and \c right and add the result to \c result.
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] left The left-hand tile to be contracted
+        /// \param[in] right The right-hand tile to be contracted
+        void operator()(result_type& result, const argument_type& first) const {
+          result += math::square_norm(first.size(), first.begin());
         }
 
-        template <typename Archive>
-        void serialize(const Archive&) { }
-      };
+        /// Square norm2 of two pairs of tiles
+
+        /// Contracte \c left1 with \c right1 and \c left2 with \c right2 ,
+        /// and add the two results.
+        /// \param[in] left The first left-hand tile to be contracted
+        /// \param[in] right The first right-hand tile to be contracted
+        /// \param[in] left The second left-hand tile to be contracted
+        /// \param[in] right The second right-hand tile to be contracted
+        /// \return A tile that contains the sum of the two contractions.
+        void operator()(result_type& result, const argument_type& first, const argument_type& second) const {
+          result += math::square_norm(first.size(), first.begin())
+              + math::square_norm(second.size(), second.begin());
+        }
+
+      }; // class square_norm2_op
+
+
+      /// Dot product reduction operation
+
+      /// Reduction operation that computes the dot product of two tensor
+      /// expressions.
+      /// \tparam LExp Left tensor expression type
+      /// \tparam RExp Right tensor expression type
+      template <typename LExp, typename RExp>
+      class dot_op {
+      public:
+        typedef typename LExp::value_type first_argument_type; ///< The left tile type
+        typedef typename RExp::value_type second_argument_type; ///< The right tile type
+        typedef typename ContractionResult<LExp, RExp>::type::value_type result_type; ///< The result type
+
+        /// Create a result type object
+
+        /// Initialize a result object for subsequent reductions
+        result_type operator()() const {
+          return result_type(0);
+        }
+
+        /// Reduce two result objects
+
+        /// Add \c arg to \c result .
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] arg The argument that will be added to \c result
+        void operator()(result_type& result, const result_type& arg) const {
+          result += arg;
+        }
+
+        /// Dot product of a pair of tiles
+
+        /// Contracte \c left and \c right and add the result to \c result.
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] left The left-hand tile to be contracted
+        /// \param[in] right The right-hand tile to be contracted
+        void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
+          TA_ASSERT(first.range() == second.range());
+          result += math::dot(first.size(), first.begin(), second.begin());
+        }
+
+        /// Dot product of two pairs of tiles
+
+        /// Contracte \c left1 with \c right1 and \c left2 with \c right2 ,
+        /// and add the two results.
+        /// \param[in] left The first left-hand tile to be contracted
+        /// \param[in] right The first right-hand tile to be contracted
+        /// \param[in] left The second left-hand tile to be contracted
+        /// \param[in] right The second right-hand tile to be contracted
+        /// \return A tile that contains the sum of the two contractions.
+        result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
+            const first_argument_type& first2, const second_argument_type& second2) const {
+          TA_ASSERT(first1.range() == second1.range());
+          TA_ASSERT(first2.range() == second2.range());
+
+          result_type result = math::dot(first1.size(), first1.begin(), second1.begin())
+              + math::dot(first2.size(), first2.begin(), second2.begin());
+
+          return result;
+        }
+
+      }; // class dot_reduce_op
 
     } // namespace detail
 
-    /// Task function for reducing a tile
 
-    /// \tparam T The \c Tensor value type
-    /// \tparam R The \c Tensor range type
-    /// \tparam A The \c Tensor allocator type
-    /// \tparam Op The reduction operation type
-    /// \param t The tensor to be reduced
-    /// \param op The reduction operation
-    /// \return The reduced value of \c t
-    template <typename T, typename R, typename A, typename Op>
-    typename madness::detail::result_of<Op>::type reduce(const Tensor<T, R, A>& t, const Op& op) {
-      return detail::reduce_tile(t, op);
-    }
-
-    /// Reduce an \c Array or a \c ReadableTiledTensor
+    /// Reduce a \c TensorExpression
 
     /// This function will reduce all elements of \c arg . The result of the
     /// reduction is returned on all nodes. The function will block, until the
     /// reduction is complete, but it will continue to process tasks while
-    /// waiting.
-    /// \f[
-    /// C = \sum_{i_1, i_2, \dots}  A_{i_1, i_2, \dots}
-    /// \f]
-    /// \tparam Arg The \c Array or \c ReadableTiledTensor type
+    /// waiting. Reduction operation objects must have the following definition:
+    /// \code
+    /// class reduction_op {
+    /// public:
+    ///   typedef ... argument_type; // tile type
+    ///   typedef ... result_type; // result type of the reduction operation
+    ///   typedef ... remote_op_type; // remote reduction operation type (e.g. std::plus<result_type>)
+    ///
+    ///   // Default construction of a result object
+    ///   result_type operator()() const { ... }
+    ///
+    ///   // Reduce two result objects
+    ///   void operator()(result_type& result, const result_type& arg) const { ... }
+    ///
+    ///   // Reduce an argument object to a result object
+    ///   void operator()(result_type& result, const argument_type& first) const { ... }
+    ///
+    ///   // Reduce a two arguments to a single result object
+    ///   void operator()(result_type& result, const argument_type& first, const argument_type& second) const { ... }
+    /// }; // class reduction_op
+    /// \endcode
+    /// \tparam Tile The tensor expression tile type
     /// \tparam Op The reduction operation type
-    /// \param arg The array or tile tensor object to be reduced
+    /// \param arg The tensor expression object to be reduced
     /// \param op The reduction operation
     /// \return The reduced value of the tensor.
-    template <typename Exp, typename Op>
+    template <typename Tile, typename Op>
     inline typename madness::detail::result_of<Op>::type
-    reduce(const ReadableTiledTensor<Exp>& arg, const Op& op) {
-      // Evaluate the argument tensor
-      madness::Future<bool> arg_eval = detail::eval(arg);
+    reduce(const TensorExpression<Tile>& arg, const Op& op) {
 
       // Spawn a task that will generate reduction tasks for each local tile
-      detail::ReduceTiles<Exp, Op>* reduce_task =
-          new detail::ReduceTiles<Exp, Op>(arg.derived(), op, arg_eval);
+      ReduceTensorExpression<TensorExpression<Tile>, Op>* reduce_task =
+          new ReduceTensorExpression<TensorExpression<Tile>, Op>(arg, op);
 
       // Spawn the task
       madness::Future<typename madness::detail::result_of<Op>::type> local_result =
@@ -336,36 +371,86 @@ namespace TiledArray {
       typename madness::detail::result_of<Op>::type result = local_result.get();
 
       // All to all global reduction
-      arg.get_world().gop.reduce(& result, 1, typename Op::std_op_type());
+      arg.get_world().gop.reduce(& result, 1, typename Op::remote_op_type());
 
       return result;
     }
 
-    /// Calculate the dot product of two tiled tensors
+    /// Element-wise tensor multiplication
+
+    /// \f[
+    /// C_{i_1, i_2, \dots} = left_{i_1, i_2, \dots} right_{i_1, i_2, \dots}
+    /// \f]
+    /// The tiled ranges of the tensor expressions, \c left and \c right , must
+    /// be identical, and the variable lists for the expressions must contain
+    /// the same set of variables, though the order of the variables may differ.
+    /// \tparam LExp The left-hand tensor expression type
+    /// \tparam RExp The right-hand tensor expression type
+    /// \param left The left-hand tensor expression
+    /// \param right The right-hand tensor expression
+    /// \return A result tensor expression
+    template <typename LTile, typename RTile>
+    inline TensorExpression<typename BinaryOpSelect<std::multiplies<typename LTile::value_type> >::type::result_type>
+    multiply(const TensorExpression<LTile>& left, const TensorExpression<RTile>& right) {
+      return make_binary_tensor(left, right, make_binary_tile_op(
+          std::multiplies<typename LTile::value_type>()));
+    }
+
+    /// Calculate the dot product of two tensor expressions
 
     /// \f[
     /// C = \sum_{i_1, i_2, \dots}  A_{i_1, i_2, \dots} B_{i_1, i_2, \dots}
     /// \f]
+    /// \tparam LExp Left-hand tensor expression type
+    /// \tparam RExp Right-hand tensor expression type
     /// \param left The left tensor argument ( \c A )
-    /// \param right The right tiled tensor argument ( \c B )
+    /// \param right The right tensor argument ( \c B )
     /// \return The sum of the products of each element in \c left and \c right ( \c C )
-    template <typename LeftArg, typename RightArg>
-    inline typename math::ContractionValue<typename LeftArg::value_type::value_type,
-        typename RightArg::value_type::value_type>::type
-    dot(const ReadableTiledTensor<LeftArg>& left, const ReadableTiledTensor<RightArg>& right) {
-      typedef typename math::ContractionValue<typename LeftArg::value_type::value_type,
-              typename RightArg::value_type::value_type>::type result_type;
-      return reduce(make_binary_tiled_tensor(left.derived(), right.derived(),
-          std::multiplies<result_type>()), detail::plus<result_type>());
+    template <typename LTile, typename RTile>
+    inline typename ReduceTensorExpressionPair<TensorExpression<LTile>,
+        TensorExpression<RTile>, detail::dot_op<TensorExpression<LTile>, TensorExpression<RTile> > >::result_type
+    dot(const TensorExpression<LTile>& left, const TensorExpression<RTile>& right) {
+      // Typedefs
+      typedef detail::dot_op<TensorExpression<LTile>,TensorExpression<RTile> > dot_op_type;
+      typedef ReduceTensorExpressionPair<TensorExpression<LTile>, TensorExpression<RTile>, dot_op_type> dot_task_type;
+
+      // Construct the dot task
+      dot_task_type* dot_task = new dot_task_type(left, right, dot_op_type());
+      madness::Future<typename dot_task_type::result_type>
+          local_result = dot_task->result();
+
+      // Submit the dot task
+      left.get_world().taskq.add(dot_task);
+
+      // Get the result
+      typename dot_task_type::result_type result = local_result.get();
+
+      // All reduce the result
+      left.get_world().gop.sum(&result, 1);
+      return result;
     }
 
-    template <typename Arg>
-    typename Arg::value_type::value_type
-    norm2(const ReadableTiledTensor<Arg>& arg) {
-      return std::sqrt(reduce(make_unary_tiled_tensor(arg.derived(),
-          TiledArray::detail::Square<typename Arg::value_type::value_type>()),
-          detail::plus<typename Arg::value_type::value_type>()));
+    /// Compute the norm2 of \c arg
+
+    /// 2-norm:
+    /// \f[
+    /// ||arg||_2 = \sqrt{\sum_{i_1, i_2, \dots} (arg_{i_1, i_2, \dots})^2 }
+    /// \f]
+    /// This function will compute the norm2 of the tensor expression, \c arg ,
+    /// across all nodes. The function will block, until the computation is
+    /// complete, but it will continue to process tasks while waiting. The same
+    /// result is returned on all nodes.
+    /// \tparam Exp Tensor expression type
+    /// \param arg The tensor expression
+    /// \return The norm2 of the tensor
+    template <typename Exp>
+    inline typename madness::enable_if<is_tensor_expression<Exp>,
+        typename Exp::value_type::value_type>::type
+    norm2(const Exp& arg) {
+      return std::sqrt(reduce(arg, detail::square_norm2_op<Exp>()));
     }
+
+
 
   } // namespace expressions
 } // namespace TiledArray

@@ -1,177 +1,396 @@
 #ifndef TILEDARRAY_BINARY_TENSOR_H__INCLUDED
 #define TILEDARRAY_BINARY_TENSOR_H__INCLUDED
 
-#include <TiledArray/tensor.h> // for Tensor, StaticRange, and DynamicRange
+#include <TiledArray/transform_iterator.h>
+#include <TiledArray/tensor_expression.h>
+#include <TiledArray/tensor.h>
+#include <TiledArray/bitset.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    template <typename, typename, typename>
-    class BinaryTensor;
-
-    /// Binary tensor factory function
-
-    /// Construct a BinaryTensor object. The constructed object will apply \c op
-    /// to each element of \c left and \c right.
-    /// \tparam LExp Left expression type
-    /// \tparam RExp Right expression type
-    /// \tparam Op Binary operation type
-    /// \param left The left expression object
-    /// \param right The right expression object
-    /// \param op The binary element operation
-    /// \return A \c BinaryTensor object
-    template <typename LExp, typename RExp, typename Op>
-    inline BinaryTensor<LExp, RExp, Op> make_binary_tensor(const ReadableTensor<LExp>& left,
-        const ReadableTensor<RExp>& right, const Op& op)
-    { return BinaryTensor<LExp, RExp, Op>(left.derived(), right.derived(), op); }
+    /// Placeholder object for a zero tensor.
+    template <typename T>
+    struct ZeroTensor {
+      typedef T value_type;
+    }; // struct ZeroTensor
 
     namespace detail {
 
-      /// Select the range type
+      template <typename Op>
+      class binary_transform_op {
+      public:
+        typedef typename Op::result_type result_type;
+        typedef typename Op::first_argument_type first_argument_type;
+        typedef typename Op::second_argument_type second_argument_type;
 
-      /// This helper class selects a range for binary operations. It favors
-      /// \c StaticRange over \c DynamicRange to avoid the dynamic memory
-      /// allocations used in \c DynamicRange.
-      /// \tparam LRange The left tiled range type
-      /// \tparam RRange The right tiled range type
-      template <typename LRange, typename RRange>
-      struct range_select {
-        typedef LRange type; ///< The range type to use
+      private:
+        Op op_;
+        result_type scale_;
 
-        /// Select the range object
-
-        /// \tparam L The left tensor object type
-        /// \tparam R The right tensor object type
-        /// \param l The left tensor object
-        /// \return A const reference to the either the \c l or \c r range
-        /// object
-        template <typename L, typename R>
-        static const type& range(const L& l, const R&) {
-          return l.range();
+      public:
+        binary_transform_op(Op op) : op_(op), scale_(1) { }
+        binary_transform_op(const binary_transform_op<Op>& other) :
+          op_(other.op_), scale_(other.scale_)
+        { }
+        binary_transform_op<Op>& operator=(const binary_transform_op<Op>& other) {
+          op_ = other.op_;
+          scale_ = other.scale_;
+          return *this;
         }
-      };
 
-      template <typename CS>
-      struct range_select<DynamicRange, StaticRange<CS> > {
-        typedef StaticRange<CS> type;
+        void scale(const result_type& value) { scale_ = value; }
 
-        template <typename L, typename R>
-        static const type& range(const L&, const R& r) {
-          return r.range();
+        result_type operator()(const first_argument_type& first, const second_argument_type& second) const {
+          return scale_ * op_(first, second);
         }
-      };
+      }; // class binary_transform_op
+
+      template <typename Op>
+      class binary_and_op {
+      public:
+        typedef Tensor<typename madness::detail::result_of<Op>::type> result_type;
+        typedef typename result_type::value_type value_type;
+
+      private:
+        typedef binary_and_op<Op> binary_and_op_;
+
+
+        binary_transform_op<Op> op_; ///< The binary operation
+
+      public:
+
+        binary_and_op(Op op) : op_(op) { }
+
+        /// Comparing two tensors for is_dense() quarry.
+
+        /// \param l Left tensor is_dense result.
+        /// \param r Right tensor is_dense result.
+        /// \return True if the result tensor is dense.
+        static bool is_dense(const bool left_dense, const bool right_dense) {
+          return left_dense || right_dense;
+        }
+
+        /// Comparing two tiles for is_zero() quarry.
+
+        /// \param l Left tile is_zero result.
+        /// \param r Right tile is_zero result.
+        /// \return True if the result tile is zero.
+        static bool is_zero(const bool left_zero, const bool right_zero) {
+          return left_zero && right_zero;
+        }
+
+        /// Construct a new bitset for shape.
+
+        /// \param[in] result The shape that will store the results
+        /// \param left The left argument shape.
+        /// \param right The right argument shape.
+        template <typename Left, typename Right>
+        static void shape(::TiledArray::detail::Bitset<>& result, const Left& left, const Right& right) {
+          if(left.is_dense()) {
+            result.flip();
+          } else {
+            if(right.is_dense()) {
+              result.flip();
+            } else {
+              result = left.get_shape();
+              result |= right.get_shape();
+            }
+          }
+        }
+
+        void scale(const value_type value) { op_.scale(value); }
+
+        template <typename Left, typename Right>
+        result_type operator()(const Left& left, const Right& right) {
+          return result_type(left.range(),
+              ::TiledArray::detail::make_tran_it(left.begin(), right.begin(), op_));
+        }
+
+        template <typename Left, typename T>
+        result_type operator()(const Left& left, const ZeroTensor<T>&) {
+          return result_type(left.range(),
+              ::TiledArray::detail::make_tran_it(left.begin(),
+              std::bind2nd(op_, typename ZeroTensor<T>::value_type(0))));
+        }
+
+        template <typename T, typename Right>
+        result_type operator()(const ZeroTensor<T>&, const Right& right) {
+          return result_type(right.range(),
+              ::TiledArray::detail::make_tran_it(right.begin(),
+              std::bind1st(op_, typename ZeroTensor<T>::value_type(0))));
+        }
+
+      }; // class binary_and_op
+
+      template <typename Op>
+      class binary_or_op {
+      public:
+        typedef Tensor<typename madness::detail::result_of<Op>::type> result_type;
+        typedef typename result_type::value_type value_type;
+
+      private:
+        typedef binary_or_op<Op> binary_or_op_;
+
+        binary_transform_op<Op> op_;
+
+      public:
+
+        binary_or_op(Op op) : op_(op) { }
+
+        /// Comparing two tensors for is_dense() quarry.
+
+        /// \param l Left tensor is_dense result.
+        /// \param r Right tensor is_dense result.
+        /// \return True if the result tensor is dense.
+        static bool is_dense(const bool left_dense, const bool right_dense) {
+          return left_dense && right_dense;
+        }
+
+        /// Comparing two tiles for is_zero() quarry.
+
+        /// \param l Left tile is_zero result.
+        /// \param r Right tile is_zero result.
+        /// \return True if the result tile is zero.
+        static bool is_zero(const bool left_zero, const bool right_zero) {
+          return left_zero || right_zero;
+        }
+
+        /// Construct a new bitset for shape.
+
+        /// \param[in] result The shape that will store the results
+        /// \param left The left argument shape.
+        /// \param right The right argument shape.
+        template <typename Left, typename Right>
+        static void shape(::TiledArray::detail::Bitset<>& result, const Left& left, const Right& right) {
+          if(left.is_dense()) {
+            result = right.get_shape();
+          } else {
+            result = left.get_shape();
+            if(! right.is_dense())
+              result &= right.get_shape();
+          }
+        }
+
+        void scale(const value_type value) { op_.scale(value); }
+
+        template <typename Left, typename Right>
+        result_type operator()(const Left& left, const Right& right) {
+          return result_type(left.range(),
+              ::TiledArray::detail::make_tran_it(left.begin(), right.begin(), op_));
+        }
+
+        template <typename T, typename Right>
+        result_type operator()(const ZeroTensor<T>&, const Right&) {
+          TA_ASSERT(false); // Should not be used.
+          return result_type();
+        }
+
+        template <typename Left, typename T>
+        result_type operator()(const Left&, const ZeroTensor<T>&) {
+          TA_ASSERT(false); // Should not be used.
+          return result_type();
+        }
+
+      }; // class binary_or_op
+
+
 
     } // namespace detail
 
-    template <typename LeftArg, typename RightArg, typename Op>
-    struct TensorTraits<BinaryTensor<LeftArg, RightArg, Op> > {
-      typedef typename detail::range_select<typename LeftArg::range_type,
-          typename RightArg::range_type>::type range_type;
-      typedef typename madness::detail::result_of<Op>::type value_type;
-      typedef value_type const_reference;
-    }; // struct TensorTraits<EvalTensor<T, A> >
+    template <typename Op>
+    struct BinaryOpSelect {
+      typedef detail::binary_and_op<Op> type;
+    }; // struct BinaryOpSelect
 
-    template <typename LeftArg, typename RightArg, typename Op>
-    struct Eval<BinaryTensor<LeftArg, RightArg, Op> > {
-      typedef Tensor<typename madness::detail::result_of<Op>::type,
-          typename detail::range_select<typename LeftArg::range_type,
-          typename RightArg::range_type>::type> type;
-    }; // struct Eval<BinaryTensor<LeftArg, RightArg, Op> >
+    template <typename T>
+    struct BinaryOpSelect<std::multiplies<T> > {
+      typedef detail::binary_or_op<std::multiplies<T> > type;
+    }; // struct BinaryOpSelect
 
-    /// Tensor that is composed from two argument tensors
+    template <typename Op>
+    typename BinaryOpSelect<Op>::type make_binary_tile_op(const Op& op) {
+      return typename BinaryOpSelect<Op>::type(op);
+    }
 
-    /// The tensor elements are constructed using a binary transformation
-    /// operation.
-    /// \tparam LeftArg The left-hand argument type
-    /// \tparam RightArg The right-hand argument type
-    /// \tparam Op The binary transform operator type.
-    template <typename LeftArg, typename RightArg, typename Op>
-    class BinaryTensor : public ReadableTensor<BinaryTensor<LeftArg, RightArg, Op> > {
-    public:
-      typedef BinaryTensor<LeftArg, RightArg, Op>  BinaryTensor_;
-      typedef LeftArg left_tensor_type;
-      typedef RightArg right_tensor_type;
-      typedef ReadableTensor<BinaryTensor_> base;
-      typedef typename base::size_type size_type;
-      typedef typename base::range_type range_type;
-      typedef typename base::eval_type eval_type;
-      typedef typename base::value_type value_type;
-      typedef typename base::const_reference const_reference;
-      typedef Op op_type; ///< The transform operation type
+    namespace detail {
 
-    private:
-      // Not allowed
-      BinaryTensor_& operator=(const BinaryTensor_&);
+      /// Tensor that is composed from two argument tensors
 
-    public:
-
-      /// Construct a binary tensor op
-
-      /// The argument may be of type \c Arg or \c FutureTensor<Arg::eval_type>
-      /// \tparam L Left tensor argument type
-      /// \tparam R Right tensor argument type
-      /// \param left The left argument
-      /// \param right The right argument
-      /// \param op The element transform operation
-      /// \throw TiledArray::Exception When left and right argument
-      /// dimensions, or sizes are not equal.
-      BinaryTensor(const left_tensor_type& left, const right_tensor_type& right, const op_type& op) :
-        left_(left), right_(right), op_(op)
+      /// A binary operator is used to transform the individual elements of the tiles.
+      /// \tparam Left The left argument type
+      /// \tparam Right The right argument type
+      /// \tparam Op The binary transform operator type.
+      template <typename LExp, typename RExp, typename Op>
+      class BinaryTensorImpl :
+        public TensorExpressionImpl<typename Op::result_type>
       {
-        TA_ASSERT(left.range() == right.range());
-      }
+      public:
+        typedef Op op_type;
+        typedef BinaryTensorImpl<LExp, RExp, Op> BinaryTensorImpl_;
+        typedef TensorExpressionImpl<typename op_type::result_type> TensorExpressionImpl_;
+        typedef typename TensorExpressionImpl_::TensorImpl_ TensorImpl_;
+        typedef LExp left_tensor_type;
+        typedef RExp right_tensor_type;
+        typedef typename TensorExpressionImpl_::size_type size_type;
+        typedef typename TensorExpressionImpl_::range_type range_type;
+        typedef typename TensorExpressionImpl_::pmap_interface pmap_interface;
+        typedef typename TensorExpressionImpl_::trange_type trange_type;
+        typedef typename TensorExpressionImpl_::value_type value_type;
+        typedef typename TensorExpressionImpl_::const_reference const_reference;
+        typedef typename TensorExpressionImpl_::const_iterator const_iterator;
 
-      BinaryTensor(const BinaryTensor_& other) :
-        left_(other.left_), right_(other.right_), op_(other.op_)
-      { }
+      private:
+        // Not allowed
+        BinaryTensorImpl_& operator=(const BinaryTensorImpl_&);
+        BinaryTensorImpl(const BinaryTensorImpl_&);
 
-      /// Evaluate this tensor
+      public:
 
-      /// \return An evaluated tensor object
-      eval_type eval() const { return *this; }
+        /// Construct a unary tensor op
 
-      /// Evaluate this tensor and store the results in \c dest
+        /// \param arg The argument
+        /// \param op The element transform operation
+        BinaryTensorImpl(const left_tensor_type& left, const right_tensor_type& right, const Op& op) :
+            TensorExpressionImpl_(left.get_world(), left.vars(), left.trange(),
+                (op.is_dense(left.is_dense(), right.is_dense()) ? 0ul : left.size())),
+            op_(op), left_(left), right_(right)
+        {
+          TA_ASSERT(left_.size() == right_.size());
+        }
 
-      /// \tparam Dest The destination object type
-      /// \param dest The destination object
-      template <typename Dest>
-      void eval_to(Dest& dest) const {
-        TA_ASSERT(size() == dest.size());
-        const size_type s = size();
-        for(size_type i = 0; i < s; ++i)
-          dest[i] = operator[](i);
-      }
+        virtual ~BinaryTensorImpl() { }
 
-      /// Tensor range object accessor
+      private:
 
-      /// \return The tensor range object
-      const range_type& range() const {
-        return detail::range_select<typename LeftArg::range_type,
-            typename RightArg::range_type>::range(left_, right_);
-      }
+        static bool done(const bool left, const bool right) { return left && right; }
 
-      /// Tensor size accessor
+        template <typename L, typename R>
+        void eval_tile(const size_type i, const L& left, const R& right) {
+          value_type result(op_(left, right));
+          TensorExpressionImpl_::set(i, madness::move(result));
+        }
 
-      /// \return The total number of elements in the tensor
-      size_type size() const {
-        return left_.size();
-      }
+        /// Function for evaluating this tensor's tiles
 
-      /// Element accessor
+        /// This function is run inside a task, and will run after \c eval_children
+        /// has completed. It should spwan additional tasks that evaluate the
+        /// individule result tiles.
+        virtual void eval_tiles() {
+          typedef ZeroTensor<typename left_tensor_type::value_type::value_type> zero_left_type;
+          typedef ZeroTensor<typename right_tensor_type::value_type::value_type> zero_right_type;
 
-      /// \return The element at the \c i position.
-      const_reference operator[](size_type i) const {
-        return op_(left_[i], right_[i]);
-      }
+          // Set the scale factor
+          op_.scale(TensorExpressionImpl_::scale());
 
-    private:
-      const left_tensor_type& left_; ///< Left argument
-      const right_tensor_type& right_; ///< Right argument
-      op_type op_; ///< Transform operation
-    }; // class BinaryTensor
+          // Construct local iterator
+          typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
+          const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
 
+          if(left_.is_dense() && right_.is_dense() && TensorImpl_::is_dense()) {
+            // Evaluate tiles where both arguments and the result are dense
+            for(; it != end; ++it) {
+              const size_type i = *it;
+              TensorImpl_::get_world().taskq.add(this,
+                  & BinaryTensorImpl_::template eval_tile<typename left_tensor_type::value_type, typename right_tensor_type::value_type>,
+                  i, left_.move(i), right_.move(i));
+            }
+          } else {
+            // Evaluate tiles where the result or one of the arguments is sparse
+            for(; it != end; ++it) {
+              const size_type i = *it;
+              if(! TensorImpl_::is_zero(i)) {
+                if(left_.is_zero(i)) {
+                  TensorImpl_::get_world().taskq.add(this,
+                    & BinaryTensorImpl_::template eval_tile<zero_left_type, typename right_tensor_type::value_type>,
+                    i, zero_left_type(), right_.move(i));
+                } else if(right_.is_zero(i)) {
+                  TensorImpl_::get_world().taskq.add(this,
+                    & BinaryTensorImpl_::template eval_tile<typename left_tensor_type::value_type, zero_right_type>,
+                    i, left_.move(i), zero_right_type());
+                } else {
+                  TensorImpl_::get_world().taskq.add(this,
+                    & BinaryTensorImpl_::template eval_tile<typename left_tensor_type::value_type, typename right_tensor_type::value_type>,
+                    i, left_.move(i), right_.move(i));
+                }
+              } else {
+                // Cleanup unused tiles
+                if(! left_.is_zero(i))
+                  left_.move(i);
+                if(! right_.is_zero(i))
+                  right_.move(i);
+              }
+            }
+          }
 
-  } // namespace expressions
-} // namespace TiledArray
+          left_.release();
+          right_.release();
+        }
 
-#endif // TILEDARRAY_BINARY_TENSOR_H__INCLUDED
+        /// Function for evaluating child tensors
+
+        /// This function should return true when the child
+
+        /// This function should evaluate all child tensors.
+        /// \param vars The variable list for this tensor (may be different from
+        /// the variable list used to initialize this tensor).
+        /// \param pmap The process map for this tensor
+        virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
+            const std::shared_ptr<pmap_interface>& pmap) {
+          // The default behavior, where left vars equal right vars, is to do the
+          // tile permuation (if necessary) in this object since it is less
+          // expensive.
+          // Note: This function assumes, vars == left vars
+          const VariableList* left_vars = & left_.vars();
+          const VariableList* right_vars = & right_.vars();
+
+          if(*left_vars != *right_vars) {
+            // Deside who is going to permute
+            if(*left_vars == vars) {
+              right_vars = left_vars; // Permute right argument
+            } else if(*right_vars == vars) {
+              left_vars = right_vars; // Permute left argument
+              TensorExpressionImpl_::vars(*right_vars);
+            } else {
+              left_vars = right_vars = & vars; // Permute left and right arguments
+              TensorExpressionImpl_::vars(vars);
+            }
+          }
+
+          madness::Future<bool> left_done = left_.eval(*left_vars, pmap->clone());
+          madness::Future<bool> right_done = right_.eval(*right_vars, pmap);
+          return TensorImpl_::get_world().taskq.add(& BinaryTensorImpl_::done,
+              left_done, right_done, madness::TaskAttributes::hipri());
+        }
+
+        /// Construct the shape object
+
+        /// This function is used by derived classes to create a shape object. It
+        /// is run inside a task with the proper dependencies to ensure data
+        /// consistancy. This function is only called when the tensor is not dense.
+        /// \param shape The existing shape object
+        virtual void make_shape(TiledArray::detail::Bitset<>& shape) const {
+          op_.shape(shape, left_, right_);
+        }
+
+        op_type op_; ///< binary element operator
+        left_tensor_type left_; ///< Left argument
+        right_tensor_type right_; ///< Right argument
+      }; // class BinaryTensorImpl
+
+    } // namespace detail
+
+    template <typename LExp, typename RExp, typename Op>
+    TensorExpression<typename Op::result_type>
+    make_binary_tensor(const LExp& left, const RExp& right, const Op& op) {
+      typedef detail::BinaryTensorImpl<LExp, RExp, Op> impl_type;
+      std::shared_ptr<detail::TensorExpressionImpl<typename Op::result_type> > pimpl(
+          new impl_type(left, right, op),
+          madness::make_deferred_deleter<impl_type>(left.get_world()));
+      return TensorExpression<typename Op::result_type>(pimpl);
+    }
+
+  }  // namespace expressions
+}  // namespace TiledArray
+
+#endif // TILEDARRAY_BINARY_TILED_TENSOR_H__INCLUDED

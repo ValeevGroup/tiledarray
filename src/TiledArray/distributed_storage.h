@@ -1,13 +1,10 @@
 #ifndef TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 #define TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 
-// This needs to be defined before world/worldreduce.h and world/worlddc.h
-#define WORLD_INSTANTIATE_STATIC_TEMPLATES
-
 #include <TiledArray/error.h>
 #include <TiledArray/indexed_iterator.h>
 #include <TiledArray/pmap.h>
-#include <world/world.h>
+#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {
@@ -17,12 +14,11 @@ namespace TiledArray {
     /// Each element in this container is owned by a single node, but any node
     /// may request a copy of the element in the form of a \c madness::Future .
     /// The owner of each element is defined by a process map (pmap), which is
-    /// passed to the constructor.
-    /// Elements do not need to be explicitly initialized because they will be
-    /// added to the container when the element is first accessed, though you
-    /// may manually initialize the an element with the \c insert() function.
-    /// All elements are stored in \c madness::Future , which may be set only
-    /// once.
+    /// passed to the constructor. Elements do not need to be explicitly
+    /// initialized because they will be added to the container when the element
+    /// is first accessed, though you may manually initialize an element with
+    /// the \c insert() function. All elements are stored in \c madness::Future ,
+    /// which may be set only once.
     /// \note This object is derived from \c madness::WorldObject , which means
     /// the order of construction of object must be the same on all nodes. This
     /// can easily be achieved by only constructing world objects in the main
@@ -31,20 +27,19 @@ namespace TiledArray {
     template <typename T>
     class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     public:
-      typedef DistributedStorage<T> DistributedStorage_;
-      typedef madness::WorldObject<DistributedStorage_> WorldObject_;
+      typedef DistributedStorage<T> DistributedStorage_; ///< This object type
+      typedef madness::WorldObject<DistributedStorage_> WorldObject_; ///< Base object type
 
-      typedef std::size_t size_type;
-      typedef size_type key_type;
-      typedef T value_type;
-      typedef madness::Future<value_type> future;
-      typedef Pmap<key_type> pmap_interface;
-
-      typedef madness::ConcurrentHashMap<key_type, future> container_type;
-      typedef detail::IndexedIterator<typename container_type::iterator> iterator; ///< Local tile iterator
-      typedef detail::IndexedIterator<typename container_type::const_iterator> const_iterator; ///< Local tile const iterator
-      typedef typename container_type::accessor accessor;
-      typedef typename container_type::const_accessor const_accessor;
+      typedef std::size_t size_type; ///< size type
+      typedef size_type key_type; ///< element key type
+      typedef T value_type; ///< Element type
+      typedef madness::Future<value_type> future; ///< Element container type
+      typedef Pmap<key_type> pmap_interface; ///< Process map interface type
+      typedef madness::ConcurrentHashMap<key_type, future> container_type; ///< Local container type
+      typedef detail::IndexedIterator<typename container_type::iterator> iterator; ///< Local element iterator
+      typedef detail::IndexedIterator<typename container_type::const_iterator> const_iterator; ///< Local element const iterator
+      typedef typename container_type::accessor accessor; ///< Local element accessor type
+      typedef typename container_type::const_accessor const_accessor; ///< Local element const accessor type
 
     private:
       // not allowed
@@ -60,9 +55,10 @@ namespace TiledArray {
       /// have to assume that all processes execute this constructor in the same
       /// order (does not apply to the non-initializing, default constructor).
       /// \param world The world where the distributed container lives
-      /// \param max_size The maximum capacity of this container.
-      /// \param pmap The process map for the container.
-      DistributedStorage(madness::World& world, size_type max_size, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+      /// \param max_size The maximum capacity of this container
+      /// \param pmap The process map for the container (default = null pointer)
+      DistributedStorage(madness::World& world, size_type max_size,
+          const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
         WorldObject_(world), max_size_(max_size),
         pmap_(pmap),
         data_((max_size / world.size()) + 11)
@@ -175,10 +171,8 @@ namespace TiledArray {
       /// function.
       bool insert(size_type i) {
         TA_ASSERT(i < max_size_);
-        if(is_local(i)) {
-          const_accessor acc;
-          return data_.insert(acc, i);
-        }
+        if(is_local(i))
+          return data_.insert(typename container_type::datumT(i, future())).second;
 
         WorldObject_::send(owner(i), & DistributedStorage_::remote_insert, i);
         return false;
@@ -188,8 +182,7 @@ namespace TiledArray {
       void insert_local() {
         typename pmap_interface::const_iterator end = pmap_->end();
         for(typename pmap_interface::const_iterator it = pmap_->begin(); it != end; ++it) {
-          const_accessor acc;
-          data_.insert(acc, *it);
+          data_.insert(*it);
         }
       }
 
@@ -202,10 +195,8 @@ namespace TiledArray {
       void insert_local(const Pred& pred) {
         typename pmap_interface::const_iterator end = pmap_->end();
         for(typename pmap_interface::const_iterator it = pmap_->begin(); it != end; ++it) {
-          if(pred(*it)) {
-            const_accessor acc;
-            data_.insert(acc, *it);
-          }
+          if(pred(*it))
+            data_.insert(*it);
         }
       }
 
@@ -235,26 +226,43 @@ namespace TiledArray {
       void set(size_type i, const future& f) {
         TA_ASSERT(i < max_size_);
         if(is_local(i)) {
-          accessor acc;
+          const_accessor acc;
           if(! data_.insert(acc, typename container_type::datumT(i, f))) {
-            // The element was already in the container.
+            // The element was already in the container, so set it with f.
             future existing_f = acc->second;
             acc.release();
             existing_f.set(f);
           }
         } else {
           if(f.probe()) {
+            // f is ready, so it can be immidiately sent to the owner.
             set_value(i, f.get());
           } else {
+            // f is not ready, so create a callback to send it to the owner when
+            // it is set.
             DelayedSet* set_callback = new DelayedSet(*this, i, f);
             const_cast<future&>(f).register_callback(set_callback);
           }
         }
       }
 
-      template <typename InIter, typename Op>
-      void reduce(size_type i, std::vector<ProcessID> procs, Op op) {
+      /// Set element \c i with \c value
 
+      /// The owner of \c i may be local or remote. If \c i is remote, a task
+      /// is spawned on the owning node to set it. If \c i is not already in
+      /// the container, it will be inserted.
+      /// \param i The element to be set
+      /// \param value The value of element \c i
+      /// \throw TiledArray::Exception If \c i is greater than or equal to \c max_size() .
+      /// \throw madness::MadnessException If \c i has already been set.
+      void set(size_type i, const madness::detail::MoveWrapper<value_type>& value) {
+        TA_ASSERT(i < max_size_);
+        if(is_local(i)) {
+          set_local_value(i, value);
+        } else {
+          WorldObject_::send(owner(i), & DistributedStorage_::set_value, i,
+              madness::unwrap_move(value));
+        }
       }
 
       /// Element accessor
@@ -267,11 +275,13 @@ namespace TiledArray {
       future operator[](size_type i) const {
         TA_ASSERT(i < max_size_);
         if(is_local(i)) {
+          // Return the local element.
           const_accessor acc;
           data_.insert(acc, i);
           return acc->second;
         }
 
+        // Send a request to the onwer of i for the element.
         future result;
         WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
             result.remote_ref(get_world()), false, madness::TaskAttributes::hipri());
@@ -285,7 +295,7 @@ namespace TiledArray {
       /// element has not been set when this function is called, then the
       /// transfer of ownership will be delayed (and handled automatically) until
       /// the element is set.
-      /// \note it is the caller's responsibility to ensure that move is only
+      /// \note It is the caller's responsibility to ensure that move is only
       /// call once. Otherwise, the program will hang.
       future move(size_type i) {
         TA_ASSERT(i < max_size_);
@@ -296,15 +306,18 @@ namespace TiledArray {
           data_.insert(acc, i);
           future result = acc->second;
 
-          // Remove the element from this
-          if(result.probe())
+          // Remove the element from the local container.
+          if(result.probe()) {
             data_.erase(acc);
-          else
+          } else {
+            acc.release();
             result.register_callback(new DelayedMove(*this, i));
+          }
 
           return result;
         }
 
+        // Send a request to the onwer of i for the element.
         future result;
         WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
             result.remote_ref(get_world()), true, madness::TaskAttributes::hipri());
@@ -314,6 +327,10 @@ namespace TiledArray {
 
     private:
 
+      /// Callback object to move a tile from this container once it has been set
+
+      /// This callback object is used to remove elements from the container
+      /// once it has been set.
       struct DelayedMove : public madness::CallbackInterface {
       private:
         DistributedStorage_& ds_; ///< A reference to the owning object
@@ -321,6 +338,10 @@ namespace TiledArray {
 
       public:
 
+        /// Constructor
+
+        /// \param ds The distributed container that owns element i
+        /// \param i The lement to be moved
         DelayedMove(const DistributedStorage_& ds, size_type i) :
             ds_(const_cast<DistributedStorage_&>(ds)), index_(i)
         { }
@@ -332,7 +353,9 @@ namespace TiledArray {
         /// This will set the value of the future on the remote node and delete
         /// this callback object.
         virtual void notify() {
-          ds_.data_.erase(index_);
+          accessor acc;
+          ds_.data_.find(acc, index_);
+          ds_.data_.erase(acc);
           delete this;
         }
       }; // struct DelayedSet
@@ -369,78 +392,114 @@ namespace TiledArray {
       }; // struct DelayedSet
 
       /// Set the value of an element
-      madness::Void set_value(size_type i, const value_type& value) {
+      void set_value(size_type i, const value_type& value) {
         if(is_local(i)) {
-          const_accessor acc;
-          data_.insert(acc, i);
-          future f = acc->second;
-          acc.release();
-          f.set(value);
+          set_local_value(i, value);
         } else {
           WorldObject_::send(owner(i), & DistributedStorage_::set_value, i, value);
         }
-
-        return madness::None;
       }
 
-      /// Remote insert without a return message.
-      madness::Void remote_insert(size_type i) {
-        TA_ASSERT(is_local(i));
+      /// Set the value of a local element
+
+      /// Assume that the tile locality has already been checked
+      /// \tparam Value The element type
+      /// \param i The index of the element to be set
+      /// \param value The value that will be assigned to element \c i
+      template <typename Value>
+      void set_local_value(size_type i, const Value& value) {
         const_accessor acc;
         data_.insert(acc, i);
-
-        return madness::None;
+        future f = acc->second;
+        acc.release();
+        f.set(value);
       }
 
-      static void find_return(const typename future::remote_refT& ref, const value_type& value) {
-        future result(ref);
-        result.set(value);
+      /// Remote insert without a return message
+
+      /// This is a task function that is used to spawn remote insert tasks
+      /// \param i The element to be inserted
+      void remote_insert(size_type i) {
+        TA_ASSERT(is_local(i));
+        data_.insert(typename container_type::datumT(i, future()));
       }
 
+      /// A delayed return callback object
+
+      /// This object is used to register callbacks for local elements that will
+      /// be sent to another node after it has been set.
+      /// \note This object will delete itself after notify has been called.
       struct DelayedReturn : public madness::CallbackInterface {
       private:
-        DistributedStorage_& ds_;
-        size_type index_;
-        typename future::remote_refT ref_;
-        future future_;
-        bool move_;
+        DistributedStorage_& ds_; ///< The distributed storage container that owns the element
+        size_type index_; ///< The element index
+        typename future::remote_refT ref_; ///< The element remote reference on the requesting node
+        future future_; ///< The element future that will be sent
+        bool move_; ///< \c true if the element will be removed after sending it
+
+        // Not allowed
+        DelayedReturn(const DelayedReturn&);
+        DelayedReturn& operator=(const DelayedReturn&);
 
       public:
 
-        DelayedReturn(const DistributedStorage_& ds, size_type index, const typename future::remote_refT& ref, const future& fut, bool move) :
-            ds_(const_cast<DistributedStorage_&>(ds)), index_(index), ref_(ref), future_(fut), move_(move)
+        /// Constructor
+
+        /// \param ds The distributed storage container that owns \c fut
+        /// \param index The index of the element that will be sent
+        /// \param ref The remote reference to the future that will hold the tile on the requesting node
+        /// \param fut The local future for the element to be sent
+        /// \param move \c true if the element will be removed from \c ds after sending it
+        DelayedReturn(const DistributedStorage_& ds, size_type index,
+            const typename future::remote_refT& ref, const future& fut, bool move) :
+          ds_(const_cast<DistributedStorage_&>(ds)), index_(index),
+          ref_(ref), future_(fut), move_(move)
         { }
 
-        ~DelayedReturn() { }
-
         virtual void notify() {
-          DistributedStorage_::find_return(ref_, future_);
-          if(move_)
-            ds_.data_.erase(index_);
+          future remote_future(ref_);
+          remote_future.set(future_);
+          if(move_) {
+            accessor acc;
+            ds_.data_.find(acc, index_);
+            ds_.data_.erase(acc);
+          }
           delete this;
         }
       }; // struct DelayedReturn
 
       /// Handles find request
+
+      /// This function is used to find and return element \c i . If \c mover
+      /// is true, the tile will be removed from the local container after
+      /// sending it to the node that requested the tile. The element will only
+      /// be forwarded after it has been set.
+      /// \param i The element to be found.
+      /// \param ref The remote reference for the element on the requesting node
+      /// \param mover This is \c true if find handler was called by \c move()
       void find_handler(size_type i, const typename future::remote_refT& ref, bool mover) const {
         TA_ASSERT(is_local(i));
+        // Find the local element
         const_accessor acc;
         data_.insert(acc, i);
         future f = acc->second;
+
         if(f.probe()) {
+          // The element has been set, so it can be returned immediately.
+          future remote_future(ref);
+          remote_future.set(f);
           if(mover)
             data_.erase(acc);
-          find_return(ref, f);
         } else {
+          // The element has not been set so create a delayed return callback
           acc.release();
-          DelayedReturn* return_callback = new DelayedReturn(*this, i, ref, f, mover);
-          f.register_callback(return_callback);
+          f.register_callback(new DelayedReturn(*this, i, ref, f, mover));
         }
       }
 
-      const size_type max_size_;
-      std::shared_ptr<pmap_interface> pmap_;
-      mutable container_type data_;
+      const size_type max_size_; ///< The maximum number of elements that can be stored by this container
+      std::shared_ptr<pmap_interface> pmap_; ///< The process map that defines the element distribution
+      mutable container_type data_; ///< The local data container
     };
 
   }  // namespace detail

@@ -3,6 +3,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/transform_iterator.h>
+#include <climits>
 
 namespace TiledArray {
   namespace detail {
@@ -312,6 +313,21 @@ namespace TiledArray {
       void flip() {
         for(size_type i = 0; i < blocks_; ++i)
           set_[i] = ~set_[i];
+      }
+
+      /// Count the number of non-zero bits
+
+      /// \return The number of non-zero bits
+      size_type count() const {
+        size_type c = 0ul;
+        for(size_type i = 0ul; i < blocks_; ++i) {
+          block_type v = set_[i]; // temp
+          v = v - ((v >> 1) & (block_type)~(block_type)0 / 3);
+          v = (v & (block_type)~(block_type)0 / 15 * 3) + ((v >> 2) & (block_type)~(block_type)0 / 15 * 3);
+          v = (v + (v >> 4)) & (block_type)~(block_type)0 / 255 * 15;
+          c += (block_type)(v * ((block_type)~(block_type)0 / 255)) >> (sizeof(block_type) - 1) * CHAR_BIT; // count
+        }
+        return c;
       }
 
       /// Data pointer accessor

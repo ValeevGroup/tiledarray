@@ -1,4 +1,4 @@
-#ifndef TILEDARRAY_SUMMA_H__INCLUDED
+#ifndef TILEDARRAY_SPSUMMA_H__INCLUDED
 #define TILEDARRAY_SUMMA_H__INCLUDED
 
 #include <TiledArray/contraction_tensor_impl.h>
@@ -6,17 +6,18 @@
 namespace TiledArray {
   namespace expressions {
 
-    /// Scalable Universal Matrix Multiplication Algorithm (SUMMA)
+    /// Sparse Scalable Universal Matrix Multiplication Algorithm (SpSUMMA)
 
-    /// This algorithm is used to contract dense tensor. The arguments are
+    /// This algorithm is used to contract sparse tensor. The arguments are
     /// permuted such that the outer and inner indices are fused such that a
     /// standard matrix multiplication algorithm can be used to contract the
-    /// tensors. SUMMA is described in:
+    /// tensors.  SUMMA is described in:
     /// Van De Geijn, R. A.; Watts, J. Concurrency Practice and Experience 1997, 9, 255-274.
+    ///
     /// \tparam Left The left-hand-arguement type
     /// \tparam Right The right-hand-argument type
     template <typename Left, typename Right>
-    class Summa : public madness::WorldObject<Summa<Left, Right> >, public ContractionTensorImpl<Left, Right> {
+    class SpSumma : public madness::WorldObject<Summa<Left, Right> >, public ContractionTensorImpl<Left, Right> {
     protected:
       typedef madness::WorldObject<Summa<Left, Right> > WorldObject_; ///< Madness world object base class
       typedef ContractionTensorImpl<Left, Right> ContractionTensorImpl_;
@@ -430,7 +431,7 @@ namespace TiledArray {
 
     public:
 
-      Summa(const Left& left, const Right& right) :
+      SpSumma(const Left& left, const Right& right) :
           WorldObject_(left.get_world()),
           ContractionTensorImpl_(left, right),
           row_group_(),
@@ -456,7 +457,7 @@ namespace TiledArray {
       }
 
       /// Virtual destructor
-      virtual ~Summa() { }
+      virtual ~SpSumma() { }
 
     private:
 

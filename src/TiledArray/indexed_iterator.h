@@ -2,20 +2,9 @@
 #define TILEDARRAY_INDEXED_ITERATOR_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
-#include <boost/iterator/iterator_adaptor.hpp>
-#include <boost/iterator/iterator_traits.hpp>
 
 namespace TiledArray {
   namespace detail {
-
-    template <typename Iterator>
-    struct BaseIteratorTraits {
-      typedef typename std::iterator_traits<Iterator>::value_type base_value_type;
-      typedef typename std::iterator_traits<Iterator>::reference base_reference;
-      typedef typename std::iterator_traits<Iterator>::value_type::second_type value_type;
-      typedef typename madness::if_<std::is_const<typename std::remove_reference<base_reference>::type >,
-          const value_type&, value_type&>::type reference;
-    };
 
     /// Iterator adapter for indexed iterators
 
@@ -32,32 +21,22 @@ namespace TiledArray {
     /// \c Key types is a \c TiledArray::ArrayCoordinate type, in which case it
     /// will be the \c TiledArray::ArrayCoordinate type.
     template <typename Iterator>
-    class IndexedIterator : public boost::iterator_adaptor<
-        IndexedIterator<Iterator>,                          // Derived class type
-        Iterator,                                           // Base iterator
-        typename BaseIteratorTraits<Iterator>::value_type,  // Value type
-        boost::use_default,                                 // Iterator category
-        typename BaseIteratorTraits<Iterator>::reference>   // reference type
-
-    {
+    class IndexedIterator {
     private:
-      /// The base class type
-      typedef boost::iterator_adaptor<IndexedIterator<Iterator>, Iterator,
-          typename BaseIteratorTraits<Iterator>::value_type, boost::use_default,
-          typename BaseIteratorTraits<Iterator>::reference> iterator_adaptor_;
-
-      // Used to selectively enable functions with boost::enable_if
+      // Used to selectively enable functions with madness::enable_if
       struct Enabler { };
 
     public:
       typedef IndexedIterator<Iterator> IndexedIterator_; ///< this object type
       typedef typename std::iterator_traits<Iterator>::value_type::first_type index_type; ///< The index (or key) type for the iterator
-      typedef typename iterator_adaptor_::base_type base_type; ///< The base iterator type
-      typedef typename iterator_adaptor_::value_type value_type; ///< iterator value_type
-      typedef typename iterator_adaptor_::reference reference; ///< iterator reference type
-      typedef typename iterator_adaptor_::pointer pointer; ///< iterator pointer type
-      typedef typename iterator_adaptor_::difference_type difference_type; ///< iterator difference type
-      typedef typename iterator_adaptor_::iterator_category iterator_category; ///< iterator traversal category
+      typedef Iterator base_type; ///< The base iterator type
+      typedef typename std::iterator_traits<Iterator>::value_type::second_type value_type; ///< iterator value_type
+      typedef typename madness::if_<std::is_const<typename std::remove_reference<typename std::iterator_traits<Iterator>::reference>::type >,
+          const value_type&, value_type&>::type reference; ///< iterator reference type
+      typedef typename madness::if_<std::is_const<typename std::remove_pointer<typename std::iterator_traits<Iterator>::pointer>::type >,
+          const value_type*, value_type*>::type pointer; ///< iterator pointer type
+      typedef typename std::iterator_traits<Iterator>::difference_type difference_type; ///< iterator difference type
+      typedef typename std::iterator_traits<Iterator>::iterator_category iterator_category; ///< iterator traversal category
 
       /// Default constructor
 
@@ -66,7 +45,7 @@ namespace TiledArray {
       /// \note This constructor is only enabled for forward, bidirectional, and
       /// random access type pointers.
       IndexedIterator(typename madness::enable_if<is_forward_iterator<Iterator>, Enabler >::type = Enabler()) :
-          iterator_adaptor_()
+          it_()
       { }
 
       /// Construct with an iterator
@@ -78,13 +57,13 @@ namespace TiledArray {
       template <typename It>
       explicit IndexedIterator(const It& it,
           typename madness::enable_if<std::is_convertible<It, Iterator>, Enabler>::type = Enabler()) :
-          iterator_adaptor_(it)
+          it_(it)
       { }
 
       /// Copy constructor
 
       /// \param other The other indexed iterator to be copied.
-      IndexedIterator(const IndexedIterator_& other) : iterator_adaptor_(other) { }
+      IndexedIterator(const IndexedIterator_& other) : it_(other.it_) { }
 
       /// Copy a convertible iterator
 
@@ -94,7 +73,7 @@ namespace TiledArray {
       template<typename It>
       IndexedIterator(const IndexedIterator<It>& other,
           typename madness::enable_if<std::is_convertible<It, Iterator>, Enabler>::type = Enabler()) :
-          iterator_adaptor_(other.base())
+          it_(other.base())
       { }
 
       /// Assignment operator
@@ -102,7 +81,7 @@ namespace TiledArray {
       /// \param other The indexed iterator that is to be copied.
       /// \return A reference to this iterator
       IndexedIterator_& operator=(const IndexedIterator_& other) {
-        iterator_adaptor_::base_reference() = other.base_reference();
+        it_ = other.base();
         return *this;
       }
 
@@ -115,7 +94,7 @@ namespace TiledArray {
       template <typename It>
       typename madness::enable_if<std::is_convertible<It, Iterator>, IndexedIterator_&>::type
       operator=(const IndexedIterator<It>& other) {
-        iterator_adaptor_::base_reference() = other.base();
+        it_ = other.base();
         return *this;
       }
 
@@ -128,26 +107,234 @@ namespace TiledArray {
       template <typename It>
       typename madness::enable_if<std::is_convertible<It, Iterator>, IndexedIterator_&>::type
       operator=(const It& it) {
-        iterator_adaptor_::base_reference() = it;
+        it_ = it;
         return *this;
       }
+
+      /// Assignment operator for other iterator types
+
+      /// \tparam It Another iterator type that is convertible to the base
+      /// iterator type.
+      /// \param it The indexed iterator that is to be copied.
+      /// \return A reference to this iterator
+      IndexedIterator_& operator+=(const difference_type n) {
+        it_ += n;
+        return *this;
+      }
+
+      /// Assignment operator for other iterator types
+
+      /// \tparam It Another iterator type that is convertible to the base
+      /// iterator type.
+      /// \param it The indexed iterator that is to be copied.
+      /// \return A reference to this iterator
+      IndexedIterator_& operator-=(const difference_type n) {
+        it_ -= n;
+        return *this;
+      }
+
+      /// Base iterator accessor
+
+      /// \return A reference to the base iterator
+      Iterator& base() { return it_; }
+
+      /// Base iterator const accessor
+
+      /// \return A const reference to the base iterator
+      const Iterator& base() const { return it_; }
 
       /// Index accessor
 
       /// \return The index associated with the iterator.
       const index_type& index() const {
-        return iterator_adaptor_::base_reference()->first;
+        return it_->first;
       }
 
+      /// Increment operator
+
+      /// Increment the iterator
+      /// \return The modified iterator
+      IndexedIterator_& operator++() {
+        ++it_;
+        return *this;
+      }
+
+      /// Increment operator
+
+      /// Increment the iterator
+      /// \return An unmodified copy of the iterator
+      IndexedIterator_ operator++(int) {
+        IndexedIterator_ temp(it_++);
+        return temp;
+      }
+
+      /// Decrement operator
+
+      /// Decrement the iterator
+      /// \return The modified iterator
+      IndexedIterator_& operator--() {
+        --it_;
+        return *this;
+      }
+
+      /// Decrement operator
+
+      /// Decrement the iterator
+      /// \return An unmodified copy of the iterator
+      IndexedIterator_ operator--(int) {
+        IndexedIterator_ temp(it_--);
+        return temp;
+      }
+
+      /// Dereference operator
+
+      /// \return A \c reference to the current data
+      reference operator*() const { return it_->second; }
+
+      /// Pointer operator
+
+      /// \return A \c pointer to the current data
+      pointer operator->() const { return &(it_->second); }
+
+      /// Offset dereference operator
       reference operator[] (difference_type n) const
-      { return static_cast<reference>(iterator_adaptor_::operator[](n)); }
+      { return it_[n].second; }
 
     private:
-      /// Returns a reference to the iterator data.
-      reference dereference() const { return iterator_adaptor_::base_reference()->second; }
 
-      friend class boost::iterator_core_access;
+      base_type it_;
     }; // class IndexedIterator
+
+    /// IndexedIterator equality operator
+
+    /// Compares the iterators for equality.
+    /// \tparam LeftIt The left-hand base iterator type
+    /// \tparam RightIt The right-hand base iterator type
+    /// \param left_it The left-hand iterator to be compared
+    /// \param right_it The right-hand iterator to be compared
+    /// \return \c true if the the base iterators of \c left_it and \c right_it
+    /// are equal, otherwise \c false .
+    template <typename LeftIt, typename RightIt>
+    bool operator==(const IndexedIterator<LeftIt>& left_it, const IndexedIterator<RightIt>& right_it) {
+      return left_it.base() == right_it.base();
+    }
+
+    /// IndexedIterator inequality operator
+
+    /// Compares the iterators for inequality.
+    /// \tparam LeftIt The left-hand base iterator type
+    /// \tparam RightIt The right-hand base iterator type
+    /// \param left_it The left-hand iterator to be compared
+    /// \param right_it The right-hand iterator to be compared
+    /// \return \c true if the the base iterators of \c left_it and \c right_it
+    /// are not equal, otherwise \c false .
+    template <typename LeftIt, typename RightIt>
+    bool operator!=(const IndexedIterator<LeftIt>& left_it, const IndexedIterator<RightIt>& right_it) {
+      return left_it.base() != right_it.base();
+    }
+
+    /// IndexedIterator less-than operator
+
+    /// Check that the left-hand iterator is less than the right-hand iterator.
+    /// \tparam LeftIt The left-hand base iterator type
+    /// \tparam RightIt The right-hand base iterator type
+    /// \param left_it The left-hand iterator to be compared
+    /// \param right_it The right-hand iterator to be compared
+    /// \return \c true if the the base iterators of \c left_it is less than
+    /// \c right_it , otherwise \c false .
+    template <typename LeftIt, typename RightIt>
+    bool operator<(const IndexedIterator<LeftIt>& left_it, const IndexedIterator<RightIt>& right_it) {
+      return left_it.base() < right_it.base();
+    }
+
+    /// IndexedIterator greater-than operator
+
+    /// Check that the left-hand iterator is greater than the right-hand iterator.
+    /// \tparam LeftIt The left-hand base iterator type
+    /// \tparam RightIt The right-hand base iterator type
+    /// \param left_it The left-hand iterator to be compared
+    /// \param right_it The right-hand iterator to be compared
+    /// \return \c true if the the base iterators of \c left_it is greater than
+    /// \c right_it , otherwise \c false .
+    template <typename LeftIt, typename RightIt>
+    bool operator>(const IndexedIterator<LeftIt>& left_it, const IndexedIterator<RightIt>& right_it) {
+      return left_it.base() > right_it.base();
+    }
+
+    /// IndexedIterator less-than-or-equal to operator
+
+    /// Check that the left-hand iterator is less than or equal to the
+    /// right-hand iterator.
+    /// \tparam LeftIt The left-hand base iterator type
+    /// \tparam RightIt The right-hand base iterator type
+    /// \param left_it The left-hand iterator to be compared
+    /// \param right_it The right-hand iterator to be compared
+    /// \return \c true if the the base iterators of \c left_it is less than or
+    /// equal to \c right_it , otherwise \c false .
+    template <typename LeftIt, typename RightIt>
+    bool operator<=(const IndexedIterator<LeftIt>& left_it, const IndexedIterator<RightIt>& right_it) {
+      return left_it.base() <= right_it.base();
+    }
+
+    /// IndexedIterator greater-than-or-equal to operator
+
+    /// Check that the left-hand iterator is greater than or equal to the
+    /// right-hand iterator.
+    /// \tparam LeftIt The left-hand base iterator type
+    /// \tparam RightIt The right-hand base iterator type
+    /// \param left_it The left-hand iterator to be compared
+    /// \param right_it The right-hand iterator to be compared
+    /// \return \c true if the the base iterators of \c left_it is greater than
+    /// or equal to \c right_it , otherwise \c false .
+    template <typename LeftIt, typename RightIt>
+    bool operator>=(const IndexedIterator<LeftIt>& left_it, const IndexedIterator<RightIt>& right_it) {
+      return left_it.base() >= right_it.base();
+    }
+
+    /// IndexedIterator addition operator
+
+    /// \tparam It The base iterator type
+    /// \param n The distance to advance it
+    /// \param it The iterator to be advanced
+    /// \return A copy of \c it that has been advanced by \c n.
+    template <typename It>
+    IndexedIterator<It> operator+(const typename IndexedIterator<It>::difference_type n, const IndexedIterator<It>& it) {
+      return IndexedIterator<It>(n + it.base());
+    }
+
+    /// IndexedIterator addition operator
+
+    /// \tparam It The base iterator type
+    /// \param it The iterator to be advanced
+    /// \param n The distance to advance it
+    /// \return A copy of \c it that has been advanced by \c n.
+    template <typename It>
+    IndexedIterator<It> operator+(const IndexedIterator<It>& it, const typename IndexedIterator<It>::difference_type& n) {
+      return IndexedIterator<It>(it.base() + n);
+    }
+
+    /// IndexedIterator difference operator
+
+    /// \tparam LeftIt The left base iterator type
+    /// \tparam RightIt The right base iterator type
+    /// \param left_it The left-hand iterator
+    /// \param right_it The right-hand iterator
+    /// \return The distance between \c left_it and \c right_it .
+    template <typename LeftIt, typename RightIt>
+    typename IndexedIterator<LeftIt>::difference_type operator-(const IndexedIterator<LeftIt>& left_it, const IndexedIterator<RightIt>& right_it) {
+      return left_it.base() - right_it.base();
+    }
+
+    /// IndexedIterator inverse advance operator
+
+    /// \tparam It The base iterator type
+    /// \param it The iterator to be advanced
+    /// \param n The distance to advance it
+    /// \return A copy of \c it that has been advanced by \c -n .
+    template <typename It>
+    IndexedIterator<It> operator-(const IndexedIterator<It>& it, const typename IndexedIterator<It>::difference_type& n) {
+      return IndexedIterator<It>(it.base() - n);
+    }
 
   } // namespace detail
 }  // namespace TiledArray

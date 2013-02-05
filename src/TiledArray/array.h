@@ -1,20 +1,9 @@
 #ifndef TILEDARRAY_ARRAY_H__INCLUDED
 #define TILEDARRAY_ARRAY_H__INCLUDED
 
-#include <TiledArray/array_impl.h>
-#include <TiledArray/type_traits.h>
-#include <TiledArray/annotated_array.h>
-#include <TiledArray/blocked_pmap.h>
-#include <world/shared_ptr.h>
-#include <world/worlddc.h>
+#include <TiledArray/annotated_tensor.h>
 
 namespace TiledArray {
-
-  namespace expressions {
-
-    template <typename> class ReadableTiledTensor;
-
-  }  // namespace expressions
 
   /// An n-dimensional, tiled array
 
@@ -22,131 +11,36 @@ namespace TiledArray {
   /// \tparam T The element type of for array tiles
   /// \tparam Coordinate system type
   /// \tparam Policy class for the array
-  template <typename T, typename CS>
+  template <typename T, unsigned int DIM, typename Tile = expressions::Tensor<T> >
   class Array {
-  private:
-    typedef detail::ArrayImpl<T, CS> impl_type;
-    typedef detail::DenseArrayImpl<T,CS> dense_impl_type;
-    typedef detail::SparseArrayImpl<T,CS> sparse_impl_type;
-
   public:
-    typedef Array<T, CS> Array_; ///< This object's type
-    typedef CS coordinate_system; ///< The array coordinate system
-
-    typedef std::size_t volume_type; ///< Array volume type
-    typedef typename coordinate_system::index index; ///< Array coordinate index type
-    typedef std::size_t ordinal_index; ///< Array ordinal index type
-    typedef std::size_t size_type; ///< Size type
-    typedef typename coordinate_system::size_array size_array; ///< Size array type
-
+    typedef Array<T, DIM, Tile> Array_; ///< This object's type
+    typedef detail::TensorImpl<Tile> impl_type;
+    typedef T element_type; ///< The tile element type
+    typedef typename impl_type::trange_type trange_type; ///< Tile range type
+    typedef typename impl_type::range_type range_type; ///< Range type for tiles
+    typedef typename impl_type::range_type::index index; ///< Array coordinate index type
+    typedef typename impl_type::size_type size_type; ///< Size type
     typedef typename impl_type::value_type value_type; ///< Tile type
-    typedef typename impl_type::future future; ///< Future of \c value_type
-    typedef future reference; ///< \c future type
-    typedef future const_reference; ///< \c future type
-
-    typedef StaticTiledRange<CS> trange_type; ///< Tile range type
-    typedef typename trange_type::range_type range_type; ///< Range type for tiles
-    typedef typename trange_type::tile_range_type tile_range_type; ///< Range type for elements
-
+    typedef typename impl_type::reference future; ///< Future of \c value_type
+    typedef typename impl_type::reference reference; ///< \c future type
+    typedef typename impl_type::const_reference const_reference; ///< \c future type
     typedef typename impl_type::iterator iterator; ///< Local tile iterator
     typedef typename impl_type::const_iterator const_iterator; ///< Local tile const iterator
-
-    typedef typename impl_type::pmap_interface pmap_interface;
-
-  private:
-
-    /// Task functor used to initialize Array tiles.
-    class InsertTiles {
-    public:
-      /// Constructor
-
-      /// \param a A pointer to the array to initialize
-      InsertTiles(Array_* a) : array_(a) { }
-
-      /// Initialize the tile given by the iterator \c it
-
-      /// \tparam It The iterator type
-      /// \param it The iterator that points to the tile to initialize
-      /// \return true
-      template <typename It>
-      typename madness::enable_if<detail::is_input_iterator<It>, bool>::type
-      operator()(const It& it) const { return insert(*it); }
-
-      /// Initialize the tile given by the ordinal index \c i
-
-      /// \param i The ordinal index of the tile to initialize
-      /// \return true
-      bool operator()(ordinal_index i) const { return insert(i); }
-
-      /// Initialize the tile given by the index \c i
-
-      /// \param i The index of the tile to initialize
-      /// \return true
-      bool operator()(const index& i) const { return insert(i); }
-
-    private:
-
-      /// Insert tile \c i into the array
-
-      /// \tparam Index The index type
-      /// \param
-      template<typename Index>
-      bool insert(const Index& i) const {
-        TA_ASSERT(array_->range().includes(i));
-
-        if(array_->is_local(i))
-          return array_->pimpl_->insert(i);
-
-        return true;
-      }
-
-      Array_* array_;
-    };
-
-
-    // Initialize the array tiles.
-    template <typename It>
-    void init(const madness::Range<It>& range) {
-      // Spawn tasks to initialize the tiles
-      madness::Future<bool> done = get_world().taskq.for_each(range, InsertTiles(this));
-
-      // Wait for everyone to finish initializing tiles (work while we wait).
-      done.get();
-      TA_ASSERT(done.get());
-
-      // Process pending messages.
-      pimpl_->process_pending();
-    }
-
-    void init(const detail::Bitset<>& shape) {
-      std::vector<std::size_t> init_list;
-      for(std::size_t i = 0; i < range().volume(); ++i) {
-        if(shape[i])
-          init_list.push_back(i);
-      }
-
-      init(madness::Range<std::vector<std::size_t>::const_iterator >(init_list.begin(), init_list.end()));
-    }
-
-    struct Enabler { };
-
-  public:
+    typedef typename impl_type::pmap_interface pmap_interface; ///< Process map interface type
 
     /// Dense array constructor
 
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
-    template <typename R>
-    Array(madness::World& w, const TiledRange<R>& tr, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-        pimpl_(new dense_impl_type(w, tr, make_pmap(pmap, w, tr.tiles().volume())),
-            madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const trange_type& tr, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+        pimpl_(new impl_type(w, tr, 0), madness::make_deferred_deleter<impl_type>(w))
     {
-//      init(madness::Range<ProcessID>(0, range().volume()));
+      pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
     /// Sparse array constructor
 
-    /// \tparam R The tiled range derived type
     /// \tparam InIter Input iterator type
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
@@ -154,30 +48,33 @@ namespace TiledArray {
     /// added to the sparse array.
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
-    template <typename R, typename InIter>
-    Array(madness::World& w, const TiledRange<R>& tr, InIter first, InIter last, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-        pimpl_(new sparse_impl_type(w, tr, make_pmap(pmap, w, tr.tiles().volume()),
-            make_shape(w, tr, first, last)), madness::make_deferred_deleter<impl_type>(w))
-    {
-//      init(madness::Range<InIter>(first, last));
-    }
-
-    template <typename R>
-    Array(madness::World& w, const TiledRange<R>& tr, const detail::Bitset<>& shape,
-        const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-        pimpl_(new sparse_impl_type(w, tr, make_pmap(pmap, w, tr.tiles().volume()), shape),
+    template <typename InIter>
+    Array(madness::World& w, const trange_type& tr, InIter first, InIter last,
+          const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+        pimpl_(new impl_type(w, tr, make_shape(w, tr, first, last)),
             madness::make_deferred_deleter<impl_type>(w))
     {
-//      init(get_shape());
+      pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
+    }
+
+    Array(madness::World& w, const trange_type& tr, const detail::Bitset<>& shape,
+        const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+        pimpl_(new impl_type(w, tr, shape),
+            madness::make_deferred_deleter<impl_type>(w))
+    {
+      pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
     /// Copy constructor
 
     /// This is a shallow copy, that is no data is copied.
     /// \param other The array to be copied
-    Array(const Array_& other) :
-      pimpl_(other.pimpl_)
-    { }
+    Array(const Array_& other) : pimpl_(other.pimpl_) { }
+
+    /// Construct Array from a pimpl
+
+    /// \param pimpl The implementation pointer
+    Array(const std::shared_ptr<impl_type>& pimpl) : pimpl_(pimpl) { }
 
     /// Copy constructor
 
@@ -188,13 +85,10 @@ namespace TiledArray {
       return *this;
     }
 
-    template <typename Derived>
-    Array_& operator=(expressions::ReadableTiledTensor<Derived>& other) {
-      Array_(other.derived()).swap(*this);
-      return *this;
-    }
+    /// Evaluate this object
 
-    madness::Future<bool> eval() { return pimpl_->eval(pimpl_); }
+    /// \return A future that is set when the array evaluation is complete
+    madness::Future<bool> eval() { return madness::Future<bool>(true); }
 
     /// Begin iterator factory function
 
@@ -220,55 +114,54 @@ namespace TiledArray {
 
     /// \tparam Index The index type
     template <typename Index>
-    madness::Future<value_type> find(const Index& i) const { return pimpl_->find(i); }
+    madness::Future<value_type> find(const Index& i) const { return pimpl_->operator[](i); }
 
     /// Set the data of tile \c i
 
     /// \tparam Index \c index or an integral type
     /// \tparam InIter An input iterator
+    /// \param i The index of the tile to be set
+    /// \param first The iterator that points to the new tile data
     template <typename Index, typename InIter>
     typename madness::enable_if<detail::is_input_iterator<InIter> >::type
-    set(const Index& i, InIter first) { pimpl_->set(i, first); }
+    set(const Index& i, InIter first) {
+      value_type temp(pimpl_->trange().make_tile_range(i), first);
+      pimpl_->set(i, madness::move(temp));
+    }
 
     template <typename Index>
-    void set(const Index& i, const T& v = T()) { pimpl_->set(i, v); }
+    void set(const Index& i, const T& v = T()) {
+      value_type temp(pimpl_->trange().make_tile_range(i), v);
+      pimpl_->set(i, madness::move(temp));
+    }
 
+    /// Set tile \c i with future \c f
+
+    /// \tparam Index The index type (i.e. index or size_type)
+    /// \param i The tile index to be set
     template <typename Index>
     void set(const Index& i, const madness::Future<value_type>& f) { pimpl_->set(i, f); }
 
-  private:
-    template <typename U>
-    static value_type value_convert(const U& u) {
-      return value_type(u);
-    }
+    /// Set tile \c i to value \c v
 
-  public:
-    template <typename Index, typename U>
-    void set(const Index& i, const madness::Future<U>& f) {
-      if(f.probe())
-        pimpl_->set(i, value_type(f.get()));
-      else {
-        // Todo: There is no way to set a future with with an object that is not
-        // the futures type. So we use a task to make a new future of the correct
-        // type.
-        madness::Future<value_type> result =
-            get_world().taskq.add(&value_convert<U>, f, madness::TaskAttributes::hipri());
-        pimpl_->set(i, result);
-      }
-    }
-
+    /// \tparam Index The index type (i.e. index or size_type)
+    /// \param i The tile index to be set
+    /// \param v The tile value
     template <typename Index>
     void set(const Index& i, const value_type& v) { pimpl_->set(i, v); }
 
     void set_all_local(const T& v = T()) {
-      pimpl_->get_world().taskq.add(& init_tiles, pimpl_, v, pimpl_->eval(pimpl_),
-          madness::TaskAttributes::hipri());
-    }
+      typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
+      const typename pmap_interface::const_iterator end = pimpl_->pmap()->end();
 
-    template <typename Index, typename Value, typename InIter, typename Op>
-    void reduce(const Index& i, const Value& value, InIter first, InIter last, Op op) {
-      TA_ASSERT(pimpl_);
-      pimpl_->reduce(i, value, op, first, last);
+      if(pimpl_->is_dense()) {
+        for(; it != end; ++it)
+          set(*it, v);
+      } else {
+        for(; it != end; ++it)
+          if(! pimpl_->is_zero(*it))
+            set(*it, v);
+      }
     }
 
     /// Tiled range accessor
@@ -277,14 +170,14 @@ namespace TiledArray {
     /// \throw nothing
     const trange_type& trange() const {
       TA_ASSERT(pimpl_);
-      return pimpl_->tiling();
+      return pimpl_->trange();
     }
 
     /// Tile range accessor
 
     /// \return A const reference to the range object for the array tiles
     /// \throw nothing
-    const range_type& tiles() const { return pimpl_->tiles(); }
+    const range_type& tiles() const { return pimpl_->range(); }
 
     /// Tile range accessor
 
@@ -296,24 +189,26 @@ namespace TiledArray {
 
     /// \return A const reference to the range object for the array elements
     /// \throw nothing
-    const tile_range_type& elements() const { return pimpl_->elements(); }
+    const typename trange_type::tile_range_type& elements() const { return pimpl_->trange().elements(); }
 
-    size_type size() const { return pimpl_->tiles().volume(); }
+    size_type size() const { return pimpl_->size(); }
 
-    /// Create an annotated array
+    /// Create an annotated tensor
 
     /// \param v A string with a comma-separated list of variables
-    /// \return An annotated array object that references this array
-    expressions::AnnotatedArray<Array_> operator ()(const std::string& v) const {
-      return expressions::make_annotatied_array(*this, v);
+    /// \return An annotated tensor object that references this array
+    expressions::TensorExpression<expressions::Tensor<T> >
+    operator ()(const std::string& v) const {
+      return expressions::make_annotatied_tensor(*this, v);
     }
 
-    /// Create an annotated array
+    /// Create an annotated tensor
 
     /// \param v A variable list object
-    /// \return An annotated array object that references this array
-    expressions::AnnotatedArray<Array_> operator ()(const expressions::VariableList& v) const {
-      return expressions::make_annotatied_array(*this, v);
+    /// \return An annotated tensor object that references this array
+    expressions::TensorExpression<expressions::Tensor<T> >
+    operator ()(const expressions::VariableList& v) const {
+      return expressions::make_annotatied_tensor(*this, v);
     }
 
     /// World accessor
@@ -324,7 +219,7 @@ namespace TiledArray {
     /// Process map accessor
 
     /// \return A reference to the world that owns this array.
-    const std::shared_ptr<pmap_interface>& get_pmap() const { return pimpl_->get_pmap(); }
+    const std::shared_ptr<pmap_interface>& get_pmap() const { return pimpl_->pmap(); }
 
     /// Check dense/sparse quary
 
@@ -340,7 +235,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When the Array is dense.
     const detail::Bitset<>& get_shape() const {
       TA_ASSERT(! is_dense());
-      return pimpl_->get_shape();
+      return pimpl_->shape();
     }
 
     /// Tile ownership
@@ -370,33 +265,34 @@ namespace TiledArray {
 
   private:
 
-    class InitTile {
-    public:
-      InitTile(const std::shared_ptr<impl_type>& pimpl, const T& v) : pimpl_(pimpl), value_(v) { }
+    /// Construct a process map
 
-      bool operator()(iterator it) const {
-        it->set(value_type(pimpl_->tiling().make_tile_range(it.index()), value_));
-        return true;
-      }
-
-    private:
-      std::shared_ptr<impl_type> pimpl_;
-      T value_;
-    }; // class InitTile
-
-    static void init_tiles(const std::shared_ptr<impl_type>& pimpl, const T& value, bool) {
-      pimpl->get_world().taskq.for_each(madness::Range<iterator>(pimpl->begin(),
-          pimpl->end()), InitTile(pimpl, value));
-    }
-
-    static std::shared_ptr<pmap_interface> make_pmap(std::shared_ptr<pmap_interface> pmap, madness::World& w, size_type volume) {
+    /// If \c pmap is a valid process map pointer, a copy is returned. Otherwise,
+    /// a new process map is constructed.
+    /// \param pmap The default process map
+    /// \param world The world of the process map
+    /// \param volume The number of tiles in the array
+    /// \return A shared pointer to a process map
+    static std::shared_ptr<pmap_interface>
+    make_pmap(std::shared_ptr<pmap_interface> pmap, madness::World& world, const size_type volume) {
       if(! pmap)
-        pmap.reset(new detail::BlockedPmap(w, volume));
+        pmap.reset(new detail::BlockedPmap(world, volume));
       return pmap;
     }
 
+    /// Construct a shape from a list of tile indices
+
+    /// Construct a shape for the array that contains the tiles given by the list
+    /// of indexes or offsets.
+    /// \tparam InIter Input interator type
+    /// \param world The world of this array
+    /// \param tr Tile range object for this array
+    /// \param first Iterator pointing to a list of tiles to be included in the array
+    /// \param last Iterator pointing to a list of tiles to be included in the array
+    /// \return A bitset that represents the array shape
     template <typename InIter>
-    static detail::Bitset<> make_shape(madness::World& world, const trange_type& tr, InIter first, InIter last) {
+    static detail::Bitset<>
+    make_shape(madness::World& world, const trange_type& tr, InIter first, InIter last) {
       detail::Bitset<> shape(tr.tiles().volume());
 
       for(; first != last; ++first)
@@ -408,9 +304,7 @@ namespace TiledArray {
       return shape;
     }
 
-    ProcessID rank() const { return pimpl_->get_world().rank(); }
-
-    std::shared_ptr<impl_type> pimpl_;
+    std::shared_ptr<impl_type> pimpl_; ///< Array implementation pointer
   }; // class Array
 
   /// Add the tensor to an output stream
@@ -423,8 +317,8 @@ namespace TiledArray {
   /// \param os The output stream
   /// \param a The array to be put in the output stream
   /// \return A reference to the output stream
-  template <typename T, typename CS>
-  inline std::ostream& operator<<(std::ostream& os, const Array<T, CS>& a) {
+  template <typename T, unsigned int DIM>
+  inline std::ostream& operator<<(std::ostream& os, const Array<T, DIM>& a) {
     if(a.get_world().rank() == 0) {
       for(std::size_t i = 0; i < a.size(); ++i)
         if(! a.is_zero(i))
@@ -433,30 +327,6 @@ namespace TiledArray {
     return os;
   }
 
-  namespace expressions {
-
-    template <typename Derived>
-    template <typename T, typename CS>
-    TiledTensor<Derived>::operator Array<T, CS>()  {
-      // Evaluate this tensor and wait
-      derived().eval(derived().vars(),
-          std::shared_ptr<TiledArray::Pmap<size_type> >(
-          new TiledArray::detail::BlockedPmap(derived().get_world(),
-          derived().size()))).get();
-
-      if(is_dense()) {
-        Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_pmap()->clone());
-        derived().eval_to(result);
-        return result;
-      } else {
-        Array<T, CS> result(derived().get_world(), derived().trange(), derived().get_shape(), derived().get_pmap()->clone());
-        derived().eval_to(result);
-        return result;
-      }
-    }
-
-  }  // namespace expressions
 } // namespace TiledArray
-
 
 #endif // TILEDARRAY_ARRAY_H__INCLUDED

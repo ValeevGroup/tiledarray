@@ -10,10 +10,9 @@
 using namespace TiledArray;
 
 struct RangeFixture {
-  typedef StaticRange<GlobalFixture::coordinate_system> RangeN;
-  typedef RangeN::size_array size_array;
-  typedef RangeN::index index;
-  typedef RangeN::size_type size_type;
+  typedef Range::size_array size_array;
+  typedef Range::index index;
+  typedef Range::size_type size_type;
 
   static const index start;
   static const index finish;
@@ -28,44 +27,19 @@ struct RangeFixture {
   static const index p5;
   static const index p6;
 
-  RangeFixture() { }
+  RangeFixture() : r(start, finish) { }
 
   ~RangeFixture() { }
 
   static size_array calc_weight(const size_array& size) {
-    size_array weight;
+    size_array weight(size.size());
     TiledArray::detail::calc_weight(weight, size);
     return weight;
   }
 
-  static std::vector<std::size_t> calc_weight(const std::vector<std::size_t>& size) {
-    std::vector<std::size_t> weight(size.size());
-    TiledArray::detail::calc_weight(weight, size);
-    return weight;
-  }
-
+  Range r;
 };
 
-struct StaticRangeFixture : public RangeFixture {
-  typedef StaticRange<GlobalFixture::coordinate_system> StaticRangeN;
-  typedef StaticRangeN::size_array size_array;
-  typedef StaticRangeN::index index;
-  typedef StaticRangeN::size_type size_type;
-
-  StaticRangeFixture();
-
-  StaticRangeN r;
-};
-
-
-struct DynamicRangeFixture : public RangeFixture {
-  typedef DynamicRange::size_array size_array;
-  typedef DynamicRange::size_type size_type;
-
-  DynamicRangeFixture();
-
-  DynamicRange r;
-};
 
 struct Range1Fixture {
 
@@ -95,18 +69,20 @@ struct Range1Fixture {
 };
 
 struct TiledRangeFixtureBase : public Range1Fixture {
-  TiledRangeFixtureBase() : dims(GlobalFixture::coordinate_system::dim, tr1) { }
+  TiledRangeFixtureBase() : dims(GlobalFixture::dim, tr1) { }
   std::vector<TiledRange1> dims;
 }; // struct TiledRangeFixtureBase
 
-struct TiledRangeFixture : public StaticRangeFixture, public TiledRangeFixtureBase {
-  typedef StaticTiledRange<GlobalFixture::coordinate_system> TRangeN;
+struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
+  typedef TiledRange TRangeN;
   typedef TRangeN::tile_range_type::index tile_index;
 
 
   TiledRangeFixture() :
-    tile_range(TiledRangeFixture::index(0), TiledRangeFixture::index(5)),
-    element_range(TiledRangeFixture::tile_index(0), TiledRangeFixture::tile_index(a[5])),
+    tile_range(TiledRangeFixture::index(GlobalFixture::dim, 0),
+        TiledRangeFixture::index(GlobalFixture::dim, 5)),
+    element_range(TiledRangeFixture::tile_index(GlobalFixture::dim, 0),
+        TiledRangeFixture::tile_index(GlobalFixture::dim, a[5])),
     tr(dims.begin(), dims.end())
   { }
 

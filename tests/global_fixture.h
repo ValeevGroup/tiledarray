@@ -1,7 +1,6 @@
 #ifndef TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 
-#include "TiledArray/coordinate_system.h"
 #include <world/stdarray.h>
 
 namespace madness {
@@ -9,7 +8,7 @@ namespace madness {
 } // namespace madness
 
 #ifndef TEST_DIM
-#define TEST_DIM 3U
+#define TEST_DIM 3u
 #endif
 #if TEST_DIM > 20
 #error "TEST_DIM cannot be greater than 20"
@@ -19,8 +18,7 @@ struct GlobalFixture {
   GlobalFixture();
   ~GlobalFixture();
 
-  typedef TiledArray::CoordinateSystem<TEST_DIM, 1U> coordinate_system;
-  typedef TiledArray::CoordinateSystem<TEST_DIM, 0U> element_coordinate_system;
+  static const unsigned int dim = TEST_DIM ;
 
   static madness::World* world;
   static unsigned int count;

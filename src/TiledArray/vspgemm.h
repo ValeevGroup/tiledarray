@@ -15,7 +15,7 @@ namespace TiledArray {
       typedef madness::WorldObject<VSpGemm<Left, Right> > WorldObject_; ///< Madness world object base class
       typedef ContractionTensorImpl<Left, Right> ContractionTensorImpl_;
       typedef typename ContractionTensorImpl_::TensorExpressionImpl_ TensorExpressionImpl_;
-      typedef typename TensorExpressionImpl_::TensorImplBase_ TensorImplBase_;
+      typedef typename TensorExpressionImpl_::TensorImpl_ TensorImpl_;
 
     public:
       typedef VSpGemm<Left, Right> VSpGemm_; ///< This object type
@@ -162,9 +162,8 @@ namespace TiledArray {
 
         // Get the remote tile
         typename Cache::accessor acc;
-        if(cache.insert(acc, i)) {
+        if(cache.insert(acc, i))
           acc->second = arg[i];
-        }
         return acc->second;
       }
 
@@ -216,6 +215,7 @@ namespace TiledArray {
         WorldObject_::process_pending();
       }
 
+      /// Virtual destructor
       virtual ~VSpGemm() { }
 
     private:
@@ -252,7 +252,7 @@ namespace TiledArray {
         // Spawn task for local tile evaluation
         for(size_type i = rank_row_; i < m_; i += proc_rows_)
           for(size_type j = rank_col_; j < n_; j += proc_cols_) {
-            if(! TensorImplBase_::is_zero(TensorExpressionImpl_::perm_index(i * n_ + j))) {
+            if(! TensorImpl_::is_zero(TensorExpressionImpl_::perm_index(i * n_ + j))) {
               WorldObject_::task(rank_, & VSpGemm_::dot_product, i, j);
             } else if((count_--) == 1) {
               // Cleanup data for children if this is the last tile

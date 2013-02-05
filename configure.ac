@@ -21,12 +21,15 @@ AC_PROG_CXX([$MPICXX])
 CFLAGS="$initial_CFLAGS"
 CXXFLAGS="$initial_CXXFLAGS"
 
+AC_CHECK_TYPE([long double], AC_DEFINE([TILEDARRAY_HAS_LONG_DOUBLE],[1],[define if compiler supports long double.]), [x = 0] )
+AC_CHECK_TYPE([long long int], AC_DEFINE([TILEDARRAY_HAS_LONG_LONG],[1],[define if compiler supports long long.]), [x = 0] )
+
 # Set compiler standard
 ACX_ENABLE_CXXFLAGS_ARG([cplusplus0x], [-std], [c++0x], [no])
 
-# Check for C++0x language features
-ACX_CHECK_VARIADIC_TEMPLATE
-ACX_CHECK_RVALUE_REF
+# Check for C++11 language features
+#ACX_CHECK_VARIADIC_TEMPLATE
+#ACX_CHECK_RVALUE_REF
 ACX_CHECK_STATIC_ASSERT
 
 # Set debugging
@@ -67,7 +70,7 @@ ACX_CHECK_MADNESS
 # option. 
 ACX_CHECK_BOOST
 ACX_WITH_BOOST_TEST_LIB
-ACX_WITH_CBLAS
+ACX_WITH_BLAS
 
 # Display options
 AC_MSG_NOTICE([CPPFLAGS = $CPPFLAGS])

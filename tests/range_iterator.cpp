@@ -1,6 +1,6 @@
 #include "TiledArray/range_iterator.h"
-#include <boost/type_traits/is_same.hpp>
 #include "unit_test_config.h"
+#include <world/type_traits.h>
 
 using TiledArray::detail::RangeIterator;
 
@@ -43,11 +43,11 @@ struct RangeIteratorFixture {
 BOOST_FIXTURE_TEST_SUITE( range_iterator_suite , RangeIteratorFixture )
 
 // Check iterator typedefs
-TA_STATIC_ASSERT( (boost::is_same<RangeIterator<int, FakeRange>::value_type, int>::value) );
-TA_STATIC_ASSERT( (boost::is_same<RangeIterator<int, FakeRange>::reference, const int&>::value) );
-TA_STATIC_ASSERT( (boost::is_same<RangeIterator<int, FakeRange>::pointer, const int*>::value) );
-TA_STATIC_ASSERT( (boost::is_same<RangeIterator<int, FakeRange>::iterator_category, std::input_iterator_tag>::value) );
-TA_STATIC_ASSERT( (boost::is_same<RangeIterator<int, FakeRange>::difference_type, std::ptrdiff_t>::value) );
+TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::value_type, int>::value) );
+TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::reference, const int&>::value) );
+TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::pointer, const int*>::value) );
+TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::iterator_category, std::input_iterator_tag>::value) );
+TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::difference_type, std::ptrdiff_t>::value) );
 
 BOOST_AUTO_TEST_CASE( rvalue_derefence )
 {

@@ -1,11 +1,11 @@
-#include "TiledArray/annotated_array.h"
+#include "TiledArray/annotated_tensor.h"
 #include "unit_test_config.h"
 #include "array_fixture.h"
 
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
-std::string AnnotatedArrayFixture::make_var_list(std::size_t first, std::size_t last) {
+std::string AnnotatedTensorFixture::make_var_list(std::size_t first, std::size_t last) {
   assert(abs(last - first) <= 24);
   assert(last < 24);
 
@@ -20,7 +20,7 @@ std::string AnnotatedArrayFixture::make_var_list(std::size_t first, std::size_t 
 }
 
 
-BOOST_FIXTURE_TEST_SUITE( annotated_array_suite , AnnotatedArrayFixture )
+BOOST_FIXTURE_TEST_SUITE( annotated_tensor_suite , AnnotatedTensorFixture )
 
 BOOST_AUTO_TEST_CASE( range_accessor )
 {
@@ -51,8 +51,8 @@ BOOST_AUTO_TEST_CASE( tile_data )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
-  BOOST_REQUIRE_NO_THROW(array_annotation at1(a, vars));
-  array_annotation at1(a, vars);
+  BOOST_REQUIRE_NO_THROW(array_annotation at1(expressions::make_annotatied_tensor(a, vars)));
+  array_annotation at1(expressions::make_annotatied_tensor(a, vars));
   BOOST_CHECK_EQUAL(at1.range(), a.range());
   BOOST_CHECK_EQUAL(at1.size(), r.volume());
   BOOST_CHECK_EQUAL(at1.vars(), vars);

@@ -3,6 +3,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/math.h>
 #include <world/archive.h>
 #include <Eigen/Core>
 #include <cstddef>
@@ -46,9 +47,9 @@ namespace TiledArray {
 
     /// \param other The tile to be copied.
     DenseStorage(const DenseStorage_& other) :
-        allocator_type(other),
-        first_(NULL),
-        last_(NULL)
+      allocator_type(other),
+      first_(NULL),
+      last_(NULL)
     {
       const size_type n = other.size();
       TA_ASSERT(n < allocator_type::max_size());
@@ -76,9 +77,9 @@ namespace TiledArray {
     /// \throw anything Any exception that can be thrown by \c T type default or
     /// copy constructors
     DenseStorage(size_type n, const value_type& val = value_type(), const allocator_type& a = allocator_type()) :
-        allocator_type(a),
-        first_(NULL),
-        last_(NULL)
+      allocator_type(a),
+      first_(NULL),
+      last_(NULL)
     {
       TA_ASSERT(n < allocator_type::max_size());
       if(n) {
@@ -107,10 +108,10 @@ namespace TiledArray {
     /// target tile
     template <typename InIter>
     DenseStorage(size_type n, InIter first, const allocator_type& a = allocator_type(),
-        typename madness::enable_if<detail::is_iterator<InIter>, Enabler>::type = Enabler()) :
-        allocator_type(a),
-        first_(NULL),
-        last_(NULL)
+      typename madness::enable_if<detail::is_iterator<InIter>, Enabler>::type = Enabler()) :
+      allocator_type(a),
+      first_(NULL),
+      last_(NULL)
     {
       TA_ASSERT(n < allocator_type::max_size());
       if(n) {
@@ -143,8 +144,14 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Plus assignment operator
+
+    /// \tparam Arg The other container type
+    /// \param other The data that will be added to this object
+    /// \return This object
     template <typename Arg>
     DenseStorage_& operator+=(const Arg& other) {
+      TA_ASSERT(size() == other.size());
       typename Arg::const_iterator it_other = other.begin();
       for(iterator it = begin(); it != end(); ++it, ++it_other)
         *it += *it_other;
@@ -152,8 +159,14 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Minus assignment operator
+
+    /// \tparam Arg The other container type
+    /// \param other The data that will be subtracted from this object
+    /// \return This object
     template <typename Arg>
     DenseStorage_& operator-=(const Arg& other) {
+      TA_ASSERT(size() == other.size());
       typename Arg::const_iterator it_other = other.begin();
       for(iterator it = begin(); it != end(); ++it, ++it_other)
         *it -= *it_other;
@@ -161,6 +174,10 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Plus shift operator
+
+    /// \param value The shift value
+    /// \return This object
     DenseStorage_& operator+=(const value_type& value) {
       for(iterator it = begin(); it != end(); ++it)
         *it += value;
@@ -168,6 +185,10 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Minus shift operator
+
+    /// \param value The negative shift value
+    /// \return This object
     DenseStorage_& operator-=(const value_type& value) {
       for(iterator it = begin(); it != end(); ++it)
         *it -= value;
@@ -175,10 +196,14 @@ namespace TiledArray {
       return *this;
     }
 
-    DenseStorage_& operator*=(const value_type& value) {
-      for(iterator it = begin(); it != end(); ++it)
-        *it *= value;
+    /// Scale operator
 
+    /// \param value The scaling factor
+    /// \return This object
+    template <typename U>
+    typename madness::enable_if<detail::is_numeric<U>, DenseStorage_&>::type
+    operator*=(const U& value) {
+      math::scale(size(), value, first_);
       return *this;
     }
 
@@ -314,7 +339,7 @@ namespace TiledArray {
 
     /// \param first A pointer to the first element in the memory range to destroy
     /// \param last A pointer to one past the last element in the memory range to destroy
-    static void destroy_(const allocator_type& alloc, pointer first, pointer last) {
+    static void destroy_(allocator_type& alloc, pointer first, pointer last) {
       destroy_aux_(alloc, first, last, std::has_trivial_destructor<value_type>());
     }
 
@@ -324,7 +349,7 @@ namespace TiledArray {
     /// \param first A pointer to the first element in the memory range to destroy
     /// \param last A pointer to one past the last element in the memory range to destroy
     /// \throw nothing
-    static void destroy_aux_(const allocator_type& alloc, pointer first, pointer last, std::false_type) {
+    static void destroy_aux_(allocator_type& alloc, pointer first, pointer last, std::false_type) {
       for(; first != last; ++first)
         alloc.destroy(&*first);
     }

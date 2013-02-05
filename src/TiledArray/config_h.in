@@ -4,14 +4,50 @@
 /* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
 #undef TA_DEFAULT_ERROR
 
-/* Define to 1 if you have the <cblas.h> header file. */
-#undef HAVE_CBLAS_H
+/* Defines when BLAS functions are available. */
+#undef TILEDARRAY_HAS_BLAS
 
-/* Define to 1 if you have the <mkl.h> header file. */
-#undef HAVE_MKL_H
+/* Alias BLAS cdotu function name */
+#undef cdotu
 
-/* Defines when cblas functions are available. */
-#undef TILEDARRAY_HAS_CBLAS
+/* Alias BLAS cgemm function name */
+#undef cgemm
+
+/* Alias BLAS cscal function name */
+#undef cscal
+
+/* Alias BLAS csscal function name */
+#undef csscal
+
+/* Alias BLAS ddot function name */
+#undef ddot
+
+/* Alias BLAS dgemm function name */
+#undef dgemm
+
+/* Alias BLAS dscal function name */
+#undef dscal
+
+/* Alias BLAS sdot function name */
+#undef sdot
+
+/* Alias BLAS sgemm function name */
+#undef sgemm
+
+/* Alias BLAS sscal function name */
+#undef sscal
+
+/* Alias BLAS zdotu function name */
+#undef zdotu
+
+/* Alias BLAS zdscal function name */
+#undef zdscal
+
+/* Alias BLAS zgemm function name */
+#undef zgemm
+
+/* Alias BLAS zscal function name */
+#undef zscal
 
 /* define if compiler has std::identity. */
 #undef TILEDARRAY_HAS_STD_IDENTITY
@@ -30,5 +66,11 @@
 
 /* define if compiler supports static_assert. */
 #undef TILEDARRAY_HAVE_STATIC_ASSERT
+
+/* define if compiler supports long double. */
+#undef TILEDARRAY_HAS_LONG_DOUBLE
+
+/* define if compiler supports long long. */
+#undef TILEDARRAY_HAS_LONG_LONG
 
 #endif // TILEDARRAY_CONFIGURE_H__INCULDED

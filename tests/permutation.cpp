@@ -1,5 +1,5 @@
 #include "TiledArray/permutation.h"
-#include "TiledArray/coordinates.h" // for boost array output
+#include "TiledArray/coordinates.h" // for array output
 #include "unit_test_config.h"
 
 using namespace TiledArray;
@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE( reverse_permutation )
   BOOST_CHECK_EQUAL(p0, p);
 }
 
-BOOST_AUTO_TEST_CASE( boost_array_permutation )
+BOOST_AUTO_TEST_CASE( array_permutation )
 {
   std::array<int, 3> a1 = {{1, 2, 3}};
   std::array<int, 3> ar = {{2, 3, 1}};

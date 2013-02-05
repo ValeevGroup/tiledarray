@@ -2,7 +2,7 @@
 #define TILEDARRAY_REDUCE_TASK_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <world/world.h>
+#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {
@@ -381,7 +381,7 @@ namespace TiledArray {
         this->dec();
         this->dec();
       }
-    }; // class ReducePairTask
+    }; // class ReducePairTaskImpl
 
     /// Reduction task
 

@@ -2,7 +2,7 @@
 #define TILEDARRAY_HASH_PMAP_H__INCLUDED
 
 #include <TiledArray/pmap.h>
-#include <world/world.h>
+#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {
