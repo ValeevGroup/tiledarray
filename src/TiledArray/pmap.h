@@ -41,6 +41,8 @@ namespace TiledArray {
     /// \return \c true when there are no local elements, otherwise \c false .
     virtual bool empty() const = 0;
 
+    virtual bool is_replicated() const { return false; }
+
     /// Begin local element iterator
 
     /// \return An iterator that points to the beginning of the local element set
