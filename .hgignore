@@ -1,0 +1,16 @@
+syntax: regexp
+^autom4te\.cache$
+^aclocal\.m4$
+^configure$
+^.project$
+.*Makefile.in$
+
+
+
+
+syntax: regexp
+^build-aux/depcomp$
+syntax: regexp
+^build-aux/install-sh$
+syntax: regexp
+^build-aux/missing$
