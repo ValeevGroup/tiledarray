@@ -34,7 +34,6 @@ ta_test_SOURCES = ta_test.cpp \
                   array_fixture.h \
                   range_fixture.h \
                   iteration_test.h \
-                  tensor_fixture.h \
                   global_fixture.h \
                   unit_test_config.h
 TESTS = $(check_PROGRAMS)
