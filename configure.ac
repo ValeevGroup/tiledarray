@@ -93,4 +93,6 @@ AC_CONFIG_FILES([
       examples/ta_dgemm/Makefile
       examples/pmap_test/Makefile
     doc/Makefile])
+# There is bug in M4 1.4.6 which is currently the default on OSX which requires
+# A new line after AC_OUTPUT
 AC_OUTPUT
