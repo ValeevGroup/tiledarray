@@ -3,14 +3,8 @@ syntax: regexp
 ^aclocal\.m4$
 ^configure$
 ^.project$
+^.cproject$
 .*Makefile.in$
-
-
-
-
-syntax: regexp
 ^build-aux/depcomp$
-syntax: regexp
 ^build-aux/install-sh$
-syntax: regexp
 ^build-aux/missing$
