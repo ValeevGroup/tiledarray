@@ -73,6 +73,8 @@ namespace TiledArray {
     /// \return An iterator that points to the beginning of the local element set
     virtual const_iterator end() const = 0;
 
+    virtual const std::vector<key_type>& local() const = 0;
+
   }; // class Pmap
 
 }  // namespace TiledArray

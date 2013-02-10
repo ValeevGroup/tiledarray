@@ -103,6 +103,11 @@ namespace TiledArray {
       /// \return An iterator that points to the beginning of the local element set
       const_iterator end() const { return local_.end(); }
 
+      /// Local element vector accessor
+
+      /// \return A const reference to a vector of local elements
+      virtual const std::vector<key_type>& local() const { return local_; }
+
     private:
 
       const std::size_t size_; ///< The number of elements to be mapped
