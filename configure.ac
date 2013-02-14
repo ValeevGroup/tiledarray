@@ -69,12 +69,22 @@ AC_SUBST([MPIEXEC])
 # Set default error checking
 ACX_ENABLE_ERROR_CHECKING
 
-# Check for the presence of doxygen
+# Check for the presence of doxygen and dot
 AC_CHECK_PROGS([DOXYGEN], [doxygen], [:])
+AC_CHECK_PROGS([DOT], [dot], [:])
 if test "$DOXYGEN" = :; then
   AC_MSG_WARN([Doxygen was not found. You will not be able to build the documentation.])
 fi
 AC_SUBST([DOXYGEN])
+AC_SUBST([DOT])
+if test "$DOT" != :; then
+  AC_SUBST([HAVE_DOT], [YES])
+else
+  AC_SUBST([HAVE_DOT], [NO])
+fi
+AM_SUBST_NOTMAKE([DOXYGEN])
+AM_SUBST_NOTMAKE([DOT])
+AM_SUBST_NOTMAKE([HAVE_DOT])
 
 # Check for the presence of Eigen header.
 AC_CHECK_HEADER([Eigen/Core], [], [
