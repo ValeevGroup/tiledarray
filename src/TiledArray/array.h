@@ -21,6 +21,8 @@
 #define TILEDARRAY_ARRAY_H__INCLUDED
 
 #include <TiledArray/annotated_tensor.h>
+#include <TiledArray/replicator.h>
+#include <TiledArray/replicated_pmap.h>
 
 namespace TiledArray {
 
@@ -281,6 +283,27 @@ namespace TiledArray {
 
     /// \param other The array to be swapped with this array.
     void swap(Array_& other) { std::swap(pimpl_, other.pimpl_); }
+
+    /// Convert a distributed \c Array into a replicated array
+    void make_replicated() {
+      if((! pimpl_->pmap()->is_replicated()) && (get_world().size() > 1)) {
+        // Construct a replicated array
+        std::shared_ptr<pmap_interface> pmap(new detail::ReplicatedPmap(get_world(), size()));
+        Array_ result = (is_dense() ? Array_(get_world(), trange(), pmap) : Array_(get_world(), trange(), get_shape(), pmap));
+
+        // Create the replicator object that will do an all-to-all broadcast of
+        // the local tile data.
+        detail::Replicator<Array_>* replicator = new detail::Replicator<Array_>(*this, result);
+
+        // Put the replicator pointer in the defered cleanup object so it will
+        // be deleted at the end of the next fence.
+        madness::DeferredDeleter<detail::Replicator<Array_> > deleter =
+            madness::make_deferred_deleter<detail::Replicator<Array_> >(get_world());
+        deleter(replicator);
+
+        result.swap(*this);
+      }
+    }
 
   private:
 

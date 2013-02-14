@@ -122,7 +122,7 @@ namespace TiledArray {
 
       /// \return The number of tiles in the tensor
       /// \throw nothing
-      size_type size() const { return data_.max_size(); }
+      size_type size() const { return trange_.tiles().volume(); }
 
       /// Local element count
 
