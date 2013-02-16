@@ -259,7 +259,7 @@ namespace TiledArray {
       return *this;
     }
 
-    /// calculate the ordinal index of /c i
+    /// calculate the ordinal index of \c i
 
     /// This function is just a pass-through so the user can call \c ord() on
     /// a template parameter that can be an index or a size_type.
@@ -272,7 +272,7 @@ namespace TiledArray {
       return i;
     }
 
-    /// calculate the ordinal index of /c i
+    /// calculate the ordinal index of \c i
 
     /// Convert an index to an ordinal index.
     /// \param i The index to be converted to an ordinal index
@@ -290,7 +290,7 @@ namespace TiledArray {
       return o;
     }
 
-    /// calculate the index of /c i
+    /// calculate the index of \c i
 
     /// Convert an ordinal index to an index.
     /// \param i Ordinal index
@@ -304,7 +304,7 @@ namespace TiledArray {
       return i;
     }
 
-    /// calculate the index of /c i
+    /// calculate the index of \c i
 
     /// This function is just a pass-through so the user can call \c idx() on
     /// a template parameter that can be an index or a size_type.

@@ -150,7 +150,7 @@ namespace TiledArray {
         return pmap_->owner(i);
       }
 
-      /// Local element quary
+      /// Local element query
 
       /// Check if element \c i belongs to this node. The element may or may not
       /// be stored. Use \c find to determine if an element is present.
