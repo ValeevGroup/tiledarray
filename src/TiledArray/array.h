@@ -305,6 +305,22 @@ namespace TiledArray {
       }
     }
 
+    /// Remove all tiles from this array
+    void purge() {
+      TA_ASSERT(pimpl_);
+      typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
+      typename pmap_interface::const_iterator end = pimpl_->pmap()->end();
+
+      if(pimpl_->is_dense()) {
+        for(; it != end; ++it)
+          pimpl_->move(*it);
+      } else {
+        for(; it != end; ++it)
+          if(! pimpl_->is_zero(*it))
+            pimpl_->move(*it);
+      }
+    }
+
   private:
 
     /// Construct a process map
