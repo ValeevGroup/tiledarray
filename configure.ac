@@ -118,7 +118,7 @@ AC_CONFIG_FILES([
     examples/Makefile
       examples/cc/Makefile
       examples/mpi_tests/Makefile
-      examples/ta_dgemm/Makefile
+      examples/dgemm/Makefile
       examples/pmap_test/Makefile
     doc/Makefile])
 # There is bug in M4 1.4.6 which is currently the default on OSX which requires

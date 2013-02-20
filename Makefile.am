@@ -19,7 +19,7 @@
 SUBDIRS = src tests examples
 ACLOCAL_AMFLAGS = -I config
 
-ccd ccsd dgemm mpi_latency mpi_bandwidth pmap:
+ccd ccsd ta_dense ta_sparse ta_band blas eigen mpi_latency mpi_bandwidth pmap:
 	$(MAKE) -C ./examples $@
 
 ta_test:
