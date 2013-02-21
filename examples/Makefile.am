@@ -18,7 +18,7 @@
 
 # examples
 
-SUBDIRS = cc ta_dgemm mpi_tests pmap_test
+SUBDIRS = cc dgemm mpi_tests pmap_test
 
 ccd ccsd:
 	$(MAKE) -C ./cc $@
