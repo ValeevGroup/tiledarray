@@ -10,3 +10,5 @@ syntax: regexp
 ^build-aux/missing$
 ^build-aux/test-driver$
 ^org.eclipse.cdt.core.prefs$
+syntax: regexp
+^src/config_h\.in$
