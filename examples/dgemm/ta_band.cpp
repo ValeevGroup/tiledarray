@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
   // Construct shape
   TiledArray::detail::Bitset<> shape(trange.tiles().volume());
   for(long i = 0; i < matrix_size; ++i) {
-    long j = std::max(i - band_width + 1, 0);
+    long j = std::max<long>(i - band_width + 1, 0);
     const long j_end = std::min(i + band_width - 1, matrix_size);
     long ij = i * matrix_size + j;
     for(; j < j_end; ++j, ++ij)
