@@ -44,13 +44,13 @@ int main(int argc, char** argv) {
 
   // Construct matrices
   double* a = NULL;
-  if(posix_memalign(&a, 128, matrix_size * matrix_size) != 0)
+  if(posix_memalign(reinterpret_cast<void**>(&a), 128, matrix_size * matrix_size) != 0)
     return 1;
   double* b = NULL;
-  if(posix_memalign(&b, 128, matrix_size * matrix_size) != 0)
+  if(posix_memalign(reinterpret_cast<void**>(&b), 128, matrix_size * matrix_size) != 0)
     return 1;
   double* c = NULL;
-  if(posix_memalign(&c, 128, matrix_size * matrix_size) != 0)
+  if(posix_memalign(reinterpret_cast<void**>(&c), 128, matrix_size * matrix_size) != 0)
     return 1;
   std::fill_n(a, matrix_size * matrix_size, 1.0);
   std::fill_n(b, matrix_size * matrix_size, 1.0);
