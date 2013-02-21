@@ -45,7 +45,7 @@ AC_CHECK_TYPE([long double], AC_DEFINE([TILEDARRAY_HAS_LONG_DOUBLE],[1],[define 
 AC_CHECK_TYPE([long long int], AC_DEFINE([TILEDARRAY_HAS_LONG_LONG],[1],[define if compiler supports long long.]), [x = 0] )
 
 # Set compiler standard
-ACX_ENABLE_CXXFLAGS_ARG([cplusplus0x], [-std], [c++0x], [no])
+ACX_ENABLE_CXXFLAGS_ARG([[cplusplus0x]], [-std], [c++0x], [no])
 
 # Check for C++11 language features
 #ACX_CHECK_VARIADIC_TEMPLATE
