@@ -17,14 +17,16 @@
 #
 
 # Initialize autoconf
-AC_INIT([TiledArray], [0.0], [tiledarray@vt.edu])
+AC_INIT([TiledArray], [0.0], 
+  [http://code.google.com/p/tiledarray/issues/list],
+  [tiledarray], [http://code.google.com/p/tiledarray/])
 AC_CONFIG_SRCDIR([src/tiled_array.h])
 AC_CONFIG_MACRO_DIR([config])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_LANG([C++])
 
 # Initialize automake
-AM_INIT_AUTOMAKE([ -Wall foreign ])
+AM_INIT_AUTOMAKE([ -Wall foreign no-define])
 
 # Check for BSD style install programs
 AC_PROG_INSTALL
