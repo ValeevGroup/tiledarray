@@ -26,7 +26,7 @@ ta_dense_SOURCES = ta_dense.cpp
 
 ta_sparse_SOURCES = ta_sparse.cpp
 
-ta_band_SOURCES = ta_diag.cpp
+ta_band_SOURCES = ta_band.cpp
 
 eigen_SOURCES = eigen.cpp
 
