@@ -223,10 +223,10 @@ namespace TiledArray {
 
       /// Square norm2 reduction operation
 
-      /// Reduction operation taht computes the square of the norm2 of a tensor
-      /// expression. This is equal to the dot product of the expression with
+      /// Reduction operation that computes the square of the norm2 of a tensor
+      /// expression. This is equal to the vector inner (dot) product of the expression with
       /// itself.
-      /// \tparam Tile The tensor expression tile type
+      /// \tparam Exp type of tensor (or tensor expression)
       template <typename Exp>
       class square_norm2_op {
       public:
@@ -241,34 +241,24 @@ namespace TiledArray {
           return result_type(0);
         }
 
-        /// Reduce two result objects
-
-        /// Add \c arg to \c result .
+        /// Reduces \c arg into \c result .
         /// \param[in,out] result The result object that will be the reduction target
         /// \param[in] arg The argument that will be added to \c result
         void operator()(result_type& result, const result_type& arg) const {
           result += arg;
         }
 
-        /// Square norm2 of a pair of tiles
-
-        /// Contracte \c left and \c right and add the result to \c result.
+        /// Reduces tile \c first into \c result.
         /// \param[in,out] result The result object that will be the reduction target
-        /// \param[in] left The left-hand tile to be contracted
-        /// \param[in] right The right-hand tile to be contracted
+        /// \param[in] first The tile to be reduced
         void operator()(result_type& result, const argument_type& first) const {
           result += math::square_norm(first.size(), first.begin());
         }
 
-        /// Square norm2 of two pairs of tiles
-
-        /// Contracte \c left1 with \c right1 and \c left2 with \c right2 ,
-        /// and add the two results.
-        /// \param[in] left The first left-hand tile to be contracted
-        /// \param[in] right The first right-hand tile to be contracted
-        /// \param[in] left The second left-hand tile to be contracted
-        /// \param[in] right The second right-hand tile to be contracted
-        /// \return A tile that contains the sum of the two contractions.
+        /// Reduces 2 tiles, \c first and \c second, into \c result.
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] first The first tile to be reduced
+        /// \param[in] second The second tile to be reduced
         void operator()(result_type& result, const argument_type& first, const argument_type& second) const {
           result += math::square_norm(first.size(), first.begin())
               + math::square_norm(second.size(), second.begin());
@@ -276,6 +266,55 @@ namespace TiledArray {
 
       }; // class square_norm2_op
 
+      /// Reduction operation that computes the (vector) infinity norm of a tensor
+      /// expression. This is equal to the maximum absolute value of an element of the tensor.
+      /// \tparam Exp type of tensor (or tensor expression)
+      template <typename Exp>
+      class norminf_op {
+      public:
+        typedef typename Exp::value_type argument_type; ///< The tile type
+        typedef typename argument_type::value_type result_type; ///< The result type
+
+        struct maxabs_functor : std::binary_function<result_type, result_type, result_type> {
+          result_type operator()(result_type x, result_type y) { return std::max(std::fabs(x), std::fabs(y)); }
+        };
+
+        typedef maxabs_functor remote_op_type; ///< Remote reduction operation type
+
+        /// Create a result type object
+
+        /// Initialize a result object for subsequent reductions
+        result_type operator()() const {
+          return result_type(0);
+        }
+
+        /// Reduces \c arg into \c result .
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] arg The argument that will be added to \c result
+        void operator()(result_type& result, const result_type& arg) const {
+          maxabs_functor op;
+          result = op(result,arg);
+        }
+
+        /// Reduces tile \c first into \c result.
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] first The tile to be reduced
+        void operator()(result_type& result, const argument_type& first) const {
+          maxabs_functor op;
+          result = op(result, math::maxabs(first.size(), first.begin()));
+        }
+
+        /// Reduces 2 tiles, \c first and \c second, into \c result.
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] first The first tile to be reduced
+        /// \param[in] second The second tile to be reduced
+        void operator()(result_type& result, const argument_type& first, const argument_type& second) const {
+          maxabs_functor op;
+          result = op(result, math::maxabs(first.size(), first.begin()));
+          result = op(result, math::maxabs(second.size(), second.begin()));
+        }
+
+      }; // class norminf_op
 
       /// Dot product reduction operation
 
@@ -449,9 +488,9 @@ namespace TiledArray {
       return result;
     }
 
-    /// Compute the norm2 of \c arg
+    /// Compute the (vector) norm2 of \c arg
 
-    /// 2-norm:
+    /// (vector) 2-norm of a tensor:
     /// \f[
     /// ||arg||_2 = \sqrt{\sum_{i_1, i_2, \dots} (arg_{i_1, i_2, \dots})^2 }
     /// \f]
@@ -461,12 +500,32 @@ namespace TiledArray {
     /// result is returned on all nodes.
     /// \tparam Exp Tensor expression type
     /// \param arg The tensor expression
-    /// \return The norm2 of the tensor
+    /// \return The 2-norm of the tensor
     template <typename Exp>
     inline typename madness::enable_if<is_tensor_expression<Exp>,
         typename Exp::value_type::value_type>::type
     norm2(const Exp& arg) {
       return std::sqrt(reduce(arg, detail::square_norm2_op<Exp>()));
+    }
+
+    /// Compute the (vector) infinity-norm of \c arg
+
+    /// Infinity-norm:
+    /// \f[
+    /// ||arg||_\infty = \max |arg_{i_1, i_2, \dots}|
+    /// \f]
+    /// This function will compute the infinity-norm of the tensor expression, \c arg ,
+    /// across all nodes. The function will block, until the computation is
+    /// complete, but it will continue to process tasks while waiting. The same
+    /// result is returned on all nodes.
+    /// \tparam Exp Tensor expression type
+    /// \param arg The tensor expression
+    /// \return The infinity-norm of the tensor
+    template <typename Exp>
+    inline typename madness::enable_if<is_tensor_expression<Exp>,
+        typename Exp::value_type::value_type>::type
+    norminf(const Exp& arg) {
+      return reduce(arg, detail::norminf_op<Exp>());
     }
 
     template <typename T, unsigned int DIM, typename Tile>
