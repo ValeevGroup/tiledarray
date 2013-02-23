@@ -108,7 +108,6 @@ AC_MSG_NOTICE([CXXFLAGS = $CXXFLAGS])
 AC_MSG_NOTICE([LDFLAGS  = $LDFLAGS])
 AC_MSG_NOTICE([LIBS     = $LIBS])
 # Output files
-AC_CONFIG_HEADERS([src/config.h:src/config_h.in])
 AC_CONFIG_HEADERS([src/TiledArray/config.h:src/TiledArray/config_h.in])
 AC_CONFIG_HEADERS([tests/unit_test_config.h:tests/unit_test_config_h.in])
 AC_CONFIG_FILES([doc/Doxyfile])
