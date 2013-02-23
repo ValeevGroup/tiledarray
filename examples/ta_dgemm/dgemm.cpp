@@ -121,7 +121,7 @@ void eigen_dgemm(madness::World& world) {
       avg_time += cpu_time;
     }
 
-    std::cout << "Average time = " << avg_time * 0.2 << "\nAverge GFLOPS ="
+    std::cout << "Average time = " << avg_time * 0.2 << "\nAverage GFLOPS ="
         << 2.0 * double(size * size * size) / (avg_time * 0.2) / 1000000000.0 << "\n";
   }
 }

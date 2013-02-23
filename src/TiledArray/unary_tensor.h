@@ -180,7 +180,7 @@ namespace TiledArray {
 
         /// This function is used by derived classes to create a shape object. It
         /// is run inside a task with the proper dependencies to ensure data
-        /// consistancy. This function is only called when the tensor is not dense.
+        /// consistency. This function is only called when the tensor is not dense.
         /// \param shape The existing shape object
         virtual void make_shape(TiledArray::detail::Bitset<>& shape) const {
           TA_ASSERT(shape.size() == arg_.size());
