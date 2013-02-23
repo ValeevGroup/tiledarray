@@ -88,7 +88,7 @@ namespace TiledArray {
         /// \param value The tile from the array
         void convert_and_set_tile(const size_type i, const typename array_type::value_type& value) {
           value_type tile(value);
-          TensorExpressionImpl_::set(i, madness::move(value));
+          TensorExpressionImpl_::set(i, madness::move(tile));
         }
 
         /// Task function that is used to scale an input tile to value_type and store it
@@ -99,7 +99,7 @@ namespace TiledArray {
           value_type tile(value.range(), ::TiledArray::detail::make_tran_it(value.begin(),
               std::bind1st(std::multiplies<typename value_type::value_type>(),
               TensorExpressionImpl_::scale())));
-          TensorExpressionImpl_::set(i, madness::move(value));
+          TensorExpressionImpl_::set(i, madness::move(tile));
         }
 
         /// Task function that is used to convert an input tile to value_type, scale it, and store it
@@ -109,7 +109,7 @@ namespace TiledArray {
         void convert_scale_and_set_tile(const size_type i, const typename array_type::value_type& value) {
           value_type tile(value);
           tile *= TensorExpressionImpl_::scale();
-          TensorExpressionImpl_::set(i, madness::move(value));
+          TensorExpressionImpl_::set(i, madness::move(tile));
         }
 
         /// Set a tile
