@@ -20,8 +20,16 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/src/
 
-noinst_PROGRAMS = dgemm
+noinst_PROGRAMS = ta_dense ta_sparse ta_band eigen blas
 
-dgemm_SOURCES = dgemm.cpp
+ta_dense_SOURCES = ta_dense.cpp
 
-all-local: dgemm
+ta_sparse_SOURCES = ta_sparse.cpp
+
+ta_band_SOURCES = ta_band.cpp
+
+eigen_SOURCES = eigen.cpp
+
+blas_SOURCES = blas.cpp
+
+all-local: ta_dense

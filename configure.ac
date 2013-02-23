@@ -17,14 +17,16 @@
 #
 
 # Initialize autoconf
-AC_INIT([TiledArray], [0.0], [tiledarray@vt.edu])
+AC_INIT([TiledArray], [0.0], 
+  [http://code.google.com/p/tiledarray/issues/list],
+  [tiledarray], [http://code.google.com/p/tiledarray/])
 AC_CONFIG_SRCDIR([src/tiled_array.h])
 AC_CONFIG_MACRO_DIR([config])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_LANG([C++])
 
 # Initialize automake
-AM_INIT_AUTOMAKE([ -Wall foreign ])
+AM_INIT_AUTOMAKE([ -Wall foreign no-define])
 
 # Check for BSD style install programs
 AC_PROG_INSTALL
@@ -43,7 +45,7 @@ AC_CHECK_TYPE([long double], AC_DEFINE([TILEDARRAY_HAS_LONG_DOUBLE],[1],[define 
 AC_CHECK_TYPE([long long int], AC_DEFINE([TILEDARRAY_HAS_LONG_LONG],[1],[define if compiler supports long long.]), [x = 0] )
 
 # Set compiler standard
-ACX_ENABLE_CXXFLAGS_ARG([cplusplus0x], [-std], [c++0x], [no])
+ACX_ENABLE_CXXFLAGS_ARG([[cplusplus0x]], [-std], [c++0x], [no])
 
 # Check for C++11 language features
 #ACX_CHECK_VARIADIC_TEMPLATE
@@ -69,12 +71,22 @@ AC_SUBST([MPIEXEC])
 # Set default error checking
 ACX_ENABLE_ERROR_CHECKING
 
-# Check for the presence of doxygen
+# Check for the presence of doxygen and dot
 AC_CHECK_PROGS([DOXYGEN], [doxygen], [:])
+AC_CHECK_PROGS([DOT], [dot], [:])
 if test "$DOXYGEN" = :; then
   AC_MSG_WARN([Doxygen was not found. You will not be able to build the documentation.])
 fi
 AC_SUBST([DOXYGEN])
+AC_SUBST([DOT])
+if test "$DOT" != :; then
+  AC_SUBST([HAVE_DOT], [YES])
+else
+  AC_SUBST([HAVE_DOT], [NO])
+fi
+AM_SUBST_NOTMAKE([DOXYGEN])
+AM_SUBST_NOTMAKE([DOT])
+AM_SUBST_NOTMAKE([HAVE_DOT])
 
 # Check for the presence of Eigen header.
 AC_CHECK_HEADER([Eigen/Core], [], [
@@ -108,7 +120,7 @@ AC_CONFIG_FILES([
     examples/Makefile
       examples/cc/Makefile
       examples/mpi_tests/Makefile
-      examples/ta_dgemm/Makefile
+      examples/dgemm/Makefile
       examples/pmap_test/Makefile
     doc/Makefile])
 # There is bug in M4 1.4.6 which is currently the default on OSX which requires

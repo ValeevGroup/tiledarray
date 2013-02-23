@@ -40,14 +40,19 @@ namespace TiledArray {
       public:
 
         template <typename Arg>
-        ReduceObject(ReduceTaskImpl_* parent, const Arg& arg) :
-            parent_(parent), arg_(arg)
+        ReduceObject(ReduceTaskImpl_* parent, const Arg& arg, madness::CallbackInterface* callback) :
+            parent_(parent), arg_(arg), callback_(callback)
         {
           TA_ASSERT(parent_);
           arg_.register_callback(this);
         }
 
         virtual ~ReduceObject() { }
+
+        void do_callback() const {
+          if(callback_)
+            callback_->notify();
+        }
 
         virtual void notify() {
           TA_ASSERT(arg_.probe());
@@ -60,6 +65,7 @@ namespace TiledArray {
 
         ReduceTaskImpl_* parent_;
         madness::Future<argument_type> arg_;
+        madness::CallbackInterface* callback_;
       }; // class ReducePair
 
 
@@ -90,9 +96,9 @@ namespace TiledArray {
       }
 
       template <typename Arg>
-      ReduceObject* add(const Arg& arg) {
+      ReduceObject* add(const Arg& arg, madness::CallbackInterface* callback) {
         inc();
-        return new ReduceObject(this, arg);
+        return new ReduceObject(this, arg, callback);
       }
 
       void ready(ReduceObject* object) {
@@ -130,6 +136,7 @@ namespace TiledArray {
             ready_object_ = NULL;
             lock_.unlock(); // <<< End critical section
             op_(*result, ready_object->arg());
+            ready_object->do_callback();
             delete ready_object;
             this->dec();
           } else if(ready_result_) {
@@ -148,6 +155,7 @@ namespace TiledArray {
 
       void reduce_result_object(std::shared_ptr<result_type> result, const ReduceObject* object) {
         op_(*result, object->arg());
+        object->do_callback();
         delete object;
         reduce(result);
         this->dec();
@@ -156,13 +164,15 @@ namespace TiledArray {
       void reduce_object_object(const ReduceObject* object1, const ReduceObject* object2) {
         std::shared_ptr<result_type> result(new result_type(op_()));
         op_(*result, object1->arg(), object2->arg());
+        object1->do_callback();
         delete object1;
+        object2->do_callback();
         delete object2;
         reduce(result);
         this->dec();
         this->dec();
       }
-    }; // class ReducePairTask
+    }; // class ReduceTaskImpl
 
     /// Reduction task
 
@@ -219,9 +229,9 @@ namespace TiledArray {
       /// \tparam Value The type of the object that will be reduced
       /// \param value The object that will be reduced
       template <typename Arg>
-      int add(const Arg& arg) {
+      int add(const Arg& arg, madness::CallbackInterface* callback = NULL) {
         TA_ASSERT(pimpl_);
-        pimpl_->add(arg);
+        pimpl_->add(arg, callback);
         return ++count_;
       }
 
@@ -269,8 +279,8 @@ namespace TiledArray {
       public:
 
         template <typename Left, typename Right>
-        ReducePair(ReducePairTaskImpl_* parent, const Left& left, const Right& right) :
-            parent_(parent), left_(left), right_(right)
+        ReducePair(ReducePairTaskImpl_* parent, const Left& left, const Right& right, madness::CallbackInterface* callback) :
+            parent_(parent), left_(left), right_(right), callback_(callback)
         {
           TA_ASSERT(parent_);
           ref_count_ = 2;
@@ -279,6 +289,11 @@ namespace TiledArray {
         }
 
         virtual ~ReducePair() { }
+
+        void do_callback() const {
+          if(callback_)
+            callback_->notify();
+        }
 
         virtual void notify() {
           if((--ref_count_) == 0) {
@@ -302,6 +317,7 @@ namespace TiledArray {
         madness::AtomicInt ref_count_;
         madness::Future<first_argument_type> left_;
         madness::Future<second_argument_type> right_;
+        madness::CallbackInterface* callback_;
       }; // class ReducePair
 
 
@@ -328,9 +344,9 @@ namespace TiledArray {
       }
 
       template <typename Left, typename Right>
-      ReducePair* add(const Left& left, const Right& right) {
+      ReducePair* add(const Left& left, const Right& right, madness::CallbackInterface* callback) {
         inc();
-        return new ReducePair(this, left, right);
+        return new ReducePair(this, left, right, callback);
       }
 
       void ready(ReducePair* pair) {
@@ -368,6 +384,7 @@ namespace TiledArray {
             ready_pair_ = NULL;
             lock_.unlock();
             op_(*result, pair->left(), pair->right());
+            pair->do_callback();
             delete pair;
             this->dec();
           } else if(ready_result_) {
@@ -386,6 +403,7 @@ namespace TiledArray {
 
       void reduce_result_pair(std::shared_ptr<result_type> result, const ReducePair* pair) {
         op_(*result, pair->left(), pair->right());
+        pair->do_callback();
         delete pair;
         reduce(result);
         this->dec();
@@ -394,7 +412,9 @@ namespace TiledArray {
       void reduce_pair_pair(const ReducePair* pair1, const ReducePair* pair2) {
         std::shared_ptr<result_type> result(new result_type(op_(pair1->left(),
             pair1->right(), pair2->left(), pair2->right())));
+        pair1->do_callback();
         delete pair1;
+        pair2->do_callback();
         delete pair2;
         reduce(result);
         this->dec();
@@ -456,9 +476,9 @@ namespace TiledArray {
       /// \tparam Value The type of the object that will be reduced
       /// \param value The object that will be reduced
       template <typename Left, typename Right>
-      void add(const Left& left, const Right& right) {
+      void add(const Left& left, const Right& right, madness::CallbackInterface* callback = NULL) {
         TA_ASSERT(pimpl_);
-        pimpl_->add(left, right);
+        pimpl_->add(left, right, callback);
         ++count_;
       }
 

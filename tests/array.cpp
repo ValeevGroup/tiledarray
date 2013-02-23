@@ -196,36 +196,26 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
     }
   }
 }
-//
-//BOOST_AUTO_TEST_CASE( reduce_tiles )
-//{
-//  std::vector<int> data;
-//  ArrayN a(world, tr);
-//
-//  std::vector<ProcessID> nodes;
-//  for(ProcessID node = 0; node < world.size(); ++node) {
-//    nodes.push_back(node);
-//  }
-//
-//  for(ArrayN::ordinal_index i = 0; i < a.range().volume(); ++i) {
-//    madness::Future<ArrayN::value_type> f;
-//    a.reduce(i, f, nodes.begin(), nodes.end(), std::plus<ArrayN::value_type>());
-//
-//    // set the future for the local contribution.
-//    ArrayN::value_type tile(a.trange().make_tile_range(i), 1);
-//    f.set(tile);
-//
-//    world.gop.fence();
-//    if(a.is_local(i)){
-//      madness::Future<ArrayN::value_type> result = a.find(i);
-//      BOOST_REQUIRE(result.probe());
-//
-//
-//      for(ArrayN::ordinal_index i = 0; i < result.get().range().volume(); ++i)
-//        BOOST_CHECK_EQUAL(result.get()[i], world.size());
-//    }
-//  }
-//
-//}
+
+BOOST_AUTO_TEST_CASE( make_replicated )
+{
+  // Get a copy of the original process map
+  std::shared_ptr<ArrayN::pmap_interface> distributed_pmap = a.get_pmap();
+
+  // Convert array to a replicated array.
+  a.make_replicated();
+
+  // Check that all the data is local
+  for(std::size_t i = 0; i < a.size(); ++i) {
+    BOOST_CHECK(a.is_local(i));
+    BOOST_CHECK_EQUAL(a.get_pmap()->owner(i), GlobalFixture::world->rank());
+    madness::Future<ArrayN::value_type> tile = a.find(i);
+    BOOST_CHECK_EQUAL(tile.get().range(), a.trange().make_tile_range(i));
+    for(ArrayN::value_type::const_iterator it = tile.get().begin(); it != tile.get().end(); ++it)
+      BOOST_CHECK_EQUAL(*it, distributed_pmap->owner(i) + 1);
+  }
+
+}
 
 BOOST_AUTO_TEST_SUITE_END()
+

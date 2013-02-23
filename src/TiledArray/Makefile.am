@@ -33,6 +33,7 @@ library_include_HEADERS = annotated_tensor.h \
                           error.h \
                           expressions.h \
                           functional.h \
+                          hash_pmap.h \
                           indexed_iterator.h \
                           lazy_sync.h \
                           madness.h \
@@ -43,6 +44,8 @@ library_include_HEADERS = annotated_tensor.h \
                           range.h \
                           reduce_task.h \
                           replicated_pmap.h \
+                          replicator.h \
+                          spsumma.h \
                           summa.h \
                           tensor_expression.h \
                           tensor_impl.h \

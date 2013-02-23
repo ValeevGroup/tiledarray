@@ -1,0 +1,6 @@
+The test programs in the dgemm directory do a simple matrix multiply test for
+TiledArray (dense, sparse, and banded) matrices, Eigen, and BLAS. The TiledArray
+tests are distributed memory applications and should be run with MPI. The 
+applications require the following inputs:
+
+blas matrix_size [repetitions]
