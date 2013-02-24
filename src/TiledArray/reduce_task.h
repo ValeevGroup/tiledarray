@@ -327,18 +327,19 @@ namespace TiledArray {
       volatile ReducePair* ready_pair_;
       madness::Future<result_type> result_;
       madness::Spinlock lock_;
+      std::size_t count_;
 
     public:
 
       ReducePairTaskImpl(madness::World& world, Op op) :
           madness::TaskInterface(1, madness::TaskAttributes::hipri()),
           world_(world), op_(op), ready_result_(new result_type(op())),
-          ready_pair_(NULL), result_(), lock_()
+          ready_pair_(NULL), result_(), lock_(), count_(0ul)
       { }
 
       virtual ~ReducePairTaskImpl() { }
 
-      virtual void run(madness::World&) {
+      virtual void run(const madness::TaskThreadEnv&) {
         TA_ASSERT(ready_result_);
         result_.set(*ready_result_);
       }
@@ -346,6 +347,7 @@ namespace TiledArray {
       template <typename Left, typename Right>
       ReducePair* add(const Left& left, const Right& right, madness::CallbackInterface* callback) {
         inc();
+        ++count_;
         return new ReducePair(this, left, right, callback);
       }
 
@@ -372,7 +374,11 @@ namespace TiledArray {
         }
       }
 
+      std::size_t count() const { return count_; }
+
       const madness::Future<result_type>& result() const { return result_; }
+
+      madness::World& get_world() const { return world_; }
 
     private:
 
@@ -449,18 +455,30 @@ namespace TiledArray {
       typedef ReducePairTask<Op> ReducePairTask_;
 
     private:
-      madness::World& world_; ///< The world that owns the task queue.
-      ReducePairTaskImpl<Op>* pimpl_; ///< The reduction task object.
-      std::size_t count_;
+      std::shared_ptr<ReducePairTaskImpl<Op> > pimpl_; ///< The reduction task object.
 
-      // Copy not allowed.
-      ReducePairTask(const ReducePairTask_&);
-      ReducePairTask_& operator=(const ReducePairTask_&);
+      static void deleter(ReducePairTaskImpl<Op>* pimpl) {
+        if(pimpl->count() == 0ul) {
+          pimpl->run(madness::TaskThreadEnv(1,0,0));
+          pimpl->dec();
+          delete pimpl;
+        } else {
+          // Get the result before submitting calling dec(), otherwise the task
+          // could run and be deleted before we are done here.
+          pimpl->get_world().taskq.add(pimpl);
+          pimpl->dec(); // decrement the fake dependency so the task will run.
+        }
+      }
+
     public:
 
 
       ReducePairTask(madness::World& world, const Op& op = Op()) :
-        world_(world), pimpl_(new ReducePairTaskImpl<Op>(world, op)), count_(0ul)
+        pimpl_(new ReducePairTaskImpl<Op>(world, op), &deleter)
+      { }
+
+      ReducePairTask(const ReducePairTask<Op>& other) :
+        pimpl_(other.pimpl_)
       { }
 
       /// Destructor
@@ -468,6 +486,11 @@ namespace TiledArray {
       /// If the reduction has not been submitted or \c destroy() has not been
       /// called, it well be submitted when the the destructor is called.
       ~ReducePairTask() { if(pimpl_) submit(); }
+
+      ReducePairTask<Op> operator=(const ReducePairTask<Op>& other) {
+        pimpl_ = other.pimpl_;
+        return *this;
+      }
 
       /// Add an element to the reduction
 
@@ -479,10 +502,18 @@ namespace TiledArray {
       void add(const Left& left, const Right& right, madness::CallbackInterface* callback = NULL) {
         TA_ASSERT(pimpl_);
         pimpl_->add(left, right, callback);
-        ++count_;
       }
 
-      std::size_t count() const { return count_; }
+
+      std::size_t count() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->count();
+      }
+
+      madness::Future<result_type> result() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->result();
+      }
 
       /// Submit the reduction task to the task queue
 
@@ -491,21 +522,8 @@ namespace TiledArray {
       /// reduction.
       madness::Future<result_type> submit() {
         TA_ASSERT(pimpl_);
-
         madness::Future<result_type> result = pimpl_->result();
-
-        if(count_ == 0ul) {
-          pimpl_->run(world_);
-          pimpl_->dec();
-          delete pimpl_;
-        } else {
-          // Get the result before submitting calling dec(), otherwise the task
-          // could run and be deleted before we are done here.
-          world_.taskq.add(pimpl_);
-          pimpl_->dec(); // decrement the fake dependency so the task will run.
-        }
-
-        pimpl_ = NULL;
+        pimpl_.reset();
         return result;
       }
 
