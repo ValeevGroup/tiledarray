@@ -23,6 +23,7 @@
 #include <TiledArray/contraction_tensor_impl.h>
 #include <TiledArray/lazy_sync.h>
 #include <TiledArray/reduce_task.h>
+#include <TiledArray/hash_pmap.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -72,91 +73,11 @@ namespace TiledArray {
       /// The right tensor cache container type
       typedef madness::ConcurrentHashMap<size_type, madness::Future<right_value_type> > right_container;
 
+      typedef detail::ContractReduceOp<Left, Right> contract_reduce_op;
+
       left_container left_cache_;
       right_container right_cache_;
       madness::AtomicInt count_;
-
-      /// Contract and reduce operation
-
-      /// This object handles contraction and reduction of tensor tiles.
-      class contract_reduce_op {
-      public:
-        typedef left_value_type first_argument_type; ///< The left tile type
-        typedef right_value_type second_argument_type; ///< The right tile type
-        typedef value_type result_type; ///< The result tile type.
-
-        /// Construct contract/reduce functor
-
-        /// \param cont Shared pointer to contraction definition object
-        explicit contract_reduce_op(const VSpGemm_& owner) :
-            owner_(& owner)
-        { TA_ASSERT(owner_); }
-
-        /// Functor copy constructor
-
-        /// Shallow copy of this functor
-        /// \param other The functor to be copied
-        contract_reduce_op(const contract_reduce_op& other) : owner_(other.owner_) { }
-
-        /// Functor assignment operator
-
-        /// Shallow copy of this functor
-        /// \param other The functor to be copied
-        contract_reduce_op& operator=(const contract_reduce_op& other) {
-          owner_ = other.owner_;
-          return *this;
-        }
-
-
-        /// Create a result type object
-
-        /// Initialize a result object for subsequent reductions
-        result_type operator()() const {
-          return result_type();
-        }
-
-        /// Reduce two result objects
-
-        /// Add \c arg to \c result .
-        /// \param[in,out] result The result object that will be the reduction target
-        /// \param[in] arg The argument that will be added to \c result
-        void operator()(result_type& result, const result_type& arg) const {
-          result += arg;
-        }
-
-
-        /// Contract a pair of tiles and add to a target tile
-
-        /// Contracte \c left and \c right and add the result to \c result.
-        /// \param[in,out] result The result object that will be the reduction target
-        /// \param[in] left The left-hand tile to be contracted
-        /// \param[in] right The right-hand tile to be contracted
-        void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
-          owner_->contract(result, first, second);
-        }
-
-        /// Contract a pair of tiles and add to a target tile
-
-        /// Contracte \c left1 with \c right1 and \c left2 with \c right2 ,
-        /// and add the two results.
-        /// \param[in] left The first left-hand tile to be contracted
-        /// \param[in] right The first right-hand tile to be contracted
-        /// \param[in] left The second left-hand tile to be contracted
-        /// \param[in] right The second right-hand tile to be contracted
-        /// \return A tile that contains the sum of the two contractions.
-        result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
-            const first_argument_type& first2, const second_argument_type& second2) const {
-          result_type result;
-
-          owner_->contract(result, first1, second1);
-          owner_->contract(result, first2, second2);
-
-          return result;
-        }
-
-      private:
-        const VSpGemm_* owner_; ///< The contraction definition object pointer
-      }; // class contract_reduce_op
 
       /// Request A tile from \c arg
 
@@ -201,7 +122,6 @@ namespace TiledArray {
       /// \param j The column of the result tile to be computed
       /// \return \c madness::None
       void dot_product(const size_type i, const size_type j) {
-
         // Construct a reduction object
         TiledArray::detail::ReducePairTask<contract_reduce_op>
             local_reduce_op(WorldObject_::get_world(), contract_reduce_op(*this));
@@ -267,6 +187,19 @@ namespace TiledArray {
       }; // class Cleanup
 
     private:
+
+      /// Construct the left argument process map
+      virtual std::shared_ptr<pmap_interface> make_left_pmap() const {
+        return std::shared_ptr<pmap_interface>(new TiledArray::detail::HashPmap(
+            TensorImpl_::get_world(), mk_));
+      }
+
+      /// Construct the right argument process map
+      virtual std::shared_ptr<pmap_interface> make_right_pmap() const {
+        return std::shared_ptr<pmap_interface>(new TiledArray::detail::HashPmap(
+            TensorImpl_::get_world(), kn_));
+      }
+
       virtual void eval_tiles() {
         // Spawn task for local tile evaluation
         for(size_type i = rank_row_; i < m_; i += proc_rows_)

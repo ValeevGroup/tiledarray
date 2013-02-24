@@ -29,6 +29,8 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename, typename> class ContractionTensorImpl;
+
     namespace detail {
 
       /// Contraction type selection for complex numbers
@@ -75,6 +77,92 @@ namespace TiledArray {
       struct ContractionExp {
         typedef TensorExpression<typename detail::ContractionResult<LExp, RExp>::type> type;
       };
+
+
+      /// Contract and reduce operation
+
+      /// This object handles contraction and reduction of tensor tiles.
+      template <typename Left, typename Right>
+      class ContractReduceOp {
+      public:
+        typedef typename ContractionTensorImpl<Left, Right>::left_value_type first_argument_type; ///< The left tile type
+        typedef typename ContractionTensorImpl<Left, Right>::right_value_type second_argument_type; ///< The right tile type
+        typedef typename ContractionTensorImpl<Left, Right>::value_type result_type; ///< The result tile type.
+
+        /// Construct contract/reduce functor
+
+        /// \param cont Shared pointer to contraction definition object
+        explicit ContractReduceOp(const ContractionTensorImpl<Left, Right>& owner) :
+            owner_(& owner)
+        { TA_ASSERT(owner_); }
+
+        /// Functor copy constructor
+
+        /// Shallow copy of this functor
+        /// \param other The functor to be copied
+        ContractReduceOp(const ContractReduceOp<Left, Right>& other) :
+          owner_(other.owner_)
+        { }
+
+        /// Functor assignment operator
+
+        /// Shallow copy of this functor
+        /// \param other The functor to be copied
+        ContractReduceOp& operator=(const ContractReduceOp<Left, Right>& other) {
+          owner_ = other.owner_;
+          return *this;
+        }
+
+
+        /// Create a result type object
+
+        /// Initialize a result object for subsequent reductions
+        result_type operator()() const {
+          return result_type();
+        }
+
+        /// Reduce two result objects
+
+        /// Add \c arg to \c result .
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] arg The argument that will be added to \c result
+        void operator()(result_type& result, const result_type& arg) const {
+          result += arg;
+        }
+
+
+        /// Contract a pair of tiles and add to a target tile
+
+        /// Contracte \c left and \c right and add the result to \c result.
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] left The left-hand tile to be contracted
+        /// \param[in] right The right-hand tile to be contracted
+        void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
+          owner_->contract(result, first, second);
+        }
+
+        /// Contract a pair of tiles and add to a target tile
+
+        /// Contracte \c left1 with \c right1 and \c left2 with \c right2 ,
+        /// and add the two results.
+        /// \param[in] left The first left-hand tile to be contracted
+        /// \param[in] right The first right-hand tile to be contracted
+        /// \param[in] left The second left-hand tile to be contracted
+        /// \param[in] right The second right-hand tile to be contracted
+        /// \return A tile that contains the sum of the two contractions.
+        result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
+            const first_argument_type& first2, const second_argument_type& second2) const {
+          result_type result = operator()();
+
+          owner_->contract(result, first1, second1);
+          owner_->contract(result, first2, second2);
+
+          return result;
+        }
+
+      private:
+        const ContractionTensorImpl<Left, Right>* owner_; ///< The contraction definition object pointer
+      }; // class contract_reduce_op
 
     } // namespace detail
 
@@ -353,6 +441,20 @@ namespace TiledArray {
               shape.set(i * n_ + j);
       }
 
+
+
+      /// Construct the left argument process map
+      virtual std::shared_ptr<pmap_interface> make_left_pmap() const {
+        return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
+            TensorImpl_::get_world(), m_, k_, proc_rows_, proc_cols_));
+      }
+
+      /// Construct the right argument process map
+      virtual std::shared_ptr<pmap_interface> make_right_pmap() const {
+        return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
+            TensorImpl_::get_world(), k_, n_, proc_rows_, proc_cols_));
+      }
+
       static bool done(const bool left, const bool right) { return left && right; }
 
       virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
@@ -378,14 +480,10 @@ namespace TiledArray {
             right_vars.push_back(*it);
           }
 
-        // Construct the left argument process map
-        std::shared_ptr<pmap_interface> left_pmap(new TiledArray::detail::CyclicPmap(
-                    TensorImpl_::get_world(), m_, k_, proc_rows_, proc_cols_));
-
         // Start the left tensor evaluation
         madness::Future<bool> left_done =
             left_.eval(expressions::VariableList(left_vars.begin(), left_vars.end()),
-            left_pmap);
+            make_left_pmap());
 
         // Finish constructing the right variable list with the outer product variables
         OuterPred right_outer_pred(left_.vars());
@@ -393,15 +491,10 @@ namespace TiledArray {
           if(right_outer_pred(*it))
             right_vars.push_back(*it);
 
-
-        // Construct the right argument process map
-        std::shared_ptr<pmap_interface> right_pmap(new TiledArray::detail::CyclicPmap(
-                    TensorImpl_::get_world(), k_, n_, proc_rows_, proc_cols_));
-
         // Start the right tensor evaluation
         madness::Future<bool> right_done =
             right_.eval(expressions::VariableList(right_vars.begin(), right_vars.end()),
-                right_pmap);
+                make_right_pmap());
 
         // Note: This does not include evaluation of tiles, only structure.
         return TensorImpl_::get_world().taskq.add(& ContractionTensorImpl_::done,
