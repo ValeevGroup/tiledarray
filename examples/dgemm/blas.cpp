@@ -58,7 +58,6 @@ int main(int argc, char** argv) {
 
   // Start clock
   const double wall_time_start = madness::wall_time();
-  const double cpu_time_start = madness::cpu_time();
 
   // Do matrix multiplcation
   // Note: If TiledArray has not been configured with blas, this will be an eigen call.
@@ -68,7 +67,6 @@ int main(int argc, char** argv) {
 
   // Stop clock
   const double wall_time_stop = madness::wall_time();
-  const double cpu_time_stop = madness::cpu_time();
 
   // Cleanup memory
   free(a);
@@ -76,7 +74,6 @@ int main(int argc, char** argv) {
   free(c);
 
   std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
-      << "\nAverage cpu time = " << 0.2 * (cpu_time_stop - cpu_time_start) / double(repeat)
       << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
           matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
 

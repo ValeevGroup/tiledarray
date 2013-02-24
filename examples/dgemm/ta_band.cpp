@@ -99,7 +99,6 @@ int main(int argc, char** argv) {
   // Start clock
   world.gop.fence();
   const double wall_time_start = madness::wall_time();
-  const double cpu_time_start = madness::cpu_time();
 
   // Do matrix multiplcation
   for(int i = 0; i < repeat; ++i) {
@@ -109,11 +108,9 @@ int main(int argc, char** argv) {
 
   // Stop clock
   const double wall_time_stop = madness::wall_time();
-  const double cpu_time_stop = madness::cpu_time();
 
   if(world.rank() == 0)
     std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
-        << "\nAverage cpu time = " << 0.2 * (cpu_time_stop - cpu_time_start) / double(repeat)
         << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
             matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
 
