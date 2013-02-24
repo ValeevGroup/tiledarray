@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
   world.gop.fence();
   const double wall_time_start = madness::wall_time();
 
-  // Do matrix multiplcation
+  // Do matrix multiplication
   for(int i = 0; i < repeat; ++i) {
     c("m,n") = a("m,k") * b("k,n");
     world.gop.fence();

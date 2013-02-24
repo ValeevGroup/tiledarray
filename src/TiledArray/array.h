@@ -54,6 +54,7 @@ namespace TiledArray {
 
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
+    /// \param pmap The tile index -> process map
     Array(madness::World& w, const trange_type& tr, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
         pimpl_(new impl_type(w, tr, 0), madness::make_deferred_deleter<impl_type>(w))
     {
@@ -69,6 +70,7 @@ namespace TiledArray {
     /// added to the sparse array.
     /// \param last An input iterator that points to the last position in a list
     /// of tiles to be added to the sparse array.
+    /// \param pmap The tile index -> process map
     template <typename InIter>
     Array(madness::World& w, const trange_type& tr, InIter first, InIter last,
           const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
@@ -78,6 +80,13 @@ namespace TiledArray {
       pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
+    /// Sparse array constructor
+
+    /// \param w The world where the array will live.
+    /// \param tr The tiled range object that will be used to set the array tiling.
+    /// \param shape Bitset of the same length as \c tr. Describes the array shape: bit set (1)
+    ///        means tile exists, else tile does not exist.
+    /// \param pmap The tile index -> process map
     Array(madness::World& w, const trange_type& tr, const detail::Bitset<>& shape,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
         pimpl_(new impl_type(w, tr, shape),
