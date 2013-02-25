@@ -31,7 +31,7 @@ namespace TiledArray {
 
     /// This implementation object holds the data for tensor object, which
     /// includes tiled range, shape, and tiles. The tiles are held in a
-    /// distrbuted container, stored accrding to a given process map.
+    /// distributed container, stored according to a given process map.
     /// \tparam Tile The tile or value_type of this tensor
     /// \note The process map must be set before data elements can be set.
     /// \note It is the users responsibility to ensure the process maps on all
