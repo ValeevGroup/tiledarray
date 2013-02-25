@@ -202,7 +202,7 @@ namespace TiledArray {
 
       /// The callback is called when the the local data has been sent to all
       /// nodes. If the data has already been sent to all nodes, the callback
-      /// is nodtified immediately.
+      /// is notified immediately.
       /// \param callback The callback object
       void register_callback(madness::CallbackInterface* callback) {
           madness::ScopedMutex<madness::Spinlock> locker(this);
