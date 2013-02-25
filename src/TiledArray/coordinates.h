@@ -186,7 +186,7 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Subtract-assignement operator
+    /// Subtract-assignment operator
 
     /// \param other The coordinate to be subtracted from this coordinate
     /// \return A reference to this object
@@ -284,8 +284,8 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The first coordinate to be swaped
-  /// \param c2 The second coordinate to be swaped
+  /// \param c1 The first coordinate to be swapped
+  /// \param c2 The second coordinate to be swapped
   /// \throw nothing
   template <unsigned int DIM, typename Tag>
   void swap(ArrayCoordinate<DIM,Tag>& c1, ArrayCoordinate<DIM,Tag>& c2) { // no throw
@@ -325,7 +325,7 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The left-hand arguemnt to be summed
+  /// \param c1 The left-hand argument to be summed
   /// \param c2 The right-hand argument to be summed
   /// \return A copy of coordinate \c c with the constant \c s added to it
   template <unsigned int DIM, typename Tag>
@@ -367,7 +367,7 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The left-hand arguemnt to be summed
+  /// \param c1 The left-hand argument to be summed
   /// \param c2 The right-hand argument to be summed
   /// \return A copy of coordinate \c c with the constant \c s added to it
   template <unsigned int DIM, typename Tag>
@@ -380,7 +380,7 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c1 The left-hand argument to be compared
   /// \param c2 The right-hand argument to be compared
   /// \return \c true when \c c1 is lexicographically less than \c c2
   template <unsigned int DIM, typename Tag>
@@ -392,7 +392,7 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c1 The left-hand argument to be compared
   /// \param c2 The right-hand argument to be compared
   /// \return \c true when \c c1 is lexicographically greater than \c c2
   template <unsigned int DIM, typename Tag>
@@ -404,7 +404,7 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c1 The left-hand argument to be compared
   /// \param c2 The right-hand argument to be compared
   /// \return \c true when \c c1 is lexicographically less than or equal to \c c2
   template <unsigned int DIM, typename Tag>
@@ -416,7 +416,7 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c1 The left-hand argument to be compared
   /// \param c2 The right-hand argument to be compared
   /// \return \c true when \c c1 is lexicographically greater than or equal to \c c2
   template <unsigned int DIM, typename Tag>
@@ -428,7 +428,7 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c1 The left-hand argument to be compared
   /// \param c2 The right-hand argument to be compared
   /// \return \c true when all elements of \c c1 and \c c2 are equal
   template <unsigned int DIM, typename Tag>
@@ -440,7 +440,7 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param c1 The left-hand arguemnt to be compared
+  /// \param c1 The left-hand argument to be compared
   /// \param c2 The right-hand argument to be compared
   /// \return \c true when all elements of \c c1 and \c c2 are not equal
   template <unsigned int DIM, typename Tag>
@@ -452,8 +452,8 @@ namespace TiledArray {
 
   /// \tparam DIM the coordinate dimension
   /// \tparam Tag The coordinate system tag
-  /// \param p The permutation to be applied to the coordiante
-  /// \param c The coordiante to be permuted
+  /// \param p The permutation to be applied to the coordinate
+  /// \param c The coordinate to be permuted
   /// \return A permuted copy of coordinate \c c
   template <unsigned int DIM, typename Tag>
   ArrayCoordinate<DIM,Tag> operator ^(const Permutation& p, const ArrayCoordinate<DIM,Tag>& c) {
@@ -483,7 +483,7 @@ namespace TiledArray {
   /// \tparam Tag The coordinate system tag
   /// \param output An output stream for the coordinate
   /// \param c The coordinate to be output
-  /// \return The output stream referenc
+  /// \return The output stream reference
   template <unsigned int DIM, typename Tag>
   std::ostream& operator<<(std::ostream& output, const ArrayCoordinate<DIM,Tag>& c) {
     detail::print_array(output, c.data());
