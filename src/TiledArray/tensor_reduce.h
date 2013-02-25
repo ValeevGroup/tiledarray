@@ -45,8 +45,8 @@ namespace TiledArray {
       /// Constructor
 
       /// \param arg The tensor expression to be reduced
-      /// \param op The reduction operatioin
-      /// \param dep The evaluation dependancy
+      /// \param op The reduction operation
+      /// \param dep The evaluation dependency
       ReduceTensorExpression(const Exp& arg, const Op& op) :
           madness::TaskInterface(1, madness::TaskAttributes::hipri()),
           arg_(arg), op_(op), result_()
@@ -56,7 +56,7 @@ namespace TiledArray {
             pmap(new TiledArray::detail::BlockedPmap(arg_.get_world(), arg_.size()));
         madness::Future<bool> arg_eval = arg_.eval(arg_.vars(), pmap);
 
-        // Add expression evaluation as a dependancy for this task
+        // Add expression evaluation as a dependency for this task
         arg_eval.register_callback(this);
       }
 
@@ -120,7 +120,7 @@ namespace TiledArray {
         madness::Future<bool> left_done = left_.eval(left_.vars(), pmap->clone());
         madness::Future<bool> right_done = right_.eval(left_.vars(), pmap);
 
-        // Add expression evaluations as a dependancies for this task
+        // Add expression evaluations as a dependencies for this task
         left_done.register_callback(this);
         right_done.register_callback(this);
       }
