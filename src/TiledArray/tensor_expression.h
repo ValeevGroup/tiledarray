@@ -39,7 +39,7 @@ namespace TiledArray {
 
       /// This class is used as the base class for other tensor expression
       /// implementation classes. It has several pure virtual function that are
-      /// used by derived classes to evauate the expression. This class also
+      /// used by derived classes to evaluate the expression. This class also
       /// handles permutation of result tiles if necessary.
       /// \tparam Tile The result tile type for the expression.
       template <typename Tile>
@@ -92,7 +92,7 @@ namespace TiledArray {
         /// Permute and set tile \c i with \c value
 
         /// If the \c value has been set, then the tensor is permuted and set
-        /// immidiately. Otherwise a task is spawn that will permute and set it.
+        /// immediately. Otherwise a task is spawn that will permute and set it.
         /// \param i The unpermuted index of the tile
         /// \param value The future that holds the unpermuted result tile
         void permute_and_set(size_type i, const value_type& value) {
@@ -102,7 +102,7 @@ namespace TiledArray {
         /// Permute and set tile \c i with \c value
 
         /// If the \c value has been set, then the tensor is permuted and set
-        /// immidiately. Otherwise a task is spawn that will permute and set it.
+        /// immediately. Otherwise a task is spawn that will permute and set it.
         /// \param i The unpermuted index of the tile
         /// \param value The future that holds the unpermuted result tile
         void permute_and_set(size_type i, const madness::Future<value_type>& value) {
@@ -211,8 +211,8 @@ namespace TiledArray {
         /// Function for evaluating this tensor's tiles
 
         /// This function is run inside a task, and will run after \c eval_children
-        /// has completed. It should spwan additional tasks that evaluate the
-        /// individule result tiles.
+        /// has completed. It should spawn additional tasks that evaluate the
+        /// individual result tiles.
         virtual void eval_tiles() = 0;
 
         /// Function for evaluating child tensors
@@ -358,7 +358,7 @@ namespace TiledArray {
           pimpl_(other.pimpl_)
       { }
 
-      /// Assignement operator
+      /// Assignment operator
 
       /// Create a shallow copy of \c other
       /// \param other The object to be copied
