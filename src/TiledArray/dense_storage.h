@@ -296,7 +296,7 @@ namespace TiledArray {
 
     /// DenseStorage size accessor
 
-    /// \return The number of elemenst stored
+    /// \return The number of elements stored
     /// \throw nothing
     size_type size() const { return last_ - first_; }
 
