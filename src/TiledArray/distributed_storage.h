@@ -336,7 +336,7 @@ namespace TiledArray {
           return result;
         }
 
-        // Send a request to the onwer of i for the element.
+        // Send a request to the owner of i for the element.
         future result;
         WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
             result.remote_ref(get_world()), true, madness::TaskAttributes::hipri());
@@ -360,7 +360,7 @@ namespace TiledArray {
         /// Constructor
 
         /// \param ds The distributed container that owns element i
-        /// \param i The lement to be moved
+        /// \param i The element to be moved
         DelayedMove(const DistributedStorage_& ds, size_type i) :
             ds_(const_cast<DistributedStorage_&>(ds)), index_(i)
         { }
