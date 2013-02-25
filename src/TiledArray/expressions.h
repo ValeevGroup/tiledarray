@@ -62,7 +62,7 @@ namespace TiledArray {
     /// \tparam LValue A numerical type
     /// \tparam RTile The tensor expression tile type
     /// \param left A numerical constant
-    /// \param right The value to be subracted from the tensor elements
+    /// \param right The value to be subtracted from the tensor elements
     /// \return The tensor expression that is the sum of left and right tensor
     /// elements.
     template <typename LValue, typename RTile>
@@ -90,7 +90,7 @@ namespace TiledArray {
           std::bind2nd(std::plus<typename LTile::value_type>(), right)));
     }
 
-    /// Tensor expression subraction operator
+    /// Tensor expression subtraction operator
 
     /// Subtract \c left and \c right tensor expression to give a new tensor
     /// expression. The variable lists must be the same for the left- and
@@ -102,7 +102,7 @@ namespace TiledArray {
     /// \f]
     /// \tparam LTile The tensor expression tile type
     /// \tparam RValue A numerical type
-    /// \param left The value to be subracted from the tensor elements
+    /// \param left The value to be subtracted from the tensor elements
     /// \param right The tensor expression to
     /// \return A tensor expression that is the difference of \c left and
     /// \c right .
@@ -358,7 +358,7 @@ namespace TiledArray {
 
         /// Dot product of two pairs of tiles
 
-        /// Contracte \c left1 with \c right1 and \c left2 with \c right2 ,
+        /// Contract \c left1 with \c right1 and \c left2 with \c right2 ,
         /// and add the two results.
         /// \param[in] left The first left-hand tile to be contracted
         /// \param[in] right The first right-hand tile to be contracted
@@ -457,7 +457,7 @@ namespace TiledArray {
     /// Calculate the dot product of two tensor expressions
 
     /// \f[
-    /// C = \sum_{i_1, i_2, \dots}  A_{i_1, i_2, \dots} B_{i_1, i_2, \dots}
+    /// A \dot B = \sum_{i_1, i_2, \dots}  A_{i_1, i_2, \dots} B_{i_1, i_2, \dots}
     /// \f]
     /// \tparam LExp Left-hand tensor expression type
     /// \tparam RExp Right-hand tensor expression type
