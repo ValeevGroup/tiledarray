@@ -32,8 +32,7 @@ namespace TiledArray {
 
     /// This map does a cyclic decomposition of an m-by-n matrix. It distributes
     /// processors into an x-by-y matrix such that the ratios of m/n and x/y are
-    /// approximately equal. It also applies a sudo-randomization to the
-    /// resulting process map.
+    /// approximately equal.
     class CyclicPmap : public Pmap<std::size_t> {
     public:
       typedef Pmap<std::size_t>::key_type key_type;
@@ -46,7 +45,6 @@ namespace TiledArray {
           n_(n),
           x_(),
           y_(),
-          seed_(0ul),
           local_()
       {
         TA_ASSERT(m > 0ul);
@@ -74,7 +72,6 @@ namespace TiledArray {
           n_(n),
           x_(std::min<std::size_t>(x,m)),
           y_(std::min<std::size_t>(y,n)),
-          seed_(0ul),
           local_()
       {
         TA_ASSERT(x_ * y_ <= procs_);
@@ -89,7 +86,6 @@ namespace TiledArray {
           n_(other.n_),
           x_(other.x_),
           y_(other.y_),
-          seed_(0ul),
           local_()
       { }
 
@@ -98,17 +94,13 @@ namespace TiledArray {
       virtual ~CyclicPmap() { }
 
       /// Set the hashing seed
-      virtual void set_seed(madness::hashT seed = 0ul) {
-        seed_ = seed;
-
+      virtual void set_seed(madness::hashT = 0) {
         // Construct the local process map.
-        // Todo: This iterates over all elements of the map, but it could be more
-        // efficient.
         local_.reserve((m_ / x_) * (n_ / y_));
         const key_type size = x_ * y_;
         const std::size_t end = m_ * n_;
         for(std::size_t r = 0ul; r < size; ++r) {
-            if(map_ordinal_to_process(r) == rank_) {
+            if(r == rank_) {
               const std::size_t m_step = n_ * x_;
               const std::size_t row_end_offset = n_ - (r % y_);
               for(std::size_t m = (r / y_) * n_ + (r % y_); m < end; m += m_step) {
@@ -118,13 +110,6 @@ namespace TiledArray {
               }
             }
         }
-
-
-//        const key_type size = m_ * n_;
-//        for(key_type i = 0ul; i < size; ++i) {
-//          if(this->owner(i) == rank_)
-//            local_.push_back(i);
-//        }
       }
 
 
@@ -141,21 +126,20 @@ namespace TiledArray {
       /// \return The \c ProcessID of the process that owns \c key .
       virtual ProcessID owner(const key_type& key) const {
         TA_ASSERT(key < (m_ * n_));
-        // Get matrix coordinate
-        const std::size_t m = key / n_;
-        const std::size_t n = key % n_;
-        // Get processor coordinate
-        const std::size_t x = m % x_;
-        const std::size_t y = n % y_;
-        // Get processor ordinal
-        const std::size_t o = x * y_ + y;
+//        // Get matrix coordinate
+//        const std::size_t m = key / n_;
+//        const std::size_t n = key % n_;
+//        // Get processor coordinate
+//        const std::size_t x = m % x_;
+//        const std::size_t y = n % y_;
+//        // Get processor ordinal
+//        const std::size_t o = x * y_ + y;
+        const std::size_t o = ((key / n_) % x_) * y_ + ((key % n_) % y_);
 
         TA_ASSERT(o < procs_);
 
-        return map_ordinal_to_process(o);
-
+        return o;
       }
-
 
       /// Local size accessor
 
@@ -184,15 +168,6 @@ namespace TiledArray {
       virtual const std::vector<key_type>& local() const { return local_; }
 
     private:
-
-      ProcessID map_ordinal_to_process(std::size_t o) const {
-//        if((x_ * y_) == procs_)
-          return o;
-        // sudo-randomize the owning process
-//        madness::hashT seed = seed_;
-//        madness::hash_combine(seed, o);
-//        return seed % procs_;
-      }
 
       std::size_t procs_; ///< Number of processes in the world
       std::size_t rank_; ///< This process's rank
