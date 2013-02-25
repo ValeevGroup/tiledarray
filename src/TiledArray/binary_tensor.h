@@ -28,7 +28,7 @@
 namespace TiledArray {
   namespace expressions {
 
-    /// Placeholder object for a zero tensor.
+    /// Place-holder object for a zero tensor.
     template <typename T>
     struct ZeroTensor {
       typedef T value_type;
@@ -118,6 +118,9 @@ namespace TiledArray {
           }
         }
 
+        /// Apply a scaling factor to this operation
+
+        /// \param value The scaling factor for this operation
         void scale(const value_type value) { op_.scale(value); }
 
         template <typename Left, typename Right>
@@ -191,6 +194,9 @@ namespace TiledArray {
           }
         }
 
+        /// Apply a scaling factor to this operation
+
+        /// \param value The scaling factor for this operation
         void scale(const value_type value) { op_.scale(value); }
 
         template <typename Left, typename Right>
@@ -293,8 +299,8 @@ namespace TiledArray {
         /// Function for evaluating this tensor's tiles
 
         /// This function is run inside a task, and will run after \c eval_children
-        /// has completed. It should spwan additional tasks that evaluate the
-        /// individule result tiles.
+        /// has completed. It should spawn additional tasks that evaluate the
+        /// individual result tiles.
         virtual void eval_tiles() {
           typedef ZeroTensor<typename left_tensor_type::value_type::value_type> zero_left_type;
           typedef ZeroTensor<typename right_tensor_type::value_type::value_type> zero_right_type;
@@ -357,7 +363,7 @@ namespace TiledArray {
         virtual madness::Future<bool> eval_children(const expressions::VariableList& vars,
             const std::shared_ptr<pmap_interface>& pmap) {
           // The default behavior, where left vars equal right vars, is to do the
-          // tile permuation (if necessary) in this object since it is less
+          // tile permutation (if necessary) in this object since it is less
           // expensive.
           // Note: This function assumes, vars == left vars
           const VariableList* left_vars = & left_.vars();
