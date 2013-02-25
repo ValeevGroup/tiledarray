@@ -42,7 +42,7 @@ namespace TiledArray {
       /// \param world A reference to the world
       /// \param size The number of elements to be mapped
       /// \param num_blocks The number of blocks [default = world.size()]
-      /// \param seed The hashing seed for sudo random selection of nodes
+      /// \param seed The hashing seed for pseudorandom selection of nodes
       /// \param min_block_size The smallest block size allowed [default = 1]
       /// \note \c seed must be the same on all nodes.
       BlockedPmap(madness::World& world, std::size_t size, std::size_t num_blocks = 0ul, std::size_t min_block_size = 1ul) :
