@@ -248,13 +248,19 @@ namespace TiledArray {
           const size_type step = owner_->proc_rows_ * owner_->k_;
           const size_type end = owner_->mk_;
           if(owner_->left().is_local(i)) {
-            for(; i < end; i += step) {
-              // Take the tile's local copy and add it to the column vector
-              col.push_back(col_datum(i, owner_->left().move(i)));
+            if(! owner_->left().get_pmap()->is_replicated()) {
+              for(; i < end; i += step) {
+                // Take the tile's local copy and add it to the column vector
+                col.push_back(col_datum(i, owner_->left().move(i)));
 
-              // Broadcast the tile to all nodes in the row
-              owner_->spawn_bcast_task(& Summa_::bcast_row_handler, i,
-                  col.back().second, owner_->row_group_, owner_->rank_col_);
+                // Broadcast the tile to all nodes in the row
+                owner_->spawn_bcast_task(& Summa_::bcast_row_handler, i,
+                    col.back().second, owner_->row_group_, owner_->rank_col_);
+              }
+            } else {
+              for(; i < end; i += step)
+                // Take the tile's local copy and add it to the column vector
+                col.push_back(col_datum(i, owner_->left().move(i)));
             }
           } else {
             for(; i < end; i += step) {
@@ -293,15 +299,20 @@ namespace TiledArray {
           size_type i = bcast_k_ * owner_->n_ + owner_->rank_col_;
           const size_type end = (bcast_k_ + 1) * owner_->n_;
           if(owner_->right().is_local(i)) {
-            for(; i < end; i += owner_->proc_cols_) {
-              // Take the tile's local copy and add it to the row vector
-              row.push_back(row_datum(i, owner_->right().move(i)));
+            if(! owner_->right().get_pmap()->is_replicated()) {
+              for(; i < end; i += owner_->proc_cols_) {
+                // Take the tile's local copy and add it to the row vector
+                row.push_back(row_datum(i, owner_->right().move(i)));
 
-              // Broadcast the tile to all nodes in the column
-              owner_->spawn_bcast_task(& Summa_::bcast_col_handler, i,
-                  row.back().second, owner_->col_group_, owner_->rank_row_);
+                // Broadcast the tile to all nodes in the column
+                owner_->spawn_bcast_task(& Summa_::bcast_col_handler, i,
+                    row.back().second, owner_->col_group_, owner_->rank_row_);
+              }
+            } else {
+              for(; i < end; i += owner_->proc_cols_)
+                // Take the tile's local copy and add it to the row vector
+                row.push_back(row_datum(i, owner_->right().move(i)));
             }
-
           } else {
             for(; i < end; i += owner_->proc_cols_) {
               // Insert a future into the cache as a placeholder for the broadcast tile.
