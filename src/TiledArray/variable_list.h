@@ -281,7 +281,7 @@ namespace TiledArray {
       return result;
     }
 
-    /// ostream VariableList output orperator.
+    /// ostream VariableList output operator.
     inline std::ostream& operator <<(std::ostream& out, const VariableList& v) {
       out << "(";
       std::size_t d;
