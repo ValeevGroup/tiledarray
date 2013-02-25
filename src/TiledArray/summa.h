@@ -33,7 +33,7 @@ namespace TiledArray {
     /// standard matrix multiplication algorithm can be used to contract the
     /// tensors. SUMMA is described in:
     /// Van De Geijn, R. A.; Watts, J. Concurrency Practice and Experience 1997, 9, 255-274.
-    /// \tparam Left The left-hand-arguement type
+    /// \tparam Left The left-hand-argument type
     /// \tparam Right The right-hand-argument type
     template <typename Left, typename Right>
     class Summa : public madness::WorldObject<Summa<Left, Right> >, public ContractionTensorImpl<Left, Right> {
@@ -219,8 +219,6 @@ namespace TiledArray {
       }
 
       /// Broadcast task for rows or columns
-
-      /// \tparam Func The member function of the owner function that will do the actual broadcasting.
       class BcastRowColTask : public madness::TaskInterface {
       private:
         Summa_* owner_;
@@ -368,13 +366,13 @@ namespace TiledArray {
       /// the left argument tensor, and broadcast of the k + 2 row of the right
       /// argument. The next SUMMA iteration task depends on the results of the
       /// schedule contraction task. The broadcast tasks depend on all of the
-      /// individule contraction tasks and the schedule contraction task.
+      /// individual contraction tasks and the schedule contraction task.
       /// When \c k==k_ , the finalize task is spawned instead, which will assign
       /// the final value to the local tiles.
       /// \param k The SUMMA iteration step, in the range [0,k_].
       /// \param results A vector of futures of shared pointers to result tiles
       /// \param col_k0 The column tiles of the left argument tensor needed for
-      /// SUMMA iterantion \c k
+      /// SUMMA iteration \c k
       /// \param row_k0 The row tiles of the right argument tensor needed for
       /// SUMMA iteration \c k
       /// \param col_row_k1 The column and row tiles for SUMMA iteration \c k+1
@@ -436,7 +434,7 @@ namespace TiledArray {
           for(; row_first < row_last; ++row_first)
             row_group_.push_back(row_first);
 
-          // Fill the col group with all the processes in rank's col
+          // Fill the col group with all the processes in rank's column
           col_group_.reserve(proc_rows_);
           for(ProcessID col_first = rank_col_; col_first < proc_size_; col_first += proc_cols_)
             col_group_.push_back(col_first);
@@ -474,7 +472,7 @@ namespace TiledArray {
               TensorExpressionImpl_::set(ij, results_.back().second.result());
             }
 
-          // Spawn the first step in the summa algorithm
+          // Spawn the first step in the algorithm
           task(rank_, & Summa_::step, 0ul, col_row_k0.first, col_row_k0.second,
               col_row_k1, madness::TaskAttributes::hipri());
         }
