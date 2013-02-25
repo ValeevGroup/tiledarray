@@ -335,7 +335,7 @@ namespace TiledArray {
 
     /// Construct a shape for the array that contains the tiles given by the list
     /// of indexes or offsets.
-    /// \tparam InIter Input interator type
+    /// \tparam InIter Input iterator type
     /// \param world The world of this array
     /// \param tr Tile range object for this array
     /// \param first Iterator pointing to a list of tiles to be included in the array
