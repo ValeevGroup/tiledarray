@@ -334,8 +334,10 @@ namespace TiledArray {
       ReducePairTaskImpl(madness::World& world, Op op) :
           madness::TaskInterface(1, madness::TaskAttributes::hipri()),
           world_(world), op_(op), ready_result_(new result_type(op())),
-          ready_pair_(NULL), result_(), lock_(), count_(0ul)
-      { }
+          ready_pair_(NULL), result_(), lock_(), count_()
+      {
+        count_ = 0;
+      }
 
       virtual ~ReducePairTaskImpl() { }
 
