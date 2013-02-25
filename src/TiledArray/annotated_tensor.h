@@ -174,7 +174,7 @@ namespace TiledArray {
 
         /// \tparam T The integral type
         /// \param t The value to be checked
-        /// \return \c true if t is equal to 1, othewise false
+        /// \return \c true if t is equal to 1, otherwise false
         template <typename T>
         typename madness::enable_if<std::is_integral<T>, bool>::type
         is_one(const T t) {
@@ -186,7 +186,7 @@ namespace TiledArray {
         /// Check that \c is approximately equal to 1 +/- 10^-15.
         /// \tparam T The floating point type
         /// \param t The value to be checked
-        /// \return \c true if t is equal to 1, othewise false
+        /// \return \c true if t is equal to 1, otherwise false
         template <typename T>
         typename madness::enable_if<std::is_floating_point<T>, bool>::type
         is_one(const T t) {
@@ -197,8 +197,8 @@ namespace TiledArray {
         /// Function for evaluating this tensor's tiles
 
         /// This function is run inside a task, and will run after \c eval_children
-        /// has completed. It should spwan additional tasks that evaluate the
-        /// individule result tiles.
+        /// has completed. It should spawn additional tasks that evaluate the
+        /// Individual result tiles.
         virtual void eval_tiles() {
           static const typename value_type::value_type one(1);
 
@@ -252,7 +252,7 @@ namespace TiledArray {
         array_type& array_; ///< The referenced array
       }; // class PermuteTiledTensor
 
-    } // detail namespace
+    } // namespace detail
 
 
     template <typename T, unsigned int DIM, typename Tile>
