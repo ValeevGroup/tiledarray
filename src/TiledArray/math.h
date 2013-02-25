@@ -125,14 +125,16 @@ namespace TiledArray {
       return X.squaredNorm();
     }
 
-    template <typename T>
-    T maxabs(const integer n, const T* x) {
-
+    namespace detail {
+      template <typename T>
       struct abs_compare {
         bool operator()(T x, T y) { return std::fabs(x) < std::fabs(y); }
       };
-      abs_compare cmp;
+    }
 
+    template <typename T>
+    T maxabs(const integer n, const T* x) {
+      detail::abs_compare<T> cmp;
       return *(std::max_element(x, x+n, cmp));
     }
 
