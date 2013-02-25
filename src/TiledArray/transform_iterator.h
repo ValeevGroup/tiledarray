@@ -153,7 +153,7 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Postfix increment operator
+      /// Post-fix increment operator
 
       /// \return A copy of this object before it is incremented.
       this_type operator++(int) {
@@ -325,7 +325,7 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Postfix increment operator
+      /// Post-fix increment operator
 
       /// \return A copy of this object before it is incremented.
       this_type operator++(int) {
@@ -497,7 +497,7 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Postfix increment operator
+      /// Post-fix increment operator
 
       /// \return A copy of this object before it is incremented.
       this_type operator++(int) {
