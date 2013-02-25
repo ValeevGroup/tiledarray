@@ -327,7 +327,7 @@ namespace TiledArray {
       volatile ReducePair* ready_pair_;
       madness::Future<result_type> result_;
       madness::Spinlock lock_;
-      std::size_t count_;
+      madness::AtomicInt count_;
 
     public:
 
@@ -347,7 +347,7 @@ namespace TiledArray {
       template <typename Left, typename Right>
       ReducePair* add(const Left& left, const Right& right, madness::CallbackInterface* callback) {
         inc();
-        ++count_;
+        count_++;
         return new ReducePair(this, left, right, callback);
       }
 
@@ -442,21 +442,31 @@ namespace TiledArray {
     /// \code
     /// first = op(first, second);
     /// \endcode
-    /// where \c op is the reduction operation given to the constructor
+    /// where \c op is the reduction operation given to the constructor.
+    /// \note There is no need to add this object to the MADNESS task queue. It
+    /// will be handled internally by the object. Simply call \c submit() to add
+    /// this task to the task queue.
     /// \tparam T The object type to be reduced
     /// \tparam Op The reduction operation type
     template <typename Op>
     class ReducePairTask {
     public:
 
-      typedef typename Op::result_type result_type;
-      typedef typename Op::first_argument_type first_argument_type;
-      typedef typename Op::second_argument_type second_argument_type;
-      typedef ReducePairTask<Op> ReducePairTask_;
+      typedef typename Op::result_type result_type; ///< The reduction result type
+      typedef typename Op::first_argument_type first_argument_type; ///< The left-hand argument type
+      typedef typename Op::second_argument_type second_argument_type; ///< The right-hand argument type
+      typedef ReducePairTask<Op> ReducePairTask_; ///< This object type
 
     private:
+
       std::shared_ptr<ReducePairTaskImpl<Op> > pimpl_; ///< The reduction task object.
 
+      /// Deleter function for the pimpl
+
+      /// This function will either run the task function if the count is zero
+      /// or submit the task to MADNESS the task queue. The pointer will
+      /// eventually be deleted by the task queue.
+      /// \param pimpl The pinter to be disposed of
       static void deleter(ReducePairTaskImpl<Op>* pimpl) {
         if(pimpl->count() == 0ul) {
           pimpl->run(madness::TaskThreadEnv(1,0,0));
@@ -472,7 +482,9 @@ namespace TiledArray {
 
     public:
 
+      /// Task constructor
 
+      /// \param world The world where this task will be run.
       ReducePairTask(madness::World& world, const Op& op = Op()) :
         pimpl_(new ReducePairTaskImpl<Op>(world, op), &deleter)
       { }
@@ -504,12 +516,17 @@ namespace TiledArray {
         pimpl_->add(left, right, callback);
       }
 
+      /// Get a count for the number of pairs added to the reduce task
 
+      /// \warning This is not thread safe.
       std::size_t count() const {
         TA_ASSERT(pimpl_);
         return pimpl_->count();
       }
 
+      /// Task result accessor
+
+      /// \return A future to the result
       madness::Future<result_type> result() const {
         TA_ASSERT(pimpl_);
         return pimpl_->result();
