@@ -149,7 +149,7 @@ namespace TiledArray {
           child1_wptr_ = wptr;
       }
 
-      /// Wolrd pointer factory function
+      /// World pointer factory function
 
       /// \return A world pointer to this object
       madness::detail::WorldPtr<LazySyncBase_> get_wptr() const {
