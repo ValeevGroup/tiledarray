@@ -139,8 +139,8 @@ namespace TiledArray {
         /// Function for evaluating this tensor's tiles
 
         /// This function is run inside a task, and will run after \c eval_children
-        /// has completed. It should spwan additional tasks that evaluate the
-        /// individule result tiles.
+        /// has completed. It should spawn additional tasks that evaluate the
+        /// individual result tiles.
         virtual void eval_tiles() {
           // Set the scale factor
           op_.scale(TensorExpressionImpl_::scale());
@@ -188,7 +188,7 @@ namespace TiledArray {
         }
 
         arg_tensor_type arg_; ///< Argument
-        Op op_; ///< The unary element opertation
+        Op op_; ///< The unary tile operation
       }; // class UnaryTensorImpl
 
     } // namespace detail
