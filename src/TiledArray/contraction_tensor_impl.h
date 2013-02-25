@@ -133,7 +133,7 @@ namespace TiledArray {
 
         /// Contract a pair of tiles and add to a target tile
 
-        /// Contracte \c left and \c right and add the result to \c result.
+        /// Contract \c left and \c right and add the result to \c result.
         /// \param[in,out] result The result object that will be the reduction target
         /// \param[in] left The left-hand tile to be contracted
         /// \param[in] right The right-hand tile to be contracted
@@ -143,7 +143,7 @@ namespace TiledArray {
 
         /// Contract a pair of tiles and add to a target tile
 
-        /// Contracte \c left1 with \c right1 and \c left2 with \c right2 ,
+        /// Contract \c left1 with \c right1 and \c left2 with \c right2 ,
         /// and add the two results.
         /// \param[in] left The first left-hand tile to be contracted
         /// \param[in] right The first right-hand tile to be contracted
@@ -295,7 +295,7 @@ namespace TiledArray {
         right_inner_ = left_inner_;
         right_outer_ = right_.range().dim() - right_inner_;
 
-        // Caclulate the process map dimensions and size
+        // Calculate the process map dimensions and size
         proc_cols_ = std::min(size_ / std::max(std::min<std::size_t>(std::sqrt(size_ * m_ / n_), size_), 1ul), n_);
         proc_rows_ = std::min(size_ / proc_cols_, m_);
         proc_size_ = proc_cols_ * proc_rows_;
@@ -367,19 +367,19 @@ namespace TiledArray {
         TA_ASSERT(!left.empty());
         TA_ASSERT(!right.empty());
 
-        // The assertions below varify that the argument and result tensors are coformal
+        // The assertions below verify that the argument and result tensors are coformal
 
         // Check that all tensors have the correct dimension sizes
         TA_ASSERT(result.range().dim() == (left_outer_ + right_outer_));
         TA_ASSERT(left.range().dim() == (left_outer_ + left_inner_));
         TA_ASSERT(right.range().dim() == (right_inner_ + right_outer_));
 
-        // Check that the outer dimensions of left match the the corresponding dimesions in result
+        // Check that the outer dimensions of left match the the corresponding dimensions in result
         TA_ASSERT(std::equal(left.range().start().begin(), left.range().start().begin() + left_outer_, result.range().start().begin()));
         TA_ASSERT(std::equal(left.range().finish().begin(), left.range().finish().begin() + left_outer_, result.range().finish().begin()));
         TA_ASSERT(std::equal(left.range().size().begin(), left.range().size().begin() + left_outer_, result.range().size().begin()));
 
-        // Check that the outer dimensions of right match the the corresponding dimesions in result
+        // Check that the outer dimensions of right match the the corresponding dimensions in result
         TA_ASSERT(std::equal(right.range().start().begin() + right_inner_, right.range().start().end(), result.range().start().begin() + left_outer_));
         TA_ASSERT(std::equal(right.range().finish().begin() + right_inner_, right.range().finish().end(), result.range().finish().begin() + left_outer_));
         TA_ASSERT(std::equal(right.range().size().begin() + right_inner_, right.range().size().end(), result.range().size().begin() + left_outer_));
