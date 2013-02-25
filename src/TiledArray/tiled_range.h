@@ -173,10 +173,6 @@ namespace TiledArray {
     }
 
   private:
-    /// precomputes useful data listed below
-    void init_() {
-    }
-
     range_type range_; ///< Stores information on tile indexing for the range.
     tile_range_type element_range_; ///< Stores information on element indexing for the range.
     Ranges ranges_; ///< Stores tile boundaries for each dimension.
