@@ -259,7 +259,7 @@ namespace TiledArray {
 
     /// Shape map accessor
 
-    /// Bits are \c true when the tile exists, ether locally or remotely. No
+    /// Bits are \c true when the tile exists, either locally or remotely. No
     /// no communication required.
     /// \return A bitset that maps the existence of tiles.
     /// \throw TiledArray::Exception When the Array is dense.
@@ -304,29 +304,13 @@ namespace TiledArray {
         // the local tile data.
         detail::Replicator<Array_>* replicator = new detail::Replicator<Array_>(*this, result);
 
-        // Put the replicator pointer in the defered cleanup object so it will
+        // Put the replicator pointer in the deferred cleanup object so it will
         // be deleted at the end of the next fence.
         madness::DeferredDeleter<detail::Replicator<Array_> > deleter =
             madness::make_deferred_deleter<detail::Replicator<Array_> >(get_world());
         deleter(replicator);
 
         result.swap(*this);
-      }
-    }
-
-    /// Remove all tiles from this array
-    void purge() {
-      TA_ASSERT(pimpl_);
-      typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
-      typename pmap_interface::const_iterator end = pimpl_->pmap()->end();
-
-      if(pimpl_->is_dense()) {
-        for(; it != end; ++it)
-          pimpl_->move(*it);
-      } else {
-        for(; it != end; ++it)
-          if(! pimpl_->is_zero(*it))
-            pimpl_->move(*it);
       }
     }
 
