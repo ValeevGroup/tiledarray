@@ -378,6 +378,35 @@ namespace TiledArray {
 
       }; // class dot_reduce_op
 
+      template <typename Exp>
+      class sum_op {
+      public:
+        typedef typename Exp::value_type argument_type; // tile type
+        typedef typename Exp::value_type::value_type result_type; // result type of the reduction operation
+        typedef std::plus<result_type> remote_op_type; // remote reduction operation type (e.g. std::plus<result_type>)
+
+        // Default construction of a result object
+        result_type operator()() const { return result_type(0); }
+
+
+        // Reduce two result objects
+        void operator()(result_type& result, const result_type& arg) const {
+          result += arg;
+        }
+
+        // Reduce an argument object to a result object
+        void operator()(result_type& result, const argument_type& first) const {
+          for(typename argument_type::const_iterator it = first.begin(); it != first.end(); ++it)
+            result += *it;
+        }
+
+        // Reduce a two arguments to a single result object
+        void operator()(result_type& result, const argument_type& first, const argument_type& second) const {
+          operator()(result, first);
+          operator()(result, second);
+        }
+      }; // class reduction_op
+
     } // namespace detail
 
 
@@ -454,6 +483,25 @@ namespace TiledArray {
           std::multiplies<typename LTile::value_type>()));
     }
 
+    /// Compute the (vector) norm2 of \c arg
+
+    /// (vector) 2-norm of a tensor:
+    /// \f[
+    /// ||arg||_2 = \sqrt{\sum_{i_1, i_2, \dots} (arg_{i_1, i_2, \dots})^2 }
+    /// \f]
+    /// This function will compute the norm2 of the tensor expression, \c arg ,
+    /// across all nodes. The function will block, until the computation is
+    /// complete, but it will continue to process tasks while waiting. The same
+    /// result is returned on all nodes.
+    /// \tparam Exp Tensor expression type
+    /// \param arg The tensor expression
+    /// \return The 2-norm of the tensor
+    template <typename Tile>
+    inline typename TensorExpression<Tile>::value_type::value_type
+    sum(const TensorExpression<Tile>& arg) {
+      return reduce(arg, detail::sum_op<TensorExpression<Tile> >());
+    }
+
     /// Calculate the dot product of two tensor expressions
 
     /// \f[
@@ -501,11 +549,10 @@ namespace TiledArray {
     /// \tparam Exp Tensor expression type
     /// \param arg The tensor expression
     /// \return The 2-norm of the tensor
-    template <typename Exp>
-    inline typename madness::enable_if<is_tensor_expression<Exp>,
-        typename Exp::value_type::value_type>::type
-    norm2(const Exp& arg) {
-      return std::sqrt(reduce(arg, detail::square_norm2_op<Exp>()));
+    template <typename Tile>
+    inline typename TensorExpression<Tile>::value_type::value_type
+    norm2(const TensorExpression<Tile>& arg) {
+      return std::sqrt(reduce(arg, detail::square_norm2_op<TensorExpression<Tile> >()));
     }
 
     /// Compute the (vector) infinity-norm of \c arg
@@ -521,11 +568,10 @@ namespace TiledArray {
     /// \tparam Exp Tensor expression type
     /// \param arg The tensor expression
     /// \return The infinity-norm of the tensor
-    template <typename Exp>
-    inline typename madness::enable_if<is_tensor_expression<Exp>,
-        typename Exp::value_type::value_type>::type
-    norminf(const Exp& arg) {
-      return reduce(arg, detail::norminf_op<Exp>());
+    template <typename Tile>
+    inline typename TensorExpression<Tile>::value_type::value_type
+    norminf(const TensorExpression<Tile>& arg) {
+      return reduce(arg, detail::norminf_op<TensorExpression<Tile> >());
     }
 
     template <typename T, unsigned int DIM, typename Tile>
