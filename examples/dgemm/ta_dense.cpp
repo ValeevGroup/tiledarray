@@ -52,11 +52,13 @@ int main(int argc, char** argv) {
   const std::size_t num_blocks = matrix_size / block_size;
 
   if(world.rank() == 0)
-    std::cout << "Number of nodes   = " << world.size()
-              << "\nMatrix size       = " << matrix_size << "x" << matrix_size
-              << "\nBlock size        = " << block_size << "x" << block_size
-              << "\nMemory per matrix = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
-              << " GB\nNumber of blocks  = " << num_blocks * num_blocks << "\n";
+    std::cout << "TiledArray: dense matrix multiply test...\n"
+              << "Number of nodes    = " << world.size()
+              << "\nMatrix size        = " << matrix_size << "x" << matrix_size
+              << "\nBlock size         = " << block_size << "x" << block_size
+              << "\nMemory per matrix  = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
+              << " GB\nNumber of blocks   = " << num_blocks * num_blocks
+              << "\nAverage blocks/node = " << num_blocks / num_blocks << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;
@@ -85,6 +87,8 @@ int main(int argc, char** argv) {
   for(int i = 0; i < repeat; ++i) {
     c("m,n") = a("m,k") * b("k,n");
     world.gop.fence();
+    if(world.rank() == 0)
+      std::cout << "Iteration " << i + 1 << "\n";
   }
 
   // Stop clock

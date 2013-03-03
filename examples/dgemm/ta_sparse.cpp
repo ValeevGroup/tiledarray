@@ -59,14 +59,17 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // Print information about the test
   const std::size_t num_blocks = matrix_size / block_size;
-
+  const long block_count = (double(sparsity) / 100.0) * double(num_blocks * num_blocks);
   if(world.rank() == 0)
-    std::cout << "Number of nodes   = " << world.size()
-              << "\nMatrix size       = " << matrix_size << "x" << matrix_size
-              << "\nBlock size        = " << block_size << "x" << block_size
-              << "\nMemory per matrix = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
-              << " GB\nNumber of blocks  = " << num_blocks * num_blocks << "\n";
+    std::cout << "TiledArray: block-sparse matrix multiply test...\n"
+              << "Number of nodes    = " << world.size()
+              << "\nMatrix size        = " << matrix_size << "x" << matrix_size
+              << "\nBlock size         = " << block_size << "x" << block_size
+              << "\nMemory per matrix  = " << double(block_count * block_size * block_size * sizeof(double)) / 1.0e9
+              << " GB\nNumber of blocks   = " << block_count
+              << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;
@@ -81,15 +84,21 @@ int main(int argc, char** argv) {
     trange(blocking2.begin(), blocking2.end());
 
   // Construct shape
-  TiledArray::detail::Bitset<> shape(trange.tiles().volume());
-  const long n = (double(sparsity) / 100.0) * double(trange.tiles().volume());
-  world.srand(time(NULL));
-  for(long i = 0; i < n; ++i)
-    shape.set(world.rand() % trange.tiles().volume());
+  std::vector<std::size_t> a_shape, b_shape;
+  if(world.rank() == 0) {
+    a_shape.reserve(block_count);
+    world.srand(time(NULL));
+    for(long i = 0; i < block_count; ++i)
+      a_shape.push_back(world.rand() % trange.tiles().volume());
+
+    b_shape.reserve(block_count);
+    for(long i = 0; i < block_count; ++i)
+      b_shape.push_back(world.rand() % trange.tiles().volume());
+  }
 
   // Construct and initialize arrays
-  TiledArray::Array<double, 2> a(world, trange, shape);
-  TiledArray::Array<double, 2> b(world, trange, shape);
+  TiledArray::Array<double, 2> a(world, trange, a_shape.begin(), a_shape.end());
+  TiledArray::Array<double, 2> b(world, trange, b_shape.begin(), b_shape.end());
   TiledArray::Array<double, 2> c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
@@ -98,19 +107,23 @@ int main(int argc, char** argv) {
   world.gop.fence();
   const double wall_time_start = madness::wall_time();
 
-  // Do matrix multiplcation
+  // Do matrix multiplication
   for(int i = 0; i < repeat; ++i) {
     c("m,n") = a("m,k") * b("k,n");
     world.gop.fence();
+    if(world.rank() == 0)
+      std::cout << "Iteration " << i + 1 << "\n";
   }
 
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 
-  if(world.rank() == 0)
+  // Print results
+  const long flop = 2.0 * TiledArray::expressions::sum(c("m,n"));
+  if(world.rank() == 0) {
     std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
-        << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
-            matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+        << "\nAverage GFLOPS = " << double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+  }
 
 
   madness::finalize();

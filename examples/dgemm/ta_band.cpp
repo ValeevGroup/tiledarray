@@ -59,13 +59,19 @@ int main(int argc, char** argv) {
   }
 
   const std::size_t num_blocks = matrix_size / block_size;
+  std::size_t block_count = 0;
+  for (int i = -band_width + 1; i < band_width; ++i) {
+    block_count += num_blocks - (2 * std::abs(i));
+  }
 
   if(world.rank() == 0)
-    std::cout << "Number of nodes   = " << world.size()
-              << "\nMatrix size       = " << matrix_size << "x" << matrix_size
-              << "\nBlock size        = " << block_size << "x" << block_size
-              << "\nMemory per matrix = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
-              << " GB\nNumber of blocks  = " << num_blocks * num_blocks << "\n";
+    std::cout << "TiledArray: block-banded matrix multiply test...\n"
+              << "Number of nodes    = " << world.size()
+              << "\nMatrix size        = " << matrix_size << "x" << matrix_size
+              << "\nBlock size         = " << block_size << "x" << block_size
+              << "\nMemory per matrix  = " << double(block_count * block_size * block_size * sizeof(double)) / 1.0e9
+              << " GB\nNumber of blocks   = " << block_count
+              << "\nAverage blocks/node = " << block_count / world.size() << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;
@@ -81,10 +87,10 @@ int main(int argc, char** argv) {
 
   // Construct shape
   TiledArray::detail::Bitset<> shape(trange.tiles().volume());
-  for(long i = 0; i < matrix_size; ++i) {
+  for(long i = 0; i < num_blocks; ++i) {
     long j = std::max<long>(i - band_width + 1, 0);
-    const long j_end = std::min(i + band_width - 1, matrix_size);
-    long ij = i * matrix_size + j;
+    const long j_end = std::min<long>(i + band_width - 1, num_blocks);
+    long ij = i * num_blocks + j;
     for(; j < j_end; ++j, ++ij)
       shape.set(ij);
   }
@@ -100,19 +106,23 @@ int main(int argc, char** argv) {
   world.gop.fence();
   const double wall_time_start = madness::wall_time();
 
-  // Do matrix multiplcation
+  // Do matrix multiplication
   for(int i = 0; i < repeat; ++i) {
     c("m,n") = a("m,k") * b("k,n");
     world.gop.fence();
+    if(world.rank() == 0)
+      std::cout << "Iteration " << i + 1 << "\n";
   }
 
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 
-  if(world.rank() == 0)
+  // Print results
+  const long flop = 2.0 * TiledArray::expressions::sum(c("m,n"));
+  if(world.rank() == 0) {
     std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
-        << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
-            matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+        << "\nAverage GFLOPS = " << double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+  }
 
 
   madness::finalize();
