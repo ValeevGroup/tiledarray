@@ -410,9 +410,26 @@ namespace TiledArray {
 
       template <typename A>
       A convert_to_array() {
-        A array(std::static_pointer_cast<typename A::impl_type>(pimpl_));
-        pimpl_.reset();
-        return array;
+        if(pimpl_->is_dense()) {
+          A array(pimpl_->get_world(), pimpl_->trange());
+
+          typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
+          const typename pmap_interface::const_iterator end = pimpl_->pmap()->end();
+          for(; it != end; ++it)
+            array.set(*it, pimpl_->move(*it));
+
+          return array;
+        } else {
+          A array(pimpl_->get_world(), pimpl_->trange(), pimpl_->shape());
+
+          typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
+          const typename pmap_interface::const_iterator end = pimpl_->pmap()->end();
+          for(; it != end; ++it)
+            if(! pimpl_->is_zero(*it))
+              array.set(*it, pimpl_->move(*it));
+
+          return array;
+        }
       }
 
 
