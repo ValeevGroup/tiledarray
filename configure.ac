@@ -84,9 +84,6 @@ if test "$DOT" != :; then
 else
   AC_SUBST([HAVE_DOT], [NO])
 fi
-AM_SUBST_NOTMAKE([DOXYGEN])
-AM_SUBST_NOTMAKE([DOT])
-AM_SUBST_NOTMAKE([HAVE_DOT])
 
 # Check for the presence of Eigen header.
 AC_CHECK_HEADER([Eigen/Core], [], [
