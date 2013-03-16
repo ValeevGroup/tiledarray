@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
               << "\nBlock size         = " << block_size << "x" << block_size
               << "\nMemory per matrix  = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
               << " GB\nNumber of blocks   = " << num_blocks * num_blocks
-              << "\nAverage blocks/node = " << num_blocks / num_blocks << "\n";
+              << "\nAverage blocks/node = " << num_blocks / world.size() << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;
