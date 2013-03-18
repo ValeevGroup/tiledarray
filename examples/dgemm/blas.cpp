@@ -21,7 +21,7 @@
 #include <tiled_array.h>
 
 int main(int argc, char** argv) {
-
+#ifdef TILEDARRAY_HAS_BLAS
   // Get command line arguments
   if(argc < 2) {
     std::cout << "Usage: blas matrix_size [repetitions]\n";
@@ -56,13 +56,19 @@ int main(int argc, char** argv) {
   std::fill_n(b, matrix_size * matrix_size, 1.0);
   std::fill_n(c, matrix_size * matrix_size, 0.0);
 
+  // BLAS dgemm arguments
+  char opa = 'n', opb = 'n';
+  const double alpha = 1l, beta = 0l;
+  const integer m = matrix_size, n = matrix_size, k = matrix_size;
+  const integer lda = matrix_size, ldb = matrix_size, ldc = matrix_size;
+
   // Start clock
   const double wall_time_start = madness::wall_time();
 
   // Do matrix multiplcation
   // Note: If TiledArray has not been configured with blas, this will be an eigen call.
   for(int i = 0; i < repeat; ++i) {
-    TiledArray::math::gemm(matrix_size, matrix_size, matrix_size, 1.0, a, b, c);
+    dgemm(&opb, &opa, &n, &m, &k, &alpha, b, &ldb, a, &lda, &beta, c, &ldc);
   }
 
   // Stop clock
@@ -76,7 +82,9 @@ int main(int argc, char** argv) {
   std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
       << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
           matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
-
+#else
+  std::cout << "!!! ERROR: BLAS is not available.\n";
+#endif // TILEDARRAY_HAS_BLAS
   return 0;
 }
 

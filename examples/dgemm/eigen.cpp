@@ -43,18 +43,12 @@ int main(int argc, char** argv) {
             << " GB\n";
 
   // Construct matrices
-  double* a = NULL;
-  if(posix_memalign(reinterpret_cast<void**>(&a), 128, matrix_size * matrix_size) != 0)
-    return 1;
-  double* b = NULL;
-  if(posix_memalign(reinterpret_cast<void**>(&b), 128, matrix_size * matrix_size) != 0)
-    return 1;
-  double* c = NULL;
-  if(posix_memalign(reinterpret_cast<void**>(&c), 128, matrix_size * matrix_size) != 0)
-    return 1;
-  std::fill_n(a, matrix_size * matrix_size, 1.0);
-  std::fill_n(b, matrix_size * matrix_size, 1.0);
-  std::fill_n(c, matrix_size * matrix_size, 0.0);
+  Eigen::MatrixXd a(matrix_size, matrix_size);
+  Eigen::MatrixXd b(matrix_size, matrix_size);
+  Eigen::MatrixXd c(matrix_size, matrix_size);
+  a.fill(1.0);
+  b.fill(1.0);
+  c.fill(0.0);
 
 
   // Start clock
@@ -62,16 +56,11 @@ int main(int argc, char** argv) {
 
   // Do matrix multiplcation
   for(int i = 0; i < repeat; ++i) {
-    TiledArray::math::gemm<double>(matrix_size, matrix_size, matrix_size, 1.0, a, b, c);
+    c.noalias() = 1.0 * a * b + 0.0 * c;
   }
 
   // Stop clock
   const double wall_time_stop = madness::wall_time();
-
-  // Cleanup memory
-  free(a);
-  free(b);
-  free(c);
 
   std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
       << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
