@@ -32,6 +32,12 @@
 /* Alias BLAS cgemm function name */
 #undef cgemm
 
+/* Alias BLAS cgemv function name */
+#undef cgemv
+
+/* Alias BLAS cger function name */
+#undef cger
+
 /* Alias BLAS cscal function name */
 #undef cscal
 
@@ -44,6 +50,12 @@
 /* Alias BLAS dgemm function name */
 #undef dgemm
 
+/* Alias BLAS dgemv function name */
+#undef dgemv
+
+/* Alias BLAS dger function name */
+#undef dger
+
 /* Alias BLAS dscal function name */
 #undef dscal
 
@@ -52,6 +64,12 @@
 
 /* Alias BLAS sgemm function name */
 #undef sgemm
+
+/* Alias BLAS sgemv function name */
+#undef sgemv
+
+/* Alias BLAS sger function name */
+#undef sger
 
 /* Alias BLAS sscal function name */
 #undef sscal
@@ -64,6 +82,12 @@
 
 /* Alias BLAS zgemm function name */
 #undef zgemm
+
+/* Alias BLAS zgemv function name */
+#undef zgemv
+
+/* Alias BLAS zger function name */
+#undef zger
 
 /* Alias BLAS zscal function name */
 #undef zscal

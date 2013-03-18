@@ -23,6 +23,7 @@ library_include_HEADERS = annotated_tensor.h \
                           array.h \
                           binary_tensor.h \
                           bitset.h \
+                          blas.h \
                           blocked_pmap.h \
                           contraction_tensor_impl.h \
                           contraction_tensor.h \

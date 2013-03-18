@@ -22,54 +22,9 @@
 
 #include <TiledArray/config.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/blas.h>
 #include <world/enable_if.h>
 #include <Eigen/Core>
-
-#include <fortran_ctypes.h>
-#ifdef TILEDARRAY_HAS_BLAS
-
-typedef const char* fchar;
-typedef const integer* fint;
-typedef const char_len* fchar_len;
-
-extern "C" {
-
-  // BLAS _GEMM declarations
-  void sgemm(const char* opa, const char* opb, fint m, fint n, fint k,
-      const float* alpha, const float* A, fint lda, const float* B, fint ldb,
-      const float* beta, float* C, fint ldc);
-  void dgemm(const char*, const char*, fint, fint,
-      fint, const double*, const double*, fint,
-      const double*, fint, const double*, double*, fint);
-  void cgemm(const char*, const char*, fint, fint,
-      fint, const std::complex<float>*, const std::complex<float>*,
-      fint, const std::complex<float>*, fint,
-      const std::complex<float>*, std::complex<float>*, fint);
-  void zgemm(const char*, const char*, fint, fint, fint,
-      const std::complex<double>*, const std::complex<double>*, fint,
-      const std::complex<double>*, fint, const std::complex<double>*,
-      std::complex<double>*, fint);
-
-  // BLAS _SCAL declarations
-  void sscal(fint, const float*, float*, fint);
-  void dscal(fint, const double*, double*, fint);
-  void cscal(fint, const std::complex<float>*, std::complex<float>*, fint);
-  void csscal(fint, const float*, std::complex<float>*, fint);
-  void zscal(fint, const std::complex<double>*, std::complex<double>*, fint);
-  void zdscal(fint, const double*, std::complex<double>*, fint);
-
-  // BLAS _DOT declarations
-  float sdot(fint, const float*, fint, const float*, fint);
-  void sdsdotu(fint, const float*, const float*, fint, const float*,
-      fint, float*);
-  double ddot(fint, const double *, fint, const double *, fint);
-  void cdotu(fint, const std::complex<float>*, fint,
-      const std::complex<float>*, fint, std::complex<float>*);
-  void zdotu(fint, const std::complex<double>*, fint,
-      const std::complex<double>*, fint, std::complex<double>*);
-}
-
-#endif
 
 namespace TiledArray {
   namespace math {
@@ -88,55 +43,6 @@ namespace TiledArray {
       C.noalias() += alpha * (A * B);
     }
 
-    template <typename T, typename U>
-    inline typename madness::enable_if<detail::is_numeric<T> >::type
-    scale(const integer n, const T alpha, U* x) {
-      // Type defs
-      typedef Eigen::Matrix<U, Eigen::Dynamic, 1> matrix_type;
-      typedef Eigen::Map<matrix_type, Eigen::AutoAlign> map_type;
-
-      map_type X(x, n);
-
-      X *= alpha;
-    }
-
-    template <typename T, typename U>
-    T dot(const integer n, const T* x, const U* y) {
-      // Type defs
-      typedef Eigen::Matrix<T, Eigen::Dynamic, 1> matrixt_type;
-      typedef Eigen::Matrix<U, Eigen::Dynamic, 1> matrixu_type;
-      typedef Eigen::Map<const matrixt_type, Eigen::AutoAlign> mapt_type;
-      typedef Eigen::Map<const matrixu_type, Eigen::AutoAlign> mapu_type;
-
-      // construct vector maps
-      mapt_type X(x, n);
-      mapu_type Y(y, n);
-
-      return X.dot(Y);
-    }
-
-    template <typename T>
-    T square_norm(const integer n, const T* x) {
-      // Type defs
-      typedef Eigen::Matrix<T, Eigen::Dynamic, 1> matrix_type;
-      typedef Eigen::Map<const matrix_type, Eigen::AutoAlign> map_type;
-
-      map_type X(x, n);
-      return X.squaredNorm();
-    }
-
-    namespace detail {
-      template <typename T>
-      struct abs_compare {
-        bool operator()(T x, T y) { return std::fabs(x) < std::fabs(y); }
-      };
-    }
-
-    template <typename T>
-    T maxabs(const integer n, const T* x) {
-      detail::abs_compare<T> cmp;
-      return *(std::max_element(x, x+n, cmp));
-    }
 
 #ifdef TILEDARRAY_HAS_BLAS
 
@@ -165,6 +71,22 @@ namespace TiledArray {
       static const std::complex<double> beta(1.0, 0.0);
       zgemm(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
     }
+
+#endif // TILEDARRAY_HAS_CBLAS
+
+    template <typename T, typename U>
+    inline typename madness::enable_if<detail::is_numeric<T> >::type
+    scale(const integer n, const T alpha, U* x) {
+      // Type defs
+      typedef Eigen::Matrix<U, Eigen::Dynamic, 1> matrix_type;
+      typedef Eigen::Map<matrix_type, Eigen::AutoAlign> map_type;
+
+      map_type X(x, n);
+
+      X *= alpha;
+    }
+
+#ifdef TILEDARRAY_HAS_BLAS
 
     // BLAS _SCAL wrapper functions
 
@@ -198,6 +120,29 @@ namespace TiledArray {
       zdscal(&n, &alpha, x, &incX);
     }
 
+#endif // TILEDARRAY_HAS_CBLAS
+
+
+    template <typename T, typename U>
+    T dot(const integer n, const T* x, const U* y) {
+      // Type defs
+      typedef Eigen::Matrix<T, Eigen::Dynamic, 1> matrixt_type;
+      typedef Eigen::Matrix<U, Eigen::Dynamic, 1> matrixu_type;
+      typedef Eigen::Map<const matrixt_type, Eigen::AutoAlign> mapt_type;
+      typedef Eigen::Map<const matrixu_type, Eigen::AutoAlign> mapu_type;
+
+      // construct vector maps
+      mapt_type X(x, n);
+      mapu_type Y(y, n);
+
+      return X.dot(Y);
+    }
+
+#ifdef TILEDARRAY_HAS_BLAS
+
+
+    // BLAS _DOT wrapper functions
+
     inline float dot(const integer n, const float* x, const float* y) {
       static const integer incX = 1, incY = 1;
       return sdot(&n, x, &incX, y, &incY);
@@ -223,6 +168,30 @@ namespace TiledArray {
     }
 
 #endif // TILEDARRAY_HAS_CBLAS
+
+
+    template <typename T>
+    T square_norm(const integer n, const T* x) {
+      // Type defs
+      typedef Eigen::Matrix<T, Eigen::Dynamic, 1> matrix_type;
+      typedef Eigen::Map<const matrix_type, Eigen::AutoAlign> map_type;
+
+      map_type X(x, n);
+      return X.squaredNorm();
+    }
+
+    namespace detail {
+      template <typename T>
+      struct abs_compare {
+        bool operator()(T x, T y) { return std::fabs(x) < std::fabs(y); }
+      };
+    }
+
+    template <typename T>
+    T maxabs(const integer n, const T* x) {
+      detail::abs_compare<T> cmp;
+      return *(std::max_element(x, x+n, cmp));
+    }
 
   }  // namespace detail
 }  // namespace TiledArray
