@@ -50,15 +50,16 @@ int main(int argc, char** argv) {
   }
 
   const std::size_t num_blocks = matrix_size / block_size;
+  const std::size_t block_count = num_blocks * num_blocks;
 
   if(world.rank() == 0)
     std::cout << "TiledArray: dense matrix multiply test...\n"
-              << "Number of nodes    = " << world.size()
-              << "\nMatrix size        = " << matrix_size << "x" << matrix_size
-              << "\nBlock size         = " << block_size << "x" << block_size
-              << "\nMemory per matrix  = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
-              << " GB\nNumber of blocks   = " << num_blocks * num_blocks
-              << "\nAverage blocks/node = " << num_blocks / world.size() << "\n";
+              << "Number of nodes     = " << world.size()
+              << "\nMatrix size         = " << matrix_size << "x" << matrix_size
+              << "\nBlock size          = " << block_size << "x" << block_size
+              << "\nMemory per matrix   = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
+              << " GB\nNumber of blocks    = " << block_count
+              << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;
@@ -95,8 +96,8 @@ int main(int argc, char** argv) {
   const double wall_time_stop = madness::wall_time();
 
   if(world.rank() == 0)
-    std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
-        << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
+    std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
+        << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
             matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
 
 
