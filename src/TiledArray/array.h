@@ -39,7 +39,7 @@ namespace TiledArray {
     typedef detail::TensorImpl<Tile> impl_type;
     typedef T element_type; ///< The tile element type
     typedef typename impl_type::trange_type trange_type; ///< Tile range type
-    typedef typename impl_type::range_type range_type; ///< Range type for tiles
+    typedef typename impl_type::range_type range_type; ///< Range type for array tiling
     typedef typename impl_type::range_type::index index; ///< Array coordinate index type
     typedef typename impl_type::size_type size_type; ///< Size type
     typedef typename impl_type::value_type value_type; ///< Tile type
@@ -159,10 +159,34 @@ namespace TiledArray {
       pimpl_->set(i, madness::move(temp));
     }
 
+  private:
+
+    class MakeTile : public madness::TaskInterface {
+    private:
+      const typename trange_type::tile_range_type& range_;
+      const typename value_type::value_type value_;
+      madness::Future<value_type> result_;
+
+    public:
+      MakeTile(const typename trange_type::tile_range_type& range, const T& value) :
+        madness::TaskInterface(), range_(range), value_(value)
+      { }
+
+      virtual void run(madness::World&) {
+        value_type temp(range_, value_);
+        result_.set(madness::move(temp));
+      }
+
+      const madness::Future<value_type>& result() const { return result_; }
+
+    }; // class MakeTile
+
+  public:
     template <typename Index>
     void set(const Index& i, const T& v = T()) {
-      value_type temp(pimpl_->trange().make_tile_range(i), v);
-      pimpl_->set(i, madness::move(temp));
+      MakeTile* task = new MakeTile(pimpl_->trange().make_tile_range(i), v);
+      pimpl_->set(i, task->result());
+      pimpl_->get_world().taskq.add(task);
     }
 
     /// Set tile \c i with future \c f
