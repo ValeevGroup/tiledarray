@@ -169,7 +169,7 @@ namespace TiledArray {
 
     public:
       MakeTile(const typename trange_type::tile_range_type& range, const T& value) :
-        madness::TaskInterface(), range_(range), value_(value)
+        madness::TaskInterface(), range_(range), value_(value), result_()
       { }
 
       virtual void run(madness::World&) {
