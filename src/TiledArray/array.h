@@ -161,11 +161,12 @@ namespace TiledArray {
 
   private:
 
+    template <typename Value>
     class MakeTile : public madness::TaskInterface {
     private:
       const typename trange_type::tile_range_type& range_;
-      const typename value_type::value_type value_;
-      madness::Future<value_type> result_;
+      const typename Value::value_type value_;
+      madness::Future<Value> result_;
 
     public:
       MakeTile(const typename trange_type::tile_range_type& range, const T& value) :
@@ -182,9 +183,11 @@ namespace TiledArray {
     }; // class MakeTile
 
   public:
+
     template <typename Index>
     void set(const Index& i, const T& v = T()) {
-      MakeTile* task = new MakeTile(pimpl_->trange().make_tile_range(i), v);
+      MakeTile<value_type>* task =
+          new MakeTile<value_type>(pimpl_->trange().make_tile_range(i), v);
       pimpl_->set(i, task->result());
       pimpl_->get_world().taskq.add(task);
     }
