@@ -161,20 +161,21 @@ namespace TiledArray {
 
   private:
 
-    template <typename Value>
+    template <typename Index, typename Value>
     class MakeTile : public madness::TaskInterface {
     private:
-      const typename trange_type::tile_range_type& range_;
+      std::shared_ptr<impl_type> pimpl_;
+      const Index index_;
       const typename Value::value_type value_;
       madness::Future<Value> result_;
 
     public:
-      MakeTile(const typename trange_type::tile_range_type& range, const T& value) :
-        madness::TaskInterface(), range_(range), value_(value), result_()
+      MakeTile(const std::shared_ptr<impl_type>& pimpl, const Index& index, const T& value) :
+        madness::TaskInterface(), pimpl_(pimpl), index_(index), value_(value), result_()
       { }
 
       virtual void run(madness::World&) {
-        value_type temp(range_, value_);
+        value_type temp(pimpl_->trange().make_tile_range(index_), value_);
         result_.set(madness::move(temp));
       }
 
@@ -186,8 +187,8 @@ namespace TiledArray {
 
     template <typename Index>
     void set(const Index& i, const T& v = T()) {
-      MakeTile<value_type>* task =
-          new MakeTile<value_type>(pimpl_->trange().make_tile_range(i), v);
+      MakeTile<Index, value_type>* task =
+          new MakeTile<Index, value_type>(pimpl_, i, v);
       pimpl_->set(i, task->result());
       pimpl_->get_world().taskq.add(task);
     }
