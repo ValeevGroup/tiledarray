@@ -556,7 +556,7 @@ BOOST_AUTO_TEST_CASE( right_shift )
     set.set(std::size_t(GlobalFixture::world->rand()) % size);
 
   // Check each bit shift from 0 to size
-  for(std::size_t shift = 0; shift <= size; ++shift) {
+  for(std::size_t shift = 0ul; shift <= size; ++shift) {
     // Store shifted copy of bitset
     Bitset temp = set >> shift;
 
@@ -578,6 +578,23 @@ BOOST_AUTO_TEST_CASE( right_shift )
       ++i;
     }
   }
+}
+
+BOOST_AUTO_TEST_CASE( bit_count )
+{
+  // Fill bitset with random data
+  std::size_t n = size * 0.25;
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0; i < n; ++i)
+    set.set(std::size_t(GlobalFixture::world->rand()) % size);
+
+  // Count bits
+  std::size_t count = 0ul;
+  for(std::size_t i = 0ul; i < size; ++i)
+    if(set[i])
+      ++count;
+
+  BOOST_CHECK_EQUAL(set.count(), count);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
