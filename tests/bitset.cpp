@@ -20,7 +20,7 @@
 #include "unit_test_config.h"
 #include "global_fixture.h"
 #include "TiledArray/bitset.h"
-#include <world/array.h>
+#include <world/world.h>
 #include <algorithm>
 
 using namespace TiledArray;
@@ -444,6 +444,140 @@ BOOST_AUTO_TEST_CASE( bit_operators )
   BOOST_CHECK_THROW(bad | set, Exception);
   BOOST_CHECK_THROW(bad ^ set, Exception);
 #endif // TA_EXCEPTION_ERROR
+}
+
+BOOST_AUTO_TEST_CASE( left_shift_assign )
+{
+  // Fill bitset with random data
+  std::size_t n = size * 0.25;
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0; i < n; ++i)
+    set.set(std::size_t(GlobalFixture::world->rand()) % size);
+
+  // Check each bit shift from 0 to size
+  for(std::size_t shift = 0; shift <= size; ++shift) {
+    // Shift bitset data
+    Bitset temp = set;
+    temp <<= shift;
+
+    // Check that the head is filled with zeros
+    int i = 0;
+    int j = 0;
+    while((i < shift) && (i < size)) {
+      BOOST_CHECK(temp[i] == 0ul);
+      if(temp[i])
+        std::cout << "i = " << i << "\n";
+      ++i;
+    }
+    // Check that the data has been shifted correctly
+    while(i < size) {
+      BOOST_CHECK(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul)));
+      if(!(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul))))
+        std::cout << "i = " << i << ", j = " << j << "\n";
+      ++i;
+      ++j;
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( left_shift )
+{
+  // Fill bitset with random data
+  std::size_t n = size * 0.25;
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0; i < n; ++i)
+    set.set(std::size_t(GlobalFixture::world->rand()) % size);
+
+  // Check each bit shift from 0 to size
+  for(std::size_t shift = 0; shift <= size; ++shift) {
+    // Store shifted copy of bitset
+    Bitset temp = set << shift;
+
+    // Check that the head is filled with zeros
+    int i = 0;
+    int j = 0;
+    while((i < shift) && (i < size)) {
+      BOOST_CHECK(temp[i] == 0ul);
+      if(temp[i])
+        std::cout << "i = " << i << "\n";
+      ++i;
+    }
+    // Check that the data has been shifted correctly
+    while(i < size) {
+      BOOST_CHECK(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul)));
+      if(!(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul))))
+        std::cout << "i = " << i << ", j = " << j << "\n";
+      ++i;
+      ++j;
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( right_shift_assign )
+{
+  // Fill bitset with random data
+  std::size_t n = size * 0.25;
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0; i < n; ++i)
+    set.set(std::size_t(GlobalFixture::world->rand()) % size);
+
+  // Check each bit shift from 0 to size
+  for(std::size_t shift = 0; shift <= size; ++shift) {
+    // Shift bitset data
+    Bitset temp = set;
+    temp >>= shift;
+
+    // Check that the data has been shifted correctly
+    int i = 0;
+    int j = shift;
+    while((i < (size - shift)) && (j < size)) {
+      BOOST_CHECK(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul)));
+      if(!(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul))))
+        std::cout << "i = " << i << ", j = " << j << "\n";
+      ++i;
+      ++j;
+    }
+    // Check that the tail is filled with zeros
+    while(i < size) {
+      BOOST_CHECK(temp[i] == 0ul);
+      if(temp[i])
+        std::cout << "i = " << i << "\n";
+      ++i;
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( right_shift )
+{
+  // Fill bitset with random data
+  std::size_t n = size * 0.25;
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0; i < n; ++i)
+    set.set(std::size_t(GlobalFixture::world->rand()) % size);
+
+  // Check each bit shift from 0 to size
+  for(std::size_t shift = 0; shift <= size; ++shift) {
+    // Store shifted copy of bitset
+    Bitset temp = set >> shift;
+
+    // Check that the data has been shifted correctly
+    int i = 0;
+    int j = shift;
+    while((i < (size - shift)) && (j < size)) {
+      BOOST_CHECK(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul)));
+      if(!(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul))))
+        std::cout << "i = " << i << ", j = " << j << "\n";
+      ++i;
+      ++j;
+    }
+    // Check that the tail is filled with zeros
+    while(i < size) {
+      BOOST_CHECK(temp[i] == 0ul);
+      if(temp[i])
+        std::cout << "i = " << i << "\n";
+      ++i;
+    }
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

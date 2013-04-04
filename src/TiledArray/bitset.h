@@ -23,6 +23,8 @@
 #include <TiledArray/error.h>
 #include <TiledArray/transform_iterator.h>
 #include <climits>
+#include <iosfwd>
+#include <iomanip>
 
 namespace TiledArray {
   namespace detail {
@@ -112,6 +114,7 @@ namespace TiledArray {
 
     private:
 
+      /// Operation to provide iterator access to bits
       class ConstTransformOp {
       public:
         typedef std::size_t argument_type;
@@ -134,6 +137,7 @@ namespace TiledArray {
         const Bitset<Block>* bitset_;
       }; // class ConstTransformOp
 
+      /// Operation to provide const iterator access to bits
       class TransformOp {
       public:
         typedef std::size_t argument_type;
@@ -252,6 +256,159 @@ namespace TiledArray {
         return *this;
       }
 
+    private:
+
+      static void left_shift(Bitset<Block>& dest, const Bitset<Block>& source, size_type n) {
+        static const block_type zero(0ul);
+
+        // Compute shifts
+        const size_type block_shift = dest.block_index(n);
+        const size_type bit_shift = dest.bit_index(n);
+
+        // Compute iteration ranges
+        block_type* last = dest.set_ + dest.blocks_ - 1;
+        const block_type* const first = dest.set_ + block_shift;
+        const block_type* base = source.set_ + source.blocks_ - 1 - block_shift;
+
+        if(bit_shift == 0) {
+          // Shift by unit strides
+          while(last >= first)
+            *last-- = *base--;
+        } else {
+          // Shift by non-unit strides
+          const block_type* base1 = base - 1;
+          const size_type reverse_bit_shift = block_bits - bit_shift;
+          while(last > first) {
+            *last-- = (*base << bit_shift) | (*base1 >> reverse_bit_shift);
+            base = base1--;
+          }
+          *last-- = (*base << bit_shift);
+        }
+
+        // Zero the head
+        while(last >= dest.set_)
+          *last-- = zero;
+
+        // Zero the tail
+        const size_type extra_bits = dest.size_ % block_bits;
+        if (extra_bits != 0)
+            dest.set_[dest.blocks_ - 1] &= ~(~zero << extra_bits);
+      }
+
+      static void right_shift(Bitset<Block>& dest, const Bitset<Block>& source, size_type n) {
+        static const block_type zero(0);
+
+        // Compute shifts
+        size_type  const block_shift = block_index(n);
+        size_type const bit_shift = bit_index(n);
+
+        // Compute iterator ranges
+        const block_type* base = source.set_ + block_shift;
+        block_type* first = dest.set_;
+        const block_type* const end = dest.set_ + dest.blocks_;
+        const block_type* const last = end - 1 - block_shift;
+
+        if (bit_shift == 0) {
+          // Shift by unit strides
+          while(first <= last)
+              *first++ = *base++;
+        } else {
+          // Shift by non-unit strides
+            size_type const reverse_bit_shift = block_bits - bit_shift;
+            const block_type* base1 = base + 1;
+
+            while(first < last) {
+                *first++ = (*base >> bit_shift) | (*base1  << reverse_bit_shift);
+                base = base1++;
+            }
+            *first++ = *base >> bit_shift;
+        }
+
+        // Zero the tail
+        while(first < end)
+          *first++ = zero;
+      }
+
+
+    public:
+
+      Bitset<Block>& operator<<=(size_type n) {
+        if(n >= size_)
+          reset();
+        else if(n > 0ul)
+          left_shift(*this, *this, n);
+        return *this;
+      }
+
+      Bitset<Block> operator<<(size_type n) {
+        Bitset<Block> temp = Bitset<Block>(size_);
+        if(n < size_)
+          left_shift(temp, *this, n);
+        return temp;
+      }
+
+      Bitset<Block>& operator>>=(size_type n) {
+        if(n >= size_)
+          reset();
+        else if(n > 0ul)
+          right_shift(*this, *this, n);
+        return *this;
+      }
+
+      Bitset<Block> operator>>(size_type n) {
+        Bitset<Block> temp = Bitset<Block>(size_);
+        if(n < size_)
+          right_shift(temp, *this, n);
+        return temp;
+      }
+
+
+//      //
+//      // NOTE:
+//      //  see the comments to operator <<=
+//      //
+//      template <typename B, typename A>
+//      dynamic_bitset<B, A> & dynamic_bitset<B, A>::operator>>=(size_type n) {
+//          if (n >= m_num_bits) {
+//              return reset();
+//          }
+//          //else
+//          if (n>0) {
+//
+//              size_type  const last  = num_blocks() - 1; // num_blocks() is >= 1
+//              size_type  const div   = n / bits_per_block;   // div is <= last
+//              block_width_type const r     = bit_index(n);
+//              block_type * const b   = &m_bits[0];
+//
+//
+//              if (r != 0) {
+//
+//                  block_width_type const ls = bits_per_block - r;
+//
+//                  for (size_type i = div; i < last; ++i) {
+//                      b[i-div] = (b[i] >> r) | (b[i+1]  << ls);
+//                  }
+//                  // r bits go to zero
+//                  b[last-div] = b[last] >> r;
+//              }
+//
+//              else {
+//                  for (size_type i = div; i <= last; ++i) {
+//                      b[i-div] = b[i];
+//                  }
+//                  // note the '<=': the last iteration 'absorbs'
+//                  // b[last-div] = b[last] >> 0;
+//              }
+//
+//
+//
+//              // div blocks are zero filled at the most significant end
+//              std::fill_n(b + (num_blocks()-div), div, static_cast<block_type>(0));
+//          }
+//
+//          return *this;
+//      }
+
       /// Bit accessor operator
 
       /// \param i The bit to access
@@ -338,13 +495,14 @@ namespace TiledArray {
 
       /// \return The number of non-zero bits
       size_type count() const {
+        static const block_type xff = ~(block_type(0));
         size_type c = 0ul;
         for(size_type i = 0ul; i < blocks_; ++i) {
           block_type v = set_[i]; // temp
-          v = v - ((v >> 1) & (block_type)~(block_type)0 / 3);
-          v = (v & (block_type)~(block_type)0 / 15 * 3) + ((v >> 2) & (block_type)~(block_type)0 / 15 * 3);
-          v = (v + (v >> 4)) & (block_type)~(block_type)0 / 255 * 15;
-          c += (block_type)(v * ((block_type)~(block_type)0 / 255)) >> (sizeof(block_type) - 1) * CHAR_BIT; // count
+          v = v - ((v >> 1) & xff / 3);
+          v = (v & xff / 15 * 3) + ((v >> 2) & xff / 15 * 3);
+          v = (v + (v >> 4)) & xff / 255 * 15;
+          c += block_type(v * (xff / 255)) >> (sizeof(block_type) - 1) * CHAR_BIT; // count
         }
         return c;
       }
@@ -416,7 +574,7 @@ namespace TiledArray {
 
     template <typename Block>
     const std::size_t Bitset<Block>::block_bits =
-        8 * sizeof(typename Bitset<Block>::block_type);
+        8ul * sizeof(typename Bitset<Block>::block_type);
 
     /// Bitwise and operator of bitset.
 
@@ -454,6 +612,34 @@ namespace TiledArray {
       left ^= right;
       return left;
     }
+
+    template <typename Block>
+    std::ostream& operator<<(std::ostream& os, const Bitset<Block>& bitset) {
+      os << std::hex;
+      for(long i = bitset.num_blocks() - 1l; i >= 0l; --i)
+        os << std::setfill('0') << std::setw(sizeof(Block)*2) << bitset.get()[i] << " ";
+
+      os << std::setbase(10) << std::setw(0);
+      return os;
+    }
+
+
+//
+//    template <typename Block, typename Allocator>
+//    dynamic_bitset<Block, Allocator>
+//    dynamic_bitset<Block, Allocator>::operator<<(size_type n) const
+//    {
+//        dynamic_bitset r(*this);
+//        return r <<= n;
+//    }
+//
+//    template <typename Block, typename Allocator>
+//    dynamic_bitset<Block, Allocator>
+//    dynamic_bitset<Block, Allocator>::operator>>(size_type n) const
+//    {
+//        dynamic_bitset r(*this);
+//        return r >>= n;
+//    }
 
   } // namespace detail
 } // namespace TiledArray
