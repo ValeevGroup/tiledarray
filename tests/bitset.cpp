@@ -186,6 +186,62 @@ BOOST_AUTO_TEST_CASE( set_all )
     BOOST_CHECK(set[i]);
 }
 
+BOOST_AUTO_TEST_CASE( set_range )
+{
+  // Check that the bits are not set
+  for(std::size_t i = 0; i < set.size(); ++i)
+    BOOST_CHECK(! set[i]);
+
+  set.set_range(10, 20);
+
+  // Check that the bits are set
+  std::size_t i = 0ul;
+  for(; i < 10ul; ++i) {
+    BOOST_CHECK(! set[i]);
+    if(set[i])
+      std::cout << "i = " << i << "\n";
+  }
+  for(; i <= 20; ++i) {
+    BOOST_CHECK(set[i]);
+    if(! set[i])
+      std::cout << "i = " << i << "\n";
+  }
+  for(; i < size; ++i) {
+    BOOST_CHECK(! set[i]);
+    if(set[i])
+      std::cout << "i = " << i << "\n";
+  }
+
+  set.set_range(30, 225);
+
+  // Check that the bits are setset
+  for(i = 0ul; i < 10ul; ++i) {
+    BOOST_CHECK(! set[i]);
+    if(set[i])
+      std::cout << "i = " << i << "\n";
+  }
+  for(; i <= 20; ++i) {
+    BOOST_CHECK(set[i]);
+    if(! set[i])
+      std::cout << "i = " << i << "\n";
+  }
+  for(; i < 30ul; ++i) {
+    BOOST_CHECK(! set[i]);
+    if(set[i])
+      std::cout << "i = " << i << "\n";
+  }
+  for(; i <= 225; ++i) {
+    BOOST_CHECK(set[i]);
+    if(! set[i])
+      std::cout << "i = " << i << "\n";
+  }
+  for(; i < size; ++i) {
+    BOOST_CHECK(! set[i]);
+    if(set[i])
+      std::cout << "i = " << i << "\n";
+  }
+}
+
 BOOST_AUTO_TEST_CASE( reset_bit )
 {
   set.set();
