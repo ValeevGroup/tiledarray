@@ -376,6 +376,24 @@ namespace TiledArray {
         return reference(set_[block_index(i)], mask(i));
       }
 
+      operator bool() const {
+        const block_type* const end = set_ + blocks_;
+        for(const block_type* first = set_; first != end; ++first)
+          if(*first)
+            return true;
+
+        return false;
+      }
+
+      bool operator!() const {
+        const block_type* const end = set_ + blocks_;
+        for(const block_type* first = set_; first != end; ++first)
+          if(*first)
+            return false;
+
+        return true;
+      }
+
       const_iterator begin() const {
         return const_iterator(0, ConstTransformOp(*this));
       }

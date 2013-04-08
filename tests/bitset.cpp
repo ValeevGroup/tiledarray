@@ -653,5 +653,36 @@ BOOST_AUTO_TEST_CASE( bit_count )
   BOOST_CHECK_EQUAL(set.count(), count);
 }
 
+BOOST_AUTO_TEST_CASE( operator_bool )
+{
+  // Check that a bitset full of zeros returns false
+  BOOST_CHECK_EQUAL(static_cast<bool>(set), false);
+
+  // Fill bitset with random data
+  std::size_t n = size * 0.25;
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0; i < n; ++i)
+    set.set(std::size_t(GlobalFixture::world->rand()) % size);
+
+  // Check that a bitset with non-zero data returns true
+  BOOST_CHECK_EQUAL(static_cast<bool>(set), true);
+}
+
+
+BOOST_AUTO_TEST_CASE( operator_not )
+{
+  // Check that a bitset full of zeros returns true
+  BOOST_CHECK_EQUAL(!set, true);
+
+  // Fill bitset with random data
+  std::size_t n = size * 0.25;
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0; i < n; ++i)
+    set.set(std::size_t(GlobalFixture::world->rand()) % size);
+
+  // Check that a bitset with non-zero data returns false
+  BOOST_CHECK_EQUAL(!set, false);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
