@@ -42,6 +42,9 @@ namespace TiledArray {
       TA_STATIC_ASSERT( (std::is_integral<Block>::value || std::is_same<Block, char>::value) );
 
       static const std::size_t block_bits; ///< The number of bits in a block
+      static const Block zero;
+      static const Block one;
+      static const Block xffff;
 
     public:
 
@@ -167,7 +170,7 @@ namespace TiledArray {
           blocks_((size_ / block_bits) + (size_ % block_bits ? 1 : 0)),
           set_((size_ ? new block_type[blocks_] : NULL))
       {
-        std::fill_n(set_, blocks_, block_type(0));
+        std::fill_n(set_, blocks_, zero);
       }
 
       /// Construct a bitset that contains \c s bits.
@@ -181,7 +184,7 @@ namespace TiledArray {
           set_((size_ ? new block_type[blocks_] : NULL))
       {
         // Initialize to zero
-        std::fill_n(set_, blocks_, block_type(0));
+        std::fill_n(set_, blocks_, zero);
 
         for(size_type i = 0; first != last; ++i, ++first)
           if(*first)
@@ -259,8 +262,6 @@ namespace TiledArray {
     private:
 
       static void left_shift(Bitset<Block>& dest, const Bitset<Block>& source, size_type n) {
-        static const block_type zero(0ul);
-
         // Compute shifts
         const size_type block_shift = dest.block_index(n);
         const size_type bit_shift = dest.bit_index(n);
@@ -292,12 +293,10 @@ namespace TiledArray {
         // Zero the tail
         const size_type extra_bits = dest.size_ % block_bits;
         if (extra_bits != 0)
-            dest.set_[dest.blocks_ - 1] &= ~(~zero << extra_bits);
+            dest.set_[dest.blocks_ - 1] &= ~(xffff << extra_bits);
       }
 
       static void right_shift(Bitset<Block>& dest, const Bitset<Block>& source, size_type n) {
-        static const block_type zero(0);
-
         // Compute shifts
         size_type  const block_shift = block_index(n);
         size_type const bit_shift = bit_index(n);
@@ -362,53 +361,6 @@ namespace TiledArray {
         return temp;
       }
 
-
-//      //
-//      // NOTE:
-//      //  see the comments to operator <<=
-//      //
-//      template <typename B, typename A>
-//      dynamic_bitset<B, A> & dynamic_bitset<B, A>::operator>>=(size_type n) {
-//          if (n >= m_num_bits) {
-//              return reset();
-//          }
-//          //else
-//          if (n>0) {
-//
-//              size_type  const last  = num_blocks() - 1; // num_blocks() is >= 1
-//              size_type  const div   = n / bits_per_block;   // div is <= last
-//              block_width_type const r     = bit_index(n);
-//              block_type * const b   = &m_bits[0];
-//
-//
-//              if (r != 0) {
-//
-//                  block_width_type const ls = bits_per_block - r;
-//
-//                  for (size_type i = div; i < last; ++i) {
-//                      b[i-div] = (b[i] >> r) | (b[i+1]  << ls);
-//                  }
-//                  // r bits go to zero
-//                  b[last-div] = b[last] >> r;
-//              }
-//
-//              else {
-//                  for (size_type i = div; i <= last; ++i) {
-//                      b[i-div] = b[i];
-//                  }
-//                  // note the '<=': the last iteration 'absorbs'
-//                  // b[last-div] = b[last] >> 0;
-//              }
-//
-//
-//
-//              // div blocks are zero filled at the most significant end
-//              std::fill_n(b + (num_blocks()-div), div, static_cast<block_type>(0));
-//          }
-//
-//          return *this;
-//      }
-
       /// Bit accessor operator
 
       /// \param i The bit to access
@@ -458,6 +410,43 @@ namespace TiledArray {
       /// \throw nothing
       void set() { std::fill_n(set_, blocks_, ~block_type(0)); }
 
+      /// Set all bits from first to last
+
+      /// \param first The first bit in the range to set
+      /// \param last The last bit in the range to set
+      void set_range(size_type first, size_type last) {
+        if(last >= size_)
+          last = size_ - 1;
+        TA_ASSERT(first < last);
+
+        // Get iterator and shift values
+        block_type* first_block = set_ + block_index(first);
+        const size_type first_shift = bit_index(first);
+        block_type* const last_block = set_ + block_index(last);
+        const size_type last_shift = block_bits - bit_index(last) - 1;
+
+        // Set the first and last bits
+        if(first_block == last_block) {
+          *first_block |= (xffff << first_shift) & (xffff >> last_shift);
+        } else {
+          *first_block++ |= (xffff << first_shift);
+          *last_block |= (xffff >> last_shift);
+        }
+
+        // Set all blocks between the first and last blocks.
+        while(first_block < last_block)
+          *first_block++ = xffff;
+      }
+
+      /// Set elements separated by \c stride
+
+      /// \param first The first bit to set
+      /// \param stride The distance between each set bit
+      void set_stride(size_type first, size_type stride) {
+        for(; first < size_; first += stride)
+          set_[block_index(first)] &= ~mask(first);
+      }
+
       /// Reset a bit
 
       /// \param i The bit to be reset
@@ -471,7 +460,7 @@ namespace TiledArray {
 
       /// \throw nothing
       void reset() {
-        std::fill_n(set_, blocks_, block_type(0));
+        std::fill_n(set_, blocks_, zero);
       }
 
       /// Flip a bit
@@ -495,14 +484,13 @@ namespace TiledArray {
 
       /// \return The number of non-zero bits
       size_type count() const {
-        static const block_type xff = ~(block_type(0));
         size_type c = 0ul;
         for(size_type i = 0ul; i < blocks_; ++i) {
           block_type v = set_[i]; // temp
-          v = v - ((v >> 1) & xff / 3);
-          v = (v & xff / 15 * 3) + ((v >> 2) & xff / 15 * 3);
-          v = (v + (v >> 4)) & xff / 255 * 15;
-          c += block_type(v * (xff / 255)) >> (sizeof(block_type) - 1) * CHAR_BIT; // count
+          v = v - ((v >> 1) & xffff / 3);
+          v = (v & xffff / 15 * 3) + ((v >> 2) & xffff / 15 * 3);
+          v = (v + (v >> 4)) & xffff / 255 * 15;
+          c += block_type(v * (xffff / 255)) >> (sizeof(block_type) - 1) * CHAR_BIT; // count
         }
         return c;
       }
@@ -560,7 +548,7 @@ namespace TiledArray {
 
       /// \return A \c block_type that contains a single bit "on" bit at the i-th
       /// bit index.
-      static block_type mask(size_type i) { return block_type(1) << bit_index(i); }
+      static block_type mask(size_type i) { return one << bit_index(i); }
 
       size_type size_;    ///< The number of bits in the set
       size_type blocks_;  ///< The number of blocks used to store the bits
@@ -575,6 +563,12 @@ namespace TiledArray {
     template <typename Block>
     const std::size_t Bitset<Block>::block_bits =
         8ul * sizeof(typename Bitset<Block>::block_type);
+    template <typename Block>
+    const Block Bitset<Block>::zero = Block(0);
+    template <typename Block>
+    const Block Bitset<Block>::one = Block(1);
+    template <typename Block>
+    const Block Bitset<Block>::xffff = ~Block(0);
 
     /// Bitwise and operator of bitset.
 
@@ -623,23 +617,6 @@ namespace TiledArray {
       return os;
     }
 
-
-//
-//    template <typename Block, typename Allocator>
-//    dynamic_bitset<Block, Allocator>
-//    dynamic_bitset<Block, Allocator>::operator<<(size_type n) const
-//    {
-//        dynamic_bitset r(*this);
-//        return r <<= n;
-//    }
-//
-//    template <typename Block, typename Allocator>
-//    dynamic_bitset<Block, Allocator>
-//    dynamic_bitset<Block, Allocator>::operator>>(size_type n) const
-//    {
-//        dynamic_bitset r(*this);
-//        return r >>= n;
-//    }
 
   } // namespace detail
 } // namespace TiledArray
