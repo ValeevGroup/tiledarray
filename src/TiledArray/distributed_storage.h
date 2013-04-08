@@ -250,6 +250,13 @@ namespace TiledArray {
             // The element was already in the container, so set it with f.
             future existing_f = acc->second;
             acc.release();
+
+            // Check that the future has not been set already.
+#ifndef NDEBUG
+            check_future(f);
+#endif // NDEBUG
+
+            // Set the future
             existing_f.set(f);
           }
         } else {
@@ -300,7 +307,7 @@ namespace TiledArray {
           return acc->second;
         }
 
-        // Send a request to the onwer of i for the element.
+        // Send a request to the owner of i for the element.
         future result;
         WorldObject_::task(owner(i), & DistributedStorage_::find_handler, i,
             result.remote_ref(get_world()), false, madness::TaskAttributes::hipri());
@@ -345,6 +352,15 @@ namespace TiledArray {
       }
 
     private:
+
+      /// Check that the future has not been previously assigned
+
+      /// \param f The future to be checked
+      /// \throw TiledArray::Exception When \c f has been previously set.
+      static void check_future(const future& f) {
+        if(f.probe())
+          TA_EXCEPTION("Tile has already been assigned.");
+      }
 
       /// Callback object to move a tile from this container once it has been set
 
@@ -427,10 +443,18 @@ namespace TiledArray {
       /// \param value The value that will be assigned to element \c i
       template <typename Value>
       void set_local_value(size_type i, const Value& value) {
+        // Get the future for element i
         const_accessor acc;
         data_.insert(acc, i);
         future f = acc->second;
         acc.release();
+
+        // Check that the future has not been set already.
+#ifndef NDEBUG
+        check_future(f);
+#endif // NDEBUG
+
+        // Assign the element
         f.set(value);
       }
 
