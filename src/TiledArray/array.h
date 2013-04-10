@@ -171,7 +171,11 @@ namespace TiledArray {
 
     public:
       MakeTile(const std::shared_ptr<impl_type>& pimpl, const Index& index, const T& value) :
-        madness::TaskInterface(), pimpl_(pimpl), index_(index), value_(value), result_()
+        madness::TaskInterface(),
+        pimpl_(pimpl),
+        index_(index),
+        value_(value),
+        result_(pimpl->operator[](index))
       { }
 
       virtual void run(madness::World&) {
@@ -187,10 +191,7 @@ namespace TiledArray {
 
     template <typename Index>
     void set(const Index& i, const T& v = T()) {
-      MakeTile<Index, value_type>* task =
-          new MakeTile<Index, value_type>(pimpl_, i, v);
-      pimpl_->set(i, task->result());
-      pimpl_->get_world().taskq.add(task);
+      pimpl_->get_world().taskq.add(new MakeTile<Index, value_type>(pimpl_, i, v));
     }
 
     /// Set tile \c i with future \c f
