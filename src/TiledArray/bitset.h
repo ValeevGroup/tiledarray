@@ -153,13 +153,13 @@ namespace TiledArray {
       }; // class TransformOp
 
     public:
-      typedef Bitset<Block> Bitset_;
-      typedef Block block_type;     ///< The type used to store the data
-      typedef Block value_type;
+      typedef Bitset<Block> Bitset_; ///< This object type
+      typedef Block block_type; ///< The type used to store the data
+      typedef Block value_type; ///< The value type
       typedef Block const_reference; ///< Constant reference to a bit
-      typedef std::size_t size_type;
-      typedef UnaryTransformIterator<Block, ConstTransformOp> const_iterator;
-      typedef UnaryTransformIterator<Block, TransformOp> iterator;
+      typedef std::size_t size_type; ///< indexing size type
+      typedef UnaryTransformIterator<Block, ConstTransformOp> const_iterator; ///< Const iterator type
+      typedef UnaryTransformIterator<Block, TransformOp> iterator; ///< Iterator type
 
       /// Construct a bitset that contains \c s bits.
 
@@ -203,6 +203,7 @@ namespace TiledArray {
         std::copy(other.set_, other.set_ + blocks_, set_);
       }
 
+      /// Destructor
       ~Bitset() { delete [] set_; }
 
       /// Assignment operator
@@ -212,9 +213,14 @@ namespace TiledArray {
       /// \param other The bitset to copy
       /// \throw std::runtime_error If the bitset sizes are not equal.
       Bitset<Block>& operator=(const Bitset<Block>& other) {
-        TA_ASSERT(size_ == other.size_);
-        if(this != &other)
-          std::copy(other.set_, other.set_ + blocks_, set_);
+        if(blocks_ == other.blocks_) {
+          if(this != &other) {
+            size_ = other.size_;
+            std::copy(other.set_, other.set_ + blocks_, set_);
+          }
+        } else {
+          Bitset<Block>(other).swap(*this);
+        }
 
         return *this;
       }
@@ -469,7 +475,7 @@ namespace TiledArray {
       /// \param stride The distance between each set bit
       void set_stride(size_type first, size_type stride) {
         for(; first < size_; first += stride)
-          set_[block_index(first)] &= ~mask(first);
+          set_[block_index(first)] |= mask(first);
       }
 
       /// Reset a bit
@@ -585,6 +591,7 @@ namespace TiledArray {
       b0.swap(b1);
     }
 
+    // Bitset static constant data
     template <typename Block>
     const std::size_t Bitset<Block>::block_bits =
         8ul * sizeof(typename Bitset<Block>::block_type);

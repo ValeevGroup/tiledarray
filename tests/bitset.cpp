@@ -361,8 +361,11 @@ BOOST_AUTO_TEST_CASE( flip_all )
 
 BOOST_AUTO_TEST_CASE( assignment )
 {
-  for(std::size_t i = 0; i < set.size(); ++i)
-    set.set(i);
+  // Fill bitset with random data
+  std::size_t n = size * 0.25;
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0; i < n; ++i)
+    set.set(std::size_t(GlobalFixture::world->rand()) % size);
 
   Bitset b(size);
 
@@ -370,14 +373,34 @@ BOOST_AUTO_TEST_CASE( assignment )
   BOOST_REQUIRE_NO_THROW(b = set);
 
   // Check that all bits were copied from set.
-  for(std::size_t i = 0; i < set.size(); ++i)
-    BOOST_CHECK(b[i]);
+  BOOST_CHECK_EQUAL(b.size(), set.size());
+  for(std::size_t i = 0ul; i < set.size(); ++i) {
+    BOOST_REQUIRE_NO_THROW(b[i]);
+    BOOST_CHECK(((b[i] != 0ul) && (set[i] != 0ul)) || ((b[i] == 0ul) && (set[i] == 0ul)));
+  }
 
-  // Check that assignment of bitsets with different size throws.
-#ifdef TA_EXCEPTION_ERROR
-  Bitset bad(size / 2);
-  BOOST_CHECK_THROW(bad = set, Exception);
-#endif // TA_EXCEPTION_ERROR
+  // Check that assignment of bitsets with different size is done correctly.
+  Bitset small(size / 2);
+  small.set();
+  small = set;
+
+  BOOST_CHECK_EQUAL(small.size(), set.size());
+  for(std::size_t i = 0ul; i < set.size(); ++i) {
+    BOOST_REQUIRE_NO_THROW(small[i]);
+    BOOST_CHECK(((small[i] != 0ul) && (set[i] != 0ul)) || ((small[i] == 0ul) && (set[i] == 0ul)));
+  }
+
+  // Check that assignment of bitsets with different size is done correctly.
+  Bitset big(size * 2);
+  big.set();
+  big = set;
+
+  BOOST_CHECK_EQUAL(big.size(), set.size());
+  BOOST_CHECK_EQUAL(big.num_blocks(), set.num_blocks());
+  for(std::size_t i = 0ul; i < set.size(); ++i) {
+    BOOST_REQUIRE_NO_THROW(big[i]);
+    BOOST_CHECK(((big[i] != 0ul) && (set[i] != 0ul)) || ((big[i] == 0ul) && (set[i] == 0ul)));
+  }
 }
 
 BOOST_AUTO_TEST_CASE( bit_assignment )
