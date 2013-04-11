@@ -30,6 +30,7 @@ ta_test_SOURCES = ta_test.cpp \
                   dense_storage.cpp \
                   tensor.cpp \
                   bitset.cpp \
+                  shape.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
                   indexed_iterator.cpp \
