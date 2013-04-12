@@ -41,6 +41,7 @@ namespace TiledArray {
       typedef Shape<T, Comp> Shape_;
       typedef TiledArray::expressions::Tensor<T> tensor_type; ///< Tensor representation type
       typedef typename tensor_type::value_type value_type; ///< The type used to represent the tile magnitude
+      typedef typename tensor_type::range_type range_type; ///< The shape range type
       typedef typename tensor_type::reference reference; ///< Tile estimate reference type
       typedef typename tensor_type::const_reference const_reference; ///< Tile estimate reference type
 
@@ -69,7 +70,7 @@ namespace TiledArray {
       /// \param range The range that shape will describe
       /// \param threshold The zero threshold for tiles
       /// \param init_value The starting value for elements in the shape
-      Shape(const Range& range, const value_type threshold,
+      Shape(const range_type& range, const value_type threshold,
           const value_type& init_value = value_type(),
           const comp_type& comp = comp_type()) :
         data_(range, init_value), threshold_(threshold), shared_(false), comp_(comp)
@@ -86,7 +87,7 @@ namespace TiledArray {
       /// \param first An iterator to the first element of tile estimate data
       /// \param last An iterator to the last element of tile estimate data
       template <typename InIter>
-      Shape(const Range& range, const value_type threshold, InIter first,
+      Shape(const range_type& range, const value_type threshold, InIter first,
           InIter last, const comp_type& comp = comp_type()) :
         data_(range), threshold_(threshold), shared_(false), comp_()
       {
@@ -128,6 +129,11 @@ namespace TiledArray {
       operator const tensor_type& () const {
         return data_;
       }
+
+      /// Shape range data accessor
+
+      /// \return A const reference to the shape range
+      const range_type& range() const { return data_.range(); }
 
       /// Share local data among all processes in \c world
 
@@ -239,12 +245,14 @@ namespace TiledArray {
     public:
       typedef Shape<bool, std::equal_to<bool> > Shape_;
       typedef bool value_type; ///< The type used to represent the tile magnitude
+      typedef TiledArray::expressions::Tensor<unsigned int> tensor_type;
+      typedef typename tensor_type::range_type range_type;
       typedef TiledArray::detail::Bitset<>::reference reference; ///< Tile estimate reference type
       typedef TiledArray::detail::Bitset<>::const_reference const_reference; ///< Tile estimate reference type
       typedef std::equal_to<bool>  comp_type; ///< Comparison function type
 
     private:
-      Range range_; ///< Shape range
+      range_type range_; ///< Shape range
       TiledArray::detail::Bitset<> data_; ///< Tile magnitude estimate
       bool shared_; ///< true if data is distributed, false if it is local
 
@@ -264,7 +272,7 @@ namespace TiledArray {
       /// \param range The range that shape will describe
       /// \param threshold The zero threshold for tiles
       /// \param init_value The starting value for elements in the shape
-      Shape(const Range& range, const value_type threshold,
+      Shape(const range_type& range, const value_type threshold,
           const value_type& init_value = value_type()) :
         range_(range), data_(range_.volume()), shared_(false)
       {
@@ -283,7 +291,7 @@ namespace TiledArray {
       /// \param first An iterator to the first element of tile estimate data
       /// \param last An iterator to the last element of tile estimate data
       template <typename InIter>
-      Shape(const Range& range, const value_type threshold, InIter first,
+      Shape(const range_type& range, const value_type threshold, InIter first,
           InIter last) :
         range_(range), data_(range_.volume()), shared_(false)
       {
@@ -312,9 +320,9 @@ namespace TiledArray {
       /// Convert the shape into a tensor object where each element of the
       /// tensor represents the tile estimate value
       /// \return A tensor that represents the shape
-      operator TiledArray::expressions::Tensor<unsigned int> () const {
+      operator tensor_type () const {
         // Create a temporary tensor object
-        TiledArray::expressions::Tensor<unsigned int> temp(range_, 0u);
+        tensor_type temp(range_, 0u);
 
         // Fill the tensor with data_
         for(std::size_t i = 0ul; i < temp.size(); ++i)
@@ -323,6 +331,11 @@ namespace TiledArray {
 
         return temp;
       }
+
+      /// Shape range data accessor
+
+      /// \return A const reference to the shape range
+      const range_type& range() const { return range_; }
 
       /// Share local data among all processes in \c world
 

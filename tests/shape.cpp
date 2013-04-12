@@ -414,4 +414,9 @@ BOOST_AUTO_TEST_CASE( tensor_conversion )
     BOOST_CHECK_CLOSE(*it, 1.0, 1.0e-4);
 }
 
+BOOST_AUTO_TEST_CASE( range_accessor )
+{
+  BOOST_CHECK_EQUAL(shape.range(), r);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
