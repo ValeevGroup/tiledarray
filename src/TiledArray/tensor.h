@@ -70,6 +70,23 @@ namespace TiledArray {
         range_(r), data_(r.volume(), it)
       { }
 
+      /// Construct an evaluated tensor
+      template <typename InIter, typename Op>
+      Tensor(const Range& r, InIter it, const Op& op,
+          typename madness::enable_if< TiledArray::detail::is_input_iterator<InIter>,
+          Enabler>::type = Enabler()) :
+        range_(r), data_(r.volume(), it, op)
+      { }
+
+      /// Construct an evaluated tensor
+      template <typename InIter1, typename InIter2, typename Op>
+      Tensor(const Range& r, InIter1 it1, InIter2 it2, const Op& op,
+          typename madness::enable_if_c<
+            TiledArray::detail::is_input_iterator<InIter1>::value &&
+            TiledArray::detail::is_input_iterator<InIter2>::value, Enabler>::type = Enabler()) :
+        range_(r), data_(r.volume(), it1, it2, op)
+      { }
+
       /// Copy constructor
 
       /// Do a deep copy of \c other

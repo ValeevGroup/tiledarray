@@ -29,6 +29,35 @@
 
 namespace TiledArray {
 
+  namespace detail {
+
+    template <typename T, typename P>
+    struct optimized_init : public std::false_type { };
+
+    template <typename T>
+    struct optimized_init<T, T*> : public detail::is_numeric<T> { };
+
+    template <typename T>
+    struct optimized_init<T, const T*> : public detail::is_numeric<T> { };
+
+
+    template <typename T, typename P1, typename P2>
+    struct optimized_pair_init : public std::false_type { };
+
+    template <typename T>
+    struct optimized_pair_init<T, T*, T*> : public detail::is_numeric<T> { };
+
+    template <typename T>
+    struct optimized_pair_init<T, const T*, T*> : public detail::is_numeric<T> { };
+
+    template <typename T>
+    struct optimized_pair_init<T, T*, const T*> : public detail::is_numeric<T> { };
+
+    template <typename T>
+    struct optimized_pair_init<T, const T*, const T*> : public detail::is_numeric<T> { };
+
+  } // namespace detail
+
   /// DenseStorage is an N-dimensional, dense array.
 
   /// \tparam T DenseStorage element type.
@@ -76,7 +105,7 @@ namespace TiledArray {
         first_ = allocator_type::allocate(n);
         last_ = first_ + n;
         try {
-          construct_iterator(first_, last_, other.begin());
+          construct_iterator(other.begin());
         } catch(...) {
           allocator_type::deallocate(first_, n);
           throw;
@@ -105,7 +134,7 @@ namespace TiledArray {
         first_ = allocator_type::allocate(n);
         last_ = first_ + n;
         try {
-          construct_value(first_, last_, val);
+          construct_value(val);
         } catch (...) {
           allocator_type::deallocate(first_, n);
           throw;
@@ -137,7 +166,72 @@ namespace TiledArray {
         first_ = allocator_type::allocate(n);
         last_ = first_ + n;
         try {
-          construct_iterator(first_, last_, first);
+          construct_iterator(first);
+        } catch (...) {
+          allocator_type::deallocate(first_, n);
+          throw;
+        }
+      }
+    }
+
+    /// Constructs a new tile
+
+    /// The tile will have the dimensions specified by the range object \c r and
+    /// the elements of the new tile will be equal to \c v. The provided
+    /// allocator \c a will allocate space for only for the tile data.
+    /// \tparam InIter An input iterator type.
+    /// \param n the size of the storage area
+    /// \param first An input iterator to the beginning of the data to copy
+    /// \param a The allocator object for the tile data ( default: allocator_type() )
+    /// \throw std::bad_alloc There is not enough memory available for the
+    /// target tile
+    template <typename InIter, typename Op>
+    DenseStorage(size_type n, InIter first, Op op, const allocator_type& a = allocator_type(),
+      typename madness::enable_if_c<detail::is_iterator<InIter>::value &&
+        ! detail::is_iterator<Op>::value, Enabler>::type = Enabler()) :
+      allocator_type(a),
+      first_(NULL),
+      last_(NULL)
+    {
+      TA_ASSERT(n < allocator_type::max_size());
+      if(n) {
+        first_ = allocator_type::allocate(n);
+        last_ = first_ + n;
+        try {
+          construct_unary_op(first, op);
+        } catch (...) {
+          allocator_type::deallocate(first_, n);
+          throw;
+        }
+      }
+    }
+
+    /// Constructs a new tile
+
+    /// The tile will have the dimensions specified by the range object \c r and
+    /// the elements of the new tile will be equal to \c v. The provided
+    /// allocator \c a will allocate space for only for the tile data.
+    /// \tparam InIter An input iterator type.
+    /// \param n the size of the storage area
+    /// \param first An input iterator to the beginning of the data to copy
+    /// \param a The allocator object for the tile data ( default: allocator_type() )
+    /// \throw std::bad_alloc There is not enough memory available for the
+    /// target tile
+    template <typename InIter1, typename InIter2, typename Op>
+    DenseStorage(size_type n, InIter1 it1, InIter2 it2, const Op op,
+        const allocator_type& a = allocator_type(),
+        typename madness::enable_if_c<detail::is_iterator<InIter1>::value &&
+            detail::is_iterator<InIter2>::value, Enabler>::type = Enabler()) :
+      allocator_type(a),
+      first_(NULL),
+      last_(NULL)
+    {
+      TA_ASSERT(n < allocator_type::max_size());
+      if(n) {
+        first_ = allocator_type::allocate(n);
+        last_ = first_ + n;
+        try {
+          construct_binary_op(it1, it2, op);
         } catch (...) {
           allocator_type::deallocate(first_, n);
           throw;
@@ -319,9 +413,19 @@ namespace TiledArray {
     void load(const Archive& ar) {
       size_type n = 0;
       ar & n;
-      DenseStorage_ temp(n);
-      ar & madness::archive::wrap(temp.data(), temp.size());
-      temp.swap(*this);
+
+      // Deallocate existing memory
+      if(first_ != NULL) {
+          destroy_(*this, first_, last_);
+          allocator_type::deallocate(first_, size());
+      }
+
+      // Allocate new memory
+      pointer first_ = allocator_type::allocate(n);
+      pointer last_ = first_ + n;
+      default_init(detail::is_numeric<value_type>());
+
+      ar & madness::archive::wrap(first_, n);
     }
 
     template <typename Archive>
@@ -331,25 +435,85 @@ namespace TiledArray {
 
   private:
 
+    void default_init(std::true_type) { }
+
+
+    void default_init(std::false_type) {
+      const value_type temp = value_type();
+      for(pointer it = first_; it != last_; ++it)
+        allocator_type::construct(it, temp);
+    }
+
+    /// Initialize tile data with an input iterator
+
+    /// \tparam InIter Input iterator type
+    /// \param in_it Input iterator to the initialization data
     template <typename InIter>
-    void construct_iterator(pointer first, pointer last, InIter data) {
-      pointer it = first;
+    typename madness::disable_if<detail::optimized_init<value_type, InIter> >::type
+    construct_iterator(InIter in_it) {
+      pointer it = first_;
       try {
-        for(; it != last; ++it, ++data)
-          allocator_type::construct(it, *data);
+        for(; it != last_; ++it)
+          allocator_type::construct(it, *in_it++);
       } catch (...) {
-        destroy_(*this, first, it);
+        destroy_(*this, first_, it);
         throw;
       }
     }
 
-    void construct_value(pointer first, pointer last, const value_type& value) {
-      pointer it = first;
+    /// Initialize data with an input iterator
+
+    /// \tparam InIter Input iterator type
+    /// \param in_it Input iterator to the initialization data
+    void construct_iterator(const_pointer in_it) {
+      memcpy(first_, in_it, last_ - first_);
+    }
+
+    /// Initialize data with an input iterator + unary operation
+
+    /// Each element is initialized with: \c op(*in_it)
+    /// \tparam InIter Input iterator type
+    /// \param in_it Input iterator to the initialization data
+    /// \param op The operation to be applied to the input
+    template <typename InIter, typename Op>
+    void construct_unary_op(InIter in_it, const Op& op) {
+      pointer it = first_;
       try {
-        for(; it != last; ++it)
+        for(; it != last_; ++it)
+          allocator_type::construct(it, op(*in_it++));
+      } catch (...) {
+        destroy_(*this, first_, it);
+        throw;
+      }
+    }
+
+    /// Initialize data with an input iterator + unary operation
+
+    /// Each element is initialized with: \c op(*in_it1, *in_it2)
+    /// \tparam InIter1 Input iterator 1 type
+    /// \tparam InIter1 Input iterator 2 type
+    /// \param in_it1 Input iterator to the initialization data for left-hand argument
+    /// \param in_it2 Input iterator to the initialization data for right-hand argument
+    /// \param op The operation to be applied to the input
+    template <typename InIter1, typename InIter2, typename Op>
+    void construct_binary_op(InIter1 in_it1, InIter2 in_it2, const Op& op) {
+      pointer it = first_;
+      try {
+        for(; it != last_; ++it)
+          allocator_type::construct(it, op(*in_it1++, *in_it2++));
+      } catch (...) {
+        destroy_(*this, first_, it);
+        throw;
+      }
+    }
+
+    void construct_value(const value_type& value) {
+      pointer it = first_;
+      try {
+        for(; it != last_; ++it)
           allocator_type::construct(it, value);
       } catch (...) {
-        destroy_(*this, first, it);
+        destroy_(*this, first_, it);
         throw;
       }
     }
@@ -359,7 +523,8 @@ namespace TiledArray {
     /// \param first A pointer to the first element in the memory range to destroy
     /// \param last A pointer to one past the last element in the memory range to destroy
     static void destroy_(allocator_type& alloc, pointer first, pointer last) {
-      destroy_aux_(alloc, first, last, std::has_trivial_destructor<value_type>());
+      // NOTE: destroy_aux_ is necessary because destroy has no template parameters.
+      destroy_aux_(alloc, first, last, detail::is_numeric<value_type>());
     }
 
     /// Call the destructor for a range of data.
@@ -370,7 +535,7 @@ namespace TiledArray {
     /// \throw nothing
     static void destroy_aux_(allocator_type& alloc, pointer first, pointer last, std::false_type) {
       for(; first != last; ++first)
-        alloc.destroy(&*first);
+        alloc.destroy(first);
     }
 
     /// Call the destructor for a range of data.

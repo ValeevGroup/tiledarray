@@ -22,7 +22,7 @@
 #include <utility>
 #include "unit_test_config.h"
 #include "range_fixture.h"
-#include <world/bufar.h>
+#include "TiledArray/madness.h"
 
 //using namespace TiledArray;
 
@@ -207,6 +207,38 @@ BOOST_AUTO_TEST_CASE( constructor )
     TensorN t3(r, data.begin());
     BOOST_CHECK_EQUAL(t3.range(), r);
     BOOST_CHECK_EQUAL_COLLECTIONS(t3.begin(), t3.end(), data.begin(), data.end());
+  }
+}
+
+BOOST_AUTO_TEST_CASE( transform_constructor )
+{
+  std::vector<int> vl;
+  std::vector<int> vr;
+  vl.reserve(r.volume());
+  vr.reserve(r.volume());
+
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    vl.push_back(GlobalFixture::world->rand());
+    vr.push_back(GlobalFixture::world->rand());
+  }
+
+  // check pair transform constructor
+  {
+    BOOST_REQUIRE_NO_THROW(TensorN t(r, vl.begin(), std::negate<int>()));
+    TensorN t(r, vl.begin(), std::negate<int>());
+
+    for(std::size_t i = 0ul; i < r.volume(); ++i)
+      BOOST_CHECK_EQUAL(t[i], -(vl[i]));
+  }
+
+  // check pair transform constructor
+  {
+    BOOST_REQUIRE_NO_THROW(TensorN t(r, vl.begin(), vr.begin(), std::plus<int>()));
+    TensorN t(r, vl.begin(), vr.begin(), std::plus<int>());
+
+    for(std::size_t i = 0ul; i < r.volume(); ++i)
+      BOOST_CHECK_EQUAL(t[i], vl[i] + vr[i]);
   }
 }
 

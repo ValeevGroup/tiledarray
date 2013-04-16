@@ -19,7 +19,7 @@
 
 #include "TiledArray/dense_storage.h"
 #include "unit_test_config.h"
-#include <world/bufar.h>
+#include "TiledArray/madness.h"
 
 using namespace TiledArray;
 
@@ -82,6 +82,39 @@ BOOST_AUTO_TEST_CASE( constructor )
     Storage t3(10, t.begin());
     BOOST_CHECK_EQUAL(t3.size(), 10ul);
     BOOST_CHECK_EQUAL_COLLECTIONS(t3.begin(), t3.end(), t.begin(), t.end());
+  }
+}
+
+BOOST_AUTO_TEST_CASE( transform_constructor )
+{
+  const std::size_t n = 100;
+  std::vector<int> vl;
+  std::vector<int> vr;
+  vl.reserve(n);
+  vr.reserve(n);
+
+  GlobalFixture::world->srand(27);
+  for(std::size_t i = 0ul; i < n; ++i) {
+    vl.push_back(GlobalFixture::world->rand());
+    vr.push_back(GlobalFixture::world->rand());
+  }
+
+  // check pair transform constructor
+  {
+    BOOST_REQUIRE_NO_THROW(Storage t(n, vl.begin(), std::negate<int>()));
+    Storage t(n, vl.begin(), std::negate<int>());
+
+    for(std::size_t i = 0ul; i < n; ++i)
+      BOOST_CHECK_EQUAL(t[i], -(vl[i]));
+  }
+
+  // check pair transform constructor
+  {
+    BOOST_REQUIRE_NO_THROW(Storage t(n, vl.begin(), vr.begin(), std::plus<int>()));
+    Storage t(n, vl.begin(), vr.begin(), std::plus<int>());
+
+    for(std::size_t i = 0ul; i < n; ++i)
+      BOOST_CHECK_EQUAL(t[i], vl[i] + vr[i]);
   }
 }
 
