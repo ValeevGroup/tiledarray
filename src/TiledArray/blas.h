@@ -30,62 +30,62 @@ typedef const integer* fint;
 extern "C" {
 
   // BLAS _GEMM declarations
-  void sgemm(const char*, const char*, fint, fint, fint, const float*,
+  void F77_SGEMM(const char*, const char*, fint, fint, fint, const float*,
       const float*, fint, const float*, fint, const float*, float*, fint);
-  void dgemm(const char*, const char*, fint, fint, fint, const double*,
+  void F77_DGEMM(const char*, const char*, fint, fint, fint, const double*,
       const double*, fint, const double*, fint, const double*, double*, fint);
-  void cgemm(const char*, const char*, fint, fint, fint,
+  void F77_CGEMM(const char*, const char*, fint, fint, fint,
       const std::complex<float>*, const std::complex<float>*,
       fint, const std::complex<float>*, fint, const std::complex<float>*,
       std::complex<float>*, fint);
-  void zgemm(const char*, const char*, fint, fint, fint,
+  void F77_ZGEMM(const char*, const char*, fint, fint, fint,
       const std::complex<double>*, const std::complex<double>*, fint,
       const std::complex<double>*, fint, const std::complex<double>*,
       std::complex<double>*, fint);
 
   // BLAS _GEMV declarations
-  void sgemv(const char* OpA, fint m, fint n, const float* alpha,
+  void F77_SGEMV(const char* OpA, fint m, fint n, const float* alpha,
       const float* A, fint lda, const float* X, fint incX, const float* beta,
       float* Y, fint incY);
-  void dgemv(const char* OpA, fint m, fint n, const double* alpha,
+  void F77_DGEMV(const char* OpA, fint m, fint n, const double* alpha,
       const double* A, fint lda, const double* X, fint incX, const double* beta,
       double* Y, fint incY);
-  void cgemv(const char* OpA, fint m, fint n, const std::complex<float>* alpha,
+  void F77_CGEMV(const char* OpA, fint m, fint n, const std::complex<float>* alpha,
       const std::complex<float>* A, fint lda, const std::complex<float>* X,
       fint incX, const std::complex<float>* beta, std::complex<float>* Y,
       fint incY);
-  void zgemv(const char* OpA, fint m, fint n, const std::complex<double>* alpha,
+  void F77_ZGEMV(const char* OpA, fint m, fint n, const std::complex<double>* alpha,
       const std::complex<double>* A, fint lda, const std::complex<double>* X,
       fint incX, const std::complex<double>* beta, std::complex<double>* Y,
       fint incY);
 
   // BLAS _GER declarations
-  void sger(fint m, fint n, const float* alpha, const float* X, fint incX,
+  void F77_SGER(fint m, fint n, const float* alpha, const float* X, fint incX,
       const float* Y, fint incY, float* A, fint lda);
-  void dger(fint m, fint n, const double* alpha, const double* X, fint incX, const double* Y, fint incY,
+  void F77_DGER(fint m, fint n, const double* alpha, const double* X, fint incX, const double* Y, fint incY,
       double* A, fint lda);
   void cger(fint m, fint n, const std::complex<float>* alpha,
       const std::complex<float>* X, fint incX, const std::complex<float>* Y,
       fint incY, std::complex<float>* A,
       fint lda);
-  void zger(fint m, fint n, const std::complex<double>* alpha,
+  void F77_ZGER(fint m, fint n, const std::complex<double>* alpha,
       const std::complex<double>* X, fint incX, const std::complex<double>* Y,
       fint incY, std::complex<double>* A, fint lda);
 
   // BLAS _SCAL declarations
-  void sscal(fint, const float*, float*, fint);
-  void dscal(fint, const double*, double*, fint);
-  void cscal(fint, const std::complex<float>*, std::complex<float>*, fint);
-  void csscal(fint, const float*, std::complex<float>*, fint);
-  void zscal(fint, const std::complex<double>*, std::complex<double>*, fint);
-  void zdscal(fint, const double*, std::complex<double>*, fint);
+  void F77_SSCAL(fint, const float*, float*, fint);
+  void F77_DSCAL(fint, const double*, double*, fint);
+  void F77_CSCAL(fint, const std::complex<float>*, std::complex<float>*, fint);
+  void F77_CSSCAL(fint, const float*, std::complex<float>*, fint);
+  void F77_ZSCAL(fint, const std::complex<double>*, std::complex<double>*, fint);
+  void F77_ZDSCAL(fint, const double*, std::complex<double>*, fint);
 
   // BLAS _DOT declarations
-  float sdot(fint, const float*, fint, const float*, fint);
-  double ddot(fint, const double *, fint, const double *, fint);
-  void cdotu(fint, const std::complex<float>*, fint,
+  float F77_SDOT(fint, const float*, fint, const float*, fint);
+  double F77_DDOT(fint, const double *, fint, const double *, fint);
+  void F77_CDOTU(fint, const std::complex<float>*, fint,
       const std::complex<float>*, fint, std::complex<float>*);
-  void zdotu(fint, const std::complex<double>*, fint,
+  void F77_ZDOTU(fint, const std::complex<double>*, fint,
       const std::complex<double>*, fint, std::complex<double>*);
 }
 

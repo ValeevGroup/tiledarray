@@ -51,25 +51,25 @@ namespace TiledArray {
     inline void gemm(const integer m, const integer n, const integer k, const float alpha, const float* a, const float* b, float* c) {
       static const char *op[] = { "n","t" };
       static const float beta = 1.0;
-      sgemm(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
+      F77_SGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
     }
 
     inline void gemm(const integer m, const integer n, const integer k, const double alpha, const double* a, const double* b, double* c) {
       static const char *op[] = { "n","t" };
       static const double beta = 1.0;
-      dgemm(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
+      F77_DGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
     }
 
     inline void gemm(const integer m, const integer n, const integer k, const std::complex<float> alpha, const std::complex<float>* a, const std::complex<float>* b, std::complex<float>* c) {
       static const char *op[] = { "n","t","c" };
       static const std::complex<float> beta(1.0, 0.0);
-      cgemm(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
+      F77_CGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
     }
 
     inline void gemm(const integer m, const integer n, const integer k, const std::complex<double> alpha, const std::complex<double>* a, const std::complex<double>* b, std::complex<double>* c) {
       static const char *op[] = { "n","t","c" };
       static const std::complex<double> beta(1.0, 0.0);
-      zgemm(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
+      F77_ZGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
     }
 
 #endif // TILEDARRAY_HAS_CBLAS
@@ -92,32 +92,32 @@ namespace TiledArray {
 
     inline void scale(const integer n, float alpha, float* x) {
       static const integer incX = 1;
-      sscal(&n, &alpha, x, &incX);
+      F77_SSCAL(&n, &alpha, x, &incX);
     }
 
     inline void scale(const integer n, double alpha, double* x) {
       static const integer incX = 1;
-      dscal(&n, &alpha, x, &incX);
+      F77_DSCAL(&n, &alpha, x, &incX);
     }
 
     inline void scale(const integer n, std::complex<float> alpha, std::complex<float>* x) {
       static const integer incX = 1;
-      cscal(&n, &alpha, x, &incX);
+      F77_CSCAL(&n, &alpha, x, &incX);
     }
 
     inline void scale(const integer n, std::complex<double> alpha, std::complex<double>* x) {
       static const integer incX = 1;
-      zscal(&n, &alpha, x, &incX);
+      F77_ZSCAL(&n, &alpha, x, &incX);
     }
 
     inline void scale(const integer n, float alpha, std::complex<float>* x) {
       static const integer incX = 1;
-      csscal(&n, &alpha, x, &incX);
+      F77_CSSCAL(&n, &alpha, x, &incX);
     }
 
     inline void scale(const integer n, double alpha, std::complex<double>* x) {
       static const integer incX = 1;
-      zdscal(&n, &alpha, x, &incX);
+      F77_ZDSCAL(&n, &alpha, x, &incX);
     }
 
 #endif // TILEDARRAY_HAS_CBLAS
@@ -145,25 +145,25 @@ namespace TiledArray {
 
     inline float dot(const integer n, const float* x, const float* y) {
       static const integer incX = 1, incY = 1;
-      return sdot(&n, x, &incX, y, &incY);
+      return F77_SDOT(&n, x, &incX, y, &incY);
     }
 
     inline double dot(const integer n, const double* x, const double* y) {
       static const integer incX = 1, incY = 1;
-      return ddot(&n, x, &incX, y, &incY);
+      return F77_DDOT(&n, x, &incX, y, &incY);
     }
 
     inline std::complex<float> dot(const integer n, const std::complex<float>* x, const std::complex<float>* y) {
       static const integer incX = 1, incY = 1;
       std::complex<float> result(0.0, 0.0);
-      cdotu(&n, x, &incX, y, &incY, &result);
+      F77_CDOTU(&n, x, &incX, y, &incY, &result);
       return result;
     }
 
     inline std::complex<double> dot(const integer n, const std::complex<double>* x, const std::complex<double>* y) {
       static const integer incX = 1, incY = 1;
       std::complex<double> result(0.0, 0.0);
-      zdotu(&n, x, &incX, y, &incY, &result);
+      F77_ZDOTU(&n, x, &incX, y, &incY, &result);
       return result;
     }
 

@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
   // Do matrix multiplcation
   // Note: If TiledArray has not been configured with blas, this will be an eigen call.
   for(int i = 0; i < repeat; ++i) {
-    dgemm(&opb, &opa, &n, &m, &k, &alpha, b, &ldb, a, &lda, &beta, c, &ldc);
+    F77_DGEMM(&opb, &opa, &n, &m, &k, &alpha, b, &ldb, a, &lda, &beta, c, &ldc);
   }
 
   // Stop clock
