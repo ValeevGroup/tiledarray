@@ -75,11 +75,6 @@ BOOST_AUTO_TEST_CASE( constructor )
   // Disable sharing so that the initial values can be checked
   s.no_share();
 
-#ifdef TA_EXCEPTION_ERROR
-  // Check that the second call to no_share throws an exception
-  BOOST_CHECK_THROW(s.no_share(), TiledArray::Exception);
-#endif // TA_EXCEPTION_ERROR
-
   // Check that the default constructed shape is dense
   BOOST_CHECK(s.is_dense());
 
@@ -115,11 +110,6 @@ BOOST_AUTO_TEST_CASE( copy_constructor )
   // Disable sharing so that the initial values can be checked
   BOOST_CHECK_NO_THROW(s.no_share());
 
-#ifdef TA_EXCEPTION_ERROR
-  // Check that the second call to no_share throws an exception
-  BOOST_CHECK_THROW(s.no_share(), TiledArray::Exception);
-#endif // TA_EXCEPTION_ERROR
-
   // Check that the default constructed shape is dense
   BOOST_CHECK(! s.is_dense());
 
@@ -151,11 +141,6 @@ BOOST_AUTO_TEST_CASE( iterator_constructor )
   // Disable sharing so that the initial values can be checked
   BOOST_CHECK_NO_THROW(s.no_share());
 
-#ifdef TA_EXCEPTION_ERROR
-  // Check that the second call to no_share throws an exception
-  BOOST_CHECK_THROW(s.no_share(), TiledArray::Exception);
-#endif // TA_EXCEPTION_ERROR
-
   // Check that the default constructed shape is dense
   BOOST_CHECK(s.is_dense());
 
@@ -186,11 +171,6 @@ BOOST_AUTO_TEST_CASE( copy_assignment_before_share )
   // Disable sharing so that the initial values can be checked
   BOOST_CHECK_NO_THROW(s.no_share());
 
-#ifdef TA_EXCEPTION_ERROR
-  // Check that the second call to no_share throws an exception
-  BOOST_CHECK_THROW(s.no_share(), TiledArray::Exception);
-#endif // TA_EXCEPTION_ERROR
-
   // Check that the default constructed shape is dense
   BOOST_CHECK(! s.is_dense());
 
@@ -218,9 +198,6 @@ BOOST_AUTO_TEST_CASE( share )
 #ifdef TA_EXCEPTION_ERROR
   // Check that the second call to no_share throws an exception
   BOOST_CHECK_THROW(s.share(* GlobalFixture::world), TiledArray::Exception);
-
-  // Check that the a call to no_share after share throws an exception
-  BOOST_CHECK_THROW(s.no_share(), TiledArray::Exception);
 
   // Check that data access throws before sharing
   BOOST_CHECK_NO_THROW(s.is_zero(0));
@@ -252,9 +229,6 @@ BOOST_AUTO_TEST_CASE( share_with_op )
 #ifdef TA_EXCEPTION_ERROR
   // Check that the second call to no_share throws an exception
   BOOST_CHECK_THROW(s.share(* GlobalFixture::world), TiledArray::Exception);
-
-  // Check that the a call to no_share after share throws an exception
-  BOOST_CHECK_THROW(s.no_share(), TiledArray::Exception);
 
   // Check that data access throws before sharing
   BOOST_CHECK_NO_THROW(s.is_zero(0));
@@ -308,26 +282,6 @@ BOOST_AUTO_TEST_CASE( tensor_assignment )
 
   if(GlobalFixture::world->rank() == 0)
     BOOST_CHECK_NO_THROW(shape = tensor);
-
-  BOOST_CHECK_NO_THROW(shape.share(* GlobalFixture::world));
-
-
-  // Check that the default constructed shape is dense
-  BOOST_CHECK(shape.is_dense());
-
-  // Check that all tiles for a default constructed shape are non-zero
-  for(Range::const_iterator it = r.begin(); it != r.end(); ++it) {
-    BOOST_CHECK(! shape.is_zero(*it));
-    BOOST_CHECK(! shape.is_zero(r.ord(*it)));
-  }
-}
-
-BOOST_AUTO_TEST_CASE( tensor_move_assignment )
-{
-  Shape<float>::tensor_type tensor(r, 1.0);
-
-  if(GlobalFixture::world->rank() == 0)
-    BOOST_CHECK_NO_THROW(shape = madness::move(tensor));
 
   BOOST_CHECK_NO_THROW(shape.share(* GlobalFixture::world));
 
@@ -408,7 +362,7 @@ BOOST_AUTO_TEST_CASE( tensor_conversion )
   // Share the data
   BOOST_CHECK_NO_THROW(shape.share(* GlobalFixture::world));
 
-  Shape<float>::tensor_type tensor = shape;
+  Shape<float>::tensor_type tensor = shape.tensor();
 
   for(Shape<float>::tensor_type::const_iterator it = tensor.begin(); it != tensor.end(); ++it)
     BOOST_CHECK_CLOSE(*it, 1.0, 1.0e-4);

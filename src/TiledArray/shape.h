@@ -53,6 +53,8 @@ namespace TiledArray {
       bool shared_; ///< true if data is distributed, false if it is local
       comp_type comp_; ///< Comparison function
 
+      template <typename, typename> friend class Shape;
+
     public:
       /// Construct an empty shape
       Shape() : data_(), threshold_(), shared_(true), comp_() { }
@@ -116,17 +118,57 @@ namespace TiledArray {
         return *this;
       }
 
-      Shape_& operator=(const madness::detail::MoveWrapper<TiledArray::expressions::Tensor<value_type> >& tensor) {
-        data_ = tensor;
+      template <typename S, typename U, typename CU, typename V, typename CV>
+      Shape_& add_and_scale(const S scalar, const Shape<U, CU>& left, const Shape<V, CV>& right) {
+        TA_ASSERT(left.shared_);
+        TA_ASSERT(right.shared_);
+
+        if(left.range().volume() != 0ul) {
+          if(right.range().size() != 0ul) {
+            TA_ASSERT(left.range() == right.range());
+            if(data_.empty()) {
+              data_ = tensor_type(left.range(), scalar, left.begin(),
+                  right.begin(), std::plus<value_type>());
+            } else {
+              for(std::size_t i = 0; i < data_.size(); ++i)
+                data_[i] = scalar * (left.data_[i] + right.data_[i]);
+            }
+            threshold_ = left.threshold_ + right.threshold_;
+          } else {
+            for(std::size_t i = 0; i < data_.size(); ++i)
+              data_[i] = scalar * left.data_[i];
+          }
+        } else {
+          if(right.range().size() != 0ul) {
+            TA_ASSERT(data_.range() == right.range());
+            for(std::size_t i = 0; i < data_.size(); ++i)
+              data_[i] = scalar * right.data_[i];
+          } else {
+            data_ = tensor_type();
+          }
+        }
+
+        shared_ = true;
+
         return *this;
       }
 
-      /// Tensor conversion operator
+
+      /// Tensor accessor
 
       /// Convert the shape into a tensor object where each element of the
       /// tensor represents the tile estimate value
       /// \return A tensor that represents the shape
-      operator const tensor_type& () const {
+      const tensor_type& tensor() const {
+        return data_;
+      }
+
+      /// Tensor accessor
+
+      /// Convert the shape into a tensor object where each element of the
+      /// tensor represents the tile estimate value
+      /// \return A tensor that represents the shape
+      tensor_type& tensor() {
         return data_;
       }
 
@@ -165,13 +207,15 @@ namespace TiledArray {
         shared_ = true;
       }
 
+      /// Shared accessor
+
+      /// \return \c true if the data has been shared with all processes.
+      bool is_shared() const { return shared_; }
+
       /// Disable data sharing
 
       /// Allows shape to be used without sharing data among nodes.
-      void no_share() {
-        TA_ASSERT(! shared_);
-        shared_ = true;
-      }
+      void no_share() { shared_ = true; }
 
       /// Threshold value
 
