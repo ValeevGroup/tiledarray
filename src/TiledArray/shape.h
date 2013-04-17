@@ -39,7 +39,7 @@ namespace TiledArray {
     class Shape {
     public:
       typedef Shape<T, Comp> Shape_;
-      typedef TiledArray::expressions::Tensor<T> tensor_type; ///< Tensor representation type
+      typedef Tensor<T> tensor_type; ///< Tensor representation type
       typedef typename tensor_type::value_type value_type; ///< The type used to represent the tile magnitude
       typedef typename tensor_type::range_type range_type; ///< The shape range type
       typedef typename tensor_type::reference reference; ///< Tile estimate reference type
@@ -48,7 +48,7 @@ namespace TiledArray {
       typedef Comp comp_type; ///< Comparison function type
 
     private:
-      TiledArray::expressions::Tensor<value_type> data_; ///< Tile magnitude estimate
+      Tensor<value_type> data_; ///< Tile magnitude estimate
       value_type threshold_; ///< Zero threshold for a tile
       bool shared_; ///< true if data is distributed, false if it is local
       comp_type comp_; ///< Comparison function
@@ -113,7 +113,7 @@ namespace TiledArray {
 
       /// Assign data from tensor
       template <typename U, typename A>
-      Shape_& operator=(const TiledArray::expressions::Tensor<U, A>& tensor) {
+      Shape_& operator=(const Tensor<U, A>& tensor) {
         data_ = tensor;
         return *this;
       }
@@ -252,7 +252,7 @@ namespace TiledArray {
       bool is_dense() const {
         TA_ASSERT(shared_);
         if(! data_.empty())
-          for(typename TiledArray::expressions::Tensor<value_type>::const_iterator it = data_.begin(); it != data_.end(); ++it)
+          for(typename Tensor<value_type>::const_iterator it = data_.begin(); it != data_.end(); ++it)
             if(comp_(*it, threshold_))
               return false;
 
@@ -289,7 +289,7 @@ namespace TiledArray {
     public:
       typedef Shape<bool, std::equal_to<bool> > Shape_;
       typedef bool value_type; ///< The type used to represent the tile magnitude
-      typedef TiledArray::expressions::Tensor<unsigned int> tensor_type;
+      typedef Tensor<unsigned int> tensor_type;
       typedef typename tensor_type::range_type range_type;
       typedef TiledArray::detail::Bitset<>::reference reference; ///< Tile estimate reference type
       typedef TiledArray::detail::Bitset<>::const_reference const_reference; ///< Tile estimate reference type

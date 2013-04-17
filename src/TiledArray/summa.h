@@ -483,26 +483,5 @@ namespace TiledArray {
   }  // namespace detail
 }  // namespace TiledArray
 
-
-namespace madness {
-  namespace archive {
-
-    template <typename Archive, typename T, typename A>
-    struct ArchiveLoadImpl<Archive, std::shared_ptr<TiledArray::expressions::Tensor<T,A> > > {
-      static inline void load(const Archive& ar, std::shared_ptr<TiledArray::expressions::Tensor<T,A> > &) {
-        TA_EXCEPTION("Serialization of shared_ptr not supported.");
-      }
-    };
-
-    template <typename Archive, typename T, typename A>
-    struct ArchiveStoreImpl<Archive,std::shared_ptr<TiledArray::expressions::Tensor<T,A> > > {
-      static inline void store(const Archive& ar, const std::shared_ptr<TiledArray::expressions::Tensor<T,A> >&) {
-        TA_EXCEPTION("Serialization of shared_ptr not supported.");
-      }
-    };
-
-  }  // namespace archive
-}  // namespace madness
-
 #endif // TILEDARRAY_SUMMA_H__INCLUDED
 

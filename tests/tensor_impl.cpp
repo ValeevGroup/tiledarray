@@ -28,7 +28,7 @@ using namespace TiledArray;
 
 struct TensorImplFixture : public TiledRangeFixture {
   typedef TiledRange trange_type;
-  typedef expressions::Tensor<int> value_type;
+  typedef Tensor<int> value_type;
   typedef detail::TensorImpl<value_type> tensor_impl_base;
 
   TensorImplFixture() : impl(* GlobalFixture::world, tr, detail::Bitset<>(0ul)),

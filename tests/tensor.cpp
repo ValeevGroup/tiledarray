@@ -44,7 +44,7 @@ public:
 };
 
 struct TensorFixture {
-  typedef TiledArray::expressions::Tensor<int> TensorN;
+  typedef TiledArray::Tensor<int> TensorN;
   typedef TensorN::value_type value_type;
   typedef TensorN::range_type::index index;
   typedef TensorN::size_type size_type;

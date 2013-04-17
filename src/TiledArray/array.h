@@ -32,7 +32,7 @@ namespace TiledArray {
   /// \tparam T The element type of for array tiles
   /// \tparam Coordinate system type
   /// \tparam Policy class for the array
-  template <typename T, unsigned int DIM, typename Tile = expressions::Tensor<T> >
+  template <typename T, unsigned int DIM, typename Tile = Tensor<T> >
   class Array {
   public:
     typedef Array<T, DIM, Tile> Array_; ///< This object's type
@@ -255,7 +255,7 @@ namespace TiledArray {
 
     /// \param v A string with a comma-separated list of variables
     /// \return An annotated tensor object that references this array
-    expressions::TensorExpression<expressions::Tensor<T> >
+    expressions::TensorExpression<Tensor<T> >
     operator ()(const std::string& v) const {
       return expressions::make_annotatied_tensor(*this, v);
     }
@@ -264,7 +264,7 @@ namespace TiledArray {
 
     /// \param v A variable list object
     /// \return An annotated tensor object that references this array
-    expressions::TensorExpression<expressions::Tensor<T> >
+    expressions::TensorExpression<Tensor<T> >
     operator ()(const expressions::VariableList& v) const {
       return expressions::make_annotatied_tensor(*this, v);
     }
