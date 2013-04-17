@@ -26,71 +26,115 @@
 /* Defines when BLAS functions are available. */
 #undef TILEDARRAY_HAS_BLAS
 
+#ifndef F77_CDOTU
 /* Alias BLAS CDOTU function name */
 #undef F77_CDOTU
+#endif // F77_CDOTU
 
+#ifndef F77_CGEMM
 /* Alias BLAS CGEMM function name */
 #undef F77_CGEMM
+#endif // F77_CGEMM
 
+#ifndef F77_CGEMV
 /* Alias BLAS CGEMV function name */
 #undef F77_CGEMV
+#endif // F77_CGEMV
 
+#ifndef F77_CGER
 /* Alias BLAS CGER function name */
 #undef F77_CGER
+#endif // F77_CGER
 
+#ifndef F77_CSCAL
 /* Alias BLAS CSCAL function name */
 #undef F77_CSCAL
+#endif // F77_CSCAL
 
+#ifndef F77_CSSCAL
 /* Alias BLAS CSSCAL function name */
 #undef F77_CSSCAL
+#endif // F77_CSSCAL
 
+#ifndef F77_DDOT
 /* Alias BLAS DDOT function name */
 #undef F77_DDOT
+#endif // F77_DDOT
 
+#ifndef F77_DGEMM
 /* Alias BLAS DGEMM function name */
 #undef F77_DGEMM
+#endif // F77_DGEMM
 
+#ifndef F77_DGEMV
 /* Alias BLAS DGEMV function name */
 #undef F77_DGEMV
+#endif // F77_DGEMV
 
+#ifndef F77_DGER
 /* Alias BLAS DGER function name */
 #undef F77_DGER
+#endif // F77_DGER
 
+#ifndef F77_DSCAL
 /* Alias BLAS DSCAL function name */
 #undef F77_DSCAL
+#endif // F77_DSCAL
 
+#ifndef F77_SDOT
 /* Alias BLAS SDOT function name */
 #undef F77_SDOT
+#endif // F77_SDOT
 
+#ifndef F77_SGEMM
 /* Alias BLAS SGEMM function name */
 #undef F77_SGEMM
+#endif // F77_SGEMM
 
+#ifndef F77_SGEMV
 /* Alias BLAS SGEMV function name */
 #undef F77_SGEMV
+#endif // F77_SGEMV
 
+#ifndef F77_SGER
 /* Alias BLAS SGER function name */
 #undef F77_SGER
+#endif // F77_SGER
 
+#ifndef F77_SSCAL
 /* Alias BLAS SSCAL function name */
 #undef F77_SSCAL
+#endif // F77_SSCAL
 
+#ifndef F77_ZDOTU
 /* Alias BLAS ZDOTU function name */
 #undef F77_ZDOTU
+#endif // F77_ZDOTU
 
+#ifndef F77_ZDSCAL
 /* Alias BLAS ZDSCAL function name */
 #undef F77_ZDSCAL
+#endif // F77_ZDSCAL
 
+#ifndef F77_ZGEMM
 /* Alias BLAS ZGEMM function name */
 #undef F77_ZGEMM
+#endif // F77_ZGEMM
 
+#ifndef F77_ZGEMV
 /* Alias BLAS ZGEMV function name */
 #undef F77_ZGEMV
+#endif // F77_ZGEMV
 
+#ifndef F77_ZGER
 /* Alias BLAS ZGER function name */
 #undef F77_ZGER
+#endif // F77_ZGER
 
+#ifndef F77_ZSCAL
 /* Alias BLAS ZSCAL function name */
 #undef F77_ZSCAL
+#endif // F77_ZSCAL
 
 /* define if compiler has std::identity. */
 #undef TILEDARRAY_HAS_STD_IDENTITY
