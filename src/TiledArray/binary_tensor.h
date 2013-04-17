@@ -259,6 +259,7 @@ namespace TiledArray {
         typedef RExp right_tensor_type;
         typedef typename TensorExpressionImpl_::size_type size_type;
         typedef typename TensorExpressionImpl_::range_type range_type;
+        typedef typename TensorExpressionImpl_::shape_type shape_type;
         typedef typename TensorExpressionImpl_::pmap_interface pmap_interface;
         typedef typename TensorExpressionImpl_::trange_type trange_type;
         typedef typename TensorExpressionImpl_::value_type value_type;
@@ -292,8 +293,7 @@ namespace TiledArray {
 
         template <typename L, typename R>
         void eval_tile(const size_type i, const L& left, const R& right) {
-          value_type result(op_(left, right));
-          TensorExpressionImpl_::set(i, madness::move(result));
+          TensorExpressionImpl_::set(i, value_type(op_(left, right)));
         }
 
         /// Function for evaluating this tensor's tiles
@@ -394,7 +394,7 @@ namespace TiledArray {
         /// is run inside a task with the proper dependencies to ensure data
         /// consistency. This function is only called when the tensor is not dense.
         /// \param shape The existing shape object
-        virtual void make_shape(TiledArray::detail::Bitset<>& shape) const {
+        virtual void make_shape(shape_type& shape) const {
           op_.shape(shape, left_, right_);
         }
 

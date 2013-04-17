@@ -41,6 +41,7 @@ namespace TiledArray {
     public:
       typedef TiledRange trange_type; ///< Tiled range type
       typedef typename trange_type::range_type range_type; ///< Tile range type
+      typedef Bitset<> shape_type; ///< Tensor shape type
       typedef Tile value_type; ///< Tile or data type
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
       typedef typename storage_type::size_type size_type; ///< Size type
@@ -53,7 +54,7 @@ namespace TiledArray {
     private:
 
       trange_type trange_; ///< Tiled range type
-      Bitset<> shape_; ///< Tensor shape (zero size == dense)
+      shape_type shape_; ///< Tensor shape (zero size == dense)
       storage_type data_; ///< Tile container
 
     public:
@@ -67,7 +68,7 @@ namespace TiledArray {
       /// \param op The element transform operation
       /// \throw TiledArray::Exception When the size of shape is not equal to
       /// zero
-      TensorImpl(madness::World& world, const trange_type& trange, const Bitset<>& shape) :
+      TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape) :
         trange_(trange), shape_(shape), data_(world, trange_.tiles().volume())
       {
         TA_ASSERT((shape_.size() == trange_.tiles().volume()) || (shape_.size() == 0ul));
@@ -183,7 +184,7 @@ namespace TiledArray {
 
       /// \return A reference to the tensor shape map
       /// \throw TiledArray::Exception When this tensor is dense
-      const TiledArray::detail::Bitset<>& shape() const {
+      const shape_type& shape() const {
         TA_ASSERT(! is_dense());
         return shape_;
       }
@@ -192,7 +193,7 @@ namespace TiledArray {
 
       /// \return A reference to the tensor shape map
       /// \throw TiledArray::Exception When this tensor is dense
-      TiledArray::detail::Bitset<>& shape() {
+      shape_type& shape() {
         TA_ASSERT(! is_dense());
         return shape_;
       }
@@ -202,7 +203,7 @@ namespace TiledArray {
       /// \param s The new shape
       /// \throw TiledArray::Exception When the size of \c s is not equal to the
       /// size of this tensor or zero.
-      void shape(TiledArray::detail::Bitset<> s) {
+      void shape(shape_type s) {
         TA_ASSERT((s.size() == trange_.tiles().volume()) || (s.size() == 0ul));
         s.swap(shape_);
       }

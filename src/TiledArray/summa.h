@@ -189,7 +189,7 @@ namespace TiledArray {
           acc.release();
 
         // Set the local future with the broadcast value
-        tile.set(madness::move(value)); // Move
+        tile.set(value);
       }
 
       /// Task function used for broadcasting tiles along the column
@@ -215,7 +215,7 @@ namespace TiledArray {
           acc.release();
 
         // Set the local future with the broadcast value
-        tile.set(madness::move(value)); // Move
+        tile.set(value);
       }
 
       /// Broadcast task for rows or columns

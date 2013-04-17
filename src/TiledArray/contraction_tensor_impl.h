@@ -186,6 +186,7 @@ namespace TiledArray {
       typedef typename TensorImpl_::pmap_interface pmap_interface; ///< The process map interface type
       typedef typename TensorImpl_::trange_type trange_type;
       typedef typename TensorImpl_::range_type range_type;
+      typedef typename TensorImpl_::shape_type shape_type;
       typedef typename TensorImpl_::value_type value_type; ///< The result value type
       typedef typename TensorImpl_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
       typedef typename TensorImpl_::storage_type::future const_reference;
@@ -302,7 +303,7 @@ namespace TiledArray {
 
         // Set an empty shape if sparse
         if(! (left_.is_dense() && right_.is_dense()))
-          TensorImpl_::shape(::TiledArray::detail::Bitset<>(m_ * n_));
+          TensorImpl_::shape(shape_type(m_ * n_));
 
         if(rank_ < proc_size_) {
           // Calculate this rank's row and column
@@ -401,7 +402,7 @@ namespace TiledArray {
 
     private:
 
-      virtual void make_shape(TiledArray::detail::Bitset<>& shape) const {
+      virtual void make_shape(shape_type& shape) const {
         TA_ASSERT(shape.size() == (m_ * n_));
 
         typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
@@ -413,7 +414,7 @@ namespace TiledArray {
         if(left_.is_dense())
           left_map.fill(1);
         else {
-          const TiledArray::detail::Bitset<> left_shape(left_.get_shape());
+          const shape_type left_shape(left_.get_shape());
           for(std::size_t i = 0; i < m_; ++i)
             for(std::size_t j = 0; j < k_; ++j)
               left_map(i, j) = (left_shape[i * k_ + j] ? 1 : 0);
@@ -424,7 +425,7 @@ namespace TiledArray {
         if(right_.is_dense())
           right_map.fill(1);
         else {
-          const TiledArray::detail::Bitset<> right_shape(right_.get_shape());
+          const shape_type right_shape(right_.get_shape());
           for(std::size_t i = 0; i < k_; ++i)
             for(std::size_t j = 0; j < n_; ++j)
               right_map(i, j) = (right_shape[i * n_ + j] ? 1 : 0);

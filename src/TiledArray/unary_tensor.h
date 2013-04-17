@@ -102,6 +102,7 @@ namespace TiledArray {
         typedef typename TensorExpressionImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
         typedef typename TensorExpressionImpl_::size_type size_type; ///< Size type
         typedef typename TensorExpressionImpl_::range_type range_type; ///< Range type
+        typedef typename TensorExpressionImpl_::shape_type shape_type; ///< Shape type
         typedef typename TensorExpressionImpl_::pmap_interface pmap_interface; ///< Process map interface type
         typedef typename TensorExpressionImpl_::trange_type trange_type; ///< tiled range type
         typedef typename TensorExpressionImpl_::value_type value_type; ///< value type
@@ -132,8 +133,7 @@ namespace TiledArray {
       private:
 
         void eval_tile(const size_type i, const typename arg_tensor_type::value_type& tile) {
-          value_type result = op_(tile);
-          TensorExpressionImpl_::set(i, madness::move(result));
+          TensorExpressionImpl_::set(i, op_(tile));
         }
 
         /// Function for evaluating this tensor's tiles
@@ -182,7 +182,7 @@ namespace TiledArray {
         /// is run inside a task with the proper dependencies to ensure data
         /// consistency. This function is only called when the tensor is not dense.
         /// \param shape The existing shape object
-        virtual void make_shape(TiledArray::detail::Bitset<>& shape) const {
+        virtual void make_shape(shape_type& shape) const {
           TA_ASSERT(shape.size() == arg_.size());
           shape = arg_.get_shape();
         }

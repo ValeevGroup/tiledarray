@@ -145,8 +145,7 @@ namespace TiledArray {
             data.end();
 
         for(; data_it != data_end; ++data_it, ++index_it)
-          destination_.set(*index_it,
-              madness::move(const_cast<typename A::value_type&>(data_it->get())));
+          destination_.set(*index_it, data_it->get());
 
         delay_send();
       }

@@ -22,7 +22,7 @@
 
 #include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
-#include <world/move.h>
+#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -50,24 +50,98 @@ namespace TiledArray {
       typedef typename storage_type::pointer pointer;
       typedef typename storage_type::size_type size_type;
 
+    private:
+
+      /// Evaluation tensor
+
+      /// This tensor is used as an evaluated intermediate for other tensors.
+      /// \tparma T the value type of this tensor
+      /// \tparam A The allocator type for the data
+      class Impl {
+      public:
+
+        /// Default constructor
+
+        /// Construct an empty tensor that has no data or dimensions
+        Impl() : range_(), data_() { }
+
+        /// Construct an evaluated tensor
+
+        /// \param r An array with the size of of each dimension
+        /// \param v The value of the tensor elements
+        explicit Impl(const Range& r, const value_type& v) :
+          range_(r), data_(r.volume(), v)
+        { }
+
+        /// Construct an evaluated tensor
+        template <typename InIter>
+        Impl(const Range& r, InIter it,
+            typename madness::enable_if<TiledArray::detail::is_input_iterator<InIter>, Enabler>::type = Enabler()) :
+          range_(r), data_(r.volume(), it)
+        { }
+
+        /// Construct an evaluated tensor
+        template <typename InIter, typename Op>
+        Impl(const Range& r, InIter it, const Op& op,
+            typename madness::enable_if< TiledArray::detail::is_input_iterator<InIter>,
+            Enabler>::type = Enabler()) :
+          range_(r), data_(r.volume(), it, op)
+        { }
+
+        /// Construct an evaluated tensor
+        template <typename InIter1, typename InIter2, typename Op>
+        Impl(const Range& r, InIter1 it1, InIter2 it2, const Op& op,
+            typename madness::enable_if_c<
+              TiledArray::detail::is_input_iterator<InIter1>::value &&
+              TiledArray::detail::is_input_iterator<InIter2>::value, Enabler>::type = Enabler()) :
+          range_(r), data_(r.volume(), it1, it2, op)
+        { }
+
+        /// Copy constructor
+
+        /// Do a deep copy of \c other
+        /// \param other The tile to be copied.
+        Impl(const Impl& other) :
+          range_(other.range_), data_(other.data_)
+        { }
+
+        /// Element accessor
+
+        /// Serialize tensor data
+
+        /// \tparam Archive The serialization archive type
+        /// \param ar The serialization archive
+        template <typename Archive>
+        void serialize(Archive& ar) {
+          ar & range_ & data_;
+        }
+
+        range_type range_; ///< Tensor size info
+        storage_type data_; ///< Tensor data
+      }; // class Tensor
+
+      std::shared_ptr<Impl> pimpl_;
+
+    public:
+
       /// Default constructor
 
       /// Construct an empty tensor that has no data or dimensions
-      Tensor() : range_(), data_() { }
+      Tensor() : pimpl_(new Impl()) { }
 
       /// Construct an evaluated tensor
 
       /// \param r An array with the size of of each dimension
       /// \param v The value of the tensor elements
       explicit Tensor(const Range& r, const value_type& v = value_type()) :
-        range_(r), data_(r.volume(), v)
+        pimpl_(new Impl(r, v))
       { }
 
       /// Construct an evaluated tensor
       template <typename InIter>
       Tensor(const Range& r, InIter it,
           typename madness::enable_if<TiledArray::detail::is_input_iterator<InIter>, Enabler>::type = Enabler()) :
-        range_(r), data_(r.volume(), it)
+        pimpl_(new Impl(r, it))
       { }
 
       /// Construct an evaluated tensor
@@ -75,7 +149,7 @@ namespace TiledArray {
       Tensor(const Range& r, InIter it, const Op& op,
           typename madness::enable_if< TiledArray::detail::is_input_iterator<InIter>,
           Enabler>::type = Enabler()) :
-        range_(r), data_(r.volume(), it, op)
+        pimpl_(new Impl(r, it, op))
       { }
 
       /// Construct an evaluated tensor
@@ -84,7 +158,7 @@ namespace TiledArray {
           typename madness::enable_if_c<
             TiledArray::detail::is_input_iterator<InIter1>::value &&
             TiledArray::detail::is_input_iterator<InIter2>::value, Enabler>::type = Enabler()) :
-        range_(r), data_(r.volume(), it1, it2, op)
+        pimpl_(new Impl(r, it1, it2, op))
       { }
 
       /// Copy constructor
@@ -92,18 +166,8 @@ namespace TiledArray {
       /// Do a deep copy of \c other
       /// \param other The tile to be copied.
       Tensor(const Tensor_& other) :
-        range_(other.range_), data_(other.data_)
+        pimpl_(other.pimpl_)
       { }
-
-      /// Move constructor
-
-      /// Do a shallow copy of \c other
-      /// \param other The tile to be Moved
-      Tensor(const madness::detail::MoveWrapper<Tensor<T, A> >& wrapper) :
-          range_(wrapper.get().range()), data_()
-      {
-        data_.swap(wrapper.get().data_);
-      }
 
       /// Copy assignment
 
@@ -111,41 +175,8 @@ namespace TiledArray {
       /// \param other The tensor to be copied
       /// \return this tensor
       Tensor_& operator=(const Tensor_& other) {
-        if(range_ == other.range())
-          std::copy(other.begin(), other.end(), data_.begin());
-        else {
-          range_ = other.range();
-          data_ = other.data_;
-        }
+        pimpl_ = other.pimpl_;
 
-        return *this;
-      }
-
-      /// Copy assignment
-
-      /// Evaluate \c other to this tensor
-      /// \param other The tensor to be copied
-      /// \return this tensor
-      template <typename U, typename AU>
-      Tensor_& operator=(const Tensor<U, AU>& other) {
-        if(range_ == other.range())
-          std::copy(other.begin(), other.end(), data_.begin());
-        else {
-          range_ = other.range();
-          storage_type(other.size(), other.begin()).swap(data_);
-        }
-
-        return *this;
-      }
-
-      /// Move assignment
-
-      /// Evaluate \c other to this tensor
-      /// \param other The tensor to be moved
-      /// \return this tensor
-      Tensor_& operator=(const madness::detail::MoveWrapper<Tensor<T, A> >& other) {
-        range_ = other.get().range();
-        data_.swap(other.get().data_);
         return *this;
       }
 
@@ -156,14 +187,13 @@ namespace TiledArray {
       /// \return this tensor
       template <typename U, typename AU>
       Tensor_& operator+=(const Tensor<U, AU>& other) {
-        if(data_.empty()) {
-          range_ = other.range();
-          storage_type temp(other.range().volume());
-          temp.swap(data_);
+        if(!pimpl_) {
+          pimpl_.reset(new Impl(other.range(), other.begin()));
+        } else {
+          TA_ASSERT(pimpl_->range_ == other.range());
+          pimpl_->data_ += other;
         }
 
-        TA_ASSERT(range_ == other.range());
-        data_ += other;
         return *this;
       }
 
@@ -174,14 +204,12 @@ namespace TiledArray {
       /// \return this tensor
       template <typename U, typename AU>
       Tensor_& operator-=(const Tensor<U, AU>& other) {
-        if(data_.empty()) {
-          range_ = other.range();
-          storage_type temp(other.range().volume());
-          temp.swap(data_);
+        if(!pimpl_) {
+          pimpl_.reset(new Impl(other.range(), other.begin(), std::bind1st(std::minus<value_type>(), 0)));
+        } else {
+          TA_ASSERT(pimpl_->range_ == other.range());
+          pimpl_->data_ -= other;
         }
-
-        TA_ASSERT(range_ == other.range());
-        data_ -= other;
 
         return *this;
       }
@@ -193,14 +221,12 @@ namespace TiledArray {
       /// \return this tensor
       template <typename U, typename RU, typename AU>
       Tensor_& operator*=(const Tensor<U, AU>& other) {
-        if(data_.empty()) {
-          range_ = other.range();
-          storage_type temp(other.range().volume());
-          temp.swap(data_);
+        if(!pimpl_) {
+          pimpl_.reset(new Impl(other.range(), 0));
+        } else {
+          TA_ASSERT(pimpl_->range_ == other.range());
+          pimpl_->data_ *= other;
         }
-
-        TA_ASSERT(range_ == other.range());
-        data_ *= other;
 
         return *this;
       }
@@ -208,22 +234,22 @@ namespace TiledArray {
       /// Tensor range object accessor
 
       /// \return The tensor range object
-      const range_type& range() const { return range_; }
+      const range_type& range() const { return pimpl_->range_; }
 
       /// Tensor dimension size accessor
 
       /// \return The number of elements in the tensor
-      size_type size() const { return range_.volume(); }
+      size_type size() const { return pimpl_->range_.volume(); }
 
       /// Element accessor
 
       /// \return The element at the \c i position.
-      const_reference operator[](size_type i) const { return data_[i]; }
+      const_reference operator[](const size_type i) const { return pimpl_->data_[i]; }
 
       /// Element accessor
 
       /// \return The element at the \c i position.
-      reference operator[](size_type i) { return data_[i]; }
+      reference operator[](const size_type i) { return pimpl_->data_[i]; }
 
 
       /// Element accessor
@@ -231,46 +257,46 @@ namespace TiledArray {
       /// \return The element at the \c i position.
       template <typename Index>
       typename madness::disable_if<std::is_integral<Index>, const_reference>::type
-      operator[](const Index& i) const { return data_[range_.ord(i)]; }
+      operator[](const Index& i) const { return pimpl_->data_[pimpl_->range_.ord(i)]; }
 
       /// Element accessor
 
       /// \return The element at the \c i position.
       template <typename Index>
       typename madness::disable_if<std::is_integral<Index>, reference>::type
-      operator[](const Index& i) { return data_[range_.ord(i)]; }
+      operator[](const Index& i) { return pimpl_->data_[pimpl_->range_.ord(i)]; }
 
       /// Iterator factory
 
       /// \return An iterator to the first data element
-      const_iterator begin() const { return data_.begin(); }
+      const_iterator begin() const { return pimpl_->data_.begin(); }
 
       /// Iterator factory
 
       /// \return An iterator to the first data element
-      iterator begin() { return data_.begin(); }
+      iterator begin() { return pimpl_->data_.begin(); }
 
       /// Iterator factory
 
       /// \return An iterator to the last data element
-      const_iterator end() const { return data_.end(); }
+      const_iterator end() const { return pimpl_->data_.end(); }
 
       /// Iterator factory
 
       /// \return An iterator to the last data element
-      iterator end() { return data_.end(); }
+      iterator end() { return pimpl_->data_.end(); }
 
       /// Data direct access
 
       /// \return A const pointer to the tensor data
-      const_pointer data() const { return data_.data(); }
+      const_pointer data() const { return pimpl_->data_.data(); }
 
       /// Data direct access
 
       /// \return A const pointer to the tensor data
-      pointer data() { return data_.data(); }
+      pointer data() { return pimpl_->data_.data(); }
 
-      bool empty() const { return data_.empty(); }
+      bool empty() const { return pimpl_->data_.empty(); }
 
       /// Serialize tensor data
 
@@ -278,15 +304,16 @@ namespace TiledArray {
       /// \param ar The serialization archive
       template <typename Archive>
       void serialize(Archive& ar) {
-        ar & range_ & data_;
+        if(!pimpl_)
+          pimpl_.reset(new Impl());
+        pimpl_->serialize(ar);
       }
 
       /// Swap tensor data
 
       /// \param other The tensor to swap with this
       void swap(Tensor_& other) {
-        range_.swap(other.range_);
-        data_.swap(other.data_);
+        std::swap(pimpl_, other.pimpl_);
       }
 
     private:
@@ -294,6 +321,24 @@ namespace TiledArray {
       range_type range_; ///< Tensor size info
       storage_type data_; ///< Tensor data
     }; // class Tensor
+
+    template <typename T, typename AT, typename U, typename AU>
+    Tensor<T, AT> operator+(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
+      TA_ASSERT(left.range() == right.range());
+      return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::plus<T>());
+    }
+
+    template <typename T, typename AT, typename U, typename AU>
+    Tensor<T, AT> operator-(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
+      TA_ASSERT(left.range() == right.range());
+      return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::plus<T>());
+    }
+
+    template <typename T, typename AT, typename U, typename AU>
+    Tensor<T, AT> operator*(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
+      TA_ASSERT(left.range() == right.range());
+      return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::plus<T>());
+    }
 
     template <typename T, typename A>
     std::ostream& operator<<(std::ostream& os, const Tensor<T, A>& t) {

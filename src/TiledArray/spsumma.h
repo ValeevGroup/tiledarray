@@ -18,27 +18,27 @@
  */
 
 #ifndef TILEDARRAY_SPSUMMA_H__INCLUDED
-#define TILEDARRAY_SUMMA_H__INCLUDED
+#define TILEDARRAY_SPSUMMA_H__INCLUDED
 
 #include <TiledArray/contraction_tensor_impl.h>
+#include <TiledArray/reduce_task.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    /// Sparse Scalable Universal Matrix Multiplication Algorithm (SpSUMMA)
+    /// Scalable Universal Matrix Multiplication Algorithm (SUMMA)
 
-    /// This algorithm is used to contract sparse tensor. The arguments are
+    /// This algorithm is used to contract dense tensor. The arguments are
     /// permuted such that the outer and inner indices are fused such that a
     /// standard matrix multiplication algorithm can be used to contract the
-    /// tensors.  SUMMA is described in:
+    /// tensors. SUMMA is described in:
     /// Van De Geijn, R. A.; Watts, J. Concurrency Practice and Experience 1997, 9, 255-274.
-    ///
-    /// \tparam Left The left-hand-arguement type
+    /// \tparam Left The left-hand-argument type
     /// \tparam Right The right-hand-argument type
     template <typename Left, typename Right>
-    class SpSumma : public madness::WorldObject<Summa<Left, Right> >, public ContractionTensorImpl<Left, Right> {
+    class SpSumma : public madness::WorldObject<SpSumma<Left, Right> >, public ContractionTensorImpl<Left, Right> {
     protected:
-      typedef madness::WorldObject<Summa<Left, Right> > WorldObject_; ///< Madness world object base class
+      typedef madness::WorldObject<SpSumma<Left, Right> > WorldObject_; ///< Madness world object base class
       typedef ContractionTensorImpl<Left, Right> ContractionTensorImpl_;
       typedef typename ContractionTensorImpl_::TensorExpressionImpl_ TensorExpressionImpl_;
 
@@ -47,7 +47,7 @@ namespace TiledArray {
       using WorldObject_::get_world;
 
     public:
-      typedef Summa<Left, Right> Summa_; ///< This object type
+      typedef SpSumma<Left, Right> SpSumma_; ///< This object type
       typedef typename ContractionTensorImpl_::size_type size_type; ///< size type
       typedef typename ContractionTensorImpl_::value_type value_type; ///< The result value type
       typedef typename ContractionTensorImpl_::left_tensor_type left_tensor_type; ///< The left tensor type
@@ -63,12 +63,18 @@ namespace TiledArray {
       /// The right tensor cache container type
       typedef madness::ConcurrentHashMap<size_type, madness::Future<right_value_type> > right_container;
 
+
+      /// Contraction and reduction task operation type
+      typedef detail::ContractReduceOp<Left, Right> contract_reduce_op;
+
+      /// Contraction and reduction task type
+      typedef TiledArray::detail::ReducePairTask<contract_reduce_op> reduce_pair_task;
+
       /// Datum type for
       typedef std::pair<size_type, madness::Future<right_value_type> > row_datum;
       typedef std::pair<size_type, madness::Future<left_value_type> > col_datum;
-      typedef std::shared_ptr<value_type> value_ptr;
-      typedef madness::Future<value_ptr> future_value_ptr;
-      typedef std::pair<size_type, future_value_ptr > result_datum;
+      typedef std::pair<size_type, reduce_pair_task> result_datum;
+
 
     protected:
 
@@ -94,11 +100,12 @@ namespace TiledArray {
       std::vector<ProcessID> col_group_; ///< The group of processes included in this node's column
       left_container left_cache_; ///< Cache for left bcast tiles
       right_container right_cache_; ///< Cache for right bcast tiles
+      std::vector<result_datum> results_; ///< Task object that will contract and reduce tiles
 
     private:
       // Not allowed
-      Summa(const Summa_&);
-      Summa_& operator=(const Summa_&);
+      SpSumma(const SpSumma_&);
+      SpSumma_& operator=(const SpSumma_&);
 
       /// Broadcast a tile to child nodes within group
 
@@ -155,7 +162,7 @@ namespace TiledArray {
         if(value.probe())
           bcast(handler, i, value, group, rank, rank);
         else
-          task(rank_, & Summa_::template bcast<Handler, Value>, handler, i, value,
+          task(rank_, & SpSumma_::template bcast<Handler, Value>, handler, i, value,
               group, rank, rank);
       }
 
@@ -168,7 +175,7 @@ namespace TiledArray {
           const ProcessID group_rank, const ProcessID group_root)
       {
         // Broadcast this task to the next nodes in the tree
-        bcast(& Summa_::bcast_row_handler, i, value, row_group_, group_rank, group_root);
+        bcast(& SpSumma_::bcast_row_handler, i, value, row_group_, group_rank, group_root);
 
         // Copy tile into local cache
         typename left_container::const_accessor acc;
@@ -194,7 +201,7 @@ namespace TiledArray {
           const ProcessID group_rank, const ProcessID group_root)
       {
         // Broadcast this task to the next nodes in the tree
-        bcast(& Summa_::bcast_col_handler, i, value, col_group_, group_rank, group_root);
+        bcast(& SpSumma_::bcast_col_handler, i, value, col_group_, group_rank, group_root);
 
         // Copy tile into local cache
         typename right_container::const_accessor acc;
@@ -211,150 +218,135 @@ namespace TiledArray {
         tile.set(madness::move(value)); // Move
       }
 
-      /// Task function for broadcasting the k-th column of the left tensor argument
-
-      /// This function will construct a task that broadcasts the k-th column of
-      /// the left tensor argument and return a vector of futures to the local
-      /// elements of the k-th column.  This task must be run on all nodes
-      /// for each k.
-      /// \param k The column to be broadcast
-      /// \return A vector that contains futures to k-th column tiles
-      std::vector<col_datum> bcast_column_task(const size_type k) {
-        // Construct the result column vector
-        std::vector<col_datum> col;
-        col.reserve(local_rows_);
-
-        // Iterate over local rows of the k-th column of the left argument tensor
-        size_type i = rank_row_ * k_ + k;
-        const size_type step = proc_rows_ * k_;
-        if(ContractionTensorImpl_::left().is_local(i)) {
-          for(; i < mk_; i += step) {
-            // Take the tile's local copy and add it to the column vector
-            col.push_back(col_datum(i, ContractionTensorImpl_::left().move(i)));
-
-            // Broadcast the tile to all nodes in the row
-            spawn_bcast_task(& Summa_::bcast_row_handler, i, col.back().second, row_group_, rank_col_);
-          }
-        } else {
-          for(; i < mk_; i += step) {
-            // Insert a future into the cache as a placeholder for the broadcast tile.
-            typename left_container::const_accessor acc;
-            const bool erase_cache = ! left_cache_.insert(acc, i);
-            madness::Future<left_value_type> tile = acc->second;
-
-            // If the local future is already present, the cached value is not needed
-            if(erase_cache)
-              left_cache_.erase(acc);
-            else
-              acc.release();
-
-            // Add tile to column vector
-            col.push_back(col_datum(i, tile));
-          }
-        }
-
-        return col;
-      }
-
-      /// Task function for broadcasting the k-th column of the right tensor argument
-
-      /// This function will broadcast and return a vector of futures to the k-th
-      /// column of the right tensor argument. Only the tiles that are needed for
-      /// local contractions are returned. This task must be run on all nodes
-      /// for each k.
-      /// \param k The column to be broadcast
-      /// \return A vector that contains futures to k-th column tiles
-      std::vector<row_datum> bcast_row_task(const size_type k) {
-        // Construct the result row vector
-        std::vector<row_datum> row;
-        row.reserve(local_cols_);
-
-        // Iterate over local columns of the k-th row of the right argument tensor
-        size_type i = k * n_ + rank_col_;
-        const size_type end = (k + 1) * n_;
-        if(ContractionTensorImpl_::right().is_local(i)) {
-          for(; i < end; i += proc_cols_) {
-            // Take the tile's local copy and add it to the row vector
-            row.push_back(row_datum(i, ContractionTensorImpl_::right().move(i)));
-
-            // Broadcast the tile to all nodes in the column
-            spawn_bcast_task(& Summa_::bcast_col_handler, i, row.back().second, col_group_, rank_row_);
-          }
-
-        } else {
-          for(; i < end; i += proc_cols_) {
-            // Insert a future into the cache as a placeholder for the broadcast tile.
-            typename right_container::const_accessor acc;
-            const bool erase_cache = ! right_cache_.insert(acc, i);
-            madness::Future<right_value_type> tile = acc->second;
-
-            if(erase_cache)
-              right_cache_.erase(acc); // Bcast data has arived, so erase cache
-            else
-              acc.release();
-
-            // Add tile to row vector
-            row.push_back(row_datum(i, tile));
-
-          }
-        }
-
-        return row;
-      }
-
-      /// Contract argument tiles and store the result in the given result tile
-
-      /// This function contracts \c left and \c right , and adds the result to
-      /// \c result.
-      /// \param result A shared pointer to the result tile
-      /// \param left The left tile to be contracted
-      /// \param right The right tile to be contracted
-      /// \return The shared pointer to the result.
-      value_ptr contract(const size_type i, const bool assign, const value_ptr& result, const left_value_type& left,
-          const right_value_type& right)
-      {
-        ContractionTensorImpl_::contract(*result, left, right);
-        if(assign)
-          TensorExpressionImpl_::set(i, madness::move(*result));
-        return result;
-      }
-
-
       /// Broadcast task for rows or columns
-
-      /// \tparam Func The member function of the owner function that will do the actual broadcasting.
-      template <typename Func>
-      class BcastTask : public madness::TaskInterface {
-      public:
-        typedef typename madness::detail::result_of<Func>::type result_type;
+      class BcastRowColTask : public madness::TaskInterface {
       private:
-        Summa_* owner_;
-        Func func_;
-        const size_type k_;
-        madness::Future<result_type> results_;
+        SpSumma_* owner_;
+        const size_type bcast_k_;
+        std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > > results_;
 
         virtual void get_id(std::pair<void*,unsigned long>& id) const {
             return madness::PoolTaskInterface::make_id(id, *this);
         }
 
+        /// Task function for broadcasting the k-th column of the left tensor argument
+
+        /// This function will construct a task that broadcasts the k-th column of
+        /// the left tensor argument and return a vector of futures to the local
+        /// elements of the k-th column.  This task must be run on all nodes
+        /// for each k.
+        /// \param k The column to be broadcast
+        std::vector<col_datum> bcast_column() {
+          // Construct the result column vector
+          std::vector<col_datum> col;
+          col.reserve(owner_->local_rows_);
+
+          // Iterate over local rows of the k-th column of the left argument tensor
+          size_type i = owner_->rank_row_ * owner_->k_ + bcast_k_;
+          const size_type step = owner_->proc_rows_ * owner_->k_;
+          const size_type end = owner_->mk_;
+          if(owner_->left().is_local(i)) {
+            if(! owner_->left().get_pmap()->is_replicated()) {
+              for(; i < end; i += step) {
+                // Take the tile's local copy and add it to the column vector
+                col.push_back(col_datum(i, owner_->left().move(i)));
+
+                // Broadcast the tile to all nodes in the row
+                owner_->spawn_bcast_task(& SpSumma_::bcast_row_handler, i,
+                    col.back().second, owner_->row_group_, owner_->rank_col_);
+              }
+            } else {
+              for(; i < end; i += step)
+                // Take the tile's local copy and add it to the column vector
+                col.push_back(col_datum(i, owner_->left().move(i)));
+            }
+          } else {
+            for(; i < end; i += step) {
+              // Insert a future into the cache as a placeholder for the broadcast tile.
+              typename left_container::const_accessor acc;
+              const bool erase_cache = ! owner_->left_cache_.insert(acc, i);
+              madness::Future<left_value_type> tile = acc->second;
+
+              // If the local future is already present, the cached value is not needed
+              if(erase_cache)
+                owner_->left_cache_.erase(acc);
+              else
+                acc.release();
+
+              // Add tile to column vector
+              col.push_back(col_datum(i, tile));
+            }
+          }
+
+          return col;
+        }
+
+        /// Task function for broadcasting the k-th column of the right tensor argument
+
+        /// This function will broadcast and return a vector of futures to the k-th
+        /// column of the right tensor argument. Only the tiles that are needed for
+        /// local contractions are returned. This task must be run on all nodes
+        /// for each k.
+        /// \param k The column to be broadcast
+        std::vector<row_datum> bcast_row() {
+          // Construct the result row vector
+          std::vector<row_datum> row;
+          row.reserve(owner_->local_cols_);
+
+          // Iterate over local columns of the k-th row of the right argument tensor
+          size_type i = bcast_k_ * owner_->n_ + owner_->rank_col_;
+          const size_type end = (bcast_k_ + 1) * owner_->n_;
+          if(owner_->right().is_local(i)) {
+            if(! owner_->right().get_pmap()->is_replicated()) {
+              for(; i < end; i += owner_->proc_cols_) {
+                // Take the tile's local copy and add it to the row vector
+                row.push_back(row_datum(i, owner_->right().move(i)));
+
+                // Broadcast the tile to all nodes in the column
+                owner_->spawn_bcast_task(& SpSumma_::bcast_col_handler, i,
+                    row.back().second, owner_->col_group_, owner_->rank_row_);
+              }
+            } else {
+              for(; i < end; i += owner_->proc_cols_)
+                // Take the tile's local copy and add it to the row vector
+                row.push_back(row_datum(i, owner_->right().move(i)));
+            }
+          } else {
+            for(; i < end; i += owner_->proc_cols_) {
+              // Insert a future into the cache as a placeholder for the broadcast tile.
+              typename right_container::const_accessor acc;
+              const bool erase_cache = ! owner_->right_cache_.insert(acc, i);
+              madness::Future<right_value_type> tile = acc->second;
+
+              if(erase_cache)
+                owner_->right_cache_.erase(acc); // Bcast data has arived, so erase cache
+              else
+                acc.release();
+
+              // Add tile to row vector
+              row.push_back(row_datum(i, tile));
+
+            }
+          }
+
+          return row;
+        }
+
       public:
-        BcastTask(Summa_* owner, Func func, size_type k) :
-            madness::TaskInterface(madness::TaskAttributes::hipri()),
-            owner_(owner), func_(func), k_(k), results_()
+        BcastRowColTask(SpSumma_* owner, size_type k, const int ndep) :
+            madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
+            owner_(owner), bcast_k_(k), results_()
         { }
 
-        virtual ~BcastTask() { }
+        virtual ~BcastRowColTask() { }
 
-        virtual void run(madness::World&) {
-          results_.set((owner_->*func_)(k_));
+        virtual void run(const madness::TaskThreadEnv&) {
+          results_.first.set(bcast_column());
+          results_.second.set(bcast_row());
         }
 
-        void add_dependency(future_value_ptr& f) {
-          DependencyInterface::inc();
-          f.register_callback(this);
-        }
-
-        const madness::Future<result_type>& result() const { return results_; }
+        const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >&
+        result() const { return results_; }
       }; // class BcastTask
 
       /// Spawn broadcast tasks for column and row \c k
@@ -362,42 +354,9 @@ namespace TiledArray {
       /// Spawn two high priority tasks that will broadcast tiles needed for
       /// local tile contractions.
       /// \param k The column and row to broadcast
-      /// \return A \c std::pair of futures that contain vectors of futures for the column and row tiles
-      std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
-      bcast_row_and_column(const size_type k, std::vector<result_datum>& results) const {
-        typedef BcastTask<std::vector<col_datum> (Summa_::*)(size_type)> col_task_type;
-        typedef BcastTask<std::vector<row_datum> (Summa_::*)(size_type)> row_task_type;
-
-        // Return empty results if we are at the end of the contraction
-        if(k >= k_) {
-          return std::make_pair(
-              madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
-              madness::Future<std::vector<row_datum> >(std::vector<row_datum>()));
-        }
-
-        // Construct the row and column broadcast task
-        col_task_type* col_task = new col_task_type(const_cast<Summa_*>(this), & Summa_::bcast_column_task, k);
-        row_task_type* row_task = new row_task_type(const_cast<Summa_*>(this), & Summa_::bcast_row_task, k);
-
-        // Add callbacks for dependencies.
-        if(results.size()) {
-          for(typename std::vector<result_datum>::iterator it = results.begin(); it != results.end(); ++it) {
-            if(! it->second.probe()) {
-              col_task->add_dependency(it->second);
-              row_task->add_dependency(it->second);
-            }
-          }
-        }
-
-        // Get the broadcast task results
-        std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
-        bcast_results = std::make_pair(col_task->result(), row_task->result());
-
-        // Spawn the broadcast tasks.
-        get_world().taskq.add(col_task);
-        get_world().taskq.add(row_task);
-
-        return bcast_results;
+      /// \return A broad cast task pointer
+      BcastRowColTask* bcast_row_and_column(const size_type k, const int ndep = 0) const {
+        return (k < k_ ? new BcastRowColTask(const_cast<SpSumma_*>(this), k, ndep) : NULL);
       }
 
       /// Task function that is created for each iteration of the SUMMA algorithm
@@ -407,44 +366,53 @@ namespace TiledArray {
       /// the left argument tensor, and broadcast of the k + 2 row of the right
       /// argument. The next SUMMA iteration task depends on the results of the
       /// schedule contraction task. The broadcast tasks depend on all of the
-      /// individule contraction tasks and the schedule contraction task.
+      /// individual contraction tasks and the schedule contraction task.
       /// When \c k==k_ , the finalize task is spawned instead, which will assign
       /// the final value to the local tiles.
       /// \param k The SUMMA iteration step, in the range [0,k_].
       /// \param results A vector of futures of shared pointers to result tiles
       /// \param col_k0 The column tiles of the left argument tensor needed for
-      /// SUMMA iterantion \c k
+      /// SUMMA iteration \c k
       /// \param row_k0 The row tiles of the right argument tensor needed for
       /// SUMMA iteration \c k
       /// \param col_row_k1 The column and row tiles for SUMMA iteration \c k+1
       /// for the left and right tensors respectively.
       /// \return madness::None
-      void step(const size_type k, const std::vector<result_datum>& results,
+      void step(const size_type k,
           const std::vector<col_datum>& col_k0, const std::vector<row_datum>& row_k0,
           const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >& col_row_k1)
       {
         const bool assign = (k == (k_ - 1));
 
-        // Create results vector for the next iteration
-        std::vector<result_datum> next_results;
-        next_results.reserve(local_size_);
+        BcastRowColTask* task_row_col_k2 = bcast_row_and_column(k + 2, local_size_);
 
         // Schedule contraction tasks
-        typename std::vector<result_datum>::const_iterator it = results.begin();
+        typename std::vector<result_datum>::iterator it = results_.begin();
         for(typename std::vector<col_datum>::const_iterator col_it = col_k0.begin(); col_it != col_k0.end(); ++col_it)
           for(typename std::vector<row_datum>::const_iterator row_it = row_k0.begin(); row_it != row_k0.end(); ++row_it, ++it)
-            next_results.push_back(result_datum(it->first, task(rank_,
-                & Summa_::contract, it->first, assign, it->second, col_it->second, row_it->second)));
+            it->second.add(col_it->second, row_it->second, task_row_col_k2);
 
         // Spawn the task for the next iteration
         if(assign) {
+          // Signal the reduce task that all the reduction pairs have been added
+          for(it = results_.begin(); it != results_.end(); ++it)
+            it->second.submit();
+          // Do some memory cleanup
           ContractionTensorImpl_::left().release();
           ContractionTensorImpl_::right().release();
         } else {
-          task(rank_, & Summa_::step, k + 1, next_results, col_row_k1.first,
-              col_row_k1.second, bcast_row_and_column(k + 2,
-              const_cast<std::vector<result_datum>&>(results)),
-              madness::TaskAttributes::hipri());
+          if(task_row_col_k2) {
+            task(rank_, & SpSumma_::step, k + 1, col_row_k1.first,
+                col_row_k1.second, task_row_col_k2->result(),
+                madness::TaskAttributes::hipri());
+            get_world().taskq.add(task_row_col_k2);
+          } else {
+            task(rank_, & SpSumma_::step, k + 1, col_row_k1.first,
+                col_row_k1.second, std::make_pair(
+                    madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
+                    madness::Future<std::vector<row_datum> >(std::vector<row_datum>())),
+                madness::TaskAttributes::hipri());
+          }
         }
       }
 
@@ -466,7 +434,7 @@ namespace TiledArray {
           for(; row_first < row_last; ++row_first)
             row_group_.push_back(row_first);
 
-          // Fill the col group with all the processes in rank's col
+          // Fill the col group with all the processes in rank's column
           col_group_.reserve(proc_rows_);
           for(ProcessID col_first = rank_col_; col_first < proc_size_; col_first += proc_cols_)
             col_group_.push_back(col_first);
@@ -480,33 +448,173 @@ namespace TiledArray {
 
     private:
 
+      class BcastColTask : public madness::TaskInterface {
+      private:
+        SpSumma_& owner_; ///< The object that owns this task
+        const size_type k_; ///< The column to broadcast
+        std::vector<col_datum>& col_; ///< The result column vector
+        madness::TaskInterface* parent_; ///< The parent task
+
+      public:
+        BcastColTask(SpSumma_& owner, const size_type k, std::vector<col_datum>& col,
+            std::vector<row_datum>& row, madness::TaskInterface* parent) :
+          owner_(owner), k_(k), col_(col), row_(row), parent_(parent)
+        {
+        }
+
+        virtual void run(const madness::TaskThreadEnv&) {
+          if(parent_)
+            parent_->notify();
+        }
+
+      }; // class BcastColTask
+
+      class BcastRowTask : public madness::TaskInterface {
+      private:
+        SpSumma_& owner_; ///< The object that owns this task
+        const size_type k_; ///< The row to broadcast
+        std::vector<row_datum>& row_; ///< The result row vector
+        madness::TaskInterface* parent_; ///< The parent task
+
+      public:
+
+        virtual void run(const madness::TaskThreadEnv&) {
+          // Notify the parent task that the result vector has been set.
+          if(parent_) {
+            parent_->notify();
+          }
+        }
+      }; // class BcastRowTask
+
+      /// SpSumma master scheduling task
+
+      /// This task will schedule all broadcast and computation scheduling tasks.
+      class Scheduler : public madness::TaskInterface {
+      private:
+        SpSumma_& owner_; ///< The object that owns this task
+        TiledArray::detail::Bitset<> left_local_mask_;
+        TiledArray::detail::Bitset<> col_mask_;
+        TiledArray::detail::Bitset<> right_local_mask_;
+        TiledArray::detail::Bitset<> row_mask_;
+
+      public:
+        Scheduler(SpSumma_& owner, size_type& k, std::vector<col_datum>& col,
+            std::vector<row_datum>& row, madness::TaskInterface* parent) :
+          owner_(owner), k_(k), col_(col), row_(row), parent_(parent)
+        {
+          // Initialize left_local_mask_
+          size_type i_row = 0;
+          for(size_type i = owner_.rank_row_; i < owner_.m_; i += owner_.proc_rows_) {
+            i_row = i * owner_.k_;
+            for(size_type j = owner_.rank_col_; j < owner_.k_; j += owner_.proc_cols_) {
+              left_local_mask_.set(i_row + j);
+            }
+          }
+
+          // Initialize right_local_mask_
+          for(size_type i = owner_.rank_row_; i < owner_.k_; i += owner_.proc_rows_) {
+            i_row = i * owner_.k_;
+            for(size_type j = owner_.rank_col_; j < owner_.n_; j += owner_.proc_cols_) {
+              left_local_mask_.set(i_row + j);
+            }
+          }
+
+          // Initialize col_mask_
+          for(size_type ij = 0; ij < owner_.mk_; ij += onwer_.k_)
+            col_mask_.set(ij);
+
+          // Initialize row_mask_
+          row_mask_.set_range(0, owner_.n_ - 1);
+        }
+
+        virtual void run(const madness::TaskThreadEnv&) {
+
+          if(owner_.left().is_dense()) {
+            if(owner_.right().is_dense()) {
+
+            } else {
+              TiledArray::detail::Bitset<> right_temp(owner_.right().size());
+
+            }
+          } else {
+            TiledArray::detail::Bitset<> left_temp(owner_.left().size());
+            if(owner_.right().is_dense()) {
+
+            } else {
+              TiledArray::detail::Bitset<> right_temp(owner_.right().size());
+
+              for(size_type k = 0; k < owner_.k_; ++k) {
+                left_temp = owner_.left().shape();
+                left_temp &= col_mask;
+
+                right_temp = owner_.right().shape();
+                right_temp &= row_mask;
+
+                // Shift mask for the next iteration
+                col_mask <<= 1;
+                row_mask <<= owner_.k_;
+              }
+            }
+          }
+
+
+
+        }
+
+      }; // class Scheduler
+
+      class Step : public madness::TaskInterface {
+      private:
+        SpSumma_& owner_;
+        size_type k_;
+        std::vector<col_datum> col_;
+        std::vector<row_datum> row_;
+
+      public:
+        Step(SpSumma_& owner, const k current_k) :
+          madness::TaskInterface(3),
+          owner_(owner), k_(current_k + 1), col_(), row_()
+        {
+          owner_->get_world().taskq.add(new NextK(owner_, k_, col_, row_, this));
+        }
+
+        virtual void run(const madness::TaskThreadEnv&) {
+
+        }
+      }; // class Step
+
       virtual void eval_tiles() {
         if(rank_ < proc_size_) {
-          std::vector<result_datum> results;
 
           // Start broadcast tasks of column and row for k = 0
+          BcastRowColTask* task_col_row_k0 = bcast_row_and_column(0ul);
           std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
-          col_row_k0 = bcast_row_and_column(0ul, results);
+          col_row_k0 = task_col_row_k0->result();
+          get_world().taskq.add(task_col_row_k0);
 
           // Start broadcast tasks of column and row for k = 1
+          BcastRowColTask* task_col_row_k1 = bcast_row_and_column(1ul);
           std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
-          col_row_k1 = bcast_row_and_column(1ul, results);
+          col_row_k1 = task_col_row_k1->result();
+          get_world().taskq.add(task_col_row_k1);
 
-          // Construct local result tiles
-          // The tiles are initially empty, they will be initialized on first use.
-          results.reserve(local_size_);
+          // Construct a pair reduction object for each local tile
+          results_.reserve(local_size_);
           for(size_type i = rank_row_; i < m_; i += proc_rows_)
-            for(size_type j = rank_col_; j < n_; j += proc_cols_)
-              results.push_back(result_datum(i * n_ + j,
-                  future_value_ptr(value_ptr(new value_type()))));
+            for(size_type j = rank_col_; j < n_; j += proc_cols_) {
+              const size_type ij = i * n_ + j;
+              results_.push_back(result_datum(ij,
+                  reduce_pair_task(get_world(), contract_reduce_op(*this))));
+              TensorExpressionImpl_::set(ij, results_.back().second.result());
+            }
 
-          // Spawn the first step in the summa algorithm
-          task(rank_, & Summa_::step, 0ul, results, col_row_k0.first, col_row_k0.second,
+          // Spawn the first step in the algorithm
+          task(rank_, & SpSumma_::step, 0ul, col_row_k0.first, col_row_k0.second,
               col_row_k1, madness::TaskAttributes::hipri());
         }
       }
 
-    }; // class Summa
+    }; // class SpSumma
 
   }  // namespace detail
 }  // namespace TiledArray
@@ -532,5 +640,5 @@ namespace madness {
   }  // namespace archive
 }  // namespace madness
 
-#endif // TILEDARRAY_SUMMA_H__INCLUDED
+#endif // TILEDARRAY_SPSUMMA_H__INCLUDED
 

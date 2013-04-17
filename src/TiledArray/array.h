@@ -40,6 +40,7 @@ namespace TiledArray {
     typedef T element_type; ///< The tile element type
     typedef typename impl_type::trange_type trange_type; ///< Tile range type
     typedef typename impl_type::range_type range_type; ///< Range type for array tiling
+    typedef typename impl_type::shape_type shape_type; ///< Shape type for array tiling
     typedef typename impl_type::range_type::index index; ///< Array coordinate index type
     typedef typename impl_type::size_type size_type; ///< Size type
     typedef typename impl_type::value_type value_type; ///< Tile type
@@ -87,7 +88,7 @@ namespace TiledArray {
     /// \param shape Bitset of the same length as \c tr. Describes the array shape: bit set (1)
     ///        means tile exists, else tile does not exist.
     /// \param pmap The tile index -> process map
-    Array(madness::World& w, const trange_type& tr, const detail::Bitset<>& shape,
+    Array(madness::World& w, const trange_type& tr, const shape_type& shape,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
         pimpl_(new impl_type(w, tr, shape),
             madness::make_deferred_deleter<impl_type>(w))
@@ -155,8 +156,7 @@ namespace TiledArray {
     template <typename Index, typename InIter>
     typename madness::enable_if<detail::is_input_iterator<InIter> >::type
     set(const Index& i, InIter first) {
-      value_type temp(pimpl_->trange().make_tile_range(i), first);
-      pimpl_->set(i, madness::move(temp));
+      pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
     }
 
   private:
@@ -179,8 +179,7 @@ namespace TiledArray {
       { }
 
       virtual void run(madness::World&) {
-        value_type temp(pimpl_->trange().make_tile_range(index_), value_);
-        result_.set(madness::move(temp));
+        result_.set(value_type(pimpl_->trange().make_tile_range(index_), value_));
       }
 
       const madness::Future<value_type>& result() const { return result_; }
@@ -292,7 +291,7 @@ namespace TiledArray {
     /// no communication required.
     /// \return A bitset that maps the existence of tiles.
     /// \throw TiledArray::Exception When the Array is dense.
-    const detail::Bitset<>& get_shape() const {
+    const shape_type& get_shape() const {
       TA_ASSERT(! is_dense());
       return pimpl_->shape();
     }

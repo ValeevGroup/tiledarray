@@ -45,6 +45,7 @@ namespace TiledArray {
         typedef typename TensorImpl_::pmap_interface pmap_interface; ///< The process map interface type
         typedef typename TensorImpl_::trange_type trange_type; ///< Tiled range type
         typedef typename TensorImpl_::range_type range_type; ///< Tile range type
+        typedef typename TensorImpl_::shape_type shape_type; ///< Tile shape type
         typedef typename TensorImpl_::value_type value_type; ///< The result value type
         typedef typename TensorImpl_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
         typedef typename TensorImpl_::storage_type::future const_reference; /// The storage type for this object
@@ -87,8 +88,7 @@ namespace TiledArray {
         /// \param i The tile index
         /// \param value The tile from the array
         void convert_and_set_tile(const size_type i, const typename array_type::value_type& value) {
-          value_type tile(value);
-          TensorExpressionImpl_::set(i, madness::move(tile));
+          TensorExpressionImpl_::set(i, value_type(value));
         }
 
         /// Task function that is used to scale an input tile to value_type and store it
@@ -96,10 +96,9 @@ namespace TiledArray {
         /// \param i The tile index
         /// \param value The tile from the array
         void scale_and_set_tile(const size_type i, const value_type& value) {
-          value_type tile(value.range(), ::TiledArray::detail::make_tran_it(value.begin(),
+          TensorExpressionImpl_::set(i, value_type(value.range(), value.begin(),
               std::bind1st(std::multiplies<typename value_type::value_type>(),
               TensorExpressionImpl_::scale())));
-          TensorExpressionImpl_::set(i, madness::move(tile));
         }
 
         /// Task function that is used to convert an input tile to value_type, scale it, and store it
@@ -107,9 +106,9 @@ namespace TiledArray {
         /// \param i The tile index
         /// \param value The tile from the array
         void convert_scale_and_set_tile(const size_type i, const typename array_type::value_type& value) {
-          value_type tile(value);
-          tile *= TensorExpressionImpl_::scale();
-          TensorExpressionImpl_::set(i, madness::move(tile));
+          TensorExpressionImpl_::set(i, value_type(value.range(), value.begin(),
+              std::bind1st(std::multiplies<typename value_type::value_type>(),
+              TensorExpressionImpl_::scale())));
         }
 
         /// Set a tile
@@ -183,16 +182,21 @@ namespace TiledArray {
 
         /// Check that a floating point value is approximately equal to 1.
 
-        /// Check that \c is approximately equal to 1 +/- 10^-15.
+        /// Check that \c is approximately equal to 1 +/- 10^-13.
         /// \tparam T The floating point type
         /// \param t The value to be checked
         /// \return \c true if t is equal to 1, otherwise false
-        template <typename T>
-        typename madness::enable_if<std::is_floating_point<T>, bool>::type
-        is_one(const T t) {
-          return (t <= 1.000000000000001) &&
-                 (t >= 0.999999999999999);
+        bool is_one(const double t) {
+          return (t <= 1.0000000000001) && (t >= 0.9999999999999);
         }
+
+        /// Check that a floating point value is approximately equal to 1.
+
+        /// Check that \c is approximately equal to 1 +/- 10^-5.
+        /// \tparam T The floating point type
+        /// \param t The value to be checked
+        /// \return \c true if t is equal to 1, otherwise false
+        bool is_one(const float t) { return (t <= 1.00001) && (t >= 0.99999); }
 
         /// Function for evaluating this tensor's tiles
 
@@ -244,7 +248,7 @@ namespace TiledArray {
         /// Construct the shape object
 
         /// \param shape The existing shape object
-        virtual void make_shape(TiledArray::detail::Bitset<>& shape) const {
+        virtual void make_shape(shape_type& shape) const {
           TA_ASSERT(shape.size() == array_.size());
           shape = array_.get_shape();
         }

@@ -51,6 +51,7 @@ namespace TiledArray {
         typedef typename TensorImpl_::size_type size_type; ///< Size type
         typedef typename TensorImpl_::trange_type trange_type; ///< Tiled range type for this object
         typedef typename TensorImpl_::range_type range_type; ///< Range type this tensor
+        typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
         typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
         typedef typename TensorImpl_::value_type value_type; ///< Tile type
 
@@ -86,7 +87,7 @@ namespace TiledArray {
 
           // Store the permuted tensor
           TensorImpl_::set(TensorImpl_::range().ord(perm_ ^ trange_.tiles().idx(index)),
-              madness::move(result));
+              result);
         }
 
         /// Permute and set tile \c i with \c value
@@ -136,8 +137,7 @@ namespace TiledArray {
         /// \note If the shape bitset is zero size, then the tensor is considered
         /// to be dense.
         TensorExpressionImpl(madness::World& world, const VariableList& vars,
-            const trange_type& trange,
-            const ::TiledArray::detail::Bitset<>& shape = ::TiledArray::detail::Bitset<>(0ul)) :
+            const trange_type& trange, const shape_type& shape = shape_type(0ul)) :
           TensorImpl_(world, trange, shape),
           vars_(vars),
           trange_(trange),
@@ -232,7 +232,7 @@ namespace TiledArray {
         /// is run inside a task with the proper dependencies to ensure data
         /// consistency. This function is only called when the tensor is not dense.
         /// \param shape The existing shape object
-        virtual void make_shape(TiledArray::detail::Bitset<>& shape) const = 0;
+        virtual void make_shape(shape_type& shape) const = 0;
 
         /// Set the range, shape, and variable list of this tensor
 
@@ -339,6 +339,7 @@ namespace TiledArray {
       typedef detail::TensorExpressionImpl<Tile> impl_type;
       typedef typename impl_type::size_type size_type;
       typedef typename impl_type::range_type range_type;
+      typedef typename impl_type::shape_type shape_type;
       typedef typename impl_type::pmap_interface pmap_interface;
       typedef typename impl_type::trange_type trange_type;
       typedef typename impl_type::value_type value_type;
@@ -520,7 +521,7 @@ namespace TiledArray {
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      const TiledArray::detail::Bitset<> get_shape() const {
+      const shape_type get_shape() const {
         TA_ASSERT(pimpl_);
         return pimpl_->shape();
       }
