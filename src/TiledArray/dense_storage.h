@@ -421,8 +421,8 @@ namespace TiledArray {
       }
 
       // Allocate new memory
-      pointer first_ = allocator_type::allocate(n);
-      pointer last_ = first_ + n;
+      first_ = allocator_type::allocate(n);
+      last_ = first_ + n;
       default_init(detail::is_numeric<value_type>());
 
       ar & madness::archive::wrap(first_, n);
@@ -466,7 +466,7 @@ namespace TiledArray {
     /// \tparam InIter Input iterator type
     /// \param in_it Input iterator to the initialization data
     void construct_iterator(const_pointer in_it) {
-      memcpy(first_, in_it, last_ - first_);
+      memcpy(first_, in_it, sizeof(value_type) * (last_ - first_));
     }
 
     /// Initialize data with an input iterator + unary operation
