@@ -35,16 +35,6 @@ namespace Eigen {
 } // namespace Eigen
 
 namespace TiledArray {
-
-  template <typename, unsigned int, typename> class Array;
-  template <typename, typename> class Tensor;
-
-  namespace expressions {
-
-    template <typename> class TensorExpression;
-
-  } // namespace expressions
-
   namespace detail {
 
     template <typename T>
@@ -91,25 +81,19 @@ namespace TiledArray {
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };
 
+    template<typename> struct is_type : public std::true_type { };
+
     /// Type trait for extracting the scalar type of tensors and arrays.
-    template <typename T, typename Enabler = typename madness::enable_if<is_numeric<T> >::type>
-    struct scalar_type {
+    template <typename T, typename Enabler = void> struct scalar_type;
+
+    template <typename T>
+    struct scalar_type<T, typename madness::enable_if<is_numeric<T> >::type> {
       typedef T type;
     };
 
-    template <typename T, typename A>
-    struct scalar_type<Tensor<T, A>, void> :
-        public scalar_type<typename Tensor<T, A>::value_type>
-    { };
-
-    template <typename T, unsigned int DIM, typename Tile>
-    struct scalar_type<Array<T, DIM, Tile>, void> :
-        public scalar_type<typename Array<T, DIM, Tile>::value_type>
-    { };
-
-    template <typename Tile>
-    struct scalar_type<expressions::TensorExpression<Tile>, void> :
-        public scalar_type<typename expressions::TensorExpression<Tile>::value_type>
+    template <typename T>
+    struct scalar_type<T, typename madness::enable_if<is_type<typename T::value_type> >::type> :
+        public scalar_type<typename T::value_type>
     { };
 
     template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
@@ -134,25 +118,6 @@ namespace TiledArray {
       typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
     };
 
-    template <typename T>
-    struct has_iterator_catagory
-    {
-        // yes and no are guaranteed to have different sizes,
-        // specifically sizeof(yes) == 1 and sizeof(no) == 2
-        typedef char yes[1];
-        typedef char no[2];
-
-        template <typename C>
-        static yes& test(typename C::iterator_category*);
-
-        template <typename>
-        static no& test(...);
-
-        // if the sizeof the result of calling test<T>(0) is equal to the sizeof(yes),
-        // the first overload worked and T has a nested type named type.
-        static const bool value = sizeof(test<T>(0)) == sizeof(yes);
-    };
-
     struct non_iterator_tag { };
 
     template <typename T, typename Enabler = void>
@@ -161,7 +126,7 @@ namespace TiledArray {
     };
 
     template <typename T>
-    struct is_iterator<T, typename madness::enable_if_c<has_iterator_catagory<T>::value >::type > : public std::true_type {
+    struct is_iterator<T, typename madness::enable_if<is_type<typename T::iterator_category> >::type > : public std::true_type {
       typedef typename std::iterator_traits<T>::iterator_category iterator_category;
     };
 
