@@ -25,8 +25,18 @@
 #include <world/enable_if.h>
 #include <world/typestuff.h>
 #include <complex>
+#include <Eigen/Core>
 
 namespace TiledArray {
+
+  template <typename, unsigned int, typename> class Array;
+
+  namespace expressions {
+
+    template <typename, typename> class Tensor;
+
+  } // namespace expressions
+
   namespace detail {
 
     template <typename T>
@@ -72,6 +82,33 @@ namespace TiledArray {
 
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };
+
+    template <typename T, typename Enabler = typename madness::enable_if<is_numeric<T> >::type>
+    struct Scalar {
+      typedef T type;
+    };
+
+    template <typename T, typename A>
+    struct Scalar<Tensor<T, A>, void> : public Scalar<T> { };
+
+    template <typename T, unsigned int DIM, typename Tile>
+    struct Scalar<Array<T, DIM, Tile>, void> : public Scalar<T> { };
+
+    template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
+    struct Scalar<Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
+        public Scalar<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
+    { };
+
+    template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
+    struct Scalar<Eigen::Array<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
+        public Scalar<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
+    { };
+
+    template <typename PlainObjectType, int MapOptions, typename StrideType>
+    struct Scalar<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
+        public Scalar<PlainObjectType>
+    { };
+
 
     /// Remove const, volatile, and reference qualifiers.
     template <typename T>
