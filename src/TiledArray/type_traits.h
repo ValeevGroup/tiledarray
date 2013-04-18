@@ -25,15 +25,23 @@
 #include <world/enable_if.h>
 #include <world/typestuff.h>
 #include <complex>
-#include <Eigen/Core>
+
+namespace Eigen {
+
+  template <typename, int, int, int, int, int> class Matrix;
+  template <typename, int, int, int, int, int> class Array;
+  template <typename, int, typename> class Map;
+
+} // namespace Eigen
 
 namespace TiledArray {
 
   template <typename, unsigned int, typename> class Array;
+  template <typename, typename> class Tensor;
 
   namespace expressions {
 
-    template <typename, typename> class Tensor;
+    template <typename> class TensorExpression;
 
   } // namespace expressions
 
@@ -83,30 +91,40 @@ namespace TiledArray {
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };
 
+    /// Type trait for extracting the scalar type of tensors and arrays.
     template <typename T, typename Enabler = typename madness::enable_if<is_numeric<T> >::type>
-    struct Scalar {
+    struct scalar_type {
       typedef T type;
     };
 
     template <typename T, typename A>
-    struct Scalar<Tensor<T, A>, void> : public Scalar<T> { };
+    struct scalar_type<Tensor<T, A>, void> :
+        public scalar_type<typename Tensor<T, A>::value_type>
+    { };
 
     template <typename T, unsigned int DIM, typename Tile>
-    struct Scalar<Array<T, DIM, Tile>, void> : public Scalar<T> { };
+    struct scalar_type<Array<T, DIM, Tile>, void> :
+        public scalar_type<typename Array<T, DIM, Tile>::value_type>
+    { };
 
-    template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
-    struct Scalar<Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
-        public Scalar<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
+    template <typename Tile>
+    struct scalar_type<expressions::TensorExpression<Tile>, void> :
+        public scalar_type<typename expressions::TensorExpression<Tile>::value_type>
     { };
 
     template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
-    struct Scalar<Eigen::Array<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
-        public Scalar<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
+    struct scalar_type<Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
+        public scalar_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
+    { };
+
+    template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
+    struct scalar_type<Eigen::Array<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
+        public scalar_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
     { };
 
     template <typename PlainObjectType, int MapOptions, typename StrideType>
-    struct Scalar<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
-        public Scalar<PlainObjectType>
+    struct scalar_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
+        public scalar_type<PlainObjectType>
     { };
 
 
