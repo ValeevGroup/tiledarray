@@ -73,7 +73,7 @@ namespace TiledArray {
         void scale(const value_type value) { op_.scale(value); }
 
         result_type operator()(argument_type arg) const {
-          return result_type(arg.range(), ::TiledArray::detail::make_tran_it(arg.begin(), op_));
+          return result_type(arg.range(), arg.begin(), op_);
         }
 
       }; // class UnaryTileOp
