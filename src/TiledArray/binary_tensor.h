@@ -20,7 +20,6 @@
 #ifndef TILEDARRAY_BINARY_TENSOR_H__INCLUDED
 #define TILEDARRAY_BINARY_TENSOR_H__INCLUDED
 
-#include <TiledArray/transform_iterator.h>
 #include <TiledArray/tensor_expression.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/bitset.h>
