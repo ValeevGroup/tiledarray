@@ -31,6 +31,7 @@ library_include_HEADERS = annotated_tensor.h \
                           cyclic_pmap.h \
                           dense_storage.h \
                           distributed_storage.h \
+                          eigen.h \
                           error.h \
                           expressions.h \
                           functional.h \

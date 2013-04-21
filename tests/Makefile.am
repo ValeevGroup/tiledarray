@@ -40,6 +40,7 @@ ta_test_SOURCES = ta_test.cpp \
                   distributed_storage.cpp \
                   tensor_impl.cpp \
                   array.cpp \
+                  eigen.cpp \
                   variable_list.cpp \
                   tensor_expression_impl.cpp \
                   annotated_tensor.cpp \
