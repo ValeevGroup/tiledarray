@@ -125,22 +125,19 @@ namespace TiledArray {
 
         template <typename Left, typename Right>
         result_type operator()(const Left& left, const Right& right) {
-          return result_type(left.range(),
-              ::TiledArray::detail::make_tran_it(left.begin(), right.begin(), op_));
+          return result_type(left.range(), left.begin(), right.begin(), op_);
         }
 
         template <typename Left, typename T>
         result_type operator()(const Left& left, const ZeroTensor<T>&) {
-          return result_type(left.range(),
-              ::TiledArray::detail::make_tran_it(left.begin(),
-              std::bind2nd(op_, typename ZeroTensor<T>::value_type(0))));
+          return result_type(left.range(), left.begin(),
+              std::bind2nd(op_, typename ZeroTensor<T>::value_type(0)));
         }
 
         template <typename T, typename Right>
         result_type operator()(const ZeroTensor<T>&, const Right& right) {
-          return result_type(right.range(),
-              ::TiledArray::detail::make_tran_it(right.begin(),
-              std::bind1st(op_, typename ZeroTensor<T>::value_type(0))));
+          return result_type(right.range(), right.begin(),
+              std::bind1st(op_, typename ZeroTensor<T>::value_type(0)));
         }
 
       }; // class binary_and_op
@@ -201,8 +198,7 @@ namespace TiledArray {
 
         template <typename Left, typename Right>
         result_type operator()(const Left& left, const Right& right) {
-          return result_type(left.range(),
-              ::TiledArray::detail::make_tran_it(left.begin(), right.begin(), op_));
+          return result_type(left.range(), left.begin(), right.begin(), op_);
         }
 
         template <typename T, typename Right>
