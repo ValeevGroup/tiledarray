@@ -97,14 +97,12 @@ namespace TiledArray {
   "TiledArray: exception at " file "(" TA_STRINGIZE( line ) "): " mess
 
 #define TA_EXCEPTION( m ) \
-    throw TiledArray::Exception ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , m ) )
-
-#define TA_ASSERT( a )  \
-  if(! ( a ) ) \
     { \
       TiledArray::exception_break(); \
-      TA_EXCEPTION( "assertion failure" ) ; \
+      throw TiledArray::Exception ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , m ) ); \
     }
+
+#define TA_ASSERT( a )  if(! ( a ) ) TA_EXCEPTION( "assertion failure" )
 
 #define TA_TEST( a )  TA_ASSERT( a )
 
@@ -125,10 +123,14 @@ namespace TiledArray {
 
 #endif //TA_EXCEPTION_ERROR
 
-#define TA_CHECK( a )  \
+#define TA_CHECK( a ) if(! ( a ) ) TA_EXCEPTION( "check failure" )
+
+#define TA_USER_ASSERT( a , m ) \
   if(! ( a ) ) \
     { \
-      TA_EXCEPTION( "check failure" ) ; \
+      std::cerr << "!!! ERROR TiledArray: " << m << "\n"; \
+      TiledArray::exception_break(); \
+      throw TiledArray::Exception( m ); \
     }
 
 #endif // TILEDARRAY_ERROR_H__INCLUDED
