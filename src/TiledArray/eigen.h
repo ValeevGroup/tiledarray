@@ -84,7 +84,7 @@ namespace TiledArray {
   /// \tparam A The tensor allocator type
   /// \param tensor The tensor object
   /// \return An Eigen matrix map for \c tensor
-  /// \throw When \c tensor dimensions are not equal to 2 or 1.
+  /// \throw TiledArray::Exception When \c tensor dimensions are not equal to 2 or 1.
   template <typename T, typename A>
   inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
   eigen_map(const Tensor<T, A>& tensor) {
@@ -100,12 +100,12 @@ namespace TiledArray {
   /// \tparam A The tensor allocator type
   /// \param tensor The tensor object
   /// \return An Eigen matrix map for \c tensor
-  /// \throw When \c tensor dimensions are not equal to 2 or 1.
+  /// \throw TiledArray::Exception When \c tensor dimensions are not equal to 2 or 1.
   template <typename T, typename A>
   inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
   eigen_map(Tensor<T, A>& tensor) {
     TA_ASSERT((tensor.range().dim() == 2u) || (tensor.range().dim() == 1u));
-
+    Eigen::MatrixBase
     return eigen_map(tensor, tensor.range().size()[0],
             (tensor.range().dim() == 2u ? tensor.range().size()[1] : 1ul));
   }
@@ -245,8 +245,10 @@ namespace TiledArray {
 
   /// Convert an Eigen matrix into an Array object
 
-  /// This function will block until all tiles of \c array have been copied
-  /// from the Eigen matrix.
+  /// This function will copy the content of \c matrix into an \c Array object
+  /// that is tiled according to the \c trange object. The copy operation is
+  /// done in parallel, and this function will block until all elements of
+  /// \c matrix have been copied into the result array tiles.
   /// Usage:
   /// \code
   /// Eigen::MatrixXd m(100, 100);
