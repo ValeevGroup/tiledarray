@@ -1,11 +1,11 @@
 /*
- *  This file is a part of TiledArray.
- *  Copyright (C) 2013  Virginia Tech
+ * This file is a part of TiledArray.
+ * Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
+ *   (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -257,7 +257,7 @@ namespace TiledArray {
     /// \return An annotated tensor object that references this array
     expressions::TensorExpression<Tensor<T> >
     operator ()(const std::string& v) const {
-      return expressions::make_annotatied_tensor(*this, v);
+      return expressions::make_annotated_tensor(*this, v);
     }
 
     /// Create an annotated tensor
@@ -266,7 +266,7 @@ namespace TiledArray {
     /// \return An annotated tensor object that references this array
     expressions::TensorExpression<Tensor<T> >
     operator ()(const expressions::VariableList& v) const {
-      return expressions::make_annotatied_tensor(*this, v);
+      return expressions::make_annotated_tensor(*this, v);
     }
 
     /// World accessor
@@ -279,7 +279,7 @@ namespace TiledArray {
     /// \return A reference to the world that owns this array.
     const std::shared_ptr<pmap_interface>& get_pmap() const { return pimpl_->pmap(); }
 
-    /// Check dense/sparse quary
+    /// Check dense/sparse
 
     /// \return \c true when \c Array is dense, \c false otherwise.
     bool is_dense() const { return pimpl_->is_dense(); }

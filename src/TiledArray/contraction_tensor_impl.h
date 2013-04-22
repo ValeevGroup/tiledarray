@@ -368,7 +368,7 @@ namespace TiledArray {
         TA_ASSERT(!left.empty());
         TA_ASSERT(!right.empty());
 
-        // The assertions below verify that the argument and result tensors are coformal
+        // The assertions below verify that the argument and result tensor shapes conform
 
         // Check that all tensors have the correct dimension sizes
         TA_ASSERT(result.range().dim() == (left_outer_ + right_outer_));

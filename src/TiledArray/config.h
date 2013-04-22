@@ -17,10 +17,10 @@
  *
  */
 
-#ifndef TILEDARRAY_CONFIGURE_H__INCULDED
-#define TILEDARRAY_CONFIGURE_H__INCULDED
+#ifndef TILEDARRAY_CONFIGURE_H__INCLUDED
+#define TILEDARRAY_CONFIGURE_H__INCLUDED
 
 /* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
 #define TA_DEFAULT_ERROR 1
 
-#endif // TILEDARRAY_CONFIGURE_H__INCULDED
+#endif // TILEDARRAY_CONFIGURE_H__INCLUDED

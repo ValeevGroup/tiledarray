@@ -43,6 +43,8 @@ namespace TiledArray {
       typedef typename trange_type::range_type range_type; ///< Tile range type
       typedef Bitset<> shape_type; ///< Tensor shape type
       typedef Tile value_type; ///< Tile or data type
+      typedef typename TiledArray::detail::scalar_type<typename value_type::value_type>::type
+          numeric_type; ///< the numeric type that supports Tile
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
       typedef typename storage_type::size_type size_type; ///< Size type
       typedef typename storage_type::const_iterator const_iterator; ///< Constant iterator type

@@ -81,19 +81,25 @@ namespace TiledArray {
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };
 
+    // helps to implement other metafunctions
     template<typename> struct is_type : public std::true_type { };
 
-    /// Type trait for extracting the scalar type of tensors and arrays.
+    /** Type trait for extracting the scalar numeric type of tensors and arrays.
+     * 1) if T is numeric, scalar_type<T>::type evaluates to T
+     * 2) if T is not numeric and T::value_type is a valid type, will evaluate to scalar_type<T::value_type>::type,
+     *    and so on recursively
+     * 3) otherwise it's undefined
+     */
     template <typename T, typename Enabler = void> struct scalar_type;
 
     template <typename T>
     struct scalar_type<T, typename madness::enable_if<is_numeric<T> >::type> {
-      typedef T type;
+        typedef T type;
     };
 
     template <typename T>
     struct scalar_type<T, typename madness::enable_if<is_type<typename T::value_type> >::type> :
-        public scalar_type<typename T::value_type>
+    public scalar_type<typename T::value_type>
     { };
 
     template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
@@ -110,7 +116,6 @@ namespace TiledArray {
     struct scalar_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
         public scalar_type<PlainObjectType>
     { };
-
 
     /// Remove const, volatile, and reference qualifiers.
     template <typename T>
