@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   // check default constructor
   BOOST_REQUIRE_NO_THROW(TiledRange r0);
   TiledRange r0;
-  TiledRange::size_array s0(3,0);
+  std::vector<std::size_t> s0(3,0);
   BOOST_CHECK_EQUAL(r0.tiles().size().size(), 0);
   BOOST_CHECK_EQUAL(r0.elements().size().size(), 0);
 

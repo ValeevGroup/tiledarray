@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_RANGE_H__INCLUDED
 #define TILEDARRAY_RANGE_H__INCLUDED
 
+#include <TiledArray/size_array.h>
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/coordinates.h>
 #include <algorithm>
@@ -119,7 +120,7 @@ namespace TiledArray {
     typedef Range Range_;
     typedef std::size_t size_type;
     typedef std::vector<std::size_t> index;
-    typedef std::vector<std::size_t> size_array;
+    typedef detail::SizeArray<std::size_t> size_array;
     typedef detail::RangeIterator<index, Range_> const_iterator;
     friend class detail::RangeIterator<index, Range_>;
 
@@ -132,17 +133,22 @@ namespace TiledArray {
     /// finish must be greater than or equal to those of start.
     template <typename Index>
     Range(const Index& start, const Index& finish) :
-        start_(start.size()),
-        finish_(start.size()),
-        size_(start.size()),
-        weight_(start.size()),
+        start_(),
+        finish_(),
+        size_(),
+        weight_(),
         volume_(start.size() ? 1ul : 0ul)
     {
       TA_ASSERT(start.size() == finish.size());
       TA_ASSERT( (std::equal(start.begin(), start.end(), finish.begin(),
           std::less_equal<std::size_t>())) );
 
-      for(int i = start.size() - 1; i >= 0; --i) {
+      // Initialize array memory
+      const size_type n = start.size();
+      init_arrays(new size_type[n * 4], n);
+
+      // Set array data
+      for(int i = n - 1; i >= 0; --i) {
         start_[i] = start[i];
         finish_[i] = finish[i];
         size_[i] = finish[i] - start[i];
@@ -153,29 +159,46 @@ namespace TiledArray {
 
     template <typename SizeArray>
     explicit Range(const SizeArray& size) :
-        start_(size.size(), 0ul),
-        finish_(size.begin(), size.end()),
-        size_(size.begin(), size.end()),
-        weight_(size.size()),
-        volume_(detail::calc_volume(size))
+        start_(),
+        finish_(),
+        size_(),
+        weight_(),
+        volume_(size.size() ? 1ul : 0ul)
     {
-      detail::calc_weight(weight_, size_);
+      // Initialize array memory
+      const size_type n = size.size();
+      init_arrays(new size_type[n * 4], n);
+
+      // Set array data
+      for(int i = n - 1; i >= 0; --i) {
+        start_[i] = 0ul;
+        finish_[i] = size[i];
+        size_[i] = size[i];
+        weight_[i] = (size[i] != 0ul ? volume_ : 0);
+        volume_ *= size[i];
+      }
     }
 
     /// Copy Constructor
     Range(const Range_& other) : // no throw
-        start_(other.start_), finish_(other.finish_), size_(other.size_),
-        weight_(other.weight_), volume_(other.volume_)
-    {}
+        start_(), finish_(), size_(), weight_(), volume_(other.volume_)
+    {
+      const size_type n = other.start_.size();
+      init_arrays(new size_type[n * 4], n);
+      memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4 * n);
+    }
 
     ~Range() {}
 
     Range_& operator=(const Range_& other) {
-      start_ = other.start_;
-      finish_ = other.finish_;
-      size_ = other.size_;
-      weight_ = other.weight_;
-      volume_ = other.volume_;
+      const size_type n = other.start_.size();
+
+      if(start_.size() != n) {
+        delete [] start_.data();
+        init_arrays(new size_type[n * 4], n);
+      }
+
+      memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4 * n);
 
       return *this;
     }
@@ -183,10 +206,10 @@ namespace TiledArray {
     unsigned int dim() const { return size_.size(); }
 
     /// Returns the lower bound of the range
-    const index& start() const { return start_; } // no throw
+    const size_array& start() const { return start_; } // no throw
 
     /// Returns the upper bound of the range
-    const index& finish() const { return finish_; } // no throw
+    const size_array& finish() const { return finish_; } // no throw
 
     /// Returns an array with the size of each dimension.
     const size_array& size() const { return size_; } // no throw
@@ -318,19 +341,47 @@ namespace TiledArray {
     }
 
     template <typename Archive>
-    void serialize(const Archive& ar) {
-      ar & start_ & finish_ & size_ & weight_ & volume_;
+    typename madness::enable_if<madness::archive::is_input_archive<Archive> >::type
+    serialize(const Archive& ar) {
+      size_type n = 0ul;
+
+      // Get number of dimensions
+      ar & n;
+      const size_type n4 = n * 4;
+      if(start_.size() != n) {
+        if(! start_.empty())
+          delete [] start_.data();
+        init_arrays(new size_type[n4], n);
+      }
+      ar & madness::archive::wrap(start_.data(), n4) & volume_;
+    }
+
+    template <typename Archive>
+    typename madness::enable_if<madness::archive::is_output_archive<Archive> >::type
+    serialize(const Archive& ar) const {
+      const size_type n = start_.size();
+      ar & n & madness::archive::wrap(start_.data(), n * 4) & volume_;
     }
 
     void swap(Range_& other) {
-      std::swap(start_, other.start_);
-      std::swap(finish_, other.finish_);
-      std::swap(size_, other.size_);
-      std::swap(weight_, other.weight_);
+      // Get temp data
+      size_type* temp_start = start_.data();
+      const size_type n = start_.size();
+
+      // Swap data
+      init_arrays(other.start_.data(), n);
+      other.init_arrays(temp_start, n);
       std::swap(volume_, other.volume_);
     }
 
   private:
+
+    void init_arrays(size_type* data, const size_type n) {
+      start_.set(data, n);
+      finish_.set(start_.end(), n);
+      size_.set(finish_.end(), n);
+      weight_.set(size_.end(), n);
+    }
 
     template <typename T>
     std::vector<T>& size_index_(std::vector<T>& i) const {
@@ -375,10 +426,10 @@ namespace TiledArray {
       return ord(last) - ord(first);
     }
 
-    index start_;     ///< Tile origin
-    index finish_;    ///< Tile upper bound
-    index size_;      ///< Dimension sizes
-    index weight_;    ///< Dimension weights
+    size_array start_;     ///< Tile origin
+    size_array finish_;    ///< Tile upper bound
+    size_array size_;      ///< Dimension sizes
+    size_array weight_;    ///< Dimension weights
     size_type volume_;///< Total number of elements
   }; // class Range
 

@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -73,7 +73,7 @@ namespace TiledArray {
           value_type result(perm_ ^ value.range());
 
           // Construct the inverse permuted weight and size for this tensor
-          typename range_type::size_array ip_weight = (-perm_) ^ result.range().weight();
+          std::vector<std::size_t> ip_weight = (-perm_) ^ result.range().weight();
           const typename value_type::range_type::index& start = value.range().start();
 
           // Coordinated iterator for the value range
@@ -260,7 +260,7 @@ namespace TiledArray {
             // If not dense, permute the shape
             if(! TensorImpl_::is_dense()) {
               // Construct the inverse permuted weight and size for this tensor
-              typename range_type::size_array ip_weight =
+              std::vector<std::size_t> ip_weight =
                   (-perm_) ^ TensorImpl_::trange().tiles().weight();
               const typename range_type::index& start = trange_.tiles().start();
 

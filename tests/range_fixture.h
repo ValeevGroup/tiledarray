@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,8 +35,8 @@ struct RangeFixture {
 
   static const index start;
   static const index finish;
-  static const size_array size;
-  static const size_array weight;
+  static const std::vector<std::size_t> size;
+  static const std::vector<std::size_t> weight;
   static const size_type volume;
   static const index p0;
   static const index p1;
@@ -50,8 +50,9 @@ struct RangeFixture {
 
   ~RangeFixture() { }
 
-  static size_array calc_weight(const size_array& size) {
-    size_array weight(size.size());
+  template <typename A>
+  static std::vector<std::size_t> calc_weight(const A& size) {
+    std::vector<std::size_t> weight(size.size());
     TiledArray::detail::calc_weight(weight, size);
     return weight;
   }

@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,11 +28,11 @@ using namespace TiledArray;
 
 const RangeFixture::index RangeFixture::start(GlobalFixture::dim, 0);
 const RangeFixture::index RangeFixture::finish(GlobalFixture::dim, 5);
-const RangeFixture::size_array RangeFixture::size(GlobalFixture::dim,  5);
-const RangeFixture::size_array RangeFixture::weight =
-    RangeFixture::calc_weight(RangeFixture::size_array(GlobalFixture::dim, 5));
+const std::vector<std::size_t> RangeFixture::size(GlobalFixture::dim,  5);
+const std::vector<std::size_t> RangeFixture::weight =
+    RangeFixture::calc_weight(std::vector<std::size_t>(GlobalFixture::dim, 5));
 const RangeFixture::size_type RangeFixture::volume =
-    detail::calc_volume(RangeFixture::size_array(GlobalFixture::dim, 5));
+    detail::calc_volume(std::vector<std::size_t>(GlobalFixture::dim, 5));
 const RangeFixture::index RangeFixture::p0(GlobalFixture::dim, 0);
 const RangeFixture::index RangeFixture::p1(GlobalFixture::dim, 1);
 const RangeFixture::index RangeFixture::p2(GlobalFixture::dim, 2);
@@ -158,7 +158,7 @@ BOOST_AUTO_TEST_CASE( permutation )
 {
   index s(GlobalFixture::dim);
   index f(GlobalFixture::dim);
-  size_array a(GlobalFixture::dim, 0);
+  std::vector<std::size_t> a(GlobalFixture::dim, 0);
   for(unsigned int d = 0; d < GlobalFixture::dim; ++d) {
     s[d] = d;
     f[d] = d + d + 5;
@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE( permutation )
                                 r2.size().begin(),  r2.size().end());
   BOOST_CHECK_EQUAL(r2.volume(), r1.volume());
 
-  Range::size_array w =
+  std::vector<std::size_t> w =
       RangeFixture::calc_weight(r2.size());
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.weight().begin(), r2.weight().end(), w.begin(), w.end());
 
@@ -269,7 +269,7 @@ BOOST_AUTO_TEST_CASE( iteration )
 
 BOOST_AUTO_TEST_CASE( serialization )
 {
-  std::size_t buf_size = sizeof(Range) * 2;
+  std::size_t buf_size = 2 * (sizeof(Range) + sizeof(std::size_t) * (4 * GlobalFixture::dim + 1));
   unsigned char* buf = new unsigned char[buf_size];
   madness::archive::BufferOutputArchive oar(buf, buf_size);
   oar & r;

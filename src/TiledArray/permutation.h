@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,6 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/size_array.h>
 #include <world/array.h>
 #include <numeric>
 #include <stdarg.h>
@@ -311,6 +312,14 @@ namespace TiledArray {
     return result;
   }
 
+  template <typename T>
+  inline std::vector<T> operator^(const Permutation& perm, const detail::SizeArray<T>& orig) {
+    TA_ASSERT(orig.size() == perm.dim());
+    std::vector<T> result(perm.dim());
+    detail::permute_array<Permutation::const_iterator, typename detail::SizeArray<T>::const_iterator, typename std::vector<T>::iterator>
+      (perm.begin(), perm.end(), orig.begin(), result.begin());
+    return result;
+  }
 
 
   inline Permutation operator ^(const Permutation& perm, const Permutation& p) {
@@ -328,6 +337,12 @@ namespace TiledArray {
     /// permute a std::vector<T>
     template <typename T, typename A>
     inline const std::vector<T>& operator^(const NoPermutation&, const std::vector<T, A>& orig) {
+      return orig;
+    }
+
+    /// permute a std::vector<T>
+    template <typename T>
+    inline const detail::SizeArray<T>& operator^(const NoPermutation&, const detail::SizeArray<T>& orig) {
       return orig;
     }
 
