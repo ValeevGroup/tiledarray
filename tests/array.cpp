@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -204,6 +204,8 @@ BOOST_AUTO_TEST_CASE( make_replicated )
 
   // Convert array to a replicated array.
   a.make_replicated();
+
+  BOOST_CHECK(a.get_pmap()->is_replicated());
 
   // Check that all the data is local
   for(std::size_t i = 0; i < a.size(); ++i) {
