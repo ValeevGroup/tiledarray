@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -343,12 +343,17 @@ namespace TiledArray {
   }
 
   template <typename T, typename AT, typename N>
-  typename madness::enable_if_c<TiledArray::detail::is_numeric<N>::value,
-                                Tensor<T, AT>
-                               >::type
+  typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(const Tensor<T, AT>& left, N right) {
     return Tensor<T,AT>(left.range(), left.begin(),
-                        std::bind2nd(TiledArray::detail::multiplies<T, N, T>(),right));
+        std::bind2nd(TiledArray::detail::multiplies<T, N, T>(),right));
+  }
+
+  template <typename T, typename AT, typename N>
+  typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
+  operator*(N left, const Tensor<T, AT>& right) {
+    return Tensor<T,AT>(right.range(), right.begin(),
+        std::bind2nd(TiledArray::detail::multiplies<T, N, T>(),left));
   }
 
   template <typename T, typename A>

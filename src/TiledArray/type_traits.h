@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -84,22 +84,24 @@ namespace TiledArray {
     // helps to implement other metafunctions
     template<typename> struct is_type : public std::true_type { };
 
-    /** Type trait for extracting the scalar numeric type of tensors and arrays.
-     * 1) if T is numeric, scalar_type<T>::type evaluates to T
-     * 2) if T is not numeric and T::value_type is a valid type, will evaluate to scalar_type<T::value_type>::type,
-     *    and so on recursively
-     * 3) otherwise it's undefined
-     */
+    /// Type trait for extracting the scalar numeric type of tensors and arrays.
+
+    /// \tparam T The type to extract a numeric type from
+    /// \tparam Enabler Type used to selectively implement partial specializations
+    /// -# if T is numeric, scalar_type<T>::type evaluates to T
+    /// -# if T is not numeric and T::value_type is a valid type, will evaluate to scalar_type<T::value_type>::type,
+    ///   and so on recursively
+    /// -# otherwise it's undefined
     template <typename T, typename Enabler = void> struct scalar_type;
 
     template <typename T>
     struct scalar_type<T, typename madness::enable_if<is_numeric<T> >::type> {
-        typedef T type;
+      typedef T type;
     };
 
     template <typename T>
     struct scalar_type<T, typename madness::enable_if<is_type<typename T::value_type> >::type> :
-    public scalar_type<typename T::value_type>
+        public scalar_type<typename T::value_type>
     { };
 
     template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>

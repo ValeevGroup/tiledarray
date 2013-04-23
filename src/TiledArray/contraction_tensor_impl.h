@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -368,7 +368,7 @@ namespace TiledArray {
         TA_ASSERT(!left.empty());
         TA_ASSERT(!right.empty());
 
-        // The assertions below verify that the argument and result tensor shapes conform
+        // The assertions below verify that the argument and result tensors are coformal
 
         // Check that all tensors have the correct dimension sizes
         TA_ASSERT(result.range().dim() == (left_outer_ + right_outer_));
