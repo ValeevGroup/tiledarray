@@ -125,10 +125,16 @@ namespace TiledArray {
 
 #define TA_CHECK( a ) if(! ( a ) ) TA_EXCEPTION( "check failure" )
 
+#ifdef TILEDARRAY_NO_USER_ERROR_MESSAGES
+#define TA_USER_ERROR_MESSAGE( m )
+#else
+#define TA_USER_ERROR_MESSAGE( m ) std::cerr << "!!! ERROR " << m << "\n";
+#endif // TILEDARRAY_NO_USER_ERROR_MESSAGES
+
 #define TA_USER_ASSERT( a , m ) \
   if(! ( a ) ) \
     { \
-      std::cerr << "!!! ERROR " << m << "\n"; \
+      TA_USER_ERROR_MESSAGE( m ) \
       TiledArray::exception_break(); \
       throw TiledArray::Exception( m ); \
     }
