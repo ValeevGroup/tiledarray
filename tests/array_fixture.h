@@ -46,7 +46,7 @@ struct ArrayFixture : public TiledRangeFixture {
 struct AnnotatedTensorFixture : public ArrayFixture {
   typedef expressions::TensorExpression<Tensor<ArrayN::element_type> > array_annotation;
 
-  AnnotatedTensorFixture() : vars(make_var_list()), aa(expressions::make_annotatied_tensor(a, vars)), perm() {
+  AnnotatedTensorFixture() : vars(make_var_list()), aa(expressions::make_annotated_tensor(a, vars)), perm() {
     std::array<std::size_t, GlobalFixture::dim> p;
     p[0] = GlobalFixture::dim - 1;
     for(std::size_t i = 1; i < GlobalFixture::dim; ++i)

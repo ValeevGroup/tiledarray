@@ -44,7 +44,9 @@ namespace TiledArray {
 
       private:
         Op op_;
-        result_type scale_;
+        typedef typename TiledArray::detail::scalar_type<result_type>::type
+            numeric_type; ///< the numeric type that supports Tile
+            numeric_type scale_;
 
       public:
         binary_transform_op(Op op) : op_(op), scale_(1) { }

@@ -23,6 +23,7 @@
 #include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
 #include <TiledArray/madness.h>
+#include <TiledArray/functional.h>
 
 namespace TiledArray {
 
@@ -40,6 +41,8 @@ namespace TiledArray {
     typedef DenseStorage<T,A> storage_type;
     typedef Range range_type;
     typedef typename storage_type::value_type value_type;
+    typedef typename TiledArray::detail::scalar_type<T>::type
+        numeric_type; ///< the numeric type that supports T
     typedef typename storage_type::const_reference const_reference;
     typedef typename storage_type::reference reference;
     typedef typename storage_type::const_iterator const_iterator;
@@ -330,13 +333,22 @@ namespace TiledArray {
   template <typename T, typename AT, typename U, typename AU>
   Tensor<T, AT> operator-(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::plus<T>());
+    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::minus<T>());
   }
 
   template <typename T, typename AT, typename U, typename AU>
   Tensor<T, AT> operator*(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::plus<T>());
+    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::multiplies<T>());
+  }
+
+  template <typename T, typename AT, typename N>
+  typename madness::enable_if_c<TiledArray::detail::is_numeric<N>::value,
+                                Tensor<T, AT>
+                               >::type
+  operator*(const Tensor<T, AT>& left, N right) {
+    return Tensor<T,AT>(left.range(), left.begin(),
+                        std::bind2nd(TiledArray::detail::multiplies<T, N, T>(),right));
   }
 
   template <typename T, typename A>

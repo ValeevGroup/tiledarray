@@ -54,6 +54,7 @@ namespace TiledArray {
         typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
         typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
         typedef typename TensorImpl_::value_type value_type; ///< Tile type
+        typedef typename TensorImpl_::numeric_type numeric_type;  ///< the numeric type that supports Tile
 
       private:
         VariableList vars_; ///< The tensor expression variable list
@@ -62,7 +63,7 @@ namespace TiledArray {
         volatile bool evaluated_; ///< A flag to indicate that the tensor has been evaluated.
                                   ///< This is just here as a sanity check to make sure evaluate is only run once.
                                   ///< It is NOT thread safe.
-        typename value_type::value_type scale_; ///< The scale factor for this expression
+        numeric_type scale_; ///< The scale factor for this expression
 
         /// Task function for permuting result tensor
 
@@ -93,7 +94,7 @@ namespace TiledArray {
         /// Permute and set tile \c i with \c value
 
         /// If the \c value has been set, then the tensor is permuted and set
-        /// immediately. Otherwise a task is spawn that will permute and set it.
+        /// immediately. Otherwise a task is spawned that will permute and set it.
         /// \param i The unpermuted index of the tile
         /// \param value The future that holds the unpermuted result tile
         void permute_and_set(size_type i, const value_type& value) {
@@ -187,18 +188,18 @@ namespace TiledArray {
 
         /// scale = scale * value
         /// \param value The new scale factor
-        void scale(const typename value_type::value_type& value) { scale_ *= value; }
+        void scale(const numeric_type& value) { scale_ *= value; }
 
         /// Modify the expression scale factor
 
         /// scale = scale * value
         /// \param value The new scale factor
-        void set_scale(const typename value_type::value_type& value) { scale_ = value; }
+        void set_scale(const numeric_type& value) { scale_ = value; }
 
         /// Get the expression scale factor
 
         /// \return The current scale factor
-        typename value_type::value_type scale() const { return scale_; }
+        numeric_type scale() const { return scale_; }
 
 
         virtual void assign(std::shared_ptr<TensorExpressionImpl_>& pimpl, TensorExpression<Tile>& other) {
@@ -343,6 +344,7 @@ namespace TiledArray {
       typedef typename impl_type::pmap_interface pmap_interface;
       typedef typename impl_type::trange_type trange_type;
       typedef typename impl_type::value_type value_type;
+      typedef typename impl_type::numeric_type numeric_type;
       typedef typename impl_type::const_reference const_reference;
       typedef typename impl_type::const_iterator const_iterator;
 
@@ -436,25 +438,25 @@ namespace TiledArray {
 
       /// Modify the expression scale factor
 
-      /// scale = scale * value
+      /// scale = scale * factor
       /// \param value The new scale factor
-      void scale(const typename value_type::value_type& value) {
+      void scale(const numeric_type& factor) {
         TA_ASSERT(pimpl_);
-        pimpl_->scale(value);
+        pimpl_->scale(factor);
       }
 
       /// Set the expression scale factor
 
       /// \param value The new scale factor
-      void set_scale(const typename value_type::value_type& value) {
+      void set_scale(const numeric_type& new_scale) {
         TA_ASSERT(pimpl_);
-        pimpl_->set_scale(value);
+        pimpl_->set_scale(new_scale);
       }
 
       /// Get the expression scale factor
 
       /// \return The current scale factor
-      typename value_type::value_type scale() const {
+      numeric_type scale() const {
         TA_ASSERT(pimpl_);
         return pimpl_->scale();
       }

@@ -39,6 +39,24 @@ namespace TiledArray {
 
     }; // class Square
 
+
+    /// generalization of std::multiplies, but multiplying T by U yielding V
+    /// \tparam T argument1 type
+    /// \tparam U argument2 type
+    /// \tparam V result type
+    template <typename T, typename U, typename V>
+    struct multiplies : std::binary_function<T,U,V> {
+
+      /// Returns \c t * \c scale = \c v
+      /// \param t first factor
+      /// \param scale second factor
+      /// \return \c t * \c scale
+      typename madness::enable_if_c<TiledArray::detail::is_numeric<U>::value,
+                                    V>::type
+      operator()(T t, U scale) const { return t * scale; }
+
+    }; // class multiplies
+
   }  // namespace detail
 }  // namespace TiledArray
 

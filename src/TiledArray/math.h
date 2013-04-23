@@ -143,25 +143,47 @@ namespace TiledArray {
 
     // BLAS _DOT wrapper functions
 
-    inline float dot(const integer n, const float* x, const float* y) {
+    inline float dot(integer n, const float* x, const float* y) {
       static const integer incX = 1, incY = 1;
       return F77_SDOT(&n, x, &incX, y, &incY);
     }
 
-    inline double dot(const integer n, const double* x, const double* y) {
+    inline double dot(integer n, const double* x, const double* y) {
       static const integer incX = 1, incY = 1;
       return F77_DDOT(&n, x, &incX, y, &incY);
     }
 
-    inline std::complex<float> dot(const integer n, const std::complex<float>* x, const std::complex<float>* y) {
+    inline std::complex<float> dot(integer n, const std::complex<float>* x, const std::complex<float>* y) {
       static const integer incX = 1, incY = 1;
       std::complex<float> result(0.0, 0.0);
       F77_CDOTU(&n, x, &incX, y, &incY, &result);
       return result;
     }
 
-    inline std::complex<double> dot(const integer n, const std::complex<double>* x, const std::complex<double>* y) {
+    inline std::complex<double> dot(integer n, const std::complex<double>* x, const std::complex<double>* y) {
       static const integer incX = 1, incY = 1;
+      std::complex<double> result(0.0, 0.0);
+      F77_ZDOTU(&n, x, &incX, y, &incY, &result);
+      return result;
+    }
+
+    inline float dot(integer n, const float* x, integer incX, const float* y, integer incY) {
+      return F77_SDOT(&n, x, &incX, y, &incY);
+    }
+
+    inline double dot(integer n, const double* x, integer incX, const double* y, integer incY) {
+      return F77_DDOT(&n, x, &incX, y, &incY);
+    }
+
+    inline std::complex<float> dot(integer n, const std::complex<float>* x, integer incX,
+                                   const std::complex<float>* y, integer incY) {
+      std::complex<float> result(0.0, 0.0);
+      F77_CDOTU(&n, x, &incX, y, &incY, &result);
+      return result;
+    }
+
+    inline std::complex<double> dot(integer n, const std::complex<double>* x, integer incX,
+                                    const std::complex<double>* y, integer incY) {
       std::complex<double> result(0.0, 0.0);
       F77_ZDOTU(&n, x, &incX, y, &incY, &result);
       return result;

@@ -22,6 +22,7 @@
 
 #include <TiledArray/tensor_expression.h>
 #include <TiledArray/tensor.h>
+#include <TiledArray/functional.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -47,6 +48,7 @@ namespace TiledArray {
         typedef typename TensorImpl_::range_type range_type; ///< Tile range type
         typedef typename TensorImpl_::shape_type shape_type; ///< Tile shape type
         typedef typename TensorImpl_::value_type value_type; ///< The result value type
+        typedef typename TensorImpl_::numeric_type numeric_type; ///< The numeric data supporting value_type
         typedef typename TensorImpl_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
         typedef typename TensorImpl_::storage_type::future const_reference; /// The storage type for this object
 
@@ -97,7 +99,10 @@ namespace TiledArray {
         /// \param value The tile from the array
         void scale_and_set_tile(const size_type i, const value_type& value) {
           TensorExpressionImpl_::set(i, value_type(value.range(), value.begin(),
-              std::bind1st(std::multiplies<typename value_type::value_type>(),
+              std::bind2nd(TiledArray::detail::multiplies<typename value_type::value_type,
+                                                          numeric_type,
+                                                          typename value_type::value_type
+                                                         >(),
               TensorExpressionImpl_::scale())));
         }
 
@@ -107,7 +112,10 @@ namespace TiledArray {
         /// \param value The tile from the array
         void convert_scale_and_set_tile(const size_type i, const typename array_type::value_type& value) {
           TensorExpressionImpl_::set(i, value_type(value.range(), value.begin(),
-              std::bind1st(std::multiplies<typename value_type::value_type>(),
+              std::bind2nd(TiledArray::detail::multiplies<typename value_type::value_type,
+                                                          numeric_type,
+                                                          typename value_type::value_type
+                                                         >(),
               TensorExpressionImpl_::scale())));
         }
 
@@ -204,7 +212,9 @@ namespace TiledArray {
         /// has completed. It should spawn additional tasks that evaluate the
         /// Individual result tiles.
         virtual void eval_tiles() {
-          static const typename value_type::value_type one(1);
+          typedef typename TiledArray::detail::scalar_type<typename value_type::value_type>::type
+              numeric_type; ///< the numeric type that supports Tile
+          static const numeric_type one(1);
 
           // Make sure all local tiles are present.
           const typename pmap_interface::const_iterator end =
@@ -261,7 +271,7 @@ namespace TiledArray {
 
     template <typename T, unsigned int DIM, typename Tile>
     inline TensorExpression<Tensor<T> >
-    make_annotatied_tensor(const Array<T, DIM, Tile>& array, const VariableList& vars) {
+    make_annotated_tensor(const Array<T, DIM, Tile>& array, const VariableList& vars) {
       typedef detail::AnnotatedTensorImpl<Array<T, DIM, Tile> > impl_type;
       std::shared_ptr<typename impl_type::TensorExpressionImpl_> pimpl(
           new impl_type(array, vars),
@@ -271,7 +281,7 @@ namespace TiledArray {
 
     template <typename T, unsigned int DIM, typename Tile>
     inline TensorExpression<Tensor<T> >
-    make_annotatied_tensor(const Array<T, DIM, Tile>& array, const std::string& vars) {
+    make_annotated_tensor(const Array<T, DIM, Tile>& array, const std::string& vars) {
       typedef detail::AnnotatedTensorImpl<Array<T, DIM, Tile> > impl_type;
       std::shared_ptr<typename impl_type::TensorExpressionImpl_> pimpl(
           new impl_type(array, VariableList(vars)),

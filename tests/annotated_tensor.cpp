@@ -70,8 +70,8 @@ BOOST_AUTO_TEST_CASE( tile_data )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
-  BOOST_REQUIRE_NO_THROW(array_annotation at1(expressions::make_annotatied_tensor(a, vars)));
-  array_annotation at1(expressions::make_annotatied_tensor(a, vars));
+  BOOST_REQUIRE_NO_THROW(array_annotation at1(expressions::make_annotated_tensor(a, vars)));
+  array_annotation at1(expressions::make_annotated_tensor(a, vars));
   BOOST_CHECK_EQUAL(at1.range(), a.range());
   BOOST_CHECK_EQUAL(at1.size(), r.volume());
   BOOST_CHECK_EQUAL(at1.vars(), vars);
