@@ -205,7 +205,10 @@ BOOST_AUTO_TEST_CASE( make_replicated )
   // Convert array to a replicated array.
   a.make_replicated();
 
-  BOOST_CHECK(a.get_pmap()->is_replicated());
+  if(GlobalFixture::world->size() == 1)
+    BOOST_CHECK(! a.get_pmap()->is_replicated());
+  else
+    BOOST_CHECK(a.get_pmap()->is_replicated());
 
   // Check that all the data is local
   for(std::size_t i = 0; i < a.size(); ++i) {
