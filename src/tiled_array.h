@@ -22,5 +22,6 @@
 
 #include <TiledArray/array.h>
 #include <TiledArray/expressions.h>
+#include <TiledArray/eigen.h>
 
 #endif // TILED_ARRAY_H__INCLUDED
