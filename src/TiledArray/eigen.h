@@ -27,18 +27,18 @@
 namespace TiledArray {
 
   // Convenience typedefs
-  typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajorBit> EigenMatrixXd;
-  typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajorBit> EigenMatrixXf;
-  typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajorBit> EigenMatrixXcd;
-  typedef Eigen::Matrix<std::complex<float>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajorBit> EigenMatrixXcf;
-  typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajorBit> EigenMatrixXi;
-  typedef Eigen::Matrix<long, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajorBit> EigenMatrixXl;
-  typedef Eigen::Matrix<double, Eigen::Dynamic, 1, Eigen::RowMajorBit> EigenVectorXd;
-  typedef Eigen::Matrix<float, Eigen::Dynamic, 1, Eigen::RowMajorBit> EigenVectorXf;
-  typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajorBit> EigenVectorXcd;
-  typedef Eigen::Matrix<std::complex<float>, 1, Eigen::Dynamic, Eigen::RowMajorBit> EigenVectorXcf;
-  typedef Eigen::Matrix<int, Eigen::Dynamic, 1, Eigen::RowMajorBit> EigenVectorXi;
-  typedef Eigen::Matrix<long, Eigen::Dynamic, 1, Eigen::RowMajorBit> EigenVectorXl;
+  typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXd;
+  typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXf;
+  typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXcd;
+  typedef Eigen::Matrix<std::complex<float>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXcf;
+  typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXi;
+  typedef Eigen::Matrix<long, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXl;
+  typedef Eigen::Matrix<double, Eigen::Dynamic, 1, Eigen::RowMajor> EigenVectorXd;
+  typedef Eigen::Matrix<float, Eigen::Dynamic, 1, Eigen::RowMajor> EigenVectorXf;
+  typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> EigenVectorXcd;
+  typedef Eigen::Matrix<std::complex<float>, 1, Eigen::Dynamic, Eigen::RowMajor> EigenVectorXcf;
+  typedef Eigen::Matrix<int, Eigen::Dynamic, 1, Eigen::RowMajor> EigenVectorXi;
+  typedef Eigen::Matrix<long, Eigen::Dynamic, 1, Eigen::RowMajor> EigenVectorXl;
 
 
   /// Construct a const Eigen::Map object for a given Tensor object
@@ -100,12 +100,12 @@ namespace TiledArray {
   /// \tparam A The tensor allocator type
   /// \param tensor The tensor object
   /// \return An Eigen matrix map for \c tensor
-  /// \throw TiledArray::Exception When \c tensor dimensions are not equal to 2 or 1.
+  /// \throw When \c tensor dimensions are not equal to 2 or 1.
   template <typename T, typename A>
   inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
   eigen_map(Tensor<T, A>& tensor) {
     TA_ASSERT((tensor.range().dim() == 2u) || (tensor.range().dim() == 1u));
-    Eigen::MatrixBase
+
     return eigen_map(tensor, tensor.range().size()[0],
             (tensor.range().dim() == 2u ? tensor.range().size()[1] : 1ul));
   }
@@ -248,7 +248,10 @@ namespace TiledArray {
   /// This function will copy the content of \c matrix into an \c Array object
   /// that is tiled according to the \c trange object. The copy operation is
   /// done in parallel, and this function will block until all elements of
-  /// \c matrix have been copied into the result array tiles.
+  /// \c matrix have been copied into the result array tiles. The size of
+  /// \c array.get_world().size() must be equal to 1 or \c replicate must be
+  /// equal to \c true . If \c replicate is \c true, it is your responsibility
+  /// to ensure that the data in matrix is identical on all nodes.
   /// Usage:
   /// \code
   /// Eigen::MatrixXd m(100, 100);
@@ -272,6 +275,8 @@ namespace TiledArray {
   /// \param world The world where the array will live
   /// \param trange The tiled range of the new array
   /// \param matrix The Eigen matrix to be copied
+  /// \param replicated \c true indicates that the result array should be a
+  /// replicated array [default = false].
   /// \return An \c Array object that is a copy of \c matrix
   /// \throw TiledArray::Exception When world size is greater than 1
   /// \note This function will only work in non-distributed environments. If you
@@ -280,29 +285,33 @@ namespace TiledArray {
   /// writing such an algorithm easier.
   template <typename A, typename Derived>
   A eigen_to_array(madness::World& world, const typename A::trange_type& trange,
-      const Eigen::MatrixBase<Derived>& matrix)
+      const Eigen::MatrixBase<Derived>& matrix, bool replicated = false)
   {
     // Check that trange matches the dimensions of other
     if((matrix.cols() > 1) && (matrix.rows() > 1)) {
       TA_USER_ASSERT(trange.tiles().dim() == 2,
-          "The number of dimensions in trange is not equal to that of the Eigen matrix.");
+          "TiledArray::eigen_to_array(): The number of dimensions in trange is not equal to that of the Eigen matrix.");
       TA_USER_ASSERT(trange.elements().size()[0] == matrix.rows(),
-          "The number of rows in trange is not equal to the number of rows in the Eigen matrix.");
+          "TiledArray::eigen_to_array(): The number of rows in trange is not equal to the number of rows in the Eigen matrix.");
       TA_USER_ASSERT(trange.elements().size()[1] == matrix.cols(),
-          "The number of columns in trange is not equal to the number of columns in the Eigen matrix.");
+          "TiledArray::eigen_to_array(): The number of columns in trange is not equal to the number of columns in the Eigen matrix.");
     } else {
       TA_USER_ASSERT(trange.tiles().dim() == 1,
-          "The number of dimensions in trange must match that of the Eigen matrix.");
+          "TiledArray::eigen_to_array(): The number of dimensions in trange must match that of the Eigen matrix.");
       TA_USER_ASSERT(trange.elements().size()[0] == matrix.size(),
-          "The size of trange must be equal to the matrix size.");
+          "TiledArray::eigen_to_array(): The size of trange must be equal to the matrix size.");
     }
 
     // Check that this is not a distributed computing environment
-    TA_USER_ASSERT(world.size() == 1,
-        "An array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
+    if(! replicated)
+      TA_USER_ASSERT(world.size() == 1,
+          "An array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
 
     // Create a new tensor
-    A array(world, trange);
+    A array = (replicated && (world.size() > 1) ?
+        A(world, trange, std::static_pointer_cast<typename A::pmap_interface>(
+            std::shared_ptr<detail::ReplicatedPmap>(new detail::ReplicatedPmap(world, trange.tiles().volume())))) :
+        A(world, trange));
 
     // Spawn tasks to copy Eigen to an Array
     madness::AtomicInt counter;
@@ -323,8 +332,11 @@ namespace TiledArray {
 
   /// Convert an Array object into an Eigen matrix object
 
-  /// This function will block until all tiles of \c array have been set and copied
-  /// into the new Eigen matrix.
+  /// This function will copy the content of an \c Array object into matrix. The
+  /// copy operation is done in parallel, and this function will block until
+  /// all elements of \c array have been copied into the result matrix. The size
+  /// of world must be exactly equal to 1, or \c array must be a replicated
+  /// object.
   /// Usage:
   /// \code
   /// TiledArray::Array<double, 2> array(world, trange);
@@ -336,18 +348,23 @@ namespace TiledArray {
   /// \tparam DIM The array dimension
   /// \tparam Tile The array tile type
   /// \param array The array to be converted
-  /// \throw TiledArray::Exception When world size is greater than 1
+  /// \throw TiledArray::Exception When world size is greater than 1 and
+  /// \c array is not replicated.
+  /// \throw TiledArray::Exception When the number of dimensions of \c array
+  /// is not equal to 1 or 2.
   /// \note This function will only work in non-distributed environments.
   template <typename T, unsigned int DIM, typename Tile>
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
   array_to_eigen(const Array<T, DIM, Tile>& array) {
     // Check that the array will fit in a matrix or vector
     TA_USER_ASSERT((DIM == 2u) || (DIM == 1u),
-        "The array dimensions must be equal to 1 or 2.");
+        "TiledArray::array_to_eigen(): The array dimensions must be equal to 1 or 2.");
 
-    // Check that this is not a distributed computing environment
-    TA_USER_ASSERT(array.get_world().size() == 1,
-        "Array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
+    // Check that this is not a distributed computing environment or that the
+    // array is replicated
+    if(! array.get_pmap()->is_replicated())
+      TA_USER_ASSERT(array.get_world().size() == 1,
+          "TiledArray::array_to_eigen(): Array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
 
     // Construct the Eigen matrix
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>

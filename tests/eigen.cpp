@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -140,44 +140,61 @@ BOOST_AUTO_TEST_CASE( tensor_to_submatrix ) {
 }
 
 BOOST_AUTO_TEST_CASE( matrix_to_array ) {
-  if(GlobalFixture::world->size() == 1) {
-    // Fill the matrix with random data
-    matrix = Eigen::MatrixXi::Random(matrix.rows(), matrix.cols());
+  // Fill the matrix with random data
+  matrix = Eigen::MatrixXi::Random(matrix.rows(), matrix.cols());
 
+  if(GlobalFixture::world->size() == 1) {
     // Copy matrix to array
     BOOST_CHECK_NO_THROW((array = eigen_to_array<Array<int, 2> >(*GlobalFixture::world, trange, matrix)));
-
-    // Check that the data in array is equal to that in matrix
-    for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-      madness::Future<Array<int, 2>::value_type > tile = array.find(*it);
-      for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
-        BOOST_CHECK_EQUAL(tile.get()[*tile_it], matrix((*tile_it)[0], (*tile_it)[1]));
-      }
-    }
   } else {
     // Check that eigen_to_array does not work in distributed environments
     BOOST_CHECK_THROW((eigen_to_array<Array<int, 2> >(*GlobalFixture::world, trange, matrix)), TiledArray::Exception);
+
+    // Note: The following tests constructs a replicated array, but the data may
+    // not be identical. That is OK here since we are check the local data, but
+    // in real applications the data should be identical.
+
+    // Copy matrix to a replicated array
+    BOOST_CHECK_NO_THROW((array = eigen_to_array<Array<int, 2> >(*GlobalFixture::world, trange, matrix, true)));
+  }
+
+  // Check that the data in array is equal to that in matrix
+  for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
+    madness::Future<Array<int, 2>::value_type > tile = array.find(*it);
+    for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
+      BOOST_CHECK_EQUAL(tile.get()[*tile_it], matrix((*tile_it)[0], (*tile_it)[1]));
+    }
   }
 }
 
 BOOST_AUTO_TEST_CASE( vector_to_array ) {
+
+  // Fill the vector with random data
+  vector = Eigen::VectorXi::Random(vector.size());
+
   if(GlobalFixture::world->size() == 1) {
-    // Fill the vector with random data
-    vector = Eigen::VectorXi::Random(vector.size());
 
     // Convert the vector to an array
     BOOST_CHECK_NO_THROW((array1 = eigen_to_array<Array<int, 1> >(*GlobalFixture::world, trange1, vector)));
 
-    // Check that the data in array matches the data in vector
-    for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
-      madness::Future<Array<int, 1>::value_type > tile = array1.find(*it);
-      for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
-        BOOST_CHECK_EQUAL(tile.get()[*tile_it], vector((*tile_it)[0]));
-      }
-    }
   } else {
     // Check that eigen_to_array does not work in distributed environments
     BOOST_CHECK_THROW((eigen_to_array<Array<int, 1> >(*GlobalFixture::world, trange1, vector)), TiledArray::Exception);
+
+    // Note: The following tests constructs a replicated array, but the data may
+    // not be identical. That is OK here since we are check the local data, but
+    // in real applications the data should be identical.
+
+    // Convert the vector to an array
+    BOOST_CHECK_NO_THROW((array1 = eigen_to_array<Array<int, 1> >(*GlobalFixture::world, trange1, vector, true)));
+  }
+
+  // Check that the data in array matches the data in vector
+  for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
+    madness::Future<Array<int, 1>::value_type > tile = array1.find(*it);
+    for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
+      BOOST_CHECK_EQUAL(tile.get()[*tile_it], vector((*tile_it)[0]));
+    }
   }
 }
 
@@ -210,7 +227,42 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     }
   } else {
     // Check that eigen_to_array throws when there is more than one node
-    BOOST_CHECK_THROW((eigen_to_array<Array<int, 2> >(*GlobalFixture::world, trange, matrix)), TiledArray::Exception);
+    BOOST_CHECK_THROW(array_to_eigen(array), TiledArray::Exception);
+
+    // Fill local tiles with data
+    GlobalFixture::world->srand(27);
+    Array<int, 1>::pmap_interface::const_iterator it = array.get_pmap()->begin();
+    Array<int, 1>::pmap_interface::const_iterator end = array.get_pmap()->end();
+    for(; it != end; ++it) {
+      Array<int, 2>::value_type tile(array.trange().make_tile_range(*it));
+      for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
+        *tile_it = GlobalFixture::world->rand();
+      }
+      array.set(*it, tile);
+    }
+
+    // Distribute the data of array1 to all nodes
+    array.make_replicated();
+
+    BOOST_CHECK(array.get_pmap()->is_replicated());
+
+    // Convert the array to an Eigen vector
+    BOOST_CHECK_NO_THROW(matrix = array_to_eigen(array));
+
+
+    // Check that the matrix dimensions are the same as the array
+    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements().size()[0]);
+    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements().size()[1]);
+
+    // Check that the data in vector matches the data in array
+    for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
+      BOOST_CHECK(array.is_local(*it));
+
+      madness::Future<Array<int, 1>::value_type > tile = array.find(*it);
+      for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
+        BOOST_CHECK_EQUAL(matrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
+      }
+    }
   }
 }
 
@@ -231,7 +283,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(vector.rows(), array.trange().elements().size()[0]);
+    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements().size()[0]);
     BOOST_CHECK_EQUAL(vector.cols(), 1);
 
     // Check that the data in vector matches the data in array
@@ -244,6 +296,42 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
   } else {
     // Check that eigen_to_array throws when there is more than one node
     BOOST_CHECK_THROW(array_to_eigen(array1), TiledArray::Exception);
+
+    // Fill local tiles with data
+    GlobalFixture::world->srand(27);
+    Array<int, 1>::pmap_interface::const_iterator it = array1.get_pmap()->begin();
+    Array<int, 1>::pmap_interface::const_iterator end = array1.get_pmap()->end();
+    for(; it != end; ++it) {
+      Array<int, 1>::value_type tile(array1.trange().make_tile_range(*it));
+      for(Array<int, 1>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
+        *tile_it = GlobalFixture::world->rand();
+      }
+      array1.set(*it, tile);
+    }
+
+    // Distribute the data of array1 to all nodes
+    array1.make_replicated();
+
+    BOOST_CHECK(array1.get_pmap()->is_replicated());
+
+    // Convert the array to an Eigen vector
+    BOOST_CHECK_NO_THROW(vector = array_to_eigen(array1));
+
+
+    // Check that the matrix dimensions are the same as the array
+    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements().size()[0]);
+    BOOST_CHECK_EQUAL(vector.cols(), 1);
+
+    // Check that the data in vector matches the data in array
+    for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
+      BOOST_CHECK(array1.is_local(*it));
+
+      madness::Future<Array<int, 1>::value_type > tile = array1.find(*it);
+      for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
+        BOOST_CHECK_EQUAL(vector((*tile_it)[0]), tile.get()[*tile_it]);
+      }
+    }
+
   }
 }
 
