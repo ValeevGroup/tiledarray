@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -60,6 +60,9 @@ namespace TiledArray {
     /// \return \c true when there are no local elements, otherwise \c false .
     virtual bool empty() const = 0;
 
+    /// Replicated array status
+
+    /// \return \c true if the array is replicated, and false otherwise
     virtual bool is_replicated() const { return false; }
 
     /// Begin local element iterator
