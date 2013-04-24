@@ -38,6 +38,7 @@ namespace TiledArray {
     struct Enabler { };
   public:
     typedef Tensor<T, A> Tensor_;
+    typedef Tensor_ eval_type; ///< The type used when evaluating expressions
     typedef DenseStorage<T,A> storage_type;
     typedef Range range_type;
     typedef typename storage_type::value_type value_type;

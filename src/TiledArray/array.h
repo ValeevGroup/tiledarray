@@ -44,6 +44,7 @@ namespace TiledArray {
     typedef typename impl_type::range_type::index index; ///< Array coordinate index type
     typedef typename impl_type::size_type size_type; ///< Size type
     typedef typename impl_type::value_type value_type; ///< Tile type
+    typedef typename impl_type::eval_type eval_type; ///< The tile evaluation type
     typedef typename impl_type::reference future; ///< Future of \c value_type
     typedef typename impl_type::reference reference; ///< \c future type
     typedef typename impl_type::const_reference const_reference; ///< \c future type
@@ -255,7 +256,7 @@ namespace TiledArray {
 
     /// \param v A string with a comma-separated list of variables
     /// \return An annotated tensor object that references this array
-    expressions::TensorExpression<Tensor<T> >
+    expressions::TensorExpression<eval_type>
     operator ()(const std::string& v) const {
       return expressions::make_annotated_tensor(*this, v);
     }
@@ -264,7 +265,7 @@ namespace TiledArray {
 
     /// \param v A variable list object
     /// \return An annotated tensor object that references this array
-    expressions::TensorExpression<Tensor<T> >
+    expressions::TensorExpression<eval_type>
     operator ()(const expressions::VariableList& v) const {
       return expressions::make_annotated_tensor(*this, v);
     }

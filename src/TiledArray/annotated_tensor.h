@@ -270,23 +270,23 @@ namespace TiledArray {
 
 
     template <typename T, unsigned int DIM, typename Tile>
-    inline TensorExpression<Tensor<T> >
+    inline TensorExpression<typename Array<T, DIM, Tile>::eval_type>
     make_annotated_tensor(const Array<T, DIM, Tile>& array, const VariableList& vars) {
       typedef detail::AnnotatedTensorImpl<Array<T, DIM, Tile> > impl_type;
       std::shared_ptr<typename impl_type::TensorExpressionImpl_> pimpl(
           new impl_type(array, vars),
           madness::make_deferred_deleter<impl_type>(array.get_world()));
-      return TensorExpression<Tensor<T> >(pimpl);
+      return TensorExpression<typename Array<T, DIM, Tile>::eval_type>(pimpl);
     }
 
     template <typename T, unsigned int DIM, typename Tile>
-    inline TensorExpression<Tensor<T> >
+    inline TensorExpression<typename Array<T, DIM, Tile>::eval_type>
     make_annotated_tensor(const Array<T, DIM, Tile>& array, const std::string& vars) {
       typedef detail::AnnotatedTensorImpl<Array<T, DIM, Tile> > impl_type;
       std::shared_ptr<typename impl_type::TensorExpressionImpl_> pimpl(
           new impl_type(array, VariableList(vars)),
           madness::make_deferred_deleter<impl_type>(array.get_world()));
-      return TensorExpression<Tensor<T> >(pimpl);
+      return TensorExpression<typename Array<T, DIM, Tile>::eval_type>(pimpl);
     }
 
   } // namespace expressions
