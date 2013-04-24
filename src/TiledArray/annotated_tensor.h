@@ -100,10 +100,8 @@ namespace TiledArray {
         void scale_and_set_tile(const size_type i, const value_type& value) {
           TensorExpressionImpl_::set(i, value_type(value.range(), value.begin(),
               std::bind2nd(TiledArray::detail::multiplies<typename value_type::value_type,
-                                                          numeric_type,
-                                                          typename value_type::value_type
-                                                         >(),
-              TensorExpressionImpl_::scale())));
+                  numeric_type, typename value_type::value_type>(),
+                  TensorExpressionImpl_::scale())));
         }
 
         /// Task function that is used to convert an input tile to value_type, scale it, and store it
@@ -111,12 +109,9 @@ namespace TiledArray {
         /// \param i The tile index
         /// \param value The tile from the array
         void convert_scale_and_set_tile(const size_type i, const typename array_type::value_type& value) {
-          TensorExpressionImpl_::set(i, value_type(value.range(), value.begin(),
-              std::bind2nd(TiledArray::detail::multiplies<typename value_type::value_type,
-                                                          numeric_type,
-                                                          typename value_type::value_type
-                                                         >(),
-              TensorExpressionImpl_::scale())));
+          value_type tile(value);
+          tile *= TensorExpressionImpl_::scale();
+          TensorExpressionImpl_::set(i, tile);
         }
 
         /// Set a tile
