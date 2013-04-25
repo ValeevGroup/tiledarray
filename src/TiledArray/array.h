@@ -1,11 +1,11 @@
 /*
- *  This file is a part of TiledArray.
- *  Copyright (C) 2013  Virginia Tech
+ * This file is a part of TiledArray.
+ * Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
+ *   (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -393,12 +393,13 @@ namespace TiledArray {
   /// tiles. It will wait for each tile to be evaluated (i.e. it is a blocking
   /// function). Tasks will continue to be processed.
   /// \tparam T The element type of Array
-  /// \tparam CS The coordinate system type of Array
+  /// \tparam DIM The number of dimensions
+  /// \tparam Tile The Tile type
   /// \param os The output stream
   /// \param a The array to be put in the output stream
   /// \return A reference to the output stream
-  template <typename T, unsigned int DIM>
-  inline std::ostream& operator<<(std::ostream& os, const Array<T, DIM>& a) {
+  template <typename T, unsigned int DIM, typename Tile>
+  inline std::ostream& operator<<(std::ostream& os, const Array<T, DIM, Tile>& a) {
     if(a.get_world().rank() == 0) {
       for(std::size_t i = 0; i < a.size(); ++i)
         if(! a.is_zero(i))

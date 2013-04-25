@@ -35,9 +35,9 @@ namespace TiledArray {
       /// \tparam A The \c Array type
       /// \tparam Op The Unary transform operator type.
       template <typename A>
-      class AnnotatedTensorImpl : public TensorExpressionImpl<Tensor<typename A::element_type> > {
+      class AnnotatedTensorImpl : public TensorExpressionImpl<typename A::eval_type> {
       public:
-        typedef TensorExpressionImpl<typename A::value_type> TensorExpressionImpl_; ///< The base class type
+        typedef TensorExpressionImpl< typename A::eval_type > TensorExpressionImpl_; ///< The base class type
         typedef typename TensorExpressionImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
         typedef AnnotatedTensorImpl<A> AnnotatedTensorImpl_; ///< This object type
         typedef A array_type; ///< The array type
