@@ -28,6 +28,24 @@ namespace TiledArray {
   namespace expressions {
     namespace detail {
 
+      template <typename AT, typename Enabler = void>
+      struct AssignArrayHelper {
+        static void assign(std::shared_ptr<AT>&, TensorExpression<typename AT::value_type>& other) {
+          TA_USER_ASSERT(false, "You cannot assign to an unassignable array.")
+        }
+      }; // AssignArrayHelper
+
+      template <typename AT>
+      struct AssignArrayHelper<AT, typename madness::enable_if<
+          std::is_same<typename AT::array_type::value_type,
+                       typename AT::value_type> >::type>
+      {
+        static void assign(std::shared_ptr<AT>& pimpl, TensorExpression<typename AT::value_type>& other) {
+          other.eval(pimpl->vars(), pimpl->array().get_pmap()->clone()).get();
+          pimpl->array() = other.template convert_to_array<typename AT::array_type>();
+        }
+      }; // AssignArrayHelper
+
       /// Wraps an \c Array object as a tensor expression
 
       /// This object converts an \c Array obect into a tensor expression and
@@ -78,9 +96,11 @@ namespace TiledArray {
         const array_type& array() const { return array_; }
 
         /// Assign a tensor expression to this object
-        virtual void assign(std::shared_ptr<TensorExpressionImpl_>&, TensorExpression<value_type>& other) {
-          other.eval(TensorExpressionImpl_::vars(), array_.get_pmap()->clone()).get();
-          array_ = other.template convert_to_array<array_type>();
+        virtual void assign(std::shared_ptr<TensorExpressionImpl_>& pimpl, TensorExpression<value_type>& other) {
+          TA_ASSERT(pimpl.get() == this);
+          std::shared_ptr<AnnotatedTensorImpl_> this_ptr =
+              std::static_pointer_cast<AnnotatedTensorImpl_>(pimpl);
+          AssignArrayHelper<AnnotatedTensorImpl_>::assign(this_ptr, other);
         }
 
       private:
