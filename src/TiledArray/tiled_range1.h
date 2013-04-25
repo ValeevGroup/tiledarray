@@ -150,7 +150,7 @@ namespace TiledArray {
     template <typename RandIter>
     static bool valid_(RandIter first, RandIter last) {
       // Verify at least 2 elements are present if the vector is not empty.
-      if((last - first) == 2)
+      if(std::distance(first, last) < 2)
         return false;
       // Verify the requirement that a0 < a1 < a2 < ...
       for (; first != (last - 1); ++first)
