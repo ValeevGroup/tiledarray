@@ -175,7 +175,7 @@ namespace TiledArray {
           TA_ASSERT(evaluated_);
 
           if(perm_.dim())
-            permute_and_set(i, madness::unwrap_move(value));
+            permute_and_set(i, value);
           else
             TensorImpl_::set(i, value);
         }
