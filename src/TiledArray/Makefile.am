@@ -48,6 +48,7 @@ library_include_HEADERS = annotated_tensor.h \
                           replicated_pmap.h \
                           replicator.h \
                           shape.h \
+                          size_array.h \
                           spsumma.h \
                           summa.h \
                           tensor_expression.h \
