@@ -234,6 +234,23 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Multiply assignment
+
+    /// Evaluate \c other to this tensor
+    /// \param other The tensor to be copied
+    /// \return this tensor
+    template <typename U>
+    typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
+    operator*=(const U u) {
+      if(pimpl_) {
+        const iterator end =  pimpl_->data_.end();
+        for(iterator it = pimpl_->data_.begin(); it != end; ++it)
+          *it *= u;
+      }
+
+      return *this;
+    }
+
     /// Tensor range object accessor
 
     /// \return The tensor range object
