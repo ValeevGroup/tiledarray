@@ -121,16 +121,17 @@ namespace TiledArray {
 
       range_type range_; ///< Tensor size info
       storage_type data_; ///< Tensor data
-    }; // class Tensor
+    }; // class Impl
 
-    std::shared_ptr<Impl> pimpl_;
+    std::shared_ptr<Impl> pimpl_; ///< Shared pointer to implementation object
+    static const range_type empty_range_; ///< Empty range
 
   public:
 
     /// Default constructor
 
     /// Construct an empty tensor that has no data or dimensions
-    Tensor() : pimpl_(new Impl()) { }
+    Tensor() : pimpl_() { }
 
     /// Construct an evaluated tensor
 
@@ -191,7 +192,8 @@ namespace TiledArray {
     template <typename U, typename AU>
     Tensor_& operator+=(const Tensor<U, AU>& other) {
       if(!pimpl_) {
-        pimpl_.reset(new Impl(other.range(), other.begin()));
+        if(! other.empty())
+          pimpl_.reset(new Impl(other.range(), other.begin()));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
         pimpl_->data_ += other;
@@ -208,7 +210,8 @@ namespace TiledArray {
     template <typename U, typename AU>
     Tensor_& operator-=(const Tensor<U, AU>& other) {
       if(!pimpl_) {
-        pimpl_.reset(new Impl(other.range(), other.begin(), std::bind1st(std::minus<value_type>(), 0)));
+        if(! other.empty())
+          pimpl_.reset(new Impl(other.range(), other.begin(), std::bind1st(std::minus<value_type>(), 0)));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
         pimpl_->data_ -= other;
@@ -225,7 +228,8 @@ namespace TiledArray {
     template <typename U, typename RU, typename AU>
     Tensor_& operator*=(const Tensor<U, AU>& other) {
       if(!pimpl_) {
-        pimpl_.reset(new Impl(other.range(), 0));
+        if(! other.empty())
+          pimpl_.reset(new Impl(other.range(), 0));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
         pimpl_->data_ *= other;
@@ -254,22 +258,32 @@ namespace TiledArray {
     /// Tensor range object accessor
 
     /// \return The tensor range object
-    const range_type& range() const { return pimpl_->range_; }
+    const range_type& range() const {
+      return (pimpl_ ? pimpl_->range_ : empty_range_);
+    }
 
     /// Tensor dimension size accessor
 
     /// \return The number of elements in the tensor
-    size_type size() const { return pimpl_->range_.volume(); }
+    size_type size() const {
+      return (pimpl_ ? pimpl_->range_.volume() : 0ul);
+    }
 
     /// Element accessor
 
     /// \return The element at the \c i position.
-    const_reference operator[](const size_type i) const { return pimpl_->data_[i]; }
+    const_reference operator[](const size_type i) const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->data_[i];
+    }
 
     /// Element accessor
 
     /// \return The element at the \c i position.
-    reference operator[](const size_type i) { return pimpl_->data_[i]; }
+    reference operator[](const size_type i) {
+      TA_ASSERT(pimpl_);
+      return pimpl_->data_[i];
+    }
 
 
     /// Element accessor
@@ -277,46 +291,52 @@ namespace TiledArray {
     /// \return The element at the \c i position.
     template <typename Index>
     typename madness::disable_if<std::is_integral<Index>, const_reference>::type
-    operator[](const Index& i) const { return pimpl_->data_[pimpl_->range_.ord(i)]; }
+    operator[](const Index& i) const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->data_[pimpl_->range_.ord(i)];
+    }
 
     /// Element accessor
 
     /// \return The element at the \c i position.
     template <typename Index>
     typename madness::disable_if<std::is_integral<Index>, reference>::type
-    operator[](const Index& i) { return pimpl_->data_[pimpl_->range_.ord(i)]; }
+    operator[](const Index& i) {
+      TA_ASSERT(pimpl_);
+      return pimpl_->data_[pimpl_->range_.ord(i)];
+    }
 
     /// Iterator factory
 
     /// \return An iterator to the first data element
-    const_iterator begin() const { return pimpl_->data_.begin(); }
+    const_iterator begin() const { return (pimpl_ ? pimpl_->data_.begin() : NULL); }
 
     /// Iterator factory
 
     /// \return An iterator to the first data element
-    iterator begin() { return pimpl_->data_.begin(); }
+    iterator begin() { return (pimpl_ ? pimpl_->data_.begin() : NULL); }
 
     /// Iterator factory
 
     /// \return An iterator to the last data element
-    const_iterator end() const { return pimpl_->data_.end(); }
+    const_iterator end() const { return (pimpl_ ? pimpl_->data_.end() : NULL); }
 
     /// Iterator factory
 
     /// \return An iterator to the last data element
-    iterator end() { return pimpl_->data_.end(); }
+    iterator end() { return (pimpl_ ? pimpl_->data_.end() : NULL); }
 
     /// Data direct access
 
     /// \return A const pointer to the tensor data
-    const_pointer data() const { return pimpl_->data_.data(); }
+    const_pointer data() const { return (pimpl_ ? pimpl_->data_.data() : NULL); }
 
     /// Data direct access
 
     /// \return A const pointer to the tensor data
-    pointer data() { return pimpl_->data_.data(); }
+    pointer data() { return (pimpl_ ? pimpl_->data_.data() : NULL); }
 
-    bool empty() const { return pimpl_->data_.empty(); }
+    bool empty() const { return (pimpl_ ? pimpl_->data_.empty() : true); }
 
     /// Serialize tensor data
 
@@ -336,11 +356,10 @@ namespace TiledArray {
       std::swap(pimpl_, other.pimpl_);
     }
 
-  private:
-
-    range_type range_; ///< Tensor size info
-    storage_type data_; ///< Tensor data
   }; // class Tensor
+
+  template <typename T, typename A>
+  const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
 
   template <typename T, typename AT, typename U, typename AU>
   Tensor<T, AT> operator+(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
