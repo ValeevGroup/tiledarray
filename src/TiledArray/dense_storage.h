@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,7 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/math.h>
+#include <TiledArray/math/math.h>
 #include <world/archive.h>
 #include <Eigen/Core>
 #include <cstddef>

@@ -23,7 +23,7 @@
 #include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
 #include <TiledArray/madness.h>
-#include <TiledArray/functional.h>
+#include <TiledArray/math/functional.h>
 
 namespace TiledArray {
 

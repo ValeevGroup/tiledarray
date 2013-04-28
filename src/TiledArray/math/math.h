@@ -22,7 +22,7 @@
 
 #include <TiledArray/config.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/blas.h>
+#include <TiledArray/math/blas.h>
 #include <world/enable_if.h>
 #include <Eigen/Core>
 

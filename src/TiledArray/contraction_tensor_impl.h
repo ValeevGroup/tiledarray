@@ -23,7 +23,7 @@
 #include <TiledArray/tensor_expression.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/cyclic_pmap.h>
-#include <TiledArray/math.h>
+#include <TiledArray/math/math.h>
 #include <TiledArray/annotated_tensor.h>
 
 namespace TiledArray {
