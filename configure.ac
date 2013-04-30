@@ -115,6 +115,7 @@ AC_CONFIG_FILES([
       src/TiledArray/Makefile
         src/TiledArray/math/Makefile
         src/TiledArray/pmap/Makefile
+        src/TiledArray/expressions/Makefile
     tests/Makefile
     examples/Makefile
       examples/cc/Makefile

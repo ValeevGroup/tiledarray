@@ -21,7 +21,7 @@
 #define TILEDARRAY_TENSOR_EXPRESSION_IMPL_H__INCLUDED
 
 #include <TiledArray/tensor_impl.h>
-#include <TiledArray/variable_list.h>
+#include <TiledArray/expressions/variable_list.h>
 #include <TiledArray/pmap/blocked_pmap.h>
 
 namespace TiledArray {

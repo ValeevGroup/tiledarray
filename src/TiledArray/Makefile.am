@@ -18,7 +18,7 @@
 
 # src/TiledArray/Makefile
 
-SUBDIRS = math pmap
+SUBDIRS = math pmap expressions
 library_includedir = $(includedir)/TiledArray
 library_include_HEADERS = annotated_tensor.h \
                           array.h \
@@ -53,6 +53,5 @@ library_include_HEADERS = annotated_tensor.h \
                           transform_iterator.h \
                           type_traits.h \
                           unary_tensor.h \
-                          variable_list.h \
                           vspgemm.h \
                           config.h
