@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,22 +17,21 @@
  *
  */
 
-#ifndef TILEDARRAY_BLOCKED_PMAP_H__INCLUDED
-#define TILEDARRAY_BLOCKED_PMAP_H__INCLUDED
+#ifndef TILEDARRAY_PMAP_REPLICATED_PMAP_H__INCLUDED
+#define TILEDARRAY_PMAP_REPLICATED_PMAP_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <TiledArray/pmap.h>
+#include <TiledArray/pmap/pmap.h>
 #include <TiledArray/madness.h>
 #include <algorithm>
 
 namespace TiledArray {
   namespace detail {
 
-    /// A blocked process map
+    /// A Replicated process map
 
-    /// Map N elements among P processes into blocks that are approximately N/P
-    /// elements in size. A minimum block size may also be specified.
-    class BlockedPmap : public Pmap<std::size_t> {
+    /// Defines a process map where all processes own data.
+    class ReplicatedPmap : public Pmap<std::size_t> {
     public:
       typedef Pmap<std::size_t>::key_type key_type; ///< Key type
       typedef Pmap<std::size_t>::const_iterator const_iterator;
@@ -41,69 +40,38 @@ namespace TiledArray {
 
       /// \param world A reference to the world
       /// \param size The number of elements to be mapped
-      /// \param num_blocks The number of blocks [default = world.size()]
-      /// \param seed The hashing seed for pseudorandom selection of nodes
-      /// \param min_block_size The smallest block size allowed [default = 1]
-      /// \note \c seed must be the same on all nodes.
-      BlockedPmap(madness::World& world, std::size_t size, std::size_t num_blocks = 0ul, std::size_t min_block_size = 1ul) :
-          block_size_(),
-          num_blocks_(),
+      ReplicatedPmap(madness::World& world, std::size_t size) :
           size_(size),
           rank_(world.rank()),
           procs_(world.size()),
-          seed_(0ul),
           local_()
-      {
-        TA_ASSERT(size_ > 0ul);
-
-        // Check for the default value of num_blocks
-        if((num_blocks == 0ul) || (num_blocks > procs_))
-          num_blocks = world.size();
-
-        TA_ASSERT(min_block_size > 0ul);
-        block_size_ = std::max<std::size_t>((size_ / num_blocks) + (size_ % num_blocks ? 1 : 0), min_block_size);
-        TA_ASSERT(block_size_ > 0ul);
-
-        num_blocks_ = (size_ / block_size_) + (size_ % block_size_ ? 1 : 0);
-      }
+      { }
 
     private:
 
-      BlockedPmap(const BlockedPmap& other) :
-          block_size_(other.block_size_),
-          num_blocks_(other.num_blocks_),
+      ReplicatedPmap(const ReplicatedPmap& other) :
           size_(other.size_),
           rank_(other.rank_),
           procs_(other.procs_),
-          seed_(0ul),
           local_()
       { }
 
     public:
 
-      ~BlockedPmap() { }
+      ~ReplicatedPmap() { }
 
-      virtual void set_seed(madness::hashT seed = 0ul) {
-        seed_ = seed;
-
+      virtual void set_seed(madness::hashT) {
         // Construct a map of all local processes
-        for(std::size_t block = 0; block < num_blocks_; ++block) {
-          if(map_block_to_process(block) == rank_) {
-            // The block maps to this process so add it to the local list
-            local_.reserve(local_.size() + block_size_);
-            const std::size_t block_start = block * block_size_;
-            const std::size_t block_finish = (block + 1) * block_size_;
-            for(std::size_t i = block_start; (i < block_finish) && (i < size_); ++i)
-              local_.push_back(i);
-          }
-        }
+        local_.reserve(size_);
+        for(std::size_t i = 0; i < size_; ++i)
+          local_.push_back(i);
       }
 
       /// Create a copy of this pmap
 
       /// \return A shared pointer to the new object
       virtual std::shared_ptr<Pmap<key_type> > clone() const {
-        return std::shared_ptr<Pmap<key_type> >(new BlockedPmap(*this));
+        return std::shared_ptr<Pmap<key_type> >(new ReplicatedPmap(*this));
       }
 
       /// Maps key to processor
@@ -112,7 +80,7 @@ namespace TiledArray {
       /// \return Processor that logically owns the key
       ProcessID owner(const key_type& key) const {
         TA_ASSERT(key < size_);
-        return map_block_to_process(key / block_size_);
+        return rank_;
       }
 
       /// Local size accessor
@@ -125,11 +93,15 @@ namespace TiledArray {
       /// \return \c true when there are no local elements, otherwise \c false .
       bool empty() const { return local_.empty(); }
 
+      /// Replicated array status
+
+      /// \return \c true if the array is replicated, and false otherwise
+      virtual bool is_replicated() const { return true; }
+
       /// Begin local element iterator
 
       /// \return An iterator that points to the beginning of the local element set
       const_iterator begin() const { return local_.begin(); }
-
 
       /// End local element iterator
 
@@ -142,22 +114,10 @@ namespace TiledArray {
       virtual const std::vector<key_type>& local() const { return local_; }
 
     private:
-      ProcessID map_block_to_process(std::size_t block) const {
-        TA_ASSERT(block < num_blocks_);
-        if(num_blocks_ == procs_)
-          return block;
 
-        madness::hashT seed = seed_;
-        madness::hash_combine(seed, block);
-        return seed_ % procs_;
-      }
-
-      std::size_t block_size_; ///< block size
-      std::size_t num_blocks_; ///< number of blocks in map
       const std::size_t size_; ///< The number of elements to be mapped
       const std::size_t rank_;
       const std::size_t procs_; ///< The number of processes in the world
-      madness::hashT seed_; ///< seed for hashing block locations
       std::vector<std::size_t> local_; ///< A list of local elements
     }; // class MapByRow
 
@@ -165,4 +125,4 @@ namespace TiledArray {
 }  // namespace TiledArray
 
 
-#endif // TILEDARRAY_BLOCKED_PMAP_H__INCLUDED
+#endif // TILEDARRAY_PMAP_REPLICATED_PMAP_H__INCLUDED

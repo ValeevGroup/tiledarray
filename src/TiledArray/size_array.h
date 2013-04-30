@@ -98,13 +98,9 @@ namespace TiledArray {
         typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
         reverse_iterator rbegin() { return reverse_iterator(end()); }
-        const_reverse_iterator rbegin() const {
-            return const_reverse_iterator(end());
-        }
+        const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
         reverse_iterator rend() { return reverse_iterator(begin()); }
-        const_reverse_iterator rend() const {
-            return const_reverse_iterator(begin());
-        }
+        const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
 
         // operator[]
         reference operator[](size_type i) { return first_[i]; }
@@ -161,6 +157,7 @@ namespace TiledArray {
         // assign one value to all elements
         void assign (const T& value) { std::fill(begin(), end(), value); }
 
+        // Comparison operators
         template <typename U>
         bool operator==(const SizeArray<U>& other) const {
           const std::size_t n = size();

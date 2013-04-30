@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,7 +18,7 @@
  */
 
 #include <tiled_array.h>
-#include <TiledArray/hash_pmap.h>
+#include <TiledArray/pmap/hash_pmap.h>
 
 std::vector<ProcessID> make_map(std::size_t m, std::size_t n, std::shared_ptr<TiledArray::Pmap<std::size_t> >& pmap) {
   std::vector<ProcessID> map;

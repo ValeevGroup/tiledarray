@@ -22,7 +22,7 @@
 
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/variable_list.h>
-#include <TiledArray/blocked_pmap.h>
+#include <TiledArray/pmap/blocked_pmap.h>
 
 namespace TiledArray {
 
