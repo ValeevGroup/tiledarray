@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_BLAS_H__INCLUDED
-#define TILEDARRAY_BLAS_H__INCLUDED
+#ifndef TILEDARRAY_MATH_BLAS_H__INCLUDED
+#define TILEDARRAY_MATH_BLAS_H__INCLUDED
 
 #include <TiledArray/config.h>
 #include <fortran_ctypes.h>
@@ -91,4 +91,4 @@ extern "C" {
 
 #endif
 
-#endif // TILEDARRAY_BLAS_H__INCLUDED
+#endif // TILEDARRAY_MATH_BLAS_H__INCLUDED

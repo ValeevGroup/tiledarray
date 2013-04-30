@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_MATH_H__INCLUDED
-#define TILEDARRAY_MATH_H__INCLUDED
+#ifndef TILEDARRAY_MATH_MATH_H__INCLUDED
+#define TILEDARRAY_MATH_MATH_H__INCLUDED
 
 #include <TiledArray/config.h>
 #include <TiledArray/type_traits.h>
@@ -218,4 +218,4 @@ namespace TiledArray {
   }  // namespace detail
 }  // namespace TiledArray
 
-#endif // TILEDARRAY_MATH_H__INCLUDED
+#endif // TILEDARRAY_MATH_MATH_H__INCLUDED

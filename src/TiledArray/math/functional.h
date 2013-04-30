@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_FUNCTIONAL_H__INCLUDED
-#define TILEDARRAY_FUNCTIONAL_H__INCLUDED
+#ifndef TILEDARRAY_MATH_FUNCTIONAL_H__INCLUDED
+#define TILEDARRAY_MATH_FUNCTIONAL_H__INCLUDED
 
 namespace TiledArray {
   namespace detail {
@@ -59,4 +59,4 @@ namespace TiledArray {
   }  // namespace detail
 }  // namespace TiledArray
 
-#endif // TILEDARRAY_FUNCTIONAL_H__INCLUDED
+#endif // TILEDARRAY_MATH_FUNCTIONAL_H__INCLUDED
