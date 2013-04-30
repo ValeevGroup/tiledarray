@@ -229,7 +229,6 @@ namespace TiledArray {
         virtual void eval_tiles() {
           typedef typename TiledArray::detail::scalar_type<typename value_type::value_type>::type
               numeric_type; ///< the numeric type that supports Tile
-          static const numeric_type one(1);
 
           // Make sure all local tiles are present.
           const typename pmap_interface::const_iterator end =
