@@ -169,13 +169,13 @@ namespace TiledArray {
 
     private:
 
-      std::size_t procs_; ///< Number of processes in the world
       std::size_t rank_; ///< This process's rank
+      std::size_t procs_; ///< Number of processes in the world
       std::size_t m_; ///< Number of rows to be mapped
       std::size_t n_; ///< Number of columns to be mapped
       std::size_t x_; ///< Number of process rows
       std::size_t y_; ///< Number of process columns
-      madness::hashT seed_; ///< Hashing seed for process randomization
+//      madness::hashT seed_; ///< Hashing seed for process randomization
       std::vector<key_type> local_; ///< A vector of local elements in map.
     }; // class CyclicPmap
 
