@@ -227,9 +227,6 @@ namespace TiledArray {
         /// has completed. It should spawn additional tasks that evaluate the
         /// Individual result tiles.
         virtual void eval_tiles() {
-          typedef typename TiledArray::detail::scalar_type<typename value_type::value_type>::type
-              numeric_type; ///< the numeric type that supports Tile
-
           // Make sure all local tiles are present.
           const typename pmap_interface::const_iterator end =
               TensorExpressionImpl_::pmap()->end();
