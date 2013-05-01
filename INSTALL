@@ -1,128 +1,254 @@
-TiledArray Installation instructions:
+Software Stack
+==============
 
-Prerequisites:
-- Software:
-  - C and C++ compiler
-    TiledArray only requires a c++ complier, but m-a-d-n-e-s-s also requires a
-    c compiler. This package was developed with GNU GCC 4.4.x, but any GCC 4.2.x
-    and higher should work, as well as any compiler with good template support.
- 
-  - Autotools (optional)
-    Autotools is needed if you want an automated installation and testing process.
+Required
 
-- Libraries:
-  - m-a-d-n-e-s-s 
-    This is an open source library which is designed to solve quantum chemistry
-    problems. (http://code.google.com/p/m-a-d-n-e-s-s/)
-    
-  - MPI-2
-    Most MPI-2 implementations should work. It is required for both TiledArray
-    and m-a-d-n-e-s-s. Both MPICH2 (http://www.mcs.anl.gov/research/projects/mpich2/)
-    and OpenMPI (http://www.open-mpi.org/) should work.
+  * Apple Xcode 3.2 or later
+  * MPI-2 or MPI-3
+  * MADNESS
+  * Eigen 3.x or later
+  * Boost (for unit tests only)
+  * GNU Autotools
+    * autoconf 2.59 or later
+    * automake 1.11 or later
+    * libtool 2.x or later (??? not sure on earliest working version)
+  * Subversion (svn)
+  * Mercurial (hg)
 
-  - BLAS and LAPACK
-    BLAS is optional for TiledArray, but BLAS and LAPACK are required by m-a-d-n-e-s-s.
-    You can use your favorite implementation for this.
-      
-  - Eigen 3
-    This is an open source c++ template library which is a c++ replacement for
-    BLAS and LAPACK. It is the default math library for TiledArray, but you may
-    replace it with BLAS. You can download a copy of it here:
-    http://eigen.tuxfamily.org/index.php?title=Main_Page .
-    
-  - Boost
-    This is a semi-standard open source c++ template library. It contains many
-    useful generic template libraries you can use with your programs. You can
-    download a copy of it here: http://www.boost.org/ .
+Recommended
 
-  - TCMalloc (optional)
-    This is a fast memory allocation tool designed by Google. It is an optional
-    component for m-a-d-n-e-s-s, and it is highly recommend for any application
-    where fast performance is needed. You may download a copy of it here:
-    http://code.google.com/p/google-perftools/ .
+  * MacPorts
+  * BLAS, which is included in OS X Accelerate framework (highly recommended)
 
-  - Google Test (optional)
-    This is a unit testing suite that was created by Google. It is only used for
-    unit testing with m-a-d-n-e-s-s. If you do not want to run these unit tests
-    (not recommended), then you will not need this component. Note: Unit testing
-    for TiledArray is done with Boost Test.
-    
-  - PAPI (optional)
-    This is an optional component for m-a-d-n-e-s-s. Currently, it is only
-    implemented on Linux operating systems.
+Optional
 
-Building:
+  * Doxygen
 
-  TiledArray is a template library, so there is no precompiled library for you 
-  to include in your project. Therefore you may need to specify additional
-  compiler arguments in your project. First you will need to make sure you have
-  all the necessary prerequisites listed above.
-  
-  Next, you need to specify the include paths for each of the following:
-  libraries:
-    - m-a-d-n-e-s-s
-    - Eigen 3
-    - Boost
-    - BLAS (optional)
-  For GCC the include paths will look something like the following:
-  
-    -I/path/to/madness/include -I/path/to/eigen/include -I/path/to/boost/include -I/path/to/blas/include
-  
-  You must also specify the library paths for each of the following: 
-    - m-a-d-n-e-s-s
-    - BLAS (optional)
-  For GCC the library paths will look something like the following:
-    -L/path/to/madness/lib -L/path/to/blas/lib
-  You will also need to inlculd the m-a-d-n-e-s-s and possible blas libraries
-  to your link commands. For example:
-    -lMADworld -lblas
-    
-  Next, there are three macro definitions that you may want to specify to change
-  the behavior of TiledArray.
-    -DTA_EXCEPTION_ERROR
-      TiledArray will perform runtime error checking and throw exceptions when
-      an error is encountered. 
-    -DTA_ASSERT_ERROR
-      TiledArray will perform runtime error checking and will call the standard
-      assert() or exit() function when an error is encountered.
-  If nether of these compile macros are used then TiledArray will perform minimal
-  error checking and call exit() when an error is encountered.
-  
-    
+If you already have all the dependencies installed, you can skip ahead to the
+Build TiledArray section.
 
-Configuration options:
+Build and Install Dependencies
+==============================
 
- --enable-cpp0x[=compiler arg]
-                          Enable experimental c++0x standard
-                          [default=-std=c++0x].
-   
-   This option is used to enable experimental C++0x standard. The argument for 
-   this option will be passed to the C++ compiler. The default option is the
-   "-std=c++0x", and is the argument required by GCC for this standard.
-                          
-  --enable-debugging[=compiler arg]
-                          Enable debugging information [default=-g].
-                          
-    This option is used to enable or disable debugging. The default argument is
-    for the GCC compiler. However, you may specify any compiler specific arguments.
+Installing Xcode
 
-  --enable-optimization[=compiler arg]
-                          Enable code optimization [default=-O2].
-                          
-    This option is used to enable or disable optimization. The default argument
-    is for the GCC compiler. However, you may specify any compiler specific arguments.
-    
-  --enable-error-checking[=throw|assert|no]
-                          Enable default error checking[default=throw].
-                          
-    This will set default error checking behavior of TiledArray.
-      - "throw" will cause TiledArray to throw an exception whenever an error is encountered.
-      - "assert" will call the standard library assert() or exit() if an error is encountered.
-      - "no" will disable most error checking. However, some minimal error checking
-        is still done, in which case it will call exit().
+Lion and later
 
-  --with-blas[=DIR]       DIR where the blas library is installed.
+  1. Open Mac App Store
+  2. Search for and "Buy" Xcode (it is free). Xcode will automatically start
+     downloading and install itself.
+  3. Open Xcode
+  4. Go to Xcode->Preferences...
+  5. Select the Downloads and then the components tab
+  6. Click "Install" next to "Command Line Tools"
+  7. Check the "Check for and install updates automatically" box
 
-    When you specify this option, BLAS will be used for most math operations
-    instead of Eigen. 
+Note: Command-line tools are automatically installed with Xcode 4.2.x and earlier.
 
+Xcode Alternative for Lion and later
+
+If you do not want to install Xcode, you may install just Apple's Command-Line
+Tools package (the same package you would install with Xcode). You can download
+it from the Apple Developer website. The only disadvantage to this method is you
+must update this software manually.
+
+Snow Leopard and earlier
+
+  1. Download Xcode 3.2.6 for Snow Leopard or 3.1.4 for Leopard from Apple’s
+     Developer website. You will need to log in with your Apple ID.
+  2. Open the .dmg file
+  3. Double click install package
+  4. Follow the prompts
+
+Environment Variables
+
+You will need to edit your environment variables. To do this, you will need to
+modify your shell initialization script. The shell initialization script for the
+default shell on OS X is .profile. If you are using a non-default shell, such as
+C-shell, your initialization script may be different. To edit the default shell
+initialization script: 
+
+  $ vi ~/.profile
+
+Next, adde the following lines to your .profile file that correspond to your
+particular system.
+
+Xcode 4.x for Mountain Lion
+
+export MACOSX_DEPLOYMENT_TARGET=10.8
+export CC=/usr/bin/clang
+export CXX=/usr/bin/clang++
+
+Xcode 4.2 and later for Lion
+
+export MACOSX_DEPLOYMENT_TARGET=10.7
+export CC=/usr/bin/clang
+export CXX=/usr/bin/clang++
+
+Xcode 3.x, 4.0, and 4.1 for Snow Leopard
+
+export MACOSX_DEPLOYMENT_TARGET=10.6
+export CC=/usr/bin/gcc-4.2
+export CXX=/usr/bin/g++-4.2
+
+Note: You will need to restart terminal for the change to take effect. 
+Note: If you are using a non-bash shell, the above shell
+
+Installing MPI
+
+You may choose either MPICH or OpenMPI, both will work equally well on your Mac.
+You do NOT need to install both. To install MPI on your computer you may:
+
+  * Use a software management program such as MacPorts or HomeBrew.
+  * Use the provided installation scripts in our download section.
+  * Build and install MPI manually. See InstallingMPICH or InstallingOpenMPI for
+    details.
+
+Note: Older versions of Xcode included OpenMPI, but it does not work correctly
+      with TiledArray. 
+Note: In the following instructions you may need to modify the paths and file
+      names to reference the latest version.
+
+MacPorts
+
+MacPorts is a command-line tool that automates the process of downloading,
+configuring, installing, and updating open-source software in OS X. Most of the
+software required by TiledArray is available through MacPorts. To install
+MacPorts:
+
+  1. Download the install package from: http://www.macports.org/
+  2. Open the downloaded .dmg file.
+  3. Double click the install package
+  4. Follow the prompts
+
+Once MacPorts is installed, in terminal run:
+
+  $ sudo port selfupdate
+
+Note: If you are behind a firewall or proxy and having trouble syncing
+portfiles, you can use the alternate download method described here
+https://trac.macports.org/wiki/howto/PortTreeTarball.
+
+You can install the remaining software need by TiledArray with MacPorts.
+
+  $ sudo port install autoconf automake libtool eigen3 boost subversion mercurial doxygen
+
+Note: Older versions of Xcode included autoconf and automake, but they are very
+      old and do not work correctly with TiledArray?. 
+
+MADNESS
+
+Download
+
+In Terminal:
+
+  $ mkdir madness
+  $ cd madness
+  $ svn  checkout  https://m-a-d-n-e-s-s.googlecode.com/svn/local/trunk src
+  $ cd src
+  $ aclocal
+  $ autoconf
+  $ autoheader
+  $ automake --add-missing
+  $ cd ..
+
+Configure
+
+  $ mkdir build
+  $ cd build
+
+Lion and later
+
+  $ ../src/configure \
+      --prefix=/path/to/madness/install \
+      --enable-debugging \
+      --disable-optimization \
+      --enable-warning \
+      --disable-optimal \
+      CPPFLAGS="-ansi" \
+      LDFLAGS="-framework Accelerate -Wl,-no_pie"
+
+Snow Leopard and earlier
+
+  $ ../src/configure \
+      --prefix=/path/to/madness/install \
+      --enable-debugging \
+      --disable-optimization \
+      --enable-warning \
+      --disable-optimal \
+      CPPFLAGS="-ansi" \
+      LDFLAGS="-framework Accelerate"
+
+Build
+
+  $ make -j
+  $ make install
+
+Build TiledArray
+================
+
+Download
+
+In Terminal:
+
+  $ mkdir tiledarray
+  $ cd tiledarray
+  $ hg clone https://code.google.com/p/tiledarray/ src
+  $ cd src
+  $ aclocal
+  $ autoconf
+  $ autoheader
+  $ automake --add-missing
+  $ cd ..
+
+Configure
+
+  $ mkdir build
+  $ cd build
+
+The configure commands below assume that Eigen 3 and Boost were installed in
+/opt/local with MacPorts.
+
+Lion and later
+
+  $ ../src/configure \
+      --prefix=/path/to/tiledarray/install \
+      --enable-debugging \
+      --disable-optimization \
+      --enable-error-checking=throw \
+      CPPFLAGS="-ansi  -Wvexing-parse -I/opt/local/include -I/opt/local/eigen3 -I/path/to/madness/install/include" \
+      LIBS="-L/path/to/madness/install/lib" \
+      LDFLAGS="-framework Accelerate -Wl,-no_pie"
+
+Snow Leopard and earlier
+
+  $ ../src/configure \
+      --prefix=/path/to/tiledarray/install \
+      --enable-debugging \
+      --disable-optimization \
+      --enable-error-checking=throw \
+      CPPFLAGS="-ansi -I/opt/local/include -I/opt/local/eigen3 -I/path/to/madness/install/include" \
+      LIBS="-L/path/to/madness/install/lib" \
+      LDFLAGS="-framework Accelerate"
+
+Build
+
+  $ make -j
+    ... many lines omitted ...
+  $ make install
+
+Information about Compiler
+==========================
+
+The following compiles have been tested with TiledArray? on OS X and are known
+to work.
+
+  * Apple's GCC 4.2.1
+  * Apple's LLVM GCC 4.2.1
+  * Apple's Clang 2.0 (svn 2.9) and later -- Preferred
+  * LLVM Clang 2.9 and later (same as Apple's version)
+  * Intel 11.x and 12.x
+
+Note: Do not use GNU GCC compilers that you build yourself or those provided by
+      MacPorts. They have significant compatibility issues on Macs and may
+      result in strange runtime behavior.
