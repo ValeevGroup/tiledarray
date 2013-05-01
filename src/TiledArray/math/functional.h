@@ -45,7 +45,11 @@ namespace TiledArray {
     /// \tparam U argument2 type
     /// \tparam V result type
     template <typename T, typename U, typename V>
-    struct multiplies : std::binary_function<T,U,V> {
+    struct multiplies {
+
+      typedef T first_argument_type;
+      typedef U second_argument_type;
+      typedef V result_type;
 
       /// Returns \c t * \c scale = \c v
       /// \param t first factor
