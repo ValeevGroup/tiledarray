@@ -22,6 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/array.h>
+#include <TiledArray/counter_probe.h>
 #include <Eigen/Core>
 
 namespace TiledArray {
@@ -219,27 +220,6 @@ namespace TiledArray {
       tensor_to_eigen_submatrix(tensor, *matrix);
       (*counter)++;
     }
-
-    /// Counter probe used to check for the completion of a set of tasks
-    class CounterProbe {
-    private:
-      const madness::AtomicInt& counter_; ///< Counter incremented by the set of tasks
-      const long n_; ///< The total number of tasks
-
-    public:
-      /// Constructor
-
-      /// \param counter The task completion counter
-      /// \param n The total number of tasks
-      CounterProbe(const madness::AtomicInt& counter, const long n) :
-        counter_(counter), n_(n)
-      { }
-
-      /// Probe function
-
-      /// \return \c true when the counter is equal to the number of tasks
-      bool operator()() const { return counter_ == n_; }
-    }; // class CounterProbe
 
   } // namespace detail
 
