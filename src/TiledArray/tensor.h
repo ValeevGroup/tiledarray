@@ -27,6 +27,16 @@
 
 namespace TiledArray {
 
+  namespace detail {
+
+    /// Place-holder object for a zero tensor.
+    template <typename T>
+    struct ZeroTensor {
+      typedef T value_type;
+    }; // struct ZeroTensor
+
+  }  // namespace detail
+
   /// Evaluation tensor
 
   /// This tensor is used as an evaluated intermediate for other tensors.
