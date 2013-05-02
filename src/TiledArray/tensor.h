@@ -27,15 +27,13 @@
 
 namespace TiledArray {
 
-  namespace detail {
 
-    /// Place-holder object for a zero tensor.
-    template <typename T>
-    struct ZeroTensor {
-      typedef T value_type;
-    }; // struct ZeroTensor
+  /// Place-holder object for a zero tensor.
+  template <typename T>
+  struct ZeroTensor {
+    typedef T value_type;
+  }; // struct ZeroTensor
 
-  }  // namespace detail
 
   /// Evaluation tensor
 
