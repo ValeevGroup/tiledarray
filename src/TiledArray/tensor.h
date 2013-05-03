@@ -192,6 +192,22 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Assign a range to this tensor
+
+    /// The new range must have the same dimensions as the original, unless this
+    /// tensor is empty. In which case the tensor will be resized to have the
+    /// dimensions of \c range .
+    /// \param range The new range for this tensor
+    /// \return A reference to this tensor.
+    Tensor_& operator=(const range_type& range) const {
+      if(pimpl_) {
+        TA_ASSERT(range.volume() == pimpl_->range_.volume());
+        pimpl_->range_ = range;
+      } else {
+        pimpl_.reset(new Impl(range));
+      }
+    }
+
     /// Plus assignment
 
     /// Evaluate \c other to this tensor
@@ -219,7 +235,8 @@ namespace TiledArray {
     Tensor_& operator-=(const Tensor<U, AU>& other) {
       if(!pimpl_) {
         if(! other.empty())
-          pimpl_.reset(new Impl(other.range(), other.begin(), std::bind1st(std::minus<value_type>(), 0)));
+          pimpl_.reset(new Impl(other.range(), other.begin(),
+              std::bind1st(std::minus<value_type>(), 0)));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
         pimpl_->data_ -= other;
