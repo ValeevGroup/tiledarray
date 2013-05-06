@@ -20,6 +20,8 @@
 #ifndef TILEDARRAY_MATH_FUNCTIONAL_H__INCLUDED
 #define TILEDARRAY_MATH_FUNCTIONAL_H__INCLUDED
 
+#include <TiledArray/type_traits.h>
+
 namespace TiledArray {
   namespace detail {
 
@@ -39,27 +41,235 @@ namespace TiledArray {
 
     }; // class Square
 
+    /// Generalization of \c std::plus, but \c First plus \c Second yielding \c Result
 
-    /// generalization of std::multiplies, but multiplying T by U yielding V
-    /// \tparam T argument1 type
-    /// \tparam U argument2 type
-    /// \tparam V result type
-    template <typename T, typename U, typename V>
-    struct multiplies {
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    /// \tparam Result Result type
+    template <typename First, typename Second, typename Result>
+    struct Plus {
+      typedef First first_argument_type; ///< The left-hand argument type
+      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef Result result_type; ///< The result type
 
-      typedef T first_argument_type;
-      typedef U second_argument_type;
-      typedef V result_type;
+      /// Compute the sum of \c first and \c second
 
-      /// Returns \c t * \c scale = \c v
-      /// \param t first factor
-      /// \param scale second factor
-      /// \return \c t * \c scale
-      typename madness::enable_if<TiledArray::detail::is_numeric<U>, V>::type
-      operator()(T t, U scale) const { return t * scale; }
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      /// \return \c first + \c second
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        return first + second;
+      }
+    }; // class Plus
 
-    }; // class multiplies
+    /// Generalization of \c std::plus with scaling, but \c First plus \c Second yielding \c Result
 
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    /// \tparam Result Result type
+    template <typename First, typename Second, typename Result>
+    struct ScalPlus {
+      typedef First first_argument_type; ///< The left-hand argument type
+      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef Result result_type; ///< The result type
+      typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
+
+    private:
+      scalar_type factor_; ///< scaling factor
+
+    public:
+
+      // Constructors & assignment operator
+      ScalPlus(scalar_type factor) : factor_(factor) { }
+      ScalPlus(const ScalPlus<First,Second,Result>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      ScalPlus<First,Second,Result>&
+      operator=(const ScalPlus<First,Second,Result>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      /// Compute the scaled sum of \c first and \c second
+
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      /// \return \c (first+second)*factor
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        return result_type(first + second) * factor_;
+      }
+    }; // class ScalPlus
+
+    /// Generalization of \c std::minus, but \c First minus \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    /// \tparam Result Result type
+    template <typename First, typename Second, typename Result>
+    struct Minus {
+      typedef First first_argument_type; ///< The left-hand argument type
+      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef Result result_type; ///< The result type
+
+      /// Compute the difference of \c first and \c second
+
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      /// \return \c first - \c second
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        return first - second;
+      }
+    }; // class Minus
+
+    /// Generalization of \c std::minus with scaling, but \c First minus \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    /// \tparam Result Result type
+    template <typename First, typename Second, typename Result>
+    struct ScalMinus {
+      typedef First first_argument_type; ///< The left-hand argument type
+      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef Result result_type; ///< The result type
+      typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
+
+    private:
+      scalar_type factor_; ///< scaling factor
+
+    public:
+
+      // Constructors & assignment operator
+      ScalMinus(scalar_type factor) : factor_(factor) { }
+      ScalMinus(const ScalMinus<First,Second,Result>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      ScalMinus<First,Second,Result>& operator=(const ScalMinus<First,Second,Result>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      /// Compute the scaled difference of \c first and \c second
+
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      /// \return \c (first-second)*factor
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        return result_type(first - second) * factor_;
+      }
+    }; // class ScalMinus
+
+    /// Generalization of \c std::multiplies, but \c First times \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    /// \tparam Result Result type
+    template <typename First, typename Second, typename Result>
+    struct Multiplies {
+      typedef First first_argument_type; ///< The left-hand argument type
+      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef Result result_type; ///< The result type
+
+      /// Compute the product of \c first and \c second
+
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      /// \return \c first*second
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        return first * second;
+      }
+    }; // class Multiples
+
+    /// Generalization of \c std::multiples with scaling, but \c First times \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    /// \tparam Result Result type
+    template <typename First, typename Second, typename Result>
+    struct ScalMultiplies {
+      typedef First first_argument_type; ///< The left-hand argument type
+      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef Result result_type; ///< The result type
+      typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
+
+    private:
+      scalar_type factor_; ///< scaling factor
+
+    public:
+
+      // Constructors & assignment operator
+      ScalMultiplies(scalar_type factor) : factor_(factor) { }
+      ScalMultiplies(const ScalMultiplies<First,Second,Result>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      ScalMultiplies<First,Second,Result>&
+      operator=(const ScalMultiplies<First,Second,Result>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      /// Compute the scaled product of \c first and \c second
+
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      /// \return \c first * \c second
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        return result_type(first * second) * factor_;
+      }
+    }; // class ScalMultiplies
+
+
+    /// Generalization of \c std::negate, but \c Arg yielding \c Result
+
+    /// \tparam Arg Argument type
+    /// \tparam Result Result type
+    template <typename Arg, typename Result>
+    struct Negate {
+      typedef Arg argument_type; ///< The argument type
+      typedef Result result_type; ///< The result type
+
+      /// Compute the product of \c first and \c second
+
+      /// \param arg The  argument
+      /// \return \c -arg
+      result_type operator()(argument_type arg) const {
+        return -arg;
+      }
+    }; // class Multiples
+
+    /// Generalization of \c std::negate with scaling, but \c Arg yielding \c Result
+
+    /// \tparam Arg Argument type
+    /// \tparam Result Result type
+    template <typename Arg, typename Result>
+    struct ScalNegate {
+      typedef Arg argument_type; ///< The left-hand argument type
+      typedef Result result_type; ///< The result type
+      typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
+
+    private:
+      scalar_type factor_; ///< scaling factor
+
+    public:
+
+      // Constructors & assignment operator
+      ScalNegate(scalar_type factor) : factor_(-factor) { }
+      ScalNegate(const ScalNegate<Arg,Result>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      ScalNegate<Arg,Result>& operator=(const ScalNegate<Arg,Result>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      /// Compute the scaled product of \c first and \c second
+
+      /// \param arg The argument
+      /// \return \c -arg*factor
+      result_type operator()(argument_type arg) const {
+        // Note: factor is negated in the constructor
+        return arg * factor_;
+      }
+    }; // class ScalMultiplies
   }  // namespace detail
 }  // namespace TiledArray
 

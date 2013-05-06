@@ -119,7 +119,7 @@ namespace TiledArray {
         /// \param value The tile from the array
         void scale_and_set_tile(const size_type i, const value_type& value) {
           TensorExpressionImpl_::set(i, value_type(value.range(), value.begin(),
-              std::bind2nd(TiledArray::detail::multiplies<typename value_type::value_type,
+              std::bind2nd(TiledArray::detail::Multiplies<typename value_type::value_type,
                   numeric_type, typename value_type::value_type>(),
                   TensorExpressionImpl_::scale())));
         }

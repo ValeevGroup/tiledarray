@@ -408,14 +408,14 @@ namespace TiledArray {
   typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(const Tensor<T, AT>& left, N right) {
     return Tensor<T,AT>(left.range(), left.begin(),
-        std::bind2nd(TiledArray::detail::multiplies<T, N, T>(),right));
+        std::bind2nd(TiledArray::detail::Multiplies<T, N, T>(),right));
   }
 
   template <typename T, typename AT, typename N>
   typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(N left, const Tensor<T, AT>& right) {
     return Tensor<T,AT>(right.range(), right.begin(),
-        std::bind2nd(TiledArray::detail::multiplies<T, N, T>(),left));
+        std::bind2nd(TiledArray::detail::Multiplies<T, N, T>(),left));
   }
 
   template <typename T, typename A>
