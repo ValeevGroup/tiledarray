@@ -229,9 +229,9 @@ namespace TiledArray {
   /// that is tiled according to the \c trange object. The copy operation is
   /// done in parallel, and this function will block until all elements of
   /// \c matrix have been copied into the result array tiles. The size of
-  /// \c array.get_world().size() must be equal to 1 or \c replicate must be
-  /// equal to \c true . If \c replicate is \c true, it is your responsibility
-  /// to ensure that the data in matrix is identical on all nodes.
+  /// \c world.size() must be equal to 1 or \c replicate must be equal to
+  /// \c true . If \c replicate is \c true, it is your responsibility to ensure
+  /// that the data in matrix is identical on all nodes.
   /// Usage:
   /// \code
   /// Eigen::MatrixXd m(100, 100);
@@ -371,6 +371,118 @@ namespace TiledArray {
     array.get_world().await(probe);
 
     return matrix;
+  }
+
+  /// Convert a row-major matrix buffer into an Array object
+
+  /// This function will copy the content of \c buffer into an \c Array object
+  /// that is tiled according to the \c trange object. The copy operation is
+  /// done in parallel, and this function will block until all elements of
+  /// \c matrix have been copied into the result array tiles. The size of
+  /// \c world.size() must be equal to 1 or \c replicate must be equal to
+  /// \c true . If \c replicate is \c true, it is your responsibility to ensure
+  /// that the data in \c buffer is identical on all nodes.
+  /// Usage:
+  /// \code
+  /// double* buffer = new double[100 * 100];
+  /// // Fill buffer with data ...
+  ///
+  /// // Create a range for the new array object
+  /// std::vector<std::size_t> blocks;
+  /// for(std::size_t i = 0ul; i <= 100ul; i += 10ul)
+  ///   blocks.push_back(i);
+  /// std::array<TiledArray::TiledRange1, 2> blocks2 =
+  ///     {{ TiledArray::TiledRange1(blocks.begin(), blocks.end()),
+  ///        TiledArray::TiledRange1(blocks.begin(), blocks.end()) }};
+  /// TiledArray::TiledRange trange(blocks2.begin(), blocks2.end());
+  ///
+  /// // Create an Array from an Eigen matrix.
+  /// TiledArray::Array<double, 2> array =
+  ///     row_major_buffer_to_array<TiledArray::Array<double, 2> >(world, trange, buffer, 100, 100);
+  ///
+  /// delete [] buffer;
+  /// \endcode
+  /// \tparam A The array type
+  /// \param world The world where the array will live
+  /// \param trange The tiled range of the new array
+  /// \param buffer The row-major matrix buffer to be copied
+  /// \param m The number of rows in the matrix
+  /// \param n The number of columns in the matrix
+  /// \param replicated \c true indicates that the result array should be a
+  /// replicated array [default = false].
+  /// \return An \c Array object that is a copy of \c matrix
+  /// \throw TiledArray::Exception When \c m and \c n are not equal to the
+  /// number of rows or columns in tiled range.
+  template <typename A>
+  inline A row_major_buffer_to_array(madness::World& world, const typename A::trange_type& trange,
+      const typename A::value_type::value_type* buffer, const std::size_t m,
+      const std::size_t n, const bool replicated = false)
+  {
+    TA_USER_ASSERT(trange.elements().size()[0] == m,
+        "TiledArray::eigen_to_array(): The number of rows in trange is not equal to m.");
+    TA_USER_ASSERT(trange.elements().size()[1] == n,
+        "TiledArray::eigen_to_array(): The number of columns in trange is not equal to n.");
+
+    typedef Eigen::Matrix<typename A::value_type::value_type, Eigen::Dynamic,
+        Eigen::Dynamic, Eigen::RowMajor> matrix_type;
+    return eigen_to_array(world, trange, Eigen::Map<const matrix_type,
+        Eigen::AutoAlign>(buffer, m, n), replicated);
+  }
+
+  /// Convert a column-major matrix buffer into an Array object
+
+  /// This function will copy the content of \c buffer into an \c Array object
+  /// that is tiled according to the \c trange object. The copy operation is
+  /// done in parallel, and this function will block until all elements of
+  /// \c matrix have been copied into the result array tiles. The size of
+  /// \c world.size() must be equal to 1 or \c replicate must be equal to
+  /// \c true . If \c replicate is \c true, it is your responsibility to ensure
+  /// that the data in \c buffer is identical on all nodes.
+  /// Usage:
+  /// \code
+  /// double* buffer = new double[100 * 100];
+  /// // Fill buffer with data ...
+  ///
+  /// // Create a range for the new array object
+  /// std::vector<std::size_t> blocks;
+  /// for(std::size_t i = 0ul; i <= 100ul; i += 10ul)
+  ///   blocks.push_back(i);
+  /// std::array<TiledArray::TiledRange1, 2> blocks2 =
+  ///     {{ TiledArray::TiledRange1(blocks.begin(), blocks.end()),
+  ///        TiledArray::TiledRange1(blocks.begin(), blocks.end()) }};
+  /// TiledArray::TiledRange trange(blocks2.begin(), blocks2.end());
+  ///
+  /// // Create an Array from an Eigen matrix.
+  /// TiledArray::Array<double, 2> array =
+  ///     column_major_buffer_to_array<TiledArray::Array<double, 2> >(world, trange, buffer, 100, 100);
+  ///
+  /// delete [] buffer;
+  /// \endcode
+  /// \tparam A The array type
+  /// \param world The world where the array will live
+  /// \param trange The tiled range of the new array
+  /// \param buffer The row-major matrix buffer to be copied
+  /// \param m The number of rows in the matrix
+  /// \param n The number of columns in the matrix
+  /// \param replicated \c true indicates that the result array should be a
+  /// replicated array [default = false].
+  /// \return An \c Array object that is a copy of \c matrix
+  /// \throw TiledArray::Exception When \c m and \c n are not equal to the
+  /// number of rows or columns in tiled range.
+  template <typename A>
+  inline A column_major_buffer_to_array(madness::World& world, const typename A::trange_type& trange,
+      const typename A::value_type::value_type* buffer, const std::size_t m,
+      const std::size_t n, const bool replicated = false)
+  {
+    TA_USER_ASSERT(trange.elements().size()[0] == m,
+        "TiledArray::eigen_to_array(): The number of rows in trange is not equal to m.");
+    TA_USER_ASSERT(trange.elements().size()[1] == n,
+        "TiledArray::eigen_to_array(): The number of columns in trange is not equal to n.");
+
+    typedef Eigen::Matrix<typename A::value_type::value_type, Eigen::Dynamic,
+        Eigen::Dynamic, Eigen::ColMajor> matrix_type;
+    return eigen_to_array(world, trange, Eigen::Map<const matrix_type,
+        Eigen::AutoAlign>(buffer, m, n), replicated);
   }
 
 } // namespace TiledArray
