@@ -21,7 +21,7 @@
 #define TILEDARRAY_TILE_OP_PERMUTE_H__INCLUDED
 
 #include <TiledArray/tensor.h>
-#include <TiledArray/permute.h>
+#include <TiledArray/permutation.h>
 
 namespace TiledArray {
   namespace math {
