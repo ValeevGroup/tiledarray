@@ -199,13 +199,15 @@ namespace TiledArray {
     /// dimensions of \c range .
     /// \param range The new range for this tensor
     /// \return A reference to this tensor.
-    Tensor_& operator=(const range_type& range) const {
+    Tensor_& operator=(const range_type& range) {
       if(pimpl_) {
         TA_ASSERT(range.volume() == pimpl_->range_.volume());
         pimpl_->range_ = range;
       } else {
-        pimpl_.reset(new Impl(range));
+        pimpl_.reset(new Impl(range, value_type()));
       }
+
+      return *this;
     }
 
     /// Plus assignment
