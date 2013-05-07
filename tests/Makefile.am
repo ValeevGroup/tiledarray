@@ -42,6 +42,7 @@ ta_test_SOURCES = ta_test.cpp \
                   array.cpp \
                   eigen.cpp \
                   variable_list.cpp \
+                  tile_op_add.h \
                   tensor_expression_impl.cpp \
                   annotated_tensor.cpp \
                   unary_tensor.cpp \
