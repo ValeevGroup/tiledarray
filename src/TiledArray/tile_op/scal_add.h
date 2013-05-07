@@ -17,21 +17,17 @@
  *
  */
 
-#ifndef TILEDARRAY_TILE_OP_ADD_H__INCLUDED
-#define TILEDARRAY_TILE_OP_ADD_H__INCLUDED
-
-#include <TiledArray/type_traits.h>
-#include <TiledArray/tile_op/permute.h>
-#include <TiledArray/tensor.h>
+#ifndef TILEDARRAY_TILE_OP_SCAL_ADD_H__INCLUDED
+#define TILEDARRAY_TILE_OP_SCAL_ADD_H__INCLUDED
 
 namespace TiledArray {
   namespace math {
 
     // Forward declarations
     template <typename Result, typename Left, typename Right, bool LeftConsumable, bool RightConsumable>
-    class Add;
+    class ScalAdd;
 
-    /// Tile addition operation
+    /// Tile scaled addition operation
 
     /// This addition operation will add the content two tiles and apply a
     /// permutation to the result tensor. If no permutation is given or the
@@ -40,15 +36,15 @@ namespace TiledArray {
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
     template <typename Result, typename Left, typename Right>
-    class Add<Result, Left, Right, false, false> {
+    class ScalAdd<Result, Left, Right, false, false> {
     public:
-      typedef Add<Result, Left, Right, false, false> Add_; ///< This object type
+      typedef ScalAdd<Result, Left, Right, false, false> ScalAdd_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
-      typedef TiledArray::detail::Plus<typename Left::value_type,
+      typedef TiledArray::detail::ScalPlus<typename Left::value_type,
           typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
 
     private:
@@ -58,24 +54,24 @@ namespace TiledArray {
       /// Default constructor
 
       /// Construct an addition operation that does not permute the result tile
-      Add() : perm_() { }
+      ScalAdd() : perm_() { }
 
       /// Permute constructor
 
       /// Construct an addition operation that permutes the result tensor
       /// \param perm The permutation to apply to the result tile
-      Add(const Permutation& perm) : perm_(perm) { }
+      ScalAdd(const Permutation& perm) : perm_(perm) { }
 
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      Add(const Add_& other) : perm_(other.perm_) { }
+      ScalAdd(const Add_& other) : perm_(other.perm_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      Add operator=(const Add_& other) {
+      ScalAdd_ operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -137,15 +133,15 @@ namespace TiledArray {
     /// \tparam Right The right-hand argument type
     /// \note This specialization assumes the left hand tile is consumable
     template <typename Result, typename Left, typename Right, bool RightConsumable>
-    class Add<Result, Left, Right, true, RightConsumable> {
+    class ScalAdd<Result, Left, Right, true, RightConsumable> {
     public:
-      typedef Add<Result, Left, Right, true, false> Add_; ///< This object type
+      typedef ScalAdd<Result, Left, Right, true, false> ScalAdd_; ///< This object type
       typedef Left first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
-      typedef TiledArray::detail::Plus<typename Left::value_type,
+      typedef TiledArray::detail::ScalPlus<typename Left::value_type,
           typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
 
     private:
@@ -155,24 +151,24 @@ namespace TiledArray {
       /// Default constructor
 
       /// Construct an addition operation that does not permute the result tile
-      Add() : perm_() { }
+      ScalAdd() : perm_() { }
 
       /// Permute constructor
 
       /// Construct an addition operation that permutes the result tensor
       /// \param perm The permutation to apply to the result tile
-      Add(const Permutation& perm) : perm_(perm) { }
+      ScalAdd(const Permutation& perm) : perm_(perm) { }
 
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      Add(const Add_& other) : perm_(other.perm_) { }
+      ScalAdd(const ScalAdd_& other) : perm_(other.perm_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      Add operator=(const Add_& other) {
+      ScalAdd_& operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -235,15 +231,15 @@ namespace TiledArray {
     /// \tparam Right The right-hand argument type
     /// \note This specialization assumes the left hand tile is consumable
     template <typename Result, typename Left, typename Right>
-    class Add<Result, Left, Right, false, true> {
+    class ScalAdd<Result, Left, Right, false, true> {
     public:
-      typedef Add<Result, Left, Right, true, false> Add_; ///< This object type
+      typedef ScalAdd<Result, Left, Right, false, true> ScalAdd_; ///< This object type
       typedef Left first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
-      typedef TiledArray::detail::Plus<typename Left::value_type,
+      typedef TiledArray::detail::ScalPlus<typename Left::value_type,
           typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
 
     private:
@@ -253,24 +249,24 @@ namespace TiledArray {
       /// Default constructor
 
       /// Construct an addition operation that does not permute the result tile
-      Add() : perm_() { }
+      ScalAdd() : perm_() { }
 
       /// Permute constructor
 
       /// Construct an addition operation that permutes the result tensor
       /// \param perm The permutation to apply to the result tile
-      Add(const Permutation& perm) : perm_(perm) { }
+      ScalAdd(const Permutation& perm) : perm_(perm) { }
 
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      Add(const Add_& other) : perm_(other.perm_) { }
+      ScalAdd(const ScalAdd_& other) : perm_(other.perm_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      Add operator=(const Add_& other) {
+      ScalAdd_ operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -321,9 +317,9 @@ namespace TiledArray {
 
         return result;
       }
-    }; // class Add
+    }; // class ScalAdd
 
-  } // namespace math
+  }  // namespace math
 } // namespace TiledArray
 
-#endif // TILEDARRAY_TILE_OP_ADD_H__INCLUDED
+#endif // TILEDARRAY_TILE_OP_SCAL_ADD_H__INCLUDED
