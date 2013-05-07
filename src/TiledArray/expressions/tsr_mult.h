@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_EXPRESSIONS_TSR_ADD_H__INCLUDED
-#define TILEDARRAY_EXPRESSIONS_TSR_ADD_H__INCLUDED
+#ifndef TILEDARRAY_EXPRESSIONS_TSR_MULT_H__INCLUDED
+#define TILEDARRAY_EXPRESSIONS_TSR_MULT_H__INCLUDED
 
 #include <TiledArray/expressions/binary_base.h>
 
@@ -26,21 +26,21 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename ExpLeft, typename ExpRight>
-    class TsrAdd : public BinaryBase<TsrAdd<ExpLeft, ExpRight> > {
+    class TsrMult : public BinaryBase<TsrMult<ExpLeft, ExpRight> > {
     private:
-      typedef BinaryBase<TsrAdd<ExpLeft, ExpRight> > base;
+      typedef BinaryBase<TsrMult<ExpLeft, ExpRight> > base;
 
     public:
       typedef ExpLeft left_exp_type;
       typedef ExpRight right_exp_type;
-      typedef TsrAdd<ExpLeft, ExpRight> tensor_type;
-      typedef ScalTsrAdd<ExpLeft, ExpRight> scaled_tensor_type;
+      typedef TsrMult<ExpLeft, ExpRight> tensor_type;
+      typedef ScalTsrMult<ExpLeft, ExpRight> scaled_tensor_type;
 
-      TsrAdd(const left_exp_type& left, const right_exp_type& right) :
+      TsrMult(const left_exp_type& left, const right_exp_type& right) :
         base(left, right)
       { }
 
-      TsrAdd(const TsrAdd<ExpLeft, ExpRight>& other) :
+      TsrMult(const TsrMult<ExpLeft, ExpRight>& other) :
         base(other)
       { }
 
@@ -48,9 +48,9 @@ namespace TiledArray {
       using base::left;
       using base::right;
 
-    }; // class TsrAdd
+    }; // class TsrMult
 
   }  // namespace expressions
 } // namespace TiledArray
 
-#endif // TILEDARRAY_EXPRESSIONS_TSR_ADD_H__INCLUDED
+#endif // TILEDARRAY_EXPRESSIONS_TSR_MULT_H__INCLUDED

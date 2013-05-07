@@ -23,7 +23,7 @@
 namespace TiledArray {
   namespace expressions {
 
-    // Forward declarations
+    // Forward declarations for tensor expression objects
     template <typename> class Base;
     template <typename> class TsrBase;
     template <typename> class Tsr;
@@ -36,36 +36,41 @@ namespace TiledArray {
     template <typename, typename> class ScalTsrSubt;
     template <typename, typename> class TsrCont;
     template <typename, typename> class ScalTsrCont;
+    template <typename, typename> class TsrMult;
+    template <typename, typename> class ScalTsrMult;
     template <typename> class UnaryBase;
     template <typename> class ScalUnaryBase;
     template <typename> class TsrNeg;
     template <typename> class ScalTsrNeg;
+    template <typename> class TsrConv;
+    template <typename> class ScalTsrConv;
 
-
+    /// Base class for expression evaluation
     template <typename Derived>
     class Base {
     public:
 
-      typedef Derived derived_type;
+      typedef Derived derived_type; ///< The derived object type
 
+      /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
+
+      /// Cast this object to it's derived type
       const derived_type& derived() const { return *static_cast<const derived_type*>(this); }
 
-      Base<Derived>& operator=(const Base<Derived>& other) {
-        derived().eval_to(other.derived());
-        return *this;
-      }
+      /// Evaluate this object and assign it to \c tsr
 
-      template <typename D>
-      Base<Derived>& operator=(const Base<D>& other) {
-        derived().eval_to(other.derived());
-        return *this;
-      }
+      /// This expression is evaluated in parallel in distributed environments,
+      /// where the content of \c tsr will be replace by the results of the
+      /// evaluated tensor expression.
+      /// \tparam A The array type
+      /// \param tsr The tensor to be assigned
+      template <typename A>
+      void eval_to(Tsr<A>& tsr) { derived().eval_to(tsr); }
 
     }; // class Base
 
   } // namespace expressions
 } // namespace TiledArray
-
 
 #endif // TILEDARRAY_EXPRESSIONS_BASE_H__INCLUDED

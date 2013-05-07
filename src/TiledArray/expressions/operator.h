@@ -20,10 +20,64 @@
 #ifndef TILEDARRAY_EXPRESSIONS_OPERATOR_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_OPERATOR_H__INCLUDED
 
+#include <TiledArray/expressions/tsr_add.h>
+#include <TiledArray/expressions/tsr_subt.h>
+#include <TiledArray/expressions/tsr_neg.h>
+#include <TiledArray/expressions/tsr_cont.h>
+#include <TiledArray/expressions/tsr_mult.h>
+#include <TiledArray/expressions/scal_tsr_add.h>
+#include <TiledArray/expressions/scal_tsr_subt.h>
+#include <TiledArray/expressions/scal_tsr_neg.h>
+#include <TiledArray/expressions/scal_tsr_cont.h>
+#include <TiledArray/expressions/scal_tsr_mult.h>
+
 namespace TiledArray {
   namespace expressions {
 
+    // Create addition expression
+    template <typename ExpLeft, typename ExpRight>
+    TsrAdd<ExpLeft, ExpRight> operator+(const Base<ExpLeft>& left, const Base<ExpRight>& right) {
+      return TsrAdd<ExpLeft, ExpRight>(left.derived(), right.derived());
+    }
 
+
+    // Create subtraction expression
+    template <typename ExpLeft, typename ExpRight>
+    TsrSubt<ExpLeft, ExpRight> operator-(const Base<ExpLeft>& left, const Base<ExpRight>& right) {
+      return TsrSubt<ExpLeft, ExpRight>(left.derived(), right.derived());
+    }
+
+
+    // Create negate expression
+    template <typename Exp>
+    TsrNeg<Exp> operator-(const Base<Exp>& arg) {
+      return TsrNeg<Exp>(arg.derived());
+    }
+
+    // Create multiply expressions
+    template <typename ExpLeft, typename ExpRight>
+    TsrMult<ExpLeft, ExpRight> multiply(const Base<ExpLeft>& left, const Base<ExpRight>& right) {
+      return TsrMult<ExpLeft, ExpRight>(left.derived(), right.derived());
+    }
+
+    // Create multiply expressions
+    template <typename ExpLeft, typename ExpRight>
+    TsrMult<ExpLeft, ExpRight> multiply(const Base<ExpLeft>& left, const Base<ExpRight>& right) {
+      return TsrMult<ExpLeft, ExpRight>(left.derived(), right.derived());
+    }
+
+    // Create scaled addition expressions
+    template <typename Factor, typename Exp>
+    typename madness::enable_if<TiledArray::detail::is_numeric<Factor>, typename Exp::scaled_expression_type>::type
+    operator*(const Factor factor, const Base<Exp>& exp) {
+      return typename Exp::scaled_expression_type(exp.derived(), factor);
+    }
+
+    template <typename Exp, typename Factor>
+    typename madness::enable_if<TiledArray::detail::is_numeric<Factor>, typename Exp::scaled_expression_type>::type
+    operator*(const Base<Exp>& exp, const Factor& factor) {
+      return typename Exp::scaled_expression_type(exp.derived(), factor);
+    }
 
   }  // namespace expressions
 } // namespace TiledArray

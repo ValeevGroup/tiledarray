@@ -50,6 +50,9 @@ namespace TiledArray {
       using base::right;
       using base::factor;
 
+      template <typename A>
+      void eval_to(Tsr<A>& tsr) {
+      }
     }; // class ScalTsrCont
 
   }  // namespace expressions

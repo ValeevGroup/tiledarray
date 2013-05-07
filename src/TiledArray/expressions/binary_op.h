@@ -17,27 +17,24 @@
  *
  */
 
-#ifndef TILEDARRAY_EXPRESSIONS_SCAL_TSR_ADD_H__INCLUDED
-#define TILEDARRAY_EXPRESSIONS_SCAL_TSR_ADD_H__INCLUDED
+#ifndef TILEDARRAY_EXPRESSIONS_BINARY_OP_H__INCLUDED
+#define TILEDARRAY_EXPRESSIONS_BINARY_OP_H__INCLUDED
 
-#include <TiledArray/expressions/scal_binary_base.h>
-#include <TiledArray/dist_eval/binary_eval.h>
-#include <TiledArray/tile_op/scal_add.h>
+#include <TiledArray/expressions/Binary_base.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    template <typename ExpLeft, typename ExpRight>
-    class ScalTsrAdd : public ScalBinaryBase<ScalTsrAdd<ExpLeft, ExpRight> > {
+    template <typename Derived>
+    class BinaryOp : public BinaryBase<Derived> {
     private:
-      typedef ScalBinaryBase<ScalTsrAdd<ExpLeft, ExpRight> > base; ///< Base class type
+      typedef BinaryBase<Direvid> base; ///< Base class type
 
     public:
-      typedef ExpLeft left_exp_type; ///< Left-hand argument expressions type
-      typedef ExpRight right_exp_type; ///< Right-hand argument expression type
-      typedef typename detail::scalar_type<ExpLeft>::type numeric_type; ///< The scalar type
-      typedef TsrAdd<ExpLeft, ExpRight> expression_type; ///< Non-scaled expression type
-      typedef ScalTsrAdd<ExpLeft, ExpRight> scaled_expression_type; ///< Non-scaled expression type
+      typedef typename Derived::left_exp_type left_exp_type; ///< Left-hand argument expressions type
+      typedef typename Derived::right_exp_type right_exp_type; ///< Right-hand argument expression type
+      typedef typename Derived::expression_type expression_type; ///< Non-scaled expression type
+      typedef typename Derived::scaled_expression_type scaled_expression_type; ///< Non-scaled expression type
       typedef typename base::pmap_interface pmap_interface; ///< Process map interface type
       typedef typename base::shape_type shape_type; ///< The expression shape type
       typedef detail::BinaryEvalImpl<typename ExpLeft::eval_type,
@@ -114,7 +111,7 @@ namespace TiledArray {
 
     }; // class ScalTsrAdd
 
-  }  // namespace expressions
+  } // namespace expressions
 } // namespace TiledArray
 
-#endif // TILEDARRAY_EXPRESSIONS_SCAL_TSR_ADD_H__INCLUDED
+#endif // TILEDARRAY_EXPRESSIONS_BINARY_OP_H__INCLUDED

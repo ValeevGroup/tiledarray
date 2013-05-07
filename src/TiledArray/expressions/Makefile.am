@@ -24,12 +24,20 @@ library_include_HEADERS = base.h \
                           operator.h \
                           scal_binary_base.h \
                           scal_tsr_add.h \
+                          scal_tsr_cont.h \
+                          scal_tsr_conv.h \
+                          scal_tsr_mult.h \
+                          scal_tsr_neg.h \
                           scal_tsr_subt.h \
                           scal_tsr.h \
                           tsr_add.h \
                           tsr_base.h \
                           tsr_cont.h \
+                          tsr_conv.h \
+                          tsr_mult.h \
+                          tsr_neg.h \
                           tsr_subt.h \
                           tsr.h \
                           type_traits.h \
+                          unary_base.h \
                           variable_list.h

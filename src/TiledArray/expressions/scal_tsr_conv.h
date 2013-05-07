@@ -17,40 +17,44 @@
  *
  */
 
-#ifndef TILEDARRAY_EXPRESSIONS_TSR_ADD_H__INCLUDED
-#define TILEDARRAY_EXPRESSIONS_TSR_ADD_H__INCLUDED
+#ifndef TILEDARRAY_EXPRESSIONS_SCAL_TSR_CONV_H__INCLUDED
+#define TILEDARRAY_EXPRESSIONS_SCAL_TSR_CONV_H__INCLUDED
 
-#include <TiledArray/expressions/binary_base.h>
+#include <TiledArray/expressions/scal_unary_base.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    template <typename ExpLeft, typename ExpRight>
-    class TsrAdd : public BinaryBase<TsrAdd<ExpLeft, ExpRight> > {
+    template <typename ExpArg>
+    class ScalTsrConv : public ScalUnaryBase<ScalTsrConv<ExpArg> > {
     private:
-      typedef BinaryBase<TsrAdd<ExpLeft, ExpRight> > base;
+      typedef ScalUnaryBase<ScalTsrConv<ExpArg> > base;
 
     public:
-      typedef ExpLeft left_exp_type;
-      typedef ExpRight right_exp_type;
-      typedef TsrAdd<ExpLeft, ExpRight> tensor_type;
-      typedef ScalTsrAdd<ExpLeft, ExpRight> scaled_tensor_type;
+      typedef ExpArg arg_exp_type;
+      typedef typename detail::scalar_type<ExpArg>::type numeric_type;
+      typedef TsrConv<ExpArg> tensor_type;
+      typedef ScalTsrConv<ExpArg> scaled_tensor_type;
 
-      TsrAdd(const left_exp_type& left, const right_exp_type& right) :
-        base(left, right)
+      ScalTsrConv(const arg_exp_type& arg) :
+        base(arg)
       { }
 
-      TsrAdd(const TsrAdd<ExpLeft, ExpRight>& other) :
+      ScalTsrConv(const ScalTsrConv<ExpArg>& other) :
         base(other)
       { }
 
       using base::derived;
-      using base::left;
-      using base::right;
+      using base::arg;
+      using base::factor;
 
-    }; // class TsrAdd
+      template <typename A>
+      void eval_to(Tsr<A>& tsr) {
+      }
+
+    }; // class ScalTsrConv
 
   }  // namespace expressions
 } // namespace TiledArray
 
-#endif // TILEDARRAY_EXPRESSIONS_TSR_ADD_H__INCLUDED
+#endif // TILEDARRAY_EXPRESSIONS_SCAL_TSR_CONV_H__INCLUDED

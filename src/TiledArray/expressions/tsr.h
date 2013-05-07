@@ -26,24 +26,24 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename A>
-    class ExpTsr : public ExpTsrBase<ExpTsr<A> > {
+    class Tsr : public ExpTsrBase<Tsr<A> > {
     private:
-      typedef ExpTsrBase<ExpTsr<A> > base;
+      typedef ExpTsrBase<Tsr<A> > base;
 
     public:
       typedef A array_type;
-      typedef ExpTsr<A> tensor_type;
-      typedef ExpScalTsr<A> scaled_tensor_type;
+      typedef Tsr<A> tensor_type;
+      typedef ScalTsr<A> scaled_tensor_type;
 
-      ExpTsr(array_type& array, const VariableList& vars) :
+      Tsr(array_type& array, const VariableList& vars) :
         base(array, vars)
       { }
 
-      ExpTsr(const ExpTsr<A>& tensor) :
+      Tsr(const ExpTsr<A>& tensor) :
         base(tensor)
       { }
 
-      ExpTsr(const ExpScalTsr<A>& tensor) :
+      Tsr(const ExpScalTsr<A>& tensor) :
         base(tensor.array(), tensor.vars())
       { }
 
@@ -51,6 +51,48 @@ namespace TiledArray {
       using base::derived;
       using base::array;
       using base::vars;
+
+      Tsr<A>& operator=(Tsr<A>& other) {
+        other.eval_to(*this);
+        return *this;
+      }
+
+      template <typename D>
+      Tsr<A>& operator=(const Base<D>& other) {
+        other.eval_to(*this);
+        return *this;
+      }
+
+      template <typename D>
+      Tsr<A>& operator+=(const Base<D>& other) {
+        Tsr<A> temp(tsr);
+        TsrAdd<Tsr<A>, Derived> exp(temp, derived());
+        exp.eval_to(tsr);
+        return *this;
+      }
+
+      template <typename D>
+      Tsr<A>& operator-=(const Base<D>& other) {
+        Tsr<A> temp(tsr);
+        TsrSubt<Tsr<A>, Derived> exp(temp, derived());
+        exp.eval_to(tsr);
+        return *this;
+      }
+
+      template <typename D>
+      Tsr<A>& operator*=(const Base<D>& other) {
+        Tsr<A> temp(tsr);
+        TsrMult<Tsr<A>, Derived> exp(temp, derived());
+        exp.eval_to(tsr);
+        return *this;
+      }
+
+      operator array_type& () { return array_; }
+      operator const array_type& () { return arra_; }
+
+      template <typename A>
+      void eval_to(Tsr<A>& tsr) {
+      }
 
     }; // class ExpTsr
 

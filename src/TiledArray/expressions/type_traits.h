@@ -32,7 +32,7 @@ namespace TiledArray {
     struct is_scaled : public std::false_type { };
 
     template <typename A>
-    struct is_scaled<ExpScalTsr<A> > : public std::true_type { };
+    struct is_scaled<ScalTsr<A> > : public std::true_type { };
 
     template <typename D>
     struct is_scaled<ScalBinaryBase<D> > : public std::true_type { };
@@ -41,16 +41,19 @@ namespace TiledArray {
     struct is_scaled<TsrAdd<L, R> > : public std::true_type { };
 
     template <typename L, typename R>
-    struct is_scaled<ExpScalTsrSubt<L, R> > : public std::true_type { };
+    struct is_scaled<ScalTsrSubt<L, R> > : public std::true_type { };
 
     template <typename L, typename R>
-    struct is_scaled<ExpScalTsrCont<L, R> > : public std::true_type { };
+    struct is_scaled<ScalTsrCont<L, R> > : public std::true_type { };
+
+    template <typename L, typename R>
+    struct is_scaled<ScalTsrConv<L, R> > : public std::true_type { };
 
     template <typename D>
-    struct is_scaled<ExpScalUnaryBase<D> > : public std::true_type { };
+    struct is_scaled<ScalUnaryBase<D> > : public std::true_type { };
 
     template <typename A>
-    struct is_scaled<ExpScalTsrNeg<A> > : public std::true_type { };
+    struct is_scaled<ScalTsrNeg<A> > : public std::true_type { };
 
 
     // Type traits for tensors
@@ -59,13 +62,22 @@ namespace TiledArray {
     struct is_tensor : public std::false_type { };
 
     template <typename D>
-    struct is_tensor<ExpTsrBase<D> > : public std::true_type { };
+    struct is_tensor<TsrBase<D> > : public std::true_type { };
 
     template <typename A>
-    struct is_tensor<ExpTsr<A> > : public std::true_type { };
+    struct is_tensor<Tsr<A> > : public std::true_type { };
 
     template <typename A>
-    struct is_tensor<ExpScalTsr<A> > : public std::true_type { };
+    struct is_tensor<ScalTsr<A> > : public std::true_type { };
+
+
+    // Type traits for consumable data
+
+    template <typename>
+    struct is_consumable : public std::false_type { };
+
+    template <typename D>
+    struct is_consumable<BinaryBase<D> > : public std::true_type { };
 
   }  // namespace expressions
 } // namespace TiledArray
