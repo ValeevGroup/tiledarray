@@ -113,9 +113,11 @@ AC_CONFIG_FILES([
   Makefile
     src/Makefile
       src/TiledArray/Makefile
+        src/TiledArray/dist_eval/Makefile
+        src/TiledArray/expressions/Makefile
         src/TiledArray/math/Makefile
         src/TiledArray/pmap/Makefile
-        src/TiledArray/expressions/Makefile
+        src/TiledArray/tile_op/Makefile
     tests/Makefile
     examples/Makefile
       examples/cc/Makefile
