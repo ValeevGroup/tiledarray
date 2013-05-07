@@ -88,7 +88,7 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
         result_type result;
-        if(perm.dim())
+        if(perm_.dim())
           permute(result, perm_, first, second, op_type());
         else
           result = result_type(first.range(), first.begin(), second.begin(), op_type());
@@ -119,7 +119,7 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, zero_right_type) const {
         result_type result;
         if(perm_.dim())
-          permute(result, perm_, second); // permute
+          permute(result, perm_, first); // permute
         else
           result = result_type(first.range(), first.begin()); // No permute
 
@@ -184,7 +184,7 @@ namespace TiledArray {
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
-        if(perm.dim()) {
+        if(perm_.dim()) {
           result_type result;
           permute(result, perm_, first, second, op_type());
           return result;
@@ -238,8 +238,8 @@ namespace TiledArray {
     class Add<Result, Left, Right, false, true> {
     public:
       typedef Add<Result, Left, Right, true, false> Add_; ///< This object type
-      typedef Left first_argument_type; ///< The left-hand argument type
-      typedef const Right& second_argument_type; ///< The right-hand argument type
+      typedef const Left& first_argument_type; ///< The left-hand argument type
+      typedef Right second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
@@ -282,7 +282,7 @@ namespace TiledArray {
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
-        if(perm.dim()) {
+        if(perm_.dim()) {
           result_type result;
           permute(result, perm_, first, second, op_type());
           return result;
@@ -302,7 +302,7 @@ namespace TiledArray {
         if(perm_.dim())
           permute(result, perm_, second); // permute
         else
-          second; // no permute
+          return second; // no permute
 
         return result;
       }
