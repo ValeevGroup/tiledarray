@@ -111,17 +111,16 @@ namespace TiledArray {
         result[TiledArray::detail::calc_ordinal(*it, ip_weight, start)] = op(left[i], right[i]);
     }
 
-
-
-    template <typename T, typename A>
-    inline Tensor<T,A> operator^(const Permutation& perm, const Tensor<T, A>& tensor) {
-      // Create tensor to hold the result
-      Tensor<T,A> result;
-      permute(result, perm, tensor);
-      return result;
-    }
-
   }  // namespace math
+
+  template <typename T, typename A>
+  inline Tensor<T,A> operator^(const Permutation& perm, const Tensor<T, A>& tensor) {
+    // Create tensor to hold the result
+    Tensor<T,A> result;
+    math::permute(result, perm, tensor);
+    return result;
+  }
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_PERMUTE_H__INCLUDED
