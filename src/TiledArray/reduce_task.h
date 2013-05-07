@@ -323,6 +323,7 @@ namespace TiledArray {
 
       madness::World& world_;
       Op op_;
+      madness::AtomicInt* counter_;
       std::shared_ptr<result_type> ready_result_;
       volatile ReducePair* ready_pair_;
       madness::Future<result_type> result_;
@@ -331,10 +332,11 @@ namespace TiledArray {
 
     public:
 
-      ReducePairTaskImpl(madness::World& world, Op op) :
+      ReducePairTaskImpl(madness::World& world, Op op, madness::AtomicInt* counter) :
           madness::TaskInterface(1, madness::TaskAttributes::hipri()),
-          world_(world), op_(op), ready_result_(new result_type(op())),
-          ready_pair_(NULL), result_(), lock_(), count_()
+          world_(world), op_(op), counter_(counter),
+          ready_result_(new result_type(op())), ready_pair_(NULL), result_(),
+          lock_(), count_()
       {
         count_ = 0;
       }
@@ -344,6 +346,8 @@ namespace TiledArray {
       virtual void run(const madness::TaskThreadEnv&) {
         TA_ASSERT(ready_result_);
         result_.set(*ready_result_);
+        if(counter_)
+          (*counter_)++;
       }
 
       template <typename Left, typename Right>
@@ -487,8 +491,8 @@ namespace TiledArray {
       /// Task constructor
 
       /// \param world The world where this task will be run.
-      ReducePairTask(madness::World& world, const Op& op = Op()) :
-        pimpl_(new ReducePairTaskImpl<Op>(world, op), &deleter)
+      ReducePairTask(madness::World& world, const Op& op = Op(), madness::AtomicInt* counter = NULL) :
+        pimpl_(new ReducePairTaskImpl<Op>(world, op, counter), &deleter)
       { }
 
       ReducePairTask(const ReducePairTask<Op>& other) :
