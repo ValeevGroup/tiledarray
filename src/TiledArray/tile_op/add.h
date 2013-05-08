@@ -20,7 +20,6 @@
 #ifndef TILEDARRAY_TILE_OP_ADD_H__INCLUDED
 #define TILEDARRAY_TILE_OP_ADD_H__INCLUDED
 
-#include <TiledArray/type_traits.h>
 #include <TiledArray/tile_op/permute.h>
 #include <TiledArray/tensor.h>
 
