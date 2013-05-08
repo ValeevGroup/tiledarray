@@ -41,7 +41,7 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right>
     class ScalAdd<Result, Left, Right, false, false> {
     public:
-      typedef ScalAdd<Result, Left, Right, false, false> Add_; ///< This object type
+      typedef ScalAdd<Result, Left, Right, false, false> ScalAdd_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
@@ -82,13 +82,13 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      ScalAdd(const Add_& other) : perm_(other.perm_), factor_(other.factor_) { }
+      ScalAdd(const ScalAdd_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd operator=(const Add_& other) {
+      ScalAdd operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;
@@ -163,7 +163,7 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool RightConsumable>
     class ScalAdd<Result, Left, Right, true, RightConsumable> {
     public:
-      typedef ScalAdd<Result, Left, Right, true, false> Add_; ///< This object type
+      typedef ScalAdd<Result, Left, Right, true, false> ScalAdd_; ///< This object type
       typedef Left first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
@@ -204,13 +204,13 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      ScalAdd(const Add_& other) : perm_(other.perm_), factor_(other.factor_) { }
+      ScalAdd(const ScalAdd_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd operator=(const Add_& other) {
+      ScalAdd operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;
@@ -290,7 +290,7 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right>
     class ScalAdd<Result, Left, Right, false, true> {
     public:
-      typedef ScalAdd<Result, Left, Right, true, false> Add_; ///< This object type
+      typedef ScalAdd<Result, Left, Right, true, false> ScalAdd_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef Right second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
@@ -329,13 +329,13 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      ScalAdd(const Add_& other) : perm_(other.perm_), factor_(other.factor_) { }
+      ScalAdd(const ScalAdd_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd operator=(const Add_& other) {
+      ScalAdd operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;
