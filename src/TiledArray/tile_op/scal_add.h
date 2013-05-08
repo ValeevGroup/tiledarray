@@ -20,6 +20,9 @@
 #ifndef TILEDARRAY_TILE_OP_SCAL_ADD_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SCAL_ADD_H__INCLUDED
 
+#include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tensor.h>
+
 namespace TiledArray {
   namespace math {
 
@@ -27,18 +30,18 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool LeftConsumable, bool RightConsumable>
     class ScalAdd;
 
-    /// Tile scaled addition operation
+    /// Tile addition and scale operation
 
-    /// This addition operation will add the content two tiles and apply a
-    /// permutation to the result tensor. If no permutation is given or the
-    /// permutation is null, then the result is not permuted.
+    /// This addition operation will add the content two tiles, then scale and
+    /// apply a permutation to the result tensor. If no permutation is given or
+    /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
     template <typename Result, typename Left, typename Right>
     class ScalAdd<Result, Left, Right, false, false> {
     public:
-      typedef ScalAdd<Result, Left, Right, false, false> ScalAdd_; ///< This object type
+      typedef ScalAdd<Result, Left, Right, false, false> Add_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
@@ -46,88 +49,113 @@ namespace TiledArray {
       typedef Result result_type; ///< The result tile type
       typedef TiledArray::detail::ScalPlus<typename Left::value_type,
           typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
+      typedef typename op_type::scalar_type scalar_type; ///< Scalar type
 
     private:
       Permutation perm_; ///< The result permutation
+      scalar_type factor_; ///< The scaling factor
 
     public:
       /// Default constructor
 
       /// Construct an addition operation that does not permute the result tile
-      ScalAdd() : perm_() { }
+      /// and has a scaling factor of 1.
+      ScalAdd() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct an addition operation that permutes the result tensor
+      /// Construct an addition operation that scales the result tensor
+      /// \param factor The scaling factor for the operation [default = 1]
+      ScalAdd(const scalar_type factor) :
+        perm_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct an addition operation that permutes and scales the result tensor
       /// \param perm The permutation to apply to the result tile
-      ScalAdd(const Permutation& perm) : perm_(perm) { }
+      /// \param factor The scaling factor for the operation [default = 1]
+      ScalAdd(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+        perm_(perm), factor_(factor)
+      { }
 
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      ScalAdd(const Add_& other) : perm_(other.perm_) { }
+      ScalAdd(const Add_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd_ operator=(const ScalAdd_& other) {
+      ScalAdd operator=(const Add_& other) {
         perm_ = other.perm_;
+        factor_ = other.factor_;
         return *this;
       }
 
-      /// Add two non-zero tiles and possibly permute
+      /// Add and scale two non-zero tiles and possibly permute
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
+
+        const TiledArray::detail::ScalPlus<typename Left::value_type,
+            typename Right::value_type, typename Result::value_type> op(factor_);
+
         result_type result;
-        if(perm.dim())
-          permute(result, perm_, first, second, op_type());
+        if(perm_.dim())
+          permute(result, perm_, first, second, op);
         else
-          result = result_type(first.range(), first.begin(), second.begin(), op_type());
+          result = result_type(first.range(), first.begin(), second.begin(), op);
 
         return result;
       }
 
-      /// Add a zero tile to a non-zero tiles and possibly permute
+      /// Add and scale a zero tile to a non-zero tiles and possibly permute
 
       /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The sum and permutation of the first and second
       result_type operator()(zero_left_type, second_argument_type second) const {
+        const TiledArray::detail::Scale<typename Right::value_type,
+            typename Result::value_type> op(factor_);
+
         result_type result;
         if(perm_.dim())
-          permute(result, perm_, second); // permute
+          permute(result, perm_, second, op); // permute
         else
-          result = result_type(second.range(), second.begin()); // no permute
+          result = result_type(second.range(), second.begin(), op); // no permute
 
         return result;
       }
 
-      /// Add a non-zero tiles to a zero tile and possibly permute
+      /// Add and scale a non-zero tiles to a zero tile and possibly permute
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument, a zero tile
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, zero_right_type) const {
+        const TiledArray::detail::Scale<typename Left::value_type,
+            typename Result::value_type> op(factor_);
+
         result_type result;
         if(perm_.dim())
-          permute(result, perm_, second); // permute
+          permute(result, perm_, first, op); // permute
         else
-          result = result_type(first.range(), first.begin()); // No permute
+          result = result_type(first.range(), first.begin(), op); // No permute
 
         return result;
       }
-    }; // class Add
+    }; // class ScalAdd
 
-    /// Tile addition operation
+    /// Tile addition and scale operation
 
-    /// This addition operation will add the content two tiles and apply a
-    /// permutation to the result tensor. If no permutation is given or the
-    /// permutation is null, then the result is not permuted.
+    /// This addition operation will add the content two tiles, then scale and
+    /// apply a permutation to the result tensor. If no permutation is given or
+    /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
@@ -135,139 +163,181 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool RightConsumable>
     class ScalAdd<Result, Left, Right, true, RightConsumable> {
     public:
-      typedef ScalAdd<Result, Left, Right, true, false> ScalAdd_; ///< This object type
+      typedef ScalAdd<Result, Left, Right, true, false> Add_; ///< This object type
       typedef Left first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
-      typedef TiledArray::detail::ScalPlus<typename Left::value_type,
+      typedef TiledArray::detail::Plus<typename Left::value_type,
           typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
+      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
 
     private:
       Permutation perm_; ///< The result permutation
+      scalar_type factor_; ///< The scaling factor
 
     public:
       /// Default constructor
 
       /// Construct an addition operation that does not permute the result tile
-      ScalAdd() : perm_() { }
+      /// and has a scaling factor of 1.
+      ScalAdd() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct an addition operation that permutes the result tensor
+      /// Construct an addition operation that scales the result tensor
+      /// \param factor The scaling factor for the operation [default = 1]
+      ScalAdd(const scalar_type factor) :
+        perm_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct an addition operation that permutes and scales the result tensor
       /// \param perm The permutation to apply to the result tile
-      ScalAdd(const Permutation& perm) : perm_(perm) { }
+      /// \param factor The scaling factor for the operation [default = 1]
+      ScalAdd(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+        perm_(perm), factor_(factor)
+      { }
 
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      ScalAdd(const ScalAdd_& other) : perm_(other.perm_) { }
+      ScalAdd(const Add_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd_& operator=(const ScalAdd_& other) {
+      ScalAdd operator=(const Add_& other) {
         perm_ = other.perm_;
+        factor_ = other.factor_;
         return *this;
       }
 
-      /// Add two non-zero tiles and possibly permute
+      /// Add and scale two non-zero tiles and possibly permute
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
-        if(perm.dim()) {
+
+        const TiledArray::detail::ScalPlus<typename Left::value_type,
+            typename Right::value_type, typename Result::value_type> op(factor_);
+
+        if(perm_.dim()) {
           result_type result;
-          permute(result, perm_, first, second, op_type());
+          permute(result, perm_, first, second, op);
           return result;
         } else {
-          first += second;
+          const std::size_t end = first.size();
+          for(std::size_t i = 0ul; i < end; ++i)
+            first[i] = op(first[i], second[i]);
           return first;
         }
       }
 
-      /// Add a zero tile to a non-zero tiles and possibly permute
+      /// Add and scale a zero tile to a non-zero tiles and possibly permute
 
       /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The sum and permutation of the first and second
       result_type operator()(zero_left_type, second_argument_type second) const {
+        const TiledArray::detail::Scale<typename Right::value_type,
+                    typename Result::value_type> op(factor_);
+
         result_type result;
         if(perm_.dim())
-          permute(result, perm_, second); // permute
+          permute(result, perm_, second, op); // permute
         else
-          result = result_type(second.range(), second.begin()); // no permute
+          result = result_type(second.range(), second.begin(), op); // no permute
 
         return result;
       }
 
-      /// Add a non-zero tiles to a zero tile and possibly permute
+      /// Add and scale a non-zero tiles to a zero tile and possibly permute
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument, a zero tile
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, zero_right_type) const {
         if(perm_.dim()) {
+          const TiledArray::detail::Scale<typename Left::value_type,
+              typename Result::value_type> op(factor_);
+
           result_type result;
-          permute(result, perm_, first); // permute
+          permute(result, perm_, first, op); // permute
           return result;
-        } else
-          return first; // No permute
+        }
+
+        first *= factor_;
+        return first; // No permute
       }
-    }; // class Add
+    }; // class ScalAdd
 
 
-    /// Tile addition operation
+    /// Tile addition and scale operation
 
-    /// This addition operation will add the content two tiles and apply a
-    /// permutation to the result tensor. If no permutation is given or the
-    /// permutation is null, then the result is not permuted.
+    /// This addition operation will add the content two tiles, then scale and
+    /// apply a permutation to the result tensor. If no permutation is given or
+    /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
-    /// \note This specialization assumes the left hand tile is consumable
+    /// \note This specialization assumes the right-hand tile is consumable
     template <typename Result, typename Left, typename Right>
     class ScalAdd<Result, Left, Right, false, true> {
     public:
-      typedef ScalAdd<Result, Left, Right, false, true> ScalAdd_; ///< This object type
-      typedef Left first_argument_type; ///< The left-hand argument type
-      typedef const Right& second_argument_type; ///< The right-hand argument type
+      typedef ScalAdd<Result, Left, Right, true, false> Add_; ///< This object type
+      typedef const Left& first_argument_type; ///< The left-hand argument type
+      typedef Right second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
-      typedef TiledArray::detail::ScalPlus<typename Left::value_type,
-          typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
+      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
 
     private:
       Permutation perm_; ///< The result permutation
+      scalar_type factor_; ///< The scaling factor
 
     public:
       /// Default constructor
 
       /// Construct an addition operation that does not permute the result tile
-      ScalAdd() : perm_() { }
+      /// and has a scaling factor of 1
+      ScalAdd() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct an addition operation that permutes the result tensor
+      /// Construct an addition operation that scales the result tensor
+      /// \param factor The scaling factor for the operation [default = 1]
+      ScalAdd(const scalar_type factor) :
+        perm_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct an addition operation that permutes and scales the result tensor
       /// \param perm The permutation to apply to the result tile
-      ScalAdd(const Permutation& perm) : perm_(perm) { }
+      /// \param factor The scaling factor for the operation [default = 1]
+      ScalAdd(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+        perm_(perm), factor_(factor)
+      { }
 
       /// Copy constructor
 
       /// \param other The addition operation object to be copied
-      ScalAdd(const ScalAdd_& other) : perm_(other.perm_) { }
+      ScalAdd(const Add_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd_ operator=(const ScalAdd_& other) {
+      ScalAdd operator=(const Add_& other) {
         perm_ = other.perm_;
+        factor_ = other.factor_;
         return *this;
       }
 
@@ -278,42 +348,55 @@ namespace TiledArray {
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
-        if(perm.dim()) {
+
+        const TiledArray::detail::ScalPlus<typename Left::value_type,
+            typename Right::value_type, typename Result::value_type> op(factor_);
+
+        if(perm_.dim()) {
           result_type result;
-          permute(result, perm_, first, second, op_type());
+          permute(result, perm_, first, second, op);
           return result;
         } else {
-          second += first;
+          const std::size_t end = first.size();
+          for(std::size_t i = 0ul; i < end; ++i)
+            second[i] = op(first[i], second[i]);
           return second;
         }
       }
 
-      /// Add a zero tile to a non-zero tiles and possibly permute
+      /// Add and scale a zero tile to a non-zero tiles and possibly permute
 
       /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The sum and permutation of the first and second
       result_type operator()(zero_left_type, second_argument_type second) const {
-        result_type result;
-        if(perm_.dim())
-          permute(result, perm_, second); // permute
-        else
-          second; // no permute
+        if(perm_.dim()) {
+          const TiledArray::detail::Scale<typename Right::value_type,
+                      typename Result::value_type> op(factor_);
 
-        return result;
+          result_type result;
+          permute(result, perm_, second, op); // permute
+          return result;
+        }
+
+        second *= factor_;
+        return second; // no permute
       }
 
-      /// Add a non-zero tiles to a zero tile and possibly permute
+      /// Add and scale a non-zero tiles to a zero tile and possibly permute
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument, a zero tile
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, zero_right_type) const {
+        const TiledArray::detail::Scale<typename Left::value_type,
+            typename Result::value_type> op(factor_);
+
         result_type result;
         if(perm_.dim())
-          permute(result, perm_, first); // permute
+          permute(result, perm_, first, op); // permute
         else
-          result = result_type(first.range(), first.begin()); // No permute
+          result = result_type(first.range(), first.begin(), op); // No permute
 
         return result;
       }
