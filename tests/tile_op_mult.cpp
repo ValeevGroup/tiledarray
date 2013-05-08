@@ -18,7 +18,7 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  tile_op_add.cpp
+ *  tile_op_mult.cpp
  *  May 7, 2013
  *
  */
