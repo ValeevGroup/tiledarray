@@ -135,7 +135,7 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
-    /// \note This specialization assumes the left hand tile is consumable
+    /// \note This specialization assumes the left-hand tile is consumable
     template <typename Result, typename Left, typename Right, bool RightConsumable>
     class Add<Result, Left, Right, true, RightConsumable> {
     public:
@@ -233,7 +233,7 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
-    /// \note This specialization assumes the left hand tile is consumable
+    /// \note This specialization assumes the right-hand tile is consumable
     template <typename Result, typename Left, typename Right>
     class Add<Result, Left, Right, false, true> {
     public:
