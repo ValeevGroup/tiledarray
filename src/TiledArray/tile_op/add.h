@@ -81,7 +81,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
@@ -101,7 +101,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
         result_type result;
         if(perm_.dim())
@@ -116,7 +116,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument, a zero tile
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
         result_type result;
         if(perm_.dim())
@@ -182,7 +182,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
@@ -203,7 +203,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
         result_type result;
         if(perm_.dim())
@@ -218,7 +218,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument, a zero tile
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
         if(perm_.dim()) {
           result_type result;
@@ -282,7 +282,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
@@ -303,7 +303,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
         result_type result;
         if(perm_.dim())
@@ -318,7 +318,7 @@ namespace TiledArray {
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument, a zero tile
-      /// \return The sum and permutation of the first and second
+      /// \return The sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
         result_type result;
         if(perm_.dim())
