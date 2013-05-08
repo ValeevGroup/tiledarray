@@ -107,8 +107,8 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename First, typename Second, typename Result>
     struct Minus {
-      typedef First first_argument_type; ///< The left-hand argument type
-      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef typename std::add_const<First>::type first_argument_type; ///< The left-hand argument type
+      typedef typename std::add_const<Second>::type second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
 
       /// Compute the difference of \c first and \c second
@@ -128,8 +128,8 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename First, typename Second, typename Result>
     struct ScalMinus {
-      typedef First first_argument_type; ///< The left-hand argument type
-      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef typename std::add_const<First>::type first_argument_type; ///< The left-hand argument type
+      typedef typename std::add_const<Second second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
       typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
 
@@ -165,8 +165,8 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename First, typename Second, typename Result>
     struct Multiplies {
-      typedef First first_argument_type; ///< The left-hand argument type
-      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef typename std::add_const<First first_argument_type; ///< The left-hand argument type
+      typedef typename std::add_const<Second second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
 
       /// Compute the product of \c first and \c second
@@ -186,8 +186,8 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename First, typename Second, typename Result>
     struct ScalMultiplies {
-      typedef First first_argument_type; ///< The left-hand argument type
-      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef typename std::add_const<First first_argument_type; ///< The left-hand argument type
+      typedef typename std::add_const<Second second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
       typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
 
@@ -224,7 +224,7 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename Arg, typename Result>
     struct Negate {
-      typedef Arg argument_type; ///< The argument type
+      typedef typename std::add_const<Arg argument_type; ///< The argument type
       typedef Result result_type; ///< The result type
 
       /// Compute the product of \c first and \c second
@@ -234,7 +234,7 @@ namespace TiledArray {
       result_type operator()(argument_type arg) const {
         return -arg;
       }
-    }; // class Multiples
+    }; // class Negate
 
     /// Generalization of \c std::negate with scaling, but \c Arg yielding \c Result
 
@@ -242,7 +242,7 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename Arg, typename Result>
     struct ScalNegate {
-      typedef Arg argument_type; ///< The left-hand argument type
+      typedef typename std::add_const<Arg argument_type; ///< The left-hand argument type
       typedef Result result_type; ///< The result type
       typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
 
@@ -251,7 +251,7 @@ namespace TiledArray {
 
     public:
 
-      // Constructors & assignment operator
+      // Constructors
       ScalNegate(scalar_type factor) : factor_(-factor) { }
       ScalNegate(const ScalNegate<Arg,Result>& other) : factor_(other.factor_) { }
 
@@ -269,7 +269,42 @@ namespace TiledArray {
         // Note: factor is negated in the constructor
         return arg * factor_;
       }
-    }; // class ScalMultiplies
+    }; // class ScalNegate
+
+    /// Scaling operations
+
+    /// \tparam Arg The argument type
+    /// \tparam Result The result type
+    template <typename Arg, typename Result>
+    struct Scale {
+      typedef typename std::add_const<Arg argument_type;
+      typedef Result result_type;
+      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type;
+
+    private:
+      scalar_type factor_; ///< The scaling factor
+
+    public:
+      // Constructors
+      Scale(const scalar_type factor) : factor_(factor) { }
+      Scale(const Scale<Arg, Result>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      Scale<Arg, Result>& operator=(const Scale<Arg, Result>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      /// Scale operation
+
+      /// \param arg The argument to be scaled
+      /// \return \c arg*factor
+      result_type operator()(const argument_type arg) const {
+        return arg * factor_;
+      }
+
+    }; // struct Scale
+
   }  // namespace detail
 }  // namespace TiledArray
 
