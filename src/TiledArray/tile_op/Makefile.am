@@ -20,6 +20,7 @@
 
 library_includedir = $(includedir)/TiledArray/tile_op
 library_include_HEADERS = add.h \
+                          mult.h \
                           permute.h \
                           scal_add.h \
                           scal_subt.h \

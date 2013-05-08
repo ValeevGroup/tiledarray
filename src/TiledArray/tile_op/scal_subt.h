@@ -26,10 +26,6 @@
 namespace TiledArray {
   namespace math {
 
-    // Forward declarations
-    template <typename Result, typename Left, typename Right, bool LeftConsumable, bool RightConsumable>
-    class ScalSubt;
-
     /// Tile addition and scale operation
 
     /// This addition operation will add the content two tiles, then scale and
@@ -38,8 +34,9 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
-    template <typename Result, typename Left, typename Right>
-    class ScalSubt<Result, Left, Right, false, false> {
+    template <typename Result, typename Left, typename Right, bool LeftConsumable,
+        bool RightConsumable, typename Enabler = void>
+    class ScalSubt {
     public:
       typedef ScalSubt<Result, Left, Right, false, false> ScalSubt_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
@@ -159,7 +156,7 @@ namespace TiledArray {
     /// \tparam Right The right-hand argument type
     /// \note This specialization assumes the left hand tile is consumable
     template <typename Result, typename Left, typename Right, bool RightConsumable>
-    class ScalSubt<Result, Left, Right, true, RightConsumable> {
+    class ScalSubt<Result, Left, Right, true, RightConsumable, void> {
     public:
       typedef ScalSubt<Result, Left, Right, true, false> ScalSubt_; ///< This object type
       typedef Left first_argument_type; ///< The left-hand argument type
@@ -283,8 +280,10 @@ namespace TiledArray {
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
     /// \note This specialization assumes the right-hand tile is consumable
-    template <typename Result, typename Left, typename Right>
-    class ScalSubt<Result, Left, Right, false, true> {
+    template <typename Result, typename Left, typename Right, bool LeftConsumable>
+    class ScalSubt<Result, Left, Right, LeftConsumable, true,
+        typename madness::disable_if_c<LeftConsumable && std::is_same<Result, Left>::value>::type>
+    {
     public:
       typedef ScalSubt<Result, Left, Right, true, false> ScalSubt_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type

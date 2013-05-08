@@ -26,10 +26,6 @@
 namespace TiledArray {
   namespace math {
 
-    // Forward declarations
-    template <typename Result, typename Left, typename Right, bool LeftConsumable, bool RightConsumable>
-    class Add;
-
     /// Tile addition operation
 
     /// This addition operation will add the content two tiles and apply a
@@ -38,8 +34,9 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
-    template <typename Result, typename Left, typename Right>
-    class Add<Result, Left, Right, false, false> {
+    template <typename Result, typename Left, typename Right, bool LeftConsumable,
+        bool RightConsumable, typename Enabler = void>
+    class Add {
     public:
       typedef Add<Result, Left, Right, false, false> Add_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
@@ -137,17 +134,15 @@ namespace TiledArray {
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
     /// \note This specialization assumes the left-hand tile is consumable
-    template <typename Result, typename Left, typename Right, bool RightConsumable>
-    class Add<Result, Left, Right, true, RightConsumable> {
+    template <typename Result, typename Right, bool RightConsumable>
+    class Add<Result, Result, Right, true, RightConsumable, void> {
     public:
-      typedef Add<Result, Left, Right, true, false> Add_; ///< This object type
-      typedef Left first_argument_type; ///< The left-hand argument type
+      typedef Add<Result, Result, Right, true, false> Add_; ///< This object type
+      typedef Result first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
+      typedef const ZeroTensor<typename Result::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
-      typedef TiledArray::detail::Plus<typename Left::value_type,
-          typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
 
     private:
       Permutation perm_; ///< The result permutation
@@ -186,7 +181,7 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        TiledArray::detail::Plus<typename Left::value_type,
+        TiledArray::detail::Plus<typename Result::value_type,
             typename Right::value_type, typename Result::value_type> op;
 
         if(perm_.dim()) {
@@ -239,14 +234,16 @@ namespace TiledArray {
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
     /// \note This specialization assumes the right-hand tile is consumable
-    template <typename Result, typename Left, typename Right>
-    class Add<Result, Left, Right, false, true> {
+    template <typename Result, typename Left, bool LeftConsumable>
+    class Add<Result, Left, Result, LeftConsumable, true,
+        typename madness::disable_if_c<LeftConsumable && std::is_same<Result, Left>::value>::type>
+    {
     public:
-      typedef Add<Result, Left, Right, true, false> Add_; ///< This object type
+      typedef Add<Result, Left, Result, true, false> Add_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
-      typedef Right second_argument_type; ///< The right-hand argument type
+      typedef Result second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
+      typedef const ZeroTensor<typename Result::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
 
     private:
@@ -287,7 +284,7 @@ namespace TiledArray {
         TA_ASSERT(first.range() == second.range());
 
         TiledArray::detail::Plus<typename Left::value_type,
-            typename Right::value_type, typename Result::value_type> op;
+            typename Result::value_type, typename Result::value_type> op;
 
         if(perm_.dim()) {
           result_type result;
