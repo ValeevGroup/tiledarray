@@ -47,8 +47,6 @@ namespace TiledArray {
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
-      typedef TiledArray::detail::Plus<typename Left::value_type,
-          typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
 
     private:
       Permutation perm_; ///< The result permutation
@@ -86,11 +84,15 @@ namespace TiledArray {
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
+
+        TiledArray::detail::Plus<typename Left::value_type,
+            typename Right::value_type, typename Result::value_type> op;
+
         result_type result;
         if(perm_.dim())
-          permute(result, perm_, first, second, op_type());
+          permute(result, perm_, first, second, op);
         else
-          result = result_type(first.range(), first.begin(), second.begin(), op_type());
+          result = result_type(first.range(), first.begin(), second.begin(), op);
 
         return result;
       }
@@ -183,9 +185,13 @@ namespace TiledArray {
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
+
+        TiledArray::detail::Plus<typename Left::value_type,
+            typename Right::value_type, typename Result::value_type> op;
+
         if(perm_.dim()) {
           result_type result;
-          permute(result, perm_, first, second, op_type());
+          permute(result, perm_, first, second, op);
           return result;
         } else {
           first += second;
@@ -242,8 +248,6 @@ namespace TiledArray {
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
-      typedef TiledArray::detail::Plus<typename Left::value_type,
-          typename Right::value_type, typename Result::value_type> op_type; ///< The operation applied to the arguments
 
     private:
       Permutation perm_; ///< The result permutation
@@ -281,9 +285,13 @@ namespace TiledArray {
       /// \return The sum and permutation of the first and second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
+
+        TiledArray::detail::Plus<typename Left::value_type,
+            typename Right::value_type, typename Result::value_type> op;
+
         if(perm_.dim()) {
           result_type result;
-          permute(result, perm_, first, second, op_type());
+          permute(result, perm_, first, second, op);
           return result;
         } else {
           second += first;
