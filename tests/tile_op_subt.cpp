@@ -65,6 +65,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_NO_THROW((math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false>(perm)));
   BOOST_CHECK_NO_THROW((math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
   BOOST_CHECK_NO_THROW((math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(perm)));
+  BOOST_CHECK_NO_THROW((math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
+  BOOST_CHECK_NO_THROW((math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm)));
 }
 
 BOOST_AUTO_TEST_CASE( binary_add )

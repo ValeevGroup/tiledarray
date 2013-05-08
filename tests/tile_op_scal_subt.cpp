@@ -71,6 +71,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_NO_THROW((math::ScalSubt<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(7)));
   BOOST_CHECK_NO_THROW((math::ScalSubt<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(perm)));
   BOOST_CHECK_NO_THROW((math::ScalSubt<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(perm, 7)));
+  BOOST_CHECK_NO_THROW((math::ScalSubt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
+  BOOST_CHECK_NO_THROW((math::ScalSubt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(7)));
+  BOOST_CHECK_NO_THROW((math::ScalSubt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm)));
+  BOOST_CHECK_NO_THROW((math::ScalSubt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm, 7)));
 }
 
 BOOST_AUTO_TEST_CASE( binary_add )

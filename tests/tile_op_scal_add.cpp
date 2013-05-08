@@ -59,12 +59,22 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_scal_add_suite, ScalAddFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, false, false>()));
   BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, false, false>(7)));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, false, false>(perm)));
   BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, false, false>(perm, 7)));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, true, false>()));
   BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, true, false>(7)));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, true, false>(perm)));
   BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, true, false>(perm, 7)));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
   BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(7)));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(perm)));
   BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(perm, 7)));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(7)));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm)));
+  BOOST_CHECK_NO_THROW((math::ScalAdd<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm, 7)));
 }
 
 BOOST_AUTO_TEST_CASE( binary_add )
