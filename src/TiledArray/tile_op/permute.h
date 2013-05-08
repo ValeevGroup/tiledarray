@@ -15,6 +15,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  tile_op_subt.cpp
+ *  May 7, 2013
+ *
  */
 
 #ifndef TILEDARRAY_TILE_OP_PERMUTE_H__INCLUDED
