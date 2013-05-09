@@ -52,8 +52,6 @@ namespace TiledArray {
       typedef Mult<Result, Left, Right, false, false> Mult_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
 
     private:
@@ -121,8 +119,6 @@ namespace TiledArray {
       typedef Mult<Result, Result, Right, true, false> Mult_; ///< This object type
       typedef Result first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Result::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
 
     private:
@@ -196,8 +192,6 @@ namespace TiledArray {
       typedef Mult<Result, Left, Result, true, false> Mult_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef Result second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Result::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
 
     private:
