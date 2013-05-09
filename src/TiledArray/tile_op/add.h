@@ -40,11 +40,16 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
+    /// \tparam LeftConsumable A flag that is \c true when the left-hand
+    /// argument is consumable.
+    /// \tparam RightConsumable A flag that is \c true when the right-hand
+    /// argument is consumable.
+    /// \tparam Enabler Used to disambiguate specialization
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable, typename Enabler = void>
     class Add {
     public:
-      typedef Add<Result, Left, Right, false, false> Add_; ///< This object type
+      typedef Add<Result, Left, Right, LeftConsumable, RightConsumable, Enabler> Add_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
@@ -139,6 +144,8 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
+    /// \tparam RightConsumable A flag that is \c true when the right-hand
+    /// argument is consumable.
     /// \note This specialization assumes the left-hand tile is consumable
     template <typename Result, typename Right, bool RightConsumable>
     class Add<Result, Result, Right, true, RightConsumable, void> {
@@ -239,6 +246,8 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
+    /// \tparam LeftConsumable A flag that is \c true when the left-hand
+    /// argument is consumable.
     /// \note This specialization assumes the right-hand tile is consumable
     template <typename Result, typename Left, bool LeftConsumable>
     class Add<Result, Left, Result, LeftConsumable, true,

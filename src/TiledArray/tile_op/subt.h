@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_TILE_OP_ADD_H__INCLUDED
-#define TILEDARRAY_TILE_OP_ADD_H__INCLUDED
+#ifndef TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
+#define TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
 #include <TiledArray/tensor.h>
@@ -352,4 +352,4 @@ namespace TiledArray {
   } // namespace math
 } // namespace TiledArray
 
-#endif // TILEDARRAY_TILE_OP_ADD_H__INCLUDED
+#endif // TILEDARRAY_TILE_OP_SUBT_H__INCLUDED

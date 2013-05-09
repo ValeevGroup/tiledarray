@@ -18,7 +18,7 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  tile_op_add.cpp
+ *  scal_add.cpp
  *  May 8, 2013
  *
  */
@@ -40,6 +40,11 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
+    /// \tparam LeftConsumable A flag that is \c true when the left argument is
+    /// consumable.
+    /// \tparam RightConsumable A flag that is \c true when the right argument
+    /// is consumable.
+    /// \tparam Enabler Used to disambiguate specialization
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable, typename Enabler = void>
     class ScalAdd {

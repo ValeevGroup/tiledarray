@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_TILE_OP_ADD_H__INCLUDED
-#define TILEDARRAY_TILE_OP_ADD_H__INCLUDED
+#ifndef TILEDARRAY_TILE_OP_MULT_H__INCLUDED
+#define TILEDARRAY_TILE_OP_MULT_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
 #include <TiledArray/tensor.h>
@@ -40,8 +40,11 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
-    /// \tparam LeftConsumable Flag is true when left-hand argument is consumable
-    /// \tparam RightConsumable Flag is true when right-hand argument is consumable
+    /// \tparam LeftConsumable A flag that is \c true when the left-hand
+    /// argument is consumable.
+    /// \tparam RightConsumable A flag that is \c true when the right-hand
+    /// argument is consumable.
+    /// \tparam Enabler Used to disambiguate specialization
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable, typename Enabler = void>
     class Mult {
@@ -253,4 +256,4 @@ namespace TiledArray {
   } // namespace math
 } // namespace TiledArray
 
-#endif // TILEDARRAY_TILE_OP_ADD_H__INCLUDED
+#endif // TILEDARRAY_TILE_OP_MULT_H__INCLUDED
