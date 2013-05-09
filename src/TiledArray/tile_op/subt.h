@@ -80,7 +80,7 @@ namespace TiledArray {
 
       /// \param other The subtraction operation object to be copied
       /// \return A reference to this object
-      Subt operator=(const Subt_& other) {
+      Subt_& operator=(const Subt_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -185,7 +185,7 @@ namespace TiledArray {
 
       /// \param other The subtraction operation object to be copied
       /// \return A reference to this object
-      Subt operator=(const Subt_& other) {
+      Subt_& operator=(const Subt_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -291,7 +291,7 @@ namespace TiledArray {
 
       /// \param other The subtraction operation object to be copied
       /// \return A reference to this object
-      Subt operator=(const Subt_& other) {
+      Subt_& operator=(const Subt_& other) {
         perm_ = other.perm_;
         return *this;
       }

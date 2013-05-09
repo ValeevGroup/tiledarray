@@ -49,7 +49,7 @@ namespace TiledArray {
         bool RightConsumable, typename Enabler = void>
     class Mult {
     public:
-      typedef Mult<Result, Left, Right, false, false> Add_; ///< This object type
+      typedef Mult<Result, Left, Right, false, false> Mult_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
@@ -74,13 +74,13 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The multiplication operation object to be copied
-      Mult(const Add_& other) : perm_(other.perm_) { }
+      Mult(const Mult_& other) : perm_(other.perm_) { }
 
       /// Copy assignment
 
       /// \param other The multiplication operation object to be copied
       /// \return A reference to this object
-      Mult operator=(const Add_& other) {
+      Mult_& operator=(const Mult_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -118,7 +118,7 @@ namespace TiledArray {
     template <typename Result, typename Right, bool RightConsumable>
     class Mult<Result, Result, Right, true, RightConsumable, void> {
     public:
-      typedef Mult<Result, Result, Right, true, false> Add_; ///< This object type
+      typedef Mult<Result, Result, Right, true, false> Mult_; ///< This object type
       typedef Result first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Result::value_type>& zero_left_type; ///< Zero left-hand tile type
@@ -143,13 +143,13 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The multiplication operation object to be copied
-      Mult(const Add_& other) : perm_(other.perm_) { }
+      Mult(const Mult_& other) : perm_(other.perm_) { }
 
       /// Copy assignment
 
       /// \param other The multiplication operation object to be copied
       /// \return A reference to this object
-      Mult operator=(const Add_& other) {
+      Mult_& operator=(const Mult_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -193,7 +193,7 @@ namespace TiledArray {
         typename madness::disable_if_c<LeftConsumable && std::is_same<Result, Left>::value>::type>
    {
     public:
-      typedef Mult<Result, Left, Result, true, false> Add_; ///< This object type
+      typedef Mult<Result, Left, Result, true, false> Mult_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
       typedef Result second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
@@ -218,13 +218,13 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The multiplication operation object to be copied
-      Mult(const Add_& other) : perm_(other.perm_) { }
+      Mult(const Mult_& other) : perm_(other.perm_) { }
 
       /// Copy assignment
 
       /// \param other The multiplication operation object to be copied
       /// \return A reference to this object
-      Mult operator=(const Add_& other) {
+      Mult_& operator=(const Mult_& other) {
         perm_ = other.perm_;
         return *this;
       }

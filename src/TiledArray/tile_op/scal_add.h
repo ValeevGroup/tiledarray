@@ -94,7 +94,7 @@ namespace TiledArray {
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd operator=(const ScalAdd_& other) {
+      ScalAdd_& operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;
@@ -215,7 +215,7 @@ namespace TiledArray {
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd operator=(const ScalAdd_& other) {
+      ScalAdd_& operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;
@@ -343,7 +343,7 @@ namespace TiledArray {
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      ScalAdd operator=(const ScalAdd_& other) {
+      ScalAdd_& operator=(const ScalAdd_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;

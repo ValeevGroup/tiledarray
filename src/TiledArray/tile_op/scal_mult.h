@@ -94,7 +94,7 @@ namespace TiledArray {
 
       /// \param other The multiplication operation object to be copied
       /// \return A reference to this object
-      ScalMult operator=(const ScalMult_& other) {
+      ScalMult_& operator=(const ScalMult_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;
@@ -179,7 +179,7 @@ namespace TiledArray {
 
       /// \param other The multiplication operation object to be copied
       /// \return A reference to this object
-      ScalMult operator=(const ScalMult_& other) {
+      ScalMult_& operator=(const ScalMult_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;
@@ -270,7 +270,7 @@ namespace TiledArray {
 
       /// \param other The multiplication operation object to be copied
       /// \return A reference to this object
-      ScalMult operator=(const ScalMult_& other) {
+      ScalMult_& operator=(const ScalMult_& other) {
         perm_ = other.perm_;
         factor_ = other.factor_;
         return *this;

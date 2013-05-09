@@ -80,7 +80,7 @@ namespace TiledArray {
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      Add operator=(const Add_& other) {
+      Add_& operator=(const Add_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -180,7 +180,7 @@ namespace TiledArray {
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      Add operator=(const Add_& other) {
+      Add_& operator=(const Add_& other) {
         perm_ = other.perm_;
         return *this;
       }
@@ -283,7 +283,7 @@ namespace TiledArray {
 
       /// \param other The addition operation object to be copied
       /// \return A reference to this object
-      Add operator=(const Add_& other) {
+      Add_& operator=(const Add_& other) {
         perm_ = other.perm_;
         return *this;
       }
