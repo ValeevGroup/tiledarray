@@ -40,6 +40,11 @@ namespace TiledArray {
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
+    /// \tparam LeftConsumable A flag that is \c true when the left-hand
+    /// argument is consumable.
+    /// \tparam RightConsumable A flag that is \c true when the right-hand
+    /// argument is consumable.
+    /// \tparam Enabler Used to disambiguate specialization
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable, typename Enabler = void>
     class ScalSubt {
@@ -158,16 +163,17 @@ namespace TiledArray {
     /// apply a permutation to the result tensor. If no permutation is given or
     /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
-    /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
+    /// \tparam RightConsumable A flag that is \c true when the right-hand
+    /// argument is consumable.
     /// \note This specialization assumes the left hand tile is consumable
-    template <typename Result, typename Left, typename Right, bool RightConsumable>
-    class ScalSubt<Result, Left, Right, true, RightConsumable, void> {
+    template <typename Result, typename Right, bool RightConsumable>
+    class ScalSubt<Result, Result, Right, true, RightConsumable, void> {
     public:
-      typedef ScalSubt<Result, Left, Right, true, false> ScalSubt_; ///< This object type
-      typedef Left first_argument_type; ///< The left-hand argument type
+      typedef ScalSubt<Result, Result, Right, true, false> ScalSubt_; ///< This object type
+      typedef Result first_argument_type; ///< The left-hand argument type
       typedef const Right& second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
+      typedef const ZeroTensor<typename Result::value_type>& zero_left_type; ///< Zero left-hand tile type
       typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
       typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
@@ -223,7 +229,7 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        const TiledArray::detail::ScalMinus<typename Left::value_type,
+        const TiledArray::detail::ScalMinus<typename Result::value_type,
             typename Right::value_type, typename Result::value_type> op(factor_);
 
         if(perm_.dim()) {
@@ -263,7 +269,7 @@ namespace TiledArray {
       /// \return The scaled difference and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
         if(perm_.dim()) {
-          const TiledArray::detail::Scale<typename Left::value_type,
+          const TiledArray::detail::Scale<typename Result::value_type,
               typename Result::value_type> op(factor_);
 
           result_type result;
@@ -284,18 +290,19 @@ namespace TiledArray {
     /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
-    /// \tparam Right The right-hand argument type
+    /// \tparam LeftConsumable A flag that is \c true when the left-hand
+    /// argument is consumable.
     /// \note This specialization assumes the right-hand tile is consumable
-    template <typename Result, typename Left, typename Right, bool LeftConsumable>
-    class ScalSubt<Result, Left, Right, LeftConsumable, true,
+    template <typename Result, typename Left, bool LeftConsumable>
+    class ScalSubt<Result, Left, Result, LeftConsumable, true,
         typename madness::disable_if_c<LeftConsumable && std::is_same<Result, Left>::value>::type>
     {
     public:
-      typedef ScalSubt<Result, Left, Right, true, false> ScalSubt_; ///< This object type
+      typedef ScalSubt<Result, Left, Result, true, false> ScalSubt_; ///< This object type
       typedef const Left& first_argument_type; ///< The left-hand argument type
-      typedef Right second_argument_type; ///< The right-hand argument type
+      typedef Result second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
+      typedef const ZeroTensor<typename Result::value_type>& zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
       typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
 
@@ -351,7 +358,7 @@ namespace TiledArray {
         TA_ASSERT(first.range() == second.range());
 
         const TiledArray::detail::ScalMinus<typename Left::value_type,
-            typename Right::value_type, typename Result::value_type> op(factor_);
+            typename Result::value_type, typename Result::value_type> op(factor_);
 
         if(perm_.dim()) {
           result_type result;
@@ -372,7 +379,7 @@ namespace TiledArray {
       /// \return The scaled difference and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
         if(perm_.dim()) {
-          const TiledArray::detail::ScalNegate<typename Right::value_type,
+          const TiledArray::detail::ScalNegate<typename Result::value_type,
                       typename Result::value_type> op(factor_);
 
           result_type result;

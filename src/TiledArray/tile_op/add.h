@@ -142,7 +142,6 @@ namespace TiledArray {
     /// permutation to the result tensor. If no permutation is given or the
     /// permutation is null, then the result is not permuted.
     /// \tparam Result The result type
-    /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
     /// \tparam RightConsumable A flag that is \c true when the right-hand
     /// argument is consumable.
@@ -245,7 +244,6 @@ namespace TiledArray {
     /// permutation is null, then the result is not permuted.
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
-    /// \tparam Right The right-hand argument type
     /// \tparam LeftConsumable A flag that is \c true when the left-hand
     /// argument is consumable.
     /// \note This specialization assumes the right-hand tile is consumable
