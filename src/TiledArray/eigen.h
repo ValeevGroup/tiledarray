@@ -80,6 +80,40 @@ namespace TiledArray {
 
   /// Construct a const Eigen::Map object for a given Tensor object
 
+  /// \tparam T The tensor element type
+  /// \tparam A The tensor allocator type
+  /// \param tensor The tensor object
+  /// \param n The number of elements in the result matrix
+  /// \return An n element Eigen vector map for \c tensor
+  /// \throw TiledArray::Exception When n is not equal to \c tensor size
+  template <typename T, typename A>
+  inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>
+  eigen_map(const Tensor<T, A>& tensor, const std::size_t n) {
+    TA_ASSERT(n == tensor.size());
+
+    return Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>,
+        Eigen::AutoAlign>(tensor.data(), n);
+  }
+
+  /// Construct an Eigen::Map object for a given Tensor object
+
+  /// \tparam T The tensor element type
+  /// \tparam A The tensor allocator type
+  /// \param tensor The tensor object
+  /// \param n The number of elements in the result matrix
+  /// \return An n element Eigen vector map for \c tensor
+  /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+  template <typename T, typename A>
+  inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>
+  eigen_map(Tensor<T, A>& tensor, const std::size_t n) {
+    TA_ASSERT(n == tensor.size());
+
+    return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>,
+        Eigen::AutoAlign>(tensor.data(), n);
+  }
+
+  /// Construct a const Eigen::Map object for a given Tensor object
+
   /// The dimensions of the result tensor
   /// \tparam T The tensor element type
   /// \tparam A The tensor allocator type
