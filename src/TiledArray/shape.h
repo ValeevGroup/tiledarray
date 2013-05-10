@@ -290,7 +290,7 @@ namespace TiledArray {
       typedef Shape<bool, std::equal_to<bool> > Shape_;
       typedef bool value_type; ///< The type used to represent the tile magnitude
       typedef Tensor<unsigned int> tensor_type;
-      typedef typename tensor_type::range_type range_type;
+      typedef tensor_type::range_type range_type;
       typedef TiledArray::detail::Bitset<>::reference reference; ///< Tile estimate reference type
       typedef TiledArray::detail::Bitset<>::const_reference const_reference; ///< Tile estimate reference type
       typedef std::equal_to<bool>  comp_type; ///< Comparison function type
