@@ -27,6 +27,7 @@ library_include_HEADERS = annotated_tensor.h \
                           contraction_tensor_impl.h \
                           contraction_tensor.h \
                           coordinates.h \
+                          counter_probe.h \
                           dense_storage.h \
                           distributed_storage.h \
                           eigen.h \
