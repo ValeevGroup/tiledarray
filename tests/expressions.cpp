@@ -32,16 +32,20 @@
 using namespace TiledArray;
 
 struct ExpressionsFixture : public TiledRangeFixture {
-  typedef Array<int,GlobalFixture::dim> ArrayN;
+  typedef Array<int,4> Array4;
+  typedef Array<int,3> Array3;
+  typedef Array<int,2> Array2;
+  typedef Array<int,1> Array1;
 
   ExpressionsFixture() :
-    vector_trange(dims.begin(), dims.begin() + 1),
+    trange1(dims.begin(), dims.begin() + 1),
+    trange2(dims.begin(), dims.begin() + 2),
     a(*GlobalFixture::world, tr),
     b(*GlobalFixture::world, tr),
     c(*GlobalFixture::world, tr),
-    u(*GlobalFixture::world, vector_trange),
-    v(*GlobalFixture::world, vector_trange),
-    w(*GlobalFixture::world, vector_trange)
+    u(*GlobalFixture::world, trange1),
+    v(*GlobalFixture::world, trange1),
+    w(*GlobalFixture::world, trange2)
   {
     random_fill(a);
     random_fill(b);
@@ -50,33 +54,37 @@ struct ExpressionsFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.fence();
   }
 
-  static void random_fill(ArrayN& x) {
-    ArrayN::pmap_interface::const_iterator it = x.get_pmap()->begin();
-    ArrayN::pmap_interface::const_iterator end = x.get_pmap()->end();
+  template <typename T, unsigned int DIM, typename Tile>
+  static void random_fill(Array<T, DIM, Tile>& x) {
+    typename Array<T, DIM, Tile>::pmap_interface::const_iterator it = x.get_pmap()->begin();
+    typename Array<T, DIM, Tile>::pmap_interface::const_iterator end = x.get_pmap()->end();
     for(; it != end; ++it)
-      x.set(*it, x.get_world().taskq.add(& ExpressionsFixture::make_rand_tile,
+      x.set(*it, x.get_world().taskq.add(& ExpressionsFixture::template make_rand_tile<Array<T, DIM, Tile> >,
           x.trange().make_tile_range(*it)));
   }
 
 
 
   // Fill a tile with random data
-  static ArrayN::value_type make_rand_tile(const ArrayN::value_type::range_type& r) {
-    ArrayN::value_type tile(r);
+  template <typename A>
+  static typename A::value_type
+  make_rand_tile(const typename A::value_type::range_type& r) {
+    typename A::value_type tile(r);
     for(std::size_t i = 0ul; i < tile.size(); ++i)
-      tile[i] = GlobalFixture::world->rand() / 101;
+      tile[i] = GlobalFixture::world->rand() / 11;
     return tile;
   }
 
   ~ExpressionsFixture() { }
 
-  TiledRange vector_trange;
-  ArrayN a;
-  ArrayN b;
-  ArrayN c;
-  ArrayN u;
-  ArrayN v;
-  ArrayN w;
+  TiledRange trange1;
+  TiledRange trange2;
+  Array3 a;
+  Array3 b;
+  Array3 c;
+  Array1 u;
+  Array1 v;
+  Array2 w;
 }; // ExpressionsFixture
 
 BOOST_FIXTURE_TEST_SUITE( expressions_suite, ExpressionsFixture )
@@ -88,7 +96,7 @@ BOOST_AUTO_TEST_CASE( outer_product )
   EigenMatrixXi eu = array_to_eigen(u);
 
   // Generate the expected result
-  EigenMatrixXi ew_test = ev * eu.transpose();
+  EigenMatrixXi ew_test = eu * ev.transpose();
 
   // Test that outer produce works
   BOOST_CHECK_NO_THROW(w("i,j") = u("i") * v("j"));
