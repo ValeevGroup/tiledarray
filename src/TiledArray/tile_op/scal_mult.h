@@ -62,13 +62,13 @@ namespace TiledArray {
     public:
       /// Default constructor
 
-      /// Construct an multiplication operation that does not permute the result tile
+      /// Construct a multiplication operation that does not permute the result tile
       /// and has a scaling factor of 1.
       ScalMult() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct an multiplication operation that scales the result tensor
+      /// Construct a multiplication operation that scales the result tensor
       /// \param factor The scaling factor for the operation [default = 1]
       ScalMult(const scalar_type factor) :
         perm_(), factor_(factor)
@@ -76,7 +76,7 @@ namespace TiledArray {
 
       /// Permute constructor
 
-      /// Construct an multiplication operation that permutes and scales the result tensor
+      /// Construct a multiplication operation that permutes and scales the result tensor
       /// \param perm The permutation to apply to the result tile
       /// \param factor The scaling factor for the operation [default = 1]
       ScalMult(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
@@ -145,13 +145,13 @@ namespace TiledArray {
     public:
       /// Default constructor
 
-      /// Construct an multiplication operation that does not permute the result tile
+      /// Construct a multiplication operation that does not permute the result tile
       /// and has a scaling factor of 1.
       ScalMult() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct an multiplication operation that scales the result tensor
+      /// Construct a multiplication operation that scales the result tensor
       /// \param factor The scaling factor for the operation [default = 1]
       ScalMult(const scalar_type factor) :
         perm_(), factor_(factor)
@@ -159,7 +159,7 @@ namespace TiledArray {
 
       /// Permute constructor
 
-      /// Construct an multiplication operation that permutes and scales the result tensor
+      /// Construct a multiplication operation that permutes and scales the result tensor
       /// \param perm The permutation to apply to the result tile
       /// \param factor The scaling factor for the operation [default = 1]
       ScalMult(const Permutation& perm, const scalar_type factor = scalar_type(1)) :

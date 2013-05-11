@@ -32,9 +32,9 @@
 namespace TiledArray {
   namespace math {
 
-    /// Tile addition and scale operation
+    /// Tile subtraction and scale operation
 
-    /// This addition operation will add the content two tiles, then scale and
+    /// This subtraction operation will add the content two tiles, then scale and
     /// apply a permutation to the result tensor. If no permutation is given or
     /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
@@ -64,13 +64,13 @@ namespace TiledArray {
     public:
       /// Default constructor
 
-      /// Construct an addition operation that does not permute the result tile
-      /// and has a scaling factor of 1.
+      /// Construct a subtraction operation that does not permute the result
+      /// tile and has a scaling factor of 1.
       ScalSubt() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct an addition operation that scales the result tensor
+      /// Construct a subtraction operation that scales the result tensor
       /// \param factor The scaling factor for the operation [default = 1]
       ScalSubt(const scalar_type factor) :
         perm_(), factor_(factor)
@@ -78,7 +78,8 @@ namespace TiledArray {
 
       /// Permute constructor
 
-      /// Construct an addition operation that permutes and scales the result tensor
+      /// Construct a subtraction operation that permutes and scales the result
+      /// tile.
       /// \param perm The permutation to apply to the result tile
       /// \param factor The scaling factor for the operation [default = 1]
       ScalSubt(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
@@ -87,12 +88,12 @@ namespace TiledArray {
 
       /// Copy constructor
 
-      /// \param other The addition operation object to be copied
+      /// \param other The subtraction operation object to be copied
       ScalSubt(const ScalSubt_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
-      /// \param other The addition operation object to be copied
+      /// \param other The subtraction operation object to be copied
       /// \return A reference to this object
       ScalSubt_& operator=(const ScalSubt_& other) {
         perm_ = other.perm_;
@@ -157,9 +158,9 @@ namespace TiledArray {
       }
     }; // class ScalSubt
 
-    /// Tile addition and scale operation
+    /// Tile subtraction and scale operation
 
-    /// This addition operation will add the content two tiles, then scale and
+    /// This subtraction operation will add the content two tiles, then scale and
     /// apply a permutation to the result tensor. If no permutation is given or
     /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
@@ -185,13 +186,13 @@ namespace TiledArray {
     public:
       /// Default constructor
 
-      /// Construct an addition operation that does not permute the result tile
+      /// Construct a subtraction operation that does not permute the result tile
       /// and has a scaling factor of 1.
       ScalSubt() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct an addition operation that scales the result tensor
+      /// Construct a subtraction operation that scales the result tensor
       /// \param factor The scaling factor for the operation [default = 1]
       ScalSubt(const scalar_type factor) :
         perm_(), factor_(factor)
@@ -199,7 +200,7 @@ namespace TiledArray {
 
       /// Permute constructor
 
-      /// Construct an addition operation that permutes and scales the result tensor
+      /// Construct a subtraction operation that permutes and scales the result tensor
       /// \param perm The permutation to apply to the result tile
       /// \param factor The scaling factor for the operation [default = 1]
       ScalSubt(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
@@ -208,12 +209,12 @@ namespace TiledArray {
 
       /// Copy constructor
 
-      /// \param other The addition operation object to be copied
+      /// \param other The subtraction operation object to be copied
       ScalSubt(const ScalSubt_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
-      /// \param other The addition operation object to be copied
+      /// \param other The subtraction operation object to be copied
       /// \return A reference to this object
       ScalSubt_& operator=(const ScalSubt_& other) {
         perm_ = other.perm_;
@@ -283,9 +284,9 @@ namespace TiledArray {
     }; // class ScalSubt
 
 
-    /// Tile addition and scale operation
+    /// Tile subtraction and scale operation
 
-    /// This addition operation will add the content two tiles, then scale and
+    /// This subtraction operation will add the content two tiles, then scale and
     /// apply a permutation to the result tensor. If no permutation is given or
     /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
@@ -313,13 +314,13 @@ namespace TiledArray {
     public:
       /// Default constructor
 
-      /// Construct an addition operation that does not permute the result tile
+      /// Construct a subtraction operation that does not permute the result tile
       /// and has a scaling factor of 1
       ScalSubt() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct an addition operation that scales the result tensor
+      /// Construct a subtraction operation that scales the result tensor
       /// \param factor The scaling factor for the operation [default = 1]
       ScalSubt(const scalar_type factor) :
         perm_(), factor_(factor)
@@ -327,7 +328,7 @@ namespace TiledArray {
 
       /// Permute constructor
 
-      /// Construct an addition operation that permutes and scales the result tensor
+      /// Construct a subtraction operation that permutes and scales the result tensor
       /// \param perm The permutation to apply to the result tile
       /// \param factor The scaling factor for the operation [default = 1]
       ScalSubt(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
@@ -336,12 +337,12 @@ namespace TiledArray {
 
       /// Copy constructor
 
-      /// \param other The addition operation object to be copied
+      /// \param other The subtraction operation object to be copied
       ScalSubt(const ScalSubt_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
-      /// \param other The addition operation object to be copied
+      /// \param other The subtraction operation object to be copied
       /// \return A reference to this object
       ScalSubt_& operator=(const ScalSubt_& other) {
         perm_ = other.perm_;
