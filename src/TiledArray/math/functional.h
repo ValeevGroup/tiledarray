@@ -90,6 +90,9 @@ namespace TiledArray {
         return *this;
       }
 
+      /// Scaling factor accessor
+      scalar_type factor() const { return factor_; }
+
       /// Compute the scaled sum of \c first and \c second
 
       /// \param first The left-hand argument
@@ -147,6 +150,9 @@ namespace TiledArray {
         factor_ = other.factor_;
         return *this;
       }
+
+      /// Scaling factor accessor
+      scalar_type factor() const { return factor_; }
 
       /// Compute the scaled difference of \c first and \c second
 
@@ -207,6 +213,9 @@ namespace TiledArray {
         return *this;
       }
 
+      /// Scaling factor accessor
+      scalar_type factor() const { return factor_; }
+
       /// Compute the scaled product of \c first and \c second
 
       /// \param first The left-hand argument
@@ -261,6 +270,9 @@ namespace TiledArray {
         return *this;
       }
 
+      // Scaling factor accessor
+      scalar_type factor() const { return factor_; }
+
       /// Compute the scaled product of \c first and \c second
 
       /// \param arg The argument
@@ -294,6 +306,9 @@ namespace TiledArray {
         factor_ = other.factor_;
         return *this;
       }
+
+      // Scaling factor accessor
+      scalar_type factor() const { return factor_; }
 
       /// Scale operation
 
