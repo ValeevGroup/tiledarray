@@ -49,6 +49,8 @@ ta_test_SOURCES = ta_test.cpp \
                   tile_op_scal_subt.cpp \
                   tile_op_mult.cpp \
                   tile_op_scal_mult.cpp \
+                  tile_op_neg.cpp \
+                  tile_op_scal_neg.cpp \
                   tensor_expression_impl.cpp \
                   annotated_tensor.cpp \
                   unary_tensor.cpp \
@@ -58,6 +60,7 @@ ta_test_SOURCES = ta_test.cpp \
                   vspgemm.cpp \
                   summa.cpp \
                   contraction_tensor.cpp \
+                  expressions.cpp \
                   array_fixture.h \
                   range_fixture.h \
                   iteration_test.h \
