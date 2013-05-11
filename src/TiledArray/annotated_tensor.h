@@ -41,7 +41,9 @@ namespace TiledArray {
                        typename AT::value_type> >::type>
       {
         static void assign(std::shared_ptr<AT>& pimpl, TensorExpression<typename AT::value_type>& other) {
-          other.eval(pimpl->vars(), pimpl->array().get_pmap()->clone()).get();
+          std::shared_ptr<typename AT::pmap_interface>
+              pmap(new TiledArray::detail::BlockedPmap(pimpl->get_world(), other.size()));
+          other.eval(pimpl->vars(), pmap).get();
           pimpl->array() = other.template convert_to_array<typename AT::array_type>();
         }
       }; // AssignArrayHelper
