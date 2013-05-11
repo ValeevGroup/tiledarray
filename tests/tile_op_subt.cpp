@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_NO_THROW((math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm)));
 }
 
-BOOST_AUTO_TEST_CASE( binary_add )
+BOOST_AUTO_TEST_CASE( binary_subt )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE( binary_add )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_left_zero )
+BOOST_AUTO_TEST_CASE( binary_subt_left_zero )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_right_zero )
+BOOST_AUTO_TEST_CASE( binary_subt_right_zero )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_perm )
+BOOST_AUTO_TEST_CASE( binary_subt_perm )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op(perm);
 
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE( binary_add_perm )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm )
+BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op(perm);
 
@@ -166,7 +166,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm )
+BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op(perm);
 
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_consume_left )
+BOOST_AUTO_TEST_CASE( binary_subt_consume_left )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
   const Tensor<int> ax(a.range(), a.begin());
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE( binary_add_consume_left )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_left_zero_consume_left )
+BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_left )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
@@ -225,7 +225,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_consume_left )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_right_zero_consume_left )
+BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_left )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
   const Tensor<int> ax(a.range(), a.begin());
@@ -245,7 +245,7 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero_consume_left )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_perm_consume_left )
+BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_left )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op(perm);
 
@@ -265,7 +265,7 @@ BOOST_AUTO_TEST_CASE( binary_add_perm_consume_left )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm_consume_left )
+BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_left )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op(perm);
 
@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm_consume_left )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm_consume_left )
+BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_left )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op(perm);
 
@@ -303,7 +303,7 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm_consume_left )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_consume_right )
+BOOST_AUTO_TEST_CASE( binary_subt_consume_right )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
   const Tensor<int> bx(b.range(), b.begin());
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE( binary_add_consume_right )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_left_zero_consume_right )
+BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_right )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
   const Tensor<int> bx(b.range(), b.begin());
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_consume_right )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_right_zero_consume_right )
+BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_right )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
@@ -363,7 +363,7 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero_consume_right )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_perm_consume_right )
+BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_right )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op(perm);
 
@@ -383,7 +383,7 @@ BOOST_AUTO_TEST_CASE( binary_add_perm_consume_right )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm_consume_right )
+BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_right )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op(perm);
 
@@ -402,7 +402,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm_consume_right )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm_consume_right )
+BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_right )
 {
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op(perm);
 

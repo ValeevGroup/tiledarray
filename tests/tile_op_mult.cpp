@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm)));
 }
 
-BOOST_AUTO_TEST_CASE( binary_add )
+BOOST_AUTO_TEST_CASE( binary_mult )
 {
   math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false> mult_op;
 
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE( binary_add )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_perm )
+BOOST_AUTO_TEST_CASE( binary_mult_perm )
 {
   math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false> mult_op(perm);
 
@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE( binary_add_perm )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_consume_left )
+BOOST_AUTO_TEST_CASE( binary_mult_consume_left )
 {
   math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false> mult_op;
   const Tensor<int> ax(a.range(), a.begin());
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE( binary_add_consume_left )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_perm_consume_left )
+BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_left )
 {
   math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false> mult_op(perm);
 
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE( binary_add_perm_consume_left )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_consume_right )
+BOOST_AUTO_TEST_CASE( binary_mult_consume_right )
 {
   math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true> mult_op;
   const Tensor<int> bx(b.range(), b.begin());
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE( binary_add_consume_right )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_add_perm_consume_right )
+BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_right )
 {
   math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true> mult_op(perm);
 
