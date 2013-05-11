@@ -23,24 +23,85 @@
 #include <TiledArray/config.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/math/blas.h>
+#include <TiledArray/math/functional.h>
 #include <world/enable_if.h>
 #include <Eigen/Core>
 
 namespace TiledArray {
   namespace math {
 
+    /// Construct a const Eigen::Map object for a given Tensor object
+
+    /// \tparam T The element type
+    /// \param t The buffer pointer
+    /// \param m The number of rows in the result matrix
+    /// \param n The number of columns in the result matrix
+    /// \return An m x n Eigen matrix map for \c tensor
+    /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+    template <typename T>
+    inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
+    eigen_map(const T* t, const std::size_t m, const std::size_t n) {
+      TA_ASSERT(t);
+      TA_ASSERT(m > 0);
+      TA_ASSERT(n > 0);
+      return Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic,
+          Eigen::RowMajor>, Eigen::AutoAlign>(t, m, n);
+    }
+
+    /// Construct an Eigen::Map object for a given Tensor object
+
+    /// \tparam T The tensor element type
+    /// \tparam A The tensor allocator type
+    /// \param tensor The tensor object
+    /// \param m The number of rows in the result matrix
+    /// \param n The number of columns in the result matrix
+    /// \return An m x n Eigen matrix map for \c tensor
+    /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+    template <typename T, typename A>
+    inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
+    eigen_map(T* t, const std::size_t m, const std::size_t n) {
+      TA_ASSERT(t);
+      TA_ASSERT(m > 0);
+      TA_ASSERT(n > 0);
+      return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic,
+          Eigen::RowMajor>, Eigen::AutoAlign>(t, m, n);
+    }
+
+    /// Construct a const Eigen::Map object for a given Tensor object
+
+    /// \tparam T The tensor element type
+    /// \tparam A The tensor allocator type
+    /// \param tensor The tensor object
+    /// \param n The number of elements in the result matrix
+    /// \return An n element Eigen vector map for \c tensor
+    /// \throw TiledArray::Exception When n is not equal to \c tensor size
+    template <typename T>
+    inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>
+    eigen_map(const T* t, const std::size_t n) {
+      TA_ASSERT(t);
+      TA_ASSERT(n > 0);
+      return Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>(t, n);
+    }
+
+    /// Construct an Eigen::Map object for a given Tensor object
+
+    /// \tparam T The tensor element type
+    /// \tparam A The tensor allocator type
+    /// \param tensor The tensor object
+    /// \param n The number of elements in the result matrix
+    /// \return An n element Eigen vector map for \c tensor
+    /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+    template <typename T>
+    inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>
+    eigen_map(T* t, const std::size_t n) {
+      TA_ASSERT(t);
+      TA_ASSERT(n > 0);
+      return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>(t, n);
+    }
+
     template <typename T>
     inline void gemm(const integer m, const integer n, const integer k, const T alpha, const T* a, const T* b, T* c) {
-
-      typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
-      typedef Eigen::Map<matrix_type, Eigen::AutoAlign> map_type;
-      typedef Eigen::Map<const matrix_type, Eigen::AutoAlign> const_map_type;
-
-      const_map_type A(a, m, k);
-      const_map_type B(b, k, n);
-      map_type C(c, m, n);
-
-      C.noalias() += alpha * (A * B);
+      eigen_map(c, m, n).noalias() += alpha * (eigen_map(a, m, k) * eigen_map(b, k, n));
     }
 
 
@@ -72,18 +133,12 @@ namespace TiledArray {
       F77_ZGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
     }
 
-#endif // TILEDARRAY_HAS_CBLAS
+#endif // TILEDARRAY_HAS_BLAS
 
     template <typename T, typename U>
     inline typename madness::enable_if<detail::is_numeric<T> >::type
     scale(const integer n, const T alpha, U* x) {
-      // Type defs
-      typedef Eigen::Matrix<U, Eigen::Dynamic, 1> matrix_type;
-      typedef Eigen::Map<matrix_type, Eigen::AutoAlign> map_type;
-
-      map_type X(x, n);
-
-      X *= alpha;
+      eigen_map(x, n) *= alpha;
     }
 
 #ifdef TILEDARRAY_HAS_BLAS
@@ -125,17 +180,7 @@ namespace TiledArray {
 
     template <typename T, typename U>
     T dot(const integer n, const T* x, const U* y) {
-      // Type defs
-      typedef Eigen::Matrix<T, Eigen::Dynamic, 1> matrixt_type;
-      typedef Eigen::Matrix<U, Eigen::Dynamic, 1> matrixu_type;
-      typedef Eigen::Map<const matrixt_type, Eigen::AutoAlign> mapt_type;
-      typedef Eigen::Map<const matrixu_type, Eigen::AutoAlign> mapu_type;
-
-      // construct vector maps
-      mapt_type X(x, n);
-      mapu_type Y(y, n);
-
-      return X.dot(Y);
+      return eigen_map(x, n).dot(eigen_map(y, n));
     }
 
 #ifdef TILEDARRAY_HAS_BLAS
@@ -192,27 +237,182 @@ namespace TiledArray {
 #endif // TILEDARRAY_HAS_CBLAS
 
 
-    template <typename T>
-    T square_norm(const integer n, const T* x) {
-      // Type defs
-      typedef Eigen::Matrix<T, Eigen::Dynamic, 1> matrix_type;
-      typedef Eigen::Map<const matrix_type, Eigen::AutoAlign> map_type;
+    template <typename T, typename U>
+    inline void add_to(const integer n, T* t, const U* u) {
+      eigen_map(t, n) += eigen_map(u, n);
+    }
 
-      map_type X(x, n);
-      return X.squaredNorm();
+    template <typename T, typename U>
+    inline void subt_to(const integer n, T* t, const U* u) {
+      eigen_map(t, n) -= eigen_map(u, n);
+    }
+
+    template <typename T, typename U>
+    inline void mult_to(const integer n, T* t, const U* u) {
+      eigen_map(t, n) *= eigen_map(u, n);
+    }
+
+    template <typename T, typename U>
+    inline void add_const(const integer n, T* t, const U& u) {
+      eigen_map(t, n).array() += u;
+    }
+
+    template <typename T, typename U>
+    inline void subt_const(const integer n, T* t, const U& u) {
+      eigen_map(t, n).array() -= u;
+    }
+
+
+    template <typename T>
+    inline T square_norm(const integer n, const T* t) {
+      return eigen_map(t, n).squaredNorm();
+    }
+
+    template <int p, typename T>
+    inline T norm_2(const integer n, const T* t) {
+      return eigen_map(t, n).norm();
     }
 
     namespace detail {
+
+      template <typename Op>
+      struct BinaryVectorOpHelper {
+        template <typename T, typename U, typename V>
+        static void eval(const integer n, const T* t, const U* u, V* v, const Op& op) {
+          eigen_map(v, n) = eigen_map(t, n).binaryExpr(eigen_map(u, n), op);
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename T, typename U, typename V>
+      struct BinaryVectorOpHelper<TiledArray::detail::Plus<T, U, V> > {
+        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::Plus<T, U, V>&) {
+          eigen_map(v, n) = eigen_map(t, n) + eigen_map(u, n);
+        }
+      }; //  struct VectorOpHelper
+
       template <typename T>
-      struct abs_compare {
-        bool operator()(T x, T y) { return std::fabs(x) < std::fabs(y); }
-      };
+      struct BinaryVectorOpHelper<std::plus<T> > {
+        static void eval(const integer n, const T* t, const T* u, T* v, const std::plus<T>&) {
+          eigen_map(v, n) = eigen_map(t, n) + eigen_map(u, n);
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename T, typename U, typename V>
+      struct BinaryVectorOpHelper<TiledArray::detail::ScalPlus<T, U, V> > {
+        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::ScalPlus<T, U, V>& op) {
+          eigen_map(v, n) = op.factor() * (eigen_map(t, n) + eigen_map(u, n));
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename T, typename U, typename V>
+      struct BinaryVectorOpHelper<TiledArray::detail::Minus<T, U, V> > {
+        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::Minus<T, U, V>&) {
+          eigen_map(v, n) = eigen_map(t, n) - eigen_map(u, n);
+        }
+      }; //  struct VectorOpHelper
+
+
+      template <typename T>
+      struct BinaryVectorOpHelper<std::minus<T> > {
+        static void eval(const integer n, const T* t, const T* u, T* v, const std::minus<T>&) {
+          eigen_map(v, n) = eigen_map(t, n) - eigen_map(u, n);
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename T, typename U, typename V>
+      struct BinaryVectorOpHelper<TiledArray::detail::ScalMinus<T, U, V> > {
+        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::ScalMinus<T, U, V>& op) {
+          eigen_map(v, n) = op.factor() * (eigen_map(t, n) - eigen_map(u, n));
+        }
+      }; //  struct VectorOpHelper
+
+
+      template <typename T, typename U, typename V>
+      struct BinaryVectorOpHelper<TiledArray::detail::Multiplies<T, U, V> > {
+        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::Multiplies<T, U, V>&) {
+          eigen_map(v, n).array() =
+              eigen_map(t, n).array() * eigen_map(u, n).array();
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename T>
+      struct BinaryVectorOpHelper<std::multiplies<T> > {
+        static void eval(const integer n, const T* t, const T* u, T* v, const std::multiplies<T>&) {
+          eigen_map(v, n).array() = eigen_map(t, n).array() * eigen_map(u, n).array();
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename T, typename U, typename V>
+      struct BinaryVectorOpHelper<TiledArray::detail::ScalMultiplies<T, U, V> > {
+        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::ScalMultiplies<T, U, V>& op) {
+          eigen_map(v, n).array() =
+              op.factor() * (eigen_map(t, n).array() * eigen_map(u, n).array());
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename Op>
+      struct UnaryVectorOpHelper {
+        template <typename T, typename U>
+        static void eval(const integer n, const T* t, U* u, const Op& op) {
+          eigen_map(u, n) = eigen_map(t, n).unaryExpr(op);
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename T, typename U>
+      struct UnaryVectorOpHelper<TiledArray::detail::Negate<T, U> > {
+        static void eval(const integer n, const T* t, U* u, const TiledArray::detail::Negate<T, U>&) {
+          eigen_map(u, n) = -(eigen_map(t, n));
+        }
+      }; //  struct VectorOpHelper
+
+
+      template <typename T>
+      struct BinaryVectorOpHelper<std::negate<T> > {
+        static void eval(const integer n, const T* t, T* u, const std::negate<T>&) {
+          eigen_map(u, n) = -(eigen_map(t, n));
+        }
+      }; //  struct VectorOpHelper
+
+      template <typename T, typename U>
+      struct UnaryVectorOpHelper<TiledArray::detail::ScalNegate<T, U> > {
+        static void eval(const integer n, const T* t, U* u, const TiledArray::detail::ScalNegate<T, U>& op) {
+          eigen_map(u, n) = op.factor() * eigen_map(t, n);
+        }
+      }; //  struct VectorOpHelper
+
+    }  // namespace detail
+
+    template <typename T, typename U, typename V, typename Op>
+    inline void vector_op(const integer n, const T* t, const U* u, V* v, const Op& op) {
+      detail::BinaryVectorOpHelper<Op>::eval(n, t, u, v, op);
+    }
+
+    template <typename T, typename U, typename Op>
+    inline void vector_op(const integer n, const T* t, U* u, const Op& op) {
+      detail::UnaryVectorOpHelper<Op>::eval(n, t, u, op);
     }
 
     template <typename T>
-    T maxabs(const integer n, const T* x) {
-      detail::abs_compare<T> cmp;
-      return *(std::max_element(x, x+n, cmp));
+    inline T maxabs(const integer n, const T* t) {
+      T temp = 0;
+      const integer n4 = n - (n % 4);
+      integer i = 0;
+      for(; i < n4; i += 4) {
+        const T abs0 = std::abs(t[i]);
+        const T abs1 = std::abs(t[i+1]);
+        const T abs2 = std::abs(t[i+2]);
+        const T abs3 = std::abs(t[i+3]);
+
+        if(temp < abs0) temp = abs0;
+        if(temp < abs1) temp = abs1;
+        if(temp < abs2) temp = abs2;
+        if(temp < abs3) temp = abs3;
+      }
+      for(; i < n; ++i) {
+        const T abs = std::abs(t[i]);
+        if(temp < abs) temp = abs;
+      }
+      return temp;
     }
 
   }  // namespace detail
