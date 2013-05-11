@@ -459,8 +459,12 @@ namespace TiledArray {
           // Start broadcast tasks of column and row for k = 1
           BcastRowColTask* task_col_row_k1 = bcast_row_and_column(1ul);
           std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
-          col_row_k1 = task_col_row_k1->result();
-          get_world().taskq.add(task_col_row_k1);
+          col_row_k1 = (task_col_row_k1 ? task_col_row_k1->result() :
+              std::make_pair(
+                  madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
+                  madness::Future<std::vector<row_datum> >(std::vector<row_datum>())));
+          if(task_col_row_k1)
+            get_world().taskq.add(task_col_row_k1);
 
           // Construct a pair reduction object for each local tile
           results_.reserve(local_size_);
