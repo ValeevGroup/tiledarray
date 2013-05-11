@@ -119,12 +119,40 @@ namespace TiledArray {
     /// allocated with the allocator \c a .
     /// \param r A shared pointer to the range object that will define the tile
     /// dimensions
-    /// \param val The fill value for the new tile elements ( default: value_type() )
     /// \param a The allocator object for the tile data ( default: allocator_type() )
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     /// \throw anything Any exception that can be thrown by \c T type default or
     /// copy constructors
-    DenseStorage(size_type n, const value_type& val = value_type(), const allocator_type& a = allocator_type()) :
+    explicit DenseStorage(size_type n, const allocator_type& a = allocator_type()) :
+      allocator_type(a),
+      first_(NULL),
+      last_(NULL)
+    {
+      TA_ASSERT(n < allocator_type::max_size());
+      if(n) {
+        first_ = allocator_type::allocate(n);
+        last_ = first_ + n;
+        try {
+          default_init(detail::is_numeric<value_type>());
+        } catch (...) {
+          allocator_type::deallocate(first_, n);
+          throw;
+        }
+      }
+    }
+
+    /// Constructs dense storage object
+
+    /// The storage object will contain \c n elements that have \c val , and are
+    /// allocated with the allocator \c a .
+    /// \param r A shared pointer to the range object that will define the tile
+    /// dimensions
+    /// \param val The fill value for the new tile elements
+    /// \param a The allocator object for the tile data [default: allocator_type()]
+    /// \throw std::bad_alloc There is not enough memory available for the target tile
+    /// \throw anything Any exception that can be thrown by \c T type default or
+    /// copy constructors
+    DenseStorage(size_type n, const value_type& val, const allocator_type& a = allocator_type()) :
       allocator_type(a),
       first_(NULL),
       last_(NULL)
@@ -186,7 +214,7 @@ namespace TiledArray {
     /// \throw std::bad_alloc There is not enough memory available for the
     /// target tile
     template <typename InIter, typename Op>
-    DenseStorage(size_type n, InIter first, Op op, const allocator_type& a = allocator_type(),
+    DenseStorage(size_type n, InIter first, const Op& op, const allocator_type& a = allocator_type(),
       typename madness::enable_if_c<detail::is_iterator<InIter>::value &&
         ! detail::is_iterator<Op>::value, Enabler>::type = Enabler()) :
       allocator_type(a),
@@ -218,7 +246,7 @@ namespace TiledArray {
     /// \throw std::bad_alloc There is not enough memory available for the
     /// target tile
     template <typename InIter1, typename InIter2, typename Op>
-    DenseStorage(size_type n, InIter1 it1, InIter2 it2, const Op op,
+    DenseStorage(size_type n, InIter1 it1, InIter2 it2, const Op& op,
         const allocator_type& a = allocator_type(),
         typename madness::enable_if_c<detail::is_iterator<InIter1>::value &&
             detail::is_iterator<InIter2>::value, Enabler>::type = Enabler()) :
@@ -257,7 +285,7 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Plus assignment operator
+    /// Plus-assignment operator
 
     /// \tparam Arg The other container type
     /// \param other The data that will be added to this object
@@ -265,14 +293,12 @@ namespace TiledArray {
     template <typename Arg>
     DenseStorage_& operator+=(const Arg& other) {
       TA_ASSERT(size() == other.size());
-      typename Arg::const_iterator it_other = other.begin();
-      for(iterator it = begin(); it != end(); ++it, ++it_other)
-        *it += *it_other;
+      math::add_to(last_ - first_, first_, other.data());
 
       return *this;
     }
 
-    /// Minus assignment operator
+    /// Minus-assignment operator
 
     /// \tparam Arg The other container type
     /// \param other The data that will be subtracted from this object
@@ -280,9 +306,21 @@ namespace TiledArray {
     template <typename Arg>
     DenseStorage_& operator-=(const Arg& other) {
       TA_ASSERT(size() == other.size());
-      typename Arg::const_iterator it_other = other.begin();
-      for(iterator it = begin(); it != end(); ++it, ++it_other)
-        *it -= *it_other;
+      math::subt_to(last_ - first_, first_, other.data());
+
+      return *this;
+    }
+
+    /// Multiply-assignment operator
+
+    /// \tparam Arg The other container type
+    /// \param other The data that will be subtracted from this object
+    /// \return This object
+    template <typename Arg>
+    typename madness::disable_if<detail::is_numeric<Arg>, DenseStorage_&>::type
+    operator*=(const Arg& other) {
+      TA_ASSERT(size() == other.size());
+      math::mult_to(last_ - first_, first_, other.data());
 
       return *this;
     }
@@ -292,9 +330,7 @@ namespace TiledArray {
     /// \param value The shift value
     /// \return This object
     DenseStorage_& operator+=(const value_type& value) {
-      for(iterator it = begin(); it != end(); ++it)
-        *it += value;
-
+      math::add_const(last_ - first_, first_, value);
       return *this;
     }
 
@@ -303,9 +339,7 @@ namespace TiledArray {
     /// \param value The negative shift value
     /// \return This object
     DenseStorage_& operator-=(const value_type& value) {
-      for(iterator it = begin(); it != end(); ++it)
-        *it -= value;
-
+      math::subt_const(last_ - first_, first_, value);
       return *this;
     }
 
@@ -476,11 +510,47 @@ namespace TiledArray {
     /// \param in_it Input iterator to the initialization data
     /// \param op The operation to be applied to the input
     template <typename InIter, typename Op>
-    void construct_unary_op(InIter in_it, const Op& op) {
+    typename madness::disable_if<detail::optimized_init<value_type, InIter> >::type
+    construct_unary_op(InIter in_it, const Op& op) {
       pointer it = first_;
       try {
         for(; it != last_; ++it)
           allocator_type::construct(it, op(*in_it++));
+      } catch (...) {
+        destroy_(*this, first_, it);
+        throw;
+      }
+    }
+
+    /// Initialize data with an input iterator + unary operation
+
+    /// Each element is initialized with: \c op(*in_it)
+    /// \tparam InIter Input iterator type
+    /// \param in_it Input iterator to the initialization data
+    /// \param op The operation to be applied to the input
+    template <typename InIter, typename Op>
+    typename madness::enable_if<detail::optimized_init<value_type, InIter> >::type
+    construct_unary_op(InIter in_it, const Op& op) {
+      math::vector_op(last_ - first_, in_it, first_, op);
+    }
+
+    /// Initialize data with an input iterator + unary operation
+
+    /// Each element is initialized with: \c op(*in_it1, *in_it2)
+    /// \tparam InIter1 Input iterator 1 type
+    /// \tparam InIter1 Input iterator 2 type
+    /// \param in_it1 Input iterator to the initialization data for left-hand argument
+    /// \param in_it2 Input iterator to the initialization data for right-hand argument
+    /// \param op The operation to be applied to the input
+    template <typename InIter1, typename InIter2, typename Op>
+    typename madness::disable_if_c<
+        detail::optimized_init<value_type, InIter1>::value &&
+        detail::optimized_init<value_type, InIter2>::value >::type
+    construct_binary_op(InIter1 in_it1, InIter2 in_it2, const Op& op) {
+      pointer it = first_;
+      try {
+        for(; it != last_; ++it)
+          allocator_type::construct(it, op(*in_it1++, *in_it2++));
       } catch (...) {
         destroy_(*this, first_, it);
         throw;
@@ -496,15 +566,11 @@ namespace TiledArray {
     /// \param in_it2 Input iterator to the initialization data for right-hand argument
     /// \param op The operation to be applied to the input
     template <typename InIter1, typename InIter2, typename Op>
-    void construct_binary_op(InIter1 in_it1, InIter2 in_it2, const Op& op) {
-      pointer it = first_;
-      try {
-        for(; it != last_; ++it)
-          allocator_type::construct(it, op(*in_it1++, *in_it2++));
-      } catch (...) {
-        destroy_(*this, first_, it);
-        throw;
-      }
+    typename madness::enable_if_c<
+        detail::optimized_init<value_type, InIter1>::value &&
+        detail::optimized_init<value_type, InIter2>::value >::type
+    construct_binary_op(InIter1 in_it1, InIter2 in_it2, const Op& op) {
+      math::vector_op(last_ - first_, in_it1, in_it2, first_, op);
     }
 
     void construct_value(const value_type& value) {

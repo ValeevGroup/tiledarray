@@ -63,8 +63,8 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(Storage t1(10));
     Storage t1(10);
     BOOST_CHECK_EQUAL(t1.size(), 10u);
-    for(Storage::const_iterator it = t1.begin(); it != t1.end(); ++it)
-      BOOST_CHECK_EQUAL(*it, int());
+//    for(Storage::const_iterator it = t1.begin(); it != t1.end(); ++it)
+//      BOOST_CHECK_EQUAL(*it, int());
   }
 
   // check constructing with a range and initial value.
