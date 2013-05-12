@@ -331,8 +331,10 @@ BOOST_AUTO_TEST_CASE( set )
 
 BOOST_AUTO_TEST_CASE( is_not_dense )
 {
+#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(shape.is_zero(r.start()), TiledArray::Exception);
   BOOST_CHECK_THROW(shape.is_zero(1), TiledArray::Exception);
+#endif // TA_EXCEPTION_ERROR
 
   // Share the data
   BOOST_CHECK_NO_THROW(shape.share(* GlobalFixture::world));
