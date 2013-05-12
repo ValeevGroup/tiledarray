@@ -55,12 +55,12 @@ struct ExpressionsFixture : public TiledRangeFixture {
   }
 
   template <typename T, unsigned int DIM, typename Tile>
-  static void random_fill(Array<T, DIM, Tile>& x) {
-    typename Array<T, DIM, Tile>::pmap_interface::const_iterator it = x.get_pmap()->begin();
-    typename Array<T, DIM, Tile>::pmap_interface::const_iterator end = x.get_pmap()->end();
+  static void random_fill(Array<T, DIM, Tile>& array) {
+    typename Array<T, DIM, Tile>::pmap_interface::const_iterator it = array.get_pmap()->begin();
+    typename Array<T, DIM, Tile>::pmap_interface::const_iterator end = array.get_pmap()->end();
     for(; it != end; ++it)
-      x.set(*it, x.get_world().taskq.add(& ExpressionsFixture::template make_rand_tile<Array<T, DIM, Tile> >,
-          x.trange().make_tile_range(*it)));
+      array.set(*it, array.get_world().taskq.add(& ExpressionsFixture::template make_rand_tile<Array<T, DIM, Tile> >,
+          array.trange().make_tile_range(*it)));
   }
 
 
@@ -73,6 +73,31 @@ struct ExpressionsFixture : public TiledRangeFixture {
     for(std::size_t i = 0ul; i < tile.size(); ++i)
       tile[i] = GlobalFixture::world->rand() / 11;
     return tile;
+  }
+
+
+  template <typename T, unsigned int DIM, typename Tile>
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
+  make_matrix(Array<T, DIM, Tile>& array) {
+    // Check that the array will fit in a matrix or vector
+    TA_ASSERT((DIM == 2u) || (DIM == 1u));
+
+    // Construct the Eigen matrix
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
+        matrix(array.trange().elements().size()[0],
+            (DIM == 2 ? array.trange().elements().size()[1] : 1));
+
+    // Spawn tasks to copy array tiles to the Eigen matrix
+    for(std::size_t i = 0; i < array.size(); ++i) {
+      if(array.get_world().rank() == 1)
+        std::cout << i;
+      if(! array.is_zero(i))
+        tensor_to_eigen_submatrix(array.find(i).get(), matrix);
+      if(array.get_world().rank() == 1)
+        std::cout << "*\n";
+    }
+
+    return matrix;
   }
 
   ~ExpressionsFixture() { }
@@ -89,21 +114,23 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
 BOOST_FIXTURE_TEST_SUITE( expressions_suite, ExpressionsFixture )
 
-BOOST_AUTO_TEST_CASE( outer_product )
-{
-  // Generate Eigen matrices from input arrays.
-  EigenMatrixXi ev = array_to_eigen(v);
-  EigenMatrixXi eu = array_to_eigen(u);
-
-  // Generate the expected result
-  EigenMatrixXi ew_test = eu * ev.transpose();
-
-  // Test that outer produce works
-  BOOST_CHECK_NO_THROW(w("i,j") = u("i") * v("j"));
-
-  EigenMatrixXi ew = array_to_eigen(w);
-
-  BOOST_CHECK_EQUAL(ew, ew_test);
-}
+//BOOST_AUTO_TEST_CASE( outer_product )
+//{
+//  // Generate Eigen matrices from input arrays.
+//  EigenMatrixXi ev = make_matrix(v);
+//  EigenMatrixXi eu = make_matrix(u);
+//
+//  // Generate the expected result
+//  EigenMatrixXi ew_test = eu * ev.transpose();
+//
+//  // Test that outer produce works
+//  BOOST_CHECK_NO_THROW(w("i,j") = u("i") * v("j"));
+//
+//  GlobalFixture::world->gop.fence();
+//
+//  EigenMatrixXi ew = make_matrix(w);
+//
+//  BOOST_CHECK_EQUAL(ew, ew_test);
+//}
 
 BOOST_AUTO_TEST_SUITE_END()
