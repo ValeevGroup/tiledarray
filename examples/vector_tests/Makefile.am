@@ -1,11 +1,11 @@
 #
-# This file is a part of TiledArray.
-# Copyright (C) 2013  Virginia Tech
+#  This file is a part of TiledArray.
+#  Copyright (C) 2013  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
+#  (at your option) any later version.
 #
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,22 +15,18 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+#  Justus Calvin
+#  Department of Chemistry, Virginia Tech
+#
+#  Makefile.am
+#  May 11, 2013
+ 
+# examples/vector_tests
 
-# examples
+AM_CPPFLAGS = -I$(top_srcdir)/src/
 
-SUBDIRS = cc dgemm mpi_tests pmap_test vector_tests
+noinst_PROGRAMS = vector
 
-ccd ccsd:
-	$(MAKE) -C ./cc $@
+vector_SOURCES = vector.cpp
 
-ta_dense ta_sparse ta_band blas eigen:
-	$(MAKE) -C ./dgemm $@
-
-mpi_latency mpi_bandwidth:
-	$(MAKE) -C ./mpi_tests $@
-
-pmap:
-	$(MAKE) -C ./pmap_test $@
-
-vector:
-	$(MAKE) -C ./vector_tests $@
+all-local: vector

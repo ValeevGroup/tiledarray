@@ -20,12 +20,16 @@
 #ifndef TILEDARRAY_MATH_MATH_H__INCLUDED
 #define TILEDARRAY_MATH_MATH_H__INCLUDED
 
-#include <TiledArray/config.h>
+#include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/functional.h>
 #include <world/enable_if.h>
 #include <Eigen/Core>
+
+#ifndef TILEDARRAY_LOOP_UNWIND
+#define TILEDARRAY_LOOP_UNWIND 12
+#endif // TILEDARRAY_LOOP_UNWIND
 
 namespace TiledArray {
   namespace math {
@@ -275,147 +279,231 @@ namespace TiledArray {
 
     namespace detail {
 
-      template <typename Op>
-      struct BinaryVectorOpHelper {
-        template <typename T, typename U, typename V>
-        static void eval(const integer n, const T* t, const U* u, V* v, const Op& op) {
-          eigen_map(v, n) = eigen_map(t, n).binaryExpr(eigen_map(u, n), op);
+      /// Vector loop unwind helper class
+
+      /// This object will unwind \c N steps of a vector operation loop.
+      /// \tparam N The number of steps to unwind
+      template <unsigned int N>
+      struct VectorOpUnwind {
+
+        /// Evaluate a binary operation and store the result
+
+        /// \tparam T The left-hand argument type
+        /// \tparam U The right-hand argument type
+        /// \tparam V The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The left-hand argument pointer
+        /// \param u The right-hand argument pointer
+        /// \param v The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename V, typename Op>
+        static inline void eval(const int i, register const T* t, register const U* u, register V* v, const Op& op) {
+          VectorOpUnwind<N-1>::eval(i, t, u, v, op);
+          v[i+N] = op(t[i+N], u[i+N]);
         }
-      }; //  struct VectorOpHelper
 
-      template <typename T, typename U, typename V>
-      struct BinaryVectorOpHelper<TiledArray::detail::Plus<T, U, V> > {
-        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::Plus<T, U, V>&) {
-          eigen_map(v, n) = eigen_map(t, n) + eigen_map(u, n);
+        /// Evaluate a unary operation and store the result
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename Op>
+        static inline void eval(const unsigned int i, register const T* t, register U* u, const Op& op) {
+          VectorOpUnwind<N-1>::eval(i, t, u, op);
+          u[i+N] = op(t[i+N]);
         }
-      }; //  struct VectorOpHelper
 
-      template <typename T>
-      struct BinaryVectorOpHelper<std::plus<T> > {
-        static void eval(const integer n, const T* t, const T* u, T* v, const std::plus<T>&) {
-          eigen_map(v, n) = eigen_map(t, n) + eigen_map(u, n);
+        /// Evaluate a binary operation and store the result
+
+        /// \tparam T The left-hand argument type
+        /// \tparam U The right-hand argument type
+        /// \tparam V The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The left-hand argument pointer
+        /// \param u The right-hand argument pointer
+        /// \param v The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename V, typename Op>
+        static inline void eval_to_temp(const unsigned int i, register const T* t, register const U* u, register V* v, const Op& op) {
+          VectorOpUnwind<N-1>::eval_to_temp(i, t, u, v, op);
+          v[N] = op(t[i+N], u[i+N]);
         }
-      }; //  struct VectorOpHelper
 
-      template <typename T, typename U, typename V>
-      struct BinaryVectorOpHelper<TiledArray::detail::ScalPlus<T, U, V> > {
-        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::ScalPlus<T, U, V>& op) {
-          eigen_map(v, n) = op.factor() * (eigen_map(t, n) + eigen_map(u, n));
+        /// Evaluate a unary operation and store the result
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename Op>
+        static inline void eval_to_temp(const unsigned int i, register const T* t, register U* u, const Op& op) {
+          VectorOpUnwind<N-1>::eval_to_temp(i, t, u, op);
+          u[N] = op(t[i+N]);
         }
-      }; //  struct VectorOpHelper
 
-      template <typename T, typename U, typename V>
-      struct BinaryVectorOpHelper<TiledArray::detail::Minus<T, U, V> > {
-        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::Minus<T, U, V>&) {
-          eigen_map(v, n) = eigen_map(t, n) - eigen_map(u, n);
+        /// Evaluate a reduction operation and store the result
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename Op>
+        static inline void reduce(const unsigned int i, register const T* t, U& u, const Op& op) {
+          VectorOpUnwind<N-1>::reduce(i, t, u, op);
+          u = op(u, t[i+N]);
         }
-      }; //  struct VectorOpHelper
+      }; //  struct VectorOpUnwind
 
+      /// Vector loop unwind helper class
 
-      template <typename T>
-      struct BinaryVectorOpHelper<std::minus<T> > {
-        static void eval(const integer n, const T* t, const T* u, T* v, const std::minus<T>&) {
-          eigen_map(v, n) = eigen_map(t, n) - eigen_map(u, n);
+      /// This object will unwind \c 1 step of a vector operation loop, and
+      /// terminate the loop
+      /// \tparam N The number of steps to unwind
+      template <>
+      struct VectorOpUnwind<0u> {
+
+        /// Evaluate a binary operation and store the result
+
+        /// \tparam T The left-hand argument type
+        /// \tparam U The right-hand argument type
+        /// \tparam V The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The left-hand argument pointer
+        /// \param u The right-hand argument pointer
+        /// \param v The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename V, typename Op>
+        static inline void eval(const unsigned int i, register const T* t, register const U* u, register V* v, const Op& op) {
+          v[i] = op(t[i], u[i]);
         }
-      }; //  struct VectorOpHelper
 
-      template <typename T, typename U, typename V>
-      struct BinaryVectorOpHelper<TiledArray::detail::ScalMinus<T, U, V> > {
-        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::ScalMinus<T, U, V>& op) {
-          eigen_map(v, n) = op.factor() * (eigen_map(t, n) - eigen_map(u, n));
+        /// Evaluate a unary operation and store the result
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename Op>
+        static inline void eval(const unsigned int i, register const T* t, register U* u, const Op& op) {
+          u[i] = op(t[i]);
         }
-      }; //  struct VectorOpHelper
 
+        /// Evaluate a binary operation and store the result
 
-      template <typename T, typename U, typename V>
-      struct BinaryVectorOpHelper<TiledArray::detail::Multiplies<T, U, V> > {
-        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::Multiplies<T, U, V>&) {
-          eigen_map(v, n).array() =
-              eigen_map(t, n).array() * eigen_map(u, n).array();
+        /// \tparam T The left-hand argument type
+        /// \tparam U The right-hand argument type
+        /// \tparam V The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The left-hand argument pointer
+        /// \param u The right-hand argument pointer
+        /// \param v The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename V, typename Op>
+        static inline void eval_to_temp(const unsigned int i, register const T* t, register const U* u, register V* v, const Op& op) {
+          v[0u] = op(t[i], u[i]);
         }
-      }; //  struct VectorOpHelper
 
-      template <typename T>
-      struct BinaryVectorOpHelper<std::multiplies<T> > {
-        static void eval(const integer n, const T* t, const T* u, T* v, const std::multiplies<T>&) {
-          eigen_map(v, n).array() = eigen_map(t, n).array() * eigen_map(u, n).array();
+        /// Evaluate a unary operation and store the result
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename Op>
+        static inline void eval_to_temp(const unsigned int i, register const T* t, register U* u, const Op& op) {
+          u[0u] = op(t[i]);
         }
-      }; //  struct VectorOpHelper
 
-      template <typename T, typename U, typename V>
-      struct BinaryVectorOpHelper<TiledArray::detail::ScalMultiplies<T, U, V> > {
-        static void eval(const integer n, const T* t, const U* u, V* v, const TiledArray::detail::ScalMultiplies<T, U, V>& op) {
-          eigen_map(v, n).array() =
-              op.factor() * (eigen_map(t, n).array() * eigen_map(u, n).array());
+        /// Evaluate a reduction operation and store the result
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The binary operation
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The binary operation
+        template <typename T, typename U, typename Op>
+        static inline void reduce(const unsigned int i, register const T* t, U& u, const Op& op) {
+          u = op(u, t[i]);
         }
-      }; //  struct VectorOpHelper
-
-      template <typename Op>
-      struct UnaryVectorOpHelper {
-        template <typename T, typename U>
-        static void eval(const integer n, const T* t, U* u, const Op& op) {
-          eigen_map(u, n) = eigen_map(t, n).unaryExpr(op);
-        }
-      }; //  struct VectorOpHelper
-
-      template <typename T, typename U>
-      struct UnaryVectorOpHelper<TiledArray::detail::Negate<T, U> > {
-        static void eval(const integer n, const T* t, U* u, const TiledArray::detail::Negate<T, U>&) {
-          eigen_map(u, n) = -(eigen_map(t, n));
-        }
-      }; //  struct VectorOpHelper
-
-
-      template <typename T>
-      struct BinaryVectorOpHelper<std::negate<T> > {
-        static void eval(const integer n, const T* t, T* u, const std::negate<T>&) {
-          eigen_map(u, n) = -(eigen_map(t, n));
-        }
-      }; //  struct VectorOpHelper
-
-      template <typename T, typename U>
-      struct UnaryVectorOpHelper<TiledArray::detail::ScalNegate<T, U> > {
-        static void eval(const integer n, const T* t, U* u, const TiledArray::detail::ScalNegate<T, U>& op) {
-          eigen_map(u, n) = op.factor() * eigen_map(t, n);
-        }
-      }; //  struct VectorOpHelper
+      }; //  struct VectorOpUnwind
 
     }  // namespace detail
 
     template <typename T, typename U, typename V, typename Op>
-    inline void vector_op(const integer n, const T* t, const U* u, V* v, const Op& op) {
-      detail::BinaryVectorOpHelper<Op>::eval(n, t, u, v, op);
+    inline void vector_op(const unsigned int n, register const T* t, register const U* u, register V* v, const Op& op) {
+      unsigned int i = 0;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+      const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval(i, t, u, v, op);
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i)
+        v[i] = op(t[i], u[i]);
     }
 
     template <typename T, typename U, typename Op>
-    inline void vector_op(const integer n, const T* t, U* u, const Op& op) {
-      detail::UnaryVectorOpHelper<Op>::eval(n, t, u, op);
+    inline void vector_op(const unsigned int n, register const T* t, register U* u, const Op& op) {
+      unsigned int i = 0;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+      const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval(i, t, u, op);
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i)
+        u[i] = op(t[i]);
     }
+
+    namespace detail {
+
+      template <typename T>
+      inline T abs(const T t) { return std::abs(t); }
+
+    } // namespace
 
     template <typename T>
-    inline T maxabs(const integer n, const T* t) {
-      T temp = 0;
-      const integer n4 = n - (n % 4);
-      integer i = 0;
-      for(; i < n4; i += 4) {
-        const T abs0 = std::abs(t[i]);
-        const T abs1 = std::abs(t[i+1]);
-        const T abs2 = std::abs(t[i+2]);
-        const T abs3 = std::abs(t[i+3]);
-
-        if(temp < abs0) temp = abs0;
-        if(temp < abs1) temp = abs1;
-        if(temp < abs2) temp = abs2;
-        if(temp < abs3) temp = abs3;
+    inline T maxabs(const unsigned int n, register const T* t) {
+      T result = 0;
+      unsigned int i = 0u;
+#if TILEDARRAY_LOOP_UNWIND > 1
+      const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
+        T temp[TILEDARRAY_LOOP_UNWIND];
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t, temp, TiledArray::math::detail::abs<T>);
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp, result, std::max<T>);
       }
-      for(; i < n; ++i) {
-        const T abs = std::abs(t[i]);
-        if(temp < abs) temp = abs;
-      }
-      return temp;
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+      for(; i < n; ++i)
+        result = std::max(result, std::abs(t[i]));
+      return result;
     }
 
-  }  // namespace detail
+  }  // namespace math
 }  // namespace TiledArray
 
 #endif // TILEDARRAY_MATH_MATH_H__INCLUDED

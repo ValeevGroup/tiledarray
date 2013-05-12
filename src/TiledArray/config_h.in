@@ -160,4 +160,7 @@
 /* define if compiler supports long long. */
 #undef TILEDARRAY_HAS_LONG_LONG
 
+/* Define the number of iterations to unwind in a loop. */
+#undef TILEDARRAY_LOOP_UNWIND
+
 #endif // TILEDARRAY_CONFIGURE_H__INCULDED

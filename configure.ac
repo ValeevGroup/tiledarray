@@ -99,6 +99,28 @@ ACX_CHECK_BOOST
 ACX_WITH_BOOST_TEST_LIB
 ACX_WITH_BLAS
 
+acx_loop_unwind=12
+AC_ARG_ENABLE([loop-unwind],
+  [AC_HELP_STRING([--enable-loop-unwind@<:@=N@:>@],
+    [Enable loop unwinding @<:@default=12@:>@.]) ],
+  [
+    case $enableval in
+      yes)
+        acx_loop_unwind=12
+      ;;
+      no)
+        acx_loop_unwind=1
+      ;;
+      *)
+        acx_loop_unwind=$enableval
+      ;;
+    esac
+  ]
+)
+AS_IF([test "$acx_loop_unwind" -lt 1 ],
+  [AC_MSG_ERROR([Loop unwind value must be greater than or equal to 1.])])
+AC_DEFINE_UNQUOTED([TILEDARRAY_LOOP_UNWIND],[$acx_loop_unwind],[Define the number of iterations to unwind in a loop.])
+
 # Display options
 AC_MSG_NOTICE([CPPFLAGS = $CPPFLAGS])
 AC_MSG_NOTICE([CXXFLAGS = $CXXFLAGS])
@@ -124,6 +146,7 @@ AC_CONFIG_FILES([
       examples/mpi_tests/Makefile
       examples/dgemm/Makefile
       examples/pmap_test/Makefile
+      examples/vector_tests/Makefile
     doc/Makefile])
 # There is bug in M4 1.4.6 which is currently the default on OSX which requires
 # A new line after AC_OUTPUT
