@@ -60,6 +60,8 @@ namespace TiledArray {
     Array(madness::World& w, const trange_type& tr, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
         pimpl_(new impl_type(w, tr, 0), madness::make_deferred_deleter<impl_type>(w))
     {
+      TA_USER_ASSERT(tr.tiles().dim() == DIM,
+          "The dimensions of the tiled range do not match that of the array object.");
       pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
@@ -79,6 +81,8 @@ namespace TiledArray {
         pimpl_(new impl_type(w, tr, make_shape(w, tr, first, last)),
             madness::make_deferred_deleter<impl_type>(w))
     {
+      TA_USER_ASSERT(tr.tiles().dim() == DIM,
+          "The dimensions of the tiled range do not match that of the array object.");
       pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
@@ -94,6 +98,8 @@ namespace TiledArray {
         pimpl_(new impl_type(w, tr, shape),
             madness::make_deferred_deleter<impl_type>(w))
     {
+      TA_USER_ASSERT(tr.tiles().dim() == DIM,
+          "The dimensions of the tiled range do not match that of the array object.");
       pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
@@ -103,10 +109,10 @@ namespace TiledArray {
     /// \param other The array to be copied
     Array(const Array_& other) : pimpl_(other.pimpl_) { }
 
-    /// Construct Array from a pimpl
-
-    /// \param pimpl The implementation pointer
-    Array(const std::shared_ptr<impl_type>& pimpl) : pimpl_(pimpl) { }
+//    /// Construct Array from a pimpl
+//
+//    /// \param pimpl The implementation pointer
+//    Array(const std::shared_ptr<impl_type>& pimpl) : pimpl_(pimpl) { }
 
     /// Copy constructor
 
