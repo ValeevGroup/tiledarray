@@ -28,10 +28,12 @@ namespace TiledArray {
 
   /// An n-dimensional, tiled array
 
-  /// Array is considered a global object
+  /// Array is the local representation of a global object. This means that the
+  /// local array object will only contain a portion of the data. It may be used
+  /// to construct distributed tensor algebraic operations.
   /// \tparam T The element type of for array tiles
-  /// \tparam Coordinate system type
-  /// \tparam Policy class for the array
+  /// \tparam DIM The number of dimensions for this array object
+  /// \tparam Tile The tile type [ Default = \c Tensor<T> ]
   template <typename T, unsigned int DIM, typename Tile = Tensor<T> >
   class Array {
   public:
@@ -152,7 +154,10 @@ namespace TiledArray {
 
     /// \tparam Index The index type
     template <typename Index>
-    madness::Future<value_type> find(const Index& i) const { return pimpl_->operator[](i); }
+    madness::Future<value_type> find(const Index& i) const {
+      check_index(i);
+      return pimpl_->operator[](i);
+    }
 
     /// Set the data of tile \c i
 
@@ -163,6 +168,7 @@ namespace TiledArray {
     template <typename Index, typename InIter>
     typename madness::enable_if<detail::is_input_iterator<InIter> >::type
     set(const Index& i, InIter first) {
+      check_index(i);
       pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
     }
 
@@ -197,6 +203,7 @@ namespace TiledArray {
 
     template <typename Index>
     void set(const Index& i, const T& v = T()) {
+      check_index(i);
       pimpl_->get_world().taskq.add(new MakeTile<Index, value_type>(pimpl_, i, v));
     }
 
@@ -205,7 +212,10 @@ namespace TiledArray {
     /// \tparam Index The index type (i.e. index or size_type)
     /// \param i The tile index to be set
     template <typename Index>
-    void set(const Index& i, const madness::Future<value_type>& f) { pimpl_->set(i, f); }
+    void set(const Index& i, const madness::Future<value_type>& f) {
+      check_index(i);
+      pimpl_->set(i, f);
+    }
 
     /// Set tile \c i to value \c v
 
@@ -213,7 +223,10 @@ namespace TiledArray {
     /// \param i The tile index to be set
     /// \param v The tile value
     template <typename Index>
-    void set(const Index& i, const value_type& v) { pimpl_->set(i, v); }
+    void set(const Index& i, const value_type& v) {
+      check_index(i);
+      pimpl_->set(i, v);
+    }
 
     void set_all_local(const T& v = T()) {
       typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
@@ -233,22 +246,13 @@ namespace TiledArray {
 
     /// \return A const reference to the tiled range object for the array
     /// \throw nothing
-    const trange_type& trange() const {
-      TA_ASSERT(pimpl_);
-      return pimpl_->trange();
-    }
+    const trange_type& trange() const { return pimpl_->trange(); }
 
     /// Tile range accessor
 
     /// \return A const reference to the range object for the array tiles
     /// \throw nothing
-    const range_type& tiles() const { return pimpl_->range(); }
-
-    /// Tile range accessor
-
-    /// \return A const reference to the range object for the array tiles
-    /// \throw nothing
-    const range_type& range() const { return tiles(); }
+    const range_type& range() const { return pimpl_->range(); }
 
     /// Element range accessor
 
@@ -299,7 +303,8 @@ namespace TiledArray {
     /// \return A bitset that maps the existence of tiles.
     /// \throw TiledArray::Exception When the Array is dense.
     const shape_type& get_shape() const {
-      TA_ASSERT(! is_dense());
+      TA_USER_ASSERT(! is_dense(),
+          "You cannot access the shape of a dense array. Use Array::is_dense() to check for a dense array.");
       return pimpl_->shape();
     }
 
@@ -311,17 +316,26 @@ namespace TiledArray {
     /// \note This does not indicate whether a tile exists or not. Only, who
     /// would own it if it does exist.
     template <typename Index>
-    ProcessID owner(const Index& i) const { return pimpl_->owner(i); }
+    ProcessID owner(const Index& i) const {
+      check_index(i);
+      return pimpl_->owner(i);
+    }
 
     template <typename Index>
-    bool is_local(const Index& i) const { return pimpl_->is_local(i); }
+    bool is_local(const Index& i) const {
+      check_index(i);
+      return pimpl_->is_local(i);
+    }
 
     /// Check for zero tiles
 
     /// \return \c true if tile at index \c i is zero, false if the tile is
     /// non-zero or remote existence data is not available.
     template <typename Index>
-    bool is_zero(const Index& i) const { return pimpl_->is_zero(i); }
+    bool is_zero(const Index& i) const {
+      check_index(i);
+      return pimpl_->is_zero(i);
+    }
 
     /// Swap this array with \c other
 
@@ -350,6 +364,20 @@ namespace TiledArray {
     }
 
   private:
+
+    template <typename Index>
+    madness::enable_if<std::is_integral<Index> > check_index(const Index i) {
+      TA_USER_ASSERT(pimpl_->range().includes(i),
+          "The ordinal index used to access an array tile is out of range.");
+    }
+
+    template <typename Index>
+    madness::disable_if<std::is_integral<Index> > check_index(const Index& i) {
+      TA_USER_ASSERT(pimpl_->range().includes(i),
+          "The coordinate index used to access an array tile is out of range.");
+      TA_USER_ASSERT(i.size() == DIM,
+          "The number of elements in the coordinate index does not match the dimension of the array.");
+    }
 
     /// Construct a process map
 
