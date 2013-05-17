@@ -28,7 +28,7 @@
 #include <Eigen/Core>
 
 #ifndef TILEDARRAY_LOOP_UNWIND
-#define TILEDARRAY_LOOP_UNWIND 12
+#define TILEDARRAY_LOOP_UNWIND 1
 #endif // TILEDARRAY_LOOP_UNWIND
 
 namespace TiledArray {
@@ -106,8 +106,6 @@ namespace TiledArray {
     }
 
 
-#ifdef TILEDARRAY_HAS_BLAS
-
     // BLAS _GEMM wrapper functions
 
     inline void gemm(const integer m, const integer n, const integer k, const float alpha, const float* a, const float* b, float* c) {
@@ -130,15 +128,11 @@ namespace TiledArray {
           n, m, k, alpha, b, n, a, k, std::complex<double>(1.0, 0.0), c, n);
     }
 
-#endif // TILEDARRAY_HAS_BLAS
-
     template <typename T, typename U>
     inline typename madness::enable_if<detail::is_numeric<T> >::type
     scale(const integer n, const T alpha, U* x) {
       eigen_map(x, n) *= alpha;
     }
-
-#ifdef TILEDARRAY_HAS_BLAS
 
     // BLAS _SCAL wrapper functions
 
@@ -166,15 +160,12 @@ namespace TiledArray {
       madness::cblas::scal(n, alpha, x, 1);
     }
 
-#endif // TILEDARRAY_HAS_CBLAS
 
 
     template <typename T, typename U>
     T dot(const integer n, const T* x, const U* y) {
       return eigen_map(x, n).dot(eigen_map(y, n));
     }
-
-#ifdef TILEDARRAY_HAS_BLAS
 
 
     // BLAS _DOT wrapper functions
@@ -197,8 +188,6 @@ namespace TiledArray {
 
     // Import the madness dot functions into the TiledArray namespace
     using madness::cblas::dot;
-
-#endif // TILEDARRAY_HAS_CBLAS
 
 
     template <typename T>
