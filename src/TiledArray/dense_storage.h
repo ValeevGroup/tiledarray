@@ -61,7 +61,6 @@ namespace TiledArray {
   /// DenseStorage is an N-dimensional, dense array.
 
   /// \tparam T DenseStorage element type.
-  /// \tparam CS A \c CoordinateSystem type
   /// \tparam A A C++ standard library compliant allocator (Default:
   /// \c Eigen::aligned_allocator<T>)
   template <typename T, typename A = Eigen::aligned_allocator<T> >
@@ -117,8 +116,7 @@ namespace TiledArray {
 
     /// The storage object will contain \c n elements that have \c val , and are
     /// allocated with the allocator \c a .
-    /// \param r A shared pointer to the range object that will define the tile
-    /// dimensions
+    /// \param n The number of elements to be stored
     /// \param a The allocator object for the tile data ( default: allocator_type() )
     /// \throw std::bad_alloc There is not enough memory available for the target tile
     /// \throw anything Any exception that can be thrown by \c T type default or
@@ -145,8 +143,7 @@ namespace TiledArray {
 
     /// The storage object will contain \c n elements that have \c val , and are
     /// allocated with the allocator \c a .
-    /// \param r A shared pointer to the range object that will define the tile
-    /// dimensions
+    /// \param n The number of elements to be stored
     /// \param val The fill value for the new tile elements
     /// \param a The allocator object for the tile data [default: allocator_type()]
     /// \throw std::bad_alloc There is not enough memory available for the target tile
@@ -204,12 +201,17 @@ namespace TiledArray {
 
     /// Constructs a new tile
 
-    /// The tile will have the dimensions specified by the range object \c r and
-    /// the elements of the new tile will be equal to \c v. The provided
-    /// allocator \c a will allocate space for only for the tile data.
-    /// \tparam InIter An input iterator type.
+    /// This constructor will allocate memory for \c n elements. Each element
+    /// will be initialized as:
+    /// \code
+    /// for(int i = 0; i < n; ++i)
+    ///    data[i] = op(*first++);
+    /// \endcode
+    /// \tparam InIter An input iterator type for the argument.
+    /// \tparam Op A unary operation type
     /// \param n the size of the storage area
-    /// \param first An input iterator to the beginning of the data to copy
+    /// \param first An input iterator for the argument
+    /// \param op The unary operation to be applied to the argument data
     /// \param a The allocator object for the tile data ( default: allocator_type() )
     /// \throw std::bad_alloc There is not enough memory available for the
     /// target tile
@@ -236,12 +238,19 @@ namespace TiledArray {
 
     /// Constructs a new tile
 
-    /// The tile will have the dimensions specified by the range object \c r and
-    /// the elements of the new tile will be equal to \c v. The provided
-    /// allocator \c a will allocate space for only for the tile data.
-    /// \tparam InIter An input iterator type.
+    /// This constructor will allocate memory for \c n elements. Each element
+    /// will be initialized as:
+    /// \code
+    /// for(int i = 0; i < n; ++i)
+    ///    data[i] = op(*it1++, *it2++);
+    /// \endcode
+    /// \tparam InIter1 An input iterator type for the left-hand argument.
+    /// \tparam InIter2 An input iterator type for the right-hand argument.
+    /// \tparam Op A binary operation type
     /// \param n the size of the storage area
-    /// \param first An input iterator to the beginning of the data to copy
+    /// \param it1 An input iterator for the left-hand argument
+    /// \param it2 An input iterator for the right-hand argument
+    /// \param op The binary operation to be applied to the argument data
     /// \param a The allocator object for the tile data ( default: allocator_type() )
     /// \throw std::bad_alloc There is not enough memory available for the
     /// target tile
@@ -283,85 +292,6 @@ namespace TiledArray {
         DenseStorage_(other).swap(*this);
 
       return *this;
-    }
-
-    /// Plus-assignment operator
-
-    /// \tparam Arg The other container type
-    /// \param other The data that will be added to this object
-    /// \return This object
-    template <typename Arg>
-    DenseStorage_& operator+=(const Arg& other) {
-      TA_ASSERT(size() == other.size());
-      math::add_to(last_ - first_, first_, other.data());
-
-      return *this;
-    }
-
-    /// Minus-assignment operator
-
-    /// \tparam Arg The other container type
-    /// \param other The data that will be subtracted from this object
-    /// \return This object
-    template <typename Arg>
-    DenseStorage_& operator-=(const Arg& other) {
-      TA_ASSERT(size() == other.size());
-      math::subt_to(last_ - first_, first_, other.data());
-
-      return *this;
-    }
-
-    /// Multiply-assignment operator
-
-    /// \tparam Arg The other container type
-    /// \param other The data that will be subtracted from this object
-    /// \return This object
-    template <typename Arg>
-    typename madness::disable_if<detail::is_numeric<Arg>, DenseStorage_&>::type
-    operator*=(const Arg& other) {
-      TA_ASSERT(size() == other.size());
-      math::mult_to(last_ - first_, first_, other.data());
-
-      return *this;
-    }
-
-    /// Plus shift operator
-
-    /// \param value The shift value
-    /// \return This object
-    DenseStorage_& operator+=(const value_type& value) {
-      math::add_const(last_ - first_, first_, value);
-      return *this;
-    }
-
-    /// Minus shift operator
-
-    /// \param value The negative shift value
-    /// \return This object
-    DenseStorage_& operator-=(const value_type& value) {
-      math::subt_const(last_ - first_, first_, value);
-      return *this;
-    }
-
-    /// Scale operator
-
-    /// \param value The scaling factor
-    /// \return This object
-    template <typename U>
-    typename madness::enable_if<detail::is_numeric<U>, DenseStorage_&>::type
-    operator*=(const U& value) {
-      math::scale(size(), value, first_);
-      return *this;
-    }
-
-    /// Copy the content of this data into dest
-    template <typename Dest>
-    void eval_to(Dest& dest) const {
-      TA_ASSERT(! empty());
-      const size_type end = size();
-      TA_ASSERT(dest.size() == end);
-      for(size_type i = 0; i < end; ++i)
-        dest[i] = operator[](i);
     }
 
     /// Returns a raw pointer to the array elements. Elements are ordered from
@@ -450,14 +380,21 @@ namespace TiledArray {
 
       // Deallocate existing memory
       if(first_ != NULL) {
+        const std::size_t size = last_ - first_;
+        if(size < n) {
           destroy_(*this, first_, last_);
-          allocator_type::deallocate(first_, size());
-      }
+          allocator_type::deallocate(first_, size);
 
-      // Allocate new memory
-      first_ = allocator_type::allocate(n);
-      last_ = first_ + n;
-      default_init(detail::is_numeric<value_type>());
+          // Allocate new memory
+          first_ = allocator_type::allocate(n);
+          last_ = first_ + n;
+          default_init(detail::is_numeric<value_type>());
+        } else if(size > n) {
+          value_type* const new_last = first_ + n;
+          destroy_(*this, new_last, last_);
+          last_ = new_last;
+        }
+      }
 
       ar & madness::archive::wrap(first_, n);
     }
@@ -497,7 +434,6 @@ namespace TiledArray {
 
     /// Initialize data with an input iterator
 
-    /// \tparam InIter Input iterator type
     /// \param in_it Input iterator to the initialization data
     void construct_iterator(const_pointer in_it) {
       memcpy(first_, in_it, sizeof(value_type) * (last_ - first_));
@@ -537,11 +473,12 @@ namespace TiledArray {
     /// Initialize data with an input iterator + unary operation
 
     /// Each element is initialized with: \c op(*in_it1, *in_it2)
-    /// \tparam InIter1 Input iterator 1 type
-    /// \tparam InIter1 Input iterator 2 type
-    /// \param in_it1 Input iterator to the initialization data for left-hand argument
-    /// \param in_it2 Input iterator to the initialization data for right-hand argument
-    /// \param op The operation to be applied to the input
+    /// \tparam InIter1 An input iterator type for the left-hand argument.
+    /// \tparam InIter2 An input iterator type for the right-hand argument.
+    /// \tparam Op A binary operation type
+    /// \param in_it1 An input iterator for the left-hand argument
+    /// \param in_it2 An input iterator for the right-hand argument
+    /// \param op The operation to be applied to the input data
     template <typename InIter1, typename InIter2, typename Op>
     typename madness::disable_if_c<
         detail::optimized_init<value_type, InIter1>::value &&
@@ -559,12 +496,13 @@ namespace TiledArray {
 
     /// Initialize data with an input iterator + unary operation
 
-    /// Each element is initialized with: \c op(*in_it1, *in_it2)
-    /// \tparam InIter1 Input iterator 1 type
-    /// \tparam InIter1 Input iterator 2 type
-    /// \param in_it1 Input iterator to the initialization data for left-hand argument
-    /// \param in_it2 Input iterator to the initialization data for right-hand argument
-    /// \param op The operation to be applied to the input
+    /// Each element is initialized with: \c op(*in_it1,*in_it2)
+    /// \tparam InIter1 An input iterator type for the left-hand argument.
+    /// \tparam InIter2 An input iterator type for the right-hand argument.
+    /// \tparam Op A binary operation type
+    /// \param in_it1 An input iterator for the left-hand argument
+    /// \param in_it2 An input iterator for the right-hand argument
+    /// \param op The operation to be applied to the input data
     template <typename InIter1, typename InIter2, typename Op>
     typename madness::enable_if_c<
         detail::optimized_init<value_type, InIter1>::value &&
@@ -607,8 +545,6 @@ namespace TiledArray {
     /// Call the destructor for a range of data.
 
     /// This is a helper function for data with a trivial destructor functions.
-    /// \param first A pointer to the first element in the memory range to destroy
-    /// \param last A pointer to one past the last element in the memory range to destroy
     /// \throw nothing
     static void destroy_aux_(const allocator_type&, pointer, pointer, std::true_type) { }
 

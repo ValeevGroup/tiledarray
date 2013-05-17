@@ -35,9 +35,8 @@ namespace TiledArray {
   }; // struct ZeroTensor
 
 
-  /// Evaluation tensor
+  /// An N-dimensional tensor object
 
-  /// This tensor is used as an evaluated intermediate for other tensors.
   /// \tparma T the value type of this tensor
   /// \tparam A The allocator type for the data
   template <typename T, typename A = Eigen::aligned_allocator<T> >
@@ -66,8 +65,6 @@ namespace TiledArray {
     /// Evaluation tensor
 
     /// This tensor is used as an evaluated intermediate for other tensors.
-    /// \tparma T the value type of this tensor
-    /// \tparam A The allocator type for the data
     class Impl {
     public:
 
@@ -222,7 +219,8 @@ namespace TiledArray {
           pimpl_.reset(new Impl(other.range(), other.begin()));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
-        pimpl_->data_ += other;
+        math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
+            detail::PlusAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
       return *this;
@@ -241,7 +239,8 @@ namespace TiledArray {
               std::bind1st(std::minus<value_type>(), 0)));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
-        pimpl_->data_ -= other;
+        math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
+            detail::MinusAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
       return *this;
@@ -252,32 +251,58 @@ namespace TiledArray {
     /// Evaluate \c other to this tensor
     /// \param other The tensor to be copied
     /// \return this tensor
-    template <typename U, typename RU, typename AU>
+    template <typename U, typename AU>
     Tensor_& operator*=(const Tensor<U, AU>& other) {
       if(!pimpl_) {
         if(! other.empty())
           pimpl_.reset(new Impl(other.range(), 0));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
-        pimpl_->data_ *= other;
+        math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
+            detail::MultipliesAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
       return *this;
     }
 
-    /// Multiply assignment
+    /// Plus shift operator
 
-    /// Evaluate \c other to this tensor
-    /// \param other The tensor to be copied
+    /// \param value The shift value
     /// \return this tensor
     template <typename U>
     typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
-    operator*=(const U u) {
-      if(pimpl_) {
-        const iterator end =  pimpl_->data_.end();
-        for(iterator it = pimpl_->data_.begin(); it != end; ++it)
-          *it *= u;
-      }
+    operator+=(const U& value) {
+      if(pimpl_)
+        math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
+            detail::PlusAssignConst<value_type>(value));
+
+      return *this;
+    }
+
+    /// Minus shift operator
+
+    /// \param value The negative shift value
+    /// \return this tensor
+    template <typename U>
+    typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
+    operator-=(const U& value) {
+      if(pimpl_)
+        math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
+            detail::PlusAssignConst<value_type>(-value));
+
+      return *this;
+    }
+
+    /// Scale operator
+
+    /// \param value The scaling factor
+    /// \return this tensor
+    template <typename U>
+    typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
+    operator*=(const U& value) {
+      if(pimpl_)
+        math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
+            detail::ScaleAssign<value_type>(value));
 
       return *this;
     }
@@ -391,33 +416,32 @@ namespace TiledArray {
   template <typename T, typename AT, typename U, typename AU>
   Tensor<T, AT> operator+(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::plus<T>());
+    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Plus<T, U, T>());
   }
 
   template <typename T, typename AT, typename U, typename AU>
   Tensor<T, AT> operator-(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::minus<T>());
+    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Minus<T, U, T>());
   }
 
   template <typename T, typename AT, typename U, typename AU>
   Tensor<T, AT> operator*(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), std::multiplies<T>());
+    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Multiplies<T, U, T>());
   }
 
   template <typename T, typename AT, typename N>
   typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(const Tensor<T, AT>& left, N right) {
-    return Tensor<T,AT>(left.range(), left.begin(),
-        std::bind2nd(TiledArray::detail::Multiplies<T, N, T>(),right));
+    return Tensor<T,AT>(left.range(), left.begin(), TiledArray::detail::Scale<T>(right));
   }
 
   template <typename T, typename AT, typename N>
   typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(N left, const Tensor<T, AT>& right) {
     return Tensor<T,AT>(right.range(), right.begin(),
-        std::bind2nd(TiledArray::detail::Multiplies<T, N, T>(),left));
+        TiledArray::detail::Scale<T>(left));
   }
 
   template <typename T, typename A>
