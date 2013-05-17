@@ -189,46 +189,6 @@ BOOST_AUTO_TEST_CASE( assignment_operator )
   BOOST_CHECK_NE(t1.begin(), t.begin());
 }
 
-BOOST_AUTO_TEST_CASE( plus_assignment_operator )
-{
-  Storage t1(10, 1);
-  t += t1;
-  for(int i = 0; i < 10; ++ i)
-    BOOST_CHECK_EQUAL(t[i], i + 1);
-}
-
-BOOST_AUTO_TEST_CASE( plus_assignment_value_operator )
-{
-  t += 1;
-  for(int i = 0; i < 10; ++ i)
-    BOOST_CHECK_EQUAL(t[i], i + 1);
-}
-
-BOOST_AUTO_TEST_CASE( minus_assignment_operator )
-{
-  t += 2;
-  Storage t1(10, 1);
-  t -= t1;
-  for(int i = 0; i < 10; ++ i)
-    BOOST_CHECK_EQUAL(t[i], i + 1);
-}
-
-BOOST_AUTO_TEST_CASE( minus_assignment_value_operator )
-{
-  t += 2;
-
-  t -= 1;
-  for(int i = 0; i < 10; ++ i)
-    BOOST_CHECK_EQUAL(t[i], i + 1);
-}
-
-BOOST_AUTO_TEST_CASE( scale_assignment_operator )
-{
-  t *= 2;
-  for(int i = 0; i < 10; ++ i)
-    BOOST_CHECK_EQUAL(t[i], i * 2);
-}
-
 BOOST_AUTO_TEST_CASE( serialize )
 {
 
