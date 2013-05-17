@@ -24,7 +24,7 @@
 using namespace TiledArray;
 
 ArrayFixture::ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
-  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it)
+  for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it)
     if(a.is_local(*it))
       a.set(*it, world.rank() + 1); // Fill the tile at *it (the index)
 
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE( owner )
       & madness::detail::checked_array_delete<ProcessID>);
 
   size_type o = 0;
-  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it, ++o) {
+  for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it, ++o) {
     // Check that local ownership agrees
     const int owner = a.owner(*it);
     BOOST_CHECK_EQUAL(a.owner(o), owner);
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE( is_local )
   // Test to make sure everyone agrees who owns which tiles.
 
   size_type o = 0;
-  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it, ++o) {
+  for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it, ++o) {
     // Check that local ownership agrees
     const bool local_tile = a.owner(o) == world.rank();
     BOOST_CHECK_EQUAL(a.is_local(*it), local_tile);
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE( is_local )
 
 BOOST_AUTO_TEST_CASE( find_local )
 {
-  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
+  for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
 
     if(a.is_local(*it)) {
       madness::Future<ArrayN::value_type> tile = a.find(*it);
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE( find_remote )
 {
   a.eval().get();
 
-  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
+  for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
 
     if(! a.is_local(*it)) {
       madness::Future<ArrayN::value_type> tile = a.find(*it);
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE( fill_tiles )
   ArrayN a(world, tr);
   a.eval().get();
 
-  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
+  for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
     if(a.is_local(*it)) {
       a.set(*it, 0); // Fill the tile at *it (the index) with 0
 
@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
   ArrayN a(world, tr);
   a.eval().get();
 
-  for(ArrayN::range_type::const_iterator it = a.tiles().begin(); it != a.tiles().end(); ++it) {
+  for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
     ArrayN::trange_type::tile_range_type range = a.trange().make_tile_range(*it);
     if(a.is_local(*it)) {
       if(data.size() < range.volume())
