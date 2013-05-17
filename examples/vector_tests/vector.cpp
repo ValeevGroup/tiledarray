@@ -34,18 +34,25 @@
 #define EIGEN_NO_MALLOC
 
 int main(int argc, char** argv) {
-  const std::size_t repeat = 1000;
+  const std::size_t repeat = 100;
   // Allocate some memory for tests
-  const std::size_t n = 1000000;
-  double* a = new double[n];
-  double* b = new double[n];
-  double* c = new double[n];
+  const std::size_t n = 10000000;
+  double* a = NULL;
+  double* b = NULL;
+  double* c = NULL;
+  if(posix_memalign(reinterpret_cast<void**>(&a), 128, sizeof(double) * n) != 0)
+    return 1;
+  if(posix_memalign(reinterpret_cast<void**>(&b), 128, sizeof(double) * n) != 0)
+    return 1;
+  if(posix_memalign(reinterpret_cast<void**>(&c), 128, sizeof(double) * n) != 0)
+    return 1;
 
   // Init memory
   std::fill_n(a, n, 2.0);
   std::fill_n(b, n, 3.0);
   std::fill_n(c, n, 0.0);
 
+  ////==========================================================================
   std::cout << "Sum:\n";
   double start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r)
@@ -78,12 +85,24 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    C = A + B;
+  }
+  stop = madness::wall_time();
+
+  std::cout << "Eigen:  " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::vector_op(n, a, b, c, TiledArray::detail::Plus<double, double, double>());
   }
   stop = madness::wall_time();
 
   std::cout << "vector: " << stop - start << " s\n";
 
+  ////==========================================================================
   std::cout << "\nScale Sum:\n";
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r)
@@ -116,13 +135,25 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    C = (A + B) * 3.0;
+  }
+  stop = madness::wall_time();
+
+  std::cout << "Eigen:  " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::vector_op(n, a, b, c, TiledArray::detail::ScalPlus<double, double, double>(3.0));
   }
   stop = madness::wall_time();
 
   std::cout << "vector: " << stop - start << " s\n";
 
-  ////
+
+  ////==========================================================================
   std::cout << "\nMultiply:\n";
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r)
@@ -147,11 +178,22 @@ int main(int argc, char** argv) {
       c[i+7] = a[i+7] * b[i+7];
     }
     for(; i < n; ++i)
-      c[i] = a[i] + b[i];
+      c[i] = a[i] * b[i];
   }
   stop = madness::wall_time();
 
   std::cout << "unwind: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    C = A * B;
+  }
+  stop = madness::wall_time();
+
+  std::cout << "Eigen:  " << stop - start << " s\n";
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
@@ -161,7 +203,7 @@ int main(int argc, char** argv) {
 
   std::cout << "vector: " << stop - start << " s\n";
 
-  ////
+  ////==========================================================================
   std::cout << "\nScale Multiply:\n";
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r)
@@ -194,13 +236,83 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    C = (A * B) * 3.0;
+  }
+  stop = madness::wall_time();
+
+  std::cout << "Eigen:  " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::vector_op(n, a, b, c, TiledArray::detail::ScalMultiplies<double, double, double>(3.0));
   }
   stop = madness::wall_time();
 
   std::cout << "vector: " << stop - start << " s\n";
 
-  ////
+  ////==========================================================================
+  std::cout << "\nScale:\n";
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r)
+    for(std::size_t i = 0ul; i < n; ++i)
+      c[i] *= 3.0;
+  stop = madness::wall_time();
+
+  std::cout << "base:   " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    const std::size_t n4 = n - (n % 8);
+    std::size_t i = 0ul;
+    for(; i < n4; i += 8) {
+      c[i]   = 3.0;
+      c[i+1] = 3.0;
+      c[i+2] = 3.0;
+      c[i+3] = 3.0;
+      c[i+4] = 3.0;
+      c[i+5] = 3.0;
+      c[i+6] = 3.0;
+      c[i+7] = 3.0;
+    }
+    for(; i < n; ++i)
+      c[i] = 3.0;
+  }
+  stop = madness::wall_time();
+
+  std::cout << "unwind: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    C *= 3.0;
+  }
+  stop = madness::wall_time();
+
+  std::cout << "Eigen:  " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    madness::cblas::scal(n, 3.0, c, 1);
+  }
+  stop = madness::wall_time();
+
+  std::cout << "blas:   " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::vector_assign(n, c, TiledArray::detail::ScaleAssign<double>(3.0));
+  }
+  stop = madness::wall_time();
+
+  std::cout << "vector: " << stop - start << " s\n";
+
+
+  ////==========================================================================
   std::cout << "\nMaxabs:\n";
   double temp = 0.0;
   start = madness::wall_time();
@@ -235,16 +347,16 @@ int main(int argc, char** argv) {
   start = madness::wall_time();
   double x = 0.0;
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    x = TiledArray::math::maxabs(n, a);
+    x += TiledArray::math::maxabs(n, a);
   }
   stop = madness::wall_time();
-
-  std::cout << "vector: " << stop - start << " s\n";
+  x += 1.0;
+  std::cout << "vector: " << stop - start << " s\n" << x;
 
   // Deallocate memory
-  delete [] a;
-  delete [] b;
-  delete [] c;
+  free(a);
+  free(b);
+  free(c);
 
   return 0;
 }
