@@ -62,6 +62,26 @@ namespace TiledArray {
       }
     }; // class Plus
 
+    /// Plus assign, but \c First plus \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    template <typename First, typename Second>
+    struct PlusAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename std::add_const<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+
+      /// Compute the sum of \c first and \c second
+
+      /// \param[in,out] first The left-hand argument, and the sum of \c first
+      /// and \c second
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first += second;
+      }
+    }; // class PlusAssign
+
     /// Generalization of \c std::plus with scaling, but \c First plus \c Second yielding \c Result
 
     /// \tparam First Left-hand argument type
@@ -107,7 +127,6 @@ namespace TiledArray {
 
     /// \tparam First Left-hand argument type
     /// \tparam Second Right-hand argument type
-    /// \tparam Result Result type
     template <typename First, typename Second, typename Result>
     struct Minus {
       typedef typename std::add_const<First>::type first_argument_type; ///< The left-hand argument type
@@ -118,11 +137,30 @@ namespace TiledArray {
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument
-      /// \return \c first - \c second
+      /// \return \c first-second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         return first - second;
       }
     }; // class Minus
+
+    /// Minus assign, but \c First minus \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    template <typename First, typename Second>
+    struct MinusAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename std::add_const<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+
+      /// Compute the difference of \c first and \c second
+
+      /// \param[in,out] first The left-hand argument and result
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first -= second;
+      }
+    }; // class MinusAssign
 
     /// Generalization of \c std::minus with scaling, but \c First minus \c Second yielding \c Result
 
@@ -185,6 +223,25 @@ namespace TiledArray {
       }
     }; // class Multiples
 
+    /// Multiply assign, but \c First times \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    template <typename First, typename Second>
+    struct MultipliesAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename std::add_const<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+
+      /// Compute the product of \c first and \c second
+
+      /// \param[in,out] first The left-hand argument and result
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first *= second;
+      }
+    }; // class MultipliesAssign
+
     /// Generalization of \c std::multiples with scaling, but \c First times \c Second yielding \c Result
 
     /// \tparam First Left-hand argument type
@@ -225,7 +282,6 @@ namespace TiledArray {
         return result_type(first * second) * factor_;
       }
     }; // class ScalMultiplies
-
 
     /// Generalization of \c std::negate, but \c Arg yielding \c Result
 
@@ -286,12 +342,11 @@ namespace TiledArray {
     /// Scaling operations
 
     /// \tparam Arg The argument type
-    /// \tparam Result The result type
-    template <typename Arg, typename Result>
+    template <typename Arg>
     struct Scale {
       typedef typename std::add_const<Arg>::type argument_type;
-      typedef Result result_type;
-      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type;
+      typedef Arg result_type;
+      typedef typename TiledArray::detail::scalar_type<Arg>::type scalar_type;
 
     private:
       scalar_type factor_; ///< The scaling factor
@@ -299,10 +354,10 @@ namespace TiledArray {
     public:
       // Constructors
       Scale(const scalar_type factor) : factor_(factor) { }
-      Scale(const Scale<Arg, Result>& other) : factor_(other.factor_) { }
+      Scale(const Scale<Arg>& other) : factor_(other.factor_) { }
 
       // Assignment operator
-      Scale<Arg, Result>& operator=(const Scale<Arg, Result>& other) {
+      Scale<Arg>& operator=(const Scale<Arg>& other) {
         factor_ = other.factor_;
         return *this;
       }
@@ -314,11 +369,83 @@ namespace TiledArray {
 
       /// \param arg The argument to be scaled
       /// \return \c arg*factor
-      result_type operator()(const argument_type arg) const {
+      result_type operator()(argument_type arg) const {
         return arg * factor_;
       }
 
     }; // struct Scale
+
+    /// Scaling assign operations
+
+    /// \tparam Arg The argument type
+    template <typename Arg>
+    struct ScaleAssign {
+      typedef Arg& argument_type;
+      typedef void result_type;
+      typedef typename TiledArray::detail::scalar_type<Arg>::type scalar_type;
+
+    private:
+      scalar_type factor_; ///< The scaling factor
+
+    public:
+      // Constructors
+      ScaleAssign(const scalar_type factor) : factor_(factor) { }
+      ScaleAssign(const ScaleAssign<Arg>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      ScaleAssign<Arg>& operator=(const ScaleAssign<Arg>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      // Scaling factor accessor
+      scalar_type factor() const { return factor_; }
+
+      /// Scale operation
+
+      /// Multiply-assign \c arg by factor.
+      /// \param arg The argument to be scaled
+      result_type operator()(argument_type arg) const {
+        arg *= factor_;
+      }
+
+    }; // struct ScaleAssign
+
+    /// Add constant operations
+
+    /// \tparam Arg The argument type
+    template <typename Arg>
+    struct PlusAssignConst {
+      typedef Arg& argument_type;
+      typedef void result_type;
+      typedef typename TiledArray::detail::scalar_type<Arg>::type scalar_type;
+
+    private:
+      scalar_type factor_; ///< The scaling factor
+
+    public:
+      // Constructors
+      PlusAssignConst(const scalar_type factor) : factor_(factor) { }
+      PlusAssignConst(const PlusAssignConst<Arg>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      PlusAssignConst<Arg>& operator=(const PlusAssignConst<Arg>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      // Scaling factor accessor
+      scalar_type factor() const { return factor_; }
+
+      /// Scale operation
+
+      /// Add factor to \c arg
+      /// \param arg The argument to be scaled
+      result_type operator()(argument_type arg) const {
+        arg += factor_;
+      }
+
+    }; // struct AddConst
 
   }  // namespace detail
 }  // namespace TiledArray
