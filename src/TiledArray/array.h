@@ -366,13 +366,15 @@ namespace TiledArray {
   private:
 
     template <typename Index>
-    madness::enable_if<std::is_integral<Index> > check_index(const Index i) {
+    typename madness::enable_if<std::is_integral<Index> >::type
+    check_index(const Index i) const {
       TA_USER_ASSERT(pimpl_->range().includes(i),
           "The ordinal index used to access an array tile is out of range.");
     }
 
     template <typename Index>
-    madness::disable_if<std::is_integral<Index> > check_index(const Index& i) {
+    typename madness::disable_if<std::is_integral<Index> >::type
+    check_index(const Index& i) const {
       TA_USER_ASSERT(pimpl_->range().includes(i),
           "The coordinate index used to access an array tile is out of range.");
       TA_USER_ASSERT(i.size() == DIM,
