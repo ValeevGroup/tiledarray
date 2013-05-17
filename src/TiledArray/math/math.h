@@ -22,9 +22,9 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/math/blas.h>
 #include <TiledArray/math/functional.h>
 #include <world/enable_if.h>
+#include <linalg/cblas.h>
 #include <Eigen/Core>
 
 #ifndef TILEDARRAY_LOOP_UNWIND
@@ -55,13 +55,12 @@ namespace TiledArray {
     /// Construct an Eigen::Map object for a given Tensor object
 
     /// \tparam T The tensor element type
-    /// \tparam A The tensor allocator type
-    /// \param tensor The tensor object
+    /// \param t The tensor object
     /// \param m The number of rows in the result matrix
     /// \param n The number of columns in the result matrix
     /// \return An m x n Eigen matrix map for \c tensor
     /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
-    template <typename T, typename A>
+    template <typename T>
     inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
     eigen_map(T* t, const std::size_t m, const std::size_t n) {
       TA_ASSERT(t);
@@ -73,9 +72,8 @@ namespace TiledArray {
 
     /// Construct a const Eigen::Map object for a given Tensor object
 
-    /// \tparam T The tensor element type
-    /// \tparam A The tensor allocator type
-    /// \param tensor The tensor object
+    /// \tparam T The element type
+    /// \param t The vector pointer
     /// \param n The number of elements in the result matrix
     /// \return An n element Eigen vector map for \c tensor
     /// \throw TiledArray::Exception When n is not equal to \c tensor size
@@ -89,9 +87,8 @@ namespace TiledArray {
 
     /// Construct an Eigen::Map object for a given Tensor object
 
-    /// \tparam T The tensor element type
-    /// \tparam A The tensor allocator type
-    /// \param tensor The tensor object
+    /// \tparam T The element type
+    /// \param t The vector pointer
     /// \param n The number of elements in the result matrix
     /// \return An n element Eigen vector map for \c tensor
     /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
@@ -114,27 +111,23 @@ namespace TiledArray {
     // BLAS _GEMM wrapper functions
 
     inline void gemm(const integer m, const integer n, const integer k, const float alpha, const float* a, const float* b, float* c) {
-      static const char *op[] = { "n","t" };
-      static const float beta = 1.0;
-      F77_SGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
+      madness::cblas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
+          n, m, k, alpha, b, n, a, k, 1.0, c, n);
     }
 
     inline void gemm(const integer m, const integer n, const integer k, const double alpha, const double* a, const double* b, double* c) {
-      static const char *op[] = { "n","t" };
-      static const double beta = 1.0;
-      F77_DGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
+      madness::cblas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
+          n, m, k, alpha, b, n, a, k, 1.0, c, n);
     }
 
     inline void gemm(const integer m, const integer n, const integer k, const std::complex<float> alpha, const std::complex<float>* a, const std::complex<float>* b, std::complex<float>* c) {
-      static const char *op[] = { "n","t","c" };
-      static const std::complex<float> beta(1.0, 0.0);
-      F77_CGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
+      madness::cblas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
+          n, m, k, alpha, b, n, a, k, std::complex<float>(1.0, 0.0), c, n);
     }
 
     inline void gemm(const integer m, const integer n, const integer k, const std::complex<double> alpha, const std::complex<double>* a, const std::complex<double>* b, std::complex<double>* c) {
-      static const char *op[] = { "n","t","c" };
-      static const std::complex<double> beta(1.0, 0.0);
-      F77_ZGEMM(op[0], op[0], &n, &m, &k, &alpha, b, &n, a, &k, &beta, c, &n);
+      madness::cblas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
+          n, m, k, alpha, b, n, a, k, std::complex<double>(1.0, 0.0), c, n);
     }
 
 #endif // TILEDARRAY_HAS_BLAS
@@ -149,34 +142,28 @@ namespace TiledArray {
 
     // BLAS _SCAL wrapper functions
 
-    inline void scale(const integer n, float alpha, float* x) {
-      static const integer incX = 1;
-      F77_SSCAL(&n, &alpha, x, &incX);
+    inline void scale(const integer n, const float alpha, float* x) {
+      madness::cblas::scal(n, alpha, x, 1);
     }
 
-    inline void scale(const integer n, double alpha, double* x) {
-      static const integer incX = 1;
-      F77_DSCAL(&n, &alpha, x, &incX);
+    inline void scale(const integer n, const double alpha, double* x) {
+      madness::cblas::scal(n, alpha, x, 1);
     }
 
-    inline void scale(const integer n, std::complex<float> alpha, std::complex<float>* x) {
-      static const integer incX = 1;
-      F77_CSCAL(&n, &alpha, x, &incX);
+    inline void scale(const integer n, const std::complex<float> alpha, std::complex<float>* x) {
+      madness::cblas::scal(n, alpha, x, 1);
     }
 
-    inline void scale(const integer n, std::complex<double> alpha, std::complex<double>* x) {
-      static const integer incX = 1;
-      F77_ZSCAL(&n, &alpha, x, &incX);
+    inline void scale(const integer n, const std::complex<double> alpha, std::complex<double>* x) {
+      madness::cblas::scal(n, alpha, x, 1);
     }
 
-    inline void scale(const integer n, float alpha, std::complex<float>* x) {
-      static const integer incX = 1;
-      F77_CSSCAL(&n, &alpha, x, &incX);
+    inline void scale(const integer n, const float alpha, std::complex<float>* x) {
+      madness::cblas::scal(n, alpha, x, 1);
     }
 
-    inline void scale(const integer n, double alpha, std::complex<double>* x) {
-      static const integer incX = 1;
-      F77_ZDSCAL(&n, &alpha, x, &incX);
+    inline void scale(const integer n, const double alpha, std::complex<double>* x) {
+      madness::cblas::scal(n, alpha, x, 1);
     }
 
 #endif // TILEDARRAY_HAS_CBLAS
@@ -193,78 +180,25 @@ namespace TiledArray {
     // BLAS _DOT wrapper functions
 
     inline float dot(integer n, const float* x, const float* y) {
-      static const integer incX = 1, incY = 1;
-      return F77_SDOT(&n, x, &incX, y, &incY);
+      return madness::cblas::dot(n, x, 1, y, 1);
     }
 
     inline double dot(integer n, const double* x, const double* y) {
-      static const integer incX = 1, incY = 1;
-      return F77_DDOT(&n, x, &incX, y, &incY);
+      return madness::cblas::dot(n, x, 1, y, 1);
     }
 
     inline std::complex<float> dot(integer n, const std::complex<float>* x, const std::complex<float>* y) {
-      static const integer incX = 1, incY = 1;
-      std::complex<float> result(0.0, 0.0);
-      F77_CDOTU(&n, x, &incX, y, &incY, &result);
-      return result;
+      return madness::cblas::dot(n, x, 1, y, 1);
     }
 
     inline std::complex<double> dot(integer n, const std::complex<double>* x, const std::complex<double>* y) {
-      static const integer incX = 1, incY = 1;
-      std::complex<double> result(0.0, 0.0);
-      F77_ZDOTU(&n, x, &incX, y, &incY, &result);
-      return result;
+      return madness::cblas::dot(n, x, 1, y, 1);
     }
 
-    inline float dot(integer n, const float* x, integer incX, const float* y, integer incY) {
-      return F77_SDOT(&n, x, &incX, y, &incY);
-    }
-
-    inline double dot(integer n, const double* x, integer incX, const double* y, integer incY) {
-      return F77_DDOT(&n, x, &incX, y, &incY);
-    }
-
-    inline std::complex<float> dot(integer n, const std::complex<float>* x, integer incX,
-                                   const std::complex<float>* y, integer incY) {
-      std::complex<float> result(0.0, 0.0);
-      F77_CDOTU(&n, x, &incX, y, &incY, &result);
-      return result;
-    }
-
-    inline std::complex<double> dot(integer n, const std::complex<double>* x, integer incX,
-                                    const std::complex<double>* y, integer incY) {
-      std::complex<double> result(0.0, 0.0);
-      F77_ZDOTU(&n, x, &incX, y, &incY, &result);
-      return result;
-    }
+    // Import the madness dot functions into the TiledArray namespace
+    using madness::cblas::dot;
 
 #endif // TILEDARRAY_HAS_CBLAS
-
-
-    template <typename T, typename U>
-    inline void add_to(const integer n, T* t, const U* u) {
-      eigen_map(t, n) += eigen_map(u, n);
-    }
-
-    template <typename T, typename U>
-    inline void subt_to(const integer n, T* t, const U* u) {
-      eigen_map(t, n) -= eigen_map(u, n);
-    }
-
-    template <typename T, typename U>
-    inline void mult_to(const integer n, T* t, const U* u) {
-      eigen_map(t, n) *= eigen_map(u, n);
-    }
-
-    template <typename T, typename U>
-    inline void add_const(const integer n, T* t, const U& u) {
-      eigen_map(t, n).array() += u;
-    }
-
-    template <typename T, typename U>
-    inline void subt_const(const integer n, T* t, const U& u) {
-      eigen_map(t, n).array() -= u;
-    }
 
 
     template <typename T>
@@ -298,7 +232,7 @@ namespace TiledArray {
         /// \param v The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename V, typename Op>
-        static inline void eval(const int i, register const T* t, register const U* u, register V* v, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void eval(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
           VectorOpUnwind<N-1>::eval(i, t, u, v, op);
           v[i+N] = op(t[i+N], u[i+N]);
         }
@@ -313,7 +247,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static inline void eval(const unsigned int i, register const T* t, register U* u, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void eval(const unsigned int i, const T* t, U* u, const Op& op) {
           VectorOpUnwind<N-1>::eval(i, t, u, op);
           u[i+N] = op(t[i+N]);
         }
@@ -330,7 +264,7 @@ namespace TiledArray {
         /// \param v The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename V, typename Op>
-        static inline void eval_to_temp(const unsigned int i, register const T* t, register const U* u, register V* v, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void eval_to_temp(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
           VectorOpUnwind<N-1>::eval_to_temp(i, t, u, v, op);
           v[N] = op(t[i+N], u[i+N]);
         }
@@ -345,11 +279,68 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static inline void eval_to_temp(const unsigned int i, register const T* t, register U* u, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void eval_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
           VectorOpUnwind<N-1>::eval_to_temp(i, t, u, op);
           u[N] = op(t[i+N]);
         }
 
+        /// Assign vector
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The assignment operation type
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The assignment operation
+        template <typename T, typename U, typename Op>
+        static __inline__ __attribute__((always_inline)) void assign(const unsigned int i, const T* t, U* u, const Op& op) {
+          VectorOpUnwind<N-1>::assign(i, t, u, op);
+          op(u[i+N], t[i+N]);
+        }
+
+        /// Assign vector
+
+        /// \tparam T The result type
+        /// \tparam Op The assignment operation type
+        /// \param i The starting position of the vector offset
+        /// \param t The result pointer
+        /// \param op The assignment operation
+        template <typename T, typename Op>
+        static __inline__ __attribute__((always_inline)) void assign(const unsigned int i, T* t, const Op& op) {
+          VectorOpUnwind<N-1>::assign(i, t, op);
+          op(t[i+N]);
+        }
+
+        /// Assign vector to temporary
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The assignment operation type
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The assignment operation
+        template <typename T, typename U, typename Op>
+        static __inline__ __attribute__((always_inline)) void assign_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+          VectorOpUnwind<N-1>::assign_to_temp(i, t, u, op);
+          op(u[N], t[i+N]);
+        }
+
+        /// Assign vector from temporary
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The assignment operation type
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The assignment operation
+        template <typename T, typename U, typename Op>
+        static __inline__ __attribute__((always_inline)) void assign_from_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+          VectorOpUnwind<N-1>::assign_from_temp(i, t, u, op);
+          op(u[i+N], t[N]);
+        }
         /// Evaluate a reduction operation and store the result
 
         /// \tparam T The argument type
@@ -360,7 +351,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static inline void reduce(const unsigned int i, register const T* t, U& u, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void reduce(const unsigned int i, const T* t, U& u, const Op& op) {
           VectorOpUnwind<N-1>::reduce(i, t, u, op);
           u = op(u, t[i+N]);
         }
@@ -370,7 +361,6 @@ namespace TiledArray {
 
       /// This object will unwind \c 1 step of a vector operation loop, and
       /// terminate the loop
-      /// \tparam N The number of steps to unwind
       template <>
       struct VectorOpUnwind<0u> {
 
@@ -386,7 +376,7 @@ namespace TiledArray {
         /// \param v The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename V, typename Op>
-        static inline void eval(const unsigned int i, register const T* t, register const U* u, register V* v, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void eval(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
           v[i] = op(t[i], u[i]);
         }
 
@@ -400,7 +390,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static inline void eval(const unsigned int i, register const T* t, register U* u, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void eval(const unsigned int i, const T* t, U* u, const Op& op) {
           u[i] = op(t[i]);
         }
 
@@ -416,7 +406,7 @@ namespace TiledArray {
         /// \param v The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename V, typename Op>
-        static inline void eval_to_temp(const unsigned int i, register const T* t, register const U* u, register V* v, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void eval_to_temp(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
           v[0u] = op(t[i], u[i]);
         }
 
@@ -430,8 +420,62 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static inline void eval_to_temp(const unsigned int i, register const T* t, register U* u, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void eval_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
           u[0u] = op(t[i]);
+        }
+
+        /// Assign vector
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The assignment operation type
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The assignment operation
+        template <typename T, typename U, typename Op>
+        static __inline__ __attribute__((always_inline)) void assign(const unsigned int i, const T* t, U* u, const Op& op) {
+           op(u[i], t[i]);
+        }
+
+        /// Assign vector
+
+        /// \tparam T The result type
+        /// \tparam Op The assignment operation type
+        /// \param i The starting position of the vector offset
+        /// \param t The result pointer
+        /// \param op The assignment operation
+        template <typename T, typename Op>
+        static __inline__ __attribute__((always_inline)) void assign(const unsigned int i, T* t, const Op& op) {
+           op(t[i]);
+        }
+
+        /// Assign vector to temporary
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The assignment operation type
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The assignment operation
+        template <typename T, typename U, typename Op>
+        static __inline__ __attribute__((always_inline)) void assign_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+           op(u[0u], t[i]);
+        }
+
+        /// Assign vector from temporary
+
+        /// \tparam T The argument type
+        /// \tparam U The result type
+        /// \tparam Op The assignment operation type
+        /// \param i The starting position of the vector offset
+        /// \param t The argument pointer
+        /// \param u The result pointer
+        /// \param op The assignment operation
+        template <typename T, typename U, typename Op>
+        static __inline__ __attribute__((always_inline)) void assign_from_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+           op(u[i], t[0u]);
         }
 
         /// Evaluate a reduction operation and store the result
@@ -444,7 +488,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static inline void reduce(const unsigned int i, register const T* t, U& u, const Op& op) {
+        static __inline__ __attribute__((always_inline)) void reduce(const unsigned int i, const T* t, U& u, const Op& op) {
           u = op(u, t[i]);
         }
       }; //  struct VectorOpUnwind
@@ -452,7 +496,7 @@ namespace TiledArray {
     }  // namespace detail
 
     template <typename T, typename U, typename V, typename Op>
-    inline void vector_op(const unsigned int n, register const T* t, register const U* u, register V* v, const Op& op) {
+    inline void vector_op(const unsigned int n, const T* t, const U* u, V* v, const Op& op) {
       unsigned int i = 0;
 
 #if TILEDARRAY_LOOP_UNWIND > 1
@@ -466,7 +510,7 @@ namespace TiledArray {
     }
 
     template <typename T, typename U, typename Op>
-    inline void vector_op(const unsigned int n, register const T* t, register U* u, const Op& op) {
+    inline void vector_op(const unsigned int n, const T* t, U* u, const Op& op) {
       unsigned int i = 0;
 
 #if TILEDARRAY_LOOP_UNWIND > 1
@@ -479,6 +523,34 @@ namespace TiledArray {
         u[i] = op(t[i]);
     }
 
+    template <typename T, typename U, typename Op>
+    inline void vector_assign(const unsigned int n, const T* t, U* u,const Op& op) {
+      unsigned int i = 0;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+      const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::assign(i, t, u, op);
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i)
+        op(u[i], t[i]);
+    }
+
+    template <typename T, typename Op>
+    inline void vector_assign(const unsigned int n, T* t, const Op& op) {
+      unsigned int i = 0;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+      const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::assign(i, t, op);
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i)
+        op(t[i]);
+    }
+
     namespace detail {
 
       template <typename T>
@@ -487,17 +559,17 @@ namespace TiledArray {
     } // namespace
 
     template <typename T>
-    inline T maxabs(const unsigned int n, register const T* t) {
+    inline T maxabs(const unsigned int n, const T* t) {
       T result = 0;
       unsigned int i = 0u;
-#if TILEDARRAY_LOOP_UNWIND > 1
+//#if TILEDARRAY_LOOP_UNWIND > 1
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
         T temp[TILEDARRAY_LOOP_UNWIND];
         detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t, temp, TiledArray::math::detail::abs<T>);
         detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp, result, std::max<T>);
       }
-#endif // TILEDARRAY_LOOP_UNWIND > 1
+//#endif // TILEDARRAY_LOOP_UNWIND > 1
       for(; i < n; ++i)
         result = std::max(result, std::abs(t[i]));
       return result;
