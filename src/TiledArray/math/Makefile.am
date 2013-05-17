@@ -19,6 +19,5 @@
 # src/TiledArray/math/Makefile
 
 library_includedir = $(includedir)/TiledArray/math
-library_include_HEADERS = blas.h \
-                          functional.h \
+library_include_HEADERS = functional.h \
                           math.h
