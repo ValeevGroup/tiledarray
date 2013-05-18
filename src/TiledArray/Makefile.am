@@ -18,7 +18,7 @@
 
 # src/TiledArray/Makefile
 
-SUBDIRS = math pmap expressions
+SUBDIRS = math pmap expressions algebra
 library_includedir = $(includedir)/TiledArray
 library_include_HEADERS = annotated_tensor.h \
                           array.h \
