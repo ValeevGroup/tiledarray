@@ -16,7 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# src/TiledArray/Makefile
+# src/TiledArray/dist_eval/Makefile
 
 library_includedir = $(includedir)/TiledArray/dist_eval
 library_include_HEADERS = binary_eval.h \
