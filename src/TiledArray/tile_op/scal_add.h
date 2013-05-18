@@ -112,7 +112,7 @@ namespace TiledArray {
             typename Right::value_type, typename Result::value_type> op(factor_);
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, first, second, op);
         else
           result = result_type(first.range(), first.begin(), second.begin(), op);
@@ -122,15 +122,13 @@ namespace TiledArray {
 
       /// Add and scale a zero tile to a non-zero tiles and possibly permute
 
-      /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The scaled sum and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
-        const TiledArray::detail::Scale<typename Right::value_type,
-            typename Result::value_type> op(factor_);
+        const TiledArray::detail::Scale<typename Right::value_type> op(factor_);
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, second, op); // permute
         else
           result = result_type(second.range(), second.begin(), op); // no permute
@@ -141,14 +139,12 @@ namespace TiledArray {
       /// Add and scale a non-zero tiles to a zero tile and possibly permute
 
       /// \param first The left-hand argument
-      /// \param second The right-hand argument, a zero tile
       /// \return The scaled sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
-        const TiledArray::detail::Scale<typename Left::value_type,
-            typename Result::value_type> op(factor_);
+        const TiledArray::detail::Scale<typename Left::value_type> op(factor_);
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, first, op); // permute
         else
           result = result_type(first.range(), first.begin(), op); // No permute
@@ -232,7 +228,7 @@ namespace TiledArray {
         const TiledArray::detail::ScalPlus<typename Result::value_type,
             typename Right::value_type, typename Result::value_type> op(factor_);
 
-        if(perm_.dim()) {
+        if(perm_.dim() > 1) {
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
@@ -246,15 +242,13 @@ namespace TiledArray {
 
       /// Add and scale a zero tile to a non-zero tiles and possibly permute
 
-      /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The scaled sum and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
-        const TiledArray::detail::Scale<typename Right::value_type,
-                    typename Result::value_type> op(factor_);
+        const TiledArray::detail::Scale<typename Right::value_type> op(factor_);
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, second, op); // permute
         else
           result = result_type(second.range(), second.begin(), op); // no permute
@@ -265,12 +259,10 @@ namespace TiledArray {
       /// Add and scale a non-zero tiles to a zero tile and possibly permute
 
       /// \param first The left-hand argument
-      /// \param second The right-hand argument, a zero tile
       /// \return The scaled sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
-        if(perm_.dim()) {
-          const TiledArray::detail::Scale<typename Result::value_type,
-              typename Result::value_type> op(factor_);
+        if(perm_.dim() > 1) {
+          const TiledArray::detail::Scale<typename Result::value_type> op(factor_);
 
           result_type result;
           permute(result, perm_, first, op); // permute
@@ -360,7 +352,7 @@ namespace TiledArray {
         const TiledArray::detail::ScalPlus<typename Left::value_type,
             typename Result::value_type, typename Result::value_type> op(factor_);
 
-        if(perm_.dim()) {
+        if(perm_.dim() > 1) {
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
@@ -374,13 +366,11 @@ namespace TiledArray {
 
       /// Add and scale a zero tile to a non-zero tiles and possibly permute
 
-      /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The scaled sum and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
-        if(perm_.dim()) {
-          const TiledArray::detail::Scale<typename Result::value_type,
-                      typename Result::value_type> op(factor_);
+        if(perm_.dim() > 1) {
+          const TiledArray::detail::Scale<typename Result::value_type> op(factor_);
 
           result_type result;
           permute(result, perm_, second, op); // permute
@@ -394,14 +384,12 @@ namespace TiledArray {
       /// Add and scale a non-zero tiles to a zero tile and possibly permute
 
       /// \param first The left-hand argument
-      /// \param second The right-hand argument, a zero tile
       /// \return The scaled sum and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
-        const TiledArray::detail::Scale<typename Left::value_type,
-            typename Result::value_type> op(factor_);
+        const TiledArray::detail::Scale<typename Left::value_type> op(factor_);
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, first, op); // permute
         else
           result = result_type(first.range(), first.begin(), op); // No permute

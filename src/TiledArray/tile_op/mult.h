@@ -91,14 +91,14 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        TiledArray::detail::Multiplies<typename Left::value_type,
-            typename Right::value_type, typename Result::value_type> op;
-
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1) {
+          TiledArray::detail::Multiplies<typename Left::value_type,
+              typename Right::value_type, typename Result::value_type> op;
+
           permute(result, perm_, first, second, op);
-        else
-          result = result_type(first.range(), first.begin(), second.begin(), op);
+        } else
+          result = first * second;
 
         return result;
       }
@@ -110,7 +110,6 @@ namespace TiledArray {
     /// apply a permutation to the result tensor. If no permutation is given or
     /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
-    /// \tparam Left The left-hand argument type
     /// \tparam Right The right-hand argument type
     /// \note This specialization assumes the left-hand tile is consumable
     template <typename Result, typename Right, bool RightConsumable>
@@ -158,17 +157,15 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        TiledArray::detail::Multiplies<typename Result::value_type,
-            typename Right::value_type, typename Result::value_type> op;
+        if(perm_.dim() > 1) {
+          TiledArray::detail::Multiplies<typename Result::value_type,
+              typename Right::value_type, typename Result::value_type> op;
 
-        if(perm_.dim()) {
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
         } else {
-          const std::size_t end = first.size();
-          for(std::size_t i = 0ul; i < end; ++i)
-            first[i] = op(first[i], second[i]);
+          first *= second;
           return first;
         }
       }
@@ -182,7 +179,6 @@ namespace TiledArray {
     /// the permutation is null, then the result is not permuted.
     /// \tparam Result The result type
     /// \tparam Left The left-hand argument type
-    /// \tparam Right The right-hand argument type
     /// \note This specialization assumes the right-hand tile is consumable
     template <typename Result, typename Left, bool LeftConsumable>
     class Mult<Result, Left, Result, LeftConsumable, true,
@@ -231,17 +227,15 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        TiledArray::detail::Multiplies<typename Left::value_type,
-            typename Result::value_type, typename Result::value_type> op;
 
-        if(perm_.dim()) {
+        if(perm_.dim() > 1) {
+          TiledArray::detail::Multiplies<typename Left::value_type,
+              typename Result::value_type, typename Result::value_type> op;
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
         } else {
-          const std::size_t end = first.size();
-          for(std::size_t i = 0ul; i < end; ++i)
-            second[i] = op(first[i], second[i]);
+          second *= first;
           return second;
         }
       }

@@ -198,7 +198,6 @@ namespace TiledArray {
       /// The function will perform an "all reduce" reduce operation to share
       /// local data among all nodes in world.
       /// \param world The world that will share data
-      /// \param op The reduction operation used to share data
       /// \note This operation must be called from the main thread.
       void share(madness::World& world) {
         TA_ASSERT(! shared_);
@@ -402,7 +401,6 @@ namespace TiledArray {
       /// The function will perform an "all reduce" reduce operation to share
       /// local data among all nodes in world.
       /// \param world The world that will share data
-      /// \param op The reduction operation used to share data
       /// \note This operation must be called from the main thread.
       template <typename Op>
       void share(madness::World& world) {

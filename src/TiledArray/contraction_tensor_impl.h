@@ -91,7 +91,7 @@ namespace TiledArray {
 
         /// Construct contract/reduce functor
 
-        /// \param cont Shared pointer to contraction definition object
+        /// \param owner The contraction object that owns this operation
         explicit ContractReduceOp(const ContractionTensorImpl<Left, Right>& owner) :
             owner_(& owner)
         { TA_ASSERT(owner_); }
@@ -135,8 +135,8 @@ namespace TiledArray {
 
         /// Contract \c left and \c right and add the result to \c result.
         /// \param[in,out] result The result object that will be the reduction target
-        /// \param[in] left The left-hand tile to be contracted
-        /// \param[in] right The right-hand tile to be contracted
+        /// \param[in] first The left-hand tile to be contracted
+        /// \param[in] second The right-hand tile to be contracted
         void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
           owner_->contract(result, first, second);
         }
@@ -145,10 +145,10 @@ namespace TiledArray {
 
         /// Contract \c left1 with \c right1 and \c left2 with \c right2 ,
         /// and add the two results.
-        /// \param[in] left The first left-hand tile to be contracted
-        /// \param[in] right The first right-hand tile to be contracted
-        /// \param[in] left The second left-hand tile to be contracted
-        /// \param[in] right The second right-hand tile to be contracted
+        /// \param[in] first1 The first left-hand tile to be contracted
+        /// \param[in] second1 The first right-hand tile to be contracted
+        /// \param[in] first2 The second left-hand tile to be contracted
+        /// \param[in] second2 The second right-hand tile to be contracted
         /// \return A tile that contains the sum of the two contractions.
         result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
             const first_argument_type& first2, const second_argument_type& second2) const {

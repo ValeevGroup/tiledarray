@@ -120,7 +120,6 @@ namespace TiledArray {
       /// Compute row/column \c a of left with column/row \c b of right.
       /// \param i The row of the result tile to be computed
       /// \param j The column of the result tile to be computed
-      /// \return \c madness::None
       void dot_product(const size_type i, const size_type j) {
         // Construct a reduction object
         TiledArray::detail::ReducePairTask<contract_reduce_op>

@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -189,7 +189,6 @@ namespace TiledArray {
     /// first = op(first, second);
     /// \endcode
     /// where \c op is the reduction operation given to the constructor
-    /// \tparam T The object type to be reduced
     /// \tparam Op The reduction operation type
     template <typename Op>
     class ReduceTask {
@@ -226,8 +225,8 @@ namespace TiledArray {
 
       /// \c value may be of type \c value_type (or \c T ), \c madness::Future<value_type> ,
       /// or \c madness::RemoteReference<madness::FutureImpl<value_type>> .
-      /// \tparam Value The type of the object that will be reduced
-      /// \param value The object that will be reduced
+      /// \tparam Arg The type of the object that will be reduced
+      /// \param arg The object that will be reduced
       template <typename Arg>
       int add(const Arg& arg, madness::CallbackInterface* callback = NULL) {
         TA_ASSERT(pimpl_);
@@ -452,7 +451,6 @@ namespace TiledArray {
     /// \note There is no need to add this object to the MADNESS task queue. It
     /// will be handled internally by the object. Simply call \c submit() to add
     /// this task to the task queue.
-    /// \tparam T The object type to be reduced
     /// \tparam Op The reduction operation type
     template <typename Op>
     class ReducePairTask {
@@ -514,8 +512,11 @@ namespace TiledArray {
 
       /// \c value may be of type \c value_type (or \c T ), \c madness::Future<value_type> ,
       /// or \c madness::RemoteReference<madness::FutureImpl<value_type>> .
-      /// \tparam Value The type of the object that will be reduced
-      /// \param value The object that will be reduced
+      /// \tparam Left The left-hand object type
+      /// \tparam Right The right-hand object type
+      /// \param left The left-hand object that will be reduced
+      /// \param right The right-hand object that will be reduced
+      /// \param callback The callback that will be invoked when this reduction has completed
       template <typename Left, typename Right>
       void add(const Left& left, const Right& right, madness::CallbackInterface* callback = NULL) {
         TA_ASSERT(pimpl_);

@@ -53,7 +53,6 @@ namespace TiledArray {
       /// This object converts an \c Array obect into a tensor expression and
       /// adds annotation.
       /// \tparam A The \c Array type
-      /// \tparam Op The Unary transform operator type.
       template <typename A>
       class AnnotatedTensorImpl : public TensorExpressionImpl<typename A::eval_type> {
       public:
@@ -76,9 +75,8 @@ namespace TiledArray {
 
         /// Constructor
 
-        /// \param left The left argument
-        /// \param right The right argument
-        /// \param op The element transform operation
+        /// \param array The array object that this annotated array will reference
+        /// \param vars The varible list for this tensor argument
         AnnotatedTensorImpl(const array_type& array, const VariableList& vars) :
             TensorExpressionImpl_(array.get_world(), vars, array.trange(), (array.is_dense() ? 0 : array.size())),
             array_(const_cast<array_type&>(array))
@@ -121,8 +119,8 @@ namespace TiledArray {
         /// \param value The tile from the array
         void scale_and_set_tile(const size_type i, const value_type& value) {
           TensorExpressionImpl_::set(i, value_type(value.range(), value.begin(),
-              TiledArray::detail::Scale<typename value_type::value_type,
-                  typename value_type::value_type>(TensorExpressionImpl_::scale())));
+              TiledArray::detail::Scale<typename value_type::value_type>(
+                  TensorExpressionImpl_::scale())));
         }
 
         /// Task function that is used to convert an input tile to value_type, scale it, and store it
@@ -207,7 +205,6 @@ namespace TiledArray {
         /// Check that a floating point value is approximately equal to 1.
 
         /// Check that \c is approximately equal to 1 +/- 10^-13.
-        /// \tparam T The floating point type
         /// \param t The value to be checked
         /// \return \c true if t is equal to 1, otherwise false
         bool is_one(const double t) {
@@ -217,7 +214,6 @@ namespace TiledArray {
         /// Check that a floating point value is approximately equal to 1.
 
         /// Check that \c is approximately equal to 1 +/- 10^-5.
-        /// \tparam T The floating point type
         /// \param t The value to be checked
         /// \return \c true if t is equal to 1, otherwise false
         bool is_one(const float t) { return (t <= 1.00001) && (t >= 0.99999); }
@@ -260,9 +256,6 @@ namespace TiledArray {
         /// This function should return true when the child
 
         /// This function should evaluate all child tensors.
-        /// \param vars The variable list for this tensor (may be different from
-        /// the variable list used to initialize this tensor).
-        /// \param pmap The process map for this tensor
         virtual madness::Future<bool> eval_children(const expressions::VariableList&,
             const std::shared_ptr<pmap_interface>&)
         { return array_.eval(); }

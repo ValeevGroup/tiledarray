@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -235,7 +235,6 @@ namespace TiledArray {
         /// the left tensor argument and return a vector of futures to the local
         /// elements of the k-th column.  This task must be run on all nodes
         /// for each k.
-        /// \param k The column to be broadcast
         std::vector<col_datum> bcast_column() {
           // Construct the result column vector
           std::vector<col_datum> col;
@@ -287,7 +286,6 @@ namespace TiledArray {
         /// column of the right tensor argument. Only the tiles that are needed for
         /// local contractions are returned. This task must be run on all nodes
         /// for each k.
-        /// \param k The column to be broadcast
         std::vector<row_datum> bcast_row() {
           // Construct the result row vector
           std::vector<row_datum> row;
@@ -370,14 +368,12 @@ namespace TiledArray {
       /// When \c k==k_ , the finalize task is spawned instead, which will assign
       /// the final value to the local tiles.
       /// \param k The SUMMA iteration step, in the range [0,k_].
-      /// \param results A vector of futures of shared pointers to result tiles
       /// \param col_k0 The column tiles of the left argument tensor needed for
       /// SUMMA iteration \c k
       /// \param row_k0 The row tiles of the right argument tensor needed for
       /// SUMMA iteration \c k
       /// \param col_row_k1 The column and row tiles for SUMMA iteration \c k+1
       /// for the left and right tensors respectively.
-      /// \return madness::None
       void step(const size_type k,
           const std::vector<col_datum>& col_k0, const std::vector<row_datum>& row_k0,
           const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >& col_row_k1)

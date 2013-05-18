@@ -84,8 +84,8 @@ namespace TiledArray {
 
         /// Comparing two tensors for is_dense() quarry.
 
-        /// \param l Left tensor is_dense result.
-        /// \param r Right tensor is_dense result.
+        /// \param left_dense Left tensor is_dense result.
+        /// \param right_dense Right tensor is_dense result.
         /// \return True if the result tensor is dense.
         static bool is_dense(const bool left_dense, const bool right_dense) {
           return left_dense || right_dense;
@@ -93,8 +93,8 @@ namespace TiledArray {
 
         /// Comparing two tiles for is_zero() quarry.
 
-        /// \param l Left tile is_zero result.
-        /// \param r Right tile is_zero result.
+        /// \param left_zero Left tile is_zero result.
+        /// \param right_zero Right tile is_zero result.
         /// \return True if the result tile is zero.
         static bool is_zero(const bool left_zero, const bool right_zero) {
           return left_zero && right_zero;
@@ -160,8 +160,8 @@ namespace TiledArray {
 
         /// Comparing two tensors for is_dense() quarry.
 
-        /// \param l Left tensor is_dense result.
-        /// \param r Right tensor is_dense result.
+        /// \param left_dense Left tensor is_dense result.
+        /// \param right_dense Right tensor is_dense result.
         /// \return True if the result tensor is dense.
         static bool is_dense(const bool left_dense, const bool right_dense) {
           return left_dense && right_dense;
@@ -169,8 +169,8 @@ namespace TiledArray {
 
         /// Comparing two tiles for is_zero() quarry.
 
-        /// \param l Left tile is_zero result.
-        /// \param r Right tile is_zero result.
+        /// \param left_zero Left tile is_zero result.
+        /// \param right_zero Right tile is_zero result.
         /// \return True if the result tile is zero.
         static bool is_zero(const bool left_zero, const bool right_zero) {
           return left_zero || right_zero;
@@ -240,8 +240,8 @@ namespace TiledArray {
       /// Tensor that is composed from two argument tensors
 
       /// A binary operator is used to transform the individual elements of the tiles.
-      /// \tparam Left The left argument type
-      /// \tparam Right The right argument type
+      /// \tparam LExp The left-hand expression type
+      /// \tparam RExp The right-hand expression type
       /// \tparam Op The binary transform operator type.
       template <typename LExp, typename RExp, typename Op>
       class BinaryTensorImpl :
@@ -272,7 +272,8 @@ namespace TiledArray {
 
         /// Construct a unary tensor op
 
-        /// \param arg The argument
+        /// \param left The left-hand argument
+        /// \param right The right-hand argument
         /// \param op The element transform operation
         BinaryTensorImpl(const left_tensor_type& left, const right_tensor_type& right, const Op& op) :
             TensorExpressionImpl_(left.get_world(), left.vars(), left.trange(),

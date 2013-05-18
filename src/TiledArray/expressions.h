@@ -101,7 +101,7 @@ namespace TiledArray {
     /// result_{i_1, i_2, \dots} =  left_{i_1, i_2, \dots} - right_{i_1, i_2, \dots}
     /// \f]
     /// \tparam LTile The tensor expression tile type
-    /// \tparam RValue A numerical type
+    /// \tparam RTile A numerical type
     /// \param left The value to be subtracted from the tensor elements
     /// \param right The tensor expression to
     /// \return A tensor expression that is the difference of \c left and
@@ -349,8 +349,8 @@ namespace TiledArray {
 
         /// Contracte \c left and \c right and add the result to \c result.
         /// \param[in,out] result The result object that will be the reduction target
-        /// \param[in] left The left-hand tile to be contracted
-        /// \param[in] right The right-hand tile to be contracted
+        /// \param[in] first The left-hand tile to be contracted
+        /// \param[in] second The right-hand tile to be contracted
         void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
           TA_ASSERT(first.range() == second.range());
           result += math::dot(first.size(), first.begin(), second.begin());
@@ -360,10 +360,10 @@ namespace TiledArray {
 
         /// Contract \c left1 with \c right1 and \c left2 with \c right2 ,
         /// and add the two results.
-        /// \param[in] left The first left-hand tile to be contracted
-        /// \param[in] right The first right-hand tile to be contracted
-        /// \param[in] left The second left-hand tile to be contracted
-        /// \param[in] right The second right-hand tile to be contracted
+        /// \param[in] first1 The first left-hand tile to be contracted
+        /// \param[in] second1 The first right-hand tile to be contracted
+        /// \param[in] first2 The second left-hand tile to be contracted
+        /// \param[in] second2 The second right-hand tile to be contracted
         /// \return A tile that contains the sum of the two contractions.
         result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
             const first_argument_type& first2, const second_argument_type& second2) const {
@@ -471,8 +471,8 @@ namespace TiledArray {
     /// The tiled ranges of the tensor expressions, \c left and \c right , must
     /// be identical, and the variable lists for the expressions must contain
     /// the same set of variables, though the order of the variables may differ.
-    /// \tparam LExp The left-hand tensor expression type
-    /// \tparam RExp The right-hand tensor expression type
+    /// \tparam LTile The left-hand tile type
+    /// \tparam RTile The right-hand tile type
     /// \param left The left-hand tensor expression
     /// \param right The right-hand tensor expression
     /// \return A result tensor expression
@@ -493,7 +493,7 @@ namespace TiledArray {
     /// across all nodes. The function will block, until the computation is
     /// complete, but it will continue to process tasks while waiting. The same
     /// result is returned on all nodes.
-    /// \tparam Exp Tensor expression type
+    /// \tparam Tile Tensor tile type
     /// \param arg The tensor expression
     /// \return The 2-norm of the tensor
     template <typename Tile>
@@ -507,8 +507,8 @@ namespace TiledArray {
     /// \f[
     /// A \dot B = \sum_{i_1, i_2, \dots}  A_{i_1, i_2, \dots} B_{i_1, i_2, \dots}
     /// \f]
-    /// \tparam LExp Left-hand tensor expression type
-    /// \tparam RExp Right-hand tensor expression type
+    /// \tparam LTile Left-hand tensor tile type
+    /// \tparam RTile Right-hand tensor tile type
     /// \param left The left tensor argument ( \c A )
     /// \param right The right tensor argument ( \c B )
     /// \return The sum of the products of each element in \c left and \c right ( \c C )
@@ -546,7 +546,7 @@ namespace TiledArray {
     /// across all nodes. The function will block, until the computation is
     /// complete, but it will continue to process tasks while waiting. The same
     /// result is returned on all nodes.
-    /// \tparam Exp Tensor expression type
+    /// \tparam Tile Tensor tile type
     /// \param arg The tensor expression
     /// \return The 2-norm of the tensor
     template <typename Tile>
@@ -565,7 +565,7 @@ namespace TiledArray {
     /// across all nodes. The function will block, until the computation is
     /// complete, but it will continue to process tasks while waiting. The same
     /// result is returned on all nodes.
-    /// \tparam Exp Tensor expression type
+    /// \tparam Tile Tensor tile type
     /// \param arg The tensor expression
     /// \return The infinity-norm of the tensor
     template <typename Tile>

@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -65,10 +65,9 @@ namespace TiledArray {
       /// Constructor
 
       /// The size of shape must be equal to the volume of the tiled range tiles.
-      /// Also, the volume of trange must remain constant. This restriction allows
-      /// the tiled range to be permuted, but not resized.
-      /// \param arg The argument
-      /// \param op The element transform operation
+      /// \param world The world where this tensor will live
+      /// \param trange The tiled range for this tensor
+      /// \param shape The shape of this tensor
       /// \throw TiledArray::Exception When the size of shape is not equal to
       /// zero
       TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape) :

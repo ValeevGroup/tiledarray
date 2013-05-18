@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -130,22 +130,18 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Assignment operator for other iterator types
+      /// Increment this iterator by \c n
 
-      /// \tparam It Another iterator type that is convertible to the base
-      /// iterator type.
-      /// \param it The indexed iterator that is to be copied.
+      /// \param n The difference for this iterator
       /// \return A reference to this iterator
       IndexedIterator_& operator+=(const difference_type n) {
         it_ += n;
         return *this;
       }
 
-      /// Assignment operator for other iterator types
+      /// decrement this iterator by \c n
 
-      /// \tparam It Another iterator type that is convertible to the base
-      /// iterator type.
-      /// \param it The indexed iterator that is to be copied.
+      /// \param n The difference for this iterator
       /// \return A reference to this iterator
       IndexedIterator_& operator-=(const difference_type n) {
         it_ -= n;

@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,7 +30,6 @@ namespace TiledArray {
     /// This object will create a replicated \c Array from a distributed
     /// \c Array.
     /// \tparam A The array type
-    /// \tparam Dest
     /// Homeworld = M7R-227
     template <typename A>
     class Replicator : public madness::WorldObject<Replicator<A> >, private madness::Spinlock {

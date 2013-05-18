@@ -67,8 +67,8 @@ namespace TiledArray {
 
         /// Task function for permuting result tensor
 
+        /// \param index The index of this tile
         /// \param value The unpermuted result tile
-        /// \return The permuted result tile
         void permute_and_set_with_value(const size_type index, const value_type& value) {
           // Create tensor to hold the result
           value_type result(perm_ ^ value.range());
@@ -133,7 +133,8 @@ namespace TiledArray {
         /// Constructor
 
         /// \param world The world where the tensor lives
-        /// \param tr The tiled range object
+        /// \param vars The variable list for this expression
+        /// \param trange The tiled range for result of this tensor expression
         /// \param shape The tensor shape bitset [ Default = 0 size bitset ]
         /// \note If the shape bitset is zero size, then the tensor is considered
         /// to be dense.
@@ -155,9 +156,9 @@ namespace TiledArray {
         const VariableList& vars() const { return vars_; }
 
 
-        /// Variable list accessor
+        /// Variable list assignment
 
-        /// \return The expression variable list
+        /// Set the variable list for this expression
         void vars(const VariableList& vars) { vars_ = vars; }
 
         /// Set tensor value
@@ -165,7 +166,7 @@ namespace TiledArray {
         /// This will store \c value at ordinal index \c i . The tile will be
         /// permuted if necessary. Typically this function should be called by
         /// \c eval_tiles() or there in.
-        /// \tparam The value type, either \c value_type or \c madness::Future<value_type>
+        /// \tparam Value The value type, either \c value_type or \c madness::Future<value_type>
         /// \param i The index where value will be stored.
         /// \param value The value or future value to be stored at index \c i
         /// \note The index \c i and \c value will be permuted by this function
@@ -439,7 +440,7 @@ namespace TiledArray {
       /// Modify the expression scale factor
 
       /// scale = scale * factor
-      /// \param value The new scale factor
+      /// \param factor The new scale factor
       void scale(const numeric_type& factor) {
         TA_ASSERT(pimpl_);
         pimpl_->scale(factor);
@@ -447,7 +448,7 @@ namespace TiledArray {
 
       /// Set the expression scale factor
 
-      /// \param value The new scale factor
+      /// \param new_scale The new scale factor
       void set_scale(const numeric_type& new_scale) {
         TA_ASSERT(pimpl_);
         pimpl_->set_scale(new_scale);

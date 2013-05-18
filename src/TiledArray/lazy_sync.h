@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -124,9 +124,9 @@ namespace TiledArray {
 
       /// Set the parent world pointer
 
-      /// \param parent Set the parent world pointer
-      /// \throw madness::MadnessException When the world pointer is null
-      /// \throw madness::MadnessException If the world pointer does not
+      /// \param wptr Set the parent world pointer
+      /// \throw TiledArray::Exception When the world pointer is null
+      /// \throw TiledArray::Exception If the world pointer does not
       /// belong to the parent node
       void set_parent(const madness::detail::WorldPtr<LazySyncBase_>& wptr) {
         TA_ASSERT(wptr);
@@ -137,8 +137,8 @@ namespace TiledArray {
       /// Set one of the child world pointers
 
       /// \param wptr A world pointer to one of the children
-      /// \throw madness::MadnessException When the world pointer is null
-      /// \throw madness::MadnessException If the world pointer does not
+      /// \throw TiledArray::Exception When the world pointer is null
+      /// \throw TiledArray::Exception If the world pointer does not
       /// belong to one of the child nodes
       void set_child(const madness::detail::WorldPtr<LazySyncBase_>& wptr) {
         TA_ASSERT(wptr);
@@ -285,8 +285,7 @@ namespace TiledArray {
       /// sends a task to the child nodes to do the same. It also does
       /// additional cleanup work.
       /// \param p The sync object world pointer for this node
-      /// \return None
-      /// \throw madness::MadnessException If \c p is not local
+      /// \throw TiledArray::Exception If \c p is not local
       static void sync_task(const madness::detail::WorldPtr<LazySyncBase_>& p) {
         TA_ASSERT(p.is_local());
 

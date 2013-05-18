@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -91,7 +91,7 @@ namespace TiledArray {
 
       /// The tensor elements are constructed using a unary transformation
       /// operation.
-      /// \tparam Arg The argument type
+      /// \tparam Exp The expression argument type
       /// \tparam Op The Unary transform operator type.
       template <typename Exp, typename Op>
       class UnaryTensorImpl : public TensorExpressionImpl<typename Op::result_type> {

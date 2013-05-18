@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -68,8 +68,8 @@ namespace TiledArray {
     /// This will construct a 1D tiled range with the given tile boundaries. The
     /// first argument is the number of tiles. The number of tile boundaries
     /// must be n + 1. Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
-    /// \param start_tile_index
-    /// \param n is the number of tiles.
+    /// \param start_tile_index The starting value for the tile indices
+    /// \param n The number of tiles.
     /// \param t0 The first lower bound
     /// \param t1 ... are the tile boundaries.
     explicit TiledRange1(const size_type start_tile_index, const std::size_t n, const size_type t0, const size_type t1, ...) {

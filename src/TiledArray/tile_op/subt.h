@@ -97,7 +97,7 @@ namespace TiledArray {
             typename Right::value_type, typename Result::value_type> op;
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, first, second, op);
         else
           result = result_type(first.range(), first.begin(), second.begin(), op);
@@ -107,7 +107,6 @@ namespace TiledArray {
 
       /// Subtract a zero tile from a non-zero tiles and possibly permute
 
-      /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The difference and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
@@ -115,7 +114,7 @@ namespace TiledArray {
             typename Result::value_type> op;
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, second, op); // permute
         else
           result = result_type(second.range(), second.begin(), op); // no permute
@@ -126,11 +125,10 @@ namespace TiledArray {
       /// Subtract a non-zero tiles from a zero tile and possibly permute
 
       /// \param first The left-hand argument
-      /// \param second The right-hand argument, a zero tile
       /// \return The difference and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, first); // permute
         else
           result = result_type(first.range(), first.begin()); // No permute
@@ -201,7 +199,7 @@ namespace TiledArray {
         TiledArray::detail::Minus<typename Result::value_type,
             typename Right::value_type, typename Result::value_type> op;
 
-        if(perm_.dim()) {
+        if(perm_.dim() > 1) {
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
@@ -213,7 +211,6 @@ namespace TiledArray {
 
       /// Add a zero tile from a non-zero tiles and possibly permute
 
-      /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The difference and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
@@ -221,7 +218,7 @@ namespace TiledArray {
             typename Result::value_type> op;
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, second, op); // permute
         else
           result = result_type(second.range(), second.begin(), op); // no permute
@@ -232,10 +229,9 @@ namespace TiledArray {
       /// Subtract a non-zero tiles from a zero tile and possibly permute
 
       /// \param first The left-hand argument
-      /// \param second The right-hand argument, a zero tile
       /// \return The difference and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
-        if(perm_.dim()) {
+        if(perm_.dim() > 1) {
           result_type result;
           permute(result, perm_, first); // permute
           return result;
@@ -306,21 +302,18 @@ namespace TiledArray {
             typename Result::value_type, typename Result::value_type> op;
 
         TA_ASSERT(first.range() == second.range());
-        if(perm_.dim()) {
+        if(perm_.dim() > 1) {
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
         } else {
-          const std::size_t end = second.size();
-          for(std::size_t i = 0ul; i < end; ++i)
-            second[i] = op(first[i], second[i]);
+          vector_op(second.size(), first.data(), second.data(), second.data(), op);
           return second;
         }
       }
 
       /// Subtract a zero tile from a non-zero tiles and possibly permute
 
-      /// \param first The left-hand argument, a zero tile
       /// \param second The right-hand argument
       /// \return The difference and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
@@ -328,7 +321,7 @@ namespace TiledArray {
             typename Result::value_type> op;
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, second, op); // permute
         else {
           const std::size_t end = second.size();
@@ -343,11 +336,10 @@ namespace TiledArray {
       /// Subtract a non-zero tiles from a zero tile and possibly permute
 
       /// \param first The left-hand argument
-      /// \param second The right-hand argument, a zero tile
       /// \return The difference and permutation of \c first and \c second
       result_type operator()(first_argument_type first, zero_right_type) const {
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, first); // permute
         else
           result = result_type(first.range(), first.begin()); // No permute

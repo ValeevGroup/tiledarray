@@ -239,7 +239,7 @@ namespace TiledArray {
     /// Check the coordinate to make sure it is within the range.
 
     /// \tparam Index The coordinate index array type
-    /// \param i The coordinate index to check for inclusion in the range
+    /// \param index The coordinate index to check for inclusion in the range
     /// \return \c true when \c i \c >= \c start and \c i \c < \c f, otherwise
     /// \c false
     template <typename Index>
@@ -298,7 +298,7 @@ namespace TiledArray {
     /// calculate the ordinal index of \c i
 
     /// Convert an index to an ordinal index.
-    /// \param i The index to be converted to an ordinal index
+    /// \param index The index to be converted to an ordinal index
     /// \return The ordinal index of the index \c i
     template <typename Index>
     typename madness::disable_if<std::is_integral<Index>, size_type>::type
@@ -316,7 +316,7 @@ namespace TiledArray {
     /// calculate the index of \c i
 
     /// Convert an ordinal index to an index.
-    /// \param i Ordinal index
+    /// \param o Ordinal index
     /// \return The index of the ordinal index
     template <typename Ordinal>
     typename madness::enable_if<std::is_integral<Ordinal>, index>::type

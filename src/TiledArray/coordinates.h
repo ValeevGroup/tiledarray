@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,7 +35,6 @@ namespace TiledArray {
 
   /// ArrayCoordinate represents a coordinate index of an DIM-dimensional orthogonal tensor.
 
-  /// \tparam I The index type of each coordinate element.
   /// \tparam DIM The number of dimensions in the coordinate
   /// \tparam Tag Type used to differentiate different coordinate systems.
   template <unsigned int DIM, typename Tag>
@@ -270,7 +269,7 @@ namespace TiledArray {
 
     /// Serialized the coordinate data into archive \c ar.
     /// \tparam Archive The serialization archive type
-    /// \tparam ar The serialization archive object
+    /// \param ar The serialization archive object
     template <typename Archive>
     void serialize(const Archive& ar) {
       ar & r_;

@@ -225,10 +225,11 @@ namespace TiledArray {
 
     /// Task function for converting Eigen submatrix to a tensor
 
-    /// \tparam T Tensor type
+    /// \tparam A Array type
     /// \tparam Derived The matrix type
-    /// \param tensor The tensor to be copied
-    /// \param matrix The matrix to be assigned
+    /// \param matrix The matrix that will be copied
+    /// \param array The array that will hold the result
+    /// \param i The index of the tile to be copied
     /// \param counter The task counter
     template <typename A, typename Derived>
     void counted_eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>* matrix,

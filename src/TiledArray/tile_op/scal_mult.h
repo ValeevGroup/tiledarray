@@ -110,7 +110,7 @@ namespace TiledArray {
             typename Right::value_type, typename Result::value_type> op(factor_);
 
         result_type result;
-        if(perm_.dim())
+        if(perm_.dim() > 1)
           permute(result, perm_, first, second, op);
         else
           result = result_type(first.range(), first.begin(), second.begin(), op);
@@ -192,7 +192,7 @@ namespace TiledArray {
         const TiledArray::detail::ScalMultiplies<typename Result::value_type,
             typename Right::value_type, typename Result::value_type> op(factor_);
 
-        if(perm_.dim()) {
+        if(perm_.dim() > 1) {
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
@@ -281,7 +281,7 @@ namespace TiledArray {
         const TiledArray::detail::ScalMultiplies<typename Left::value_type,
             typename Result::value_type, typename Result::value_type> op(factor_);
 
-        if(perm_.dim()) {
+        if(perm_.dim() > 1) {
           result_type result;
           permute(result, perm_, first, second, op);
           return result;

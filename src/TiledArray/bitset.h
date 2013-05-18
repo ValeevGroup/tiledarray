@@ -175,7 +175,9 @@ namespace TiledArray {
 
       /// Construct a bitset that contains \c s bits.
 
-      /// \param s The number of bits
+      /// \tparam InIter The input iterator type
+      /// \param first The first element of a set of bits to be set
+      /// \param last The last element of a set of bits to be set
       /// \throw std::bad_alloc If bitset allocation fails.
       template <typename InIter>
       Bitset(InIter first, InIter last) :
