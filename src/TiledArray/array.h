@@ -105,6 +105,9 @@ namespace TiledArray {
       pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
+    /// Default constructor
+    Array() : pimpl_() { }
+
     /// Copy constructor
 
     /// This is a shallow copy, that is no data is copied.
@@ -133,22 +136,34 @@ namespace TiledArray {
     /// Begin iterator factory function
 
     /// \return An iterator to the first local tile.
-    iterator begin() { return pimpl_->begin(); }
+    iterator begin() {
+      check_pimpl();
+      return pimpl_->begin();
+    }
 
     /// Begin const iterator factory function
 
     /// \return A const iterator to the first local tile.
-    const_iterator begin() const { return pimpl_->begin(); }
+    const_iterator begin() const {
+      check_pimpl();
+      return pimpl_->begin();
+    }
 
     /// End iterator factory function
 
     /// \return An iterator to one past the last local tile.
-    iterator end() { return pimpl_->end(); }
+    iterator end() {
+      check_pimpl();
+      return pimpl_->end();
+    }
 
     /// End const iterator factory function
 
     /// \return A const iterator to one past the last local tile.
-    const_iterator end() const { return pimpl_->end(); }
+    const_iterator end() const {
+      check_pimpl();
+      return pimpl_->end();
+    }
 
     /// Find local or remote tile
 
@@ -182,13 +197,19 @@ namespace TiledArray {
       const typename Value::value_type value_;
       madness::Future<Value> result_;
 
+      static const std::shared_ptr<impl_type>& checked_pimpl(const std::shared_ptr<impl_type>& pimpl) {
+        TA_USER_ASSERT(pimpl,
+                       "The Array::pimpl has not been initialized, likely reason: it was default constructed and used.");
+        return pimpl;
+      }
+
     public:
       MakeTile(const std::shared_ptr<impl_type>& pimpl, const Index& index, const T& value) :
         madness::TaskInterface(),
         pimpl_(pimpl),
         index_(index),
         value_(value),
-        result_(pimpl->operator[](index))
+        result_(checked_pimpl(pimpl)->operator[](index))
       { }
 
       virtual void run(madness::World&) {
@@ -229,6 +250,7 @@ namespace TiledArray {
     }
 
     void set_all_local(const T& v = T()) {
+      check_pimpl();
       typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
       const typename pmap_interface::const_iterator end = pimpl_->pmap()->end();
 
@@ -246,21 +268,33 @@ namespace TiledArray {
 
     /// \return A const reference to the tiled range object for the array
     /// \throw nothing
-    const trange_type& trange() const { return pimpl_->trange(); }
+    const trange_type& trange() const {
+      check_pimpl();
+      return pimpl_->trange();
+    }
 
     /// Tile range accessor
 
     /// \return A const reference to the range object for the array tiles
     /// \throw nothing
-    const range_type& range() const { return pimpl_->range(); }
+    const range_type& range() const {
+      check_pimpl();
+      return pimpl_->range();
+    }
 
     /// Element range accessor
 
     /// \return A const reference to the range object for the array elements
     /// \throw nothing
-    const typename trange_type::tile_range_type& elements() const { return pimpl_->trange().elements(); }
+    const typename trange_type::tile_range_type& elements() const {
+      check_pimpl();
+      return pimpl_->trange().elements();
+    }
 
-    size_type size() const { return pimpl_->size(); }
+    size_type size() const {
+      check_pimpl();
+      return pimpl_->size();
+    }
 
     /// Create an annotated tensor
 
@@ -283,17 +317,26 @@ namespace TiledArray {
     /// World accessor
 
     /// \return A reference to the world that owns this array.
-    madness::World& get_world() const { return pimpl_->get_world(); }
+    madness::World& get_world() const {
+      check_pimpl();
+      return pimpl_->get_world();
+    }
 
     /// Process map accessor
 
     /// \return A reference to the world that owns this array.
-    const std::shared_ptr<pmap_interface>& get_pmap() const { return pimpl_->pmap(); }
+    const std::shared_ptr<pmap_interface>& get_pmap() const {
+      check_pimpl();
+      return pimpl_->pmap();
+    }
 
     /// Check dense/sparse
 
     /// \return \c true when \c Array is dense, \c false otherwise.
-    bool is_dense() const { return pimpl_->is_dense(); }
+    bool is_dense() const {
+      check_pimpl();
+      return pimpl_->is_dense();
+      }
 
 
     /// Shape map accessor
@@ -344,6 +387,7 @@ namespace TiledArray {
 
     /// Convert a distributed \c Array into a replicated array
     void make_replicated() {
+      check_pimpl();
       if((! pimpl_->pmap()->is_replicated()) && (get_world().size() > 1)) {
         // Construct a replicated array
         std::shared_ptr<pmap_interface> pmap(new detail::ReplicatedPmap(get_world(), size()));
@@ -368,6 +412,7 @@ namespace TiledArray {
     template <typename Index>
     typename madness::enable_if<std::is_integral<Index> >::type
     check_index(const Index i) const {
+      check_pimpl();
       TA_USER_ASSERT(pimpl_->range().includes(i),
           "The ordinal index used to access an array tile is out of range.");
     }
@@ -375,6 +420,7 @@ namespace TiledArray {
     template <typename Index>
     typename madness::disable_if<std::is_integral<Index> >::type
     check_index(const Index& i) const {
+      check_pimpl();
       TA_USER_ASSERT(pimpl_->range().includes(i),
           "The coordinate index used to access an array tile is out of range.");
       TA_USER_ASSERT(i.size() == DIM,
@@ -418,6 +464,12 @@ namespace TiledArray {
       world.gop.bit_or(shape.get(), shape.num_blocks());
 
       return shape;
+    }
+
+    /// makes sure pimpl has been initialized
+    void check_pimpl() const {
+      TA_USER_ASSERT(pimpl_,
+                     "The Array has not been initialized, likely reason: it was default constructed and used.");
     }
 
     std::shared_ptr<impl_type> pimpl_; ///< Array implementation pointer
