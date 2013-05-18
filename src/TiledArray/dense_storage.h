@@ -375,25 +375,21 @@ namespace TiledArray {
 
     template <typename Archive>
     void load(const Archive& ar) {
-      size_type n = 0;
+      size_type n = 0ul;
       ar & n;
-
-      // Deallocate existing memory
-      if(first_ != NULL) {
-        const std::size_t size = last_ - first_;
-        if(size < n) {
+      {
+        const size_type s = size();
+        if(s != n) {
           destroy_(*this, first_, last_);
-          allocator_type::deallocate(first_, size);
-
-          // Allocate new memory
-          first_ = allocator_type::allocate(n);
-          last_ = first_ + n;
-          default_init(detail::is_numeric<value_type>());
-        } else if(size > n) {
-          value_type* const new_last = first_ + n;
-          destroy_(*this, new_last, last_);
-          last_ = new_last;
+          allocator_type::deallocate(first_, s);
+          first_ = NULL;
         }
+      }
+
+      if(! first_) {
+        first_ = allocator_type::allocate(n);
+        last_ = first_ + n;
+        default_init(detail::is_numeric<value_type>());
       }
 
       ar & madness::archive::wrap(first_, n);
