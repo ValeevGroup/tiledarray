@@ -143,6 +143,8 @@ namespace TiledArray {
 #define TA_USER_ERROR_MESSAGE( m ) std::cerr << "!!! ERROR " << m << "\n";
 #endif // TILEDARRAY_NO_USER_ERROR_MESSAGES
 
+#ifndef NDEBUG
+// User interface assertion
 #define TA_USER_ASSERT( a , m ) \
   if(! ( a ) ) \
     { \
@@ -150,5 +152,12 @@ namespace TiledArray {
       TiledArray::exception_break(); \
       throw TiledArray::Exception( m ); \
     }
+
+#else
+
+// Disable user interface assertion when NDEBUG is defined
+#define TA_USER_ASSERT( a , m )
+
+#endif
 
 #endif // TILEDARRAY_ERROR_H__INCLUDED
