@@ -27,6 +27,366 @@
 namespace TiledArray {
   namespace detail {
 
+    // Forward declaration
+    template <typename> class TensorImpl;
+    template <typename> class TensorIterator;
+    template <typename> class ConstTensorIterator;
+
+    /// Tensor tile reference
+    template <typename Tile>
+    class TileReference {
+    private:
+
+      template <typename>
+      friend class ConstTensorIterator;
+
+      TensorImpl<Tile>* tensor_; ///< The tensor that owns the referenced tile
+      std::size_t index_; ///< The index of the tensor
+
+      // Not allowed
+      TileReference<Tile>& operator=(const TileReference<Tile>&);
+    public:
+
+      TileReference(TensorImpl<Tile>* tensor, const std::size_t index) :
+        tensor_(tensor), index_(index)
+      { }
+
+      TileReference(const TileReference<Tile>& other) :
+        tensor_(other.tensor_), index_(other.index_)
+      { }
+
+      template <typename Value>
+      TileReference<Tile>& operator=(const Value& value) {
+        tensor_->set(index_, value);
+        return *this;
+      }
+
+      typename TensorImpl<Tile>::future get() const { return (*tensor_)[index_]; }
+
+      operator typename TensorImpl<Tile>::future() const { return get(); }
+    }; // class reference
+
+
+    /// Distributed tensor iterator
+
+    /// This iterator will reference local tiles for a TensorImpl object. It can
+    /// be used to get or set futures to a tile, or access the coordinate and
+    /// ordinal index of the tile.
+    /// \tparam Tile The tile time of the TensorImpl object
+    template <typename Tile>
+    class TensorIterator {
+    private:
+      // Give access to other iterator types.
+      template <typename>
+      friend class ConstTensorIterator;
+
+      TensorImpl<Tile>* tensor_;
+      typename TensorImpl<Tile>::pmap_interface::const_iterator it_;
+
+    public:
+      typedef ptrdiff_t difference_type;                        ///< Difference type
+      typedef typename TensorImpl<Tile>::future value_type; ///< Iterator dereference value type
+      typedef PointerProxy<value_type> pointer;                 ///< Pointer type to iterator value
+      typedef TileReference<Tile> reference;                             ///< Reference type to iterator value
+      typedef std::forward_iterator_tag iterator_category;        ///< Iterator category type
+      typedef TensorIterator<Tile> TensorIterator_;       ///< This object type
+      typedef typename TensorImpl<Tile>::range_type::index index_type;
+      typedef typename TensorImpl<Tile>::size_type ordinal_type;
+
+      /// Default constructor
+      TensorIterator() : tensor_(NULL), it_() { }
+
+      /// Constructor
+      TensorIterator(TensorImpl<Tile>* tensor,
+          typename TensorImpl<Tile>::pmap_interface::const_iterator it) :
+        tensor_(tensor), it_(it)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The transform iterator to copy
+      TensorIterator(const TensorIterator_& other) :
+        tensor_(other.tensor_), it_(other.it_)
+      { }
+
+      /// Copy const iterator constructor
+
+      /// \param other The transform iterator to copy
+      TensorIterator(const ConstTensorIterator<Tile>& other) :
+        tensor_(other.tensor_), it_(other.it_)
+      { }
+
+      /// Copy operator
+
+      /// \param other The transform iterator to copy
+      /// \return A reference to this object
+      TensorIterator_& operator=(const TensorIterator_& other) {
+        tensor_ = other.tensor_;
+        it_ = other.it_;
+
+        return *this;
+      }
+
+      /// Copy operator
+
+      /// \param other The transform iterator to copy
+      /// \return A reference to this object
+      TensorIterator_& operator=(const ConstTensorIterator<Tile>& other) {
+        tensor_ = other.tensor_;
+        it_ = other.it_;
+
+        return *this;
+      }
+
+      /// Prefix increment operator
+
+      /// \return A reference to this object after it has been incremented.
+      TensorIterator_& operator++() {
+        TA_ASSERT(tensor_);
+        ++it_;
+        return *this;
+      }
+
+      /// Post-fix increment operator
+
+      /// \return A copy of this object before it is incremented.
+      TensorIterator_ operator++(int) {
+        TA_ASSERT(tensor_);
+        TensorIterator_ tmp(*this);
+        ++it_;
+        return tmp;
+      }
+
+      /// Equality operator
+
+      /// \param other The iterator to compare to this iterator.
+      /// \return \c true when the iterators are equal to each other, otherwise
+      /// \c false.
+      bool operator==(const TensorIterator_& other) const {
+        return (tensor_ == other.tensor_) && (it_ == other.it_);
+      }
+
+      /// Inequality operator
+
+      /// \param other The iterator to compare to this iterator.
+      /// \return \c true when the iterators are not equal to each other,
+      /// otherwise \c false.
+      bool operator!=(const TensorIterator_& other) const {
+        return (tensor_ != other.tensor_) || (it_ != other.it_);
+      }
+
+      /// Equality operator
+
+      /// \param other The iterator to compare to this iterator.
+      /// \return \c true when the iterators are equal to each other, otherwise
+      /// \c false.
+      bool operator==(const ConstTensorIterator<Tile>& other) const {
+        return (tensor_ == other.tensor_) && (it_ == other.it_);
+      }
+
+      /// Inequality operator
+
+      /// \param other The iterator to compare to this iterator.
+      /// \return \c true when the iterators are not equal to each other,
+      /// otherwise \c false.
+      bool operator!=(const ConstTensorIterator<Tile>& other) const {
+        return (tensor_ != other.tensor_) || (it_ != other.it_);
+      }
+
+      /// Dereference operator
+
+      /// \return A referenc to the current tile future.
+      reference operator*() const {
+        TA_ASSERT(tensor_);
+        return reference(tensor_, *it_);
+      }
+
+      /// Arrow dereference operator
+
+      /// \return A pointer-proxy to the current tile
+      pointer operator->() const {
+        TA_ASSERT(tensor_);
+        return pointer((*tensor_)[*it_]);
+      }
+
+      /// Tile coordinate index accessor
+
+      /// \return The coordinate index of the current tile
+      index_type index() const {
+        TA_ASSERT(tensor_);
+        return tensor_->range().idx(*it_);
+      }
+
+      /// Tile ordinal index accessor
+
+      /// \return The ordinal index of the current tile
+      ordinal_type ordinal() const {
+        TA_ASSERT(tensor_);
+        return *it_;
+      }
+
+    }; // class TensorIterator
+
+    /// Distributed tensor iterator
+
+    /// This iterator will reference local tiles for a TensorImpl object. It can
+    /// be used to get or set futures to a tile, or access the coordinate and
+    /// ordinal index of the tile.
+    /// \tparam Tile The tile time of the TensorImpl object
+    template <typename Tile>
+    class ConstTensorIterator {
+    private:
+      // Give access to other iterator types.
+      template <typename>
+      friend class TensorIterator;
+
+      TensorImpl<Tile>* tensor_;
+      typename TensorImpl<Tile>::pmap_interface::const_iterator it_;
+
+    public:
+      typedef ptrdiff_t difference_type; ///< Difference type
+      typedef typename TensorImpl<Tile>::future value_type; ///< Iterator dereference value type
+      typedef PointerProxy<value_type> pointer; ///< Pointer type to iterator value
+      typedef value_type reference; ///< Reference type to iterator value
+      typedef std::forward_iterator_tag iterator_category; ///< Iterator category type
+      typedef ConstTensorIterator<Tile> ConstTensorIterator_; ///< This object type
+      typedef typename TensorImpl<Tile>::range_type::index index_type; ///< Coordinate index type
+      typedef typename TensorImpl<Tile>::size_type ordinal_type; ///< Ordinal index type
+
+      /// Default constructor
+      ConstTensorIterator() : tensor_(NULL), it_() { }
+
+      /// Constructor
+      ConstTensorIterator(TensorImpl<Tile>& tensor,
+          typename TensorImpl<Tile>::pmap_interface::const_iterator it) :
+        tensor_(&tensor), it_(it)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The transform iterator to copy
+      ConstTensorIterator(const ConstTensorIterator_& other) :
+        tensor_(other.tensor_), it_(other.it_)
+      { }
+
+      /// Copy const iterator constructor
+
+      /// \param other The transform iterator to copy
+      ConstTensorIterator(const TensorIterator<Tile>& other) :
+        tensor_(other.tensor_), it_(other.it_)
+      { }
+
+      /// Copy operator
+
+      /// \param other The transform iterator to copy
+      /// \return A reference to this object
+      ConstTensorIterator_& operator=(const ConstTensorIterator_& other) {
+        tensor_ = other.tensor_;
+        it_ = other.it_;
+
+        return *this;
+      }
+
+      /// Copy operator
+
+      /// \param other The transform iterator to copy
+      /// \return A reference to this object
+      ConstTensorIterator_& operator=(const TensorIterator<Tile>& other) {
+        tensor_ = other.tensor_;
+        it_ = other.it_;
+
+        return *this;
+      }
+
+      /// Prefix increment operator
+
+      /// \return A reference to this object after it has been incremented.
+      ConstTensorIterator_& operator++() {
+        TA_ASSERT(tensor_);
+        ++it_;
+        return *this;
+      }
+
+      /// Post-fix increment operator
+
+      /// \return A copy of this object before it is incremented.
+      ConstTensorIterator_ operator++(int) {
+        TA_ASSERT(tensor_);
+        ConstTensorIterator_ tmp(*this);
+        ++it_;
+        return tmp;
+      }
+
+      /// Equality operator
+
+      /// \param other The iterator to compare to this iterator.
+      /// \return \c true when the iterators are equal to each other, otherwise
+      /// \c false.
+      bool operator==(const ConstTensorIterator_& other) const {
+        return (tensor_ == other.tensor_) && (it_ == other.it_);
+      }
+
+      /// Inequality operator
+
+      /// \param other The iterator to compare to this iterator.
+      /// \return \c true when the iterators are not equal to each other,
+      /// otherwise \c false.
+      bool operator!=(const ConstTensorIterator_& other) const {
+        return (tensor_ != other.tensor_) || (it_ != other.it_);
+      }
+
+      /// Equality operator
+
+      /// \param other The iterator to compare to this iterator.
+      /// \return \c true when the iterators are equal to each other, otherwise
+      /// \c false.
+      bool operator==(const TensorIterator<Tile>& other) const {
+        return (tensor_ == other.tensor_) && (it_ == other.it_);
+      }
+
+      /// Inequality operator
+
+      /// \param other The iterator to compare to this iterator.
+      /// \return \c true when the iterators are not equal to each other,
+      /// otherwise \c false.
+      bool operator!=(const TensorIterator<Tile>& other) const {
+        return (tensor_ != other.tensor_) || (it_ != other.it_);
+      }
+
+      /// Dereference operator
+
+      /// \return A referenc to the current tile future.
+      reference operator*() const {
+        TA_ASSERT(tensor_);
+        return (*tensor_)[*it_];
+      }
+
+      /// Arrow dereference operator
+
+      /// \return A pointer-proxy to the current tile
+      pointer operator->() const {
+        TA_ASSERT(tensor_);
+        return pointer((*tensor_)[*it_]);
+      }
+
+      /// Tile coordinate index accessor
+
+      /// \return The coordinate index of the current tile
+      index_type index() const {
+        TA_ASSERT(tensor_);
+        return tensor_->range().idx(*it_);
+      }
+
+      /// Tile ordinal index accessor
+
+      /// \return The ordinal index of the current tile
+      ordinal_type ordinal() const {
+        TA_ASSERT(tensor_);
+        return *it_;
+      }
+
+    }; // class ConstTensorIterator
+
     /// Tensor implementation and base for other tensor implementation objects
 
     /// This implementation object holds the data for tensor object, which
@@ -39,6 +399,7 @@ namespace TiledArray {
     template <typename Tile>
     class TensorImpl : private NO_DEFAULTS{
     public:
+      typedef TensorImpl<Tile> TensorImpl_;
       typedef TiledRange trange_type; ///< Tiled range type
       typedef typename trange_type::range_type range_type; ///< Tile range type
       typedef Bitset<> shape_type; ///< Tensor shape type
@@ -48,10 +409,11 @@ namespace TiledArray {
           numeric_type; ///< the numeric type that supports Tile
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
       typedef typename storage_type::size_type size_type; ///< Size type
-      typedef typename storage_type::const_iterator const_iterator; ///< Constant iterator type
-      typedef typename storage_type::iterator iterator; ///< Iterator type
+      typedef typename storage_type::future future; ///< Future tile type
+      typedef TileReference<Tile> reference;
       typedef typename storage_type::future const_reference; ///< Constant reference type
-      typedef typename storage_type::future reference; ///< Reference type
+      typedef TensorIterator<Tile> iterator; ///< Iterator type
+      typedef ConstTensorIterator<Tile> const_iterator; ///< Constatnt iterator type
       typedef Pmap<size_type> pmap_interface; ///< Process map interface type
 
     private:
@@ -257,7 +619,7 @@ namespace TiledArray {
       template <typename Index>
       reference operator[](const Index& i) {
         TA_ASSERT(! is_zero(i));
-        return data_[trange_.tiles().ord(i)];
+        return reference(this, trange_.tiles().ord(i));
       }
 
       /// Tile move
@@ -276,22 +638,22 @@ namespace TiledArray {
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return data_.begin(); }
+      const_iterator begin() const { return iterator(this, data_.get_pmap()->begin()); }
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      iterator begin() { return data_.begin(); }
+      iterator begin() { return iterator(this, data_.get_pmap()->begin()); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return data_.end(); }
+      const_iterator end() const { return iterator(this, data_.get_pmap()->end()); }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      iterator end() { return data_.end(); }
+      iterator end() { return iterator(this, data_.get_pmap()->end()); }
 
       /// World accessor
 
