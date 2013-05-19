@@ -638,22 +638,34 @@ namespace TiledArray {
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      const_iterator begin() const { return iterator(this, data_.get_pmap()->begin()); }
+      const_iterator begin() const {
+        TA_ASSERT(data_.get_pmap());
+        return iterator(this, data_.get_pmap()->begin());
+      }
 
       /// Array begin iterator
 
       /// \return A const iterator to the first element of the array.
-      iterator begin() { return iterator(this, data_.get_pmap()->begin()); }
+      iterator begin() {
+        TA_ASSERT(data_.get_pmap());
+        return iterator(this, data_.get_pmap()->begin());
+      }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const { return iterator(this, data_.get_pmap()->end()); }
+      const_iterator end() const {
+        TA_ASSERT(data_.get_pmap());
+        return iterator(this, data_.get_pmap()->end());
+      }
 
       /// Array end iterator
 
       /// \return A const iterator to one past the last element of the array.
-      iterator end() { return iterator(this, data_.get_pmap()->end()); }
+      iterator end() {
+        TA_ASSERT(data_.get_pmap());
+        return iterator(this, data_.get_pmap()->end());
+      }
 
       /// World accessor
 
