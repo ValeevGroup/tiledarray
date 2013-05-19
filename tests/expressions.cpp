@@ -123,7 +123,7 @@ BOOST_FIXTURE_TEST_SUITE( expressions_suite, ExpressionsFixture )
 //  // Generate the expected result
 //  EigenMatrixXi ew_test = eu * ev.transpose();
 //
-//  // Test that outer produce works
+//  // Test that outer product works
 //  BOOST_CHECK_NO_THROW(w("i,j") = u("i") * v("j"));
 //
 //  GlobalFixture::world->gop.fence();

@@ -316,6 +316,56 @@ namespace TiledArray {
 
       }; // class norminf_op
 
+      /// Reduction operation that computes the minabs of a tensor
+      /// expression. This is equal to the minimum absolute value of an element of the tensor.
+      /// \tparam Exp type of tensor (or tensor expression)
+      template <typename Exp>
+      class minabs_op {
+      public:
+        typedef typename Exp::value_type argument_type; ///< The tile type
+        typedef typename argument_type::value_type result_type; ///< The result type
+
+        struct minabs_functor : std::binary_function<result_type, result_type, result_type> {
+          result_type operator()(result_type x, result_type y) { return std::min(std::fabs(x), std::fabs(y)); }
+        };
+
+        typedef minabs_functor remote_op_type; ///< Remote reduction operation type
+
+        /// Create a result type object
+
+        /// Initialize a result object for subsequent reductions
+        result_type operator()() const {
+          return result_type(std::numeric_limits<result_type>::max());
+        }
+
+        /// Reduces \c arg into \c result .
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] arg The argument that will be added to \c result
+        void operator()(result_type& result, const result_type& arg) const {
+          minabs_functor op;
+          result = op(result,arg);
+        }
+
+        /// Reduces tile \c first into \c result.
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] first The tile to be reduced
+        void operator()(result_type& result, const argument_type& first) const {
+          minabs_functor op;
+          result = op(result, math::minabs(first.size(), first.begin()));
+        }
+
+        /// Reduces 2 tiles, \c first and \c second, into \c result.
+        /// \param[in,out] result The result object that will be the reduction target
+        /// \param[in] first The first tile to be reduced
+        /// \param[in] second The second tile to be reduced
+        void operator()(result_type& result, const argument_type& first, const argument_type& second) const {
+          minabs_functor op;
+          result = op(result, math::minabs(first.size(), first.begin()));
+          result = op(result, math::minabs(second.size(), second.begin()));
+        }
+
+      }; // class minabs_op
+
       /// Dot product reduction operation
 
       /// Reduction operation that computes the dot product of two tensor
@@ -483,19 +533,10 @@ namespace TiledArray {
           std::multiplies<typename LTile::value_type>()));
     }
 
-    /// Compute the (vector) norm2 of \c arg
-
-    /// (vector) 2-norm of a tensor:
-    /// \f[
-    /// ||arg||_2 = \sqrt{\sum_{i_1, i_2, \dots} (arg_{i_1, i_2, \dots})^2 }
-    /// \f]
-    /// This function will compute the norm2 of the tensor expression, \c arg ,
-    /// across all nodes. The function will block, until the computation is
-    /// complete, but it will continue to process tasks while waiting. The same
-    /// result is returned on all nodes.
-    /// \tparam Tile Tensor tile type
-    /// \param arg The tensor expression
-    /// \return The 2-norm of the tensor
+    /// Compute the sum of elements of \c arg
+    /// \tparam Tile parametrizes Tensor expression type
+    /// \param arg The argument TensorExpression
+    /// \return The sum of the elements of the TensorExpression
     template <typename Tile>
     inline typename TensorExpression<Tile>::value_type::value_type
     sum(const TensorExpression<Tile>& arg) {
@@ -572,6 +613,25 @@ namespace TiledArray {
     inline typename TensorExpression<Tile>::value_type::value_type
     norminf(const TensorExpression<Tile>& arg) {
       return reduce(arg, detail::norminf_op<TensorExpression<Tile> >());
+    }
+
+    /// Compute the element of \c arg whose value is not greater (in absolute magnitude) than that of any other element
+
+    /// minabs:
+    /// \f[
+    /// \mathrm{minabs} arg = \min |arg_{i_1, i_2, \dots}|
+    /// \f]
+    /// This function will compute the minabs of the tensor expression, \c arg ,
+    /// across all nodes. The function will block, until the computation is
+    /// complete, but it will continue to process tasks while waiting. The same
+    /// result is returned on all nodes.
+    /// \tparam Exp Tensor expression type
+    /// \param arg The tensor expression
+    /// \return The minabs of the tensor
+    template <typename Tile>
+    inline typename TensorExpression<Tile>::value_type::value_type
+    minabs(const TensorExpression<Tile>& arg) {
+      return reduce(arg, detail::minabs_op<TensorExpression<Tile> >());
     }
 
     template <typename T, unsigned int DIM, typename Tile>

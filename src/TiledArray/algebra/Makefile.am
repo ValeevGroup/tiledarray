@@ -16,12 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# src/TiledArray/dist_eval/Makefile
+# src/TiledArray/algebra/Makefile
 
-library_includedir = $(includedir)/TiledArray/dist_eval
-library_include_HEADERS = binary_eval.h \
-                          contraction_eval.h \
-                          dist_eval.h \
-                          summa.h \
-                          unary_eval.h \
-                          vspgemm.h
+library_includedir = $(includedir)/TiledArray/algebra
+library_include_HEADERS = conjgrad.h

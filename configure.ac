@@ -140,6 +140,7 @@ AC_CONFIG_FILES([
         src/TiledArray/math/Makefile
         src/TiledArray/pmap/Makefile
         src/TiledArray/tile_op/Makefile
+        src/TiledArray/algebra/Makefile
     tests/Makefile
     examples/Makefile
       examples/cc/Makefile
