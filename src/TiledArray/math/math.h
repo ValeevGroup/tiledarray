@@ -551,14 +551,14 @@ namespace TiledArray {
     inline T maxabs(const unsigned int n, const T* t) {
       T result = 0;
       unsigned int i = 0u;
-//#if TILEDARRAY_LOOP_UNWIND > 1
+#if TILEDARRAY_LOOP_UNWIND > 1
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
         T temp[TILEDARRAY_LOOP_UNWIND];
         detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t, temp, TiledArray::math::detail::abs<T>);
         detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp, result, std::max<T>);
       }
-//#endif // TILEDARRAY_LOOP_UNWIND > 1
+#endif // TILEDARRAY_LOOP_UNWIND > 1
       for(; i < n; ++i)
         result = std::max(result, std::abs(t[i]));
       return result;
@@ -568,14 +568,14 @@ namespace TiledArray {
     inline T minabs(const unsigned int n, const T* t) {
       T result = std::numeric_limits<T>::max();
       unsigned int i = 0u;
-//#if TILEDARRAY_LOOP_UNWIND > 1
+#if TILEDARRAY_LOOP_UNWIND > 1
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
         T temp[TILEDARRAY_LOOP_UNWIND];
         detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t, temp, TiledArray::math::detail::abs<T>);
         detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp, result, std::min<T>);
       }
-//#endif // TILEDARRAY_LOOP_UNWIND > 1
+#endif // TILEDARRAY_LOOP_UNWIND > 1
       for(; i < n; ++i)
         result = std::min(result, std::abs(t[i]));
       return result;
