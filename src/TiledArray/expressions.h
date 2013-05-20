@@ -625,7 +625,7 @@ namespace TiledArray {
     /// across all nodes. The function will block, until the computation is
     /// complete, but it will continue to process tasks while waiting. The same
     /// result is returned on all nodes.
-    /// \tparam Exp Tensor expression type
+    /// \tparam Tile Tensor tile type
     /// \param arg The tensor expression
     /// \return The minabs of the tensor
     template <typename Tile>
