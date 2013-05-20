@@ -62,7 +62,7 @@ namespace TiledArray {
       }
 
       typename TensorImpl<Tile>::future get() const {
-        return *(const_cast<const TensorImpl<Tile>*>(tensor_))[index_];
+        return (*const_cast<const TensorImpl<Tile>*>(tensor_))[index_];
       }
 
       operator typename TensorImpl<Tile>::future() const { return get(); }
