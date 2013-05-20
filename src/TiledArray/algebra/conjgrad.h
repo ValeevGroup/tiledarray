@@ -22,6 +22,8 @@
 
 #include <sstream>
 #include <TiledArray/array.h>
+#include <TiledArray/algebra/diis.h>
+#include <TiledArray/algebra/utils.h>
 
 namespace TiledArray {
 
@@ -57,6 +59,11 @@ namespace TiledArray {
   }
 
   template <typename T, unsigned int DIM, typename Tile>
+  inline void zero(TiledArray::Array<T,DIM,Tile>& a) {
+    a = typename TiledArray::Array<T,DIM,Tile>::element_type(0) * a(detail::dummy_annotation(DIM));
+  }
+
+  template <typename T, unsigned int DIM, typename Tile>
   typename TiledArray::Array<T,DIM,Tile>::element_type
   inline minabs_value(const TiledArray::Array<T,DIM,Tile>& a) {
     return minabs(a(detail::dummy_annotation(DIM)));
@@ -81,14 +88,14 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tile>
   inline void scale(TiledArray::Array<T,DIM,Tile>& a,
-             typename TiledArray::Array<T,DIM,Tile>::element_type scaling_factor) {
+                    typename TiledArray::Array<T,DIM,Tile>::element_type scaling_factor) {
     a = scaling_factor * a(detail::dummy_annotation(DIM));
   }
 
   template <typename T, unsigned int DIM, typename Tile>
-  inline void daxpy(TiledArray::Array<T,DIM,Tile>& y,
-             typename TiledArray::Array<T,DIM,Tile>::element_type a,
-             const TiledArray::Array<T,DIM,Tile>& x) {
+  inline void axpy(TiledArray::Array<T,DIM,Tile>& y,
+                   typename TiledArray::Array<T,DIM,Tile>::element_type a,
+                   const TiledArray::Array<T,DIM,Tile>& x) {
     y = y(detail::dummy_annotation(DIM)) + a * x(detail::dummy_annotation(DIM));
   }
 
@@ -113,7 +120,8 @@ namespace TiledArray {
    * Solves linear system a(x) = b using conjugate gradient solver
    * where a is a linear function of x.
    *
-   * @tparam D type of \c x and \c b, as well as the preconditioner; must implement the following standalone functions:
+   * @tparam D type of \c x and \c b, as well as the preconditioner; D::element_type must be defined and D must provide
+   * the following standalone functions:
    *   - size_t size(const D&)
    *   - D clone(const D&)
    *   - D copy(const D&)
@@ -122,7 +130,7 @@ namespace TiledArray {
    *   - void vec_multiply(D& a, const D& b) (element-wise multiply of a by b)
    *   - value_type dot_product(const D& a, const D& b)
    *   - void scale(D&, value_type)
-   *   - void daxpy(D& y, value_type a, const D& x)
+   *   - void axpy(D& y, value_type a, const D& x)
    *   - void assign(D&, const D&)
    *   - double norm2(const D&)
    * @tparam F type that evaluates the LHS, will call F::operator()(x, result), hence must implement operator()(const D&, D&) const
@@ -146,6 +154,9 @@ namespace TiledArray {
 
       auto n = size(x);
       assert(n == size(preconditioner));
+
+      const bool use_diis = false;
+      DIIS<D> diis;
 
       // solution vector
       D XX_i;
@@ -185,7 +196,10 @@ namespace TiledArray {
       // r_0 = b - a(x)
       a(XX_i, RR_i);  // RR_i = a(XX_i)
       scale(RR_i, -1.0);
-      daxpy(RR_i, 1.0, b); // RR_i = b - a(XX_i)
+      axpy(RR_i, 1.0, b); // RR_i = b - a(XX_i)
+
+      if (use_diis)
+        diis.extrapolate(XX_i, RR_i, true);
 
       // z_0 = D^-1 . r_0
       ZZ_i = copy(RR_i);
@@ -205,10 +219,13 @@ namespace TiledArray {
         const value_type alpha_i = rz_norm2 / pAp_i;
 
         // x_i += alpha_i p_i
-        daxpy(XX_i, alpha_i, PP_i);
+        axpy(XX_i, alpha_i, PP_i);
 
         // r_i -= alpha_i Ap_i
-        daxpy(RR_i, -alpha_i, APP_i);
+        axpy(RR_i, -alpha_i, APP_i);
+
+        if (use_diis)
+          diis.extrapolate(XX_i, RR_i, true);
 
         const value_type r_ip1_norm = norm2(RR_i) / rhs_size;
         if (r_ip1_norm < convergence_target) {
@@ -228,7 +245,7 @@ namespace TiledArray {
         // 1) scale p_i by beta_i
         // 2) add z_i+1 (i.e. current contents of z_i)
         scale(PP_i, beta_i);
-        daxpy(PP_i, 1.0, ZZ_i);
+        axpy(PP_i, 1.0, ZZ_i);
 
         ++iter;
         //std::cout << "iter=" << iter << " dnorm=" << r_ip1_norm << std::endl;

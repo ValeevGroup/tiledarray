@@ -19,4 +19,4 @@
 # src/TiledArray/algebra/Makefile
 
 library_includedir = $(includedir)/TiledArray/algebra
-library_include_HEADERS = conjgrad.h
+library_include_HEADERS = conjgrad.h diis.h utils.h
