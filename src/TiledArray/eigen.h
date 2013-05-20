@@ -34,12 +34,12 @@ namespace TiledArray {
   typedef Eigen::Matrix<std::complex<float>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXcf;
   typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXi;
   typedef Eigen::Matrix<long, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXl;
-  typedef Eigen::Matrix<double, Eigen::Dynamic, 1, Eigen::RowMajor> EigenVectorXd;
-  typedef Eigen::Matrix<float, Eigen::Dynamic, 1, Eigen::RowMajor> EigenVectorXf;
-  typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> EigenVectorXcd;
-  typedef Eigen::Matrix<std::complex<float>, 1, Eigen::Dynamic, Eigen::RowMajor> EigenVectorXcf;
-  typedef Eigen::Matrix<int, Eigen::Dynamic, 1, Eigen::RowMajor> EigenVectorXi;
-  typedef Eigen::Matrix<long, Eigen::Dynamic, 1, Eigen::RowMajor> EigenVectorXl;
+  typedef Eigen::Matrix<double, Eigen::Dynamic, 1> EigenVectorXd;
+  typedef Eigen::Matrix<float, Eigen::Dynamic, 1> EigenVectorXf;
+  typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic> EigenVectorXcd;
+  typedef Eigen::Matrix<std::complex<float>, 1, Eigen::Dynamic> EigenVectorXcf;
+  typedef Eigen::Matrix<int, Eigen::Dynamic, 1> EigenVectorXi;
+  typedef Eigen::Matrix<long, Eigen::Dynamic, 1> EigenVectorXl;
 
 
   /// Construct a const Eigen::Map object for a given Tensor object
