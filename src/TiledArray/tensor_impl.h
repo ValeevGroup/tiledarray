@@ -41,13 +41,13 @@ namespace TiledArray {
       friend class ConstTensorIterator;
 
       TensorImpl<Tile>* tensor_; ///< The tensor that owns the referenced tile
-      std::size_t index_; ///< The index of the tensor
+      typename TensorImpl<Tile>::size_type index_; ///< The index of the tensor
 
       // Not allowed
       TileReference<Tile>& operator=(const TileReference<Tile>&);
     public:
 
-      TileReference(TensorImpl<Tile>* tensor, const std::size_t index) :
+      TileReference(TensorImpl<Tile>* tensor, const typename TensorImpl<Tile>::size_type index) :
         tensor_(tensor), index_(index)
       { }
 
@@ -61,7 +61,9 @@ namespace TiledArray {
         return *this;
       }
 
-      typename TensorImpl<Tile>::future get() const { return (*tensor_)[index_]; }
+      typename TensorImpl<Tile>::future get() const {
+        return *(const_cast<const TensorImpl<Tile>*>(tensor_))[index_];
+      }
 
       operator typename TensorImpl<Tile>::future() const { return get(); }
     }; // class reference
