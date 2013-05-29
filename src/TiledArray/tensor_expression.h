@@ -302,7 +302,7 @@ namespace TiledArray {
         /// \li Set the process map for result tiles to \c pmap
         /// \li Permute the range, shape, and variable list of this tensor if
         /// \c vars is not equal to the current variable list.
-        /// \li Evaluat result tiles
+        /// \li Evaluate result tiles
         /// \param vars The result variable list for this expression
         /// \param pmap The process map for storage of result tiles
         /// \return A future to a bool that will be set once the structure of this
