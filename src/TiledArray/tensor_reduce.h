@@ -110,7 +110,8 @@ namespace TiledArray {
         madness::TaskInterface(2, madness::TaskAttributes::hipri()),
         left_(left), right_(right), op_(op), result_()
       {
-        TA_ASSERT(left.trange() == right.trange());
+        TA_USER_ASSERT(left.trange() == right.trange(),
+                       "Tranges of tensor reduction arguments do not conform, must be identical");
 
         std::shared_ptr<typename LExp::pmap_interface>
           pmap(new TiledArray::detail::BlockedPmap(left_.get_world(), left_.size()));
