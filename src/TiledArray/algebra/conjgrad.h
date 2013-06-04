@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,6 +14,12 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Eduard Valeyev
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  conjgrad.h
+ *  May 20, 2013
  *
  */
 
@@ -27,41 +33,39 @@
 
 namespace TiledArray {
 
-  /**
-   * Solves linear system a(x) = b using conjugate gradient solver
-   * where a is a linear function of x.
-   *
-   * @tparam D type of \c x and \c b, as well as the preconditioner; D::element_type must be defined and D must provide
-   * the following standalone functions:
-   *   - size_t size(const D&)
-   *   - D clone(const D&)
-   *   - D copy(const D&)
-   *   - value_type minabs_value(const D&)
-   *   - value_type maxabs_value(const D&)
-   *   - void vec_multiply(D& a, const D& b) (element-wise multiply of a by b)
-   *   - value_type dot_product(const D& a, const D& b)
-   *   - void scale(D&, value_type)
-   *   - void axpy(D& y, value_type a, const D& x)
-   *   - void assign(D&, const D&)
-   *   - double norm2(const D&)
-   * @tparam F type that evaluates the LHS, will call F::operator()(x, result), hence must implement operator()(const D&, D&) const
-   *
-   * @param a object of type F
-   * @param b RHS
-   * @param x unknown
-   * @param preconditioner
-   * @param convergence_target
-   * @return the 2-norm of the residual, a(x) - b, divided by the number of elements in the residual.
-   */
+  /// Solves linear system <tt> a(x) = b </tt> using conjugate gradient solver
+  /// where \c a is a linear function of \c x .
+
+  /// \tparam D type of \c x and \c b, as well as the preconditioner;
+  /// \tparam F type that evaluates the LHS, will call \c F::operator()(x,result) ,
+  /// \c D must implement <tt> operator()(const D&, D&) const </tt>
+  /// \c D::element_type must be defined and \c D must provide the following
+  /// stand-alone functions:
+  ///   \li <tt> size_t size(const D&) </tt>
+  ///   \li <tt> D clone(const D&) </tt>
+  ///   \li <tt> D copy(const D&) </tt>
+  ///   \li <tt> value_type minabs_value(const D&) </tt>
+  ///   \li <tt> value_type maxabs_value(const D&) </tt>
+  ///   \li <tt> void vec_multiply(D& a, const D& b) </tt> (element-wise multiply of \c a by \c b )
+  ///   \li <tt> value_type dot_product(const D& a, const D& b) </tt>
+  ///   \li <tt> void scale(D&, value_type) </tt>
+  ///   \li <tt> void axpy(D& y, value_type a, const D& x) </tt>
+  ///   \li <tt> void assign(D&, const D&) </tt>
+  ///   \li <tt> double norm2(const D&) </tt>
   template <typename D, typename F>
   struct ConjugateGradientSolver {
     typedef typename D::element_type value_type;
 
-    value_type operator()(F& a,
-               const D& b,
-               D& x,
-               const D& preconditioner,
-               value_type convergence_target = -1.0) {
+    /// \param a object of type F
+    /// \param b RHS
+    /// \param x unknown
+    /// \param preconditioner
+    /// \param convergence_target The convergence target [default = -1.0]
+    /// \return The 2-norm of the residual, a(x) - b, divided by the number of
+    /// elements in the residual.
+    value_type operator()(F& a, const D& b, D& x, const D& preconditioner,
+        value_type convergence_target = -1.0)
+    {
 
       auto n = size(x);
       assert(n == size(preconditioner));

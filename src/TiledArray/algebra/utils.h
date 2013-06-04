@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,6 +14,12 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Eduard Valeyev
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  utils.h
+ *  May 20, 2013
  *
  */
 
@@ -35,7 +41,7 @@ namespace TiledArray {
       return oss.str();
     }
 
-  } // namespace TiledArray::detail
+  } // namespace detail
 
   template <typename T, unsigned int DIM, typename Tile>
   inline size_t size(const TiledArray::Array<T, DIM, Tile>& a) {
@@ -75,13 +81,15 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tile>
   inline void vec_multiply(TiledArray::Array<T,DIM,Tile>& a1, const TiledArray::Array<T,DIM,Tile>& a2) {
-    a1 = multiply(a1(detail::dummy_annotation(DIM)), a2(detail::dummy_annotation(DIM)));
+    expressions::VariableList vars(detail::dummy_annotation(DIM));
+    a1 = multiply(a1(vars), a2(vars));
   }
 
   template <typename T, unsigned int DIM, typename Tile>
   inline typename TiledArray::Array<T,DIM,Tile>::element_type
   dot_product(const TiledArray::Array<T,DIM,Tile>& a1, const TiledArray::Array<T,DIM,Tile>& a2) {
-    return dot(a1(detail::dummy_annotation(DIM)), a2(detail::dummy_annotation(DIM)));
+    expressions::VariableList vars(detail::dummy_annotation(DIM));
+    return dot(a1(vars), a2(vars));
   }
 
   template <typename T, unsigned int DIM, typename Tile>
@@ -94,7 +102,8 @@ namespace TiledArray {
   inline void axpy(TiledArray::Array<T,DIM,Tile>& y,
                    typename TiledArray::Array<T,DIM,Tile>::element_type a,
                    const TiledArray::Array<T,DIM,Tile>& x) {
-    y = y(detail::dummy_annotation(DIM)) + a * x(detail::dummy_annotation(DIM));
+    expressions::VariableList vars(detail::dummy_annotation(DIM));
+    y = y(vars) + a * x(vars);
   }
 
   template <typename T, unsigned int DIM, typename Tile>
@@ -110,10 +119,9 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tile>
   inline void print(const TiledArray::Array<T,DIM,Tile>& a, const char* label) {
-    std::cout << label << ":" << std::endl
-              << a << std::endl;
+    std::cout << label << ":\n" << a << "\n";
   }
 
-};
+} // namespace TiledArray
 
 #endif // TILEDARRAY_ALGEBRA_UTILS_H__INCLUDED

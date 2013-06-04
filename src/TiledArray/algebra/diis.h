@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,6 +14,12 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Eduard Valeyev
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  diis.h
+ *  May 20, 2013
  *
  */
 
@@ -29,66 +35,73 @@
 
 namespace TiledArray {
 
-  /** The DIIS class provides DIIS (``direct inversion of iterative subspace'') extrapolation
-   *  to an iterative solver of (systems of) linear or nonlinear equations of the \f$ f(x) = 0 \f$ form,
-   *  where \f$ f(x) \f$ is a (non-linear) function of \f$ x \f$ (in general, \f$ x \f$ is a set of numeric values).
-   *  Such equations are usually solved iteratively as follows:
-   *    - given a current guess at the solution, \f$ x_i \f$, evaluate the error (``residual'') \f$ e_i = f(x_i) \f$ (NOTE
-   *      that the dimension of \f$ x \f$ and \f$ e \f$ do not need to coincide);
-   *    - use the error to compute an updated guess \f$ x_{i+1} = x_i + g(e_i) \f$;
-   *    - proceed until a norm of the error is less than the target precision \f$ \epsilon \f$. Another convergence
-   *      criterion may include \f$ ||x_{i+1} - x_i|| < \epsilon \f$ .
-   *
-   *  For example, in the Hartree-Fock method in the density form, one could choose \f$ x \equiv \mathbf{P} \f$, the one-electron density matrix,
-   *  and \f$ f(\mathbf{P}) \equiv [\mathbf{F}, \mathbf{P}] \f$ , where \f$ \mathbf{F} = \mathbf{F}(\mathbf{P}) \f$ is the Fock matrix,
-   *  a linear function of the density. Because \f$ \mathbf{F} \f$ is a linear function of the density and DIIS uses a linear
-   *  extrapolation, it is possible to just extrapolate the Fock matrix itself, i.e. \f$ x \equiv \mathbf{F} \f$
-   *  and \f$ f(\mathbf{F}) \equiv [\mathbf{F}, \mathbf{P}] \f$.
-   *
-   *  Similarly, in the Hartree-Fock method in the molecular orbital representation, DIIS is used to extrapolate
-   *  the Fock matrix, i.e. \f$ x \equiv \mathbf{F} \f$ and \f$ f(\mathbf{F}) \equiv \{ F_i^a \} \f$ ,
-   *  where \f$ i \f$ and \f$ a \f$ are the occupied and unoccupied orbitals, respectively.
-   *
-   *  Here's a short description of the DIIS method. Given a set of solution guess vectors \f$ \{ x_k \}, k=0..i \f$
-   *  and the corresponding error vectors \f$ \{ e_k \} \f$ DIIS tries to find a linear combination of \f$ x \f$
-   *  that would minimize the error by solving a simple linear system set up from the set of errors.
-   *  The solution is a vector of coefficients \f$ \{ C_k \} \f$ that can be used to obtain an improved \f$ x \f$:
-   *  \f$ x_{\mathrm{extrap},i+1} = \sum\limits_{k=0}^i C_{k,i} x_{k} \f$
-   *  A more complicated version of DIIS introduces mixing:
-   *  \f$ x_{\mathrm{extrap},i+1} = \sum\limits_{k=0}^i C_{k,i} ( (1-f) x_{k} + f x_{extrap,k} ) \f$
-   *  Note that the mixing is not used in the first iteration.
-   *
-   *  The original DIIS reference: P. Pulay, Chem. Phys. Lett. 73, 393 (1980).
-   *
-   *  @tparam D type of \c x;
-   *
-   */
+  /// DIIS (``direct inversion of iterative subspace'') extrapolation
+
+  /// The DIIS class provides DIIS extrapolation to an iterative solver of
+  /// (systems of) linear or nonlinear equations of the \f$ f(x) = 0 \f$ form,
+  /// where \f$ f(x) \f$ is a (non-linear) function of \f$ x \f$ (in general,
+  /// \f$ x \f$ is a set of numeric values). Such equations are usually solved
+  /// iteratively as follows:
+  /// \li given a current guess at the solution, \f$ x_i \f$, evaluate the error
+  ///     (``residual'') \f$ e_i = f(x_i) \f$ (NOTE that the dimension of
+  ///     \f$ x \f$ and \f$ e \f$ do not need to coincide);
+  /// \li use the error to compute an updated guess \f$ x_{i+1} = x_i + g(e_i) \f$;
+  /// \li proceed until a norm of the error is less than the target precision
+  ///     \f$ \epsilon \f$. Another convergence criterion may include
+  ///     \f$ ||x_{i+1} - x_i|| < \epsilon \f$ .
+  /// \\
+  /// For example, in the Hartree-Fock method in the density form, one could
+  /// choose \f$ x \equiv \mathbf{P} \f$, the one-electron density matrix, and
+  /// \f$ f(\mathbf{P}) \equiv [\mathbf{F}, \mathbf{P}] \f$ , where
+  /// \f$ \mathbf{F} = \mathbf{F}(\mathbf{P}) \f$ is the Fock matrix, a linear
+  /// function of the density. Because \f$ \mathbf{F} \f$ is a linear function
+  /// of the density and DIIS uses a linear extrapolation, it is possible to
+  /// just extrapolate the Fock matrix itself, i.e. \f$ x \equiv \mathbf{F} \f$
+  /// and \f$ f(\mathbf{F}) \equiv [\mathbf{F}, \mathbf{P}] \f$ .
+  /// \\
+  /// Similarly, in the Hartree-Fock method in the molecular orbital
+  /// representation, DIIS is used to extrapolate the Fock matrix, i.e.
+  /// \f$ x \equiv \mathbf{F} \f$ and \f$ f(\mathbf{F}) \equiv \{ F_i^a \} \f$ ,
+  /// where \f$ i \f$ and \f$ a \f$ are the occupied and unoccupied orbitals,
+  /// respectively.
+  /// \\
+  /// Here's a short description of the DIIS method. Given a set of solution
+  /// guess vectors \f$ \{ x_k \}, k=0..i \f$ and the corresponding error
+  /// vectors \f$ \{ e_k \} \f$ DIIS tries to find a linear combination of
+  /// \f$ x \f$ that would minimize the error by solving a simple linear system
+  /// set up from the set of errors. The solution is a vector of coefficients
+  /// \f$ \{ C_k \} \f$ that can be used to obtain an improved \f$ x \f$:
+  /// \f$ x_{\mathrm{extrap},i+1} = \sum\limits_{k=0}^i C_{k,i} x_{k} \f$
+  /// A more complicated version of DIIS introduces mixing:
+  /// \f$ x_{\mathrm{extrap},i+1} = \sum\limits_{k=0}^i C_{k,i} ( (1-f) x_{k} + f x_{extrap,k} ) \f$
+  /// Note that the mixing is not used in the first iteration.
+  /// \\
+  /// The original DIIS reference: P. Pulay, Chem. Phys. Lett. 73, 393 (1980).
+  ///
+  /// \tparam D type of \c x
   template <typename D>
   class DIIS {
     public:
       typedef typename D::element_type value_type;
-      /**
-       *
-       * @param strt The DIIS extrapolation will begin on the
-       *             iteration given by this integer.  The default is 1.
-       * @param ndi  This integer maximum number of data sets to
-       *             retain.  The default is 5.
-       * @param dmp This nonnegative floating point
-       *            number is used to dampen the DIIS extrapolation.  The default is
-       *            0.0.
-       * @param ngr The number of iterations in a DIIS group.
-       *            DIIS extrapolation is only used for the first \c ngrdiis of these
-       *            interations.  The default is 1.  If \c ngr is 1 and \c ngrdiis is
-       *            greater than 0, then DIIS will be used on all iterations after and
-       *            including the start iteration.
-       * @param ngrdiis The number of DIIS extrapolations to do
-       *                at the beginning of an iteration group.  See the documentation for
-       *                \c ngr . The default is 1.
-       * @param mf This real number in
-       *           [0,1] is used to dampen the DIIS extrapolation by mixing the input
-       *           data with the output data for each iteration. The default is 0.0,
-       *           which performs no mixing. The approach described in
-       *           Kerker, Phys. Rev. B, 23, p3082, 1981.
+      /// \param strt The DIIS extrapolation will begin on the iteration given
+      ///             by this integer.  The default is 1.
+      /// \param ndi This integer maximum number of data sets to retain. The
+      ///            default is 5.
+      /// \param dmp This nonnegative floating point number is used to dampen
+      ///            the DIIS extrapolation.  The default is 0.0.
+      /// \param ngr The number of iterations in a DIIS group. DIIS
+      ///            extrapolation is only used for the first \c ngrdiis of
+      ///            these iterations.  The default is 1.  If \c ngr is 1 and
+      ///            \c ngrdiis is greater than 0, then DIIS will be used on all
+      ///            iterations after and including the start iteration.
+      ///@param ngrdiis The number of DIIS extrapolations to do
+      ///               at the beginning of an iteration group.  See the documentation for
+      ///               \c ngr . The default is 1.
+      ///@param mf This real number in
+      ///          [0,1] is used to dampen the DIIS extrapolation by mixing the input
+      ///          data with the output data for each iteration. The default is 0.0,
+      ///          which performs no mixing. The approach described in
+      ///          Kerker, Phys. Rev. B, 23, p3082, 1981.
        */
       DIIS(unsigned int strt=1,
            unsigned int ndi=5,
@@ -111,13 +124,12 @@ namespace TiledArray {
         x_extrap_.clear();
       }
 
-      /**
-       *
-       * @param[in,out] x On input, the most recent solution guess; on output, the extrapolated guess
-       * @param[in,out] error On input, the most recent error; on output, the if \c extrapolate_error = true
-       *                will be the extrapolated error, otherwise the value unchanged
-       * @param extrapolate_error whether to extrapolate the error
-       */
+      /// \param[in,out] x On input, the most recent solution guess; on output,
+      ///                  the extrapolated guess
+      /// \param[in,out] error On input, the most recent error; on output, the
+      ///                      if \c extrapolate_error \c == \c true will be the
+      ///                      extrapolated error, otherwise the value unchanged
+      /// \param extrapolate_error whether to extrapolate the error
       void extrapolate(D& x,
                        D& error,
                        bool extrapolate_error = false)
@@ -240,7 +252,7 @@ namespace TiledArray {
       }
 
       /** calling this function forces the extrapolation to start upon next call to extrapolate()
-       * even if this object was initialized with start value greater than the current iteration index.
+      ///even if this object was initialized with start value greater than the current iteration index.
        */
       void start_extrapolation() {
         if (start > iter) start = iter+1;
@@ -293,8 +305,8 @@ namespace TiledArray {
         //x_extrap_.resize(diis+1);
       }
 
-  };
+  }; // class DIIS
 
 } // namespace TiledArray
 
-#endif /* TILEDARRAY_ALGEBRA_DIIS_H__INCLUDED */
+#endif // TILEDARRAY_ALGEBRA_DIIS_H__INCLUDED
