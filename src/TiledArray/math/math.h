@@ -221,7 +221,7 @@ namespace TiledArray {
         /// \param v The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename V, typename Op>
-        static __inline__ __attribute__((always_inline)) void eval(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
+        static inline void eval(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
           VectorOpUnwind<N-1>::eval(i, t, u, v, op);
           v[i+N] = op(t[i+N], u[i+N]);
         }
@@ -236,7 +236,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void eval(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void eval(const unsigned int i, const T* t, U* u, const Op& op) {
           VectorOpUnwind<N-1>::eval(i, t, u, op);
           u[i+N] = op(t[i+N]);
         }
@@ -253,7 +253,7 @@ namespace TiledArray {
         /// \param v The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename V, typename Op>
-        static __inline__ __attribute__((always_inline)) void eval_to_temp(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
+        static inline void eval_to_temp(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
           VectorOpUnwind<N-1>::eval_to_temp(i, t, u, v, op);
           v[N] = op(t[i+N], u[i+N]);
         }
@@ -268,7 +268,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void eval_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void eval_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
           VectorOpUnwind<N-1>::eval_to_temp(i, t, u, op);
           u[N] = op(t[i+N]);
         }
@@ -283,7 +283,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The assignment operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void assign(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void assign(const unsigned int i, const T* t, U* u, const Op& op) {
           VectorOpUnwind<N-1>::assign(i, t, u, op);
           op(u[i+N], t[i+N]);
         }
@@ -296,7 +296,7 @@ namespace TiledArray {
         /// \param t The result pointer
         /// \param op The assignment operation
         template <typename T, typename Op>
-        static __inline__ __attribute__((always_inline)) void assign(const unsigned int i, T* t, const Op& op) {
+        static inline void assign(const unsigned int i, T* t, const Op& op) {
           VectorOpUnwind<N-1>::assign(i, t, op);
           op(t[i+N]);
         }
@@ -311,7 +311,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The assignment operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void assign_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void assign_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
           VectorOpUnwind<N-1>::assign_to_temp(i, t, u, op);
           op(u[N], t[i+N]);
         }
@@ -326,7 +326,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The assignment operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void assign_from_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void assign_from_temp(const unsigned int i, const T* t, U* u, const Op& op) {
           VectorOpUnwind<N-1>::assign_from_temp(i, t, u, op);
           op(u[i+N], t[N]);
         }
@@ -340,7 +340,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void reduce(const unsigned int i, const T* t, U& u, const Op& op) {
+        static inline void reduce(const unsigned int i, const T* t, U& u, const Op& op) {
           VectorOpUnwind<N-1>::reduce(i, t, u, op);
           u = op(u, t[i+N]);
         }
@@ -365,7 +365,7 @@ namespace TiledArray {
         /// \param v The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename V, typename Op>
-        static __inline__ __attribute__((always_inline)) void eval(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
+        static inline void eval(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
           v[i] = op(t[i], u[i]);
         }
 
@@ -379,7 +379,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void eval(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void eval(const unsigned int i, const T* t, U* u, const Op& op) {
           u[i] = op(t[i]);
         }
 
@@ -395,7 +395,7 @@ namespace TiledArray {
         /// \param v The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename V, typename Op>
-        static __inline__ __attribute__((always_inline)) void eval_to_temp(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
+        static inline void eval_to_temp(const unsigned int i, const T* t, const U* u, V* v, const Op& op) {
           v[0u] = op(t[i], u[i]);
         }
 
@@ -409,7 +409,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void eval_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void eval_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
           u[0u] = op(t[i]);
         }
 
@@ -423,7 +423,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The assignment operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void assign(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void assign(const unsigned int i, const T* t, U* u, const Op& op) {
            op(u[i], t[i]);
         }
 
@@ -435,7 +435,7 @@ namespace TiledArray {
         /// \param t The result pointer
         /// \param op The assignment operation
         template <typename T, typename Op>
-        static __inline__ __attribute__((always_inline)) void assign(const unsigned int i, T* t, const Op& op) {
+        static inline void assign(const unsigned int i, T* t, const Op& op) {
            op(t[i]);
         }
 
@@ -449,7 +449,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The assignment operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void assign_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void assign_to_temp(const unsigned int i, const T* t, U* u, const Op& op) {
            op(u[0u], t[i]);
         }
 
@@ -463,7 +463,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The assignment operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void assign_from_temp(const unsigned int i, const T* t, U* u, const Op& op) {
+        static inline void assign_from_temp(const unsigned int i, const T* t, U* u, const Op& op) {
            op(u[i], t[0u]);
         }
 
@@ -477,7 +477,7 @@ namespace TiledArray {
         /// \param u The result pointer
         /// \param op The binary operation
         template <typename T, typename U, typename Op>
-        static __inline__ __attribute__((always_inline)) void reduce(const unsigned int i, const T* t, U& u, const Op& op) {
+        static inline void reduce(const unsigned int i, const T* t, U& u, const Op& op) {
           u = op(u, t[i]);
         }
       }; //  struct VectorOpUnwind
