@@ -95,6 +95,18 @@ namespace TiledArray {
       typedef typename TensorImpl<Tile>::range_type::index index_type;
       typedef typename TensorImpl<Tile>::size_type ordinal_type;
 
+    private:
+
+      void advance() {
+        do {
+          ++it_;
+          if(tensor_->pmap()->end() == it_)
+            break;
+        } while(tensor_->is_zero(*it_));
+      }
+
+    public:
+
       /// Default constructor
       TensorIterator() : tensor_(NULL), it_() { }
 
@@ -145,7 +157,7 @@ namespace TiledArray {
       /// \return A reference to this object after it has been incremented.
       TensorIterator_& operator++() {
         TA_ASSERT(tensor_);
-        ++it_;
+        advance();
         return *this;
       }
 
@@ -155,7 +167,7 @@ namespace TiledArray {
       TensorIterator_ operator++(int) {
         TA_ASSERT(tensor_);
         TensorIterator_ tmp(*this);
-        ++it_;
+        advance();
         return tmp;
       }
 
