@@ -102,7 +102,6 @@ namespace TiledArray {
       ///          data with the output data for each iteration. The default is 0.0,
       ///          which performs no mixing. The approach described in
       ///          Kerker, Phys. Rev. B, 23, p3082, 1981.
-       */
       DIIS(unsigned int strt=1,
            unsigned int ndi=5,
            value_type dmp =0,
@@ -251,9 +250,9 @@ namespace TiledArray {
         if (do_mixing) x_extrap_.push_back(x);
       }
 
-      /** calling this function forces the extrapolation to start upon next call to extrapolate()
-      ///even if this object was initialized with start value greater than the current iteration index.
-       */
+      /// calling this function forces the extrapolation to start upon next call
+      /// to \c extrapolate() even if this object was initialized with start
+      /// value greater than the current iteration index.
       void start_extrapolation() {
         if (start > iter) start = iter+1;
       }
