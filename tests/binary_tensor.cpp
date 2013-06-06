@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE( location )
 BOOST_AUTO_TEST_CASE( result )
 {
   for(tensor_expression::const_iterator it = btt.begin(); it != btt.end(); ++it) {
-    array_annotation::const_reference input = a.find(it.index());
+    madness::Future<array_annotation::value_type> input = a.find(it.index());
 
     BOOST_CHECK_EQUAL(it->get().range(), input.get().range());
 

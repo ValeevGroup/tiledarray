@@ -54,6 +54,7 @@ namespace TiledArray {
         typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
         typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
         typedef typename TensorImpl_::value_type value_type; ///< Tile type
+        typedef typename TensorImpl_::future future; ///< Tile future type
         typedef typename TensorImpl_::numeric_type numeric_type;  ///< the numeric type that supports Tile
 
       private:
@@ -345,6 +346,7 @@ namespace TiledArray {
       typedef typename impl_type::pmap_interface pmap_interface;
       typedef typename impl_type::trange_type trange_type;
       typedef typename impl_type::value_type value_type;
+      typedef typename impl_type::future future;
       typedef typename impl_type::numeric_type numeric_type;
       typedef typename impl_type::const_reference const_reference;
       typedef typename impl_type::const_iterator const_iterator;
@@ -551,7 +553,7 @@ namespace TiledArray {
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference move(size_type i) const {
+      future move(size_type i) const {
         TA_ASSERT(pimpl_);
         return pimpl_->move(i);
       }

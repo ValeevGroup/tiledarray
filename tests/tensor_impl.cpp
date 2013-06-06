@@ -268,7 +268,7 @@ BOOST_AUTO_TEST_CASE( array_operator )
 {
   // Check that elements are inserted properly for access requests.
   for(std::size_t i = 0; i < impl.size(); ++i) {
-    tensor_impl_base::const_reference f = impl[i];
+    tensor_impl_base::future f = impl[i];
     f.probe();
     if(impl.is_local(i))
       impl.set(i, value_type(impl.trange().make_tile_range(i), GlobalFixture::world->rank()));
