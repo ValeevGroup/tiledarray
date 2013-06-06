@@ -57,7 +57,11 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(x.range(), tr.tiles());
   BOOST_CHECK_EQUAL(x.trange(), tr);
   BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
-  BOOST_CHECK(x.begin() == x.end());
+#ifdef TA_EXCEPTION_ERROR
+  // These tests throw because the process map has not been initialized yet
+  BOOST_CHECK_THROW(x.begin(), Exception);
+  BOOST_CHECK_THROW(x.end(), Exception);
+#endif // TA_EXCEPTION_ERROR
   BOOST_CHECK(x.is_dense());
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
     BOOST_CHECK(! x.is_zero(i));
@@ -81,7 +85,11 @@ BOOST_AUTO_TEST_CASE( constructor_with_shape )
   BOOST_CHECK_EQUAL(x.range(), tr.tiles());
   BOOST_CHECK_EQUAL(x.trange(), tr);
   BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
-  BOOST_CHECK(x.begin() == x.end());
+#ifdef TA_EXCEPTION_ERROR
+  // These tests throw because the process map has not been initialized yet
+  BOOST_CHECK_THROW(x.begin(), Exception);
+  BOOST_CHECK_THROW(x.end(), Exception);
+#endif // TA_EXCEPTION_ERROR
   BOOST_CHECK(! x.is_dense());
   BOOST_CHECK_EQUAL(x.shape().size(), tr.tiles().volume());
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
@@ -285,7 +293,7 @@ BOOST_AUTO_TEST_CASE( move_local )
   // Insert all local tiles
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i))
-      impl[i];
+      impl.set(i, madness::Future<value_type>());
   }
 
   // Get total local tile count
@@ -315,7 +323,7 @@ BOOST_AUTO_TEST_CASE( delayed_move_local )
   // Insert all local tiles
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i))
-      impl[i];
+      impl.set(i, madness::Future<value_type>());
   }
 
   // Get total local tile count
@@ -386,7 +394,7 @@ BOOST_AUTO_TEST_CASE( delayed_move_remote )
   // Insert all local tiles
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i))
-      impl[i];
+      impl.set(i, madness::Future<value_type>());
   }
 
   // Get total local tile count
@@ -422,7 +430,7 @@ BOOST_AUTO_TEST_CASE( delayed_move_remote )
 }
 
 BOOST_AUTO_TEST_CASE( access_zero_tile ) {
-  impl.shape(detail::Bitset<>(impl.size()));
+  BOOST_CHECK_NO_THROW(impl.shape(detail::Bitset<>(impl.size())));
 
 #ifdef TA_EXCEPTION_ERROR
   // Check that you cannot access a tile that is zero
@@ -437,7 +445,7 @@ BOOST_AUTO_TEST_CASE( clear )
   // Insert all local tiles
   for(std::size_t i = 0; i < impl.size(); ++i) {
     if(impl.is_local(i))
-      impl[i];
+      impl.set(i, madness::Future<value_type>());
   }
 
   // Check that there are tiles inserted locally
@@ -450,7 +458,6 @@ BOOST_AUTO_TEST_CASE( clear )
   impl.clear();
 
   BOOST_CHECK_EQUAL(impl.local_size(), 0ul);
-  BOOST_CHECK(impl.begin() == impl.end());
 
 }
 
