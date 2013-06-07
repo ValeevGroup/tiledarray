@@ -143,7 +143,7 @@ namespace TiledArray {
             tensor_->pmap()->end();
         do {
           ++it_;
-        } while(tensor_->is_zero(*it_) && (it_ != end));
+        } while((it_ != end) && tensor_->is_zero(*it_));
       }
 
     public:
