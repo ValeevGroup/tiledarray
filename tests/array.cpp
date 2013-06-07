@@ -62,7 +62,10 @@ BOOST_AUTO_TEST_CASE( constructors )
 
 BOOST_AUTO_TEST_CASE( all_owned )
 {
-  unsigned int count = std::distance(a.begin(), a.end());
+  std::size_t count = 0ul;
+  for(std::size_t i = 0ul; i < tr.tiles().volume(); ++i)
+    if(a.owner(i) == GlobalFixture::world->rank())
+      ++count;
   world.gop.sum(count);
 
   // Check that all tiles are in the array
