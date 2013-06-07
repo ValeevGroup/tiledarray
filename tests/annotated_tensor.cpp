@@ -56,8 +56,8 @@ BOOST_AUTO_TEST_CASE( vars_accessor )
 BOOST_AUTO_TEST_CASE( tile_data )
 {
   ArrayN::const_iterator a_it = a.begin();
+  aa.eval(vars, std::shared_ptr<array_annotation::pmap_interface>(new TiledArray::detail::BlockedPmap(* GlobalFixture::world, a.size()))).get();
   for(array_annotation::const_iterator aa_it = aa.begin(); aa_it != aa.end(); ++aa_it, ++a_it) {
-    BOOST_CHECK(aa_it == a_it);
     aa_it->get();
     for(std::size_t it = 0; it != aa_it->get().size(); ++it) {
       const ArrayN::value_type::value_type& ai = a_it->get()[it];
