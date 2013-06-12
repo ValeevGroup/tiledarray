@@ -197,9 +197,10 @@ namespace TiledArray {
       const typename Value::value_type value_;
       madness::Future<Value> result_;
 
-      static const std::shared_ptr<impl_type>& checked_pimpl(const std::shared_ptr<impl_type>& pimpl) {
+      static const std::shared_ptr<impl_type>&
+      checked_pimpl(const std::shared_ptr<impl_type>& pimpl) {
         TA_USER_ASSERT(pimpl,
-                       "The Array::pimpl has not been initialized, likely reason: it was default constructed and used.");
+            "The Array::pimpl has not been initialized, likely reason: it was default constructed and used.");
         return pimpl;
       }
 
@@ -209,7 +210,7 @@ namespace TiledArray {
         pimpl_(pimpl),
         index_(index),
         value_(value),
-        result_(checked_pimpl(pimpl)->operator[](index))
+        result_(pimpl->operator[](index))
       { }
 
       virtual void run(madness::World&) {
@@ -427,6 +428,12 @@ namespace TiledArray {
           "The number of elements in the coordinate index does not match the dimension of the array.");
     }
 
+    /// Makes sure pimpl has been initialized
+    void check_pimpl() const {
+      TA_USER_ASSERT(pimpl_,
+          "The Array has not been initialized, likely reason: it was default constructed and used.");
+    }
+
     /// Construct a process map
 
     /// If \c pmap is a valid process map pointer, a copy is returned. Otherwise,
@@ -464,12 +471,6 @@ namespace TiledArray {
       world.gop.bit_or(shape.get(), shape.num_blocks());
 
       return shape;
-    }
-
-    /// makes sure pimpl has been initialized
-    void check_pimpl() const {
-      TA_USER_ASSERT(pimpl_,
-                     "The Array has not been initialized, likely reason: it was default constructed and used.");
     }
 
     std::shared_ptr<impl_type> pimpl_; ///< Array implementation pointer
