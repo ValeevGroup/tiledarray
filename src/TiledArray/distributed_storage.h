@@ -117,30 +117,6 @@ namespace TiledArray {
       /// \throw nothing
       const std::shared_ptr<pmap_interface>& get_pmap() const { return pmap_; }
 
-      /// Begin iterator factory
-
-      /// \return An iterator that points to the first local data element
-      /// \note Iterates over local data only and involve no communication.
-      iterator begin() { return iterator(data_.begin()); }
-
-      /// Begin const iterator factory
-
-      /// \return A const iterator that points to the first local data element
-      /// \note Iterates over local data only and involve no communication.
-      const_iterator begin() const { return const_iterator(data_.begin()); }
-
-      /// End iterator factory
-
-      /// \return An iterator that points to the end of the local data elements
-      /// \note Iterates over local data only and involve no communication.
-      iterator end() { return iterator(data_.end()); }
-
-      /// End const iterator factory
-
-      /// \return A const iterator that points to the end of the local data elements
-      /// \note Iterates over local data only and involve no communication.
-      const_iterator end() const { return const_iterator(data_.end()); }
-
       /// Element owner
 
       /// \return The process that owns element \c i

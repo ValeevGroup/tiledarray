@@ -68,7 +68,6 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_CHECK_EQUAL(s->size(), 0ul);
   BOOST_CHECK_EQUAL(s->max_size(), 10ul);
-  BOOST_CHECK(s->begin() == s->end());
 
 }
 
