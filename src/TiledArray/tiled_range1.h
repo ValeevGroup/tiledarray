@@ -148,21 +148,22 @@ namespace TiledArray {
 
     /// Validates tile_boundaries
     template <typename RandIter>
-    static bool valid_(RandIter first, RandIter last) {
+    static void valid_(RandIter first, RandIter last) {
       // Verify at least 2 elements are present if the vector is not empty.
-      if(std::distance(first, last) < 2)
-        return false;
+      TA_USER_ASSERT((std::distance(first, last) >= 2),
+          "TiledRange1 construction failed: You need at least 2 elements in the tile boundary list.");
       // Verify the requirement that a0 < a1 < a2 < ...
       for (; first != (last - 1); ++first)
-        if(*first >= *(first + 1))
-          return false;
-      return true;
+        TA_USER_ASSERT(*first < *(first + 1),
+            "TiledRange1 construction failed: Invalid tile boundary, tile boundary i must be greater than tile boundary i+1 for all i. ");
     }
 
     /// Initialize tiles use a set of tile offsets
     template <typename RandIter>
     void init_tiles_(RandIter first, RandIter last, size_type start_tile_index) {
-      TA_ASSERT( valid_(first, last) );
+#ifndef NDEBUG
+      valid_(first, last);
+#endif // NDEBUG
       range_.first = start_tile_index;
       range_.second = start_tile_index + last - first - 1;
       element_range_.first = *first;

@@ -125,6 +125,19 @@ BOOST_AUTO_TEST_CASE( constructor )
       BOOST_CHECK_EQUAL(r.tile(i - 1).second, a[i + 1]);
     }
   }
+
+  // Check that invalid input throws an exception.
+  {
+#ifndef NDEBUG
+    std::vector<std::size_t> boundaries;
+    BOOST_CHECK_THROW(TiledRange1 r(boundaries.begin(), boundaries.end()), Exception);
+    BOOST_CHECK_THROW(TiledRange1 r(a.begin(), a.begin()), Exception);
+    BOOST_CHECK_THROW(TiledRange1 r(a.begin(), a.begin() + 1), Exception);
+    boundaries.push_back(2);
+    boundaries.push_back(0);
+    BOOST_CHECK_THROW(TiledRange1 r(boundaries.begin(), boundaries.end()), Exception);
+#endif // NDEBUG
+  }
 }
 
 BOOST_AUTO_TEST_CASE( ostream )
