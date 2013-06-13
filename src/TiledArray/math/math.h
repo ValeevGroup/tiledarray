@@ -545,6 +545,12 @@ namespace TiledArray {
       template <typename T>
       inline T abs(const T t) { return std::abs(t); }
 
+      template <typename T>
+      inline T max(const T t1, const T t2) { return std::max(t1, t2); }
+
+      template <typename T>
+      inline T min(const T t1, const T t2) { return std::min(t1, t2); }
+
     } // namespace
 
     template <typename T>
@@ -555,8 +561,10 @@ namespace TiledArray {
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
         T temp[TILEDARRAY_LOOP_UNWIND];
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t, temp, TiledArray::math::detail::abs<T>);
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp, result, std::max<T>);
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t,
+            temp, TiledArray::math::detail::abs<T>);
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp,
+            result, TiledArray::math::detail::max<T>);
       }
 #endif // TILEDARRAY_LOOP_UNWIND > 1
       for(; i < n; ++i)
@@ -572,8 +580,10 @@ namespace TiledArray {
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
         T temp[TILEDARRAY_LOOP_UNWIND];
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t, temp, TiledArray::math::detail::abs<T>);
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp, result, std::min<T>);
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t,
+            temp, TiledArray::math::detail::abs<T>);
+        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp,
+            result, TiledArray::math::detail::min<T>);
       }
 #endif // TILEDARRAY_LOOP_UNWIND > 1
       for(; i < n; ++i)
