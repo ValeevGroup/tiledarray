@@ -218,17 +218,208 @@ BOOST_AUTO_TEST_CASE( zero )
 #endif // TA_EXCEPTION_ERROR
 }
 
-BOOST_AUTO_TEST_CASE( tile_set_and_get )
+BOOST_AUTO_TEST_CASE( tile_get_and_set_w_value )
 {
-  std::vector<madness::Future<value_type> > tiles;
-  tiles.reserve(tr.tiles().volume());
+  // Get each tile before it is set
+  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+    if(GlobalFixture::world->rank() == 0) {
+      const ProcessID owner = impl.owner(i);
 
+      // Set each tile on node 0
+      BOOST_CHECK_NO_THROW(impl.set(i, value_type(impl.trange().make_tile_range(i), owner)));
+
+      // Get the tile future (may or may not be remote) and wait for the data to arrive.
+      madness::Future<value_type> tile = impl.get(i);
+      GlobalFixture::world->gop.fence();
+
+      // Check that the future has been set and the data is what we expect.
+      BOOST_CHECK(tile.probe());
+      for(std::size_t j = 0ul; j < tile.get().size(); ++j)
+        BOOST_CHECK_EQUAL(tile.get()[j], owner);
+    } else {
+      GlobalFixture::world->gop.fence();
+      if(impl.is_local(i)) {
+        // Get the local tile
+        madness::Future<value_type> tile = impl.get(i);
+
+        // Check that the future has been set and the data is what we expect.
+        BOOST_CHECK(tile.probe());
+        for(std::size_t j = 0ul; j < tile.get().size(); ++j)
+          BOOST_CHECK_EQUAL(tile.get()[j], GlobalFixture::world->rank());
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( tile_get_and_set_w_future )
+{
+  // Get each tile before it is set
+  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+    if(GlobalFixture::world->rank() == 0) {
+      const ProcessID owner = impl.owner(i);
+      madness::Future<value_type> tile;
+
+      // Set each tile on node 0
+      BOOST_CHECK_NO_THROW(impl.set(i, tile));
+
+      // Get the tile future (may or may not be remote) and wait for the data to arrive.
+      tile.set(value_type(impl.trange().make_tile_range(i), owner));
+      GlobalFixture::world->gop.fence();
+
+      // Check that the future has been set and the data is what we expect.
+      BOOST_CHECK(tile.probe());
+      for(std::size_t j = 0ul; j < tile.get().size(); ++j)
+        BOOST_CHECK_EQUAL(tile.get()[j], owner);
+    } else {
+      GlobalFixture::world->gop.fence();
+      if(impl.is_local(i)) {
+        // Get the local tile
+        madness::Future<value_type> tile = impl.get(i);
+
+        // Check that the future has been set and the data is what we expect.
+        BOOST_CHECK(tile.probe());
+        for(std::size_t j = 0ul; j < tile.get().size(); ++j)
+          BOOST_CHECK_EQUAL(tile.get()[j], GlobalFixture::world->rank());
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( tile_reference_w_value )
+{
+  // Get each tile before it is set
+  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+    if(GlobalFixture::world->rank() == 0) {
+      const ProcessID owner = impl.owner(i);
+
+      // Set each tile on node 0
+      BOOST_CHECK_NO_THROW(impl[i] = value_type(impl.trange().make_tile_range(i), owner));
+
+      // Get the tile future (may or may not be remote) and wait for the data to arrive.
+      value_type tile = impl[i];
+      GlobalFixture::world->gop.fence();
+
+      // Check that the future has been set and the data is what we expect.
+      for(std::size_t j = 0ul; j < tile.size(); ++j)
+        BOOST_CHECK_EQUAL(tile[j], owner);
+    } else {
+      GlobalFixture::world->gop.fence();
+      if(impl.is_local(i)) {
+        // Get the local tile
+        value_type tile = impl[i];
+
+        // Check that the future has been set and the data is what we expect.
+        for(std::size_t j = 0ul; j < tile.size(); ++j)
+          BOOST_CHECK_EQUAL(tile[j], GlobalFixture::world->rank());
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( tile_reference_w_future )
+{
+  // Get each tile before it is set
+  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+    if(GlobalFixture::world->rank() == 0) {
+      const ProcessID owner = impl.owner(i);
+      madness::Future<value_type> tile;
+
+      // Set each tile on node 0
+      BOOST_CHECK_NO_THROW(impl[i] = tile);
+
+      // Get the tile future (may or may not be remote) and wait for the data to arrive.
+      tile.set(value_type(impl.trange().make_tile_range(i), owner));
+      GlobalFixture::world->gop.fence();
+
+      // Check that the future has been set and the data is what we expect.
+      BOOST_CHECK(tile.probe());
+      for(std::size_t j = 0ul; j < tile.get().size(); ++j)
+        BOOST_CHECK_EQUAL(tile.get()[j], owner);
+    } else {
+      GlobalFixture::world->gop.fence();
+      if(impl.is_local(i)) {
+        // Get the local tile
+        madness::Future<value_type> tile = impl[i];
+
+        // Check that the future has been set and the data is what we expect.
+        BOOST_CHECK(tile.probe());
+        for(std::size_t j = 0ul; j < tile.get().size(); ++j)
+          BOOST_CHECK_EQUAL(tile.get()[j], GlobalFixture::world->rank());
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( tile_iterator_w_value )
+{
+  // Set local tiles via iterators
+  for(tensor_impl_base::iterator it = impl.begin(); it != impl.end(); ++it) {
+    BOOST_CHECK_NO_THROW(*it = value_type(impl.trange().make_tile_range(it.ordinal()), impl.owner(it.ordinal())));
+  }
+
+  GlobalFixture::world->gop.fence();
 
   // Get each tile before it is set
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
-    tiles.push_back(impl[i]);
+    if(GlobalFixture::world->rank() == 0) {
+      // Get the tile future (may or may not be remote) and wait for the data to arrive.
+      value_type tile = impl[i];
+      GlobalFixture::world->gop.fence();
+
+      // Check that the future has been set and the data is what we expect.
+      for(std::size_t j = 0ul; j < tile.size(); ++j)
+        BOOST_CHECK_EQUAL(tile[j], impl.owner(i));
+    } else {
+      GlobalFixture::world->gop.fence();
+      if(impl.is_local(i)) {
+        // Get the local tile
+        value_type tile = impl[i];
+
+        // Check that the future has been set and the data is what we expect.
+        for(std::size_t j = 0ul; j < tile.size(); ++j)
+          BOOST_CHECK_EQUAL(tile[j], GlobalFixture::world->rank());
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( tile_iterator_w_future )
+{
+  // Set local tiles via iterators
+  for(tensor_impl_base::iterator it = impl.begin(); it != impl.end(); ++it) {
+    madness::Future<value_type> tile;
+    BOOST_CHECK_NO_THROW(*it = tile);
+    tile.set(value_type(impl.trange().make_tile_range(it.ordinal()), GlobalFixture::world->rank()));
   }
 
+  GlobalFixture::world->gop.fence();
+
+  // Get each tile before it is set
+  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+    if(GlobalFixture::world->rank() == 0) {
+      const ProcessID owner = impl.owner(i);
+
+      // Get the tile, which may be local or remote.
+      madness::Future<value_type> tile = impl[i];
+      GlobalFixture::world->gop.fence();
+
+      // Check that the future has been set and the data is what we expect.
+      BOOST_CHECK(tile.probe());
+      for(std::size_t j = 0ul; j < tile.get().size(); ++j)
+        BOOST_CHECK_EQUAL(tile.get()[j], impl.owner(i));
+    } else {
+      GlobalFixture::world->gop.fence();
+      if(impl.is_local(i)) {
+        // Get the local tile
+        madness::Future<value_type> tile = impl[i];
+
+        // Check that the future has been set and the data is what we expect.
+        BOOST_CHECK(tile.probe());
+        for(std::size_t j = 0ul; j < tile.get().size(); ++j)
+          BOOST_CHECK_EQUAL(tile.get()[j], GlobalFixture::world->rank());
+      }
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE( dense )
@@ -262,6 +453,22 @@ BOOST_AUTO_TEST_CASE( set_value )
   BOOST_CHECK_THROW(impl.set(impl.size(), value_type()), TiledArray::Exception);
   BOOST_CHECK_THROW(impl.set(impl.size() + 2, value_type()), TiledArray::Exception);
 #endif // TA_EXCEPTION_ERROR
+}
+
+BOOST_AUTO_TEST_CASE( assign_value )
+{
+  // Check that we can set all elements
+  for(std::size_t i = 0; i < impl.size(); ++i)
+    if(impl.is_local(i)) {
+      BOOST_CHECK_NO_THROW(impl[i] =
+          value_type(impl.trange().make_tile_range(i), GlobalFixture::world->rank()));
+    }
+
+  GlobalFixture::world->gop.fence();
+  std::size_t n = impl.local_size();
+  GlobalFixture::world->gop.sum(n);
+
+  BOOST_CHECK_EQUAL(n, impl.size());
 }
 
 BOOST_AUTO_TEST_CASE( array_operator )

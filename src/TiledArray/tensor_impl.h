@@ -65,12 +65,20 @@ namespace TiledArray {
         return *this;
       }
 
-      typename TensorImpl<Tile>::future get() const {
+
+      typename TensorImpl<Tile>::future future() const {
         TA_ASSERT(tensor_);
         return tensor_->get(index_);
       }
 
-      operator typename TensorImpl<Tile>::future() const { return get(); }
+      const typename TensorImpl<Tile>::value_type& get() const {
+        TA_ASSERT(tensor_);
+        return future().get();
+      }
+
+      operator typename TensorImpl<Tile>::future() const { return future(); }
+
+      operator const typename TensorImpl<Tile>::value_type&() const { return get(); }
     }; // class reference
 
     /// Tensor tile reference
@@ -100,12 +108,19 @@ namespace TiledArray {
         tensor_(other.tensor_), index_(other.index_)
       { }
 
-      typename TensorImpl<Tile>::future get() const {
+      typename TensorImpl<Tile>::future future() const {
         TA_ASSERT(tensor_);
         return tensor_->get(index_);
       }
 
-      operator typename TensorImpl<Tile>::future() const { return get(); }
+      const typename TensorImpl<Tile>::value_type& get() const {
+        TA_ASSERT(tensor_);
+        return future().get();
+      }
+
+      operator typename TensorImpl<Tile>::future() const { return future(); }
+
+      operator const typename TensorImpl<Tile>::value_type&() const { return get(); }
     }; // class reference
 
 

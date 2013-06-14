@@ -210,7 +210,7 @@ namespace TiledArray {
         pimpl_(pimpl),
         index_(index),
         value_(value),
-        result_(pimpl->operator[](index))
+        result_(pimpl->get(index))
       { }
 
       virtual void run(madness::World&) {
