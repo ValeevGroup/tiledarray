@@ -414,38 +414,42 @@ namespace TiledArray {
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
 
   template <typename T, typename AT, typename U, typename AU>
-  Tensor<T, AT> operator+(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
+  inline Tensor<T, AT> operator+(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
     return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Plus<T, U, T>());
   }
 
   template <typename T, typename AT, typename U, typename AU>
-  Tensor<T, AT> operator-(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
+  inline Tensor<T, AT> operator-(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
     return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Minus<T, U, T>());
   }
 
   template <typename T, typename AT, typename U, typename AU>
-  Tensor<T, AT> operator*(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
+  inline Tensor<T, AT> operator*(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
     return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Multiplies<T, U, T>());
   }
 
   template <typename T, typename AT, typename N>
-  typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
+  inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(const Tensor<T, AT>& left, N right) {
     return Tensor<T,AT>(left.range(), left.begin(), TiledArray::detail::Scale<T>(right));
   }
 
   template <typename T, typename AT, typename N>
-  typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
+  inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(N left, const Tensor<T, AT>& right) {
-    return Tensor<T,AT>(right.range(), right.begin(),
-        TiledArray::detail::Scale<T>(left));
+    return Tensor<T,AT>(right.range(), right.begin(), TiledArray::detail::Scale<T>(left));
+  }
+
+  template <typename T, typename AT>
+  inline Tensor<T, AT> operator-(const Tensor<T, AT>& arg) {
+    return Tensor<T,AT>(arg.range(), arg.begin(), TiledArray::detail::Negate<T, T>());
   }
 
   template <typename T, typename A>
-  std::ostream& operator<<(std::ostream& os, const Tensor<T, A>& t) {
+  inline std::ostream& operator<<(std::ostream& os, const Tensor<T, A>& t) {
     os << t.range() << " { ";
     for(typename Tensor<T, A>::const_iterator it = t.begin(); it != t.end(); ++it) {
       os << *it << " ";
