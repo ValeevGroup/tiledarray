@@ -123,6 +123,47 @@ namespace TiledArray {
       }
     }; // class ScalPlus
 
+    /// Generalization of \c std::plus with scaling, but \c First plus \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    /// \tparam Result Result type
+    template <typename First, typename Second>
+    struct ScalPlusAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef Second second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+      typedef typename detail::scalar_type<First>::type scalar_type; ///< Scaling factor type
+
+    private:
+      scalar_type factor_; ///< scaling factor
+
+    public:
+
+      // Constructors & assignment operator
+      ScalPlusAssign(scalar_type factor) : factor_(factor) { }
+      ScalPlusAssign(const ScalPlusAssign<First,Second>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      ScalPlusAssign<First,Second>&
+      operator=(const  ScalPlusAssign<First,Second>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      /// Scaling factor accessor
+      scalar_type factor() const { return factor_; }
+
+      /// Compute the scaled sum of \c first and \c second
+
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      /// \return \c (first+second)*factor
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        (first += second) *= factor_;
+      }
+    }; // class ScalPlus
+
     /// Generalization of \c std::minus, but \c First minus \c Second yielding \c Result
 
     /// \tparam First Left-hand argument type
@@ -300,6 +341,24 @@ namespace TiledArray {
         return -arg;
       }
     }; // class Negate
+
+    /// Negate and assign a value, where \c Arg yielding \c Arg
+
+    /// \tparam Arg Argument type
+    /// \tparam Result Result type
+    template <typename Arg>
+    struct NegateAssign {
+      typedef Arg& argument_type; ///< The argument type
+      typedef Arg result_type; ///< The result type
+
+      /// Compute the product of \c first and \c second
+
+      /// \param arg The  argument
+      /// \return \c -arg
+      void operator()(argument_type arg) const {
+        arg = -arg;
+      }
+    }; // class NegateAssign
 
     /// Generalization of \c std::negate with scaling, but \c Arg yielding \c Result
 

@@ -18,7 +18,10 @@
 
 # tests/Makefile
 
-AM_CPPFLAGS = -DTILEDARRAY_NO_USER_ERROR_MESSAGES=1 -I$(top_srcdir)/src/
+include $(top_srcdir)/MakeGlobal.am
+
+AM_CPPFLAGS += $(MADNESS_CPPFLAGS) -DTILEDARRAY_NO_USER_ERROR_MESSAGES=1
+LDADD = $(MADNESS_LIB)
 
 check_PROGRAMS = ta_test
 ta_test_SOURCES = ta_test.cpp \
@@ -66,6 +69,7 @@ ta_test_SOURCES = ta_test.cpp \
                   iteration_test.h \
                   global_fixture.h \
                   unit_test_config.h
+
 TESTS = $(check_PROGRAMS)
 
 check_parallel: $(TESTS)

@@ -191,17 +191,16 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        TiledArray::detail::Plus<typename Result::value_type,
-            typename Right::value_type, typename Result::value_type> op;
-
         if(perm_.dim() > 1) {
           result_type result;
+          TiledArray::detail::Plus<typename Result::value_type,
+              typename Right::value_type, typename Result::value_type> op;
           permute(result, perm_, first, second, op);
           return result;
-        } else {
-          first += second;
-          return first;
         }
+
+        first += second;
+        return first;
       }
 
       /// Add a zero tile to a non-zero tiles and possibly permute
@@ -227,8 +226,9 @@ namespace TiledArray {
           result_type result;
           permute(result, perm_, first); // permute
           return result;
-        } else
-          return first; // No permute
+        }
+
+        return first; // No permute
       }
     }; // class Add
 
@@ -292,17 +292,16 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        TiledArray::detail::Plus<typename Left::value_type,
-            typename Result::value_type, typename Result::value_type> op;
-
         if(perm_.dim() > 1) {
           result_type result;
+          TiledArray::detail::Plus<typename Left::value_type,
+              typename Result::value_type, typename Result::value_type> op;
           permute(result, perm_, first, second, op);
           return result;
-        } else {
-          second += first;
-          return second;
         }
+
+        second += first;
+        return second;
       }
 
       /// Add a zero tile to a non-zero tiles and possibly permute
@@ -310,13 +309,13 @@ namespace TiledArray {
       /// \param second The right-hand argument
       /// \return The sum and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
-        result_type result;
-        if(perm_.dim() > 1)
+        if(perm_.dim() > 1) {
+          result_type result;
           permute(result, perm_, second); // permute
-        else
-          return second; // no permute
+          return result;
+        }
 
-        return result;
+        return second; // no permute
       }
 
       /// Add a non-zero tiles to a zero tile and possibly permute

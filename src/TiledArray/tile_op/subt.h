@@ -93,14 +93,14 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        TiledArray::detail::Minus<typename Left::value_type,
-            typename Right::value_type, typename Result::value_type> op;
-
         result_type result;
-        if(perm_.dim() > 1)
+        if(perm_.dim() > 1) {
+          TiledArray::detail::Minus<typename Left::value_type,
+              typename Right::value_type, typename Result::value_type> op;
           permute(result, perm_, first, second, op);
-        else
-          result = result_type(first.range(), first.begin(), second.begin(), op);
+        } else {
+          result = first - second;
+        }
 
         return result;
       }
@@ -196,17 +196,16 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        TiledArray::detail::Minus<typename Result::value_type,
-            typename Right::value_type, typename Result::value_type> op;
-
         if(perm_.dim() > 1) {
           result_type result;
+          TiledArray::detail::Minus<typename Result::value_type,
+              typename Right::value_type, typename Result::value_type> op;
           permute(result, perm_, first, second, op);
           return result;
-        } else {
-          first -= second;
-          return first;
         }
+
+        first -= second;
+        return first;
       }
 
       /// Add a zero tile from a non-zero tiles and possibly permute
@@ -214,10 +213,10 @@ namespace TiledArray {
       /// \param second The right-hand argument
       /// \return The difference and permutation of \c first and \c second
       result_type operator()(zero_left_type, second_argument_type second) const {
+        result_type result;
         TiledArray::detail::Negate<typename Right::value_type,
             typename Result::value_type> op;
 
-        result_type result;
         if(perm_.dim() > 1)
           permute(result, perm_, second, op); // permute
         else

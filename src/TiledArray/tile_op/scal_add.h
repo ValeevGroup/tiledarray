@@ -225,19 +225,20 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        const TiledArray::detail::ScalPlus<typename Result::value_type,
-            typename Right::value_type, typename Result::value_type> op(factor_);
 
         if(perm_.dim() > 1) {
+          const TiledArray::detail::ScalPlus<typename Result::value_type,
+              typename Right::value_type, typename Result::value_type> op(factor_);
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
-        } else {
-          const std::size_t end = first.size();
-          for(std::size_t i = 0ul; i < end; ++i)
-            first[i] = op(first[i], second[i]);
-          return first;
         }
+
+
+        const TiledArray::detail::ScalPlusAssign<typename Result::value_type,
+            typename Right::value_type> op(factor_);
+        math::vector_assign(first.size(), second.data(), first.data(), op);
+        return first;
       }
 
       /// Add and scale a zero tile to a non-zero tiles and possibly permute

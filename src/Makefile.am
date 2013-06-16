@@ -18,5 +18,15 @@
 
 # src/Makefile
 
+include $(top_srcdir)/MakeGlobal.am
+
 SUBDIRS = TiledArray
 include_HEADERS = tiled_array.h
+
+if NESTD_MADNESS
+  
+install-exec-local: 
+	$(MAKE) -C $(top_builddir)/madness install-linalg
+
+	
+endif

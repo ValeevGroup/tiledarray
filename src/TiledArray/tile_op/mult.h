@@ -164,10 +164,10 @@ namespace TiledArray {
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
-        } else {
-          first *= second;
-          return first;
         }
+
+        first *= second;
+        return first;
       }
     }; // class Mult
 
@@ -227,17 +227,16 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-
         if(perm_.dim() > 1) {
           TiledArray::detail::Multiplies<typename Left::value_type,
               typename Result::value_type, typename Result::value_type> op;
           result_type result;
           permute(result, perm_, first, second, op);
           return result;
-        } else {
-          second *= first;
-          return second;
         }
+
+        second *= first;
+        return second;
       }
     }; // class Mult
 

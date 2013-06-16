@@ -18,6 +18,8 @@
 
 # src/TiledArray/math/Makefile
 
+include $(top_srcdir)/MakeGlobal.am
+
 library_includedir = $(includedir)/TiledArray/pmap
 library_include_HEADERS = blocked_pmap.h \
                           cyclic_pmap.h \

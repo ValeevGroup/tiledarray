@@ -24,5 +24,7 @@
 
 # src/TiledArray/algebra/Makefile
 
+include $(top_srcdir)/MakeGlobal.am
+
 library_includedir = $(includedir)/TiledArray/algebra
 library_include_HEADERS = conjgrad.h diis.h utils.h

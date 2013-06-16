@@ -18,7 +18,9 @@
 
 # src/TiledArray/Makefile
 
-SUBDIRS = math pmap expressions algebra
+include $(top_srcdir)/MakeGlobal.am
+
+SUBDIRS = math pmap tile_op dist_eval expressions algebra
 library_includedir = $(includedir)/TiledArray
 library_include_HEADERS = annotated_tensor.h \
                           array.h \

@@ -86,11 +86,10 @@ namespace TiledArray {
             typename Arg::value_type> op;
 
         result_type result;
-
         if(perm_.dim() > 1) {
           permute(result, perm_, arg, op);
         } else {
-          result = result_type(arg.range(), arg.begin(), op);
+          result = -arg;
         }
 
         return result;
@@ -113,6 +112,10 @@ namespace TiledArray {
 
     private:
       Permutation perm_; ///< The result permutation
+
+      static inline void negate(typename argument_type::value_type& value) {
+        value = -value;
+      }
 
     public:
       /// Default constructor
@@ -146,18 +149,15 @@ namespace TiledArray {
       /// \return The negative and permutation of \c arg
       result_type operator()(argument_type arg) const {
         if(perm_.dim() > 1) {
-          TiledArray::detail::Negate<typename Result::value_type,
-              typename Result::value_type> op;
           result_type result;
-          permute(result, perm_, arg, op);
+          permute(result, perm_, arg,
+              TiledArray::detail::Negate<typename Result::value_type,
+              typename Result::value_type>());
           return result;
         }
 
-        typedef Eigen::Matrix<typename Result::value_type, Eigen::Dynamic, 1> arg_matrix_type;
-        typedef Eigen::Map<arg_matrix_type, Eigen::AutoAlign> arg_map_type;
-
-        arg_map_type arg_map(arg.data(), arg.size());
-        arg_map = -arg_map;
+        math::vector_assign(arg.size(), arg.data(),
+            TiledArray::detail::NegateAssign<typename Result::value_type>());
         return arg;
       }
     }; // class Neg

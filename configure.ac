@@ -23,6 +23,13 @@ AC_INIT([TiledArray], [0.0],
 AC_CONFIG_SRCDIR([src/tiled_array.h])
 AC_CONFIG_MACRO_DIR([config])
 AC_CONFIG_AUX_DIR([build-aux])
+
+# Add MADNESS as an optional subpackage.
+if test -d "$srcdir/madness"; then
+  AC_CONFIG_SUBDIRS([madness])
+fi
+
+# Set the langage to be used
 AC_LANG([C++])
 
 # Initialize automake
@@ -91,7 +98,12 @@ AC_CHECK_HEADER([Eigen/Core], [], [
 ])
 
 # Check for the presence of M-A-D-N-E-S-S header and library.
-ACX_CHECK_MADNESS
+if test -d "$srcdir/madness"; then
+  AC_MSG_NOTICE([Using nested MADNESS package.])
+else
+  ACX_CHECK_MADNESS
+fi
+AM_CONDITIONAL([NESTD_MADNESS], [test -d "$srcdir/madness"])
 
 # Check for the presence of boost header files and add the --with-boost-test-lib
 # option. 

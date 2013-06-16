@@ -12,3 +12,5 @@ syntax: regexp
 ^org.eclipse.cdt.core.prefs$
 syntax: regexp
 ^src/config_h\.in$
+syntax: regexp
+^madness$

@@ -23,7 +23,10 @@
  
 # examples/vector_tests
 
-AM_CPPFLAGS = -I$(top_srcdir)/src/
+include $(top_srcdir)/MakeGlobal.am
+
+AM_CPPFLAGS += $(MADNESS_CPPFLAGS)
+LDADD = $(MADNESS_LIB)
 
 noinst_PROGRAMS = vector
 

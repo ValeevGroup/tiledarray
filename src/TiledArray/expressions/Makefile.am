@@ -18,6 +18,8 @@
 
 # src/TiledArray/expressions/Makefile
 
+include $(top_srcdir)/MakeGlobal.am
+
 library_includedir = $(includedir)/TiledArray/expressions
 library_include_HEADERS = base.h \
                           binary_base.h \
