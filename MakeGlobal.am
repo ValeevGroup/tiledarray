@@ -20,7 +20,7 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/src/
 if NESTD_MADNESS
-MADNESS_CPPFLAGS = -I$(top_srcdir)/madness/include -I$(top_srcdir)/madness/src/lib
+MADNESS_CPPFLAGS = -I$(top_srcdir)/madness/include -I$(top_builddir)/madness/include -I$(top_srcdir)/madness/src/lib
 MADNESS_LIB = $(top_builddir)/madness/src/lib/world/libMADworld.a
   
 $(top_builddir)/madness/src/lib/world/libMADworld.a:
