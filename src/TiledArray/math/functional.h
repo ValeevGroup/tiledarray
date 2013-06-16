@@ -123,11 +123,11 @@ namespace TiledArray {
       }
     }; // class ScalPlus
 
-    /// Generalization of \c std::plus with scaling, but \c First plus \c Second yielding \c Result
+    /// Generalization of \c std::plus with scaling and assign, but \c First
+    /// plus \c Second yielding \c First
 
     /// \tparam First Left-hand argument type
     /// \tparam Second Right-hand argument type
-    /// \tparam Result Result type
     template <typename First, typename Second>
     struct ScalPlusAssign {
       typedef First& first_argument_type; ///< The left-hand argument type
@@ -154,11 +154,10 @@ namespace TiledArray {
       /// Scaling factor accessor
       scalar_type factor() const { return factor_; }
 
-      /// Compute the scaled sum of \c first and \c second
+      /// Compute the scaled sum of \c first and \c second and store the result in \c first
 
       /// \param first The left-hand argument
       /// \param second The right-hand argument
-      /// \return \c (first+second)*factor
       result_type operator()(first_argument_type first, second_argument_type second) const {
         (first += second) *= factor_;
       }
@@ -345,16 +344,14 @@ namespace TiledArray {
     /// Negate and assign a value, where \c Arg yielding \c Arg
 
     /// \tparam Arg Argument type
-    /// \tparam Result Result type
     template <typename Arg>
     struct NegateAssign {
       typedef Arg& argument_type; ///< The argument type
       typedef Arg result_type; ///< The result type
 
-      /// Compute the product of \c first and \c second
+      /// Compute and assign the negative of \c arg
 
-      /// \param arg The  argument
-      /// \return \c -arg
+      /// \param arg The argument
       void operator()(argument_type arg) const {
         arg = -arg;
       }
