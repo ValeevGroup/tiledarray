@@ -71,15 +71,15 @@ namespace TiledArray {
         return tensor_->get(index_);
       }
 
-      const typename TensorImpl<Tile>::value_type& get() const {
+      const typename TensorImpl<Tile>::value_type get() const {
         TA_ASSERT(tensor_);
         return future().get();
       }
 
       operator typename TensorImpl<Tile>::future() const { return future(); }
 
-      operator const typename TensorImpl<Tile>::value_type&() const { return get(); }
-    }; // class reference
+      operator const typename TensorImpl<Tile>::value_type() const { return get(); }
+    }; // class TileReference
 
     /// Tensor tile reference
     template <typename Tile>
@@ -113,15 +113,15 @@ namespace TiledArray {
         return tensor_->get(index_);
       }
 
-      const typename TensorImpl<Tile>::value_type& get() const {
+      const typename TensorImpl<Tile>::value_type get() const {
         TA_ASSERT(tensor_);
         return future().get();
       }
 
       operator typename TensorImpl<Tile>::future() const { return future(); }
 
-      operator const typename TensorImpl<Tile>::value_type&() const { return get(); }
-    }; // class reference
+      operator const typename TensorImpl<Tile>::value_type() const { return get(); }
+    }; // class TileConstReference
 
 
     /// Distributed tensor iterator
