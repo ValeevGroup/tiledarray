@@ -60,10 +60,52 @@ ACX_ENABLE_CXXFLAGS_ARG([[cplusplus0x]], [-std], [c++0x], [no])
 ACX_CHECK_STATIC_ASSERT
 
 # Set debugging
-ACX_ENABLE_CXXFLAGS_OPT([debugging], [-g], [], [no])
+acx_enable_debuging="no"
+AC_ARG_ENABLE([debugging],
+  [AC_HELP_STRING([--enable-debugging@<:@=yes|no|OPTION@:>@],
+    [Enable optimization for C and C++ (e.g. -g) @<:@default=yes@:>@]) ],
+  [
+    case $enableval in
+      yes)
+        acx_enable_debuging="yes"
+        CXXFLAGS="$CXXFLAGS -g"
+      ;;
+      no)
+        acx_enable_debuging="no"
+      ;;
+      *)
+        acx_enable_debuging="yes"
+        CXXFLAGS="$CXXFLAGS -g$enableval"
+      ;;
+    esac
+  ]
+)
 
 # Set optimization
-ACX_ENABLE_CXXFLAGS_OPT([optimization], [-O], [2], [yes])
+AC_ARG_ENABLE([optimization],
+  [AC_HELP_STRING([--enable-optimization@<:@=yes|no|OPTION@:>@],
+    [Enable optimization for C and C++ (e.g. -O2) @<:@default=yes@:>@]) ],
+  [
+    case $enableval in
+      yes)
+        CXXFLAGS="$CXXFLAGS -O2"
+      ;;
+      no)
+      ;;
+      *)
+        CXXFLAGS="$CXXFLAGS -O$enableval"
+      ;;
+    esac
+  ],
+  [
+    if test "x$acx_enable_debugging" == xno; then
+      CXXFLAGS="$CXXFLAGS -O2"
+    else
+      CXXFLAGS="$CXXFLAGS -O0"
+      AC_MSG_WARN([Optimization was disabled, because debugging is enabled. Add --enable-optimization to overide this behavior.])
+    fi
+  ]
+)
 
 AC_CHECK_HEADER([mpi.h], [], [AC_MSG_ERROR([Unable to find mpi.h.])])
 
