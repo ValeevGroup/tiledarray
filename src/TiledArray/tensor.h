@@ -189,6 +189,10 @@ namespace TiledArray {
       return *this;
     }
 
+    Tensor_ clone() const {
+      return (pimpl_ ? Tensor_(pimpl_->range_, pimpl_->data_.data()) : Tensor_());
+    }
+
     /// Assign a range to this tensor
 
     /// The new range must have the same dimensions as the original, unless this
