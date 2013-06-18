@@ -417,41 +417,107 @@ namespace TiledArray {
   template <typename T, typename A>
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
 
+  /// Tensor plus operator
+
+  /// Add two tensors
+  /// \tparam T The element type of \c left
+  /// \tparam AT The allocator type of \c left
+  /// \tparam U The element type of \c right
+  /// \tparam AU The allocator type of \c right
+  /// \param left The left-hand tensor argument
+  /// \param right The right-hand tensor argument
+  /// \return A tensor where element \c i is equal to <tt> left[i] + right[i] </tt>
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator+(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
     return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Plus<T, U, T>());
   }
 
+  /// Tensor minus operator
+
+  /// Subtract two tensors
+  /// \tparam T The element type of \c left
+  /// \tparam AT The allocator type of \c left
+  /// \tparam U The element type of \c right
+  /// \tparam AU The allocator type of \c right
+  /// \param left The left-hand tensor argument
+  /// \param right The right-hand tensor argument
+  /// \return A tensor where element \c i is equal to <tt> left[i] - right[i] </tt>
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator-(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
     return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Minus<T, U, T>());
   }
 
+  /// Tensor multiplication operator
+
+  /// Element-wise multiplication of two tensors
+  /// \tparam T The element type of \c left
+  /// \tparam AT The allocator type of \c left
+  /// \tparam U The element type of \c right
+  /// \tparam AU The allocator type of \c right
+  /// \param left The left-hand tensor argument
+  /// \param right The right-hand tensor argument
+  /// \return A tensor where element \c i is equal to <tt> left[i] * right[i] </tt>
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator*(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
     return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Multiplies<T, U, T>());
   }
 
+
+  /// Tensor multiplication operator
+
+  /// Scale a tensor
+  /// \tparam T The element type of \c left
+  /// \tparam AT The allocator type of \c left
+  /// \tparam U The element type of \c right
+  /// \tparam AU The allocator type of \c right
+  /// \param left The left-hand tensor argument
+  /// \param right The right-hand tensor argument
+  /// \return A tensor where element \c i is equal to <tt> left[i] * right </tt>
   template <typename T, typename AT, typename N>
   inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(const Tensor<T, AT>& left, N right) {
     return Tensor<T,AT>(left.range(), left.begin(), TiledArray::detail::Scale<T>(right));
   }
 
+  /// Tensor multiplication operator
+
+  /// Scale a tensor
+  /// \tparam T The element type of \c left
+  /// \tparam AT The allocator type of \c left
+  /// \tparam U The element type of \c right
+  /// \tparam AU The allocator type of \c right
+  /// \param left The left-hand tensor argument
+  /// \param right The right-hand tensor argument
+  /// \return A tensor where element \c i is equal to <tt> left * right[i] </tt>
   template <typename T, typename AT, typename N>
   inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(N left, const Tensor<T, AT>& right) {
     return Tensor<T,AT>(right.range(), right.begin(), TiledArray::detail::Scale<T>(left));
   }
 
+  /// Tensor multiplication operator
+
+  /// Negate a tensor
+  /// \tparam T The element type of \c arg
+  /// \tparam AT The allocator type of \c arg
+  /// \param arg The argument tensor
+  /// \return A tensor where element \c i is equal to \c -arg[i]
   template <typename T, typename AT>
   inline Tensor<T, AT> operator-(const Tensor<T, AT>& arg) {
     return Tensor<T,AT>(arg.range(), arg.begin(), TiledArray::detail::Negate<T, T>());
   }
 
+  /// Tensor output operator
+
+  /// Ouput tensor \c t to the output stream, \c os .
+  /// \tparam T The element type of \c arg
+  /// \tparam AT The allocator type of \c arg
+  /// \param os The output stream
+  /// \param t The tensor to be output
+  /// \return A reference to the output stream
   template <typename T, typename A>
   inline std::ostream& operator<<(std::ostream& os, const Tensor<T, A>& t) {
     os << t.range() << " { ";
