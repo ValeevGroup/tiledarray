@@ -471,10 +471,9 @@ namespace TiledArray {
   /// Scale a tensor
   /// \tparam T The element type of \c left
   /// \tparam AT The allocator type of \c left
-  /// \tparam U The element type of \c right
-  /// \tparam AU The allocator type of \c right
+  /// \tparam N Numeric type
   /// \param left The left-hand tensor argument
-  /// \param right The right-hand tensor argument
+  /// \param right The right-hand scalar argument
   /// \return A tensor where element \c i is equal to <tt> left[i] * right </tt>
   template <typename T, typename AT, typename N>
   inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
@@ -485,14 +484,13 @@ namespace TiledArray {
   /// Tensor multiplication operator
 
   /// Scale a tensor
+  /// \tparam N Numeric type
   /// \tparam T The element type of \c left
   /// \tparam AT The allocator type of \c left
-  /// \tparam U The element type of \c right
-  /// \tparam AU The allocator type of \c right
-  /// \param left The left-hand tensor argument
+  /// \param left The left-hand scalar argument
   /// \param right The right-hand tensor argument
   /// \return A tensor where element \c i is equal to <tt> left * right[i] </tt>
-  template <typename T, typename AT, typename N>
+  template <typename N, typename T, typename AT>
   inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(N left, const Tensor<T, AT>& right) {
     return Tensor<T,AT>(right.range(), right.begin(), TiledArray::detail::Scale<T>(left));
@@ -518,10 +516,10 @@ namespace TiledArray {
   /// \param os The output stream
   /// \param t The tensor to be output
   /// \return A reference to the output stream
-  template <typename T, typename A>
-  inline std::ostream& operator<<(std::ostream& os, const Tensor<T, A>& t) {
+  template <typename T, typename AT>
+  inline std::ostream& operator<<(std::ostream& os, const Tensor<T, AT>& t) {
     os << t.range() << " { ";
-    for(typename Tensor<T, A>::const_iterator it = t.begin(); it != t.end(); ++it) {
+    for(typename Tensor<T, AT>::const_iterator it = t.begin(); it != t.end(); ++it) {
       os << *it << " ";
     }
 
