@@ -27,6 +27,6 @@ library_include_HEADERS = add.h \
                           permute.h \
                           scal_add.h \
                           scal_mult.h \
-                          scal_neg.h \
                           scal_subt.h \
+                          scal.h \
                           subt.h

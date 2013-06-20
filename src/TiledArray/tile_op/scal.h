@@ -18,43 +18,44 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  neg.h
- *  May 7, 2013
+ *  scal.h
+ *  June 20, 2013
  *
  */
 
-#ifndef TILEDARRAY_TILE_OP_NEG_H__INCLUDED
-#define TILEDARRAY_TILE_OP_NEG_H__INCLUDED
+#ifndef TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
+#define TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
 #include <TiledArray/tensor.h>
-#include <Eigen/Core>
 
 namespace TiledArray {
   namespace math {
 
-    /// Tile negation operation
+    /// Tile scaling operation
 
-    /// This negation operation will negate the content a tile and apply a
+    /// This scaling operation will scale the content a tile and apply a
     /// permutation to the result tensor. If no permutation is given or the
     /// permutation is null, then the result is not permuted.
     /// \tparam Result The result type
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Neg {
+    class Scal {
     public:
-      typedef Neg<Result, Arg, Consumable> Neg_; ///< This object type
+      typedef Scal<Result, Arg, Consumable> Scal_; ///< This object type
       typedef typename madness::if_c<Consumable, Arg&, const Arg&>::type argument_type; ///< The argument type
       typedef Result result_type; ///< The result tile type
+      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
 
     private:
       Permutation perm_; ///< The result permutation
+      scalar_type factor_; ///< Scaling factor
 
       // Element operation functor types
 
-      typedef Negate<typename Arg::value_type, typename Result::value_type> negate_op;
-      typedef NegateAssign<typename Arg::value_type> negate_assign_op;
+      typedef Scale<typename Arg::value_type> scale_op;
+      typedef ScaleAssign<typename Arg::value_type> scale_assign_op;
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
@@ -62,7 +63,7 @@ namespace TiledArray {
 
       result_type permute(argument_type arg) const {
         result_type result;
-        TiledArray::math::permute(result, perm_, arg, negate_op());
+        TiledArray::math::permute(result, perm_, arg, scale_op(factor_));
         return result;
       }
 
@@ -71,59 +72,72 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool C>
-      static typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
+      typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(argument_type arg) {
-        return -arg;
+      no_permute(argument_type arg) const {
+        return arg * factor_;
       }
 
       template <bool C>
-      static typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
+      typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(argument_type arg) {
-        vector_assign(arg.size(), arg.data(), negate_assign_op());
+      no_permute(argument_type arg) const {
+        vector_assign(arg.size(), arg.data(), scale_assign_op(factor_));
         return arg;
       }
 
     public:
       /// Default constructor
 
-      /// Construct a negation operation that does not permute the result tile
-      Neg() : perm_() { }
+      /// Construct a scaling operation that does not permute the result tile
+      /// and has a scaling factor of 1.
+      Scal() : perm_(), factor_(1) { }
 
       /// Permute constructor
 
-      /// Construct a negation operation that permutes the result tensor
+      /// Construct a scaling operation that scales the result tensor
+      /// \param factor The scaling factor for the operation
+      Scal(const scalar_type factor) :
+        perm_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct a scaling operation that permutes and scales the result tensor.
       /// \param perm The permutation to apply to the result tile
-      Neg(const Permutation& perm) : perm_(perm) { }
+      /// \param factor The scaling factor for the operation [default = 1]
+      Scal(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+        perm_(perm), factor_(factor)
+      { }
 
       /// Copy constructor
 
-      /// \param other The negation operation object to be copied
-      Neg(const Neg_& other) : perm_(other.perm_) { }
+      /// \param other The scaling operation object to be copied
+      Scal(const Scal_& other) : perm_(other.perm_), factor_(other.factor_) { }
 
       /// Copy assignment
 
-      /// \param other The negation operation object to be copied
+      /// \param other The scaling operation object to be copied
       /// \return A reference to this object
-      Neg_& operator=(const Neg_& other) {
+      Scal_& operator=(const Scal_& other) {
         perm_ = other.perm_;
+        factor_ = other.factor_;
         return *this;
       }
 
-      /// Negate a tile and possibly permute
+      /// Scale a tile and possibly permute
 
       /// \param arg The argument
-      /// \return The sum and permutation of \c arg
+      /// \return A scaled and permuted \c arg
       result_type operator()(argument_type arg) const {
         if(perm_.dim() > 1)
           return permute(arg);
 
         return no_permute<Consumable>(arg);
       }
-    }; // class Neg
+    }; // class Scal
 
   } // namespace math
 } // namespace TiledArray
 
-#endif // TILEDARRAY_TILE_OP_NEG_H__INCLUDED
+#endif // TILEDARRAY_TILE_OP_SCAL_H__INCLUDED

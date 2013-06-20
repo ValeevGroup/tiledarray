@@ -44,154 +44,58 @@ namespace TiledArray {
     /// argument is consumable.
     /// \tparam RightConsumable A flag that is \c true when the right-hand
     /// argument is consumable.
-    /// \tparam Enabler Used to disambiguate specialization
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
-        bool RightConsumable, typename Enabler = void>
+        bool RightConsumable>
     class Mult {
     public:
       typedef Mult<Result, Left, Right, false, false> Mult_; ///< This object type
-      typedef const Left& first_argument_type; ///< The left-hand argument type
-      typedef const Right& second_argument_type; ///< The right-hand argument type
+      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type first_argument_type; ///< The left-hand argument type
+      typedef typename madness::if_c<RightConsumable, Right&, const Right&>::type second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result tile type
 
     private:
       Permutation perm_; ///< The result permutation
 
-    public:
-      /// Default constructor
+      // Element operation functor types
 
-      /// Construct a multiplication operation that does not permute the result tile
-      Mult() : perm_() { }
+      typedef Multiplies<typename Left::value_type, typename Right::value_type,
+          typename Result::value_type> multiplies_op;
 
-      /// Permute constructor
+      // Permuting tile evaluation function
+      // These operations cannot consume the argument tile since this operation
+      // requires temporary storage space.
 
-      /// Construct a multiplication operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Mult(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The multiplication operation object to be copied
-      Mult(const Mult_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The multiplication operation object to be copied
-      /// \return A reference to this object
-      Mult_& operator=(const Mult_& other) {
-        perm_ = other.perm_;
-        return *this;
-      }
-
-      /// Multiply two non-zero tiles and possibly permute
-
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The sum and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
+      result_type permute(first_argument_type first, second_argument_type second) const {
         result_type result;
-        if(perm_.dim() > 1) {
-          TiledArray::detail::Multiplies<typename Left::value_type,
-              typename Right::value_type, typename Result::value_type> op;
-
-          permute(result, perm_, first, second, op);
-        } else
-          result = first * second;
-
+        TiledArray::math::permute(result, perm_, first, second, multiplies_op());
         return result;
       }
-    }; // class Mult
 
-    /// Tile multiplication operation
+      // Non-permuting tile evaluation functions
+      // The compiler will select the correct functions based on the consumability
+      // of the arguments.
 
-    /// This multiplication operation will multiply the content two tiles and
-    /// apply a permutation to the result tensor. If no permutation is given or
-    /// the permutation is null, then the result is not permuted.
-    /// \tparam Result The result type
-    /// \tparam Right The right-hand argument type
-    /// \note This specialization assumes the left-hand tile is consumable
-    template <typename Result, typename Right, bool RightConsumable>
-    class Mult<Result, Result, Right, true, RightConsumable, void> {
-    public:
-      typedef Mult<Result, Result, Right, true, false> Mult_; ///< This object type
-      typedef Result first_argument_type; ///< The left-hand argument type
-      typedef const Right& second_argument_type; ///< The right-hand argument type
-      typedef Result result_type; ///< The result tile type
-
-    private:
-      Permutation perm_; ///< The result permutation
-
-    public:
-      /// Default constructor
-
-      /// Construct a multiplication operation that does not permute the result tile
-      Mult() : perm_() { }
-
-      /// Permute constructor
-
-      /// Construct a multiplication operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Mult(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The multiplication operation object to be copied
-      Mult(const Mult_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The multiplication operation object to be copied
-      /// \return A reference to this object
-      Mult_& operator=(const Mult_& other) {
-        perm_ = other.perm_;
-        return *this;
+      template <bool LC, bool RC>
+      static typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
+          (RC && std::is_same<Result, Right>::value), result_type>::type
+      no_permute(first_argument_type first, second_argument_type second) {
+        return first * second;
       }
 
-      /// Multiply two non-zero tiles and possibly permute
-
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The sum and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
-        if(perm_.dim() > 1) {
-          TiledArray::detail::Multiplies<typename Result::value_type,
-              typename Right::value_type, typename Result::value_type> op;
-
-          result_type result;
-          permute(result, perm_, first, second, op);
-          return result;
-        }
-
+      template <bool LC, bool RC>
+      static typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+      no_permute(first_argument_type first, second_argument_type second) {
         first *= second;
         return first;
       }
-    }; // class Mult
 
-
-    /// Tile multiplication operation
-
-    /// This multiplication operation will multiply the content two tiles and
-    /// apply a permutation to the result tensor. If no permutation is given or
-    /// the permutation is null, then the result is not permuted.
-    /// \tparam Result The result type
-    /// \tparam Left The left-hand argument type
-    /// \note This specialization assumes the right-hand tile is consumable
-    template <typename Result, typename Left, bool LeftConsumable>
-    class Mult<Result, Left, Result, LeftConsumable, true,
-        typename madness::disable_if_c<LeftConsumable && std::is_same<Result, Left>::value>::type>
-   {
-    public:
-      typedef Mult<Result, Left, Result, true, false> Mult_; ///< This object type
-      typedef const Left& first_argument_type; ///< The left-hand argument type
-      typedef Result second_argument_type; ///< The right-hand argument type
-      typedef Result result_type; ///< The result tile type
-
-    private:
-      Permutation perm_; ///< The result permutation
+      template <bool LC, bool RC>
+      static typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
+          (!(LC && std::is_same<Result, Left>::value)), result_type>::type
+      no_permute(first_argument_type first, second_argument_type second) {
+        second *= first;
+        return second;
+      }
 
     public:
       /// Default constructor
@@ -227,16 +131,10 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        if(perm_.dim() > 1) {
-          TiledArray::detail::Multiplies<typename Left::value_type,
-              typename Result::value_type, typename Result::value_type> op;
-          result_type result;
-          permute(result, perm_, first, second, op);
-          return result;
-        }
+        if(perm_.dim() > 1)
+          return permute(first, second);
 
-        second *= first;
-        return second;
+        return no_permute<LeftConsumable, RightConsumable>(first, second);
       }
     }; // class Mult
 
