@@ -83,25 +83,27 @@ namespace TiledArray {
   class DIIS {
     public:
       typedef typename D::element_type value_type;
+
+      /// Constructor
+
       /// \param strt The DIIS extrapolation will begin on the iteration given
-      ///             by this integer.  The default is 1.
-      /// \param ndi This integer maximum number of data sets to retain. The
-      ///            default is 5.
+      ///   by this integer (default = 1).
+      /// \param ndi This integer maximum number of data sets to retain (default
+      ///   = 5).
       /// \param dmp This nonnegative floating point number is used to dampen
-      ///            the DIIS extrapolation.  The default is 0.0.
+      ///   the DIIS extrapolation (default = 0.0).
       /// \param ngr The number of iterations in a DIIS group. DIIS
-      ///            extrapolation is only used for the first \c ngrdiis of
-      ///            these iterations.  The default is 1.  If \c ngr is 1 and
-      ///            \c ngrdiis is greater than 0, then DIIS will be used on all
-      ///            iterations after and including the start iteration.
-      ///@param ngrdiis The number of DIIS extrapolations to do
-      ///               at the beginning of an iteration group.  See the documentation for
-      ///               \c ngr . The default is 1.
-      ///@param mf This real number in
-      ///          [0,1] is used to dampen the DIIS extrapolation by mixing the input
-      ///          data with the output data for each iteration. The default is 0.0,
-      ///          which performs no mixing. The approach described in
-      ///          Kerker, Phys. Rev. B, 23, p3082, 1981.
+      ///   extrapolation is only used for the first \c ngrdiis of these
+      ///   iterations (default = 1). If \c ngr is 1 and \c ngrdiis is
+      ///   greater than 0, then DIIS will be used on all iterations after and
+      ///   including the start iteration.
+      /// \param ngrdiis The number of DIIS extrapolations to do at the
+      ///   beginning of an iteration group.  See the documentation for \c ngr
+      ///   (default = 1).
+      /// \param mf This real number in [0,1] is used to dampen the DIIS
+      ///   extrapolation by mixing the input data with the output data for each
+      ///   iteration (default = 0.0), which performs no mixing. The approach
+      ///   described in Kerker, Phys. Rev. B, 23, p3082, 1981.
       DIIS(unsigned int strt=1,
            unsigned int ndi=5,
            value_type dmp =0,
@@ -124,11 +126,12 @@ namespace TiledArray {
       }
 
       /// \param[in,out] x On input, the most recent solution guess; on output,
-      ///                  the extrapolated guess
+      ///   the extrapolated guess
       /// \param[in,out] error On input, the most recent error; on output, the
-      ///                      if \c extrapolate_error \c == \c true will be the
-      ///                      extrapolated error, otherwise the value unchanged
-      /// \param extrapolate_error whether to extrapolate the error
+      ///   if \c extrapolate_error \c == \c true will be the extrapolated
+      ///   error, otherwise the value unchanged
+      /// \param extrapolate_error whether to extrapolate the error (default =
+      ///   false).
       void extrapolate(D& x,
                        D& error,
                        bool extrapolate_error = false)
@@ -211,7 +214,7 @@ namespace TiledArray {
 #endif
 
             // finally, solve the DIIS linear system
-            auto A_QR = A.colPivHouseholderQr();
+            Eigen::ColPivHouseholderQR<EigenMatrixX> A_QR = A.colPivHouseholderQr();
             c = A_QR.solve(rhs);
             absdetA = A_QR.absDeterminant();
 

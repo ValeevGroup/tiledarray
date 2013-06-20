@@ -36,7 +36,7 @@ namespace TiledArray {
     inline std::string dummy_annotation(unsigned int DIM) {
       std::ostringstream oss;
       if (DIM > 0) oss << "i0";
-      for(auto d=1; d<DIM; ++d)
+      for(unsigned int d=1; d<DIM; ++d)
         oss << ",i" << d;
       return oss.str();
     }

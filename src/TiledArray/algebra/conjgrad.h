@@ -41,7 +41,7 @@ namespace TiledArray {
   /// \c D must implement <tt> operator()(const D&, D&) const </tt>
   /// \c D::element_type must be defined and \c D must provide the following
   /// stand-alone functions:
-  ///   \li <tt> size_t size(const D&) </tt>
+  ///   \li <tt> std::size_t size(const D&) </tt>
   ///   \li <tt> D clone(const D&) </tt>
   ///   \li <tt> D copy(const D&) </tt>
   ///   \li <tt> value_type minabs_value(const D&) </tt>
@@ -67,7 +67,7 @@ namespace TiledArray {
         value_type convergence_target = -1.0)
     {
 
-      auto n = size(x);
+      std::size_t n = size(x);
       assert(n == size(preconditioner));
 
       const bool use_diis = false;
@@ -102,7 +102,7 @@ namespace TiledArray {
       bool converged = false;
       const unsigned int max_niter = 500;
       value_type rnorm2 = 0.0;
-      const auto rhs_size = size(b);
+      const std::size_t rhs_size = size(b);
 
       // starting guess: x_0 = D^-1 . b
       XX_i = copy(b);
