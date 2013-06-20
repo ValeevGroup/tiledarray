@@ -224,7 +224,7 @@ namespace TiledArray {
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
         math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
-            detail::PlusAssign<value_type, typename Tensor<U, AU>::value_type>());
+            math::PlusAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
       return *this;
@@ -240,11 +240,11 @@ namespace TiledArray {
       if(!pimpl_) {
         if(! other.empty())
           pimpl_.reset(new Impl(other.range(), other.begin(),
-              std::bind1st(std::minus<value_type>(), 0)));
+              math::Negate<typename Tensor<U, AU>::value_type, value_type>()));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
         math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
-            detail::MinusAssign<value_type, typename Tensor<U, AU>::value_type>());
+            math::MinusAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
       return *this;
@@ -263,7 +263,7 @@ namespace TiledArray {
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
         math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
-            detail::MultipliesAssign<value_type, typename Tensor<U, AU>::value_type>());
+            math::MultipliesAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
       return *this;
@@ -278,7 +278,7 @@ namespace TiledArray {
     operator+=(const U& value) {
       if(pimpl_)
         math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
-            detail::PlusAssignConst<value_type>(value));
+            math::PlusAssignConst<value_type>(value));
 
       return *this;
     }
@@ -292,7 +292,7 @@ namespace TiledArray {
     operator-=(const U& value) {
       if(pimpl_)
         math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
-            detail::PlusAssignConst<value_type>(-value));
+            math::PlusAssignConst<value_type>(-value));
 
       return *this;
     }
@@ -306,7 +306,7 @@ namespace TiledArray {
     operator*=(const U& value) {
       if(pimpl_)
         math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
-            detail::ScaleAssign<value_type>(value));
+            math::ScaleAssign<value_type>(value));
 
       return *this;
     }
@@ -430,7 +430,7 @@ namespace TiledArray {
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator+(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Plus<T, U, T>());
+    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), math::Plus<T, U, T>());
   }
 
   /// Tensor minus operator
@@ -446,7 +446,7 @@ namespace TiledArray {
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator-(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Minus<T, U, T>());
+    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), math::Minus<T, U, T>());
   }
 
   /// Tensor multiplication operator
@@ -462,7 +462,7 @@ namespace TiledArray {
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator*(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
     TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), detail::Multiplies<T, U, T>());
+    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), math::Multiplies<T, U, T>());
   }
 
 
@@ -478,7 +478,7 @@ namespace TiledArray {
   template <typename T, typename AT, typename N>
   inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(const Tensor<T, AT>& left, N right) {
-    return Tensor<T,AT>(left.range(), left.begin(), TiledArray::detail::Scale<T>(right));
+    return Tensor<T,AT>(left.range(), left.begin(), math::Scale<T>(right));
   }
 
   /// Tensor multiplication operator
@@ -493,7 +493,7 @@ namespace TiledArray {
   template <typename N, typename T, typename AT>
   inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(N left, const Tensor<T, AT>& right) {
-    return Tensor<T,AT>(right.range(), right.begin(), TiledArray::detail::Scale<T>(left));
+    return Tensor<T,AT>(right.range(), right.begin(), math::Scale<T>(left));
   }
 
   /// Tensor multiplication operator
@@ -505,7 +505,7 @@ namespace TiledArray {
   /// \return A tensor where element \c i is equal to \c -arg[i]
   template <typename T, typename AT>
   inline Tensor<T, AT> operator-(const Tensor<T, AT>& arg) {
-    return Tensor<T,AT>(arg.range(), arg.begin(), TiledArray::detail::Negate<T, T>());
+    return Tensor<T,AT>(arg.range(), arg.begin(), math::Negate<T, T>());
   }
 
   /// Tensor output operator

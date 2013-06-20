@@ -23,7 +23,7 @@
 #include <TiledArray/type_traits.h>
 
 namespace TiledArray {
-  namespace detail {
+  namespace math {
 
     /// Square function object
 
@@ -169,7 +169,7 @@ namespace TiledArray {
     /// \tparam Second Right-hand argument type
     template <typename First, typename Second, typename Result>
     struct Minus {
-      typedef typename add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
       typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
 
