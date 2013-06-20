@@ -200,7 +200,7 @@ namespace TiledArray {
       return eigen_map(t, n).norm();
     }
 
-    namespace detail {
+    namespace {
 
       /// Vector loop unwind helper class
 
@@ -491,7 +491,7 @@ namespace TiledArray {
 #if TILEDARRAY_LOOP_UNWIND > 1
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval(i, t, u, v, op);
+        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval(i, t, u, v, op);
 #endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
@@ -505,7 +505,7 @@ namespace TiledArray {
 #if TILEDARRAY_LOOP_UNWIND > 1
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval(i, t, u, op);
+        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval(i, t, u, op);
 #endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
@@ -519,7 +519,7 @@ namespace TiledArray {
 #if TILEDARRAY_LOOP_UNWIND > 1
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::assign(i, t, u, op);
+        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::assign(i, t, u, op);
 #endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
@@ -533,7 +533,7 @@ namespace TiledArray {
 #if TILEDARRAY_LOOP_UNWIND > 1
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::assign(i, t, op);
+        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::assign(i, t, op);
 #endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
@@ -561,9 +561,9 @@ namespace TiledArray {
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
         T temp[TILEDARRAY_LOOP_UNWIND];
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t,
+        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t,
             temp, TiledArray::math::detail::abs<T>);
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp,
+        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp,
             result, TiledArray::math::detail::max<T>);
       }
 #endif // TILEDARRAY_LOOP_UNWIND > 1
@@ -580,9 +580,9 @@ namespace TiledArray {
       const unsigned int nx = n - (n % TILEDARRAY_LOOP_UNWIND);
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
         T temp[TILEDARRAY_LOOP_UNWIND];
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t,
+        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::eval_to_temp(i, t,
             temp, TiledArray::math::detail::abs<T>);
-        detail::VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp,
+        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(0u, temp,
             result, TiledArray::math::detail::min<T>);
       }
 #endif // TILEDARRAY_LOOP_UNWIND > 1
