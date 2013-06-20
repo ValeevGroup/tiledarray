@@ -170,7 +170,7 @@ namespace TiledArray {
     template <typename First, typename Second, typename Result>
     struct Minus {
       typedef typename TiledArray::detail::add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
-      typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
 
       /// Compute the difference of \c first and \c second
@@ -209,8 +209,8 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename First, typename Second, typename Result>
     struct ScalMinus {
-      typedef typename add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
-      typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
       typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
 
@@ -249,7 +249,7 @@ namespace TiledArray {
     template <typename First, typename Second>
     struct ScalMinusAssign {
       typedef First& first_argument_type; ///< The left-hand argument type
-      typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
       typedef void result_type; ///< The result type
       typedef typename detail::scalar_type<First>::type scalar_type; ///< Scaling factor type
 
@@ -288,8 +288,8 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename First, typename Second, typename Result>
     struct Multiplies {
-      typedef typename add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
-      typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
 
       /// Compute the product of \c first and \c second
@@ -328,8 +328,8 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename First, typename Second, typename Result>
     struct ScalMultiplies {
-      typedef typename add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
-      typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<First>::type first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
       typedef Result result_type; ///< The result type
       typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
 
@@ -369,7 +369,7 @@ namespace TiledArray {
     template <typename First, typename Second>
     struct ScalMultipliesAssign {
       typedef First& first_argument_type; ///< The left-hand argument type
-      typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
       typedef void result_type; ///< The result type
       typedef typename detail::scalar_type<First>::type scalar_type; ///< Scaling factor type
 
@@ -407,7 +407,7 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename Arg, typename Result>
     struct Negate {
-      typedef typename add_const_to_nonnumeric<Arg>::type argument_type; ///< The argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Arg>::type argument_type; ///< The argument type
       typedef Result result_type; ///< The result type
 
       /// Compute the product of \c first and \c second
@@ -441,7 +441,7 @@ namespace TiledArray {
     /// \tparam Result Result type
     template <typename Arg, typename Result>
     struct ScalNegate {
-      typedef typename add_const_to_nonnumeric<Arg>::type argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Arg>::type argument_type; ///< The left-hand argument type
       typedef Result result_type; ///< The result type
       typedef typename detail::scalar_type<Result>::type scalar_type; ///< Scaling factor type
 
@@ -478,7 +478,7 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     template <typename Arg>
     struct Scale {
-      typedef typename add_const_to_nonnumeric<Arg>::type argument_type;
+      typedef typename TiledArray::detail::add_const_to_nonnumeric<Arg>::type argument_type;
       typedef Arg result_type;
       typedef typename TiledArray::detail::scalar_type<Arg>::type scalar_type;
 

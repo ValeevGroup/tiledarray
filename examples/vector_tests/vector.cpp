@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op(n, a, b, c, TiledArray::detail::Plus<double, double, double>());
+    TiledArray::math::vector_op(n, a, b, c, TiledArray::math::Plus<double, double, double>());
   }
   stop = madness::wall_time();
 
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op(n, a, b, c, TiledArray::detail::ScalPlus<double, double, double>(3.0));
+    TiledArray::math::vector_op(n, a, b, c, TiledArray::math::ScalPlus<double, double, double>(3.0));
   }
   stop = madness::wall_time();
 
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op(n, a, b, c, TiledArray::detail::Multiplies<double, double, double>());
+    TiledArray::math::vector_op(n, a, b, c, TiledArray::math::Multiplies<double, double, double>());
   }
   stop = madness::wall_time();
 
@@ -247,7 +247,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op(n, a, b, c, TiledArray::detail::ScalMultiplies<double, double, double>(3.0));
+    TiledArray::math::vector_op(n, a, b, c, TiledArray::math::ScalMultiplies<double, double, double>(3.0));
   }
   stop = madness::wall_time();
 
@@ -305,7 +305,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_assign(n, c, TiledArray::detail::ScaleAssign<double>(3.0));
+    TiledArray::math::vector_assign(n, c, TiledArray::math::ScaleAssign<double>(3.0));
   }
   stop = madness::wall_time();
 

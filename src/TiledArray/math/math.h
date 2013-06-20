@@ -482,7 +482,7 @@ namespace TiledArray {
         }
       }; //  struct VectorOpUnwind
 
-    }  // namespace detail
+    }  // namespace
 
     template <typename T, typename U, typename V, typename Op>
     inline void vector_op(const unsigned int n, const T* t, const U* u, V* v, const Op& op) {
