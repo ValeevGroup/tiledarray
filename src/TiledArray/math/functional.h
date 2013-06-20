@@ -242,6 +242,45 @@ namespace TiledArray {
       }
     }; // class ScalMinus
 
+    /// Generalization of \c std::minus with scaling, but \c First minus \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    template <typename First, typename Second>
+    struct ScalMinusAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+      typedef typename detail::scalar_type<First>::type scalar_type; ///< Scaling factor type
+
+    private:
+      scalar_type factor_; ///< scaling factor
+
+    public:
+
+      // Constructors & assignment operator
+      ScalMinusAssign(scalar_type factor) : factor_(factor) { }
+      ScalMinusAssign(const ScalMinusAssign<First,Second>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      ScalMinusAssign<First,Second>& operator=(const ScalMinusAssign<First,Second>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      /// Scaling factor accessor
+      scalar_type factor() const { return factor_; }
+
+      /// Compute the scaled difference of \c first and \c second
+
+      /// Asssigns <tt> first = (first - second) * factor </tt>
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        (first -= second) *= factor_;
+      }
+    }; // class ScalMinusAssign
+
     /// Generalization of \c std::multiplies, but \c First times \c Second yielding \c Result
 
     /// \tparam First Left-hand argument type
@@ -320,6 +359,45 @@ namespace TiledArray {
       /// \return \c first * \c second
       result_type operator()(first_argument_type first, second_argument_type second) const {
         return result_type(first * second) * factor_;
+      }
+    }; // class ScalMultiplies
+
+    /// Generalization of \c std::multiples with scaling, but \c First times \c Second yielding \c Result
+
+    /// \tparam First Left-hand argument type
+    /// \tparam Second Right-hand argument type
+    template <typename First, typename Second>
+    struct ScalMultipliesAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename add_const_to_nonnumeric<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+      typedef typename detail::scalar_type<First>::type scalar_type; ///< Scaling factor type
+
+    private:
+      scalar_type factor_; ///< scaling factor
+
+    public:
+
+      // Constructors & assignment operator
+      ScalMultipliesAssign(scalar_type factor) : factor_(factor) { }
+      ScalMultipliesAssign(const ScalMultipliesAssign<First,Second>& other) : factor_(other.factor_) { }
+
+      // Assignment operator
+      ScalMultipliesAssign<First,Second>&
+      operator=(const ScalMultipliesAssign<First,Second>& other) {
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      /// Scaling factor accessor
+      scalar_type factor() const { return factor_; }
+
+      /// Compute the scaled product of \c first and \c second
+
+      /// \param first The left-hand argument
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first *= second * factor_;
       }
     }; // class ScalMultiplies
 
