@@ -155,24 +155,13 @@ namespace TiledArray {
   /// \param matrix The matrix that will be assigned the content of \c tensor
   /// \throw TiledArray::Exception When the dimensions of \c tensor are not equal
   /// to 1 or 2.
+  /// \throw TiledArray::Exception When the range of \c tensor is outside the
+  /// range of \c matrix .
   template <typename T, typename A, typename Derived>
   inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix, Tensor<T, A>& tensor) {
-    if(matrix.rows() == 1) {
-      TA_ASSERT(tensor.range().dim() == 1u);
-      TA_ASSERT(tensor.range().finish()[0] <= matrix.cols());
+    TA_ASSERT((tensor.range().dim() == 2u) || (tensor.range().dim() == 1u));
 
-      // Copy vector to tensor
-      eigen_map(tensor, 1, tensor.range().size()[0]) =
-          matrix.block(0, tensor.range().start()[0], 1, tensor.range().size()[0]);
-    } else if(matrix.cols() == 1) {
-      TA_ASSERT(tensor.range().dim() == 1u);
-      TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
-
-      // Copy vector to tensor
-      eigen_map(tensor, tensor.range().size()[0], 1) =
-          matrix.block(tensor.range().start()[0], 0, tensor.range().size()[0], 1);
-    } else {
-      TA_ASSERT(tensor.range().dim() == 2u);
+    if(tensor.range().dim() == 2u) {
       TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
       TA_ASSERT(tensor.range().finish()[1] <= matrix.cols());
 
@@ -180,6 +169,23 @@ namespace TiledArray {
       eigen_map(tensor, tensor.range().size()[0], tensor.range().size()[1]) =
           matrix.block(tensor.range().start()[0], tensor.range().start()[1],
           tensor.range().size()[0], tensor.range().size()[1]);
+    } else {
+      // Check that matrix is a vector.
+      TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
+
+      if(matrix.rows() == 1) {
+        TA_ASSERT(tensor.range().finish()[0] <= matrix.cols());
+
+        // Copy the row vector to tensor
+        eigen_map(tensor, 1, tensor.range().size()[0]) =
+            matrix.block(0, tensor.range().start()[0], 1, tensor.range().size()[0]);
+      } else {
+        TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
+
+        // Copy the column vector to tensor
+        eigen_map(tensor, tensor.range().size()[0], 1) =
+            matrix.block(tensor.range().start()[0], 0, tensor.range().size()[0], 1);
+      }
     }
   }
 
@@ -193,31 +199,36 @@ namespace TiledArray {
   /// \param matrix The matrix that will be assigned the content of \c tensor
   /// \throw TiledArray::Exception When the dimensions of \c tensor are not equal
   /// to 1 or 2.
+  /// \throw TiledArray::Exception When the range of \c tensor is outside the
+  /// range of \c matrix .
   template <typename T, typename A, typename Derived>
   inline void tensor_to_eigen_submatrix(const Tensor<T, A>& tensor, Eigen::MatrixBase<Derived>& matrix) {
-    if(matrix.rows() == 1) {
-      TA_ASSERT(tensor.range().dim() == 1u);
-      TA_ASSERT(tensor.range().finish()[0] <= matrix.cols());
+    TA_ASSERT((tensor.range().dim() == 2u) || (tensor.range().dim() == 1u));
 
-      // Copy vector to tensor
-      matrix.block(0, tensor.range().start()[0], 1, tensor.range().size()[0]) =
-          eigen_map(tensor, 1, tensor.range().size()[0]);
-    } else if(matrix.cols() == 1) {
-      TA_ASSERT(tensor.range().dim() == 1u);
-      TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
-
-      // Copy vector to tensor
-      matrix.block(tensor.range().start()[0], 0, tensor.range().size()[0], 1) =
-          eigen_map(tensor, tensor.range().size()[0], 1);
-    } else {
-      TA_ASSERT(tensor.range().dim() == 2u);
+    if(tensor.range().dim() == 2) {
       TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
       TA_ASSERT(tensor.range().finish()[1] <= matrix.cols());
 
-      // Copy matrix
+      // Copy tensor into matrix
       matrix.block(tensor.range().start()[0], tensor.range().start()[1],
           tensor.range().size()[0], tensor.range().size()[1]) =
               eigen_map(tensor, tensor.range().size()[0], tensor.range().size()[1]);
+    } else {
+      TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
+
+      if(matrix.rows() == 1) {
+        TA_ASSERT(tensor.range().finish()[0] <= matrix.cols());
+
+        // Copy tensor into row vector
+        matrix.block(0, tensor.range().start()[0], 1, tensor.range().size()[0]) =
+            eigen_map(tensor, 1, tensor.range().size()[0]);
+      } else {
+        TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
+
+        // Copy tensor into column vector
+        matrix.block(tensor.range().start()[0], 0, tensor.range().size()[0], 1) =
+            eigen_map(tensor, tensor.range().size()[0], 1);
+      }
     }
   }
 
