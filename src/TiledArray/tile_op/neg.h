@@ -27,8 +27,6 @@
 #define TILEDARRAY_TILE_OP_NEG_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
-#include <TiledArray/tensor.h>
-#include <Eigen/Core>
 
 namespace TiledArray {
   namespace math {
