@@ -28,6 +28,8 @@ ArrayFixture::ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
     if(a.is_local(*it))
       a.set(*it, world.rank() + 1); // Fill the tile at *it (the index)
 
+  world.gop.fence();
+
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
     if(i % 3)
       list.push_back(i);
