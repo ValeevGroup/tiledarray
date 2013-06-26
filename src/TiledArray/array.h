@@ -303,7 +303,10 @@ namespace TiledArray {
     /// \return An annotated tensor object that references this array
     expressions::TensorExpression<eval_type>
     operator ()(const std::string& v) const {
-      return expressions::make_annotated_tensor(*this, v);
+      expressions::VariableList vars(v);
+      TA_USER_ASSERT(vars.dim() == DIM,
+          "The number of variables in the tensor annotation is not equal to the tensor order (number of dimensions).");
+      return expressions::make_annotated_tensor(*this, vars);
     }
 
     /// Create an annotated tensor
@@ -312,6 +315,8 @@ namespace TiledArray {
     /// \return An annotated tensor object that references this array
     expressions::TensorExpression<eval_type>
     operator ()(const expressions::VariableList& v) const {
+      TA_USER_ASSERT(v.dim() == DIM,
+          "The number of variables in the tensor annotation is not equal to the tensor order (number of dimensions).");
       return expressions::make_annotated_tensor(*this, v);
     }
 
