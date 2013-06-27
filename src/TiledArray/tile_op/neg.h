@@ -112,7 +112,7 @@ namespace TiledArray {
       /// Negate a tile and possibly permute
 
       /// \param arg The argument
-      /// \return The sum and permutation of \c arg
+      /// \return The negation and permutation of \c arg
       result_type operator()(argument_type arg) const {
         if(perm_.dim() > 1)
           return permute(arg);
