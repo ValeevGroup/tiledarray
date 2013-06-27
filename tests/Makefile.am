@@ -54,6 +54,7 @@ ta_test_SOURCES = ta_test.cpp \
                   tile_op_scal_mult.cpp \
                   tile_op_neg.cpp \
                   tile_op_scal.cpp \
+                  tile_op_noop.cpp \
                   tensor_expression_impl.cpp \
                   annotated_tensor.cpp \
                   unary_tensor.cpp \
