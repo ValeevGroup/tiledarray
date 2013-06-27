@@ -49,6 +49,10 @@ namespace TiledArray {
     /// \return The \c ProcessID of the process that owns \c key .
     virtual ProcessID owner(const key_type& key) const = 0;
 
+    /// Size accessor
+
+    /// \return The number of local elements
+    virtual std::size_t size() const = 0;
 
     /// Local size accessor
 

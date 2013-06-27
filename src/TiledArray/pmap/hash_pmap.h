@@ -80,6 +80,10 @@ namespace TiledArray {
         return seed % procs_;
       }
 
+      /// Size accessor
+
+      /// \return The number of local elements
+      virtual std::size_t size() const { return size_; }
 
       /// Local size accessor
 

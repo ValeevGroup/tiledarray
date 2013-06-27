@@ -141,6 +141,11 @@ namespace TiledArray {
         return o;
       }
 
+      /// Size accessor
+
+      /// \return The number of local elements
+      virtual std::size_t size() const { return m_ * n_; }
+
       /// Local size accessor
 
       /// \return The number of local elements

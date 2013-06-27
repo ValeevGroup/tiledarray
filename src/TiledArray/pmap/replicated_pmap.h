@@ -83,6 +83,11 @@ namespace TiledArray {
         return rank_;
       }
 
+      /// Size accessor
+
+      /// \return The number of local elements
+      virtual std::size_t size() const { return size_; }
+
       /// Local size accessor
 
       /// \return The number of local elements
