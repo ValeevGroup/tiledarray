@@ -55,9 +55,7 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(argument_type arg) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, arg);
-        return result;
+        return perm_ ^ arg;
       }
 
       // Non-permuting tile evaluation functions
