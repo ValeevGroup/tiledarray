@@ -413,6 +413,8 @@ namespace TiledArray {
       }
     }
 
+    bool is_initialized() const { return pimpl_; }
+
   private:
 
     template <typename Index>
