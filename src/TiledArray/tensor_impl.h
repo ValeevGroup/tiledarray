@@ -78,7 +78,7 @@ namespace TiledArray {
 
       operator typename TensorImpl<Tile>::future() const { return future(); }
 
-      operator const typename TensorImpl<Tile>::value_type() const { return get(); }
+      operator typename TensorImpl<Tile>::value_type() const { return get(); }
     }; // class TileReference
 
     /// Tensor tile reference
@@ -120,7 +120,7 @@ namespace TiledArray {
 
       operator typename TensorImpl<Tile>::future() const { return future(); }
 
-      operator const typename TensorImpl<Tile>::value_type() const { return get(); }
+      operator typename TensorImpl<Tile>::value_type() const { return get(); }
     }; // class TileConstReference
 
 
