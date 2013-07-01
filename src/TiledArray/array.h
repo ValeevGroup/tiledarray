@@ -498,8 +498,10 @@ namespace TiledArray {
   inline std::ostream& operator<<(std::ostream& os, const Array<T, DIM, Tile>& a) {
     if(a.get_world().rank() == 0) {
       for(std::size_t i = 0; i < a.size(); ++i)
-        if(! a.is_zero(i))
-          os << i << ": " << a.find(i).get() << "\n";
+        if(! a.is_zero(i)) {
+          const typename Array<T, DIM, Tile>::value_type tile = a.find(i).get();
+          os << i << ": " << tile  << "\n";
+        }
     }
     return os;
   }
