@@ -21,8 +21,9 @@
 #include <tiled_array.h>
 
 int main(int argc, char** argv) {
-  madness::initialize(argc,argv);
-  madness::World world(SafeMPI::COMM_WORLD);
+  // Initialize runtime
+  TiledArray::Runtime ta_runtime(argc,argv);
+  madness::World& world = ta_runtime.get_world();
 
   // Get command line arguments
   if(argc < 2) {
@@ -100,7 +101,5 @@ int main(int argc, char** argv) {
         << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
             matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
 
-
-  madness::finalize();
   return 0;
 }

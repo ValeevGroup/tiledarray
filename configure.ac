@@ -36,6 +36,9 @@ AC_LANG([C++])
 AM_INIT_AUTOMAKE([ -Wall foreign no-define])
 
 # Check for BSD style install programs
+m4_pattern_allow([AM_PROG_AR])
+AM_PROG_AR
+AC_PROG_RANLIB
 AC_PROG_INSTALL
 
 # Check for mpi c++ compiler.

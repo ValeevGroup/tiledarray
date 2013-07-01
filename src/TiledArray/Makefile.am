@@ -43,6 +43,7 @@ library_include_HEADERS = annotated_tensor.h \
                           range.h \
                           reduce_task.h \
                           replicator.h \
+                          runtime.h \
                           shape.h \
                           size_array.h \
                           spsumma.h \

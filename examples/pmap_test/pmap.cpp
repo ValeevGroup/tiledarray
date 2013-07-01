@@ -52,55 +52,53 @@ void print_local(madness::World& world, const std::shared_ptr<TiledArray::Pmap<s
 }
 
 int main(int argc, char** argv) {
-  madness::initialize(argc,argv);
-  {
-    madness::World world(SafeMPI::COMM_WORLD);
+  // Initialize runtime
+  TiledArray::Runtime ta_runtime(argc,argv);
+  madness::World& world = ta_runtime.get_world();
 
-    std::size_t m = 20;
-    std::size_t n = 10;
+  std::size_t m = 20;
+  std::size_t n = 10;
 
-    std::shared_ptr<TiledArray::Pmap<std::size_t> > blocked_pmap(new TiledArray::detail::BlockedPmap(world, m * n));
-    blocked_pmap->set_seed(0ul);
-    std::vector<ProcessID> blocked_map = make_map(m, n, blocked_pmap);
+  std::shared_ptr<TiledArray::Pmap<std::size_t> > blocked_pmap(new TiledArray::detail::BlockedPmap(world, m * n));
+  blocked_pmap->set_seed(0ul);
+  std::vector<ProcessID> blocked_map = make_map(m, n, blocked_pmap);
 
-    std::shared_ptr<TiledArray::Pmap<std::size_t> > cyclic_pmap(new TiledArray::detail::CyclicPmap(world, m, n));
-    cyclic_pmap->set_seed(0ul);
-    std::vector<ProcessID> cyclic_map = make_map(m, n, cyclic_pmap);
+  std::shared_ptr<TiledArray::Pmap<std::size_t> > cyclic_pmap(new TiledArray::detail::CyclicPmap(world, m, n));
+  cyclic_pmap->set_seed(0ul);
+  std::vector<ProcessID> cyclic_map = make_map(m, n, cyclic_pmap);
 
-    std::shared_ptr<TiledArray::Pmap<std::size_t> > hash_pmap(new TiledArray::detail::HashPmap(world, m * n));
-    hash_pmap->set_seed(0ul);
-    std::vector<ProcessID> hash_map = make_map(m, n, hash_pmap);
+  std::shared_ptr<TiledArray::Pmap<std::size_t> > hash_pmap(new TiledArray::detail::HashPmap(world, m * n));
+  hash_pmap->set_seed(0ul);
+  std::vector<ProcessID> hash_map = make_map(m, n, hash_pmap);
 
-    if(world.rank() == 0) {
-      std::cout << "Block\n";
-      print_map(m, n, blocked_map);
-      std::cout << "\n";
-    }
-
-    print_local(world, blocked_pmap);
-
-    world.gop.fence();
-
-    if(world.rank() == 0) {
-
-      std::cout << "\n\nCyclic\n";
-      print_map(m, n, cyclic_map);
-      std::cout << "\n";
-    }
-
-    print_local(world, cyclic_pmap);
-
-    world.gop.fence();
-
-    if(world.rank() == 0) {
-      std::cout << "\n\nHash\n";
-      print_map(m, n, hash_map);
-      std::cout << "\n";
-    }
-
-    print_local(world, hash_pmap);
+  if(world.rank() == 0) {
+    std::cout << "Block\n";
+    print_map(m, n, blocked_map);
+    std::cout << "\n";
   }
-  madness::finalize();
+
+  print_local(world, blocked_pmap);
+
+  world.gop.fence();
+
+  if(world.rank() == 0) {
+
+    std::cout << "\n\nCyclic\n";
+    print_map(m, n, cyclic_map);
+    std::cout << "\n";
+  }
+
+  print_local(world, cyclic_pmap);
+
+  world.gop.fence();
+
+  if(world.rank() == 0) {
+    std::cout << "\n\nHash\n";
+    print_map(m, n, hash_map);
+    std::cout << "\n";
+  }
+
+  print_local(world, hash_pmap);
 
   return 0;
 }

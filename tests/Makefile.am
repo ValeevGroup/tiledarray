@@ -21,7 +21,7 @@
 include $(top_srcdir)/MakeGlobal.am
 
 AM_CPPFLAGS += $(MADNESS_CPPFLAGS) -DTILEDARRAY_NO_USER_ERROR_MESSAGES=1
-LDADD = $(MADNESS_LIB)
+LDADD = $(TILEDARRAY_LIB) $(MADNESS_LIB)
 
 check_PROGRAMS = ta_test
 ta_test_SOURCES = ta_test.cpp \

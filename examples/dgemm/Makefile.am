@@ -21,7 +21,7 @@
 include $(top_srcdir)/MakeGlobal.am
 
 AM_CPPFLAGS += $(MADNESS_CPPFLAGS)
-LDADD = $(MADNESS_LIB)
+LDADD = $(TILEDARRAY_LIB) $(MADNESS_LIB)
 
 noinst_PROGRAMS = ta_dense ta_sparse ta_band eigen blas
 

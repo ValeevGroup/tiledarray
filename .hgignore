@@ -14,3 +14,5 @@ syntax: regexp
 ^src/config_h\.in$
 syntax: regexp
 ^madness$
+syntax: regexp
+^build-aux/ar-lib$

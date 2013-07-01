@@ -25,16 +25,16 @@ using namespace TiledArray;
 using namespace TiledArray::expressions;
 
 int main(int argc, char** argv) {
-  // Initialize madness runtime
-  madness::initialize(argc,argv);
+  // Initialize runtime
+  TiledArray::Runtime ta_runtime(argc,argv);
+  madness::World& world = ta_runtime.get_world();
+
   std::string file_name = argv[1];
 
   // Open input file.
   std::ifstream input(file_name.c_str());
 
   if(! input.fail()) {
-    // Make the world
-    madness::World world(SafeMPI::COMM_WORLD);
 
     // Read input data.
 
@@ -273,11 +273,8 @@ int main(int argc, char** argv) {
   } else  {
     std::cout << "Unable to open file: " << file_name << "\n";
     // stop the madenss runtime
-    madness::finalize();
     return 1;
   }
 
-  // stop the madenss runtime
-  madness::finalize();
 	return 0;
 }

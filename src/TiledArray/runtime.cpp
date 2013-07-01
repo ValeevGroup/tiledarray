@@ -15,14 +15,36 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  tiled_array.cpp
+ *  Jul 1, 2013
+ *
  */
 
-#ifndef TILED_ARRAY_H__INCLUDED
-#define TILED_ARRAY_H__INCLUDED
-
-#include <TiledArray/array.h>
-#include <TiledArray/expressions.h>
-#include <TiledArray/eigen.h>
+#include <world/world.h>
 #include <TiledArray/runtime.h>
 
-#endif // TILED_ARRAY_H__INCLUDED
+namespace TiledArray {
+
+  // Instantiate static member variables for TiledArray objects
+  madness::World* Runtime::world_ = NULL;
+
+  Runtime::Runtime(int argc, char** argv) {
+    TA_USER_ASSERT(! is_initialized(),
+        "TiledArray::Runtime has already been initialized; only one instance of TiledArray::Runtime is allowed.");
+
+    // Initialize madness runtime
+    madness::initialize(argc, argv);
+    world_ = new madness::World(SafeMPI::COMM_WORLD);
+    world_->args(argc, argv);
+  }
+
+  Runtime::~Runtime() {
+    delete world_;
+    world_ = NULL;
+    madness::finalize();
+  }
+
+} // namespace TiledArray
