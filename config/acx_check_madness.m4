@@ -21,6 +21,18 @@ AC_DEFUN([ACX_CHECK_MADNESS], [
     AC_MSG_ERROR([Unable to find the required M-A-D-N-E-S-S header file.])
   ])
   
-  ACX_CXX_CHECK_LIB([MADworld], [madness::initialize(int argc = 0, char** argv = 0)],
-    [LIBS="$LIBS -lMADworld"], [AC_MSG_ERROR([The required library MADworld could not be found.])])
+  AC_MSG_CHECKING([for madness::initialize])
+  
+  LIBS="$LIBS -lMADworld"
+  AC_LINK_IFELSE(
+    [
+      AC_LANG_PROGRAM([[#include <world/world.h>]],
+        [[madness::World& world = madness::initialize(argc, argv);  return 0;]])
+    ],
+    [AC_MSG_RESULT([yes])],
+    [
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([The required library libMADworld is not usable.])
+    ]
+  )
 ])
