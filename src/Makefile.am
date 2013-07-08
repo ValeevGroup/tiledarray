@@ -21,15 +21,7 @@
 include $(top_srcdir)/MakeGlobal.am
 
 SUBDIRS = TiledArray
-
-AM_CPPFLAGS += $(MADNESS_CPPFLAGS)
-
 include_HEADERS = tiled_array.h
-
-
-# libtiledarray.a
-lib_LIBRARIES = libtiledarray.a
-libtiledarray_a_SOURCES = TiledArray/runtime.cpp TiledArray/runtime.h
 
 if NESTD_MADNESS
   

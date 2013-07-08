@@ -22,8 +22,7 @@
 
 int main(int argc, char** argv) {
   // Initialize runtime
-  TiledArray::Runtime ta_runtime(argc,argv);
-  madness::World& world = ta_runtime.get_world();
+  madness::World& world = madness::initialize(argc, argv);
 
   // Get command line arguments
   if(argc < 2) {
@@ -125,5 +124,6 @@ int main(int argc, char** argv) {
         << "\nAverage GFLOPS = " << double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
   }
 
+  madness::finalize();
   return 0;
 }

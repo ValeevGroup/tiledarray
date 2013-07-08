@@ -26,8 +26,7 @@ using namespace TiledArray::expressions;
 
 int main(int argc, char** argv) {
   // Initialize runtime
-  TiledArray::Runtime ta_runtime(argc,argv);
-  madness::World& world = ta_runtime.get_world();
+  madness::World& world = madness::initialize(argc, argv);
 
   std::string file_name = argv[1];
 
@@ -273,8 +272,10 @@ int main(int argc, char** argv) {
   } else  {
     std::cout << "Unable to open file: " << file_name << "\n";
     // stop the madenss runtime
+    madness::finalize();
     return 1;
   }
 
+  madness::finalize();
 	return 0;
 }

@@ -21,7 +21,7 @@
 include $(top_srcdir)/MakeGlobal.am
 
 AM_CPPFLAGS += $(MADNESS_CPPFLAGS)
-LDADD = $(TILEDARRAY_LIB) $(MADNESS_LIB)
+LDADD = $(MADNESS_LIB)
 
 noinst_PROGRAMS = ccd ccsd
 

@@ -19,18 +19,20 @@
 
 #define BOOST_TEST_MAIN TiledArray Tests
 #include "unit_test_config.h"
-#include <TiledArray/runtime.h>
 #include <world/world.h>
 
-GlobalFixture::GlobalFixture() :
-  ta_runtime(boost::unit_test::framework::master_test_suite().argc,
-      boost::unit_test::framework::master_test_suite().argv)
-{
-  world = & ta_runtime.get_world();
+GlobalFixture::GlobalFixture() {
+  world = & madness::initialize(
+      boost::unit_test::framework::master_test_suite().argc,
+      boost::unit_test::framework::master_test_suite().argv);
+
   world->gop.fence();
 }
 
-GlobalFixture::~GlobalFixture() { }
+GlobalFixture::~GlobalFixture() {
+  world->gop.fence();
+  madness::finalize();
+}
 
 madness::World* GlobalFixture::world = NULL;
 const std::array<std::size_t, 20> GlobalFixture::primes =

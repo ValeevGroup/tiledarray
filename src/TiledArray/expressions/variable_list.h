@@ -177,7 +177,7 @@ namespace TiledArray {
         if(it == vars_.end())
           return result;
 
-        for(result = *it; it != vars_.end(); ++it) {
+        for(result = *it++; it != vars_.end(); ++it) {
           result += "," + *it;
         }
 

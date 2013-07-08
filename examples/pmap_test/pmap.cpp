@@ -52,9 +52,7 @@ void print_local(madness::World& world, const std::shared_ptr<TiledArray::Pmap<s
 }
 
 int main(int argc, char** argv) {
-  // Initialize runtime
-  TiledArray::Runtime ta_runtime(argc,argv);
-  madness::World& world = ta_runtime.get_world();
+  madness::World& world = madness::initialize(argc,argv);
 
   std::size_t m = 20;
   std::size_t n = 10;
@@ -99,6 +97,7 @@ int main(int argc, char** argv) {
   }
 
   print_local(world, hash_pmap);
+  madness::finalize();
 
   return 0;
 }
