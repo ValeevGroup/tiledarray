@@ -225,7 +225,7 @@ namespace TiledArray {
         const size_type bcast_k_;
         std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > > results_;
 
-        virtual void get_id(std::pair<void*,unsigned long>& id) const {
+        virtual void get_id(std::pair<void*,unsigned short>& id) const {
             return madness::PoolTaskInterface::make_id(id, *this);
         }
 
