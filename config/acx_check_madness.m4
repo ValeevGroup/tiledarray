@@ -27,7 +27,8 @@ AC_DEFUN([ACX_CHECK_MADNESS], [
   AC_LINK_IFELSE(
     [
       AC_LANG_PROGRAM([[#include <world/world.h>]],
-        [[madness::World& world = madness::initialize(argc, argv);  return 0;]])
+        [[int argc; char** argv;
+          madness::World& world = madness::initialize(argc, argv);]])
     ],
     [AC_MSG_RESULT([yes])],
     [
