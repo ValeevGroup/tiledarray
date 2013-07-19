@@ -15,12 +15,32 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  dense_shape.cpp
+ *  Jul 18, 2013
+ *
  */
 
-#ifndef TILEDARRAY_SHAPE_H__INCLUDED
-#define TILEDARRAY_SHAPE_H__INCLUDED
+#include "TiledArray/dense_shape.h"
+#include "unit_test_config.h"
 
-#include <TiledArray/sparse_shape.h>
-#include <TiledArray/dense_shape.h>
+struct DenseShapeFixture {
 
-#endif // TILEDARRAY_SHAPE_H__INCLUDED
+  DenseShapeFixture() { }
+
+  ~DenseShapeFixture() { }
+
+}; // DenseShapeFixture
+
+using namespace TiledArray;
+
+BOOST_FIXTURE_TEST_SUITE( dense_shape_suite, DenseShapeFixture )
+
+BOOST_AUTO_TEST_CASE( constructor )
+{
+  BOOST_CHECK_NO_THROW(DenseShape x);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
