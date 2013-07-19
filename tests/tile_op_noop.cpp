@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE( noop_perm )
   }
 }
 
-BOOST_AUTO_TEST_CASE( noop_perm_consume )
+BOOST_AUTO_TEST_CASE( noop_consume )
 {
   math::Noop<Tensor<int>, Tensor<int>, true> noop_op;
   const Tensor<int> ax(a.range(), a.begin());
