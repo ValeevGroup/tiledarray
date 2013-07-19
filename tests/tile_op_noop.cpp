@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_NO_THROW((math::Noop<Tensor<int>, Tensor<int>, true>(perm)));
 }
 
-BOOST_AUTO_TEST_CASE( unary_neg )
+BOOST_AUTO_TEST_CASE( noop )
 {
   math::Noop<Tensor<int>, Tensor<int>, false> noop_op;
 
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE( unary_neg )
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_neg_perm )
+BOOST_AUTO_TEST_CASE( noop_perm )
 {
   math::Noop<Tensor<int>, Tensor<int>, false> noop_op(perm);
 
@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE( unary_neg_perm )
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_neg_consume )
+BOOST_AUTO_TEST_CASE( noop_perm_consume )
 {
   math::Noop<Tensor<int>, Tensor<int>, true> noop_op;
   const Tensor<int> ax(a.range(), a.begin());
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE( unary_neg_consume )
 }
 
 
-BOOST_AUTO_TEST_CASE( unary_neg_perm_consume )
+BOOST_AUTO_TEST_CASE( noop_perm_consume )
 {
   math::Noop<Tensor<int>, Tensor<int>, true> noop_op(perm);
 
