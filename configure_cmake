@@ -1,0 +1,150 @@
+#!/bin/sh
+
+TOPDIR=$(cd `dirname $0` && pwd)
+#echo $TOPDIR
+
+# Strip prefix from argument
+arg () {
+  echo "$1" | sed "s/^${2-[^=]*=}//"
+}
+
+# Display CMake bootstrap usage
+help()
+{
+echo '
+Configure TiledArray. This script will invoke cmake.
+Alternatively, use cmake or ccmake directly.
+
+Invoked as "configure cmake" it will download and install cmake into ./cmake directory 
+
+Usage: '"$0"' [<options>...]
+Options: [defaults in brackets after descriptions]
+Configuration:
+  --help                  print this message
+  --debug                 debug build (CMAKE_BUILD_TYPE=Debug)
+  --unittest              build unit tests (CMAKE_BUILD_UNITTESTS=1)
+  --prefix=               install prefix (CMAKE_INSTALL_PREFIX=)
+  --lapack=               LAPACK libraries (LAPACK_LIBRARIES=)
+  --integer8              assume integer*8 in fortran
+  --mpicc=                MPI C compiler to deduce MPI environment (MPI_C_COMPILER=)
+  --unittest              will cause unit tests be built (TA_BUILD_UNITTESTS=TRUE)
+  --boost=                Boost path
+  --search=               paths to search for files/libraries, separated by semicolon
+                          (CMAKE_PREFIX_PATH=)
+  --expert                Expert mode: disables building dependencies (TA_EXPERT=TRUE)
+  -D*                     passed verbatim to cmake command
+
+Some influential environment variables:
+  CC          C compiler command       (e.g. CC='mpicc')
+  CFLAGS      C compiler flags         (e.g. CFLAGS='-O0 -g -std=c11')
+  CXX         C++ compiler command     (e.g. CXX='mpicxx')
+  CXXFLAGS    C++ compiler flags       (e.g. CXXFLAGS='-O0 -g -std=c++0x')
+  F77         Fortran 77 compiler command  (e.g. F77='gfortran')
+  FFLAGS      Fortran 77 compiler flags    (e.g. FFLAGS='-fdefault-integer-8')
+  CPPFLAGS    C/C++ proprocessor flags (e.g. CPPFLAGS='-I/opt/local/include -DNDEBUG')
+  LDFLAGS     linker flags             (e.g. LDFLAGS=-L/libdir)
+'
+  exit 10
+}
+
+# was told to build local cmake
+if [ $# -eq 1 -a "$1" = "cmake" ]; then
+    cd $TOPDIR/cmake && make cmake
+    exit
+fi
+
+# check if local cmake was built
+CMAKE=$TOPDIR/cmake/bin/cmake
+if [ ! -x "$CMAKE" ]; then
+    CMAKE=`which cmake 2>/dev/null`
+fi
+
+# if no local/system cmake exist, build!
+if [ -z "$CMAKE" ]; then
+    make -C cmake
+    CMAKE=$TOPDIR/cmake/bin/cmake
+fi
+
+srcdir=`dirname $0`
+echo $srcdir
+args=""
+prefix=$PWD
+build="Release"
+
+# log the command, preserving quotes
+log="Last invoked on `date`:\n$0 "
+for token in "$@"
+  do
+    log="$log '$token'"
+  done
+echo $log > config.log
+
+while test $# != 0; do
+  case "$1" in
+  --help|-h) help ;;
+  --prefix=*)      prefix="`arg \"$1\"`" ;;
+  --lapack=*)      lapack="`arg \"$1\"`"
+                   args="$args -DLAPACK_LIBRARIES=\"$lapack\"" ;;
+  --integer8)      args="$args -DINTEGER8=TRUE" ;;
+  --debug)         build="Debug" ;; #args="$args -DCMAKE_BUILD_TYPE=Debug" ;;
+  --search=*)      search="`arg \"$1\"`"
+		   args="$args -DCMAKE_PREFIX_PATH=\"$search\"" ;;
+  --mpicc=*)       args="$args -DMPI_C_COMPILER=`arg \"$1\"`" ;;
+  --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
+  --boost=*)       args="$args -DBOOST=`arg \"$1\"`" ;;
+  --expert)        args="$args -DTA_EXPERT=TRUE" ;;
+  -D*) args="$args $1" ;; # raw  cmake arg
+  CC=*) CC="`arg \"$1\"`" ;;
+  CXX=*) CXX="`arg \"$1\"`" ;;
+  F77=*) F77="`arg \"$1\"`" ;;
+  CPPFLAGS=*) CPPFLAGS="`arg \"$1\"`" ;;
+  CFLAGS=*) CFLAGS="`arg \"$1\"`" ;;
+  CXXFLAGS=*) CXXFLAGS="`arg \"$1\"`" ;;
+  FFLAGS=*) FFLAGS="`arg \"$1\"`" ;;
+  LDFLAGS=*) LDFLAGS="`arg \"$1\"`" ;;
+  *) exit "Unknown option: \"$1\"" ;;
+  esac
+  shift
+done
+
+args="$args -DCMAKE_INSTALL_PREFIX=$prefix"
+args="$args -DCMAKE_BUILD_TYPE=$build"
+
+if [ -n "$CC" ]; then
+    args="$args -DCMAKE_C_COMPILER=$CC"
+fi
+
+if [ -n "$CXX" ]; then
+    args="$args -DCMAKE_CXX_COMPILER=$CXX"
+fi
+
+if [ -n "$F77" ]; then
+    args="$args -DCMAKE_Fortran_COMPILER=$F77"
+fi
+
+if [ -n "$CPPFLAGS" ]; then
+    args="$args -DCMAKE_CPP_FLAGS=\"$CPPFLAGS\""
+fi
+
+if [ -n "$CFLAGS" ]; then
+    args="$args -DCMAKE_C_FLAGS=\"$CFLAGS\""
+fi
+
+if [ -n "$CXXFLAGS" ]; then
+    args="$args -DCMAKE_CXX_FLAGS=\"$CXXFLAGS\""
+fi
+
+if [ -n "$FFLAGS" ]; then
+    args="$args -DCMAKE_Fortran_FLAGS=\"$FFLAGS\""
+fi
+
+if [ -n "$LDFLAGS" ]; then
+    args="$args -DCMAKE_EXE_LINKER_FLAGS=\"$LDFLAGS\""
+fi
+
+echo "Using CMake $CMAKE"
+cmd="$CMAKE $args $srcdir"
+
+set -x
+rm -fr CMakeFiles CMakeCache.txt
+eval $cmd

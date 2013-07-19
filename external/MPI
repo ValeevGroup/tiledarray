@@ -1,0 +1,27 @@
+# -*- mode: cmake -*-
+
+set(MPI_LIBRARIES "")
+
+if (DEFINED MPI_C_COMPILER AND NOT MPI_C_COMPILER)
+  message(STATUS "MPI disabled")
+else()
+  find_package(MPI)
+  if (NOT MPI_FOUND)
+    message(ERROR "MPI not found")
+  else()
+    set(HAVE_MPI TRUE)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MPI_LINKER_FLAGS}")
+
+    include_directories(${MPI_INCLUDE_PATH})
+
+    list(APPEND CMAKE_REQUIRED_INCLUDES ${MPI_INCLUDE_PATH})
+    list(APPEND CMAKE_REQUIRED_LIBRARIES ${MPI_LIBRARIES})
+
+    message(STATUS "MPI_LIBRARIES: ${MPI_LIBRARIES}")
+    message(STATUS "MPI_LINKER_FLAGS: ${MPI_LINKER_FLAGS}")
+
+    #add_definitions(-DOMPI_SKIP_MPICXX)
+    option(ALWAYS_USE_MPI "Always use MPI" TRUE)
+
+  endif()
+endif()

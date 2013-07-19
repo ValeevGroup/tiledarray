@@ -19,7 +19,7 @@
 
 #include "TiledArray/distributed_storage.h"
 #include "TiledArray/pmap/blocked_pmap.h"
-#include "unit_test_config.h"
+#include "config.h"
 #include <world/worlddc.h>
 #include <iterator>
 

@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/reduce_task.h"
-#include "unit_test_config.h"
+#include "config.h"
 #include <functional>
 
 using namespace TiledArray;

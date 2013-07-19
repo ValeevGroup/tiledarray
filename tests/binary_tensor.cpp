@@ -20,7 +20,7 @@
 #include "TiledArray/binary_tensor.h"
 #include "TiledArray/array.h"
 #include "TiledArray/math/functional.h"
-#include "unit_test_config.h"
+#include "config.h"
 #include "array_fixture.h"
 
 using namespace TiledArray;

@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/summa.h"
-#include "unit_test_config.h"
+#include "config.h"
 
 struct SummaFixture {
 

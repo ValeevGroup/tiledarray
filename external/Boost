@@ -1,0 +1,92 @@
+# -*- mode: cmake -*-
+
+if (DEFINED BOOST)
+
+  set(Boost_USE_STATIC_LIBS        ON)
+  set(Boost_USE_MULTITHREADED      OFF)
+  #set(Boost_USE_STATIC_RUNTIME    OFF)
+
+  set(BOOST_ROOT ${BOOST})
+  set(Boost_NO_SYSTEM_PATHS TRUE)
+  find_package(Boost 1.48 COMPONENTS thread)
+  if (NOT Boost_FOUND)
+    message(FATAL_ERROR "Boost not found in ${BOOST_ROOT}")
+  endif()
+
+elseif (TILEDARRAY_EXPERT)
+
+  message("** BOOST was not explicitly set")
+  message("** Downloading and building Boost is explicitly disabled in EXPERT mode")
+
+else()
+
+  set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external)
+  set(EXTERNAL_BUILD_DIR ${PROJECT_BINARY_DIR}/external/build)
+
+  set(BOOST_URL
+    http://downloads.sourceforge.net/project/boost/boost/1.53.0/boost_1_53_0.tar.gz)
+  set(BOOST_URL_HASH MD5=57a9e2047c0f511c4dfcf00eb5eb2fbb)
+
+  if (EXISTS ${EXTERNAL_SOURCE_DIR}/boost.tar.gz)
+    set(BOOST_URL ${EXTERNAL_SOURCE_DIR}/boost.tar.gz)
+    set(BOOST_URL_HASH "")
+  endif()
+
+  message("** Will build Boost from ${BOOST_URL}")
+
+  if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+    set(BOOST_TOOLSET gcc)
+  endif()
+
+  # gcc/clang seem to use same config under Darwin
+  if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(BOOST_TOOLSET darwin)
+  endif()
+
+  if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+    set(BOOST_TOOLSET clang)
+  endif()
+
+  if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel") 
+    set(BOOST_TOOLSET intel)
+  endif()
+
+  set(BOOST_CONFIG "using ${BOOST_TOOLSET} : : ${CMAKE_CXX_COMPILER} ;")
+
+  if (EXISTS ${EXTERNAL_BUILD_DIR}/boost/user-config.jam)
+    file(READ ${EXTERNAL_BUILD_DIR}/boost/user-config.jam BOOST_CONFIG_JAM)
+    if (NOT ("${BOOST_CONFIG}" STREQUAL "${BOOST_CONFIG_JAM}"))
+      message(STATUS "Boost needs to be rebuilt")
+      file(REMOVE ${EXTERNAL_BUILD_DIR}/boost/src/boost-stamp/boost-build)
+    endif()
+  endif()
+  file(WRITE ${EXTERNAL_BUILD_DIR}/boost/user-config.jam "${BOOST_CONFIG}")
+
+  ExternalProject_Add(
+    boost
+    PREFIX ${EXTERNAL_BUILD_DIR}/boost
+    URL ${BOOST_URL}
+    URL_HASH ${BOOST_URL_HASH}
+    BUILD_IN_SOURCE 1
+    CONFIGURE_COMMAND ./bootstrap.sh
+    BUILD_COMMAND ./b2 --user-config=${EXTERNAL_BUILD_DIR}/boost/user-config.jam
+    --toolset=${BOOST_TOOLSET}
+    --with-thread
+    --link=static
+    INSTALL_COMMAND ""
+    )
+
+  add_dependencies(External boost)
+
+  set(Boost_INCLUDE_DIRS ${EXTERNAL_BUILD_DIR}/boost/src/boost)
+
+  list(APPEND Boost_LIBRARIES ${EXTERNAL_BUILD_DIR}/boost/src/boost/stage/lib/libboost_thread.a)
+  list(APPEND Boost_LIBRARIES ${EXTERNAL_BUILD_DIR}/boost/src/boost/stage/lib/libboost_system.a)
+
+endif()
+
+include_directories(${Boost_INCLUDE_DIRS})
+
+message(STATUS "Boost include dir: ${Boost_INCLUDE_DIRS}")
+message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
+

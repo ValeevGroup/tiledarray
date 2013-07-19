@@ -24,7 +24,7 @@
  */
 
 #include "TiledArray/tile_op/neg.h"
-#include "unit_test_config.h"
+#include "config.h"
 #include "TiledArray/tensor.h"
 #include "range_fixture.h"
 

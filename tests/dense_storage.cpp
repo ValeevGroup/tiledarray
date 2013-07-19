@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/dense_storage.h"
-#include "unit_test_config.h"
+#include "config.h"
 #include "TiledArray/madness.h"
 
 using namespace TiledArray;

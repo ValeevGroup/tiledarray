@@ -1,0 +1,89 @@
+# -*- mode: cmake -*-
+
+###################
+# Find MADNESS
+###################
+
+set(MADNESS_LIBRARIES "")
+foreach (_lib MADworld MADtensor MADlinalg MADmisc MADmra MADtinyxml MADmuparser)
+  set(_libpath _libpath-NOTFOUND)
+  find_library(_libpath ${_lib})
+  #message(STATUS "Found ${_lib}: ${_libpath}")
+  if (_libpath)
+    list(APPEND MADNESS_LIBRARIES ${_libpath})
+  endif()
+endforeach()
+
+find_path(MADNESS_INCLUDE_DIR madness_config.h)
+
+if (MADNESS_LIBRARIES)
+  if (NOT MADNESS_INCLUDE_DIR)
+    message(FATAL_ERROR "Could not find madness_config.h")
+  endif()
+
+  # sanity check: try compiling a simple program
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INCLUDE_DIR})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${MADNESS_LIBRARIES})
+  CHECK_CXX_SOURCE_COMPILES(
+    "
+    #include <world/world.h>
+    int main(int argc, char** argv) {
+      madness::World& world = madness::initialize(argc, argv);
+      return 0;
+    }
+    "  MADNESS_COMPILES)
+  if (NOT MADNESS_COMPILES)
+    message(FATAL_ERROR "Could not compile MADNESS test program")
+  endif()
+    
+  set(HAVE_MADNESS TRUE)
+  message(STATUS "Found MADNESS:")
+  message(STATUS "\tMADNESS_LIBRARIES=${MADNESS_LIBRARIES}")
+  message(STATUS "\tMADNESS_INCLUDE_DIR=${MADNESS_INCLUDE_DIR}")
+  include_directories(${MADNESS_INCLUDE_DIR})
+else()
+
+  if(TILEDARRAY_EXPERT)
+
+    message("** MADNESS was not found or explicitly set")
+    message("** Downloading and building MADNESS is explicitly disabled in EXPERT mode")
+
+  else()
+
+    set(MADNESS_SVN_URL http://m-a-d-n-e-s-s.googlecode.com/svn/local/trunk)
+
+    message("** Will pull MADNESS from ${MADNESS_SVN_URL}")
+    
+    # need to use BLAS_LIBRARIES and LAPACK_LIBRARIES, but need to convert them first to compiler arguments
+    include(ConvertLibrariesListToCompilerArgs)
+    convert_libs_to_compargs(BLAS_LIBS "${BLAS_LIBRARIES}")
+    convert_libs_to_compargs(LAPACK_LIBS "${LAPACK_LIBRARIES}")
+    set(LAPACKBLAS_LIBS "${LAPACK_LIBS} ${BLAS_LIBS}")
+
+    if (INTEGER8)
+      set (MAD_F77_INT32 no)
+    else()
+      set (MAD_F77_INT32 yes)
+    endif()
+
+    ExternalProject_Add(
+      madness
+      PREFIX ${EXTERNAL_BUILD_DIR}/madness
+      SVN_REPOSITORY ${MADNESS_SVN_URL}
+      UPDATE_COMMAND "autoreconf"
+      CONFIGURE_COMMAND ${EXTERNAL_BUILD_DIR}/madness/src/madness/configure --prefix=${EXTERNAL_BUILD_DIR}/madness --with-mpi-thread=multiple --enable-optimal=yes --enable-dependency-tracking --with-fortran-int32=${MAD_F77_INT32} MPICXX=${CMAKE_CXX_COMPILER} CXX=${CMAKE_CXX_COMPILER} LIBS=${LAPACKBLAS_LIBS} CXXFLAGS=${CMAKE_CXX_FLAGS} CPPFLAGS=${CMAKE_CPP_FLAGS} LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} 
+      BUILD_COMMAND make libraries
+      INSTALL_COMMAND make install-libraries
+    )
+
+    add_dependencies(External MADNESS)
+    set(MADNESS_LIBRARIES)
+    foreach (_lib MADworld MADtensor MADlinalg MADmisc MADtinyxml MADmuparser)
+      list(APPEND MADNESS_LIBRARIES ${EXTERNAL_BUILD_DIR}/madness/lib/lib${_lib}.a)
+    endforeach()
+    message(STATUS "MADNESS_LIBRARIES = ${MADNESS_LIBRARIES}")
+    set(MADNESS_INCLUDE_DIR ${EXTERNAL_BUILD_DIR}/madness/include)
+
+  endif()
+
+endif()

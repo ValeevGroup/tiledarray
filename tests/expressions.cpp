@@ -26,7 +26,7 @@
 #include "TiledArray/expressions.h"
 #include "TiledArray/array.h"
 #include "TiledArray/eigen.h"
-#include "unit_test_config.h"
+#include "config.h"
 #include "range_fixture.h"
 
 using namespace TiledArray;
