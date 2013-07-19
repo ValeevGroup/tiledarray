@@ -20,7 +20,7 @@
 #ifndef TILEDARRAY_DIST_EVAL_BINARY_EVAL_H__INCLUDED
 #define TILEDARRAY_DIST_EVAL_BINARY_EVAL_H__INCLUDED
 
-#include <TiledArray/dist_eval.h>
+#include <TiledArray/dist_eval/dist_eval.h>
 #include <TiledArray/tensor.h>
 
 namespace TiledArray {
