@@ -112,7 +112,7 @@ AC_CHECK_HEADER([mpi.h], [], [AC_MSG_ERROR([Unable to find mpi.h.])])
 # Check for mpi execution command
 AC_ARG_VAR([MPIEXEC], [MPI command used to run parallel/distributed programs.])
 AC_CHECK_PROGS([MPIEXEC], [mpiexec mpirun], [:])
-if test "$DOXYGEN" = :; then
+if test "$MPIEXEC" = :; then
   AC_MSG_WARN([MPI execution program was not found.])
 fi
 AC_SUBST([MPIEXEC])
