@@ -17,7 +17,7 @@
  *
  */
 
-#include "unit_test_config.h"
+#include "config.h"
 #include "global_fixture.h"
 #include "TiledArray/bitset.h"
 #include <world/world.h>

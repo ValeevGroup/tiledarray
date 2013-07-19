@@ -1,11 +1,11 @@
 /*
- * This file is a part of TiledArray.
- * Copyright (C) 2013  Virginia Tech
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,10 +17,21 @@
  *
  */
 
-#ifndef TILEDARRAY_CONFIGURE_H__INCLUDED
-#define TILEDARRAY_CONFIGURE_H__INCLUDED
+#ifndef TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED
+#define TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED
 
-/* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
-#define TA_DEFAULT_ERROR 1
+/* Defines the boost unit test framework linkage. */
+#cmakedefine BOOST_TEST_DYN_LINK
 
-#endif // TILEDARRAY_CONFIGURE_H__INCLUDED
+#if defined(BOOST_TEST_MAIN) && !defined(BOOST_TEST_DYN_LINK)
+#include <boost/test/included/unit_test.hpp>
+#else
+#include <boost/test/unit_test.hpp>
+#endif // BOOST_TEST_MAIN
+
+#include <boost/test/output_test_stream.hpp>
+#include "global_fixture.h"
+#include "iteration_test.h"
+
+#endif // TILEDARRAY_CONFIG_H__INCLUDED
+

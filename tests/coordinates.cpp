@@ -20,7 +20,7 @@
 #include "TiledArray/coordinates.h"
 #include "TiledArray/permutation.h"
 #include <iostream>
-#include "unit_test_config.h"
+#include "config.h"
 #include <world/bufar.h>
 
 using namespace TiledArray;

@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/vspgemm.h"
-#include "unit_test_config.h"
+#include "config.h"
 
 struct VSpGemmFixture {
 

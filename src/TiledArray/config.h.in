@@ -1,0 +1,47 @@
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2013  Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+#ifndef TILEDARRAY_CONFIG_H__INCLUDED
+#define TILEDARRAY_CONFIG_H__INCLUDED
+
+/* Defines the boost unit test framework linkage. */
+#cmakedefine BOOST_TEST_DYN_LINK
+
+/* Define to 1 if you have the <boost/test/output_test_stream.hpp> header file. */
+#cmakedefine HAVE_BOOST_TEST_OUTPUT_TEST_STREAM_HPP
+
+/* Define to 1 if you have the <boost/test/unit_test.hpp> header file. */
+#cmakedefine HAVE_BOOST_TEST_UNIT_TEST_HPP
+
+/* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
+#cmakedefine TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@
+
+/* define if compiler supports long double. */
+#cmakedefine TILEDARRAY_HAS_LONG_DOUBLE
+
+/* define if compiler supports long long. */
+#cmakedefine TILEDARRAY_HAS_LONG_LONG
+
+/* define if compiler supports static_assert. */
+#cmakedefine TILEDARRAY_HAVE_STATIC_ASSERT
+
+/* Define the number of iterations to unwind in a loop. */
+#cmakedefine TILEDARRAY_LOOP_UNWIND
+
+#endif // TILEDARRAY_CONFIG_H__INCLUDED
