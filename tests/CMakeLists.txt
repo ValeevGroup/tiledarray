@@ -5,7 +5,7 @@ CONFIGURE_FILE(
 )
 
 set(executable ta_test)
-add_executable(   ${executable}
+add_executable(   ${executable} EXCLUDE_FROM_ALL
                   ta_test.cpp
                   permutation.cpp
                   coordinates.cpp
@@ -47,6 +47,8 @@ add_executable(   ${executable}
                   contraction_tensor.cpp
                   expressions.cpp
 )
+add_test(${executable} ${executable})
+add_dependencies(check ${executable})
 
 include_directories(${MADNESS_INCLUDE_DIR})
 
