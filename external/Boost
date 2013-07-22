@@ -8,7 +8,7 @@ if (DEFINED BOOST)
 
   set(BOOST_ROOT ${BOOST})
   set(Boost_NO_SYSTEM_PATHS TRUE)
-  find_package(Boost 1.48 COMPONENTS thread)
+  find_package(Boost 1.48 COMPONENTS unit_test_framework)
   if (NOT Boost_FOUND)
     message(FATAL_ERROR "Boost not found in ${BOOST_ROOT}")
   endif()
@@ -68,20 +68,14 @@ else()
     URL ${BOOST_URL}
     URL_HASH ${BOOST_URL_HASH}
     BUILD_IN_SOURCE 1
-    CONFIGURE_COMMAND ./bootstrap.sh
-    BUILD_COMMAND ./b2 --user-config=${EXTERNAL_BUILD_DIR}/boost/user-config.jam
-    --toolset=${BOOST_TOOLSET}
-    --with-thread
-    --link=static
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
     INSTALL_COMMAND ""
     )
 
   add_dependencies(External boost)
 
   set(Boost_INCLUDE_DIRS ${EXTERNAL_BUILD_DIR}/boost/src/boost)
-
-  list(APPEND Boost_LIBRARIES ${EXTERNAL_BUILD_DIR}/boost/src/boost/stage/lib/libboost_thread.a)
-  list(APPEND Boost_LIBRARIES ${EXTERNAL_BUILD_DIR}/boost/src/boost/stage/lib/libboost_system.a)
 
 endif()
 
