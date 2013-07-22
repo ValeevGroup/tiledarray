@@ -5,7 +5,7 @@
 ###################
 
 set(MADNESS_LIBRARIES "")
-foreach (_lib MADworld MADtensor MADlinalg MADmisc MADmra MADtinyxml MADmuparser)
+foreach (_lib MADworld MADmisc MADtensor MADlinalg)
   set(_libpath _libpath-NOTFOUND)
   find_library(_libpath ${_lib})
   #message(STATUS "Found ${_lib}: ${_libpath}")
@@ -43,7 +43,7 @@ if (MADNESS_LIBRARIES)
   include_directories(${MADNESS_INCLUDE_DIR})
 else()
 
-  if(TILEDARRAY_EXPERT)
+  if(TA_EXPERT)
 
     message("** MADNESS was not found or explicitly set")
     message("** Downloading and building MADNESS is explicitly disabled in EXPERT mode")
@@ -70,15 +70,15 @@ else()
       madness
       PREFIX ${EXTERNAL_BUILD_DIR}/madness
       SVN_REPOSITORY ${MADNESS_SVN_URL}
-      UPDATE_COMMAND "autoreconf"
+      PATCH_COMMAND aclocal -I ./ && autoconf && autoheader && automake --add-missing
       CONFIGURE_COMMAND ${EXTERNAL_BUILD_DIR}/madness/src/madness/configure --prefix=${CMAKE_INSTALL_PREFIX} --with-mpi-thread=multiple --enable-optimal=yes --enable-dependency-tracking --with-fortran-int32=${MAD_F77_INT32} MPICXX=${CMAKE_CXX_COMPILER} CXX=${CMAKE_CXX_COMPILER} LIBS=${LAPACKBLAS_LIBS} CXXFLAGS=${CMAKE_CXX_FLAGS} CPPFLAGS=${CMAKE_CPP_FLAGS} LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} 
       BUILD_COMMAND make libraries
-      INSTALL_COMMAND make install-libraries
+      INSTALL_COMMAND make install-linalg
     )
 
     add_dependencies(External MADNESS)
     set(MADNESS_LIBRARIES)
-    foreach (_lib MADworld MADtensor MADlinalg MADmisc MADtinyxml MADmuparser)
+    foreach (_lib MADworld MADtensor MADlinalg MADmisc)
       list(APPEND MADNESS_LIBRARIES ${CMAKE_INSTALL_PREFIX}/lib/lib${_lib}.a)
     endforeach()
     message(STATUS "MADNESS_LIBRARIES = ${MADNESS_LIBRARIES}")
