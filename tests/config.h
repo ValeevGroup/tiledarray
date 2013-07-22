@@ -17,22 +17,21 @@
  *
  */
 
-#ifndef TILEDARRAY_CONFIG_H__INCLUDED
-#define TILEDARRAY_CONFIG_H__INCLUDED
+#ifndef TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED
+#define TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED
 
-/* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
-#define TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@
+/* Defines the boost unit test framework linkage. */
+/* #undef BOOST_TEST_DYN_LINK */
 
-/* define if compiler supports long double, the value is sizeof(long double) */
-#cmakedefine TILEDARRAY_HAS_LONG_DOUBLE @HAVE_LONG_DOUBLE@
+#if defined(BOOST_TEST_MAIN) && !defined(BOOST_TEST_DYN_LINK)
+#include <boost/test/included/unit_test.hpp>
+#else
+#include <boost/test/unit_test.hpp>
+#endif // BOOST_TEST_MAIN
 
-/* define if compiler supports long long, the value is sizeof(long long) */
-#cmakedefine TILEDARRAY_HAS_LONG_LONG @HAVE_LONG_LONG@
-
-/* define if compiler supports static_assert. */
-#cmakedefine TILEDARRAY_HAVE_STATIC_ASSERT
-
-/* Define the number of iterations to unwind in a loop. */
-#cmakedefine TILEDARRAY_LOOP_UNWIND
+#include <boost/test/output_test_stream.hpp>
+#include "global_fixture.h"
+#include "iteration_test.h"
 
 #endif // TILEDARRAY_CONFIG_H__INCLUDED
+

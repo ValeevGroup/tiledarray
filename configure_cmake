@@ -22,29 +22,36 @@ Options: [defaults in brackets after descriptions]
 Configuration:
   --help                  print this message
   --debug                 debug build (CMAKE_BUILD_TYPE=Debug)
-  --unittest              build unit tests (CMAKE_BUILD_UNITTESTS=1)
+  --unittest              build unit tests (CMAKE_BUILD_UNITTESTS=TRUE)
   --prefix=               install prefix (CMAKE_INSTALL_PREFIX=)
   --lapack=               LAPACK libraries (LAPACK_LIBRARIES=)
-  --integer8              assume integer*8 in fortran
-  --mpicc=                MPI C compiler to deduce MPI environment (MPI_C_COMPILER=)
+  --integer8              assume integer*8 in fortran (INTEGER8=TRUE)
+  --mpicc=                MPI C compiler to deduce MPI environment,
+                          only needed if CXX is not set to an MPI compiler wrapper
+                          (MPI_C_COMPILER=)
   --unittest              will cause unit tests be built (TA_BUILD_UNITTESTS=TRUE)
-  --boost=                Boost path
-  --search=               paths to search for files/libraries, separated by semicolon
+  --boost=                Boost path, only needed if --unittest is set also (BOOST=)
+  --error-checking=       specify the default error reporting style,
+                          allowed values: none, throw (default), assert
+                          (TA_ERROR=)
+  --search=               paths to search for files/libraries, separated by semicolon;
+                          specify here the locations of Eigen, MADNESS unless you want
+                          configure to download and build them automatically
                           (CMAKE_PREFIX_PATH=)
-  --expert                Expert mode: disables building dependencies (TA_EXPERT=TRUE)
+  --expert                Expert mode: disables building dependencies, e.g. Eigen, MADNESS, etc. (TA_EXPERT=TRUE)
   -D*                     passed verbatim to cmake command
 
 Some influential environment variables:
-  CC          C compiler command       (e.g. CC='mpicc')
-  CFLAGS      C compiler flags         (e.g. CFLAGS='-O0 -g -std=c11')
+  CPPFLAGS    C/C++ proprocessor flags (e.g. CPPFLAGS='-I/opt/local/include -DNDEBUG')
+  LDFLAGS     linker flags             (e.g. LDFLAGS=-L/libdir)
   CXX         C++ compiler command     (e.g. CXX='mpicxx')
   CXXFLAGS    C++ compiler flags       (e.g. CXXFLAGS='-O0 -g -std=c++0x')
   F77         Fortran 77 compiler command  (e.g. F77='gfortran')
   FFLAGS      Fortran 77 compiler flags    (e.g. FFLAGS='-fdefault-integer-8')
-  CPPFLAGS    C/C++ proprocessor flags (e.g. CPPFLAGS='-I/opt/local/include -DNDEBUG')
-  LDFLAGS     linker flags             (e.g. LDFLAGS=-L/libdir)
+  CC          C compiler command       (e.g. CC='mpicc')
+  CFLAGS      C compiler flags         (e.g. CFLAGS='-O0 -g -std=c11')
 '
-  exit 10
+  exit 1
 }
 
 # was told to build local cmake
@@ -92,6 +99,7 @@ while test $# != 0; do
   --mpicc=*)       args="$args -DMPI_C_COMPILER=`arg \"$1\"`" ;;
   --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
   --boost=*)       args="$args -DBOOST=`arg \"$1\"`" ;;
+  --error-checking=*)   args="$args -DTA_ERROR=`arg \"$1\"`" ;;
   --expert)        args="$args -DTA_EXPERT=TRUE" ;;
   -D*) args="$args $1" ;; # raw  cmake arg
   CC=*) CC="`arg \"$1\"`" ;;

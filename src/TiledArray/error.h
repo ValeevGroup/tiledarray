@@ -24,7 +24,7 @@
 
 #ifdef TILEDARRAY_HAVE_STATIC_ASSERT
 
-#define TA_STATIC_ASSERT( a ) static_assert( a )
+#define TA_STATIC_ASSERT( a ) static_assert( a , #a )
 
 #else
 

@@ -33,26 +33,35 @@ set(BUILD_TESTING FALSE CACHE BOOLEAN "BUILD_TESTING")
 set(BUILD_TESTING_STATIC FALSE CACHE BOOLEAN "BUILD_TESTING_STATIC")
 set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 
+##########################
+# Check C++11 features
+##########################
 include(TestCXXAcceptsFlag)
 include(CheckCXXSourceCompiles)
 
-if (CMAKE_CXX_COMPILER_ID MATCHES Clang)
-  message("* C++11: assuming Clang doesn't need -std=c++0x flag.")
-else()
-  # C++11 flag is required
-  CHECK_CXX_ACCEPTS_FLAG("-std=c++0x" CXX_FLAG_CXX0X)
-  CHECK_CXX_ACCEPTS_FLAG("-std=c++11" CXX_FLAG_CXX11)
-  set(HAVE_CXX11 FALSE)
-  if(CXX_FLAG_CXX11)
-      set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
-      message(STATUS "C++11 flag: -std=c++11")
-      set(HAVE_CXX11 TRUE)
-  elseif (CXX_FLAG_CXX0X)
-    set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
-    message(STATUS "C++11 flag: -std=c++0x")
-    set(HAVE_CXX11 TRUE)
-  endif()
+# some C++11 support is needed, figure out how to turn on the support
+CHECK_CXX_ACCEPTS_FLAG("-std=c++11" CXX_FLAG_CXX11)
+if(CXX_FLAG_CXX11)
+  set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+  message(STATUS "C++11 flag: -std=c++11")
 endif()
+if (NOT CXX_FLAG_CXX11)
+  CHECK_CXX_ACCEPTS_FLAG("-std=c++0x" CXX_FLAG_CXX0X)
+endif()
+if (CXX_FLAG_CXX0X)
+  set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
+  message(STATUS "C++11 flag: -std=c++0x")
+endif()
+
+# static_assert is desired, but an implementation is included
+set(CMAKE_REQUIRED_FLAGS_CURRENT ${CMAKE_REQUIRED_FLAGS})
+list(APPEND CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS})
+CHECK_CXX_SOURCE_COMPILES("
+  int main(int argc, char* argv[]) {
+    static_assert(true, \"don't worry, be happy\");
+  }"
+  TILEDARRAY_HAVE_STATIC_ASSERT)  
+set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_CURRENT})
 
 set(TARGET_ARCH "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
 set(TILEDARRAY_MAJOR_VERSION 3)
@@ -64,27 +73,26 @@ set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.
 set(TILEDARRAY_VERSION "${TILEDARRAY_VERSION}-${TILEDARRAY_BUILDID}")
 
 include(CheckTypeSize)
-check_type_size(int64_t C_TYPE_INT64_T)
-check_type_size(int32_t C_TYPE_INT32_T)
-check_type_size(long C_TYPE_LONG)
-check_type_size(int C_TYPE_INT)
+check_type_size("long double" LONG_DOUBLE)
+check_type_size("long long" LONG_LONG)
+if (HAVE_LONG_DOUBLE)
+  set (TILEDARRAY_HAS_LONG_DOUBLE TRUE)
+endif()
+if (HAVE_LONG_LONG)
+  set (TILEDARRAY_HAS_LONG_LONG TRUE)
+endif()
 
 include(GNUInstallDirs)           
 
 include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories("${PROJECT_BINARY_DIR}/src")
 
-if (CMAKE_BUILD_UNITTESTS)
+if (TA_BUILD_UNITTEST)
   set (TILEDARRAY_NEEDS_BOOST TRUE)
 endif()
 
 # external dependencies
 include(external/External)
-
-CONFIGURE_FILE(
-  ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
-  ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
-)
 
 # libraries
 set(LINK_LIBRARIES)
@@ -101,9 +109,12 @@ add_subdirectory(src)
 add_subdirectory(doc)
 
 # checking/testing
+enable_testing()
 if (TA_BUILD_UNITTEST)
+  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
   add_subdirectory(tests)
-  set (TA_NEEDS_BOOST TRUE)
+else()
+  add_custom_target(check COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
 endif()
 
 # Export include dirs, library list
@@ -112,23 +123,25 @@ set(TILEDARRAY_CONFIG_LIBRARIES "")
 # transform library list into compiler args
 include(ConvertLibrariesListToCompilerArgs)
 convert_libs_to_compargs(TILEDARRAY_CONFIG_LIBRARIES "${LINK_LIBRARIES}")
-message(STATUS "TILEDARRAY_CONFIG_LIBRARIES = ${TILEDARRAY_CONFIG_LIBRARIES}")
+#message(STATUS "TILEDARRAY_CONFIG_LIBRARIES = ${TILEDARRAY_CONFIG_LIBRARIES}")
 
-# include dirs
-#get_directory_property(TILEDARRAY_INCLUDE_DIRECTORIES DIRECTORY src/bin/mpqc INCLUDE_DIRECTORIES)
-# remove internal source dirs
-#list(REMOVE_ITEM
-#  TILEDARRAY_INCLUDE_DIRECTORIES
-#  ${PROJECT_BINARY_DIR}/src/lib
-#  ${PROJECT_SOURCE_DIR}/src/lib
-#  ${PROJECT_SOURCE_DIR}/include
-#) 
+# TiledArray CPPFLAGS
+set(TILEDARRAY_CPP_FLAGS "-I${CMAKE_INSTALL_PREFIX}/include -I${MADNESS_INCLUDE_DIR} ${CMAKE_CPP_FLAGS}")
+#message(STATUS "TILEDARRAY_CPP_FLAGS = ${TILEDARRAY_CPP_FLAGS}")
 
-set(TILEDARRAY_CPP_FLAGS "${CMAKE_CPP_FLAGS}")
-foreach (_dir ${TILEDARRAY_INCLUDE_DIRECTORIES})
-  set(TILEDARRAY_CPP_FLAGS "${TILEDARRAY_CPP_FLAGS} -I${_dir}")
-endforeach()
+# convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
+set (TA_DEFAULT_ERROR 1)
+if (TA_ERROR STREQUAL none)
+  set (TA_DEFAULT_ERROR 0)
+elseif (TA_ERROR STREQUAL throw)
+  set (TA_DEFAULT_ERROR 1)
+elseif (TA_ERROR STREQUAL assert)
+  set (TA_DEFAULT_ERROR 2)
+endif()
 
-# TiledArray includes
-set(TILEDARRAY_CPP_FLAGS "-I${CMAKE_INSTALL_PREFIX}/include -I${MADNESS_INCLUDE_DIR} ${TILEDARRAY_CPP_FLAGS}")
-message(STATUS "TILEDARRAY_CPP_FLAGS = ${TILEDARRAY_CPP_FLAGS}")
+# wrap up
+CONFIGURE_FILE(
+  ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
+  ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
+)
+
