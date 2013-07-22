@@ -41,7 +41,7 @@ endif()
 
 if (NOT LAPACK_FOUND)
 
-  if(TILEDARRAY_EXPERT)
+  if(TA_EXPERT)
 
     message("** LAPACK was not found or explicitly set")
     message("** Downloading and building LAPACK is explicitly disabled in EXPERT mode")
