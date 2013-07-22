@@ -20,7 +20,7 @@
 #ifndef TILEDARRAY_EXPRESSIONS_TYPE_TRAITS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_TYPE_TRAITS_H__INCLUDED
 
-#include <TiledArray/expressions/exp_base.h>
+#include <TiledArray/expressions/base.h>
 #include <TiledArray/type_traits.h>
 
 namespace TiledArray {

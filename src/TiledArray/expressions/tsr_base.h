@@ -20,8 +20,8 @@
 #ifndef TILEDARRAY_EXPRESSIONS_EXP_TSR_BASE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_EXP_TSR_BASE_H__INCLUDED
 
-#include <TiledArray/expressions/exp_base.h>
-#include <TiledArray/variable_list.h>
+#include <TiledArray/expressions/base.h>
+#include <TiledArray/expressions/variable_list.h>
 
 namespace TiledArray {
   namespace expressions {
