@@ -47,7 +47,7 @@ add_executable(   ${executable} EXCLUDE_FROM_ALL
                   contraction_tensor.cpp
                   expressions.cpp
 )
-set_target_properties(${executable} PROPERTIES COMPILE_FLAGS -DTILEDARRAY_NO_USER_ERROR_MESSAGES=1)
+set_target_properties(${executable} PROPERTIES COMPILE_DEFINITIONS TILEDARRAY_NO_USER_ERROR_MESSAGES=1)
 add_test(${executable} ${executable})
 add_dependencies(check ${executable})
 
