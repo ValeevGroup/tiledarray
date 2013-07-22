@@ -13,7 +13,7 @@ if (DEFINED BOOST)
     message(FATAL_ERROR "Boost not found in ${BOOST_ROOT}")
   endif()
 
-elseif (TILEDARRAY_EXPERT)
+elseif (TA_EXPERT)
 
   message("** BOOST was not explicitly set")
   message("** Downloading and building Boost is explicitly disabled in EXPERT mode")
