@@ -24,7 +24,7 @@
  */
 
 #include "TiledArray/tile_op/scal_add.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include "TiledArray/tensor.h"
 #include "range_fixture.h"
 

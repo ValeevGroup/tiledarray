@@ -18,7 +18,7 @@
  */
 
 #define BOOST_TEST_MAIN TiledArray Tests
-#include "config.h"
+#include "unit_test_config.h"
 #include <world/world.h>
 
 GlobalFixture::GlobalFixture() {

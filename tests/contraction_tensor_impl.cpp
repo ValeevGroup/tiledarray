@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/contraction_tensor_impl.h"
-#include "config.h"
+#include "unit_test_config.h"
 
 struct ContractionTensorImplFixture {
 

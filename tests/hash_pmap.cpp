@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/pmap/hash_pmap.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include "global_fixture.h"
 
 using namespace TiledArray;

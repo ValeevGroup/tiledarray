@@ -19,7 +19,7 @@
 
 #include "TiledArray/indexed_iterator.h"
 #include "TiledArray/error.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include <world/type_traits.h>
 #include <vector>
 #include <map>

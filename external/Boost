@@ -2,15 +2,18 @@
 
 if (DEFINED BOOST)
 
-  set(Boost_USE_STATIC_LIBS        ON)
-  set(Boost_USE_MULTITHREADED      OFF)
-  #set(Boost_USE_STATIC_RUNTIME    OFF)
+  set(Boost_USE_STATIC_LIBS    OFF)
+  #set(Boost_USE_MULTITHREADED  OFF)
+  #set(Boost_USE_STATIC_RUNTIME OFF)
 
   set(BOOST_ROOT ${BOOST})
   set(Boost_NO_SYSTEM_PATHS TRUE)
-  find_package(Boost 1.48 COMPONENTS unit_test_framework)
-  if (NOT Boost_FOUND)
-    message(FATAL_ERROR "Boost not found in ${BOOST_ROOT}")
+  
+  # Check for non-threaded Boost
+  find_package(Boost 1.33 REQUIRED)
+  find_package(Boost COMPONENTS unit_test_framework)
+  if (BOOST_UNIT_TEST_FRAMEWORK_FOUND)
+    set(BOOST_TEST_DYN_LINK 1)
   endif()
 
 elseif (TA_EXPERT)
@@ -33,34 +36,6 @@ else()
   endif()
 
   message("** Will build Boost from ${BOOST_URL}")
-
-  if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-    set(BOOST_TOOLSET gcc)
-  endif()
-
-  # gcc/clang seem to use same config under Darwin
-  if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(BOOST_TOOLSET darwin)
-  endif()
-
-  if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-    set(BOOST_TOOLSET clang)
-  endif()
-
-  if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel") 
-    set(BOOST_TOOLSET intel)
-  endif()
-
-  set(BOOST_CONFIG "using ${BOOST_TOOLSET} : : ${CMAKE_CXX_COMPILER} ;")
-
-  if (EXISTS ${EXTERNAL_BUILD_DIR}/boost/user-config.jam)
-    file(READ ${EXTERNAL_BUILD_DIR}/boost/user-config.jam BOOST_CONFIG_JAM)
-    if (NOT ("${BOOST_CONFIG}" STREQUAL "${BOOST_CONFIG_JAM}"))
-      message(STATUS "Boost needs to be rebuilt")
-      file(REMOVE ${EXTERNAL_BUILD_DIR}/boost/src/boost-stamp/boost-build)
-    endif()
-  endif()
-  file(WRITE ${EXTERNAL_BUILD_DIR}/boost/user-config.jam "${BOOST_CONFIG}")
 
   ExternalProject_Add(
     boost

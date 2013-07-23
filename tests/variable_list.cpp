@@ -19,7 +19,7 @@
 
 #include "TiledArray/expressions/variable_list.h"
 #include "TiledArray/permutation.h"
-#include "config.h"
+#include "unit_test_config.h"
 
 //using namespace TiledArray;
 using namespace TiledArray;

@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/transform_iterator.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include <vector>
 
 using TiledArray::detail::BinaryTransformIterator;

@@ -20,7 +20,7 @@
 #include "TiledArray/tensor_impl.h"
 #include "TiledArray/tensor.h"
 #include "range_fixture.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include "TiledArray/pmap/hash_pmap.h"
 
 using namespace TiledArray;

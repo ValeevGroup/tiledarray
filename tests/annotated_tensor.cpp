@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/annotated_tensor.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include "array_fixture.h"
 
 using namespace TiledArray;

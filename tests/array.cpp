@@ -18,7 +18,7 @@
  */
 
 #include "array_fixture.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include "TiledArray/expressions.h"
 
 using namespace TiledArray;

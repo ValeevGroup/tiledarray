@@ -19,7 +19,7 @@
 
 #include "TiledArray/range.h"
 #include "TiledArray/permutation.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include "range_fixture.h"
 #include <sstream>
 #include <world/bufar.h>

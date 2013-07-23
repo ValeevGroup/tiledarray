@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/eigen.h"
-#include "config.h"
+#include "unit_test_config.h"
 #include "range_fixture.h"
 
 using namespace TiledArray;

@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/tensor_expression.h"
-#include "config.h"
+#include "unit_test_config.h"
 
 struct TensorExpressionImplFixture {
 

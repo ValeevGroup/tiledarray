@@ -20,7 +20,7 @@
 #include "TiledArray/tensor.h"
 #include <math.h>
 #include <utility>
-#include "config.h"
+#include "unit_test_config.h"
 #include "range_fixture.h"
 #include "TiledArray/madness.h"
 

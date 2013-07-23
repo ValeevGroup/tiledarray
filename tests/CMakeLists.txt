@@ -1,7 +1,7 @@
 
 CONFIGURE_FILE(
-  ${CMAKE_CURRENT_SOURCE_DIR}/config.h.in
-  ${CMAKE_CURRENT_SOURCE_DIR}/config.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake_unit_test_config_h.in
+  ${PROJECT_BINARY_DIR}/tests/unit_test_config.h
 )
 
 set(executable ta_test)
@@ -47,7 +47,12 @@ add_executable(   ${executable} EXCLUDE_FROM_ALL
                   contraction_tensor.cpp
                   expressions.cpp
 )
+
+# Add compiler flags for test
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+include_directories("${PROJECT_BINARY_DIR}/tests")
 set_target_properties(${executable} PROPERTIES COMPILE_DEFINITIONS TILEDARRAY_NO_USER_ERROR_MESSAGES=1)
+
 add_test(${executable} ${executable})
 add_dependencies(check ${executable})
 

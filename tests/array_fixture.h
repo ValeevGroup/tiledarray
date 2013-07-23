@@ -24,7 +24,7 @@
 #include "TiledArray/annotated_tensor.h"
 #include "range_fixture.h"
 #include <vector>
-#include "config.h"
+#include "unit_test_config.h"
 
 struct ArrayFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::dim> ArrayN;
