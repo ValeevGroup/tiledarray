@@ -75,7 +75,7 @@ else()
       CONFIGURE_COMMAND ${EXTERNAL_BUILD_DIR}/madness/src/madness/configure
        --prefix=${CMAKE_INSTALL_PREFIX}
        --with-mpi-thread=multiple
-       --enable-optimal=yes
+       --disable-optimal
        --enable-dependency-tracking
        --with-fortran-int32=${MAD_F77_INT32}
        MPICXX=${CMAKE_CXX_COMPILER}
