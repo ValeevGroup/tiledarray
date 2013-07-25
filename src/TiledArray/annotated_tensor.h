@@ -44,7 +44,7 @@ namespace TiledArray {
           std::shared_ptr<typename AT::pmap_interface>
               pmap(new TiledArray::detail::BlockedPmap(pimpl->get_world(), other.size()));
           other.eval(pimpl->vars(), pmap).get();
-          pimpl->array() = other.template convert_to_array<typename AT::array_type>();
+          pimpl->xarray() = other.template convert_to_array<typename AT::array_type>();
         }
       }; // AssignArrayHelper
 
@@ -79,7 +79,8 @@ namespace TiledArray {
         /// \param vars The varible list for this tensor argument
         AnnotatedTensorImpl(const array_type& array, const VariableList& vars) :
             TensorExpressionImpl_(array.get_world(), vars, array.trange(), (array.is_dense() ? 0 : array.size())),
-            array_(const_cast<array_type&>(array))
+            array_(const_cast<array_type&>(array)),
+            array_copy_()
         { }
 
         /// Virtual destructor
@@ -88,12 +89,12 @@ namespace TiledArray {
         /// Array accessor
 
         /// \return A reference to the array object
-				array_type& array() { return array_; }
+				array_type& xarray() { return array_; }
 
         /// Const array accessor
 
         /// \return A const reference to the array object
-        const array_type& array() const { return array_; }
+        const array_type& array() const { return array_copy_; }
 
         /// Assign a tensor expression to this object
         virtual void assign(std::shared_ptr<TensorExpressionImpl_>& pimpl, TensorExpression<value_type>& other) {
@@ -231,22 +232,22 @@ namespace TiledArray {
               TensorExpressionImpl_::pmap()->begin();
 
             if(is_one(TensorExpressionImpl_::scale())) {
-              if(array_.is_dense()) {
+              if(array_copy_.is_dense()) {
                 for(; it != end; ++it)
-                  set_tile(*it, array_.find(*it));
+                  set_tile(*it, array_copy_.find(*it));
               } else {
                 for(; it != end; ++it)
-                  if(! array_.is_zero(*it))
-                    set_tile(*it, array_.find(*it));
+                  if(! array_copy_.is_zero(*it))
+                    set_tile(*it, array_copy_.find(*it));
               }
             } else {
-              if(array_.is_dense()) {
+              if(array_copy_.is_dense()) {
                 for(; it != end; ++it)
-                  scale_set_tile(*it, array_.find(*it));
+                  scale_set_tile(*it, array_copy_.find(*it));
               } else {
                 for(; it != end; ++it)
-                  if(! array_.is_zero(*it))
-                    scale_set_tile(*it, array_.find(*it));
+                  if(! array_copy_.is_zero(*it))
+                    scale_set_tile(*it, array_copy_.find(*it));
               }
             }
         }
@@ -258,18 +259,22 @@ namespace TiledArray {
         /// This function should evaluate all child tensors.
         virtual madness::Future<bool> eval_children(const expressions::VariableList&,
             const std::shared_ptr<pmap_interface>&)
-        { return array_.eval(); }
+        {
+          array_copy_ = array_;
+          return array_copy_.eval();
+        }
 
         /// Construct the shape object
 
         /// \param shape The existing shape object
         virtual void make_shape(shape_type& shape) const {
-          TA_ASSERT(shape.size() == array_.size());
-          shape = array_.get_shape();
+          TA_ASSERT(shape.size() == array_copy_.size());
+          shape = array_copy_.get_shape();
         }
 
         array_type& array_; ///< The referenced array
-      }; // class PermuteTiledTensor
+        array_type array_copy_; ///< The copied array
+      }; // class AnnotatedTensorImpl
 
     } // namespace detail
 
