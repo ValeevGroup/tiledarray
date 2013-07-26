@@ -4,7 +4,7 @@
 # Find MADNESS
 ###################
 
-find_package(MADNESS COMPONENTS MADworld REQUIRED)
+find_package(MADNESS COMPONENTS MADworld OPTIONAL)
 
 if (MADNESS_FOUND)
   # Print the MADNESS libraries and paths found
@@ -34,9 +34,9 @@ elseif(TA_EXPERT)
 
 else()
 
-  message("** Will pull MADNESS from ${MADNESS_SVN_URL}")
-  
   set(MADNESS_SVN_URL http://m-a-d-n-e-s-s.googlecode.com/svn/local/trunk)
+
+  message("** Will pull MADNESS from ${MADNESS_SVN_URL}")  
     
   # need to use BLAS_LIBRARIES and LAPACK_LIBRARIES, but need to convert them first to compiler arguments
   include(ConvertLibrariesListToCompilerArgs)
