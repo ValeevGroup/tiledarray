@@ -58,8 +58,11 @@ namespace TiledArray {
       {
         // Construct a map of all local processes
         local_.reserve(size_);
+        // Warning: This is non-scaling code because it iterates over all
+        // elements. However, it is for replicated data so the number of
+        // elements is assumed to be reasonable.
         for(std::size_t i = 0; i < size_; ++i) {
-          TA_ASSERT(ReplicatedPmap::owner(i));
+          TA_ASSERT(ReplicatedPmap::owner(i) == rank_);
           local_.push_back(i);
         }
       }
