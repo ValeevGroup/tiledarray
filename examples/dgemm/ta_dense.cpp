@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
   // Construct and initialize arrays
   TiledArray::Array<double, 2> a(world, trange);
   TiledArray::Array<double, 2> b(world, trange);
-  TiledArray::Array<double, 2> c(world, trange);
+//  TiledArray::Array<double, 2> c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
 
@@ -84,14 +84,24 @@ int main(int argc, char** argv) {
   world.gop.fence();
   const double wall_time_start = madness::wall_time();
 
-  // Do matrix multiplication
-  for(int i = 0; i < repeat; ++i) {
-    c("m,n") = a("m,k") * b("k,n");
-    world.gop.fence();
-    if(world.rank() == 0)
-      std::cout << "Iteration " << i + 1 << "\n";
-  }
+  try {
+    // Do matrix multiplication
+    for(int i = 0; i < repeat; ++i) {
 
+//      a("i,j") = a("i,k") * a("k,j");
+      world.gop.fence();
+      const TiledArray::Array<double, 2> c = a("i,k") * b("k,j");
+//      world.gop.fence();
+      const TiledArray::Array<double, 2> d = c("i,j") * 0.5 * b("j,k");
+      world.gop.fence();
+      a = d;
+      if((world.rank() == 0) && ((i % 100) ==  0))
+        std::cout << "Iteration " << i + 1 << "\n";
+    }
+  } catch(std::exception& e) {
+    std::cout << e.what() << std::endl;
+    throw;
+  }
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 

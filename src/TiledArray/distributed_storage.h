@@ -21,7 +21,6 @@
 #define TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <TiledArray/indexed_iterator.h>
 #include <TiledArray/pmap/pmap.h>
 #include <TiledArray/madness.h>
 
@@ -55,8 +54,6 @@ namespace TiledArray {
       typedef madness::Future<value_type> future; ///< Element container type
       typedef Pmap pmap_interface; ///< Process map interface type
       typedef madness::ConcurrentHashMap<key_type, future> container_type; ///< Local container type
-      typedef detail::IndexedIterator<typename container_type::iterator> iterator; ///< Local element iterator
-      typedef detail::IndexedIterator<typename container_type::const_iterator> const_iterator; ///< Local element const iterator
       typedef typename container_type::accessor accessor; ///< Local element accessor type
       typedef typename container_type::const_accessor const_accessor; ///< Local element const accessor type
 

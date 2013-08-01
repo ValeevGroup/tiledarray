@@ -188,7 +188,6 @@ namespace TiledArray {
       typedef typename TensorImpl_::range_type range_type;
       typedef typename TensorImpl_::shape_type shape_type;
       typedef typename TensorImpl_::value_type value_type; ///< The result value type
-      typedef typename TensorImpl_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
       typedef typename TensorImpl_::storage_type::future const_reference;
 
     private:

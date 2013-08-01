@@ -37,7 +37,6 @@ ta_test_SOURCES = ta_test.cpp \
                   sparse_shape.cpp \
                   tiled_range1.cpp \
                   tiled_range.cpp \
-                  indexed_iterator.cpp \
                   blocked_pmap.cpp \
                   cyclic_pmap.cpp \
                   hash_pmap.cpp \

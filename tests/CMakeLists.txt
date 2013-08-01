@@ -17,7 +17,6 @@ add_executable(   ${executable} EXCLUDE_FROM_ALL
                   bitset.cpp
                   tiled_range1.cpp
                   tiled_range.cpp
-                  indexed_iterator.cpp
                   blocked_pmap.cpp
                   cyclic_pmap.cpp
                   hash_pmap.cpp

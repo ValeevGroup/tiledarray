@@ -68,7 +68,6 @@ namespace TiledArray {
         typedef typename TensorImpl_::shape_type shape_type; ///< Tile shape type
         typedef typename TensorImpl_::value_type value_type; ///< The result value type
         typedef typename TensorImpl_::numeric_type numeric_type; ///< The numeric data supporting value_type
-        typedef typename TensorImpl_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
         typedef typename TensorImpl_::storage_type::future const_reference; /// The storage type for this object
 
       public:

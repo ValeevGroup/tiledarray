@@ -35,7 +35,6 @@ library_include_HEADERS = annotated_tensor.h \
                           eigen.h \
                           error.h \
                           expressions.h \
-                          indexed_iterator.h \
                           lazy_sync.h \
                           madness.h \
                           permutation.h \
