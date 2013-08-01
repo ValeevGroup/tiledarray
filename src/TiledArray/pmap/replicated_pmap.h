@@ -15,6 +15,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  replicated_pmap.h
+ *  February 8, 2013
+ *
  */
 
 #ifndef TILEDARRAY_PMAP_REPLICATED_PMAP_H__INCLUDED
@@ -31,99 +37,49 @@ namespace TiledArray {
     /// A Replicated process map
 
     /// Defines a process map where all processes own data.
-    class ReplicatedPmap : public Pmap<std::size_t> {
+    class ReplicatedPmap : public Pmap {
+    protected:
+
+      // Import Pmap protected variables
+      using Pmap::local_;
+      using Pmap::rank_;
+      using Pmap::procs_;
+      using Pmap::size_;
+
     public:
-      typedef Pmap<std::size_t>::key_type key_type; ///< Key type
-      typedef Pmap<std::size_t>::const_iterator const_iterator;
+      typedef Pmap::size_type size_type; ///< Size type
 
       /// Construct Blocked map
 
       /// \param world A reference to the world
       /// \param size The number of elements to be mapped
       ReplicatedPmap(madness::World& world, std::size_t size) :
-          size_(size),
-          rank_(world.rank()),
-          procs_(world.size()),
-          local_()
-      { }
-
-    private:
-
-      ReplicatedPmap(const ReplicatedPmap& other) :
-          size_(other.size_),
-          rank_(other.rank_),
-          procs_(other.procs_),
-          local_()
-      { }
-
-    public:
-
-      ~ReplicatedPmap() { }
-
-      virtual void set_seed(madness::hashT) {
+          Pmap(world, size)
+      {
         // Construct a map of all local processes
         local_.reserve(size_);
-        for(std::size_t i = 0; i < size_; ++i)
+        for(std::size_t i = 0; i < size_; ++i) {
+          TA_ASSERT(ReplicatedPmap::owner(i));
           local_.push_back(i);
+        }
       }
 
-      /// Create a copy of this pmap
+      virtual ~ReplicatedPmap() { }
 
-      /// \return A shared pointer to the new object
-      virtual std::shared_ptr<Pmap<key_type> > clone() const {
-        return std::shared_ptr<Pmap<key_type> >(new ReplicatedPmap(*this));
-      }
+      /// Maps \c tile to the processor that owns it
 
-      /// Maps key to processor
-
-      /// \param key Key for container
-      /// \return Processor that logically owns the key
-      ProcessID owner(const key_type& key) const {
-        TA_ASSERT(key < size_);
+      /// \param tile The tile to be queried
+      /// \return Processor that logically owns \c tile
+      virtual ProcessID owner(const size_type tile) const {
+        TA_ASSERT(tile < size_);
         return rank_;
       }
-
-      /// Size accessor
-
-      /// \return The number of local elements
-      virtual std::size_t size() const { return size_; }
-
-      /// Local size accessor
-
-      /// \return The number of local elements
-      std::size_t local_size() const { return local_.size(); }
-
-      /// Local elements
-
-      /// \return \c true when there are no local elements, otherwise \c false .
-      bool empty() const { return local_.empty(); }
 
       /// Replicated array status
 
       /// \return \c true if the array is replicated, and false otherwise
       virtual bool is_replicated() const { return true; }
 
-      /// Begin local element iterator
-
-      /// \return An iterator that points to the beginning of the local element set
-      const_iterator begin() const { return local_.begin(); }
-
-      /// End local element iterator
-
-      /// \return An iterator that points to the beginning of the local element set
-      const_iterator end() const { return local_.end(); }
-
-      /// Local element vector accessor
-
-      /// \return A const reference to a vector of local elements
-      virtual const std::vector<key_type>& local() const { return local_; }
-
-    private:
-
-      const std::size_t size_; ///< The number of elements to be mapped
-      const std::size_t rank_;
-      const std::size_t procs_; ///< The number of processes in the world
-      std::vector<std::size_t> local_; ///< A list of local elements
     }; // class MapByRow
 
   }  // namespace detail

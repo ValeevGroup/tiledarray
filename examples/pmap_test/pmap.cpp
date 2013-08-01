@@ -20,7 +20,7 @@
 #include <tiled_array.h>
 #include <TiledArray/pmap/hash_pmap.h>
 
-std::vector<ProcessID> make_map(std::size_t m, std::size_t n, std::shared_ptr<TiledArray::Pmap<std::size_t> >& pmap) {
+std::vector<ProcessID> make_map(std::size_t m, std::size_t n, std::shared_ptr<TiledArray::Pmap>& pmap) {
   std::vector<ProcessID> map;
 
   const std::size_t end = m * n;
@@ -39,12 +39,12 @@ void print_map(std::size_t m, std::size_t n, const std::vector<ProcessID>& map) 
   }
 }
 
-void print_local(madness::World& world, const std::shared_ptr<TiledArray::Pmap<std::size_t> >& pmap) {
+void print_local(madness::World& world, const std::shared_ptr<TiledArray::Pmap>& pmap) {
   for(ProcessID r = 0; r < world.size(); ++r) {
     world.gop.fence();
     if(r == world.rank()) {
       std::cout << r << ": { ";
-      for(TiledArray::Pmap<std::size_t>::const_iterator it = pmap->begin(); it != pmap->end(); ++it)
+      for(TiledArray::Pmap::const_iterator it = pmap->begin(); it != pmap->end(); ++it)
         std::cout << *it << " ";
       std::cout << "}\n";
     }
@@ -57,16 +57,13 @@ int main(int argc, char** argv) {
   std::size_t m = 20;
   std::size_t n = 10;
 
-  std::shared_ptr<TiledArray::Pmap<std::size_t> > blocked_pmap(new TiledArray::detail::BlockedPmap(world, m * n));
-  blocked_pmap->set_seed(0ul);
+  std::shared_ptr<TiledArray::Pmap> blocked_pmap(new TiledArray::detail::BlockedPmap(world, m * n));
   std::vector<ProcessID> blocked_map = make_map(m, n, blocked_pmap);
 
-  std::shared_ptr<TiledArray::Pmap<std::size_t> > cyclic_pmap(new TiledArray::detail::CyclicPmap(world, m, n));
-  cyclic_pmap->set_seed(0ul);
+  std::shared_ptr<TiledArray::Pmap> cyclic_pmap(new TiledArray::detail::CyclicPmap(world, m, n));
   std::vector<ProcessID> cyclic_map = make_map(m, n, cyclic_pmap);
 
-  std::shared_ptr<TiledArray::Pmap<std::size_t> > hash_pmap(new TiledArray::detail::HashPmap(world, m * n));
-  hash_pmap->set_seed(0ul);
+  std::shared_ptr<TiledArray::Pmap> hash_pmap(new TiledArray::detail::HashPmap(world, m * n));
   std::vector<ProcessID> hash_map = make_map(m, n, hash_pmap);
 
   if(world.rank() == 0) {

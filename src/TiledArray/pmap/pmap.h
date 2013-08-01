@@ -15,54 +15,97 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  pmap.h
+ *  April 24, 2012
+ *
  */
 
 #ifndef TILEDARRAY_PMAP_H__INCLUDED
 #define TILEDARRAY_PMAP_H__INCLUDED
 
-#include <world/worldtypes.h>
-#include <world/worldhash.h>
+#include <TiledArray/madness.h>
+#include <TiledArray/error.h>
 #include <vector>
-#include <world/shared_ptr.h>
 
 namespace TiledArray {
 
-  /// Process map base class
-  template <typename Key>
+  /// Process map
+
+  /// This is the base and interface class for other process maps. It provides
+  /// access to the local tile iterator and basic process map information.
+  /// Derived classes are responsible for distribution of tiles.
   class Pmap {
   public:
-    typedef Key key_type;
-    typedef typename std::vector<key_type>::const_iterator const_iterator;
+    typedef std::size_t size_type; ///< Size type
+    typedef typename std::vector<size_type>::const_iterator const_iterator; ///< Iterator type
+
+  protected:
+    const ProcessID rank_; ///< The rank of this process
+    const ProcessID procs_; ///< The number of processes
+    const size_type size_; ///< The number of tiles mapped among all processes
+    std::vector<size_type> local_; ///< A list of local tiles
+
+  private:
+    // Not allowed
+    Pmap(const Pmap&);
+    Pmap& operator=(const Pmap&);
+
+  public:
+
+    /// Process map constructor
+
+    /// \param world The world where the tiles will be mapped
+    /// \param size The number of processes to be mapped
+    Pmap(madness::World& world, const size_type size) :
+      rank_(world.rank()), procs_(world.size()), size_(size), local_()
+    {
+      TA_ASSERT(size_ > 0ul);
+    }
 
     virtual ~Pmap() { }
 
-    /// Initialize the hashing seed and local iterator
-    virtual void set_seed(madness::hashT = 0ul) = 0;
+    /// Maps \c tile to the processor that owns it
 
-    /// Create a copy of this pmap
+    /// \param tile The tile to be queried
+    /// \return Processor that logically owns \c tile
+    virtual ProcessID owner(const size_type tile) const = 0;
 
-    /// \return A shared pointer to the new object
-    virtual std::shared_ptr<Pmap<key_type> > clone() const = 0;
+    /// Check that the tile is owned by this process
 
-    /// Key owner
-
-    /// \return The \c ProcessID of the process that owns \c key .
-    virtual ProcessID owner(const key_type& key) const = 0;
+    /// \param tile The tile to be checked
+    /// \return \c true if \c tile is owned by this process, otherwise \c false .
+    bool is_local(size_type tile) const {
+      TA_ASSERT(tile < size_);
+      return (rank_ == this->owner(tile));
+    }
 
     /// Size accessor
 
-    /// \return The number of local elements
-    virtual std::size_t size() const = 0;
+    /// \return The number of elements
+    size_type size() const { return size_; }
+
+    /// Process rank accessor
+
+    /// \return The rank of this process
+    ProcessID rank() const { return rank_; }
+
+    /// Process count accessor
+
+    /// \return The number of processes
+    ProcessID procs() const { return procs_; }
 
     /// Local size accessor
 
     /// \return The number of local elements
-    virtual std::size_t local_size() const = 0;
+    std::size_t local_size() const { return local_.size(); }
 
     /// Local elements
 
-    /// \return \c true when there are no local elements, otherwise \c false .
-    virtual bool empty() const = 0;
+    /// \return \c true when there are no local tiles, otherwise \c false .
+    bool empty() const { return local_.empty(); }
 
     /// Replicated array status
 
@@ -72,15 +115,12 @@ namespace TiledArray {
     /// Begin local element iterator
 
     /// \return An iterator that points to the beginning of the local element set
-    virtual const_iterator begin() const = 0;
-
+    const_iterator begin() const { return local_.begin(); }
 
     /// End local element iterator
 
     /// \return An iterator that points to the beginning of the local element set
-    virtual const_iterator end() const = 0;
-
-    virtual const std::vector<key_type>& local() const = 0;
+    const_iterator end() const { return local_.end(); }
 
   }; // class Pmap
 

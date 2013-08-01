@@ -26,7 +26,6 @@ using namespace TiledArray;
 struct HashPmapFixture {
 
   HashPmapFixture() : pmap(* GlobalFixture::world, 50ul) {
-    pmap.set_seed();
   }
 
   detail::HashPmap pmap;

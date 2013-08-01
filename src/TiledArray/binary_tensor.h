@@ -380,7 +380,7 @@ namespace TiledArray {
             }
           }
 
-          madness::Future<bool> left_done = left_.eval(*left_vars, pmap->clone());
+          madness::Future<bool> left_done = left_.eval(*left_vars, pmap);
           madness::Future<bool> right_done = right_.eval(*right_vars, pmap);
           return TensorImpl_::get_world().taskq.add(& BinaryTensorImpl_::done,
               left_done, right_done, madness::TaskAttributes::hipri());

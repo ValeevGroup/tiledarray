@@ -117,7 +117,7 @@ namespace TiledArray {
           pmap(new TiledArray::detail::BlockedPmap(left_.get_world(), left_.size()));
 
         // Evaluate and wait the arguments
-        madness::Future<bool> left_done = left_.eval(left_.vars(), pmap->clone());
+        madness::Future<bool> left_done = left_.eval(left_.vars(), pmap);
         madness::Future<bool> right_done = right_.eval(left_.vars(), pmap);
 
         // Add expression evaluations as a dependencies for this task

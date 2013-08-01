@@ -26,7 +26,6 @@ using namespace TiledArray;
 struct CyclicPmapFixture {
 
   CyclicPmapFixture() : pmap(* GlobalFixture::world, 5ul, 10ul) {
-    pmap.set_seed();
   }
 
   detail::CyclicPmap pmap;

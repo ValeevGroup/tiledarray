@@ -312,7 +312,7 @@ namespace TiledArray {
       typedef TileConstReference<Tile> const_reference; ///< Tile constant reference type
       typedef TensorIterator<Tile, reference> iterator; ///< Iterator type
       typedef TensorIterator<Tile, const_reference> const_iterator; ///< Constant iterator type
-      typedef Pmap<size_type> pmap_interface; ///< Process map interface type
+      typedef typename storage_type::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 

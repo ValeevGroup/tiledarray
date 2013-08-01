@@ -314,7 +314,7 @@ namespace TiledArray {
         {
           TA_ASSERT(! evaluated_);
 
-          madness::Future<bool> child_eval_done = this->eval_children(vars, pmap->clone());
+          madness::Future<bool> child_eval_done = this->eval_children(vars, pmap);
 
           // Initialize the data container process map
           TensorImpl_::pmap(pmap);
@@ -407,7 +407,7 @@ namespace TiledArray {
 
         // Evaluate this tensor and wait
         pimpl_->eval(pimpl_->vars(),
-            std::shared_ptr<TiledArray::Pmap<size_type> >(
+            std::shared_ptr<pmap_interface>(
             new TiledArray::detail::BlockedPmap(pimpl_->get_world(),
             pimpl_->size()))).get();
 
@@ -417,7 +417,7 @@ namespace TiledArray {
       template <typename A>
       A convert_to_array() {
         if(pimpl_->is_dense()) {
-          A array(pimpl_->get_world(), pimpl_->trange(), pimpl_->pmap()->clone());
+          A array(pimpl_->get_world(), pimpl_->trange(), pimpl_->pmap());
 
           typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
           const typename pmap_interface::const_iterator end = pimpl_->pmap()->end();
@@ -426,7 +426,7 @@ namespace TiledArray {
 
           return array;
         } else {
-          A array(pimpl_->get_world(), pimpl_->trange(), pimpl_->shape(), pimpl_->pmap()->clone());
+          A array(pimpl_->get_world(), pimpl_->trange(), pimpl_->shape(), pimpl_->pmap());
 
           typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
           const typename pmap_interface::const_iterator end = pimpl_->pmap()->end();

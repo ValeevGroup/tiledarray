@@ -15,108 +15,64 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  hash_pmap.h
+ *  May 4, 2012
+ *
  */
 
 #ifndef TILEDARRAY_PMAP_HASH_PMAP_H__INCLUDED
 #define TILEDARRAY_PMAP_HASH_PMAP_H__INCLUDED
 
 #include <TiledArray/pmap/pmap.h>
-#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {
 
-    /// Process map base class
-    class HashPmap : public Pmap<std::size_t> {
-    public:
-      typedef Pmap<std::size_t>::key_type key_type;
-      typedef Pmap<std::size_t>::const_iterator const_iterator;
-
-      HashPmap(madness::World& world, std::size_t size) :
-          rank_(world.rank()),
-          procs_(world.size()),
-          size_(size),
-          seed_(0ul),
-          local_()
-      { }
+    /// Hashed process map
+    class HashPmap : public Pmap {
+    protected:
+      // Import Pmap protected variables
+      using Pmap::local_;
+      using Pmap::rank_;
+      using Pmap::procs_;
+      using Pmap::size_;
 
     private:
 
-      HashPmap(const HashPmap& other) :
-          rank_(other.rank_),
-          procs_(other.procs_),
-          size_(other.size_),
-          seed_(0ul),
-          local_()
-      { }
+      const madness::hashT seed_; ///< Hashing seed value
 
     public:
+      typedef Pmap::size_type size_type; ///< Size type
+
+      /// Construct a hashed process map
+
+      /// \param world The world where the tiles are mapped
+      /// \param size The number of tiles to be mapped
+      /// \param seed The hash seed used to generate different maps
+      HashPmap(madness::World& world, const size_type size, madness::hashT seed = 0ul) :
+          Pmap(world, size), seed_(seed)
+      {
+        // Construct a map of all local processes
+        for(size_type i = 0ul; i < size_; ++i)
+          if(HashPmap::owner(i) == rank_)
+            local_.push_back(i);
+      }
 
       virtual ~HashPmap() { }
 
-      /// Initialize the hashing seed and local iterator
-      virtual void set_seed(madness::hashT seed = 0ul) {
-        seed_ = seed;
+      /// Maps \c tile to the processor that owns it
 
-        for(key_type i = 0ul; i < size_; ++i) {
-          if(HashPmap::owner(i) == rank_)
-            local_.push_back(i);
-        }
-      }
-
-      /// Create a copy of this pmap
-
-      /// \return A shared pointer to the new object
-      virtual std::shared_ptr<Pmap<key_type> > clone() const {
-        return std::shared_ptr<Pmap<key_type> >(new HashPmap(*this));
-      }
-
-      /// Key owner
-
-      /// \return The \c ProcessID of the process that owns \c key .
-      virtual ProcessID owner(const key_type& key) const {
+      /// \param tile The tile to be queried
+      /// \return Processor that logically owns \c tile
+      virtual ProcessID owner(const size_type tile) const {
         madness::hashT seed = seed_;
-        madness::hash_combine(seed, key);
+        madness::hash_combine(seed, tile);
         return seed % procs_;
       }
 
-      /// Size accessor
-
-      /// \return The number of local elements
-      virtual std::size_t size() const { return size_; }
-
-      /// Local size accessor
-
-      /// \return The number of local elements
-      virtual std::size_t local_size() const { return local_.size(); }
-
-      /// Local elements
-
-      /// \return \c true when there are no local elements, otherwise \c false .
-      virtual bool empty() const { return local_.empty(); }
-
-      /// Begin local element iterator
-
-      /// \return An iterator that points to the beginning of the local element set
-      virtual const_iterator begin() const { return local_.begin(); }
-
-
-      /// End local element iterator
-
-      /// \return An iterator that points to the beginning of the local element set
-      virtual const_iterator end() const { return local_.end(); }
-
-      /// Local element vector accessor
-
-      /// \return A const reference to a vector of local elements
-      virtual const std::vector<key_type>& local() const { return local_; }
-
-    private:
-      const std::size_t rank_;
-      const std::size_t procs_;
-      const std::size_t size_;
-      std::size_t seed_;
-      std::vector<key_type> local_;
     }; // class HashPmap
 
   } // namespace detail

@@ -53,7 +53,7 @@ namespace TiledArray {
       typedef size_type key_type; ///< element key type
       typedef T value_type; ///< Element type
       typedef madness::Future<value_type> future; ///< Element container type
-      typedef Pmap<key_type> pmap_interface; ///< Process map interface type
+      typedef Pmap pmap_interface; ///< Process map interface type
       typedef madness::ConcurrentHashMap<key_type, future> container_type; ///< Local container type
       typedef detail::IndexedIterator<typename container_type::iterator> iterator; ///< Local element iterator
       typedef detail::IndexedIterator<typename container_type::const_iterator> const_iterator; ///< Local element const iterator
@@ -83,7 +83,11 @@ namespace TiledArray {
         data_((max_size / world.size()) + 11)
       {
         if(pmap_) {
-          pmap_->set_seed(WorldObject_::id().get_obj_id());
+          // Check that the process map is appropriate for this storage object
+          TA_ASSERT(pmap_->size() == max_size);
+          TA_ASSERT(pmap_->rank() == world.rank());
+          TA_ASSERT(pmap_->procs() == world.size());
+//          pmap_->set_seed(WorldObject_::id().get_obj_id());
           WorldObject_::process_pending();
         }
       }
@@ -98,10 +102,14 @@ namespace TiledArray {
       /// It can be invoked in the constructor by passing \c true to the
       /// \c do_pending argument.
       void init(const std::shared_ptr<pmap_interface>& pmap) {
-        TA_ASSERT(pmap);
         TA_ASSERT(!pmap_);
+        // Check that the process map is appropriate for this storage object
+        TA_ASSERT(pmap);
+        TA_ASSERT(pmap->size() == max_size_);
+        TA_ASSERT(pmap->rank() == WorldObject_::get_world().rank());
+        TA_ASSERT(pmap->procs() == WorldObject_::get_world().size());
         pmap_ = pmap;
-        pmap_->set_seed(WorldObject_::id().get_obj_id());
+//        pmap_->set_seed(WorldObject_::id().get_obj_id());
         WorldObject_::process_pending();
       }
 
