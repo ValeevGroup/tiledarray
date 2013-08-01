@@ -208,7 +208,7 @@ BOOST_AUTO_TEST_CASE( make_replicated )
   std::shared_ptr<ArrayN::pmap_interface> distributed_pmap = a.get_pmap();
 
   // Convert array to a replicated array.
-  a.make_replicated();
+  BOOST_REQUIRE_NO_THROW(a.make_replicated());
 
   if(GlobalFixture::world->size() == 1)
     BOOST_CHECK(! a.get_pmap()->is_replicated());
@@ -224,7 +224,6 @@ BOOST_AUTO_TEST_CASE( make_replicated )
     for(ArrayN::value_type::const_iterator it = tile.get().begin(); it != tile.get().end(); ++it)
       BOOST_CHECK_EQUAL(*it, distributed_pmap->owner(i) + 1);
   }
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
