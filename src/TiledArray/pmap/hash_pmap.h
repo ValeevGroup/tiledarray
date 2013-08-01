@@ -56,6 +56,8 @@ namespace TiledArray {
           Pmap(world, size), seed_(seed)
       {
         // Construct a map of all local processes
+        // TODO: NON-SCALING!!!
+        // This code is non-scaling because it iterates over all elements
         for(size_type i = 0ul; i < size_; ++i)
           if(HashPmap::owner(i) == rank_)
             local_.push_back(i);
