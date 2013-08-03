@@ -217,6 +217,7 @@ BOOST_AUTO_TEST_CASE( make_replicated )
 
   // Check that all the data is local
   for(std::size_t i = 0; i < a.size(); ++i) {
+    std::cout << i << "\n";
     BOOST_CHECK(a.is_local(i));
     BOOST_CHECK_EQUAL(a.get_pmap()->owner(i), GlobalFixture::world->rank());
     madness::Future<ArrayN::value_type> tile = a.find(i);
