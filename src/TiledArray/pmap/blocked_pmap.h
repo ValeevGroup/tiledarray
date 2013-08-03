@@ -84,10 +84,9 @@ namespace TiledArray {
       /// \return Processor that logically owns \c tile
       virtual ProcessID owner(const size_type tile) const {
         TA_ASSERT(tile < size_);
-        if(tile < rn1_)
-          return tile / n1_; // = tile / (n + 1)
-
-        return ((tile - rn1_) / n_) + r_; // = (tile - r_ * (n_ + 1)) / n_ + r_
+        return (tile < rn1_ ?
+            tile / n1_ : // = tile / (n + 1)
+            ((tile - rn1_) / n_) + r_); // = (tile - r_ * (n_ + 1)) / n_ + r_
       }
 
     private:
