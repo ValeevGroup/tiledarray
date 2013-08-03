@@ -63,11 +63,11 @@ namespace TiledArray {
       {
         // Find the first and last tiles of the local block
         size_type first = rank_ * n_ + std::min<std::size_t>(rank_, r_);
-        size_type last = n_ + ((rank_ + 1) < r_ ? 1ul : 0ul); // Compute the local block size
+        const ProcessID rank1 = rank_ + 1;
+        const size_type last = rank1 * n_ + std::min<std::size_t>(rank1, r_); // Compute the local block size
 
-        local_.reserve(last);
+        local_.reserve(last - first);
 
-        last += first; // Compute the last tile in the local block
 
         // Construct a map of all local processes
         for(; first < last; ++first) {
