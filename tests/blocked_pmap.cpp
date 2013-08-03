@@ -25,12 +25,9 @@ using namespace TiledArray;
 
 struct BlockedPmapFixture {
 
-  BlockedPmapFixture() : pmap(* GlobalFixture::world, 100ul) {
-  }
+  BlockedPmapFixture() { }
 
-  detail::BlockedPmap pmap;
 };
-
 
 // =============================================================================
 // BlockdPmap Test Suite
@@ -50,16 +47,21 @@ BOOST_AUTO_TEST_CASE( owner )
 
   ProcessID* p_owner = new ProcessID[size];
 
-  for(std::size_t i = 0; i < 100; ++i) {
-    std::fill_n(p_owner, size, 0);
-    p_owner[rank] = pmap.owner(i);
-    // check that the value is in range
-    BOOST_CHECK_LT(p_owner[rank], size);
-    GlobalFixture::world->gop.sum(p_owner, size);
+  // Check various pmap sizes
+  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    TiledArray::detail::BlockedPmap pmap(* GlobalFixture::world, tiles);
 
-    // Make sure everyone agrees on who owns what.
-    for(std::size_t p = 0ul; p < size; ++p)
-      BOOST_CHECK_EQUAL(p_owner[p], p_owner[rank]);
+    for(std::size_t tile = 0; tile < tiles; ++tile) {
+      std::fill_n(p_owner, size, 0);
+      p_owner[rank] = pmap.owner(tile);
+      // check that the value is in range
+      BOOST_CHECK_LT(p_owner[rank], size);
+      GlobalFixture::world->gop.sum(p_owner, size);
+
+      // Make sure everyone agrees on who owns what.
+      for(std::size_t p = 0ul; p < size; ++p)
+        BOOST_CHECK_EQUAL(p_owner[p], p_owner[rank]);
+    }
   }
 
   delete [] p_owner;
@@ -67,39 +69,42 @@ BOOST_AUTO_TEST_CASE( owner )
 
 BOOST_AUTO_TEST_CASE( local_size )
 {
-  std::size_t total_size = pmap.local_size();
-  GlobalFixture::world->gop.sum(total_size);
+  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    TiledArray::detail::BlockedPmap pmap(* GlobalFixture::world, tiles);
 
-  BOOST_CHECK_EQUAL(total_size, 100ul);
-  BOOST_CHECK(pmap.empty() == (pmap.local_size() == 0ul));
+    std::size_t total_size = pmap.local_size();
+    GlobalFixture::world->gop.sum(total_size);
+
+    // Check that the total number of elements in all local groups is equal to
+    // the number of tiles in the map.
+    BOOST_CHECK_EQUAL(total_size, tiles);
+    BOOST_CHECK(pmap.empty() == (pmap.local_size() == 0ul));
+  }
 }
 
 BOOST_AUTO_TEST_CASE( local_group )
 {
-  // Make sure the total number of elements in the local groups is correct
-  std::size_t total_size = std::distance(pmap.begin(), pmap.end());
-  GlobalFixture::world->gop.sum(total_size);
+  ProcessID tile_owners[100];
 
-  BOOST_CHECK_EQUAL(total_size, 100ul);
+  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    TiledArray::detail::BlockedPmap pmap(* GlobalFixture::world, tiles);
 
-  // Check that all local elements map to this rank
-  for(detail::BlockedPmap::const_iterator it = pmap.begin(); it != pmap.end(); ++it) {
-    BOOST_CHECK_EQUAL(pmap.owner(*it), GlobalFixture::world->rank());
-  }
-
-
-  // Check that all elements owned by this rank are in the local group exactly once
-  for(std::size_t i = 0; i < 100ul; ++i) {
-    if(pmap.owner(i) == GlobalFixture::world->rank()) {
-      BOOST_CHECK_EQUAL(std::count(pmap.begin(), pmap.end(), i), 1);
+    // Check that all local elements map to this rank
+    for(detail::BlockedPmap::const_iterator it = pmap.begin(); it != pmap.end(); ++it) {
+      BOOST_CHECK_EQUAL(pmap.owner(*it), GlobalFixture::world->rank());
     }
+
+    std::fill_n(tile_owners, tiles, 0);
+    for(detail::BlockedPmap::const_iterator it = pmap.begin(); it != pmap.end(); ++it) {
+      tile_owners[*it] += GlobalFixture::world->rank();
+    }
+
+    GlobalFixture::world->gop.sum(tile_owners, tiles);
+    for(std::size_t tile = 0; tile < tiles; ++tile) {
+      BOOST_CHECK_EQUAL(tile_owners[tile], pmap.owner(tile));
+    }
+
   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-
-
-
-
-
