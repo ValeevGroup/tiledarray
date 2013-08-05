@@ -20,6 +20,7 @@ add_executable(   ${executable} EXCLUDE_FROM_ALL
                   blocked_pmap.cpp
                   cyclic_pmap.cpp
                   hash_pmap.cpp
+                  replicated_pmap.cpp
                   distributed_storage.cpp
                   tensor_impl.cpp
                   array.cpp

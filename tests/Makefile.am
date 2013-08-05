@@ -40,6 +40,7 @@ ta_test_SOURCES = ta_test.cpp \
                   blocked_pmap.cpp \
                   cyclic_pmap.cpp \
                   hash_pmap.cpp \
+                  replicated_pmap.cpp \
                   distributed_storage.cpp \
                   tensor_impl.cpp \
                   array.cpp \
