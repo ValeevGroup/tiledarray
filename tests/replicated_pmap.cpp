@@ -38,7 +38,15 @@ BOOST_FIXTURE_TEST_SUITE( replicated_pmap_suite, ReplicatedPmapFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, 100ul));
+  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    BOOST_REQUIRE_NO_THROW(TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, tiles));
+    TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, tiles);
+    BOOST_CHECK_EQUAL(pmap.rank(), GlobalFixture::world->rank());
+    BOOST_CHECK_EQUAL(pmap.procs(), GlobalFixture::world->size());
+    BOOST_CHECK_EQUAL(pmap.size(), tiles);
+  }
+
+  BOOST_CHECK_THROW(TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, 0ul), TiledArray::Exception);
 }
 
 BOOST_AUTO_TEST_CASE( owner )
