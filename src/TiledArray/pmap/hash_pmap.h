@@ -34,11 +34,12 @@ namespace TiledArray {
     /// Hashed process map
     class HashPmap : public Pmap {
     protected:
+
       // Import Pmap protected variables
-      using Pmap::local_;
-      using Pmap::rank_;
-      using Pmap::procs_;
-      using Pmap::size_;
+      using Pmap::rank_; ///< The rank of this process
+      using Pmap::procs_; ///< The number of processes
+      using Pmap::size_; ///< The number of tiles mapped among all processes
+      using Pmap::local_; ///< A list of local tiles
 
     private:
 
@@ -69,10 +70,20 @@ namespace TiledArray {
 
       /// \param tile The tile to be queried
       /// \return Processor that logically owns \c tile
-      virtual ProcessID owner(const size_type tile) const {
+      virtual size_type owner(const size_type tile) const {
+        TA_ASSERT(tile < size_);
         madness::hashT seed = seed_;
         madness::hash_combine(seed, tile);
-        return seed % procs_;
+        return (seed % procs_);
+      }
+
+
+      /// Check that the tile is owned by this process
+
+      /// \param tile The tile to be checked
+      /// \return \c true if \c tile is owned by this process, otherwise \c false .
+      virtual bool is_local(const size_type tile) const {
+        return HashPmap::owner(tile) == rank_;
       }
 
     }; // class HashPmap

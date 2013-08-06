@@ -39,38 +39,44 @@ namespace TiledArray {
     /// Map N elements among P processes into blocks that are approximately N/P
     /// elements in size. A minimum block size may also be specified.
     class BlockedPmap : public Pmap {
-    private:
+    protected:
 
       // Import Pmap protected variables
-      using Pmap::local_;
-      using Pmap::rank_;
-      using Pmap::procs_;
-      using Pmap::size_;
+      using Pmap::rank_; ///< The rank of this process
+      using Pmap::procs_; ///< The number of processes
+      using Pmap::size_; ///< The number of tiles mapped among all processes
+      using Pmap::local_; ///< A list of local tiles
+
+    private:
+
+      const size_type block_size_; ///< block size (= size_ / procs_)
+      const size_type remainder_; ///< tile remainder (= size_ % procs_)
+      const size_type block_size_plus_1_; ///< Cashed value
+      const size_type block_size_plus_1_times_remainder_; ///< Cached value
+      const size_type local_first_; ///< First tile of this process's block
+      const size_type local_last_; ///< Last tile + 1 of this process's block
 
     public:
       typedef Pmap::size_type size_type; ///< Key type
 
       /// Construct Blocked map
 
-      /// \param world A reference to the world
-      /// \param size The number of elements to be mapped
-      BlockedPmap(madness::World& world, std::size_t size) :
+      /// \param world The world where the tiles will be mapped
+      /// \param size The number of tiles to be mapped
+      BlockedPmap(madness::World& world, size_type size) :
           Pmap(world, size),
-          n_(size_ / procs_),
-          r_(size_ % procs_),
-          n1_(n_ + 1),
-          rn1_(r_ * n1_)
+          block_size_(size_ / procs_),
+          remainder_(size_ % procs_),
+          block_size_plus_1_(block_size_ + 1),
+          block_size_plus_1_times_remainder_(remainder_ * block_size_plus_1_),
+          local_first_(rank_ * block_size_ + std::min<size_type>(rank_, remainder_)),
+          local_last_((rank_ + 1) * block_size_ + std::min<size_type>((rank_ + 1), remainder_))
       {
-        // Find the first and last tiles of the local block
-        size_type first = rank_ * n_ + std::min<std::size_t>(rank_, r_);
-        const ProcessID rank1 = rank_ + 1;
-        const size_type last = rank1 * n_ + std::min<std::size_t>(rank1, r_); // Compute the local block size
-
-        local_.reserve(last - first);
+        local_.reserve(local_last_ - local_first_);
 
 
         // Construct a map of all local processes
-        for(; first < last; ++first) {
+        for(size_type first = local_first_; first < local_last_; ++first) {
           TA_ASSERT(BlockedPmap::owner(first) == rank_);
           local_.push_back(first);
         }
@@ -82,20 +88,22 @@ namespace TiledArray {
 
       /// \param tile The tile to be queried
       /// \return Processor that logically owns \c tile
-      virtual ProcessID owner(const size_type tile) const {
+      virtual size_type owner(const size_type tile) const {
         TA_ASSERT(tile < size_);
-        return (tile < rn1_ ?
-            tile / n1_ : // = tile / (n + 1)
-            ((tile - rn1_) / n_) + r_); // = (tile - r_ * (n_ + 1)) / n_ + r_
+        return (tile < block_size_plus_1_times_remainder_ ?
+            tile / block_size_plus_1_ :
+            ((tile - block_size_plus_1_times_remainder_) / block_size_) + remainder_);
       }
 
-    private:
 
-      size_type n_; ///< block size
-      size_type r_; ///< tile remainder
-      size_type n1_; ///< Cashed value: (n + 1)
-      size_type rn1_; ///< Cached value: r * (n + 1)
-    }; // class MapByRow
+      /// Check that the tile is owned by this process
+
+      /// \param tile The tile to be checked
+      /// \return \c true if \c tile is owned by this process, otherwise \c false .
+      virtual bool is_local(const size_type tile) const {
+        return ((tile >= local_first_) && (tile < local_last_));
+      }
+    }; // class BlockedPmap
 
   }  // namespace detail
 }  // namespace TiledArray

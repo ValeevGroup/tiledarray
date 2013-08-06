@@ -41,10 +41,10 @@ namespace TiledArray {
     protected:
 
       // Import Pmap protected variables
-      using Pmap::local_;
-      using Pmap::rank_;
-      using Pmap::procs_;
-      using Pmap::size_;
+      using Pmap::rank_; ///< The rank of this process
+      using Pmap::procs_; ///< The number of processes
+      using Pmap::size_; ///< The number of tiles mapped among all processes
+      using Pmap::local_; ///< A list of local tiles
 
     public:
       typedef Pmap::size_type size_type; ///< Size type
@@ -53,7 +53,7 @@ namespace TiledArray {
 
       /// \param world A reference to the world
       /// \param size The number of elements to be mapped
-      ReplicatedPmap(madness::World& world, std::size_t size) :
+      ReplicatedPmap(madness::World& world, size_type size) :
           Pmap(world, size)
       {
         // Construct a map of all local processes
@@ -61,7 +61,7 @@ namespace TiledArray {
         // Warning: This is non-scaling code because it iterates over all
         // elements. However, it is for replicated data so the number of
         // elements is assumed to be reasonable.
-        for(std::size_t i = 0; i < size_; ++i) {
+        for(size_type i = 0; i < size_; ++i) {
           TA_ASSERT(ReplicatedPmap::owner(i) == rank_);
           local_.push_back(i);
         }
@@ -73,9 +73,18 @@ namespace TiledArray {
 
       /// \param tile The tile to be queried
       /// \return Processor that logically owns \c tile
-      virtual ProcessID owner(const size_type tile) const {
+      virtual size_type owner(const size_type tile) const {
         TA_ASSERT(tile < size_);
         return rank_;
+      }
+
+      /// Check that the tile is owned by this process
+
+      /// \param tile The tile to be checked
+      /// \return \c true if \c tile is owned by this process, otherwise \c false .
+      virtual bool is_local(const size_type tile) const {
+        TA_ASSERT(tile < size_);
+        return true;
       }
 
       /// Replicated array status

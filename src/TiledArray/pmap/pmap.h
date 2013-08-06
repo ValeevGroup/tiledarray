@@ -36,15 +36,22 @@ namespace TiledArray {
 
   /// This is the base and interface class for other process maps. It provides
   /// access to the local tile iterator and basic process map information.
-  /// Derived classes are responsible for distribution of tiles.
+  /// Derived classes are responsible for distribution of tiles. The general
+  /// idea of process map objects is to compute process owners with an O(1)
+  /// algorithm to provide fast access to tile owner information and avoid
+  /// storage of process map. A cache a list of local tiles is stored so that
+  /// algorithms that need to iterate over local tiles can do so without
+  /// computing the owner of all tiles. The algorithm to generate the cached
+  /// list of local tiles and the memory requirement should scale as
+  /// O(tiles/processes), if possible.
   class Pmap {
   public:
     typedef std::size_t size_type; ///< Size type
     typedef typename std::vector<size_type>::const_iterator const_iterator; ///< Iterator type
 
   protected:
-    const ProcessID rank_; ///< The rank of this process
-    const ProcessID procs_; ///< The number of processes
+    const size_type rank_; ///< The rank of this process
+    const size_type procs_; ///< The number of processes
     const size_type size_; ///< The number of tiles mapped among all processes
     std::vector<size_type> local_; ///< A list of local tiles
 
@@ -71,16 +78,13 @@ namespace TiledArray {
 
     /// \param tile The tile to be queried
     /// \return Processor that logically owns \c tile
-    virtual ProcessID owner(const size_type tile) const = 0;
+    virtual size_type owner(const size_type tile) const = 0;
 
     /// Check that the tile is owned by this process
 
     /// \param tile The tile to be checked
     /// \return \c true if \c tile is owned by this process, otherwise \c false .
-    bool is_local(size_type tile) const {
-      TA_ASSERT(tile < size_);
-      return (rank_ == this->owner(tile));
-    }
+    virtual bool is_local(const size_type tile) const = 0;
 
     /// Size accessor
 
@@ -90,17 +94,17 @@ namespace TiledArray {
     /// Process rank accessor
 
     /// \return The rank of this process
-    ProcessID rank() const { return rank_; }
+    size_type rank() const { return rank_; }
 
     /// Process count accessor
 
     /// \return The number of processes
-    ProcessID procs() const { return procs_; }
+    size_type procs() const { return procs_; }
 
     /// Local size accessor
 
     /// \return The number of local elements
-    std::size_t local_size() const { return local_.size(); }
+    size_type local_size() const { return local_.size(); }
 
     /// Local elements
 
