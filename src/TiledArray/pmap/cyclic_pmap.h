@@ -34,82 +34,94 @@
 namespace TiledArray {
   namespace detail {
 
-    /// Map processes using cyclic decomposition
+    /// Map processes using a 2D cyclic decomposition
 
-    /// This map does a cyclic decomposition of an m-by-n matrix. It distributes
-    /// processors into an x-by-y matrix such that the ratios of m/n and x/y are
-    /// approximately equal.
+    /// This map cyclicly distributes a two-dimensional grid of tiles among a
+    /// two-dimensional grid of processes.
     class CyclicPmap : public Pmap {
-    private:
+    protected:
 
       // Import Pmap protected variables
-      using Pmap::local_;
-      using Pmap::rank_;
-      using Pmap::procs_;
-      using Pmap::size_;
+      using Pmap::rank_; ///< The rank of this process
+      using Pmap::procs_; ///< The number of processes
+      using Pmap::size_; ///< The number of tiles mapped among all processes
+      using Pmap::local_; ///< A list of local tiles
 
-    public:
-      typedef Pmap::size_type size_type;
+    private:
 
-      CyclicPmap(madness::World& world, std::size_t m, std::size_t n) :
-          Pmap(world, m * n),
-          m_(m),
-          n_(n),
-          x_(),
-          y_()
-      {
-        TA_ASSERT(m > 0ul);
-        TA_ASSERT(n > 0ul);
+      size_type rows_; ///< Number of tile rows to be mapped
+      size_type cols_; ///< Number of tile columns to be mapped
+      size_type proc_rows_; ///< Number of process rows
+      size_type proc_cols_; ///< Number of process columns
 
-        // Get a rough estimate of the process dimensions
-        // The ratios of x_ / y_  and m_ / n_ should be approximately equal.
-        // Constraints: 1 <= x_ <= procs_ && 1 <= y_
-        // The process map should be no bigger than m * n
-        y_ = procs_ / std::max<std::size_t>(std::min<std::size_t>(
-            std::sqrt(procs_ * m_ / n_), procs_), 1ul);
-        x_ = procs_ / y_;
+      /// Initialize local tile list
+      void init_local() {
+        if(rank_ < (proc_rows_ * proc_cols_)) {
+          local_.reserve((rows_ / proc_rows_) * (cols_ / proc_cols_));
+          // Compute rank coordinates
+          const size_type rank_row = rank_ / proc_cols_;
+          const size_type rank_col = rank_ % proc_cols_;
 
-        // Maximum size is m and n
-        x_ = std::min(x_, m_);
-        y_ = std::min(y_, n_);
-
-        TA_ASSERT(x_ * y_ <= procs_);
-
-        // Initialize local
-        local_.reserve((m_ / x_) * (n_ / y_));
-        const std::size_t end = m_ * n_;
-        const std::size_t m_step = n_ * x_;
-        const std::size_t row_end_offset = n_ - (rank_ % y_);
-        for(std::size_t m = (rank_ / y_) * n_ + (rank_ % y_); m < end; m += m_step) {
-          const std::size_t row_end = m + row_end_offset;
-          for(std::size_t i = m; i < row_end; i += y_) {
-            TA_ASSERT(CyclicPmap::owner(i) == rank_);
-            local_.push_back(i);
+          // Iterate over local tiles
+          for(size_type i = rank_row; i < rows_; i += proc_rows_) {
+            const size_type row_end = (i + 1) * cols_;
+            for(size_type tile = i * cols_ + rank_col; tile < row_end; tile += proc_cols_) {
+              TA_ASSERT(CyclicPmap::owner(tile) == rank_);
+              local_.push_back(tile);
+            }
           }
         }
       }
 
-      CyclicPmap(madness::World& world, std::size_t m, std::size_t n, std::size_t x, std::size_t y) :
-          Pmap(world, m * n),
-          m_(m),
-          n_(n),
-          x_(std::min<std::size_t>(x,m)),
-          y_(std::min<std::size_t>(y,n))
-      {
-        TA_ASSERT(x_ * y_ <= procs_);
+    public:
+      typedef Pmap::size_type size_type; ///< Size type
 
-        // Initialize local
-        local_.reserve((m_ / x_) * (n_ / y_));
-        const std::size_t end = m_ * n_;
-        const std::size_t m_step = n_ * x_;
-        const std::size_t row_end_offset = n_ - (rank_ % y_);
-        for(std::size_t m = (rank_ / y_) * n_ + (rank_ % y_); m < end; m += m_step) {
-          const std::size_t row_end = m + row_end_offset;
-          for(std::size_t i = m; i < row_end; i += y_) {
-            TA_ASSERT(CyclicPmap::owner(i) == rank_);
-            local_.push_back(i);
-          }
-        }
+      /// Construct process map
+
+      /// \param world The world where the tiles will be mapped
+      /// \param rows The number of tile rows to be mapped
+      /// \param cols The number of tile columns to be mapped
+      CyclicPmap(madness::World& world, size_type rows, size_type cols) :
+          Pmap(world, rows * cols), rows_(rows), cols_(cols), proc_rows_(), proc_cols_()
+      {
+        // Get a rough estimate of the process dimensions. The goal is for the
+        // ratios of proc_rows_ / proc_cols_  and rows_ / cols_ to be
+        // approximately equal.
+        // Constraints: 1 <= proc_rows_ <= procs_ && 1 <= proc_cols_
+        // The process map should be no bigger than m * n
+        proc_cols_ = std::max<size_type>(std::min<size_type>(
+            std::sqrt(procs_ * cols_ / rows_), procs_), 1ul);
+        proc_rows_ = procs_ / proc_cols_;
+
+        // Maximum size is m and n
+        proc_rows_ = std::min<size_type>(proc_rows_, rows_);
+        proc_cols_ = std::min<size_type>(proc_cols_, cols_);
+
+        TA_ASSERT((proc_rows_ * proc_cols_) <= procs_);
+
+        init_local();
+
+      }
+
+      /// Construct process map
+
+      /// \param world The world where the tiles will be mapped
+      /// \param rows The number of tile rows to be mapped
+      /// \param cols The number of tile columns to be mapped
+      /// \param proc_rows The number of process rows in the map
+      /// \param proc_cols The number of process columns in the map
+      /// \throw TiledArray::Exception When <tt>proc_rows > rows</tt>
+      /// \throw TiledArray::Exception When <tt>proc_cols > cols</tt>
+      /// \throw TiledArray::Exception When <tt>proc_rows * proc_cols > world.size()</tt>
+      CyclicPmap(madness::World& world, size_type rows, size_type cols, size_type proc_rows, size_type proc_cols) :
+          Pmap(world, rows * cols), rows_(rows), cols_(cols), proc_rows_(proc_rows), proc_cols_(proc_cols)
+      {
+        // Check that the processor grid is non-zero
+        TA_ASSERT(proc_rows_ <= rows_);
+        TA_ASSERT(proc_cols_ <= cols_);
+        TA_ASSERT(proc_rows_ * proc_cols_ <= procs_);
+
+        init_local();
       }
 
       virtual ~CyclicPmap() { }
@@ -118,30 +130,30 @@ namespace TiledArray {
 
       /// \param tile The tile to be queried
       /// \return Processor that logically owns \c tile
-      virtual ProcessID owner(const size_type tile) const {
-        TA_ASSERT(tile < (m_ * n_));
-//        // Get matrix coordinate
-//        const std::size_t m = key / n_;
-//        const std::size_t n = key % n_;
-//        // Get processor coordinate
-//        const std::size_t x = m % x_;
-//        const std::size_t y = n % y_;
-//        // Get processor ordinal
-//        const std::size_t o = x * y_ + y;
-        const std::size_t o = ((tile / n_) % x_) * y_ + ((tile % n_) % y_);
+      virtual size_type owner(const size_type tile) const {
+        TA_ASSERT(tile < size_);
+        // Compute tile coordinate in tile grid
+        const size_type tile_row = tile / cols_;
+        const size_type tile_col = tile % cols_;
+        // Compute process coordinate of tile in the process grid
+        const size_type proc_row = tile_row % proc_rows_;
+        const size_type proc_col = tile_col % proc_cols_;
+        // Compute the process that owns tile
+        const size_type proc = proc_row * proc_cols_ + proc_col;
 
-        TA_ASSERT(o < procs_);
+        TA_ASSERT(proc < procs_);
 
-        return o;
+        return proc;
       }
 
-    private:
 
-      std::size_t m_; ///< Number of rows to be mapped
-      std::size_t n_; ///< Number of columns to be mapped
-      std::size_t x_; ///< Number of process rows
-      std::size_t y_; ///< Number of process columns
-//      madness::hashT seed_; ///< Hashing seed for process randomization
+      /// Check that the tile is owned by this process
+
+      /// \param tile The tile to be checked
+      /// \return \c true if \c tile is owned by this process, otherwise \c false .
+      virtual bool is_local(const size_type tile) const {
+        return (CyclicPmap::owner(tile) == rank_);
+      }
     }; // class CyclicPmap
 
   }  // namespace detail
