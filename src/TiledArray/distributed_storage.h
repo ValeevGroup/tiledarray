@@ -137,7 +137,11 @@ namespace TiledArray {
       /// be stored. Use \c find to determine if an element is present.
       /// \param i The element to check.
       /// \return \c true when the element is stored locally, otherwise \c false.
-      bool is_local(size_type i) const { return owner(i) == get_world().rank(); }
+      bool is_local(size_type i) const {
+        TA_ASSERT(i < max_size_);
+        TA_ASSERT(pmap_);
+        return pmap_->is_local(i);
+      }
 
       /// Clear local data
 
