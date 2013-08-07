@@ -33,7 +33,6 @@ library_include_HEADERS = base.h \
                           scal_tsr_subt.h \
                           scal_tsr.h \
                           tsr_add.h \
-                          tsr_base.h \
                           tsr_cont.h \
                           tsr_conv.h \
                           tsr_mult.h \
