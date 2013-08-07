@@ -25,7 +25,6 @@ namespace TiledArray {
 
     // Forward declarations for tensor expression objects
     template <typename> class Base;
-    template <typename> class TsrBase;
     template <typename> class Tsr;
     template <typename> class ScalTsr;
     template <typename> class BinaryBase;
@@ -51,6 +50,8 @@ namespace TiledArray {
     public:
 
       typedef Derived derived_type; ///< The derived object type
+      typedef typename Derived::disteval_type disteval_type; ///< The distributed evaluator type
+
 
       /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
@@ -66,7 +67,39 @@ namespace TiledArray {
       /// \tparam A The array type
       /// \param tsr The tensor to be assigned
       template <typename A>
-      void eval_to(Tsr<A>& tsr) { derived().eval_to(tsr); }
+      void eval_to(Tsr<A>& tsr) {
+        // Get the target world
+        madness::World& world = (tsr.array().is_initialized() ?
+            tsr.array().world() :
+            madness::World::get_default());
+
+        // Get the output process map
+        std::shared_ptr<typename Tsr<A>::array_type::pmap_interface> pmap;
+        if(tsr.array().is_initialized())
+          pmap = tsr.array().get_pmap();
+
+        // Create the distributed evaluator from this expression
+        disteval_type disteval = derived().eval(world, vars_, pmap);
+
+        // Create the result array
+        typename Tsr<A>::array_type result(disteval.get_world(), disteval.trange(),
+            disteval.shape(), disteval.pmap());
+
+        // Move the data from disteval into the result array
+        typename Tsr<A>::array_type::pmap_interface::const_iterator it =
+            disteval.pmap().begin();
+        const typename Tsr<A>::array_type::pmap_interface::const_iterator end =
+            disteval.pmap().end();
+        for(; it != end; ++it)
+          if(! disteval.is_zero(*it))
+            result.set(*it, disteval.move(*it));
+
+        // Wait for this expression to finish evaluating
+        disteval.wait();
+
+        // Swap the new array with the result array object.
+        tsr.array().swap(result);
+      }
 
     }; // class Base
 
