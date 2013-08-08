@@ -28,13 +28,14 @@ namespace TiledArray {
   namespace detail {
 
     // Forward declaration
-    template <typename> class TensorImpl;
     template <typename> class TensorReference;
     template <typename> class TensorConstReference;
     template <typename, typename> class TensorIterator;
 
     /// Tensor tile reference
-    template <typename Tile>
+
+    /// \tparam Impl The TensorImpl type
+    template <typename Impl>
     class TileReference {
     private:
 
@@ -44,83 +45,85 @@ namespace TiledArray {
       template <typename>
       friend class TileConstReference;
 
-      TensorImpl<Tile>* tensor_; ///< The tensor that owns the referenced tile
-      typename TensorImpl<Tile>::size_type index_; ///< The index of the tensor
+      Impl* tensor_; ///< The tensor that owns the referenced tile
+      typename Impl::size_type index_; ///< The index of the tensor
 
       // Not allowed
-      TileReference<Tile>& operator=(const TileReference<Tile>&);
+      TileReference<Impl>& operator=(const TileReference<Impl>&);
     public:
 
-      TileReference(TensorImpl<Tile>* tensor, const typename TensorImpl<Tile>::size_type index) :
+      TileReference(Impl* tensor, const typename Impl::size_type index) :
         tensor_(tensor), index_(index)
       { }
 
-      TileReference(const TileReference<Tile>& other) :
+      TileReference(const TileReference<Impl>& other) :
         tensor_(other.tensor_), index_(other.index_)
       { }
 
       template <typename Value>
-      TileReference<Tile>& operator=(const Value& value) {
+      TileReference<Impl>& operator=(const Value& value) {
         tensor_->set(index_, value);
         return *this;
       }
 
 
-      typename TensorImpl<Tile>::future future() const {
+      typename Impl::future future() const {
         TA_ASSERT(tensor_);
         return tensor_->get(index_);
       }
 
-      const typename TensorImpl<Tile>::value_type get() const {
+      const typename Impl::value_type get() const {
         TA_ASSERT(tensor_);
         return future().get();
       }
 
-      operator typename TensorImpl<Tile>::future() const { return future(); }
+      operator typename Impl::future() const { return future(); }
 
-      operator typename TensorImpl<Tile>::value_type() const { return get(); }
+      operator typename Impl::value_type() const { return get(); }
     }; // class TileReference
 
     /// Tensor tile reference
-    template <typename Tile>
+
+    /// \tparam Impl The TensorImpl type
+    template <typename Impl>
     class TileConstReference {
     private:
 
       template <typename, typename>
       friend class TensorIterator;
 
-      TensorImpl<Tile>* tensor_; ///< The tensor that owns the referenced tile
-      typename TensorImpl<Tile>::size_type index_; ///< The index of the tensor
+      Impl* tensor_; ///< The tensor that owns the referenced tile
+      typename Impl::size_type index_; ///< The index of the tensor
 
       // Not allowed
-      TileConstReference<Tile>& operator=(const TileConstReference<Tile>&);
+      TileConstReference<Impl>& operator=(const TileConstReference<Impl>&);
     public:
 
-      TileConstReference(TensorImpl<Tile>* tensor, const typename TensorImpl<Tile>::size_type index) :
+      TileConstReference(Impl* tensor, const typename Impl::size_type index) :
         tensor_(tensor), index_(index)
       { }
 
-      TileConstReference(const TileConstReference<Tile>& other) :
+      TileConstReference(const TileConstReference<Impl>& other) :
         tensor_(other.tensor_), index_(other.index_)
       { }
 
-      TileConstReference(const TileReference<Tile>& other) :
+      TileConstReference(const TileReference<Impl>& other) :
         tensor_(other.tensor_), index_(other.index_)
       { }
 
-      typename TensorImpl<Tile>::future future() const {
+      typename Impl::future future() const {
         TA_ASSERT(tensor_);
         return tensor_->get(index_);
       }
 
-      const typename TensorImpl<Tile>::value_type get() const {
+      const typename Impl::value_type get() const {
         TA_ASSERT(tensor_);
         return future().get();
       }
 
-      operator typename TensorImpl<Tile>::future() const { return future(); }
+      operator typename Impl::future() const { return future(); }
 
-      operator typename TensorImpl<Tile>::value_type() const { return get(); }
+      operator typename Impl::value_type() const { return get(); }
     }; // class TileConstReference
 
 
@@ -129,32 +132,33 @@ namespace TiledArray {
     /// This iterator will reference local tiles for a TensorImpl object. It can
     /// be used to get or set futures to a tile, or access the coordinate and
     /// ordinal index of the tile.
-    /// \tparam Tile The tile time of the TensorImpl object
-    template <typename Tile, typename Reference>
+    /// \tparam Impl The TensorImpl type
+    /// \tparam Reference The iterator reference type
+    template <typename Impl, typename Reference>
     class TensorIterator {
     private:
       // Give access to other iterator types.
       template <typename, typename>
       friend class TensorIterator;
 
-      TensorImpl<Tile>* tensor_;
-      typename TensorImpl<Tile>::pmap_interface::const_iterator it_;
+      Impl* tensor_;
+      typename Impl::pmap_interface::const_iterator it_;
 
     public:
       typedef ptrdiff_t difference_type;                        ///< Difference type
-      typedef typename TensorImpl<Tile>::future value_type; ///< Iterator dereference value type
+      typedef typename Impl::future value_type; ///< Iterator dereference value type
       typedef PointerProxy<value_type> pointer;                 ///< Pointer type to iterator value
       typedef Reference reference;                             ///< Reference type to iterator value
       typedef std::forward_iterator_tag iterator_category;        ///< Iterator category type
-      typedef TensorIterator<Tile, Reference> TensorIterator_;       ///< This object type
-      typedef typename TensorImpl<Tile>::range_type::index index_type;
-      typedef typename TensorImpl<Tile>::size_type ordinal_type;
+      typedef TensorIterator<Impl, Reference> TensorIterator_;       ///< This object type
+      typedef typename Impl::range_type::index index_type;
+      typedef typename Impl::size_type ordinal_type;
 
     private:
 
       void advance() {
         TA_ASSERT(tensor_);
-        const typename TensorImpl<Tile>::pmap_interface::const_iterator end =
+        const typename Impl::pmap_interface::const_iterator end =
             tensor_->pmap()->end();
         do {
           ++it_;
@@ -167,8 +171,7 @@ namespace TiledArray {
       TensorIterator() : tensor_(NULL), it_() { }
 
       /// Constructor
-      TensorIterator(TensorImpl<Tile>* tensor,
-          typename TensorImpl<Tile>::pmap_interface::const_iterator it) :
+      TensorIterator(Impl* tensor, typename Impl::pmap_interface::const_iterator it) :
         tensor_(tensor), it_(it)
       { }
 
@@ -184,7 +187,7 @@ namespace TiledArray {
       /// \tparam R Iterator reference type
       /// \param other The transform iterator to copy
       template <typename R>
-      TensorIterator(const TensorIterator<Tile, R>& other) :
+      TensorIterator(const TensorIterator<Impl, R>& other) :
         tensor_(other.tensor_), it_(other.it_)
       { }
 
@@ -205,7 +208,7 @@ namespace TiledArray {
       /// \param other The transform iterator to copy
       /// \return A reference to this object
       template <typename R>
-      TensorIterator_& operator=(const TensorIterator<Tile, R>& other) {
+      TensorIterator_& operator=(const TensorIterator<Impl, R>& other) {
         tensor_ = other.tensor_;
         it_ = other.it_;
 
@@ -236,7 +239,7 @@ namespace TiledArray {
       /// \return \c true when the iterators are equal to each other, otherwise
       /// \c false.
       template <typename R>
-      bool operator==(const TensorIterator<Tile, R>& other) const {
+      bool operator==(const TensorIterator<Impl, R>& other) const {
         return (tensor_ == other.tensor_) && (it_ == other.it_);
       }
 
@@ -247,7 +250,7 @@ namespace TiledArray {
       /// \return \c true when the iterators are not equal to each other,
       /// otherwise \c false.
       template <typename R>
-      bool operator!=(const TensorIterator<Tile, R>& other) const {
+      bool operator!=(const TensorIterator<Impl, R>& other) const {
         return (tensor_ != other.tensor_) || (it_ != other.it_);
       }
 
@@ -308,10 +311,10 @@ namespace TiledArray {
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
       typedef typename storage_type::size_type size_type; ///< Size type
       typedef typename storage_type::future future; ///< Future tile type
-      typedef TileReference<Tile> reference; ///< Tile reference type
-      typedef TileConstReference<Tile> const_reference; ///< Tile constant reference type
-      typedef TensorIterator<Tile, reference> iterator; ///< Iterator type
-      typedef TensorIterator<Tile, const_reference> const_iterator; ///< Constant iterator type
+      typedef TileReference<TensorImpl_> reference; ///< Tile reference type
+      typedef TileConstReference<TensorImpl_> const_reference; ///< Tile constant reference type
+      typedef TensorIterator<TensorImpl_, reference> iterator; ///< Iterator type
+      typedef TensorIterator<TensorImpl_, const_reference> const_iterator; ///< Constant iterator type
       typedef typename storage_type::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
