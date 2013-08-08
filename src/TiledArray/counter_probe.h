@@ -29,14 +29,14 @@ namespace TiledArray {
     class CounterProbe {
     private:
       const madness::AtomicInt& counter_; ///< Counter incremented by the set of tasks
-      const long n_; ///< The total number of tasks
+      const int n_; ///< The total number of tasks
 
     public:
       /// Constructor
 
       /// \param counter The task completion counter
       /// \param n The total number of tasks
-      CounterProbe(const madness::AtomicInt& counter, const long n) :
+      CounterProbe(const madness::AtomicInt& counter, const int n) :
         counter_(counter), n_(n)
       { }
 
