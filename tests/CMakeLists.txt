@@ -1,6 +1,6 @@
 
 CONFIGURE_FILE(
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake_unit_test_config_h.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/unit_test_config_h.in
   ${PROJECT_BINARY_DIR}/tests/unit_test_config.h
 )
 
