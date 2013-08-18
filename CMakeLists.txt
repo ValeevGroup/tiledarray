@@ -90,7 +90,14 @@ if (TA_BUILD_UNITTEST)
 endif()
 
 # external dependencies
-include(external/External)
+add_custom_target(External)
+include(external/MPI)
+include(external/Lapack)
+include(external/MADNESS)
+include(external/Eigen)
+if (TA_BUILD_UNITTEST)
+  include(external/Boost)
+endif()
 
 # libraries
 set(LINK_LIBRARIES)
