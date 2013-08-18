@@ -89,7 +89,9 @@ if (TA_BUILD_UNITTEST)
   set (TILEDARRAY_NEEDS_BOOST TRUE)
 endif()
 
+##########################
 # external dependencies
+##########################
 add_custom_target(External)
 include(external/MPI)
 include(external/Lapack)
@@ -99,7 +101,9 @@ if (TA_BUILD_UNITTEST)
   include(external/Boost)
 endif()
 
+##########################
 # libraries
+##########################
 set(LINK_LIBRARIES)
 list(APPEND LINK_LIBRARIES ${MADNESS_LIBRARIES})
 list(APPEND LINK_LIBRARIES ${Boost_LIBRARIES})
@@ -109,11 +113,15 @@ list(APPEND LINK_LIBRARIES ${MPI_LIBRARIES})
 list(APPEND LINK_LIBRARIES ${LIBRARIES})
 list(APPEND LINK_LIBRARIES ${CMAKE_DL_LIBS})
 
+##########################
 # sources
+##########################
 add_subdirectory(src)
 add_subdirectory(doc)
 
+##########################
 # checking/testing
+##########################
 enable_testing()
 if (TA_BUILD_UNITTEST)
   add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
@@ -122,7 +130,9 @@ else()
   add_custom_target(check COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
 endif()
 
+##########################
 # Export include dirs, library list
+##########################
 set(TILEDARRAY_CONFIG_LIBRARIES "")
 
 # transform library list into compiler args
@@ -130,11 +140,15 @@ include(ConvertLibrariesListToCompilerArgs)
 convert_libs_to_compargs(TILEDARRAY_CONFIG_LIBRARIES "${LINK_LIBRARIES}")
 #message(STATUS "TILEDARRAY_CONFIG_LIBRARIES = ${TILEDARRAY_CONFIG_LIBRARIES}")
 
+##########################
 # TiledArray CPPFLAGS
+##########################
 set(TILEDARRAY_CPP_FLAGS "-I${CMAKE_INSTALL_PREFIX}/include -I${MADNESS_INCLUDE_DIR} ${CMAKE_CPP_FLAGS}")
 #message(STATUS "TILEDARRAY_CPP_FLAGS = ${TILEDARRAY_CPP_FLAGS}")
 
+##########################
 # convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
+##########################
 set (TA_DEFAULT_ERROR 1)
 if (TA_ERROR STREQUAL none)
   set (TA_DEFAULT_ERROR 0)
@@ -144,7 +158,9 @@ elseif (TA_ERROR STREQUAL assert)
   set (TA_DEFAULT_ERROR 2)
 endif()
 
+##########################
 # wrap up
+##########################
 CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
   ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
