@@ -126,6 +126,35 @@ namespace TiledArray {
       operator typename Impl::value_type() const { return get(); }
     }; // class TileConstReference
 
+  } // namespace detail
+} // namespace TiledArray
+
+
+namespace madness {
+  namespace detail {
+
+    // The following class specializations are required so MADNESS will do the
+    // right thing when given a TileReference and TileConstReference objects
+    // as an input for task functions.
+
+    template <typename Impl>
+    struct task_arg<TiledArray::detail::TileReference<Impl> > {
+        typedef typename Impl::value_type type;
+        typedef typename Impl::future holderT;
+    }; // struct task_arg<TiledArray::detail::TileReference<Impl> >
+
+    template <typename Impl>
+    struct task_arg<TiledArray::detail::TileConstReference<Impl> > {
+        typedef typename Impl::value_type type;
+        typedef typename Impl::future holderT;
+    }; // struct task_arg<TiledArray::detail::TileConstReference<Impl> >
+
+  }  // namespace detail
+}  // namespace madness
+
+
+namespace TiledArray {
+  namespace detail {
 
     /// Distributed tensor iterator
 
@@ -638,22 +667,5 @@ namespace TiledArray {
 // MADNESS task functions. The result is that the task function will store
 // a future to the tile type instead of the TileReference or
 // TileConstReference objects.
-
-namespace madness {
-  namespace detail {
-
-    template <typename T>
-    struct value_type<TiledArray::detail::TileReference<T> > {
-        typedef T type;
-    }; // struct value_type<TiledArray::detail::TileReference<T> >
-
-    template <typename T>
-    struct value_type<TiledArray::detail::TileConstReference<T> > {
-        typedef T type;
-    }; // struct value_type<TiledArray::detail::TileConstReference<T> >
-
-  }  // namespace detail
-}  // namespace madness
-
 
 #endif // TILEDARRAY_TENSOR_IMPL_H__INCLUDED
