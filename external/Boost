@@ -56,18 +56,19 @@ else()
   if(TA_EXPERT)
 
     message("** BOOST was not explicitly set")
-    message("** Downloading and building Boost is explicitly disabled in EXPERT mode")
+    message(FATAL_ERROR "** Downloading and building Boost is explicitly disabled in EXPERT mode")
 
   else()
 
     # Set source and build path for Boost in the TiledArray Project
     set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/boost)
     set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/boost)
+    set(EXTERNAL_DOWNLOAD_DIR  ${PROJECT_SOURCE_DIR}/external/src)
 
     # Set the external source
-    if (EXISTS ${EXTERNAL_SOURCE_DIR}/boost.tar.gz)
+    if (EXISTS ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
       # Use local file
-      set(BOOST_URL ${EXTERNAL_SOURCE_DIR}/boost.tar.gz)
+      set(BOOST_URL ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
       set(BOOST_URL_HASH "")
     else()
       # Downlaod remote file
@@ -83,6 +84,7 @@ else()
       PREFIX ${EXTERNAL_BUILD_DIR}/boost
       URL ${BOOST_URL}
       URL_HASH ${BOOST_URL_HASH}
+      DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
       SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
       BINARY_DIR ${EXTERNAL_BUILD_DIR}
       CONFIGURE_COMMAND ""
@@ -95,7 +97,7 @@ else()
       DIRECTORY ${EXTERNAL_SOURCE_DIR}/boost
       DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
       )
-    set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR}/boost)
+    set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR})
 
   endif()
 
