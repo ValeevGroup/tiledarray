@@ -15,27 +15,42 @@ find_package(Boost 1.33 COMPONENTS unit_test_framework)
 
 
 if (Boost_FOUND)
-  
-  # Boost is installed on the system
-  # Configure TiledArray to use the Boost installation
-  if (BOOST_UNIT_TEST_FRAMEWORK_FOUND AND NOT Boost_USE_STATIC_LIBS)
-    set(BOOST_TEST_DYN_LINK 1)
-  endif()
 
-  # Perform a compile check with Boost.
+  # Perform a compile check with Boost
   list(APPEND CMAKE_REQUIRED_INCLUDES ${Boost_INCLUDE_DIR})
   list(APPEND CMAKE_REQUIRED_LIBRARIES ${Boost_LIBRARIES})
-  CHECK_CXX_SOURCE_COMPILES(
-    "
-    #include <world/world.h>
-    int main(int argc, char** argv) {
-      madness::World& world = madness::initialize(argc, argv);
-      return 0;
-    }
-    "  BOOST_COMPILES)
-  if (NOT MADNESS_COMPILES)
-    message(FATAL_ERROR "Could not compile MADNESS test program")
+  if (BOOST_UNIT_TEST_FRAMEWORK_FOUND AND NOT Boost_USE_STATIC_LIBS)
+    set(BOOST_TEST_DYN_LINK 1)
+    CHECK_CXX_SOURCE_COMPILES(
+      "
+      #define BOOST_TEST_MAIN main_tester
+      #define BOOST_TEST_DYN_LINK 1
+      #ifdef BOOST_TEST_DYN_LINK
+      
+      BOOST_AUTO_TEST_CASE( tester )
+      {
+        BOOST_CHECK( true );
+      }
+      
+      "  BOOST_COMPILES)
+  else()
+    CHECK_CXX_SOURCE_COMPILES(
+      "
+      #define BOOST_TEST_MAIN main_tester
+      #include <boost/test/included/unit_test.hpp>
+      
+      BOOST_AUTO_TEST_CASE( tester )
+      {
+        BOOST_CHECK( true );
+      }
+      
+      "  BOOST_COMPILES)
   endif()
+
+  if (NOT BOOST_COMPILES)
+    message(FATAL_ERROR "Could not compile Boost test program")
+  endif()
+  
 else()
 
   if(TA_EXPERT)
