@@ -1,56 +1,87 @@
 # -*- mode: cmake -*-
 
-if (DEFINED BOOST)
 
-  set(Boost_USE_STATIC_LIBS    OFF)
-  #set(Boost_USE_MULTITHREADED  OFF)
-  #set(Boost_USE_STATIC_RUNTIME OFF)
+set(Boost_USE_STATIC_LIBS    OFF)
+#set(Boost_USE_MULTITHREADED  OFF)
+#set(Boost_USE_STATIC_RUNTIME OFF)
 
-  set(BOOST_ROOT ${BOOST})
+# Limit scope of the search if BOOST_ROOT or BOOST_INCLUDEDIR is provided.
+if (BOOST_ROOT OR BOOST_INCLUDEDIR)
   set(Boost_NO_SYSTEM_PATHS TRUE)
+endif()
   
-  # Check for non-threaded Boost
-  find_package(Boost 1.33 REQUIRED)
-  find_package(Boost COMPONENTS unit_test_framework)
-  if (BOOST_UNIT_TEST_FRAMEWORK_FOUND)
+# Check for Boost
+find_package(Boost 1.33 COMPONENTS unit_test_framework)
+
+
+if (Boost_FOUND)
+  
+  # Boost is installed on the system
+  # Configure TiledArray to use the Boost installation
+  if (BOOST_UNIT_TEST_FRAMEWORK_FOUND AND NOT Boost_USE_STATIC_LIBS)
     set(BOOST_TEST_DYN_LINK 1)
   endif()
 
-elseif (TA_EXPERT)
-
-  message("** BOOST was not explicitly set")
-  message("** Downloading and building Boost is explicitly disabled in EXPERT mode")
-
+  # Perform a compile check with Boost.
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${Boost_INCLUDE_DIR})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${Boost_LIBRARIES})
+  CHECK_CXX_SOURCE_COMPILES(
+    "
+    #include <world/world.h>
+    int main(int argc, char** argv) {
+      madness::World& world = madness::initialize(argc, argv);
+      return 0;
+    }
+    "  BOOST_COMPILES)
+  if (NOT MADNESS_COMPILES)
+    message(FATAL_ERROR "Could not compile MADNESS test program")
+  endif()
 else()
 
-  set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external)
-  set(EXTERNAL_BUILD_DIR ${PROJECT_BINARY_DIR}/external/build)
+  if(TA_EXPERT)
 
-  set(BOOST_URL
-    http://downloads.sourceforge.net/project/boost/boost/1.53.0/boost_1_53_0.tar.gz)
-  set(BOOST_URL_HASH MD5=57a9e2047c0f511c4dfcf00eb5eb2fbb)
+    message("** BOOST was not explicitly set")
+    message("** Downloading and building Boost is explicitly disabled in EXPERT mode")
 
-  if (EXISTS ${EXTERNAL_SOURCE_DIR}/boost.tar.gz)
-    set(BOOST_URL ${EXTERNAL_SOURCE_DIR}/boost.tar.gz)
-    set(BOOST_URL_HASH "")
+  else()
+
+    set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/boost)
+    set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/boost)
+
+
+    if (EXISTS ${EXTERNAL_SOURCE_DIR}/boost.tar.gz)
+      # Use local file
+      set(BOOST_URL ${EXTERNAL_SOURCE_DIR}/boost.tar.gz)
+      set(BOOST_URL_HASH "")
+    else()
+      # Downlaod remote file
+      set(BOOST_URL
+          http://downloads.sourceforge.net/project/boost/boost/1.53.0/boost_1_53_0.tar.gz)
+      set(BOOST_URL_HASH MD5=57a9e2047c0f511c4dfcf00eb5eb2fbb)
+    endif()
+
+    message("** Will build Boost from ${BOOST_URL}")
+
+    ExternalProject_Add(
+      boost
+      PREFIX ${EXTERNAL_BUILD_DIR}/boost
+      URL ${BOOST_URL}
+      URL_HASH ${BOOST_URL_HASH}
+      SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
+      BINARY_DIR ${EXTERNAL_BUILD_DIR}
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      INSTALL_COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${EXTERNAL_SOURCE_DIR}/boost/
+        ${CMAKE_INSTALL_PREFIX}/include/boost/
+      )
+
+    add_dependencies(External boost)
+
+    set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR}/boost)
+
   endif()
-
-  message("** Will build Boost from ${BOOST_URL}")
-
-  ExternalProject_Add(
-    boost
-    PREFIX ${EXTERNAL_BUILD_DIR}/boost
-    URL ${BOOST_URL}
-    URL_HASH ${BOOST_URL_HASH}
-    BUILD_IN_SOURCE 1
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    )
-
-  add_dependencies(External boost)
-
-  set(Boost_INCLUDE_DIRS ${EXTERNAL_BUILD_DIR}/boost/src/boost)
 
 endif()
 

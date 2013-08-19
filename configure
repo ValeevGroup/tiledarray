@@ -98,7 +98,7 @@ while test $# != 0; do
 		   args="$args -DCMAKE_PREFIX_PATH=\"$search\"" ;;
   --mpicc=*)       args="$args -DMPI_C_COMPILER=`arg \"$1\"`" ;;
   --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
-  --boost=*)       args="$args -DBOOST=`arg \"$1\"`" ;;
+  --boost=*)       args="$args -DBOOST_ROOT=`arg \"$1\"`" ;;
   --error-checking=*)   args="$args -DTA_ERROR=`arg \"$1\"`" ;;
   --expert)        args="$args -DTA_EXPERT=TRUE" ;;
   -D*) args="$args $1" ;; # raw  cmake arg
