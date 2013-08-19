@@ -1,12 +1,14 @@
 # -*- mode: cmake -*-
 
+
+# Check for Eigen
 find_package(Eigen 3.0)
 
-# if found, try sanity check: try compiling a simple program
+
 if (EIGEN_FOUND)
-  set(Eigen_INCLUDE_DIR ${EIGEN_INCLUDE_DIR})
-  # this only works if Eigen has been installed
-  list(INSERT CMAKE_REQUIRED_INCLUDES 0 ${EIGEN_INCLUDE_DIR})
+
+  # Perform a compile check with Eigen
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN_INCLUDE_DIR})
   CHECK_CXX_SOURCE_COMPILES("
     #include <Eigen/Core>
     #include <Eigen/Dense>
@@ -18,54 +20,61 @@ if (EIGEN_FOUND)
       std::cout << m_invsqrt << std::endl;
     }"
     EIGEN_COMPILES)
+
   if (NOT EIGEN_COMPILES)
-    message("Eigen found at ${Eigen_INCLUDE_DIR} but failed to compile")
-    message("See CMakeFiles/CMakeOutput.log for details")
-    set(EIGEN_FOUND FALSE)
+    message(FATAL_ERROR "Eigen found at ${Eigen_INCLUDE_DIR} but failed to compile")
+  endif()
+  
+else()
+
+  if(TA_EXPERT)
+
+    message("** Eigen was not found")
+    message(FATAL_ERROR "** Downloading and building Eigen is explicitly disabled in EXPERT mode")
+
   else()
-    include_directories(${Eigen_INCLUDE_DIR})
-    set(HAVE_EIGEN TRUE)
+
+    # Set source and build path for Eigen in the TiledArray Project
+    set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/eigen)
+    set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
+    set(EXTERNAL_DOWNLOAD_DIR  ${PROJECT_SOURCE_DIR}/external/src)
+
+    # Set the external source
+    if (EXISTS ${PROJECT_SOURCE_DIR}/external/src/eigen.tar.gz)
+      # Use local file
+      set(EIGEN_URL ${PROJECT_SOURCE_DIR}/external/src/eigen.tar.gz)
+      set(EIGEN_URL_HASH "")
+    else()
+      # Downlaod remote file
+      set(EIGEN_URL https://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz)
+      set(EIGEN_URL_HASH MD5=d41d8cd98f00b204e9800998ecf8427e)
+    endif()
+
+    message("** Will build Eigen from ${EIGEN_URL}")
+
+    ExternalProject_Add(
+      eigen
+      PREFIX ${EXTERNAL_BUILD_DIR}/eigen
+      URL ${EIGEN_URL}
+      URL_HASH ${EIGEN_URL_HASH}
+      DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
+      SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
+      BINARY_DIR ${EXTERNAL_BUILD_DIR}
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      INSTALL_COMMAND ""
+      )
+
+    add_dependencies(External eigen)
+    install(
+      DIRECTORY ${EXTERNAL_SOURCE_DIR}/Eigen
+      DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
+      )
+    set(EIGEN_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR})
+
   endif()
-  list(REMOVE_AT CMAKE_REQUIRED_INCLUDES 0)
-endif()
-
-#if eigen not found or did not compile, use the built in
-if (NOT EIGEN_FOUND)
-
-  set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external)
-  set(EXTERNAL_BUILD_DIR ${PROJECT_BINARY_DIR}/external/build)
-
-  include(ExternalProject)
-
-  set(EIGEN_URL https://bitbucket.org/eigen/eigen/get/3.1.3.tar.gz)
-  set(EIGEN_URL_HASH MD5=dc4247efd4f5d796041f999e8774af04)
-
-  if (EXISTS ${EXTERNAL_SOURCE_DIR}/eigen.tar.gz)
-    set(EIGEN_URL ${EXTERNAL_SOURCE_DIR}/eigen.tar.gz)
-    set(EIGEN_URL_HASH "")
-    message(STATUS "Using Eigen archive ${EIGEN_URL}")
-  endif()
-
-  ExternalProject_Add(
-    Eigen
-    PREFIX ${EXTERNAL_BUILD_DIR}/Eigen
-    URL ${EIGEN_URL}
-    URL_HASH ${EIGEN_URL_HASH}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND
-      ${CMAKE_COMMAND} -E copy_directory
-      ${EXTERNAL_BUILD_DIR}/Eigen/src/Eigen/Eigen/
-      ${EXTERNAL_BUILD_DIR}/Eigen/include/Eigen/
-  )
-
-  add_dependencies(External Eigen)
-  set(Eigen_INCLUDE_DIR ${EXTERNAL_BUILD_DIR}/Eigen/include)
-  include_directories(${Eigen_INCLUDE_DIR})
-  set(HAVE_EIGEN TRUE)
 
 endif()
 
-if (HAVE_EIGEN)
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN_INCLUDE_DIR})
-endif()
+include_directories(${EIGEN_INCLUDE_DIRS})
+message(STATUS "Eigen include dir: ${EIGEN_INCLUDE_DIRS}")
