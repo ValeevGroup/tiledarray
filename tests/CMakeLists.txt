@@ -54,6 +54,7 @@ include_directories("${PROJECT_BINARY_DIR}/tests")
 set_target_properties(${executable} PROPERTIES COMPILE_DEFINITIONS TILEDARRAY_NO_USER_ERROR_MESSAGES=1)
 
 add_test(${executable} ${executable})
+add_dependencies(${executable} External)
 add_dependencies(check ${executable})
 
 include_directories(${MADNESS_INCLUDE_DIR})
