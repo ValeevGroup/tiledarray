@@ -48,63 +48,58 @@ if (Boost_FOUND)
   endif()
 
   if (NOT BOOST_COMPILES)
-    message(FATAL_ERROR "Could not compile Boost test program")
+    message(FATAL_ERROR "Boost found at ${BOOST_ROOT}, but could not compile test program")
   endif()
   
+elseif(TA_EXPERT)
+
+  message("** BOOST was not explicitly set")
+  message(FATAL_ERROR "** Downloading and building Boost is explicitly disabled in EXPERT mode")
+
 else()
 
-  if(TA_EXPERT)
+  # Set source and build path for Boost in the TiledArray Project
+  set(EXTERNAL_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
+  set(EXTERNAL_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/boost)
+  set(EXTERNAL_BUILD_DIR    ${PROJECT_BINARY_DIR}/external/build/boost)
 
-    message("** BOOST was not explicitly set")
-    message(FATAL_ERROR "** Downloading and building Boost is explicitly disabled in EXPERT mode")
-
+  # Set the external source
+  if (EXISTS ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
+    # Use local file
+    set(BOOST_URL ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
+    set(BOOST_URL_HASH "")
   else()
-
-    # Set source and build path for Boost in the TiledArray Project
-    set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/boost)
-    set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/boost)
-    set(EXTERNAL_DOWNLOAD_DIR  ${PROJECT_SOURCE_DIR}/external/src)
-
-    # Set the external source
-    if (EXISTS ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
-      # Use local file
-      set(BOOST_URL ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
-      set(BOOST_URL_HASH "")
-    else()
-      # Downlaod remote file
-      set(BOOST_URL
-          http://downloads.sourceforge.net/project/boost/boost/1.53.0/boost_1_53_0.tar.gz)
-      set(BOOST_URL_HASH MD5=57a9e2047c0f511c4dfcf00eb5eb2fbb)
-    endif()
-
-    message("** Will build Boost from ${BOOST_URL}")
-
-    ExternalProject_Add(
-      boost
-      PREFIX ${EXTERNAL_BUILD_DIR}/boost
-      URL ${BOOST_URL}
-      URL_HASH ${BOOST_URL_HASH}
-      DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
-      SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
-      BINARY_DIR ${EXTERNAL_BUILD_DIR}
-      CONFIGURE_COMMAND ""
-      BUILD_COMMAND ""
-      INSTALL_COMMAND ""
-      )
-
-    add_dependencies(External boost)
-    install(
-      DIRECTORY ${EXTERNAL_SOURCE_DIR}/boost
-      DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
-      )
-    set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR})
-
+    # Downlaod remote file
+    set(BOOST_URL
+        http://downloads.sourceforge.net/project/boost/boost/1.53.0/boost_1_53_0.tar.gz)
+    set(BOOST_URL_HASH MD5=57a9e2047c0f511c4dfcf00eb5eb2fbb)
   endif()
+
+  message("** Will build Boost from ${BOOST_URL}")
+
+  ExternalProject_Add(
+    boost
+    PREFIX ${CMAKE_INSTALL_PREFIX}
+    URL ${BOOST_URL}
+    URL_HASH ${BOOST_URL_HASH}
+    DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
+    SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
+    BINARY_DIR ${EXTERNAL_BUILD_DIR}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    )
+
+  add_dependencies(External boost)
+  install(
+    DIRECTORY ${EXTERNAL_SOURCE_DIR}/boost
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
+    )
+  set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR})
 
 endif()
 
 include_directories(${Boost_INCLUDE_DIRS})
 
-message(STATUS "Boost include dir: ${Boost_INCLUDE_DIRS}")
-message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
-
+message(STATUS "\tBoost include dir: ${Boost_INCLUDE_DIRS}")
+message(STATUS "\tBoost libraries: ${Boost_LIBRARIES}")
