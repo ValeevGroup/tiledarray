@@ -28,7 +28,8 @@ libfind_package(MADNESS LAPACK)
 # Find the include dir
 find_path(MADNESS_INCLUDE_DIR
     NAMES madness_config.h 
-    PATHS ${MADNESS_DIR})
+    PATHS ${MADNESS_DIR} ${CMAKE_PREFIX_PATH}
+    NO_DEFAULT_PATH)
 
 # Remove duplicate libraries
 list(REMOVE_DUPLICATES MADNESS_FIND_COMPONENTS)
