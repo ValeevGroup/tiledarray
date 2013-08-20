@@ -85,8 +85,18 @@ include(GNUInstallDirs)
 include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories("${PROJECT_BINARY_DIR}/src")
 
-if (TA_BUILD_UNITTEST)
-  set (TILEDARRAY_NEEDS_BOOST TRUE)
+##########################
+# TiledArray linker flags
+##########################
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
+  # Building on OS X 10.7 or later, so add "-Wl,-no_pie" linker flags if the user ommitted it. 
+  string(REGEX MATCH "-Wl,-no_pie" no_pie_find ${CMAKE_EXE_LINKER_FLAGS})
+  if(NOT no_pie_find)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-no_pie")
+    #set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-no_pie")
+    #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-no_pie")
+    #set(STATIC_LIBRARY_FLAGS "${STATIC_LIBRARY_FLAGS} -Wl,-no_pie")
+  endif()
 endif()
 
 ##########################
