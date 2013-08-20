@@ -44,7 +44,7 @@ else()
     set(EIGEN_URL ${PROJECT_SOURCE_DIR}/external/src/eigen.tar.gz)
     set(EIGEN_URL_HASH "")
   else()
-    # Downlaod remote file
+    # Download remote file
     set(EIGEN_URL http://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz)
     set(EIGEN_URL_HASH MD5=d41d8cd98f00b204e9800998ecf8427e)
   endif()
