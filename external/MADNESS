@@ -4,12 +4,9 @@
 # Find MADNESS
 ###################
 
-find_package(MADNESS COMPONENTS MADworld OPTIONAL)
+find_package(MADNESS COMPONENTS MADworld)
 
-if (MADNESS_FOUND)
-  # Print the MADNESS libraries and paths found
-  message(STATUS "\tMADNESS_LIBRARIES=${MADNESS_LIBRARIES}")
-  message(STATUS "\tMADNESS_INCLUDE_DIR=${MADNESS_INCLUDE_DIR}")
+if(MADNESS_FOUND)
 
   # sanity check: try compiling a simple program
   list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INCLUDE_DIR})
@@ -23,41 +20,48 @@ if (MADNESS_FOUND)
     }
     "  MADNESS_COMPILES)
   if (NOT MADNESS_COMPILES)
-    message(FATAL_ERROR "Could not compile MADNESS test program")
+    message(FATAL_ERROR "MADNESS found at ${MADNESS_INCLUDE_DIR}, but could not compile test program")
   endif()
 
-  include_directories(${MADNESS_INCLUDE_DIR})
 elseif(TA_EXPERT)
 
   message("** MADNESS was not found or explicitly set")
-  message("** Downloading and building MADNESS is explicitly disabled in EXPERT mode")
+  message(FATAL_ERROR "** Downloading and building MADNESS is explicitly disabled in EXPERT mode")
 
 else()
 
+  # Set source, build, and staging paths for MADNESS
+  set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/madness)
+  set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/madness)
+  set(EXTERNAL_STAGE_DIR  ${PROJECT_BINARY_DIR}/external/stage/madness)
+  
   set(MADNESS_SVN_URL http://m-a-d-n-e-s-s.googlecode.com/svn/local/trunk)
 
+  message(STATUS "MADNESS not found")
   message("** Will pull MADNESS from ${MADNESS_SVN_URL}")  
     
-  # need to use BLAS_LIBRARIES and LAPACK_LIBRARIES, but need to convert them first to compiler arguments
+  # Convert LAPACK_LIBRARIES to compiler arguments for MADNESS configure script
   include(ConvertLibrariesListToCompilerArgs)
-  convert_libs_to_compargs(BLAS_LIBS "${BLAS_LIBRARIES}")
   convert_libs_to_compargs(LAPACK_LIBS "${LAPACK_LIBRARIES}")
-  set(LAPACKBLAS_LIBS "${LAPACK_LIBS} ${BLAS_LIBS}")
 
   if (INTEGER8)
     set (MAD_F77_INT32 no)
   else()
     set (MAD_F77_INT32 yes)
   endif()
-
-  ExternalProject_Add(
-    MADNESS
-    PREFIX ${EXTERNAL_BUILD_DIR}/madness
+  
+  ExternalProject_Add(madness
+    PREFIX ${EXTERNAL_STAGE_DIR}
+   #--Download step--------------
     SVN_REPOSITORY ${MADNESS_SVN_URL}
+    SVN_TRUST_CERT 1
+   #--Update/Patch step----------
+    UPDATE_COMMAND ""
     PATCH_COMMAND aclocal -I ./ && autoconf && autoheader && automake --add-missing
-    UPDATE_COMMAND svn update -r HEAD --force
-    CONFIGURE_COMMAND ${EXTERNAL_BUILD_DIR}/madness/src/madness/configure
-      --prefix=${CMAKE_INSTALL_PREFIX}
+   #--Configure step-------------
+    SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
+    CONFIGURE_COMMAND ${EXTERNAL_SOURCE_DIR}/configure
+      --prefix=${EXTERNAL_STAGE_DIR}
       --with-mpi-thread=multiple
       --disable-optimal
       --enable-dependency-tracking
@@ -68,18 +72,44 @@ else()
       CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${CMAKE_CXX_FLAGS}
       CC=${CMAKE_C_COMPILER} CFLAGS=${CMAKE_C_FLAGS}
       F77=${CMAKE_Fortran_COMPILER} FFLAGS=${CMAKE_Fortran_FLAGS}
-      LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} LIBS=${LAPACKBLAS_LIBS} 
-    BUILD_COMMAND make linalg
-    INSTALL_COMMAND make install-linalg
-  )
+      LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} LIBS=${LAPACK_LIBS}
+   #--Build step-----------------
+    BINARY_DIR ${EXTERNAL_BUILD_DIR}
+    BUILD_COMMAND make libraries
+   #--Install step---------------
+    INSTALL_DIR ${EXTERNAL_STAGE_DIR}
+    INSTALL_COMMAND make install-libraries
+    )
+    
+  ExternalProject_Add_Step(madness SVN_UPDATE
+    COMMAND ${Subversion_SVN_EXECUTABLE} update -r HEAD --force
+    COMMENT "Performing update step for 'madness'"
+    DEPENDEES configure
+    DEPENDERS build
+    ALWAYS 1
+    WORKING_DIRECTORY ${EXTERNAL_SOURCE_DIR}
+    )
 
-
-  add_dependencies(External MADNESS)
+  # Set build dependencies and compiler arguments
+  add_dependencies(External madness)
   set(MADNESS_LIBRARIES)
-  foreach (_lib MADworld)
-    list(APPEND MADNESS_LIBRARIES ${CMAKE_INSTALL_PREFIX}/lib/lib${_lib}.a)
-  endforeach()
-  message(STATUS "MADNESS_LIBRARIES = ${MADNESS_LIBRARIES}")
-  set(MADNESS_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include)
-
+  list(APPEND MADNESS_LIBRARIES ${EXTERNAL_STAGE_DIR}/lib/libMADworld.a)
+  list(APPEND MADNESS_LIBRARIES ${LAPACK_LIBRARIES})
+  set(MADNESS_INCLUDE_DIR ${EXTERNAL_STAGE_DIR}/include)
+  
+  # Install step copies MADNESS from the staging directory to the TiledArray Install directory
+  install(
+    DIRECTORY ${EXTERNAL_STAGE_DIR}/include
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    )
+  install(
+    DIRECTORY ${EXTERNAL_STAGE_DIR}/lib
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    )
+    
 endif()
+
+include_directories(${MADNESS_INCLUDE_DIRS})
+
+message(STATUS "\tMADNESS libraries: ${MADNESS_LIBRARIES}")
+message(STATUS "\tMADNESS include dir: ${MADNESS_INCLUDE_DIR}")
