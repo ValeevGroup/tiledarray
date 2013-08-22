@@ -29,7 +29,8 @@ Configuration:
   --mpicc=                MPI C compiler to deduce MPI environment,
                           only needed if CXX is not set to an MPI compiler wrapper
                           (MPI_C_COMPILER=)
-  --boost=                Boost path, only needed if --unittest is set also (BOOST=)
+  --boost=                Boost path, only needed if --unittest is set also (BOOST_ROOT=)
+  --madness=              MADNESS path (MADNESS_DIR=)
   --error-checking=       specify the default error reporting style,
                           allowed values: none, throw (default), assert
                           (TA_ERROR=)
@@ -95,10 +96,11 @@ while test $# != 0; do
   --integer8)      args="$args -DINTEGER8=TRUE" ;;
   --debug)         build="Debug" ;; #args="$args -DCMAKE_BUILD_TYPE=Debug" ;;
   --search=*)      search="`arg \"$1\"`"
-		   args="$args -DCMAKE_PREFIX_PATH=\"$search\"" ;;
+                   args="$args -DCMAKE_PREFIX_PATH=\"$search\"" ;;
   --mpicc=*)       args="$args -DMPI_C_COMPILER=`arg \"$1\"`" ;;
   --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
   --boost=*)       args="$args -DBOOST_ROOT=`arg \"$1\"`" ;;
+  --madness=*)     args="$args -DMADNESS_DIR=`arg \"$1\"`" ;;
   --error-checking=*)   args="$args -DTA_ERROR=`arg \"$1\"`" ;;
   --expert)        args="$args -DTA_EXPERT=TRUE" ;;
   -D*) args="$args $1" ;; # raw  cmake arg
