@@ -30,6 +30,8 @@ elseif(TA_EXPERT)
 
 else()
 
+  include(ExternalProject)
+
   # Set source, build, and staging paths for MADNESS
   set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/madness)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/madness)
