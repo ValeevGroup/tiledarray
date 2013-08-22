@@ -36,21 +36,8 @@ set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 ##########################
 # Check C++11 features
 ##########################
-include(TestCXXAcceptsFlag)
+#include(TestCXXAcceptsFlag)
 include(CheckCXXSourceCompiles)
-
-# some C++11 support is needed, figure out how to turn on the support
-CHECK_CXX_ACCEPTS_FLAG("-std=c++11" CXX_FLAG_CXX11)
-if(CXX_FLAG_CXX11)
-  set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
-  message(STATUS "C++11 flag: -std=c++11")
-else(CXX_FLAG_CXX11)
-  CHECK_CXX_ACCEPTS_FLAG("-std=c++0x" CXX_FLAG_CXX0X)
-  if (CXX_FLAG_CXX0X)
-    set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
-    message(STATUS "C++11 flag: -std=c++0x")
-  endif()
-endif()
 
 # static_assert is desired, but an implementation is included
 set(CMAKE_REQUIRED_FLAGS_CURRENT ${CMAKE_REQUIRED_FLAGS})
@@ -62,6 +49,7 @@ CHECK_CXX_SOURCE_COMPILES("
   TILEDARRAY_HAVE_STATIC_ASSERT)  
 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_CURRENT})
 
+# Set TiledArray version
 set(TARGET_ARCH "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
 set(TILEDARRAY_MAJOR_VERSION 1)
 set(TILEDARRAY_MINOR_VERSION 0)
@@ -70,6 +58,7 @@ set(TILEDARRAY_BUILDID alpha)
 
 set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
 
+# Check type support
 include(CheckTypeSize)
 check_type_size("long double" LONG_DOUBLE)
 check_type_size("long long" LONG_LONG)
@@ -117,8 +106,6 @@ endif()
 set(LINK_LIBRARIES)
 list(APPEND LINK_LIBRARIES ${MADNESS_LIBRARIES})
 list(APPEND LINK_LIBRARIES ${Boost_LIBRARIES})
-list(APPEND LINK_LIBRARIES ${LAPACK_LIBRARIES})
-list(APPEND LINK_LIBRARIES ${BLAS_LIBRARIES})
 list(APPEND LINK_LIBRARIES ${MPI_LIBRARIES})
 list(APPEND LINK_LIBRARIES ${LIBRARIES})
 list(APPEND LINK_LIBRARIES ${CMAKE_DL_LIBS})
@@ -127,6 +114,7 @@ list(APPEND LINK_LIBRARIES ${CMAKE_DL_LIBS})
 # sources
 ##########################
 add_subdirectory(src)
+#add_subdirectory(examples)
 add_subdirectory(doc)
 
 ##########################
