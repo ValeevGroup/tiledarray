@@ -1,10 +1,5 @@
 # -*- mode: cmake -*-
 
-set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external)
-set(EXTERNAL_BUILD_DIR ${PROJECT_BINARY_DIR}/external/build)
-
-include(ExternalProject)
-
 # Lapack was explicity set
 if (DEFINED LAPACK_LIBRARIES)
   message("** LAPACK libraries were explicitly set")
@@ -13,15 +8,6 @@ else()
 
   # this will find LAPACK *and* BLAS unless BLAS_LIBRARIES explicitly set
   find_package(LAPACK)
-
-  if (BLAS_LIBRARIES)
-    message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
-  endif()
-
-  # to make sure they are really black, not FALSE
-  if (NOT BLAS_LIBRARIES)
-    set(BLAS_LIBRARIES "")
-  endif()
 
   # to make sure they are really black, not FALSE
   if (NOT LAPACK_LIBRARIES)
@@ -37,41 +23,58 @@ if (LAPACK_FOUND)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LAPACK_LINKER_FLAGS}")
   set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${LAPACK_LINKER_FLAGS}")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LAPACK_LINKER_FLAGS}")
-endif()
 
-if (NOT LAPACK_FOUND)
+elseif(TA_EXPERT)
 
-  if(TA_EXPERT)
+  message("** LAPACK was not found or explicitly set")
+  message("** Downloading and building LAPACK is explicitly disabled in EXPERT mode")
 
-    message("** LAPACK was not found or explicitly set")
-    message("** Downloading and building LAPACK is explicitly disabled in EXPERT mode")
+else()
 
-  else()
+  include(ExternalProject)
 
-    set(LAPACK_URL http://www.netlib.org/lapack/lapack-3.4.2.tgz)
-    set(LAPACK_URL_HASH MD5=61bf1a8a4469d4bdb7604f5897179478)
+  set(EXTERNAL_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
+  set(EXTERNAL_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/lapack)
+  set(EXTERNAL_BUILD_DIR    ${PROJECT_BINARY_DIR}/external/build/lapack)
+  set(EXTERNAL_STAGE_DIR    ${PROJECT_BINARY_DIR}/external/stage/lapack)
 
-    if (EXISTS ${EXTERNAL_SOURCE_DIR}/lapack.tar.gz)
-      set(LAPACK_URL ${EXTERNAL_SOURCE_DIR}/lapack.tar.gz)
-      set(LAPACK_URL_HASH "")
-    endif()
+  set(LAPACK_URL http://www.netlib.org/lapack/lapack-3.4.2.tgz)
+  set(LAPACK_URL_HASH MD5=61bf1a8a4469d4bdb7604f5897179478)
 
-    message("** Will build LAPACK from ${LAPACK_URL}")
-
-    ExternalProject_Add(
-      lapack
-      PREFIX ${EXTERNAL_BUILD_DIR}/lapack
-      URL ${LAPACK_URL}
-      URL_HASH ${LAPACK_URL_HASH}
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_BUILD_DIR}/lapack
-      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
-      -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
-      )
-
-    add_dependencies(External Lapack)
-    set(BLAS_LIBRARIES ${EXTERNAL_BUILD_DIR}/lapack/lib/libblas.a)
-    set(LAPACK_LIBRARIES ${EXTERNAL_BUILD_DIR}/lapack/lib/liblapack.a)
-
+  if (EXISTS ${EXTERNAL_SOURCE_DIR}/lapack.tar.gz)
+    set(LAPACK_URL ${EXTERNAL_SOURCE_DIR}/lapack.tar.gz)
+    set(LAPACK_URL_HASH "")
   endif()
+
+  message("** Will build LAPACK from ${LAPACK_URL}")
+  ExternalProject_Add(
+    lapack
+    PREFIX ${EXTERNAL_STAGE_DIR}
+    URL ${LAPACK_URL}
+    URL_HASH ${LAPACK_URL_HASH}
+    BINARY_DIR ${EXTERNAL_BUILD_DIR}
+    )
+
+  ExternalProject_Add(lapack
+    PREFIX ${EXTERNAL_STAGE_DIR}
+   #--Download step--------------
+    URL ${LAPACK_URL}
+    URL_HASH ${LAPACK_URL_HASH}
+    DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
+   #--Configure step-------------
+    SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_STAGE_DIR}
+    -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+    -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
+    )
+
+  # Install step copies MADNESS from the staging directory to the TiledArray Install directory
+  add_dependencies(External Lapack)
+  set(BLAS_LIBRARIES ${EXTERNAL_STAGE_DIR}/lib/libblas.a)
+  set(LAPACK_LIBRARIES ${EXTERNAL_BUILD_DIR}/lib/liblapack.a ${BLAS_LIBRARIES})
+  install(
+    DIRECTORY ${EXTERNAL_STAGE_DIR}/lib
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    )
 
 endif()
