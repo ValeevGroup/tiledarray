@@ -58,10 +58,13 @@ elseif(TA_EXPERT)
 
 else()
 
+  include(ExternalProject)
+  
   # Set source and build path for Boost in the TiledArray Project
   set(EXTERNAL_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/boost)
   set(EXTERNAL_BUILD_DIR    ${PROJECT_BINARY_DIR}/external/build/boost)
+  set(EXTERNAL_STAGE_DIR    ${PROJECT_BINARY_DIR}/external/stage/boost)
 
   # Set the external source
   if (EXISTS ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
@@ -87,15 +90,18 @@ else()
     BINARY_DIR ${EXTERNAL_BUILD_DIR}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
-    INSTALL_COMMAND ""
+    INSTALL_COMMAND
+      ${CMAKE_COMMAND} -E copy_directory
+      ${EXTERNAL_SOURCE_DIR}/boost
+      ${EXTERNAL_STAGE_DIR}/include/boost
     )
 
   add_dependencies(External boost)
   install(
-    DIRECTORY ${EXTERNAL_SOURCE_DIR}/boost
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
+    DIRECTORY ${EXTERNAL_STAGE_DIR}/include
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
     )
-  set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR})
+  set(Boost_INCLUDE_DIRS ${EXTERNAL_STAGE_DIR}/include)
 
 endif()
 
