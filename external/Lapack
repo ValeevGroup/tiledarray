@@ -36,7 +36,6 @@ else()
   set(EXTERNAL_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/lapack)
   set(EXTERNAL_BUILD_DIR    ${PROJECT_BINARY_DIR}/external/build/lapack)
-  set(EXTERNAL_STAGE_DIR    ${PROJECT_BINARY_DIR}/external/stage/lapack)
 
   set(LAPACK_URL http://www.netlib.org/lapack/lapack-3.4.2.tgz)
   set(LAPACK_URL_HASH MD5=61bf1a8a4469d4bdb7604f5897179478)
@@ -56,25 +55,28 @@ else()
     )
 
   ExternalProject_Add(lapack
-    PREFIX ${EXTERNAL_STAGE_DIR}
+    PREFIX ${CMAKE_INSTALL_PREFIX}
+    STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
    #--Download step--------------
     URL ${LAPACK_URL}
     URL_HASH ${LAPACK_URL_HASH}
     DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
    #--Configure step-------------
     SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_STAGE_DIR}
-    -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
-    -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+        -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+        -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
+   #--Install step---------------
+    INSTALL_COMMAND ""
     )
 
   # Install step copies MADNESS from the staging directory to the TiledArray Install directory
   add_dependencies(External Lapack)
-  set(BLAS_LIBRARIES ${EXTERNAL_STAGE_DIR}/lib/libblas.a)
+  set(BLAS_LIBRARIES ${EXTERNAL_BUILD_DIR}/lib/libblas.a)
   set(LAPACK_LIBRARIES ${EXTERNAL_BUILD_DIR}/lib/liblapack.a ${BLAS_LIBRARIES})
   install(
-    DIRECTORY ${EXTERNAL_STAGE_DIR}/lib
-    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    DIRECTORY ${EXTERNAL_BUILD_DIR}/lib
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
     )
 
 endif()
