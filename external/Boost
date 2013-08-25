@@ -99,7 +99,7 @@ else()
   add_dependencies(External boost)
   install(
     DIRECTORY ${EXTERNAL_SOURCE_DIR}/boost
-    DESTINATION include
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
   set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR})
 
