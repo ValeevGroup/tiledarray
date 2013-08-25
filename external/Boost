@@ -63,8 +63,6 @@ else()
   # Set source and build path for Boost in the TiledArray Project
   set(EXTERNAL_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/boost)
-  set(EXTERNAL_BUILD_DIR    ${PROJECT_BINARY_DIR}/external/build/boost)
-  set(EXTERNAL_STAGE_DIR    ${PROJECT_BINARY_DIR}/external/stage/boost)
 
   # Set the external source
   if (EXISTS ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
@@ -74,34 +72,36 @@ else()
   else()
     # Downlaod remote file
     set(BOOST_URL
-        http://downloads.sourceforge.net/project/boost/boost/1.53.0/boost_1_53_0.tar.gz)
-    set(BOOST_URL_HASH MD5=57a9e2047c0f511c4dfcf00eb5eb2fbb)
+        http://downloads.sourceforge.net/project/boost/boost/1.54.0/boost_1_54_0.tar.gz)
+    set(BOOST_URL_HASH MD5=efbfbff5a85a9330951f243d0a46e4b9)
   endif()
 
   message("** Will build Boost from ${BOOST_URL}")
 
-  ExternalProject_Add(
-    boost
+  ExternalProject_Add(boost
     PREFIX ${CMAKE_INSTALL_PREFIX}
+    STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
+   #--Download step--------------
     URL ${BOOST_URL}
     URL_HASH ${BOOST_URL_HASH}
     DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
+   #--Configure step-------------
     SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
-    BINARY_DIR ${EXTERNAL_BUILD_DIR}
     CONFIGURE_COMMAND ""
+   #--Build step-----------------
     BUILD_COMMAND ""
-    INSTALL_COMMAND
-      ${CMAKE_COMMAND} -E copy_directory
-      ${EXTERNAL_SOURCE_DIR}/boost
-      ${EXTERNAL_STAGE_DIR}/include/boost
+   #--Install step---------------
+    INSTALL_COMMAND ""
+   #--Custom targets-------------
+    STEP_TARGETS download
     )
 
   add_dependencies(External boost)
   install(
-    DIRECTORY ${EXTERNAL_STAGE_DIR}/include
-    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    DIRECTORY ${EXTERNAL_SOURCE_DIR}/boost
+    DESTINATION include
     )
-  set(Boost_INCLUDE_DIRS ${EXTERNAL_STAGE_DIR}/include)
+  set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR})
 
 endif()
 
