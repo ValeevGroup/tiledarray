@@ -32,10 +32,9 @@ else()
 
   include(ExternalProject)
 
-  # Set source, build, and staging paths for MADNESS
+  # Set paths for MADNESS project
   set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/madness)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/madness)
-  
   set(MADNESS_SVN_URL http://m-a-d-n-e-s-s.googlecode.com/svn/local/trunk)
 
   message(STATUS "MADNESS not found")
@@ -61,6 +60,7 @@ else()
    #--Configure step-------------
     SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
     CONFIGURE_COMMAND ${EXTERNAL_SOURCE_DIR}/configure
+      --quiet
       --prefix=${CMAKE_INSTALL_PREFIX}
       --with-mpi-thread=multiple
       --disable-optimal
@@ -75,7 +75,7 @@ else()
       LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} LIBS=${LAPACK_LIBS}
    #--Build step-----------------
     BINARY_DIR ${EXTERNAL_BUILD_DIR}
-    BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} libraries
+    BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} libraries V=0
    #--Install step---------------
     INSTALL_COMMAND ""
     STEP_TARGETS download patch configure build
