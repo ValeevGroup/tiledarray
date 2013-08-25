@@ -11,12 +11,13 @@ if (NOT CMAKE_CXX_COMPILER)
   message(FATAL_ERROR "C++ compiler not found")
 endif()
 
-if(INTEGER8) 
-  set(F77_INTEGER_WIDTH 8)
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -DINTEGER77='INTEGER*8' ")
+# Set set the default fortran integer type. This is only used by MADNESS.
+set(INTEGER4 "FALSE" CACHE BOOL "Set the default Fortran integer type to integer*4")
+mark_as_advanced(INTEGER4)
+if(INTEGER4) 
+  set(MAD_F77_INT32 yes)
 else()
-  set(F77_INTEGER_WIDTH 4)
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -DINTEGER77='INTEGER*4' ")
+  set (MAD_F77_INT32 no)
 endif()
 
 # extra cmake files are shipped with TiledArray
