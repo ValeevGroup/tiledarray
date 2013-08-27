@@ -47,9 +47,6 @@ if(NOT MADNESS_FIND_QUIETLY)
   endif()
 endif()
 
-# Remove duplicate libraries
-list(REMOVE_DUPLICATES MADNESS_FIND_COMPONENTS)
-
 # Add any missing dependencies to the commponent list
 
 # Add missing dependencies for MADmra
@@ -104,35 +101,37 @@ endif(MADNESS_LIBRARY_DIR)
 # Finally the library itself
 foreach (COMPONENT ${MADNESS_FIND_COMPONENTS})
 
-  # Find the component library.
-  if (NOT MADNESS_FIND_QUIETLY)
-    message(STATUS "Looking for ${COMPONENT}")
-  endif()
-#  set(MADNESS_${COMPONENT}_LIBRARY MADNESS_${COMPONENT}-NOTFOUND)
-  find_library(MADNESS_${COMPONENT}_LIBRARY 
-      NAMES ${COMPONENT}
-      PATHS ${test_lib_dir} ${CMAKE_PREFIX_PATH}
-      DOC "MADNESS ${COMPONENT} library"
-      NO_CMAKE_SYSTEM_PATH)
-  
-  # Set result status variables
-  if (MADNESS_${COMPONENT}_LIBRARY)
-    if(NOT MADNESS_LIBRARY_DIR)
-      get_filename_component(MADNESS_LIBRARY_DIR ${MADNESS_${COMPONENT}_LIBRARY} PATH CACHE)
-    endif()
-    set(MADNESS_${COMPONENT}_FOUND TRUE)
-  else()
-    set(MADNESS_${COMPONENT}_FOUND FALSE)
-  endif()
-  
-  # Print the result of the search
-  if (NOT MADNESS_FIND_QUIETLY)
-    if(MADNESS_${COMPONENT}_FOUND)
-      message(STATUS "Looking for ${COMPONENT} - found")
-    else()
-      message(STATUS "Looking for ${COMPONENT} - not found")
-    endif()
-  endif()
+  if(NOT DEFINED MADNESS_${COMPONENT}_FOUND)
+    # Find the component library.
+    if(NOT MADNESS_FIND_QUIETLY)
+      message(STATUS "Looking for ${COMPONENT}")
+    endif(NOT MADNESS_FIND_QUIETLY)
+#    set(MADNESS_${COMPONENT}_LIBRARY MADNESS_${COMPONENT}-NOTFOUND)
+    find_library(MADNESS_${COMPONENT}_LIBRARY 
+        NAMES ${COMPONENT}
+        PATHS ${test_lib_dir} ${CMAKE_PREFIX_PATH}
+        DOC "MADNESS ${COMPONENT} library"
+        NO_CMAKE_SYSTEM_PATH)
+
+    # Set result status variables
+    if(MADNESS_${COMPONENT}_LIBRARY)
+      if(NOT MADNESS_LIBRARY_DIR)
+        get_filename_component(MADNESS_LIBRARY_DIR ${MADNESS_${COMPONENT}_LIBRARY} PATH CACHE)
+      endif(NOT MADNESS_LIBRARY_DIR)
+      set(MADNESS_${COMPONENT}_FOUND TRUE)
+    else(MADNESS_${COMPONENT}_LIBRARY)
+      set(MADNESS_${COMPONENT}_FOUND FALSE)
+    endif(MADNESS_${COMPONENT}_LIBRARY)
+
+    # Print the result of the search
+    if(NOT MADNESS_FIND_QUIETLY)
+      if(MADNESS_${COMPONENT}_FOUND)
+        message(STATUS "Looking for ${COMPONENT} - found")
+      else(MADNESS_${COMPONENT}_FOUND)
+        message(STATUS "Looking for ${COMPONENT} - not found")
+      endif(MADNESS_${COMPONENT}_FOUND)
+    endif(NOT MADNESS_FIND_QUIETLY)
+  endif(NOT DEFINED MADNESS_${COMPONENT}_FOUND)
 endforeach()
 
 # Add the found libraries to MADNESS_PROCESS_LIBS so that they are in the proper order
