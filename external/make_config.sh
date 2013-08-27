@@ -2,7 +2,7 @@
 
 # Generate configure script for autotools project
 
-aclocal -I ./
+aclocal -I ./config
 autoconf
 autoheader
 automake --add-missing
