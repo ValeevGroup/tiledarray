@@ -5,6 +5,7 @@ project (TiledArray)
 
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+option(DISABLE_MPI "Disable the use of MPI" OFF)
 
 enable_language (CXX)
 if (NOT CMAKE_CXX_COMPILER)
