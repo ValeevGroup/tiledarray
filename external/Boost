@@ -107,6 +107,7 @@ else()
 endif()
 
 include_directories(${Boost_INCLUDE_DIRS})
+list(APPEND LINK_LIBRARIES ${Boost_LIBRARIES})
 
 message(STATUS "\tBoost include dir: ${Boost_INCLUDE_DIRS}")
 message(STATUS "\tBoost libraries: ${Boost_LIBRARIES}")

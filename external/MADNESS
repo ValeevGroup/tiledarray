@@ -151,7 +151,8 @@ else()
     
 endif()
 
-include_directories(${MADNESS_INCLUDE_DIRS})
+include_directories(${MADNESS_INCLUDE_DIR})
+list(APPEND LINK_LIBRARIES ${MADNESS_LIBRARIES})
 
 message(STATUS "\tMADNESS include dir: ${MADNESS_INCLUDE_DIR}")
 message(STATUS "\tMADNESS libraries: ${MADNESS_LIBRARIES}")

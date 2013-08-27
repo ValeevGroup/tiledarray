@@ -12,7 +12,6 @@ add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
 # Add compiler flags for test
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 include_directories("${PROJECT_BINARY_DIR}/tests")
-include_directories(${MADNESS_INCLUDE_DIR})
 set_target_properties(${executable} PROPERTIES COMPILE_DEFINITIONS TILEDARRAY_NO_USER_ERROR_MESSAGES=1)
 target_link_libraries(${executable} ${LINK_LIBRARIES})
 

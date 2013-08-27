@@ -70,10 +70,7 @@ if (HAVE_LONG_LONG)
   set (TILEDARRAY_HAS_LONG_LONG TRUE)
 endif()
 
-include(GNUInstallDirs)           
-
-include_directories("${PROJECT_SOURCE_DIR}/src")
-include_directories("${PROJECT_BINARY_DIR}/src")
+include(GNUInstallDirs)
 
 ##########################
 # TiledArray linker flags
@@ -102,12 +99,15 @@ if (TA_BUILD_UNITTEST)
 endif()
 
 ##########################
+# headers
+##########################
+include_directories("${PROJECT_SOURCE_DIR}/src")
+include_directories("${PROJECT_BINARY_DIR}/src")
+
+##########################
 # libraries
 ##########################
 set(LINK_LIBRARIES)
-list(APPEND LINK_LIBRARIES ${MADNESS_LIBRARIES})
-list(APPEND LINK_LIBRARIES ${Boost_LIBRARIES})
-list(APPEND LINK_LIBRARIES ${MPI_LIBRARIES})
 list(APPEND LINK_LIBRARIES ${LIBRARIES})
 list(APPEND LINK_LIBRARIES ${CMAKE_DL_LIBS})
 
