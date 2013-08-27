@@ -4,7 +4,7 @@
 # Find MADNESS
 ###################
 
-find_package(MADNESS COMPONENTS MADworld)
+find_package(Madness COMPONENTS MADworld)
 
 if(MADNESS_FOUND)
 
