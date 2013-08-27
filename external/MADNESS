@@ -48,6 +48,12 @@ else()
     message(FATAL_ERROR "CMAKE_MAKE_PROGRAM not set. The MADNESS build system requires a GNU complient make program.")
   endif()
   
+  if(MPI_FOUND)
+    set(MAD_STUB_MPI "no")
+  else()
+    set(MAD_STUB_MPI "yes")
+  endif()
+  
   ExternalProject_Add(madness
     PREFIX ${CMAKE_INSTALL_PREFIX}
     STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
@@ -66,6 +72,7 @@ else()
       --disable-optimal
       --enable-dependency-tracking
       --with-fortran-int32=${MAD_F77_INT32}
+      --with-stubmpi=${MAD_STUB_MPI}
       MPICXX=${CMAKE_CXX_COMPILER}
       MPICC=${CMAKE_C_COMPILER}
       CPPFLAGS=${CMAKE_CPP_FLAGS}
