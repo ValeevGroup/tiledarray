@@ -1,28 +1,33 @@
 # - Try to find MADNESS lib
 #
 # This module will search for MADNESS components in Madness_DIR and the default
-# search path. This module will define:
+# search path. It will also check for MADNESS dependencies: LAPACK and MPI. This
+# module will define:
 #
-#  Madness_FOUND                - System has MADNESS lib with correct version
-#  Madness_INCLUDE_DIR          - The MADNESS include directory
-#  Madness_INCLUDE_DIRS         - The MADNESS include directory
-#  Madness_LIBRARY_DIR          - The MADNESS library directory
-#  Madness_LIBRARY              - The MADNESS library
-#  Madness_LIBRARIES            - The MADNESS libraries and their dependencies
-#  Madness_${COMPONENT}_FOUND   - System has the specified MADNESS COMPONENT
-#  Madness_${COMPONENT}_LIBRARY - The MADNESS COMPONENT library
+#   Madness_FOUND                - System has MADNESS lib with correct version
+#   Madness_INCLUDE_DIR          - The MADNESS include directory
+#   Madness_INCLUDE_DIRS         - The MADNESS include directory
+#   Madness_LIBRARY_DIR          - The MADNESS library directory
+#   Madness_LIBRARY              - The MADNESS library
+#   Madness_LIBRARIES            - The MADNESS libraries and their dependencies
+#   Madness_<COMPONENT>_FOUND    - System has the specified MADNESS COMPONENT
+#   Madness_<COMPONENT>_LIBRARY  - The MADNESS COMPONENT library
 #
-#  Valid COMPONENTS are:
-#    MADmra 
-#    MADtinyxml 
-#    MADmuparser
-#    MADlinalg
-#    MADtensor
-#    MADmisc
-#    MADworld
+# Dependicy variables are also defined by the FindMPI and FindLAPACK modules.
+# See the CMake documentation for details.
+#
+# Valid COMPONENTS are:
+#   MADmra 
+#   MADtinyxml 
+#   MADmuparser
+#   MADlinalg
+#   MADtensor
+#   MADmisc
+#   MADworld
 #
 
 include(LibFindMacros)
+include(LibAddDep)
 
 #Create a cache variable for the MADNESS install path
 set(Madness_DIR "" CACHE PATH "MADNESS install path")
@@ -51,44 +56,10 @@ if(NOT Madness_FIND_QUIETLY)
 endif()
 
 # Add any missing dependencies to the commponent list
-
-# Add missing dependencies for MADmra
-list(FIND Madness_FIND_COMPONENTS MADmra _lib_find)
-if(NOT _lib_find EQUAL -1)
-  foreach(_libdep MADtinyxml MADmuparser MADlinalg)
-    list(FIND Madness_FIND_COMPONENTS ${_libdep} _lib_find)
-    if(_lib_find EQUAL -1)
-      list(APPEND Madness_FIND_COMPONENTS ${_libdep})
-     endif()
-  endforeach()
-endif()
-
-# Add missing dependencies for MADlinalg
-list(FIND Madness_FIND_COMPONENTS MADlinalg _lib_find)
-if(NOT _lib_find EQUAL -1)
-  list(FIND Madness_FIND_COMPONENTS MADtensor _lib_find)
-  if(_lib_find EQUAL -1)
-    list(APPEND Madness_FIND_COMPONENTS MADtensor)
-   endif()
-endif()
-
-# Add missing dependencies for MADtensor
-list(FIND Madness_FIND_COMPONENTS MADtensor _lib_find)
-if(NOT _lib_find EQUAL -1)
-  list(FIND Madness_FIND_COMPONENTS MADmisc _lib_find)
-  if(_lib_find EQUAL -1)
-    list(APPEND Madness_FIND_COMPONENTS MADmisc)
-   endif()
-endif()
-
-# Add missing dependencies for MADmisc
-list(FIND Madness_FIND_COMPONENTS MADmisc _lib_find)
-if(NOT _lib_find EQUAL -1)
-  list(FIND Madness_FIND_COMPONENTS MADworld _lib_find)
-  if(_lib_find EQUAL -1)
-    list(APPEND Madness_FIND_COMPONENTS MADworld)
-  endif()
-endif() 
+lib_add_dep(Madness_FIND_COMPONENTS MADmra "MADtinyxml;MADmuparser;MADlinalg")
+lib_add_dep(Madness_FIND_COMPONENTS MADlinalg "MADtensor")
+lib_add_dep(Madness_FIND_COMPONENTS MADtensor "MADmisc")
+lib_add_dep(Madness_FIND_COMPONENTS MADmisc "MADworld")
 
 # Set the first library test path
 if(Madness_LIBRARY_DIR)
