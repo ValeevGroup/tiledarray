@@ -74,25 +74,23 @@ endif()
 include(GNUInstallDirs)
 
 ##########################
-# TiledArray linker flags
+# Set the MPI compliers
 ##########################
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
-  # Building on OS X 10.7 or later, so add "-Wl,-no_pie" linker flags if the user ommitted it. 
-  string(REGEX MATCH "-Wl,-no_pie" no_pie_find ${CMAKE_EXE_LINKER_FLAGS})
-  if(NOT no_pie_find)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-no_pie")
-    #set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-no_pie")
-    #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-no_pie")
-    #set(STATIC_LIBRARY_FLAGS "${STATIC_LIBRARY_FLAGS} -Wl,-no_pie")
-  endif()
+
+# Set the MPICC compiler
+if(NOT DEFINED MPI_C_COMPILER)
+  set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
+endif()
+
+# Set the MPICXX complier
+if(NOT DEFINED MPI_CXX_COMPILER)
+  set(MPI_CXX_COMPILER ${CMAKE_CXX_COMPILER})
 endif()
 
 ##########################
 # external dependencies
 ##########################
 add_custom_target(External)
-include(external/MPI)
-include(external/Lapack)
 include(external/MADNESS)
 include(external/Eigen)
 if (TA_BUILD_UNITTEST)
@@ -100,17 +98,17 @@ if (TA_BUILD_UNITTEST)
 endif()
 
 ##########################
-# headers
+# TiledArray compile options
 ##########################
-include_directories("${PROJECT_SOURCE_DIR}/src")
-include_directories("${PROJECT_BINARY_DIR}/src")
-
-##########################
-# libraries
-##########################
-set(LINK_LIBRARIES)
-list(APPEND LINK_LIBRARIES ${LIBRARIES})
-list(APPEND LINK_LIBRARIES ${CMAKE_DL_LIBS})
+list(APPEND TiledArray_INCLUDE_DIRS 
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_BINARY_DIR}/src
+    ${Madness_INCLUDE_DIRS}
+    ${EIGEN_INCLUDE_DIR})
+list(APPEND TiledArray_LIBRARIES
+    ${Madness_LIBRARIES})
+set(TiledArray_LINK_FLAGS ${Madness_LINK_FLAGS})
+set(TiledArray_COMPILE_FLAGS ${Madness_COMPILE_FLAGS})
 
 ##########################
 # sources
@@ -129,22 +127,6 @@ if (TA_BUILD_UNITTEST)
 else()
   add_custom_target(check COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
 endif()
-
-##########################
-# Export include dirs, library list
-##########################
-set(TILEDARRAY_CONFIG_LIBRARIES "")
-
-# transform library list into compiler args
-include(ConvertLibrariesListToCompilerArgs)
-convert_libs_to_compargs(TILEDARRAY_CONFIG_LIBRARIES "${LINK_LIBRARIES}")
-#message(STATUS "TILEDARRAY_CONFIG_LIBRARIES = ${TILEDARRAY_CONFIG_LIBRARIES}")
-
-##########################
-# TiledArray CPPFLAGS
-##########################
-set(TILEDARRAY_CPP_FLAGS "-I${CMAKE_INSTALL_PREFIX}/include -I${MADNESS_INCLUDE_DIR} ${CMAKE_CPP_FLAGS}")
-#message(STATUS "TILEDARRAY_CPP_FLAGS = ${TILEDARRAY_CPP_FLAGS}")
 
 ##########################
 # convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
