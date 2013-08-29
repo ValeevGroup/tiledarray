@@ -1,51 +1,28 @@
 # -*- mode: cmake -*-
 
-
-set(Boost_USE_STATIC_LIBS    OFF)
-#set(Boost_USE_MULTITHREADED  OFF)
-#set(Boost_USE_STATIC_RUNTIME OFF)
-
 # Limit scope of the search if BOOST_ROOT or BOOST_INCLUDEDIR is provided.
 if (BOOST_ROOT OR BOOST_INCLUDEDIR)
   set(Boost_NO_SYSTEM_PATHS TRUE)
 endif()
   
 # Check for Boost
-find_package(Boost 1.33 COMPONENTS unit_test_framework)
-
+find_package(Boost 1.33)
 
 if (Boost_FOUND)
 
   # Perform a compile check with Boost
   list(APPEND CMAKE_REQUIRED_INCLUDES ${Boost_INCLUDE_DIR})
-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${Boost_LIBRARIES})
-  if (BOOST_UNIT_TEST_FRAMEWORK_FOUND AND NOT Boost_USE_STATIC_LIBS)
-    set(BOOST_TEST_DYN_LINK 1)
-    CHECK_CXX_SOURCE_COMPILES(
-      "
-      #define BOOST_TEST_MAIN main_tester
-      #define BOOST_TEST_DYN_LINK 1
-      #ifdef BOOST_TEST_DYN_LINK
-      
-      BOOST_AUTO_TEST_CASE( tester )
-      {
-        BOOST_CHECK( true );
-      }
-      
-      "  BOOST_COMPILES)
-  else()
-    CHECK_CXX_SOURCE_COMPILES(
+
+  CHECK_CXX_SOURCE_COMPILES(
       "
       #define BOOST_TEST_MAIN main_tester
       #include <boost/test/included/unit_test.hpp>
-      
+
       BOOST_AUTO_TEST_CASE( tester )
       {
         BOOST_CHECK( true );
       }
-      
       "  BOOST_COMPILES)
-  endif()
 
   if (NOT BOOST_COMPILES)
     message(FATAL_ERROR "Boost found at ${BOOST_ROOT}, but could not compile test program")
@@ -107,7 +84,5 @@ else()
 endif()
 
 include_directories(${Boost_INCLUDE_DIRS})
-list(APPEND LINK_LIBRARIES ${Boost_LIBRARIES})
 
 message(STATUS "\tBoost include dir: ${Boost_INCLUDE_DIRS}")
-message(STATUS "\tBoost libraries: ${Boost_LIBRARIES}")

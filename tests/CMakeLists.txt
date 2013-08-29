@@ -19,7 +19,7 @@ set_target_properties(${executable} PROPERTIES
     COMPILE_FLAGS "${CMAKE_CPP_FLAGS} ${TiledArray_COMPILE_FLAGS}"
     COMPILE_DEFINITIONS "TILEDARRAY_NO_USER_ERROR_MESSAGES=1"
     LINK_FLAGS "${TiledArray_LINK_FLAGS}")
-target_link_libraries(${executable} ${TiledArray_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(${executable} ${TiledArray_LIBRARIES})
 
 # Add targets
 add_dependencies(${executable} External)
