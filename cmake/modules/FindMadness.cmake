@@ -29,7 +29,9 @@ set(Madness_DIR "" CACHE PATH "MADNESS install path")
 
 # Dependencies
 libfind_package(MADNESS LAPACK)
-libfind_package(MADNESS MPI)
+if(NOT DISABLE_MPI)
+  libfind_package(MADNESS MPI)
+endif()
 
 # Find the MADNESS include dir
 if (NOT Madness_FIND_QUIETLY)
@@ -142,18 +144,27 @@ foreach(COMPONENT MADmra MADtinyxml MADmuparser MADlinalg MADtensor MADmisc MADw
   endif()
 endforeach()
 
-foreach(lang _C_ _CXX_ _)
 
-  if(MPI${lang}FOUND)
-    set(Madness_PROCESS_INCLUDES Madness_INCLUDE_DIR MPI${lang}INCLUDE_PATH)
-    set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES MPI${lang}LIBRARIES)
+if(DISABLE_MPI)
+  set(Madness_PROCESS_INCLUDES Madness_INCLUDE_DIR)
+  set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES)  
+  set(Madness_COMPILE_FLAGS "")
+  set(Madness_LINK_FLAGS "${LAPACK_LINKER_FLAGS}")
+else()
+  foreach(lang _C_ _CXX_ _)
+
+    if(MPI${lang}FOUND)
+      set(Madness_PROCESS_INCLUDES Madness_INCLUDE_DIR MPI${lang}INCLUDE_PATH)
+      set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES MPI${lang}LIBRARIES)
+  
+      set(Madness_COMPILE_FLAGS "${MPI${lang}COMPILE_FLAGS}")
+      set(Madness_LINK_FLAGS "${Madness_LINK_FLAGS} ${MPI${lang}LINK_FLAGS}")
     
-    set(Madness_COMPILE_FLAGS "${MPI${lang}COMPILE_FLAGS}")
-    set(Madness_LINK_FLAGS "${LAPACK_LINKER_FLAGS} ${MPI${lang}LINK_FLAGS}")
-    break()
-  endif()
+      break()
+    endif()
 
-endforeach()
+  endforeach()
+endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
   # Building on OS X 10.7 or later, so add "-Wl,-no_pie" linker flags.
