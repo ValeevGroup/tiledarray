@@ -4,13 +4,15 @@
 # Find MADNESS
 ###################
 
+include(ExternalProject)
+  
 find_package(Madness COMPONENTS MADworld)
 
-if(MADNESS_FOUND)
+if(Madness_FOUND)
 
   # sanity check: try compiling a simple program
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INCLUDE_DIRS})
-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${MADNESS_LIBRARIES})
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${Madness_INCLUDE_DIRS})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${Madness_LIBRARIES})
   CHECK_CXX_SOURCE_COMPILES(
     "
     #include <world/world.h>
@@ -18,9 +20,9 @@ if(MADNESS_FOUND)
       madness::World& world = madness::initialize(argc, argv);
       return 0;
     }
-    "  MADNESS_COMPILES)
-  if (NOT MADNESS_COMPILES)
-    message(FATAL_ERROR "MADNESS found at ${MADNESS_INCLUDE_DIR}, but could not compile test program")
+    "  Madness_COMPILES)
+  if (NOT Madness_COMPILES)
+    message(FATAL_ERROR "MADNESS found at ${Madness_INCLUDE_DIR}, but could not compile test program")
   endif()
 
 elseif(TA_EXPERT)
@@ -29,8 +31,6 @@ elseif(TA_EXPERT)
   message(FATAL_ERROR "** Downloading and building MADNESS is explicitly disabled in EXPERT mode")
 
 else()
-
-  include(ExternalProject)
 
   # Set paths for MADNESS project
   set(EXTERNAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/madness)
@@ -140,19 +140,36 @@ else()
 
   # Set build dependencies and compiler arguments
   add_dependencies(External madness)
-  set(MADNESS_LIBRARIES)
-  list(APPEND MADNESS_LIBRARIES ${EXTERNAL_BUILD_DIR}/src/lib/world/libMADworld.a)
-  list(APPEND MADNESS_LIBRARIES ${LAPACK_LIBRARIES})
-  set(MADNESS_INCLUDE_DIR 
+  
+  set(Madness_INCLUDE_DIR 
       ${EXTERNAL_BUILD_DIR}/include
       ${EXTERNAL_SOURCE_DIR}/include
       ${EXTERNAL_BUILD_DIR}/src/lib
       ${EXTERNAL_SOURCE_DIR}/src/lib)
+  set(Madness_LIBRARY ${EXTERNAL_BUILD_DIR}/src/lib/world/libMADworld.a)
+  foreach(lang _C_ _CXX_ _)
+
+    if(MPI${lang}FOUND)
+      set(Madness_INCLUDE_DIRS ${Madness_INCLUDE_DIR} ${MPI${lang}INCLUDE_PATH})
+      set(Madness_LIBRARIES ${Madness_LIBRARY} ${LAPACK_LIBRARIES} ${MPI${lang}LIBRARIES})
+    
+      set(Madness_COMPILE_FLAGS "${MPI${lang}COMPILE_FLAGS}")
+      set(Madness_LINK_FLAGS "${LAPACK_LINKER_FLAGS} ${MPI${lang}LINK_FLAGS}")
+      
+      break()
+    endif()
+
+  endforeach()
+  
+  # Add -no_pie link flag for OS X 11.0 and greater
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
+    # Building on OS X 10.7 or later, so add "-Wl,-no_pie" linker flags.
+    set(Madness_LINK_FLAGS "${Madness_LINK_FLAGS} -Wl,-no_pie")
+  endif()
     
 endif()
 
-include_directories(${MADNESS_INCLUDE_DIR})
-list(APPEND LINK_LIBRARIES ${MADNESS_LIBRARIES})
-
-message(STATUS "\tMADNESS include dir: ${MADNESS_INCLUDE_DIR}")
-message(STATUS "\tMADNESS libraries: ${MADNESS_LIBRARIES}")
+message(STATUS "\tMADNESS include dir: ${Madness_INCLUDE_DIRS}")
+message(STATUS "\tMADNESS compile flags: ${Madness_COMPILE_FLAGS}")
+message(STATUS "\tMADNESS libraries: ${Madness_LIBRARIES}")
+message(STATUS "\tMADNESS link flags: ${Madness_LINK_FLAGS}")
