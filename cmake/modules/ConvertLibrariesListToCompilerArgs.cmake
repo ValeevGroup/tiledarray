@@ -1,7 +1,6 @@
 #
-# converts a list of libraries (second argument, don't forget to enclose the list in quotes)
-# into a list of command-line parameters to the compiler/linker. The main purpose is to
-# handle Apple's frameworks.
+# Converts a list of libraries (second argument, don't forget to enclose the 
+# list in quotes) into a list of command-line parameters to the compiler/linker.
 #
 
 macro(convert_libs_to_compargs _args _libs )
@@ -59,11 +58,11 @@ macro(convert_libs_to_compargs _args _libs )
     list(REMOVE_DUPLICATES _lib_paths)
   endif()
   foreach(_lib_path ${_lib_paths})
-    set(${_args} "${${_args}} -L${_lib_path}")
+    set(${_args} "${${_args}} ${CMAKE_LIBRARY_PATH_FLAG}${_lib_path}")
   endforeach()
 
   # Add libraries to _args
   foreach(_lib_name ${_lib_names})
-    set(${_args} "${${_args}} -l${_lib_name}")
+    set(${_args} "${${_args}} ${CMAKE_LINK_LIBRARY_FLAG}${_lib_name}")
   endforeach()
 endmacro()
