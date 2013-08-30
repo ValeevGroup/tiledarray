@@ -5,7 +5,9 @@
 ###################
 
 include(ExternalProject)
-  
+include(ConvertLibrariesListToCompilerArgs)
+
+
 find_package(Madness COMPONENTS MADworld)
 
 if(Madness_FOUND)
@@ -41,8 +43,8 @@ else()
   message("** Will pull MADNESS from ${MADNESS_SVN_URL}")  
     
   # Convert LAPACK_LIBRARIES to compiler arguments for MADNESS configure script
-  include(ConvertLibrariesListToCompilerArgs)
-  convert_libs_to_compargs(LAPACK_LIBS "${LAPACK_LIBRARIES}")
+  convert_libs_to_compargs(MAD_LIBS "${Madness_LIBRARIES}")
+  message("${MAD_LIBS}")
   
   if(NOT CMAKE_MAKE_PROGRAM)
     message(FATAL_ERROR "CMAKE_MAKE_PROGRAM not set. The MADNESS build system requires a GNU complient make program.")
@@ -73,13 +75,15 @@ else()
       --enable-dependency-tracking
       --with-fortran-int32=${MAD_F77_INT32}
       --with-stubmpi=${MAD_STUB_MPI}
-      MPICXX=${CMAKE_CXX_COMPILER}
-      MPICC=${CMAKE_C_COMPILER}
-      CPPFLAGS=${CMAKE_CPP_FLAGS}
-      CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${CMAKE_CXX_FLAGS}
-      CC=${CMAKE_C_COMPILER} CFLAGS=${CMAKE_C_FLAGS}
-      F77=${CMAKE_Fortran_COMPILER} FFLAGS=${CMAKE_Fortran_FLAGS}
-      LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} LIBS=${LAPACK_LIBS}
+      "MPICXX=${CMAKE_CXX_COMPILER}"
+      "MPICC=${CMAKE_C_COMPILER}"
+      "CPPFLAGS=${CMAKE_CPP_FLAGS}"
+      "CXX=${CMAKE_CXX_COMPILER}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS} ${Madness_COMPILE_FLAGS}"
+      "CC=${CMAKE_C_COMPILER}" "CFLAGS=${CMAKE_C_FLAGS}"
+      "F77=${CMAKE_Fortran_COMPILER}" "FFLAGS=${CMAKE_Fortran_FLAGS}"
+      "LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} ${MADNESS_LINK_FLAGS}"
+      "LIBS=${MAD_LIBS}"
    #--Build step-----------------
     BINARY_DIR ${EXTERNAL_BUILD_DIR}
     BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} libraries V=0
@@ -141,31 +145,18 @@ else()
   # Set build dependencies and compiler arguments
   add_dependencies(External madness)
   
+  # MadnessFind will set Madness_INCLUDE_DIRS and Madness_LIBRARIES with the
+  # dependencies. So all that needs to be done here is set Madness_INCLUDE_DIR,
+  # Madness_INCLUDE_DIRS, Madness_LIBRARY, and Madness_LIBRARIES with the paths
+  # and libraries for the built version of MADNESS above.
   set(Madness_INCLUDE_DIR 
       ${EXTERNAL_BUILD_DIR}/include
       ${EXTERNAL_SOURCE_DIR}/include
       ${EXTERNAL_BUILD_DIR}/src/lib
       ${EXTERNAL_SOURCE_DIR}/src/lib)
+  set(Madness_INCLUDE_DIRS ${Madness_INCLUDE_DIR} ${Madness_INCLUDE_DIRS})
   set(Madness_LIBRARY ${EXTERNAL_BUILD_DIR}/src/lib/world/libMADworld.a)
-  foreach(lang _C_ _CXX_ _)
-
-    if(MPI${lang}FOUND)
-      set(Madness_INCLUDE_DIRS ${Madness_INCLUDE_DIR} ${MPI${lang}INCLUDE_PATH})
-      set(Madness_LIBRARIES ${Madness_LIBRARY} ${LAPACK_LIBRARIES} ${MPI${lang}LIBRARIES})
-    
-      set(Madness_COMPILE_FLAGS "${MPI${lang}COMPILE_FLAGS}")
-      set(Madness_LINK_FLAGS "${LAPACK_LINKER_FLAGS} ${MPI${lang}LINK_FLAGS}")
-      
-      break()
-    endif()
-
-  endforeach()
-  
-  # Add -no_pie link flag for OS X 11.0 and greater
-  if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
-    # Building on OS X 10.7 or later, so add "-Wl,-no_pie" linker flags.
-    set(Madness_LINK_FLAGS "${Madness_LINK_FLAGS} -Wl,-no_pie")
-  endif()
+  set(Madness_LIBRARIES ${Madness_LIBRARY} ${Madness_LIBRARIES})
     
 endif()
 
