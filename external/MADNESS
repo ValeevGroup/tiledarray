@@ -5,6 +5,7 @@
 ###################
 
 include(ExternalProject)
+include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
 
@@ -43,8 +44,8 @@ else()
   message("** Will pull MADNESS from ${MADNESS_SVN_URL}")  
     
   # Convert LAPACK_LIBRARIES to compiler arguments for MADNESS configure script
+  convert_incs_to_compargs(MAD_CPPFLAGS "${Madness_INCLUDE_DIRS}")
   convert_libs_to_compargs(MAD_LIBS "${Madness_LIBRARIES}")
-  message("${MAD_LIBS}")
   
   if(NOT CMAKE_MAKE_PROGRAM)
     message(FATAL_ERROR "CMAKE_MAKE_PROGRAM not set. The MADNESS build system requires a GNU complient make program.")
@@ -77,10 +78,11 @@ else()
       --with-stubmpi=${MAD_STUB_MPI}
       "MPICXX=${CMAKE_CXX_COMPILER}"
       "MPICC=${CMAKE_C_COMPILER}"
-      "CPPFLAGS=${CMAKE_CPP_FLAGS}"
+      "CC=${CMAKE_C_COMPILER}"
       "CXX=${CMAKE_CXX_COMPILER}"
+      "CPPFLAGS=${CMAKE_CPP_FLAGS} ${MAD_CPPFLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS} ${Madness_COMPILE_FLAGS}"
-      "CC=${CMAKE_C_COMPILER}" "CFLAGS=${CMAKE_C_FLAGS}"
+      "CFLAGS=${CMAKE_C_FLAGS} ${Madness_COMPILE_FLAGS}"
       "F77=${CMAKE_Fortran_COMPILER}" "FFLAGS=${CMAKE_Fortran_FLAGS}"
       "LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} ${MADNESS_LINK_FLAGS}"
       "LIBS=${MAD_LIBS}"
