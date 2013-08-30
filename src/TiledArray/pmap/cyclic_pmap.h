@@ -84,6 +84,8 @@ namespace TiledArray {
       CyclicPmap(madness::World& world, size_type rows, size_type cols) :
           Pmap(world, rows * cols), rows_(rows), cols_(cols), proc_rows_(), proc_cols_()
       {
+        TA_ASSERT(rows_ >= 1ul);
+        TA_ASSERT(cols_ >= 1ul);
         // Get a rough estimate of the process dimensions. The goal is for the
         // ratios of proc_rows_ / proc_cols_  and rows_ / cols_ to be
         // approximately equal.
