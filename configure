@@ -30,6 +30,7 @@ Configuration:
   --mpicc=                MPI C compiler to deduce MPI environment,
                           only needed if CXX is not set to an MPI compiler wrapper
                           (MPI_C_COMPILER=)
+  --disable-mpi           Disable checks and inclusion of MPI (DISABLE_MPI) 
   --boost=                Boost path, only needed if --unittest is set also (BOOST_ROOT=)
   --madness=              MADNESS path (Madness_DIR=)
   --error-checking=       specify the default error reporting style,
@@ -44,14 +45,14 @@ Configuration:
   -D*                     passed verbatim to cmake command
 
 Some influential environment variables:
-  CPPFLAGS    C/C++ proprocessor flags (e.g. CPPFLAGS='-I/opt/local/include -DNDEBUG')
-  LDFLAGS     linker flags             (e.g. LDFLAGS=-L/libdir)
-  CXX         C++ compiler command     (e.g. CXX='mpicxx')
-  CXXFLAGS    C++ compiler flags       (e.g. CXXFLAGS='-O0 -g -std=c++0x')
+  CPPFLAGS    C/C++ proprocessor flags     (e.g. CPPFLAGS='-I/opt/local/include -DNDEBUG')
+  LDFLAGS     linker flags                 (e.g. LDFLAGS=-L/libdir)
+  CXX         C++ compiler command         (e.g. CXX='mpicxx')
+  CXXFLAGS    C++ compiler flags           (e.g. CXXFLAGS='-O0 -g -std=c++0x')
   F77         Fortran 77 compiler command  (e.g. F77='gfortran')
   FFLAGS      Fortran 77 compiler flags    (e.g. FFLAGS='-fdefault-integer-8')
-  CC          C compiler command       (e.g. CC='mpicc')
-  CFLAGS      C compiler flags         (e.g. CFLAGS='-O0 -g -std=c11')
+  CC          C compiler command           (e.g. CC='mpicc')
+  CFLAGS      C compiler flags             (e.g. CFLAGS='-O0 -g -std=c11')
 '
   exit 1
 }
@@ -99,6 +100,7 @@ while test $# != 0; do
   --search=*)      search="`arg \"$1\"`"
                    args="$args -DCMAKE_PREFIX_PATH=\"$search\"" ;;
   --mpicc=*)       args="$args -DMPI_C_COMPILER=`arg \"$1\"`" ;;
+  --disabe-mpi)    args="$args -DDISABLE_MPI=TRUE" ;;
   --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
   --boost=*)       args="$args -DBOOST_ROOT=`arg \"$1\"`" ;;
   --madness=*)     args="$args -DMadness_DIR=`arg \"$1\"`" ;;
