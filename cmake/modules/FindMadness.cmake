@@ -134,7 +134,7 @@ else()
       set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES MPI${lang}LIBRARIES CMAKE_THREAD_LIBS_INIT)
   
       set(Madness_COMPILE_FLAGS "-DOMPI_SKIP_MPICXX=1 -DMPICH_SKIP_MPICXX=1 ${MPI${lang}COMPILE_FLAGS}")
-      set(Madness_LINK_FLAGS "${Madness_LINK_FLAGS} ${MPI${lang}LINK_FLAGS}")
+      set(Madness_LINK_FLAGS "${Madness_LINK_FLAGS} ${LAPACK_LINKER_FLAGS} ${MPI${lang}LINK_FLAGS}")
     
       break()
     endif()
