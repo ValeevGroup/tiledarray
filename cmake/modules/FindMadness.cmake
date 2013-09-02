@@ -40,7 +40,7 @@ if(NOT CMAKE_USE_PTHREADS_INIT AND NOT CMAKE_USE_HP_PTHREAD_INIT)
 endif()
 libfind_package(Madness LAPACK REQUIRED)
 if(NOT DISABLE_MPI)
-  libfind_package(Madness MPI)
+  libfind_package(Madness MPI REQUIRED)
 endif()
 
 # Find the MADNESS include dir
