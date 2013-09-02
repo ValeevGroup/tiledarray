@@ -123,7 +123,7 @@ endforeach()
 
 if(DISABLE_MPI)
   set(Madness_PROCESS_INCLUDES Madness_INCLUDE_DIR)
-  set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES)  
+  set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES CMAKE_THREAD_LIBS_INIT)  
   set(Madness_COMPILE_FLAGS "")
   set(Madness_LINK_FLAGS "${LAPACK_LINKER_FLAGS}")
 else()
