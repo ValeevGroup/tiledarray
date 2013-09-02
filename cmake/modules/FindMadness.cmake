@@ -32,7 +32,7 @@ include(LibAddDep)
 #Create a cache variable for the MADNESS install path
 set(Madness_DIR "" CACHE PATH "MADNESS install path")
 
-# Dependencies
+# Dependencies: Pthreads, LAPACK, and MPI
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 libfind_package(Madness Threads REQUIRED)
 if(NOT CMAKE_USE_PTHREADS_INIT AND NOT CMAKE_USE_HP_PTHREAD_INIT)
@@ -124,7 +124,7 @@ endforeach()
 if(DISABLE_MPI)
   set(Madness_PROCESS_INCLUDES Madness_INCLUDE_DIR)
   set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES)  
-  set(Madness_COMPILE_FLAGS "")
+  set(Madness_COMPILE_FLAGS "-DOMPI_SKIP_MPICXX=1 -DMPICH_SKIP_MPICXX=1")
   set(Madness_LINK_FLAGS "${LAPACK_LINKER_FLAGS}")
 else()
   foreach(lang _C_ _CXX_ _)
