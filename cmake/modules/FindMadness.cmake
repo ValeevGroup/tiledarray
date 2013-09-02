@@ -33,9 +33,14 @@ include(LibAddDep)
 set(Madness_DIR "" CACHE PATH "MADNESS install path")
 
 # Dependencies
-libfind_package(MADNESS LAPACK)
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+libfind_package(Madness Threads REQUIRED)
+if(NOT CMAKE_USE_PTHREADS_INIT AND NOT CMAKE_USE_HP_PTHREAD_INIT)
+  message(FATAL_ERROR "MADNESS requires Pthreads.")
+endif()
+libfind_package(Madness LAPACK REQUIRED)
 if(NOT DISABLE_MPI)
-  libfind_package(MADNESS MPI)
+  libfind_package(Madness MPI)
 endif()
 
 # Find the MADNESS include dir
@@ -126,7 +131,7 @@ else()
 
     if(MPI${lang}FOUND)
       set(Madness_PROCESS_INCLUDES Madness_INCLUDE_DIR MPI${lang}INCLUDE_PATH)
-      set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES MPI${lang}LIBRARIES)
+      set(Madness_PROCESS_LIBS Madness_LIBRARY LAPACK_LIBRARIES MPI${lang}LIBRARIES CMAKE_THREAD_LIBS_INIT)
   
       set(Madness_COMPILE_FLAGS "${MPI${lang}COMPILE_FLAGS}")
       set(Madness_LINK_FLAGS "${Madness_LINK_FLAGS} ${MPI${lang}LINK_FLAGS}")
