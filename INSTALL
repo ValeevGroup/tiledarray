@@ -1,254 +1,164 @@
-Software Stack
-==============
+# Software Stack
 
-Required
-
-  * Apple Xcode 3.2 or later
-  * MPI-2 or MPI-3
-  * MADNESS
-  * Eigen 3.x or later
-  * Boost (for unit tests only)
-  * GNU Autotools
-    * autoconf 2.59 or later
-    * automake 1.11 or later
-    * libtool 2.x or later (??? not sure on earliest working version)
+### Required
+* Apple Xcode 3.2 or later
+* Cmake 2.8.8 or later
+* Git 1.8 or later
+* Eigen 3.x or later
+* MADNESS
+  * autoconf 2.59 or later
+  * automake 1.11 or later
+  * libtool 2.x or later (??? not sure on earliest working version)
   * Subversion (svn)
-  * Mercurial (hg)
+  * MPI-2 or MPI-3
+  * LAPACK and BLAS (included in the OS X Accelerate framework)
 
-Recommended
+### Recommended
+* MacPorts
 
-  * MacPorts
-  * BLAS, which is included in OS X Accelerate framework (highly recommended)
-
-Optional
-
-  * Doxygen
+### Optional
+* Doxygen
+* Boost 1.33.0 or later (for unit tests only)
 
 If you already have all the dependencies installed, you can skip ahead to the
 Build TiledArray section.
 
-Build and Install Dependencies
-==============================
+# Install Dependencies
 
-Installing Xcode
+## Installing Xcode
+### OS X 10.7 (Lion) and later
+1. Open Mac App Store
+2. Search for and “Buy” Xcode (it is free). Xcode will automatically start
+   downloading and install itself.
+3. Open Xcode
+4. Go to Xcode->Preferences...
+5. Select the Downloads and then the components tab
+6. Click “Install” next to “Command Line Tools”
+7. Check the “Check for and install updates automatically” box
 
-Lion and later
+**Note:** Command-line tools are automatically installed with Xcode 4.2.x and 
+          earlier.
 
-  1. Open Mac App Store
-  2. Search for and "Buy" Xcode (it is free). Xcode will automatically start
-     downloading and install itself.
-  3. Open Xcode
-  4. Go to Xcode->Preferences...
-  5. Select the Downloads and then the components tab
-  6. Click "Install" next to "Command Line Tools"
-  7. Check the "Check for and install updates automatically" box
-
-Note: Command-line tools are automatically installed with Xcode 4.2.x and earlier.
-
-Xcode Alternative for Lion and later
-
+### Xcode Alternative for OS X 10.7 (Lion) and later
 If you do not want to install Xcode, you may install just Apple's Command-Line
 Tools package (the same package you would install with Xcode). You can download
-it from the Apple Developer website. The only disadvantage to this method is you
-must update this software manually.
+it from the [Apple Developer website](http://developer.apple.com). The only
+disadvantage to this method is you must update this software manually.
 
-Snow Leopard and earlier
+### Mac OS X 10.6 (Snow Leopard) and earlier
+1. Download Xcode 3.2.6 for Snow Leopard or 3.1.4 for Leopard from
+   [Apple’s Developer website](http://developer.apple.com). You will need to log
+   in with your Apple ID.
+2. Open the .dmg file
+3. Double click install package
+4. Follow the prompts
 
-  1. Download Xcode 3.2.6 for Snow Leopard or 3.1.4 for Leopard from Apple’s
-     Developer website. You will need to log in with your Apple ID.
-  2. Open the .dmg file
-  3. Double click install package
-  4. Follow the prompts
-
-Environment Variables
-
-You will need to edit your environment variables. To do this, you will need to
-modify your shell initialization script. The shell initialization script for the
-default shell on OS X is .profile. If you are using a non-default shell, such as
-C-shell, your initialization script may be different. To edit the default shell
-initialization script: 
-
-  $ vi ~/.profile
-
-Next, adde the following lines to your .profile file that correspond to your
-particular system.
-
-Xcode 4.x for Mountain Lion
-
-export MACOSX_DEPLOYMENT_TARGET=10.8
-export CC=/usr/bin/clang
-export CXX=/usr/bin/clang++
-
-Xcode 4.2 and later for Lion
-
-export MACOSX_DEPLOYMENT_TARGET=10.7
-export CC=/usr/bin/clang
-export CXX=/usr/bin/clang++
-
-Xcode 3.x, 4.0, and 4.1 for Snow Leopard
-
-export MACOSX_DEPLOYMENT_TARGET=10.6
-export CC=/usr/bin/gcc-4.2
-export CXX=/usr/bin/g++-4.2
-
-Note: You will need to restart terminal for the change to take effect. 
-Note: If you are using a non-bash shell, the above shell
-
-Installing MPI
-
-You may choose either MPICH or OpenMPI, both will work equally well on your Mac.
-You do NOT need to install both. To install MPI on your computer you may:
-
-  * Use a software management program such as MacPorts or HomeBrew.
-  * Use the provided installation scripts in our download section.
-  * Build and install MPI manually. See InstallingMPICH or InstallingOpenMPI for
-    details.
-
-Note: Older versions of Xcode included OpenMPI, but it does not work correctly
-      with TiledArray. 
-Note: In the following instructions you may need to modify the paths and file
-      names to reference the latest version.
-
-MacPorts
-
-MacPorts is a command-line tool that automates the process of downloading,
+## MacPorts
+MacPorts is a command-line tool that automates the process of downloading, 
 configuring, installing, and updating open-source software in OS X. Most of the
 software required by TiledArray is available through MacPorts. To install
 MacPorts:
+1. Download the install package from: http://www.macports.org/
+2. Open the downloaded .dmg file.
+3. Double click the install package
+4. Follow the prompts
+5. Once MacPorts is installed, in Terminal run:
 
-  1. Download the install package from: http://www.macports.org/
-  2. Open the downloaded .dmg file.
-  3. Double click the install package
-  4. Follow the prompts
+    $ sudo port selfupdate
 
-Once MacPorts is installed, in terminal run:
-
-  $ sudo port selfupdate
-
-Note: If you are behind a firewall or proxy and having trouble syncing
-portfiles, you can use the alternate download method described here
-https://trac.macports.org/wiki/howto/PortTreeTarball.
+**Note:** If you are behind a firewall or proxy and having trouble syncing
+          portfiles, you can use the alternate download method described
+          [here](https://trac.macports.org/wiki/howto/PortTreeTarball).
 
 You can install the remaining software need by TiledArray with MacPorts.
 
-  $ sudo port install autoconf automake libtool eigen3 boost subversion mercurial doxygen
+    $ sudo port install autoconf automake libtool cmake eigen3 +cmake boost subversion git-core doxygen
 
-Note: Older versions of Xcode included autoconf and automake, but they are very
-      old and do not work correctly with TiledArray?. 
+## Installing MPI
+You may choose either MPICH or OpenMPI. You do **NOT** need to install both. To
+install MPI on your computer you may:
+* Use a software management program such as [MacPorts](http://www.macports.org) 
+  or [HomeBrew](http://mxcl.github.io/homebrew/).
+* Build and install MPI manually. See the respective documentation for details.
+  * [MPICH documentation](http://www.mpich.org/documentation/guides/)
+  * [OpenMPI documentation](http://www.open-mpi.org/doc/)
 
-MADNESS
+### Installing MPICH with MacPorts
+* OS X 10.7 (Lion) or later:
 
-Download
+    `$ sudo port install mpich +clang`
 
+* Mac OS X 10.6 (Snow Leopard) or earlier:
+
+    `$ sudo port install mpich`
+
+### Install OpenMPI with MacPorts
+    $ sudo port install openmpi +threads-gcc47
+
+## MADNESS
+You have two options for installing MADNESS:
+
+1. Build and install MADNESS as a nested project. This is the default behavior 
+   if MADNESS is not found by the configure script. **RECOMMENDED**
+2. Build and install MADNESS manually as described
+   [here](https://code.google.com/p/m-a-d-n-e-s-s/wiki/BuildingMadnessonOSX).
+
+# Build TiledArray
+
+## Download
 In Terminal:
 
-  $ mkdir madness
-  $ cd madness
-  $ svn  checkout  https://m-a-d-n-e-s-s.googlecode.com/svn/local/trunk src
-  $ cd src
-  $ aclocal
-  $ autoconf
-  $ autoheader
-  $ automake --add-missing
-  $ cd ..
+    $ mkdir tiledarray
+    $ cd tiledarray
+    $ git clone https://github.com/ValeevGroup/TiledArray.git src
 
-Configure
+## Configure
 
-  $ mkdir build
-  $ cd build
-
-Lion and later
-
-  $ ../src/configure \
-      --prefix=/path/to/madness/install \
-      --enable-debugging \
-      --disable-optimization \
-      --enable-warning \
-      --disable-optimal \
-      CPPFLAGS="-ansi" \
-      LDFLAGS="-framework Accelerate -Wl,-no_pie"
-
-Snow Leopard and earlier
-
-  $ ../src/configure \
-      --prefix=/path/to/madness/install \
-      --enable-debugging \
-      --disable-optimization \
-      --enable-warning \
-      --disable-optimal \
-      CPPFLAGS="-ansi" \
-      LDFLAGS="-framework Accelerate"
-
-Build
-
-  $ make -j
-  $ make install
-
-Build TiledArray
-================
-
-Download
-
-In Terminal:
-
-  $ mkdir tiledarray
-  $ cd tiledarray
-  $ hg clone https://code.google.com/p/tiledarray/ src
-  $ cd src
-  $ aclocal
-  $ autoconf
-  $ autoheader
-  $ automake --add-missing
-  $ cd ..
-
-Configure
-
-  $ mkdir build
-  $ cd build
-
-The configure commands below assume that Eigen 3 and Boost were installed in
+The configure commands below assume that Eigen 3 and Boost were installed in 
 /opt/local with MacPorts.
 
-Lion and later
+### Lion (OS X 10.7) and later
+    $ mkdir build
+    $ cd build
+    $ ../../src/tiledarray/configure \
+        --prefix=/path/to/tiledarray/install \
+        --debug \
+        --boost=/opt/local \
+        --search="/opt/local" \
+        --mpicc=/opt/local/bin/mpicc
+        CC=/usr/bin/clang \
+        CXX=/usr/bin/clang++ \
+        CPPFLAGS="-Wvexing-parse" 
 
-  $ ../src/configure \
-      --prefix=/path/to/tiledarray/install \
-      --enable-debugging \
-      --disable-optimization \
-      --enable-error-checking=throw \
-      CPPFLAGS="-ansi  -Wvexing-parse -I/opt/local/include -I/opt/local/eigen3 -I/path/to/madness/install/include" \
-      LIBS="-L/path/to/madness/install/lib" \
-      LDFLAGS="-framework Accelerate -Wl,-no_pie"
+### Snow Leopard (OS X 10.6) and earlier
 
-Snow Leopard and earlier
+    $ mkdir build
+    $ cd build
+    $ ../../src/tiledarray/configure \
+        --prefix=/path/to/tiledarray/install \
+        --debug \
+        --boost=/opt/local \
+        --search="/opt/local" \
+        --mpicc=/opt/local/bin/mpicc
+        CC=/usr/bin/gcc \
+        CXX=/usr/bin/g++
 
-  $ ../src/configure \
-      --prefix=/path/to/tiledarray/install \
-      --enable-debugging \
-      --disable-optimization \
-      --enable-error-checking=throw \
-      CPPFLAGS="-ansi -I/opt/local/include -I/opt/local/eigen3 -I/path/to/madness/install/include" \
-      LIBS="-L/path/to/madness/install/lib" \
-      LDFLAGS="-framework Accelerate"
-
-Build
-
-  $ make -j
+### Build and Install
+    $ make -j
     ... many lines omitted ...
-  $ make install
+    $ make install
 
-Information about Compiler
-==========================
+# Information about Compiler
+The following compiles have been tested with TiledArray on OS X and are known to
+work.
+* Apple's Clang 2.0 (svn 2.9) and later **(Preferred)**
+* LLVM Clang 2.9 and later (same as Apple's version)
+* Intel 11.x and 12.x
+* Apple's GCC 4.2.1 (deprecated by Apple)
+* Apple's LLVM GCC 4.2.1 (deprecated by Apple)
 
-The following compiles have been tested with TiledArray? on OS X and are known
-to work.
+**Note:** Do not use GNU GCC compilers that you build yourself or those provided
+          by MacPorts. They have significant compatibility issues on Macs and
+          may result in strange runtime behavior.
 
-  * Apple's GCC 4.2.1
-  * Apple's LLVM GCC 4.2.1
-  * Apple's Clang 2.0 (svn 2.9) and later -- Preferred
-  * LLVM Clang 2.9 and later (same as Apple's version)
-  * Intel 11.x and 12.x
 
-Note: Do not use GNU GCC compilers that you build yourself or those provided by
-      MacPorts. They have significant compatibility issues on Macs and may
-      result in strange runtime behavior.
