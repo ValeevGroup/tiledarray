@@ -4,7 +4,7 @@
 # search path. It will also check for MADNESS dependencies: LAPACK and MPI. This
 # module will define:
 #
-#   Madness_FOUND                - System has MADNESS lib with correct version
+#   not set! Madness_FOUND                - System has MADNESS lib with correct version
 #   Madness_INCLUDE_DIR          - The MADNESS include directory
 #   Madness_INCLUDE_DIRS         - The MADNESS include directory
 #   Madness_LIBRARY_DIR          - The MADNESS library directory
