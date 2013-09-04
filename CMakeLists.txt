@@ -114,7 +114,7 @@ set(TiledArray_COMPILE_FLAGS ${Madness_COMPILE_FLAGS})
 # sources
 ##########################
 add_subdirectory(src)
-#add_subdirectory(examples)
+add_subdirectory(examples)
 add_subdirectory(doc)
 
 ##########################
