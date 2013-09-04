@@ -11,7 +11,7 @@ include(ConvertLibrariesListToCompilerArgs)
 
 find_package(Madness COMPONENTS MADworld)
 
-if(Madness_MADworld_FOUND)
+if(Madness_FOUND)
 
   # sanity check: try compiling a simple program
   list(APPEND CMAKE_REQUIRED_INCLUDES ${Madness_INCLUDE_DIRS})
