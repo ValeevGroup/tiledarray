@@ -50,7 +50,7 @@ int main (int argc, char *argv[])
 
   /* All tasks send their host name to task 0 */
   MPI_Get_processor_name(host, &namelength);
-  MPI_Gather(&host, MPI_MAX_PROCESSOR_NAME, MPI_CHAR, &hostmap,
+  MPI_Gather((void*)&host, MPI_MAX_PROCESSOR_NAME, MPI_CHAR, (void*)&hostmap,
       MPI_MAX_PROCESSOR_NAME, MPI_CHAR, 0, MPI_COMM_WORLD);
 
   /* Determine who my send/receive partner is and tell task 0 */
@@ -58,7 +58,7 @@ int main (int argc, char *argv[])
     dest = src = numtasks/2 + rank;
   if (rank >= numtasks/2)
     dest = src = rank - numtasks/2;
-  MPI_Gather(&dest, 1, MPI_INT, &taskpairs, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Gather(&dest, 1, MPI_INT, (void*)&taskpairs, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
     resolution = MPI_Wtick();
@@ -87,8 +87,8 @@ int main (int argc, char *argv[])
       nbytes =  sizeof(char) * n;
       for (i=1; i<=rndtrps; i++){
         t1 = MPI_Wtime();
-        MPI_Send(&msgbuf, n, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
-        MPI_Recv(&msgbuf, n, MPI_CHAR, src, tag, MPI_COMM_WORLD, &status);
+        MPI_Send((void*)&msgbuf, n, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
+        MPI_Recv((void*)&msgbuf, n, MPI_CHAR, src, tag, MPI_COMM_WORLD, &status);
         t2 = MPI_Wtime();
         thistime = t2 - t1;
         bw = ((double)nbytes * 2) / thistime;
@@ -115,7 +115,7 @@ int main (int argc, char *argv[])
         /* that this loop will be appropriately skipped if there are    */
         /* only two tasks. */
         for (j=1; j<numtasks/2; j++)
-          MPI_Recv(&timings[j], 3, MPI_DOUBLE, j, tag, MPI_COMM_WORLD, &status);
+          MPI_Recv((void*)&timings[j], 3, MPI_DOUBLE, j, tag, MPI_COMM_WORLD, &status);
         printf("***Message size: %8d *** best  /  avg  / worst (MB/sec)\n",n);
         for (j=0; j<numtasks/2; j++) {
           printf("   task pair: %4d - %4d:    %4.2f / %4.2f / %4.2f \n",
@@ -145,8 +145,8 @@ int main (int argc, char *argv[])
   if (rank >= numtasks/2) {
     for (n=start; n<=end; n=n+incr) {
       for (i=1; i<=rndtrps; i++){
-        MPI_Recv(&msgbuf, n, MPI_CHAR, src, tag, MPI_COMM_WORLD, &status);
-        MPI_Send(&msgbuf, n, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
+        MPI_Recv((void*)&msgbuf, n, MPI_CHAR, src, tag, MPI_COMM_WORLD, &status);
+        MPI_Send((void*)&msgbuf, n, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
       }
     }
   }
