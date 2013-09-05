@@ -145,9 +145,11 @@ if(Madness_FOUND AND NOT Madness_INCLUDE_DIR)
 
 endif()
 
-if(Madness_FOUND AND NOT Madness_INCLUDE_DIRS)
+if(NOT Madness_INCLUDE_DIRS)
 
-  set(Madness_INCLUDE_DIRS ${Madness_INCLUDE_DIR})
+  if(Madness_INCLUDE_DIR)
+    set(Madness_INCLUDE_DIRS ${Madness_INCLUDE_DIR})
+  endif()
   if(NOT DISABLE_MPI)
     foreach(lang _C_ _CXX_ _)
 
@@ -239,7 +241,9 @@ endif()
 if(NOT Madness_LIBRARIES)
 
   # Add MADNESS libraries
-  set(Madness_LIBRARIES ${Madness_LIBRARY})
+  if(Madness_LIBRARY)
+    set(Madness_LIBRARIES ${Madness_LIBRARY})
+  endif()
   
   # Add MPI libraries
   if(NOT DISABLE_MPI)
