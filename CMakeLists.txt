@@ -39,11 +39,6 @@ endif()
 # Set set the default fortran integer type. This is only used by MADNESS.
 set(INTEGER4 "FALSE" CACHE BOOL "Set the default Fortran integer type to integer*4")
 mark_as_advanced(INTEGER4)
-if(INTEGER4) 
-  set(MAD_F77_INT32 yes)
-else()
-  set (MAD_F77_INT32 no)
-endif()
 
 # extra cmake files are shipped with TiledArray
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
