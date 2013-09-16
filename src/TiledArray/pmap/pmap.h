@@ -47,7 +47,7 @@ namespace TiledArray {
   class Pmap {
   public:
     typedef std::size_t size_type; ///< Size type
-    typedef typename std::vector<size_type>::const_iterator const_iterator; ///< Iterator type
+    typedef std::vector<size_type>::const_iterator const_iterator; ///< Iterator type
 
   protected:
     const size_type rank_; ///< The rank of this process
