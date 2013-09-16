@@ -22,14 +22,13 @@
 int main (int argc, char *argv[])
 {
   int     numtasks, rank, n, i, j, rndtrps, nbytes, start, end, incr,
-  src, dest, rc, tag=1, taskpairs[MAXTASKS], namelength;
+  src, dest, tag=1, taskpairs[MAXTASKS], namelength;
   double  thistime, bw, bestbw, worstbw, totalbw, avgbw,
   bestall, avgall, worstall,
   timings[MAXTASKS/2][3], tmptimes[3],
   resolution, t1, t2;
   char    msgbuf[ENDSIZE], host[MPI_MAX_PROCESSOR_NAME],
   hostmap[MAXTASKS][MPI_MAX_PROCESSOR_NAME];
-  struct  timeval tv1, tv2;
   MPI_Status status;
 
   /* Some initializations and error checking */
@@ -37,7 +36,7 @@ int main (int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
   if (numtasks % 2 != 0) {
     printf("ERROR: Must be an even number of tasks!  Quitting...\n");
-    MPI_Abort(MPI_COMM_WORLD, rc);
+    MPI_Abort(MPI_COMM_WORLD, 1);
     exit(0);
   }
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
