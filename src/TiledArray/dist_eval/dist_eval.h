@@ -22,6 +22,7 @@
 
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/counter_probe.h>
+#include <TiledArray/tile_op/permute.h>
 
 namespace TiledArray {
   namespace detail {
@@ -32,75 +33,49 @@ namespace TiledArray {
     /// implementation classes. It has several pure virtual function that are
     /// used by derived classes to implement the distributed evaluate. This
     /// class can also handles permutation of result tiles if necessary.
-    /// \tparam Tile The result tile type for the expression.
-    template <typename Tile>
-    class DistEvalImpl : public TensorImpl<Tile> {
+    /// \tparam Policy The policy type
+    template <typename Policy>
+    class DistEvalImpl : public TensorImpl<typename Policy::tile_type> {
     public:
-      typedef DistEvalImpl<Tile> DistEvalImpl_; ///< This object type
-      typedef TiledArray::detail::TensorImpl<Tile> TensorImpl_; ///< Tensor implementation base class
+      typedef DistEvalImpl<Policy> DistEvalImpl_; ///< This object type
+      typedef TiledArray::detail::TensorImpl<typename Policy::tile_type> TensorImpl_;
+                                          ///< Tensor implementation base class
 
-      typedef typename TensorImpl_::size_type size_type; ///< Size type
-      typedef typename TensorImpl_::trange_type trange_type; ///< Tiled range type for this object
-      typedef typename TensorImpl_::range_type range_type; ///< Range type this tensor
-      typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
-      typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
-      typedef typename TensorImpl_::value_type value_type; ///< Tile type
-      typedef typename TensorImpl_::numeric_type numeric_type;  ///< the numeric type that supports Tile
+      typedef typename Policy::size_type size_type; ///< Size type
+      typedef typename Policy::trange_type trange_type; ///< Tiled range type for this object
+      typedef typename Policy::range_type range_type; ///< Range type this tensor
+      typedef typename Policy::shape_type shape_type; ///< Shape type
+      typedef typename Policy::pmap_interface pmap_interface; ///< process map interface type
+      typedef typename Policy::value_type value_type; ///< Tile type
+      typedef typename Policy::future future; ///< Future type
 
     private:
       const Permutation perm_; ///< The permutation to be applied to this tensor
       const typename TensorImpl_::range_type range_; ///< The original tiled range for this tensor
-      const bool permute_tiles_;
+      const bool permute_tiles_; ///< Flag for permuting the tile result
 
-      /// Task function for permuting result tensor
+      // The following variables are used to track the total number of tasks run
+      // on the local node, task_count_, and the number of tiles set on this
+      // node, set_counter_. They are used to track the progress of work done by
+      // this node, which allows us to wait for the completion of these tasks
+      // without waiting for all tasks.
 
-      /// \param value The unpermuted result tile
-      /// \return The permuted result tile
-      void permute_and_set_with_value(const size_type index, const value_type& value) {
-        // Create tensor to hold the result
-        value_type result(perm_ ^ value.range());
+      volatile int task_count_; ///< Total number of local tasks
+      madness::AtomicInt set_counter_; ///< The number of tiles set by this node
 
-        // Construct the inverse permuted weight and size for this tensor
-        std::vector<std::size_t> ip_weight = (-perm_) ^ result.range().weight();
-        const typename value_type::range_type::size_array& start = value.range().start();
-
-        // Coordinated iterator for the value range
-        typename value_type::range_type::const_iterator value_range_it =
-            value.range().begin();
-
-        // permute the data
-        for(typename value_type::const_iterator value_it = value.begin(); value_it != value.end(); ++value_it, ++value_range_it)
-          result[TiledArray::detail::calc_ordinal(*value_range_it, ip_weight, start)] = *value_it;
-
-        // Store the permuted tensor
-        TensorImpl_::set(permute_index(index)), result);
-      }
-
-      /// Permute and set tile \c i with \c value
-
-      /// If the \c value has been set, then the tensor is permuted and set
-      /// immediately. Otherwise a task is spawned that will permute and set it.
-      /// \param i The unpermuted index of the tile
-      /// \param value The future that holds the unpermuted result tile
-      void permute_and_set(size_type i, const value_type& value) {
-        permute_and_set_with_value(i, value);
-      }
-
-      /// Permute and set tile \c i with \c value
-
-      /// If the \c value has been set, then the tensor is permuted and set
-      /// immediately. Otherwise a task is spawn that will permute and set it.
-      /// \param i The unpermuted index of the tile
-      /// \param value The future that holds the unpermuted result tile
-      void permute_and_set(size_type i, const madness::Future<value_type>& value) {
-        if(value.probe())
-          permute_and_set_with_value(i, value.get());
-        else
-          TensorImpl_::get_world().taskq.add(*this,
-              & DistEvalImpl_::permute_and_set_with_value, i, value);
-      }
+      // TODO: Remove this member variable. It should go in TensorImpl
+      shape_type shape_;
 
     protected:
+
+      /// Set tile count
+
+      /// \param tiles The number of tiles in this tensor
+      void set_tile_count(const int tiles) {
+        TA_ASSERT(tiles >= 0);
+        TA_ASSERT(tiles < int(TensorImpl_::size()));
+        task_count_ = tiles;
+      }
 
       /// Map an index value from the unpermuted index space to the permuted index space
 
@@ -122,35 +97,15 @@ namespace TiledArray {
       DistEvalImpl(madness::World& world, const Permutation& perm,
           const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const bool permute_tiles) :
-        TensorImpl_(world, (perm.dim() ? perm ^ trange : trange), 0),
+        TensorImpl_(world, (perm.dim() ? perm ^ trange : trange), 0, pmap),
         range_(trange.tiles()),
         perm_(perm),
-        permute_tiles_(perm_tiles)
+        permute_tiles_(permute_tiles),
+        task_count_(0),
+        set_counter_(),
+        shape_(shape)
       {
-        if(shape.size()) {
-          if(perm.dim()) {
-            // Set the shape with a permuted shape.
-
-            // Construct the inverse permuted weight and size for this tensor
-            std::vector<std::size_t> ip_weight =
-                (-perm_) ^ TensorImpl_::trange().tiles().weight();
-            const typename range_type::size_array& start = range_.start();
-
-            // Construct a shape
-            TensorImpl_::shape(shape_type(range_.size()));
-
-            // Set the permuted shape
-            typename range_type::const_iterator range_it = range_.begin();
-            for(size_type i = 0ul; i < size; ++i, ++range_it)
-              if(shape[i])
-                TensorImpl_::shape(TiledArray::detail::calc_ordinal(*range_it,
-                    ip_weight, start), true);
-          } else {
-            TensorImpl_::shape(shape);
-          }
-        }
-
-        TensorImpl_::pmap(pmap);
+        set_counter_ = 0;
       }
 
       virtual ~DistEvalImpl() { }
@@ -158,58 +113,64 @@ namespace TiledArray {
       /// Set tensor value
 
       /// This will store \c value at ordinal index \c i . The tile will be
-      /// permuted if necessary. Typically this function should be called by
-      /// \c eval_tiles() or there in.
-      /// \tparam Value The value type, either \c value_type or \c madness::Future<value_type>
+      /// permuted if necessary. Typically, this function should be called by a
+      /// task function.
       /// \param i The index where value will be stored.
       /// \param value The value or future value to be stored at index \c i
-      /// \param perm If true, value will be permuted. [default = true]
-      /// \note The index \c i and \c value will be permuted by this function
+      /// \note The index \c i and \c value may be permuted by this function
       /// before storing the value.
-      template <typename Value>
-      void set(size_type i, const Value& value) {
-        if(perm_.dim()) {
-          if(permute_tiles_)
-            permute_and_set(i, value);
-          else
-            TensorImpl_::set(perm_index(i), value);
-        } else
+      void set_tile(size_type i, const value_type& value) {
+        // Permute the index if necessary.
+        if(perm_.dim())
+          i = perm_index(i);
+
+        if(permute_tiles_) {
+          // Store a permuted copy of value
+          value_type result;
+          permute(result, perm_, value);
+          TensorImpl_::set(i, result);
+        } else {
+          // Store valeu
           TensorImpl_::set(i, value);
+        }
+
+        // Record the assignment of a tile
+        set_counter_++;
       }
 
-      /// Permute a tensor
+      /// Wait for all tiles to be assigned
+      void wait() const {
+        CounterProbe probe(set_counter_, task_count_);
+        TensorImpl_::get_world().await(probe);
+      }
 
-      /// \param result The tensor that will hold the permuted result
-      /// \param value The unpermuted tensor
-      void permute(value_type& result, const value_type& value) const {
-        if(perm_.dim()) {
-        }
+      // TODO: Remove these functions after moving shape_ into TensorImpl.
+
+      const shape_type& shape() const { return shape_; }
+
+      bool is_dense() const { return shape_.is_dense(); }
+
+      template <typename Index>
+      bool is_zero(const Index& i) const {
+        TA_ASSERT(TensorImpl_::range().includes(i));
+        return shape_.is_zero(TensorImpl_::range().ord(i));
       }
 
     private:
+
+      /// Function for evaluating child tensors
+      virtual void eval_children() = 0;
 
       /// Function for evaluating this tensor's tiles
 
       /// This function is run inside a task, and will run after \c eval_children
       /// has completed. It should spawn additional tasks that evaluate the
       /// individual result tiles.
-      /// \param counter An atomic counter that to track the number of completed
-      /// tasks.
-      /// \param task_counter Counter for the total number of tasks generated
-      /// by this evaluator.
-      virtual void eval_tiles(const std::shared_ptr<DistEvalImpl>& pimpl,
-          madness::AtomicInt& counter, int& task_count) = 0;
+      /// \param pimpl A shared pointer to this object
+      virtual size_type eval_tiles(const std::shared_ptr<DistEvalImpl>& pimpl) = 0;
 
-      /// Function for evaluating child tensors
-
-      /// This function should return true when the child
-
-      /// This function should evaluate all child tensors.
-      /// \param counter An atomic counter that to track the number of completed
-      /// tasks.
-      /// \param task_counter Counter for the total number of tasks generated
-      /// by children evaluators.
-      virtual void eval_children(madness::AtomicInt& counter, int& task_count) = 0;
+      /// Wait for tasks of children to finish
+      virtual void wait_children() const = 0;
 
     public:
 
@@ -219,29 +180,18 @@ namespace TiledArray {
       /// and evaluate the tiles for this distributed evaluator. It will block
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
-      /// \param counter An atomic counter that to track the number of completed
-      /// tasks.
-      /// \param task_counter Counter for the total number of tasks generated
-      /// by this evaluator.
-      void eval(std::shared_ptr<DistEvalImpl> pimpl, madness::AtomicInt& counter,
-          int& task_count)
-      {
-        // Children eval counter
-        madness::AtomicInt children_counter;
-        children_counter = 0;
-        int children_task_count = 0;
-
+      /// \param pimpl A shared pointer to this object
+      void eval(std::shared_ptr<DistEvalImpl> pimpl) {
         // Evaluate children
-        this->eval_children(children_counter, children_task_count);
+        this->eval_children();
 
         // Evaluate tiles for this object
-        this->eval_tiles(pimpl, counter, task_count);
+        task_count_ = this->eval_tiles(pimpl);
 
         // Wait until the children tasks are complete. Tasks will be processed
         // by this thread while waiting. We block here to throttle the number
         // of simultaneous tasks and evaluations.
-        CounterProbe probe(children_counter, children_task_count);
-        TensorImpl_::get_world().await(probe);
+        this->wait_children();
       }
 
     }; // class DistEvalImpl
@@ -252,21 +202,19 @@ namespace TiledArray {
     /// This object holds a tensor expression. It is used to store various type
     /// of tensor expressions that depend on the pimpl used to construct the
     /// expression.
-    /// \tparam Tile The expression tile type
-    template <typename Tile>
+    /// \tparam Policy The policy type
+    template <typename Policy>
     class DistEval {
     public:
-      typedef DistEval<Tile> DistEval_;
-      typedef DistEvalImpl<Tile> impl_type;
-      typedef typename impl_type::size_type size_type;
-      typedef typename impl_type::range_type range_type;
-      typedef typename impl_type::shape_type shape_type;
-      typedef typename impl_type::pmap_interface pmap_interface;
-      typedef typename impl_type::trange_type trange_type;
-      typedef typename impl_type::value_type value_type;
-      typedef typename impl_type::numeric_type numeric_type;
-      typedef typename impl_type::const_reference const_reference;
-      typedef typename impl_type::const_iterator const_iterator;
+      typedef DistEval<Policy> DistEval_;
+      typedef DistEvalImpl<Policy> impl_type;
+      typedef typename Policy::size_type size_type;
+      typedef typename Policy::range_type range_type;
+      typedef typename Policy::shape_type shape_type;
+      typedef typename Policy::pmap_interface pmap_interface;
+      typedef typename Policy::trange_type trange_type;
+      typedef typename Policy::value_type value_type;
+      typedef typename Policy::future future;
 
       /// Constructor
 
@@ -295,12 +243,9 @@ namespace TiledArray {
 
       /// \c v is the dimension ordering that the parent expression expects.
       /// The returned future will be evaluated once the tensor has been evaluated.
-      /// \param v The expected data layout of this tensor.
-      /// \return A Future bool that will be assigned once this tensor has been
-      /// evaluated.
-      madness::Future<bool> eval(madness::AtomicInt& counter, int& task_count) {
+      void eval() {
         TA_ASSERT(pimpl_);
-        return pimpl_->eval(pimpl_, counter, task_count);
+        return pimpl_->eval(pimpl_);
       }
 
 
@@ -366,7 +311,7 @@ namespace TiledArray {
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      const shape_type shape() const {
+      const shape_type& shape() const {
         TA_ASSERT(pimpl_);
         return pimpl_->shape();
       }
@@ -384,7 +329,7 @@ namespace TiledArray {
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
-      const_reference move(size_type i) const {
+      future move(size_type i) const {
         TA_ASSERT(pimpl_);
         return pimpl_->move(i);
       }
