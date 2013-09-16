@@ -250,7 +250,7 @@ if(NOT Madness_LIBRARIES)
     foreach(lang _C_ _CXX_ _)
 
       if(MPI${lang}FOUND)
-        if(MPI${lang}LINK_FLAGS)
+        if(MPI${lang}LIBRARIES)
           list(APPEND Madness_LIBRARIES ${MPI${lang}LIBRARIES})
         endif()
         break()
