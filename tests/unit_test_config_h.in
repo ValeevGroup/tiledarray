@@ -23,6 +23,9 @@
 /* Defines the boost unit test framework linkage. */
 #cmakedefine BOOST_TEST_DYN_LINK
 
+#pragma GCC diagnostic push
+#pragma GCC system_header
+
 #if defined(BOOST_TEST_MAIN) && !defined(BOOST_TEST_DYN_LINK)
 #include <boost/test/included/unit_test.hpp>
 #else
@@ -30,6 +33,9 @@
 #endif // BOOST_TEST_MAIN
 
 #include <boost/test/output_test_stream.hpp>
+
+#pragma GCC diagnostic pop
+
 #include "global_fixture.h"
 #include "iteration_test.h"
 

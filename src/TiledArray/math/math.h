@@ -24,8 +24,8 @@
 #include <TiledArray/type_traits.h>
 #include <TiledArray/math/functional.h>
 #include <world/enable_if.h>
-#include <linalg/cblas.h>
-#include <Eigen/Core>
+#include <TiledArray/madness.h>
+#include <TiledArray/eigen3.h>
 
 #ifndef TILEDARRAY_LOOP_UNWIND
 #define TILEDARRAY_LOOP_UNWIND 1

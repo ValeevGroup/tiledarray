@@ -121,7 +121,6 @@ BOOST_AUTO_TEST_CASE( submatrix_to_tensor ) {
 BOOST_AUTO_TEST_CASE( tensor_to_submatrix ) {
   // Fill a tensor with data
   Tensor<int> tensor(trange.make_tile_range(0));
-  const Tensor<int>& ctensor = tensor;
   GlobalFixture::world->srand(27);
   for(Tensor<int>::iterator it = tensor.begin(); it != tensor.end(); ++it)
     *it = GlobalFixture::world->rand();

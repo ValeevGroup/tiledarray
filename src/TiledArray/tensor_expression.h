@@ -143,8 +143,8 @@ namespace TiledArray {
             const trange_type& trange, const shape_type& shape = shape_type(0ul)) :
           TensorImpl_(world, trange, shape),
           vars_(vars),
-          trange_(trange),
           perm_(),
+          trange_(trange),
           evaluated_(false),
           scale_(1)
         { }

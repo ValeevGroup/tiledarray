@@ -29,8 +29,7 @@
 #include <deque>
 #include <TiledArray/array.h>
 #include <TiledArray/eigen.h>
-#include <Eigen/Householder>
-#include <Eigen/QR>
+#include <TiledArray/eigen3.h>
 #include <TiledArray/algebra/utils.h>
 
 namespace TiledArray {

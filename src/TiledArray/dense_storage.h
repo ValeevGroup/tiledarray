@@ -24,7 +24,7 @@
 #include <TiledArray/type_traits.h>
 #include <TiledArray/math/math.h>
 #include <world/archive.h>
-#include <Eigen/Core>
+#include <TiledArray/eigen3.h>
 #include <cstddef>
 
 namespace TiledArray {
