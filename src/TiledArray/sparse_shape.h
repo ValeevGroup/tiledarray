@@ -69,6 +69,11 @@ namespace TiledArray {
       world.gop.sum(data_.data(), data_.size());
     }
 
+    /// Validate shape range
+
+    /// \return \c true when range matches the range of this shape
+    bool validate(const Range& range) { return (range == data_.range()); }
+
     /// Check that a tile is zero
 
     /// \tparam Index The type of the index

@@ -40,6 +40,8 @@ namespace TiledArray {
   namespace expressions {
     class VariableList;
   }  // namespace expressions
+  class Range;
+
 
   /// Dense shape of an array
 
@@ -56,6 +58,11 @@ namespace TiledArray {
 
     /// No operation since there is no data.
     static void collective_init(madness::World&) { }
+
+    /// Validate shape range
+
+    /// \return \c true when range matches the range of this shape
+    static bool validate(const Range&) { return true; }
 
     /// Check that a tile is zero
 
