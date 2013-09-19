@@ -37,8 +37,8 @@ namespace TiledArray {
     typedef TiledRange trange_type;
     typedef typename trange_type::range_type range_type;
     typedef typename range_type::size_type size_type;
-    typedef DenseShape shape_type;
     typedef Pmap pmap_interface;
+    typedef SparseShape shape_type;
   }; // class SparsePolicy
 
 } // namespace TiledArray
