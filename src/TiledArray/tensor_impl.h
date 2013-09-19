@@ -134,7 +134,7 @@ namespace madness {
   namespace detail {
 
     // The following class specializations are required so MADNESS will do the
-    // right thing when given a TileReference and TileConstReference objects
+    // right thing when given a TileReference or TileConstReference object
     // as an input for task functions.
 
     template <typename Impl>
@@ -326,25 +326,24 @@ namespace TiledArray {
     /// \note The process map must be set before data elements can be set.
     /// \note It is the users responsibility to ensure the process maps on all
     /// nodes are identical.
-    template <typename Tile>
-    class TensorImpl : private NO_DEFAULTS{
+    template <typename Tile, typename Policy>
+    class TensorImpl : private NO_DEFAULTS {
     public:
-      typedef TensorImpl<Tile> TensorImpl_;
-      typedef TiledRange trange_type; ///< Tiled range type
-      typedef typename trange_type::range_type range_type; ///< Tile range type
-      typedef Bitset<> shape_type; ///< Tensor shape type
+      typedef TensorImpl<Tile, Policy> TensorImpl_;
+      typedef typename Policy::trange_type trange_type; ///< Tiled range type
+      typedef typename Policy::range_type range_type; ///< Tile range type
+      typedef typename Policy::size_type size_type; ///< Size type
+      typedef typename Policy::shape_type shape_type; ///< Tensor shape type
+      typedef typename Policy::pmap_interface pmap_interface; ///< Process map interface type
       typedef Tile value_type; ///< Tile or data type
-      typedef typename Tile::eval_type eval_type; ///< The tile evaluation type
-      typedef typename TiledArray::detail::scalar_type<typename value_type::value_type>::type
-          numeric_type; ///< the numeric type that supports Tile
-      typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
-      typedef typename storage_type::size_type size_type; ///< Size type
+      typedef typename value_type::eval_type eval_type; ///< The tile evaluation type
+      typedef typename value_type::numeric_type numeric_type; ///< the numeric type that supports Tile
+      typedef TiledArray::detail::DistributedStorage<value_type, pmap_interface> storage_type; ///< The data container type
       typedef typename storage_type::future future; ///< Future tile type
       typedef TileReference<TensorImpl_> reference; ///< Tile reference type
       typedef TileConstReference<TensorImpl_> const_reference; ///< Tile constant reference type
       typedef TensorIterator<TensorImpl_, reference> iterator; ///< Iterator type
       typedef TensorIterator<TensorImpl_, const_reference> const_iterator; ///< Constant iterator type
-      typedef typename storage_type::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 
@@ -365,7 +364,7 @@ namespace TiledArray {
       TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape) :
         trange_(trange), shape_(shape), data_(world, trange_.tiles().volume())
       {
-        TA_ASSERT((shape_.size() == trange_.tiles().volume()) || (shape_.size() == 0ul));
+        TA_ASSERT(shape_.validate(trange_.tiles()));
       }
 
       /// Virtual destructor

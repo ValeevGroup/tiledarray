@@ -20,9 +20,12 @@
 #ifndef TILEDARRAY_ARRAY_H__INCLUDED
 #define TILEDARRAY_ARRAY_H__INCLUDED
 
-#include <TiledArray/annotated_tensor.h>
 #include <TiledArray/replicator.h>
 #include <TiledArray/pmap/replicated_pmap.h>
+#include <TiledArray/tensor.h>
+#include <TiledArray/policies/dense_policy.h>
+#include <TiledArray/tensor_impl.h>
+#include <TiledArray/pmap/blocked_pmap.h>
 
 namespace TiledArray {
 
@@ -34,11 +37,11 @@ namespace TiledArray {
   /// \tparam T The element type of for array tiles
   /// \tparam DIM The number of dimensions for this array object
   /// \tparam Tile The tile type [ Default = \c Tensor<T> ]
-  template <typename T, unsigned int DIM, typename Tile = Tensor<T> >
+  template <typename T, unsigned int DIM, typename Tile = Tensor<T>, typename Policy = DensePolicy >
   class Array {
   public:
-    typedef Array<T, DIM, Tile> Array_; ///< This object's type
-    typedef detail::TensorImpl<Tile> impl_type;
+    typedef Array<T, DIM, Tile, Policy> Array_; ///< This object's type
+    typedef TiledArray::detail::TensorImpl<Tile, Policy> impl_type;
     typedef T element_type; ///< The tile element type
     typedef typename impl_type::trange_type trange_type; ///< Tile range type
     typedef typename impl_type::range_type range_type; ///< Range type for array tiling
@@ -59,29 +62,9 @@ namespace TiledArray {
     /// \param w The world where the array will live.
     /// \param tr The tiled range object that will be used to set the array tiling.
     /// \param pmap The tile index -> process map
-    Array(madness::World& w, const trange_type& tr, const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-        pimpl_(new impl_type(w, tr, 0), madness::make_deferred_deleter<impl_type>(w))
-    {
-      TA_USER_ASSERT(tr.tiles().dim() == DIM,
-          "The dimensions of the tiled range do not match that of the array object.");
-      pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
-    }
-
-    /// Sparse array constructor
-
-    /// \tparam InIter Input iterator type
-    /// \param w The world where the array will live.
-    /// \param tr The tiled range object that will be used to set the array tiling.
-    /// \param first An input iterator that points to the a list of tiles to be
-    /// added to the sparse array.
-    /// \param last An input iterator that points to the last position in a list
-    /// of tiles to be added to the sparse array.
-    /// \param pmap The tile index -> process map
-    template <typename InIter>
-    Array(madness::World& w, const trange_type& tr, InIter first, InIter last,
-          const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-        pimpl_(new impl_type(w, tr, make_shape(w, tr, first, last)),
-            madness::make_deferred_deleter<impl_type>(w))
+    Array(madness::World& w, const trange_type& tr,
+        const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+      pimpl_(new impl_type(w, tr, shape_type()), madness::make_deferred_deleter<impl_type>(w))
     {
       TA_USER_ASSERT(tr.tiles().dim() == DIM,
           "The dimensions of the tiled range do not match that of the array object.");
@@ -95,13 +78,19 @@ namespace TiledArray {
     /// \param shape Bitset of the same length as \c tr. Describes the array shape: bit set (1)
     ///        means tile exists, else tile does not exist.
     /// \param pmap The tile index -> process map
+    /// \param collective_shape_init If true then the collective_init method for
+    /// shape will be invoced by the constructor
     Array(madness::World& w, const trange_type& tr, const shape_type& shape,
-        const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-        pimpl_(new impl_type(w, tr, shape),
+        const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>(),
+        bool collective_shape_init = true) :
+      pimpl_(new impl_type(w, tr, shape),
             madness::make_deferred_deleter<impl_type>(w))
     {
       TA_USER_ASSERT(tr.tiles().dim() == DIM,
           "The dimensions of the tiled range do not match that of the array object.");
+      if(collective_shape_init)
+        pimpl_->shape().collective_init(pimpl_->get_world());
+
       pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
@@ -301,24 +290,24 @@ namespace TiledArray {
 
     /// \param v A string with a comma-separated list of variables
     /// \return An annotated tensor object that references this array
-    expressions::TensorExpression<eval_type>
-    operator ()(const std::string& v) const {
-      expressions::VariableList vars(v);
-      TA_USER_ASSERT(vars.dim() == DIM,
-          "The number of variables in the tensor annotation is not equal to the tensor order (number of dimensions).");
-      return expressions::make_annotated_tensor(*this, vars);
-    }
-
-    /// Create an annotated tensor
-
-    /// \param v A variable list object
-    /// \return An annotated tensor object that references this array
-    expressions::TensorExpression<eval_type>
-    operator ()(const expressions::VariableList& v) const {
-      TA_USER_ASSERT(v.dim() == DIM,
-          "The number of variables in the tensor annotation is not equal to the tensor order (number of dimensions).");
-      return expressions::make_annotated_tensor(*this, v);
-    }
+//    expressions::TensorExpression<eval_type>
+//    operator ()(const std::string& v) const {
+//      expressions::VariableList vars(v);
+//      TA_USER_ASSERT(vars.dim() == DIM,
+//          "The number of variables in the tensor annotation is not equal to the tensor order (number of dimensions).");
+//      return expressions::make_annotated_tensor(*this, vars);
+//    }
+//
+//    /// Create an annotated tensor
+//
+//    /// \param v A variable list object
+//    /// \return An annotated tensor object that references this array
+//    expressions::TensorExpression<eval_type>
+//    operator ()(const expressions::VariableList& v) const {
+//      TA_USER_ASSERT(v.dim() == DIM,
+//          "The number of variables in the tensor annotation is not equal to the tensor order (number of dimensions).");
+//      return expressions::make_annotated_tensor(*this, v);
+//    }
 
     /// World accessor
 
@@ -454,30 +443,6 @@ namespace TiledArray {
       if(! pmap)
         pmap.reset(new detail::BlockedPmap(world, volume));
       return pmap;
-    }
-
-    /// Construct a shape from a list of tile indices
-
-    /// Construct a shape for the array that contains the tiles given by the list
-    /// of indexes or offsets.
-    /// \tparam InIter Input iterator type
-    /// \param world The world of this array
-    /// \param tr Tile range object for this array
-    /// \param first Iterator pointing to a list of tiles to be included in the array
-    /// \param last Iterator pointing to a list of tiles to be included in the array
-    /// \return A bitset that represents the array shape
-    template <typename InIter>
-    static detail::Bitset<>
-    make_shape(madness::World& world, const trange_type& tr, InIter first, InIter last) {
-      detail::Bitset<> shape(tr.tiles().volume());
-
-      for(; first != last; ++first)
-        shape.set(tr.tiles().ord(*first));
-
-      // Construct the bitset for remote data
-      world.gop.bit_or(shape.get(), shape.num_blocks());
-
-      return shape;
     }
 
     std::shared_ptr<impl_type> pimpl_; ///< Array implementation pointer
