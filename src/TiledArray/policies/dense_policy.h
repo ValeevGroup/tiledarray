@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  justus
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  dense_array.h
@@ -26,22 +26,21 @@
 #ifndef TILEDARRAY_DENSE_ARRAY_H__INCLUDED
 #define TILEDARRAY_DENSE_ARRAY_H__INCLUDED
 
+#include <TiledArray/tiled_range.h>
+#include <TiledArray/pmap/pmap.h>
 #include <TiledArray/dense_shape.h>
 
 namespace TiledArray {
 
   // Forward declarations
-  template <typename> class Tensor;
   class DenseShape;
 
-  template <typename T>
   class DensePolicy {
-    typedef T element_type;
-    typedef Tensor<T> tile_type;
-    typedef Tensor<T> eval_type;
+    typedef TiledRange trange_type;
+    typedef typename trange_type::range_type range_type;
+    typedef typename range_type::size_type size_type;
     typedef DenseShape shape_type;
-
-    shape_type default_shape() { return shape_type(); }
+    typedef Pmap pmap_interface;
   }; // class DensePolicy
 
 } // namespace TiledArray
