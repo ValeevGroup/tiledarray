@@ -26,7 +26,7 @@
 using namespace TiledArray;
 
 struct DistributedStorageFixture {
-  typedef TiledArray::detail::DistributedStorage<int> Storage;
+  typedef TiledArray::detail::DistributedStorage<int, Pmap> Storage;
   typedef Storage::size_type size_type;
 
   DistributedStorageFixture() :
