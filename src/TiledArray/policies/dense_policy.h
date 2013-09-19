@@ -36,6 +36,7 @@ namespace TiledArray {
   class DenseShape;
 
   class DensePolicy {
+  public:
     typedef TiledRange trange_type;
     typedef typename trange_type::range_type range_type;
     typedef typename range_type::size_type size_type;
