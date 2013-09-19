@@ -42,23 +42,24 @@ namespace TiledArray {
   template <typename T, typename A = Eigen::aligned_allocator<T> >
   class Tensor {
   private:
+    // Internal type for enabling various constructors.
     struct Enabler { };
   public:
-    typedef Tensor<T, A> Tensor_;
+    typedef Tensor<T, A> Tensor_; ///< This class type
     typedef Tensor_ eval_type; ///< The type used when evaluating expressions
-    typedef DenseStorage<T,A> storage_type;
-    typedef Range range_type;
-    typedef typename storage_type::value_type value_type;
+    typedef DenseStorage<T,A> storage_type; ///< Tensor data storage container type
+    typedef Range range_type; ///< Tensor range type
+    typedef typename storage_type::value_type value_type; ///< Element type
     typedef typename TiledArray::detail::scalar_type<T>::type
         numeric_type; ///< the numeric type that supports T
-    typedef typename storage_type::const_reference const_reference;
-    typedef typename storage_type::reference reference;
-    typedef typename storage_type::const_iterator const_iterator;
-    typedef typename storage_type::iterator iterator;
-    typedef typename storage_type::difference_type difference_type;
-    typedef typename storage_type::const_pointer const_pointer;
-    typedef typename storage_type::pointer pointer;
-    typedef typename storage_type::size_type size_type;
+    typedef typename storage_type::const_reference const_reference; ///< Element const reference type
+    typedef typename storage_type::reference reference; ///< Element reference type
+    typedef typename storage_type::const_iterator const_iterator; ///< Const iterator type
+    typedef typename storage_type::iterator iterator; ///< Iterator type
+    typedef typename storage_type::difference_type difference_type; ///< Difference type (C++ std lib compliance)
+    typedef typename storage_type::const_pointer const_pointer; ///< Const data pointer type
+    typedef typename storage_type::pointer pointer; ///< Data pointer type
+    typedef typename storage_type::size_type size_type; ///< Size type (C++ std lib compliance)
 
   private:
 
