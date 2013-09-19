@@ -42,17 +42,17 @@ namespace TiledArray {
     /// can easily be achieved by only constructing world objects in the main
     /// thread. DO NOT construct world objects within tasks where the order of
     /// execution is nondeterministic.
-    template <typename T, typename PmapInterface>
-    class DistributedStorage : public madness::WorldObject<DistributedStorage<T, PmapInterface> > {
+    template <typename T>
+    class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     public:
-      typedef DistributedStorage<T, PmapInterface> DistributedStorage_; ///< This object type
+      typedef DistributedStorage<T> DistributedStorage_; ///< This object type
       typedef madness::WorldObject<DistributedStorage_> WorldObject_; ///< Base object type
 
       typedef std::size_t size_type; ///< size type
       typedef size_type key_type; ///< element key type
       typedef T value_type; ///< Element type
       typedef madness::Future<value_type> future; ///< Element container type
-      typedef PmapInterface pmap_interface; ///< Process map interface type
+      typedef Pmap pmap_interface; ///< Process map interface type
       typedef madness::ConcurrentHashMap<key_type, future> container_type; ///< Local container type
       typedef typename container_type::accessor accessor; ///< Local element accessor type
       typedef typename container_type::const_accessor const_accessor; ///< Local element const accessor type
