@@ -72,14 +72,14 @@ namespace TiledArray {
     /// Validate shape range
 
     /// \return \c true when range matches the range of this shape
-    bool validate(const Range& range) { return (range == data_.range()); }
+    bool validate(const Range& range) const { return (range == data_.range()); }
 
     /// Check that a tile is zero
 
     /// \tparam Index The type of the index
     /// \return false
     template <typename Index>
-    bool is_zero(const Index& i) { return (std::abs(data_[i]) < threshold_); }
+    bool is_zero(const Index& i) const { return (std::abs(data_[i]) < threshold_); }
 
     /// Check density
 
