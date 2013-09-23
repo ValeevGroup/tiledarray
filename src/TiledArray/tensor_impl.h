@@ -361,8 +361,9 @@ namespace TiledArray {
       /// \param shape The shape of this tensor
       /// \throw TiledArray::Exception When the size of shape is not equal to
       /// zero
-      TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape) :
-        trange_(trange), shape_(shape), data_(world, trange_.tiles().volume())
+      TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape,
+          const std::shared_ptr<pmap_interface>& pmap) :
+        trange_(trange), shape_(shape), data_(world, trange_.tiles().volume(), pmap)
       {
         TA_ASSERT(shape_.validate(trange_.tiles()));
       }
@@ -375,13 +376,6 @@ namespace TiledArray {
       /// \return A shared pointer to the process map of this tensor
       /// \throw nothing
       const std::shared_ptr<pmap_interface>& pmap() const { return data_.get_pmap(); }
-
-      /// Initialize pmap
-
-      /// \param pmap The process map
-      /// \throw TiledArray::Exception When the process map has already been set
-      /// \throw TiledArray::Exception When \c pmap is \c NULL
-      void pmap(const std::shared_ptr<pmap_interface>& pmap) { data_.init(pmap); }
 
       /// Evaluate tensor to destination
 
