@@ -20,35 +20,32 @@
 #ifndef TILEDARRAY_UNARY_TENSOR_H__INCLUDED
 #define TILEDARRAY_UNARY_TENSOR_H__INCLUDED
 
-#include <TiledArray/tensor_expression.h>
-#include <TiledArray/tensor.h>
+#include <TiledArray/dist_eval/dist_eval.h>
 
 namespace TiledArray {
   namespace detail {
-
 
     /// Tensor that is composed from an argument tensor
 
     /// The tensor elements are constructed using a unary transformation
     /// operation.
-    /// \tparam Arg The argument type
-    /// \tparam Op The Unary transform operator type.
-    template <typename Exp, typename Op>
-    class UnaryEvalImpl : public DistEvalImpl<typename Op::result_type> {
+    /// \tparam Arg The evaluator argument type
+    /// \tparam Policy The evaluator policy type
+    template <typename Arg, typename Policy>
+    class UnaryEvalImpl : public DistEvalImpl<typename Arg::eval_type, Policy> {
     public:
-      typedef UnaryEvalImpl<Exp, Op> UnaryEvalImpl_; ///< This object type
-      typedef Exp arg_type; ///< The argument tensor type
-      typedef DistEvalImpl<typename Op::result_type> DistEvalImpl_; ///< The base class type
+      typedef UnaryEvalImpl<Arg, Policy> UnaryEvalImpl_; ///< This object type
+      typedef DistEvalImpl<typename Arg::eval_type, Policy> DistEvalImpl_; ///< The base class type
       typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
+      typedef Arg arg_type; ///< The argument tensor type
       typedef typename DistEvalImpl_::size_type size_type; ///< Size type
       typedef typename DistEvalImpl_::range_type range_type; ///< Range type
       typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
       typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
       typedef typename DistEvalImpl_::trange_type trange_type; ///< tiled range type
       typedef typename DistEvalImpl_::value_type value_type; ///< value type
-      typedef typename DistEvalImpl_::const_reference const_reference; ///< const reference type
-      typedef typename DistEvalImpl_::const_iterator const_iterator; ///< const iterator type
-
+      typedef typename DistEvalImpl_::future future; ///< Future type
+      typedef typename Policy::op_type op_type; ///< Tile evaluation operator type
 
     public:
 
@@ -57,7 +54,7 @@ namespace TiledArray {
       /// \param arg The argument
       /// \param op The element transform operation
       UnaryEvalImpl(const arg_type& arg, const Permutation& perm, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap, const Op& op) :
+          const std::shared_ptr<pmap_interface>& pmap, const op_type& op) :
         DistEvalImpl_(arg.get_world(), perm, arg.trange(), shape, pmap),
         arg_(arg),
         op_(op)
@@ -68,11 +65,8 @@ namespace TiledArray {
 
     private:
 
-      void eval_tile(const size_type i, const typename arg_type::value_type& tile,
-          madness::AtomicInt* const counter)
-      {
-        DistEvalImpl_::set(i, op_(tile));
-        (*counter)++;
+      void eval_tile(const size_type i, const typename arg_type::value_type& tile) {
+        DistEvalImpl_::set_tile(i, op_(tile));
       }
 
       /// Function for evaluating this tensor's tiles
@@ -80,50 +74,40 @@ namespace TiledArray {
       /// This function is run inside a task, and will run after \c eval_children
       /// has completed. It should spawn additional tasks that evaluate the
       /// individual result tiles.
-      virtual void eval_tiles(const std::shared_ptr<DistEvalImpl>& pimpl,
-          madness::AtomicInt& counter, int& task_count)
-      {
+      /// \return The number of local tiles
+      virtual size_type eval_tiles(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+        // Counter for the number of tasks submitted by this object
+        const size_type task_count = 0ul;
+
         // Convert pimpl to this object type so it can be used in tasks
         TA_ASSERT(this == pimpl.get());
-        std::shared_ptr<UnaryEvalImpl_> this_pimpl =
+        std::shared_ptr<UnaryEvalImpl_> self =
             std::static_pointer_cast<UnaryEvalImpl_>(pimpl);
 
         // Make sure all local tiles are present.
         const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
         typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
-        if(arg_.is_dense()) {
-          for(; it != end; ++it) {
-            TensorImpl_::get_world().taskq.add(this_pimpl,
-                & UnaryEvalImpl_::eval_tile, *it, arg_.move(*it), counter);
+        for(; it != end; ++it) {
+          if(! arg_.is_zero(*it)) {
+            TensorImpl_::get_world().taskq.add(self,
+                & UnaryEvalImpl_::eval_tile, *it, arg_.move(*it));
             ++task_count;
-          }
-        } else {
-          for(; it != end; ++it) {
-            if(! arg_.is_zero(*it)) {
-              TensorImpl_::get_world().taskq.add(this_pimpl,
-                  & UnaryEvalImpl_::eval_tile, *it, arg_.move(*it), counter);
-              ++task_count;
-            }
           }
         }
 
         arg_.release();
+
+        return task_count;
       }
 
       /// Function for evaluating child tensors
+      virtual void eval_children() { arg_.eval(); }
 
-      /// This function should return true when the child
-
-      /// This function should evaluate all child tensors.
-      /// \param vars The variable list for this tensor (may be different from
-      /// the variable list used to initialize this tensor).
-      /// \param pmap The process map for this tensor
-      virtual void eval_children(madness::AtomicInt& counter, int& task_count) {
-        arg_.eval(counter, task_count);
-      }
+      /// Wait for tasks of children to finish
+      virtual void wait_children() const { arg_.wait(); }
 
       arg_type arg_; ///< Argument
-      Op op_; ///< The unary tile operation
+      op_type op_; ///< The unary tile operation
     }; // class UnaryEvalImpl
 
   }  // namespace detail

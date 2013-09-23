@@ -25,20 +25,31 @@
 
 #include "TiledArray/dist_eval/array_eval.h"
 #include "unit_test_config.h"
+#include "array_fixture.h"
+#include "TiledArray/tile_op/scal.h"
+#include "TiledArray/shape.h"
 
-struct ArrayEvalFixture {
 
-  ArrayEvalFixture() { }
+using namespace TiledArray;
 
-  ~ArrayEvalFixture() { }
 
+
+struct ArrayEvalImplFixture : public ArrayFixture {
+  typedef math::Scal<ArrayN::value_type::eval_type,
+      ArrayN::value_type::eval_type, false> op_type;
+  typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
+  ArrayEvalImplFixture() : op(3) { }
+
+  ~ArrayEvalImplFixture() { }
+
+   op_type op;
 }; // ArrayEvalFixture
 
-BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalFixture )
+BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-
+  BOOST_REQUIRE_NO_THROW(impl_type(a, Permutation(), DenseShape(), a.get_pmap(), op));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

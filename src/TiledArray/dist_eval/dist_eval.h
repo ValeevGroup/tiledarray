@@ -34,25 +34,23 @@ namespace TiledArray {
     /// used by derived classes to implement the distributed evaluate. This
     /// class can also handles permutation of result tiles if necessary.
     /// \tparam Policy The policy type
-    template <typename Policy>
-    class DistEvalImpl : public TensorImpl<typename Policy::tile_type> {
+    template <typename Tile, typename Policy>
+    class DistEvalImpl : public TensorImpl<Tile, Policy> {
     public:
-      typedef DistEvalImpl<Policy> DistEvalImpl_; ///< This object type
-      typedef TiledArray::detail::TensorImpl<typename Policy::tile_type> TensorImpl_;
+      typedef DistEvalImpl<Tile, Policy> DistEvalImpl_; ///< This object type
+      typedef TiledArray::detail::TensorImpl<Tile, Policy> TensorImpl_;
                                           ///< Tensor implementation base class
 
-      typedef typename Policy::size_type size_type; ///< Size type
-      typedef typename Policy::trange_type trange_type; ///< Tiled range type for this object
-      typedef typename Policy::range_type range_type; ///< Range type this tensor
-      typedef typename Policy::shape_type shape_type; ///< Shape type
-      typedef typename Policy::pmap_interface pmap_interface; ///< process map interface type
-      typedef typename Policy::value_type value_type; ///< Tile type
-      typedef typename Policy::future future; ///< Future type
+      typedef typename TensorImpl_::size_type size_type; ///< Size type
+      typedef typename TensorImpl_::trange_type trange_type; ///< Tiled range type for this object
+      typedef typename TensorImpl_::range_type range_type; ///< Range type this tensor
+      typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
+      typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
+      typedef typename TensorImpl_::value_type value_type; ///< Tile type
 
     private:
       const Permutation perm_; ///< The permutation to be applied to this tensor
       const typename TensorImpl_::range_type range_; ///< The original tiled range for this tensor
-      const bool permute_tiles_; ///< Flag for permuting the tile result
 
       // The following variables are used to track the total number of tasks run
       // on the local node, task_count_, and the number of tiles set on this
@@ -62,9 +60,6 @@ namespace TiledArray {
 
       volatile int task_count_; ///< Total number of local tasks
       madness::AtomicInt set_counter_; ///< The number of tiles set by this node
-
-      // TODO: Remove this member variable. It should go in TensorImpl
-      shape_type shape_;
 
     protected:
 
@@ -96,14 +91,12 @@ namespace TiledArray {
       /// storing the data.
       DistEvalImpl(madness::World& world, const Permutation& perm,
           const trange_type& trange, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap, const bool permute_tiles) :
-        TensorImpl_(world, (perm.dim() ? perm ^ trange : trange), 0, pmap),
-        range_(trange.tiles()),
+          const std::shared_ptr<pmap_interface>& pmap) :
+        TensorImpl_(world, (perm.dim() ? perm ^ trange : trange), shape, pmap),
         perm_(perm),
-        permute_tiles_(permute_tiles),
+        range_(trange.tiles()),
         task_count_(0),
-        set_counter_(),
-        shape_(shape)
+        set_counter_()
       {
         set_counter_ = 0;
       }
@@ -112,27 +105,15 @@ namespace TiledArray {
 
       /// Set tensor value
 
-      /// This will store \c value at ordinal index \c i . The tile will be
-      /// permuted if necessary. Typically, this function should be called by a
-      /// task function.
+      /// This will store \c value at ordinal index \c i . Typically, this
+      /// function should be called by a task function.
       /// \param i The index where value will be stored.
       /// \param value The value or future value to be stored at index \c i
       /// \note The index \c i and \c value may be permuted by this function
       /// before storing the value.
       void set_tile(size_type i, const value_type& value) {
-        // Permute the index if necessary.
-        if(perm_.dim())
-          i = perm_index(i);
-
-        if(permute_tiles_) {
-          // Store a permuted copy of value
-          value_type result;
-          permute(result, perm_, value);
-          TensorImpl_::set(i, result);
-        } else {
-          // Store valeu
-          TensorImpl_::set(i, value);
-        }
+        // Store value
+        TensorImpl_::set(i, value);
 
         // Record the assignment of a tile
         set_counter_++;
@@ -142,18 +123,6 @@ namespace TiledArray {
       void wait() const {
         CounterProbe probe(set_counter_, task_count_);
         TensorImpl_::get_world().await(probe);
-      }
-
-      // TODO: Remove these functions after moving shape_ into TensorImpl.
-
-      const shape_type& shape() const { return shape_; }
-
-      bool is_dense() const { return shape_.is_dense(); }
-
-      template <typename Index>
-      bool is_zero(const Index& i) const {
-        TA_ASSERT(TensorImpl_::range().includes(i));
-        return shape_.is_zero(TensorImpl_::range().ord(i));
       }
 
     private:
@@ -203,18 +172,18 @@ namespace TiledArray {
     /// of tensor expressions that depend on the pimpl used to construct the
     /// expression.
     /// \tparam Policy The policy type
-    template <typename Policy>
+    template <typename Tile, typename Policy>
     class DistEval {
     public:
-      typedef DistEval<Policy> DistEval_;
-      typedef DistEvalImpl<Policy> impl_type;
-      typedef typename Policy::size_type size_type;
-      typedef typename Policy::range_type range_type;
-      typedef typename Policy::shape_type shape_type;
-      typedef typename Policy::pmap_interface pmap_interface;
-      typedef typename Policy::trange_type trange_type;
-      typedef typename Policy::value_type value_type;
-      typedef typename Policy::future future;
+      typedef DistEval<Tile, Policy> DistEval_; ///< This class type
+      typedef DistEvalImpl<Tile, Policy> impl_type; ///< Implementation base class type
+      typedef typename impl_type::size_type size_type; ///< Size type
+      typedef typename impl_type::trange_type trange_type; ///< Tiled range type for this object
+      typedef typename impl_type::range_type range_type; ///< Range type this tensor
+      typedef typename impl_type::shape_type shape_type; ///< Tensor shape type
+      typedef typename impl_type::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename impl_type::value_type value_type; ///< Tile type
+      typedef typename impl_type::future future; ///< Future of tile type
 
       /// Constructor
 

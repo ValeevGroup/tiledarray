@@ -37,13 +37,16 @@ namespace TiledArray {
 
     /// \tparam Result The result tile type for the lazy tile
     /// \tparam
-    template <typename Tile, typename Op>
+    template <typename Op>
     class LazyArrayTile {
     public:
-      typedef LazyArrayTile<Tile, Op> LazyArrayTile_; ///< This class type
-      typedef typename Tile::eval_type eval_type; ///< The evaluation type for this tile
-      typedef Tile tile_type; ///< The input tile type
+      typedef LazyArrayTile<Op> LazyArrayTile_; ///< This class type
       typedef Op op_type; ///< The operation that will modify this tile
+      typedef typename op_type::result_type eval_type; ///< The evaluation type for this tile
+      typedef typename detail::remove_cvr<typename op_type::argument_type>::type
+          tile_type; ///< The input tile type
+      typedef typename tile_type::value_type value_type; ///< Tile element type
+      typedef typename scalar_type<value_type>::type numeric_type;
 
     private:
       madness::Future<tile_type> tile_; ///< The input tile
@@ -67,12 +70,20 @@ namespace TiledArray {
         return *this;
       }
 
+      /// Convert tile to evaluation type
       operator eval_type() const {
         TA_ASSERT(tile_.probe());
         return (*op_)(tile_);
       }
 
+      /// Serialization not implemented
+      template <typename Archive>
+      void serialize(const Archive& ar) {
+        TA_ASSERT(false);
+      }
+
     }; // LazyArrayTile
+
 
     /// Distributed evaluator for \c TiledArray::Array objects
 
@@ -85,25 +96,28 @@ namespace TiledArray {
     /// so that the resulting data is only evaluated when the tile is needed by
     /// subsequent operations.
     /// \tparam Policy The evaluator policy type
-    template <typename Policy>
-    class ArrayEvalImpl : public DistEvalImpl<Policy> {
+    template <typename Array, typename Op, typename Policy>
+    class ArrayEvalImpl :
+//        public madness::WorldObject<ArrayEvalImpl<Array, Op, Policy> >,
+        public DistEvalImpl<LazyArrayTile<Op>, Policy>
+    {
     public:
-      typedef ArrayEvalImpl<Policy> ArrayEvalImpl_; ///< This object type
-      typedef DistEvalImpl<Policy> DistEvalImpl_; ///< The base class type
+      typedef ArrayEvalImpl<Array, Op, Policy> ArrayEvalImpl_; ///< This object type
+      typedef DistEvalImpl<LazyArrayTile<Op>, Policy> DistEvalImpl_; ///< The base class type
       typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
-      typedef typename Policy::arg_type array_type; ///< The array type
+      typedef Array array_type; ///< The array type
       typedef typename DistEvalImpl_::size_type size_type; ///< Size type
       typedef typename DistEvalImpl_::range_type range_type; ///< Range type
       typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
       typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
       typedef typename DistEvalImpl_::trange_type trange_type; ///< tiled range type
       typedef typename DistEvalImpl_::value_type value_type; ///< value type
-      typedef typename DistEvalImpl_::future future; ///< Future type
-      typedef typename Policy::op_type op_type; ///< Tile evaluation operator type
+      typedef Op op_type; ///< Tile evaluation operator type
 
     private:
       array_type array_; ///< The array that will be evaluated
       std::shared_ptr<op_type> op_; ///< The tile operation
+      Permutation inv_perm_;
 
     public:
 
@@ -113,9 +127,10 @@ namespace TiledArray {
       /// \param op The element transform operation
       ArrayEvalImpl(const array_type& array, const Permutation& perm, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const op_type& op) :
-        DistEvalImpl_(array.get_world(), perm, array.trange(), shape, pmap, false),
+        DistEvalImpl_(array.get_world(), perm, array.trange(), shape, pmap),
         array_(array),
-        op_(op)
+        op_(new op_type(op)),
+        inv_perm_(-perm)
       { }
 
       /// Virtual destructor
@@ -124,6 +139,7 @@ namespace TiledArray {
     private:
 
       void eval_tile(const size_type i, const madness::Future<typename array_type::value_type>& tile) {
+        TA_ASSERT(TensorImpl_::is_local(i));
         DistEvalImpl_::set_tile(i, value_type(tile, op_));
       }
 
@@ -142,16 +158,24 @@ namespace TiledArray {
         std::shared_ptr<ArrayEvalImpl_> self =
             std::static_pointer_cast<ArrayEvalImpl_>(pimpl);
 
-        // Make sure all local tiles are present.
-        const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
-        typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
+        // Create iterator to tiles that are local for this evaluator.
+        const typename array_type::pmap_interface::const_iterator end =
+            TensorImpl_::pmap()->end();
+        typename array_type::pmap_interface::const_iterator it =
+            TensorImpl_::pmap()->begin();
+
         for(; it != end; ++it) {
-          if(! array_.is_zero(*it)) {
+          if(! TensorImpl_::is_zero(*it)) {
+
+            // Get the tile from array_, which may be located on a remote node.
             madness::Future<typename array_type::value_type> tile =
-                array_.find(*it);
+                array_.find(inv_perm_ ^ TensorImpl_::range().idx(*it));
+
+            // Insert the tile into this evaluator for subsequent processing
+            const size_type i = DistEvalImpl_::perm_index(*it);
             if(tile.probe()) {
               // Skip the task since the tile is ready
-              DistEvalImpl_::set_tile(*it, value_type(tile, op_));
+              DistEvalImpl_::set_tile(i, value_type(tile, op_));
             } else {
               // Spawn a task to set the tile the input tile is ready.
               TensorImpl_::get_world().taskq.add(self,
