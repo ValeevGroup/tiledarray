@@ -74,41 +74,20 @@ namespace TiledArray {
       /// \param max_size The maximum capacity of this container
       /// \param pmap The process map for the container (default = null pointer)
       DistributedStorage(madness::World& world, size_type max_size,
-          const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+          const std::shared_ptr<pmap_interface>& pmap) :
         WorldObject_(world), max_size_(max_size),
         pmap_(pmap),
         data_((max_size / world.size()) + 11)
       {
-        if(pmap_) {
-          // Check that the process map is appropriate for this storage object
-          TA_ASSERT(pmap_->size() == max_size);
-          TA_ASSERT(pmap_->rank() == world.rank());
-          TA_ASSERT(pmap_->procs() == world.size());
-//          pmap_->set_seed(WorldObject_::id().get_obj_id());
-          WorldObject_::process_pending();
-        }
+        // Check that the process map is appropriate for this storage object
+        TA_ASSERT(pmap_);
+        TA_ASSERT(pmap_->size() == max_size);
+        TA_ASSERT(pmap_->rank() == world.rank());
+        TA_ASSERT(pmap_->procs() == world.size());
+        WorldObject_::process_pending();
       }
 
       virtual ~DistributedStorage() { }
-
-      /// Initialize the container
-
-      /// Process any messages that arrived before this object was constructed
-      /// locally.
-      /// \note No incoming messages are processed until this routine is invoked.
-      /// It can be invoked in the constructor by passing \c true to the
-      /// \c do_pending argument.
-      void init(const std::shared_ptr<pmap_interface>& pmap) {
-        TA_ASSERT(!pmap_);
-        // Check that the process map is appropriate for this storage object
-        TA_ASSERT(pmap);
-        TA_ASSERT(pmap->size() == max_size_);
-        TA_ASSERT(pmap->rank() == WorldObject_::get_world().rank());
-        TA_ASSERT(pmap->procs() == WorldObject_::get_world().size());
-        pmap_ = pmap;
-//        pmap_->set_seed(WorldObject_::id().get_obj_id());
-        WorldObject_::process_pending();
-      }
 
       /// World accessor
 

@@ -29,6 +29,16 @@
 
 namespace TiledArray {
 
+  /// Create a default process map
+
+  /// \param world The world of the process map
+  /// \param size The number of tiles in the array
+  /// \return A shared pointer to a process map
+  inline std::shared_ptr<TiledArray::Pmap>
+  default_pmap(madness::World& world, const std::size_t size) {
+    return std::shared_ptr<TiledArray::Pmap>(new detail::BlockedPmap(world, size));
+  }
+
   /// An n-dimensional, tiled array
 
   /// Array is the local representation of a global object. This means that the
@@ -64,11 +74,11 @@ namespace TiledArray {
     /// \param pmap The tile index -> process map
     Array(madness::World& w, const trange_type& tr,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(new impl_type(w, tr, shape_type()), madness::make_deferred_deleter<impl_type>(w))
+      pimpl_(new impl_type(w, tr, shape_type(), (pmap ? pmap : default_pmap(w, tr.tiles().volume()))),
+          madness::make_deferred_deleter<impl_type>(w))
     {
       TA_USER_ASSERT(tr.tiles().dim() == DIM,
           "The dimensions of the tiled range do not match that of the array object.");
-      pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
     /// Sparse array constructor
@@ -81,17 +91,12 @@ namespace TiledArray {
     /// \param collective_shape_init If true then the collective_init method for
     /// shape will be invoced by the constructor
     Array(madness::World& w, const trange_type& tr, const shape_type& shape,
-        const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>(),
-        bool collective_shape_init = true) :
-      pimpl_(new impl_type(w, tr, shape),
-            madness::make_deferred_deleter<impl_type>(w))
+        const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
+      pimpl_(new impl_type(w, tr, shape, (pmap ? pmap : default_pmap(w, tr.tiles().volume()))),
+          madness::make_deferred_deleter<impl_type>(w))
     {
       TA_USER_ASSERT(tr.tiles().dim() == DIM,
           "The dimensions of the tiled range do not match that of the array object.");
-      if(collective_shape_init)
-        pimpl_->shape().collective_init(pimpl_->get_world());
-
-      pimpl_->pmap(make_pmap(pmap, w, tr.tiles().volume()));
     }
 
     /// Default constructor
@@ -428,21 +433,6 @@ namespace TiledArray {
     void check_pimpl() const {
       TA_USER_ASSERT(pimpl_,
           "The Array has not been initialized, likely reason: it was default constructed and used.");
-    }
-
-    /// Construct a process map
-
-    /// If \c pmap is a valid process map pointer, a copy is returned. Otherwise,
-    /// a new process map is constructed.
-    /// \param pmap The default process map
-    /// \param world The world of the process map
-    /// \param volume The number of tiles in the array
-    /// \return A shared pointer to a process map
-    static std::shared_ptr<pmap_interface>
-    make_pmap(std::shared_ptr<pmap_interface> pmap, madness::World& world, const size_type volume) {
-      if(! pmap)
-        pmap.reset(new detail::BlockedPmap(world, volume));
-      return pmap;
     }
 
     std::shared_ptr<impl_type> pimpl_; ///< Array implementation pointer
