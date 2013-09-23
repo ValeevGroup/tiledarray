@@ -86,19 +86,24 @@ int main(int argc, char** argv) {
     trange(blocking2.begin(), blocking2.end());
 
   // Construct shape
-  TiledArray::detail::Bitset<> shape(trange.tiles().volume());
+  TiledArray::Tensor<float> shape_tensor(trange.tiles(), 0.0);
   for(long i = 0; i < num_blocks; ++i) {
     long j = std::max<long>(i - band_width + 1, 0);
     const long j_end = std::min<long>(i + band_width - 1, num_blocks);
     long ij = i * num_blocks + j;
     for(; j < j_end; ++j, ++ij)
-      shape.set(ij);
+      shape_tensor[ij] = 1.0;
   }
 
+  TiledArray::SparseShape shape(shape_tensor, 0.5);
+
+  typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
+      TiledArray::SparsePolicy > SpTArray2;
+
   // Construct and initialize arrays
-  TiledArray::Array<double, 2> a(world, trange, shape);
-  TiledArray::Array<double, 2> b(world, trange, shape);
-  TiledArray::Array<double, 2> c(world, trange);
+  SpTArray2 a(world, trange, shape);
+  SpTArray2 b(world, trange, shape);
+  SpTArray2 c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
 

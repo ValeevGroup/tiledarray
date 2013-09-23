@@ -84,22 +84,31 @@ int main(int argc, char** argv) {
     trange(blocking2.begin(), blocking2.end());
 
   // Construct shape
-  std::vector<std::size_t> a_shape, b_shape;
+  TiledArray::Tensor<float>
+      a_shape_tensor(trange.tiles(), 0.0),
+      b_shape_tensor(trange.tiles(), 0.0);
   if(world.rank() == 0) {
-    a_shape.reserve(block_count);
     world.srand(time(NULL));
-    for(long i = 0; i < block_count; ++i)
-      a_shape.push_back(world.rand() % trange.tiles().volume());
+    const long process_block_count = block_count / world.size() +
+        (world.rank() < (block_count / world.size()) ? 1 : 0);
+    for(long i = 0; i < process_block_count; ++i)
+      a_shape.data()[world.rand() % trange.tiles().volume()] = 1.0;
 
-    b_shape.reserve(block_count);
-    for(long i = 0; i < block_count; ++i)
-      b_shape.push_back(world.rand() % trange.tiles().volume());
+    for(long i = 0; i < process_block_count; ++i)
+      b_shape.data()[world.rand() % trange.tiles().volume()] = 1.0;
   }
+  TiledArray::SparseShape
+      a_shape(world, a_shape_tensor, 0.5),
+      b_shape(world, b_shape_tensor, 0.5);
+
+
+  typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
+      TiledArray::SparsePolicy > SpTArray2;
 
   // Construct and initialize arrays
-  TiledArray::Array<double, 2> a(world, trange, a_shape.begin(), a_shape.end());
-  TiledArray::Array<double, 2> b(world, trange, b_shape.begin(), b_shape.end());
-  TiledArray::Array<double, 2> c(world, trange);
+  SpTArray2 a(world, trange, a_shape);
+  SpTArray2 b(world, trange, b_shape);
+  SpTArray2 c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
 
