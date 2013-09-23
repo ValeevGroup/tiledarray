@@ -67,6 +67,16 @@ namespace TiledArray {
     typedef typename impl_type::const_iterator const_iterator; ///< Local tile const iterator
     typedef typename impl_type::pmap_interface pmap_interface; ///< Process map interface type
 
+
+    /// Default constructor
+    Array() : pimpl_() { }
+
+    /// Copy constructor
+
+    /// This is a shallow copy, that is no data is copied.
+    /// \param other The array to be copied
+    Array(const Array_& other) : pimpl_(other.pimpl_) { }
+
     /// Dense array constructor
 
     /// \param w The world where the array will live.
@@ -98,15 +108,6 @@ namespace TiledArray {
       TA_USER_ASSERT(tr.tiles().dim() == DIM,
           "The dimensions of the tiled range do not match that of the array object.");
     }
-
-    /// Default constructor
-    Array() : pimpl_() { }
-
-    /// Copy constructor
-
-    /// This is a shallow copy, that is no data is copied.
-    /// \param other The array to be copied
-    Array(const Array_& other) : pimpl_(other.pimpl_) { }
 
 //    /// Construct Array from a pimpl
 //
