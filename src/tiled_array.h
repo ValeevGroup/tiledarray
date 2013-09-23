@@ -22,5 +22,6 @@
 
 #include <TiledArray/array.h>
 #include <TiledArray/eigen.h>
+#include <TiledArray/policies/sparse_policy.h>
 
 #endif // TILED_ARRAY_H__INCLUDED
