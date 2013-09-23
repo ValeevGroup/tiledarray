@@ -347,8 +347,8 @@ namespace TiledArray {
 
     private:
 
-      trange_type trange_; ///< Tiled range type
-      shape_type shape_; ///< Tensor shape (zero size == dense)
+      const trange_type trange_; ///< Tiled range type
+      const shape_type shape_; ///< Tensor shape
       storage_type data_; ///< Tile container
 
     public:
@@ -456,71 +456,27 @@ namespace TiledArray {
       template <typename Index>
       bool is_zero(const Index& i) const {
         TA_ASSERT(trange_.tiles().includes(i));
-        if(is_dense())
-          return false;
-        return ! (shape_[trange_.tiles().ord(i)]);
+        return ! (shape_.is_zero(trange_.tiles().ord(i)));
       }
 
       /// Query the density of the tensor
 
       /// \return \c true if the tensor is dense, otherwise false
       /// \throw nothing
-      bool is_dense() const { return shape_.size() == 0ul; }
+      bool is_dense() const { return shape_.is_dense(); }
 
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
       /// \throw TiledArray::Exception When this tensor is dense
       const shape_type& shape() const {
-        TA_ASSERT(! is_dense());
         return shape_;
-      }
-
-      /// Tensor shape accessor
-
-      /// \return A reference to the tensor shape map
-      /// \throw TiledArray::Exception When this tensor is dense
-      shape_type& shape() {
-        TA_ASSERT(! is_dense());
-        return shape_;
-      }
-
-      /// Set the shape
-
-      /// \param s The new shape
-      /// \throw TiledArray::Exception When the size of \c s is not equal to the
-      /// size of this tensor or zero.
-      void shape(shape_type s) {
-        TA_ASSERT((s.size() == trange_.tiles().volume()) || (s.size() == 0ul));
-        s.swap(shape_);
-      }
-
-      /// Set shape values
-
-      /// Modify the shape value for tile \c i to \c value
-      /// \tparam Index The index type
-      /// \param i Tile index
-      /// \param value The value of the tile
-      /// \throw TiledArray::Exception When this tensor is dense
-      template <typename Index>
-      void shape(const Index& i, bool value = true) {
-        TA_ASSERT(trange_.tiles().includes(i));
-        TA_ASSERT(! is_dense());
-        shape_.set(trange_.tiles().ord(i), value);
       }
 
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
       const trange_type& trange() const { return trange_; }
-
-      /// Set tiled range
-
-      /// \param tr Tiled range to set
-      void trange(const trange_type& tr) {
-        TA_ASSERT(tr.tiles().volume() == trange_.tiles().volume());
-        trange_ = tr;
-      }
 
       /// Tile future accessor
 
