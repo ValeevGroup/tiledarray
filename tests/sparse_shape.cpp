@@ -29,24 +29,37 @@
 
 using namespace TiledArray;
 
-struct SparseShapeFixture {
+struct SparseShapeBaseFixture {
   typedef std::vector<std::size_t> vec_type;
 
-  SparseShapeFixture() :
-    left(Tensor<float>(range), 1.0),
-    right(Tensor<float>(range), 1.0)
-  {
+  SparseShapeBaseFixture() : left_tensor(range), right_tensor(range) {
     GlobalFixture::world->srand(37ul);
-    for(Tensor<float>::iterator it = left.data().begin(); it != left.data().end(); ++it)
+    for(Tensor<float>::iterator it = left_tensor.begin(); it != left_tensor.end(); ++it)
       *it = GlobalFixture::world->rand() % 101;
 
-    for(Tensor<float>::iterator it = right.data().begin(); it != right.data().end(); ++it)
+    for(Tensor<float>::iterator it = right_tensor.begin(); it != right_tensor.end(); ++it)
       *it = GlobalFixture::world->rand() % 101;
   }
 
-  ~SparseShapeFixture() { }
+  ~SparseShapeBaseFixture() { }
 
   static const Range range;
+
+  Tensor<float> left_tensor;
+  Tensor<float> right_tensor;
+
+}; // SparseShapeBaseFixture
+
+struct SparseShapeFixture : public SparseShapeBaseFixture {
+  typedef std::vector<std::size_t> vec_type;
+
+  SparseShapeFixture() :
+    left(left_tensor, 1.0),
+    right(right_tensor, 1.0)
+  { }
+
+  ~SparseShapeFixture() { }
+
   static const float factor;
   static const DenseShape dense_shape;
 
@@ -56,7 +69,7 @@ struct SparseShapeFixture {
 }; // SparseShapeFixture
 
 // Static consts
-const Range SparseShapeFixture::range(std::vector<std::size_t>(3, 0), std::vector<std::size_t>(3, 5));
+const Range SparseShapeBaseFixture::range(std::vector<std::size_t>(3, 0), std::vector<std::size_t>(3, 5));
 const float SparseShapeFixture::factor = 3.1;
 const DenseShape SparseShapeFixture::dense_shape = DenseShape();
 

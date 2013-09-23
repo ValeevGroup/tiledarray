@@ -101,10 +101,6 @@ namespace TiledArray {
     /// \return A const reference to the shape data
     const Tensor<float>& data() const { return data_; }
 
-    /// Shape data accessor
-
-    /// \return A const reference to the shape data
-    Tensor<float>& data() { return data_; }
   }; // class SparseShape
 
   /// Permute sparse shape
