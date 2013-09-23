@@ -40,7 +40,7 @@ BOOST_FIXTURE_TEST_SUITE( dense_shape_suite, DenseShapeFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_CHECK_NO_THROW(DenseShape x);
+  BOOST_CHECK_NO_THROW(DenseShape());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
