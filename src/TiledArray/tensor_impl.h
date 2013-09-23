@@ -338,7 +338,7 @@ namespace TiledArray {
       typedef Tile value_type; ///< Tile or data type
       typedef typename value_type::eval_type eval_type; ///< The tile evaluation type
       typedef typename value_type::numeric_type numeric_type; ///< the numeric type that supports Tile
-      typedef TiledArray::detail::DistributedStorage<value_type, pmap_interface> storage_type; ///< The data container type
+      typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
       typedef typename storage_type::future future; ///< Future tile type
       typedef TileReference<TensorImpl_> reference; ///< Tile reference type
       typedef TileConstReference<TensorImpl_> const_reference; ///< Tile constant reference type
