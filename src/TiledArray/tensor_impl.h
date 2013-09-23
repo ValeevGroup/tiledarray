@@ -334,7 +334,7 @@ namespace TiledArray {
       typedef typename Policy::range_type range_type; ///< Tile range type
       typedef typename Policy::size_type size_type; ///< Size type
       typedef typename Policy::shape_type shape_type; ///< Tensor shape type
-      typedef typename Policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef Pmap pmap_interface; ///< Process map interface type
       typedef Tile value_type; ///< Tile or data type
       typedef typename value_type::eval_type eval_type; ///< The tile evaluation type
       typedef typename value_type::numeric_type numeric_type; ///< the numeric type that supports Tile
