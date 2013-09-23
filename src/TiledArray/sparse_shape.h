@@ -57,14 +57,28 @@ namespace TiledArray {
 
     /// \param tensor The tile magnitude data
     /// \param threshold The zero threshold
-    SparseShape(const Tensor<float>& tensor, float threshold) :
+    SparseShape(const Tensor<float>& tensor, const float threshold) :
       data_(tensor), threshold_(std::abs(threshold))
     { }
 
+    /// Collective constructor
 
-    /// Collective initialization of a shape
+    /// After initializing local data, share data by calling \c collective_init .
+    /// \param world The world where the shape will live
+    /// \param tensor The tile magnitude data
+    /// \param threshold The zero threshold
+    SparseShape(madness::World& world, const Tensor<float>& tensor, const float threshold) :
+      data_(tensor), threshold_(std::abs(threshold))
+    {
+      collective_init(world);
+    }
 
-    /// No operation since there is no data.
+
+    /// Collective initialization shape
+
+    /// Share data on each node with all other nodes. The data is shared using
+    /// a collective, sum-reduction algorithm.
+    /// \param world The world where the shape will live
     void collective_init(madness::World& world) {
       world.gop.sum(data_.data(), data_.size());
     }
