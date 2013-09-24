@@ -27,7 +27,7 @@
 #define TILEDARRAY_DENSE_ARRAY_H__INCLUDED
 
 #include <TiledArray/tiled_range.h>
-#include <TiledArray/pmap/pmap.h>
+#include <TiledArray/pmap/blocked_pmap.h>
 #include <TiledArray/dense_shape.h>
 
 namespace TiledArray {
@@ -41,6 +41,17 @@ namespace TiledArray {
     typedef typename trange_type::range_type range_type;
     typedef typename range_type::size_type size_type;
     typedef DenseShape shape_type;
+    typedef detail::BlockedPmap default_pmap_type;
+
+    /// Create a default process map
+
+    /// \param world The world of the process map
+    /// \param size The number of tiles in the array
+    /// \return A shared pointer to a process map
+    static std::shared_ptr<TiledArray::Pmap>
+    default_pmap(madness::World& world, const std::size_t size) {
+      return std::shared_ptr<TiledArray::Pmap>(new default_pmap_type(world, size));
+    }
   }; // class DensePolicy
 
 } // namespace TiledArray
