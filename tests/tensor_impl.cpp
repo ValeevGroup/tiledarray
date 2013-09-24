@@ -34,8 +34,9 @@ struct TensorImplBaseFixture : public TiledRangeFixture {
     shape_tensor(tr.tiles(), 0.0),
     pmap(new detail::HashPmap(* GlobalFixture::world, tr.tiles().volume()))
   {
-    for(Tensor<float>::iterator it = shape_tensor.begin(); it != shape_tensor.end(); std::advance(it, 3))
-      *it = 1.0;
+    for(Tensor<float>::iterator it = shape_tensor.begin(); it != shape_tensor.end(); ++it)
+      if((std::distance(shape_tensor.begin(), it) % 3) == 0)
+        *it = 1.0;
   }
 
   Tensor<float> shape_tensor;
@@ -72,7 +73,7 @@ BOOST_AUTO_TEST_CASE( constructor_dense_policy )
 
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
-  BOOST_CHECK(x.pmap().get() == NULL);
+  BOOST_CHECK(x.pmap() == pmap);
   BOOST_CHECK_EQUAL(x.range(), tr.tiles());
   BOOST_CHECK_EQUAL(x.trange(), tr);
   BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
@@ -88,7 +89,7 @@ BOOST_AUTO_TEST_CASE( constructor_shape_policy )
 
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
-  BOOST_CHECK(x.pmap().get() == NULL);
+  BOOST_CHECK(x.pmap() == pmap);
   BOOST_CHECK_EQUAL(x.range(), tr.tiles());
   BOOST_CHECK_EQUAL(x.trange(), tr);
   BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
