@@ -63,15 +63,6 @@ namespace TiledArray {
 
     protected:
 
-      /// Set tile count
-
-      /// \param tiles The number of tiles in this tensor
-      void set_tile_count(const int tiles) {
-        TA_ASSERT(tiles >= 0);
-        TA_ASSERT(tiles < int(TensorImpl_::size()));
-        task_count_ = tiles;
-      }
-
       /// Map an index value from the unpermuted index space to the permuted index space
 
       /// \param i The index in the unpermuted index space
