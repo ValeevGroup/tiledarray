@@ -49,18 +49,22 @@ namespace TiledArray {
       typedef typename scalar_type<value_type>::type numeric_type;
 
     private:
-      madness::Future<tile_type> tile_; ///< The input tile
+      tile_type tile_; ///< The input tile
       std::shared_ptr<op_type> op_; ///< The operation that will be applied to argument tiles
 
     public:
       /// Default constructor
       LazyArrayTile() :
-        tile_(madness::Future<tile_type>::default_initializer()), op_()
+        tile_(), op_()
       { }
 
+      /// Copy constructor
+
+      /// \param other The LazyArrayTile object to be copied
       LazyArrayTile(const LazyArrayTile_& other) : tile_(other.tile_), op_(other.op_) { }
 
-      LazyArrayTile(const madness::Future<tile_type>& tile, std::shared_ptr<op_type> op) :
+      /// Construct from tile and operation
+      LazyArrayTile(const tile_type& tile, std::shared_ptr<op_type> op) :
         tile_(tile), op_(op)
       { }
 
@@ -71,10 +75,7 @@ namespace TiledArray {
       }
 
       /// Convert tile to evaluation type
-      operator eval_type() const {
-        TA_ASSERT(tile_.probe());
-        return (*op_)(tile_);
-      }
+      operator eval_type() const { return (*op_)(tile_); }
 
       /// Serialization not implemented
       template <typename Archive>
@@ -98,7 +99,7 @@ namespace TiledArray {
     /// \tparam Policy The evaluator policy type
     template <typename Array, typename Op, typename Policy>
     class ArrayEvalImpl :
-//        public madness::WorldObject<ArrayEvalImpl<Array, Op, Policy> >,
+        public madness::WorldObject<ArrayEvalImpl<Array, Op, Policy> >,
         public DistEvalImpl<LazyArrayTile<Op>, Policy>
     {
     public:
@@ -138,7 +139,7 @@ namespace TiledArray {
 
     private:
 
-      void eval_tile(const size_type i, const madness::Future<typename array_type::value_type>& tile) {
+      void eval_tile(const size_type i, const typename array_type::value_type& tile) {
         TA_ASSERT(TensorImpl_::is_local(i));
         DistEvalImpl_::set_tile(i, value_type(tile, op_));
       }
