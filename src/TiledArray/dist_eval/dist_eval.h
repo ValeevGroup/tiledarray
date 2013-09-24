@@ -71,6 +71,11 @@ namespace TiledArray {
         return (perm_.dim() ? TensorImpl_::range().ord(perm_ ^ range_.idx(i)) : i);
       }
 
+      /// Permutation accessor
+
+      /// \return A const reference to the permutation
+      const Permutation& perm() const { return perm_; }
+
     public:
       /// Constructor
 
