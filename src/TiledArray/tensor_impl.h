@@ -456,7 +456,7 @@ namespace TiledArray {
       template <typename Index>
       bool is_zero(const Index& i) const {
         TA_ASSERT(trange_.tiles().includes(i));
-        return ! (shape_.is_zero(trange_.tiles().ord(i)));
+        return shape_.is_zero(trange_.tiles().ord(i));
       }
 
       /// Query the density of the tensor
