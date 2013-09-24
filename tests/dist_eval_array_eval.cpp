@@ -32,8 +32,6 @@
 
 using namespace TiledArray;
 
-
-
 struct ArrayEvalImplFixture : public ArrayFixture {
   typedef math::Scal<ArrayN::value_type::eval_type,
       ArrayN::value_type::eval_type, false> op_type;
@@ -50,6 +48,17 @@ BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalImplFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(impl_type(a, Permutation(), DenseShape(), a.get_pmap(), op));
+
+  impl_type impl(a, Permutation(), DenseShape(), a.get_pmap(), op);
+
+  BOOST_CHECK_EQUAL(& impl.get_world(), GlobalFixture::world);
+  BOOST_CHECK(impl.pmap() == a.get_pmap());
+  BOOST_CHECK_EQUAL(impl.range(), tr.tiles());
+  BOOST_CHECK_EQUAL(impl.trange(), tr);
+  BOOST_CHECK_EQUAL(impl.size(), tr.tiles().volume());
+  BOOST_CHECK(impl.is_dense());
+  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+    BOOST_CHECK(! impl.is_zero(i));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
