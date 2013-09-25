@@ -49,7 +49,7 @@ namespace TiledArray {
       typedef typename scalar_type<value_type>::type numeric_type;
 
     private:
-      tile_type tile_; ///< The input tile
+      mutable tile_type tile_; ///< The input tile
       std::shared_ptr<op_type> op_; ///< The operation that will be applied to argument tiles
       bool consume_; ///< If true, \c tile_ is consumable
 
