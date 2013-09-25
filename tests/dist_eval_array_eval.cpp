@@ -32,33 +32,130 @@
 
 using namespace TiledArray;
 
-struct ArrayEvalImplFixture : public ArrayFixture {
+// Array evaluator fixture
+struct ArrayEvalImplFixture : public TiledRangeFixture {
+  typedef Array<int, GlobalFixture::dim> ArrayN;
   typedef math::Scal<ArrayN::value_type::eval_type,
       ArrayN::value_type::eval_type, false> op_type;
   typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
-  ArrayEvalImplFixture() : op(3) { }
+
+
+  ArrayEvalImplFixture() : op(3), array(*GlobalFixture::world, tr) {
+    for(ArrayN::range_type::const_iterator it = array.range().begin(); it != array.range().end(); ++it)
+      if(array.is_local(*it)) {
+        ArrayN::value_type tile(array.trange().make_tile_range(*it));
+        for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
+          *tile_it = GlobalFixture::world->rand() % 101;
+        array.set(*it, tile); // Fill the tile at *it (the index)
+      }
+  }
 
   ~ArrayEvalImplFixture() { }
 
    op_type op;
+   ArrayN array;
 }; // ArrayEvalFixture
 
 BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(impl_type(a, Permutation(), DenseShape(), a.get_pmap(), op));
+  BOOST_REQUIRE_NO_THROW(impl_type(array, Permutation(), DenseShape(), array.get_pmap(), op));
 
-  impl_type impl(a, Permutation(), DenseShape(), a.get_pmap(), op);
+  impl_type impl(array, Permutation(), DenseShape(), array.get_pmap(), op);
 
   BOOST_CHECK_EQUAL(& impl.get_world(), GlobalFixture::world);
-  BOOST_CHECK(impl.pmap() == a.get_pmap());
+  BOOST_CHECK(impl.pmap() == array.get_pmap());
   BOOST_CHECK_EQUAL(impl.range(), tr.tiles());
   BOOST_CHECK_EQUAL(impl.trange(), tr);
   BOOST_CHECK_EQUAL(impl.size(), tr.tiles().volume());
   BOOST_CHECK(impl.is_dense());
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
     BOOST_CHECK(! impl.is_zero(i));
+}
+
+BOOST_AUTO_TEST_CASE( eval_scale )
+{
+  impl_type impl(array, Permutation(), DenseShape(), array.get_pmap(), op);
+  std::shared_ptr<impl_type> pimpl(& impl, & madness::detail::no_delete<impl_type>);
+  BOOST_REQUIRE_NO_THROW(impl.eval(pimpl));
+
+  impl_type::pmap_interface::const_iterator it = impl.pmap()->begin();
+  const impl_type::pmap_interface::const_iterator end = impl.pmap()->end();
+
+  // Check that each tile has been properly scaled.
+  for(; it != end; ++it) {
+    // Get the original type
+    ArrayN::value_type array_tile = array.find(*it);
+
+    // Get the array evaluator tile.
+    madness::Future<impl_type::value_type> impl_tile;
+    BOOST_REQUIRE_NO_THROW(impl_tile = impl.move(*it));
+
+    // Force the evaluation of the tile
+    impl_type::eval_type eval_tile;
+    BOOST_REQUIRE_NO_THROW(eval_tile = impl_tile.get());
+
+    // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
+    for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
+      BOOST_CHECK_EQUAL(eval_tile[i], 3 * array_tile[i]);
+    }
+
+  }
+}
+
+BOOST_AUTO_TEST_CASE( eval_permute )
+{
+  // Create permutation to be applied in the array evaluations
+  std::array<std::size_t, GlobalFixture::dim> p;
+  for(std::size_t i = 0; i < p.size(); ++i)
+    p[i] = (i + p.size() - 1) % p.size();
+  Permutation perm(p.begin(), p.end());
+
+  // Redefine the types for the new operation.
+  typedef math::Noop<ArrayN::value_type, ArrayN::value_type, false> op_type;
+  typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
+
+  // Construct the permuting operation.
+  op_type op(perm);
+
+  // Construct and evaluate
+  impl_type impl(array, perm, DenseShape(), array.get_pmap(), op);
+  std::shared_ptr<impl_type> pimpl(& impl, & madness::detail::no_delete<impl_type>);
+  BOOST_REQUIRE_NO_THROW(impl.eval(pimpl));
+
+  // Check that each tile has been moved to the correct location and has been
+  // properly permuted.
+  impl_type::pmap_interface::const_iterator it = impl.pmap()->begin();
+  const impl_type::pmap_interface::const_iterator end = impl.pmap()->end();
+  Permutation inv_perm = -perm;
+  for(; it != end; ++it) {
+    // Get the original type
+    ArrayN::value_type array_tile = array.find(inv_perm ^ impl.range().idx(*it));
+
+    // Get the corresponding array evaluator tile.
+    madness::Future<impl_type::value_type> impl_tile;
+    BOOST_REQUIRE_NO_THROW(impl_tile = impl.move(*it));
+
+    // Force the evaluation of the tile
+    impl_type::eval_type eval_tile;
+    BOOST_REQUIRE_NO_THROW(
+    try { \
+      eval_tile = impl_tile.get(); \
+    } catch(std::exception& e) { \
+      std::cout << e.what() << "\n"; \
+      throw; \
+    } \
+    );
+
+    // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), perm ^ array_tile.range());
+    for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
+      BOOST_CHECK_EQUAL(eval_tile[perm ^ array_tile.range().idx(i)], array_tile[i]);
+    }
+
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
