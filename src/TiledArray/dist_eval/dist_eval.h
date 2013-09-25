@@ -85,9 +85,9 @@ namespace TiledArray {
       /// \param shape The tensor shape bitset [ Default = 0 size bitset ]
       /// \note \c trange and \c shape will be permuted by \c perm before
       /// storing the data.
-      DistEvalImpl(madness::World& world, const Permutation& perm,
-          const trange_type& trange, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap) :
+      DistEvalImpl(madness::World& world, const trange_type& trange,
+          const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
+          const Permutation& perm) :
         TensorImpl_(world, (perm.dim() ? perm ^ trange : trange), shape, pmap),
         perm_(perm),
         range_(trange.tiles()),

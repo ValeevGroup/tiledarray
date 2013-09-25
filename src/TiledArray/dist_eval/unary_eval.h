@@ -31,10 +31,10 @@ namespace TiledArray {
     /// operation.
     /// \tparam Arg The evaluator argument type
     /// \tparam Policy The evaluator policy type
-    template <typename Arg, typename Policy>
+    template <typename Arg, typename Op, typename Policy>
     class UnaryEvalImpl : public DistEvalImpl<typename Arg::eval_type, Policy> {
     public:
-      typedef UnaryEvalImpl<Arg, Policy> UnaryEvalImpl_; ///< This object type
+      typedef UnaryEvalImpl<Arg, Op, Policy> UnaryEvalImpl_; ///< This object type
       typedef DistEvalImpl<typename Arg::eval_type, Policy> DistEvalImpl_; ///< The base class type
       typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
       typedef Arg arg_type; ///< The argument tensor type
@@ -44,8 +44,7 @@ namespace TiledArray {
       typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
       typedef typename DistEvalImpl_::trange_type trange_type; ///< tiled range type
       typedef typename DistEvalImpl_::value_type value_type; ///< value type
-      typedef typename DistEvalImpl_::future future; ///< Future type
-      typedef typename Policy::op_type op_type; ///< Tile evaluation operator type
+      typedef Op op_type; ///< Tile evaluation operator type
 
     public:
 
@@ -53,9 +52,10 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \param op The element transform operation
-      UnaryEvalImpl(const arg_type& arg, const Permutation& perm, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap, const op_type& op) :
-        DistEvalImpl_(arg.get_world(), perm, arg.trange(), shape, pmap),
+      UnaryEvalImpl(const arg_type& arg, const shape_type& shape,
+          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
+          const op_type& op) :
+        DistEvalImpl_(arg.get_world(), arg.trange(), shape, pmap, perm),
         arg_(arg),
         op_(op)
       { }

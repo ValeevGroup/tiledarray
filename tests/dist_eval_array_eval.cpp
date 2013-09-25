@@ -60,9 +60,9 @@ BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(impl_type(array, Permutation(), DenseShape(), array.get_pmap(), op));
+  BOOST_REQUIRE_NO_THROW(impl_type(array, DenseShape(), array.get_pmap(), Permutation(), op));
 
-  impl_type impl(array, Permutation(), DenseShape(), array.get_pmap(), op);
+  impl_type impl(array, DenseShape(), array.get_pmap(), Permutation(), op);
 
   BOOST_CHECK_EQUAL(& impl.get_world(), GlobalFixture::world);
   BOOST_CHECK(impl.pmap() == array.get_pmap());
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( eval_scale )
 {
-  impl_type impl(array, Permutation(), DenseShape(), array.get_pmap(), op);
+  impl_type impl(array, DenseShape(), array.get_pmap(), Permutation(), op);
   std::shared_ptr<impl_type> pimpl(& impl, & madness::detail::no_delete<impl_type>);
   BOOST_REQUIRE_NO_THROW(impl.eval(pimpl));
 
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE( eval_permute )
   op_type op(perm);
 
   // Construct and evaluate
-  impl_type impl(array, perm, DenseShape(), array.get_pmap(), op);
+  impl_type impl(array, DenseShape(), array.get_pmap(), perm, op);
   std::shared_ptr<impl_type> pimpl(& impl, & madness::detail::no_delete<impl_type>);
   BOOST_REQUIRE_NO_THROW(impl.eval(pimpl));
 

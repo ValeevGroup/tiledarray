@@ -134,9 +134,10 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \param op The element transform operation
-      ArrayEvalImpl(const array_type& array, const Permutation& perm, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap, const op_type& op) :
-        DistEvalImpl_(array.get_world(), perm, array.trange(), shape, pmap),
+      ArrayEvalImpl(const array_type& array, const shape_type& shape,
+          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
+          const op_type& op) :
+        DistEvalImpl_(array.get_world(), array.trange(), shape, pmap, perm),
         array_(array),
         op_(new op_type(op)),
         inv_perm_(-perm)
