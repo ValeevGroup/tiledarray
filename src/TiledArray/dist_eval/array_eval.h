@@ -51,31 +51,41 @@ namespace TiledArray {
     private:
       tile_type tile_; ///< The input tile
       std::shared_ptr<op_type> op_; ///< The operation that will be applied to argument tiles
+      bool consume_; ///< If true, \c tile_ is consumable
 
     public:
       /// Default constructor
       LazyArrayTile() :
-        tile_(), op_()
+        tile_(), op_(), consume_(false)
       { }
 
       /// Copy constructor
 
       /// \param other The LazyArrayTile object to be copied
-      LazyArrayTile(const LazyArrayTile_& other) : tile_(other.tile_), op_(other.op_) { }
+      LazyArrayTile(const LazyArrayTile_& other) :
+        tile_(other.tile_), op_(other.op_), consume_(other.consume_)
+      { }
 
       /// Construct from tile and operation
-      LazyArrayTile(const tile_type& tile, std::shared_ptr<op_type> op) :
-        tile_(tile), op_(op)
+
+      /// \param tile The input tile that will be modified
+      /// \param op The operation to be applied to the input tile
+      /// \param consume If true, the input tile may be consumed by \c op
+      LazyArrayTile(const tile_type& tile, std::shared_ptr<op_type> op, const bool consume) :
+        tile_(tile), op_(op), consume_(consume)
       { }
+
 
       LazyArrayTile_& operator=(const LazyArrayTile_& other) {
         tile_ = other.tile_;
         op_ = other.op_;
+        consume_ = other.consume_;
+
         return *this;
       }
 
       /// Convert tile to evaluation type
-      operator eval_type() const { return (*op_)(tile_); }
+      operator eval_type() const { return (*op_)(tile_, consume_); }
 
       /// Serialization not implemented
       template <typename Archive>
@@ -141,8 +151,8 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \param tile The array tile that is the basis for lazy tile
-      void set_tile(const size_type i, const typename array_type::value_type& tile) {
-        DistEvalImpl_::set_tile(i, value_type(tile, op_));
+      void set_tile(const size_type i, const typename array_type::value_type& tile, const bool consume) {
+        DistEvalImpl_::set_tile(i, value_type(tile, op_, consume));
       }
 
       /// Get the array tile that corresponds to the target tile
@@ -151,18 +161,16 @@ namespace TiledArray {
       /// get the array tile index.
       /// \param inv_perm The inverse permutation
       /// \param i The target tile index
-      madness::Future<typename array_type::value_type>
-      get_array_tile(const Permutation& inv_perm, const size_type i) {
-        return array_.find(inv_perm ^ TensorImpl_::range().idx(i));
+      size_type get_array_index(const Permutation& inv_perm, const size_type i) {
+        return array_.range().ord(inv_perm ^ TensorImpl_::range().idx(i));
       }
 
       /// Get the array tile that corresponds to the target tile
 
       /// No permutation is applied to the target index.
       /// \param i The target tile index
-      madness::Future<typename array_type::value_type>
-      get_array_tile(const NoPermutation, const size_type i) {
-        return array_.find(i);
+      size_type get_array_index(const NoPermutation, const size_type i) {
+        return i;
       }
 
       /// Evaluate tiles for this operation
@@ -185,22 +193,25 @@ namespace TiledArray {
             TensorImpl_::pmap()->begin();
 
         for(; it != end; ++it) {
-          const size_type i = *it;
+          const size_type i = *it; // The target index
           if(! TensorImpl_::is_zero(i)) {
 
+            // Get the array index that corresponds to the target index
+            const size_type array_index = get_array_index(inv_perm, i);
+
             // Get the tile from array_, which may be located on a remote node.
+            const bool consumable_tile = ! array_.is_local(array_index);
             madness::Future<typename array_type::value_type> tile =
-                get_array_tile(inv_perm, i);
+                array_.find(array_index);
 
             // Insert the tile into this evaluator for subsequent processing
             if(tile.probe()) {
               // Skip the task since the tile is ready
-              ArrayEvalImpl_::set_tile(i, value_type(tile, op_));
+              DistEvalImpl_::set_tile(i, value_type(tile, op_, consumable_tile));
             } else {
               // Spawn a task to set the tile the input tile is ready.
-              TensorImpl_::get_world().taskq.add(self,
-                  & ArrayEvalImpl_::set_tile, i, tile,
-                  madness::TaskAttributes::hipri());
+              TensorImpl_::get_world().taskq.add(self, & ArrayEvalImpl_::set_tile,
+                  i, tile, consumable_tile, madness::TaskAttributes::hipri());
             }
 
             ++task_count;
