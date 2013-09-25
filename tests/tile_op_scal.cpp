@@ -124,6 +124,68 @@ BOOST_AUTO_TEST_CASE( unary_scale_consume )
   }
 }
 
+BOOST_AUTO_TEST_CASE( unary_scale_runtime_consume )
+{
+  math::Scal<Tensor<int>, Tensor<int>, false> scal_op(7);
+  const Tensor<int> ax(a.range(), a.begin());
+
+  // Store the sum of a and b in c
+  BOOST_CHECK_NO_THROW(b = scal_op(a, true));
+
+  // Check that the result range is correct
+  BOOST_CHECK_EQUAL(b.range(), a.range());
+
+  // Check that a nor b were consumed
+  BOOST_CHECK_EQUAL(b.data(), a.data());
+
+  // Check that the data in the new tile is correct
+  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    BOOST_CHECK_EQUAL(b[i], 7 * ax[i]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( unary_scale_runtime_no_consume )
+{
+  math::Scal<Tensor<int>, Tensor<int>, true> scal_op(7);
+
+  // Store the sum of a and b in c
+  BOOST_CHECK_NO_THROW(b = scal_op(a, false));
+
+  // Check that the result range is correct
+  BOOST_CHECK_EQUAL(b.range(), a.range());
+
+  // Check that a nor b were consumed
+  BOOST_CHECK_NE(b.data(), a.data());
+
+  // Check that the data in the new tile is correct
+  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    BOOST_CHECK_EQUAL(b[i], 7 * a[i]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( unary_scale_runtime_const_no_consume )
+{
+  math::Scal<Tensor<int>, Tensor<int>, true> scal_op(7);
+  const Tensor<int>& ca = a;
+
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(scal_op(ca, true), Exception);
+#endif // TA_EXCEPTION_ERROR
+
+  // Store the sum of a and b in c
+  BOOST_CHECK_NO_THROW(b = scal_op(ca, false));
+
+  // Check that the result range is correct
+  BOOST_CHECK_EQUAL(b.range(), ca.range());
+
+  // Check that a nor b were consumed
+  BOOST_CHECK_NE(b.data(), ca.data());
+
+  // Check that the data in the new tile is correct
+  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    BOOST_CHECK_EQUAL(b[i], 7 * ca[i]);
+  }
+}
 
 BOOST_AUTO_TEST_CASE( unary_scale_perm_consume )
 {

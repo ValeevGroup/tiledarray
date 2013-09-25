@@ -58,7 +58,7 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(argument_type arg) const {
+      result_type permute(const Arg& arg) const {
         result_type result;
         TiledArray::math::permute(result, perm_, arg, negate_op());
         return result;
@@ -71,14 +71,14 @@ namespace TiledArray {
       template <bool C>
       static typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(argument_type arg) {
+      no_permute(const Arg& arg) {
         return -arg;
       }
 
       template <bool C>
       static typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(argument_type arg) {
+      no_permute(Arg& arg) {
         vector_assign(arg.size(), arg.data(), negate_assign_op());
         return arg;
       }
@@ -118,6 +118,32 @@ namespace TiledArray {
           return permute(arg);
 
         return no_permute<Consumable>(arg);
+      }
+
+      /// Negate a tile and possibly permute
+
+      /// \param arg The argument
+      /// \return The negation and permutation of \c arg
+      result_type operator()(Arg& arg, const bool consume) const {
+        if(perm_.dim() > 1)
+          return permute(arg);
+
+        if(consume)
+          return no_permute<true>(arg);
+
+        return no_permute<false>(arg);
+      }
+
+      /// Negate a tile and possibly permute
+
+      /// \param arg The argument
+      /// \return The negation and permutation of \c arg
+      result_type operator()(const Arg& arg, const bool consume) const {
+        TA_ASSERT(! consume); // consume flag cannot be respected due to arg constness.
+        if(perm_.dim() > 1)
+          return permute(arg);
+
+        return no_permute<false>(arg);
       }
     }; // class Neg
 

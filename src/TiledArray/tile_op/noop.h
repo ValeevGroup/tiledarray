@@ -54,7 +54,7 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(argument_type arg) const {
+      result_type permute(const Arg& arg) const {
         return perm_ ^ arg;
       }
 
@@ -65,16 +65,12 @@ namespace TiledArray {
       template <bool C>
       static typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(argument_type arg) {
-        return arg.clone();
-      }
+      no_permute(const Arg& arg) { return arg.clone(); }
 
       template <bool C>
       static typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(argument_type arg) {
-        return arg;
-      }
+      no_permute(Arg& arg) { return arg; }
 
     public:
       /// Default constructor
@@ -111,6 +107,40 @@ namespace TiledArray {
           return permute(arg);
 
         return no_permute<Consumable>(arg);
+      }
+
+      /// No operation or possibly permute
+
+      /// Permute if the operation has a valid permutation, otherwise clone
+      /// \c arg when \c consume is false or (shallow) copy when consume is
+      /// \c true .
+      /// \param arg The argument
+      /// \param consume Indicates the consumable behavior
+      /// \return The sum and permutation of \c arg
+      result_type operator()(Arg& arg, const bool consume) const {
+        if(perm_.dim() > 1)
+          return permute(arg);
+
+        if(consume)
+          return no_permute<true>(arg);
+
+        return no_permute<false>(arg);
+      }
+
+      /// No operation or possibly permute
+
+      /// Permute if the operation has a valid permutation, otherwise clone
+      /// \c arg . Never consumes \c arg since it is const.
+      /// \param arg The argument
+      /// \param consume Indicates the consumable behavior
+      /// \return The sum and permutation of \c arg
+      /// \throw TiledArray::Exception If \c consume is \c true .
+      result_type operator()(const Arg& arg, const bool consume) const {
+        TA_ASSERT(! consume); // consume flag cannot be respected due to arg constness.
+        if(perm_.dim() > 1)
+          return permute(arg);
+
+        return no_permute<false>(arg);
       }
     }; // class Noop
 

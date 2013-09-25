@@ -60,7 +60,7 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(argument_type arg) const {
+      result_type permute(const Arg& arg) const {
         result_type result;
         TiledArray::math::permute(result, perm_, arg, scale_op(factor_));
         return result;
@@ -73,17 +73,12 @@ namespace TiledArray {
       template <bool C>
       typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(argument_type arg) const {
-        return arg * factor_;
-      }
+      no_permute(const Arg& arg) const { return arg * factor_; }
 
       template <bool C>
       typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(argument_type arg) const {
-        vector_assign(arg.size(), arg.data(), scale_assign_op(factor_));
-        return arg;
-      }
+      no_permute(Arg& arg) const { return (arg *= factor_); }
 
     public:
       /// Default constructor
@@ -133,6 +128,41 @@ namespace TiledArray {
           return permute(arg);
 
         return no_permute<Consumable>(arg);
+      }
+
+      /// Scale a tile and possibly permute
+
+      /// Scale \c arg and permute if the operation has a valid permutation. If
+      /// \c consume is \c true ,  \c arg will be consumed by this operation
+      /// if the result is not permuted.
+      /// operation.
+      /// \param arg The argument
+      /// \param consume Indicates the consumable behavior
+      /// \return A scaled and permuted \c arg
+      result_type operator()(Arg& arg, const bool consume) const {
+        if(perm_.dim() > 1)
+          return permute(arg);
+
+        if(consume)
+          return no_permute<true>(arg);
+
+        return no_permute<false>(arg);
+      }
+
+      /// Scale a tile and possibly permute
+
+      /// Scale \c arg and permute if the operation has a valid permutation.
+      /// Never consumes \c arg since it is const.
+      /// \param arg The argument
+      /// \param consume Indicates the consumable behavior
+      /// \return A scaled and permuted \c arg
+      /// \throw TiledArray::Exception If \c consume is \c true .
+      result_type operator()(const Arg& arg, const bool consume) const {
+        TA_ASSERT(! consume); // consume flag cannot be respected due to arg constness.
+        if(perm_.dim() > 1)
+          return permute(arg);
+
+        return no_permute<false>(arg);
       }
     }; // class Scal
 
