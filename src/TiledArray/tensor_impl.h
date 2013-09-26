@@ -21,8 +21,7 @@
 #define TILEDARRAY_TENSOR_IMPL_H__INCLUDED
 
 #include <TiledArray/distributed_storage.h>
-#include <TiledArray/tiled_range.h>
-#include <TiledArray/bitset.h>
+#include <TiledArray/transform_iterator.h>
 
 namespace TiledArray {
   namespace detail {
@@ -174,12 +173,12 @@ namespace TiledArray {
       typename Impl::pmap_interface::const_iterator it_;
 
     public:
-      typedef ptrdiff_t difference_type;                        ///< Difference type
+      typedef ptrdiff_t difference_type; ///< Difference type
       typedef typename Impl::future value_type; ///< Iterator dereference value type
-      typedef PointerProxy<value_type> pointer;                 ///< Pointer type to iterator value
-      typedef Reference reference;                             ///< Reference type to iterator value
-      typedef std::forward_iterator_tag iterator_category;        ///< Iterator category type
-      typedef TensorIterator<Impl, Reference> TensorIterator_;       ///< This object type
+      typedef PointerProxy<value_type> pointer; ///< Pointer type to iterator value
+      typedef Reference reference; ///< Reference type to iterator value
+      typedef std::forward_iterator_tag iterator_category; ///< Iterator category type
+      typedef TensorIterator<Impl, Reference> TensorIterator_; ///< This object type
       typedef typename Impl::range_type::index index_type;
       typedef typename Impl::size_type ordinal_type;
 
@@ -584,6 +583,12 @@ namespace TiledArray {
       /// \return A reference to the world that contains this tensor
       madness::World& get_world() const { return data_.get_world(); }
 
+
+      /// Unique object id accessor
+
+      /// \return A const reference to this object unique id
+      const madness::uniqueidT& id() const { return data_.id(); }
+
       /// Set tile
 
       /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,
@@ -606,15 +611,9 @@ namespace TiledArray {
       /// is destroyed. This function only removes them from the container.
       void clear() { data_.clear(); }
 
-    }; // class TensorImplBase
+    }; // class TensorImpl
 
   }  // namespace detail
 }  // namespace TiledArray
-
-
-// These specializations are used to modify the type that is stored by
-// MADNESS task functions. The result is that the task function will store
-// a future to the tile type instead of the TileReference or
-// TileConstReference objects.
 
 #endif // TILEDARRAY_TENSOR_IMPL_H__INCLUDED
