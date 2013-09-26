@@ -357,10 +357,10 @@ namespace TiledArray {
       /// \param world The world where the sync object lives
       /// \param key The sync key
       /// \param op The sync operation to be executed on this node
-      static void make(madness::World& world, const keyT& key, opT op) {
+      static void make(madness::World& world, const keyT& key, const opT& op) {
         if(world.size() == 1) {
-          op(); // No need to do more than run the sync object when
-          // there is only one node
+          op(); // No need to do more than run the sync
+                // object when there is only one node.
         } else {
           accessor acc;
           LazySync_* p = insert(acc, world, key);
