@@ -126,7 +126,10 @@ namespace TiledArray {
 
       /// Remove all local data.
       /// \throw nothing
-      void clear() { data_.clear(); }
+      void clear() {
+        pmap_.reset();
+        data_.clear();
+      }
 
       /// Number of local elements
 
@@ -163,6 +166,7 @@ namespace TiledArray {
 
       /// Insert an empty future into all locally owned elements
       void insert_local() {
+        TA_ASSERT(pmap_);
         typename pmap_interface::const_iterator end = pmap_->end();
         for(typename pmap_interface::const_iterator it = pmap_->begin(); it != end; ++it) {
           data_.insert(*it);
@@ -176,6 +180,7 @@ namespace TiledArray {
       /// index
       template <typename Pred>
       void insert_local(const Pred& pred) {
+        TA_ASSERT(pmap_);
         typename pmap_interface::const_iterator end = pmap_->end();
         for(typename pmap_interface::const_iterator it = pmap_->begin(); it != end; ++it) {
           if(pred(*it))
@@ -507,7 +512,7 @@ namespace TiledArray {
       const size_type max_size_; ///< The maximum number of elements that can be stored by this container
       std::shared_ptr<pmap_interface> pmap_; ///< The process map that defines the element distribution
       mutable container_type data_; ///< The local data container
-    };
+    }; // class DistributedStorage
 
   }  // namespace detail
 }  // namespace TiledArray
