@@ -40,6 +40,7 @@ namespace TiledArray {
 
       madness::World& world_; ///< The world where the sync object lives
       keyT key_; ///< The sync key
+      bool ready_; ///< Flag that indicates the the sync object has been reached on this node
       ProcessID parent_; ///< The parent node of this node ( = -1 if this is the root node)
       ProcessID child0_; ///< The first child node of this node (=-1 if there is no first child node)
       ProcessID child1_; ///< The second child node of this node (=-1 if there is no second child node)
@@ -55,7 +56,7 @@ namespace TiledArray {
       /// \param world The world where this sync object lives
       /// \param key The sync key
       LazySyncBase(madness::World& world, const keyT& key) :
-        world_(world), key_(key), parent_(-1), child0_(-1), child1_(-1),
+        world_(world), key_(key), ready_(false), parent_(-1), child0_(-1), child1_(-1),
         parent_wptr_(), child0_wptr_(), child1_wptr_()
       {
         world.mpi.binary_tree_info(0, parent_, child0_, child1_);
@@ -121,6 +122,10 @@ namespace TiledArray {
         return (child0_wptr_ || (child0_ == -1)) // Check that child0 is ready (or non-existent)
             && (child1_wptr_ || (child1_ == -1)); // Check that child1 is ready (or non-existent)
       }
+
+      void set_ready() { ready_ = true; }
+
+      bool ready() const { return (ready_ && children_ready()); }
 
       /// Set the parent world pointer
 
@@ -308,7 +313,9 @@ namespace TiledArray {
       /// Send an active message to the parent sync object that sets the
       /// child pointer and continues the synchronization process.
       void init_parent() const {
-        if(LazySyncBase_::children_ready()) { // True after all children have initialized this object
+        if(LazySyncBase_::ready()) {
+          // True after all children have initialized this object the sync point
+          // has been reached by on this node.
           if(LazySyncBase_::is_root()) {
             // This is the root node. When this condition is true,
             // all nodes have been fully initialized. It is now safe
@@ -366,6 +373,7 @@ namespace TiledArray {
           LazySync_* p = insert(acc, world, key);
 
           p->op_ = op;
+          p->set_ready();
           p->init_children();
         }
       }
