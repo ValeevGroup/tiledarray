@@ -38,69 +38,92 @@ namespace TiledArray {
     /// point. Deletion of the object is deferred to the next global sync point.
     /// \c T must define the member functions clear, id, and get_world.
     /// \tparam T The type of pointer that will be deleted
-    /// \tparam D The deleter type [ default = \c void(*)(T*) ]
-    template <typename T, typename D = void(*)(T*)>
-    class DistributedDeleter : private madness::DeferredDeleter<T, D>
-    {
-      /// The base class type
-      typedef madness::DeferredDeleter<T, D> deferred_deleter_type;
+    /// \tparam Deleter The deleter type [ default = \c void(*)(T*) ]
+    template <typename T, typename Deleter = void(*)(T*)>
+    class DistributedDeleter {
+
+      Deleter deleter_; ///< The pointer deleter function/functor
 
       /// Lazy cleaner object
 
       /// This object is used as the operation to lazy_sync and will be called
-      /// after all nodes have finished
-      class LazyCleaner {
+      /// after all nodes have called lazy_sync for the given object.
+      class LazyDelete {
         T* t_; ///< A pointer to the distributed object object
+        Deleter deleter_;
 
       public:
         /// Default constructor
-        LazyCleaner() : t_(NULL) { }
+        LazyDelete() : t_(NULL), deleter_() { }
 
         /// Constructor
 
-        /// \param t The object to be cleaned
-        LazyCleaner(T* t) : t_(t) { }
+        /// \param t The object to be deleted
+        /// \param d The deleter function
+        LazyDelete(T* t, const Deleter& d) :
+          t_(t), deleter_(d)
+        { }
 
         /// Copy constructor
 
         /// \param other The object to be copied
-        LazyCleaner(const LazyCleaner& other) : t_(other.t_) { }
+        LazyDelete(const LazyDelete& other) :
+          t_(other.t_), deleter_(other.deleter_)
+        { }
 
         /// Assignment operator
 
         /// \param other The object to be copied
         /// \return A reference to this object
-        LazyCleaner& operator=(const LazyCleaner& other) {
+        LazyDelete& operator=(const LazyDelete& other) {
           t_ = other.t_;
+          deleter_ = other.deleter_;
           return *this;
         }
 
         /// Do memory cleanup
         void operator()() const {
-          TA_ASSERT(t_);
-          t_->clear();
+          deleter_(t_);
         }
-      }; // class LazyClear
+      }; // class LazyDelete
+
+      /// Construct a default deleter for a function pointer
+      template <typename D>
+      static typename madness::enable_if<std::is_same<D, void(*)(T*)>, D>::type
+      default_deleter() { return & madness::detail::checked_delete<T>; }
+
+      /// Construct a default deleter for a functor
+      template <typename D>
+      static typename madness::disable_if<std::is_same<D, void(*)(T*)>, D>::type
+      default_deleter() { return D(); }
 
     public:
 
       /// Constructor
 
       /// \param world The world where the distributed object will live
-      DistributedDeleter(madness::World& world) :
-        deferred_deleter_type(world)
+      DistributedDeleter() :
+        deleter_(default_deleter<Deleter>())
       { }
 
-      DistributedDeleter(const DistributedDeleter<T, D>& other) :
-        deferred_deleter_type(other)
+      /// Constructor
+
+      /// \param world The world where the distributed object will live
+      DistributedDeleter(const Deleter& deleter) :
+        deleter_(deleter)
+      { }
+
+      DistributedDeleter(const DistributedDeleter<T, Deleter>& other) :
+        deleter_(other.deleter_)
       { }
 
       /// Assignment operator
 
       /// \param other The object to be copied
       /// \return A reference to this object
-      DistributedDeleter<T, D>& operator=(const DistributedDeleter<T, D>& other) {
-        deferred_deleter_type::operator=(other);
+      DistributedDeleter<T, Deleter>&
+      operator=(const DistributedDeleter<T, Deleter>& other) {
+        deleter_ = other.deleter_;
         return *this;
       }
 
@@ -113,8 +136,7 @@ namespace TiledArray {
       /// \param t The pointer to be deleted
       void operator()(T* t) {
         TA_ASSERT(t);
-        lazy_sync(t->get_world(), t->id(), LazyCleaner(t));
-        madness::DeferredDeleter<T>::operator()(t);
+        lazy_sync(t->get_world(), t->id(), LazyDelete(t, deleter_));
       }
     }; // class DistributedDeleter
 
@@ -127,7 +149,7 @@ namespace TiledArray {
     /// \return A shared pointer to p
     template <typename T>
     inline std::shared_ptr<T> make_distributed_shared_ptr(T* p) {
-      return std::shared_ptr<T>(p, DistributedDeleter<T>(p->get_world()));
+      return std::shared_ptr<T>(p, DistributedDeleter<T>());
     }
 
     /// Create a shared pointer to a \c DistributedStorage object.
@@ -141,7 +163,7 @@ namespace TiledArray {
     template <typename T, typename D>
     inline std::shared_ptr<T> make_distributed_shared_ptr(T* p, const D& d) {
       TA_ASSERT(p);
-      return std::shared_ptr<T>(p, DistributedDeleter<T, D>(p->get_world(), d));
+      return std::shared_ptr<T>(p, DistributedDeleter<T, D>(d));
     }
 
 
