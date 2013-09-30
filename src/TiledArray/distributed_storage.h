@@ -164,30 +164,6 @@ namespace TiledArray {
         return false;
       }
 
-      /// Insert an empty future into all locally owned elements
-      void insert_local() {
-        TA_ASSERT(pmap_);
-        typename pmap_interface::const_iterator end = pmap_->end();
-        for(typename pmap_interface::const_iterator it = pmap_->begin(); it != end; ++it) {
-          data_.insert(*it);
-        }
-      }
-
-      /// Insert an empty future into all locally owned elements where \c pred \c true
-
-      /// \tparam Pred A predicate type
-      /// \param pred A predicate that returns true or false for a given element
-      /// index
-      template <typename Pred>
-      void insert_local(const Pred& pred) {
-        TA_ASSERT(pmap_);
-        typename pmap_interface::const_iterator end = pmap_->end();
-        for(typename pmap_interface::const_iterator it = pmap_->begin(); it != end; ++it) {
-          if(pred(*it))
-            data_.insert(*it);
-        }
-      }
-
       /// Set element \c i with \c value
 
       /// The owner of \c i may be local or remote. If \c i is remote, a task
@@ -230,7 +206,7 @@ namespace TiledArray {
           }
         } else {
           if(f.probe()) {
-            // f is ready, so it can be immidiately sent to the owner.
+            // f is ready, so it can be sent immediately to the owner.
             set_value(i, f.get());
           } else {
             // f is not ready, so create a callback to send it to the owner when
@@ -238,25 +214,6 @@ namespace TiledArray {
             DelayedSet* set_callback = new DelayedSet(*this, i, f);
             const_cast<future&>(f).register_callback(set_callback);
           }
-        }
-      }
-
-      /// Set element \c i with \c value
-
-      /// The owner of \c i may be local or remote. If \c i is remote, a task
-      /// is spawned on the owning node to set it. If \c i is not already in
-      /// the container, it will be inserted.
-      /// \param i The element to be set
-      /// \param value The value of element \c i
-      /// \throw TiledArray::Exception If \c i is greater than or equal to \c max_size() .
-      /// \throw madness::MadnessException If \c i has already been set.
-      void set(size_type i, const madness::detail::MoveWrapper<value_type>& value) {
-        TA_ASSERT(i < max_size_);
-        if(is_local(i)) {
-          set_local_value(i, value);
-        } else {
-          WorldObject_::send(owner(i), & DistributedStorage_::set_value, i,
-              madness::unwrap_move(value));
         }
       }
 
