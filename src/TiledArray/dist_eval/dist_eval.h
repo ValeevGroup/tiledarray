@@ -47,6 +47,7 @@ namespace TiledArray {
       typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
       typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
       typedef typename TensorImpl_::value_type value_type; ///< Tile type
+      typedef typename value_type::eval_type eval_type; ///< Tile evaluation type
 
     private:
       const Permutation perm_; ///< The permutation to be applied to this tensor
@@ -179,6 +180,7 @@ namespace TiledArray {
       typedef typename impl_type::shape_type shape_type; ///< Tensor shape type
       typedef typename impl_type::pmap_interface pmap_interface; ///< Process map interface type
       typedef typename impl_type::value_type value_type; ///< Tile type
+      typedef typename impl_type::eval_type eval_type; ///< Tile evaluation type
       typedef typename impl_type::future future; ///< Future of tile type
 
       /// Constructor
