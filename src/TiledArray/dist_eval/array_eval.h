@@ -37,14 +37,13 @@ namespace TiledArray {
 
     /// \tparam Result The result tile type for the lazy tile
     /// \tparam
-    template <typename Op>
+    template <typename Tile, typename Op>
     class LazyArrayTile {
     public:
-      typedef LazyArrayTile<Op> LazyArrayTile_; ///< This class type
+      typedef LazyArrayTile<Tile, Op> LazyArrayTile_; ///< This class type
       typedef Op op_type; ///< The operation that will modify this tile
       typedef typename op_type::result_type eval_type; ///< The evaluation type for this tile
-      typedef typename detail::remove_cvr<typename op_type::argument_type>::type
-          tile_type; ///< The input tile type
+      typedef Tile tile_type; ///< The input tile type
       typedef typename tile_type::value_type value_type; ///< Tile element type
       typedef typename scalar_type<value_type>::type numeric_type;
 
@@ -108,11 +107,12 @@ namespace TiledArray {
     /// subsequent operations.
     /// \tparam Policy The evaluator policy type
     template <typename Array, typename Op, typename Policy>
-    class ArrayEvalImpl : public DistEvalImpl<LazyArrayTile<Op>, Policy>
+    class ArrayEvalImpl :
+        public DistEvalImpl<LazyArrayTile<typename Array::value_type, Op>, Policy>
     {
     public:
       typedef ArrayEvalImpl<Array, Op, Policy> ArrayEvalImpl_; ///< This object type
-      typedef DistEvalImpl<LazyArrayTile<Op>, Policy> DistEvalImpl_; ///< The base class type
+      typedef DistEvalImpl<LazyArrayTile<typename Array::value_type, Op>, Policy> DistEvalImpl_; ///< The base class type
       typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
       typedef Array array_type; ///< The array type
       typedef typename DistEvalImpl_::size_type size_type; ///< Size type
