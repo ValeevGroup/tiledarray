@@ -549,25 +549,4 @@ BOOST_AUTO_TEST_CASE( delayed_move_remote )
 
 }
 
-BOOST_AUTO_TEST_CASE( clear )
-{
-  // Insert all local tiles
-  for(std::size_t i = 0; i < impl.size(); ++i) {
-    if(impl.is_local(i))
-      impl.set(i, madness::Future<value_type>());
-  }
-
-  // Check that there are tiles inserted locally
-  BOOST_CHECK_EQUAL(impl.local_size(), pmap->local_size());
-  if(impl.local_size() > 0)
-    BOOST_CHECK(impl.begin() != impl.end());
-  else
-    BOOST_CHECK(impl.begin() == impl.end());
-
-  impl.clear();
-
-  BOOST_CHECK_EQUAL(impl.local_size(), 0ul);
-
-}
-
 BOOST_AUTO_TEST_SUITE_END()
