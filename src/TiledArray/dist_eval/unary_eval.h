@@ -33,10 +33,10 @@ namespace TiledArray {
     /// \tparam Op The tile operation to be applied to the input tiles
     /// \tparam Policy The evaluator policy type
     template <typename Arg, typename Op, typename Policy>
-    class UnaryEvalImpl : public DistEvalImpl<typename Arg::eval_type, Policy> {
+    class UnaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy> {
     public:
       typedef UnaryEvalImpl<Arg, Op, Policy> UnaryEvalImpl_; ///< This object type
-      typedef DistEvalImpl<typename Arg::eval_type, Policy> DistEvalImpl_; ///< The base class type
+      typedef DistEvalImpl<typename Op::result_type, Policy> DistEvalImpl_; ///< The base class type
       typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
       typedef Arg arg_type; ///< The argument tensor type
       typedef typename DistEvalImpl_::size_type size_type; ///< Size type
