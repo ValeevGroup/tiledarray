@@ -122,15 +122,6 @@ namespace TiledArray {
         return pmap_->is_local(i);
       }
 
-      /// Clear local data
-
-      /// Remove all local data.
-      /// \throw nothing
-      void clear() {
-        pmap_.reset();
-        data_.clear();
-      }
-
       /// Number of local elements
 
       /// No communication.

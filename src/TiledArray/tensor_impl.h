@@ -604,13 +604,6 @@ namespace TiledArray {
         data_.set(trange_.tiles().ord(i), value);
       }
 
-      /// Clear the tile data
-
-      /// Remove all local tiles from the tensor.
-      /// \note: Any tiles will remain in memory until the last reference
-      /// is destroyed. This function only removes them from the container.
-      void clear() { data_.clear(); }
-
     }; // class TensorImpl
 
   }  // namespace detail
