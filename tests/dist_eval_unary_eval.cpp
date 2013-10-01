@@ -41,7 +41,7 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   typedef detail::ArrayEvalImpl<ArrayN, array_op_type, DensePolicy> array_eval_impl_type;
   typedef detail::DistEval<array_eval_impl_type::value_type, DensePolicy> dist_eval_type;
   typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
-      true> op_type;
+      false> op_type;
   typedef detail::UnaryEvalImpl<dist_eval_type, op_type, DensePolicy> impl_type;
 
 
@@ -88,14 +88,16 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_CHECK(! unary.is_zero(i));
 
   typedef detail::DistEval<dist_eval_type1::eval_type, DensePolicy> dist_eval_type2;
-  typedef detail::UnaryEvalImpl<dist_eval_type2, op_type, DensePolicy> impl_type2;
+  typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
+      true> op_type2;
+  typedef detail::UnaryEvalImpl<dist_eval_type2, op_type2, DensePolicy> impl_type2;
 
 
-  BOOST_REQUIRE_NO_THROW(impl_type2(unary, DenseShape(), arg.pmap(), Permutation(), op_type(5)));
+  BOOST_REQUIRE_NO_THROW(impl_type2(unary, DenseShape(), arg.pmap(), Permutation(), op_type2(5)));
 
   dist_eval_type2 unary2(
       std::shared_ptr<typename dist_eval_type2::impl_type>(
-          new impl_type2(unary, DenseShape(), unary.pmap(), Permutation(), op_type(5))));
+          new impl_type2(unary, DenseShape(), unary.pmap(), Permutation(), op_type2(5))));
 
 
   BOOST_CHECK_EQUAL(& unary2.get_world(), GlobalFixture::world);
@@ -106,6 +108,88 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK(unary2.is_dense());
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
     BOOST_CHECK(! unary2.is_zero(i));
+}
+
+
+BOOST_AUTO_TEST_CASE( eval )
+{
+  typedef detail::DistEval<dist_eval_type::eval_type, DensePolicy> dist_eval_type1;
+
+  dist_eval_type1 dist_eval(
+      std::shared_ptr<typename impl_type::DistEvalImpl_>(
+          new impl_type(arg, DenseShape(), arg.pmap(), Permutation(), op_type(3))));
+
+  BOOST_REQUIRE_NO_THROW(dist_eval.eval());
+
+  impl_type::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
+  const impl_type::pmap_interface::const_iterator end = dist_eval.pmap()->end();
+
+  // Check that each tile has been properly scaled.
+  for(; it != end; ++it) {
+    // Get the original type
+    ArrayN::value_type array_tile = array.find(*it);
+
+    // Get the array evaluator tile.
+    madness::Future<impl_type::value_type> tile;
+    BOOST_REQUIRE_NO_THROW(tile = dist_eval.move(*it));
+
+    // Force the evaluation of the tile
+    impl_type::eval_type eval_tile;
+    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+
+    // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
+    for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
+      BOOST_CHECK_EQUAL(eval_tile[i], 3 * array_tile[i]);
+    }
+
+  }
+}
+
+BOOST_AUTO_TEST_CASE( double_eval )
+{
+  typedef detail::DistEval<dist_eval_type::eval_type, DensePolicy> dist_eval_type1;
+  typedef detail::DistEval<dist_eval_type1::eval_type, DensePolicy> dist_eval_type2;
+  typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
+      true> op_type2;
+  typedef detail::UnaryEvalImpl<dist_eval_type2, op_type2, DensePolicy> impl_type2;
+
+
+  dist_eval_type1 dist_eval(
+      std::shared_ptr<typename impl_type::DistEvalImpl_>(
+          new impl_type(arg, DenseShape(), arg.pmap(), Permutation(), op_type(3))));
+
+  dist_eval_type2 dist_eval2(
+      std::shared_ptr<typename dist_eval_type2::impl_type>(
+          new impl_type2(dist_eval, DenseShape(), dist_eval.pmap(), Permutation(), op_type2(5))));
+
+  BOOST_REQUIRE_NO_THROW(dist_eval2.eval());
+
+  impl_type::pmap_interface::const_iterator it = dist_eval2.pmap()->begin();
+  const impl_type::pmap_interface::const_iterator end = dist_eval2.pmap()->end();
+
+  // Check that each tile has been properly scaled.
+  for(; it != end; ++it) {
+    // Get the original type
+    ArrayN::value_type array_tile = array.find(*it);
+
+    // Get the array evaluator tile.
+    madness::Future<impl_type::value_type> tile;
+    BOOST_REQUIRE_NO_THROW(tile = dist_eval2.move(*it));
+
+    // Force the evaluation of the tile
+    impl_type::eval_type eval_tile;
+    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+
+    // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
+    for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
+      BOOST_CHECK_EQUAL(eval_tile[i], 5 * 3 * array_tile[i]);
+    }
+
+  }
+
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
