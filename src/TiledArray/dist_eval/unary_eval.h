@@ -113,8 +113,6 @@ namespace TiledArray {
           }
         }
 
-        arg_.release();
-
         return task_count;
       }
 
