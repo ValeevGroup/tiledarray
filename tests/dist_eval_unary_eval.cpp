@@ -154,11 +154,12 @@ BOOST_AUTO_TEST_CASE( double_eval )
       true> op_type2;
   typedef detail::UnaryEvalImpl<dist_eval_type2, op_type2, DensePolicy> impl_type2;
 
-
+  /// Construct a scaling unary evaluator
   dist_eval_type1 dist_eval(
       std::shared_ptr<typename impl_type::DistEvalImpl_>(
           new impl_type(arg, DenseShape(), arg.pmap(), Permutation(), op_type(3))));
 
+  /// Construct a two-step, scaling unary evaluator
   dist_eval_type2 dist_eval2(
       std::shared_ptr<typename dist_eval_type2::impl_type>(
           new impl_type2(dist_eval, DenseShape(), dist_eval.pmap(), Permutation(), op_type2(5))));
@@ -186,9 +187,57 @@ BOOST_AUTO_TEST_CASE( double_eval )
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], 5 * 3 * array_tile[i]);
     }
-
   }
 
+}
+
+BOOST_AUTO_TEST_CASE( perm_eval )
+{
+  typedef detail::DistEval<dist_eval_type::eval_type, DensePolicy> dist_eval_type1;
+  typedef detail::DistEval<dist_eval_type1::eval_type, DensePolicy> dist_eval_type2;
+  typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
+      true> op_type2;
+  typedef detail::UnaryEvalImpl<dist_eval_type2, op_type2, DensePolicy> impl_type2;
+
+  // Create permutation to be applied in the array evaluations
+  std::array<std::size_t, GlobalFixture::dim> p;
+  for(std::size_t i = 0; i < p.size(); ++i)
+    p[i] = (i + p.size() - 1) % p.size();
+  const Permutation perm(p.begin(), p.end());
+
+  dist_eval_type1 dist_eval(
+      std::shared_ptr<typename impl_type::DistEvalImpl_>(
+          new impl_type(arg, DenseShape(), arg.pmap(), Permutation(), op_type(3))));
+
+  dist_eval_type2 dist_eval2(
+      std::shared_ptr<typename dist_eval_type2::impl_type>(
+          new impl_type2(dist_eval, DenseShape(), dist_eval.pmap(), perm, op_type2(perm, 5))));
+
+  BOOST_REQUIRE_NO_THROW(dist_eval2.eval());
+
+  // Check that each tile has been properly scaled and permuted.
+  impl_type::pmap_interface::const_iterator it = dist_eval2.pmap()->begin();
+  const impl_type::pmap_interface::const_iterator end = dist_eval2.pmap()->end();
+  const Permutation inv_perm = -perm;
+  for(; it != end; ++it) {
+    // Get the original type
+    const ArrayN::value_type array_tile =
+        array.find(inv_perm ^ dist_eval2.range().idx(*it));
+
+    // Get the array evaluator tile.
+    madness::Future<impl_type::value_type> tile;
+    BOOST_REQUIRE_NO_THROW(tile = dist_eval2.move(*it));
+
+    // Force the evaluation of the tile
+    impl_type::eval_type eval_tile;
+    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+
+    // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), perm ^ array_tile.range());
+    for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
+      BOOST_CHECK_EQUAL(eval_tile[perm ^ array_tile.range().idx(i)], 5 * 3 * array_tile[i]);
+    }
+  }
 
 }
 
