@@ -135,8 +135,8 @@ namespace TiledArray {
         typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
         for(; it != end; ++it) {
           if(! arg_.is_zero(*it)) {
-            TensorImpl_::get_world().taskq.add(self,
-                & UnaryEvalImpl_::eval_tile, *it, arg_.move(*it));
+            TensorImpl_::get_world().taskq.add(self, & UnaryEvalImpl_::eval_tile,
+                DistEvalImpl_::perm_index(*it), arg_.move(*it));
             ++task_count;
           }
         }
