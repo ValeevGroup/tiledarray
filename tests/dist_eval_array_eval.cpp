@@ -38,6 +38,7 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
   typedef math::Scal<ArrayN::value_type::eval_type,
       ArrayN::value_type::eval_type, false> op_type;
   typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
+  typedef detail::DistEval<impl_type::value_type, DensePolicy> dist_eval_type;
 
 
   ArrayEvalImplFixture() : op(3), array(*GlobalFixture::world, tr) {
@@ -62,26 +63,29 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(impl_type(array, DenseShape(), array.get_pmap(), Permutation(), op));
 
-  impl_type impl(array, DenseShape(), array.get_pmap(), Permutation(), op);
+  dist_eval_type dist_eval(
+      std::shared_ptr<typename impl_type::DistEvalImpl_>(
+          new impl_type(array, DenseShape(), array.get_pmap(), Permutation(), op)));
 
-  BOOST_CHECK_EQUAL(& impl.get_world(), GlobalFixture::world);
-  BOOST_CHECK(impl.pmap() == array.get_pmap());
-  BOOST_CHECK_EQUAL(impl.range(), tr.tiles());
-  BOOST_CHECK_EQUAL(impl.trange(), tr);
-  BOOST_CHECK_EQUAL(impl.size(), tr.tiles().volume());
-  BOOST_CHECK(impl.is_dense());
+  BOOST_CHECK_EQUAL(& dist_eval.get_world(), GlobalFixture::world);
+  BOOST_CHECK(dist_eval.pmap() == array.get_pmap());
+  BOOST_CHECK_EQUAL(dist_eval.range(), tr.tiles());
+  BOOST_CHECK_EQUAL(dist_eval.trange(), tr);
+  BOOST_CHECK_EQUAL(dist_eval.size(), tr.tiles().volume());
+  BOOST_CHECK(dist_eval.is_dense());
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
-    BOOST_CHECK(! impl.is_zero(i));
+    BOOST_CHECK(! dist_eval.is_zero(i));
 }
 
 BOOST_AUTO_TEST_CASE( eval_scale )
 {
-  impl_type impl(array, DenseShape(), array.get_pmap(), Permutation(), op);
-  std::shared_ptr<impl_type> pimpl(& impl, & madness::detail::no_delete<impl_type>);
-  BOOST_REQUIRE_NO_THROW(impl.eval(pimpl));
+  dist_eval_type dist_eval(
+      std::shared_ptr<typename impl_type::DistEvalImpl_>(
+          new impl_type(array, DenseShape(), array.get_pmap(), Permutation(), op)));
+  BOOST_REQUIRE_NO_THROW(dist_eval.eval());
 
-  impl_type::pmap_interface::const_iterator it = impl.pmap()->begin();
-  const impl_type::pmap_interface::const_iterator end = impl.pmap()->end();
+  impl_type::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
+  const impl_type::pmap_interface::const_iterator end = dist_eval.pmap()->end();
 
   // Check that each tile has been properly scaled.
   for(; it != end; ++it) {
@@ -90,7 +94,7 @@ BOOST_AUTO_TEST_CASE( eval_scale )
 
     // Get the array evaluator tile.
     madness::Future<impl_type::value_type> impl_tile;
-    BOOST_REQUIRE_NO_THROW(impl_tile = impl.move(*it));
+    BOOST_REQUIRE_NO_THROW(impl_tile = dist_eval.move(*it));
 
     // Force the evaluation of the tile
     impl_type::eval_type eval_tile;
