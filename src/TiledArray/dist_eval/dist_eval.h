@@ -186,15 +186,17 @@ namespace TiledArray {
       /// Constructor
 
       /// \param pimpl A pointer to the expression implementation object
-      DistEval(const std::shared_ptr<impl_type>& pimpl) : pimpl_(pimpl) { }
+      DistEval(const std::shared_ptr<impl_type>& pimpl) :
+        pimpl_(pimpl)
+      {
+        TA_ASSERT(pimpl_);
+      }
 
       /// Copy constructor
 
       /// Create a shallow copy of \c other .
       /// \param other The object to be copied.
-      DistEval(const DistEval_& other) :
-          pimpl_(other.pimpl_)
-      { }
+      DistEval(const DistEval_& other) : pimpl_(other.pimpl_) { }
 
       /// Assignment operator
 
@@ -210,116 +212,71 @@ namespace TiledArray {
 
       /// \c v is the dimension ordering that the parent expression expects.
       /// The returned future will be evaluated once the tensor has been evaluated.
-      void eval() {
-        TA_ASSERT(pimpl_);
-        return pimpl_->eval(pimpl_);
-      }
+      void eval() { return pimpl_->eval(pimpl_); }
 
 
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
-      const range_type& range() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->range();
-      }
+      const range_type& range() const { return pimpl_->range(); }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
-      size_type size() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->size();
-      }
+      size_type size() const { return pimpl_->size(); }
 
       /// Query a tile owner
 
       /// \param i The tile index to query
       /// \return The process ID of the node that owns tile \c i
-      ProcessID owner(size_type i) const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->owner(i);
-      }
+      ProcessID owner(size_type i) const { return pimpl_->owner(i); }
 
       /// Query for a locally owned tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is owned by this node, otherwise \c false
-      bool is_local(size_type i) const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->is_local(i);
-      }
+      bool is_local(size_type i) const { return pimpl_->is_local(i); }
 
       /// Query for a zero tile
 
       /// \param i The tile index to query
       /// \return \c true if the tile is zero, otherwise \c false
-      bool is_zero(size_type i) const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->is_zero(i);
-      }
+      bool is_zero(size_type i) const { return pimpl_->is_zero(i); }
 
       /// Tensor process map accessor
 
       /// \return A shared pointer to the process map of this tensor
-      const std::shared_ptr<pmap_interface>& pmap() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->pmap();
-      }
+      const std::shared_ptr<pmap_interface>& pmap() const { return pimpl_->pmap(); }
 
       /// Query the density of the tensor
 
       /// \return \c true if the tensor is dense, otherwise false
-      bool is_dense() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->is_dense();
-      }
+      bool is_dense() const { return pimpl_->is_dense(); }
 
       /// Tensor shape accessor
 
       /// \return A reference to the tensor shape map
-      const shape_type& shape() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->shape();
-      }
+      const shape_type& shape() const { return pimpl_->shape(); }
 
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
-      const trange_type& trange() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->trange();
-      }
+      const trange_type& trange() const { return pimpl_->trange(); }
 
       /// Tile move
 
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
-      future move(size_type i) const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->move(i);
-      }
+      future move(size_type i) const { return pimpl_->move(i); }
 
       /// World object accessor
 
       /// \return A reference to the world object
-      madness::World& get_world() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->get_world();
-      }
+      madness::World& get_world() const { return pimpl_->get_world(); }
 
       /// Wait for all local tiles to be evaluated
-      void wait() const {
-        TA_ASSERT(pimpl_);
-        pimpl_->wait();
-      }
-
-      /// Release tensor data
-
-      /// Clear all tensor data from memory. This is equivalent to
-      /// \c UnaryTiledTensor().swap(*this) .
-      void release() { pimpl_.reset(); }
+      void wait() const { pimpl_->wait(); }
 
     protected:
       std::shared_ptr<impl_type> pimpl_; ///< pointer to the implementation object
