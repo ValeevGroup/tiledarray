@@ -309,6 +309,12 @@ namespace TiledArray {
         return pimpl_->get_world();
       }
 
+      /// Wait for all local tiles to be evaluated
+      void wait() const {
+        TA_ASSERT(pimpl_);
+        pimpl_->wait();
+      }
+
       /// Release tensor data
 
       /// Clear all tensor data from memory. This is equivalent to
