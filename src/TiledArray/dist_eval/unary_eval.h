@@ -29,7 +29,8 @@ namespace TiledArray {
 
     /// The tensor elements are constructed using a unary transformation
     /// operation.
-    /// \tparam Arg The evaluator argument type
+    /// \tparam Arg The input distributed evaluator argument type
+    /// \tparam Op The tile operation to be applied to the input tiles
     /// \tparam Policy The evaluator policy type
     template <typename Arg, typename Op, typename Policy>
     class UnaryEvalImpl : public DistEvalImpl<typename Arg::eval_type, Policy> {
@@ -42,8 +43,9 @@ namespace TiledArray {
       typedef typename DistEvalImpl_::range_type range_type; ///< Range type
       typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
       typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
-      typedef typename DistEvalImpl_::trange_type trange_type; ///< tiled range type
-      typedef typename DistEvalImpl_::value_type value_type; ///< value type
+      typedef typename DistEvalImpl_::trange_type trange_type; ///< Tiled range type
+      typedef typename DistEvalImpl_::value_type value_type; ///< Tile type
+      typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
       typedef Op op_type; ///< Tile evaluation operator type
 
     public:
@@ -65,8 +67,24 @@ namespace TiledArray {
 
     private:
 
-      void eval_tile(const size_type i, const typename arg_type::value_type& tile) {
+      void eval_tile_helper(const size_type i, typename op_type::argument_type tile) {
         DistEvalImpl_::set_tile(i, op_(tile));
+      }
+
+      template <typename T>
+      typename madness::disable_if<std::is_same<T, typename arg_type::eval_type> >::type
+      eval_tile_helper(const size_type i, const T& tile) {
+        typename arg_type::eval_type eval_tile = tile;
+        eval_tile_helper(i, eval_tile);
+      }
+
+      typedef typename madness::if_<std::is_const<typename op_type::argument_type>,
+          const typename arg_type::value_type,
+                typename arg_type::value_type>::type &
+              tile_argument_type;
+
+      void eval_tile(const size_type i, tile_argument_type tile) {
+        eval_tile_helper(i, tile);
       }
 
       /// Function for evaluating this tensor's tiles
@@ -77,7 +95,7 @@ namespace TiledArray {
       /// \return The number of local tiles
       virtual size_type eval_tiles(const std::shared_ptr<DistEvalImpl_>& pimpl) {
         // Counter for the number of tasks submitted by this object
-        const size_type task_count = 0ul;
+        size_type task_count = 0ul;
 
         // Convert pimpl to this object type so it can be used in tasks
         TA_ASSERT(this == pimpl.get());
