@@ -51,13 +51,12 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
         array.get_pmap(), Permutation(), array_op_type()))
   {
     // Fill array with random data
-    for(ArrayN::range_type::const_iterator it = array.range().begin(); it != array.range().end(); ++it)
-      if(array.is_local(*it)) {
-        ArrayN::value_type tile(array.trange().make_tile_range(*it));
-        for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
-          *tile_it = GlobalFixture::world->rand() % 101;
-        array.set(*it, tile); // Fill the tile at *it (the index)
-      }
+    for(ArrayN::iterator it = array.begin(); it != array.end(); ++it) {
+      ArrayN::value_type tile(array.trange().make_tile_range(it.index()));
+      for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
+        *tile_it = GlobalFixture::world->rand() % 101;
+      *it = tile;
+    }
   }
 
   ~UnaryEvalImplFixture() { }
