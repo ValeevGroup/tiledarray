@@ -69,7 +69,7 @@ namespace TiledArray {
       /// \param i The index in the unpermuted index space
       /// \return The corresponding index in the permuted index space
       size_type perm_index(size_type i) const {
-        return (perm_.dim() ? TensorImpl_::range().ord(perm_ ^ range_.idx(i)) : i);
+        return (perm_.dim() > 1u ? TensorImpl_::range().ord(perm_ ^ range_.idx(i)) : i);
       }
 
       /// Permutation accessor
@@ -82,14 +82,14 @@ namespace TiledArray {
 
       /// \param world The world where the tensor lives
       /// \param perm The permutation that is applied to the result tensor
-      /// \param trange The tiled range object
+      /// \param trange The unpermuted tiled range object
       /// \param shape The tensor shape bitset [ Default = 0 size bitset ]
       /// \note \c trange and \c shape will be permuted by \c perm before
       /// storing the data.
       DistEvalImpl(madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm) :
-        TensorImpl_(world, (perm.dim() ? perm ^ trange : trange), shape, pmap),
+        TensorImpl_(world, (perm.dim() > 1u ? perm ^ trange : trange), shape, pmap),
         perm_(perm),
         range_(trange.tiles()),
         task_count_(0),
