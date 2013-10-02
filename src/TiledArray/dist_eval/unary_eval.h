@@ -52,10 +52,10 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \param op The element transform operation
-      UnaryEvalImpl(const arg_type& arg, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
-          const op_type& op) :
-        DistEvalImpl_(arg.get_world(), arg.trange(), shape, pmap, perm),
+      UnaryEvalImpl(const arg_type& arg, madness::World& world,
+          const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
+          const Permutation& perm, const op_type& op) :
+        DistEvalImpl_(world, arg.trange(), shape, pmap, perm),
         arg_(arg),
         op_(op)
       { }
@@ -121,14 +121,16 @@ namespace TiledArray {
       /// has completed. It should spawn additional tasks that evaluate the
       /// individual result tiles.
       /// \return The number of local tiles
-      virtual size_type eval_tiles(const std::shared_ptr<DistEvalImpl_>& pimpl) {
-        // Counter for the number of tasks submitted by this object
-        size_type task_count = 0ul;
-
+      virtual size_type internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
         // Convert pimpl to this object type so it can be used in tasks
-        TA_ASSERT(this == pimpl.get());
         std::shared_ptr<UnaryEvalImpl_> self =
             std::static_pointer_cast<UnaryEvalImpl_>(pimpl);
+
+        // Evaluate argument
+        arg_.eval();
+
+        // Counter for the number of tasks submitted by this object
+        size_type task_count = 0ul;
 
         // Make sure all local tiles are present.
         const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
@@ -141,18 +143,43 @@ namespace TiledArray {
           }
         }
 
+        // Wait for local tiles of argument to be evaluated
+        arg_.wait();
+
         return task_count;
       }
-
-      /// Function for evaluating child tensors
-      virtual void eval_children() { arg_.eval(); }
-
-      /// Wait for tasks of children to finish
-      virtual void wait_children() const { arg_.wait(); }
 
       arg_type arg_; ///< Argument
       op_type op_; ///< The unary tile operation
     }; // class UnaryEvalImpl
+
+    /// Distrubuted unary evaluator factory function
+
+    /// Construct a distributed unary evaluator, which constructs a new tensor
+    /// by applying \c op to tiles of \c arg .
+    /// \tparam Tile Tile type of the argument
+    /// \tparam Policy The policy type of the argument
+    /// \tparam Op The unary tile operation
+    /// \param arg Argument to be modified
+    /// \param world The world where the argument will be evaluated
+    /// \param shape The shape of the evaluated tensor
+    /// \param pmap The process map for the evaluated tensor
+    /// \param perm The permutation applied to the tensor
+    /// \param op The unary tile operation
+    template <typename Tile, typename Policy, typename Op>
+    DistEval<typename Op::result_type, Policy> make_unary_eval(
+        const DistEval<Tile, Policy>& arg,
+        madness::World& world,
+        const typename DistEval<Tile, Policy>::shape_type& shape,
+        const std::shared_ptr<typename DistEval<Tile, Policy>::pmap_interface>& pmap,
+        const Permutation& perm,
+        const Op& op)
+    {
+      typedef UnaryEvalImpl<DistEval<Tile, Policy>, Op, Policy> impl_type;
+      typedef typename impl_type::DistEvalImpl_ impl_base_type;
+      return DistEval<typename Op::result_type, Policy>(
+          std::shared_ptr<impl_base_type>(new impl_type(arg, world, shape, pmap, perm, op)));
+    }
 
   }  // namespace detail
 }  // namespace TiledArray

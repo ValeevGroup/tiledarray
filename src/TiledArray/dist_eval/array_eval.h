@@ -29,9 +29,11 @@
 #include <TiledArray/dist_eval/dist_eval.h>
 
 namespace TiledArray {
+
+  // Forward declarations
+  template <typename, unsigned int, typename, typename> class Array;
+
   namespace detail {
-
-
 
     /// Lazy tile for evaluating array tiles on the fly.
 
@@ -134,10 +136,10 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \param op The element transform operation
-      ArrayEvalImpl(const array_type& array, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
-          const op_type& op) :
-        DistEvalImpl_(array.get_world(), array.trange(), shape, pmap, perm),
+      ArrayEvalImpl(const array_type& array, madness::World& world,
+          const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
+          const Permutation& perm, const op_type& op) :
+        DistEvalImpl_(world, array.trange(), shape, pmap, perm),
         array_(array),
         op_(new op_type(op)),
         inv_perm_(-perm)
@@ -228,8 +230,7 @@ namespace TiledArray {
       /// has completed. It should spawn additional tasks that evaluate the
       /// individual result tiles.
       /// \return The number of local tiles
-      virtual size_type eval_tiles(const std::shared_ptr<DistEvalImpl_>& pimpl) {
-
+      virtual size_type internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
         // Convert pimpl to this object type so it can be used in tasks
         TA_ASSERT(this == pimpl.get());
         std::shared_ptr<ArrayEvalImpl_> self =
@@ -240,13 +241,39 @@ namespace TiledArray {
             eval_kernel(self, NoPermutation()));
       }
 
-      /// Function for evaluating child tensors
-      virtual void eval_children() { }
+    }; // class ArrayEvalImpl
 
-      /// Wait for tasks of children to finish
-      virtual void wait_children() const { }
+    /// Distrubuted array evaluator factory function
 
-    }; // class UnaryEvalImpl
+    /// Construct a distributed array evaluator, which wraps an \c Array object
+    /// in a distributed evaluator so that it can be used by other distributed
+    /// evaluators.
+    /// \tparam T The element type of \c array
+    /// \tparam DIM The number of dimensions of \c array
+    /// \tparam Tile Tile type of \c array
+    /// \tparam Policy The policy type of \c array
+    /// \tparam Op The unary tile operation type
+    /// \param arg Argument to be modified
+    /// \param world The world where \c array will be evaluated
+    /// \param shape The shape of the evaluated tensor
+    /// \param pmap The process map for the evaluated tensor
+    /// \param perm The permutation applied to the tensor
+    /// \param op The unary tile operation
+    template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
+    DistEval<LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
+    make_array_eval(
+        const Array<T, DIM, Tile, Policy>& array,
+        madness::World& world,
+        const typename DistEval<Tile, Policy>::shape_type& shape,
+        const std::shared_ptr<typename DistEval<Tile, Policy>::pmap_interface>& pmap,
+        const Permutation& perm,
+        const Op& op)
+    {
+      typedef ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
+      typedef typename impl_type::DistEvalImpl_ impl_base_type;
+      return DistEval<LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+          std::shared_ptr<impl_base_type>(new impl_type(array, world, shape, pmap, perm, op)));
+    }
 
   }  // namespace detail
 } // namespace TiledArray

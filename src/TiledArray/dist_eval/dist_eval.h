@@ -124,19 +124,14 @@ namespace TiledArray {
 
     private:
 
-      /// Function for evaluating child tensors
-      virtual void eval_children() = 0;
+      /// Evaluate this tensor expression object
 
-      /// Function for evaluating this tensor's tiles
-
-      /// This function is run inside a task, and will run after \c eval_children
-      /// has completed. It should spawn additional tasks that evaluate the
-      /// individual result tiles.
+      /// This function will evaluate the children of this distributed evaluator
+      /// and evaluate the tiles for this distributed evaluator. It will block
+      /// until the tasks for the children are evaluated (not for the tasks of
+      /// this object).
       /// \param pimpl A shared pointer to this object
-      virtual size_type eval_tiles(const std::shared_ptr<DistEvalImpl>& pimpl) = 0;
-
-      /// Wait for tasks of children to finish
-      virtual void wait_children() const = 0;
+      virtual size_type internal_eval(const std::shared_ptr<DistEvalImpl>& pimpl) = 0;
 
     public:
 
@@ -147,17 +142,9 @@ namespace TiledArray {
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
       /// \param pimpl A shared pointer to this object
-      void eval(std::shared_ptr<DistEvalImpl> pimpl) {
-        // Evaluate children
-        this->eval_children();
-
-        // Evaluate tiles for this object
-        task_count_ = this->eval_tiles(pimpl);
-
-        // Wait until the children tasks are complete. Tasks will be processed
-        // by this thread while waiting. We block here to throttle the number
-        // of simultaneous tasks and evaluations.
-        this->wait_children();
+      void eval(const std::shared_ptr<DistEvalImpl>& pimpl) {
+        TA_ASSERT(this == pimpl.get());
+        task_count_ = this->internal_eval(pimpl);
       }
 
     }; // class DistEvalImpl
@@ -183,6 +170,10 @@ namespace TiledArray {
       typedef typename impl_type::eval_type eval_type; ///< Tile evaluation type
       typedef typename impl_type::future future; ///< Future of tile type
 
+    private:
+      std::shared_ptr<impl_type> pimpl_; ///< pointer to the implementation object
+
+    public:
       /// Constructor
 
       /// \param pimpl A pointer to the expression implementation object
@@ -278,8 +269,6 @@ namespace TiledArray {
       /// Wait for all local tiles to be evaluated
       void wait() const { pimpl_->wait(); }
 
-    protected:
-      std::shared_ptr<impl_type> pimpl_; ///< pointer to the implementation object
     }; // class DistEval
 
   }  // namespace detail

@@ -38,7 +38,8 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
   typedef math::Scal<ArrayN::value_type::eval_type,
       ArrayN::value_type::eval_type, false> op_type;
   typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
-  typedef detail::DistEval<impl_type::value_type, DensePolicy> dist_eval_type;
+  typedef detail::DistEval<detail::LazyArrayTile<typename ArrayN::value_type,
+      op_type>, DensePolicy> dist_eval_type;
 
 
   ArrayEvalImplFixture() : op(3), array(*GlobalFixture::world, tr) {
@@ -61,11 +62,10 @@ BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(impl_type(array, DenseShape(), array.get_pmap(), Permutation(), op));
+  BOOST_REQUIRE_NO_THROW(impl_type(array, array.get_world(), DenseShape(), array.get_pmap(), Permutation(), op));
 
-  dist_eval_type dist_eval(
-      std::shared_ptr<typename impl_type::DistEvalImpl_>(
-          new impl_type(array, DenseShape(), array.get_pmap(), Permutation(), op)));
+  dist_eval_type dist_eval = detail::make_array_eval(array, array.get_world(),
+      DenseShape(), array.get_pmap(), Permutation(), op);
 
   BOOST_CHECK_EQUAL(& dist_eval.get_world(), GlobalFixture::world);
   BOOST_CHECK(dist_eval.pmap() == array.get_pmap());
@@ -79,13 +79,12 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( eval_scale )
 {
-  dist_eval_type dist_eval(
-      std::shared_ptr<typename impl_type::DistEvalImpl_>(
-          new impl_type(array, DenseShape(), array.get_pmap(), Permutation(), op)));
+  dist_eval_type dist_eval = detail::make_array_eval(array, array.get_world(),
+      DenseShape(), array.get_pmap(), Permutation(), op);
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
 
-  impl_type::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
-  const impl_type::pmap_interface::const_iterator end = dist_eval.pmap()->end();
+  dist_eval_type::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
+  const dist_eval_type::pmap_interface::const_iterator end = dist_eval.pmap()->end();
 
   // Check that each tile has been properly scaled.
   for(; it != end; ++it) {
@@ -93,11 +92,11 @@ BOOST_AUTO_TEST_CASE( eval_scale )
     ArrayN::value_type array_tile = array.find(*it);
 
     // Get the array evaluator tile.
-    madness::Future<impl_type::value_type> impl_tile;
+    madness::Future<dist_eval_type::value_type> impl_tile;
     BOOST_REQUIRE_NO_THROW(impl_tile = dist_eval.move(*it));
 
     // Force the evaluation of the tile
-    impl_type::eval_type eval_tile;
+    dist_eval_type::eval_type eval_tile;
     BOOST_REQUIRE_NO_THROW(eval_tile = impl_tile.get());
 
     // Check that the result tile is correctly modified.
@@ -119,30 +118,29 @@ BOOST_AUTO_TEST_CASE( eval_permute )
 
   // Redefine the types for the new operation.
   typedef math::Noop<ArrayN::value_type, ArrayN::value_type, false> op_type;
-  typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
-  typedef detail::DistEval<impl_type::value_type, DensePolicy> dist_eval_type;
+  typedef detail::DistEval<detail::LazyArrayTile<typename ArrayN::value_type,
+      op_type>, DensePolicy> dist_eval_type;
 
   // Construct and evaluate
-  dist_eval_type dist_eval(
-      std::shared_ptr<typename impl_type::DistEvalImpl_>(
-          new impl_type(array, DenseShape(), array.get_pmap(), perm, op_type(perm))));
+  dist_eval_type dist_eval = detail::make_array_eval(array, array.get_world(),
+      DenseShape(), array.get_pmap(), perm, op_type(perm));
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
 
   // Check that each tile has been moved to the correct location and has been
   // properly permuted.
-  impl_type::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
-  const impl_type::pmap_interface::const_iterator end = dist_eval.pmap()->end();
+  dist_eval_type::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
+  const dist_eval_type::pmap_interface::const_iterator end = dist_eval.pmap()->end();
   const Permutation inv_perm = -perm;
   for(; it != end; ++it) {
     // Get the original type
     ArrayN::value_type array_tile = array.find(inv_perm ^ dist_eval.range().idx(*it));
 
     // Get the corresponding array evaluator tile.
-    madness::Future<impl_type::value_type> tile;
+    madness::Future<dist_eval_type::value_type> tile;
     BOOST_REQUIRE_NO_THROW(tile = dist_eval.move(*it));
 
     // Force the evaluation of the tile
-    impl_type::eval_type eval_tile;
+    dist_eval_type::eval_type eval_tile;
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get(););
 
     // Check that the result tile is correctly modified.
