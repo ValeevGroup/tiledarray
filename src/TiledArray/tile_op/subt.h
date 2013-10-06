@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/binary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -45,17 +46,24 @@ namespace TiledArray {
     /// argument is consumable.
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
-    class Subt {
+    class Subt : public BinaryInterface<Subt<Result, Left, Right, LeftConsumable,
+        RightConsumable>, LeftConsumable, RightConsumable>
+    {
     public:
-      typedef Subt<Result, Left, Right, false, false> Subt_; ///< This object type
-      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type first_argument_type; ///< The left-hand argument type
-      typedef typename madness::if_c<RightConsumable, Right&, const Right&>::type second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
-      typedef Result result_type; ///< The result tile type
+      typedef Subt<Result, Left, Right, LeftConsumable, RightConsumable> Subt_; ///< This object type
+      typedef BinaryInterface<Subt_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
+      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
+      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
 
     private:
       Permutation perm_; ///< The result permutation
+
+      // Make friends with base classes
+      friend class BinaryInterface<Subt_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterfaceBase<Subt_, LeftConsumable, RightConsumable>;
 
       // Element operation functor types
 
@@ -166,41 +174,8 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Subtract two non-zero tiles and possibly permute
+      using BinaryInterface_::operator();
 
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The difference and permutation of the first and second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
-
-      /// Subtract a zero tile from a non-zero tiles and possibly permute
-
-      /// \param second The right-hand argument
-      /// \return The difference and permutation of \c first and \c second
-      result_type operator()(zero_left_type first, second_argument_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
-
-      /// Subtract a non-zero tiles from a zero tile and possibly permute
-
-      /// \param first The left-hand argument
-      /// \return The difference and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, zero_right_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
     }; // class Subt
 
   } // namespace math

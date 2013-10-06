@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_SCAL_ADD_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/binary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -45,19 +46,26 @@ namespace TiledArray {
     /// argument is consumable.
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
-    class ScalAdd {
+    class ScalAdd : public BinaryInterface<ScalAdd<Result, Left, Right,
+        LeftConsumable, RightConsumable>, LeftConsumable, RightConsumable>
+    {
     public:
-      typedef ScalAdd<Result, Left, Right, false, false> ScalAdd_; ///< This object type
-      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type first_argument_type; ///< The left-hand argument type
-      typedef typename madness::if_c<RightConsumable, Right&, const Right&>::type second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
-      typedef Result result_type; ///< The result tile type
-      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
+      typedef ScalAdd<Result, Left, Right, LeftConsumable, RightConsumable> ScalAdd_; ///< This object type
+      typedef BinaryInterface<ScalAdd_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
+      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
+      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
+      typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
       Permutation perm_; ///< The result permutation
       scalar_type factor_; ///< The scaling factor
+
+      // Make friends with base classes
+      friend class BinaryInterface<ScalAdd_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterfaceBase<ScalAdd_, LeftConsumable, RightConsumable>;
 
       // Element operation functor types
 
@@ -187,41 +195,8 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Add and scale two non-zero tiles and possibly permute
+      using BinaryInterface_::operator();
 
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The scaled sum and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
-
-      /// Add and scale a zero tile to a non-zero tiles and possibly permute
-
-      /// \param second The right-hand argument
-      /// \return The scaled sum and permutation of \c first and \c second
-      result_type operator()(zero_left_type first, second_argument_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
-
-      /// Add and scale a non-zero tiles to a zero tile and possibly permute
-
-      /// \param first The left-hand argument
-      /// \return The scaled sum and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, zero_right_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
     }; // class ScalAdd
 
   }  // namespace math

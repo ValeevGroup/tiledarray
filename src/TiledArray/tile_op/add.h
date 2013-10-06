@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_ADD_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/binary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -45,39 +46,51 @@ namespace TiledArray {
     /// argument is consumable.
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
-    class Add {
+    class Add : public BinaryInterface<Add<Result, Left, Right, LeftConsumable,
+        RightConsumable>, LeftConsumable, RightConsumable>
+    {
     public:
       typedef Add<Result, Left, Right, LeftConsumable, RightConsumable> Add_; ///< This object type
-      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type first_argument_type; ///< The left-hand argument type
-      typedef typename madness::if_c<RightConsumable, Right&, const Right&>::type second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
-      typedef Result result_type; ///< The result tile type
+      typedef BinaryInterface<Add_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
+      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
+      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
 
     private:
       Permutation perm_; ///< The result permutation
+
+      // Make friends with base classes
+      friend class BinaryInterface<Add_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterfaceBase<Add_, LeftConsumable, RightConsumable>;
 
       // Element operation functor types
 
       typedef Plus<typename Left::value_type, typename Right::value_type,
           typename Result::value_type> plus_op;
 
+
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(first_argument_type first, second_argument_type second) const {
+      result_type permute(const Left& first, const Right& second) const {
         result_type result;
         TiledArray::math::permute(result, perm_, first, second, plus_op());
         return result;
       }
 
-      result_type permute(zero_left_type, second_argument_type second) const {
-        return perm_ ^ second;
+      result_type permute(zero_left_type, const Right& second) const {
+        result_type result;
+        TiledArray::math::permute(result, perm_, second);
+        return result;
       }
 
-      result_type permute(first_argument_type first, zero_right_type) const {
-        return perm_ ^ first;
+      result_type permute(const Left& first, zero_right_type) const {
+        result_type result;
+        TiledArray::math::permute(result, perm_, first);
+        return result;
       }
 
       // Non-permuting tile evaluation functions
@@ -87,13 +100,13 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
           (RC && std::is_same<Result, Right>::value), result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
+      no_permute(const Left& first, const Right& second) {
         return first + second;
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
+      no_permute(Left& first, const Right& second) {
         first += second;
         return first;
       }
@@ -101,32 +114,32 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
           (!(LC && std::is_same<Result, Left>::value)), result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
+      no_permute(const Left& first, Right& second) {
         second += first;
         return second;
       }
 
       template <bool LC, bool RC>
       static typename madness::disable_if_c<RC, result_type>::type
-      no_permute(zero_left_type, second_argument_type second) {
+      no_permute(zero_left_type, const Right& second) {
         return second.clone();
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<RC, result_type>::type
-      no_permute(zero_left_type, second_argument_type second) {
+      no_permute(zero_left_type, Right& second) {
         return second;
       }
 
       template <bool LC, bool RC>
       static typename madness::disable_if_c<LC, result_type>::type
-      no_permute(first_argument_type first, zero_right_type) {
+      no_permute(const Left& first, zero_right_type) {
         return first.clone();
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
-      no_permute(first_argument_type first, zero_right_type) {
+      no_permute(Left& first, zero_right_type) {
         return first;
       }
 
@@ -156,41 +169,8 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Add two non-zero tiles and possibly permute
+      using BinaryInterface_::operator();
 
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The sum and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
-
-      /// Add a zero tile to a non-zero tiles and possibly permute
-
-      /// \param second The right-hand argument
-      /// \return The sum and permutation of \c first and \c second
-      result_type operator()(zero_left_type first, second_argument_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
-
-      /// Add a non-zero tiles to a zero tile and possibly permute
-
-      /// \param first The left-hand argument
-      /// \return The sum and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, zero_right_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
     }; // class Add
 
   } // namespace math
