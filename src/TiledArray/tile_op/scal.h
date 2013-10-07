@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/unary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -40,16 +41,20 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Scal {
+    class Scal : UnaryInterface<Scal<Result, Arg, Consumable>, Consumable> {
     public:
       typedef Scal<Result, Arg, Consumable> Scal_; ///< This object type
-      typedef typename madness::if_c<Consumable, Arg&, const Arg&>::type argument_type; ///< The argument type
-      typedef Result result_type; ///< The result tile type
-      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
+      typedef UnaryInterface<Scal_, Consumable> UnaryInterface_;
+      typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
+      typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
+      typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
       Permutation perm_; ///< The result permutation
       scalar_type factor_; ///< Scaling factor
+
+      // Make friends with base class
+      friend class UnaryInterface<Scal_, Consumable>;
 
       // Element operation functor types
 
@@ -99,8 +104,8 @@ namespace TiledArray {
 
       /// Construct a scaling operation that permutes and scales the result tensor.
       /// \param perm The permutation to apply to the result tile
-      /// \param factor The scaling factor for the operation [default = 1]
-      Scal(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+      /// \param factor The scaling factor for the operation
+      Scal(const Permutation& perm, const scalar_type factor) :
         perm_(perm), factor_(factor)
       { }
 
@@ -119,51 +124,9 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Scale a tile and possibly permute
+      // Import interface from base class
+      using UnaryInterface_::operator();
 
-      /// \param arg The argument
-      /// \return A scaled and permuted \c arg
-      result_type operator()(argument_type arg) const {
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        return no_permute<Consumable>(arg);
-      }
-
-      /// Scale a tile and possibly permute
-
-      /// Scale \c arg and permute if the operation has a valid permutation. If
-      /// \c consume is \c true ,  \c arg will be consumed by this operation
-      /// if the result is not permuted.
-      /// operation.
-      /// \param arg The argument
-      /// \param consume Indicates the consumable behavior
-      /// \return A scaled and permuted \c arg
-      result_type operator()(Arg& arg, const bool consume) const {
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        if(consume)
-          return no_permute<true>(arg);
-
-        return no_permute<false>(arg);
-      }
-
-      /// Scale a tile and possibly permute
-
-      /// Scale \c arg and permute if the operation has a valid permutation.
-      /// Never consumes \c arg since it is const.
-      /// \param arg The argument
-      /// \param consume Indicates the consumable behavior
-      /// \return A scaled and permuted \c arg
-      /// \throw TiledArray::Exception If \c consume is \c true .
-      result_type operator()(const Arg& arg, const bool consume) const {
-        TA_ASSERT(! consume); // consume flag cannot be respected due to arg constness.
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        return no_permute<false>(arg);
-      }
     }; // class Scal
 
   } // namespace math

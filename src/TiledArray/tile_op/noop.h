@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_NOOP_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/unary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -40,15 +41,18 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Noop {
+    class Noop : UnaryInterface<Noop<Result, Arg, Consumable>, Consumable>  {
     public:
       typedef Noop<Result, Arg, Consumable> Noop_; ///< This object type
-      typedef typename madness::if_c<Consumable, Arg&, const Arg&>::type argument_type; ///< The argument type
-      typedef Result result_type; ///< The result tile type
+      typedef UnaryInterface<Noop_, Consumable> UnaryInterface_;
+      typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
+      typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
 
     private:
       Permutation perm_; ///< The result permutation
 
+      // Make friends with base class
+      friend class UnaryInterface<Noop_, Consumable>;
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
@@ -98,50 +102,9 @@ namespace TiledArray {
         return *this;
       }
 
-      /// No operation or possibly permute
+      // Import interface from base class
+      using UnaryInterface_::operator();
 
-      /// \param arg The argument
-      /// \return The sum and permutation of \c arg
-      result_type operator()(argument_type arg) const {
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        return no_permute<Consumable>(arg);
-      }
-
-      /// No operation or possibly permute
-
-      /// Permute if the operation has a valid permutation, otherwise clone
-      /// \c arg when \c consume is false or (shallow) copy when consume is
-      /// \c true .
-      /// \param arg The argument
-      /// \param consume Indicates the consumable behavior
-      /// \return The sum and permutation of \c arg
-      result_type operator()(Arg& arg, const bool consume) const {
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        if(consume)
-          return no_permute<true>(arg);
-
-        return no_permute<false>(arg);
-      }
-
-      /// No operation or possibly permute
-
-      /// Permute if the operation has a valid permutation, otherwise clone
-      /// \c arg . Never consumes \c arg since it is const.
-      /// \param arg The argument
-      /// \param consume Indicates the consumable behavior
-      /// \return The sum and permutation of \c arg
-      /// \throw TiledArray::Exception If \c consume is \c true .
-      result_type operator()(const Arg& arg, const bool consume) const {
-        TA_ASSERT(! consume); // consume flag cannot be respected due to arg constness.
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        return no_permute<false>(arg);
-      }
     }; // class Noop
 
   } // namespace math

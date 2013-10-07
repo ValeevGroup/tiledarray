@@ -143,46 +143,22 @@ BOOST_AUTO_TEST_CASE( noop_runtime_consume )
 BOOST_AUTO_TEST_CASE( noop_runtime_no_consume )
 {
   math::Noop<Tensor<int>, Tensor<int>, true> noop_op;
+  const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = noop_op(a, false));
 
   // Check that the result range is correct
-  BOOST_CHECK_EQUAL(b.range(), a.range());
+  BOOST_CHECK_EQUAL(b.range(), ax.range());
 
   // Check that a nor b were consumed
-  BOOST_CHECK_NE(b.data(), a.data());
+  BOOST_CHECK_EQUAL(b.data(), a.data());
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(b[i], a[i]);
+    BOOST_CHECK_EQUAL(b[i], ax[i]);
   }
 }
-
-BOOST_AUTO_TEST_CASE( noop_runtime_const_no_consume )
-{
-  math::Noop<Tensor<int>, Tensor<int>, true> noop_op;
-  const Tensor<int>& ca = a;
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(noop_op(ca, true), Exception);
-#endif // TA_EXCEPTION_ERROR
-
-  // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = noop_op(ca, false));
-
-  // Check that the result range is correct
-  BOOST_CHECK_EQUAL(b.range(), ca.range());
-
-  // Check that a nor b were consumed
-  BOOST_CHECK_NE(b.data(), ca.data());
-
-  // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(b[i], ca[i]);
-  }
-}
-
 
 BOOST_AUTO_TEST_CASE( noop_perm_consume )
 {

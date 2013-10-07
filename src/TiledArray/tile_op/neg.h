@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_NEG_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/unary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -40,14 +41,18 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Neg {
+    class Neg : UnaryInterface<Neg<Result, Arg, Consumable>, Consumable> {
     public:
       typedef Neg<Result, Arg, Consumable> Neg_; ///< This object type
-      typedef typename madness::if_c<Consumable, Arg&, const Arg&>::type argument_type; ///< The argument type
-      typedef Result result_type; ///< The result tile type
+      typedef UnaryInterface<Neg_, Consumable> UnaryInterface_;
+      typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
+      typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
 
     private:
       Permutation perm_; ///< The result permutation
+
+      // Make friends with base class
+      friend class UnaryInterface<Neg_, Consumable>;
 
       // Element operation functor types
 
@@ -109,42 +114,9 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Negate a tile and possibly permute
+      // Import interface from base class
+      using UnaryInterface_::operator();
 
-      /// \param arg The argument
-      /// \return The negation and permutation of \c arg
-      result_type operator()(argument_type arg) const {
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        return no_permute<Consumable>(arg);
-      }
-
-      /// Negate a tile and possibly permute
-
-      /// \param arg The argument
-      /// \return The negation and permutation of \c arg
-      result_type operator()(Arg& arg, const bool consume) const {
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        if(consume)
-          return no_permute<true>(arg);
-
-        return no_permute<false>(arg);
-      }
-
-      /// Negate a tile and possibly permute
-
-      /// \param arg The argument
-      /// \return The negation and permutation of \c arg
-      result_type operator()(const Arg& arg, const bool consume) const {
-        TA_ASSERT(! consume); // consume flag cannot be respected due to arg constness.
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        return no_permute<false>(arg);
-      }
     }; // class Neg
 
   } // namespace math
