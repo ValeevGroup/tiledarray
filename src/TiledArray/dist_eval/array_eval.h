@@ -35,10 +35,12 @@ namespace TiledArray {
 
   namespace detail {
 
-    /// Lazy tile for evaluating array tiles on the fly.
+    /// Lazy tile for on-the-fly evaluation of array tiles.
 
+    /// This tile object is used to hold input array tiles and do on-the-fly
+    /// evaluation, type conversion, and/or permutations.
     /// \tparam Result The result tile type for the lazy tile
-    /// \tparam
+    /// \tparam Op The operation type
     template <typename Tile, typename Op>
     class LazyArrayTile {
     public:
@@ -56,9 +58,7 @@ namespace TiledArray {
 
     public:
       /// Default constructor
-      LazyArrayTile() :
-        tile_(), op_(), consume_(false)
-      { }
+      LazyArrayTile() : tile_(), op_(), consume_(false) { }
 
       /// Copy constructor
 
@@ -76,7 +76,10 @@ namespace TiledArray {
         tile_(tile), op_(op), consume_(consume)
       { }
 
+      /// Assignment operator
 
+      /// \param other The object to be copied
+      /// \param A reference to this object
       LazyArrayTile_& operator=(const LazyArrayTile_& other) {
         tile_ = other.tile_;
         op_ = other.op_;
@@ -85,12 +88,21 @@ namespace TiledArray {
         return *this;
       }
 
+      /// Query runtime consumable status
+
+      /// \return \c true if this tile is consumable, otherwise \c false .
+      bool is_consumable() const { return consume_; }
+
+    public:
+
       /// Convert tile to evaluation type
       operator eval_type() const { return (*op_)(tile_, consume_); }
 
-      /// Serialization not implemented
+      /// Serialization (not implemented)
+
+      /// \tparam Archive The archive type
       template <typename Archive>
-      void serialize(const Archive& ar) {
+      void serialize(const Archive&) {
         TA_ASSERT(false);
       }
 
