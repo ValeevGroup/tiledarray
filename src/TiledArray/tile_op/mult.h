@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_MULT_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/binary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -45,15 +46,25 @@ namespace TiledArray {
     /// argument is consumable.
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
-    class Mult {
+    class Mult : public BinaryInterface<Mult<Result, Left, Right, LeftConsumable,
+        RightConsumable>, LeftConsumable, RightConsumable>
+    {
     public:
-      typedef Mult<Result, Left, Right, false, false> Mult_; ///< This object type
-      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type first_argument_type; ///< The left-hand argument type
-      typedef typename madness::if_c<RightConsumable, Right&, const Right&>::type second_argument_type; ///< The right-hand argument type
-      typedef Result result_type; ///< The result tile type
+      typedef Mult<Result, Left, Right, LeftConsumable, RightConsumable> Mult_; ///< This object type
+      typedef BinaryInterface<Mult_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
+      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
+      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
+
 
     private:
       Permutation perm_; ///< The result permutation
+
+      // Make friends with base classes
+      friend class BinaryInterface<Mult_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterfaceBase<Mult_, LeftConsumable, RightConsumable>;
 
       // Element operation functor types
 
@@ -68,6 +79,16 @@ namespace TiledArray {
         result_type result;
         TiledArray::math::permute(result, perm_, first, second, multiplies_op());
         return result;
+      }
+
+      result_type permute(zero_left_type, const Right& second) const {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
+      result_type permute(const Left& first, zero_right_type) const {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
       }
 
       // Non-permuting tile evaluation functions
@@ -96,6 +117,34 @@ namespace TiledArray {
         return second;
       }
 
+      template <bool LC, bool RC>
+      static typename madness::disable_if_c<RC, result_type>::type
+      no_permute(zero_left_type, const Right& second) {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
+      template <bool LC, bool RC>
+      static typename madness::enable_if_c<RC, result_type>::type
+      no_permute(zero_left_type, Right& second) {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
+      template <bool LC, bool RC>
+      static typename madness::disable_if_c<LC, result_type>::type
+      no_permute(const Left& first, zero_right_type) {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
+      template <bool LC, bool RC>
+      static typename madness::enable_if_c<LC, result_type>::type
+      no_permute(Left& first, zero_right_type) {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
     public:
       /// Default constructor
 
@@ -122,19 +171,9 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Multiply two non-zero tiles and possibly permute
+      // Import interface from base class
+      using BinaryInterface_::operator();
 
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The sum and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
     }; // class Mult
 
   } // namespace math

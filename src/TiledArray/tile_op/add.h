@@ -169,6 +169,7 @@ namespace TiledArray {
         return *this;
       }
 
+      // Import interface from base class
       using BinaryInterface_::operator();
 
     }; // class Add

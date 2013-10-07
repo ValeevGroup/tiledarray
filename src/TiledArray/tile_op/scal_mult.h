@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_SCAL_MULT_H__INCLUDED
 
 #include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/binary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -45,17 +46,26 @@ namespace TiledArray {
     /// argument is consumable.
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
-    class ScalMult {
+    class ScalMult : public BinaryInterface<ScalMult<Result, Left, Right,
+        LeftConsumable, RightConsumable>, LeftConsumable, RightConsumable>
+    {
     public:
-      typedef ScalMult<Result, Left, Right, false, false> ScalMult_; ///< This object type
-      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type first_argument_type; ///< The left-hand argument type
-      typedef typename madness::if_c<RightConsumable, Right&, const Right&>::type second_argument_type; ///< The right-hand argument type
-      typedef Result result_type; ///< The result tile type
-      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
+      typedef ScalMult<Result, Left, Right, LeftConsumable, RightConsumable> ScalMult_; ///< This object type
+      typedef BinaryInterface<ScalMult_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
+      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
+      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
+      typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
       Permutation perm_; ///< The result permutation
       scalar_type factor_; ///< The scaling factor
+
+      // Make friends with base classes
+      friend class BinaryInterface<ScalMult_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterfaceBase<ScalMult_, LeftConsumable, RightConsumable>;
 
       // Element operation functor types
 
@@ -75,6 +85,16 @@ namespace TiledArray {
         TiledArray::math::permute(result, perm_, first, second,
             scal_multiplies_op(factor_));
         return result;
+      }
+
+      result_type permute(zero_left_type, const Right& second) const {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
+      result_type permute(const Left& first, zero_right_type) const {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
       }
 
       // Non-permuting tile evaluation functions
@@ -104,6 +124,34 @@ namespace TiledArray {
         vector_assign(second.size(), first.data(), second.data(),
             scal_multiplies_assign_right_op(factor_));
         return second;
+      }
+
+      template <bool LC, bool RC>
+      static typename madness::disable_if_c<RC, result_type>::type
+      no_permute(zero_left_type, const Right& second) {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
+      template <bool LC, bool RC>
+      static typename madness::enable_if_c<RC, result_type>::type
+      no_permute(zero_left_type, Right& second) {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
+      template <bool LC, bool RC>
+      static typename madness::disable_if_c<LC, result_type>::type
+      no_permute(const Left& first, zero_right_type) {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
+      }
+
+      template <bool LC, bool RC>
+      static typename madness::enable_if_c<LC, result_type>::type
+      no_permute(Left& first, zero_right_type) {
+        TA_ASSERT(false); // Invalid arguments for this operation
+        return result_type();
       }
 
     public:
@@ -145,19 +193,9 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Add and scale two non-zero tiles and possibly permute
+      // Import interface from base class
+      using BinaryInterface_::operator();
 
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The scaled sum and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
     }; // class ScalMult
 
   }  // namespace math
