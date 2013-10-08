@@ -168,7 +168,7 @@ namespace TiledArray {
       typename madness::enable_if<is_lazy_tile<A>, result_type>::type
       operator()(const A& arg, const bool consume) const {
         typename A::eval_type eval_arg(arg);
-        operator()(eval_arg, consume);
+        return operator()(eval_arg, consume);
       }
 
     }; // class UnaryInterfaceBase
