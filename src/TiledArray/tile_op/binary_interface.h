@@ -93,6 +93,8 @@ namespace TiledArray {
 
       /// Evaluate two non-zero tiles and possibly permute
 
+      /// Evaluate the result tile using the appropriate \c Derived class
+      /// evaluation kernel.
       /// \param first The left-hand argument
       /// \param second The right-hand argument
       /// \return The result tile from the binary operation applied to the
@@ -108,6 +110,8 @@ namespace TiledArray {
 
       /// Evaluate a zero tile to a non-zero tiles and possibly permute
 
+      /// Evaluate the result tile using the appropriate \c Derived class
+      /// evaluation kernel.
       /// \param second The right-hand argument
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
@@ -120,6 +124,8 @@ namespace TiledArray {
 
       /// Evaluate a non-zero tiles to a zero tile and possibly permute
 
+      /// Evaluate the result tile using the appropriate \c Derived class
+      /// evaluation kernel.
       /// \param first The left-hand argument
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
@@ -138,6 +144,100 @@ namespace TiledArray {
     /// class defines binary operations with lazy tiles. It will evaluate
     /// arguments as necessary and pass them to the \c BinaryInterfaceBase
     /// interface functions.
+    ///
+    /// To use this interface class, a derived class needs to have the following
+    /// form:
+    /// \code
+    /// template <typename Result, typename Left, typename Right, bool LeftConsumable,
+    ///     bool RightConsumable>
+    /// class Operation : public BinaryInterface<Operation<Result, Left, Right,
+    ///     LeftConsumable, RightConsumable>, LeftConsumable, RightConsumable>
+    /// {
+    /// public:
+    ///   typedef Operation<Result, Left, Right, LeftConsumable, RightConsumable> Operation_;
+    ///   typedef BinaryInterface<Operation_, LeftConsumable, RightConsumable> BinaryInterface_;
+    ///   typedef typename BinaryInterface_::first_argument_type first_argument_type;
+    ///   typedef typename BinaryInterface_::second_argument_type second_argument_type;
+    ///   typedef typename BinaryInterface_::zero_left_type zero_left_type;
+    ///   typedef typename BinaryInterface_::zero_right_type zero_right_type;
+    ///   typedef typename BinaryInterface_::result_type result_type;
+    ///
+    /// private:
+    ///
+    ///   // Make friends with base classes
+    ///   friend class BinaryInterface<Operation_, LeftConsumable, RightConsumable>;
+    ///   friend class BinaryInterfaceBase<Operation_, LeftConsumable, RightConsumable>;
+    ///
+    ///   // Permuting tile evaluation function
+    ///
+    ///   result_type permute(const Left& first, const Right& second) const {
+    ///     // ...
+    ///   }
+    ///
+    ///   result_type permute(zero_left_type, const Right& second) const {
+    ///     // ...
+    ///   }
+    ///
+    ///   result_type permute(const Left& first, zero_right_type) const {
+    ///     // ...
+    ///   }
+    ///
+    ///   // Non-permuting tile evaluation functions
+    ///   // The compiler will select the correct functions based on the
+    ///   // type ane consumability of the arguments.
+    ///
+    ///   template <bool LC, bool RC>
+    ///   typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
+    ///       (RC && std::is_same<Result, Right>::value), result_type>::type
+    ///   no_permute(const Left& first, const Right& second) {
+    ///     // ...
+    ///   }
+    ///
+    ///   template <bool LC, bool RC>
+    ///   typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+    ///   no_permute(Left& first, const Right& second) {
+    ///      // ...
+    ///   }
+    ///
+    ///   template <bool LC, bool RC>
+    ///   typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
+    ///       (!(LC && std::is_same<Result, Left>::value)), result_type>::type
+    ///   no_permute(const Left& first, Right& second) {
+    ///     // ...
+    ///   }
+    ///
+    ///   template <bool LC, bool RC>
+    ///   typename madness::disable_if_c<RC, result_type>::type
+    ///   no_permute(zero_left_type, const Right& second) {
+    ///     // ...
+    ///   }
+    ///
+    ///   template <bool LC, bool RC>
+    ///   typename madness::enable_if_c<RC, result_type>::type
+    ///   no_permute(zero_left_type, Right& second) {
+    ///     // ...
+    ///   }
+    ///
+    ///   template <bool LC, bool RC>
+    ///   typename madness::disable_if_c<LC, result_type>::type
+    ///   no_permute(const Left& first, zero_right_type) {
+    ///     // ...
+    ///   }
+    ///
+    ///   template <bool LC, bool RC>
+    ///   typename madness::enable_if_c<LC, result_type>::type
+    ///   no_permute(Left& first, zero_right_type) {
+    ///     // ...
+    ///   }
+    ///
+    /// public:
+    ///   // Implement default constructor, copy constructor and assignment operator
+    ///
+    ///   // Import interface from base class
+    ///   using BinaryInterface_::operator();
+    ///
+    /// }; // class Operation
+    /// \endcode
     /// \tparam Derived The derived operation class type
     /// \tparam LeftConsumable A flag that is \c true when the left-hand
     /// argument is consumable
@@ -146,7 +246,7 @@ namespace TiledArray {
     template <typename Derived, bool LeftConsumable, bool RightConsumable>
     class BinaryInterface : public BinaryInterfaceBase<Derived, LeftConsumable, RightConsumable> {
     public:
-      typedef BinaryInterfaceBase<Derived, LeftConsumable, RightConsumable> BinaryInterfaceBase_;
+      typedef BinaryInterfaceBase<Derived, LeftConsumable, RightConsumable> BinaryInterfaceBase_; ///< This class type
       typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
@@ -168,6 +268,9 @@ namespace TiledArray {
 
       /// Evaluate two lazy tiles
 
+      /// This function will evaluate the \c first and \c second , then pass the
+      /// evaluated tiles to the appropriate \c BinaryInterfaceBase_::operator()
+      /// function.
       /// \tparam L The left-hand, lazy tile type
       /// \tparam R The right-hand, lazy tile type
       /// \param first The left-hand, lazy tile argument
@@ -185,6 +288,9 @@ namespace TiledArray {
 
       /// Evaluate lazy and non-lazy tiles
 
+      /// This function will evaluate the \c first , then pass the
+      /// evaluated tile and \c second to the appropriate
+      /// \c BinaryInterfaceBase_::operator() function.
       /// \tparam L The left-hand, lazy tile type
       /// \tparam R The right-hand, non-lazy tile type
       /// \param first The left-hand, lazy tile argument
@@ -203,6 +309,9 @@ namespace TiledArray {
 
       /// Evaluate non-lazy and lazy tiles
 
+      /// This function will evaluate the \c second , then pass the
+      /// evaluated tile and \c first to the appropriate
+      /// \c BinaryInterfaceBase_::operator() function.
       /// \tparam L The left-hand, non-lazy tile type
       /// \tparam R The right-hand, lazy tile type
       /// \param first The left-hand, non-lazy tile argument
@@ -227,7 +336,9 @@ namespace TiledArray {
     /// In addition to the interface defined by \c BinaryInterfaceBase, this
     /// class defines binary operations with lazy tiles. It will evaluate
     /// arguments as necessary and pass them to the \c BinaryInterfaceBase
-    /// interface functions. It also handles runtime consumable resources.
+    /// interface functions. This specialization is necessary to handle runtime
+    /// consumable resources, when the tiles are not marked as consumable at
+    /// compile time.
     /// \tparam Derived The derived operation class type
     /// \tparam LeftConsumable A flag that is \c true when the left-hand
     /// argument is consumable
@@ -238,7 +349,7 @@ namespace TiledArray {
         public BinaryInterfaceBase<Derived, false, false>
     {
     public:
-      typedef BinaryInterfaceBase<Derived, false, false> BinaryInterfaceBase_;
+      typedef BinaryInterfaceBase<Derived, false, false> BinaryInterfaceBase_; ///< This class type
       typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
@@ -255,6 +366,16 @@ namespace TiledArray {
       // Import interface of BinaryInterfaceBase
       using BinaryInterfaceBase_::operator();
 
+      /// Evaluate two lazy-array tiles
+
+      /// This function will evaluate the \c first and \c second , then pass the
+      /// evaluated tiles to the appropriate \c Derived class evaluation kernel.
+      /// \tparam L The left-hand, lazy-array tile type
+      /// \tparam R The right-hand, lazy-array tile type
+      /// \param first The left-hand, non-lazy tile argument
+      /// \param second The right-hand, lazy tile argument
+      /// \return The result tile from the binary operation applied to the
+      /// evaluated \c first and \c second .
       template <typename L, typename R>
       typename madness::enable_if_c<is_array_tile<L>::value && is_array_tile<R>::value,
           result_type>::type
