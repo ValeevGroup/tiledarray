@@ -79,9 +79,6 @@ namespace TiledArray {
 
     private:
 
-      typedef ZeroTensor<typename left_type::value_type::value_type> zero_left_type;
-      typedef ZeroTensor<typename right_type::value_type::value_type> zero_right_type;
-
       /// Task function for evaluating tiles
 
       /// \param i The tile index
@@ -115,6 +112,8 @@ namespace TiledArray {
             const typename right_type::value_type,
                   typename right_type::value_type>::type &
                 right_argument_type;
+        typedef ZeroTensor<typename left_type::value_type::value_type> zero_left_type;
+        typedef ZeroTensor<typename right_type::value_type::value_type> zero_right_type;
 
         size_type task_count = 0ul;
 
