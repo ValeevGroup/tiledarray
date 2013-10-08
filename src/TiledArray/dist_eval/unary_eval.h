@@ -65,39 +65,6 @@ namespace TiledArray {
 
     private:
 
-      /// Tile evaluation helper
-
-      /// This function will:
-      /// \li Apply the unary operation to the evaluated input tile
-      /// \li Store the result tile
-      /// \param i The tile index
-      /// \param tile The tile to be evaluated
-      void eval_tile_helper(const size_type i, typename op_type::argument_type tile) {
-        // Apply unary operation to the evaluated input tile
-        DistEvalImpl_::set_tile(i, op_(tile));
-      }
-
-      /// Tile evaluation helper
-
-      /// This function will:
-      /// \li Convert the input tile to the evaluation type
-      /// \li Apply the unary operation to the evaluated input tile
-      /// \li Store the result tile
-      /// \tparam T The input tile type
-      /// \param i The tile index
-      /// \param tile The tile to be evaluated
-      /// \note This function will only be instantiated when the input tile is
-      /// a lazy tile that requires on-the-fly evaluation.
-      template <typename T>
-      typename madness::disable_if<std::is_same<T, typename arg_type::eval_type> >::type
-      eval_tile_helper(const size_type i, const T& tile) {
-        // Evaluate tile to an l-value so that it may be consumed by op_.
-        typename arg_type::eval_type eval_tile = tile;
-
-        // Apply unary operation to the evaluated input tile
-        eval_tile_helper(i, eval_tile);
-      }
-
       /// Input tile argument type
 
       /// The argument must be a non-const reference if the input tile is
@@ -112,7 +79,7 @@ namespace TiledArray {
       /// \param i The tile index
       /// \param tile The tile to be evaluated
       void eval_tile(const size_type i, tile_argument_type tile) {
-        eval_tile_helper(i, tile);
+        DistEvalImpl_::set_tile(i, op_(tile));
       }
 
       /// Function for evaluating this tensor's tiles
