@@ -100,8 +100,8 @@ namespace TiledArray {
         size_type task_count = 0ul;
 
         // Make sure all local tiles are present.
-        const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
-        typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
+        const typename pmap_interface::const_iterator end = arg_.pmap()->end();
+        typename pmap_interface::const_iterator it = arg_.pmap()->begin();
         for(; it != end; ++it) {
           if(! arg_.is_zero(*it)) {
             TensorImpl_::get_world().taskq.add(self, & UnaryEvalImpl_::eval_tile,
