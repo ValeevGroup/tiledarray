@@ -31,19 +31,20 @@
 namespace TiledArray {
   namespace math {
 
+    /// Policy class for binary tile operations
+
+    /// \tparam Op The derived class type to \c UnaryInterface
+    /// \note \c Op must be a template class with the following signature:
+    /// <tt>template <typename, typename, bool> class Operation;</tt>.
     template <typename Op>
     struct UnaryTileOpPolicy;
 
     /// Policy class for binary tile operations
 
     /// \tparam Result The result type
-    /// \tparam Left The left-hand argument type
-    /// \tparam Right The right-hand argument type
-    /// \tparam LeftConsumable A flag that is \c true when the left-hand
-    /// argument is consumable.
-    /// \tparam RightConsumable A flag that is \c true when the right-hand
-    /// argument is consumable.
-    /// \tparam Op The binary tile operation template
+    /// \tparam Arg The argument type
+    /// \tparam Consumable A flag that is \c true when the argument is consumable.
+    /// \tparam Op The unary tile operation template
     template <typename Result, typename Arg, bool Consumable,
         template <typename, typename, bool> class Op>
     struct UnaryTileOpPolicy<Op<Result, Arg, Consumable> > {
@@ -55,8 +56,8 @@ namespace TiledArray {
 
     /// Unary tile operation interface base
 
-    /// This base class defines unary operations with zero or non-zero tiles,
-    /// and maps arguments given to the appropriate evaluation kernel.
+    /// This base class defines the user interface for unary operations. It
+    /// handles tiles, lazy tiles, and runtime consumable resources.
     /// \tparam Derived The derived operation class type
     /// \tparam Consumable A flag that is \c true when the argument is consumable
     template <typename Derived, bool Consumable>
@@ -76,8 +77,12 @@ namespace TiledArray {
 
     public:
 
+      /// Evaluate non-lazy tile argument
+
+      /// Apply \c Derived class operation to \c arg.
       /// \param arg The argument
-      /// \return A scaled and permuted \c arg
+      /// \return The result tile with the unary operation (and permuation)
+      /// applied to \c arg.
       result_type operator()(argument_type arg) const {
         if(derived().perm_.dim() > 1)
           return derived().permute(arg);
@@ -85,6 +90,14 @@ namespace TiledArray {
         return derived().template no_permute<Consumable>(arg);
       }
 
+      /// Evaluate lazy tile arguments
+
+      /// This function will evaluate the lazy tile and passes the result to the
+      /// non-lazy tile interface function.
+      /// \tparam A The argument type
+      /// \param arg The lazy tile to be evaluated
+      /// \return The result tile with the unary operation applied to the
+      /// evaluated \c arg
       template <typename A>
       typename madness::enable_if<is_lazy_tile<A>, result_type>::type
       operator()(const A& arg) const {
@@ -92,19 +105,27 @@ namespace TiledArray {
         return operator()(eval_arg);
       }
 
+      /// Evaluate runtime consumable tile
+
+      /// Since the tile is always consumable with this specialization, the
+      /// runtime consumable parameter is ignored. Instead it is passed to one
+      /// of the other evaluation functions.
+      /// \tparam A The argument type
+      /// \param arg The lazy tile to be evaluated
+      /// \return The result tile with the unary operation applied to the
+      /// evaluated \c arg
       template <typename A>
       result_type operator()(A& arg, const bool) const {
         return operator()(arg);
       }
 
-    }; // class UnaryInterfaceBase
+    }; // class UnaryInterface
 
     /// Unary tile operation interface base
 
     /// This base class defines unary operations with zero or non-zero tiles,
     /// and maps arguments given to the appropriate evaluation kernel.
     /// \tparam Derived The derived operation class type
-    /// \tparam Consumable A flag that is \c true when the argument is consumable
     template <typename Derived>
     class UnaryInterface<Derived, false> {
     public:
@@ -122,8 +143,12 @@ namespace TiledArray {
 
     public:
 
+      /// Evaluate non-lazy tile argument
+
+      /// Apply \c Derived class operation to \c arg.
       /// \param arg The argument
-      /// \return A scaled and permuted \c arg
+      /// \return The result tile with the unary operation (and permuation)
+      /// applied to \c arg.
       result_type operator()(argument_type arg) const {
         if(derived().perm_.dim() > 1)
           return derived().permute(arg);
@@ -131,6 +156,14 @@ namespace TiledArray {
         return derived().template no_permute<false>(arg);
       }
 
+      /// Evaluate non-array lazy tile arguments
+
+      /// This function will evaluate the lazy tile and passes the result to the
+      /// non-lazy tile interface function.
+      /// \tparam A The argument type
+      /// \param arg The lazy tile to be evaluated
+      /// \return The result tile with the unary operation applied to the
+      /// evaluated \c arg
       template <typename A>
       typename madness::enable_if<is_non_array_lazy_tile<A>, result_type>::type
       operator()(const A& arg) const {
@@ -138,19 +171,29 @@ namespace TiledArray {
         return operator()(eval_arg);
       }
 
-      template <typename A>
-      typename madness::enable_if<is_array_tile<A>, result_type>::type
-      operator()(const A& arg) const {
-        typename A::eval_type eval_arg(arg);
-        return operator()(arg, arg.is_consumable());
-      }
+      /// Evaluate non-lazy tile with runtime consumable parameter
 
+      /// Since \c arg is const with this version, runtime consumable parameter
+      /// is ignored. Instead the tile is evaluated as a non-consumable tile.
+      /// \tparam A The argument type
+      /// \param arg The argument
+      /// \return The result tile with the unary operation (and permuation)
+      /// applied to \c arg.
       template <typename A>
       typename madness::disable_if<is_lazy_tile<A>, result_type>::type
-      operator()(const A& arg, const bool consume) const {
+      operator()(const A& arg, const bool) const {
         operator()(arg);
       }
 
+      /// Evaluate non-lazy tile with runtime consumable parameter
+
+      /// If \c consume is \c true, then arg will be evaluated as a consumable
+      /// resource. Otherwise, it will not be consumed.
+      /// \tparam A The argument type
+      /// \param arg The argument
+      /// \param consume Consumability flag; true means the tile will be consumed
+      /// \return The result tile with the unary operation (and permuation)
+      /// applied to \c arg.
       template <typename A>
       typename madness::disable_if<is_lazy_tile<typename std::remove_const<A>::type>,
           result_type>::type
@@ -164,14 +207,38 @@ namespace TiledArray {
         return derived().template no_permute<false>(arg);
       }
 
+      /// Evaluate array lazy tile arguments
+
+      /// This function will evaluate the array tile and passes the result to the
+      /// non-lazy tile interface function.
+      /// \tparam A The argument type
+      /// \param arg The array tile to be evaluated
+      /// \return The result tile with the unary operation applied to the
+      /// evaluated \c arg
       template <typename A>
-      typename madness::enable_if<is_lazy_tile<A>, result_type>::type
+      typename madness::enable_if<is_array_tile<A>, result_type>::type
+      operator()(const A& arg) const {
+        typename A::eval_type eval_arg(arg);
+        return operator()(eval_arg, arg.is_consumable());
+      }
+
+      /// Evaluate non-array lazy tile arguments
+
+      /// This function will evaluate the lazy tile and passes the result to the
+      /// non-lazy tile interface function.
+      /// \tparam A The argument type
+      /// \param arg The lazy tile to be evaluated
+      /// \param consume Consumability flag; true means the tile will be consumed
+      /// \return The result tile with the unary operation applied to the
+      /// evaluated \c arg
+      template <typename A>
+      typename madness::enable_if<is_non_array_lazy_tile<A>, result_type>::type
       operator()(const A& arg, const bool consume) const {
         typename A::eval_type eval_arg(arg);
         return operator()(eval_arg, consume);
       }
 
-    }; // class UnaryInterfaceBase
+    }; // class UnaryInterface
 
   }  // namespace math
 } // namespace TiledArray
