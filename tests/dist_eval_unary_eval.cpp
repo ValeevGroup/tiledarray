@@ -134,6 +134,7 @@ BOOST_AUTO_TEST_CASE( eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(*it));
     BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], 3 * array_tile[i]);
@@ -177,6 +178,7 @@ BOOST_AUTO_TEST_CASE( double_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().make_tile_range(*it));
     BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], 5 * 3 * array_tile[i]);
@@ -226,6 +228,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().make_tile_range(*it));
     BOOST_CHECK_EQUAL(eval_tile.range(), perm ^ array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[perm ^ array_tile.range().idx(i)], 5 * 3 * array_tile[i]);
