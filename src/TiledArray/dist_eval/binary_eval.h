@@ -133,6 +133,7 @@ namespace TiledArray {
             TensorImpl_::get_world().taskq.add(self,
                 & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
                 target_index, left_.move(index), right_.move(index));
+
             ++task_count;
           }
         } else {

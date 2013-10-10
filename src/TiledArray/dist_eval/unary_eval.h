@@ -103,9 +103,17 @@ namespace TiledArray {
         const typename pmap_interface::const_iterator end = arg_.pmap()->end();
         typename pmap_interface::const_iterator it = arg_.pmap()->begin();
         for(; it != end; ++it) {
-          if(! arg_.is_zero(*it)) {
+          // Get argument tile index
+          const size_type index = *it;
+
+          if(! arg_.is_zero(index)) {
+            // Get target tile index
+            const size_type target_index = DistEvalImpl_::perm_index(index);
+
+            // Schedule tile evaluation task
             TensorImpl_::get_world().taskq.add(self, & UnaryEvalImpl_::eval_tile,
-                DistEvalImpl_::perm_index(*it), arg_.move(*it));
+                target_index, arg_.move(index));
+
             ++task_count;
           }
         }
