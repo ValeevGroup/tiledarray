@@ -46,7 +46,7 @@ struct BinaryEvalFixture : public TiledRangeFixture {
     left_arg(detail::make_array_eval(left, left.get_world(), DenseShape(),
         left.get_pmap(), Permutation(), array_op_type())),
     right_arg(detail::make_array_eval(right, right.get_world(), DenseShape(),
-            right.get_pmap(), Permutation(), array_op_type()))
+        left.get_pmap(), Permutation(), array_op_type()))
   {
     // Fill array with random data
     for(ArrayN::iterator it = left.begin(); it != left.end(); ++it) {
@@ -120,6 +120,7 @@ BOOST_AUTO_TEST_CASE( eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(*it));
     BOOST_CHECK_EQUAL(eval_tile.range(), left_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], left_tile[i] + right_tile[i]);
@@ -148,10 +149,12 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   const dist_eval_type1::pmap_interface::const_iterator end = dist_eval.pmap()->end();
 
   // Check that each tile has been properly scaled.
+  const Permutation inv_perm = -perm;
   for(; it != end; ++it) {
     // Get the original tiles
-    const ArrayN::value_type left_tile = left.find(*it);
-    const ArrayN::value_type right_tile = right.find(*it);
+    const std::size_t arg_index = left.range().ord(inv_perm ^ dist_eval.range().idx(*it));
+    const ArrayN::value_type left_tile = left.find(arg_index);
+    const ArrayN::value_type right_tile = right.find(arg_index);
 
     // Get the array evaluator tile.
     madness::Future<dist_eval_type1::value_type> tile;
@@ -162,6 +165,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(*it));
     BOOST_CHECK_EQUAL(eval_tile.range(), perm ^ left_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[perm ^ left_tile.range().idx(i)], left_tile[i] + right_tile[i]);

@@ -118,43 +118,53 @@ namespace TiledArray {
         size_type task_count = 0ul;
 
         // Construct local iterator
-        typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
-        const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
+        TA_ASSERT(left_.pmap() == right_.pmap());
+        typename pmap_interface::const_iterator it = left_.pmap()->begin();
+        const typename pmap_interface::const_iterator end = left_.pmap()->end();
 
         if(left_.is_dense() && right_.is_dense() && TensorImpl_::is_dense()) {
           // Evaluate tiles where both arguments and the result are dense
           for(; it != end; ++it) {
-            const size_type i = *it;
+            // Get tile indices
+            const size_type index = *it;
+            const size_type target_index = DistEvalImpl_::perm_index(index);
+
+            // Schedule tile evaluation task
             TensorImpl_::get_world().taskq.add(self,
                 & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
-                i, left_.move(i), right_.move(i));
+                target_index, left_.move(index), right_.move(index));
             ++task_count;
           }
         } else {
           // Evaluate tiles where the result or one of the arguments is sparse
           for(; it != end; ++it) {
-            const size_type i = *it;
-            if(! TensorImpl_::is_zero(i)) {
-              if(left_.is_zero(i)) {
+            // Get tile indices
+            const size_type index = *it;
+            const size_type target_index = DistEvalImpl_::perm_index(index);
+
+            if(! TensorImpl_::is_zero(target_index)) {
+              // Schedule tile evaluation task
+              if(left_.is_zero(index)) {
                 TensorImpl_::get_world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<const zero_left_type, right_argument_type>,
-                  i, zero_left_type(), right_.move(i));
-              } else if(right_.is_zero(i)) {
+                  target_index, zero_left_type(), right_.move(index));
+              } else if(right_.is_zero(index)) {
                 TensorImpl_::get_world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<left_argument_type, const zero_right_type>,
-                  i, left_.move(i), zero_right_type());
+                  target_index, left_.move(index), zero_right_type());
               } else {
                 TensorImpl_::get_world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
-                  i, left_.move(i), right_.move(i));
+                  target_index, left_.move(index), right_.move(index));
               }
+
               ++task_count;
             } else {
               // Cleanup unused tiles
-              if(! left_.is_zero(i))
-                left_.move(i);
-              if(! right_.is_zero(i))
-                right_.move(i);
+              if(! left_.is_zero(index))
+                left_.move(index);
+              if(! right_.is_zero(index))
+                right_.move(index);
             }
           }
         }
