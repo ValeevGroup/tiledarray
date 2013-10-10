@@ -49,10 +49,10 @@ namespace TiledArray {
 
     private:
 
-      size_type rows_; ///< Number of tile rows to be mapped
-      size_type cols_; ///< Number of tile columns to be mapped
-      size_type proc_rows_; ///< Number of process rows
-      size_type proc_cols_; ///< Number of process columns
+      const size_type rows_; ///< Number of tile rows to be mapped
+      const size_type cols_; ///< Number of tile columns to be mapped
+      const size_type proc_cols_; ///< Number of process columns
+      const size_type proc_rows_; ///< Number of process rows
 
       /// Initialize local tile list
       void init_local() {
@@ -73,6 +73,18 @@ namespace TiledArray {
         }
       }
 
+      /// Get value subject to \c min and \c max constraints
+
+      /// \param min The minimum value
+      /// \param value The test value
+      /// \param max The maximum value
+      /// \return \c value if it is in the range \c [min,max], otherwise the
+      /// nearest extreme.
+      static size_type min_max(const size_type min, const size_type value, const size_type max) {
+        TA_ASSERT(min <= max);
+        return std::max(min, std::min(value, max));
+      }
+
     public:
       typedef Pmap::size_type size_type; ///< Size type
 
@@ -82,27 +94,22 @@ namespace TiledArray {
       /// \param rows The number of tile rows to be mapped
       /// \param cols The number of tile columns to be mapped
       CyclicPmap(madness::World& world, size_type rows, size_type cols) :
-          Pmap(world, rows * cols), rows_(rows), cols_(cols), proc_rows_(), proc_cols_()
+          Pmap(world, rows * cols), rows_(rows), cols_(cols),
+          proc_cols_(min_max(1ul, std::min<size_type>(std::sqrt(double(procs_) *
+              double(cols) / double(rows)), procs_), cols_)),
+          proc_rows_(std::min<size_type>(procs_ / proc_cols_, rows_))
       {
         TA_ASSERT(rows_ >= 1ul);
         TA_ASSERT(cols_ >= 1ul);
-        // Get a rough estimate of the process dimensions. The goal is for the
-        // ratios of proc_rows_ / proc_cols_  and rows_ / cols_ to be
-        // approximately equal.
+        TA_ASSERT((proc_rows_ * proc_cols_) <= procs_);
+        // This constructor makes a rough estimate of the optimal process
+        // dimensions. The goal is for the ratios of proc_rows_/proc_cols_ and rows_/cols_
+        // to be approximately equal.
         // Constraints: 1 <= proc_rows_ <= procs_ && 1 <= proc_cols_
         // The process map should be no bigger than m * n
-        proc_cols_ = std::max<size_type>(std::min<size_type>(
-            std::sqrt(procs_ * cols_ / rows_), procs_), 1ul);
-        proc_rows_ = procs_ / proc_cols_;
-
         // Maximum size is m and n
-        proc_rows_ = std::min<size_type>(proc_rows_, rows_);
-        proc_cols_ = std::min<size_type>(proc_cols_, cols_);
-
-        TA_ASSERT((proc_rows_ * proc_cols_) <= procs_);
 
         init_local();
-
       }
 
       /// Construct process map
@@ -116,7 +123,8 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When <tt>proc_cols > cols</tt>
       /// \throw TiledArray::Exception When <tt>proc_rows * proc_cols > world.size()</tt>
       CyclicPmap(madness::World& world, size_type rows, size_type cols, size_type proc_rows, size_type proc_cols) :
-          Pmap(world, rows * cols), rows_(rows), cols_(cols), proc_rows_(proc_rows), proc_cols_(proc_cols)
+          Pmap(world, rows * cols), rows_(rows), cols_(cols),
+          proc_cols_(proc_cols), proc_rows_(proc_rows)
       {
         // Check that the processor grid is non-zero
         TA_ASSERT(proc_rows_ <= rows_);
@@ -156,6 +164,27 @@ namespace TiledArray {
       virtual bool is_local(const size_type tile) const {
         return (CyclicPmap::owner(tile) == rank_);
       }
+
+      /// Row count accessor
+
+      /// \return The number of rows
+      size_type rows() const { return rows_; }
+
+      /// Column count accessor
+
+      /// \return The number of columns
+      size_type cols() const { return cols_; }
+
+      /// Process row count accessor
+
+      /// \return The number of process rows
+      size_type proc_rows() const { return proc_rows_; }
+
+      /// Process column count accessor
+
+      /// \return The number of process columns
+      size_type proc_cols() const { return proc_cols_; }
+
     }; // class CyclicPmap
 
   }  // namespace detail
