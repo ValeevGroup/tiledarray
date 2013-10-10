@@ -81,6 +81,13 @@
 
 #endif // NDEBUG
 
+#if __cplusplus > 199711L
+// C++11
+#define TILEDARRAY_NO_EXCEPTION noexcept
+#else
+#define TILEDARRAY_NO_EXCEPTION throw()
+#endif
+
 #include <exception>
 namespace TiledArray {
 
@@ -88,7 +95,7 @@ namespace TiledArray {
   public:
     Exception(const char* m) : message_(m) { }
 
-    virtual const char* what() const throw() { return message_; }
+    virtual const char* what() const TILEDARRAY_NO_EXCEPTION { return message_; }
 
   private:
     const char* message_;
