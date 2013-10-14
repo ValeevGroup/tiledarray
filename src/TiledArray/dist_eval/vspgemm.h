@@ -21,7 +21,7 @@
 #define TILEDARRAY_VSPGEMM_H__INCLUDED
 
 #include <TiledArray/contraction_tensor_impl.h>
-#include <TiledArray/lazy_sync.h>
+#include <TiledArray/dist_op/lazy_sync.h>
 #include <TiledArray/reduce_task.h>
 #include <TiledArray/pmap/hash_pmap.h>
 

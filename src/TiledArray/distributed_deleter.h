@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_DISTRIBUTED_DELETER_H__INCLUDED
 #define TILEDARRAY_DISTRIBUTED_DELETER_H__INCLUDED
 
-#include <TiledArray/lazy_sync.h>
+#include <TiledArray/dist_op/lazy_sync.h>
 
 namespace TiledArray {
   namespace detail {
