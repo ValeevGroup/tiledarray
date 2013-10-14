@@ -17,11 +17,11 @@
  *
  */
 
-#ifndef TILED_ARRAY_H__INCLUDED
-#define TILED_ARRAY_H__INCLUDED
+#ifndef TILEDARRAY_H__INCLUDED
+#define TILEDARRAY_H__INCLUDED
 
 #include <TiledArray/array.h>
 #include <TiledArray/eigen.h>
 #include <TiledArray/policies/sparse_policy.h>
 
-#endif // TILED_ARRAY_H__INCLUDED
+#endif // TILEDARRAY_H__INCLUDED
