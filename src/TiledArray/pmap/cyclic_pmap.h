@@ -165,26 +165,6 @@ namespace TiledArray {
         return (CyclicPmap::owner(tile) == rank_);
       }
 
-      /// Row count accessor
-
-      /// \return The number of rows
-      size_type rows() const { return rows_; }
-
-      /// Column count accessor
-
-      /// \return The number of columns
-      size_type cols() const { return cols_; }
-
-      /// Process row count accessor
-
-      /// \return The number of process rows
-      size_type proc_rows() const { return proc_rows_; }
-
-      /// Process column count accessor
-
-      /// \return The number of process columns
-      size_type proc_cols() const { return proc_cols_; }
-
     }; // class CyclicPmap
 
   }  // namespace detail
