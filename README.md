@@ -18,7 +18,7 @@ The following are example expressions written in C++ with TiledArray. TiledArray
 C("m,n") = 2.0 * A("m,k") * B("k,n");
 ```
 
-* Matrix-vector mulitplication
+* Matrix-vector multiplication
 
 ```
 C("n") = A("k") * B("k,n");
