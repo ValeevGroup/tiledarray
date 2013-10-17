@@ -188,7 +188,9 @@ namespace TiledArray {
       memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4 * n);
     }
 
-    ~Range() {}
+    ~Range() {
+      delete_arrays();
+    }
 
     Range_& operator=(const Range_& other) {
       const size_type n = other.start_.size();
@@ -381,6 +383,10 @@ namespace TiledArray {
       finish_.set(start_.end(), n);
       size_.set(finish_.end(), n);
       weight_.set(size_.end(), n);
+    }
+
+    void delete_arrays() {
+      delete[] &(start_.front());
     }
 
     template <typename T>
