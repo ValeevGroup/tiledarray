@@ -196,7 +196,7 @@ namespace TiledArray {
       const size_type n = other.start_.size();
 
       if(start_.size() != n) {
-        delete [] start_.data();
+        delete_arrays();
         init_arrays(new size_type[n * 4], n);
       }
 
@@ -351,8 +351,7 @@ namespace TiledArray {
       ar & n;
       const size_type n4 = n * 4;
       if(start_.size() != n) {
-        if(! start_.empty())
-          delete [] start_.data();
+        delete_arrays();
         init_arrays(new size_type[n4], n);
       }
       ar & madness::archive::wrap(start_.data(), n4) & volume_;
@@ -386,7 +385,8 @@ namespace TiledArray {
     }
 
     void delete_arrays() {
-      delete[] &(start_.front());
+      if(! start_.empty())
+        delete [] start_.data();
     }
 
     template <typename T>
