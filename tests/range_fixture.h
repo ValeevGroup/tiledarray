@@ -52,8 +52,13 @@ struct RangeFixture {
 
   template <typename A>
   static std::vector<std::size_t> calc_weight(const A& size) {
-    std::vector<std::size_t> weight(size.size());
-    TiledArray::detail::calc_weight(weight, size);
+    const std::size_t n = detail::size(size);
+    std::vector<std::size_t> weight(n);
+    std::size_t volume = 1ul;
+    for(int i = int(n) - 1; i >= 0; --i) {
+      weight[i] = volume;
+      volume *= size[i];
+    }
     return weight;
   }
 
