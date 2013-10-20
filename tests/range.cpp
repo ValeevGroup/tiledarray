@@ -24,6 +24,19 @@
 #include <sstream>
 #include <world/bufar.h>
 
+template <typename SizeArray>
+inline std::size_t calc_volume(const SizeArray& size) {
+  const std::size_t n = detail::size(size);
+  std::size_t volume = 0ul;
+  if(n) {
+    volume = 1ul;
+    for(std::size_t i = 0ul; i < n; ++i)
+      volume *= size[i];
+  }
+
+  return volume;
+}
+
 using namespace TiledArray;
 
 const RangeFixture::index RangeFixture::start(GlobalFixture::dim, 0);
@@ -32,7 +45,7 @@ const std::vector<std::size_t> RangeFixture::size(GlobalFixture::dim,  5);
 const std::vector<std::size_t> RangeFixture::weight =
     RangeFixture::calc_weight(std::vector<std::size_t>(GlobalFixture::dim, 5));
 const RangeFixture::size_type RangeFixture::volume =
-    detail::calc_volume(std::vector<std::size_t>(GlobalFixture::dim, 5));
+    calc_volume(std::vector<std::size_t>(GlobalFixture::dim, 5));
 const RangeFixture::index RangeFixture::p0(GlobalFixture::dim, 0);
 const RangeFixture::index RangeFixture::p1(GlobalFixture::dim, 1);
 const RangeFixture::index RangeFixture::p2(GlobalFixture::dim, 2);
@@ -96,13 +109,9 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.size().begin(), r4.size().end(), size.begin(), size.end());
   BOOST_CHECK_EQUAL(r4.volume(), volume);
 
-  BOOST_REQUIRE_NO_THROW(Range r5(p2, p2)); // Zero Size Construction
-  Range r5(p2, p2);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.start().begin(), r5.start().end(), p2.begin(), p2.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.finish().begin(), r5.finish().end(), p2.begin(), p2.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.size().begin(), r5.size().end(), start.begin(), start.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.weight().begin(), r5.weight().end(), start.begin(), start.end());
-  BOOST_CHECK_EQUAL(r5.volume(), 0u);
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(Range(p2, p2), Exception); // Zero Size Construction
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( ostream )

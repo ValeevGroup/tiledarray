@@ -23,6 +23,7 @@
 #include <TiledArray/size_array.h>
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/coordinates.h>
+#include <TiledArray/utility.h>
 #include <algorithm>
 #include <vector>
 #include <functional>
@@ -34,82 +35,19 @@ namespace TiledArray {
 
   namespace detail {
 
-    template <typename SizeArray>
-    inline std::size_t calc_volume(const SizeArray& size) {
-      return size.size() ? std::accumulate(size.begin(), size.end(), typename SizeArray::value_type(1),
-          std::multiplies<typename SizeArray::value_type>()) : 0ul;
-    }
-
-    template<typename InIter, typename OutIter>
-    inline void calc_weight_helper(InIter first, InIter last, OutIter result) { // no throw
-      typedef typename std::iterator_traits<OutIter>::value_type value_type;
-
-      for(value_type weight = 1; first != last; ++first, ++result) {
-        *result = (*first != 0ul ? weight : 0);
-        weight *= *first;
-      }
-    }
-
-    template <typename WArray, typename SArray>
-    inline void calc_weight(WArray& weight, const SArray& size) {
-      TA_ASSERT(weight.size() == size.size());
-      calc_weight_helper(size.rbegin(), size.rend(), weight.rbegin());
-    }
-
     template <typename Index, typename WeightArray, typename StartArray>
-    inline typename Index::value_type calc_ordinal(const Index& index, const WeightArray& weight, const StartArray& start) {
-      typename Index::value_type o = 0;
-      const typename Index::value_type dim = index.size();
-      for(std::size_t i = 0ul; i < dim; ++i)
+    inline std::size_t calc_ordinal(const Index& index, const WeightArray& weight, const StartArray& start) {
+      // Check that the dimensions of the arrays are equal.
+      const std::size_t n = detail::size(index);
+      TA_ASSERT(detail::size(weight) == n);
+      TA_ASSERT(detail::size(start) == n);
+
+      // Compute ordinal
+      typename std::size_t o = 0ul;
+      for(std::size_t i = 0ul; i < n; ++i)
         o += (index[i] - start[i]) * weight[i];
 
       return o;
-    }
-
-
-    template <typename Index, typename Rng>
-    inline void calc_index(Index& index, std::size_t o, const Rng& range) {
-      const std::size_t dim = index.size();
-
-      for(std::size_t i = 0ul; i < dim; ++i) {
-        const typename Index::value_type x = (o / range.weight()[i]);
-        o -= x * range.weight()[i];
-        index[i] = x + range.start()[i];
-      }
-    }
-
-    template <typename ForIter, typename InIterStart, typename InIterFinish>
-    inline void increment_coordinate_helper(ForIter first_cur, ForIter last_cur, InIterStart start, InIterFinish finish) {
-      for(; first_cur != last_cur; ++first_cur, ++start, ++finish) {
-        // increment coordinate
-        ++(*first_cur);
-
-        // break if done
-        if( *first_cur < *finish)
-          return;
-
-        // Reset current index to start value.
-        *first_cur = *start;
-      }
-    }
-
-    template <typename Index, typename Rng>
-    inline void increment_coordinate(Index& index, const Rng& range) {
-      for(int dim = int(range.dim() - 1); dim >= 0; --dim) {
-        // increment coordinate
-        ++index[dim];
-
-        // break if done
-        if(index[dim] < range.finish()[dim])
-          return;
-
-        // Reset current index to start value.
-        index[dim] = range.start()[dim];
-      }
-
-      // if the current location was set to start then it was at the end and
-      // needs to be reset to equal finish.
-      std::copy(range.finish().begin(), range.finish().end(), index.begin());
     }
 
   }  // namespace detail
@@ -117,125 +55,214 @@ namespace TiledArray {
   /// Range data of an N-dimensional tensor.
   class Range {
   public:
-    typedef Range Range_;
-    typedef std::size_t size_type;
-    typedef std::vector<std::size_t> index;
-    typedef detail::SizeArray<std::size_t> size_array;
-    typedef detail::RangeIterator<index, Range_> const_iterator;
+    typedef Range Range_; ///< This object type
+    typedef std::size_t size_type; ///< Size type
+    typedef std::vector<std::size_t> index; ///< Coordinate index type
+    typedef detail::SizeArray<std::size_t> size_array; ///< Size array type
+    typedef detail::RangeIterator<index, Range_> const_iterator; ///< Coordinate iterator
     friend class detail::RangeIterator<index, Range_>;
 
-    /// Default constructor. The range has 0 size and the origin is set at 0.
-    Range() :
-        start_(), finish_(), size_(), weight_(), volume_(0ul)
-    {}
+  private:
 
-    /// Constructor defined by an upper and lower bound. All elements of
-    /// finish must be greater than or equal to those of start.
+    /// Initialize range arrays
+
+    /// Use \c buffer to set the buffers for range arrays.
+    /// \param buffer The buffer that will holds \c 4*n elements
+    /// \param n The size of each of the range arrays
+    /// \note If the range arrays reference a valid buffer, then calling this
+    /// function will cause a memory leak.
+    void init_arrays(size_type* const buffer, const size_type n) {
+      start_.set(buffer, n);
+      finish_.set(start_.end(), n);
+      size_.set(finish_.end(), n);
+      weight_.set(size_.end(), n);
+    }
+
+    /// Allocate and initialize range arrays
+
+    /// \param n The size of each of the range arrays
+    /// \throw std::bad_alloc When memory allocation fails
+    void alloc_arrays(const size_type n) { init_arrays(new size_type[n * 4ul], n); }
+
+    /// Reallocate and reinitialize range arrays
+
+    /// If <tt>dim() != n</tt>, then a new buffer is allocated and it is used to
+    /// reinitialize the range arrays. If \c n is zero, the range arrays are set
+    /// to zero sized arrays.
+    /// deallocated and the range arrays are set to zero size arrays.
+    /// \param n The new size for the range arrays
+    void realloc_arrays(const size_type n) {
+      if(dim() != n) {
+        delete_arrays();
+        size_type* const buffer = (n > 0ul ? new size_type[n * 4ul] : NULL);
+        init_arrays(buffer, n);
+      }
+    }
+    /// delete array memory
+
+    /// \throw nothing
+    void delete_arrays() { delete [] start_.data(); }
+
     template <typename Index>
-    Range(const Index& start, const Index& finish) :
-        start_(),
-        finish_(),
-        size_(),
-        weight_(),
-        volume_(start.size() ? 1ul : 0ul)
-    {
-      TA_ASSERT(start.size() == finish.size());
-      TA_ASSERT( (std::equal(start.begin(), start.end(), finish.begin(),
-          std::less_equal<std::size_t>())) );
+    void compute_range_data(const size_type n, const Index& start, const Index& finish) {
+      // Set the volume seed
+      volume_ = 1ul;
 
-      // Initialize array memory
-      const size_type n = start.size();
-      init_arrays(new size_type[n * 4], n);
-
-      // Set array data
+      // Compute range data
       for(int i = n - 1; i >= 0; --i) {
+        TA_ASSERT(start[i] < finish[i]);
         start_[i] = start[i];
         finish_[i] = finish[i];
         size_[i] = finish[i] - start[i];
-        weight_[i] = (size_[i] != 0ul ? volume_ : 0);
+        weight_[i] = volume_;
         volume_ *= size_[i];
       }
     }
 
-    template <typename SizeArray>
-    explicit Range(const SizeArray& size) :
-        start_(),
-        finish_(),
-        size_(),
-        weight_(),
-        volume_(size.size() ? 1ul : 0ul)
-    {
-      // Initialize array memory
-      const size_type n = size.size();
-      init_arrays(new size_type[n * 4], n);
+    template <typename Index>
+    void compute_range_data(const size_type n, const Index& size) {
+      // Set the volume seed
+      volume_ = 1ul;
 
-      // Set array data
+      // Compute range data
       for(int i = n - 1; i >= 0; --i) {
+        TA_ASSERT(size[i] > 0ul);
         start_[i] = 0ul;
-        finish_[i] = size[i];
-        size_[i] = size[i];
-        weight_[i] = (size[i] != 0ul ? volume_ : 0);
+        finish_[i] = size_[i] = size[i];
+        weight_[i] = volume_;
         volume_ *= size[i];
       }
     }
 
-    /// Copy Constructor
-    Range(const Range_& other) : // no throw
-        start_(), finish_(), size_(), weight_(), volume_(other.volume_)
+  public:
+
+    /// Default constructor
+
+    /// Construct a range with size and dimensions equal to zero.
+    Range() :
+      start_(), finish_(), size_(), weight_(), volume_(0ul)
+    { }
+
+    /// Constructor defined by an upper and lower bound
+
+    /// \tparam Index An array type
+    /// \param start The lower bounds of the N-dimensional range
+    /// \param finish The upper bound of the N-dimensional range
+    /// \throw TiledArray::Exception When the size of \c start is not equal to
+    /// that of \c finish.
+    /// \throw TiledArray::Exception When start[i] >= finish[i]
+    /// \throw std::bad_alloc When memory allocation fails.
+    template <typename Index>
+    Range(const Index& start, const Index& finish) :
+      start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
-      const size_type n = other.start_.size();
-      init_arrays(new size_type[n * 4], n);
-      memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4 * n);
-    }
-
-    ~Range() {
-      delete_arrays();
-    }
-
-    Range_& operator=(const Range_& other) {
-      const size_type n = other.start_.size();
-
-      if(start_.size() != n) {
-        delete_arrays();
-        init_arrays(new size_type[n * 4], n);
+      const size_type n = detail::size(start);
+      TA_ASSERT(n == detail::size(finish));
+      if(n > 0ul) {
+        // Initialize array memory
+        alloc_arrays(n);
+        compute_range_data(n, start, finish);
       }
+    }
 
-      memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4 * n);
+    /// Range constructor from size array
+
+    /// \tparam SizeArray An array type
+    /// \param size An array with the size of each dimension
+    /// \throw std::bad_alloc When memory allocation fails.
+    template <typename SizeArray>
+    explicit Range(const SizeArray& size) :
+      start_(), finish_(), size_(), weight_(), volume_(0ul)
+    {
+      const size_type n = detail::size(size);
+      if(n) {
+        // Initialize array memory
+        alloc_arrays(n);
+        compute_range_data(n, size);
+      }
+    }
+
+    /// Copy Constructor
+
+    /// \param other The range to be copied
+    /// \throw std::bad_alloc When memory allocation fails.
+    Range(const Range_& other) :
+      start_(), finish_(), size_(), weight_(), volume_(other.volume_)
+    {
+      const size_type n = other.dim();
+      if(n > 0ul) {
+        alloc_arrays(n);
+        memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4ul * n);
+      }
+    }
+
+    /// Destructor
+    ~Range() { delete_arrays(); }
+
+    /// Copy assignment operator
+
+    /// \param other The range to be copied
+    /// \return A reference to this object
+    /// \throw std::bad_alloc When memory allocation fails.
+    Range_& operator=(const Range_& other) {
+      const size_type n = other.dim();
+      realloc_arrays(n);
+      memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4ul * n);
 
       return *this;
     }
 
+    /// Dimension accessor
+
+    /// \return The number of dimension of this range
+    /// \throw nothing
     unsigned int dim() const { return size_.size(); }
 
-    /// Returns the lower bound of the range
-    const size_array& start() const { return start_; } // no throw
+    /// Range start coordinate accessor
 
-    /// Returns the upper bound of the range
-    const size_array& finish() const { return finish_; } // no throw
+    /// \return A \c size_array that contains the lower bound of this range
+    /// \throw nothing
+    const size_array& start() const { return start_; }
 
-    /// Returns an array with the size of each dimension.
-    const size_array& size() const { return size_; } // no throw
+    /// Range finish coordinate accessor
 
-    const size_array& weight() const { return weight_; } // no throw
+    /// \return A \c size_array that contains the upper bound of this range
+    /// \throw nothing
+    const size_array& finish() const { return finish_; }
+
+    /// Range size accessor
+
+    /// \return A \c size_array that contains the sizes of each dimension
+    /// \throw nothing
+    const size_array& size() const { return size_; }
+
+    /// Range weight accessor
+
+    /// \return A \c size_array that contains the strides of each dimension
+    /// \throw nothing
+    const size_array& weight() const { return weight_; }
 
 
     /// Range volume accessor
 
     /// \return The total number of elements in the range.
+    /// \throw nothing
     size_type volume() const { return volume_; }
 
     /// Index iterator factory
 
     /// The iterator dereferences to an index. The order of iteration matches
     /// the data layout of a dense tensor.
-    /// \return An iterator that holds the start element index of a tensor.
+    /// \return An iterator that holds the start element index of a tensor
+    /// \throw nothing
     const_iterator begin() const { return const_iterator(start_, this); }
 
     /// Index iterator factory
 
     /// The iterator dereferences to an index. The order of iteration matches
     /// the data layout of a dense tensor.
-    /// \return An iterator that holds the finish element index of a tensor.
+    /// \return An iterator that holds the finish element index of a tensor
+    /// \throw nothing
     const_iterator end() const { return const_iterator(finish_, this); }
 
     /// Check the coordinate to make sure it is within the range.
@@ -244,10 +271,12 @@ namespace TiledArray {
     /// \param index The coordinate index to check for inclusion in the range
     /// \return \c true when \c i \c >= \c start and \c i \c < \c f, otherwise
     /// \c false
+    /// \throw TildedArray::Exception When the dimension of this range is not
+    /// equal to the size of the index.
     template <typename Index>
     typename madness::disable_if<std::is_integral<Index>, bool>::type
     includes(const Index& index) const {
-      TA_ASSERT(index.size() == dim());
+      TA_ASSERT(detail::size(index) == dim());
       const unsigned int end = dim();
       for(unsigned int i = 0ul; i < end; ++i)
         if((index[i] < start_[i]) || (index[i] >= finish_[i]))
@@ -260,26 +289,60 @@ namespace TiledArray {
 
     /// \param i The ordinal index to check for inclusion in the range
     /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
+    /// \throw nothing
     template <typename Ordinal>
     typename madness::enable_if<std::is_integral<Ordinal>, bool>::type
     includes(Ordinal i) const {
       return include_ordinal_(i);
     }
 
-    /// Permute the tile given a permutation.
-    Range_& operator ^=(const Permutation& p) {
-      TA_ASSERT(p.dim() == dim());
-      Range_ temp(p ^ start_, p ^ finish_);
-      temp.swap(*this);
+    /// Permute this range
+
+    /// \param perm The permutation to be applied to this range
+    /// \return A reference to this range
+    /// \throw TildedArray::Exception When the dimension of this range is not
+    /// equal to the dimension of the permutation.
+    /// \throw std::bad_alloc When memory allocation fails.
+    Range_& operator ^=(const Permutation& perm) {
+      const size_type n = dim();
+      TA_ASSERT(perm.dim() == n);
+
+      if(n > 1ul) {
+        // Create a permuted copy of start and finish
+        madness::ScopedArray<size_type> buffer(new size_type[n * 2ul]);
+        register size_type* const perm_start = buffer.get();
+        register size_type* const perm_finish = buffer.get() + n;
+        for(size_type i = 0ul; i < n; ++i) {
+          perm_start[perm[i]] = start_[i];
+          perm_finish[perm[i]] = finish_[i];
+        }
+
+        compute_range_data(n, perm_start, perm_finish);
+      }
 
       return *this;
     }
 
-    /// Change the dimensions of the range.
+    /// Resize range to a new upper and lower bound
+
+    /// \tparam Index An array type
+    /// \param start The lower bounds of the N-dimensional range
+    /// \param finish The upper bound of the N-dimensional range
+    /// \throw TiledArray::Exception When the size of \c start is not equal to
+    /// that of \c finish.
+    /// \throw TiledArray::Exception When start[i] >= finish[i]
+    /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index>
     Range_& resize(const Index& start, const Index& finish) {
-      Range_ temp(start, finish);
-      temp.swap(*this);
+      const size_type n = detail::size(start);
+      TA_ASSERT(n == detail::size(finish));
+
+      // Reallocate memory for range arrays
+      realloc_arrays(n);
+      if(n > 0ul)
+        compute_range_data(n, start, finish);
+      else
+        volume_ = 0ul;
 
       return *this;
     }
@@ -287,25 +350,26 @@ namespace TiledArray {
     /// calculate the ordinal index of \c i
 
     /// This function is just a pass-through so the user can call \c ord() on
-    /// a template parameter that can be an index or a size_type.
-    /// \param i Ordinal index
-    /// \return \c i (unchanged)
-    template <typename Ordinal>
-    typename madness::enable_if<std::is_integral<Ordinal>, Ordinal>::type
-    ord(Ordinal i) const {
-      TA_ASSERT(includes(i));
-      return i;
+    /// a template parameter that can be a coordinate index or an integral.
+    /// \param index Ordinal index
+    /// \return \c index (unchanged)
+    /// \throw When \c index is not included in this range
+    size_type ord(const size_type index) const {
+      TA_ASSERT(includes(index));
+      return index;
     }
 
     /// calculate the ordinal index of \c i
 
-    /// Convert an index to an ordinal index.
+    /// Convert a coordinate index to an ordinal index.
+    /// \tparam Index A coordinate index type (array type)
     /// \param index The index to be converted to an ordinal index
-    /// \return The ordinal index of the index \c i
+    /// \return The ordinal index of \c index
+    /// \throw When \c index is not included in this range.
     template <typename Index>
     typename madness::disable_if<std::is_integral<Index>, size_type>::type
     ord(const Index& index) const {
-      TA_ASSERT(index.size() == dim());
+      TA_ASSERT(detail::size(index) == dim());
       TA_ASSERT(includes(index));
       size_type o = 0;
       const unsigned int end = dim();
@@ -315,18 +379,29 @@ namespace TiledArray {
       return o;
     }
 
-    /// calculate the index of \c i
+    /// calculate the coordinate index of the ordinal index, \c index.
 
-    /// Convert an ordinal index to an index.
-    /// \param o Ordinal index
+    /// Convert an ordinal index to a coordinate index.
+    /// \param index Ordinal index
     /// \return The index of the ordinal index
-    template <typename Ordinal>
-    typename madness::enable_if<std::is_integral<Ordinal>, index>::type
-    idx(Ordinal o) const {
-      TA_ASSERT(includes(o));
-      index i;
-      detail::calc_index(size_index_(i), o, *this);
-      return i;
+    /// \throw TiledArray::Exception When \c index is not included in this range
+    /// \throw std::bad_alloc When memory allocation fails
+    index idx(size_type index) const {
+      // Check that o is contained by range.
+      TA_ASSERT(includes(index));
+
+      // Construct result coordinate index object and allocate its memory.
+      Range_::index result;
+      result.reserve(dim());
+
+      // Compute the coordinate index of o in range.
+      for(std::size_t i = 0ul; i < dim(); ++i) {
+        const size_type s = index / weight_[i]; // Compute the size of result[i]
+        index %= weight_[i];
+        result.push_back(s + start_[i]);
+      }
+
+      return result;
     }
 
     /// calculate the index of \c i
@@ -336,7 +411,7 @@ namespace TiledArray {
     /// \param i The index
     /// \return \c i (unchanged)
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, const Index&>::type
+    typename madness::disable_if<std::is_integral<Index>, const index&>::type
     idx(const Index& i) const {
       TA_ASSERT(includes(i));
       return i;
@@ -345,23 +420,20 @@ namespace TiledArray {
     template <typename Archive>
     typename madness::enable_if<madness::archive::is_input_archive<Archive> >::type
     serialize(const Archive& ar) {
-      size_type n = 0ul;
-
       // Get number of dimensions
+      size_type n = 0ul;
       ar & n;
-      const size_type n4 = n * 4;
-      if(start_.size() != n) {
-        delete_arrays();
-        init_arrays(new size_type[n4], n);
-      }
-      ar & madness::archive::wrap(start_.data(), n4) & volume_;
+
+      // Get range data
+      realloc_arrays(n);
+      ar & madness::archive::wrap(start_.data(), n * 4ul) & volume_;
     }
 
     template <typename Archive>
     typename madness::enable_if<madness::archive::is_output_archive<Archive> >::type
     serialize(const Archive& ar) const {
-      const size_type n = start_.size();
-      ar & n & madness::archive::wrap(start_.data(), n * 4) & volume_;
+      const size_type n = dim();
+      ar & n & madness::archive::wrap(start_.data(), n * 4ul) & volume_;
     }
 
     void swap(Range_& other) {
@@ -377,66 +449,83 @@ namespace TiledArray {
 
   private:
 
-    void init_arrays(size_type* data, const size_type n) {
-      start_.set(data, n);
-      finish_.set(start_.end(), n);
-      size_.set(finish_.end(), n);
-      weight_.set(size_.end(), n);
-    }
+    /// Check that a signed integral value is include in this range
 
-    void delete_arrays() {
-      if(! start_.empty())
-        delete [] start_.data();
-    }
+    /// \tparam Index A signed integral type
+    /// \param i The ordinal index to check
+    /// \return \c true when <tt>i >= 0</tt> and <tt>i < volume_</tt>, otherwise
+    /// \c false.
+    template <typename Index>
+    typename madness::enable_if<std::is_signed<Index>, bool>::type
+    include_ordinal_(Index i) const { return (i >= Index(0)) && (i < Index(volume_)); }
 
-    template <typename T>
-    std::vector<T>& size_index_(std::vector<T>& i) const {
-      if(i.size() != dim())
-        i.resize(dim());
+    /// Check that an unsigned integral value is include in this range
 
-      return i;
-    }
+    /// \tparam Index An unsigned integral type
+    /// \param i The ordinal index to check
+    /// \return \c true when  <tt>i < volume_</tt>, otherwise \c false.
+    template <typename Index>
+    typename madness::disable_if<std::is_signed<Index>, bool>::type
+    include_ordinal_(Index i) const { return i < volume_; }
 
-    template <typename T>
-    T& size_index_(T& i) const {
-      TA_ASSERT(i.size() == dim());
-      return i;
-    }
+    /// Increment the coordinate index \c i in this range
 
-    template <typename Ordinal>
-    typename madness::enable_if<std::is_signed<Ordinal>, bool>::type
-    include_ordinal_(Ordinal i) const {
-      return (i >= 0ul) && (i < volume_);
-    }
-
-    template <typename Ordinal>
-    typename madness::disable_if<std::is_signed<Ordinal>, bool>::type
-    include_ordinal_(Ordinal i) const {
-      return i < volume_;
-    }
-
+    /// \param[in,out] i The coordinate index to be incremented
+    /// \throw TiledArray::Exception When the dimension of i is not equal to
+    /// that of this range
+    /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void increment(index& i) const {
-      detail::increment_coordinate(i, *this);
+      TA_ASSERT(includes(i));
+      for(int d = int(dim()) - 1; d >= 0; --d) {
+        // increment coordinate
+        ++i[d];
+
+        // break if done
+        if(i[d] < finish_[d])
+          return;
+
+        // Reset current index to start value.
+        i[d] = start_[d];
+      }
+
+      // if the current location was set to start then it was at the end and
+      // needs to be reset to equal finish.
+      std::copy(finish_.begin(), finish_.end(), i.begin());
     }
 
+    /// Advance the coordinate index \c i by \c n in this range
+
+    /// \param[in,out] i The coordinate index to be advanced
+    /// \param n The distance to advance \c i
+    /// \throw TiledArray::Exception When the dimension of i is not equal to
+    /// that of this range
+    /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void advance(index& i, std::ptrdiff_t n) const {
+      TA_ASSERT(includes(i));
       const size_type o = ord(i) + n;
-
-      if(n >= volume_)
-        std::copy(finish_.begin(), finish_.end(), i.begin());
-      else
-        i = idx(o);
+      TA_ASSERT(includes(o));
+      i = idx(o);
     }
 
+    /// Compute the distance between the coordinate indices \c first and \c last
+
+    /// \param first The starting position in the range
+    /// \param last The ending position in the range
+    /// \return The difference between first and last, in terms of range positions
+    /// \throw TiledArray::Exception When the dimension of \c first or \c last
+    /// is not equal to that of this range
+    /// \throw TiledArray::Exception When \c first or \c last is outside this range
     std::ptrdiff_t distance_to(const index& first, const index& last) const {
+      TA_ASSERT(includes(first));
+      TA_ASSERT(includes(last));
       return ord(last) - ord(first);
     }
 
-    size_array start_;     ///< Tile origin
-    size_array finish_;    ///< Tile upper bound
-    size_array size_;      ///< Dimension sizes
-    size_array weight_;    ///< Dimension weights
-    size_type volume_;///< Total number of elements
+    size_array start_; ///< Tile origin
+    size_array finish_; ///< Tile upper bound
+    size_array size_; ///< Dimension sizes
+    size_array weight_; ///< Dimension weights (strides)
+    size_type volume_; ///< Total number of elements
   }; // class Range
 
 
@@ -446,70 +535,81 @@ namespace TiledArray {
     r0.swap(r1);
   }
 
-  /// Return the union of two range (i.e. the overlap). If the ranges do not
-  /// overlap, then a 0 size range will be returned.
-//  template <typename Derived1, typename Derived2>
-//  Range<CS> operator &(const Range<CS>& b1, const Range<CS>& b2) {
-//    Range<CS> result;
-//    typename Range<CS>::index start, finish;
-//    typename Range<CS>::index::value_type s1, s2, f1, f2;
-//    for(unsigned int d = 0; d < CS::dim; ++d) {
-//      s1 = b1.start()[d];
-//      f1 = b1.finish()[d];
-//      s2 = b2.start()[d];
-//      f2 = b2.finish()[d];
-//      // check for overlap
-//      if( (s2 < f1 && s2 >= s1) || (f2 < f1 && f2 >= s1) ||
-//          (s1 < f2 && s1 >= s2) || (f1 < f2 && f1 >= s2) )
-//      {
-//        start[d] = std::max(s1, s2);
-//        finish[d] = std::min(f1, f2);
-//      } else {
-//        return result; // no overlap for this index
-//      }
-//    }
-//    result.resize(start, finish);
-//    return result;
-//  }
 
-  /// Returns a permuted range.
+  /// Create a permuted range
+
+  /// \param perm The permutation to be applied to the range
+  /// \param r The range to be permuted
+  /// \return A permuted copy of \c r.
   inline Range operator ^(const Permutation& perm, const Range& r) {
-    TA_ASSERT(perm.dim() == r.dim());
-    return Range(perm ^ r.start(), perm ^ r.finish());
+    const Range::size_type n = r.dim();
+    TA_ASSERT(perm.dim() == n);
+    Range result;
+
+    if(n > 1ul) {
+      // Get the start and finish of the original range.
+      const Range::size_array& start = r.start();
+      const Range::size_array& finish = r.finish();
+
+      // Create a permuted copy of start and finish
+      madness::ScopedArray<Range::size_type> buffer(new Range::size_type[n * 2ul]);
+      register Range::size_type* const perm_start = buffer.get();
+      register Range::size_type* const perm_finish = buffer.get() + n;
+      for(Range::size_type i = 0ul; i < n; ++i) {
+        perm_start[perm[i]] = start[i];
+        perm_finish[perm[i]] = finish[i];
+      }
+
+      result.resize(Range::size_array(perm_start, perm_start + n),
+          Range::size_array(perm_finish, perm_finish + n));
+    } else {
+      result = r;
+    }
+
+    return result;
   }
 
-  inline const Range& operator ^(const detail::NoPermutation& perm, const Range& r) {
+  /// No permutation function
+
+  /// This function is used to allow generic code for \c Permutation or
+  /// \c NoPermutation code.
+  /// \param r The range not to be permuted
+  /// \return A const reference to \c r
+  inline const Range& operator ^(const detail::NoPermutation&, const Range& r) {
     return r;
   }
 
-  /// Returns true if the start and finish are equal.
-  inline bool operator ==(const Range& r1, const Range& r2) {
-#ifdef NDEBUG
-    return (r1.dim() == r2.dim()) &&
-        ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
-        ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().begin()) );
-#else
-    return (r1.dim() == r2.dim()) &&
-        ( std::equal(r1.start().begin(), r1.start().end(), r2.start().begin()) ) &&
-        ( std::equal(r1.finish().begin(), r1.finish().end(), r2.finish().begin()) ) &&
-        ( std::equal(r1.size().begin(), r1.size().end(), r2.size().begin()) ) &&
-        ( std::equal(r1.weight().begin(), r1.weight().end(), r2.weight().begin()) ); // do an extra size check to catch bugs.
-#endif
-  }
+  /// Range equality comparison
 
-  /// Returns true if the start and finish are not equal.
+  /// \param r1 The first range to be compared
+  /// \param r2 The second range to be compared
+  /// \return \c true when \c r1 represents the same range as \c r2, otherwise
+  /// \c false.
+  inline bool operator ==(const Range& r1, const Range& r2) {
+    return ((r1.start() == r2.start()) && (r1.finish() == r2.finish()));
+  }
+  /// Range inequality comparison
+
+  /// \param r1 The first range to be compared
+  /// \param r2 The second range to be compared
+  /// \return \c true when \c r1 does not represent the same range as \c r2,
+  /// otherwise \c false.
   inline bool operator !=(const Range& r1, const Range& r2) {
     return ! operator ==(r1, r2);
   }
 
-  /// range output operator.
-  inline std::ostream& operator<<(std::ostream& out, const Range& r) {
-    out << "[ ";
-    detail::print_array(out, r.start());
-    out << ", ";
-    detail::print_array(out, r.finish());
-    out << " )";
-    return out;
+  /// Range output operator
+
+  /// \param os The output stream that will be used to print \c r
+  /// \param r The range to be printed
+  /// \return A reference to the output stream
+  inline std::ostream& operator<<(std::ostream& os, const Range& r) {
+    os << "[ ";
+    detail::print_array(os, r.start());
+    os << ", ";
+    detail::print_array(os, r.finish());
+    os << " )";
+    return os;
   }
 
 } // namespace TiledArray
