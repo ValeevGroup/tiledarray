@@ -310,7 +310,7 @@ namespace TiledArray {
           ds_.data_.erase(acc);
           delete this;
         }
-      }; // struct DelayedSet
+      }; // struct DelayedMove
 
       /// Set value callback object
 
