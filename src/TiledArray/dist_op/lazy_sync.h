@@ -23,7 +23,7 @@
 #include <TiledArray/madness.h>
 
 namespace TiledArray {
-  namespace detail {
+  namespace dist_op {
 
     /// Lazy synchronization base
 
@@ -62,6 +62,19 @@ namespace TiledArray {
         world.mpi.binary_tree_info(0, parent_, child0_, child1_);
       }
 
+      /// Construct a sync object
+
+      /// This will store the world reference and sync key as well as
+      /// determine the parent and children of this node.
+      /// \param world The world where this sync object lives
+      /// \param key The sync key
+      LazySyncBase(const Group& group, const keyT& key) :
+        world_(group.get_world()), key_(key), ready_(false), parent_(-1),
+        child0_(-1), child1_(-1), parent_wptr_(), child0_wptr_(), child1_wptr_()
+      {
+        group.get_tree(parent_, child0_, child1_);
+      }
+
     private:
       // not allowed
       LazySyncBase(const LazySyncBase_&);
@@ -84,6 +97,25 @@ namespace TiledArray {
       static lsT* insert(typename mapT::accessor& acc, madness::World& world, const keyT& key) {
         if(map_.insert(acc, key))
           acc->second = new lsT(world, key);
+        return static_cast<lsT*>(acc->second);
+      }
+
+
+      /// Insert a \c LazySync object into the map
+
+      /// A \c LazySync object is inserted into a map. If the object
+      /// already exists, that object is returned.
+      /// \tparam lsT The \c LazySync type
+      /// \param[out] acc The object accessor.
+      /// \param[in] group The group where the sync object lives
+      /// \param[in] key The sync object key
+      /// \return A pointer to the sync object
+      /// \note The sync object will be write locked until the accessor is
+      /// destroyed or released.
+      template <typename lsT>
+      static lsT* insert(typename mapT::accessor& acc, const Group& group, const keyT& key) {
+        if(map_.insert(acc, key))
+          acc->second = new lsT(group, key);
         return static_cast<lsT*>(acc->second);
       }
 
@@ -204,7 +236,7 @@ namespace TiledArray {
       void init_parent(fnT fn) const {
         TA_ASSERT(parent_ != -1);
         if(parent_wptr_)
-          get_world().am.send(parent_, fn, new_am_arg(key_, get_wptr()));
+          get_world().am.send(parent_, fn, madness::new_am_arg(key_, get_wptr()));
       }
 
     }; // class LazySyncBase
@@ -237,6 +269,15 @@ namespace TiledArray {
       /// \param key The sync key
       static LazySync_* insert(accessor& acc, madness::World& world, const keyT& key) {
         return LazySyncBase_::template insert<LazySync_>(acc, world, key);
+      }
+
+      /// Wrapper function for the base class insert function
+
+      /// \param acc The sync object accessor type
+      /// \param group The group where the sync object lives
+      /// \param key The sync key
+      static LazySync_* insert(accessor& acc, const Group& group, const keyT& key) {
+        return LazySyncBase_::template insert<LazySync_>(acc, group, key);
       }
 
       /// Active message function that initializes a child sync object
@@ -357,6 +398,14 @@ namespace TiledArray {
 
       /// Construct a lazy sync object
 
+      /// \param group The group where the sync object lives
+      /// \param key The sync key
+      LazySync(const Group& group, const keyT& key) :
+        LazySyncBase_(group, key)
+      { }
+
+      /// Construct a lazy sync object
+
       /// Construct a lazy sync object that executes \c once all nodes
       /// have passed \c key sync point. \c op must define a default
       /// constructor, assignment operator, and op() must be a valid
@@ -378,9 +427,31 @@ namespace TiledArray {
         }
       }
 
+      /// Construct a lazy sync object
+
+      /// Construct a lazy sync object that executes \c once all nodes
+      /// have passed \c key sync point. \c op must define a default
+      /// constructor, assignment operator, and op() must be a valid
+      /// operation.
+      /// \param group The group where the sync object lives
+      /// \param key The sync key
+      /// \param op The sync operation to be executed on this node
+      static void make(const Group& group, const keyT& key, const opT& op) {
+        if(group.size() == 1) {
+          op(); // No need to do more than run the sync
+                // object when there is only one node.
+        } else {
+          accessor acc;
+          LazySync_* p = insert(acc, group, key);
+
+          p->op_ = op;
+          p->set_ready();
+          p->init_children();
+        }
+      }
     }; // class LazySync
 
-  }  // namespace detail
+  }  // namespace dist_op
 
   /// Lazy sync object factory function
 
@@ -392,9 +463,23 @@ namespace TiledArray {
   /// \param op The sync operation to be executed on this node
   template <typename keyT, typename opT>
   void lazy_sync(madness::World& world, const keyT& key, const opT& op) {
-    detail::LazySync<keyT, opT>::make(world, key, op);
+    dist_op::LazySync<keyT, opT>::make(world, key, op);
   }
 
+
+  /// Lazy sync object factory function
+
+  /// Construct a lazy sync object that executes \c once all nodes have passed
+  /// \c key sync point. \c op must define a default constructor, assignment
+  /// operator, and op() must be a valid operation.
+  /// \param world The world where the sync object lives
+  /// \param group
+  /// \param key The sync key
+  /// \param op The sync operation to be executed on this node
+  template <typename keyT, typename opT>
+  void lazy_sync(const dist_op::Group& group, const keyT& key, const opT& op) {
+    dist_op::LazySync<keyT, opT>::make(group, key, op);
+  }
 
 }  // namespace TiledArray
 
