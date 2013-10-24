@@ -72,7 +72,7 @@ namespace TiledArray {
         world_(group.get_world()), key_(key), ready_(false), parent_(-1),
         child0_(-1), child1_(-1), parent_wptr_(), child0_wptr_(), child1_wptr_()
       {
-        group.get_tree(parent_, child0_, child1_);
+        group.make_tree(parent_, child0_, child1_);
       }
 
     private:

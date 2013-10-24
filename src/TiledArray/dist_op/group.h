@@ -150,7 +150,7 @@ namespace TiledArray {
         /// \param[out] child1 The left child node of the binary tree
         /// \param[out] child2 The right child node of the binary tree
         /// \param[in] group_root The head node of the binary tree
-        void get_tree(ProcessID& parent, ProcessID& child1,
+        void make_tree(ProcessID& parent, ProcessID& child1,
             ProcessID& child2, const ProcessID group_root) const
         {
           const ProcessID group_size = group_to_world_map_.size();
@@ -281,11 +281,11 @@ namespace TiledArray {
       /// \param[out] child2 The right child node of the binary tree
       /// \param[in] root The head node of the binary tree in the group [default = 0]
       /// \note Output ranks are in the parent world.
-      void get_tree(ProcessID& parent, ProcessID& child1,
+      void make_tree(ProcessID& parent, ProcessID& child1,
           ProcessID& child2, const ProcessID group_root = 0) const
       {
         TA_ASSERT(pimpl_);
-        pimpl_->get_tree(parent, child1, child2, group_root);
+        pimpl_->make_tree(parent, child1, child2, group_root);
       }
 
       template <typename Archive>
@@ -293,7 +293,6 @@ namespace TiledArray {
         TA_ASSERT(false); // not allowed
       }
     }; // class Group
-
 
   }  // namespace dist_op
 } // namespace TiledArray

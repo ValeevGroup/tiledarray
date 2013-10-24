@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE( constructor_empty )
   BOOST_CHECK_THROW(empty_group.rank(0), Exception);
   BOOST_CHECK_THROW(empty_group.world_rank(0), Exception);
   ProcessID parent, child1, child2;
-  BOOST_CHECK_THROW(empty_group.get_tree(parent, child1, child2, 0), Exception);
+  BOOST_CHECK_THROW(empty_group.make_tree(parent, child1, child2, 0), Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE( constructor_new_group )
 
   // Check that binary tree returns processes in the group list.
   ProcessID parent, child1, child2;
-  BOOST_CHECK_NO_THROW(new_group.get_tree(parent, child1, child2, 0));
+  BOOST_CHECK_NO_THROW(new_group.make_tree(parent, child1, child2, 0));
   BOOST_CHECK((parent == -1) || (std::find(group_list.begin(), group_list.end(), parent) != group_list.end()));
   BOOST_CHECK((child1 == -1) || (std::find(group_list.begin(), group_list.end(), child1) != group_list.end()));
   BOOST_CHECK((child2 == -1) || (std::find(group_list.begin(), group_list.end(), child2) != group_list.end()));
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE( copy_group )
 
   // Check that binary tree returns processes in the group list.
   ProcessID parent, child1, child2;
-  BOOST_CHECK_NO_THROW(copy_group.get_tree(parent, child1, child2, 0));
+  BOOST_CHECK_NO_THROW(copy_group.make_tree(parent, child1, child2, 0));
   BOOST_CHECK((parent == -1) || (std::find(group_list.begin(), group_list.end(), parent) != group_list.end()));
   BOOST_CHECK((child1 == -1) || (std::find(group_list.begin(), group_list.end(), child1) != group_list.end()));
   BOOST_CHECK((child2 == -1) || (std::find(group_list.begin(), group_list.end(), child2) != group_list.end()));
