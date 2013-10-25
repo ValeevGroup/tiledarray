@@ -93,10 +93,10 @@ namespace TiledArray {
 
       if(child0 != -1)
         world->taskq.add(child0, Communicator::template bcast_task<Key, T>, world,
-            key, value, root);
+            key, value, root, madness::TaskAttributes::hipri());
       if(child1 != -1)
         world->taskq.add(child1, Communicator::template bcast_task<Key, T>, world,
-            key, value, root);
+            key, value, root, madness::TaskAttributes::hipri());
     }
 
     template <typename Key, typename T>
@@ -119,10 +119,10 @@ namespace TiledArray {
 
       if(child0 != -1)
         world->taskq.add(child0, Communicator::template group_bcast_task<Key, T>,
-            world, group.id(), key, value, group_root);
+            world, group.id(), key, value, group_root, madness::TaskAttributes::hipri());
       if(child1 != -1)
         world->taskq.add(child1, Communicator::template group_bcast_task<Key, T>,
-            world, group.id(), key, value, group_root);
+            world, group.id(), key, value, group_root, madness::TaskAttributes::hipri());
     }
 
     template <typename Key, typename T>
@@ -137,7 +137,7 @@ namespace TiledArray {
         group_bcast_children(world, group, key, value, group_root);
       } else {
         world->taskq.add(& Communicator::template group_bcast_children<Key, T>,
-            world, group, key, value, group_root);
+            world, group, key, value, group_root, madness::TaskAttributes::hipri());
       }
     }
 
@@ -226,65 +226,98 @@ namespace TiledArray {
 
     /// Lazy sync
 
-    /// Construct a lazy sync object that executes \c once all nodes have passed
-    /// \c key sync point. \c op must define a default constructor, assignment
-    /// operator, and op() must be a valid operation.
-    /// \param world The world where the sync object lives
+    /// Lazy sync functions are asynchronous barriers with a nullary functor
+    /// that is called after all processes have called lazy sync with the same
+    /// key.
     /// \param key The sync key
-    /// \param op The sync operation to be executed on this node
+    /// \param op The sync operation to be executed on this process
+    /// \note It is the user's responsibility to ensure that the key for each
+    /// lazy sync operation is unique. You may reuse keys after the associated
+    /// sync operations have been completed.
     template <typename Key, typename Op>
     void lazy_sync(const Key& key, const Op& op) const {
       dist_op::LazySync<Key, Op>::make(*world_, key, op);
     }
 
 
-    /// Lazy sync object factory function
+    /// Group lazy sync
 
-    /// Construct a lazy sync object that executes \c once all nodes have passed
-    /// \c key sync point. \c op must define a default constructor, assignment
-    /// operator, and op() must be a valid operation.
-    /// \param group The group where the sync object lives
+    /// Lazy sync functions are asynchronous barriers with a nullary functor
+    /// that is called after all processes have called lazy sync with the same
+    /// key.
     /// \param key The sync key
-    /// \param op The sync operation to be executed on this node
+    /// \param op The sync operation to be executed on this process
+    /// \throw TiledArray::Exception When the world id of the group and the
+    /// world id of this communicator are not equal.
+    /// \throw TiledArray::Exception When this process is not in the group.
+    /// \note It is the user's responsibility to ensure that the key for each
+    /// lazy sync operation is unique. You may reuse keys after the associated
+    /// sync operations have been completed.
     template <typename Key, typename Op>
-    void lazy_sync(const dist_op::Group& group, const Key& key, const Op& op) const {
+    void lazy_sync(const Key& key, const Op& op, const dist_op::Group& group) const {
       TA_ASSERT(group.get_world().id() == world_->id());
+      TA_ASSERT(group.rank(world_->rank()) != -1);
       dist_op::LazySync<Key, Op>::make(group, key, op);
     }
 
     /// Broadcast
 
-    /// Broadcast data to all nodes in \c world. The input/output data is held
-    /// by a future.
+    /// Broadcast data from the \c root process to all processes in \c world.
+    /// The input/output data is held by \c value.
+    /// \param[in] key The key associated with this broadcast
+    /// \param[in,out] value On the \c root process, this is used as the input
+    /// data that will be broadcast to all other processes in the group.
+    /// On other processes it is used as the output to the broadcast
+    /// \param root The process that owns the data to be broadcast
+    /// \throw TiledArray::Exception When \c root is less than 0 or
+    /// greater than or equal to the world size.
+    /// \throw TiledArray::Exception When \c value has been set, except on the
+    /// \c root process.
     template <typename Key, typename T>
     void bcast(const Key& key, madness::Future<T>& value, const ProcessID root) const {
       TA_ASSERT(root >= 0 && root < world_->size());
       TA_ASSERT((world_->rank() == root) || (! value.probe()));
 
-      if(world_->rank() == root) {
-        // This is the process that owns the data to be broadcast
-        if(value.probe())
-          bcast_children(world_, key, value.get(), root);
-        else
-          world_->taskq.add(Communicator::template bcast_children<Key, T>, world_,
-              key, value, root);
-      } else {
-        dist_op::DistCache<Key>::get_cache_data(key, value);
+      if(world_->size() > 1) { // Do nothing for the trivial case
+        if(world_->rank() == root) {
+          // This is the process that owns the data to be broadcast
+
+          // Spawn remote tasks that will set the local cache for this broadcast
+          // on other nodes.
+          if(value.probe())
+            // The value is ready so send it now
+            bcast_children(world_, key, value.get(), root);
+          else
+            // The value is not ready so spawn a task to send the data when it
+            // is ready.
+            world_->taskq.add(Communicator::template bcast_children<Key, T>,
+                world_, key, value, root, madness::TaskAttributes::hipri());
+        } else {
+          // Get the local cache value for the broad cast
+          TA_ASSERT(! value.probe());
+          dist_op::DistCache<Key>::get_cache_data(key, value);
+        }
       }
     }
 
-    /// Broadcast
+    /// Group broadcast
 
-    /// Broadcast data to all nodes in \c world. The input/output data is held
-    /// by a future.
-    /// \param did The distributed id associated with this broadcast
-    /// \param value
+    /// Broadcast data from the \c group_root process to all processes in
+    /// \c group. The input/output data is held by \c value.
+    /// \param[in] key The key associated with this broadcast
+    /// \param[in,out] value On the \c group_root process, this is used as the
+    /// input data that will be broadcast to all other processes in the group.
+    /// On other processes it is used as the output to the broadcast
+    /// \param group_root The process in \c group that owns the data to be
+    /// broadcast
+    /// \param group The process group where value will be broadcast
     /// \throw TiledArray::Exception When the world id of \c group is not
-    /// equal to that of the world used to construct this object.
+    /// equal to that of the world used to construct this communicator.
     /// \throw TiledArray::Exception When \c group_root is less than 0 or
     /// greater than or equal to \c group size.
     /// \throw TiledArray::Exception When \c data has been set except on the
     /// \c root process.
+    /// \throw TiledArray::Exception When this process is not in the group.
     template <typename Key, typename T>
     void bcast(const Key& key, madness::Future<T>& value,
         const ProcessID group_root, const dist_op::Group& group) const
@@ -292,21 +325,24 @@ namespace TiledArray {
       TA_ASSERT(group.get_world().id() == world_->id());
       TA_ASSERT(group_root >= 0 && group_root < group.size());
       TA_ASSERT((group.rank() == group_root) || (! value.probe()));
+      TA_ASSERT(group.rank(world_->rank()) != -1);
 
-      if(group.rank() == group_root) {
-        // This is the process that owns the data to be broadcast
-        if(value.probe())
-          group_bcast_children(world_, group, key, value.get(), group_root);
-        else
-          world_->taskq.add(& Communicator::template group_bcast_children<Key, T>,
-              world_, group, key, value, group_root);
-      } else {
-        // This is not the root process, so retrieve the broadcast data
-        dist_op::DistCache<Key>::get_cache_data(key, value);
+      if(group.size() > 1) { // Do nothing for the trivial case
+        if(group.rank() == group_root) {
+          // This is the process that owns the data to be broadcast
+          if(value.probe())
+            group_bcast_children(world_, group, key, value.get(), group_root);
+          else
+            world_->taskq.add(& Communicator::template group_bcast_children<Key, T>,
+                world_, group, key, value, group_root, madness::TaskAttributes::hipri());
+        } else {
+          // This is not the root process, so retrieve the broadcast data
+          dist_op::DistCache<Key>::get_cache_data(key, value);
+        }
       }
     }
 
-  }; // class DistCache
+  }; // class Communicator
 
 } // namespace TiledArray
 
