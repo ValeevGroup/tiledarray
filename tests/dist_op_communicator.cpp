@@ -27,18 +27,19 @@
 #include "unit_test_config.h"
 
 using TiledArray::Communicator;
+using namespace TiledArray::dist_op;
 
 struct DistOpFixture {
 
   DistOpFixture() :
-    d_op(* GlobalFixture::world)
+    comm(* GlobalFixture::world)
   { }
 
   ~DistOpFixture() {
     GlobalFixture::world->gop.fence();
   }
 
-  Communicator d_op;
+  Communicator comm;
 
 }; // DistOpFixture
 
@@ -59,11 +60,11 @@ BOOST_AUTO_TEST_CASE( ring_send_recv )
 
   // Get the Future that will hold the remote data
   madness::Future<int> remote_data;
-  BOOST_REQUIRE_NO_THROW(remote_data = d_op.recv<int>(0));
+  BOOST_REQUIRE_NO_THROW(remote_data = comm.recv<int>(0));
 
   // Send a future to the right neighbor
   madness::Future<int> local_data;
-  BOOST_REQUIRE_NO_THROW(d_op.send(left_neighbor, 0, local_data));
+  BOOST_REQUIRE_NO_THROW(comm.send(left_neighbor, 0, local_data));
 
   // Set the local data, which should be forwarded to the right neighbor
   local_data.set(GlobalFixture::world->rank());
@@ -73,10 +74,9 @@ BOOST_AUTO_TEST_CASE( ring_send_recv )
 
 BOOST_AUTO_TEST_CASE( bcast_world )
 {
-  TiledArray::dist_op::DistributedID did(madness::uniqueidT(), 0);
   madness::Future<int> data;
 
-  BOOST_REQUIRE_NO_THROW(d_op.bcast(did, data, 0));
+  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, 0));
 
   if(GlobalFixture::world->rank() == 0)
     data.set(42);
@@ -84,25 +84,27 @@ BOOST_AUTO_TEST_CASE( bcast_world )
   BOOST_CHECK_EQUAL(data.get(), 42);
 }
 
-//BOOST_AUTO_TEST_CASE( bcast_group )
-//{
-//  std::vector<ProcessID> group_list;
-//  for(ProcessID p = GlobalFixture::world->rank() % 2; p < GlobalFixture::world->size(); p += 2)
-//    group_list.push_back(p);
-//  Group group(*GlobalFixture::world, did, group_list);
-//  register_group(group);
-//
-//  madness::Future<int> data;
-//  BOOST_REQUIRE_NO_THROW(bcast(did, data, 0, group));
-//
-//  if(group.rank() == 0)
-//    data.set(42 + (GlobalFixture::world->rank() % 2));
-//
-//  BOOST_CHECK_EQUAL(data.get(), 42 + (GlobalFixture::world->rank() % 2));
-//
-//  unregister_group(group);
-//  GlobalFixture::world->gop.fence();
-//}
+BOOST_AUTO_TEST_CASE( bcast_group )
+{
+  std::vector<ProcessID> group_list;
+  for(ProcessID p = GlobalFixture::world->rank() % 2; p < GlobalFixture::world->size(); p += 2)
+    group_list.push_back(p);
+  TiledArray::dist_op::DistributedID did(madness::uniqueidT(), 1);
+
+  Group group(*GlobalFixture::world, did, group_list);
+  group.register_group();
+
+  madness::Future<int> data;
+  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, 0, group));
+
+  if(group.rank() == 0)
+    data.set(42 + (GlobalFixture::world->rank() % 2));
+
+  BOOST_CHECK_EQUAL(data.get(), 42 + (GlobalFixture::world->rank() % 2));
+
+  group.unregister_group();
+  GlobalFixture::world->gop.fence();
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 

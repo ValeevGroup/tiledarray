@@ -302,7 +302,7 @@ namespace TiledArray {
               world_, group, key, value, group_root);
       } else {
         // This is not the root process, so retrieve the broadcast data
-        dist_op::DistCache<Key>::get_cahce_data(key, value);
+        dist_op::DistCache<Key>::get_cache_data(key, value);
       }
     }
 
