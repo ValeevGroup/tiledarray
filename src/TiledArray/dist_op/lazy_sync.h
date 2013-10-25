@@ -453,34 +453,6 @@ namespace TiledArray {
 
   }  // namespace dist_op
 
-  /// Lazy sync object factory function
-
-  /// Construct a lazy sync object that executes \c once all nodes have passed
-  /// \c key sync point. \c op must define a default constructor, assignment
-  /// operator, and op() must be a valid operation.
-  /// \param world The world where the sync object lives
-  /// \param key The sync key
-  /// \param op The sync operation to be executed on this node
-  template <typename keyT, typename opT>
-  void lazy_sync(madness::World& world, const keyT& key, const opT& op) {
-    dist_op::LazySync<keyT, opT>::make(world, key, op);
-  }
-
-
-  /// Lazy sync object factory function
-
-  /// Construct a lazy sync object that executes \c once all nodes have passed
-  /// \c key sync point. \c op must define a default constructor, assignment
-  /// operator, and op() must be a valid operation.
-  /// \param world The world where the sync object lives
-  /// \param group
-  /// \param key The sync key
-  /// \param op The sync operation to be executed on this node
-  template <typename keyT, typename opT>
-  void lazy_sync(const dist_op::Group& group, const keyT& key, const opT& op) {
-    dist_op::LazySync<keyT, opT>::make(group, key, op);
-  }
-
 }  // namespace TiledArray
 
 #endif // TILEDARRAY_LAZY_SYNC_H__INCLUDED

@@ -33,32 +33,6 @@
 namespace TiledArray {
   namespace dist_op {
 
-    // Forward declaration
-    class Group;
-
-    /// Register a group
-
-    /// Register a group so that it can be used in active messages and tasks
-    /// spawned on remote nodes.
-    /// \param group The group to be registered
-    /// \throw TiledArray::Exception When the group is already in the registry
-    void register_group(const Group& group);
-
-    /// Get a registered group
-
-    /// This function is used to acquire the group in an active message handler.
-    /// \param did The id associated with the group
-    /// \return A future to the group
-    madness::Future<Group> get_group(const DistributedID& did);
-
-    /// Remove the given group from the registry
-
-    /// Groups are removed via a lazy sync operation, which will only remove the
-    /// group from the registry once unregistered has been called on all processes
-    /// in the group.
-    /// \param group The group to be removed from the registry
-    void unregister_group(const Group& group);
-
     class Group {
     private:
 
@@ -219,6 +193,30 @@ namespace TiledArray {
         pimpl_ = other.pimpl_;
         return *this;
       }
+
+      /// Register a group
+
+      /// Register a group so that it can be used in active messages and tasks
+      /// spawned on remote nodes.
+      /// \param group The group to be registered
+      /// \throw TiledArray::Exception When the group is empty
+      /// \throw TiledArray::Exception When the group is already in the registry
+      void register_group() const;
+
+      /// Remove the given group from the registry
+
+      /// Groups are removed via a lazy sync operation, which will only remove the
+      /// group from the registry once unregistered has been called on all processes
+      /// in the group.
+      /// \param group The group to be removed from the registry
+      void unregister_group() const;
+
+      /// Get a registered group
+
+      /// This function is used to acquire the group in an active message handler.
+      /// \param did The id associated with the group
+      /// \return A future to the group
+      static madness::Future<Group> get_group(const DistributedID& did);
 
       /// Quary empty group
 

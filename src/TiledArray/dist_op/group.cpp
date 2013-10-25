@@ -93,18 +93,34 @@ namespace TiledArray {
     } // namespace
 
 
-    /// Register a group for use with distributed algorithms
+    /// Register a group
 
+    /// Register a group so that it can be used in active messages and tasks
+    /// spawned on remote nodes.
     /// \param group The group to be registered
+    /// \throw TiledArray::Exception When the group is empty
     /// \throw TiledArray::Exception When the group is already in the registry
-    void register_group(const Group& group) {
+    void Group::register_group() const {
+      TA_ASSERT(pimpl_);
       group_registry_container::accessor acc;
-      if(! group_registry.insert(acc, group_registry_container::datumT(group.id(),
-          madness::Future<Group>(group))))
+      if(! group_registry.insert(acc, group_registry_container::datumT(id(),
+          madness::Future<Group>(*this))))
       {
         TA_ASSERT(! acc->second.probe());
-        acc->second.set(group);
+        acc->second.set(*this);
       }
+    }
+
+    /// Remove the given group from the registry
+
+    /// Groups are removed via a lazy sync operation, which will only remove the
+    /// group from the registry once unregistered has been called on all processes
+    /// in the group.
+    /// \param group The group to be removed from the registry
+    void Group::unregister_group() const {
+      TA_ASSERT(pimpl_);
+      dist_op::LazySync<GroupSyncKey, UnregisterGroup>::make(*this,
+          GroupSyncKey(pimpl_->id()), UnregisterGroup(pimpl_->id()));
     }
 
     /// Get a registered group
@@ -112,7 +128,7 @@ namespace TiledArray {
     /// This function is used to acquire the group in an active message handler.
     /// \param did The id associated with the group
     /// \return A future to the group
-    madness::Future<Group> get_group(const DistributedID& did) {
+    madness::Future<Group> Group::get_group(const DistributedID& did) {
       group_registry_container::accessor acc;
       if(group_registry.insert(acc, group_registry_container::datumT(did,
           madness::Future<Group>::default_initializer())))
@@ -121,15 +137,6 @@ namespace TiledArray {
       }
 
       return acc->second;
-    }
-
-    /// Remove the given group from the registry
-
-    /// Groups are removed via a lazy sync operation, which will only remove the
-    /// group from the registry once it has been unregistered on all nodes.
-    /// param
-    void unregister_group(const Group& group) {
-      lazy_sync(group, GroupSyncKey(group.id()), UnregisterGroup(group.id()));
     }
 
   }  // namespace dist_op

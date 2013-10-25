@@ -27,9 +27,6 @@
 #include "unit_test_config.h"
 
 using TiledArray::dist_op::Group;
-using TiledArray::dist_op::register_group;
-using TiledArray::dist_op::get_group;
-using TiledArray::dist_op::unregister_group;
 using TiledArray::dist_op::DistributedID;
 using TiledArray::Exception;
 
@@ -47,7 +44,7 @@ struct GroupFixture {
   DistributedID did;
   std::vector<ProcessID> group_list;
 
-}; // Fixture
+}; // GroupFixture
 
 BOOST_FIXTURE_TEST_SUITE( dist_op_group_suite, GroupFixture )
 
@@ -145,31 +142,31 @@ BOOST_AUTO_TEST_CASE( register_unregister )
 
   // Test getting a group that has not been added to the registery
   madness::Future<Group> future_group;
-  BOOST_REQUIRE_NO_THROW(future_group = get_group(did));
+  BOOST_REQUIRE_NO_THROW(future_group = Group::get_group(did));
   BOOST_CHECK(! future_group.probe());
 
   // Test adding a future to the registry
-  BOOST_REQUIRE_NO_THROW(register_group(group));
+  BOOST_REQUIRE_NO_THROW(group.register_group());
   BOOST_CHECK(future_group.probe());
 
 #ifdef TA_EXCEPTION_ERROR
 
   // Test duplicate registration
-  BOOST_CHECK_THROW(register_group(group), Exception);
+  BOOST_CHECK_THROW(group.register_group(), Exception);
 
 #endif // TA_EXCEPTION_ERROR
 
   // Check unregistering the group
-  BOOST_REQUIRE_NO_THROW(unregister_group(group));
+  BOOST_REQUIRE_NO_THROW(group.unregister_group());
 
   GlobalFixture::world->gop.fence();
 
   // Check that the group was successfully unregistered by registering it again
-  BOOST_REQUIRE_NO_THROW(register_group(group));
+  BOOST_REQUIRE_NO_THROW(group.register_group());
   madness::Future<Group> future_group2;
-  BOOST_REQUIRE_NO_THROW(future_group2 = get_group(did));
+  BOOST_REQUIRE_NO_THROW(future_group2 = Group::get_group(did));
   BOOST_CHECK(future_group2.probe());
-  BOOST_REQUIRE_NO_THROW(unregister_group(group));
+  BOOST_REQUIRE_NO_THROW(group.unregister_group());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
