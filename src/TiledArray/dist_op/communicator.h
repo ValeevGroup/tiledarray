@@ -162,6 +162,12 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Communicator ID accessor
+
+    /// \return The universe wide unique ID of this communicator (same as the
+    /// world id).
+    unsigned int id() const { return world_->id(); }
+
     /// Receive data from remote node
 
     /// \tparam T The data type stored in cache
