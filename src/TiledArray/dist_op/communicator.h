@@ -233,7 +233,7 @@ namespace TiledArray {
     /// \param key The sync key
     /// \param op The sync operation to be executed on this node
     template <typename Key, typename Op>
-    void lazy_sync(const Key& key, const Op& op) {
+    void lazy_sync(const Key& key, const Op& op) const {
       dist_op::LazySync<Key, Op>::make(*world_, key, op);
     }
 
@@ -247,7 +247,7 @@ namespace TiledArray {
     /// \param key The sync key
     /// \param op The sync operation to be executed on this node
     template <typename Key, typename Op>
-    void lazy_sync(const dist_op::Group& group, const Key& key, const Op& op) {
+    void lazy_sync(const dist_op::Group& group, const Key& key, const Op& op) const {
       TA_ASSERT(group.get_world().id() == world_->id());
       dist_op::LazySync<Key, Op>::make(group, key, op);
     }
