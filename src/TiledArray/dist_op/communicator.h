@@ -393,20 +393,23 @@ namespace TiledArray {
     /// \param key The key associated with this reduction
     /// \param value The local value to be reduced
     /// \param op The reduction operation to be applied to local and remote data
+    /// \param root The process that will receive the result of the reduction
     /// \return A future to the reduce value on the root process, otherwise an
     /// uninitialized future that may be ignored.
     template <typename Key, typename T, typename Op>
-    madness::Future<T> reduce(const Key& key, const T& value, const Op& op, const ProcessID root) {
+    madness::Future<typename madness::detail::result_of<Op>::type>
+    reduce(const Key& key, const T& value, const Op& op, const ProcessID root) {
       TA_ASSERT((root >= 0) && (root < world_->size()));
 
       // Typedefs
       typedef ProcessKey<Key> key_type;
+      typedef typename madness::detail::result_of<Op>::type value_type;
 
       // The result of this reduction (ignored when rank != root).
-      madness::Future<T> result = madness::Future<T>::default_initializer();
+      madness::Future<value_type> result = madness::Future<T>::default_initializer();
 
       if(world_->size() == 1) {
-        result = madness::Future<T>(value);
+        result = madness::Future<value_type>(value);
       } else {
         // Get the parent and child processes in the binary tree that will be used
         // to reduce the data.
@@ -419,9 +422,9 @@ namespace TiledArray {
         // Reduce local and child data
         reduce_task.add(value);
         if(child0 != -1)
-          reduce_task.add(recv<T>(key_type(key, child0)));
+          reduce_task.add(recv<value_type>(key_type(key, child0)));
         if(child1 != -1)
-          reduce_task.add(recv<T>(key_type(key, child1)));
+          reduce_task.add(recv<value_type>(key_type(key, child1)));
 
         // Set the result
         if(parent != -1)
@@ -433,27 +436,32 @@ namespace TiledArray {
       return result;
     }
 
-    /// Distributed reduce
+    /// Distributed group reduce
 
     /// \param key The key associated with this reduction
     /// \param value The local value to be reduced
     /// \param op The reduction operation to be applied to local and remote data
+    /// \param group_root The group process that will receive the result of the reduction
+    /// \param group The group that will preform the reduction
     /// \return A future to the reduce value on the root process, otherwise an
     /// uninitialized future that may be ignored.
     template <typename Key, typename T, typename Op>
-    madness::Future<T> reduce(const Key& key, const T& value, const Op& op,
+    madness::Future<typename madness::detail::result_of<Op>::type>
+    reduce(const Key& key, const T& value, const Op& op,
         const ProcessID group_root, const dist_op::Group& group)
     {
       TA_ASSERT((group_root >= 0) && (group_root < group.size()));
       TA_ASSERT(group.get_world().id() == world_->id());
+
       // Typedefs
       typedef ProcessKey<Key> key_type;
+      typedef typename madness::detail::result_of<Op>::type value_type;
 
       // The result of this reduction (ignored when rank != root).
-      madness::Future<T> result = madness::Future<T>::default_initializer();
+      madness::Future<value_type> result = madness::Future<value_type>::default_initializer();
 
       if(group.size() == 1) {
-        result = madness::Future<T>(value);
+        result = madness::Future<value_type>(value);
       } else {
         // Get the parent and child processes in the binary tree that will be used
         // to reduce the data.
@@ -466,9 +474,9 @@ namespace TiledArray {
         // Reduce local and child data
         reduce_task.add(value);
         if(child0 != -1)
-          reduce_task.add(recv<T>(key_type(key, child0)));
+          reduce_task.add(recv<value_type>(key_type(key, child0)));
         if(child1 != -1)
-          reduce_task.add(recv<T>(key_type(key, child1)));
+          reduce_task.add(recv<value_type>(key_type(key, child1)));
 
         // Set the result
         if(parent != -1)
