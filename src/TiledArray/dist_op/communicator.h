@@ -18,7 +18,7 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  dist_op.h
+ *  communicator.h
  *  Oct 11, 2013
  *
  */
@@ -31,6 +31,7 @@
 #include <TiledArray/dist_op/dist_cache.h>
 #include <TiledArray/dist_op/group.h>
 #include <TiledArray/dist_op/lazy_sync.h>
+#include <TiledArray/reduce_task.h>
 
 namespace TiledArray {
 
@@ -38,6 +39,45 @@ namespace TiledArray {
   private:
 
     mutable madness::World* world_;
+
+    template <typename Key>
+    class ProcessKey {
+    private:
+      Key key_;
+      ProcessID proc_;
+
+    public:
+
+      ProcessKey(const Key& key, const ProcessID& proc) :
+        key_(key), proc_(proc)
+      { }
+
+      ProcessKey(const ProcessKey<Key>& other) :
+        key_(other.key_), proc_(other.proc_)
+      { }
+
+
+      ProcessKey<Key>& operator=(const ProcessKey<Key>& other) {
+        key_ = other.key_;
+        proc_ = other.proc_;
+        return *this;
+      }
+
+      bool operator==(const ProcessKey<Key>& other) const {
+        return (key_ == other.key_) && (proc_ == other.proc_);
+      }
+
+      bool operator!=(const ProcessKey<Key>& other) const {
+        return (key_ != other.key_) || (proc_ != other.proc_);
+      }
+
+      friend madness::hashT hash_value(const ProcessKey& key) {
+        madness::hashT seed = hash_value(key.key_);
+        madness::detail::combine_hash(seed, key.proc_);
+        return seed;
+      }
+
+    }; // class ReduceKey
 
     /// Delayed send callback object
 
@@ -346,6 +386,98 @@ namespace TiledArray {
           dist_op::DistCache<Key>::get_cache_data(key, value);
         }
       }
+    }
+
+    /// Distributed reduce
+
+    /// \param key The key associated with this reduction
+    /// \param value The local value to be reduced
+    /// \param op The reduction operation to be applied to local and remote data
+    /// \return A future to the reduce value on the root process, otherwise an
+    /// uninitialized future that may be ignored.
+    template <typename Key, typename T, typename Op>
+    madness::Future<T> reduce(const Key& key, const T& value, const Op& op, const ProcessID root) {
+      TA_ASSERT((root >= 0) && (root < world_->size()));
+
+      // Typedefs
+      typedef ProcessKey<Key> key_type;
+
+      // The result of this reduction (ignored when rank != root).
+      madness::Future<T> result = madness::Future<T>::default_initializer();
+
+      if(world_->size() == 1) {
+        result = madness::Future<T>(value);
+      } else {
+        // Get the parent and child processes in the binary tree that will be used
+        // to reduce the data.
+        ProcessID parent = -1, child0 = -1, child1 = -1;
+        world_->mpi.binary_tree_info(root, parent, child0, child1);
+
+        // Create the local reduction task
+        TiledArray::detail::ReduceTask<Op> reduce_task(*world_, op);
+
+        // Reduce local and child data
+        reduce_task.add(value);
+        if(child0 != -1)
+          reduce_task.add(recv<T>(key_type(key, child0)));
+        if(child1 != -1)
+          reduce_task.add(recv<T>(key_type(key, child1)));
+
+        // Set the result
+        if(parent != -1)
+          send(parent, key_type(key, world_->rank()), reduce_task.submit());
+        else
+          result = reduce_task.submit();
+      }
+
+      return result;
+    }
+
+    /// Distributed reduce
+
+    /// \param key The key associated with this reduction
+    /// \param value The local value to be reduced
+    /// \param op The reduction operation to be applied to local and remote data
+    /// \return A future to the reduce value on the root process, otherwise an
+    /// uninitialized future that may be ignored.
+    template <typename Key, typename T, typename Op>
+    madness::Future<T> reduce(const Key& key, const T& value, const Op& op,
+        const ProcessID group_root, const dist_op::Group& group)
+    {
+      TA_ASSERT((group_root >= 0) && (group_root < group.size()));
+      TA_ASSERT(group.get_world().id() == world_->id());
+      // Typedefs
+      typedef ProcessKey<Key> key_type;
+
+      // The result of this reduction (ignored when rank != root).
+      madness::Future<T> result = madness::Future<T>::default_initializer();
+
+      if(group.size() == 1) {
+        result = madness::Future<T>(value);
+      } else {
+        // Get the parent and child processes in the binary tree that will be used
+        // to reduce the data.
+        ProcessID parent = -1, child0 = -1, child1 = -1;
+        group.make_tree(parent, child0, child1, group_root);
+
+        // Create the local reduction task
+        TiledArray::detail::ReduceTask<Op> reduce_task(*world_, op);
+
+        // Reduce local and child data
+        reduce_task.add(value);
+        if(child0 != -1)
+          reduce_task.add(recv<T>(key_type(key, child0)));
+        if(child1 != -1)
+          reduce_task.add(recv<T>(key_type(key, child1)));
+
+        // Set the result
+        if(parent != -1)
+          send(parent, key_type(key, world_->rank()), reduce_task.submit());
+        else
+          result = reduce_task.submit();
+      }
+
+      return result;
     }
 
   }; // class Communicator
