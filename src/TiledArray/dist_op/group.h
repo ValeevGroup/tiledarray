@@ -42,6 +42,7 @@ namespace TiledArray {
         DistributedID did_; ///< Group id
         std::vector<ProcessID> group_to_world_map_; ///< List of nodes in the group
         ProcessID group_rank_; ///< The group rank of this process
+        volatile bool registered_; ///< Flag that is true when the group is in the register
 
       public:
         /// Constructor
@@ -54,7 +55,7 @@ namespace TiledArray {
         Impl(madness::World& world, DistributedID did, const A& group) :
           world_(world), did_(did),
           group_to_world_map_(TiledArray::detail::begin(group),
-          TiledArray::detail::end(group)), group_rank_(-1)
+          TiledArray::detail::end(group)), group_rank_(-1), registered_(false)
         {
           // Check that there is at least one process in group
           TA_ASSERT(detail::size(group) > 0ul);
@@ -84,6 +85,16 @@ namespace TiledArray {
 
         /// \return A const reference to the group id
         const DistributedID& id() const { return did_; }
+
+        /// Set the registered status
+
+        /// \param status The new registered status
+        void set_register_status(const bool status) { registered_ = status; }
+
+        /// Registration status query
+
+        /// \return \c true if the group has been registered, otherwise \c false.
+        bool is_registered() const { return registered_; }
 
         /// Group rank accessor
 
@@ -118,42 +129,63 @@ namespace TiledArray {
           return group_to_world_map_[group_rank];
         }
 
-        /// Compute the binary tree parents and children
+       /// Compute the binary tree parents and children
 
-        /// \param[out] parent The parent node of the binary tree
-        /// \param[out] child1 The left child node of the binary tree
-        /// \param[out] child2 The right child node of the binary tree
-        /// \param[in] group_root The head node of the binary tree
-        void make_tree(ProcessID& parent, ProcessID& child1,
-            ProcessID& child2, const ProcessID group_root) const
-        {
-          const ProcessID group_size = group_to_world_map_.size();
+       /// \param[out] parent The parent node of the binary tree
+       /// \param[out] child1 The left child node of the binary tree
+       /// \param[out] child2 The right child node of the binary tree
+       /// \param[in] group_root The head node of the binary tree
+       void make_tree(ProcessID& parent, ProcessID& child1,
+           ProcessID& child2, const ProcessID group_root) const
+       {
+         const ProcessID group_size = group_to_world_map_.size();
 
-          // Check that root is in the range of the group
-          TA_ASSERT(group_root >= 0);
-          TA_ASSERT(group_root < group_size);
+         // Check that root is in the range of the group
+         TA_ASSERT(group_root >= 0);
+         TA_ASSERT(group_root < group_size);
 
-          // Renumber processes so root has me == 0
-          const ProcessID me = (group_rank_ + group_size - group_root) % group_size;
+         // Renumber processes so root has me == 0
+         const ProcessID me = (group_rank_ + group_size - group_root) % group_size;
 
-          // Compute the group parent
-          parent = (me == 0 ? -1 : group_to_world_map_[(((me - 1) >> 1) + group_root) % group_size]);
+         // Compute the group parent
+         parent = (me == 0 ? -1 : group_to_world_map_[(((me - 1) >> 1) + group_root) % group_size]);
 
-          // Compute children
-          child1 = (me << 1) + 1 + group_root;
-          child2 = child1 + 1;
+         // Compute children
+         child1 = (me << 1) + 1 + group_root;
+         child2 = child1 + 1;
 
-          const ProcessID end = group_size + group_root;
-          if(child1 < end)
-            child1 = group_to_world_map_[child1 % group_size];
-          else
-            child1 = -1;
-          if(child2 < end)
-            child2 = group_to_world_map_[child2 % group_size];
-          else
-            child2 = -1;
-        }
+         const ProcessID end = group_size + group_root;
+         if(child1 < end)
+           child1 = group_to_world_map_[child1 % group_size];
+         else
+           child1 = -1;
+         if(child2 < end)
+           child2 = group_to_world_map_[child2 % group_size];
+         else
+           child2 = -1;
+       }
+
       }; // struct Impl
+
+      class UnregisterGroup {
+      private:
+        DistributedID did_;
+
+      public:
+        UnregisterGroup() : did_(madness::uniqueidT(), 0ul) { }
+
+        UnregisterGroup(const DistributedID& did) : did_(did) { }
+
+        UnregisterGroup(const UnregisterGroup& other) : did_(other.did_) { }
+
+        UnregisterGroup& operator=(const UnregisterGroup& other) {
+          did_ = other.did_;
+          return *this;
+        }
+
+        void operator()() const;
+
+      }; // class UnregisterGroup
 
 
       std::shared_ptr<Impl> pimpl_;
@@ -217,6 +249,12 @@ namespace TiledArray {
       /// \param did The id associated with the group
       /// \return A future to the group
       static madness::Future<Group> get_group(const DistributedID& did);
+
+
+      /// Registration status query
+
+      /// \return \c true if the group has been registered, otherwise \c false.
+      bool is_registered() const { return (pimpl_ && pimpl_->is_registered()); }
 
       /// Quary empty group
 

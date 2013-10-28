@@ -66,31 +66,16 @@ namespace TiledArray {
         }
       }; // class GroupSyncKey
 
-      class UnregisterGroup {
-      private:
-        DistributedID did_;
-
-      public:
-        UnregisterGroup() : did_(madness::uniqueidT(), 0ul) { }
-
-        UnregisterGroup(const DistributedID& did) : did_(did) { }
-
-        UnregisterGroup(const UnregisterGroup& other) : did_(other.did_) { }
-
-        UnregisterGroup& operator=(const UnregisterGroup& other) {
-          did_ = other.did_;
-          return *this;
-        }
-
-        void operator()() const {
-          group_registry_container::accessor acc;
-          group_registry.find(acc, did_);
-          group_registry.erase(acc);
-        }
-
-      }; // class UnregisterGroup
-
     } // namespace
+
+
+    void Group::UnregisterGroup::operator()() const {
+      group_registry_container::accessor acc;
+      group_registry.find(acc, did_);
+      Group group = acc->second;
+      group_registry.erase(acc);
+      group.pimpl_->set_register_status(false);
+    }
 
 
     /// Register a group
@@ -109,6 +94,8 @@ namespace TiledArray {
         TA_ASSERT(! acc->second.probe());
         acc->second.set(*this);
       }
+
+      pimpl_->set_register_status(true);
     }
 
     /// Remove the given group from the registry
