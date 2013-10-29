@@ -35,49 +35,171 @@
 
 namespace TiledArray {
 
-  class Communicator {
-  private:
+  namespace dist_op {
 
-    mutable madness::World* world_;
+    /// Key object that included the process information
 
-    template <typename Key>
+    /// \tparam Key The base key type
+    /// \tparam Tag A type to differentiate key types
+    template <typename Key, typename Tag = void>
     class ProcessKey {
     private:
-      Key key_;
-      ProcessID proc_;
+      Key key_; ///< The base key type
+      ProcessID proc_; ///< The process that generated the key
 
     public:
 
-      ProcessKey(const Key& key, const ProcessID& proc) :
+      /// Default constructor
+      ProcessKey() : key_(), proc_(-1) { }
+
+      /// Constructor
+
+      /// \param key The base key
+      /// \param proc The process that generated the key
+      ProcessKey(const Key& key, const ProcessID proc) :
         key_(key), proc_(proc)
       { }
 
-      ProcessKey(const ProcessKey<Key>& other) :
+      /// Copy constructor
+
+      /// \param other The key to be copied
+      ProcessKey(const ProcessKey<Key, Tag>& other) :
         key_(other.key_), proc_(other.proc_)
       { }
 
+      /// Copy assignment operator
 
-      ProcessKey<Key>& operator=(const ProcessKey<Key>& other) {
+      /// \param other The key to be copied
+      /// \return A reference to this object
+      ProcessKey<Key, Tag>& operator=(const ProcessKey<Key, Tag>& other) {
         key_ = other.key_;
         proc_ = other.proc_;
         return *this;
       }
 
-      bool operator==(const ProcessKey<Key>& other) const {
-        return (key_ == other.key_) && (proc_ == other.proc_);
+      /// Equality comparison
+
+      /// \param other The key to be compared to this
+      /// \return \c true when other key and other process are equal to that of
+      /// this key, otherwise \c false.
+      bool operator==(const ProcessKey<Key, Tag>& other) const {
+        return ((key_ == other.key_) && (proc_ == other.proc_));
       }
 
-      bool operator!=(const ProcessKey<Key>& other) const {
-        return (key_ != other.key_) || (proc_ != other.proc_);
+      /// Inequality comparison
+
+      /// \param other The key to be compared to this
+      /// \return \c true when other key or other process are not equal to that
+      /// of this key, otherwise \c false.
+      bool operator!=(const ProcessKey<Key, Tag>& other) const {
+        return ((key_ != other.key_) || (proc_ != other.proc_));
       }
 
-      friend madness::hashT hash_value(const ProcessKey& key) {
+      /// Serialize this key
+
+      /// \tparam Archive The archive type
+      /// \param ar The archive object that will serialize this object
+      template <typename Archive>
+      void serialize(const Archive& ar) {
+        ar & key_ & proc_;
+      }
+
+      /// Hashing function
+
+      /// \param key The key to be hashed
+      /// \return The hashed key value
+      friend madness::hashT hash_value(const ProcessKey<Key, Tag>& key) {
         madness::hashT seed = hash_value(key.key_);
         madness::detail::combine_hash(seed, key.proc_);
         return seed;
       }
 
-    }; // class ReduceKey
+    }; // class ProcessKey
+
+    /// Key object that included the process information
+
+    /// \tparam Key The base key type
+    /// \tparam Tag A type to differentiate key types
+    template <typename Key, typename Tag>
+    class TaggedKey {
+    private:
+      Key key_; ///< The base key type
+
+    public:
+
+      TaggedKey() : key_() { }
+
+      /// Constructor
+
+      /// \param key The base key
+      /// \param proc The process that generated the key
+      TaggedKey(const Key& key) : key_(key) { }
+
+      /// Copy constructor
+
+      /// \param other The key to be copied
+      TaggedKey(const TaggedKey<Key, Tag>& other) : key_(other.key_) { }
+
+      /// Copy assignment operator
+
+      /// \param other The key to be copied
+      /// \return A reference to this object
+      TaggedKey<Key, Tag>& operator=(const TaggedKey<Key, Tag>& other) {
+        key_ = other.key_;
+        return *this;
+      }
+
+      /// Equality comparison
+
+      /// \param other The key to be compared to this
+      /// \return \c true when other key and other process are equal to that of
+      /// this key, otherwise \c false.
+      bool operator==(const TaggedKey<Key, Tag>& other) const {
+        return (key_ == other.key_);
+      }
+
+      /// Inequality comparison
+
+      /// \param other The key to be compared to this
+      /// \return \c true when other key or other process are not equal to that
+      /// of this key, otherwise \c false.
+      bool operator!=(const TaggedKey<Key, Tag>& other) const {
+        return (key_ != other.key_);
+      }
+
+      /// Serialize this key
+
+      /// \tparam Archive The archive type
+      /// \param ar The archive object that will serialize this object
+      template <typename Archive>
+      void serialize(const Archive& ar) { ar & key_; }
+
+      /// Hashing function
+
+      /// \param key The key to be hashed
+      /// \return The hashed key value
+      friend madness::hashT hash_value(const TaggedKey<Key, Tag>& key) {
+        madness::Hash<Key> hasher;
+        return hasher(key.key_);
+      }
+
+    }; // class TagKey
+
+  } // namespace detail
+
+  class Communicator {
+  private:
+
+    mutable madness::World* world_;
+
+    struct PointToPointTag { };
+    struct BcastTag { };
+    struct GroupBcastTag { };
+    struct ReduceTag { };
+    struct GroupReduceTag { };
+    struct AllReduceTag { };
+    struct GroupAllReduceTag { };
+
 
     /// Delayed send callback object
 
@@ -121,6 +243,102 @@ namespace TiledArray {
       }
     }; // class DelayedSend
 
+    /// Compute parent and child processes of this process in a binary tree
+
+    /// \param[out] parent The parent process of this process in the binary tree
+    /// \param[out] child0 The left child process of this process in the binary tree
+    /// \param[out] child1 The right child process of this process in the binary tree
+    /// \param[in] root The head process of the binary tree
+    /// \param[in] rank The rank of this process
+    /// \param[in] size The number of processes in the binary tree
+    static void make_tree(ProcessID& parent, ProcessID& child0, ProcessID& child1,
+        const ProcessID root, const ProcessID rank, const ProcessID size)
+    {
+      // Check that rank and root is in range
+      TA_ASSERT(rank >= 0);
+      TA_ASSERT(rank < size);
+      TA_ASSERT(root >= 0);
+      TA_ASSERT(root < size);
+
+      // Renumber processes so root has me == 0
+      const ProcessID me = (rank + size - root) % size;
+
+      // Compute the group parent
+      parent = (me == 0 ? -1 : (((me - 1) >> 1) + root) % size);
+
+      // Compute children
+      child0 = (me << 1) + 1 + root;
+      child1 = child0 + 1;
+
+      const ProcessID end = size + root;
+      if(child0 < end)
+        child0 = child0 % size;
+      else
+        child0 = -1;
+      if(child1 < end)
+        child1 = child1 % size;
+      else
+        child1 = -1;
+    }
+
+    /// Compute parent and child processes of this process in a binary tree
+
+    /// \param[out] parent The parent process of this process in the binary tree
+    /// \param[out] child0 The left child process of this process in the binary tree
+    /// \param[out] child1 The right child process of this process in the binary tree
+    /// \param[in] root The head process of the binary tree
+    static void make_tree(ProcessID& parent, ProcessID& child1, ProcessID& child2,
+        const ProcessID root, const madness::World* const world)
+    {
+      make_tree(parent, child1, child2, root, world->rank(), world->size());
+    }
+
+    /// Compute parent and child processes of this process in a binary tree
+
+    /// \param[out] parent The parent process of this process in the binary tree
+    /// \param[out] child0 The left child process of this process in the binary tree
+    /// \param[out] child1 The right child process of this process in the binary tree
+    /// \param[in] group_root The head process in the group of the binary tree
+    /// \param[in] group The group where the binary tree will be constructed
+    static void make_tree(ProcessID& parent, ProcessID& child1, ProcessID& child2,
+        const ProcessID group_root, const dist_op::Group& group)
+    {
+      make_tree(parent, child1, child2, group_root, group.rank(), group.size());
+    }
+
+
+    template <typename Key, typename T>
+    static void bcast_handler(const madness::AmArg& arg) {
+
+      Key key;
+      T value;
+      ProcessID root;
+
+      arg & key & value & root;
+
+      // Add task to queue
+      arg.get_world()->taskq.add(Communicator::template bcast_task<Key, T>,
+          arg.get_world(), key, value, root, madness::TaskAttributes::hipri());
+    }
+
+    template <typename Key, typename T>
+    static void group_bcast_handler(const madness::AmArg& arg) {
+
+      Key key;
+      T value;
+      ProcessID group_root;
+      dist_op::DistributedID group_key;
+
+      arg & key & value & group_root & group_key;
+
+      // Get the local group
+      const madness::Future<dist_op::Group> group = dist_op::Group::get_group(group_key);
+
+      // Add task to queue
+      arg.get_world()->taskq.add(Communicator::template group_bcast_task<Key, T>,
+          arg.get_world(), key, value, group_root, group,
+          madness::TaskAttributes::hipri());
+    }
 
     template <typename Key, typename T>
     static void bcast_children(madness::World* world, const Key& key,
@@ -129,14 +347,45 @@ namespace TiledArray {
       // Get the parent and child processes in the binary tree that will be used
       // to broadcast the data.
       ProcessID parent = -1, child0 = -1, child1 = -1;
-      world->mpi.binary_tree_info(root, parent, child0, child1);
+      make_tree(parent, child0, child1, root, world);
 
-      if(child0 != -1)
-        world->taskq.add(child0, Communicator::template bcast_task<Key, T>, world,
-            key, value, root, madness::TaskAttributes::hipri());
-      if(child1 != -1)
-        world->taskq.add(child1, Communicator::template bcast_task<Key, T>, world,
-            key, value, root, madness::TaskAttributes::hipri());
+      const bool send0 = child0 != -1;
+      const bool send1 = child1 != -1;
+      madness::AmArg* args = (send0 || send1 ?
+          madness::new_am_arg(key, value, root) :
+          NULL);
+
+      if(send0)
+        world->am.send(child0, & Communicator::template bcast_handler<Key, T>,
+            args, madness::RMI::ATTR_ORDERED, !send1);
+      if(send1)
+        world->am.send(child1, & Communicator::template bcast_handler<Key, T>,
+            args, madness::RMI::ATTR_ORDERED, true);
+    }
+
+    template <typename Key, typename T>
+    static void group_bcast_children(madness::World* world, const Key& key,
+        const T& value, const ProcessID group_root, const dist_op::Group& group)
+    {
+      // Get the parent and child processes in the binary tree that will be used
+      // to broadcast the data.
+      ProcessID parent = -1, child0 = -1, child1 = -1;
+      make_tree(parent, child0, child1, group_root, group);
+
+      // Create active message arguments
+      const bool send0 = child0 != -1;
+      const bool send1 = child1 != -1;
+      madness::AmArg* args = (send0 || send1 ?
+          madness::new_am_arg(key, value, group_root, group.id()) :
+          NULL);
+
+      // Bcast to children
+      if(send0)
+        world->am.send(child0, & Communicator::template group_bcast_handler<Key, T>,
+            args, madness::RMI::ATTR_ORDERED, !send1);
+      if(send1)
+        world->am.send(child1, & Communicator::template group_bcast_handler<Key, T>,
+            args, madness::RMI::ATTR_ORDERED, true);
     }
 
     template <typename Key, typename T>
@@ -148,37 +397,219 @@ namespace TiledArray {
     }
 
     template <typename Key, typename T>
-    static void group_bcast_children(madness::World* world,
-        const dist_op::Group& group, const Key& key, const T& value,
-        const ProcessID group_root)
-    {
-      // Get the parent and child processes in the binary tree that will be used
-      // to broadcast the data.
-      ProcessID parent = -1, child0 = -1, child1 = -1;
-      group.make_tree(parent, child0, child1, group_root);
-
-      if(child0 != -1)
-        world->taskq.add(child0, Communicator::template group_bcast_task<Key, T>,
-            world, group.id(), key, value, group_root, madness::TaskAttributes::hipri());
-      if(child1 != -1)
-        world->taskq.add(child1, Communicator::template group_bcast_task<Key, T>,
-            world, group.id(), key, value, group_root, madness::TaskAttributes::hipri());
-    }
-
-    template <typename Key, typename T>
-    static void group_bcast_task(madness::World* world,
-        const dist_op::DistributedID& group_key, const Key& key, const T& value,
-        ProcessID group_root)
+    static void group_bcast_task(madness::World* world, const Key& key,
+        const T& value, ProcessID group_root, dist_op::Group& group)
     {
       dist_op::DistCache<Key>::set_cache_data(key, value);
-      const madness::Future<dist_op::Group> group = dist_op::Group::get_group(group_key);
+      group_bcast_children(world, key, value, group_root, group);
+    }
 
-      if(group.probe()) {
-        group_bcast_children(world, group, key, value, group_root);
+    /// Receive data from remote node
+
+    /// \tparam T The data type stored in cache
+    /// \param did The distributed ID
+    /// \return A future to the data
+    template <typename T, typename Key>
+    static madness::Future<T> recv_internal(const Key& key) {
+      return dist_op::DistCache<Key>::template get_cache_data<T>(key);
+    }
+
+    /// Send value to \c dest
+
+    /// \tparam T The value type
+    /// \param world The world that will be used to send the value
+    /// \param dest The node where the data will be sent
+    /// \param did The distributed id that is associatied with the data
+    /// \param value The data to be sent
+    template <typename Key, typename T>
+    typename madness::disable_if<madness::is_future<T> >::type
+    send_internal(const ProcessID dest, const Key& key, const T& value) const {
+      typedef TiledArray::dist_op::DistCache<Key> dist_cache;
+
+      if(world_->rank() == dest) {
+        // When dest is this process, skip the task and set the future immediately.
+        dist_cache::set_cache_data(key, value);
       } else {
-        world->taskq.add(& Communicator::template group_bcast_children<Key, T>,
-            world, group, key, value, group_root, madness::TaskAttributes::hipri());
+        // Spawn a remote task to set the value
+        world_->taskq.add(dest, dist_cache::template set_cache_data<T>,
+            key, value,  madness::TaskAttributes::hipri());
       }
+    }
+
+    /// Send \c value to \c dest
+
+    /// \tparam T The value type
+    /// \param world The world that will be used to send the value
+    /// \param dest The node where the data will be sent
+    /// \param did The distributed id that is associated with the data
+    /// \param value The data to be sent
+    template <typename Key, typename T>
+    void send_internal(ProcessID dest, const Key& key, const madness::Future<T>& value) const {
+      typedef TiledArray::dist_op::DistCache<Key> dist_cache;
+
+      if(world_->rank() == dest) {
+        dist_cache::set_cache_data(key, value);
+      } else {
+        // The destination is not this node, so send it to the destination.
+        if(value.probe()) {
+          // Spawn a remote task to set the value
+          world_->taskq.add(dest, dist_cache::template set_cache_data<T>, key,
+              value.get(), madness::TaskAttributes::hipri());
+        } else {
+          // The future is not ready, so create a callback object that will
+          // send value to the destination node when it is ready.
+          DelayedSend<Key, T>* delayed_send_callback =
+              new DelayedSend<Key, T>(*world_, dest, key, value);
+          const_cast<madness::Future<T>&>(value).register_callback(delayed_send_callback);
+
+        }
+      }
+    }
+
+    /// Distributed reduce
+
+    /// \tparam Key The key type
+    /// \tparam T The data type to be reduced
+    /// \tparam Op The reduction operation type
+    /// \param key The key associated with this reduction
+    /// \param value The local value to be reduced
+    /// \param op The reduction operation to be applied to local and remote data
+    /// \param root The process that will receive the result of the reduction
+    /// \return A future to the reduce value on the root process, otherwise an
+    /// uninitialized future that may be ignored.
+    template <typename Tag, typename Comm, typename Key, typename T, typename Op>
+    madness::Future<typename madness::detail::result_of<Op>::type>
+    reduce_internal(Comm& comm, const Key& key, const T& value, const Op& op, const ProcessID root) {
+      // Create tagged key
+      typedef dist_op::ProcessKey<Key, Tag> key_type;
+      typedef typename madness::detail::result_of<Op>::type value_type;
+
+      // The result of this reduction (ignored when rank != root).
+      madness::Future<value_type> result = madness::Future<T>::default_initializer();
+
+      // Reduce local data
+      TiledArray::detail::ReduceTask<Op> reduce_task(*world_, op);
+      reduce_task.add(value);
+
+      // Get the parent and child processes in the binary tree that will be used
+      // to reduce the data.
+      ProcessID parent = -1, child0 = -1, child1 = -1;
+      make_tree(parent, child0, child1, root, comm);
+
+      // Reduce child data
+      if(child0 != -1)
+        reduce_task.add(recv_internal<T>(key_type(key, child0)));
+      if(child1 != -1)
+        reduce_task.add(recv_internal<T>(key_type(key, child1)));
+
+      // Send reduced value to parent or, if this is the root process, set the
+      // result future.
+      if(parent != -1)
+        send_internal(parent, key_type(key, world_->rank()), reduce_task.submit());
+      else
+        result = reduce_task.submit();
+
+      return result;
+    }
+
+    /// Broadcast
+
+    /// Broadcast data from the \c root process to all processes in \c world.
+    /// The input/output data is held by \c value.
+    /// \param[in] key The key associated with this broadcast
+    /// \param[in,out] value On the \c root process, this is used as the input
+    /// data that will be broadcast to all other processes in the group.
+    /// On other processes it is used as the output to the broadcast
+    /// \param root The process that owns the data to be broadcast
+    /// \throw TiledArray::Exception When \c root is less than 0 or
+    /// greater than or equal to the world size.
+    /// \throw TiledArray::Exception When \c value has been set, except on the
+    /// \c root process.
+    template <typename Tag, typename Key, typename T>
+    void bcast_internal(const Key& key, madness::Future<T>& value, const ProcessID root) const {
+      TA_ASSERT((root >= 0) && (root < world_->size()));
+      TA_ASSERT((world_->rank() == root) || (! value.probe()));
+
+      // Add operation tag to key
+      typedef dist_op::TaggedKey<Key, Tag> key_type;
+      const key_type k(key);
+
+      if(world_->size() > 1) { // Do nothing for the trivial case
+        if(world_->rank() == root) {
+          // This is the process that owns the data to be broadcast
+
+          // Spawn remote tasks that will set the local cache for this broadcast
+          // on other nodes.
+          if(value.probe())
+            // The value is ready so send it now
+            bcast_children(world_, k, value.get(), root);
+          else
+            // The value is not ready so spawn a task to send the data when it
+            // is ready.
+            world_->taskq.add(Communicator::template bcast_children<key_type, T>,
+                world_, k, value, root, madness::TaskAttributes::hipri());
+        } else {
+          TA_ASSERT(! value.probe());
+
+          // Get the broadcast value from local cache
+          dist_op::DistCache<key_type>::get_cache_data(k, value);
+        }
+      }
+    }
+
+    /// Group broadcast
+
+    /// Broadcast data from the \c group_root process to all processes in
+    /// \c group. The input/output data is held by \c value.
+    /// \param[in] key The key associated with this broadcast
+    /// \param[in,out] value On the \c group_root process, this is used as the
+    /// input data that will be broadcast to all other processes in the group.
+    /// On other processes it is used as the output to the broadcast
+    /// \param group_root The process in \c group that owns the data to be
+    /// broadcast
+    /// \param group The process group where value will be broadcast
+    /// \throw TiledArray::Exception When the world id of \c group is not
+    /// equal to that of the world used to construct this communicator.
+    /// \throw TiledArray::Exception When \c group_root is less than 0 or
+    /// greater than or equal to \c group size.
+    /// \throw TiledArray::Exception When \c data has been set except on the
+    /// \c root process.
+    /// \throw TiledArray::Exception When this process is not in the group.
+    template <typename Tag, typename Key, typename T>
+    void bcast_internal(const Key& key, madness::Future<T>& value,
+        const ProcessID group_root, const dist_op::Group& group) const
+    {
+      TA_ASSERT(! group.empty());
+      TA_ASSERT(group.is_registered());
+      TA_ASSERT(group.get_world().id() == world_->id());
+      TA_ASSERT(group_root >= 0 && group_root < group.size());
+      TA_ASSERT((group.rank() == group_root) || (! value.probe()));
+      TA_ASSERT(group.rank(world_->rank()) != -1);
+
+      // Typedefs
+      typedef dist_op::TaggedKey<Key, Tag> key_type;
+      const key_type k(key);
+
+      if(group.size() > 1) { // Do nothing for the trivial case
+        if(group.rank() == group_root) {
+          // This is the process that owns the data to be broadcast
+          if(value.probe())
+            group_bcast_children(world_, k, value.get(), group_root, group);
+          else
+            world_->taskq.add(& Communicator::template group_bcast_children<key_type, T>,
+                world_, k, value, group_root, group, madness::TaskAttributes::hipri());
+        } else {
+          // This is not the root process, so retrieve the broadcast data
+          dist_op::DistCache<key_type>::get_cache_data(k, value);
+        }
+      }
+    }
+
+    void varify_group(const dist_op::Group& group) const {
+      TA_ASSERT(! group.empty());
+      TA_ASSERT(group.is_registered());
+      TA_ASSERT(group.get_world().id() == world_->id());
+      TA_ASSERT(group.rank(world_->rank()) != -1);
     }
 
   public:
@@ -215,7 +646,7 @@ namespace TiledArray {
     /// \return A future to the data
     template <typename T, typename Key>
     static madness::Future<T> recv(const Key& key) {
-      return dist_op::DistCache<Key>::template get_cache_data<T>(key);
+      return recv_internal<T>(dist_op::TaggedKey<Key, PointToPointTag>(key));
     }
 
     /// Send value to \c dest
@@ -228,16 +659,7 @@ namespace TiledArray {
     template <typename Key, typename T>
     typename madness::disable_if<madness::is_future<T> >::type
     send(const ProcessID dest, const Key& key, const T& value) const {
-      typedef TiledArray::dist_op::DistCache<Key> dist_cache;
-
-      if(world_->rank() == dest) {
-        // When dest is this process, skip the task and set the future immediately.
-        dist_cache::set_cache_data(key, value);
-      } else {
-        // Spawn a remote task to set the value
-        world_->taskq.add(dest, dist_cache::template set_cache_data<T>, key, value,
-            madness::TaskAttributes::hipri());
-      }
+      send_internal(dest, dist_op::TaggedKey<Key, PointToPointTag>(key), value);
     }
 
     /// Send \c value to \c dest
@@ -249,25 +671,7 @@ namespace TiledArray {
     /// \param value The data to be sent
     template <typename Key, typename T>
     void send(ProcessID dest, const Key& key, const madness::Future<T>& value) const {
-      typedef TiledArray::dist_op::DistCache<Key> dist_cache;
-
-      if(world_->rank() == dest) {
-        dist_cache::set_cache_data(key, value);
-      } else {
-        // The destination is not this node, so send it to the destination.
-        if(value.probe()) {
-          // Spawn a remote task to set the value
-          world_->taskq.add(dest, dist_cache::template set_cache_data<T>, key,
-              value.get(), madness::TaskAttributes::hipri());
-        } else {
-          // The future is not ready, so create a callback object that will
-          // send value to the destination node when it is ready.
-          DelayedSend<Key, T>* delayed_send_callback =
-              new DelayedSend<Key, T>(*world_, dest, key, value);
-          const_cast<madness::Future<T>&>(value).register_callback(delayed_send_callback);
-
-        }
-      }
+      send_internal(dest, dist_op::TaggedKey<Key, PointToPointTag>(key), value);
     }
 
     /// Lazy sync
@@ -301,8 +705,7 @@ namespace TiledArray {
     /// sync operations have been completed.
     template <typename Key, typename Op>
     void lazy_sync(const Key& key, const Op& op, const dist_op::Group& group) const {
-      TA_ASSERT(group.get_world().id() == world_->id());
-      TA_ASSERT(group.rank(world_->rank()) != -1);
+      varify_group(group);
       dist_op::LazySync<Key, Op>::make(group, key, op);
     }
 
@@ -321,29 +724,9 @@ namespace TiledArray {
     /// \c root process.
     template <typename Key, typename T>
     void bcast(const Key& key, madness::Future<T>& value, const ProcessID root) const {
-      TA_ASSERT(root >= 0 && root < world_->size());
+      TA_ASSERT((root >= 0) && (root < world_->size()));
       TA_ASSERT((world_->rank() == root) || (! value.probe()));
-
-      if(world_->size() > 1) { // Do nothing for the trivial case
-        if(world_->rank() == root) {
-          // This is the process that owns the data to be broadcast
-
-          // Spawn remote tasks that will set the local cache for this broadcast
-          // on other nodes.
-          if(value.probe())
-            // The value is ready so send it now
-            bcast_children(world_, key, value.get(), root);
-          else
-            // The value is not ready so spawn a task to send the data when it
-            // is ready.
-            world_->taskq.add(Communicator::template bcast_children<Key, T>,
-                world_, key, value, root, madness::TaskAttributes::hipri());
-        } else {
-          // Get the local cache value for the broad cast
-          TA_ASSERT(! value.probe());
-          dist_op::DistCache<Key>::get_cache_data(key, value);
-        }
-      }
+      bcast_internal<BcastTag>(key, value, root);
     }
 
     /// Group broadcast
@@ -368,28 +751,17 @@ namespace TiledArray {
     void bcast(const Key& key, madness::Future<T>& value,
         const ProcessID group_root, const dist_op::Group& group) const
     {
-      TA_ASSERT(group.get_world().id() == world_->id());
-      TA_ASSERT(group_root >= 0 && group_root < group.size());
+      varify_group(group);
+      TA_ASSERT((group_root >= 0) && (group_root < group.size()));
       TA_ASSERT((group.rank() == group_root) || (! value.probe()));
-      TA_ASSERT(group.rank(world_->rank()) != -1);
-
-      if(group.size() > 1) { // Do nothing for the trivial case
-        if(group.rank() == group_root) {
-          // This is the process that owns the data to be broadcast
-          if(value.probe())
-            group_bcast_children(world_, group, key, value.get(), group_root);
-          else
-            world_->taskq.add(& Communicator::template group_bcast_children<Key, T>,
-                world_, group, key, value, group_root, madness::TaskAttributes::hipri());
-        } else {
-          // This is not the root process, so retrieve the broadcast data
-          dist_op::DistCache<Key>::get_cache_data(key, value);
-        }
-      }
+      bcast_internal<GroupBcastTag>(key, value, group_root, group);
     }
 
     /// Distributed reduce
 
+    /// \tparam Key The key type
+    /// \tparam T The data type to be reduced
+    /// \tparam Op The reduction operation type
     /// \param key The key associated with this reduction
     /// \param value The local value to be reduced
     /// \param op The reduction operation to be applied to local and remote data
@@ -400,44 +772,14 @@ namespace TiledArray {
     madness::Future<typename madness::detail::result_of<Op>::type>
     reduce(const Key& key, const T& value, const Op& op, const ProcessID root) {
       TA_ASSERT((root >= 0) && (root < world_->size()));
-
-      // Typedefs
-      typedef ProcessKey<Key> key_type;
-      typedef typename madness::detail::result_of<Op>::type value_type;
-
-      // The result of this reduction (ignored when rank != root).
-      madness::Future<value_type> result = madness::Future<T>::default_initializer();
-
-      if(world_->size() == 1) {
-        result = madness::Future<value_type>(value);
-      } else {
-        // Get the parent and child processes in the binary tree that will be used
-        // to reduce the data.
-        ProcessID parent = -1, child0 = -1, child1 = -1;
-        world_->mpi.binary_tree_info(root, parent, child0, child1);
-
-        // Create the local reduction task
-        TiledArray::detail::ReduceTask<Op> reduce_task(*world_, op);
-
-        // Reduce local and child data
-        reduce_task.add(value);
-        if(child0 != -1)
-          reduce_task.add(recv<value_type>(key_type(key, child0)));
-        if(child1 != -1)
-          reduce_task.add(recv<value_type>(key_type(key, child1)));
-
-        // Set the result
-        if(parent != -1)
-          send(parent, key_type(key, world_->rank()), reduce_task.submit());
-        else
-          result = reduce_task.submit();
-      }
-
-      return result;
+      return reduce_internal<ReduceTag>(world_, key, value, op, root);
     }
 
     /// Distributed group reduce
 
+    /// \tparam Key The key type
+    /// \tparam T The data type to be reduced
+    /// \tparam Op The reduction operation type
     /// \param key The key associated with this reduction
     /// \param value The local value to be reduced
     /// \param op The reduction operation to be applied to local and remote data
@@ -450,42 +792,68 @@ namespace TiledArray {
     reduce(const Key& key, const T& value, const Op& op,
         const ProcessID group_root, const dist_op::Group& group)
     {
+      varify_group(group);
       TA_ASSERT((group_root >= 0) && (group_root < group.size()));
-      TA_ASSERT(group.get_world().id() == world_->id());
+      return reduce_internal<ReduceTag>(group, key, value, op, group_root);
+    }
 
-      // Typedefs
-      typedef ProcessKey<Key> key_type;
-      typedef typename madness::detail::result_of<Op>::type value_type;
+    /// Distributed all reduce
 
-      // The result of this reduction (ignored when rank != root).
-      madness::Future<value_type> result = madness::Future<value_type>::default_initializer();
+    /// \tparam Key The key type
+    /// \tparam T The data type to be reduced
+    /// \tparam Op The reduction operation type
+    /// \param key The key associated with this reduction
+    /// \param value The local value to be reduced
+    /// \param op The reduction operation to be applied to local and remote data
+    /// \param root The process that will receive the result of the reduction
+    /// \return A future to the reduce value on the root process, otherwise an
+    /// uninitialized future that may be ignored.
+    template <typename Key, typename T, typename Op>
+    madness::Future<typename madness::detail::result_of<Op>::type>
+    reduce(const Key& key, const T& value, const Op& op) {
+      // Reduce to 0 process
+      madness::Future<typename madness::detail::result_of<Op>::type> reduce_result =
+          reduce_internal<AllReduceTag>(world_, key, value, op, 0);
 
-      if(group.size() == 1) {
-        result = madness::Future<value_type>(value);
-      } else {
-        // Get the parent and child processes in the binary tree that will be used
-        // to reduce the data.
-        ProcessID parent = -1, child0 = -1, child1 = -1;
-        group.make_tree(parent, child0, child1, group_root);
+      if(world_->rank() != 0)
+        reduce_result = madness::Future<typename madness::detail::result_of<Op>::type>();
 
-        // Create the local reduction task
-        TiledArray::detail::ReduceTask<Op> reduce_task(*world_, op);
+      // Broadcast the result of the reduction to all processes
+      bcast_internal<AllReduceTag>(key, reduce_result, 0);
 
-        // Reduce local and child data
-        reduce_task.add(value);
-        if(child0 != -1)
-          reduce_task.add(recv<value_type>(key_type(key, child0)));
-        if(child1 != -1)
-          reduce_task.add(recv<value_type>(key_type(key, child1)));
+      return reduce_result;
+    }
 
-        // Set the result
-        if(parent != -1)
-          send(parent, key_type(key, world_->rank()), reduce_task.submit());
-        else
-          result = reduce_task.submit();
-      }
+    /// Distributed group all reduce
 
-      return result;
+    /// \tparam Key The key type
+    /// \tparam T The data type to be reduced
+    /// \tparam Op The reduction operation type
+    /// \param key The key associated with this reduction
+    /// \param value The local value to be reduced
+    /// \param op The reduction operation to be applied to local and remote data
+    /// \param group_root The group process that will receive the result of the reduction
+    /// \param group The group that will preform the reduction
+    /// \return A future to the reduce value on the root process, otherwise an
+    /// uninitialized future that may be ignored.
+    template <typename Key, typename T, typename Op>
+    madness::Future<typename madness::detail::result_of<Op>::type>
+    reduce(const Key& key, const T& value, const Op& op, const dist_op::Group& group)
+    {
+      varify_group(group);
+
+      // Reduce the data
+      madness::Future<typename madness::detail::result_of<Op>::type> reduce_result =
+          reduce_internal<GroupAllReduceTag>(key, value, op, 0, group);
+
+
+      if(group.rank() != 0)
+        reduce_result = madness::Future<typename madness::detail::result_of<Op>::type>();
+
+      // Broadcast the result of the reduction to all processes in the group
+      bcast_internal<GroupAllReduceTag>(key, reduce_result, 0, group);
+
+      return reduce_result;
     }
 
   }; // class Communicator
