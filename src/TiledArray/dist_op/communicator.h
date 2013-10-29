@@ -30,7 +30,6 @@
 #include <TiledArray/error.h>
 #include <TiledArray/dist_op/dist_cache.h>
 #include <TiledArray/dist_op/group.h>
-#include <TiledArray/dist_op/lazy_sync.h>
 #include <TiledArray/reduce_task.h>
 
 namespace TiledArray {
@@ -209,7 +208,10 @@ namespace TiledArray {
 
     mutable madness::World* world_;
 
+    // Message tags
     struct PointToPointTag { };
+    struct LazySyncTag { };
+    struct GroupLazySyncTag { };
     struct BcastTag { };
     struct GroupBcastTag { };
     struct ReduceTag { };
@@ -486,6 +488,72 @@ namespace TiledArray {
       }
     }
 
+
+    template <typename Key>
+    static void lazy_sync_parent(madness::World* world, const ProcessID parent,
+        const Key& key, const ProcessID, const ProcessID)
+    {
+      send_internal(world, parent, key, key.proc());
+    }
+
+    template <typename Key, typename Op>
+    static void lazy_sync_children(madness::World* world, const ProcessID child0,
+        const ProcessID child1, const Key& key, const Op& op, const ProcessID)
+    {
+      // Signal children to execute the operation.
+      if(child0 != -1)
+        send_internal(world, child0, key, 1);
+      if(child1 != -1)
+        send_internal(world, child1, key, 1);
+
+      // Execute the operation on this process.
+      op();
+    }
+
+    /// Lazy sync
+
+    /// Lazy sync functions are asynchronous barriers with a nullary functor
+    /// that is called after all processes have called lazy sync with the same
+    /// key.
+    /// \param key The sync key
+    /// \param op The sync operation to be executed on this process
+    /// \note It is the user's responsibility to ensure that the key for each
+    /// lazy sync operation is unique. You may reuse keys after the associated
+    /// sync operations have been completed.
+    template <typename Tag, typename Comm, typename Key, typename Op>
+    void lazy_sync_internal(Comm& comm, const Key& key, const Op& op) const {
+      typedef dist_op::ProcessKey<Key, Tag> key_type;
+      ProcessID parent = -1, child0 = -1, child1 = -1;
+      make_tree(parent, child0, child1, 0, comm);
+
+      // Get signals from parent and children.
+      madness::Future<ProcessID> child0_signal = (child0 != -1 ?
+          recv_internal<ProcessID>(key_type(key, child0)) :
+          madness::Future<ProcessID>(-1));
+      madness::Future<ProcessID> child1_signal = (child1 != -1 ?
+          recv_internal<ProcessID>(key_type(key, child1)) :
+          madness::Future<ProcessID>(-1));
+      madness::Future<ProcessID> parent_signal = (parent != -1 ?
+          recv_internal<ProcessID>(key_type(key, parent)) :
+          madness::Future<ProcessID>(-1));
+
+      // Construct the task that notifies children to run the operation
+      key_type my_key(key, world_->rank());
+      world_->taskq.add(Communicator::template lazy_sync_children<key_type, Op>,
+          world_, child0_signal, child1_signal, my_key, op, parent_signal,
+          madness::TaskAttributes::hipri());
+
+      // Send signal to parent
+      if(parent != -1) {
+        if(child0_signal.probe() && child1_signal.probe())
+          lazy_sync_parent(world_, parent, my_key, child0_signal, child1_signal);
+        else
+          world_->taskq.add(Communicator::template lazy_sync_parent<key_type>,
+              world_, parent, my_key, child0_signal, child1_signal,
+              madness::TaskAttributes::hipri());
+      }
+    }
+
     /// Distributed reduce
 
     /// \tparam Key The key type
@@ -694,7 +762,7 @@ namespace TiledArray {
     /// sync operations have been completed.
     template <typename Key, typename Op>
     void lazy_sync(const Key& key, const Op& op) const {
-      dist_op::LazySync<Key, Op>::make(*world_, key, op);
+      lazy_sync_internal<LazySyncTag>(world_, key, op);
     }
 
 
@@ -714,7 +782,7 @@ namespace TiledArray {
     template <typename Key, typename Op>
     void lazy_sync(const Key& key, const Op& op, const dist_op::Group& group) const {
       varify_group(group);
-      dist_op::LazySync<Key, Op>::make(group, key, op);
+      lazy_sync_internal<GroupLazySyncTag>(group, key, op);
     }
 
     /// Broadcast

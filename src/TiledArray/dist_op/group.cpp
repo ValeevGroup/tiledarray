@@ -24,7 +24,7 @@
  */
 
 #include <TiledArray/dist_op/group.h>
-#include <TiledArray/dist_op/lazy_sync.h>
+#include <TiledArray/dist_op/communicator.h>
 
 namespace TiledArray {
   namespace dist_op {
@@ -106,8 +106,8 @@ namespace TiledArray {
     /// \param group The group to be removed from the registry
     void Group::unregister_group() const {
       TA_ASSERT(pimpl_);
-      dist_op::LazySync<GroupSyncKey, UnregisterGroup>::make(*this,
-          GroupSyncKey(pimpl_->id()), UnregisterGroup(pimpl_->id()));
+      Communicator comm(pimpl_->get_world());
+      comm.lazy_sync(GroupSyncKey(pimpl_->id()), UnregisterGroup(pimpl_->id()), *this);
     }
 
     /// Get a registered group
