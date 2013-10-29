@@ -318,10 +318,16 @@ namespace TiledArray {
     /// \param[out] child1 The right child process of this process in the binary tree
     /// \param[in] group_root The head process in the group of the binary tree
     /// \param[in] group The group where the binary tree will be constructed
-    static void make_tree(ProcessID& parent, ProcessID& child1, ProcessID& child2,
+    static void make_tree(ProcessID& parent, ProcessID& child0, ProcessID& child1,
         const ProcessID group_root, const dist_op::Group& group)
     {
-      make_tree(parent, child1, child2, group_root, group.rank(), group.size());
+      make_tree(parent, child0, child1, group_root, group.rank(), group.size());
+      if(parent != -1)
+        parent = group.world_rank(parent);
+      if(child0 != -1)
+        child0 = group.world_rank(child0);
+      if(child1 != -1)
+        child1 = group.world_rank(child1);
     }
 
 
