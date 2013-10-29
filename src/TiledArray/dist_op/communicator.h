@@ -226,7 +226,7 @@ namespace TiledArray {
     template <typename Key, typename T>
     class DelayedSend : public madness::CallbackInterface {
     private:
-      madness::World& world_; ///< The communication world
+      madness::World* world_; ///< The communication world
       const ProcessID dest_; ///< The destination process id
       const Key key_; ///< The distributed id associated with \c value_
       madness::Future<T> value_; ///< The data to be sent
@@ -241,7 +241,7 @@ namespace TiledArray {
 
       /// \param ds The distributed container that owns element i
       /// \param i The element to be moved
-      DelayedSend(madness::World& world, const ProcessID dest,
+      DelayedSend(madness::World* world, const ProcessID dest,
           const Key& key, const madness::Future<T>& value) :
         world_(world), dest_(dest), key_(key), value_(value)
       { }
@@ -254,8 +254,7 @@ namespace TiledArray {
       /// this callback object.
       virtual void notify() {
         TA_ASSERT(value_.probe());
-        Communicator d_op(world_);
-        d_op.send(dest_, key_, value_.get());
+        Communicator::send_internal(world_, dest_, key_, value_.get());
         delete this;
       }
     }; // class DelayedSend
@@ -439,17 +438,19 @@ namespace TiledArray {
     /// \param did The distributed id that is associatied with the data
     /// \param value The data to be sent
     template <typename Key, typename T>
-    typename madness::disable_if<madness::is_future<T> >::type
-    send_internal(const ProcessID dest, const Key& key, const T& value) const {
+    static typename madness::disable_if<madness::is_future<T> >::type
+    send_internal(madness::World* const world, const ProcessID dest,
+        const Key& key, const T& value)
+    {
       typedef TiledArray::dist_op::DistCache<Key> dist_cache;
 
-      if(world_->rank() == dest) {
+      if(world->rank() == dest) {
         // When dest is this process, skip the task and set the future immediately.
         dist_cache::set_cache_data(key, value);
       } else {
         // Spawn a remote task to set the value
-        world_->taskq.add(dest, dist_cache::template set_cache_data<T>,
-            key, value,  madness::TaskAttributes::hipri());
+        world->taskq.add(dest, dist_cache::template set_cache_data<T>, key,
+            value, madness::TaskAttributes::hipri());
       }
     }
 
@@ -461,22 +462,24 @@ namespace TiledArray {
     /// \param did The distributed id that is associated with the data
     /// \param value The data to be sent
     template <typename Key, typename T>
-    void send_internal(ProcessID dest, const Key& key, const madness::Future<T>& value) const {
+    static void send_internal(madness::World* world, ProcessID dest,
+        const Key& key, const madness::Future<T>& value)
+    {
       typedef TiledArray::dist_op::DistCache<Key> dist_cache;
 
-      if(world_->rank() == dest) {
+      if(world->rank() == dest) {
         dist_cache::set_cache_data(key, value);
       } else {
         // The destination is not this node, so send it to the destination.
         if(value.probe()) {
           // Spawn a remote task to set the value
-          world_->taskq.add(dest, dist_cache::template set_cache_data<T>, key,
+          world->taskq.add(dest, dist_cache::template set_cache_data<T>, key,
               value.get(), madness::TaskAttributes::hipri());
         } else {
           // The future is not ready, so create a callback object that will
           // send value to the destination node when it is ready.
           DelayedSend<Key, T>* delayed_send_callback =
-              new DelayedSend<Key, T>(*world_, dest, key, value);
+              new DelayedSend<Key, T>(world, dest, key, value);
           const_cast<madness::Future<T>&>(value).register_callback(delayed_send_callback);
 
         }
@@ -522,7 +525,7 @@ namespace TiledArray {
       // Send reduced value to parent or, if this is the root process, set the
       // result future.
       if(parent != -1)
-        send_internal(parent, key_type(key, world_->rank()), reduce_task.submit());
+        send_internal(world_, parent, key_type(key, world_->rank()), reduce_task.submit());
       else
         result = reduce_task.submit();
 
@@ -662,8 +665,8 @@ namespace TiledArray {
     /// \param did The distributed ID
     /// \return A future to the data
     template <typename T, typename Key>
-    static madness::Future<T> recv(const Key& key) {
-      return recv_internal<T>(dist_op::TaggedKey<Key, PointToPointTag>(key));
+    static madness::Future<T> recv(const ProcessID source, const Key& key) {
+      return recv_internal<T>(dist_op::ProcessKey<Key, PointToPointTag>(key, source));
     }
 
     /// Send value to \c dest
@@ -674,21 +677,9 @@ namespace TiledArray {
     /// \param did The distributed id that is associatied with the data
     /// \param value The data to be sent
     template <typename Key, typename T>
-    typename madness::disable_if<madness::is_future<T> >::type
-    send(const ProcessID dest, const Key& key, const T& value) const {
-      send_internal(dest, dist_op::TaggedKey<Key, PointToPointTag>(key), value);
-    }
-
-    /// Send \c value to \c dest
-
-    /// \tparam T The value type
-    /// \param world The world that will be used to send the value
-    /// \param dest The node where the data will be sent
-    /// \param did The distributed id that is associated with the data
-    /// \param value The data to be sent
-    template <typename Key, typename T>
-    void send(ProcessID dest, const Key& key, const madness::Future<T>& value) const {
-      send_internal(dest, dist_op::TaggedKey<Key, PointToPointTag>(key), value);
+    void send(const ProcessID dest, const Key& key, const T& value) const {
+      send_internal(world_, dest, dist_op::ProcessKey<Key, PointToPointTag>(key,
+          world_->rank()), value);
     }
 
     /// Lazy sync
