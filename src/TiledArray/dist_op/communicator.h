@@ -77,6 +77,16 @@ namespace TiledArray {
         return *this;
       }
 
+      /// Base key accessor
+
+      /// \return The base key
+      const Key& key() const { return key_; }
+
+      /// Process id accessor
+
+      /// \return The process id
+      ProcessID proc() const { return proc_; }
+
       /// Equality comparison
 
       /// \param other The key to be compared to this
@@ -109,14 +119,15 @@ namespace TiledArray {
       /// \param key The key to be hashed
       /// \return The hashed key value
       friend madness::hashT hash_value(const ProcessKey<Key, Tag>& key) {
-        madness::hashT seed = hash_value(key.key_);
+        madness::Hash<Key> hasher;
+        madness::hashT seed = hasher(key.key_);
         madness::detail::combine_hash(seed, key.proc_);
         return seed;
       }
 
     }; // class ProcessKey
 
-    /// Key object that included the process information
+    /// Key object that uses a tag to differentiate keys
 
     /// \tparam Key The base key type
     /// \tparam Tag A type to differentiate key types
@@ -127,6 +138,7 @@ namespace TiledArray {
 
     public:
 
+      /// Default constructor
       TaggedKey() : key_() { }
 
       /// Constructor
@@ -148,6 +160,11 @@ namespace TiledArray {
         key_ = other.key_;
         return *this;
       }
+
+      /// Base key accessor
+
+      /// \return The base key
+      const Key& key() const { return key_; }
 
       /// Equality comparison
 
