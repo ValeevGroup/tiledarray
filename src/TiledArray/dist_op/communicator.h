@@ -206,7 +206,7 @@ namespace TiledArray {
   class Communicator {
   private:
 
-    mutable madness::World* world_;
+    mutable madness::World* world_; ///< The world of this communicator
 
     // Message tags
     struct PointToPointTag { };
@@ -347,7 +347,7 @@ namespace TiledArray {
 
     template <typename Key, typename T>
     static void group_bcast_handler(const madness::AmArg& arg) {
-
+      // Deserialize message arguments
       Key key;
       T value;
       ProcessID group_root;
@@ -920,8 +920,7 @@ namespace TiledArray {
     /// uninitialized future that may be ignored.
     template <typename Key, typename T, typename Op>
     madness::Future<typename madness::detail::result_of<Op>::type>
-    reduce(const Key& key, const T& value, const Op& op, const dist_op::Group& group)
-    {
+    reduce(const Key& key, const T& value, const Op& op, const dist_op::Group& group) {
       varify_group(group);
 
       // Reduce the data
