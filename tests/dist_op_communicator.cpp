@@ -32,16 +32,45 @@ using namespace TiledArray::dist_op;
 struct DistOpFixture {
 
   DistOpFixture() :
-    comm(* GlobalFixture::world)
-  { }
+    comm(* GlobalFixture::world),
+    group_list(),
+    world_group_list(),
+    did(madness::uniqueidT(), 1)
+  {
+
+    for(ProcessID p = GlobalFixture::world->rank() % 2; p < GlobalFixture::world->size(); p += 2)
+      group_list.push_back(p);
+    for(ProcessID p = 0; p < GlobalFixture::world->size(); ++p)
+      world_group_list.push_back(p);
+  }
 
   ~DistOpFixture() {
     GlobalFixture::world->gop.fence();
   }
 
   Communicator comm;
+  std::vector<ProcessID> group_list;
+  std::vector<ProcessID> world_group_list;
+  TiledArray::dist_op::DistributedID did;
 
 }; // DistOpFixture
+
+
+template <typename T>
+struct plus {
+  typedef T result_type;
+  typedef T argument_type;
+
+  result_type operator()() const { return result_type(); }
+
+  void operator()(result_type& result, const argument_type& arg) const {
+    result += arg;
+  }
+
+  void operator()(result_type& result, const argument_type& arg1, const argument_type& arg2) const {
+    result += arg1 + arg2;
+  }
+};
 
 BOOST_FIXTURE_TEST_SUITE( dist_op_suite, DistOpFixture )
 
@@ -60,51 +89,220 @@ BOOST_AUTO_TEST_CASE( ring_send_recv )
 
   // Get the Future that will hold the remote data
   madness::Future<int> remote_data;
-  BOOST_REQUIRE_NO_THROW(remote_data = comm.recv<int>(0));
+  BOOST_REQUIRE_NO_THROW(remote_data = comm.recv<int>(right_neighbor, 0));
 
   // Send a future to the right neighbor
   madness::Future<int> local_data;
   BOOST_REQUIRE_NO_THROW(comm.send(left_neighbor, 0, local_data));
 
-  // Set the local data, which should be forwarded to the right neighbor
+  // Set the local data, which will be forwarded to the right neighbor
   local_data.set(GlobalFixture::world->rank());
 
+  // Check that the message was received
   BOOST_CHECK_EQUAL(remote_data.get(), right_neighbor);
 }
 
 BOOST_AUTO_TEST_CASE( bcast_world )
 {
+  // Pick a random root
+  GlobalFixture::world->srand(42);
+  const ProcessID root = GlobalFixture::world->rand() % GlobalFixture::world->size();
+
+  // Setup the broadcast
   madness::Future<int> data;
+  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, root));
 
-  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, 0));
-
-  if(GlobalFixture::world->rank() == 0)
+  // Set the data on the root process, which will initiate the broadcast.
+  if(GlobalFixture::world->rank() == root)
     data.set(42);
 
+  // Check that all processes got the same message.
   BOOST_CHECK_EQUAL(data.get(), 42);
 }
 
 BOOST_AUTO_TEST_CASE( bcast_group )
 {
-  std::vector<ProcessID> group_list;
-  for(ProcessID p = GlobalFixture::world->rank() % 2; p < GlobalFixture::world->size(); p += 2)
-    group_list.push_back(p);
-  TiledArray::dist_op::DistributedID did(madness::uniqueidT(), 1);
-
+  // Create broadcast group
   Group group(*GlobalFixture::world, did, group_list);
   group.register_group();
 
-  madness::Future<int> data;
-  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, 0, group));
+  // Pick a random root
+  const ProcessID root = GlobalFixture::world->rand() % group.size();
 
-  if(group.rank() == 0)
+  // Setup the group broadcast
+  madness::Future<int> data;
+  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, root, group));
+
+  // Set the data on the root process, which will initiate the broadcast.
+  if(group.rank() == root)
     data.set(42 + (GlobalFixture::world->rank() % 2));
 
+  // Check that all processes in the group got the same message.
   BOOST_CHECK_EQUAL(data.get(), 42 + (GlobalFixture::world->rank() % 2));
 
+  // Cleanup the group
   group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 
+BOOST_AUTO_TEST_CASE( bcast_world_group )
+{
+  // Create broadcast group
+  Group group(*GlobalFixture::world, did, world_group_list);
+  group.register_group();
+
+  // Pick a random root
+  const ProcessID root = GlobalFixture::world->rand() % group.size();
+
+  // Setup the group broadcast
+  madness::Future<int> data;
+  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, root, group));
+
+  // Set the data which will initiate the broadcast
+  if(GlobalFixture::world->rank() == root)
+    data.set(42);
+
+  // Check that all processes in the group got the same message.
+  BOOST_CHECK_EQUAL(data.get(), 42);
+
+  // Cleanup the group
+  group.unregister_group();
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE( reduce_world )
+{
+  // Pick a random root
+  const ProcessID root = GlobalFixture::world->rand() % GlobalFixture::world->size();
+
+  // Setup the reduction
+  madness::Future<int> data;
+  madness::Future<int> result;
+  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), root));
+
+  // Set the local value to be reduced
+  data.set(42);
+
+  // Check that the result has been reduced to the root process
+  if(GlobalFixture::world->rank() == root)
+    BOOST_CHECK_EQUAL(result.get(), GlobalFixture::world->size() * 42);
+  else
+    BOOST_CHECK(result.is_default_initialized());
+}
+
+BOOST_AUTO_TEST_CASE( reduce_group )
+{
+  // Create reduction group
+  Group group(*GlobalFixture::world, did, group_list);
+  group.register_group();
+
+  // Pick a random root
+  const ProcessID root = GlobalFixture::world->rand() % group.size();
+
+  // Setup the reduction
+  madness::Future<int> data;
+  madness::Future<int> result;
+  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), root, group));
+
+  // Set the local value to be reduced
+  data.set(42);
+
+  // Check that the result has been reduced to the root process
+  if(group.rank() == root)
+    BOOST_CHECK_EQUAL(result.get(), group.size() * 42);
+  else
+    BOOST_CHECK(result.is_default_initialized());
+
+  // Cleanup the group
+  group.unregister_group();
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE( reduce_world_group )
+{
+  // Create reduction group
+  Group group(*GlobalFixture::world, did, world_group_list);
+  group.register_group();
+
+  // Pick a random root
+  const ProcessID root = GlobalFixture::world->rand() % group.size();
+
+  // Setup the reduction
+  madness::Future<int> data;
+  madness::Future<int> result;
+  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), root, group));
+
+  // Set the local value to be reduced
+  data.set(42);
+
+  // Check that the result has been reduced to the root process
+  if(group.rank() == root)
+    BOOST_CHECK_EQUAL(result.get(), group.size() * 42);
+  else
+    BOOST_CHECK(result.is_default_initialized());
+
+  // Cleanup the group
+  group.unregister_group();
+  GlobalFixture::world->gop.fence();
+}
+
+
+BOOST_AUTO_TEST_CASE( all_reduce_world )
+{
+  // Setup the reduction
+  madness::Future<int> data;
+  madness::Future<int> result;
+  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>()));
+
+  // Set the local value to be reduced
+  data.set(42);
+
+  // Check that the result has been reduced to the root process
+  BOOST_CHECK_EQUAL(result.get(), GlobalFixture::world->size() * 42);
+}
+
+BOOST_AUTO_TEST_CASE( all_reduce_group )
+{
+  // Create reduction group
+  Group group(*GlobalFixture::world, did, group_list);
+  group.register_group();
+
+  // Setup the reduction
+  madness::Future<int> data;
+  madness::Future<int> result;
+  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), group));
+
+  // Set the local value to be reduced
+  data.set(42);
+
+  // Check that the result has been reduced to the root process
+  BOOST_CHECK_EQUAL(result.get(), group.size() * 42);
+
+  // Cleanup the group
+  group.unregister_group();
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE( all_reduce_world_group )
+{
+  // Create reduction group
+  Group group(*GlobalFixture::world, did, world_group_list);
+  group.register_group();
+
+  // Setup the reduction
+  madness::Future<int> data;
+  madness::Future<int> result;
+  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), group));
+
+  // Set the local value to be reduced
+  data.set(42);
+
+  // Check that the result has been reduced to the root process
+  BOOST_CHECK_EQUAL(result.get(), group.size() * 42);
+
+  // Cleanup the group
+  group.unregister_group();
+  GlobalFixture::world->gop.fence();
+}
 BOOST_AUTO_TEST_SUITE_END()
 
