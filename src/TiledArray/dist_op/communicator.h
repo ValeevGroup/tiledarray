@@ -576,10 +576,7 @@ namespace TiledArray {
     reduce_internal(Comm& comm, const Key& key, const T& value, const Op& op, const ProcessID root) {
       // Create tagged key
       typedef dist_op::ProcessKey<Key, Tag> key_type;
-      typedef typename madness::detail::result_of<Op>::type value_type;
-
-      // The result of this reduction (ignored when rank != root).
-      madness::Future<value_type> result = madness::Future<T>::default_initializer();
+      typedef typename madness::detail::result_of<Op>::type result_type;
 
       // Reduce local data
       TiledArray::detail::ReduceTask<Op> reduce_task(*world_, op);
@@ -592,18 +589,18 @@ namespace TiledArray {
 
       // Reduce child data
       if(child0 != -1)
-        reduce_task.add(recv_internal<T>(key_type(key, child0)));
+        reduce_task.add(recv_internal<result_type>(key_type(key, child0)));
       if(child1 != -1)
-        reduce_task.add(recv_internal<T>(key_type(key, child1)));
+        reduce_task.add(recv_internal<result_type>(key_type(key, child1)));
 
       // Send reduced value to parent or, if this is the root process, set the
       // result future.
       if(parent != -1)
         send_internal(world_, parent, key_type(key, world_->rank()), reduce_task.submit());
       else
-        result = reduce_task.submit();
+        return reduce_task.submit();
 
-      return result;
+      return madness::Future<result_type>::default_initializer();
     }
 
     /// Broadcast
@@ -673,13 +670,6 @@ namespace TiledArray {
     void bcast_internal(const Key& key, madness::Future<T>& value,
         const ProcessID group_root, const dist_op::Group& group) const
     {
-      TA_ASSERT(! group.empty());
-      TA_ASSERT(group.is_registered());
-      TA_ASSERT(group.get_world().id() == world_->id());
-      TA_ASSERT(group_root >= 0 && group_root < group.size());
-      TA_ASSERT((group.rank() == group_root) || (! value.probe()));
-      TA_ASSERT(group.rank(world_->rank()) != -1);
-
       // Typedefs
       typedef dist_op::TaggedKey<Key, Tag> key_type;
       const key_type k(key);
@@ -893,15 +883,19 @@ namespace TiledArray {
     template <typename Key, typename T, typename Op>
     madness::Future<typename madness::detail::result_of<Op>::type>
     reduce(const Key& key, const T& value, const Op& op) {
+      // Pick a pseudo random root process
+      madness::Hash<Key> hasher;
+      const ProcessID root = hasher(key) % world_->size();
+
       // Reduce to 0 process
       madness::Future<typename madness::detail::result_of<Op>::type> reduce_result =
-          reduce_internal<AllReduceTag>(world_, key, value, op, 0);
+          reduce_internal<AllReduceTag>(world_, key, value, op, root);
 
-      if(world_->rank() != 0)
+      if(world_->rank() != root)
         reduce_result = madness::Future<typename madness::detail::result_of<Op>::type>();
 
       // Broadcast the result of the reduction to all processes
-      bcast_internal<AllReduceTag>(key, reduce_result, 0);
+      bcast_internal<AllReduceTag>(key, reduce_result, root);
 
       return reduce_result;
     }
@@ -923,12 +917,16 @@ namespace TiledArray {
     reduce(const Key& key, const T& value, const Op& op, const dist_op::Group& group) {
       varify_group(group);
 
+      // Pick a pseudo random root process
+      madness::Hash<Key> hasher;
+      const ProcessID group_root = hasher(key) % group.size();
+
       // Reduce the data
       madness::Future<typename madness::detail::result_of<Op>::type> reduce_result =
-          reduce_internal<GroupAllReduceTag>(key, value, op, 0, group);
+          reduce_internal<GroupAllReduceTag>(group, key, value, op, group_root);
 
 
-      if(group.rank() != 0)
+      if(group.rank() != group_root)
         reduce_result = madness::Future<typename madness::detail::result_of<Op>::type>();
 
       // Broadcast the result of the reduction to all processes in the group
