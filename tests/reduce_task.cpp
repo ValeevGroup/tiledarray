@@ -67,9 +67,11 @@ struct ReduceOp {
     result += first * second;
   }
 
-  result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
-      const first_argument_type& first2, const second_argument_type& second2) const {
-    return first1 * second1 + first2 * second2;
+  void operator()(result_type& result,
+      const first_argument_type& first1, const second_argument_type& second1,
+      const first_argument_type& first2, const second_argument_type& second2) const
+  {
+    result += first1 * second1 + first2 * second2;
   }
 }; // struct ReduceOp
 
