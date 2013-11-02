@@ -267,48 +267,10 @@ namespace TiledArray {
     /// \param[out] child0 The left child process of this process in the binary tree
     /// \param[out] child1 The right child process of this process in the binary tree
     /// \param[in] root The head process of the binary tree
-    /// \param[in] rank The rank of this process
-    /// \param[in] size The number of processes in the binary tree
     static void make_tree(ProcessID& parent, ProcessID& child0, ProcessID& child1,
-        const ProcessID root, const ProcessID rank, const ProcessID size)
-    {
-      // Check that rank and root is in range
-      TA_ASSERT(rank >= 0);
-      TA_ASSERT(rank < size);
-      TA_ASSERT(root >= 0);
-      TA_ASSERT(root < size);
-
-      // Renumber processes so root has me == 0
-      const ProcessID me = (rank + size - root) % size;
-
-      // Compute the group parent
-      parent = (me == 0 ? -1 : (((me - 1) >> 1) + root) % size);
-
-      // Compute children
-      child0 = (me << 1) + 1 + root;
-      child1 = child0 + 1;
-
-      const ProcessID end = size + root;
-      if(child0 < end)
-        child0 = child0 % size;
-      else
-        child0 = -1;
-      if(child1 < end)
-        child1 = child1 % size;
-      else
-        child1 = -1;
-    }
-
-    /// Compute parent and child processes of this process in a binary tree
-
-    /// \param[out] parent The parent process of this process in the binary tree
-    /// \param[out] child0 The left child process of this process in the binary tree
-    /// \param[out] child1 The right child process of this process in the binary tree
-    /// \param[in] root The head process of the binary tree
-    static void make_tree(ProcessID& parent, ProcessID& child1, ProcessID& child2,
         const ProcessID root, const madness::World* const world)
     {
-      make_tree(parent, child1, child2, root, world->rank(), world->size());
+      world->mpi.binary_tree_info(root, parent, child0, child1);
     }
 
     /// Compute parent and child processes of this process in a binary tree
@@ -321,13 +283,7 @@ namespace TiledArray {
     static void make_tree(ProcessID& parent, ProcessID& child0, ProcessID& child1,
         const ProcessID group_root, const dist_op::Group& group)
     {
-      make_tree(parent, child0, child1, group_root, group.rank(), group.size());
-      if(parent != -1)
-        parent = group.world_rank(parent);
-      if(child0 != -1)
-        child0 = group.world_rank(child0);
-      if(child1 != -1)
-        child1 = group.world_rank(child1);
+      group.make_tree(group_root, parent, child0, child1);
     }
 
 
@@ -559,6 +515,7 @@ namespace TiledArray {
               madness::TaskAttributes::hipri());
       }
     }
+
 
     /// Distributed reduce
 

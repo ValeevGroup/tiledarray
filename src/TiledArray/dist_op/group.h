@@ -129,14 +129,14 @@ namespace TiledArray {
           return group_to_world_map_[group_rank];
         }
 
-       /// Compute the binary tree parents and children
+       /// Compute the binary tree parent and children
 
        /// \param[out] parent The parent node of the binary tree
        /// \param[out] child1 The left child node of the binary tree
        /// \param[out] child2 The right child node of the binary tree
        /// \param[in] group_root The head node of the binary tree
-       void make_tree(ProcessID& parent, ProcessID& child1,
-           ProcessID& child2, const ProcessID group_root) const
+       void make_tree(const ProcessID group_root, ProcessID& parent,
+           ProcessID& child0, ProcessID& child1) const
        {
          const ProcessID group_size = group_to_world_map_.size();
 
@@ -151,18 +151,18 @@ namespace TiledArray {
          parent = (me == 0 ? -1 : group_to_world_map_[(((me - 1) >> 1) + group_root) % group_size]);
 
          // Compute children
-         child1 = (me << 1) + 1 + group_root;
-         child2 = child1 + 1;
+         child0 = (me << 1) + 1 + group_root;
+         child1 = child0 + 1;
 
          const ProcessID end = group_size + group_root;
+         if(child0 < end)
+           child0 = group_to_world_map_[child0 % group_size];
+         else
+           child0 = -1;
          if(child1 < end)
            child1 = group_to_world_map_[child1 % group_size];
          else
            child1 = -1;
-         if(child2 < end)
-           child2 = group_to_world_map_[child2 % group_size];
-         else
-           child2 = -1;
        }
 
       }; // struct Impl
@@ -238,9 +238,8 @@ namespace TiledArray {
       /// Remove the given group from the registry
 
       /// Groups are removed via a lazy sync operation, which will only remove the
-      /// group from the registry once unregistered has been called on all processes
-      /// in the group.
-      /// \param group The group to be removed from the registry
+      /// group from the registry once \c unregister_group() has been called on
+      /// all processes in the group.
       void unregister_group() const;
 
       /// Get a registered group
@@ -312,16 +311,16 @@ namespace TiledArray {
 
       /// Compute the binary tree parents and children
 
+      /// \param[in] root The head node of the binary tree in the group
       /// \param[out] parent The parent node of the binary tree
       /// \param[out] child1 The left child node of the binary tree
       /// \param[out] child2 The right child node of the binary tree
-      /// \param[in] root The head node of the binary tree in the group [default = 0]
       /// \note Output ranks are in the parent world.
-      void make_tree(ProcessID& parent, ProcessID& child1,
-          ProcessID& child2, const ProcessID group_root = 0) const
+      void make_tree(const ProcessID group_root, ProcessID& parent,
+          ProcessID& child1, ProcessID& child2) const
       {
         TA_ASSERT(pimpl_);
-        pimpl_->make_tree(parent, child1, child2, group_root);
+        pimpl_->make_tree(group_root, parent, child1, child2);
       }
 
       template <typename Archive>
