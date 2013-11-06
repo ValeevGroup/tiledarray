@@ -121,8 +121,8 @@ list(APPEND TiledArray_INCLUDE_DIRS
     ${EIGEN_INCLUDE_DIR})
 list(APPEND TiledArray_LIBRARIES
     ${Madness_LIBRARIES})
-list(APPEND TiledArray_LIBRARIES
-    tiledarray)
+#list(APPEND TiledArray_LIBRARIES
+#    tiledarray)
 set(TiledArray_LINK_FLAGS ${Madness_LINK_FLAGS})
 set(TiledArray_COMPILE_FLAGS ${Madness_COMPILE_FLAGS})
 
