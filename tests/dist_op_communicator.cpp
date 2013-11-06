@@ -23,16 +23,12 @@
  *
  */
 
-#include "TiledArray/dist_op/communicator.h"
+#include "TiledArray/madness.h"
 #include "unit_test_config.h"
-
-using TiledArray::Communicator;
-using namespace TiledArray::dist_op;
 
 struct DistOpFixture {
 
   DistOpFixture() :
-    comm(* GlobalFixture::world),
     group_list(),
     world_group_list(),
     did(madness::uniqueidT(), 1)
@@ -48,13 +44,21 @@ struct DistOpFixture {
     GlobalFixture::world->gop.fence();
   }
 
-  Communicator comm;
   std::vector<ProcessID> group_list;
   std::vector<ProcessID> world_group_list;
-  TiledArray::dist_op::DistributedID did;
+  madness::DistributedID did;
 
 }; // DistOpFixture
 
+
+struct SyncTester {
+  madness::Future<int> f;
+
+  SyncTester() : f() { }
+  SyncTester(const SyncTester& other) : f(other.f) { }
+
+  void operator()() { f.set(GlobalFixture::world->size()); }
+}; // struct sync_tester
 
 template <typename T>
 struct plus {
@@ -74,11 +78,6 @@ struct plus {
 
 BOOST_FIXTURE_TEST_SUITE( dist_op_suite, DistOpFixture )
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
-  BOOST_CHECK_NO_THROW(Communicator x(* GlobalFixture::world));
-}
-
 BOOST_AUTO_TEST_CASE( ring_send_recv )
 {
   // Send messages in a ring.
@@ -89,17 +88,69 @@ BOOST_AUTO_TEST_CASE( ring_send_recv )
 
   // Get the Future that will hold the remote data
   madness::Future<int> remote_data;
-  BOOST_REQUIRE_NO_THROW(remote_data = comm.recv<int>(right_neighbor, 0));
+  BOOST_REQUIRE_NO_THROW(remote_data = GlobalFixture::world->gop.recv<int>(right_neighbor, 0));
 
   // Send a future to the right neighbor
   madness::Future<int> local_data;
-  BOOST_REQUIRE_NO_THROW(comm.send(left_neighbor, 0, local_data));
+  BOOST_REQUIRE_NO_THROW(GlobalFixture::world->gop.send(left_neighbor, 0, local_data));
 
   // Set the local data, which will be forwarded to the right neighbor
   local_data.set(GlobalFixture::world->rank());
 
   // Check that the message was received
   BOOST_CHECK_EQUAL(remote_data.get(), right_neighbor);
+}
+
+BOOST_AUTO_TEST_CASE( lazy_sync )
+{
+  SyncTester sync_tester;
+  int key = 1;
+
+  // Start the lazy sync
+  BOOST_REQUIRE_NO_THROW(GlobalFixture::world->gop.lazy_sync(key, sync_tester));
+
+  // Test for completion
+  BOOST_CHECK_EQUAL(sync_tester.f.get(), GlobalFixture::world->size());
+}
+
+BOOST_AUTO_TEST_CASE( lazy_sync_group )
+{
+  // Create broadcast group
+  madness::Group group(*GlobalFixture::world, group_list, did);
+  group.register_group();
+
+  SyncTester sync_tester;
+  int key = 1;
+
+  // Start the lazy sync
+  BOOST_REQUIRE_NO_THROW(GlobalFixture::world->gop.lazy_sync(key, sync_tester, group));
+
+  // Test for completion
+  BOOST_CHECK_EQUAL(sync_tester.f.get(), GlobalFixture::world->size());
+
+  // Cleanup the group
+  group.unregister_group();
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE( lazy_sync_world_group )
+{
+  // Create broadcast group
+  madness::Group group(*GlobalFixture::world, world_group_list, did);
+  group.register_group();
+
+  SyncTester sync_tester;
+  int key = 1;
+
+  // Start the lazy sync
+  BOOST_REQUIRE_NO_THROW(GlobalFixture::world->gop.lazy_sync(key, sync_tester, group));
+
+  // Test for completion
+  BOOST_CHECK_EQUAL(sync_tester.f.get(), GlobalFixture::world->size());
+
+  // Cleanup the group
+  group.unregister_group();
+  GlobalFixture::world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE( bcast_world )
@@ -110,7 +161,7 @@ BOOST_AUTO_TEST_CASE( bcast_world )
 
   // Setup the broadcast
   madness::Future<int> data;
-  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, root));
+  BOOST_REQUIRE_NO_THROW(GlobalFixture::world->gop.bcast(0, data, root));
 
   // Set the data on the root process, which will initiate the broadcast.
   if(GlobalFixture::world->rank() == root)
@@ -123,7 +174,7 @@ BOOST_AUTO_TEST_CASE( bcast_world )
 BOOST_AUTO_TEST_CASE( bcast_group )
 {
   // Create broadcast group
-  Group group(*GlobalFixture::world, did, group_list);
+  madness::Group group(*GlobalFixture::world, group_list, did);
   group.register_group();
 
   // Pick a random root
@@ -131,7 +182,7 @@ BOOST_AUTO_TEST_CASE( bcast_group )
 
   // Setup the group broadcast
   madness::Future<int> data;
-  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, root, group));
+  BOOST_REQUIRE_NO_THROW(GlobalFixture::world->gop.bcast(0, data, root, group));
 
   // Set the data on the root process, which will initiate the broadcast.
   if(group.rank() == root)
@@ -148,7 +199,7 @@ BOOST_AUTO_TEST_CASE( bcast_group )
 BOOST_AUTO_TEST_CASE( bcast_world_group )
 {
   // Create broadcast group
-  Group group(*GlobalFixture::world, did, world_group_list);
+  madness::Group group(*GlobalFixture::world, world_group_list, did);
   group.register_group();
 
   // Pick a random root
@@ -156,7 +207,7 @@ BOOST_AUTO_TEST_CASE( bcast_world_group )
 
   // Setup the group broadcast
   madness::Future<int> data;
-  BOOST_REQUIRE_NO_THROW(comm.bcast(0, data, root, group));
+  BOOST_REQUIRE_NO_THROW(GlobalFixture::world->gop.bcast(0, data, root, group));
 
   // Set the data which will initiate the broadcast
   if(GlobalFixture::world->rank() == root)
@@ -178,7 +229,7 @@ BOOST_AUTO_TEST_CASE( reduce_world )
   // Setup the reduction
   madness::Future<int> data;
   madness::Future<int> result;
-  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), root));
+  BOOST_REQUIRE_NO_THROW(result = GlobalFixture::world->gop.reduce(0, data, plus<int>(), root));
 
   // Set the local value to be reduced
   data.set(42);
@@ -193,7 +244,7 @@ BOOST_AUTO_TEST_CASE( reduce_world )
 BOOST_AUTO_TEST_CASE( reduce_group )
 {
   // Create reduction group
-  Group group(*GlobalFixture::world, did, group_list);
+  madness::Group group(*GlobalFixture::world, group_list, did);
   group.register_group();
 
   // Pick a random root
@@ -202,7 +253,7 @@ BOOST_AUTO_TEST_CASE( reduce_group )
   // Setup the reduction
   madness::Future<int> data;
   madness::Future<int> result;
-  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), root, group));
+  BOOST_REQUIRE_NO_THROW(result = GlobalFixture::world->gop.reduce(0, data, plus<int>(), root, group));
 
   // Set the local value to be reduced
   data.set(42);
@@ -221,7 +272,7 @@ BOOST_AUTO_TEST_CASE( reduce_group )
 BOOST_AUTO_TEST_CASE( reduce_world_group )
 {
   // Create reduction group
-  Group group(*GlobalFixture::world, did, world_group_list);
+  madness::Group group(*GlobalFixture::world, world_group_list, did);
   group.register_group();
 
   // Pick a random root
@@ -230,7 +281,7 @@ BOOST_AUTO_TEST_CASE( reduce_world_group )
   // Setup the reduction
   madness::Future<int> data;
   madness::Future<int> result;
-  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), root, group));
+  BOOST_REQUIRE_NO_THROW(result = GlobalFixture::world->gop.reduce(0, data, plus<int>(), root, group));
 
   // Set the local value to be reduced
   data.set(42);
@@ -252,7 +303,7 @@ BOOST_AUTO_TEST_CASE( all_reduce_world )
   // Setup the reduction
   madness::Future<int> data;
   madness::Future<int> result;
-  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>()));
+  BOOST_REQUIRE_NO_THROW(result = GlobalFixture::world->gop.all_reduce(0, data, plus<int>()));
 
   // Set the local value to be reduced
   data.set(42);
@@ -264,13 +315,13 @@ BOOST_AUTO_TEST_CASE( all_reduce_world )
 BOOST_AUTO_TEST_CASE( all_reduce_group )
 {
   // Create reduction group
-  Group group(*GlobalFixture::world, did, group_list);
+  madness::Group group(*GlobalFixture::world, group_list, did);
   group.register_group();
 
   // Setup the reduction
   madness::Future<int> data;
   madness::Future<int> result;
-  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), group));
+  BOOST_REQUIRE_NO_THROW(result = GlobalFixture::world->gop.all_reduce(0, data, plus<int>(), group));
 
   // Set the local value to be reduced
   data.set(42);
@@ -286,13 +337,13 @@ BOOST_AUTO_TEST_CASE( all_reduce_group )
 BOOST_AUTO_TEST_CASE( all_reduce_world_group )
 {
   // Create reduction group
-  Group group(*GlobalFixture::world, did, world_group_list);
+  madness::Group group(*GlobalFixture::world, world_group_list, did);
   group.register_group();
 
   // Setup the reduction
   madness::Future<int> data;
   madness::Future<int> result;
-  BOOST_REQUIRE_NO_THROW(result = comm.reduce(0, data, plus<int>(), group));
+  BOOST_REQUIRE_NO_THROW(result = GlobalFixture::world->gop.all_reduce(0, data, plus<int>(), group));
 
   // Set the local value to be reduced
   data.set(42);

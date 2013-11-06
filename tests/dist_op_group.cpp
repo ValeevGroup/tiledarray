@@ -23,12 +23,11 @@
  *
  */
 
-#include "TiledArray/dist_op/group.h"
+#include "TiledArray/madness.h"
 #include "unit_test_config.h"
 
-using TiledArray::dist_op::Group;
-using TiledArray::dist_op::DistributedID;
-using TiledArray::Exception;
+using madness::Group;
+using madness::DistributedID;
 
 struct GroupFixture {
 
@@ -60,13 +59,13 @@ BOOST_AUTO_TEST_CASE( constructor_empty )
 
 #ifdef TA_EXCEPTION_ERROR
   // Check that accessing group data throws exceptions for an empty group.
-  BOOST_CHECK_THROW(empty_group.id(), Exception);
-  BOOST_CHECK_THROW(empty_group.get_world(), Exception);
-  BOOST_CHECK_THROW(empty_group.rank(), Exception);
-  BOOST_CHECK_THROW(empty_group.rank(0), Exception);
-  BOOST_CHECK_THROW(empty_group.world_rank(0), Exception);
+  BOOST_CHECK_THROW(empty_group.id(), madness::Exception);
+  BOOST_CHECK_THROW(empty_group.get_world(), madness::Exception);
+  BOOST_CHECK_THROW(empty_group.rank(), madness::Exception);
+  BOOST_CHECK_THROW(empty_group.rank(0), madness::Exception);
+  BOOST_CHECK_THROW(empty_group.world_rank(0), madness::Exception);
   ProcessID parent, child1, child2;
-  BOOST_CHECK_THROW(empty_group.make_tree(0, parent, child1, child2), Exception);
+  BOOST_CHECK_THROW(empty_group.make_tree(0, parent, child1, child2), madness::Exception);
 #endif // TA_EXCEPTION_ERROR
 }
 
@@ -74,8 +73,8 @@ BOOST_AUTO_TEST_CASE( constructor_empty )
 BOOST_AUTO_TEST_CASE( constructor_new_group )
 {
   // Check new group constructor
-  BOOST_CHECK_NO_THROW(Group(* GlobalFixture::world, did, group_list));
-  Group new_group(* GlobalFixture::world, did, group_list);
+  BOOST_CHECK_NO_THROW(Group(* GlobalFixture::world, group_list, did));
+  Group new_group(* GlobalFixture::world, group_list, did);
 
   // Check that the group is not empty
   BOOST_CHECK(! new_group.empty());
@@ -104,7 +103,7 @@ BOOST_AUTO_TEST_CASE( constructor_new_group )
 
 BOOST_AUTO_TEST_CASE( copy_group )
 {
-  Group group(* GlobalFixture::world, did, group_list);
+  Group group(* GlobalFixture::world, group_list, did);
   BOOST_CHECK_NO_THROW(Group(group));
 
   // Check copy constructor
@@ -138,7 +137,7 @@ BOOST_AUTO_TEST_CASE( copy_group )
 
 BOOST_AUTO_TEST_CASE( register_unregister )
 {
-  Group group(* GlobalFixture::world, did, group_list);
+  Group group(* GlobalFixture::world, group_list, did);
 
   // Test getting a group that has not been added to the registery
   madness::Future<Group> future_group;
@@ -152,7 +151,7 @@ BOOST_AUTO_TEST_CASE( register_unregister )
 #ifdef TA_EXCEPTION_ERROR
 
   // Test duplicate registration
-  BOOST_CHECK_THROW(group.register_group(), Exception);
+  BOOST_CHECK_THROW(group.register_group(), madness::Exception);
 
 #endif // TA_EXCEPTION_ERROR
 
