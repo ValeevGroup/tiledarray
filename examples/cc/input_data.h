@@ -23,7 +23,7 @@
 #include <vector>
 #include <iosfwd>
 #include <world/stdarray.h>
-#include <tiled_array.h>
+#include <tiledarray.h>
 
 /// Spin enum type
 typedef enum {

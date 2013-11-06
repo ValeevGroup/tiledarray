@@ -17,7 +17,7 @@
  *
  */
 
-#include <tiled_array.h>
+#include <tiledarray.h>
 #include <TiledArray/pmap/hash_pmap.h>
 
 std::vector<ProcessID> make_map(std::size_t m, std::size_t n, std::shared_ptr<TiledArray::Pmap>& pmap) {
