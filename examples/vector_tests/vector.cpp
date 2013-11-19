@@ -28,7 +28,7 @@
 #include <iostream>
 #include <algorithm>
 #include <world/worldtime.h>
-#include "TiledArray/math/math.h"
+#include "TiledArray/math/vector_op.h"
 #include "TiledArray/error.h"
 
 #define EIGEN_NO_MALLOC

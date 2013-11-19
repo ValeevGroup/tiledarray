@@ -118,7 +118,7 @@ namespace TiledArray {
       static typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
           (!(LC && std::is_same<Result, Left>::value)), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        vector_assign(second.size(), first.data(), second.data(), minus_assign_right);
+        binary_vector_op(second.size(), first.data(), second.data(), minus_assign_right);
         return second;
       }
 
@@ -132,7 +132,7 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::enable_if_c<RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) {
-        vector_assign(second.size(), second.data(), negate_assign_op());
+        unary_vector_op(second.size(), second.data(), negate_assign_op());
         return second;
       }
 

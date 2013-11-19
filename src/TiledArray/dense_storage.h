@@ -22,9 +22,8 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/math/math.h>
+#include <TiledArray/math/vector_op.h>
 #include <world/archive.h>
-#include <TiledArray/eigen3.h>
 #include <cstddef>
 
 namespace TiledArray {
@@ -463,7 +462,7 @@ namespace TiledArray {
     template <typename InIter, typename Op>
     typename madness::enable_if<detail::optimized_init<value_type, InIter> >::type
     construct_unary_op(InIter in_it, const Op& op) {
-      math::vector_op(last_ - first_, in_it, first_, op);
+      math::unary_vector_op(last_ - first_, in_it, first_, op);
     }
 
     /// Initialize data with an input iterator + unary operation
@@ -504,7 +503,7 @@ namespace TiledArray {
         detail::optimized_init<value_type, InIter1>::value &&
         detail::optimized_init<value_type, InIter2>::value >::type
     construct_binary_op(InIter1 in_it1, InIter2 in_it2, const Op& op) {
-      math::vector_op(last_ - first_, in_it1, in_it2, first_, op);
+      math::binary_vector_op(last_ - first_, in_it1, in_it2, first_, op);
     }
 
     void construct_value(const value_type& value) {

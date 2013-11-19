@@ -224,7 +224,7 @@ namespace TiledArray {
           pimpl_.reset(new Impl(other.range(), other.begin()));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
-        math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
+        math::binary_vector_op(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
             math::PlusAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
@@ -244,7 +244,7 @@ namespace TiledArray {
               math::Negate<typename Tensor<U, AU>::value_type, value_type>()));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
-        math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
+        math::binary_vector_op(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
             math::MinusAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
@@ -263,7 +263,7 @@ namespace TiledArray {
           pimpl_.reset(new Impl(other.range(), 0));
       } else {
         TA_ASSERT(pimpl_->range_ == other.range());
-        math::vector_assign(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
+        math::binary_vector_op(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
             math::MultipliesAssign<value_type, typename Tensor<U, AU>::value_type>());
       }
 
@@ -278,7 +278,7 @@ namespace TiledArray {
     typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
     operator+=(const U& value) {
       if(pimpl_)
-        math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
+        math::unary_vector_op(pimpl_->data_.size(), pimpl_->data_.data(),
             math::PlusAssignConst<value_type>(value));
 
       return *this;
@@ -292,7 +292,7 @@ namespace TiledArray {
     typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
     operator-=(const U& value) {
       if(pimpl_)
-        math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
+        math::unary_vector_op(pimpl_->data_.size(), pimpl_->data_.data(),
             math::PlusAssignConst<value_type>(-value));
 
       return *this;
@@ -306,7 +306,7 @@ namespace TiledArray {
     typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
     operator*=(const U& value) {
       if(pimpl_)
-        math::vector_assign(pimpl_->data_.size(), pimpl_->data_.data(),
+        math::unary_vector_op(pimpl_->data_.size(), pimpl_->data_.data(),
             math::ScaleAssign<value_type>(value));
 
       return *this;

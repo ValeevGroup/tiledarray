@@ -28,6 +28,7 @@
 
 #include <TiledArray/madness.h>
 #include <TiledArray/tensor.h>
+#include <TiledArray/math/blas.h>
 #include <TiledArray/dense_shape.h>
 #include <TiledArray/tile_op/noop.h>
 #include <TiledArray/tile_op/add.h>
