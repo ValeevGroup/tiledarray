@@ -18,13 +18,13 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  eigen3.h
+ *  eigen.h
  *  Sep 16, 2013
  *
  */
 
-#ifndef TILEDARRAY_EIGEN3_H__INCLUDED
-#define TILEDARRAY_EIGEN3_H__INCLUDED
+#ifndef TILEDARRAY_MATH_EIGEN_H__INCLUDED
+#define TILEDARRAY_MATH_EIGEN_H__INCLUDED
 
 #pragma GCC diagnostic push
 #pragma GCC system_header
@@ -33,4 +33,4 @@
 #include <Eigen/QR>
 #pragma GCC diagnostic pop
 
-#endif // TILEDARRAY_EIGEN3_H__INCLUDED
+#endif // TILEDARRAY_MATH_EIGEN_H__INCLUDED

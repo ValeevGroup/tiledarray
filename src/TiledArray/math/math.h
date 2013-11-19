@@ -25,7 +25,7 @@
 #include <TiledArray/math/functional.h>
 #include <world/enable_if.h>
 #include <TiledArray/madness.h>
-#include <TiledArray/eigen3.h>
+#include <TiledArray/math/eigen.h>
 
 #ifndef TILEDARRAY_LOOP_UNWIND
 #define TILEDARRAY_LOOP_UNWIND 1
