@@ -69,7 +69,7 @@ namespace TiledArray {
           madness::World& world, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
           const op_type& op) :
-            DistEvalImpl_(world, left.trange(), shape, pmap, perm),
+        DistEvalImpl_(world, left.trange(), shape, pmap, perm),
         left_(left), right_(right), op_(op)
       {
         TA_ASSERT(left.trange() == right.trange());
