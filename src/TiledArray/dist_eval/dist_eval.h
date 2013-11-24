@@ -266,6 +266,11 @@ namespace TiledArray {
       /// \return A reference to the world object
       madness::World& get_world() const { return pimpl_->get_world(); }
 
+      /// Unique object id
+
+      /// \return The unique id for this object
+      madness::uniqueidT id() const { return pimpl_->id(); }
+
       /// Wait for all local tiles to be evaluated
       void wait() const { pimpl_->wait(); }
 
