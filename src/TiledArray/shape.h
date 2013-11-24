@@ -23,4 +23,20 @@
 #include <TiledArray/sparse_shape.h>
 #include <TiledArray/dense_shape.h>
 
+namespace TiledArray {
+
+  /// Type trait to detect dense shape types
+  template <typename S, typename Enable = void>
+  struct is_dense : public std::false_type { };
+
+  template <>
+  struct is_dense<DenseShape, void> : public std::true_type { };
+
+  template <typename T>
+  struct is_dense<T, is_type<typename T::shape_type> > :
+      public is_dense<typename T::shape_type>
+  { };
+
+}  // namespace TiledArray
+
 #endif // TILEDARRAY_SHAPE_H__INCLUDED
