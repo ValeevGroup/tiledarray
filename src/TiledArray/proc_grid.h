@@ -379,16 +379,21 @@ namespace TiledArray {
 
       /// Construct a row group
 
-      /// Construct a row group that is filtered by
+      /// Construct a row group that is filtered by a shape
       /// \param Shape The shape type
       /// \param did The distributed id for the result group
-      /// \param pred A predicate that selects processes to be included in the
-      /// group.
-      /// \return A \c Group object that includes all processes in \c rank_row
+      /// \param shape The shape that will be used to filter the group
+      /// \param row The column of shape to be
+      /// \param size The number of elements in the shape
+      /// \return A \c Group object that includes all processes in \c rank_col
       template <typename Shape>
       madness::Group make_row_group(const madness::DistributedID& did,
-          const Shape& shape, const size_type row, const size_type) const
+          const Shape& shape, const size_type row, const size_type size) const
       {
+        // Check that row and size are compatible with this process grid.
+        TA_ASSERT((size % cols_) == 0ul);
+        TA_ASSERT(row < (size / cols_));
+
         madness::Group group;
 
         if(local_size_ != 0) {
@@ -405,7 +410,6 @@ namespace TiledArray {
           // Convert flags into processes
           size_type x = 0u;
           size_type p_start = rank_row_ * proc_cols_;
-          const size_type rank = world_.rank();
           for(size_type p = 0u; p < proc_cols_; ++p) {
             if(proc_list[p]) {
               proc_list[x] = p_start + p;
@@ -434,8 +438,10 @@ namespace TiledArray {
       madness::Group make_col_group(const madness::DistributedID& did,
           const Shape& shape, const size_type col, const size_type size) const
       {
-        // Check that size is
-        TA_ASSERT((size % rows_) == 0u)
+        // Check that col and size are compatible with this process grid.
+        TA_ASSERT((size % rows_) == 0u);
+        TA_ASSERT(col < (size / rows_));
+
         madness::Group group;
 
         if(local_size_ != 0u) {
