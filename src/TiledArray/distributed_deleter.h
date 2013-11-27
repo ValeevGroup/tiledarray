@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_DISTRIBUTED_DELETER_H__INCLUDED
 #define TILEDARRAY_DISTRIBUTED_DELETER_H__INCLUDED
 
-#include <TiledArray/dist_op/lazy_sync.h>
+#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {
@@ -97,6 +97,8 @@ namespace TiledArray {
       static typename madness::disable_if<std::is_same<D, void(*)(T*)>, D>::type
       default_deleter() { return D(); }
 
+      struct DistributedDeleterTag { };
+
     public:
 
       /// Constructor
@@ -136,7 +138,8 @@ namespace TiledArray {
       /// \param t The pointer to be deleted
       void operator()(T* t) {
         TA_ASSERT(t);
-        lazy_sync(t->get_world(), t->id(), LazyDelete(t, deleter_));
+        t->get_world().gop.lazy_sync(madness::TaggedKey<DistributedDeleterTag>(t->id()),
+            LazyDelete(t, deleter_));
       }
     }; // class DistributedDeleter
 
