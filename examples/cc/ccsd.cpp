@@ -18,7 +18,7 @@
  */
 
 #include <iomanip>
-#include <tiled_array.h>
+#include <tiledarray.h>
 #include "input_data.h"
 
 using namespace TiledArray;

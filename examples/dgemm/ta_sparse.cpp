@@ -19,7 +19,7 @@
 
 #include <iostream>
 #include <time.h> // for time
-#include <tiled_array.h>
+#include <tiledarray.h>
 
 int main(int argc, char** argv) {
   // Initialize runtime

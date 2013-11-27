@@ -18,7 +18,7 @@
  */
 
 #include <iostream>
-#include <tiled_array.h>
+#include <tiledarray.h>
 
 int main(int argc, char** argv) {
 #ifdef TILEDARRAY_HAS_BLAS
