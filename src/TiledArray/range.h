@@ -182,6 +182,29 @@ namespace TiledArray {
       }
     }
 
+#if __cplusplus > 199711L
+// C++11
+    /// Range constructor from a pack of sizes for each dimension
+
+    /// \tparam _size0 A
+    /// \tparam _sizes A pack of unsigned integers
+    /// \param sizes The size of dimensions 0
+    /// \param sizes A pack of sizes for dimensions 1+
+    /// \throw std::bad_alloc When memory allocation fails.
+    template<typename... _sizes>
+    explicit Range(const size_type& size0, const _sizes&... sizes) :
+    start_(), finish_(), size_(), weight_(), volume_(0ul)
+    {
+      const size_type n = sizeof...(_sizes) + 1;
+      if(n) {
+        // Initialize array memory
+        alloc_arrays(n);
+        size_type range_size[n] = {size0, static_cast<size_type>(sizes)...};
+        compute_range_data(n, range_size);
+      }
+    }
+#endif
+
     /// Copy Constructor
 
     /// \param other The range to be copied
