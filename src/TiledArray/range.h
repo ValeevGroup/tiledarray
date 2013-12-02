@@ -182,8 +182,7 @@ namespace TiledArray {
       }
     }
 
-#if __cplusplus > 199711L
-// C++11
+#if TILEDARRAY_HAVE_VARIADIC_TEMPLATES
     /// Range constructor from a pack of sizes for each dimension
 
     /// \tparam _size0 A
