@@ -232,6 +232,7 @@ namespace TiledArray {
       const size_type n = other.dim();
       realloc_arrays(n);
       memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4ul * n);
+      volume_ = other.volume();
 
       return *this;
     }
