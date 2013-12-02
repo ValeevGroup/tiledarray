@@ -58,6 +58,7 @@ namespace TiledArray {
     typedef Range Range_; ///< This object type
     typedef std::size_t size_type; ///< Size type
     typedef std::vector<std::size_t> index; ///< Coordinate index type
+    typedef index index_type; ///< Coordinate index type, to conform TWG spec
     typedef detail::SizeArray<std::size_t> size_array; ///< Size array type
     typedef detail::RangeIterator<index, Range_> const_iterator; ///< Coordinate iterator
     friend class detail::RangeIterator<index, Range_>;
@@ -238,9 +239,14 @@ namespace TiledArray {
 
     /// Dimension accessor
 
-    /// \return The number of dimension of this range
+    /// \return The number of dimensions of this range
     /// \throw nothing
     unsigned int dim() const { return size_.size(); }
+
+    /// Provided to conform to the BTAS TWG specification
+    /// \return The rank (number of dimensions) of this range
+    /// \throw nothing
+    unsigned int rank() const { return dim(); }
 
     /// Range start coordinate accessor
 
@@ -272,6 +278,11 @@ namespace TiledArray {
     /// \return The total number of elements in the range.
     /// \throw nothing
     size_type volume() const { return volume_; }
+
+    /// alias to volume() to conform to the BTAS TWG specification
+    /// \return The total number of elements in the range.
+    /// \throw nothing
+    size_type area() const { return volume(); }
 
     /// Index iterator factory
 
@@ -401,6 +412,13 @@ namespace TiledArray {
         o += (index[i] - start_[i]) * weight_[i];
 
       return o;
+    }
+
+    /// alias to ord<Index>(), to conform with the TWG spec \sa ord()
+    template <typename Index>
+    typename madness::disable_if<std::is_integral<Index>, size_type>::type
+    ordinal(const Index& index) const {
+      return ord<Index>(index);
     }
 
     /// calculate the coordinate index of the ordinal index, \c index.
