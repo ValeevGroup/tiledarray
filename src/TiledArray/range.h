@@ -214,7 +214,7 @@ namespace TiledArray {
 
     /// Dimension accessor
 
-    /// \return The number of dimension of this range
+    /// \return The number of dimensions of this range
     /// \throw nothing
     unsigned int dim() const { return size_.size(); }
 
