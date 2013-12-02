@@ -200,17 +200,17 @@ namespace TiledArray {
     /// Coordinate element const accessor
 
     /// \param n The element to access
-    /// \return A const reference to element \c n
-    /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
-    const_reference operator[](std::size_t n) const {
-      return r_[n];
+    /// \return A const reference to element \c d
+    /// \throw std::out_of_range When NDEBUG is defined and \c d \c >= \c DIM
+    const_reference operator[](std::size_t d) const {
+      return r_[d];
     }
 
     /// Coordinate element accessor
 
     /// \param d The dimension index
-    /// \return A reference to element \c n
-    /// \throw std::out_of_range When NDEBUG is defined and \c n \c >= \c DIM
+    /// \return A reference to element \c d
+    /// \throw std::out_of_range When NDEBUG is defined and \c d \c >= \c DIM
     reference operator[](std::size_t d) {
       return r_[d];
     }
@@ -218,8 +218,8 @@ namespace TiledArray {
     /// Coordinate element const accessor
 
     /// \param d The dimension index
-    /// \return A const reference to element \c n
-    /// \throw std::out_of_range When \c n \c >= \c DIM
+    /// \return A const reference to element \c d
+    /// \throw std::out_of_range When \c d \c >= \c DIM
     const_reference at(std::size_t d) const {
       TA_CHECK(d < DIM);
       return r_[d];
@@ -228,8 +228,8 @@ namespace TiledArray {
     /// Coordinate element accessor
 
     /// \param d The dimension index
-    /// \return A reference to element \c n
-    /// \throw std::out_of_range When \c n \c >= \c DIM
+    /// \return A reference to element \c d
+    /// \throw std::out_of_range When \c d \c >= \c DIM
     reference at(std::size_t d) {
       TA_CHECK(d < DIM);
       return r_[d];
