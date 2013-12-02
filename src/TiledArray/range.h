@@ -22,7 +22,7 @@
 
 #include <TiledArray/size_array.h>
 #include <TiledArray/range_iterator.h>
-#include <TiledArray/coordinates.h>
+#include <TiledArray/permutation.h>
 #include <TiledArray/utility.h>
 #include <algorithm>
 #include <vector>
