@@ -133,6 +133,17 @@ namespace TiledArray {
     inline typename madness::disable_if<std::is_array<T>, std::size_t>::type
     size(const T &a) { return a.size(); }
 
+    template <typename A>
+    void print_array(std::ostream& out, const A& a) {
+      std::size_t n = a.size();
+      out << "[";
+      for(std::size_t i = 0; i < n; ++i) {
+        out << a[i];
+        if (i != (n - 1))
+          out << ",";
+      }
+      out << "]";
+    }
 
   } // namespace detail
 } // namespace TiledArray
