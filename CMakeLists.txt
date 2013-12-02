@@ -63,14 +63,34 @@ set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 #include(TestCXXAcceptsFlag)
 include(CheckCXXSourceCompiles)
 
-# static_assert is desired, but an implementation is included
 set(CMAKE_REQUIRED_FLAGS_CURRENT ${CMAKE_REQUIRED_FLAGS})
 list(APPEND CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS})
+
+# static_assert is desired, but an implementation is included
 CHECK_CXX_SOURCE_COMPILES("
   int main(int argc, char* argv[]) {
     static_assert(true, \"don't worry, be happy\");
+    return 0;
   }"
   TILEDARRAY_HAVE_STATIC_ASSERT)  
+
+# check for variadic templates
+CHECK_CXX_SOURCE_COMPILES("
+  #include <iostream>
+  #include <iterator>
+  #include <algorithm>
+  template <typename... args> void print_numbers(const args&... numbers) {
+    const int n = sizeof...(args);
+    int nums[sizeof...(args)] = { static_cast<int>(numbers)... };
+    std::copy(nums, nums+n, std::ostream_iterator<int>(std::cout, \" \"));
+  }
+  int main(int argc, char* argv[]) {
+    print_numbers(-1);
+    print_numbers(0, 1, 2, 3, 4);
+    return 0;
+  }"
+  TILEDARRAY_HAVE_VARIADIC_TEMPLATES)  
+  
 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_CURRENT})
 
 # Check type support

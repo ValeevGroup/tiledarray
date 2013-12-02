@@ -32,6 +32,9 @@
 /* define if compiler supports static_assert. */
 #cmakedefine TILEDARRAY_HAVE_STATIC_ASSERT
 
+/* define if compiler supports variadic templates. */
+#cmakedefine TILEDARRAY_HAVE_VARIADIC_TEMPLATES
+
 /* Define the number of iterations to unwind in a loop. */
 #cmakedefine TILEDARRAY_LOOP_UNWIND
 
