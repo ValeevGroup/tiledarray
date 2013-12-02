@@ -63,6 +63,7 @@ namespace TiledArray {
     friend class detail::RangeIterator<index, Range_>;
 
   private:
+    struct Enabler {};
 
     /// Initialize range arrays
 
@@ -152,8 +153,9 @@ namespace TiledArray {
     /// that of \c finish.
     /// \throw TiledArray::Exception When start[i] >= finish[i]
     /// \throw std::bad_alloc When memory allocation fails.
-    template <typename Index, typename madness::disable_if<std::is_integral<Index>, int>::type = 0>
-    Range(const Index& start, const Index& finish) :
+    template <typename Index>
+    Range(const Index& start, const Index& finish,
+          typename madness::disable_if<std::is_integral<Index>, Enabler>::type = Enabler()) :
       start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = detail::size(start);
