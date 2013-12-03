@@ -33,7 +33,8 @@ namespace TiledArray {
     /// implementation classes. It has several pure virtual function that are
     /// used by derived classes to implement the distributed evaluate. This
     /// class can also handles permutation of result tiles if necessary.
-    /// \tparam Policy The policy type
+    /// \tparam Tile The output tile type
+    /// \param Policy The tensor policy class
     template <typename Tile, typename Policy>
     class DistEvalImpl : public TensorImpl<Tile, Policy> {
     public:
@@ -155,7 +156,8 @@ namespace TiledArray {
     /// This object holds a tensor expression. It is used to store various type
     /// of tensor expressions that depend on the pimpl used to construct the
     /// expression.
-    /// \tparam Policy The policy type
+    /// \tparam Tile The output tile type
+    /// \tparam Policy The tensor policy class
     template <typename Tile, typename Policy>
     class DistEval {
     public:
