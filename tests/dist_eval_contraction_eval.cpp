@@ -18,23 +18,23 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  dist_eval_summa.h
+ *  dist_eval_contraction_eval.h
  *  Oct 8, 2013
  *
  */
 
-//#include "TiledArray/dist_eval/summa.h"
+#include "TiledArray/dist_eval/contraction_eval.h"
 #include "unit_test_config.h"
 
-struct SummaFixture {
+struct ContractionEvalFixture {
 
-  SummaFixture() { }
+  ContractionEvalFixture() { }
 
-  ~SummaFixture() { }
+  ~ContractionEvalFixture() { }
 
-}; // Fixture
+}; // FixContractionEvalFixtureture
 
-BOOST_FIXTURE_TEST_SUITE( dist_eval_summa_suite, SummaFixture )
+BOOST_FIXTURE_TEST_SUITE( dist_eval_contraction_eval_suite, ContractionEvalFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
