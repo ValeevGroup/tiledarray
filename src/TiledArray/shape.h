@@ -33,7 +33,7 @@ namespace TiledArray {
   struct is_dense<DenseShape, void> : public std::true_type { };
 
   template <typename T>
-  struct is_dense<T, is_type<typename T::shape_type> > :
+  struct is_dense<T, detail::is_type<typename T::shape_type> > :
       public is_dense<typename T::shape_type>
   { };
 
