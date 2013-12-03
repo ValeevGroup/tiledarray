@@ -21,238 +21,532 @@
 #define TILEDARRAY_DIST_EVAL_CONTRACTION_EVAL_H__INCLUDED
 
 #include <TiledArray/dist_eval/dist_eval.h>
-#include <TiledArray/pmap/cyclic_pmap.h>
+#include <TiledArray/proc_grid.h>
+#include <TiledArray/reduce_task.h>
 
 namespace TiledArray {
   namespace detail {
 
-    template <typename, typename, typename>
-    class ContractionEvalImpl;
+    // Forward declarations
+    class SparseShape;
 
-    /// Contract and reduce operation
+    /// Distributed contraction evaluator implementation
 
-    /// This object handles contraction and reduction of tensor tiles.
-    template <typename Left, typename Right, typename Op>
-    class ContractReduceOp {
+    /// \param Left The left-hand argument evaluator type
+    /// \param Right The right-hand argument evaluator type
+    /// \param Op The contraction/reduction operation type
+    /// \param Policy The tensor policy class
+    template <typename Left, typename Right, typename Op, typename Policy>
+    class ContractionEvalImpl : public DistEvalImpl<typename Op::result_type, Policy> {
     public:
-      typedef typename ContractionEvalImpl<Left, Right, Op>::left_value_type first_argument_type; ///< The left tile type
-      typedef typename ContractionEvalImpl<Left, Right, Op>::right_value_type second_argument_type; ///< The right tile type
-      typedef typename ContractionEvalImpl<Left, Right, Op>::value_type result_type; ///< The result tile type.
-
-      /// Construct contract/reduce functor
-
-      /// \param cont Shared pointer to contraction definition object
-      explicit ContractReduceOp(const ContractionEvalImpl<Left, Right, Op>& owner) :
-          owner_(& owner)
-      { TA_ASSERT(owner_); }
-
-      /// Functor copy constructor
-
-      /// Shallow copy of this functor
-      /// \param other The functor to be copied
-      ContractReduceOp(const ContractionEvalImpl<Left, Right, Op>& other) :
-        owner_(other.owner_)
-      { }
-
-      /// Functor assignment operator
-
-      /// Shallow copy of this functor
-      /// \param other The functor to be copied
-      ContractReduceOp& operator=(const ContractionEvalImpl<Left, Right, Op>& other) {
-        owner_ = other.owner_;
-        return *this;
-      }
-
-
-      /// Create a result type object
-
-      /// Initialize a result object for subsequent reductions
-      result_type operator()() const {
-        return result_type();
-      }
-
-      /// Reduce two result objects
-
-      /// Add \c arg to \c result .
-      /// \param[in,out] result The result object that will be the reduction target
-      /// \param[in] arg The argument that will be added to \c result
-      void operator()(result_type& result, const result_type& arg) const {
-        result += arg;
-      }
-
-
-      /// Contract a pair of tiles and add to a target tile
-
-      /// Contract \c left and \c right and add the result to \c result.
-      /// \param[in,out] result The result object that will be the reduction target
-      /// \param[in] left The left-hand tile to be contracted
-      /// \param[in] right The right-hand tile to be contracted
-      void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
-        owner_->contract(result, first, second);
-      }
-
-      /// Contract a pair of tiles and add to a target tile
-
-      /// Contract \c left1 with \c right1 and \c left2 with \c right2 ,
-      /// and add the two results.
-      /// \param[in] left The first left-hand tile to be contracted
-      /// \param[in] right The first right-hand tile to be contracted
-      /// \param[in] left The second left-hand tile to be contracted
-      /// \param[in] right The second right-hand tile to be contracted
-      /// \return A tile that contains the sum of the two contractions.
-      result_type operator()(const first_argument_type& first1, const second_argument_type& second1,
-          const first_argument_type& first2, const second_argument_type& second2) const {
-        result_type result = operator()();
-
-        owner_->contract(result, first1, second1);
-        owner_->contract(result, first2, second2);
-
-        return result;
-      }
+      typedef ContractionEvalImpl<Left, Right, Op, Policy> ContractionEvalImpl_; ///< This object type
+      typedef DistEvalImpl<typename Op::result_type, Policy> DistEvalImpl_; ///< The base class type
+      typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
+      typedef Left left_type; ///< The left-hand argument type
+      typedef Right right_type; ///< The right-hand argument type
+      typedef typename DistEvalImpl_::size_type size_type; ///< Size type
+      typedef typename DistEvalImpl_::range_type range_type; ///< Range type
+      typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
+      typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename DistEvalImpl_::trange_type trange_type; ///< Tiled range type
+      typedef typename DistEvalImpl_::value_type value_type; ///< Tile type
+      typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
+      typedef Op op_type; ///< Tile evaluation operator type
 
     private:
-      const ContractionEvalImpl<Left, Right, Op>* owner_; ///< The contraction definition object pointer
-    }; // class contract_reduce_op
-
-
-
-    template <typename Left, typename Right, typename Op>
-    class ContractionEvalImpl : public DistEvalImpl<typename Op::result_type> {
-    public:
-      // Base class typedefs
-      typedef Op op_type;
-      typedef DistEvalImpl<typename Op::result_type> DistEvalImpl_; ///< Base class type
-      typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_;
-      typedef ContractionEvalImpl<Left, Right, Op> ContractionTensorImpl_;
-
-      typedef Left left_type; ///< The left tensor type
-      typedef typename left_type::value_type left_value_type; /// The left tensor value type
-      typedef Right right_type; ///< The right tensor type
-      typedef typename right_type::value_type right_value_type; ///< The right tensor value type
-
-      typedef typename TensorImpl_::size_type size_type; ///< size type
-      typedef typename TensorImpl_::pmap_interface pmap_interface; ///< The process map interface type
-      typedef typename TensorImpl_::trange_type trange_type;
-      typedef typename TensorImpl_::range_type range_type;
-      typedef typename TensorImpl_::shape_type shape_type;
-      typedef typename TensorImpl_::value_type value_type; ///< The result value type
-      typedef typename TensorImpl_::storage_type::const_iterator const_iterator; ///< Tensor const iterator
-      typedef typename TensorImpl_::storage_type::future const_reference;
-
-    private:
-      op_type op_; ///< The contraction operation
+      // Arguments and operation
       left_type left_; ///< The left argument tensor
       right_type right_; /// < The right argument tensor
+      op_type op_; /// < The contraction/reduction operation
 
-      size_type left_inner_; ///< The number of inner indices in the left tensor argument
-      size_type left_outer_; ///< The number of outer indices in the left tensor argument
-      size_type right_inner_; ///< The number of inner indices in the right tensor argument
-      size_type right_outer_; ///< The number of outer indices in the right tensor argument
+      // Broadcast groups for dense arguments (empty for non-dense arguments)
+      madness::Group row_group_; ///< The row process group for this rank
+      madness::Group col_group_; ///< The column process group for this rank
 
-    protected:
-      const ProcessID rank_; ///< This process's rank
-      const ProcessID size_; ///< Then number of processes
-      size_type m_; ///< Number of element rows in the result and left matrix
-      size_type n_; ///< Number of element columns in the result matrix and rows in the right argument matrix
-      size_type k_; ///< Number of element columns in the left and right argument matrices
-      size_type mk_; ///< Number of elements in left matrix
-      size_type kn_; ///< Number of elements in right matrix
-      size_type proc_cols_; ///< Number of columns in the result process map
-      size_type proc_rows_; ///< Number of rows in the result process map
-      size_type proc_size_; ///< Number of process in the process map. This may be
-                         ///< less than the number of processes in world.
-      ProcessID rank_row_; ///< This node's row in the process map
-      ProcessID rank_col_; ///< This node's column in the process map
-      size_type local_rows_; ///< The number of local element rows
-      size_type local_cols_; ///< The number of local element columns
-      size_type local_size_; ///< Number of local elements
+      // Dimension information
+      size_type k_; ///< Number of tiles in the inner dimension
+      const ProcGrid proc_grid_; ///< Process grid for this contraction
+
+      // Contraction results
+      ReducePairTask<op_type>* reduce_tasks_; ///< A pointer to the reduction tasks
+
+    private:
+
+      typedef madness::Future<typename right_type::value_type> right_future; ///< Future to a right-hand argument tile
+      typedef madness::Future<typename left_type::value_type> left_future; ///< Future to a left-hand argument tile
+      typedef std::pair<size_type, right_future> row_datum; ///< Datum element type for a right-hand argument row
+      typedef std::pair<size_type, left_future> col_datum; ///< Datum element type for a left-hand argument column
+
+      /// Broadcast column \c k of the left-hand argument
+
+      /// \param k The column of \c left_ to be broadcast
+      /// \param[out] col The vector that will hold the tiles in column \c k
+      void bcast_col(size_type& k, std::vector<col_datum>& col) const {
+        TA_ASSERT(col.size() == 0ul);
+
+        // Compute the left-hand argument column first index, end, and stride
+        size_type index = proc_grid_.rank_row() * proc_grid_.cols() + k;
+        const size_type end = proc_grid_.size();
+        const size_type stride = proc_grid_.proc_rows() * proc_grid_.cols();
+
+        // Get the broadcast process group and root process
+        madness::Group group;
+        if(right_.is_dense()) {
+          group = row_group_;
+        } else {
+          madness::DistributedID did(TensorImpl_::id(), k);
+          group = proc_grid_.make_row_group(did, right_.shape(), k, right_.size());
+          group.register_group();
+        }
+        const ProcessID group_root = group.rank(left_.owner(index));
+
+        // Allocate memory for the column
+        col.reserve(proc_grid_.local_rows());
+
+        // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
+        for(size_type i = 0ul; index < end; ++i, index += stride) {
+          if(! left_.is_zero(index)) {
+            // Get column tile
+            col.push_back(col_datum(i, left_.move(index)));
+
+            const madness::DistributedID key(TensorImpl_::id(), index);
+            TensorImpl_::get_world().gop.bcast(key, col.back(), group_root, group);
+          }
+        }
+
+        // Cleanup group
+        if(! right_.is_dense())
+          group.unregister_group();
+      }
+
+      void bcast_row(size_type& k, std::vector<row_datum>& row) const {
+        TA_ASSERT(row.size() == 0ul);
+
+        // Compute the left-hand argument column first index, end, and stride
+        size_type index = k * proc_grid_.cols() + proc_grid_.rank_col();
+        const size_type end = (k + 1) * proc_grid_.cols();
+        const size_type stride = proc_grid_.proc_cols();
+
+        // Get the broadcast process group and root
+        madness::Group group;
+        if(left_.is_dense()) {
+          group = col_group_;
+        } else {
+          madness::DistributedID did(TensorImpl_::id(), k + k_);
+          group = proc_grid_.make_col_group(did, left_.shape(), k, left_.size());
+          group.register_group();
+        }
+        const ProcessID group_root = group.rank(right_.owner(index));
+
+        // Allocate memory for the row
+        row.reserve(proc_grid_.local_cols());
+
+        // Broadcast and store non-zero tiles in the k-th row of the right-hand argument.
+        for(size_type i = 0ul; index < end; ++i, index += stride) {
+          if(! right_.is_zero(index)) {
+            // Get column tile
+            row.push_back(row_datum(i, right_.move(index)));
+
+            const madness::DistributedID key(TensorImpl_::id(), index + left_.size());
+            TensorImpl_::get_world().gop.bcast(key, row.back(), group_root, group);
+          }
+        }
+
+        // Cleanup group
+        if(! left_.is_dense())
+          group.unregister_group();
+      }
+
+      void bcast_col_task(const size_type k) const {
+        std::vector<col_datum> col;
+        bcast_col(k, col);
+      }
+
+      void bcast_row_task(const size_type k) const {
+        std::vector<row_datum> row;
+        bcast_row(k, row);
+      }
+
+      /// Find the next row
+
+      /// Starting at the k-th row of the right-hand argument, find the next row
+      /// that contains at least one non-zero tile. This search only checks for
+      /// non-zero tiles in this processes column.
+      /// \param k The first row to test for non-zero tiles
+      /// \return The first row, greater than or equal to \c k, that contains a
+      /// non-zero tile. If no non-zero tile is not found, return \c k_.
+      size_type next_k_row(size_type k) const {
+        if(right_.is_dense())
+          return k;
+
+        // Initialize row end to the start of the k-th row.
+        size_type row_end = k * proc_grid_.cols();
+
+        // Iterate over k's until a non-zero tile is found or the end of the
+        // matrix is reached.
+        for(; k < k_; ++k) {
+
+          // Set the starting and ending point for row k
+          size_type i = row_end + proc_grid_.rank_col();
+          row_end += proc_grid_.cols();
+
+          // Search row k for non-zero tiles
+          for(; i < row_end; i += proc_grid_.proc_cols())
+            if(! right_.is_zero(i))
+              return k;
+        }
+
+        return k;
+      }
+
+      /// Find the next column
+
+      /// Starting at the k-th column of the left-hand argument, find the next
+      /// column that contains at least one non-zero tile. This search only
+      /// checks for non-zero tiles in this process's row.
+      /// \param k The first column to test for non-zero tiles
+      /// \return The first column, greater than or equal to \c k, that contains
+      /// a non-zero tile. If no non-zero tile is not found, return \c k_.
+      size_type next_k_col(size_type k) const {
+        if(left_.is_dense())
+          return k;
+
+        // Iterate over k's until a non-zero tile is found or the end of the
+        // matrix is reached.
+        const size_type col_start = proc_grid_.rank_row() * k_;
+        const size_type col_step = proc_grid_.proc_rows() * k_;
+        for(; k < k_; ++k) {
+
+          // Search row k for non-zero tiles
+          for(size_type i = col_start + k; i < left_.size(); i += col_step)
+            if(! left_.is_zero(i))
+              return k;
+        }
+
+        return k;
+      }
+
+      /// Find the next k where the left- and right-hand argument have non-zero tiles
+
+      /// Search for the next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both contain non-zero tiles. This search
+      /// only checks for non-zero tiles in this process's row or column. If a
+      /// non-zero, local tile is found that does not contribute to local
+      /// contractions, the tiles will be immediately broadcast.
+      /// \param k The first row/column to check
+      /// \return The next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both have non-zero tiles
+      size_type next_k(const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const {
+        // The if statements below should be optimized away since the left and
+        // right dense variables are static constants.
+        if(left_.is_dense() && right_.is_dense()) {
+          // Left- and right-hand arguments are dense so k is always non-zero
+          return k;
+        } else {
+          // Left and right are sparse so search for the first k column of
+          // left and row of right that both have non-zero tiles.
+          size_type k_col = next_k_col(k);
+          size_type k_row = next_k_row(k);
+          while(k_col != k_row) {
+            // Check the largest k for non-zero tiles.
+            if(k_col < k_row) {
+              // If k_col has is local, broadcast the data to other nodes with
+              // non-zero rows.
+              if(left_.is_local(proc_grid_.rank_row() * k_ + k_col))
+                TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_col_task,
+                    k_col, madness::TaskAttributes::hipri());
+
+              // Find the next non-zero column of the left-hand argument
+              k_col = next_k_col(k_col + 1ul);
+            } else {
+              if(right_.is_local(k_row * proc_grid_.cols() + proc_grid_.rank_col()))
+                TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_row_task,
+                    k_row, madness::TaskAttributes::hipri());
+
+              k_row = next_k_row(k_row + 1ul);
+            }
+          }
+
+          return k_col;
+        }
+      }
+
+
+      // Construct the reduce tasks
+      size_type initialize(const op_type& op) {
+        // Construct static broadcast groups for dense arguments
+        if(left_.is_dense()) {
+          col_group_ = proc_grid_.make_col_group(madness::DistributedID(TensorImpl_::id(), 0ul));
+          col_group_.register_group();
+        }
+        if(right_.is_dense()) {
+          row_group_ = proc_grid_.make_row_group(madness::DistributedID(TensorImpl_::id(), k_));
+          row_group_.register_group();
+        }
+
+        // Allocate memory for the reduce pair tasks.
+        std::allocator<ReducePairTask<op_type> > alloc;
+        alloc.allocate(reduce_tasks_, proc_grid_.local_size());
+
+        // Iterate over all local rows and columns
+        size_type offset = 0ul;
+        size_type tile_count = 0ul;
+        for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
+          for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++offset) {
+
+            // Construct non-zero reduce tasks
+            if(! TensorImpl_::is_zero(offset)) {
+              alloc.construct(reduce_tasks_ + offset, ReducePairTask<op_type>(op));
+              ++tile_count;
+            }
+          }
+        }
+
+        return tile_count;
+      }
+
+      /// Destroy reduce tasks and set the result tiles
+      void finalize() {
+        // Create allocator
+        std::allocator<ReducePairTask<op_type> > alloc;
+
+        // Initialize loop control variables
+        size_type offset = 0ul;
+        size_type i_start = proc_grid_.rank_row() * proc_grid_.cols() + proc_grid_.rank_col();
+        const size_type i_start_step = proc_grid_.proc_rows() * proc_grid_.cols();
+
+        // Iterate over all local rows and columns
+        for(; i_start < proc_grid_.size(); i_start += i_start_step) {
+          for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++offset) {
+            // Compute the index
+            const size_type index = i_start + col;
+
+            if(! TensorImpl_::is_zero(index)) {
+              // Get the ordinal index and reduce task for tile (r,c).
+              ReducePairTask<op_type>* const reduce_task = reduce_tasks_ + offset;
+
+              // Set the result tile
+              DistEvalImpl_::set_tile(index, reduce_task->submit());
+
+              // Destroy the the reduce task
+              alloc.destroy(reduce_task);
+            }
+          }
+
+          // Unregister groups if used.
+          if(left_.is_dense())
+            col_group_.unregister_group();
+          if(right_.is_dense())
+            row_group_.unregister_group();
+        }
+
+        // Deallocate the memory for the reduce pair tasks.
+        alloc.deallocate(reduce_tasks_, proc_grid_.local_size());
+      }
+
+      /// Schedule local contraction tasks for \c col and \c row tile pairs
+
+      /// Schedule tile contractions for each tile pair of \c row and \c col. A
+      /// callback to \c task will be registered with each tile contraction
+      /// task.
+      /// \param col A column of tiles from the left-hand argument
+      /// \param row A row of tiles from the right-hand argument
+      /// \param callback The callback that will be invoked after each tile-pair
+      /// has been contracted
+      template <typename S>
+#ifndef TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
+      typename madness::disable_if<std::is_same<S, SparseShape> >::type
+#else
+      void
+#endif // TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
+      contract(const size_type, const std::vector<col_datum>& col,
+          const std::vector<row_datum>& row, madness::TaskInterface* const task)
+      {
+        // Iterate over the row
+        for(typename std::vector<col_datum>::const_iterator col_it = col.begin(); col_it != col.end(); ++col_it) {
+          // Compute the local, result-tile offset
+          const size_type offset = col_it->first * proc_grid_.local_cols();
+
+          for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it) {
+            task->inc();
+            reduce_tasks_[offset + col_it->first].add(col_it->second, row_it->second, task);
+          }
+        }
+      }
+
+#ifndef TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
+      /// Schedule local contraction tasks for \c col and \c row tile pairs
+
+      /// Schedule tile contractions for each tile pair of \c row and \c col. A
+      /// callback to \c task will be registered with each tile contraction
+      /// task. This version of contract is used when shape_type is
+      /// \c SparseShape. It skips tile contractions that have a negligible
+      /// contribution to the result tile.
+      /// \param k The k step for this contraction set
+      /// \param col A column of tiles from the left-hand argument
+      /// \param row A row of tiles from the right-hand argument
+      /// \param task The task that depends on the tile contraction tasks
+      template <typename S>
+      typename madness::enable_if<std::is_same<S, SparseShape> >::type
+      contract(const size_type k, const std::vector<col_datum>& col,
+          const std::vector<row_datum>& row, madness::TaskInterface* const task)
+      {
+
+        // Compute the threshold that will be applied to tile pair contractions.
+        const float threshold_k = TensorImpl_::shape().threshold() / float(k_);
+
+        /// Compute the base index and strides for tiles of col and row.
+        const size_type left_index = proc_grid_.rank_row() * k_ + k;
+        const size_type left_stride = proc_grid_.proc_rows() * k_;
+        const size_type right_index = k * proc_grid_.cols() + proc_grid_.rank_col();
+        const size_type right_stride = proc_grid_.proc_cols();
+
+        // Iterate over the left-hand argument column (rows of the result)
+        for(typename std::vector<col_datum>::const_iterator col_it = col.begin(); col_it != col.end(); ++col_it) {
+          // Compute the local, result-tile offset for the current result row.
+          const size_type result_offset = col_it->first * proc_grid_.local_cols();
+
+          // Get the shape data for col_it tile
+          const float col_shape_value =
+              left_.shape().data()[left_index + (col_it->first * left_stride)];
+
+          // Iterate over the right-hand argument row (cols of the result)
+          for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it) {
+
+            const float row_shape_value =
+                right_.shape().data()[right_index + (row_it->first * right_stride)];
+
+            if((col_shape_value * row_shape_value) >= threshold_k) { // Filter trivial results
+              task->inc();
+              reduce_tasks_[result_offset + row_it->first].add(col_it->second, row_it->second, task);
+            }
+          }
+        }
+      }
+#endif // TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
+
+      class StepTask : public madness::TaskInterface {
+      private:
+        class BcastTask;
+
+        // Member variables
+        std::shared_ptr<ContractionEvalImpl_> parent_;
+        size_type k_;
+        StepTask* next_step_task_;
+
+
+        /// Construct the task for the next step
+        StepTask(StepTask* const previous, const int ndep) :
+          madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
+          parent_(previous->parent_), k_(0ul), next_step_task_(NULL)
+        { }
+
+      public:
+
+        StepTask(const std::shared_ptr<ContractionEvalImpl_>& parent) :
+          madness::TaskInterface(madness::TaskAttributes::hipri()),
+          parent_(parent), k_(0ul), next_step_task_(new StepTask(this, 0))
+        { }
+
+        virtual ~StepTask() { }
+
+        void submit_next(const size_type k) {
+          next_step_task_->k_ = k;
+          parent_->get_world().taskq.add(next_step_task_);
+          next_step_task_ = NULL;
+        }
+
+        virtual void run(const madness::TaskThreadEnv&) {
+          if(k_ < parent_->k_) {
+            // Get the column and row for the next non-zero k iteration
+            k_ = parent_->next_k(parent_, k_);
+
+            if(k_ < parent_->k_) {
+              // Submit the task for the next iteration
+              StepTask* const next_next_step_task =
+                  next_step_task_->next_step_task_ = new StepTask(this, 1);
+              submit_next(k_ + 1ul);
+
+              // Broadcast row and column
+              std::vector<col_datum> col;
+              parent_->bcast_col(k_, col);
+              std::vector<row_datum> row;
+              parent_->bcast_row(k_, row);
+
+              // Submit tasks for the contraction of col and row tiles.
+              parent_->template contract<shape_type>(k_, col, row, next_next_step_task);
+
+              next_next_step_task->notify();
+
+            } else {
+              parent_->finalize();
+
+              // Submit the tail task to avoid errors.
+              submit_next(k_);
+            }
+          }
+        }
+
+      }; // class StepTask
+
 
     public:
 
       ContractionEvalImpl(const left_type& left, const right_type& right,
-          const op_type& op, const Permutation& perm, madness::World& world,
-          const trange_type& trange, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap) :
-        DistEvalImpl_(world, perm, trange, shape, pmap),
-        op_(op), left_(left), right_(right),
-        left_inner_(0ul), left_outer_(0ul), right_inner_(0ul), right_outer_(0ul),
-        rank_(TensorImpl_::get_world().rank()), size_(TensorImpl_::get_world().size()),
-        m_(1ul), n_(1ul), k_(1ul), mk_(1ul), kn_(1ul),
-        proc_cols_(0ul), proc_rows_(0ul), proc_size_(0ul),
-        rank_row_(-1), rank_col_(-1),
-        local_rows_(0ul), local_cols_(0ul), local_size_(0ul)
+          madness::World& world, const trange_type& trange, const shape_type& shape,
+          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
+          const op_type& op, const ProcGrid& proc_grid) :
+        DistEvalImpl_(world, trange, shape, pmap, perm),
+        left_(left), right_(right), op_(op),
+        row_group_(), col_group_(),
+        k_(0ul), proc_grid_(proc_grid),
+        reduce_tasks_(NULL)
       {
-        // Calculate the size of the inner dimension, k.
-        k_ = op_(left_.range().size(), right_.range().size());
+        // Compute the number of contracted ranks.
+        const size_type num_contracted_ranks =
+            (left_.range().dim() + right_.range().dim() - TensorImpl_::range().dim()) >> 2ul;
 
-        // Calculate the dimensions of the inner and outer fused tensors
-        mk_ = left_.range().volume();
-        kn_ = right_.range().volume();
-        m_ = mk_ / k_;
-        n_ = kn_ / k_;
-        left_outer_ = left_.range().dim() - left_inner_;
-        right_inner_ = left_inner_;
-        right_outer_ = right_.range().dim() - right_inner_;
+        // Initialize the inner inner dimension size
+        k_ = std::accumulate(left.range().size().begin() + (left.range().dim()
+            - num_contracted_ranks), left.range().size().end(), 1ul,
+            std::multiplies<size_type>());
 
-        // Calculate the process map dimensions and size
-        proc_cols_ = std::min(size_ / std::max(std::min<std::size_t>(std::sqrt(size_ * m_ / n_), size_), 1ul), n_);
-        proc_rows_ = std::min(size_ / proc_cols_, m_);
-        proc_size_ = proc_cols_ * proc_rows_;
-
-        if(rank_ < proc_size_) {
-          // Calculate this rank's row and column
-          rank_row_ = rank_ / proc_cols_;
-          rank_col_ = rank_ % proc_cols_;
-
-          // Calculate the local tile dimensions and size
-          local_rows_ = (m_ / proc_rows_) + (rank_row_ < (m_ % proc_rows_) ? 1 : 0);
-          local_cols_ = (n_ / proc_cols_) + (rank_col_ < (n_ % proc_cols_) ? 1 : 0);
-          local_size_ = local_rows_ * local_cols_;
-        }
+        // Initialize the reduction task objects
+        initialize_results(op);
       }
 
       virtual ~ContractionEvalImpl() { }
 
-      const left_type& left() const { return left_; }
-
-      left_type& left() { return left_; }
-
-      const right_type& right() const { return right_; }
-
-      right_type& right() { return right_; }
-
-      const op_type& op() const { return op_; }
-
-      /// Construct the left argument process map
-      std::shared_ptr<pmap_interface> make_left_pmap() const {
-        return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
-            TensorImpl_::get_world(), m_, k_, proc_rows_, proc_cols_));
-      }
-
-      /// Construct the right argument process map
-      std::shared_ptr<pmap_interface> make_right_pmap() const {
-        return std::shared_ptr<pmap_interface>(new TiledArray::detail::CyclicPmap(
-            TensorImpl_::get_world(), k_, n_, proc_rows_, proc_cols_));
-      }
-
-    protected:
-      /// Contraction operation
-
-      /// Contract \c left and \c right to \c result .
-      /// \param[out] result The tensor that will store the result
-      /// \param[in] left The left hand tensor argument
-      /// \param[in] right The right hand tensor argument
-      void contract(value_type& result, const left_value_type& left, const right_value_type& right) const {
-        op_(result, left, right);
-      }
-
     private:
+      /// Function for evaluating this tensor's tiles
 
-      virtual void eval_children(madness::AtomicInt& counter, int& task_count) {
-        left_.eval(counter, task_count);
-        right_.eval(counter, task_count);
+      /// This function is run inside a task, and will run after \c eval_children
+      /// has completed. It should spawn additional tasks that evaluate the
+      /// individual result tiles.
+      virtual size_type internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+        // Convert pimpl to this object type so it can be used in tasks
+        std::shared_ptr<ContractionEvalImpl_> self =
+            std::static_pointer_cast<ContractionEvalImpl_>(pimpl);
+
+        // Start evaluate child tensors
+        left_.eval();
+        right_.eval();
+
+        // Create a reduction pair task for each local, non-zero tile
+        const size_type tile_count = initialize(op_);
+
+        // Construct the first SUMMA iteration task
+        TensorImpl_::get_world().taskq.add(new StepTask(self));
+
+
+        // Wait for child tensors to be evaluated, and process tasks while waiting.
+        left_.wait();
+        right_.wait();
+
+        return tile_count;
       }
-    }; // class ContractionTensorImpl
+
+    }; // class ContractionEvalImpl
 
   } // namespace detail
 }  // namespace TiledArray
