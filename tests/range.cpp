@@ -114,6 +114,19 @@ BOOST_AUTO_TEST_CASE( constructors )
 #endif // TA_EXCEPTION_ERROR
 }
 
+BOOST_AUTO_TEST_CASE( assignment_operator )
+{
+  Range x;
+  x = r;
+
+  // Check that the data in x matches that of r.
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.start().begin(), x.start().end(), r.start().begin(), r.start().end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.finish().begin(), x.finish().end(), r.finish().begin(), r.finish().end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.size().begin(), x.size().end(), r.size().begin(), r.size().end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.weight().begin(), x.weight().end(), r.weight().begin(), r.weight().end());
+  BOOST_CHECK_EQUAL(x.volume(), r.volume());
+}
+
 BOOST_AUTO_TEST_CASE( ostream )
 {
   std::stringstream stm;
