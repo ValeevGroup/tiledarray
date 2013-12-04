@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/permutation.h"
-#include "TiledArray/coordinates.h" // for array output
+#include "TiledArray/utility.h" // for array output
 #include "unit_test_config.h"
 
 using namespace TiledArray;
