@@ -81,6 +81,12 @@ namespace TiledArray {
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };
 
+    template <typename T>
+    struct is_complex : public std::false_type { };
+
+    template <typename T>
+    struct is_complex<std::complex<T> > : public std::true_type { };
+
     // helps to implement other metafunctions
     template<typename> struct is_type : public std::true_type { };
 
