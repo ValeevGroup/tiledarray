@@ -28,7 +28,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/math/blas.h>
-#include <TiledArray/permutation.h>
+#include <TiledArray/tile_op/permute.h>
 
 namespace TiledArray {
   namespace math {
@@ -38,9 +38,9 @@ namespace TiledArray {
     /// This object uses a tile contraction operation to form a pair reduction
     /// operation.
     template <typename Result, typename Left, typename Right>
-    class ContractReduceOp {
+    class ContractReduce {
     public:
-      typedef ContractReduceOp ContractReduceOp_; ///< This class type
+      typedef ContractReduce ContractReduce_; ///< This class type
       typedef const Left& first_argument_type; ///< The left tile type
       typedef const Right& second_argument_type; ///< The right tile type
       typedef Result result_type; ///< The result tile type.
@@ -67,14 +67,6 @@ namespace TiledArray {
       static const scalar_type zero_; ///< Constant equal to 0
       static const scalar_type one_; ///< Constant equal to 1
 
-
-      void init_result_index(typename result_type::range_type::index& result,
-          const typename Left::range_type::size_array& left,
-          const typename Right::range_type::size_array& right) const
-      {
-
-      }
-
       /// Contraction operation
 
       /// Contract \c left and \c right to \c result .
@@ -92,7 +84,7 @@ namespace TiledArray {
         scalar_type beta = one_;
         if(result.empty()) {
           // Create the start and finish indices
-          typename result_type::range_type::index start, finish;
+          std::vector<std::size_t> start, finish;
           start.reserve(result_dim_);
           finish.reserve(result_dim_);
           for(std::size_t i = left_outer_begin_; i < left_outer_end_; ++i) {
@@ -164,8 +156,8 @@ namespace TiledArray {
       /// Construct contract/reduce functor
 
       /// \param num_cont_ranks The number of contracted ranks
-      ContractReduceOp(const madness::cblas::Trans left_op,
-          madness::cblas::Trans right_op, scalar_type alpha,
+      ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
+          madness::cblas::CBLAS_TRANSPOSE right_op, scalar_type alpha,
           const unsigned int result_dim, const unsigned int left_dim,
           const unsigned int right_dim, const Permutation& perm = Permutation()) :
         left_op_(left_op), right_op_(right_op), alpha_(alpha),
@@ -202,7 +194,7 @@ namespace TiledArray {
 
       /// Shallow copy of this functor
       /// \param other The functor to be copied
-      ContractReduceOp(const ContractReduceOp_& other) :
+      ContractReduce(const ContractReduce_& other) :
         left_op_(other.left_op_), right_op_(other.right_op_),
         alpha_(other.alpha_), perm_(other.perm_), left_dim_(other.left_dim_),
         right_dim_(other.right_dim_), result_dim_(other.result_dim_),
@@ -215,7 +207,7 @@ namespace TiledArray {
       /// Functor assignment operator
 
       /// \param other The functor to be copied
-      ContractReduceOp_& operator=(const ContractReduceOp_& other) {
+      ContractReduce_& operator=(const ContractReduce_& other) {
         left_op_ = other.left_op_;
         right_op_ = other.right_op_;
         alpha_ = other.alpha_;
@@ -246,10 +238,12 @@ namespace TiledArray {
       result_type operator()(const result_type& temp) const {
         result_type result;
 
-        if(perm_.dim() < 1u)
-          result = temp;
-        else
-          TiledArray::math::permute(result, perm_, temp);
+        if(! temp.empty()) {
+          if(perm_.dim() < 1u)
+            result = temp;
+          else
+            TiledArray::math::permute(result, perm_, temp);
+        }
 
         return result;
       }
@@ -295,7 +289,7 @@ namespace TiledArray {
         return result;
       }
 
-    }; // class ContractReduceOp
+    }; // class ContractReduce
 
   }  // namespace math
 } // namespace TiledArray
