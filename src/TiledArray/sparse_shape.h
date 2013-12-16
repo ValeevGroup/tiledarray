@@ -579,7 +579,8 @@ namespace TiledArray {
         const SparseShape& right, const Range& result_range) const
     {
       Tensor<float> result(result_range, 0.0);
-      math::gemm(m, n, k, 1.0, left.data().data(), right.data().data(), result.data());
+      math::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans, m, n, k, 1.0,
+          left.data().data(), right.data().data(), 1.0, result.data());
 
       if(perm.dim() > 1u)
         result = perm ^ result;
@@ -655,7 +656,8 @@ namespace TiledArray {
         const SparseShape& right, const Range& result_range, const N factor) const
     {
       Tensor<float> result(result_range, 0.0);
-      math::gemm(m, n, k, factor, left.data().data(), right.data().data(), result.data());
+      math::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans, m, n, k, factor,
+          left.data().data(), right.data().data(), 1.0, result.data());
 
       if(perm.dim() > 1u)
         result = perm ^ result;

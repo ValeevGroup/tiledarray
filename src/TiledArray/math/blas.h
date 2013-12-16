@@ -26,34 +26,110 @@
 #ifndef TILEDARRAY_BLAS_H__INCLUDED
 #define TILEDARRAY_BLAS_H__INCLUDED
 
+#include <linalg/cblas.h>
+
 namespace TiledArray {
   namespace math {
 
     // BLAS _GEMM wrapper functions
 
-    template <typename T>
-    inline void gemm(const integer m, const integer n, const integer k, const T alpha, const T* a, const T* b, T* c) {
-      eigen_map(c, m, n).noalias() += alpha * (eigen_map(a, m, k) * eigen_map(b, k, n));
+    template <typename S1, typename T1, typename T2, typename S2, typename T3>
+    inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
+        madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
+        const integer k, const S1 alpha, const T1* a, const T2* b, const S2 beta, T3* c)
+    {
+      // Check that there is no overlap of a or b with c
+      TA_ASSERT(((a + (m * k * (TiledArray::detail::is_complex<T1>::value ? 2 : 1))) < c) ||
+          ((c + (m * n * (TiledArray::detail::is_complex<T3>::value ? 2 : 1))) < a));
+      TA_ASSERT(((b + (k * n * (TiledArray::detail::is_complex<T1>::value ? 2 : 1))) < c) ||
+          ((c + (m * n * (TiledArray::detail::is_complex<T3>::value ? 2 : 1))) < b));
+
+      // Define operations
+      static const unsigned int
+          notrans_notrans     = 0x00000000,
+          notrans_trans       = 0x00000004,
+          trans_notrans       = 0x00000001,
+          trans_trans         = 0x00000005,
+          notrans_conjtrans   = 0x00000008,
+          trans_conjtrans     = 0x00000009,
+          conjtrans_notrans   = 0x00000002,
+          conjtrans_trans     = 0x00000006,
+          conjtrans_conjtrans = 0x0000000a;
+
+      // Construct matrix maps for a, b, and c.
+      typedef Eigen::Matrix<T1, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixA_type;
+      typedef Eigen::Matrix<T2, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixB_type;
+      typedef Eigen::Matrix<T3, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixC_type;
+      Eigen::Map<const matrixA_type, Eigen::AutoAlign> A(a,
+          (op_a == madness::cblas::NoTrans ? m : k),
+          (op_a == madness::cblas::NoTrans ? k : m));
+      Eigen::Map<const matrixB_type, Eigen::AutoAlign> B(b,
+          (op_b == madness::cblas::NoTrans ? k : n),
+          (op_b == madness::cblas::NoTrans ? n : k));
+      Eigen::Map<matrixC_type, Eigen::AutoAlign> C(c, m, n);
+
+      switch(op_a | (op_b << 2)) {
+        case notrans_notrans:
+          C.noalias() = alpha * A * B + beta * C;
+          break;
+        case notrans_trans:
+          C.noalias() = alpha * A * B.transpose() + beta * C;
+          break;
+        case trans_notrans:
+          C.noalias() = alpha * A.transpose() * B + beta * C;
+          break;
+        case trans_trans:
+          C.noalias() = alpha * A.transpose() * B.transpose() + beta * C;
+          break;
+
+        case notrans_conjtrans:
+          C.noalias() = alpha * A * B.adjoint() + beta * C;
+          break;
+        case trans_conjtrans:
+          C.noalias() = alpha * A.transpose() * B.adjoint() + beta * C;
+          break;
+        case conjtrans_notrans:
+          C.noalias() = alpha * A.adjoint() * B + beta * C;
+          break;
+        case conjtrans_trans:
+          C.noalias() = alpha * A.adjoint() * B.transpose() + beta * C;
+          break;
+        case conjtrans_conjtrans:
+          C.noalias() = alpha * A.adjoint() * B.adjoint() + beta * C;
+          break;
+      }
     }
 
-    inline void gemm(const integer m, const integer n, const integer k, const float alpha, const float* a, const float* b, float* c) {
-      madness::cblas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-          n, m, k, alpha, b, n, a, k, 1.0, c, n);
+    inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
+        madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
+        const integer k, const float alpha, const float* a, const float* b,
+        const float beta, float* c)
+    {
+      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, n, a, k, beta, c, n);
     }
 
-    inline void gemm(const integer m, const integer n, const integer k, const double alpha, const double* a, const double* b, double* c) {
-      madness::cblas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-          n, m, k, alpha, b, n, a, k, 1.0, c, n);
+    inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
+        madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
+        const integer k, const double alpha, const double* a, const double* b,
+        const double beta, double* c)
+    {
+      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, n, a, k, beta, c, n);
     }
 
-    inline void gemm(const integer m, const integer n, const integer k, const std::complex<float> alpha, const std::complex<float>* a, const std::complex<float>* b, std::complex<float>* c) {
-      madness::cblas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-          n, m, k, alpha, b, n, a, k, std::complex<float>(1.0, 0.0), c, n);
+    inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
+        madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
+        const integer k, const std::complex<float> alpha, const std::complex<float>* a,
+        const std::complex<float>* b, const std::complex<float> beta, std::complex<float>* c)
+    {
+      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, n, a, k, beta, c, n);
     }
 
-    inline void gemm(const integer m, const integer n, const integer k, const std::complex<double> alpha, const std::complex<double>* a, const std::complex<double>* b, std::complex<double>* c) {
-      madness::cblas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-          n, m, k, alpha, b, n, a, k, std::complex<double>(1.0, 0.0), c, n);
+    inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
+        madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
+        const integer k, const std::complex<double> alpha, const std::complex<double>* a,
+        const std::complex<double>* b, const std::complex<double> beta, std::complex<double>* c)
+    {
+      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, n, a, k, beta, c, n);
     }
 
 
