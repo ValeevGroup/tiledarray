@@ -27,6 +27,8 @@
 #define TILEDARRAY_BLAS_H__INCLUDED
 
 #include <linalg/cblas.h>
+#include <TiledArray/type_traits.h>
+#include <TiledArray/math/eigen.h>
 
 namespace TiledArray {
   namespace math {
