@@ -31,6 +31,8 @@ struct plus {
 
   result_type operator()() const { return result_type(); }
 
+  result_type operator()(const result_type temp) const { return temp; }
+
   void operator()(result_type& result, const argument_type& arg) const {
     result += arg;
   }
@@ -58,6 +60,8 @@ struct ReduceOp {
   typedef int second_argument_type;
 
   result_type operator()() const { return result_type(); }
+
+  result_type operator()(const result_type temp) const { return temp; }
 
   void operator()(result_type& result, const result_type& arg) const {
     result += arg;

@@ -93,6 +93,8 @@ namespace TiledArray {
       /// Create an default reduction object
       result_type operator()() const { return op_(); }
 
+      result_type operator()(const result_type temp) const { return temp; }
+
       /// Reduce two result objects
 
       /// \param[out] result The object that will hold the result of this reduction
@@ -413,7 +415,7 @@ namespace TiledArray {
         /// Task function
         virtual void run(const madness::TaskThreadEnv&) {
           MADNESS_ASSERT(ready_result_);
-          result_.set(*ready_result_);
+          result_.set(op_(*ready_result_));
           if(callback_)
             callback_->notify();
         }
