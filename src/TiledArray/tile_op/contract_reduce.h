@@ -48,107 +48,85 @@ namespace TiledArray {
 
     private:
 
+
       madness::cblas::CBLAS_TRANSPOSE left_op_;
+              ///< Transpose operation that is applied to the left-hand argument
       madness::cblas::CBLAS_TRANSPOSE right_op_;
-      scalar_type alpha_;
-      Permutation perm_;
-      unsigned int left_dim_;
-      unsigned int right_dim_;
-      unsigned int result_dim_;
-      unsigned int left_inner_begin_;
-      unsigned int left_inner_end_;
-      unsigned int left_outer_begin_;
-      unsigned int left_outer_end_;
-      unsigned int right_inner_begin_;
-      unsigned int right_inner_end_;
-      unsigned int right_outer_begin_;
-      unsigned int right_outer_end_;
+              ///< Transpose operation that is applied to the right-hand argument
+      scalar_type alpha_; ///< Scaling factor applied to the contraction of the left- and right-hand arguments
+      Permutation perm_; ///< Permutation that is applied to the final result tensor
+      unsigned int result_rank_; ///< The rank of the result tensor
+
+      /// Contraction argument range data
+
+      /// The range data held by this object is the range of the inner and outer
+      /// dimensions of the argument tensor. It is assumed that the inner and
+      /// outer dimensions are contiguous.
+      struct ContractArg {
+        unsigned int inner[2]; ///< The inner dimension range
+        unsigned int outer[2]; ///< The outer dimension range
+        unsigned int rank; ///< Rank of the argument tensor
+      }
+        left_, ///< Left-hand argument range data
+        right_; ///< Right-hand argument range data
 
       static const scalar_type zero_; ///< Constant equal to 0
       static const scalar_type one_; ///< Constant equal to 1
 
-      /// Contraction operation
-
-      /// Contract \c left and \c right to \c result .
-      /// \param[out] result The tensor that will store the result
-      /// \param[in] left The left hand tensor argument
-      /// \param[in] right The right hand tensor argument
-      void contract(result_type& result, first_argument_type left, second_argument_type right) const {
-        // Check that the arguments are not empty and have the correct dimension sizes
-        TA_ASSERT(!left.empty());
-        TA_ASSERT(!right.empty());
-        TA_ASSERT(left.range().dim() == left_dim_);
-        TA_ASSERT(right.range().dim() == right_dim_);
-
-        // Allocate the result tile if it is uninitialized
-        scalar_type beta = one_;
-        if(result.empty()) {
-          // Create the start and finish indices
-          std::vector<std::size_t> start, finish;
-          start.reserve(result_dim_);
-          finish.reserve(result_dim_);
-          for(std::size_t i = left_outer_begin_; i < left_outer_end_; ++i) {
-            start.push_back(left.range().start()[i]);
-            finish.push_back(left.range().finish()[i]);
-          }
-          for(std::size_t i = right_outer_begin_; i < right_outer_end_; ++i) {
-            start.push_back(right.range().start()[i]);
-            finish.push_back(right.range().finish()[i]);
-          }
-
-          // Construct the result tile
-          result_type(typename result_type::range_type(start, finish)).swap(result);
-
-          beta = zero_;
-        }
-
-        // Check that the result is not empty and has the correct dimension size
-        TA_ASSERT(!result.empty());
-        TA_ASSERT(result.range().dim() == result_dim_);
+      void check_dims(first_argument_type left, second_argument_type right, const result_type& result) const {
 
         // Check that the outer dimensions of left match the the corresponding dimensions in result
-        TA_ASSERT(std::equal(left.range().start().begin() + left_outer_begin_,
-            left.range().start().begin() + left_outer_end_, result.range().start().begin()));
-        TA_ASSERT(std::equal(left.range().finish().begin() + left_outer_begin_,
-            left.range().finish().begin() + left_outer_end_, result.range().finish().begin()));
-        TA_ASSERT(std::equal(left.range().size().begin() + left_outer_begin_,
-            left.range().size().begin() + left_outer_end_, result.range().size().begin()));
+        TA_ASSERT(std::equal(left.range().start().begin() + left_.outer[0],
+            left.range().start().begin() + left_.outer[1], result.range().start().begin()));
+        TA_ASSERT(std::equal(left.range().finish().begin() + left_.outer[0],
+            left.range().finish().begin() + left_.outer[1], result.range().finish().begin()));
+        TA_ASSERT(std::equal(left.range().size().begin() + left_.outer[0],
+            left.range().size().begin() + left_.outer[1], result.range().size().begin()));
 
         // Check that the outer dimensions of right match the the corresponding dimensions in result
-        TA_ASSERT(std::equal(right.range().start().begin() + right_outer_begin_,
-            right.range().start().begin() + right_outer_end_,
-            result.range().start().begin() + (left_outer_end_ - left_outer_begin_)));
-        TA_ASSERT(std::equal(right.range().finish().begin() + right_outer_begin_,
-            right.range().finish().begin() + right_outer_end_,
-            result.range().finish().begin() + (left_outer_end_ - left_outer_begin_)));
-        TA_ASSERT(std::equal(right.range().size().begin() + right_outer_begin_,
-            right.range().size().begin() + right_outer_end_,
-            result.range().size().begin() + (left_outer_end_ - left_outer_begin_)));
+        TA_ASSERT(std::equal(right.range().start().begin() + right_.outer[0],
+            right.range().start().begin() + right_.outer[1],
+            result.range().start().begin() + (left_.outer[1] - left_.outer[0])));
+        TA_ASSERT(std::equal(right.range().finish().begin() + right_.outer[0],
+            right.range().finish().begin() + right_.outer[1],
+            result.range().finish().begin() + (left_.outer[1] - left_.outer[0])));
+        TA_ASSERT(std::equal(right.range().size().begin() + right_.outer[0],
+            right.range().size().begin() + right_.outer[1],
+            result.range().size().begin() + (left_.outer[1] - left_.outer[0])));
 
         // Check that the inner dimensions of left and right match
-        TA_ASSERT(std::equal(left.range().start().begin() + left_inner_begin_,
-            left.range().start().begin() + left_inner_end_,
-            right.range().start().begin() + right_inner_begin_));
-        TA_ASSERT(std::equal(left.range().finish().begin() + left_inner_begin_,
-            left.range().finish().begin() + left_inner_end_,
-            right.range().finish().begin() + right_inner_begin_));
-        TA_ASSERT(std::equal(left.range().size().begin() + left_inner_begin_,
-            left.range().size().begin() + left_inner_end_,
-            right.range().size().begin() + right_inner_begin_));
+        TA_ASSERT(std::equal(left.range().start().begin() + left_.inner[0],
+            left.range().start().begin() + left_.inner[1],
+            right.range().start().begin() + right_.inner[0]));
+        TA_ASSERT(std::equal(left.range().finish().begin() + left_.inner[0],
+            left.range().finish().begin() + left_.inner[1],
+            right.range().finish().begin() + right_.inner[0]));
+        TA_ASSERT(std::equal(left.range().size().begin() + left_.inner[0],
+            left.range().size().begin() + left_.inner[1],
+            right.range().size().begin() + right_.inner[0]));
 
-        // Calculate the fused tile dimension
-        integer m = 1, n = 1, k = 1;
-        for(std::size_t i = left_outer_begin_; i < left_outer_end_; ++i)
-          m *= left.range().size()[i];
-        for(std::size_t i = left_inner_begin_; i < left_inner_end_; ++i)
-          k *= left.range().size()[i];
-        for(std::size_t i = right_outer_begin_; i < right_outer_end_; ++i)
-          n *= right.range().size()[i];
+      }
 
+      result_type make_result(first_argument_type left, second_argument_type right) const {
+        // Create the start and finish indices
+        std::vector<std::size_t> start, finish;
+        start.reserve(result_rank_);
+        finish.reserve(result_rank_);
 
-        // Do the contraction
-        gemm(left_op_, right_op_, m, n, k, alpha_, left.data(), right.data(),
-            beta, result.data());
+        // Copy left-hand argument outer dimensions to start and finish
+        for(unsigned int i = left_.outer[0]; i < left_.outer[1]; ++i) {
+          start.push_back(left.range().start()[i]);
+          finish.push_back(left.range().finish()[i]);
+        }
+
+        // Copy right-hand argument outer dimensions to start and finish
+        for(unsigned int i = right_.outer[0]; i < right_.outer[1]; ++i) {
+          start.push_back(right.range().start()[i]);
+          finish.push_back(right.range().finish()[i]);
+        }
+
+        // Construct the result tile
+        return result_type(typename result_type::range_type(start, finish));
       }
 
     public:
@@ -161,32 +139,35 @@ namespace TiledArray {
           const unsigned int result_dim, const unsigned int left_dim,
           const unsigned int right_dim, const Permutation& perm = Permutation()) :
         left_op_(left_op), right_op_(right_op), alpha_(alpha),
-        perm_(perm),
-        left_dim_(left_dim), right_dim_(right_dim), result_dim_(result_dim),
-        left_inner_begin_(0u), left_inner_end_(0u),
-        left_outer_begin_(0u), left_outer_end_(0u),
-        right_inner_begin_(0u), right_inner_end_(0u),
-        right_outer_begin_(0u), right_outer_end_(0u)
+        perm_(perm), result_rank_(result_dim), left_(), right_()
       {
         // Compute the number of contracted dimensions in left and right.
-        const unsigned int contract_size = (left_dim_ + right_dim_ - result_dim_) >> 1;
+        TA_ASSERT(((left_dim + right_dim - result_dim) % 2) == 0u);
+        const unsigned int contract_size = (left_dim + right_dim - result_dim) >> 1;
+
+        left_.rank = left_dim;
+        right_.rank = right_dim;
 
         // Store the inner and outer dimension ranges for the left-hand argument.
         if(left_op_ == madness::cblas::NoTrans) {
-          left_outer_end_ = left_inner_begin_ = contract_size;
-          left_inner_end_ = left_dim_;
+          left_.outer[0] = 0u;
+          left_.outer[1] = left_.inner[0] = left_dim - contract_size;
+          left_.inner[1] = left_dim;
         } else {
-          left_inner_end_ = left_outer_begin_ = contract_size;
-          left_outer_end_ = left_dim_;
+          left_.inner[0] = 0ul;
+          left_.inner[1] = left_.outer[0] = contract_size;
+          left_.outer[1] = left_dim;
         }
 
         // Store the inner and outer dimension ranges for the right-hand argument.
         if(right_op_ == madness::cblas::NoTrans) {
-          right_inner_end_ = right_outer_begin_ = contract_size;
-          right_outer_end_ = right_dim_;
+          right_.inner[0] = 0u;
+          right_.inner[1] = right_.outer[0] = contract_size;
+          right_.outer[1] = right_dim;
         } else {
-          right_outer_end_ = right_inner_begin_ = contract_size;
-          right_inner_end_ = right_dim_;
+          right_.outer[0] = 0u;
+          right_.outer[1] = right_.inner[0] = right_dim - contract_size;
+          right_.inner[1] = right_dim;
         }
       }
 
@@ -196,12 +177,8 @@ namespace TiledArray {
       /// \param other The functor to be copied
       ContractReduce(const ContractReduce_& other) :
         left_op_(other.left_op_), right_op_(other.right_op_),
-        alpha_(other.alpha_), perm_(other.perm_), left_dim_(other.left_dim_),
-        right_dim_(other.right_dim_), result_dim_(other.result_dim_),
-        left_inner_begin_(other.left_inner_begin_), left_inner_end_(other.left_inner_end_),
-        left_outer_begin_(other.left_outer_begin_), left_outer_end_(other.left_outer_end_),
-        right_inner_begin_(other.right_inner_begin_), right_inner_end_(other.right_inner_end_),
-        right_outer_begin_(other.right_outer_begin_), right_outer_end_(other.right_outer_end_)
+        alpha_(other.alpha_), perm_(other.perm_), result_rank_(other.result_rank_),
+        left_(other.left_), right_(other.right_)
       { }
 
       /// Functor assignment operator
@@ -212,17 +189,9 @@ namespace TiledArray {
         right_op_ = other.right_op_;
         alpha_ = other.alpha_;
         perm_ = other.perm_;
-        left_dim_ = other.left_dim_;
-        right_dim_ = other.right_dim_;
-        result_dim_ = other.result_dim_;
-        left_inner_begin_ = other.left_inner_begin_;
-        left_inner_end_ = other.left_inner_end_;
-        left_outer_begin_ = other.left_outer_begin_;
-        left_outer_end_ = other.left_outer_end_;
-        right_inner_begin_ = other.right_inner_begin_;
-        right_inner_end_ = other.right_inner_end_;
-        right_outer_begin_ = other.right_outer_begin_;
-        right_outer_end_ = other.right_outer_end_;
+        result_rank_ = other.result_rank_;
+        left_ = other.left_;
+        right_ = other.right_;
 
         return *this;
       }
@@ -263,33 +232,121 @@ namespace TiledArray {
       /// \param[in,out] result The result object that will be the reduction target
       /// \param[in] left The left-hand tile to be contracted
       /// \param[in] right The right-hand tile to be contracted
-      void operator()(result_type& result, first_argument_type first,
-          second_argument_type second) const
+      void operator()(result_type& result, first_argument_type left,
+          second_argument_type right) const
       {
-        contract(result, first, second);
+        // Check that the arguments are not empty and have the correct ranks
+        TA_ASSERT(!left.empty());
+        TA_ASSERT(!right.empty());
+        TA_ASSERT(left.range().dim() == left_.rank);
+        TA_ASSERT(right.range().dim() == right_.rank);
+
+        scalar_type beta = one_;
+        if(result.empty()) {
+          result = make_result(left, right);
+          beta = zero_;
+        }
+
+        // Check that the result is not empty and has the correct rank
+        TA_ASSERT(!result.empty());
+        TA_ASSERT(result.range().dim() == result_rank_);
+
+        check_dims(left, right, result);
+
+        // Compute fused dimension sizes
+        integer m = 1, n = 1, k = 1;
+        for(unsigned int i = left_.outer[0]; i < left_.outer[1]; ++i)
+          m *= left.range().size()[i];
+        for(unsigned int i = left_.inner[0]; i < left_.inner[1]; ++i)
+          k *= left.range().size()[i];
+        for(unsigned int i = right_.outer[0]; i < right_.outer[1]; ++i)
+          n *= right.range().size()[i];
+
+        // Do the contraction
+        gemm(left_op_, right_op_, m, n, k, alpha_, left.data(), right.data(),
+            beta, result.data());
       }
 
       /// Contract a pair of tiles and add to a target tile
 
       /// Contract \c left1 with \c right1 and \c left2 with \c right2 ,
       /// and add the two results.
-      /// \param[in] left The first left-hand tile to be contracted
-      /// \param[in] right The first right-hand tile to be contracted
-      /// \param[in] left The second left-hand tile to be contracted
-      /// \param[in] right The second right-hand tile to be contracted
-      /// \return A tile that contains the sum of the two contractions.
-      result_type operator()(first_argument_type first1, second_argument_type second1,
-          first_argument_type first2, second_argument_type second2) const
+      /// \param[in,out] result The object that will hold the result of this
+      /// reduction operation.
+      /// \param[in] left1 The first left-hand tile to be contracted
+      /// \param[in] right1 The first right-hand tile to be contracted
+      /// \param[in] left2 The second left-hand tile to be contracted
+      /// \param[in] right2 The second right-hand tile to be contracted
+      void operator()(result_type& result,
+          first_argument_type left1, second_argument_type right1,
+          first_argument_type left2, second_argument_type right2) const
       {
-        result_type result = operator()();
+        // Check that the arguments are not empty and have the correct ranks
+        TA_ASSERT(!left1.empty());
+        TA_ASSERT(!right1.empty());
+        TA_ASSERT(!left2.empty());
+        TA_ASSERT(!right2.empty());
+        TA_ASSERT(left1.range().dim() == left_.rank);
+        TA_ASSERT(right1.range().dim() == right_.rank);
+        TA_ASSERT(left2.range().dim() == left_.rank);
+        TA_ASSERT(right2.range().dim() == right_.rank);
 
-        contract(result, first1, second1);
-        contract(result, first2, second2);
+        scalar_type beta = one_;
+        if(result.empty()) {
+          result = make_result(left1, right1);
+          beta = zero_;
+        }
 
-        return result;
+        // Check that the result is not empty and has the correct rank
+        TA_ASSERT(!result.empty());
+        TA_ASSERT(result.range().dim() == result_rank_);
+
+        check_dims(left1, right1, result);
+
+        // Compute fused dimension sizes for the first contraction
+        integer m = 1, n = 1, k = 1;
+        for(unsigned int i = left_.outer[0]; i < left_.outer[1]; ++i)
+          m *= left1.range().size()[i];
+        for(unsigned int i = right_.outer[0]; i < right_.outer[1]; ++i)
+          n *= right1.range().size()[i];
+        for(unsigned int i = left_.inner[0]; i < left_.inner[1]; ++i)
+          k *= left1.range().size()[i];
+
+        TA_ASSERT(left1.size() == (m * k));
+        TA_ASSERT(right1.size() == (k * n));
+        TA_ASSERT(result.size() == (m * n));
+
+        // Do the contraction with first pair
+        gemm(left_op_, right_op_, m, n, k, alpha_, left1.data(), right1.data(),
+            beta, result.data());
+
+        check_dims(left2, right2, result);
+
+        // Compute fused inner dimension size for the second contraction
+        k = 1;
+        for(unsigned int i = left_.inner[0]; i < left_.inner[1]; ++i)
+          k *= left2.range().size()[i];
+
+        TA_ASSERT(left2.size() == (m * k));
+        TA_ASSERT(right2.size() == (k * n));
+        TA_ASSERT(result.size() == (m * n));
+
+        // Do contraction with second pair
+        gemm(left_op_, right_op_, m, n, k, alpha_, left2.data(), right2.data(),
+            one_, result.data());
       }
 
     }; // class ContractReduce
+
+
+    // Initialize static constants
+    template <typename Result, typename Left, typename Right>
+    const typename ContractReduce<Result, Left, Right>::scalar_type
+    ContractReduce<Result, Left, Right>::zero_(0);
+
+    template <typename Result, typename Left, typename Right>
+    const typename ContractReduce<Result, Left, Right>::scalar_type
+    ContractReduce<Result, Left, Right>::one_(1);
 
   }  // namespace math
 } // namespace TiledArray
