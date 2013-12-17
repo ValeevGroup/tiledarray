@@ -388,7 +388,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When \c index is not included in this range
     /// \throw std::bad_alloc When memory allocation fails
     index idx(size_type index) const {
-      // Check that o is contained by range.
+      // Check that index is contained by range.
       TA_ASSERT(includes(index));
 
       // Construct result coordinate index object and allocate its memory.
