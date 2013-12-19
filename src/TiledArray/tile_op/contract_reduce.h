@@ -142,11 +142,11 @@ namespace TiledArray {
         perm_(perm), result_rank_(result_dim), left_(), right_()
       {
         // Compute the number of contracted dimensions in left and right.
-        TA_ASSERT(((left_dim + right_dim - result_dim) % 2) == 0u);
-        const unsigned int contract_size = (left_dim + right_dim - result_dim) >> 1;
+        TA_ASSERT(((left_dim + right_dim - result_dim) % 2u) == 0u);
 
         left_.rank = left_dim;
         right_.rank = right_dim;
+        const unsigned int contract_size = num_contract_ranks();
 
         // Store the inner and outer dimension ranges for the left-hand argument.
         if(left_op_ == madness::cblas::NoTrans) {
@@ -195,6 +195,28 @@ namespace TiledArray {
 
         return *this;
       }
+
+      /// Compute the number of contracted ranks
+
+      /// \return The number of ranks that are summed by this operation
+      unsigned int num_contract_ranks() const {
+        return (left_.rank + right_.rank - result_rank_) >> 1;
+      }
+
+      /// Result rank accessor
+
+      /// \return The rank of the result tile
+      unsigned int result_rank() const { return result_rank_; }
+
+      /// Left-hand argument rank accessor
+
+      /// \return The rank of the left-hand tile
+      unsigned int left_rank() const { return left_.rank; }
+
+      /// Right-hand argument rank accessor
+
+      /// \return The rank of the right-hand tile
+      unsigned int right_rank() const { return right_.rank; }
 
       /// Create a result type object
 
