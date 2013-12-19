@@ -102,6 +102,8 @@ BOOST_AUTO_TEST_CASE( permute_empty )
 
 }
 
+// TODO: Test non-empty permutation
+
 BOOST_AUTO_TEST_CASE( matrix_multiply )
 {
   // Set dimension constants
