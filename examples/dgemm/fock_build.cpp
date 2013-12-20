@@ -26,40 +26,53 @@ int main(int argc, char** argv) {
 
   // Get command line arguments
   if(argc < 2) {
-    std::cout << "Usage: ta_dense matrix_size block_size [repetitions]\n";
+    std::cout << "Usage: fock_build matrix_size block_size df_size df_block_size [repetitions]\n";
     return 0;
   }
   const long matrix_size = atol(argv[1]);
   const long block_size = atol(argv[2]);
+  const long df_size = atol(argv[3]);
+  const long df_block_size = atol(argv[4])
   if (matrix_size <= 0) {
     std::cerr << "Error: matrix size must greater than zero.\n";
     return 1;
   }
-  if (block_size <= 0) {
+  if (df_size <= 0) {
+    std::cerr << "Error: third rank size must greater than zero.\n";
+    return 1;
+  }
+  if (block_size <= 0 || df_block_size <= 0) {
     std::cerr << "Error: block size must greater than zero.\n";
     return 1;
   }
-  if((matrix_size % block_size) != 0ul) {
-    std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
+  if((matrix_size % block_size != 0ul &&
+      third_rank_size % df_block_size != 0ul) {
+    std::cerr << "Error: tensor size must be evenly divisible by block size.\n";
     return 1;
   }
-  const long repeat = (argc >= 3 ? atol(argv[3]) : 5);
+  const long repeat = (argc >= 5 ? atol(argv[5]) : 5);
   if (repeat <= 0) {
     std::cerr << "Error: number of repititions must greater than zero.\n";
     return 1;
   }
 
   const std::size_t num_blocks = matrix_size / block_size;
+  const std::size_t df_num_blocks = df_size / df_block_size;
   const std::size_t block_count = num_blocks * num_blocks;
+  const std::size_t df_block_count = df_num_blocks * num_blocks * num_blocks;
 
   if(world.rank() == 0)
-    std::cout << "TiledArray: dense matrix multiply test...\n"
+    std::cout << "TiledArray: Fock Build Test ...\n"
               << "Number of nodes     = " << world.size()
               << "\nMatrix size         = " << matrix_size << "x" << matrix_size
-              << "\nBlock size          = " << block_size << "x" << block_size
+              << "\nTensor size         = " << matrix_size << "x" << matrix_size << "x" << df_size
+              << "\nBlock size          = " << block_size << "x" << block_size << "x" << df_block_size
               << "\nMemory per matrix   = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
-              << " GB\nNumber of blocks    = " << block_count
-              << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
+              << "\nMemory per tensor   = " << double(matrix_size * matrix_size * df_size * sizeof(double)) / 1.0e9
+              << " GB\nNumber of matrix blocks    = " << block_count
+              << " GB\nNumber of tensor blocks    = " << df_block_count
+              << "\nAverage blocks/node matrix= " << double(block_count) / double(world.size()) << "\n";
+              << "\nAverage blocks/node tensor= " << double(df_block_count) / double(world.size()) << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;

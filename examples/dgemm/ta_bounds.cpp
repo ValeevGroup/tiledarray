@@ -20,6 +20,44 @@
 #include <iostream>
 #include <tiled_array.h>
 
+using TArray2 = TiledArray::Array<double,2>;
+namespace TA = TiledArray;
+using TensorXd = TA::Tensor<double>;
+
+struct TileRowSum{ // Look at computing iterator.
+    // Return
+    typedef TensorXd result_type;
+    // I think this is the type of tile, but I am not quite sure.
+    typedef TensorXd argument_type;
+
+    result_type operator()() const { return TensorXd();}
+
+    // Adding two tensors
+    void operator()(result_type &result, const result_type &arg){
+        if(arg.range().dim() == 1){
+            if(result.empty()){
+                result = arg;
+            }else{
+                result += arg;
+            }
+
+        } else {
+            if(result.empty()){
+                // Stoped here.
+            }
+
+        }
+
+    }
+
+};
+
+// Function to calculate the Gershgorin bounds which given an upper and lower
+// bound to the eigenvalues of a square matrix.
+void Bounds(const TArray2 &mat){
+    madness::World &world = mat.get_world();
+}
+
 int main(int argc, char** argv) {
   // Initialize runtime
   madness::World& world = madness::initialize(argc, argv);
@@ -43,11 +81,6 @@ int main(int argc, char** argv) {
     std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
     return 1;
   }
-  const long repeat = (argc >= 3 ? atol(argv[3]) : 5);
-  if (repeat <= 0) {
-    std::cerr << "Error: number of repititions must greater than zero.\n";
-    return 1;
-  }
 
   const std::size_t num_blocks = matrix_size / block_size;
   const std::size_t block_count = num_blocks * num_blocks;
@@ -63,7 +96,7 @@ int main(int argc, char** argv) {
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;
-  blocking.reserve(num_blocks + 1;
+  blocking.reserve(num_blocks + 1);
   for(std::size_t i = 0; i <= matrix_size; i += block_size)
     blocking.push_back(i);
 
@@ -75,31 +108,20 @@ int main(int argc, char** argv) {
 
   // Construct and initialize arrays
   TiledArray::Array<double, 2> a(world, trange);
-  TiledArray::Array<double, 2> b(world, trange);
-  TiledArray::Array<double, 2> c(world, trange);
   a.set_all_local(1.0);
-  b.set_all_local(1.0);
 
 
   // Start clock
   world.gop.fence();
   const double wall_time_start = madness::wall_time();
 
-  // Do matrix multiplication
-  for(int i = 0; i < repeat; ++i) {
-    c("m,n") = a("m,k") * b("k,n");
-    world.gop.fence();
-    if(world.rank() == 0)
-      std::cout << "Iteration " << i + 1 << "\n";
-  }
+  Bounds(a);
 
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 
   if(world.rank() == 0)
-    std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
-        << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
-            matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+    std::cout << "Done:\nTime: " << wall_time_stop - wall_time_start << std::endl;
 
   madness::finalize();
   return 0;
