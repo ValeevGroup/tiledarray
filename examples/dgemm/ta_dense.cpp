@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
     return 1;
   }
-  const long repeat = (argc >= 3 ? atol(argv[3]) : 5);
+  const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
   if (repeat <= 0) {
     std::cerr << "Error: number of repititions must greater than zero.\n";
     return 1;
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;
-  blocking.reserve(num_blocks + 1;
+  blocking.reserve(num_blocks + 1);
   for(std::size_t i = 0; i <= matrix_size; i += block_size)
     blocking.push_back(i);
 
@@ -79,7 +79,6 @@ int main(int argc, char** argv) {
   TiledArray::Array<double, 2> c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
-
 
   // Start clock
   world.gop.fence();
