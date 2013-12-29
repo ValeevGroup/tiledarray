@@ -548,6 +548,80 @@ namespace TiledArray {
 
     }; // class ContractionEvalImpl
 
+
+    /// Distributed contraction evaluator factory function
+
+    /// Construct a distributed contraction evaluator, which constructs a new
+    /// tensor by applying \c op to tiles of \c left and \c right.
+    /// \tparam Tile Tile type of the argument
+    /// \tparam Policy The policy type of the argument
+    /// \tparam Op The unary tile operation
+    /// \param left The left-hand argument
+    /// \param right The right-hand argument
+    /// \param world The world where the argument will be evaluated
+    /// \param shape The shape of the evaluated tensor
+    /// \param pmap The process map for the evaluated tensor
+    /// \param perm The permutation applied to the tensor
+    /// \param op The contraction/reduction tile operation
+    template <typename LeftTile, typename RightTile, typename Policy, typename Op>
+    DistEval<typename Op::result_type, Policy> make_contract_eval(
+        const DistEval<LeftTile, Policy>& left,
+        const DistEval<RightTile, Policy>& right,
+        madness::World& world,
+        const typename DistEval<typename Op::result_type, Policy>::shape_type& shape,
+        const std::shared_ptr<typename DistEval<typename Op::result_type, Policy>::pmap_interface>& pmap,
+        const Permutation& perm,
+        const Op& op)
+    {
+      TA_ASSERT(left.range().dim() == op.left_rank());
+      TA_ASSERT(right.range().dim() == op.right_rank());
+      TA_ASSERT((perm.dim() == op.result_rank()) || (perm.dim() == 0u));
+
+      // Define the impl type
+      typedef ContractionEvalImpl<DistEval<LeftTile, Policy>, DistEval<RightTile,
+          Policy>, Op, Policy> impl_type;
+
+      // Precompute iteration range data
+      const unsigned int num_contract_ranks = op.num_contract_ranks();
+      const unsigned int left_end = op.left_rank();
+      const unsigned int left_middle = left_end - num_contract_ranks;
+      const unsigned int right_end = op.right_rank();
+
+      // Construct the trange for the result tensor
+      typename impl_type::trange_type::Ranges ranges(op.result_rank());
+
+      // Iterate over the left outer dimensions
+      std::size_t M = 1ul, m = 1ul;
+      std::size_t pi = 0ul;
+      for(unsigned int i = 0ul; i < left_middle; ++i) {
+        ranges[(perm.dim() > 0ul ? perm[pi++] : pi++)] = left.trange().data()[i];
+        M *= left.range().size()[i];
+        m *= left.trange().elements().size()[i];
+      }
+      // Iterate over the right outer dimensions
+      std::size_t N = 1ul, n = 1ul;
+      for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
+        ranges[(perm.dim() > 0ul ? perm[pi++] : pi++)] = right.trange().data()[i];
+        N *= right.range().size()[i];
+        n *= right.trange().elements().size()[i];
+      }
+
+      // Compute the number of tiles in the inner dimension
+      std::size_t K = 1ul;
+      for(std::size_t i = left_middle; i < left_end; ++i)
+        K *= left.range().size()[i];
+
+      // Construct the result range
+      typename impl_type::trange_type trange(ranges.begin(), ranges.end());
+
+      // Construct the process grid
+      ProcGrid proc_grid(world, M, N, m, n);
+
+      return DistEval<typename Op::result_type, Policy>(
+          std::shared_ptr<typename impl_type::DistEvalImpl_>(new impl_type(left,
+              right, world, trange, shape, pmap, perm, op, K, proc_grid)));
+    }
+
   } // namespace detail
 }  // namespace TiledArray
 
