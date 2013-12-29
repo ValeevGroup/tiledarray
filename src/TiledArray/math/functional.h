@@ -579,7 +579,7 @@ namespace TiledArray {
         arg += factor_;
       }
 
-    }; // struct AddConst
+    }; // struct PlusAssignConst
 
   }  // namespace detail
 }  // namespace TiledArray
