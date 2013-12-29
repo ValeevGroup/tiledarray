@@ -22,8 +22,6 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 
-#include "TiledArray/coordinates.h"
-
 using namespace TiledArray;
 
 BOOST_FIXTURE_TEST_SUITE( tiled_range_suite, TiledRangeFixture )

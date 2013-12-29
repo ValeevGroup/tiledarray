@@ -26,7 +26,9 @@
 #ifndef TILEDARRAY_UTILITY_H__INCLUDED
 #define TILEDARRAY_UTILITY_H__INCLUDED
 
-#include <TiledArray/madness.h>
+#include <world/enable_if.h>
+#include <iostream>
+#include <vector>
 
 namespace TiledArray {
   namespace detail {
@@ -133,8 +135,30 @@ namespace TiledArray {
     inline typename madness::disable_if<std::is_array<T>, std::size_t>::type
     size(const T &a) { return a.size(); }
 
+    template <typename A>
+    void print_array(std::ostream& out, const A& a) {
+      std::size_t n = TiledArray::detail::size(a);
+      out << "[";
+      for(std::size_t i = 0; i < n; ++i) {
+        out << a[i];
+        if (i != (n - 1))
+          out << ",";
+      }
+      out << "]";
+    }
 
   } // namespace detail
 } // namespace TiledArray
+
+namespace std {
+
+  /// Vector output stream operator
+  template <typename T, typename A>
+  inline std::ostream& operator<<(std::ostream& os, const std::vector<T, A>& vec) {
+    TiledArray::detail::print_array(os, vec);
+    return os;
+  }
+
+} // namespace std
 
 #endif // TILEDARRAY_UTILITY_H__INCLUDED

@@ -27,6 +27,14 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (TiledArray)
 
+# Set TiledArray version
+set(TILEDARRAY_MAJOR_VERSION 1)
+set(TILEDARRAY_MINOR_VERSION 0)
+set(TILEDARRAY_MICRO_VERSION 0)
+set(TILEDARRAY_BUILDID alpha)
+set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
+set(TARGET_ARCH "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 option(DISABLE_MPI "Disable the use of MPI" OFF)
@@ -55,24 +63,35 @@ set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 #include(TestCXXAcceptsFlag)
 include(CheckCXXSourceCompiles)
 
-# static_assert is desired, but an implementation is included
 set(CMAKE_REQUIRED_FLAGS_CURRENT ${CMAKE_REQUIRED_FLAGS})
 list(APPEND CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS})
+
+# static_assert is desired, but an implementation is included
 CHECK_CXX_SOURCE_COMPILES("
   int main(int argc, char* argv[]) {
     static_assert(true, \"don't worry, be happy\");
+    return 0;
   }"
   TILEDARRAY_HAVE_STATIC_ASSERT)  
+
+# check for variadic templates
+CHECK_CXX_SOURCE_COMPILES("
+  #include <iostream>
+  #include <iterator>
+  #include <algorithm>
+  template <typename... args> void print_numbers(const args&... numbers) {
+    const int n = sizeof...(args);
+    int nums[sizeof...(args)] = { static_cast<int>(numbers)... };
+    std::copy(nums, nums+n, std::ostream_iterator<int>(std::cout, \" \"));
+  }
+  int main(int argc, char* argv[]) {
+    print_numbers(-1);
+    print_numbers(0, 1, 2, 3, 4);
+    return 0;
+  }"
+  TILEDARRAY_HAVE_VARIADIC_TEMPLATES)  
+  
 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_CURRENT})
-
-# Set TiledArray version
-set(TARGET_ARCH "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
-set(TILEDARRAY_MAJOR_VERSION 1)
-set(TILEDARRAY_MINOR_VERSION 0)
-set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_BUILDID alpha)
-
-set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
 
 # Check type support
 include(CheckTypeSize)

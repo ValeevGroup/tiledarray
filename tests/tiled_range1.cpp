@@ -20,7 +20,6 @@
 #include "TiledArray/tiled_range1.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
-#include "TiledArray/coordinates.h"
 #include <sstream>
 
 using namespace TiledArray;

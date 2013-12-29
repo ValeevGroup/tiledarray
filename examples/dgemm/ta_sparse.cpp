@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
     std::cerr << "Error: Sparsity must be less than 100.\n";
     return 1;
   }
-  const long repeat = (argc >= 4 ? atol(argv[4]) : 5);
+  const long repeat = (argc >= 5 ? atol(argv[4]) : 5);
   if(repeat <= 0) {
     std::cerr << "Error: number of repititions must greater than zero.\n";
     return 1;
