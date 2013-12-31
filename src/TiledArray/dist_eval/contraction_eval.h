@@ -507,36 +507,37 @@ namespace TiledArray {
         left_.eval();
         right_.eval();
 
-        // Construct static broadcast groups for dense arguments
-        if(left_.is_dense()) {
-          col_group_ = proc_grid_.make_col_group(madness::DistributedID(TensorImpl_::id(), 0ul));
-          col_group_.register_group();
-        }
-        if(right_.is_dense()) {
-          row_group_ = proc_grid_.make_row_group(madness::DistributedID(TensorImpl_::id(), k_));
-          row_group_.register_group();
-        }
+        if(proc_grid_.local_size() != 0ul) {
+          // Construct static broadcast groups for dense arguments
+          if(left_.is_dense()) {
+            col_group_ = proc_grid_.make_col_group(madness::DistributedID(TensorImpl_::id(), 0ul));
+            col_group_.register_group();
+          }
+          if(right_.is_dense()) {
+            row_group_ = proc_grid_.make_row_group(madness::DistributedID(TensorImpl_::id(), k_));
+            row_group_.register_group();
+          }
 
-        // Allocate memory for the reduce pair tasks.
-        std::allocator<ReducePairTask<op_type> > alloc;
-        reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
+          // Allocate memory for the reduce pair tasks.
+          std::allocator<ReducePairTask<op_type> > alloc;
+          reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
-        // Iterate over all local rows and columns
-        size_type offset = 0ul;
-        size_type tile_count = 0ul;
-        for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
-          for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++offset) {
+          // Iterate over all local rows and columns
+          size_type offset = 0ul;
+          size_type tile_count = 0ul;
+          for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
+            for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++offset) {
 
-            // Construct non-zero reduce tasks
-            if(! TensorImpl_::is_zero(offset)) {
-              new(reduce_tasks_ + offset) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
-              ++tile_count;
+              // Construct non-zero reduce tasks
+              if(! TensorImpl_::is_zero(offset)) {
+                new(reduce_tasks_ + offset) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+                ++tile_count;
+              }
             }
           }
+          // Construct the first SUMMA iteration task
+          TensorImpl_::get_world().taskq.add(new StepTask(self));
         }
-        // Construct the first SUMMA iteration task
-        TensorImpl_::get_world().taskq.add(new StepTask(self));
-
 
         // Wait for child tensors to be evaluated, and process tasks while waiting.
         left_.wait();
