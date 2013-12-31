@@ -587,26 +587,25 @@ namespace TiledArray {
       const unsigned int left_middle = left_end - num_contract_ranks;
       const unsigned int right_end = op.right_rank();
 
-      // Construct the trange for the result tensor
+      // Construct a vector TiledRange1 objects from the left- and right-hand
+      // arguments that will be used to construct the result TiledTange. Also,
+      // compute the fused outer dimension sizes, number of tiles and elements,
+      // for the contraction.
       typename impl_type::trange_type::Ranges ranges(op.result_rank());
-
-      // Iterate over the left outer dimensions
-      std::size_t M = 1ul, m = 1ul;
+      std::size_t M = 1ul, m = 1ul, N = 1ul, n = 1ul;
       std::size_t pi = 0ul;
       for(unsigned int i = 0ul; i < left_middle; ++i) {
         ranges[(perm.dim() > 0ul ? perm[pi++] : pi++)] = left.trange().data()[i];
         M *= left.range().size()[i];
         m *= left.trange().elements().size()[i];
       }
-      // Iterate over the right outer dimensions
-      std::size_t N = 1ul, n = 1ul;
       for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
         ranges[(perm.dim() > 0ul ? perm[pi++] : pi++)] = right.trange().data()[i];
         N *= right.range().size()[i];
         n *= right.trange().elements().size()[i];
       }
 
-      // Compute the number of tiles in the inner dimension
+      // Compute the number of tiles in the inner dimension.
       std::size_t K = 1ul;
       for(std::size_t i = left_middle; i < left_end; ++i)
         K *= left.range().size()[i];
