@@ -53,7 +53,7 @@ else()
   
   convert_libs_to_compargs(MAD_LIBS "${Madness_LIBRARIES}")
   
-  # Determin the proper configureation flags for MADNESS
+  # Determine the proper configuration flags for MADNESS
   
   # Set Stub MPI option
   if(MPI_FOUND)
