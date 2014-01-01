@@ -30,6 +30,13 @@
 namespace TiledArray {
   namespace detail {
 
+    /// Array wrapper
+
+    /// This object is a wrapper for raw memory buffers so that it has the same
+    /// interface, and can be used in place of, standard containers (e.g.
+    /// std::vector). SizeArray does not own the buffer, therefore it is the
+    /// user's responsibility to manage (allocate, free, etc.) the memory buffer.
+    /// \tparam T The type of the array referenced by this array object
     template <typename T>
     class SizeArray {
       private:
