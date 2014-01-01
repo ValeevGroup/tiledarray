@@ -421,9 +421,8 @@ namespace TiledArray {
 
       // Compute the coordinate index of o in range.
       for(std::size_t i = 0ul; i < dim(); ++i) {
-        const size_type s = index / weight_[i]; // Compute the size of result[i]
+        result.push_back((index / weight_[i]) + start_[i]);
         index %= weight_[i];
-        result.push_back(s + start_[i]);
       }
 
       return result;
