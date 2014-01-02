@@ -62,11 +62,6 @@ namespace TiledArray {
           first_(first), last_(last)
         { }
 
-#if __cplusplus > 199711L
-// C++11
-        SizeArray(SizeArray&& other) : first_(other.first_), last_(other.last_) {}
-#endif
-
         void set(value_type* const first, const size_type n) {
           first_ = first;
           last_ = first + n;
