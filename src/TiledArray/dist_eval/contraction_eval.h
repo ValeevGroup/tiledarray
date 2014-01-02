@@ -507,6 +507,7 @@ namespace TiledArray {
         left_.eval();
         right_.eval();
 
+        size_type tile_count = 0ul;
         if(proc_grid_.local_size() != 0ul) {
           // Construct static broadcast groups for dense arguments
           if(left_.is_dense()) {
@@ -524,7 +525,6 @@ namespace TiledArray {
 
           // Iterate over all local rows and columns
           size_type offset = 0ul;
-          size_type tile_count = 0ul;
           for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
             for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++offset) {
 
