@@ -114,7 +114,7 @@ namespace TiledArray {
 
       // Compute range data
       for(int i = n - 1; i >= 0; --i) {
-        TA_ASSERT(start[i] <= finish[i]);
+        TA_ASSERT(start[i] < finish[i]);
         start_[i] = start[i];
         finish_[i] = finish[i];
         size_[i] = finish[i] - start[i];
@@ -130,7 +130,7 @@ namespace TiledArray {
 
       // Compute range data
       for(int i = n - 1; i >= 0; --i) {
-        //TA_ASSERT(size[i] >= 0ul);
+        TA_ASSERT(size[i] > 0ul);
         start_[i] = 0ul;
         finish_[i] = size_[i] = size[i];
         weight_[i] = volume_;
@@ -200,12 +200,11 @@ namespace TiledArray {
     start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = sizeof...(_sizes) + 1;
-      if(n) {
-        // Initialize array memory
-        alloc_arrays(n);
-        size_type range_extent[n] = {size0, static_cast<size_type>(sizes)...};
-        compute_range_data(n, range_extent);
-      }
+      
+      // Initialize array memory
+      alloc_arrays(n);
+      size_type range_extent[n] = {size0, static_cast<size_type>(sizes)...};
+      compute_range_data(n, range_extent);
     }
 #endif
 
