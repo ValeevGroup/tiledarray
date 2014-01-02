@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
     return 1;
   }
-  const long repeat = (argc >= 3 ? atol(argv[3]) : 5);
+  const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
   if (repeat <= 0) {
     std::cerr << "Error: number of repititions must greater than zero.\n";
     return 1;
