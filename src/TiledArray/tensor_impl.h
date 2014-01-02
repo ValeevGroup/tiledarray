@@ -23,6 +23,7 @@
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/bitset.h>
+#include <TiledArray/expression_traits.h>
 
 namespace TiledArray {
   namespace detail {
@@ -334,7 +335,7 @@ namespace TiledArray {
       typedef typename trange_type::range_type range_type; ///< Tile range type
       typedef Bitset<> shape_type; ///< Tensor shape type
       typedef Tile value_type; ///< Tile or data type
-      typedef typename Tile::eval_type eval_type; ///< The tile evaluation type
+      typedef typename expression_traits<Tile>::eval_type eval_type; ///< The tile evaluation type
       typedef typename TiledArray::detail::scalar_type<typename value_type::value_type>::type
           numeric_type; ///< the numeric type that supports Tile
       typedef TiledArray::detail::DistributedStorage<value_type> storage_type; ///< The data container type
