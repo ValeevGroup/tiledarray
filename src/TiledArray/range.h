@@ -43,7 +43,7 @@ namespace TiledArray {
       TA_ASSERT(detail::size(start) == n);
 
       // Compute ordinal
-      typename std::size_t o = 0ul;
+      std::size_t o = 0ul;
       for(std::size_t i = 0ul; i < n; ++i)
         o += (index[i] - start[i]) * weight[i];
 
