@@ -113,6 +113,93 @@ namespace TiledArray {
             arg.move(index), madness::TaskAttributes::hipri());
       }
 
+
+      /// Sparse row group factory function
+
+      /// Construct a row group that includes all processes that will receive/
+      /// have non-zero data for iteration \c k.
+      /// \param k The row of right that will be used to generate the sparse row group
+      /// \return A sparse row group
+      madness::Group
+      make_sparse_row_group(const size_type k) const {
+        // Generate the list of processes in rank_row
+        std::vector<ProcessID> proc_list(proc_grid_.proc_cols(), -1);
+
+        // Flag all process that have non-zero tiles
+        const size_type p_start = proc_grid_.rank_row() * proc_grid_.proc_cols();
+        const size_type row_k_end = right_end(k);
+        size_type count = 0ul;
+        for(size_type i = right_begin(k), p = 0u; i < row_k_end;
+            i += right_stride_, p = (p + 1u) % proc_grid_.proc_cols())
+        {
+          if(proc_list[p] != -1) continue;
+          if(right_.shape().is_zero(i)) continue;
+
+          proc_list[p] = p_start + p;
+          ++count;
+          if(count == proc_list.size()) break;
+        }
+
+        if(count < proc_list.size()) {
+          // Convert flags into process numbers
+          size_type x = 0ul;
+          for(size_type p = 0ul; p < proc_list.size(); ++p) {
+            if(proc_list[p] == -1) continue;
+            proc_list[x++] = proc_list[p];
+          }
+
+          // Truncate invalid process id's
+          proc_list.resize(x);
+        }
+
+
+        return madness::Group(TensorImpl_::get_world(), proc_list,
+            madness::DistributedID(TensorImpl_::id(), k + k_));
+      }
+
+      /// Sparse column group factory function
+
+      /// Construct a column group that includes all processes that will receive/
+      /// have non-zero data for iteration \c k.
+      /// \param k The column of left that will be used to generate the sparse column group
+      /// \return A sparse column group
+      /// \note This function assumes that there is at least one process that
+      /// contains non-zero data and that this process contains non
+      madness::Group
+      make_sparse_col_group(const size_type k) const {
+        std::vector<ProcessID> proc_list(proc_grid_.proc_rows(), 0);
+
+        // Flag all process that have non-zero tiles
+        size_type count = 0ul;
+        for(size_type i = left_begin(k), p = 0u;
+            i < left_end_; i += left_stride_, p = (p + 1u) % proc_grid_.proc_rows())
+        {
+          if(proc_list[p] == -1) continue;
+          if(left_.shape().is_zero(i)) continue;
+
+          proc_list[p] = p * proc_grid_.proc_cols() + proc_grid_.rank_col();
+          ++count;
+          if(count == proc_list.size()) break;
+        }
+
+        if(count < proc_list.size()) {
+          // Convert flags into process numbers
+          size_type x = 0ul;
+          for(size_type p = 0ul; p < proc_grid_.proc_rows(); ++p) {
+            if(proc_list[p] == -1) continue;
+
+            proc_list[x] = proc_list[p];
+            ++x;
+          }
+
+          // Truncate invalid the process id's
+          proc_list.resize(x);
+        }
+
+        return madness::Group(TensorImpl_::get_world(), proc_list,
+            madness::DistributedID(TensorImpl_::id(), k));
+      }
+
       /// Broadcast column \c k of the left-hand argument
 
       /// \param k The column of \c left_ to be broadcast
@@ -164,8 +251,7 @@ namespace TiledArray {
         if(left_.is_dense()) {
           group = col_group_;
         } else {
-          madness::DistributedID did(TensorImpl_::id(), k + k_);
-          group = proc_grid_.make_col_group(did, left_.shape(), k, left_.size());
+          group = make_sparse_col_group(k);
           group.register_group();
         }
         const ProcessID group_root = group.rank(right_.owner(index));
