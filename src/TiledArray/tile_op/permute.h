@@ -53,17 +53,22 @@ namespace TiledArray {
 
       // Construct the inverse permuted weight and size for this tensor
       std::vector<std::size_t> ip_weight = (-perm) ^ result.range().weight();
-      const typename Tensor<ArgT,ArgA>::range_type::size_array& start =
-          tensor.range().start();
-
-      // Coordinated iterator for the value range
-      typename Tensor<ArgT,ArgA>::range_type::const_iterator it =
-          tensor.range().begin();
 
       // permute the data
       const std::size_t end = result.size();
-      for(std::size_t i = 0ul; i != end; ++i, ++it)
-        result[TiledArray::detail::calc_ordinal(*it, ip_weight, start)] = tensor[i];
+      const std::size_t ndim = result.range().dim();
+      for(std::size_t index = 0ul; index != end; ++index) {
+        // Compute the permuted index
+        std::size_t i = index;
+        std::size_t perm_index = 0ul;
+        for(std::size_t dim = 0ul; dim < ndim; ++dim) {
+          perm_index += (i / tensor.range().weight()[dim]) * ip_weight[dim];
+          i %= tensor.range().weight()[dim];
+        }
+
+        // Assign permuted data
+        result[perm_index] = tensor[index];
+      }
     }
 
     /// Apply an operation to a tensor and permute the result
@@ -88,18 +93,24 @@ namespace TiledArray {
       // Create tensor to hold the result
       result = perm ^ tensor.range();
 
-      // Construct the inverse permuted weight and size for this tensor
+      // Construct the inverse permuted weight of the result tensor
       std::vector<std::size_t> ip_weight = (-perm) ^ result.range().weight();
-      const typename Tensor<ArgT,ArgA>::range_type::size_array& start = tensor.range().start();
-
-      // Coordinated iterator for the value range
-      typename Tensor<ArgT,ArgA>::range_type::const_iterator it =
-          tensor.range().begin();
 
       // permute the data
       const std::size_t end = result.size();
-      for(std::size_t i = 0ul; i != end; ++i, ++it)
-        result[TiledArray::detail::calc_ordinal(*it, ip_weight, start)] = op(tensor[i]);
+      const std::size_t ndim = result.range().dim();
+      for(std::size_t index = 0ul; index != end; ++index) {
+        // Compute the permuted index
+        std::size_t i = index;
+        std::size_t perm_index = 0ul;
+        for(std::size_t dim = 0ul; dim < ndim; ++dim) {
+          perm_index += (i / tensor.range().weight()[dim]) * ip_weight[dim];
+          i %= tensor.range().weight()[dim];
+        }
+
+        // Assign permuted data
+        result[perm_index] = op(tensor[index]);
+      }
     }
 
     /// Apply an operation to a pair of tensors and permute the result
@@ -131,17 +142,22 @@ namespace TiledArray {
 
       // Construct the inverse permuted weight and size for this tensor
       std::vector<std::size_t> ip_weight = (-perm) ^ result.range().weight();
-      const typename Tensor<LeftT, LeftA>::range_type::size_array& start =
-          left.range().start();
-
-      // Coordinated iterator for the value range
-      typename Tensor<LeftT, LeftA>::range_type::const_iterator it =
-          left.range().begin();
 
       // permute the data
       const std::size_t end = result.size();
-      for(std::size_t i = 0ul; i != end; ++i, ++it)
-        result[TiledArray::detail::calc_ordinal(*it, ip_weight, start)] = op(left[i], right[i]);
+      const std::size_t ndim = result.range().dim();
+      for(std::size_t index = 0ul; index != end; ++index) {
+        // Compute the permuted index
+        std::size_t i = index;
+        std::size_t perm_index = 0ul;
+        for(std::size_t dim = 0ul; dim < ndim; ++dim) {
+          perm_index += (i / left.range().weight()[dim]) * ip_weight[dim];
+          i %= left.range().weight()[dim];
+        }
+
+        // Assign permuted data
+        result[perm_index] = op(left[index], right[index]);
+      }
     }
 
   }  // namespace math
