@@ -630,18 +630,49 @@ namespace TiledArray {
           std::allocator<ReducePairTask<op_type> > alloc;
           reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
-          // Iterate over all local rows and columns
-          size_type offset = 0ul;
-          for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
-            for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++offset) {
+          if(DistEvalImpl_::perm().dim() > 1) {
+            // Construct inverse permuted weight and start arrays.
+            const Permutation inv_perm = -DistEvalImpl_::perm();
+            const range_type range = inv_perm ^ TensorImpl_::range();
+            const std::vector<size_type> ip_weight = inv_perm ^ TensorImpl_::range().weight();
 
-              // Construct non-zero reduce tasks
-              if(! TensorImpl_::is_zero(offset)) {
-                new(reduce_tasks_ + offset) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
-                ++tile_count;
+            // Iterate over all local rows and columns
+            ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+            for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
+              const size_type row_start = row * proc_grid_.cols();
+              for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++reduce_task) {
+
+                // Compute convert the working ordinal index to a
+                std::size_t index = 0ul;
+                std::size_t x = row_start + col;
+                for(std::size_t i = 0ul; i < range.dim(); ++i) {
+                  index += (x / range.weight()[i]) * ip_weight[i];
+                  x %= range.weight()[i];
+                }
+
+                // Construct non-zero reduce tasks
+                if(! TensorImpl_::is_zero(TiledArray::detail::calc_ordinal(range.idx(row_start + col), ip_weight, range.start()))) {
+                  new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+                  ++tile_count;
+                }
+              }
+            }
+          } else {
+
+            // Iterate over all local rows and columns
+            ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+            for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
+              const size_type row_start = row * proc_grid_.cols();
+              for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++reduce_task) {
+                // Construct non-zero reduce tasks
+                if(! TensorImpl_::is_zero(row_start + col)) {
+                  new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+                  ++tile_count;
+                }
               }
             }
           }
+
           // Construct the first SUMMA iteration task
           TensorImpl_::get_world().taskq.add(new StepTask(self));
         }
