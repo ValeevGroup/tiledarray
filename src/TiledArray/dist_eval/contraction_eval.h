@@ -71,12 +71,28 @@ namespace TiledArray {
       // Contraction results
       ReducePairTask<op_type>* reduce_tasks_; ///< A pointer to the reduction tasks
 
+      // Constant left and right index iterator bounds
+      const size_type left_start_local_;
+      const size_type left_end_;
+      const size_type left_stride_;
+      const size_type left_stride_local_;
+      const size_type right_stride_;
+      const size_type right_stride_local_;
+
     private:
 
       typedef madness::Future<typename right_type::eval_type> right_future; ///< Future to a right-hand argument tile
       typedef madness::Future<typename left_type::eval_type> left_future; ///< Future to a left-hand argument tile
       typedef std::pair<size_type, right_future> row_datum; ///< Datum element type for a right-hand argument row
       typedef std::pair<size_type, left_future> col_datum; ///< Datum element type for a left-hand argument column
+
+
+      size_type left_begin(const size_type k) const { return k; }
+      size_type left_begin_local(const size_type k) const { return left_start_local_ + k; }
+
+      size_type right_begin(const size_type k) const { return k * proc_grid_.cols(); }
+      size_type right_begin_local(const size_type k) const { return k * proc_grid_.cols() + proc_grid_.rank_col(); }
+      size_type right_end(const size_type k) const { return (k + 1ul) * proc_grid_.cols(); }
 
       template <typename T>
       static typename T::eval_type convert_tile(const T& tile) {
@@ -107,17 +123,14 @@ namespace TiledArray {
         TA_ASSERT(col.size() == 0ul);
 
         // Compute the left-hand argument column first index, end, and stride
-        size_type index = proc_grid_.rank_row() * proc_grid_.cols() + k;
-        const size_type end = proc_grid_.size();
-        const size_type stride = proc_grid_.proc_rows() * proc_grid_.cols();
+        size_type index = left_begin_local(k);
 
         // Get the broadcast process group and root process
         madness::Group group;
         if(right_.is_dense()) {
           group = row_group_;
         } else {
-          madness::DistributedID did(TensorImpl_::id(), k);
-          group = proc_grid_.make_row_group(did, right_.shape(), k, right_.size());
+          group = make_sparse_row_group(k);
           group.register_group();
         }
         const ProcessID group_root = group.rank(left_.owner(index));
@@ -126,14 +139,14 @@ namespace TiledArray {
         col.reserve(proc_grid_.local_rows());
 
         // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
-        for(size_type i = 0ul; index < end; ++i, index += stride) {
-          if(! left_.is_zero(index)) {
-            // Get column tile
-            col.push_back(col_datum(i, move_tile(left_, index)));
+        for(size_type i = 0ul; index < left_end_; ++i, index += left_stride_local_) {
+          if(left_.is_zero(index)) continue;
 
-            const madness::DistributedID key(TensorImpl_::id(), index);
-            TensorImpl_::get_world().gop.bcast(key, col.back().second, group_root, group);
-          }
+          // Get column tile
+          col.push_back(col_datum(i, (left_.is_local(index) ? move_tile(left_, index) : left_future())));
+
+          const madness::DistributedID key(TensorImpl_::id(), index);
+          TensorImpl_::get_world().gop.bcast(key, col.back().second, group_root, group);
         }
 
         // Cleanup group
@@ -145,9 +158,8 @@ namespace TiledArray {
         TA_ASSERT(row.size() == 0ul);
 
         // Compute the left-hand argument column first index, end, and stride
-        size_type index = k * proc_grid_.cols() + proc_grid_.rank_col();
-        const size_type end = (k + 1) * proc_grid_.cols();
-        const size_type stride = proc_grid_.proc_cols();
+        size_type index = right_begin_local(k);
+        const size_type end = right_end(k);
 
         // Get the broadcast process group and root
         madness::Group group;
@@ -164,14 +176,14 @@ namespace TiledArray {
         row.reserve(proc_grid_.local_cols());
 
         // Broadcast and store non-zero tiles in the k-th row of the right-hand argument.
-        for(size_type i = 0ul; index < end; ++i, index += stride) {
-          if(! right_.is_zero(index)) {
-            // Get column tile
-            row.push_back(row_datum(i, move_tile(right_, index)));
+        for(size_type i = 0ul; index < end; ++i, index += right_stride_local_) {
+          if(! right_.is_zero(index)) continue;
 
-            const madness::DistributedID key(TensorImpl_::id(), index + left_.size());
-            TensorImpl_::get_world().gop.bcast(key, row.back().second, group_root, group);
-          }
+          // Get row tile
+          row.push_back(row_datum(i, (right_.is_local(index) ? move_tile(right_, index) : right_future())));
+
+          const madness::DistributedID key(TensorImpl_::id(), index + left_.size());
+          TensorImpl_::get_world().gop.bcast(key, row.back().second, group_root, group);
         }
 
         // Cleanup group
@@ -201,20 +213,18 @@ namespace TiledArray {
         if(right_.is_dense())
           return k;
 
-        // Initialize row end to the start of the k-th row.
-        size_type row_end = k * proc_grid_.cols();
 
         // Iterate over k's until a non-zero tile is found or the end of the
         // matrix is reached.
         for(; k < k_; ++k) {
 
           // Set the starting and ending point for row k
-          size_type i = row_end + proc_grid_.rank_col();
-          row_end += proc_grid_.cols();
+          size_type index = right_begin_local(k);
+          const size_type end = right_end(k);
 
           // Search row k for non-zero tiles
-          for(; i < row_end; i += proc_grid_.proc_cols())
-            if(! right_.is_zero(i))
+          for(; index < end; index += right_stride_local_)
+            if(! right_.is_zero(index))
               return k;
         }
 
@@ -235,13 +245,10 @@ namespace TiledArray {
 
         // Iterate over k's until a non-zero tile is found or the end of the
         // matrix is reached.
-        const size_type col_start = proc_grid_.rank_row() * k_;
-        const size_type col_step = proc_grid_.proc_rows() * k_;
         for(; k < k_; ++k) {
-
           // Search row k for non-zero tiles
-          for(size_type i = col_start + k; i < left_.size(); i += col_step)
-            if(! left_.is_zero(i))
+          for(size_type index = left_begin_local(k); index < left_end_; index += left_stride_local_)
+            if(! left_.is_zero(index))
               return k;
         }
 
@@ -379,35 +386,32 @@ namespace TiledArray {
       contract(const size_type k, const std::vector<col_datum>& col,
           const std::vector<row_datum>& row, madness::TaskInterface* const task)
       {
-
-        // Compute the threshold that will be applied to tile pair contractions.
-        const float threshold_k = TensorImpl_::shape().threshold() / float(k_);
-
-        /// Compute the base index and strides for tiles of col and row.
-        const size_type left_index = proc_grid_.rank_row() * k_ + k;
-        const size_type left_stride = proc_grid_.proc_rows() * k_;
-        const size_type right_index = k * proc_grid_.cols() + proc_grid_.rank_col();
-        const size_type right_stride = proc_grid_.proc_cols();
+        // Cache row shape data.
+        std::vector<float> row_shape_values;
+        row_shape_values.reserve(row.size());
+        const size_type right_index_base = right_begin_local(k);
+        for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it)
+          row_shape_values.push_back(right_.shape().data()[right_index_base + (row_it->first * right_stride_local_)]);
 
         // Iterate over the left-hand argument column (rows of the result)
+        const size_type left_index_base = left_begin_local(k);
+        const float threshold_k = TensorImpl_::shape().threshold() / float(k_);
         for(typename std::vector<col_datum>::const_iterator col_it = col.begin(); col_it != col.end(); ++col_it) {
           // Compute the local, result-tile offset for the current result row.
           const size_type result_offset = col_it->first * proc_grid_.local_cols();
 
           // Get the shape data for col_it tile
           const float col_shape_value =
-              left_.shape().data()[left_index + (col_it->first * left_stride)];
+              left_.shape().data()[left_index_base + (col_it->first * left_stride_local_)];
 
-          // Iterate over the right-hand argument row (cols of the result)
+          // Iterate over the right-hand argument row (columns of the result)
           for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it) {
+            // Filter trivial results
+            if((col_shape_value * row_shape_values[row_it - row.begin()]) < threshold_k)
+              continue;
 
-            const float row_shape_value =
-                right_.shape().data()[right_index + (row_it->first * right_stride)];
-
-            if((col_shape_value * row_shape_value) >= threshold_k) { // Filter trivial results
-              task->inc();
-              reduce_tasks_[result_offset + row_it->first].add(col_it->second, row_it->second, task);
-            }
+            task->inc();
+            reduce_tasks_[result_offset + row_it->first].add(col_it->second, row_it->second, task);
           }
         }
       }
@@ -487,7 +491,13 @@ namespace TiledArray {
         left_(left), right_(right), op_(op),
         row_group_(), col_group_(),
         k_(k), proc_grid_(proc_grid),
-        reduce_tasks_(NULL)
+        reduce_tasks_(NULL),
+        left_start_local_(proc_grid_.rank_row() * k),
+        left_end_(left.size()),
+        left_stride_(k),
+        left_stride_local_(proc_grid.proc_rows() * k),
+        right_stride_(1ul),
+        right_stride_local_(proc_grid.proc_cols())
       { }
 
       virtual ~ContractionEvalImpl() { }
