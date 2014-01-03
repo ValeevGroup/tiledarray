@@ -29,6 +29,7 @@
 #include "TiledArray/dist_eval/array_eval.h"
 #include "TiledArray/dense_shape.h"
 #include "TiledArray/tile_op/contract_reduce.h"
+#include "TiledArray/eigen.h"
 #include "array_fixture.h"
 
 using namespace TiledArray;
@@ -73,7 +74,9 @@ struct ContractionEvalFixture : public TiledRangeFixture {
     pmap.reset(new detail::BlockedPmap(* GlobalFixture::world, result_tr.tiles().volume()));
   }
 
-  ~ContractionEvalFixture() { }
+  ~ContractionEvalFixture() {
+    GlobalFixture::world->gop.fence();
+  }
 
   ArrayN left;
   ArrayN right;
@@ -106,6 +109,91 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK(contract.is_dense());
   for(std::size_t i = 0; i < result_tr.tiles().volume(); ++i)
     BOOST_CHECK(! contract.is_zero(i));
+
+}
+
+
+BOOST_AUTO_TEST_CASE( eval )
+{
+  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
+
+  dist_eval_type1 contract = detail::make_contract_eval(left_arg, right_arg,
+      left_arg.get_world(), DenseShape(), pmap, Permutation(), op);
+
+  // Check evaluation
+  BOOST_REQUIRE_NO_THROW(contract.eval());
+
+  // Compute matrix element dimensions.
+  const std::size_t m = left.trange().elements().size().front();
+  const std::size_t n = right.trange().elements().size().back();
+  const std::size_t k = left.trange().elements().volume() / m;
+
+  typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
+  matrix_type l(m, k), r(k, n);
+
+  // Copy all tiles of left into local l matrix.
+  {
+    const std::size_t left_middle = left.range().dim() - op.num_contract_ranks();
+    for(std::size_t index = 0ul; index < left.size(); ++index) {
+      const ArrayN::value_type tile = left.find(index);
+
+      std::size_t m0 = 1ul, m = 1ul, k0 = 1ul, k = 1ul;
+      std::size_t dim;
+      for(dim = 0ul; dim < left_middle; ++dim) {
+        m0 *= tile.range().start()[dim];
+        m *= tile.range().size()[dim];
+      }
+      for(; dim < left.range().dim(); ++dim) {
+        k0 *= tile.range().start()[dim];
+        k *= tile.range().size()[dim];
+      }
+
+      l.block(m0, k0, m, k) = eigen_map(tile, m, k);
+    }
+  }
+
+  // Copy all tiles of right into local r matrix.
+  {
+    const std::size_t right_middle = op.num_contract_ranks();
+    for(std::size_t index = 0ul; index < right.size(); ++index) {
+      const ArrayN::value_type tile = right.find(index);
+
+      std::size_t k0 = 1ul, k = 1ul, n0 = 1ul, n = 1ul;
+      std::size_t dim;
+      for(dim = 0ul; dim < right_middle; ++dim) {
+        k0 *= tile.range().start()[dim];
+        k *= tile.range().size()[dim];
+      }
+      for(; dim < right.range().dim(); ++dim) {
+        n0 *= tile.range().start()[dim];
+        n *= tile.range().size()[dim];
+      }
+
+      r.block(k0, n0, k, n) = eigen_map(tile, k, n);
+    }
+  }
+
+  // Compute the reference contraction
+  const matrix_type reference = l * r;
+
+  dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
+  const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
+
+  // Check that each tile has been properly scaled.
+  for(; it != end; ++it) {
+
+    // Get the array evaluator tile.
+    madness::Future<dist_eval_type1::value_type> tile;
+    BOOST_REQUIRE_NO_THROW(tile = contract.move(*it));
+
+    // Force the evaluation of the tile
+    dist_eval_type1::eval_type eval_tile;
+    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+
+    // Check that the result tile is correctly modified.
+    BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+    BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0], eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
+  }
 
 }
 
