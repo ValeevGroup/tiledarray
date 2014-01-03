@@ -95,9 +95,7 @@ namespace TiledArray {
       size_type right_end(const size_type k) const { return (k + 1ul) * proc_grid_.cols(); }
 
       template <typename T>
-      static typename T::eval_type convert_tile(const T& tile) {
-        return tile;
-      }
+      static typename T::eval_type convert_tile(const T& tile) { return tile; }
 
       template <typename Arg>
       static typename madness::disable_if<
@@ -302,9 +300,6 @@ namespace TiledArray {
 
       /// Destroy reduce tasks and set the result tiles
       void finalize() {
-        // Create allocator
-        std::allocator<ReducePairTask<op_type> > alloc;
-
         // Initialize loop control variables
         size_type offset = 0ul;
         size_type i_start = proc_grid_.rank_row() * proc_grid_.cols() + proc_grid_.rank_col();
@@ -336,7 +331,7 @@ namespace TiledArray {
         }
 
         // Deallocate the memory for the reduce pair tasks.
-        alloc.deallocate(reduce_tasks_, proc_grid_.local_size());
+        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_, proc_grid_.local_size());
       }
 
       /// Schedule local contraction tasks for \c col and \c row tile pairs
@@ -483,6 +478,22 @@ namespace TiledArray {
 
     public:
 
+      /// Constructor
+
+      /// \param left The left-hand argument evaluator
+      /// \param right The right-hand argument evaluator
+      /// \param world The world where this evaluator will live
+      /// \param trange The tiled range of the result tensor
+      /// \param shape The shape of the result tensor
+      /// \param pmap The process map for the result tensor
+      /// \param perm The permutation that will be applied to tiles and the
+      /// coordinate index after contraction of the result tile
+      /// \param op The operation that will be used to contract tile pairs
+      /// \param k The number of tiles in the inner dimension
+      /// \param proc_grid The process grid that defines the layout of the tiles
+      /// during the contraction evaluation
+      /// \note The trange, shape, and pmap are assumed to be in the final,
+      /// permuted, state for the result.
       ContractionEvalImpl(const left_type& left, const right_type& right,
           madness::World& world, const trange_type trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
