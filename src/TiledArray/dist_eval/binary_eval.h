@@ -66,10 +66,10 @@ namespace TiledArray {
       /// \param arg The argument
       /// \param op The element transform operation
       BinaryEvalImpl(const left_type& left, const right_type& right,
-          madness::World& world, const shape_type& shape,
+          madness::World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
           const op_type& op) :
-        DistEvalImpl_(world, left.trange(), shape, pmap, perm),
+        DistEvalImpl_(world, trange, shape, pmap, perm),
         left_(left), right_(right), op_(op)
       {
         TA_ASSERT(left.trange() == right.trange());
@@ -208,7 +208,9 @@ namespace TiledArray {
           Policy>, Op, Policy> impl_type;
       return DistEval<typename Op::result_type, Policy>(
           std::shared_ptr<typename impl_type::DistEvalImpl_>(
-              new impl_type(left, right, world, shape, pmap, perm, op)));
+              new impl_type(left, right, world,
+                  (perm.dim() > 1u ? perm ^ left.trange() : left.trange()),
+                  shape, pmap, perm, op)));
     }
 
   }  // namespace detail

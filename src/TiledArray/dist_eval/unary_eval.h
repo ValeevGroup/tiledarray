@@ -52,7 +52,7 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \param op The element transform operation
-      UnaryEvalImpl(const arg_type& arg, madness::World& world,
+      UnaryEvalImpl(const arg_type& arg, madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm, const op_type& op) :
         DistEvalImpl_(world, arg.trange(), shape, pmap, perm),
@@ -153,7 +153,9 @@ namespace TiledArray {
       typedef UnaryEvalImpl<DistEval<Tile, Policy>, Op, Policy> impl_type;
       typedef typename impl_type::DistEvalImpl_ impl_base_type;
       return DistEval<typename Op::result_type, Policy>(
-          std::shared_ptr<impl_base_type>(new impl_type(arg, world, shape, pmap, perm, op)));
+          std::shared_ptr<impl_base_type>(new impl_type(arg, world,
+              (perm.dim() > 1u ? perm ^ arg.trange() : arg.trange()), shape,
+              pmap, perm, op)));
     }
 
   }  // namespace detail

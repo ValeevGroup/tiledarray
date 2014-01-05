@@ -148,7 +148,7 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \param op The element transform operation
-      ArrayEvalImpl(const array_type& array, madness::World& world,
+      ArrayEvalImpl(const array_type& array, madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm, const op_type& op) :
         DistEvalImpl_(world, array.trange(), shape, pmap, perm),
@@ -284,7 +284,9 @@ namespace TiledArray {
       typedef ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
       typedef typename impl_type::DistEvalImpl_ impl_base_type;
       return DistEval<LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
-          std::shared_ptr<impl_base_type>(new impl_type(array, world, shape, pmap, perm, op)));
+          std::shared_ptr<impl_base_type>(new impl_type(array, world,
+              (perm.dim() > 1u ? perm ^ array.trange() : array.trange()), shape,
+              pmap, perm, op)));
     }
 
   }  // namespace detail

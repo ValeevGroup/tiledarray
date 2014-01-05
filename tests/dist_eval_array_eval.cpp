@@ -62,7 +62,8 @@ BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(impl_type(array, array.get_world(), DenseShape(), array.get_pmap(), Permutation(), op));
+  BOOST_REQUIRE_NO_THROW(impl_type(array, array.get_world(), array.trange(),
+      DenseShape(), array.get_pmap(), Permutation(), op));
 
   dist_eval_type dist_eval = detail::make_array_eval(array, array.get_world(),
       DenseShape(), array.get_pmap(), Permutation(), op);

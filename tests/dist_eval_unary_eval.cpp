@@ -69,7 +69,8 @@ BOOST_FIXTURE_TEST_SUITE( unary_eval_suite, UnaryEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(impl_type(arg, arg.get_world(), DenseShape(), arg.pmap(), Permutation(), op_type(3)));
+  BOOST_REQUIRE_NO_THROW(impl_type(arg, arg.get_world(), arg.trange(),
+      DenseShape(), arg.pmap(), Permutation(), op_type(3)));
 
   typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 
@@ -91,7 +92,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   typedef detail::UnaryEvalImpl<dist_eval_type2, op_type2, DensePolicy> impl_type2;
 
 
-  BOOST_REQUIRE_NO_THROW(impl_type2(unary, unary.get_world(), DenseShape(), arg.pmap(), Permutation(), op_type2(5)));
+  BOOST_REQUIRE_NO_THROW(impl_type2(unary, unary.get_world(), unary.trange(),
+      DenseShape(), arg.pmap(), Permutation(), op_type2(5)));
 
   dist_eval_type2 unary2 = detail::make_unary_eval(unary, unary.get_world(),
       DenseShape(), unary.pmap(), Permutation(), op_type2(5));

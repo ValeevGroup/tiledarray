@@ -76,7 +76,7 @@ BOOST_FIXTURE_TEST_SUITE( dist_eval_binary_eval_suite, BinaryEvalFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   BOOST_REQUIRE_NO_THROW(impl_type(left_arg, right_arg, left.get_world(),
-      DenseShape(), left_arg.pmap(), Permutation(), op_type()));
+      left_arg.trange(), DenseShape(), left_arg.pmap(), Permutation(), op_type()));
 
   typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 

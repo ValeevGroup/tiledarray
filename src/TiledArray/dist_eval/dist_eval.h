@@ -52,7 +52,8 @@ namespace TiledArray {
 
     private:
       const Permutation perm_; ///< The permutation to be applied to this tensor
-      const typename TensorImpl_::range_type range_; ///< The original tiled range for this tensor
+      typename TensorImpl_::range_type range_; ///< The original tiled range for this tensor
+      std::vector<size_type> ip_weight_; ///< The inverse permuted weight of the result range
 
       // The following variables are used to track the total number of tasks run
       // on the local node, task_count_, and the number of tiles set on this
@@ -69,8 +70,20 @@ namespace TiledArray {
 
       /// \param i The index in the unpermuted index space
       /// \return The corresponding index in the permuted index space
-      size_type perm_index(size_type i) const {
-        return (perm_.dim() > 1u ? TensorImpl_::range().ord(perm_ ^ range_.idx(i)) : i);
+      size_type perm_index(size_type index) const {
+        std::size_t result_index;
+        if(perm_.dim() > 1u) {
+          result_index = 0ul;
+          // Permute the index
+          for(std::size_t i = 0ul; i < TensorImpl_::range().dim(); ++i) {
+            result_index += (index / range_.weight()[i]) * ip_weight_[i];
+            index %= range_.weight()[i];
+          }
+        } else {
+          // Return the unmodified index if no permutation needs to be applied
+          result_index = index;
+        }
+        return result_index;
       }
 
       /// Permutation accessor
@@ -90,13 +103,20 @@ namespace TiledArray {
       DistEvalImpl(madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm) :
-        TensorImpl_(world, (perm.dim() > 1u ? perm ^ trange : trange), shape, pmap),
+        TensorImpl_(world, trange, shape, pmap),
         perm_(perm),
-        range_(trange.tiles()),
+        range_(),
+        ip_weight_(),
         task_count_(0),
         set_counter_()
       {
         set_counter_ = 0;
+
+        if(perm.dim() > 1u) {
+          Permutation inv_perm(-perm);
+          range_ = inv_perm ^ trange.tiles();
+          ip_weight_ = inv_perm ^ TensorImpl_::range().weight();
+        }
       }
 
       virtual ~DistEvalImpl() { }
