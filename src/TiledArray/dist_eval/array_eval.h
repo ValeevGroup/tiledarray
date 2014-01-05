@@ -140,14 +140,18 @@ namespace TiledArray {
     private:
       array_type array_; ///< The array that will be evaluated
       std::shared_ptr<op_type> op_; ///< The tile operation
-      Permutation inv_perm_;
+      Permutation inv_perm_; ///< The inverse permutation
 
     public:
 
       /// Constructor
 
-      /// \param arg The argument
-      /// \param op The element transform operation
+      /// \param array The array that will be evaluated
+      /// \param world The world where array will be evaluated
+      /// \param trange The tiled range of the result tensor
+      /// \param shape The shape of the result tensor
+      /// \param pmap The process map for the result tensor tiles
+      /// \param op The operation that will be used to evaluate the tiles of array
       ArrayEvalImpl(const array_type& array, madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm, const op_type& op) :
