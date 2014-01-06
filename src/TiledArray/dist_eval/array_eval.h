@@ -93,8 +93,6 @@ namespace TiledArray {
       /// \return \c true if this tile is consumable, otherwise \c false .
       bool is_consumable() const { return consume_; }
 
-    public:
-
       /// Convert tile to evaluation type
       operator eval_type() const { return (*op_)(tile_, consume_); }
 
