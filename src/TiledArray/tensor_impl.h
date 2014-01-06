@@ -22,9 +22,8 @@
 
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/transform_iterator.h>
-#include <TiledArray/tiled_range.h>
-#include <TiledArray/bitset.h>
 #include <TiledArray/expression_traits.h>
+#include <TiledArray/type_traits.h>
 
 namespace TiledArray {
   namespace detail {
