@@ -79,7 +79,6 @@ namespace TiledArray {
       const size_type right_stride_;
       const size_type right_stride_local_;
 
-    private:
 
       typedef madness::Future<typename right_type::eval_type> right_future; ///< Future to a right-hand argument tile
       typedef madness::Future<typename left_type::eval_type> left_future; ///< Future to a left-hand argument tile
@@ -93,6 +92,7 @@ namespace TiledArray {
       size_type right_begin(const size_type k) const { return k * proc_grid_.cols(); }
       size_type right_begin_local(const size_type k) const { return k * proc_grid_.cols() + proc_grid_.rank_col(); }
       size_type right_end(const size_type k) const { return (k + 1ul) * proc_grid_.cols(); }
+
 
       template <typename T>
       static typename T::eval_type convert_tile(const T& tile) { return tile; }
@@ -386,21 +386,23 @@ namespace TiledArray {
 
       /// Destroy reduce tasks and set the result tiles
       void finalize() {
-        // Initialize loop control variables
-        size_type offset = 0ul;
-        size_type i_start = proc_grid_.rank_row() * proc_grid_.cols() + proc_grid_.rank_col();
-        const size_type i_start_step = proc_grid_.proc_rows() * proc_grid_.cols();
+
+        // Construct inverse permuted weight and start arrays.
+        const Permutation inv_perm = -DistEvalImpl_::perm();
+        const range_type range = inv_perm ^ TensorImpl_::range();
+        const std::vector<size_type> ip_weight = inv_perm ^ TensorImpl_::range().weight();
 
         // Iterate over all local rows and columns
-        for(; i_start < proc_grid_.size(); i_start += i_start_step) {
-          for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++offset) {
-            // Compute the index
-            const size_type index = i_start + col;
+        ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+        for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
+          const size_type row_start = row * proc_grid_.cols();
+          for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++reduce_task) {
 
+            // Compute convert the working ordinal index to a
+            const std::size_t index = DistEvalImpl_::perm_index(row_start + col);
+
+            // Construct non-zero reduce tasks
             if(! TensorImpl_::is_zero(index)) {
-              // Get the ordinal index and reduce task for tile (r,c).
-              ReducePairTask<op_type>* const reduce_task = reduce_tasks_ + offset;
-
               // Set the result tile
               DistEvalImpl_::set_tile(index, reduce_task->submit());
 
@@ -408,13 +410,13 @@ namespace TiledArray {
               reduce_task->~ReducePairTask<op_type>();
             }
           }
-
-          // Unregister groups if used.
-          if(left_.is_dense())
-            col_group_.unregister_group();
-          if(right_.is_dense())
-            row_group_.unregister_group();
         }
+
+        // Unregister groups if used.
+        if(left_.is_dense())
+          col_group_.unregister_group();
+        if(right_.is_dense())
+          row_group_.unregister_group();
 
         // Deallocate the memory for the reduce pair tasks.
         std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_, proc_grid_.local_size());
@@ -630,45 +632,15 @@ namespace TiledArray {
           std::allocator<ReducePairTask<op_type> > alloc;
           reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
-          if(DistEvalImpl_::perm().dim() > 1) {
-            // Construct inverse permuted weight and start arrays.
-            const Permutation inv_perm = -DistEvalImpl_::perm();
-            const range_type range = inv_perm ^ TensorImpl_::range();
-            const std::vector<size_type> ip_weight = inv_perm ^ TensorImpl_::range().weight();
-
-            // Iterate over all local rows and columns
-            ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-            for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
-              const size_type row_start = row * proc_grid_.cols();
-              for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++reduce_task) {
-
-                // Compute convert the working ordinal index to a
-                std::size_t index = 0ul;
-                std::size_t x = row_start + col;
-                for(std::size_t i = 0ul; i < range.dim(); ++i) {
-                  index += (x / range.weight()[i]) * ip_weight[i];
-                  x %= range.weight()[i];
-                }
-
-                // Construct non-zero reduce tasks
-                if(! TensorImpl_::is_zero(TiledArray::detail::calc_ordinal(range.idx(row_start + col), ip_weight, range.start()))) {
-                  new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
-                  ++tile_count;
-                }
-              }
-            }
-          } else {
-
-            // Iterate over all local rows and columns
-            ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-            for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
-              const size_type row_start = row * proc_grid_.cols();
-              for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++reduce_task) {
-                // Construct non-zero reduce tasks
-                if(! TensorImpl_::is_zero(row_start + col)) {
-                  new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
-                  ++tile_count;
-                }
+          // Iterate over all local rows and columns
+          ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+          for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
+            const size_type row_start = row * proc_grid_.cols();
+            for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++reduce_task) {
+              // Construct non-zero reduce tasks
+              if(! TensorImpl_::is_zero(DistEvalImpl_::perm_index(row_start + col))) {
+                new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+                ++tile_count;
               }
             }
           }
@@ -691,7 +663,8 @@ namespace TiledArray {
 
     /// Construct a distributed contraction evaluator, which constructs a new
     /// tensor by applying \c op to tiles of \c left and \c right.
-    /// \tparam Tile Tile type of the argument
+    /// \tparam LeftTile Tile type of the left-hand argument
+    /// \tparam RightTile Tile type of the right-hand argument
     /// \tparam Policy The policy type of the argument
     /// \tparam Op The unary tile operation
     /// \param left The left-hand argument
