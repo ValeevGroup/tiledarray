@@ -176,7 +176,7 @@ namespace TiledArray {
     /// \param size An array with the size of each dimension
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename SizeArray>
-    Range(const SizeArray& size) :
+    explicit Range(const SizeArray& size) :
       start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = detail::size(size);
@@ -197,10 +197,10 @@ namespace TiledArray {
     /// \throw std::bad_alloc When memory allocation fails.
     template<typename... _sizes>
     explicit Range(const size_type& size0, const _sizes&... sizes) :
-    start_(), finish_(), size_(), weight_(), volume_(0ul)
+      start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = sizeof...(_sizes) + 1;
-      
+
       // Initialize array memory
       alloc_arrays(n);
       size_type range_extent[n] = {size0, static_cast<size_type>(sizes)...};
