@@ -58,7 +58,10 @@ namespace TiledArray {
     typedef Range Range_; ///< This object type
     typedef std::size_t size_type; ///< Size type
     typedef std::vector<std::size_t> index; ///< Coordinate index type
+    typedef index index_type; ///< Coordinate index type, to conform Tensor Working Group spec
     typedef detail::SizeArray<std::size_t> size_array; ///< Size array type
+    typedef index extent_type;    ///< Range extent type, to conform Tensor Working Group spec
+    typedef std::size_t ordinal_type; ///< Ordinal type, to conform Tensor Working Group spec
     typedef detail::RangeIterator<index, Range_> const_iterator; ///< Coordinate iterator
     friend class detail::RangeIterator<index, Range_>;
 
@@ -147,7 +150,7 @@ namespace TiledArray {
     /// Constructor defined by an upper and lower bound
 
     /// \tparam Index An array type
-    /// \param start The lower bounds of the N-dimensional range
+    /// \param start The lower bound of the N-dimensional range
     /// \param finish The upper bound of the N-dimensional range
     /// \throw TiledArray::Exception When the size of \c start is not equal to
     /// that of \c finish.
@@ -173,7 +176,7 @@ namespace TiledArray {
     /// \param size An array with the size of each dimension
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename SizeArray>
-    explicit Range(const SizeArray& size) :
+    Range(const SizeArray& size) :
       start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = detail::size(size);
@@ -197,12 +200,11 @@ namespace TiledArray {
     start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = sizeof...(_sizes) + 1;
-      if(n) {
-        // Initialize array memory
-        alloc_arrays(n);
-        size_type range_size[n] = {size0, static_cast<size_type>(sizes)...};
-        compute_range_data(n, range_size);
-      }
+      
+      // Initialize array memory
+      alloc_arrays(n);
+      size_type range_extent[n] = {size0, static_cast<size_type>(sizes)...};
+      compute_range_data(n, range_extent);
     }
 #endif
 
@@ -287,11 +289,23 @@ namespace TiledArray {
     /// \throw nothing
     unsigned int dim() const { return size_.size(); }
 
+    /// Provided to conform to the Tensor Working Group specification
+    /// \return The rank (number of dimensions) of this range
+    /// \throw nothing
+    unsigned int rank() const { return dim(); }
+
     /// Range start coordinate accessor
 
     /// \return A \c size_array that contains the lower bound of this range
     /// \throw nothing
     const size_array& start() const { return start_; }
+
+    /// Range lower bound accessor
+
+    /// Provided to conform to the Tensor Working Group specification
+    /// \return A \c size_array that contains the lower bound of this range
+    /// \throw nothing
+    const size_array& lobound() const { return start_; }
 
     /// Range finish coordinate accessor
 
@@ -299,11 +313,23 @@ namespace TiledArray {
     /// \throw nothing
     const size_array& finish() const { return finish_; }
 
+    /// Range upper bound accessor
+
+    /// Provided to conform to the Tensor Working Group specification
+    /// \return A \c size_array that contains the upper bound of this range
+    /// \throw nothing
+    const size_array& upbound() const { return finish_; }
+
     /// Range size accessor
 
     /// \return A \c size_array that contains the sizes of each dimension
     /// \throw nothing
     const size_array& size() const { return size_; }
+
+    /// similar to size(), provided to satisfy the requirements of Tensor Working Group specification
+    /// \return A \c extent_type that contains the extent of each dimension
+    /// \throw nothing
+    extent_type extent() const { return extent_type(size_.begin(), size_.end()); }
 
     /// Range weight accessor
 
@@ -317,6 +343,11 @@ namespace TiledArray {
     /// \return The total number of elements in the range.
     /// \throw nothing
     size_type volume() const { return volume_; }
+
+    /// alias to volume() to conform to the Tensor Working Group specification
+    /// \return The total number of elements in the range.
+    /// \throw nothing
+    size_type area() const { return volume(); }
 
     /// Index iterator factory
 
@@ -460,6 +491,13 @@ namespace TiledArray {
       return o;
     }
 
+    /// alias to ord<Index>(), to conform with the Tensor Working Group spec \sa ord()
+    template <typename Index>
+    typename madness::disable_if<std::is_integral<Index>, size_type>::type
+    ordinal(const Index& index) const {
+      return ord<Index>(index);
+    }
+
     /// calculate the coordinate index of the ordinal index, \c index.
 
     /// Convert an ordinal index to a coordinate index.
@@ -477,9 +515,8 @@ namespace TiledArray {
 
       // Compute the coordinate index of o in range.
       for(std::size_t i = 0ul; i < dim(); ++i) {
-        const size_type s = index / weight_[i]; // Compute the size of result[i]
+        result.push_back((index / weight_[i]) + start_[i]);
         index %= weight_[i];
-        result.push_back(s + start_[i]);
       }
 
       return result;
