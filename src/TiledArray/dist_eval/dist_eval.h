@@ -107,7 +107,7 @@ namespace TiledArray {
         perm_(perm),
         range_(),
         ip_weight_(),
-        task_count_(0),
+        task_count_(-1),
         set_counter_()
       {
         set_counter_ = 0;
@@ -139,6 +139,7 @@ namespace TiledArray {
 
       /// Wait for all tiles to be assigned
       void wait() const {
+        TA_ASSERT(task_count_ >= 0);
         CounterProbe probe(set_counter_, task_count_);
         TensorImpl_::get_world().await(probe);
       }
@@ -165,8 +166,10 @@ namespace TiledArray {
       /// this object).
       /// \param pimpl A shared pointer to this object
       void eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+        TA_ASSERT(task_count_ == -1);
         TA_ASSERT(this == pimpl.get());
         task_count_ = this->internal_eval(pimpl);
+        TA_ASSERT(task_count_ >= 0);
       }
 
     }; // class DistEvalImpl
