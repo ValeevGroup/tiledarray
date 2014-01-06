@@ -74,8 +74,8 @@ namespace TiledArray {
 
       template <typename T, typename U, typename V, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      binary_eval(register const T* const t, register const U* const u,
-          register V* const v, const Op& op)
+      binary_eval(const T* restrict const t, const U* restrict const u,
+          V* restrict const v, const Op& op)
       {
         VectorOpUnwind<N-1>::binary_eval(t, u, v, op);
         v[N] = op(t[N], u[N]);
@@ -83,7 +83,7 @@ namespace TiledArray {
 
       template <typename T, typename U, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      binary_eval(register const T* t, register U* u, const Op& op) {
+      binary_eval(const T* restrict const t, U* restrict const u, const Op& op) {
         VectorOpUnwind<N-1>::binary_eval(t, u, op);
         op(u[N], t[N]);
       }
@@ -92,13 +92,13 @@ namespace TiledArray {
 
       template <typename T, typename U, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      unary_eval(register const T* t, register U* u, const Op& op) {
+      unary_eval(const T* restrict const t, U* restrict const u, const Op& op) {
         VectorOpUnwind<N-1>::unary_eval(t, u, op);
         u[N] = op(t[N]);
       }
 
       template <typename T, typename Op>
-      static TILEDARRAY_FORCE_INLINE void unary_eval(T* t, const Op& op) {
+      static TILEDARRAY_FORCE_INLINE void unary_eval(T* restrict const t, const Op& op) {
         VectorOpUnwind<N-1>::unary_eval(t, op);
         op(t[N]);
       }
@@ -106,7 +106,7 @@ namespace TiledArray {
       // Reduce operations
 
       template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void reduce(const T* t, U& u, const Op& op) {
+      static TILEDARRAY_FORCE_INLINE void reduce(const T* restrict const t, U& restrict u, const Op& op) {
         VectorOpUnwind<N-1>::reduce(t, u, op);
         u = op(u, t[N]);
       }
@@ -120,41 +120,47 @@ namespace TiledArray {
     struct VectorOpUnwind<0ul> {
 
       template <typename T, typename U, typename V, typename Op>
-      static TILEDARRAY_FORCE_INLINE void binary_eval(register const T* const t,
-          register const U* const u, register V* const v, const Op& op)
+      static TILEDARRAY_FORCE_INLINE void binary_eval(const T* restrict const t,
+          const U* restrict const u, V* restrict const v, const Op& op)
       {
         v[0ul] = op(t[0ul], u[0ul]);
       }
 
       template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void binary_eval(register const T* t, register U* u, const Op& op) {
+      static TILEDARRAY_FORCE_INLINE void binary_eval(const T* restrict const t,
+          U* restrict const u, const Op& op)
+      {
         op(u[0ul], t[0ul]);
       }
 
       // Unary operations
 
       template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void unary_eval(register const T* t, register U* u, const Op& op) {
+      static TILEDARRAY_FORCE_INLINE void unary_eval(const T* restrict const t,
+          U* restrict const u, const Op& op)
+      {
         u[0ul] = op(t[0ul]);
       }
 
       template <typename T, typename Op>
-      static TILEDARRAY_FORCE_INLINE void unary_eval(register T* t, const Op& op) {
+      static TILEDARRAY_FORCE_INLINE void unary_eval(T* restrict const t, const Op& op) {
         op(t[0ul]);
       }
 
       // Reduction operations
 
       template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void reduce(const T* t, U& u, const Op& op) {
+      static TILEDARRAY_FORCE_INLINE void reduce(const T* restrict const t,
+          U& restrict u, const Op& op)
+      {
         u = op(u, t[0ul]);
       }
     }; //  struct VectorOpUnwind
 
 
     template <typename T, typename U, typename V, typename Op>
-    inline void binary_vector_op(const uint_type n, register const T* const t,
-        register const U* const u, register V* const v, const Op& op)
+    inline void binary_vector_op(const uint_type n, const T* restrict const t,
+        const U* restrict const u, V* restrict const v, const Op& op)
     {
       uint_type i = 0ul;
 
@@ -171,7 +177,9 @@ namespace TiledArray {
     }
 
     template <typename T, typename U, typename Op>
-    inline void binary_vector_op(const uint_type n, register const T* const t, register U* const u, const Op& op) {
+    inline void binary_vector_op(const uint_type n, const T* restrict const t,
+        U* restrict const u, const Op& op)
+    {
       uint_type i = 0ul;
 
 #if TILEDARRAY_LOOP_UNWIND > 1
@@ -186,7 +194,9 @@ namespace TiledArray {
     }
 
     template <typename T, typename U, typename Op>
-    inline void unary_vector_op(const uint_type n, register const T* const t, register U* const u, const Op& op) {
+    inline void unary_vector_op(const uint_type n, const T* restrict const t,
+        U* restrict const u, const Op& op)
+    {
       uint_type i = 0ul;
 
 #if TILEDARRAY_LOOP_UNWIND > 1
@@ -201,7 +211,7 @@ namespace TiledArray {
     }
 
     template <typename T, typename Op>
-    inline void unary_vector_op(const uint_type n, register T* const t, const Op& op) {
+    inline void unary_vector_op(const uint_type n, T* restrict const t, const Op& op) {
       uint_type i = 0ul;
 
 #if TILEDARRAY_LOOP_UNWIND > 1
@@ -216,7 +226,7 @@ namespace TiledArray {
     }
 
     template <typename T>
-    inline T maxabs(const uint_type n, register const T* const t) {
+    inline T maxabs(const uint_type n, const T* restrict const t) {
       T result = 0;
       uint_type i = 0ul;
 #if TILEDARRAY_LOOP_UNWIND > 1
@@ -237,7 +247,7 @@ namespace TiledArray {
     }
 
     template <typename T>
-    inline T minabs(const uint_type n, const T* t) {
+    inline T minabs(const uint_type n, const T* restrict const t) {
       T result = std::numeric_limits<T>::max();
       uint_type i = 0ul;
 #if TILEDARRAY_LOOP_UNWIND > 1
@@ -258,12 +268,12 @@ namespace TiledArray {
     }
 
     template <typename T>
-    inline T square_norm(const uint_type n, const T* t) {
+    inline T square_norm(const uint_type n, const T* restrict const t) {
       return eigen_map(t, n).squaredNorm();
     }
 
     template <int p, typename T>
-    inline T norm_2(const uint_type n, const T* t) {
+    inline T norm_2(const uint_type n, const T* restrict const t) {
       return eigen_map(t, n).norm();
     }
 
