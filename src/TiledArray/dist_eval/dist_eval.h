@@ -71,11 +71,11 @@ namespace TiledArray {
       /// \param i The index in the unpermuted index space
       /// \return The corresponding index in the permuted index space
       size_type perm_index(size_type index) const {
-        std::size_t result_index;
+        size_type result_index;
         if(perm_.dim() > 1u) {
           result_index = 0ul;
           // Permute the index
-          for(std::size_t i = 0ul; i < TensorImpl_::range().dim(); ++i) {
+          for(size_type i = 0ul; i < TensorImpl_::range().dim(); ++i) {
             result_index += (index / range_.weight()[i]) * ip_weight_[i];
             index %= range_.weight()[i];
           }
