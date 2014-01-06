@@ -89,12 +89,15 @@ namespace TiledArray {
         DistEvalImpl_::set_tile(i, op_(left, right));
       }
 
-      /// Function for evaluating this tensor's tiles
+      /// Evaluate the tiles of this tensor
 
-      /// This function is run inside a task, and will run after \c eval_children
-      /// has completed. It should spawn additional tasks that evaluate the
-      /// individual result tiles.
-      virtual size_type internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+      /// This function will evaluate the children of this distributed evaluator
+      /// and evaluate the tiles for this distributed evaluator. It will block
+      /// until the tasks for the children are evaluated (not for the tasks of
+      /// this object).
+      /// \param pimpl A shared pointer to this object
+      /// \return The number of tiles that will be set by this process
+      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
         // Convert pimpl to this object type so it can be used in tasks
         std::shared_ptr<BinaryEvalImpl_> self =
             std::static_pointer_cast<BinaryEvalImpl_>(pimpl);

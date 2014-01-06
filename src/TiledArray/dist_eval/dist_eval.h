@@ -145,14 +145,15 @@ namespace TiledArray {
 
     private:
 
-      /// Evaluate this tensor expression object
+      /// Evaluate the tiles of this tensor
 
       /// This function will evaluate the children of this distributed evaluator
       /// and evaluate the tiles for this distributed evaluator. It will block
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
       /// \param pimpl A shared pointer to this object
-      virtual size_type internal_eval(const std::shared_ptr<DistEvalImpl>& pimpl) = 0;
+      /// \return The number of tiles that will be set by this process
+      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) = 0;
 
     public:
 
@@ -163,7 +164,7 @@ namespace TiledArray {
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
       /// \param pimpl A shared pointer to this object
-      void eval(const std::shared_ptr<DistEvalImpl>& pimpl) {
+      void eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
         TA_ASSERT(this == pimpl.get());
         task_count_ = this->internal_eval(pimpl);
       }
