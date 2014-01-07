@@ -189,10 +189,14 @@ BOOST_AUTO_TEST_CASE( eval )
     // Force the evaluation of the tile
     dist_eval_type1::eval_type eval_tile;
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+    BOOST_CHECK(! eval_tile.empty());
 
-    // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
-    BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0], eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
+    if(!eval_tile.empty()) {
+      // Check that the result tile is correctly modified.
+      BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+      BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0],
+          eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
+    }
   }
 
 }
