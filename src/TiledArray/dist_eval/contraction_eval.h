@@ -500,64 +500,105 @@ namespace TiledArray {
       }
 #endif // TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
 
+      class FinalizeTask : public madness::TaskInterface {
+      private:
+        std::shared_ptr<ContractionEvalImpl_> owner_; ///< The parent object for this task
+
+      public:
+        FinalizeTask(const std::shared_ptr<ContractionEvalImpl_>& owner) :
+          madness::TaskInterface(1, madness::TaskAttributes::hipri()),
+          owner_(owner)
+        { }
+
+        virtual ~FinalizeTask() { }
+
+        virtual void run(const madness::TaskThreadEnv&) {
+          owner_->finalize();
+        }
+
+      }; // class FinalizeTask
+
       class StepTask : public madness::TaskInterface {
       private:
-        class BcastTask;
-
         // Member variables
-        std::shared_ptr<ContractionEvalImpl_> parent_;
+        std::shared_ptr<ContractionEvalImpl_> owner_;
         size_type k_;
+        FinalizeTask* finalize_task_;
         StepTask* next_step_task_;
-
 
         /// Construct the task for the next step
         StepTask(StepTask* const previous, const int ndep) :
           madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
-          parent_(previous->parent_), k_(0ul), next_step_task_(NULL)
+          owner_(previous->owner_),
+          k_(0ul),
+          finalize_task_(previous->finalize_task_),
+          next_step_task_(NULL)
         { }
 
       public:
 
-        StepTask(const std::shared_ptr<ContractionEvalImpl_>& parent) :
+        StepTask(const std::shared_ptr<ContractionEvalImpl_>& owner) :
           madness::TaskInterface(madness::TaskAttributes::hipri()),
-          parent_(parent), k_(0ul), next_step_task_(new StepTask(this, 0))
-        { }
+          owner_(owner),
+          k_(0ul),
+          finalize_task_(new FinalizeTask(owner)),
+          next_step_task_(new StepTask(this, 1))
+        {
+          owner_->get_world().taskq.add(next_step_task_);
+          owner_->get_world().taskq.add(finalize_task_);
+        }
 
         virtual ~StepTask() { }
 
-        void submit_next(const size_type k) {
-          next_step_task_->k_ = k;
-          parent_->get_world().taskq.add(next_step_task_);
-          next_step_task_ = NULL;
+        // Initialize member variables
+        StepTask* initialize(const size_type k) {
+          k_ = k;
+          StepTask* step_task = NULL;
+          if(k < owner_->k_) {
+            next_step_task_ = step_task = new StepTask(this, 2);
+            owner_->get_world().taskq.add(step_task);
+          } else {
+            finalize_task_->notify();
+          }
+          this->notify();
+          return step_task;
         }
 
         virtual void run(const madness::TaskThreadEnv&) {
-          if(k_ < parent_->k_) {
-            // Get the column and row for the next non-zero k iteration
-            k_ = parent_->next_k(parent_, k_);
+          // Search for the next k to be processed
+          if(k_ < owner_->k_) {
 
-            if(k_ < parent_->k_) {
-              // Submit the task for the next iteration
-              StepTask* const next_next_step_task =
-                  next_step_task_->next_step_task_ = new StepTask(this, 1);
-              submit_next(k_ + 1ul);
+            k_ = owner_->next_k(owner_, k_);
+
+            if(k_ < owner_->k_) {
+              finalize_task_->inc();
+
+              // Submit the next step task
+              StepTask* const next_next_step_task = next_step_task_->initialize(k_ + 1ul);
+              next_step_task_ = NULL;
 
               // Broadcast row and column
               std::vector<col_datum> col;
-              parent_->bcast_col(k_, col);
+              owner_->bcast_col(k_, col);
               std::vector<row_datum> row;
-              parent_->bcast_row(k_, row);
+              owner_->bcast_row(k_, row);
+              std::cout << "col(" << col.size() << ")  row(" << row.size() << ")\n";
 
               // Submit tasks for the contraction of col and row tiles.
-              parent_->template contract<shape_type>(k_, col, row, next_next_step_task);
+              owner_->template contract<shape_type>(k_, col, row, next_next_step_task);
 
-              next_next_step_task->notify();
+              // Notify
+              if(next_next_step_task)
+                next_next_step_task->notify();
+              finalize_task_->notify();
+
 
             } else {
-              parent_->finalize();
-
-              // Submit the tail task to avoid errors.
-              submit_next(k_);
+              finalize_task_->notify();
+              if(next_step_task_) {
+                next_step_task_->k_ = std::numeric_limits<size_type>::max();
+                next_step_task_->notify();
+              }
             }
           }
         }
