@@ -298,14 +298,10 @@ namespace TiledArray {
           // Iterate over k's until a non-zero tile is found or the end of the
           // matrix is reached.
           for(; k < k_; ++k) {
-
-            // Set the starting and ending point for row k
-            size_type index = right_begin_local(k);
-            const size_type end = right_end(k);
-
             // Search row k for non-zero tiles
-            for(; index < end; index += right_stride_local_)
-              if(! right_.is_zero(index))
+            const size_type end = right_end(k);
+            for(size_type i = right_begin_local(k); i < end; i += right_stride_local_)
+              if(! right_.is_zero(i))
                 return k;
           }
         }
@@ -327,9 +323,9 @@ namespace TiledArray {
           // matrix is reached.
           for(; k < k_; ++k) {
             // Search row k for non-zero tiles
-            for(size_type index = left_begin_local(k); index < left_end_; index += left_stride_local_)
-              if(! left_.is_zero(index))
-                break;
+            for(size_type i = left_begin_local(k); i < left_end_; i += left_stride_local_)
+              if(! left_.is_zero(i))
+                return k;
           }
         }
 
@@ -376,12 +372,6 @@ namespace TiledArray {
 
       /// Destroy reduce tasks and set the result tiles
       void finalize() {
-
-        // Construct inverse permuted weight and start arrays.
-        const Permutation inv_perm = -DistEvalImpl_::perm();
-        const range_type range = inv_perm ^ TensorImpl_::range();
-        const std::vector<size_type> ip_weight = inv_perm ^ TensorImpl_::range().weight();
-
         // Iterate over all local rows and columns
         ReducePairTask<op_type>* reduce_task = reduce_tasks_;
         for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
@@ -572,7 +562,6 @@ namespace TiledArray {
               owner_->bcast_col(k_, col);
               std::vector<row_datum> row;
               owner_->bcast_row(k_, row);
-              std::cout << "col(" << col.size() << ")  row(" << row.size() << ")\n";
 
               // Submit tasks for the contraction of col and row tiles.
               owner_->template contract<shape_type>(k_, col, row, next_next_step_task);
