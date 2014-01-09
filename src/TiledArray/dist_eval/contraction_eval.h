@@ -294,22 +294,20 @@ namespace TiledArray {
       /// \return The first row, greater than or equal to \c k, that contains a
       /// non-zero tile. If no non-zero tile is not found, return \c k_.
       size_type next_k_row(size_type k) const {
-        if(right_.is_dense())
-          return k;
+        if(! right_.is_dense()) {
+          // Iterate over k's until a non-zero tile is found or the end of the
+          // matrix is reached.
+          for(; k < k_; ++k) {
 
+            // Set the starting and ending point for row k
+            size_type index = right_begin_local(k);
+            const size_type end = right_end(k);
 
-        // Iterate over k's until a non-zero tile is found or the end of the
-        // matrix is reached.
-        for(; k < k_; ++k) {
-
-          // Set the starting and ending point for row k
-          size_type index = right_begin_local(k);
-          const size_type end = right_end(k);
-
-          // Search row k for non-zero tiles
-          for(; index < end; index += right_stride_local_)
-            if(! right_.is_zero(index))
-              return k;
+            // Search row k for non-zero tiles
+            for(; index < end; index += right_stride_local_)
+              if(! right_.is_zero(index))
+                return k;
+          }
         }
 
         return k;
@@ -324,16 +322,15 @@ namespace TiledArray {
       /// \return The first column, greater than or equal to \c k, that contains
       /// a non-zero tile. If no non-zero tile is not found, return \c k_.
       size_type next_k_col(size_type k) const {
-        if(left_.is_dense())
-          return k;
-
-        // Iterate over k's until a non-zero tile is found or the end of the
-        // matrix is reached.
-        for(; k < k_; ++k) {
-          // Search row k for non-zero tiles
-          for(size_type index = left_begin_local(k); index < left_end_; index += left_stride_local_)
-            if(! left_.is_zero(index))
-              return k;
+        if(! left_.is_dense()) {
+          // Iterate over k's until a non-zero tile is found or the end of the
+          // matrix is reached.
+          for(; k < k_; ++k) {
+            // Search row k for non-zero tiles
+            for(size_type index = left_begin_local(k); index < left_end_; index += left_stride_local_)
+              if(! left_.is_zero(index))
+                break;
+          }
         }
 
         return k;
@@ -350,38 +347,31 @@ namespace TiledArray {
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
       size_type next_k(const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const {
-        // The if statements below should be optimized away since the left and
-        // right dense variables are static constants.
-        if(left_.is_dense() && right_.is_dense()) {
-          // Left- and right-hand arguments are dense so k is always non-zero
-          return k;
-        } else {
-          // Left and right are sparse so search for the first k column of
-          // left and row of right that both have non-zero tiles.
-          size_type k_col = next_k_col(k);
-          size_type k_row = next_k_row(k);
-          while(k_col != k_row) {
-            // Check the largest k for non-zero tiles.
-            if(k_col < k_row) {
-              // If k_col has is local, broadcast the data to other nodes with
-              // non-zero rows.
-              if(left_.is_local(proc_grid_.rank_row() * k_ + k_col))
-                TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_col_task,
-                    k_col, madness::TaskAttributes::hipri());
+        size_type k_col = next_k_col(k);
+        size_type k_row = next_k_row(k);
+        while(k_col != k_row) {
+          // Check the largest k for non-zero tiles.
+          if(k_col < k_row) {
+            // If k_col has local data, broadcast the data to other nodes with
+            // non-zero rows.
+            if(left_.is_local(left_start_local_ + k_col))
+              TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_col_task,
+                  k_col, madness::TaskAttributes::hipri());
 
-              // Find the next non-zero column of the left-hand argument
-              k_col = next_k_col(k_col + 1ul);
-            } else {
-              if(right_.is_local(k_row * proc_grid_.cols() + proc_grid_.rank_col()))
-                TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_row_task,
-                    k_row, madness::TaskAttributes::hipri());
+            // Find the next non-zero column of the left-hand argument
+            k_col = next_k_col(k_col + 1ul);
+          } else {
+            // If k_row has local data, broadcast the data to other nodes with
+            // non-zero columns.
+            if(right_.is_local(k_row * proc_grid_.cols() + proc_grid_.rank_col()))
+              TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_row_task,
+                  k_row, madness::TaskAttributes::hipri());
 
-              k_row = next_k_row(k_row + 1ul);
-            }
+            k_row = next_k_row(k_row + 1ul);
           }
-
-          return k_col;
         }
+
+        return k_col;
       }
 
       /// Destroy reduce tasks and set the result tiles
