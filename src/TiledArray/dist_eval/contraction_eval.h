@@ -224,11 +224,12 @@ namespace TiledArray {
         col.reserve(proc_grid_.local_rows());
 
         // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
+        const bool left_is_local = left_.is_local(index);
         for(size_type i = 0ul; index < left_end_; ++i, index += left_stride_local_) {
           if(left_.is_zero(index)) continue;
 
           // Get column tile
-          col.push_back(col_datum(i, (left_.is_local(index) ? move_tile(left_, index) : left_future())));
+          col.push_back(col_datum(i, (left_is_local ? move_tile(left_, index) : left_future())));
 
           const madness::DistributedID key(TensorImpl_::id(), index);
           TensorImpl_::get_world().gop.bcast(key, col.back().second, group_root, group);
@@ -260,11 +261,12 @@ namespace TiledArray {
         row.reserve(proc_grid_.local_cols());
 
         // Broadcast and store non-zero tiles in the k-th row of the right-hand argument.
+        const bool right_is_local = right_.is_local(index);
         for(size_type i = 0ul; index < end; ++i, index += right_stride_local_) {
           if(right_.is_zero(index)) continue;
 
           // Get row tile
-          row.push_back(row_datum(i, (right_.is_local(index) ? move_tile(right_, index) : right_future())));
+          row.push_back(row_datum(i, (right_is_local ? move_tile(right_, index) : right_future())));
 
           const madness::DistributedID key(TensorImpl_::id(), index + left_.size());
           TensorImpl_::get_world().gop.bcast(key, row.back().second, group_root, group);
