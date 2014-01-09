@@ -86,7 +86,7 @@ namespace TiledArray {
 
     /// \param n The size of each of the range arrays
     /// \throw std::bad_alloc When memory allocation fails
-    void alloc_arrays(const size_type n) { init_arrays(new size_type[n * 4ul], n); }
+    void alloc_arrays(const size_type n) { init_arrays(new size_type[n << 2], n); }
 
     /// Reallocate and reinitialize range arrays
 
@@ -98,7 +98,7 @@ namespace TiledArray {
     void realloc_arrays(const size_type n) {
       if(dim() != n) {
         delete_arrays();
-        size_type* const buffer = (n > 0ul ? new size_type[n * 4ul] : NULL);
+        size_type* const buffer = (n > 0ul ? new size_type[n << 2] : NULL);
         init_arrays(buffer, n);
       }
     }
@@ -218,7 +218,7 @@ namespace TiledArray {
       const size_type n = other.dim();
       if(n > 0ul) {
         alloc_arrays(n);
-        memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4ul * n);
+        memcpy(start_.data(), other.start_.begin(), (sizeof(size_type) << 2) * n);
       }
     }
 
@@ -260,7 +260,7 @@ namespace TiledArray {
           }
         } else {
           // Simple copy will due.
-          memcpy(start_.data(), other.start_.data(), sizeof(size_type) * 4ul * n);
+          memcpy(start_.data(), other.start_.data(), (sizeof(size_type) << 2) * n);
           volume_ = other.volume_;
         }
       }
@@ -277,7 +277,7 @@ namespace TiledArray {
     Range_& operator=(const Range_& other) {
       const size_type n = other.dim();
       realloc_arrays(n);
-      memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4ul * n);
+      memcpy(start_.data(), other.start_.begin(), (sizeof(size_type) << 2) * n);
       volume_ = other.volume();
 
       return *this;
@@ -410,7 +410,7 @@ namespace TiledArray {
       if(n > 1ul) {
         // Create a permuted copy of start and finish
         const size_type* restrict const start =
-            static_cast<size_type*>(memcpy(new size_type[n * 2ul], start_.data(), n * 2ul * sizeof(size_type)));
+            static_cast<size_type*>(memcpy(new size_type[n << 1], start_.data(), (sizeof(size_type) << 1) * n));
         const size_type* restrict const finish = start + n;
         size_type* restrict const this_start = start_.data();
         size_type* restrict const this_finish = finish_.data();
@@ -544,14 +544,14 @@ namespace TiledArray {
 
       // Get range data
       realloc_arrays(n);
-      ar & madness::archive::wrap(start_.data(), n * 4ul) & volume_;
+      ar & madness::archive::wrap(start_.data(), n << 2) & volume_;
     }
 
     template <typename Archive>
     typename madness::enable_if<madness::archive::is_output_archive<Archive> >::type
     serialize(const Archive& ar) const {
       const size_type n = dim();
-      ar & n & madness::archive::wrap(start_.data(), n * 4ul) & volume_;
+      ar & n & madness::archive::wrap(start_.data(), n << 2) & volume_;
     }
 
     void swap(Range_& other) {
