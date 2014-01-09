@@ -293,7 +293,7 @@ namespace TiledArray {
       /// \param k The first row to test for non-zero tiles
       /// \return The first row, greater than or equal to \c k, that contains a
       /// non-zero tile. If no non-zero tile is not found, return \c k_.
-      size_type next_k_row(size_type k) const {
+      size_type iterate_row(size_type k) const {
         if(! right_.is_dense()) {
           // Iterate over k's until a non-zero tile is found or the end of the
           // matrix is reached.
@@ -321,7 +321,7 @@ namespace TiledArray {
       /// \param k The first column to test for non-zero tiles
       /// \return The first column, greater than or equal to \c k, that contains
       /// a non-zero tile. If no non-zero tile is not found, return \c k_.
-      size_type next_k_col(size_type k) const {
+      size_type iterate_col(size_type k) const {
         if(! left_.is_dense()) {
           // Iterate over k's until a non-zero tile is found or the end of the
           // matrix is reached.
@@ -346,9 +346,9 @@ namespace TiledArray {
       /// \param k The first row/column to check
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
-      size_type next_k(const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const {
-        size_type k_col = next_k_col(k);
-        size_type k_row = next_k_row(k);
+      size_type iterate(const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const {
+        size_type k_col = iterate_col(k);
+        size_type k_row = iterate_row(k);
         while(k_col != k_row) {
           // Check the largest k for non-zero tiles.
           if(k_col < k_row) {
@@ -359,7 +359,7 @@ namespace TiledArray {
                   k_col, madness::TaskAttributes::hipri());
 
             // Find the next non-zero column of the left-hand argument
-            k_col = next_k_col(k_col + 1ul);
+            k_col = iterate_col(k_col + 1ul);
           } else {
             // If k_row has local data, broadcast the data to other nodes with
             // non-zero columns.
@@ -367,7 +367,7 @@ namespace TiledArray {
               TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_row_task,
                   k_row, madness::TaskAttributes::hipri());
 
-            k_row = next_k_row(k_row + 1ul);
+            k_row = iterate_row(k_row + 1ul);
           }
         }
 
@@ -558,7 +558,7 @@ namespace TiledArray {
           // Search for the next k to be processed
           if(k_ < owner_->k_) {
 
-            k_ = owner_->next_k(owner_, k_);
+            k_ = owner_->iterate(owner_, k_);
 
             if(k_ < owner_->k_) {
               finalize_task_->inc();
