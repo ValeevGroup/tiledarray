@@ -261,7 +261,7 @@ namespace TiledArray {
 
         // Broadcast and store non-zero tiles in the k-th row of the right-hand argument.
         for(size_type i = 0ul; index < end; ++i, index += right_stride_local_) {
-          if(! right_.is_zero(index)) continue;
+          if(right_.is_zero(index)) continue;
 
           // Get row tile
           row.push_back(row_datum(i, (right_.is_local(index) ? move_tile(right_, index) : right_future())));
