@@ -555,7 +555,7 @@ namespace TiledArray {
             if(k_ < owner_->k_) {
               finalize_task_->inc();
 
-              // Submit the next step task
+              // Initialize and submit next task
               StepTask* const next_next_step_task = next_step_task_->initialize(k_ + 1ul);
               next_step_task_ = NULL;
 
@@ -568,11 +568,10 @@ namespace TiledArray {
               // Submit tasks for the contraction of col and row tiles.
               owner_->template contract<shape_type>(k_, col, row, next_next_step_task);
 
-              // Notify
+              // Notify task dependencies
               if(next_next_step_task)
                 next_next_step_task->notify();
               finalize_task_->notify();
-
 
             } else {
               finalize_task_->notify();
