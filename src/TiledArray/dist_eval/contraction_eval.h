@@ -429,7 +429,7 @@ namespace TiledArray {
 
           for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it) {
             task->inc();
-            reduce_tasks_[offset + col_it->first].add(col_it->second, row_it->second, task);
+            reduce_tasks_[offset + row_it->first].add(col_it->second, row_it->second, task);
           }
         }
       }
