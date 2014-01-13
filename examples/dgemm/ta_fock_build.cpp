@@ -135,7 +135,7 @@ int main(int argc, char** argv) {
         double(4.0 * matrix_size * matrix_size * matrix_size * df_size)) // Exchange flops
         / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
 
-  world.gop.fence();
+  world.gop.fence(); // Extra fence due to werid hang.
   madness::finalize();
   return 0;
 }

@@ -21,7 +21,6 @@
 #include <tiled_array.h>
 
 int main(int argc, char** argv) {
-#ifdef TILEDARRAY_HAS_BLAS
   // Get command line arguments
   if(argc < 2) {
     std::cout << "Usage: blas matrix_size [repetitions]\n";
@@ -82,9 +81,7 @@ int main(int argc, char** argv) {
   std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
       << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
           matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
-#else
-  std::cout << "!!! ERROR: BLAS is not available.\n";
-#endif // TILEDARRAY_HAS_BLAS
+
   return 0;
 }
 
