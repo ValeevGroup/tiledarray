@@ -520,7 +520,8 @@ namespace TiledArray {
           const size_type offset = col_it->first * proc_grid_.local_cols();
 
           for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it) {
-            task->inc();
+            if(task)
+              task->inc();
             reduce_tasks_[offset + row_it->first].add(col_it->second, row_it->second, task);
           }
         }
@@ -567,7 +568,8 @@ namespace TiledArray {
             if((col_shape_value * row_shape_values[row_it - row.begin()]) < threshold_k)
               continue;
 
-            task->inc();
+            if(task)
+              task->inc();
             reduce_tasks_[result_offset + row_it->first].add(col_it->second, row_it->second, task);
           }
         }
