@@ -42,6 +42,7 @@ struct ContractionEvalFixture : public TiledRangeFixture {
       DensePolicy> array_eval_type;
   typedef math::ContractReduce<ArrayN::value_type, ArrayN::value_type, ArrayN::value_type> op_type;
   typedef detail::ContractionEvalImpl<array_eval_type, array_eval_type, op_type, DensePolicy> impl_type;
+  typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
   ContractionEvalFixture() :
     left(*GlobalFixture::world, tr),
@@ -53,7 +54,7 @@ struct ContractionEvalFixture : public TiledRangeFixture {
     result_tr(),
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().dim(), tr.tiles().dim())
   {
-    // Fill array with random data
+    // Fill arrays with random data
     for(ArrayN::iterator it = left.begin(); it != left.end(); ++it) {
       ArrayN::value_type tile(left.trange().make_tile_range(it.index()));
       for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
@@ -76,6 +77,49 @@ struct ContractionEvalFixture : public TiledRangeFixture {
 
   ~ContractionEvalFixture() {
     GlobalFixture::world->gop.fence();
+  }
+
+  static matrix_type copy_to_matrix(const ArrayN& array, const int middle)   {
+
+    std::vector<std::size_t> weight(array.range().dim(), 0ul);
+    std::size_t MN[2] = { 1ul, 1ul };
+    int i = array.range().dim() - 1;
+    for(; i >= middle; --i) {
+      weight[i] = MN[1];
+      MN[1] *= array.trange().elements().size()[i];
+    }
+    for(; i >= 0; --i) {
+      weight[i] = MN[0];
+      MN[0] *= array.trange().elements().size()[i];
+    }
+
+    matrix_type matrix(MN[0], MN[1]);
+    matrix.fill(0);
+
+    // Copy tiles from array to matrix
+    for(std::size_t index = 0ul; index < array.size(); ++index) {
+      if(array.is_zero(index))
+        continue;
+
+      // Get tile for index
+      const ArrayN::value_type tile = array.find(index);
+
+      // Compute block start and size
+      std::size_t start[2] = { 0ul, 0ul }, size[2] = { 1ul, 1ul };
+      for(i = 0ul; i < middle; ++i) {
+        start[0] += tile.range().start()[i] * weight[i] * size[0];
+        size[0] *= tile.range().size()[i];
+      }
+      for(; i < array.range().dim(); ++i) {
+        start[1] += tile.range().start()[i] * weight[i] * size[1];
+        size[1] *= tile.range().size()[i];
+      }
+
+      // Copy tile into matrix sub-block
+      matrix.block(start[0], start[1], size[0], size[1]) = eigen_map(tile, size[0], size[1]);
+    }
+
+    return matrix;
   }
 
   ArrayN left;
@@ -123,57 +167,9 @@ BOOST_AUTO_TEST_CASE( eval )
   // Check evaluation
   BOOST_REQUIRE_NO_THROW(contract.eval());
 
-  // Compute matrix element dimensions.
-  const std::size_t m = left.trange().elements().size().front();
-  const std::size_t n = right.trange().elements().size().back();
-  const std::size_t k = left.trange().elements().volume() / m;
-
-  typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
-  matrix_type l(m, k), r(k, n);
-
-  // Copy all tiles of left into local l matrix.
-  {
-    const std::size_t left_middle = left.range().dim() - op.num_contract_ranks();
-    for(std::size_t index = 0ul; index < left.size(); ++index) {
-      const ArrayN::value_type tile = left.find(index);
-
-      std::size_t m0 = 1ul, m = 1ul, k0 = 1ul, k = 1ul;
-      std::size_t dim;
-      for(dim = 0ul; dim < left_middle; ++dim) {
-        m0 *= tile.range().start()[dim];
-        m *= tile.range().size()[dim];
-      }
-      for(; dim < left.range().dim(); ++dim) {
-        k0 *= tile.range().start()[dim];
-        k *= tile.range().size()[dim];
-      }
-
-      l.block(m0, k0, m, k) = eigen_map(tile, m, k);
-    }
-  }
-
-  // Copy all tiles of right into local r matrix.
-  {
-    const std::size_t right_middle = op.num_contract_ranks();
-    for(std::size_t index = 0ul; index < right.size(); ++index) {
-      const ArrayN::value_type tile = right.find(index);
-
-      std::size_t k0 = 1ul, k = 1ul, n0 = 1ul, n = 1ul;
-      std::size_t dim;
-      for(dim = 0ul; dim < right_middle; ++dim) {
-        k0 *= tile.range().start()[dim];
-        k *= tile.range().size()[dim];
-      }
-      for(; dim < right.range().dim(); ++dim) {
-        n0 *= tile.range().start()[dim];
-        n *= tile.range().size()[dim];
-      }
-
-      r.block(k0, n0, k, n) = eigen_map(tile, k, n);
-    }
-  }
 
   // Compute the reference contraction
+  const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
   const matrix_type reference = l * r;
 
   dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
