@@ -444,7 +444,7 @@ namespace TiledArray {
           if(k_col < k_row) {
             // If k_col has local data, broadcast the data to other nodes with
             // non-zero rows.
-            if(left_.is_local(left_start_local_ + k_col))
+            if(left_.is_local(left_begin_local(k_col)))
               TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_col_task,
                   k_col, madness::TaskAttributes::hipri());
 
@@ -453,7 +453,7 @@ namespace TiledArray {
           } else {
             // If k_row has local data, broadcast the data to other nodes with
             // non-zero columns.
-            if(right_.is_local(k_row * proc_grid_.cols() + proc_grid_.rank_col()))
+            if(right_.is_local(right_begin_local(k_row)))
               TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_row_task,
                   k_row, madness::TaskAttributes::hipri());
 
