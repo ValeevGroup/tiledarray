@@ -24,12 +24,10 @@
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/reduce_task.h>
 #include <TiledArray/tile_op/type_traits.h>
+#include <TiledArray/shape.h>
 
 namespace TiledArray {
   namespace detail {
-
-    // Forward declarations
-    class SparseShape;
 
     /// Distributed contraction evaluator implementation
 
@@ -287,7 +285,67 @@ namespace TiledArray {
         bcast_row(k, row);
       }
 
-      /// Find the next row
+      /// Find next non-zero row of \c right_ for an arbitrary shape type
+
+      /// Starting at the k-th row of the right-hand argument, find the next row
+      /// that contains at least one non-zero tile. This search only checks for
+      /// non-zero tiles in this processes column.
+      /// \tparam S The shape type
+      /// \param shape The shape of \c right_
+      /// \param k The first row to search
+      /// \return The first row, greater than or equal to \c k with non-zero
+      /// tiles, or \c k_ if none is found.
+      template <typename S>
+      size_type iterate_row(const S& shape, size_type k) const {
+        if(! shape.is_dense()) {
+          // Iterate over k's until a non-zero tile is found or the end of the
+          // matrix is reached.
+          for(; k < k_; ++k) {
+            // Search row k for non-zero tiles
+            const size_type end = right_end(k);
+            for(size_type i = right_begin_local(k); i < end; i += right_stride_local_)
+              if(! shape.is_zero(i))
+                return k;
+          }
+        }
+
+        return k;
+      }
+
+      /// Find next non-zero row of \c right_ for a sparse shape
+
+      /// Starting at the k-th row of the right-hand argument, find the next row
+      /// that contains at least one non-zero tile. This search only checks for
+      /// non-zero tiles in this processes column.
+      /// \param shape The shape of \c right_
+      /// \param k The first row to search
+      /// \return The first row, greater than or equal to \c k with non-zero
+      /// tiles, or \c k_ if none is found.
+      size_type iterate_row(const SparseShape& shape, size_type k) const {
+        // Iterate over k's until a non-zero tile is found or the end of the
+        // matrix is reached.
+        for(; k < k_; ++k) {
+          // Search row k for non-zero tiles
+          const size_type end = right_end(k);
+          for(size_type i = right_begin_local(k); i < end; i += right_stride_local_)
+            if(! shape.is_zero(i))
+              return k;
+        }
+
+        return k;
+      }
+
+      /// Find next non-zero row of \c right_ for a dense shape
+
+      /// For dense shapes, no search is necessary since all tiles are present.
+      /// \param k The first row to search
+      /// \return \c k
+      size_type iterate_row(const DenseShape&, size_type k) const {
+        return k;
+      }
+
+
+      /// Find next non-zero row of \c right_
 
       /// Starting at the k-th row of the right-hand argument, find the next row
       /// that contains at least one non-zero tile. This search only checks for
@@ -296,18 +354,62 @@ namespace TiledArray {
       /// \return The first row, greater than or equal to \c k, that contains a
       /// non-zero tile. If no non-zero tile is not found, return \c k_.
       size_type iterate_row(size_type k) const {
-        if(! right_.is_dense()) {
+        return iterate_row(right_.shape(), k);
+      }
+
+
+      /// Find the next non-zero column of \c left_
+
+      /// Starting at the k-th column of the left-hand argument, find the next
+      /// column that contains at least one non-zero tile. This search only
+      /// checks for non-zero tiles in this process's row.
+      /// \param k The first column to test for non-zero tiles
+      /// \return The first column, greater than or equal to \c k, that contains
+      /// a non-zero tile. If no non-zero tile is not found, return \c k_.
+      template <typename S>
+      size_type iterate_col(const S& shape, size_type k) const {
+        if(! shape.is_dense()) {
           // Iterate over k's until a non-zero tile is found or the end of the
           // matrix is reached.
           for(; k < k_; ++k) {
             // Search row k for non-zero tiles
-            const size_type end = right_end(k);
-            for(size_type i = right_begin_local(k); i < end; i += right_stride_local_)
-              if(! right_.is_zero(i))
+            for(size_type i = left_begin_local(k); i < left_end_; i += left_stride_local_)
+              if(! shape.is_zero(i))
                 return k;
           }
         }
 
+        return k;
+      }
+
+      /// Find the next non-zero column of \c left_ for an arbitrary shape type
+
+      /// Starting at the k-th column of the left-hand argument, find the next
+      /// column that contains at least one non-zero tile. This search only
+      /// checks for non-zero tiles in this process's row.
+      /// \param shape The shape of \c left_
+      /// \param k The first column to test for non-zero tiles
+      /// \return The first column, greater than or equal to \c k, that contains
+      /// a non-zero tile. If no non-zero tile is not found, return \c k_.
+      size_type iterate_col(const SparseShape& shape, size_type k) const {
+        // Iterate over k's until a non-zero tile is found or the end of the
+        // matrix is reached.
+        for(; k < k_; ++k) {
+          // Search row k for non-zero tiles
+          for(size_type i = left_begin_local(k); i < left_end_; i += left_stride_local_)
+            if(! shape.is_zero(i))
+              return k;
+        }
+
+        return k;
+      }
+
+      /// Find the next column
+
+      /// For dense shapes, no search is necessary since all tiles are present.
+      /// \param k The first column to test for non-zero tiles
+      /// \return \c k
+      size_type iterate_col(const DenseShape&, size_type k) const {
         return k;
       }
 
@@ -320,19 +422,9 @@ namespace TiledArray {
       /// \return The first column, greater than or equal to \c k, that contains
       /// a non-zero tile. If no non-zero tile is not found, return \c k_.
       size_type iterate_col(size_type k) const {
-        if(! left_.is_dense()) {
-          // Iterate over k's until a non-zero tile is found or the end of the
-          // matrix is reached.
-          for(; k < k_; ++k) {
-            // Search row k for non-zero tiles
-            for(size_type i = left_begin_local(k); i < left_end_; i += left_stride_local_)
-              if(! left_.is_zero(i))
-                return k;
-          }
-        }
-
-        return k;
+        return iterate_col(left_.shape(), k);
       }
+
 
       /// Find the next k where the left- and right-hand argument have non-zero tiles
 
