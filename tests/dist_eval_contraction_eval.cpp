@@ -30,6 +30,7 @@
 #include "TiledArray/dense_shape.h"
 #include "TiledArray/tile_op/contract_reduce.h"
 #include "TiledArray/eigen.h"
+#include "TiledArray/proc_grid.h"
 #include "array_fixture.h"
 
 using namespace TiledArray;
@@ -47,10 +48,14 @@ struct ContractionEvalFixture : public TiledRangeFixture {
   ContractionEvalFixture() :
     left(*GlobalFixture::world, tr),
     right(*GlobalFixture::world, tr),
+    proc_grid(*GlobalFixture::world, tr.tiles().size().front(), tr.tiles().size().back(),
+        tr.elements().size().front(), tr.elements().size().back()),
     left_arg(detail::make_array_eval(left, left.get_world(), DenseShape(),
-        left.get_pmap(), Permutation(), array_op_type())),
+        proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
+        Permutation(), array_op_type())),
     right_arg(detail::make_array_eval(right, right.get_world(), DenseShape(),
-        left.get_pmap(), Permutation(), array_op_type())),
+        proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().back()),
+        Permutation(), array_op_type())),
     result_tr(),
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().dim(), tr.tiles().dim())
   {
@@ -124,6 +129,7 @@ struct ContractionEvalFixture : public TiledRangeFixture {
 
   ArrayN left;
   ArrayN right;
+  detail::ProcGrid proc_grid;
   array_eval_type left_arg;
   array_eval_type right_arg;
   typename impl_type::trange_type result_tr;
