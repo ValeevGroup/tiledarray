@@ -298,12 +298,16 @@ namespace TiledArray {
       template <typename S>
       size_type iterate_row(const S& shape, size_type k) const {
         if(! shape.is_dense()) {
+          // Compute the iterator range for row k
+          size_type begin = k * proc_grid_.cols();
+          size_type end = begin + proc_grid_.cols();
+          begin += proc_grid_.rank_col();
+
           // Iterate over k's until a non-zero tile is found or the end of the
           // matrix is reached.
-          for(; k < k_; ++k) {
-            // Search row k for non-zero tiles
-            const size_type end = right_end(k);
-            for(size_type i = right_begin_local(k); i < end; i += right_stride_local_)
+          for(; k < k_; ++k, begin += proc_grid_.cols(), end += proc_grid_.cols()) {
+            // Search for non-zero tiles in row k of right
+            for(size_type i = begin; i < end; i += right_stride_local_)
               if(! shape.is_zero(i))
                 return k;
           }
@@ -322,39 +326,21 @@ namespace TiledArray {
       /// \return The first row, greater than or equal to \c k with non-zero
       /// tiles, or \c k_ if none is found.
       size_type iterate_row(const SparseShape& shape, size_type k) const {
+        // Compute the iterator range for row k
+        size_type begin = k * proc_grid_.cols();
+        size_type end = begin + proc_grid_.cols();
+        begin += proc_grid_.rank_col();
+
         // Iterate over k's until a non-zero tile is found or the end of the
         // matrix is reached.
-        for(; k < k_; ++k) {
-          // Search row k for non-zero tiles
-          const size_type end = right_end(k);
-          for(size_type i = right_begin_local(k); i < end; i += right_stride_local_)
+        for(; k < k_; ++k, begin += proc_grid_.cols(), end += proc_grid_.cols()) {
+          // Search for non-zero tiles in row k of right
+          for(size_type i = begin; i < end; i += right_stride_local_)
             if(! shape.is_zero(i))
               return k;
         }
 
         return k;
-      }
-
-      /// Find next non-zero row of \c right_ for a dense shape
-
-      /// For dense shapes, no search is necessary since all tiles are present.
-      /// \param k The first row to search
-      /// \return \c k
-      size_type iterate_row(const DenseShape&, size_type k) const {
-        return k;
-      }
-
-
-      /// Find next non-zero row of \c right_
-
-      /// Starting at the k-th row of the right-hand argument, find the next row
-      /// that contains at least one non-zero tile. This search only checks for
-      /// non-zero tiles in this processes column.
-      /// \param k The first row to test for non-zero tiles
-      /// \return The first row, greater than or equal to \c k, that contains a
-      /// non-zero tile. If no non-zero tile is not found, return \c k_.
-      size_type iterate_row(size_type k) const {
-        return iterate_row(right_.shape(), k);
       }
 
 
@@ -404,25 +390,121 @@ namespace TiledArray {
         return k;
       }
 
-      /// Find the next column
+      /// Find the next k where the left- and right-hand argument have non-zero tiles
 
-      /// For dense shapes, no search is necessary since all tiles are present.
-      /// \param k The first column to test for non-zero tiles
-      /// \return \c k
-      size_type iterate_col(const DenseShape&, size_type k) const {
+      /// Search for the next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both contain non-zero tiles. This search
+      /// only checks for non-zero tiles in this process's row or column. If a
+      /// non-zero, local tile is found that does not contribute to local
+      /// contractions, the tiles will be immediately broadcast.
+      /// \param k The first row/column to check
+      /// \return The next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both have non-zero tiles
+      size_type iterate(const std::shared_ptr<ContractionEvalImpl_>&,
+          const DenseShape&, const DenseShape&, const size_type k) const
+      {
         return k;
       }
 
-      /// Find the next column
+      /// Find the next k where the left- and right-hand argument have non-zero tiles
 
-      /// Starting at the k-th column of the left-hand argument, find the next
-      /// column that contains at least one non-zero tile. This search only
-      /// checks for non-zero tiles in this process's row.
-      /// \param k The first column to test for non-zero tiles
-      /// \return The first column, greater than or equal to \c k, that contains
-      /// a non-zero tile. If no non-zero tile is not found, return \c k_.
-      size_type iterate_col(size_type k) const {
-        return iterate_col(left_.shape(), k);
+      /// Search for the next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both contain non-zero tiles. This search
+      /// only checks for non-zero tiles in this process's row or column. If a
+      /// non-zero, local tile is found that does not contribute to local
+      /// contractions, the tiles will be immediately broadcast.
+      /// \param k The first row/column to check
+      /// \return The next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both have non-zero tiles
+      template <typename RightShape>
+      typename madness::disable_if<std::is_same<RightShape, DenseShape>, size_type>::type
+      iterate(const std::shared_ptr<ContractionEvalImpl_>& self, const DenseShape&,
+          const RightShape& right_shape, const size_type k) const
+      {
+        // Find the next non-zero row of right
+        const size_type k_row = iterate_row(right_shape, k);
+
+        // Broadcast any local columns of left
+        if(k < k_row)
+          TensorImpl_::get_world().taskq.add(self,
+              & ContractionEvalImpl_::bcast_col_range_task, k, k_row,
+              madness::TaskAttributes::hipri());
+
+        return k_row;
+      }
+
+
+      /// Find the next k where the left- and right-hand argument have non-zero tiles
+
+      /// Search for the next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both contain non-zero tiles. This search
+      /// only checks for non-zero tiles in this process's row or column. If a
+      /// non-zero, local tile is found that does not contribute to local
+      /// contractions, the tiles will be immediately broadcast.
+      /// \param k The first row/column to check
+      /// \return The next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both have non-zero tiles
+      template <typename LeftShape>
+      typename madness::disable_if<std::is_same<LeftShape, DenseShape>, size_type>::type
+      iterate(const std::shared_ptr<ContractionEvalImpl_>& self,
+          const LeftShape& left_shape, const DenseShape&, size_type k) const
+      {
+        // Find the next non-zero column of left
+        const size_type k_col = iterate_col(left_shape, k);
+
+        // Broadcast any local columns of left
+        if(k < k_col)
+          TensorImpl_::get_world().taskq.add(self,
+              & ContractionEvalImpl_::bcast_row_range_task, k, k_col,
+              madness::TaskAttributes::hipri());
+
+        return k_col;
+      }
+
+
+      /// Find the next k where the left- and right-hand argument have non-zero tiles
+
+      /// Search for the next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both contain non-zero tiles. This search
+      /// only checks for non-zero tiles in this process's row or column. If a
+      /// non-zero, local tile is found that does not contribute to local
+      /// contractions, the tiles will be immediately broadcast.
+      /// \param k The first row/column to check
+      /// \return The next k-th column and row of the left- and right-hand
+      /// arguments, respectively, that both have non-zero tiles
+      template <typename LeftShape, typename RightShape>
+      typename madness::disable_if_c<
+          std::is_same<LeftShape, DenseShape>::value ||
+          std::is_same<RightShape, DenseShape>::value, size_type>::type
+      iterate(const std::shared_ptr<ContractionEvalImpl_>& self,
+          const LeftShape& left_shape, const RightShape& right_shape,
+          const size_type k) const
+      {
+        // Initial step for k_col and k_row.
+        size_type k_col = iterate_col(left_shape, k);
+        size_type k_row = iterate_row(right_shape, k);
+
+        // Search for a row and column that both have non-zero tiles
+        while(k_col != k_row) {
+          if(k_col < k_row) {
+            // If the tiles of k_col are owned by this node, broadcast the tiles.
+            if(((k_col - proc_grid_.rank_col()) % proc_grid_.proc_cols()) == 0ul)
+              TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_col_task,
+                  k_col, madness::TaskAttributes::hipri());
+
+            // Find the next non-zero column of the left-hand argument
+            k_col = iterate_col(left_shape, k_col + 1ul);
+          } else {
+            // If the tiles of k_row are owned by this node, broadcast the tiles.
+            if(((k_row - proc_grid_.rank_row()) % proc_grid_.proc_rows()) == 0ul)
+              TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_row_task,
+                  k_row, madness::TaskAttributes::hipri());
+
+            k_row = iterate_row(right_shape, k_row + 1ul);
+          }
+        }
+
+        return k_col;
       }
 
 
@@ -437,31 +519,7 @@ namespace TiledArray {
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
       size_type iterate(const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const {
-        size_type k_col = iterate_col(k);
-        size_type k_row = iterate_row(k);
-        while(k_col != k_row) {
-          // Check the largest k for non-zero tiles.
-          if(k_col < k_row) {
-            // If k_col has local data, broadcast the data to other nodes with
-            // non-zero rows.
-            if(left_.is_local(left_begin_local(k_col)))
-              TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_col_task,
-                  k_col, madness::TaskAttributes::hipri());
-
-            // Find the next non-zero column of the left-hand argument
-            k_col = iterate_col(k_col + 1ul);
-          } else {
-            // If k_row has local data, broadcast the data to other nodes with
-            // non-zero columns.
-            if(right_.is_local(right_begin_local(k_row)))
-              TensorImpl_::get_world().taskq.add(self, & ContractionEvalImpl_::bcast_row_task,
-                  k_row, madness::TaskAttributes::hipri());
-
-            k_row = iterate_row(k_row + 1ul);
-          }
-        }
-
-        return k_col;
+        return iterate(self, left_.shape(), right_.shape(), k);
       }
 
       /// Destroy reduce tasks and set the result tiles
