@@ -84,6 +84,9 @@ namespace TiledArray {
       typedef std::pair<size_type, left_future> col_datum; ///< Datum element type for a left-hand argument column
 
 
+      //------------------------------------------------------------------------
+      // Iterator functions
+
       size_type left_begin(const size_type k) const { return k; }
       size_type left_begin_local(const size_type k) const { return left_start_local_ + k; }
 
@@ -92,197 +95,333 @@ namespace TiledArray {
       size_type right_end(const size_type k) const { return (k + 1ul) * proc_grid_.cols(); }
 
 
-      template <typename T>
-      static typename T::eval_type convert_tile(const T& tile) { return tile; }
-
-      template <typename Arg>
-      static typename madness::disable_if<
-          TiledArray::math::is_lazy_tile<typename Arg::value_type>,
-          madness::Future<typename Arg::value_type> >::type
-      move_tile(Arg& arg, size_type index) { return arg.move(index); }
-
-      template <typename Arg>
-      typename madness::enable_if<
-          TiledArray::math::is_lazy_tile<typename Arg::value_type>,
-          madness::Future<typename Arg::eval_type> >::type
-      move_tile(Arg& arg, size_type index) const {
-        return TensorImpl_::get_world().taskq.add(
-            & ContractionEvalImpl_::template convert_tile<typename Arg::value_type>,
-            arg.move(index), madness::TaskAttributes::hipri());
-      }
+      //------------------------------------------------------------------------
+      // Process group factor functions
 
 
-      /// Sparse row group factory function
+      /// Process group factory function
 
-      /// Construct a row group that includes all processes that will receive/
-      /// have non-zero data for iteration \c k.
-      /// \param k The row of right that will be used to generate the sparse row group
-      /// \return A sparse row group
-      madness::Group
-      make_sparse_row_group(const size_type k) const {
+      /// This function generates a sparse process group. Processes are included
+      /// \tparam Shape The shape type
+      /// \tparam ProcMap The process map operation type
+      /// \param shape The shape that will be used to select processes included
+      /// in the result group
+      /// \param index The first shape index
+      /// \param end The last shape index
+      /// \param strid The stride of the shape index
+      /// \param max_group_size The maximum number of processes in the result group
+      /// \param proc_map The operator that will convert a process row/column
+      /// into a process
+      /// \param key The key that will be used to identify the result group
+      /// \return A sparse group
+      template <typename Shape, tyepname ProcMap>
+      madness::Group make_group(const Shape& shape, size_type index,
+          const size_type end, const size_type stride, const size_type max_group_size,
+          const ProcMap& proc_map, std::size_t key) const
+      {
         // Generate the list of processes in rank_row
-        std::vector<ProcessID> proc_list(proc_grid_.proc_cols(), -1);
+        std::vector<ProcessID> proc_list(max_group_size, -1);
 
         // Flag all process that have non-zero tiles
-        const size_type p_start = proc_grid_.rank_row() * proc_grid_.proc_cols();
-        const size_type row_k_end = right_end(k);
         size_type count = 0ul;
-        for(size_type i = right_begin(k), p = 0u; i < row_k_end;
-            i += right_stride_, p = (p + 1u) % proc_grid_.proc_cols())
+        for(size_type p = 0u; (index < end) && (count < max_group_size); index += stride,
+            p = (p + 1u) % max_group_size)
         {
           if(proc_list[p] != -1) continue;
-          if(right_.shape().is_zero(i)) continue;
+          if(shape.is_zero(index)) continue;
 
-          proc_list[p] = p_start + p;
+          proc_list[p] = proc_map(p);
           ++count;
-          if(count == proc_list.size()) break;
         }
 
-        if(count < proc_list.size()) {
-          // Convert flags into process numbers
-          size_type x = 0ul;
-          for(size_type p = 0ul; p < proc_list.size(); ++p) {
-            if(proc_list[p] == -1) continue;
-            proc_list[x++] = proc_list[p];
-          }
-
-          // Truncate invalid process id's
-          proc_list.resize(x);
-        }
-
-
-        return madness::Group(TensorImpl_::get_world(), proc_list,
-            madness::DistributedID(TensorImpl_::id(), k + k_));
-      }
-
-      /// Sparse column group factory function
-
-      /// Construct a column group that includes all processes that will receive/
-      /// have non-zero data for iteration \c k.
-      /// \param k The column of left that will be used to generate the sparse column group
-      /// \return A sparse column group
-      /// \note This function assumes that there is at least one process that
-      /// contains non-zero data and that this process contains non
-      madness::Group
-      make_sparse_col_group(const size_type k) const {
-        std::vector<ProcessID> proc_list(proc_grid_.proc_rows(), 0);
-
-        // Flag all process that have non-zero tiles
-        size_type count = 0ul;
-        for(size_type i = left_begin(k), p = 0u;
-            i < left_end_; i += left_stride_, p = (p + 1u) % proc_grid_.proc_rows())
-        {
+        // Remove processes from the list that will not be in the group
+        for(size_type p = 0ul, x = 0ul; (p < max_group_size) && (x < count); ++p) {
           if(proc_list[p] == -1) continue;
-          if(left_.shape().is_zero(i)) continue;
-
-          proc_list[p] = p * proc_grid_.proc_cols() + proc_grid_.rank_col();
-          ++count;
-          if(count == proc_list.size()) break;
+          proc_list[x++] = proc_list[p];
         }
 
-        if(count < proc_list.size()) {
-          // Convert flags into process numbers
-          size_type x = 0ul;
-          for(size_type p = 0ul; p < proc_grid_.proc_rows(); ++p) {
-            if(proc_list[p] == -1) continue;
-
-            proc_list[x] = proc_list[p];
-            ++x;
-          }
-
-          // Truncate invalid the process id's
-          proc_list.resize(x);
-        }
+        // Truncate invalid process id's
+        proc_list.resize(count);
 
         return madness::Group(TensorImpl_::get_world(), proc_list,
-            madness::DistributedID(TensorImpl_::id(), k));
+            madness::DistributedID(TensorImpl_::id(), key));
       }
+
+      /// Map a process row to a process
+      class MapRow {
+        const ProcGrid& proc_grid_; ///< Process grid that will be used to map rows
+      public:
+        MapRow(const ProcGrid& proc_grid) : proc_grid_(proc_grid) { }
+
+        ProcessID operator()(const ProcGrid::size_type row) const
+        { return proc_grid_.map_row(row); }
+      }; // class MapRow
+
+      /// Sparse column group factor function
+
+      /// \param k The column of left shape that will be used to generate the group
+      /// \return A sparse group for column \c k of \c left_
+      madness::Group make_col_group(const size_type k) const {
+        return make_group(left_.shape(), k, left_end_, left_stride_,
+            proc_grid_.proc_rows(), MapRow(proc_grid_), k);
+      }
+
+      /// Map a process column to a process
+      class MapCol {
+        const ProcGrid& proc_grid_;  ///< Process grid that will be used to map columns
+      public:
+        MapCol(const ProcGrid& proc_grid) : proc_grid_(proc_grid) { }
+
+        ProcessID operator()(const ProcGrid::size_type col) const
+        { return proc_grid_.map_col(col); }
+      }; // class MapCol
+
+      /// Sparse column group factor function
+
+      /// \param k The column of left shape that will be used to generate the group
+      /// \return A sparse group for column \c k of \c left_
+      madness::Group make_row_group(const size_type k) const {
+        const size_type begin = k * proc_grid_.cols();
+        const size_type end = begin + proc_grid_.cols();
+        return make_group(right_.shape(), begin, end, right_stride_,
+            proc_grid_.proc_cols(), MapCol(proc_grid_), k + k_);
+      }
+
+
+      //------------------------------------------------------------------------
+      // General broadcast function
+
+
+      template <typename ArgShape, typename Datum, typename GenTile>
+      void bcast(const ArgShape& shape, std::vector<Datum>& vec,
+          size_type index, const size_type end, const size_type stride,
+          const ProcessID group_root, const madness::Group& group,
+          const GenTile& gen_tile, const size_type key_offset) const
+      {
+        TA_ASSERT(vec.size() == 0ul);
+
+        if(shape.is_dense()) {
+          // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
+          for(size_type i = 0ul; index < end; ++i, index += stride) {
+            // Get column tile
+            vec.push_back(Datum(i, gen_tile(index)));
+
+            const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
+            TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
+          }
+        } else {
+          // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
+          for(size_type i = 0ul; index < end; ++i, index += stride) {
+            if(shape.is_zero(index)) continue;
+
+            // Get column tile
+            vec.push_back(Datum(i, gen_tile(index)));
+
+            const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
+            TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
+          }
+        }
+      }
+
+      template <typename Datum, typename GenTile>
+      void bcast(const SparseShape& shape, std::vector<Datum>& vec,
+          size_type index, const size_type end, const size_type stride,
+          const ProcessID group_root, const madness::Group& group,
+          const GenTile& gen_tile, const size_type key_offset) const
+      {
+        TA_ASSERT(vec.size() == 0ul);
+
+        // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
+        for(size_type i = 0ul; index < end; ++i, index += stride) {
+          if(shape.is_zero(index)) continue;
+
+          // Get column tile
+          vec.push_back(Datum(i, gen_tile(index)));
+
+          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
+          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
+        }
+      }
+
+      template <typename Datum, typename GenTile>
+      void bcast(const DenseShape&, std::vector<Datum>& vec,
+          size_type index, const size_type end, const size_type stride,
+          const ProcessID group_root, const madness::Group& group,
+          const size_type key_offset, const GenTile& gen_tile) const
+      {
+        TA_ASSERT(vec.size() == 0ul);
+
+        // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
+        for(size_type i = 0ul; index < end; ++i, index += stride) {
+          // Get column tile
+          vec.push_back(Datum(i, gen_tile(index)));
+
+          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
+          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
+        }
+      }
+
+      template <typename Arg>
+      class GenRootTile {
+        Arg& arg_;
+
+        template <typename Tile>
+        static typename Tile::eval_type convert_task(const Tile& tile) { return tile; }
+
+        template <typename Tile>
+        typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile>,
+            const madness::Future<Tile>& >::type
+        move(const madness::Future<Tile>& tile) { return tile; }
+
+        template <typename Tile>
+        typename madness::enable_if< TiledArray::math::is_lazy_tile<Tile>,
+            madness::Future<typename Tile::eval_type> >::type
+        move(const madness::Future<Tile>& tile) const {
+          return arg_.get_world().taskq.add(
+              & GenRootTile<Arg>::template convert_task<Tile>,
+              tile, madness::TaskAttributes::hipri());
+        }
+
+      public:
+        GenRootTile(Arg& arg) : arg_(arg) { }
+
+        madness::Future<typename Arg::eval_type> operator()(const size_type index) const {
+          madness::Future<typename Arg::eval_type> tile = convert(arg_.move(index));
+        }
+      };
+
+      template <typename Arg>
+      class GenTile {
+
+      public:
+        GenTile() { }
+
+        madness::Future<typename Arg::eval_type> operator()(const size_type) const {
+          return madness::Future<typename Arg::eval_type>();
+        }
+
+      };
 
       /// Broadcast column \c k of the left-hand argument
 
       /// \param k The column of \c left_ to be broadcast
       /// \param[out] col The vector that will hold the tiles in column \c k
-      void bcast_col(const size_type k, std::vector<col_datum>& col) const {
-        TA_ASSERT(col.size() == 0ul);
+      template <typename Arg, typename Datum>
+      void bcast(Arg& arg, std::vector<Datum>& vec,
+          size_type index, const size_type end, const size_type stride,
+          const madness::Group& group, const size_type key_offset) const
+      {
+        TA_ASSERT(vec.size() == 0ul);
 
-        // Compute the left-hand argument column first index, end, and stride
-        size_type index = left_begin_local(k);
+        // Get the root process
+        const ProcessID group_root = group.rank(arg.owner(index));
 
-        // Get the broadcast process group and root process
-        madness::Group group;
-        if(right_.is_dense()) {
-          group = row_group_;
+        if(group_root == group.rank()) {
+          bcast(arg.shape(), vec, index, end, stride, group_root, group,
+              key_offset, GenRootTile<Arg>(arg));
         } else {
-          group = make_sparse_row_group(k);
-          group.register_group();
+          bcast(arg.shape(), vec, index, end, stride, group_root, group,
+              key_offset, GenTile<Arg>());
         }
-        const ProcessID group_root = group.rank(left_.owner(index));
+      }
 
+
+      //------------------------------------------------------------------------
+      // Broadcast specialization functions
+
+      /// Broadcast column \c k of \c left_
+
+      /// This is a wrapper function around the call to more specialized column
+      /// broadcast functions. The possible choices are \c DenseShape,
+      /// \c SparseShape, and an arbitrary shape type.
+      /// \param[in] k The column of \c left_ to be broadcast
+      /// \param[out] col The vector that will hold the results of the broadcast
+      void bcast_col(const size_type k, std::vector<col_datum>& col) const {
         // Allocate memory for the column
         col.reserve(proc_grid_.local_rows());
 
-        // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
-        const bool left_is_local = left_.is_local(index);
-        for(size_type i = 0ul; index < left_end_; ++i, index += left_stride_local_) {
-          if(left_.is_zero(index)) continue;
+        // Compute local iteration limits for column k of left_.
+        const size_type begin = left_begin_local(k);
 
-          // Get column tile
-          col.push_back(col_datum(i, (left_is_local ? move_tile(left_, index) : left_future())));
-
-          const madness::DistributedID key(TensorImpl_::id(), index);
-          TensorImpl_::get_world().gop.bcast(key, col.back().second, group_root, group);
-        }
-
-        // Cleanup group
-        if(! right_.is_dense())
+        // Broadcast column k of left_.
+        if(right_.shape().is_dense()) {
+          bcast(left_, col, begin, left_end_, left_stride_local_, row_group_, 0ul);
+        } else  {
+          madness::Group group = make_row_group(k);
+          group.register_group();
+          bcast(left_, col, begin, left_end_, left_stride_local_, group, 0ul);
           group.unregister_group();
+        }
       }
 
+      /// Broadcast row \c k of \c right_
+
+      /// This is a wrapper function around the call to more specialized row
+      /// broadcast functions. The possible choices are \c DenseShape,
+      /// \c SparseShape, and an arbitrary shape type.
+      /// \param[in] k The row of \c right to be broadcast
+      /// \param[out] row The vector that will hold the results of the broadcast
       void bcast_row(const size_type k, std::vector<row_datum>& row) const {
-        TA_ASSERT(row.size() == 0ul);
-
-        // Compute the left-hand argument column first index, end, and stride
-        size_type index = right_begin_local(k);
-        const size_type end = right_end(k);
-
-        // Get the broadcast process group and root
-        madness::Group group;
-        if(left_.is_dense()) {
-          group = col_group_;
-        } else {
-          group = make_sparse_col_group(k);
-          group.register_group();
-        }
-        const ProcessID group_root = group.rank(right_.owner(index));
-
         // Allocate memory for the row
         row.reserve(proc_grid_.local_cols());
 
-        // Broadcast and store non-zero tiles in the k-th row of the right-hand argument.
-        const bool right_is_local = right_.is_local(index);
-        for(size_type i = 0ul; index < end; ++i, index += right_stride_local_) {
-          if(right_.is_zero(index)) continue;
+        // Compute local iteration limits for row k of right_.
+        size_type begin = k * proc_grid_.cols();
+        const size_type end = begin + proc_grid_.cols();
+        begin += proc_grid_.rank_col();
 
-          // Get row tile
-          row.push_back(row_datum(i, (right_is_local ? move_tile(right_, index) : right_future())));
+        // Broadcast row k of right_.
+        if(left_.shape().is_dense()) {
+          bcast(right_, row, begin, end, right_stride_local_, col_group_, left_.size());
+        } else {
+          madness::Group group = make_col_group(k);
+          group.register_group();
+          bcast(right_, row, begin, end, right_stride_local_, group, left_.size());
+          group.unregister_group();
+        }
+      }
 
-          const madness::DistributedID key(TensorImpl_::id(), index + left_.size());
-          TensorImpl_::get_world().gop.bcast(key, row.back().second, group_root, group);
+      /// \note This task while only be called when left and right are sparse.
+      void bcast_col_task(size_type k) const {
+        // Get the broadcast process group and root process
+        madness::Group group = make_sparse_row_group(k);
+        group.register_group();
+
+        // Broadcast and store non-zero tiles in the k-th column of the left-hand argument.
+        for(size_type index = left_begin_local(k); index < left_end_; index += left_stride_local_) {
+          if(left_.is_zero(index)) continue;
+
+          const madness::DistributedID key(TensorImpl_::id(), index);
+          TensorImpl_::get_world().gop.bcast(key, move_tile(left_, index), group.rank(), group);
         }
 
         // Cleanup group
-        if(! left_.is_dense())
-          group.unregister_group();
+        group.unregister_group();
       }
 
-      void bcast_col_task(const size_type k) const {
-        std::vector<col_datum> col;
-        bcast_col(k, col);
-      }
 
-      void bcast_row_task(const size_type k) const {
+      void bcast_row_task(size_type k) const {
+        TA_ASSERT(right_.is_local(k));
+
+        // Broadcast row k of right.
         std::vector<row_datum> row;
-        bcast_row(k, row);
+        bcast_row(right_.shape(), k, row);
+      }
+
+      void bcast_row_range_task(size_type k, const size_type end) const {
+        // Compute the first local row of right
+        const size_type nrows = proc_grid_.proc_rows();
+        k += (nrows - ((k - proc_grid_.rank_row()) % nrows)) % nrows;
+
+        TA_ASSERT(right_.is_local(k));
+
+        // Broadcast local row k of right.
+        std::vector<row_datum> row;
+        const col_datum null_value(0ul, left_future::default_initializer());
+        for(; k < end; k += nrows) {
+          bcast_row(right_.shape(), k, row);
+          col.resize(0ul, null_value);
+        }
       }
 
       /// Find next non-zero row of \c right_ for an arbitrary shape type
