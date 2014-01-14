@@ -431,6 +431,24 @@ namespace TiledArray {
         return group;
       }
 
+      /// Map a row to the process in this process's column
+
+      /// \param row The row to be mapped
+      /// \return The process the corresponds to the process coordinate \c (row,rank_col)
+      ProcessID map_row(const size_type row) const {
+        TA_ASSERT(row < proc_rows_);
+        return row * proc_cols_ + rank_col_;
+      }
+
+      /// Map a column to the process in this process's row
+
+      /// \param col The column to be mapped
+      /// \return The process the corresponds to the process coordinate \c (rank_row,col)
+      ProcessID map_col(const size_type col) const {
+        TA_ASSERT(col < proc_cols_);
+        return rank_row_ * proc_cols_ + col;
+      }
+
 
       /// Construct column phased a cyclic process
 
