@@ -114,7 +114,7 @@ namespace TiledArray {
       /// into a process
       /// \param key The key that will be used to identify the result group
       /// \return A sparse group
-      template <typename Shape, tyepname ProcMap>
+      template <typename Shape, typename ProcMap>
       madness::Group make_group(const Shape& shape, size_type index,
           const size_type end, const size_type stride, const size_type max_group_size,
           const ProcMap& proc_map, std::size_t key) const
@@ -271,12 +271,12 @@ namespace TiledArray {
         template <typename Tile>
         typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile>,
             const madness::Future<Tile>& >::type
-        move(const madness::Future<Tile>& tile) { return tile; }
+        convert(const madness::Future<Tile>& tile) { return tile; }
 
         template <typename Tile>
         typename madness::enable_if< TiledArray::math::is_lazy_tile<Tile>,
             madness::Future<typename Tile::eval_type> >::type
-        move(const madness::Future<Tile>& tile) const {
+        convert(const madness::Future<Tile>& tile) const {
           return arg_.get_world().taskq.add(
               & GenRootTile<Arg>::template convert_task<Tile>,
               tile, madness::TaskAttributes::hipri());
@@ -286,21 +286,18 @@ namespace TiledArray {
         GenRootTile(Arg& arg) : arg_(arg) { }
 
         madness::Future<typename Arg::eval_type> operator()(const size_type index) const {
-          madness::Future<typename Arg::eval_type> tile = convert(arg_.move(index));
+          return convert(arg_.move(index));
         }
-      };
+      }; // class GenRootTile
 
       template <typename Arg>
-      class GenTile {
-
+      class GenEmptyTile {
       public:
-        GenTile() { }
 
         madness::Future<typename Arg::eval_type> operator()(const size_type) const {
           return madness::Future<typename Arg::eval_type>();
         }
-
-      };
+      }; // class GenEmptyTile
 
       /// Broadcast column \c k of the left-hand argument
 
@@ -317,11 +314,13 @@ namespace TiledArray {
         const ProcessID group_root = group.rank(arg.owner(index));
 
         if(group_root == group.rank()) {
+          // Broadcast data from root process
           bcast(arg.shape(), vec, index, end, stride, group_root, group,
               key_offset, GenRootTile<Arg>(arg));
         } else {
+          // Receive broadcast data
           bcast(arg.shape(), vec, index, end, stride, group_root, group,
-              key_offset, GenTile<Arg>());
+              key_offset, GenEmptyTile<Arg>());
         }
       }
 
