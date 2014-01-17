@@ -72,7 +72,7 @@ namespace TiledArray {
       /// \param tile The input tile that will be modified
       /// \param op The operation to be applied to the input tile
       /// \param consume If true, the input tile may be consumed by \c op
-      LazyArrayTile(const tile_type& tile, std::shared_ptr<op_type> op, const bool consume) :
+      LazyArrayTile(const tile_type& tile, const std::shared_ptr<op_type>& op, const bool consume) :
         tile_(tile), op_(op), consume_(consume)
       { }
 
