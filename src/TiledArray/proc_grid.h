@@ -85,14 +85,14 @@ namespace TiledArray {
       /// This function computes the optimal number of process row such that the
       /// communication time of a single SUMMA iteration is minimum.
       /// \param nprocs The number of processes
-      /// \param M The number of row blocks
-      /// \param N The number of column blocks
+      /// \param Mm The number of row elements
+      /// \param Nn The number of column elements
       /// \return The number of process rows that minimizes communication time
       static size_type optimal_proc_row(const double nprocs, const double Mm,
           const double Nn)
       {
         // Compute the initial guess for P_row. This is the optimal guess when
-        // Mm is equal to Nn.
+        // Mm is equal to Nn, and the ideal solution.
         double P_row_estimate = std::sqrt(nprocs);
 
         // Here we want to find the positive, real root of the polynomial:
@@ -101,10 +101,10 @@ namespace TiledArray {
 
         // Precompute some constants
         const double PMm = nprocs * Mm;
-        const double two_P = 2.0 * nprocs;
+        const double two_P = nprocs + nprocs;
 
-        const unsigned int max_it = 21;
-        unsigned int it = 0;
+        const unsigned int max_it = 21u;
+        unsigned int it = 0u;
         double r = 0.0;
         do {
           // Precompute P_row squared
@@ -119,7 +119,7 @@ namespace TiledArray {
           // Compute a new guess for P_row
           const double P_row_n1 = P_row_estimate - (f / df);
 
-          // Compute the residule for this iteration
+          // Compute the residual for this iteration
           r = std::abs(P_row_n1 - P_row_estimate);
 
           // Update the guess
@@ -134,10 +134,18 @@ namespace TiledArray {
 
       /// This function will search for values of x and y such that minimize the
       /// number of unused processes, subject to the constraint that
-      /// <tt>x*y <= nprocs</tt>.
+      /// <tt>x*y <= nprocs</tt>. When the number of unused processes is equal,
+      /// the solution that is closest to the initial guess for x and y will be
+      /// used, which is also the solution with lower communication cost.
+      /// \param[in,out] x The initial guess for the number of rows
+      /// \param[in,out] y The initial guess for the number of columns
+      /// \param[in] nprocs The number of available processes
+      /// \param[in] min_x The minimum valid value for x
+      /// \param[in] max_x The maximum valid value for x
       void minimize_unused_procs(size_type& x, size_type& y,
           const size_type nprocs, const size_type min_x, const size_type max_x)
       {
+        // Check for the quick exit
         size_type unused = x * y;
         if(unused == 0u)
           return;
@@ -145,22 +153,22 @@ namespace TiledArray {
         // Compute the range of values for x to be tested.
         const size_type delta = std::max<size_type>(1ul, TiledArray::math::log2(nprocs));
 
+        const size_type optimal_x = x;
+        size_type diff = 0ul;
         const size_type min_test_x = std::max<int_fast32_t>(min_x, int_fast32_t(x) - delta);
         size_type test_x = std::min(x + delta, max_x);
 
         for(; test_x >= min_test_x; --test_x) {
           const size_type test_y = nprocs / test_x;
           const size_type test_unused = nprocs - test_x * test_y;
+          const size_type test_diff = std::abs(long(optimal_x) - long(test_x));
 
-          if(test_unused < unused) {
+          if((test_unused < unused) || ((test_unused == unused) && (test_diff < diff))) {
             x = test_x;
             y = test_y;
             unused = test_unused;
-
-            if(unused == 0u)
-              return;
+            diff = test_diff;
           }
-
         }
       }
 
