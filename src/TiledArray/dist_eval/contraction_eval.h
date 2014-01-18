@@ -734,23 +734,31 @@ namespace TiledArray {
       { contract(TensorImpl_::shape(), k, col, row, task); }
 
 
+      //------------------------------------------------------------------------
+      // SUMMA step task
 
 
+      /// SUMMA step task
 
+      /// This task will perform a single SUMMA iteration, and start the next
+      /// step task.
       class StepTask : public madness::TaskInterface {
       private:
         // Member variables
-        std::shared_ptr<ContractionEvalImpl_> owner_;
-        size_type k_;
-        FinalizeTask* finalize_task_;
-        StepTask* next_step_task_;
+        std::shared_ptr<ContractionEvalImpl_> owner_; ///< The owner of this task
+        size_type k_; ///< The SUMMA that will be processed by this task
+        FinalizeTask* finalize_task_; ///< The SUMMA finalization task
+        StepTask* next_step_task_; ///< The next SUMMA step task
 
         /// Construct the task for the next step
-        StepTask(StepTask* const previous, const int ndep) :
+
+        /// \param parent The previous SUMMA step task
+        /// \param ndep The number of dependencies for this task
+        StepTask(StepTask* const parent, const int ndep) :
           madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
-          owner_(previous->owner_),
+          owner_(parent->owner_),
           k_(0ul),
-          finalize_task_(previous->finalize_task_),
+          finalize_task_(parent->finalize_task_),
           next_step_task_(NULL)
         { }
 
