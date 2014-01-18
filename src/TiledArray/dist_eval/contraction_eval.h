@@ -514,8 +514,8 @@ namespace TiledArray {
       /// \param k The first row/column to check
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
-      size_type iterate(const std::shared_ptr<ContractionEvalImpl_>&,
-          const DenseShape&, const DenseShape&, const size_type k) const
+      size_type iterate(const DenseShape&, const DenseShape&,
+          const std::shared_ptr<ContractionEvalImpl_>&, const size_type k) const
       {
         return k;
       }
@@ -531,8 +531,8 @@ namespace TiledArray {
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
       template <typename LeftShape, typename RightShape>
-      size_type iterate(const std::shared_ptr<ContractionEvalImpl_>& self,
-          const LeftShape&, const RightShape&, const size_type k) const
+      size_type iterate(const LeftShape&, const RightShape&,
+          const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const
       {
         // Initial step for k_col and k_row.
         size_type k_col = iterate_col(k);
@@ -572,7 +572,7 @@ namespace TiledArray {
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
       size_type iterate(const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const {
-        return iterate(self, left_.shape(), right_.shape(), k);
+        return iterate(left_.shape(), right_.shape(), self, k);
       }
 
       /// Destroy reduce tasks and set the result tiles
