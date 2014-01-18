@@ -575,16 +575,78 @@ namespace TiledArray {
         return iterate(left_.shape(), right_.shape(), self, k);
       }
 
-      /// Destroy reduce tasks and set the result tiles
+
+
+      //------------------------------------------------------------------------
+      // Initialization functions
+
+      /// Initialize reduce tasks and construct broadcast groups
+      size_type initialize(const DenseShape&) {
+        // Construct static broadcast groups for dense arguments
+        col_group_ = proc_grid_.make_col_group(madness::DistributedID(TensorImpl_::id(), 0ul));
+        col_group_.register_group();
+        row_group_ = proc_grid_.make_row_group(madness::DistributedID(TensorImpl_::id(), k_));
+        row_group_.register_group();
+
+        // Allocate memory for the reduce pair tasks.
+        std::allocator<ReducePairTask<op_type> > alloc;
+        reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
+
+        // Iterate over all local tiles
+        for(size_type t = 0ul; t < proc_grid_.local_size(); ++t) {
+          // Initialize the reduction task
+          new(&reduce_tasks_[t]) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+        }
+
+        return proc_grid_.local_size();
+      }
+
+      /// Initialize reduce tasks
+      template <typename Shape>
+      void initialize(const Shape& shape) {
+        // Initialize iteration variables
+        const size_type end = TensorImpl_::size();
+        size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
+        size_type row_end = row_start + proc_grid_.cols();
+        row_start += proc_grid_.rank_col();
+        const size_type row_stride = proc_grid_.proc_rows() * proc_grid_.cols();
+        const size_type col_stride = proc_grid_.proc_cols();
+
+        // Iterate over all local tiles
+        size_type tile_count = 0ul;
+        for(size_type t = 0ul; row_start < end; row_start += row_stride, row_end += row_stride) {
+          for(size_type index = row_start; index < row_end; index += col_stride, ++t) {
+            // Skip zero tiles
+            if(shape.is_zero(DistEvalImpl_::perm_index(index))) continue;
+
+            // Initialize the reduction task
+            new(&reduce_tasks_[t]) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+            ++tile_count;
+          }
+        }
+
+        return tile_count;
+      }
+
+      size_type initialize() { return initialize(TensorImpl_::shape()); }
+
+
+      //------------------------------------------------------------------------
+      // Finalize functions
+
+
+      /// Set the result tiles, destroy reduce tasks, and destroy broadcast groups
       void finalize(const DenseShape&) {
-        // Iterate over all local rows and columns
-        size_type t = 0ul;
+        // Initialize iteration variables
+        size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
+        size_type row_end = row_start + proc_grid_.cols();
+        row_start += proc_grid_.rank_col();
         const size_type end = TensorImpl_::size();
         const size_type row_stride = proc_grid_.proc_rows() * proc_grid_.cols();
         const size_type col_stride = proc_grid_.proc_cols();
-        size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
-        size_type row_end = row_start + proc_grid_.cols();
-        for(row_start += proc_grid_.rank_col(); row_start < end; row_start += row_stride, row_end += row_stride) {
+
+        // Iterate over all local tiles
+        for(size_type t = 0ul; row_start < end; row_start += row_stride, row_end += row_stride) {
           for(size_type index = row_start; index < row_end; index += col_stride, ++t) {
             // Set the result tile
             DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(index),
@@ -600,35 +662,45 @@ namespace TiledArray {
         row_group_.unregister_group();
 
         // Deallocate the memory for the reduce pair tasks.
-        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_, proc_grid_.local_size());
+        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
+            proc_grid_.local_size());
       }
 
-      /// Destroy reduce tasks and set the result tiles
+      /// Set the result tiles and destroy reduce tasks
       template <typename Shape>
       void finalize(const Shape& shape) {
-        // Iterate over all local rows and columns
-        ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-        for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
-          const size_type row_start = row * proc_grid_.cols();
-          for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++reduce_task) {
+        // Initialize iteration variables
+        const size_type end = TensorImpl_::size();
+        size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
+        size_type row_end = row_start + proc_grid_.cols();
+        row_start += proc_grid_.rank_col();
+        const size_type row_stride = proc_grid_.proc_rows() * proc_grid_.cols();
+        const size_type col_stride = proc_grid_.proc_cols();
 
-            // Compute convert the working ordinal index to a
-            const size_type perm_index = DistEvalImpl_::perm_index(row_start + col);
+        // Iterate over all local tiles
+        for(size_type t = 0ul; row_start < end; row_start += row_stride, row_end += row_stride) {
+          for(size_type index = row_start; index < row_end; index += col_stride, ++t) {
+            // Compute the permuted index
+            const size_type perm_index = DistEvalImpl_::perm_index(index);
 
-            // Construct non-zero reduce tasks
-            if(! shape.is_zero(index)) {
-              // Set the result tile
-              DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
+            // Skip zero tiles
+            if(shape.is_zero(perm_index)) continue;
 
-              // Destroy the the reduce task
-              reduce_task->~ReducePairTask<op_type>();
-            }
+            // Set the result tile
+            DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(perm_index),
+                reduce_tasks_[t].submit());
+
+            // Destroy the the reduce task
+            reduce_tasks_[t].~ReducePairTask<op_type>();
           }
         }
 
         // Deallocate the memory for the reduce pair tasks.
-        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_, proc_grid_.local_size());
+        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
+            proc_grid_.local_size());
       }
+
+      void finalize() { finalize(TensorImpl_::shape()); }
 
       /// SUMMA finalization task
 
@@ -888,32 +960,7 @@ namespace TiledArray {
 
         size_type tile_count = 0ul;
         if(proc_grid_.local_size() != 0ul) {
-          // Construct static broadcast groups for dense arguments
-          if(left_.is_dense()) {
-            col_group_ = proc_grid_.make_col_group(madness::DistributedID(TensorImpl_::id(), 0ul));
-            col_group_.register_group();
-          }
-          if(right_.is_dense()) {
-            row_group_ = proc_grid_.make_row_group(madness::DistributedID(TensorImpl_::id(), k_));
-            row_group_.register_group();
-          }
-
-          // Allocate memory for the reduce pair tasks.
-          std::allocator<ReducePairTask<op_type> > alloc;
-          reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
-
-          // Iterate over all local rows and columns
-          ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-          for(size_type row = proc_grid_.rank_row(); row < proc_grid_.rows(); row += proc_grid_.proc_rows()) {
-            const size_type row_start = row * proc_grid_.cols();
-            for(size_type col = proc_grid_.rank_col(); col < proc_grid_.cols(); col += proc_grid_.proc_cols(), ++reduce_task) {
-              // Construct non-zero reduce tasks
-              if(! TensorImpl_::is_zero(DistEvalImpl_::perm_index(row_start + col))) {
-                new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
-                ++tile_count;
-              }
-            }
-          }
+          tile_count = initialize();
 
           // Construct the first SUMMA iteration task
           TensorImpl_::get_world().taskq.add(new StepTask(self));
