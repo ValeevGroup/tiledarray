@@ -114,14 +114,19 @@ namespace TiledArray {
       template <typename Shape, typename ProcMap>
       madness::Group make_group(const Shape& shape, size_type index,
           const size_type end, const size_type stride, const size_type max_group_size,
-          const ProcMap& proc_map, const std::size_t key) const
+          const size_type k, const size_type key_offset, const ProcMap& proc_map) const
       {
         // Generate the list of processes in rank_row
         std::vector<ProcessID> proc_list(max_group_size, -1);
 
+        // Flag the root processes of the broadcast, which may not be included
+        // by shape.
+        size_type p = k % max_group_size;
+        proc_list[p] = proc_map(p);
+
         // Flag all process that have non-zero tiles
-        size_type count = 0ul;
-        for(size_type p = 0u; (index < end) && (count < max_group_size); index += stride,
+        size_type count = 1ul;
+        for(p = 0ul; (index < end) && (count < max_group_size); index += stride,
             p = (p + 1u) % max_group_size)
         {
           if(proc_list[p] != -1) continue;
@@ -141,7 +146,7 @@ namespace TiledArray {
         proc_list.resize(count);
 
         return madness::Group(TensorImpl_::get_world(), proc_list,
-            madness::DistributedID(TensorImpl_::id(), key));
+            madness::DistributedID(TensorImpl_::id(), k + key_offset));
       }
 
 
@@ -342,7 +347,7 @@ namespace TiledArray {
         const size_type right_begin_k = k * proc_grid_.cols();
         const size_type right_end_k = right_begin_k + proc_grid_.cols();
         madness::Group group = make_group(right_shape, right_begin_k, right_end_k,
-            right_stride_, proc_grid_.proc_cols(), MapCol(proc_grid_), k + k_);
+            right_stride_, proc_grid_.proc_cols(), k, k_, MapCol(proc_grid_));
         group.register_group();
 
         // Broadcast column k of left_.
@@ -396,7 +401,7 @@ namespace TiledArray {
       void bcast_row(const LeftShape& left_shape, const size_type k, std::vector<row_datum>& row) const {
         // Construct the sparse broadcast group
         madness::Group group = make_group(left_shape, k, left_end_, left_stride_,
-            proc_grid_.proc_rows(), MapRow(proc_grid_), k);
+            proc_grid_.proc_rows(), k, 0ul, MapRow(proc_grid_));
         group.register_group();
 
         // Compute local iteration limits for row k of right_.
