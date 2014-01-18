@@ -630,6 +630,26 @@ namespace TiledArray {
         std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_, proc_grid_.local_size());
       }
 
+      /// SUMMA finalization task
+
+      /// This task will set the tiles and do cleanup.
+      class FinalizeTask : public madness::TaskInterface {
+      private:
+        std::shared_ptr<ContractionEvalImpl_> owner_; ///< The parent object for this task
+
+      public:
+        FinalizeTask(const std::shared_ptr<ContractionEvalImpl_>& owner) :
+          madness::TaskInterface(1, madness::TaskAttributes::hipri()),
+          owner_(owner)
+        { }
+
+        virtual ~FinalizeTask() { }
+
+        virtual void run(const madness::TaskThreadEnv&) { owner_->finalize(); }
+
+      }; // class FinalizeTask
+
+
       /// Schedule local contraction tasks for \c col and \c row tile pairs
 
       /// Schedule tile contractions for each tile pair of \c row and \c col. A
@@ -710,23 +730,10 @@ namespace TiledArray {
       }
 #endif // TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
 
-      class FinalizeTask : public madness::TaskInterface {
-      private:
-        std::shared_ptr<ContractionEvalImpl_> owner_; ///< The parent object for this task
 
-      public:
-        FinalizeTask(const std::shared_ptr<ContractionEvalImpl_>& owner) :
-          madness::TaskInterface(1, madness::TaskAttributes::hipri()),
-          owner_(owner)
-        { }
 
-        virtual ~FinalizeTask() { }
 
-        virtual void run(const madness::TaskThreadEnv&) {
-          owner_->finalize();
-        }
 
-      }; // class FinalizeTask
 
       class StepTask : public madness::TaskInterface {
       private:
