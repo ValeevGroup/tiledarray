@@ -650,6 +650,10 @@ namespace TiledArray {
       }; // class FinalizeTask
 
 
+      //------------------------------------------------------------------------
+      // Contraction functions
+
+
       /// Schedule local contraction tasks for \c col and \c row tile pairs
 
       /// Schedule tile contractions for each tile pair of \c row and \c col. A
@@ -659,24 +663,21 @@ namespace TiledArray {
       /// \param row A row of tiles from the right-hand argument
       /// \param callback The callback that will be invoked after each tile-pair
       /// has been contracted
-      template <typename S>
-#ifndef TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
-      typename madness::disable_if<std::is_same<S, SparseShape> >::type
-#else
-      void
-#endif // TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
-      contract(const size_type, const std::vector<col_datum>& col,
-          const std::vector<row_datum>& row, madness::TaskInterface* const task)
+      template <typename Shape>
+      void contract(const Shape&, const size_type,
+          const std::vector<col_datum>& col, const std::vector<row_datum>& row,
+          madness::TaskInterface* const task)
       {
         // Iterate over the row
-        for(typename std::vector<col_datum>::const_iterator col_it = col.begin(); col_it != col.end(); ++col_it) {
+        for(size_type i = 0ul; i < col.size(); ++i) {
           // Compute the local, result-tile offset
-          const size_type offset = col_it->first * proc_grid_.local_cols();
+          const size_type offset = col[i].first * proc_grid_.local_cols();
 
-          for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it) {
+          // Iterate over columns
+          for(size_type j = 0ul; j < row.size(); ++j) {
             if(task)
               task->inc();
-            reduce_tasks_[offset + row_it->first].add(col_it->second, row_it->second, task);
+            reduce_tasks_[offset + row[j].first].add(col[i].second, row[j].second, task);
           }
         }
       }
@@ -693,43 +694,44 @@ namespace TiledArray {
       /// \param col A column of tiles from the left-hand argument
       /// \param row A row of tiles from the right-hand argument
       /// \param task The task that depends on the tile contraction tasks
-      template <typename S>
-      typename madness::enable_if<std::is_same<S, SparseShape> >::type
-      contract(const size_type k, const std::vector<col_datum>& col,
-          const std::vector<row_datum>& row, madness::TaskInterface* const task)
+      void contract(const SparseShape&, const size_type k,
+          const std::vector<col_datum>& col, const std::vector<row_datum>& row,
+          madness::TaskInterface* const task)
       {
         // Cache row shape data.
         std::vector<float> row_shape_values;
         row_shape_values.reserve(row.size());
-        const size_type right_index_base = k * proc_grid_.cols() + proc_grid_.rank_col();
-        for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it)
-          row_shape_values.push_back(right_.shape().data()[right_index_base + (row_it->first * right_stride_local_)]);
+        const size_type row_start = k * proc_grid_.cols() + proc_grid_.rank_col();
+        for(size_type j = 0ul; j < row.size(); ++j)
+          row_shape_values.push_back(right_.shape().data()[row_start + (row[j].first * right_stride_local_)]);
 
-        // Iterate over the left-hand argument column (rows of the result)
-        const size_type left_index_base = left_start_local_ + k;
+        const size_type col_start = left_start_local_ + k;
         const float threshold_k = TensorImpl_::shape().threshold() / float(k_);
-        for(typename std::vector<col_datum>::const_iterator col_it = col.begin(); col_it != col.end(); ++col_it) {
-          // Compute the local, result-tile offset for the current result row.
-          const size_type result_offset = col_it->first * proc_grid_.local_cols();
+        // Iterate over the row
+        for(size_type i = 0ul; i != col.size(); ++i) {
+          // Compute the local, result-tile offset
+          const size_type offset = col[i].first * proc_grid_.local_cols();
 
           // Get the shape data for col_it tile
           const float col_shape_value =
-              left_.shape().data()[left_index_base + (col_it->first * left_stride_local_)];
+              left_.shape().data()[col_start + (col[i].first * left_stride_local_)];
 
-          // Iterate over the right-hand argument row (columns of the result)
-          for(typename std::vector<row_datum>::const_iterator row_it = row.begin(); row_it != row.end(); ++row_it) {
-            // Filter trivial results
-            if((col_shape_value * row_shape_values[row_it - row.begin()]) < threshold_k)
+          // Iterate over columns
+          for(size_type j = 0ul; j < row.size(); ++j) {
+            if((col_shape_value * row_shape_values[j]) < threshold_k)
               continue;
 
             if(task)
               task->inc();
-            reduce_tasks_[result_offset + row_it->first].add(col_it->second, row_it->second, task);
+            reduce_tasks_[offset + row[j].first].add(col[i].second, row[j].second, task);
           }
         }
       }
 #endif // TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
 
+      void contract(const size_type k, const std::vector<col_datum>& col,
+          const std::vector<row_datum>& row, madness::TaskInterface* const task)
+      { contract(TensorImpl_::shape(), k, col, row, task); }
 
 
 
@@ -801,7 +803,7 @@ namespace TiledArray {
               owner_->bcast_row(k_, row);
 
               // Submit tasks for the contraction of col and row tiles.
-              owner_->template contract<shape_type>(k_, col, row, next_next_step_task);
+              owner_->contract(k_, col, row, next_next_step_task);
 
               // Notify task dependencies
               if(next_next_step_task)
