@@ -137,7 +137,7 @@ namespace TiledArray {
         }
 
         // Remove processes from the list that will not be in the group
-        for(size_type p = 0ul, x = 0ul; (p < max_group_size) && (x < count); ++p) {
+        for(size_type x = 0ul, p = 0ul; x < count; ++p) {
           if(proc_list[p] == -1) continue;
           proc_list[x++] = proc_list[p];
         }
