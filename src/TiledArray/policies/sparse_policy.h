@@ -37,7 +37,7 @@ namespace TiledArray {
     typedef TiledRange trange_type;
     typedef typename trange_type::range_type range_type;
     typedef typename range_type::size_type size_type;
-    typedef SparseShape shape_type;
+    typedef SparseShape<float> shape_type;
     typedef detail::BlockedPmap default_pmap_type;
 
     /// Create a default process map

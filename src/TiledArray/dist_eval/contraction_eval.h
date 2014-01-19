@@ -762,30 +762,33 @@ namespace TiledArray {
       /// task. This version of contract is used when shape_type is
       /// \c SparseShape. It skips tile contractions that have a negligible
       /// contribution to the result tile.
+      /// \tparam T The shape value type
       /// \param k The k step for this contraction set
       /// \param col A column of tiles from the left-hand argument
       /// \param row A row of tiles from the right-hand argument
       /// \param task The task that depends on the tile contraction tasks
-      void contract(const SparseShape&, const size_type k,
+      template <typename T>
+      typename madness::enable_if<std::is_floating_point<T> >::type
+      contract(const SparseShape<T>&, const size_type k,
           const std::vector<col_datum>& col, const std::vector<row_datum>& row,
           madness::TaskInterface* const task)
       {
         // Cache row shape data.
-        std::vector<float> row_shape_values;
+        std::vector<typename SparseShape<T>::value_type> row_shape_values;
         row_shape_values.reserve(row.size());
         const size_type row_start = k * proc_grid_.cols() + proc_grid_.rank_col();
         for(size_type j = 0ul; j < row.size(); ++j)
           row_shape_values.push_back(right_.shape().data()[row_start + (row[j].first * right_stride_local_)]);
 
         const size_type col_start = left_start_local_ + k;
-        const float threshold_k = TensorImpl_::shape().threshold() / float(k_);
+        const float threshold_k = TensorImpl_::shape().threshold() / typename SparseShape<T>::value_type(k_);
         // Iterate over the row
         for(size_type i = 0ul; i != col.size(); ++i) {
           // Compute the local, result-tile offset
           const size_type offset = col[i].first * proc_grid_.local_cols();
 
           // Get the shape data for col_it tile
-          const float col_shape_value =
+          const typename SparseShape<T>::value_type col_shape_value =
               left_.shape().data()[col_start + (col[i].first * left_stride_local_)];
 
           // Iterate over columns
