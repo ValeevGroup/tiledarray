@@ -93,7 +93,7 @@ namespace TiledArray {
       /// Create an default reduction object
       result_type operator()() const { return op_(); }
 
-      result_type operator()(const result_type temp) const { return temp; }
+      result_type operator()(const result_type temp) const { return op_(temp); }
 
       /// Reduce two result objects
 
@@ -461,13 +461,13 @@ namespace TiledArray {
       ReduceTaskImpl* pimpl_; ///< The reduction task object.
       std::size_t count_; ///< Reduction argument counter
 
-      private:
+    private:
 
       // Copy not allowed.
       ReduceTask(const ReduceTask<opT>&);
       ReduceTask<opT>& operator=(const ReduceTask<opT>&);
 
-      public:
+    public:
 
       /// Constructor
 
@@ -519,8 +519,8 @@ namespace TiledArray {
         madness::Future<result_type> result = pimpl_->result();
 
         if(count_ == 0ul) {
-          pimpl_->run(madness::TaskThreadEnv(1,0,0));
           pimpl_->dec();
+          pimpl_->run(madness::TaskThreadEnv(1,0,0));
           delete pimpl_;
         } else {
           // Get the result before submitting calling dec(), otherwise the
