@@ -40,12 +40,6 @@ namespace TiledArray {
         madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
         const integer k, const S1 alpha, const T1* a, const T2* b, const S2 beta, T3* c)
     {
-      // Check that there is no overlap of a or b with c
-      TA_ASSERT(((a + (m * k * (TiledArray::detail::is_complex<T1>::value ? 2 : 1))) < c) ||
-          ((c + (m * n * (TiledArray::detail::is_complex<T3>::value ? 2 : 1))) < a));
-      TA_ASSERT(((b + (k * n * (TiledArray::detail::is_complex<T1>::value ? 2 : 1))) < c) ||
-          ((c + (m * n * (TiledArray::detail::is_complex<T3>::value ? 2 : 1))) < b));
-
       // Define operations
       static const unsigned int
           notrans_notrans     = 0x00000000,
