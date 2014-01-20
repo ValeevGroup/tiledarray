@@ -60,18 +60,8 @@ struct ContractionEvalFixture : public TiledRangeFixture {
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().dim(), tr.tiles().dim())
   {
     // Fill arrays with random data
-    for(ArrayN::iterator it = left.begin(); it != left.end(); ++it) {
-      ArrayN::value_type tile(left.trange().make_tile_range(it.index()));
-      for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
-        *tile_it = GlobalFixture::world->rand() % 27;
-      *it = tile;
-    }
-    for(ArrayN::iterator it = right.begin(); it != right.end(); ++it) {
-      ArrayN::value_type tile(right.trange().make_tile_range(it.index()));
-      for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
-        *tile_it = GlobalFixture::world->rand() % 27;
-      *it = tile;
-    }
+    rand_fill_array(left);
+    rand_fill_array(right);
 
     std::array<TiledRange1, 2ul> tranges =
         {{ left.trange().data().front(), right.trange().data().back() }};
@@ -84,8 +74,23 @@ struct ContractionEvalFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.fence();
   }
 
-  static matrix_type copy_to_matrix(const ArrayN& array, const int middle)   {
+  static void rand_fill_array(ArrayN& array) {
+    // Iterate over local, non-zero tiles
+    for(ArrayN::iterator it = array.begin(); it != array.end(); ++it) {
+      // Construct a new tile with random data
+      ArrayN::value_type tile(array.trange().make_tile_range(it.index()));
+      for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
+        *tile_it = GlobalFixture::world->rand() % 27;
 
+      // Set array tile
+      *it = tile;
+    }
+  }
+
+  static matrix_type copy_to_matrix(const ArrayN& array, const int middle) {
+
+    // Compute the number of rows and columns in the matrix, and a new weight
+    // that is bisected the row and column dimensions.
     std::vector<std::size_t> weight(array.range().dim(), 0ul);
     std::size_t MN[2] = { 1ul, 1ul };
     int i = array.range().dim() - 1;
@@ -98,6 +103,7 @@ struct ContractionEvalFixture : public TiledRangeFixture {
       MN[0] *= array.trange().elements().size()[i];
     }
 
+    // Construct the result matrix
     matrix_type matrix(MN[0], MN[1]);
     matrix.fill(0);
 
