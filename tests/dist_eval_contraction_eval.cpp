@@ -209,4 +209,47 @@ BOOST_AUTO_TEST_CASE( eval )
 
 }
 
+
+BOOST_AUTO_TEST_CASE( perm_eval )
+{
+  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
+  Permutation perm(1,0);
+  op_type pop(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().dim(), tr.tiles().dim(), perm);
+
+  dist_eval_type1 contract = detail::make_contract_eval(left_arg, right_arg,
+      left_arg.get_world(), DenseShape(), pmap, perm, pop);
+
+  // Check evaluation
+  BOOST_REQUIRE_NO_THROW(contract.eval());
+
+
+  // Compute the reference contraction
+  const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
+  const matrix_type reference = (l * r).transpose();
+
+  dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
+  const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
+
+  // Check that each tile has been properly scaled.
+  for(; it != end; ++it) {
+
+    // Get the array evaluator tile.
+    madness::Future<dist_eval_type1::value_type> tile;
+    BOOST_REQUIRE_NO_THROW(tile = contract.move(*it));
+
+    // Force the evaluation of the tile
+    dist_eval_type1::eval_type eval_tile;
+    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+    BOOST_CHECK(! eval_tile.empty());
+
+    if(!eval_tile.empty()) {
+      // Check that the result tile is correctly modified.
+      BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+      BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0],
+          eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
+    }
+  }
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()
