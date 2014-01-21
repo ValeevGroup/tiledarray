@@ -110,7 +110,8 @@ namespace TiledArray {
         /// \param i The tile index
         /// \param value The tile from the array
         void convert_and_set_tile(const size_type i, const typename array_type::value_type& value) {
-          TensorExpressionImpl_::set(i, value_type(value));
+          // implicit conversion
+          TensorExpressionImpl_::set(i, value);
         }
 
         /// Task function that is used to scale an input tile to value_type and store it
