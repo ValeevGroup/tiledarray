@@ -24,6 +24,8 @@
 #include <TiledArray/range.h>
 #include <TiledArray/madness.h>
 #include <TiledArray/math/functional.h>
+#include <TiledArray/math/gemm_helper.h>
+#include <TiledArray/math/blas.h>
 
 namespace TiledArray {
 
@@ -218,18 +220,7 @@ namespace TiledArray {
     /// \param other The tensor to be copied
     /// \return this tensor
     template <typename U, typename AU>
-    Tensor_& operator+=(const Tensor<U, AU>& other) {
-      if(!pimpl_) {
-        if(! other.empty())
-          pimpl_.reset(new Impl(other.range(), other.begin()));
-      } else {
-        TA_ASSERT(pimpl_->range_ == other.range());
-        math::binary_vector_op(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
-            math::PlusAssign<value_type, typename Tensor<U, AU>::value_type>());
-      }
-
-      return *this;
-    }
+    Tensor_& operator+=(const Tensor<U, AU>& other) { return add_to(other); }
 
     /// Minus assignment
 
@@ -237,19 +228,7 @@ namespace TiledArray {
     /// \param other The tensor to be copied
     /// \return this tensor
     template <typename U, typename AU>
-    Tensor_& operator-=(const Tensor<U, AU>& other) {
-      if(!pimpl_) {
-        if(! other.empty())
-          pimpl_.reset(new Impl(other.range(), other.begin(),
-              math::Negate<typename Tensor<U, AU>::value_type, value_type>()));
-      } else {
-        TA_ASSERT(pimpl_->range_ == other.range());
-        math::binary_vector_op(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
-            math::MinusAssign<value_type, typename Tensor<U, AU>::value_type>());
-      }
-
-      return *this;
-    }
+    Tensor_& operator-=(const Tensor<U, AU>& other) { return subt_to(other); }
 
     /// Multiply assignment
 
@@ -257,60 +236,25 @@ namespace TiledArray {
     /// \param other The tensor to be copied
     /// \return this tensor
     template <typename U, typename AU>
-    Tensor_& operator*=(const Tensor<U, AU>& other) {
-      if(!pimpl_) {
-        if(! other.empty())
-          pimpl_.reset(new Impl(other.range(), 0));
-      } else {
-        TA_ASSERT(pimpl_->range_ == other.range());
-        math::binary_vector_op(pimpl_->data_.size(), other.data(), pimpl_->data_.data(),
-            math::MultipliesAssign<value_type, typename Tensor<U, AU>::value_type>());
-      }
-
-      return *this;
-    }
+    Tensor_& operator*=(const Tensor<U, AU>& other) { return mult_to(other); }
 
     /// Plus shift operator
 
     /// \param value The shift value
     /// \return this tensor
-    template <typename U>
-    typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
-    operator+=(const U& value) {
-      if(pimpl_)
-        math::unary_vector_op(pimpl_->data_.size(), pimpl_->data_.data(),
-            math::PlusAssignConst<value_type>(value));
-
-      return *this;
-    }
+    Tensor_& operator+=(const numeric_type value) { return add_to(value); }
 
     /// Minus shift operator
 
     /// \param value The negative shift value
     /// \return this tensor
-    template <typename U>
-    typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
-    operator-=(const U& value) {
-      if(pimpl_)
-        math::unary_vector_op(pimpl_->data_.size(), pimpl_->data_.data(),
-            math::PlusAssignConst<value_type>(-value));
-
-      return *this;
-    }
+    Tensor_& operator-=(const numeric_type value) { return subt_to(value); }
 
     /// Scale operator
 
     /// \param value The scaling factor
     /// \return this tensor
-    template <typename U>
-    typename madness::enable_if<detail::is_numeric<U>, Tensor_&>::type
-    operator*=(const U& value) {
-      if(pimpl_)
-        math::unary_vector_op(pimpl_->data_.size(), pimpl_->data_.data(),
-            math::ScaleAssign<value_type>(value));
-
-      return *this;
-    }
+    Tensor_& operator*=(const numeric_type value) { return scale_to(value); }
 
     /// Tensor range object accessor
 
@@ -413,6 +357,394 @@ namespace TiledArray {
       std::swap(pimpl_, other.pimpl_);
     }
 
+    // Generic vector operations
+
+    /// Apply a binary, vector operation to generate a new tensor
+
+    /// \tparam U \c other tensor element type
+    /// \tparam AU \c other allocator type
+    /// \tparam Op The binary operation type
+    /// \param other The right-hand argument in the binary operation
+    /// \param op The binary, element-wise operation
+    /// \return A tensor where element \c i of the new tensor is equal to
+    /// \c op(*this[i],other[i])
+    template <typename U, typename AU, typename Op>
+    Tensor_ binary(const Tensor<U, AU>& other, const Op& op) const {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(! other.empty());
+      TA_ASSERT(pimpl_->range_ == other.range());
+
+      return Tensor_(pimpl_->range_, pimpl_->data_.data(), other.data(), op);
+    }
+
+
+    /// Apply an in-place binary operation to modify this tensor
+
+    /// \tparam U \c other tensor element type
+    /// \tparam AU \c other allocator type
+    /// \tparam Op The binary operation type
+    /// \param other The right-hand argument in the binary operation
+    /// \param op The binary, element-wise operation
+    /// \return A reference to this object
+    template <typename U, typename AU, typename Op>
+    Tensor_& inplace_binary(const Tensor<U, AU>& other, const Op& op) {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(! other.empty());
+      TA_ASSERT(pimpl_->range_ == other.range());
+      TA_ASSERT(pimpl_->data_.data() != other.data());
+
+      math::binary_vector_op(pimpl_->range_.volume(), other.data(), pimpl_->data_.data(), op);
+
+      return *this;
+    }
+
+    /// Apply a unary operation to generate a new tensor
+
+    /// \tparam Op The unary operation type
+    /// \param op The unary, element-wise operation
+    /// \return A tensor where element \c i of the new tensor is equal to
+    /// \c op(*this[i])
+    template <typename Op>
+    Tensor_ unary(const Op& op) const {
+      TA_ASSERT(pimpl_);
+
+      return Tensor_(pimpl_->range_, pimpl_->data_.data(), op);
+    }
+
+    /// Apply an in-place unary operation to modify this tensor
+
+    /// \tparam Op The unary operation type
+    /// \param op The unary, element-wise operation
+    /// \return A reference to this object
+    template <typename Op>
+    Tensor_& inplace_unary(const Op& op) {
+      TA_ASSERT(pimpl_);
+
+      math::unary_vector_op(pimpl_->range_.volume(), pimpl_->data_.data(), op);
+
+      return *this;
+    }
+
+    // Scale operation
+
+    /// Scale this tensor
+
+    /// \param factor The scaling factor
+    /// \return A new tensor where the elements are the sum of the elements of
+    /// \c this are scaled by \c factor
+    Tensor_ scale(numeric_type factor) const {
+      return unary(math::Scale<value_type>(factor));
+    }
+
+    /// Scale this tensor in place
+
+    /// \param factor The scaling factor
+    /// \return A reference to this tensor
+    Tensor_& scale_to(numeric_type factor) {
+      return inplace_unary(math::Scale<value_type>(factor));
+    }
+
+    // Addition operations
+
+    /// Add two tensors
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be added to this tensor
+    /// \return A new tensor where the elements are the sum of the elements of
+    /// \c this and \c other
+    template <typename U, typename AU>
+    Tensor_ add(const Tensor<U, AU>& other) const {
+      return binary(other, math::Plus<value_type,
+          typename Tensor<U, AU>::value_type, value_type>());
+    }
+
+    /// Add two tensors and scale
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be added to this tensor
+    /// \param factor The scaling factor
+    /// \return A new tensor where the elements are the sum of the elements of
+    /// \c this and \c other, scaled by \c factor
+    template <typename U, typename AU>
+    Tensor_ add(const Tensor<U, AU>& other, const numeric_type factor) const {
+      return binary(other, math::ScalPlus<value_type,
+          typename Tensor<U, AU>::value_type, value_type>(factor));
+    }
+
+    /// Add a constant
+
+    /// \param value The constant to be added to this tensor
+    /// \return A new tensor where the elements are the sum of the elements of
+    /// \c this and \c value
+    Tensor_ add(const numeric_type value) {
+      return unary(math::PlusConst<value_type>(value));
+    }
+
+
+    /// Add a tensor to this tensor
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be added to this tensor
+    /// \return A reference to this tensor
+    template <typename U, typename AU>
+    Tensor_& add_to(const Tensor<U, AU>& other) {
+      return inplace_binary(other, math::PlusAssign<value_type,
+          typename Tensor<U, AU>::value_type>());
+    }
+
+    /// Add a tensor to this tensor, and scale the result
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be added to this tensor
+    /// \param factor The scaling factor
+    /// \return A reference to this tensor
+    template <typename U, typename AU>
+    Tensor_& add_to(const Tensor<U, AU>& other, const numeric_type factor) {
+      return inplace_binary(other, math::ScalPlusAssign<value_type,
+          typename Tensor<U, AU>::value_type>(factor));
+    }
+
+    /// Add a constant to this tensor
+
+    /// \param value The constant to be added
+    /// \return A reference to this tensor
+    Tensor_& add_to(const numeric_type value) {
+      return inplace_unary(math::PlusAssignConst<value_type>(value));
+    }
+
+    // Subtraction operations
+
+    /// Subtract tensors
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be subtracted from this tensor
+    /// \return A new tensor where the elements are the different between the
+    /// elements of \c this and \c other
+    template <typename U, typename AU>
+    Tensor_ subt(const Tensor<U, AU>& other) const {
+      return binary(other, math::Minus<value_type, typename Tensor<U, AU>::value_type,
+          value_type>());
+    }
+
+    /// Subtract and scale tensors
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be subtracted from this tensor
+    /// \param factor The scaling factor
+    /// \return A new tensor where the elements are the different between the
+    /// elements of \c this and \c other, scaled by \c factor
+    template <typename U, typename AU>
+    Tensor_ subt(const Tensor<U, AU>& other, const numeric_type factor) const {
+      return binary(other, math::ScalMinus<value_type, typename Tensor<U, AU>::value_type,
+          value_type>(factor));
+    }
+
+    /// Subtract a constant
+
+    /// \return A new tensor where the elements are the different between the
+    /// elements of \c this and \c value
+    Tensor_ subt(const numeric_type value) {
+      return add(-value);
+    }
+
+    /// Subtract a tensor from this tensor
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be subtracted from this tensor
+    /// \return A reference to this tensor
+    template <typename U, typename AU>
+    Tensor_& subt_to(const Tensor<U, AU>& other) {
+      return inplace_binary(other, math::MinusAssign<value_type,
+          typename Tensor<U, AU>::value_type>());
+    }
+
+    /// Subtract a tensor from this tensor and scale the result
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be subtracted from this tensor
+    /// \param factor The scaling factor
+    /// \return A reference to this tensor
+    template <typename U, typename AU>
+    Tensor_& subt_to(const Tensor<U, AU>& other, const numeric_type factor) {
+      return inplace_binary(other, math::ScalMinusAssign<value_type,
+          typename Tensor<U, AU>::value_type>(factor));
+    }
+
+    /// Subtract a constant from this tensor
+    /// \return A reference to this tensor
+    Tensor_& subt_to(const numeric_type value) {
+      return add_to(-value);
+    }
+
+    // Multiplication operations
+
+    /// Multiply two tensors
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be multiplied by this tensor
+    /// \return A new tensor where the elements are the product of the elements
+    /// of \c this and \c other
+    template <typename U, typename AU>
+    Tensor_ mult(const Tensor<U, AU>& other) const {
+      return binary(other, math::Multiplies<value_type,
+          typename Tensor<U, AU>::value_type, value_type>());
+    }
+
+    /// Multiply and scale two tensors
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be multiplied by this tensor
+    /// \param factor The scaling factor
+    /// \return A new tensor where the elements are the product of the elements
+    /// of \c this and \c other, scaled by \c factor
+    template <typename U, typename AU>
+    Tensor_ mult(const Tensor<U, AU>& other, const numeric_type factor) const {
+      return binary(other, math::ScalMultiplies<value_type,
+          typename Tensor<U, AU>::value_type, value_type>(factor));
+    }
+
+
+    /// Multiply a tensor by this tensor
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be multiplied by this tensor
+    /// \return A reference to this tensor
+    template <typename U, typename AU>
+    Tensor_& mult_to(const Tensor<U, AU>& other) {
+      return inplace_binary(other, math::MultipliesAssign<value_type,
+          typename Tensor<U, AU>::value_type>());
+    }
+
+    /// Multiply a tensor by this tensor and scale the result
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be multiplied by this tensor
+    /// \param factor The scaling factor
+    /// \return A reference to this tensor
+    template <typename U, typename AU>
+    Tensor_& mult_to(const Tensor<U, AU>& other, const numeric_type factor) {
+      return inplace_binary(other, math::ScalMultipliesAssign<value_type,
+          typename Tensor<U, AU>::value_type>(factor));
+    }
+
+    // Negation operations
+
+    /// Negation operation
+
+    /// \return A new tensor that contains the negative values of this tensor
+    Tensor_ neg() const {
+      return unary(math::Negate<value_type, value_type>());
+    }
+
+    /// In-place negation operation
+
+    /// \return A reference to this tensor
+    Tensor_& neg_to() const {
+      return inplace_unary(math::NegateAssign<value_type>());
+    }
+
+    // *GEMM operations
+
+    /// Contract this tensor with other
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The tensor that will be contracted with this tensor
+    /// \param factor The scaling factor
+    /// \param gemm_helper The *GEMM operation meta data
+    /// \return A new tensor which is the result of contracting this tensor with
+    /// other
+    template <typename U, typename AU>
+    Tensor_ gemm(const Tensor<U, AU>& other, const numeric_type factor, const math::GemmHelper& gemm_helper) const {
+      // Check that this tensor is not empty and has the correct rank
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.dim() == gemm_helper.left_rank());
+
+      // Check that the arguments are not empty and have the correct ranks
+      TA_ASSERT(!other.empty());
+      TA_ASSERT(other.range().dim() == gemm_helper.right_rank());
+
+      // Construct the result Tensor
+      Tensor_ result(gemm_helper.make_result_range<range_type>(pimpl_->range_, other.range()));
+
+      // Check that the inner dimensions of left and right match
+      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.start(), other.range().start()));
+      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.finish(), other.range().finish()));
+      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.size(), other.range().size()));
+
+
+      // Compute gemm dimensions
+      integer m = 1, n = 1, k = 1;
+      gemm_helper.compute_matrix_sizes(m, n, k, pimpl_->range_, other.range());
+
+      math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor, pimpl_->data_.data(),
+          other.data(), numeric_type(0), result.data());
+
+      return result;
+    }
+
+    /// Contract two tensors and store the result in this tensor
+
+    /// \tparam U The left-hand tensor element type
+    /// \tparam AU The left-hand tensor allocator type
+    /// \tparam U The right-hand tensor element type
+    /// \tparam AU The right-hand tensor allocator type
+    /// \param left The left-hand tensor that will be contracted
+    /// \param right The right-hand tensor that will be contracted
+    /// \param factor The scaling factor
+    /// \param gemm_helper The *GEMM operation meta data
+    /// \return A new tensor which is the result of contracting this tensor with
+    /// other
+    template <typename U, typename AU, typename V, typename AV>
+    Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
+        const numeric_type factor, const math::GemmHelper& gemm_helper)
+    {
+      // Check that this tensor is not empty and has the correct rank
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.dim() == gemm_helper.result_rank());
+
+      // Check that the arguments are not empty and have the correct ranks
+      TA_ASSERT(!left.empty());
+      TA_ASSERT(left.range().dim() == gemm_helper.left_rank());
+      TA_ASSERT(!right.empty());
+      TA_ASSERT(right.range().dim() == gemm_helper.right_rank());
+
+      // Check that the outer dimensions of left match the the corresponding dimensions in result
+      TA_ASSERT(gemm_helper.left_result_coformal(left.range().start(), pimpl_->range_.start()));
+      TA_ASSERT(gemm_helper.left_result_coformal(left.range().finish(), pimpl_->range_.finish()));
+      TA_ASSERT(gemm_helper.left_result_coformal(left.range().size(), pimpl_->range_.size()));
+
+      // Check that the outer dimensions of right match the the corresponding dimensions in result
+      TA_ASSERT(gemm_helper.right_result_coformal(right.range().start(), pimpl_->range_.start()));
+      TA_ASSERT(gemm_helper.right_result_coformal(right.range().finish(), pimpl_->range_.finish()));
+      TA_ASSERT(gemm_helper.right_result_coformal(right.range().size(), pimpl_->range_.size()));
+
+      // Check that the inner dimensions of left and right match
+      TA_ASSERT(gemm_helper.left_right_coformal(left.range().start(), right.range().start()));
+      TA_ASSERT(gemm_helper.left_right_coformal(left.range().finish(), right.range().finish()));
+      TA_ASSERT(gemm_helper.left_right_coformal(left.range().size(), right.range().size()));
+
+      // Compute gemm dimensions
+      integer m, n, k;
+      gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
+
+      math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor, left.data(),
+          right.data(), numeric_type(1), pimpl_->data_.data());
+
+      return *this;
+    }
   }; // class Tensor
 
   template <typename T, typename A>
@@ -430,8 +762,7 @@ namespace TiledArray {
   /// \return A tensor where element \c i is equal to <tt> left[i] + right[i] </tt>
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator+(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
-    TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), math::Plus<T, U, T>());
+    return left.add(right);
   }
 
   /// Tensor minus operator
@@ -446,8 +777,7 @@ namespace TiledArray {
   /// \return A tensor where element \c i is equal to <tt> left[i] - right[i] </tt>
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator-(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
-    TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), math::Minus<T, U, T>());
+    return left.subt(right);
   }
 
   /// Tensor multiplication operator
@@ -462,8 +792,7 @@ namespace TiledArray {
   /// \return A tensor where element \c i is equal to <tt> left[i] * right[i] </tt>
   template <typename T, typename AT, typename U, typename AU>
   inline Tensor<T, AT> operator*(const Tensor<T, AT>& left, const Tensor<U, AU>& right) {
-    TA_ASSERT(left.range() == right.range());
-    return Tensor<T,AT>(left.range(), left.begin(), right.begin(), math::Multiplies<T, U, T>());
+    return left.mult(right);
   }
 
 
@@ -479,7 +808,7 @@ namespace TiledArray {
   template <typename T, typename AT, typename N>
   inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(const Tensor<T, AT>& left, N right) {
-    return Tensor<T,AT>(left.range(), left.begin(), math::Scale<T>(right));
+    return left.scale(right);
   }
 
   /// Tensor multiplication operator
@@ -494,7 +823,7 @@ namespace TiledArray {
   template <typename N, typename T, typename AT>
   inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
   operator*(N left, const Tensor<T, AT>& right) {
-    return Tensor<T,AT>(right.range(), right.begin(), math::Scale<T>(left));
+    return right.scale(left);
   }
 
   /// Tensor multiplication operator
@@ -506,7 +835,7 @@ namespace TiledArray {
   /// \return A tensor where element \c i is equal to \c -arg[i]
   template <typename T, typename AT>
   inline Tensor<T, AT> operator-(const Tensor<T, AT>& arg) {
-    return Tensor<T,AT>(arg.range(), arg.begin(), math::Negate<T, T>());
+    return arg.neg();
   }
 
   /// Tensor output operator
