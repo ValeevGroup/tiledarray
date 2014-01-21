@@ -131,13 +131,24 @@ namespace TiledArray {
       typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
     };
 
-    /// Analogous to std::add_const but adds const only to nonnumeric types
-    template< class T, typename Enabler = void> struct add_const_to_nonnumeric {
-        typedef const T type;
+    template <typename T, typename Enabler = void>
+    struct param {
+      typedef const T& type;
     };
-    template< class T>
-    struct add_const_to_nonnumeric<T, typename madness::enable_if_c<TiledArray::detail::is_numeric<T>::value>::type> {
-        typedef T type;
+
+    template <typename T>
+    struct param<T, typename madness::enable_if<TiledArray::detail::is_numeric<T> >::type> {
+      typedef const T type;
+    };
+
+    template <typename T>
+    struct param<T, typename madness::enable_if<std::is_pointer<T> >::type> {
+      typedef T const type;
+    };
+
+    template <typename T>
+    struct param<T, typename madness::enable_if<std::is_reference<T> >::type> {
+      typedef T type;
     };
 
     struct non_iterator_tag { };
