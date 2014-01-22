@@ -78,12 +78,12 @@ namespace TiledArray {
       template <bool C>
       typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(const Arg& arg) const { return arg * factor_; }
+      no_permute(const Arg& arg) const { return arg.scale(factor_); }
 
       template <bool C>
       typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
-      no_permute(Arg& arg) const { return (arg *= factor_); }
+      no_permute(Arg& arg) const { return arg.scale_to(factor_); }
 
     public:
       /// Default constructor

@@ -99,13 +99,13 @@ namespace TiledArray {
       static typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
           (RC && std::is_same<Result, Right>::value), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        return first * second;
+        return first.mult(second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        first *= second;
+        first.mult_to(second);
         return first;
       }
 
@@ -113,7 +113,7 @@ namespace TiledArray {
       static typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
           (!(LC && std::is_same<Result, Left>::value)), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        second *= first;
+        second.mult_to(first);
         return second;
       }
 

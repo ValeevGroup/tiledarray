@@ -104,14 +104,13 @@ namespace TiledArray {
       static typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
           (RC && std::is_same<Result, Right>::value), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        return first - second;
+        return first.subt(second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        first -= second;
-        return first;
+        return first.subt_to(second);
       }
 
       template <bool LC, bool RC>
@@ -119,21 +118,21 @@ namespace TiledArray {
           (!(LC && std::is_same<Result, Left>::value)), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
         binary_vector_op(second.size(), first.data(), second.data(), minus_assign_right);
-        return second;
+        return second.sub_to(first, -1);
       }
 
 
       template <bool LC, bool RC>
       static typename madness::disable_if_c<RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) {
-        return result_type(second.range(), second.data(), negate_op());
+        return second.neg();
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) {
         unary_vector_op(second.size(), second.data(), negate_assign_op());
-        return second;
+        return second.neg_to();
       }
 
       template <bool LC, bool RC>

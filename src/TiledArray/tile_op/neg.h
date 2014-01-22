@@ -77,15 +77,14 @@ namespace TiledArray {
       static typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
       no_permute(const Arg& arg) {
-        return -arg;
+        return arg.neg();
       }
 
       template <bool C>
       static typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
           result_type>::type
       no_permute(Arg& arg) {
-        unary_vector_op(arg.size(), arg.data(), negate_assign_op());
-        return arg;
+        return arg.neg_to();
       }
 
     public:
