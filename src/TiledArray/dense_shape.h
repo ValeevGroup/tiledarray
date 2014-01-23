@@ -40,6 +40,9 @@ namespace TiledArray {
   namespace expressions {
     class VariableList;
   }  // namespace expressions
+  namespace math {
+    class GemmHelper;
+  }
   class Range;
 
 
@@ -78,8 +81,10 @@ namespace TiledArray {
 
     DenseShape perm(const Permutation&) const { return DenseShape(); }
 
+    template <typename Scalar>
     DenseShape scale(const Scalar) const { return DenseShape(); }
 
+    template <typename Scalar>
     DenseShape scale(const Scalar, const Permutation&) const { return DenseShape(); }
 
     DenseShape add(const DenseShape&) const { return DenseShape(); }
