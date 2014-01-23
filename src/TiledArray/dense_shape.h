@@ -42,7 +42,7 @@ namespace TiledArray {
   }  // namespace expressions
   namespace math {
     class GemmHelper;
-  }
+  } // namespace math
   class Range;
 
 
