@@ -41,10 +41,10 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Neg : UnaryInterface<Neg<Result, Arg, Consumable>, Consumable> {
+    class Neg : UnaryInterface<Neg<Result, Arg, Consumable> > {
     public:
       typedef Neg<Result, Arg, Consumable> Neg_; ///< This object type
-      typedef UnaryInterface<Neg_, Consumable> UnaryInterface_;
+      typedef UnaryInterface<Neg_> UnaryInterface_;
       typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
       typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
 
@@ -52,21 +52,18 @@ namespace TiledArray {
       Permutation perm_; ///< The result permutation
 
       // Make friends with base class
-      friend class UnaryInterface<Neg_, Consumable>;
+      friend class UnaryInterface<Neg_>;
 
       // Element operation functor types
 
       typedef Negate<typename Arg::value_type, typename Result::value_type> negate_op;
-      typedef NegateAssign<typename Arg::value_type> negate_assign_op;
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(const Arg& arg) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, arg, negate_op());
-        return result;
+        return result_type(arg, negate_op(), perm_);
       }
 
       // Non-permuting tile evaluation functions
@@ -74,15 +71,13 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool C>
-      static typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
-          result_type>::type
+      static typename madness::enable_if_c<!C, result_type>::type
       no_permute(const Arg& arg) {
         return arg.neg();
       }
 
       template <bool C>
-      static typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
-          result_type>::type
+      static typename madness::enable_if_c<C, result_type>::type
       no_permute(Arg& arg) {
         return arg.neg_to();
       }

@@ -47,11 +47,11 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
     class ScalMult : public BinaryInterface<ScalMult<Result, Left, Right,
-        LeftConsumable, RightConsumable>, LeftConsumable, RightConsumable>
+        LeftConsumable, RightConsumable> >
     {
     public:
       typedef ScalMult<Result, Left, Right, LeftConsumable, RightConsumable> ScalMult_; ///< This object type
-      typedef BinaryInterface<ScalMult_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef BinaryInterface<ScalMult_> BinaryInterface_; ///< Interface base class type
       typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
@@ -64,27 +64,20 @@ namespace TiledArray {
       scalar_type factor_; ///< The scaling factor
 
       // Make friends with base classes
-      friend class BinaryInterface<ScalMult_, LeftConsumable, RightConsumable>;
-      friend class BinaryInterfaceBase<ScalMult_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterface<ScalMult_>;
+      friend class BinaryInterfaceBase<ScalMult_>;
 
       // Element operation functor types
 
       typedef ScalMultiplies<typename Left::value_type,
           typename Right::value_type, typename Result::value_type> scal_multiplies_op;
-      typedef ScalMultipliesAssign<typename Left::value_type,
-                  typename Right::value_type> scal_multiplies_assign_left_op;
-      typedef ScalMultipliesAssign<typename Right::value_type,
-                  typename Left::value_type> scal_multiplies_assign_right_op;
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, second,
-            scal_multiplies_op(factor_));
-        return result;
+        return result_type(first, second, scal_multiplies_op(factor_), perm_);
       }
 
       result_type permute(zero_left_type, const Right& second) const {
@@ -102,27 +95,25 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool LC, bool RC>
-      typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-          (RC && std::is_same<Result, Right>::value), result_type>::type
+      typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
         return first.mult(second, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+      typename madness::enable_if_c<LC, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
         return first.mult_to(second, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
-          (!(LC && std::is_same<Result, Left>::value)), result_type>::type
+      typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
         return second.mult_to(first, factor_);
       }
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<RC, result_type>::type
+      static typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, const Right& second) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
@@ -136,7 +127,7 @@ namespace TiledArray {
       }
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<LC, result_type>::type
+      static typename madness::enable_if_c<!LC, result_type>::type
       no_permute(const Left& first, zero_right_type) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();

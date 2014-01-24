@@ -51,6 +51,10 @@ namespace TiledArray {
       typedef typename madness::if_c<Consumable, Arg, const Arg>::type &
           argument_type; ///< The argument type
       typedef Result result_type; ///< The result tile type
+
+
+      typedef std::integral_constant<bool, Consumable && std::is_same<Result,
+          Arg>::value> is_consumable; ///< Left is consumable type trait
     }; // struct UnaryTileOpPolicy
 
 
@@ -60,13 +64,17 @@ namespace TiledArray {
     /// handles tiles, lazy tiles, and runtime consumable resources.
     /// \tparam Derived The derived operation class type
     /// \tparam Consumable A flag that is \c true when the argument is consumable
-    template <typename Derived, bool Consumable>
+    template <typename Derived>
     class UnaryInterface {
     public:
       typedef typename UnaryTileOpPolicy<Derived>::argument_type
           argument_type; ///< The argument type
       typedef typename UnaryTileOpPolicy<Derived>::result_type
           result_type; ///< The result tile type
+
+
+      typedef typename UnaryTileOpPolicy<Derived>::is_consumable
+          is_consumable; ///< Left is consumable type trait
 
     protected:
 
@@ -87,7 +95,7 @@ namespace TiledArray {
         if(derived().perm_.dim() > 1)
           return derived().permute(arg);
 
-        return derived().template no_permute<Consumable>(arg);
+        return derived().template no_permute<is_consumable::value>(arg);
       }
 
       /// Evaluate lazy tile arguments
@@ -126,12 +134,13 @@ namespace TiledArray {
     /// This base class defines unary operations with zero or non-zero tiles,
     /// and maps arguments given to the appropriate evaluation kernel.
     /// \tparam Derived The derived operation class type
-    template <typename Derived>
-    class UnaryInterface<Derived, false> {
+    template <typename Result, typename Arg,
+        template <typename, typename, bool> class Op>
+    class UnaryInterface<Op<Result, Arg, false> > {
     public:
-      typedef typename UnaryTileOpPolicy<Derived>::argument_type
+      typedef typename UnaryTileOpPolicy<Op<Result, Arg, false> >::argument_type
           argument_type; ///< The argument type
-      typedef typename UnaryTileOpPolicy<Derived>::result_type
+      typedef typename UnaryTileOpPolicy<Op<Result, Arg, false> >::result_type
           result_type; ///< The result tile type
 
     protected:
@@ -139,7 +148,9 @@ namespace TiledArray {
       /// Derived type accessor
 
       /// \return A const reference to the derived object
-      const Derived& derived() const { return static_cast<const Derived&>(*this); }
+      const Op<Result, Arg, false>& derived() const {
+        return static_cast<const Op<Result, Arg, false>&>(*this);
+      }
 
     public:
 

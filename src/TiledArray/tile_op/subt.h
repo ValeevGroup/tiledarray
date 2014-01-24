@@ -47,11 +47,11 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
     class Subt : public BinaryInterface<Subt<Result, Left, Right, LeftConsumable,
-        RightConsumable>, LeftConsumable, RightConsumable>
+        RightConsumable> >
     {
     public:
       typedef Subt<Result, Left, Right, LeftConsumable, RightConsumable> Subt_; ///< This object type
-      typedef BinaryInterface<Subt_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef BinaryInterface<Subt_> BinaryInterface_; ///< Interface base class type
       typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
@@ -62,38 +62,29 @@ namespace TiledArray {
       Permutation perm_; ///< The result permutation
 
       // Make friends with base classes
-      friend class BinaryInterface<Subt_, LeftConsumable, RightConsumable>;
-      friend class BinaryInterfaceBase<Subt_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterface<Subt_>;
+      friend class BinaryInterfaceBase<Subt_>;
 
       // Element operation functor types
 
       typedef Minus<typename Left::value_type, typename Right::value_type,
           typename Result::value_type> minus_op;
       typedef Negate<typename Right::value_type, typename Result::value_type> negate_op;
-      typedef NegateAssign<typename Right::value_type> negate_assign_op;
-
-      static void minus_assign_right(typename Right::value_type& first, const typename Left::value_type& second) {
-        first = second - first;
-      }
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, second, minus_op());
-        return result;
+        return result_type(first, second, minus_op(), perm_);
       }
 
       result_type permute(zero_left_type, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, second, negate_op());
-        return result;
+        return result_type(second, negate_op(), perm_);
       }
 
       result_type permute(first_argument_type first, zero_right_type) const {
-        return perm_ ^ first;
+        return result_type(first, perm_);
       }
 
       // Non-permuting tile evaluation functions
@@ -101,29 +92,25 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-          (RC && std::is_same<Result, Right>::value), result_type>::type
+      static typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
         return first.subt(second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+      static typename madness::enable_if_c<LC, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
         return first.subt_to(second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
-          (!(LC && std::is_same<Result, Left>::value)), result_type>::type
+      static typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        binary_vector_op(second.size(), first.data(), second.data(), minus_assign_right);
-        return second.sub_to(first, -1);
+        return second.subt_to(first, -1);
       }
 
-
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<RC, result_type>::type
+      static typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) {
         return second.neg();
       }
@@ -131,12 +118,11 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::enable_if_c<RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) {
-        unary_vector_op(second.size(), second.data(), negate_assign_op());
         return second.neg_to();
       }
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<LC, result_type>::type
+      static typename madness::enable_if_c<!LC, result_type>::type
       no_permute(first_argument_type first, zero_right_type) {
         return first.clone();
       }

@@ -47,11 +47,11 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
     class Add : public BinaryInterface<Add<Result, Left, Right, LeftConsumable,
-        RightConsumable>, LeftConsumable, RightConsumable>
+        RightConsumable> >
     {
     public:
       typedef Add<Result, Left, Right, LeftConsumable, RightConsumable> Add_; ///< This object type
-      typedef BinaryInterface<Add_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef BinaryInterface<Add_> BinaryInterface_; ///< Interface base class type
       typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
@@ -62,8 +62,8 @@ namespace TiledArray {
       Permutation perm_; ///< The result permutation
 
       // Make friends with base classes
-      friend class BinaryInterface<Add_, LeftConsumable, RightConsumable>;
-      friend class BinaryInterfaceBase<Add_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterface<Add_>;
+      friend class BinaryInterfaceBase<Add_>;
 
       // Element operation functor types
 
@@ -76,21 +76,15 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(const Left& first, const Right& second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, second, plus_op());
-        return result;
+        return result_type(first, second, plus_op(), perm_);
       }
 
       result_type permute(zero_left_type, const Right& second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, second);
-        return result;
+        return result_type(second, perm_);
       }
 
       result_type permute(const Left& first, zero_right_type) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first);
-        return result;
+        return result_type(first, perm_);
       }
 
       // Non-permuting tile evaluation functions
@@ -98,29 +92,25 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-          (RC && std::is_same<Result, Right>::value), result_type>::type
+      static typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(const Left& first, const Right& second) {
         return first.add(second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+      static typename madness::enable_if_c<LC, result_type>::type
       no_permute(Left& first, const Right& second) {
-        first.add_to(second);
-        return first;
+        return first.add_to(second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
-          (!(LC && std::is_same<Result, Left>::value)), result_type>::type
+      static typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(const Left& first, Right& second) {
-        second.add_to(first);
-        return second;
+        return second.add_to(first);
       }
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<RC, result_type>::type
+      static typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, const Right& second) {
         return second.clone();
       }
@@ -132,7 +122,7 @@ namespace TiledArray {
       }
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<LC, result_type>::type
+      static typename madness::enable_if_c<!LC, result_type>::type
       no_permute(const Left& first, zero_right_type) {
         return first.clone();
       }

@@ -46,7 +46,7 @@ namespace TiledArray {
     /// \tparam Op The binary tile operation template
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable, template <typename, typename, typename, bool, bool> class Op>
-    struct BinaryTileOpPolicy<Op<Result, Left, Right, LeftConsumable,RightConsumable> > {
+    struct BinaryTileOpPolicy<Op<Result, Left, Right, LeftConsumable, RightConsumable> > {
       typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type
           first_argument_type; ///< The left-hand argument type
       typedef typename madness::if_c<RightConsumable, Right&,
@@ -56,6 +56,12 @@ namespace TiledArray {
       typedef const ZeroTensor<typename Right::value_type>&
           zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
+
+      typedef std::integral_constant<bool, LeftConsumable && std::is_same<Result,
+          Left>::value> left_is_consumable; ///< Left is consumable type trait
+      typedef std::integral_constant<bool, RightConsumable && std::is_same<Result,
+          Right>::value> right_is_consumable; ///< Right is consumable type trait
+
     }; // struct BinaryTileOpPolicy
 
 
@@ -68,7 +74,7 @@ namespace TiledArray {
     /// argument is consumable
     /// \tparam RightConsumable A flag that is \c true when the right-hand
     /// argument is consumable
-    template <typename Derived, bool LeftConsumable, bool RightConsumable>
+    template <typename Derived>
     class BinaryInterfaceBase {
     public:
       typedef typename BinaryTileOpPolicy<Derived>::first_argument_type
@@ -81,6 +87,11 @@ namespace TiledArray {
           zero_right_type; ///< Zero right-hand tile type
       typedef typename BinaryTileOpPolicy<Derived>::result_type
           result_type; ///< The result tile type
+
+      typedef typename BinaryTileOpPolicy<Derived>::left_is_consumable
+          left_is_consumable; ///< Left is consumable type trait
+      typedef typename BinaryTileOpPolicy<Derived>::right_is_consumable
+          right_is_consumable; ///< Right is consumable type trait
 
     protected:
 
@@ -105,7 +116,8 @@ namespace TiledArray {
         if(derived().perm_.dim() > 1u)
           return derived().permute(first, second);
 
-        return derived().template no_permute<LeftConsumable, RightConsumable>(first, second);
+        return derived().template no_permute<left_is_consumable::value,
+            right_is_consumable::value>(first, second);
       }
 
       /// Evaluate a zero tile to a non-zero tiles and possibly permute
@@ -119,7 +131,8 @@ namespace TiledArray {
         if(derived().perm_.dim() > 1)
           return derived().permute(first, second);
 
-        return derived().template no_permute<LeftConsumable, RightConsumable>(first, second);
+        return derived().template no_permute<left_is_consumable::value,
+            right_is_consumable::value>(first, second);
       }
 
       /// Evaluate a non-zero tiles to a zero tile and possibly permute
@@ -133,7 +146,8 @@ namespace TiledArray {
         if(derived().perm_.dim() > 1)
           return derived().permute(first, second);
 
-        return derived().template no_permute<LeftConsumable, RightConsumable>(first, second);
+        return derived().template no_permute<left_is_consumable::value,
+            right_is_consumable::value>(first, second);
       }
 
     }; // class BinaryInterfaceBase
@@ -243,10 +257,10 @@ namespace TiledArray {
     /// argument is consumable
     /// \tparam RightConsumable A flag that is \c true when the right-hand
     /// argument is consumable
-    template <typename Derived, bool LeftConsumable, bool RightConsumable>
-    class BinaryInterface : public BinaryInterfaceBase<Derived, LeftConsumable, RightConsumable> {
+    template <typename Derived>
+    class BinaryInterface : public BinaryInterfaceBase<Derived> {
     public:
-      typedef BinaryInterfaceBase<Derived, LeftConsumable, RightConsumable> BinaryInterfaceBase_; ///< This class type
+      typedef BinaryInterfaceBase<Derived> BinaryInterfaceBase_; ///< This class type
       typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
@@ -344,12 +358,13 @@ namespace TiledArray {
     /// argument is consumable
     /// \tparam RightConsumable A flag that is \c true when the right-hand
     /// argument is consumable
-    template <typename Derived>
-    class BinaryInterface<Derived, false, false> :
-        public BinaryInterfaceBase<Derived, false, false>
+    template <typename Result, typename Left, typename Right,
+        template <typename, typename, typename, bool, bool> class Op>
+    class BinaryInterface<Op<Result, Left, Right, false, false> > :
+        public BinaryInterfaceBase<Op<Result, Left, Right, false, false> >
     {
     public:
-      typedef BinaryInterfaceBase<Derived, false, false> BinaryInterfaceBase_; ///< This class type
+      typedef BinaryInterfaceBase<Op<Result, Left, Right, false, false> > BinaryInterfaceBase_; ///< This class type
       typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type

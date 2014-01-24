@@ -47,11 +47,11 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
     class Mult : public BinaryInterface<Mult<Result, Left, Right, LeftConsumable,
-        RightConsumable>, LeftConsumable, RightConsumable>
+        RightConsumable> >
     {
     public:
       typedef Mult<Result, Left, Right, LeftConsumable, RightConsumable> Mult_; ///< This object type
-      typedef BinaryInterface<Mult_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef BinaryInterface<Mult_> BinaryInterface_; ///< Interface base class type
       typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
@@ -63,8 +63,8 @@ namespace TiledArray {
       Permutation perm_; ///< The result permutation
 
       // Make friends with base classes
-      friend class BinaryInterface<Mult_, LeftConsumable, RightConsumable>;
-      friend class BinaryInterfaceBase<Mult_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterface<Mult_>;
+      friend class BinaryInterfaceBase<Mult_>;
 
       // Element operation functor types
 
@@ -76,9 +76,7 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, second, multiplies_op());
-        return result;
+        return result_type(first, second, multiplies_op(), perm_);
       }
 
       result_type permute(zero_left_type, const Right& second) const {
@@ -96,29 +94,25 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-          (RC && std::is_same<Result, Right>::value), result_type>::type
+      static typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
         return first.mult(second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+      static typename madness::enable_if_c<LC, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        first.mult_to(second);
-        return first;
+        return first.mult_to(second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
-          (!(LC && std::is_same<Result, Left>::value)), result_type>::type
+      static typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        second.mult_to(first);
-        return second;
+        return second.mult_to(first);
       }
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<RC, result_type>::type
+      static typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, const Right& second) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
@@ -132,7 +126,7 @@ namespace TiledArray {
       }
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<LC, result_type>::type
+      static typename madness::enable_if_c<!LC, result_type>::type
       no_permute(const Left& first, zero_right_type) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();

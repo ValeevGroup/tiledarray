@@ -47,11 +47,11 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
     class ScalAdd : public BinaryInterface<ScalAdd<Result, Left, Right,
-        LeftConsumable, RightConsumable>, LeftConsumable, RightConsumable>
+        LeftConsumable, RightConsumable> >
     {
     public:
       typedef ScalAdd<Result, Left, Right, LeftConsumable, RightConsumable> ScalAdd_; ///< This object type
-      typedef BinaryInterface<ScalAdd_, LeftConsumable, RightConsumable> BinaryInterface_; ///< Interface base class type
+      typedef BinaryInterface<ScalAdd_> BinaryInterface_; ///< Interface base class type
       typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
       typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
@@ -64,17 +64,13 @@ namespace TiledArray {
       scalar_type factor_; ///< The scaling factor
 
       // Make friends with base classes
-      friend class BinaryInterface<ScalAdd_, LeftConsumable, RightConsumable>;
-      friend class BinaryInterfaceBase<ScalAdd_, LeftConsumable, RightConsumable>;
+      friend class BinaryInterface<ScalAdd_>;
+      friend class BinaryInterfaceBase<ScalAdd_>;
 
       // Element operation functor types
 
       typedef ScalPlus<typename Left::value_type,
           typename Right::value_type, typename Result::value_type> scal_plus_op;
-      typedef ScalPlusAssign<typename Left::value_type,
-          typename Right::value_type> scal_plus_assign_left_op;
-      typedef ScalPlusAssign<typename Right::value_type,
-          typename Left::value_type> scal_plus_assign_right_op;
       typedef Scale<typename Left::value_type> scale_left_op;
       typedef Scale<typename Right::value_type> scale_right_op;
 
@@ -83,21 +79,15 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, second, scal_plus_op(factor_));
-        return result;
+        return result_type(first, second, scal_plus_op(factor_), perm_);
       }
 
       result_type permute(zero_left_type, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, second, scale_right_op(factor_));
-        return result;
+        return result_type(second, scale_right_op(factor_), perm_);
       }
 
       result_type permute(first_argument_type first, zero_right_type) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, scale_left_op(factor_));
-        return result;
+        return result_type(first, scale_left_op(factor_), perm_);
       }
 
       // Non-permuting tile evaluation functions
@@ -105,28 +95,26 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool LC, bool RC>
-      typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-          (RC && std::is_same<Result, Right>::value), result_type>::type
+      typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
         return first.add(second, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+      typename madness::enable_if_c<LC, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
         return first.add_to(second, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
-          (!(LC && std::is_same<Result, Left>::value)), result_type>::type
+      typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
         return second.add_to(first, factor_);
       }
 
 
       template <bool LC, bool RC>
-      typename madness::disable_if_c<RC, result_type>::type
+      typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) const {
         return second.scale(factor_);
       }
@@ -138,9 +126,9 @@ namespace TiledArray {
       }
 
       template <bool LC, bool RC>
-      typename madness::disable_if_c<LC, result_type>::type
+      typename madness::enable_if_c<!LC, result_type>::type
       no_permute(first_argument_type first, zero_right_type) const {
-        return first.scale_to(factor_);
+        return first.scale(factor_);
       }
 
       template <bool LC, bool RC>
