@@ -603,7 +603,7 @@ namespace TiledArray {
 
       /// Initialize reduce tasks
       template <typename Shape>
-      void initialize(const Shape& shape) {
+      size_type initialize(const Shape& shape) {
         // Initialize iteration variables
         const size_type end = TensorImpl_::size();
         size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
@@ -778,7 +778,7 @@ namespace TiledArray {
         row_shape_values.reserve(row.size());
         const size_type row_start = k * proc_grid_.cols() + proc_grid_.rank_col();
         for(size_type j = 0ul; j < row.size(); ++j)
-          row_shape_values.push_back(right_.shape().data()[row_start + (row[j].first * right_stride_local_)]);
+          row_shape_values.push_back(right_.shape()[row_start + (row[j].first * right_stride_local_)]);
 
         const size_type col_start = left_start_local_ + k;
         const float threshold_k = TensorImpl_::shape().threshold() / typename SparseShape<T>::value_type(k_);
@@ -789,7 +789,7 @@ namespace TiledArray {
 
           // Get the shape data for col_it tile
           const typename SparseShape<T>::value_type col_shape_value =
-              left_.shape().data()[col_start + (col[i].first * left_stride_local_)];
+              left_.shape()[col_start + (col[i].first * left_stride_local_)];
 
           // Iterate over columns
           for(size_type j = 0ul; j < row.size(); ++j) {
