@@ -74,7 +74,8 @@ struct ContractionEvalFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.fence();
   }
 
-  static void rand_fill_array(ArrayN& array) {
+  template <typename T, unsigned int DIM, typename Tile, typename Policy>
+  static void rand_fill_array(Array<T, DIM, Tile, Policy>& array) {
     // Iterate over local, non-zero tiles
     for(ArrayN::iterator it = array.begin(); it != array.end(); ++it) {
       // Construct a new tile with random data
@@ -87,7 +88,8 @@ struct ContractionEvalFixture : public TiledRangeFixture {
     }
   }
 
-  static matrix_type copy_to_matrix(const ArrayN& array, const int middle) {
+  template <typename T, unsigned int DIM, typename Tile, typename Policy>
+  static matrix_type copy_to_matrix(const Array<T, DIM, Tile, Policy>& array, const int middle) {
 
     // Compute the number of rows and columns in the matrix, and a new weight
     // that is bisected the row and column dimensions.
@@ -131,6 +133,18 @@ struct ContractionEvalFixture : public TiledRangeFixture {
     }
 
     return matrix;
+  }
+
+  static SparseShape<float> make_shape(const Range& range, const float fill_percent, const int seed) {
+    GlobalFixture::world->srand(seed);
+    const float max = 27.0;
+    const float threshold = fill_percent * max;
+    Tensor<float> shape_data(range);
+    for(std::size_t i = 0ul; i < range.volume(); ++i)
+      shape_data[i] = max * float(GlobalFixture::world->rand()) /
+          float(std::numeric_limits<int>::max());
+
+    return SparseShape<float>(shape_data, threshold);
   }
 
   ArrayN left;
@@ -226,6 +240,62 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   // Compute the reference contraction
   const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
   const matrix_type reference = (l * r).transpose();
+
+  dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
+  const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
+
+  // Check that each tile has been properly scaled.
+  for(; it != end; ++it) {
+
+    // Get the array evaluator tile.
+    madness::Future<dist_eval_type1::value_type> tile;
+    BOOST_REQUIRE_NO_THROW(tile = contract.move(*it));
+
+    // Force the evaluation of the tile
+    dist_eval_type1::eval_type eval_tile;
+    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+    BOOST_CHECK(! eval_tile.empty());
+
+    if(!eval_tile.empty()) {
+      // Check that the result tile is correctly modified.
+      BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+      BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0],
+          eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
+    }
+  }
+
+}
+
+BOOST_AUTO_TEST_CASE( sparse_eval )
+{
+  typedef detail::DistEval<op_type::result_type, SparsePolicy> dist_eval_type1;
+  typedef Array<int, GlobalFixture::dim, Tensor<int>, SparsePolicy> array_type;
+  typedef detail::DistEval<detail::LazyArrayTile<array_type::value_type, array_op_type>,
+      SparsePolicy> array_eval_type;
+
+  array_type left(*GlobalFixture::world, tr, make_shape(tr.tiles(), 0.1, 23));
+
+  array_type right(*GlobalFixture::world, tr, make_shape(tr.tiles(), 0.1, 42));
+
+  array_eval_type left_arg(detail::make_array_eval(left, left.get_world(), left.get_shape(),
+      proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
+      Permutation(), array_op_type()));
+  array_eval_type right_arg(detail::make_array_eval(right, right.get_world(), right.get_shape(),
+      proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size().back()),
+      Permutation(), array_op_type()));
+
+  const SparseShape<float> result_shape = left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
+
+  dist_eval_type1 contract = detail::make_contract_eval(left_arg, right_arg,
+      left_arg.get_world(), result_shape, pmap, Permutation(), op);
+
+  // Check evaluation
+  BOOST_REQUIRE_NO_THROW(contract.eval());
+
+
+  // Compute the reference contraction
+  const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
+  const matrix_type reference = l * r;
 
   dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
   const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
