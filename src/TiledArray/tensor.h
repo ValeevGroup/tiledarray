@@ -971,7 +971,7 @@ namespace TiledArray {
     /// Negate elements of this tensor
 
     /// \return A reference to this tensor
-    Tensor_& neg_to() const {
+    Tensor_& neg_to() {
       return inplace_unary(math::NegateAssign<value_type>());
     }
 
