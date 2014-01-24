@@ -118,21 +118,31 @@ namespace TiledArray {
     /// \param thresh The new threshold
     void threshold(const value_type thresh) { threshold_ = thresh; }
 
-    /// Shape data accessor
+    /// Permute shape
 
-    /// \return A const reference to the shape data
-    const Tensor<value_type>& data() const { return data_; }
-
-
+    /// \param perm The permutation to be applied
+    /// \return A new, permuted shape
     SparseShape<T> perm(const Permutation& perm) const {
-      return SparseShape<T>(data_.perm(perm), threshold_);
+      return SparseShape<T>(data_.permute(perm), threshold_);
     }
 
-    SparseShape<T> scale(const T factor) const {
+    template <typename Index>
+    value_type operator[](const Index& index) const { return std::abs(data_[index]); }
+
+    /// Data accessor
+
+    /// \return A reference to the \c Tensor object that stores shape data
+    const Tensor<value_type>& data() const { return data_; }
+
+    /// Scale shape
+
+    /// \param factor The scaling factor
+    /// \return A new, scaled shape
+    SparseShape<T> scale(const value_type factor) const {
       return SparseShape<T>(data_.scale(factor), threshold_ * factor);
     }
 
-    SparseShape<T> scale(const T factor, const Permutation& perm) const {
+    SparseShape<T> scale(const value_type factor, const Permutation& perm) const {
       return SparseShape<T>(data_.scale(factor, perm), threshold_ * factor);
     }
 
@@ -160,7 +170,7 @@ namespace TiledArray {
       return SparseShape<T>(data_.add(value), threshold_ + value);
     }
 
-    SparseShape<T> add(const value_type value, const Permutation& perm) {
+    SparseShape<T> add(const value_type value, const Permutation& perm) const {
       return SparseShape<T>(data_.add(value, perm), threshold_ + value);
     }
 
@@ -184,12 +194,12 @@ namespace TiledArray {
           (threshold_ - other.threshold_) * factor);
     }
 
-    SparseShape<T> subt(const value_type value) {
-      return SparseShape<T>(data_.subt(value), threshold_ + value);
+    SparseShape<T> subt(const value_type value) const {
+      return SparseShape<T>(data_.unary(AbsSubtConst(value)), threshold_ + value);
     }
 
-    SparseShape<T> subt(const value_type value, const Permutation& perm) {
-      return SparseShape<T>(data_.subt(value, perm), threshold_ + value);
+    SparseShape<T> subt(const value_type value, const Permutation& perm) const {
+      return SparseShape<T>(data_.unary(AbsSubtConst(value), perm), threshold_ + value);
     }
 
     SparseShape<T> mult(const SparseShape<T>& other) const {
@@ -213,21 +223,21 @@ namespace TiledArray {
     }
 
     SparseShape<T> gemm(const SparseShape<T>& other, const value_type factor,
-        const math::GemmHelper& gemm_helper)
+        const math::GemmHelper& gemm_helper) const
     {
       integer m, n, k;
       gemm_helper.compute_matrix_sizes(m, n, k, data_.range(), other.data_.range());
-      return SparseShape<T>(data_.gemm(other, factor, gemm_helper),
-          (threshold_ * other.threshold_) * k);
+      return SparseShape<T>(data_.gemm(other.data_, factor, gemm_helper),
+          (threshold_ * other.threshold_) * value_type(k));
     }
 
     SparseShape<T> gemm(const SparseShape<T>& other, const value_type factor,
-        const math::GemmHelper& gemm_helper, const Permutation& perm)
+        const math::GemmHelper& gemm_helper, const Permutation& perm) const
     {
       integer m, n, k;
       gemm_helper.compute_matrix_sizes(m, n, k, data_.range(), other.data_.range());
-      return SparseShape<T>(data_.gemm(other, factor, gemm_helper, perm),
-          (threshold_ * other.threshold_) * k);
+      return SparseShape<T>(data_.gemm(other.data_, factor, gemm_helper).perm(perm),
+          (threshold_ * other.threshold_) * value_type(k));
     }
 
   }; // class SparseShape
