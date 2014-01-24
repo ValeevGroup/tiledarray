@@ -84,6 +84,11 @@ namespace TiledArray {
         return *this;
       }
 
+      /// Gemm meta data accessor
+
+      /// \return A reference to the gemm helper object
+      const GemmHelper& gemm_helper() const { return gemm_helper_; }
+
       /// Compute the number of contracted ranks
 
       /// \return The number of ranks that are summed by this operation
