@@ -103,17 +103,22 @@ namespace TiledArray {
 
         /// Get pointers to this tensors data and weight
         const size_type* restrict const other_weight = other.range().weight().data();
+        const typename Tensor<U, AU>::value_type* restrict const other_data = other.data();
 
         // Construct the inverse permuted weight and size for this tensor
         const std::vector<size_type> ip_weight = (-perm) ^ range_.weight();
         {
           const size_type* restrict const r_ip_weight = & ip_weight.front();
 
-          // permute the data
+          // Cache constants needed for the perumtation loop
           const size_type end = range_.volume();
           const size_type ndim = range_.dim();
-          for(std::size_t index = 0ul; index != end; ++index) {
-            // Compute the permuted index
+          const size_type index_end_stride = range_.size()[range_.dim() - 1ul];
+          const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
+
+          // Permute the data
+          for(size_type index = 0ul, index_end = index_end_stride; index < end; index_end += index_end_stride) {
+            // Compute the first permuted index of this vector
             size_type i = index;
             size_type perm_index = 0ul;
             for(size_type dim = 0ul; dim < ndim; ++dim) {
@@ -121,8 +126,10 @@ namespace TiledArray {
               i %= other_weight[dim];
             }
 
-            // Assign permuted data
-            data[perm_index] = other[index];
+            for(; index < index_end; ++index, perm_index += perm_index_stride)
+              // Assign permuted data
+              data[perm_index] = other_data[index];
+
           }
         }
       }
@@ -154,11 +161,15 @@ namespace TiledArray {
         {
           const size_type* restrict const r_ip_weight = & ip_weight.front();
 
-          // permute the data
+          // Cache constants needed for the perumtation loop
           const size_type end = range_.volume();
           const size_type ndim = range_.dim();
-          for(std::size_t index = 0ul; index != end; ++index) {
-            // Compute the permuted index
+          const size_type index_end_stride = range_.size()[range_.dim() - 1ul];
+          const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
+
+          // Permute the data
+          for(size_type index = 0ul, index_end = index_end_stride; index < end; index_end += index_end_stride) {
+            // Compute the first permuted index of this vector
             size_type i = index;
             size_type perm_index = 0ul;
             for(size_type dim = 0ul; dim < ndim; ++dim) {
@@ -166,8 +177,10 @@ namespace TiledArray {
               i %= other_weight[dim];
             }
 
-            // Assign permuted data
-            data[perm_index] = op(other_data[index]);
+            for(; index < index_end; ++index, perm_index += perm_index_stride)
+              // Assign permuted data
+              data[perm_index] = op(other_data[index]);
+
           }
         }
       }
@@ -202,11 +215,15 @@ namespace TiledArray {
         {
           const size_type* restrict const r_ip_weight = & ip_weight.front();
 
-          // permute the data
+          // Cache constants needed for the perumtation loop
           const size_type end = range_.volume();
           const size_type ndim = range_.dim();
-          for(std::size_t index = 0ul; index != end; ++index) {
-            // Compute the permuted index
+          const size_type index_end_stride = range_.size()[range_.dim() - 1ul];
+          const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
+
+          // Permute the data
+          for(size_type index = 0ul, index_end = index_end_stride; index < end; index_end += index_end_stride) {
+            // Compute the first permuted index of this vector
             size_type i = index;
             size_type perm_index = 0ul;
             for(size_type dim = 0ul; dim < ndim; ++dim) {
@@ -214,8 +231,10 @@ namespace TiledArray {
               i %= other_weight[dim];
             }
 
-            // Assign permuted data
-            data[perm_index] = op(left_data[index], right_data[index]);
+            for(; index < index_end; ++index, perm_index += perm_index_stride)
+              // Assign permuted data
+              data[perm_index] = op(left_data[index], right_data[index]);
+
           }
         }
       }
