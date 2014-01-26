@@ -646,7 +646,7 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A reference to this tensor
     Tensor_& scale_to(numeric_type factor) {
-      return inplace_unary(math::Scale<value_type>(factor));
+      return inplace_unary(math::ScaleAssign<value_type>(factor));
     }
 
     // Addition operations
