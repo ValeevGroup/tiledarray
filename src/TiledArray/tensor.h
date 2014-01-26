@@ -105,15 +105,16 @@ namespace TiledArray {
         const size_type* restrict const other_weight = other.range().weight().data();
         const typename Tensor<U, AU>::value_type* restrict const other_data = other.data();
 
-        // Construct the inverse permuted weight and size for this tensor
-        const std::vector<size_type> ip_weight = (-perm) ^ range_.weight();
+        // Construct the inverse permuted weight for this tensor
+        const Permutation inv_perm(-perm);
+        const std::vector<size_type> ip_weight = inv_perm ^ range_.weight();
         {
           const size_type* restrict const r_ip_weight = & ip_weight.front();
 
           // Cache constants needed for the perumtation loop
           const size_type end = range_.volume();
           const size_type ndim = range_.dim();
-          const size_type index_end_stride = range_.size()[range_.dim() - 1ul];
+          const size_type index_end_stride = range_.size()[inv_perm[range_.dim() - 1ul]];
           const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
 
           // Permute the data
@@ -129,7 +130,6 @@ namespace TiledArray {
             for(; index < index_end; ++index, perm_index += perm_index_stride)
               // Assign permuted data
               data[perm_index] = other_data[index];
-
           }
         }
       }
@@ -156,15 +156,16 @@ namespace TiledArray {
         const size_type* restrict const other_weight = other.range().weight().data();
         const typename Tensor<U, AU>::value_type* restrict const other_data = other.data();
 
-        // Construct the inverse permuted weight and size for this tensor
-        const std::vector<size_type> ip_weight = (-perm) ^ range_.weight();
+        // Construct the inverse permuted weight for this tensor
+        const Permutation inv_perm(-perm);
+        const std::vector<size_type> ip_weight = inv_perm ^ range_.weight();
         {
           const size_type* restrict const r_ip_weight = & ip_weight.front();
 
           // Cache constants needed for the perumtation loop
           const size_type end = range_.volume();
           const size_type ndim = range_.dim();
-          const size_type index_end_stride = range_.size()[range_.dim() - 1ul];
+          const size_type index_end_stride = range_.size()[inv_perm[range_.dim() - 1ul]];
           const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
 
           // Permute the data
@@ -210,15 +211,16 @@ namespace TiledArray {
         const typename Tensor<U, AU>::value_type* restrict const left_data = left.data();
         const typename Tensor<V, AV>::value_type* restrict const right_data = right.data();
 
-        // Construct the inverse permuted weight and size for this tensor
-        const std::vector<size_type> ip_weight = (-perm) ^ range_.weight();
+        // Construct the inverse permuted weight for this tensor
+        const Permutation inv_perm(-perm);
+        const std::vector<size_type> ip_weight = inv_perm ^ range_.weight();
         {
           const size_type* restrict const r_ip_weight = & ip_weight.front();
 
           // Cache constants needed for the perumtation loop
           const size_type end = range_.volume();
           const size_type ndim = range_.dim();
-          const size_type index_end_stride = range_.size()[range_.dim() - 1ul];
+          const size_type index_end_stride = range_.size()[inv_perm[range_.dim() - 1ul]];
           const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
 
           // Permute the data
