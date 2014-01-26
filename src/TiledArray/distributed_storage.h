@@ -348,7 +348,8 @@ namespace TiledArray {
         if(is_local(i)) {
           set_local_value(i, value);
         } else {
-          WorldObject_::send(owner(i), & DistributedStorage_::set_value, i, value);
+          WorldObject_::task(owner(i), & DistributedStorage_::set_value, i, value,
+              madness::TaskAttributes::hipri());
         }
       }
 
