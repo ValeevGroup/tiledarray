@@ -257,25 +257,6 @@ namespace TiledArray {
         }
       }
 
-      /// Set element \c i with \c value
-
-      /// The owner of \c i may be local or remote. If \c i is remote, a task
-      /// is spawned on the owning node to set it. If \c i is not already in
-      /// the container, it will be inserted.
-      /// \param i The element to be set
-      /// \param value The value of element \c i
-      /// \throw TiledArray::Exception If \c i is greater than or equal to \c max_size() .
-      /// \throw madness::MadnessException If \c i has already been set.
-      void set(size_type i, const madness::detail::MoveWrapper<value_type>& value) {
-        TA_ASSERT(i < max_size_);
-        if(is_local(i)) {
-          set_local_value(i, value);
-        } else {
-          WorldObject_::send(owner(i), & DistributedStorage_::set_value, i,
-              madness::unwrap_move(value));
-        }
-      }
-
       /// Element accessor
 
       /// This operator returns a future to the local or remote element \c i .
@@ -416,7 +397,8 @@ namespace TiledArray {
         if(is_local(i)) {
           set_local_value(i, value);
         } else {
-          WorldObject_::send(owner(i), & DistributedStorage_::set_value, i, value);
+          WorldObject_::task(owner(i), & DistributedStorage_::set_value, i, value,
+              madness::TaskAttributes::hipri());
         }
       }
 
