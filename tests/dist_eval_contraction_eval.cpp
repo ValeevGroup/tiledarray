@@ -302,6 +302,9 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
 
   // Check that each tile has been properly scaled.
   for(; it != end; ++it) {
+    // Skip zero tiles
+    if(contract.is_zero(*it))
+      continue;
 
     // Get the array evaluator tile.
     madness::Future<dist_eval_type1::value_type> tile;
