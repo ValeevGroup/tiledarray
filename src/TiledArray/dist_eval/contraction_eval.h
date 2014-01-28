@@ -595,7 +595,7 @@ namespace TiledArray {
         // Iterate over all local tiles
         for(size_type t = 0ul; t < proc_grid_.local_size(); ++t) {
           // Initialize the reduction task
-          new(&reduce_tasks_[t]) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+          new(reduce_tasks_ + t) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
         }
 
         return proc_grid_.local_size();
@@ -604,6 +604,10 @@ namespace TiledArray {
       /// Initialize reduce tasks
       template <typename Shape>
       size_type initialize(const Shape& shape) {
+        // Allocate memory for the reduce pair tasks.
+        std::allocator<ReducePairTask<op_type> > alloc;
+        reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
+
         // Initialize iteration variables
         const size_type end = TensorImpl_::size();
         size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
@@ -620,7 +624,7 @@ namespace TiledArray {
             if(shape.is_zero(DistEvalImpl_::perm_index(index))) continue;
 
             // Initialize the reduction task
-            new(&reduce_tasks_[t]) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+            new(reduce_tasks_ + t) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
             ++tile_count;
           }
         }
