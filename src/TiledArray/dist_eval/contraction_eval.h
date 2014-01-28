@@ -593,9 +593,11 @@ namespace TiledArray {
         reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
         // Iterate over all local tiles
-        for(size_type t = 0ul; t < proc_grid_.local_size(); ++t) {
+        const size_type n = proc_grid_.local_size();
+        for(size_type t = 0ul; t < n; ++t) {
           // Initialize the reduction task
-          new(reduce_tasks_ + t) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+          ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
+          new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
         }
 
         return proc_grid_.local_size();
@@ -609,22 +611,25 @@ namespace TiledArray {
         reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
         // Initialize iteration variables
-        const size_type end = TensorImpl_::size();
         size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
         size_type row_end = row_start + proc_grid_.cols();
         row_start += proc_grid_.rank_col();
-        const size_type row_stride = proc_grid_.proc_rows() * proc_grid_.cols();
-        const size_type col_stride = proc_grid_.proc_cols();
+        const size_type col_stride = // The stride to iterate down a column
+            proc_grid_.proc_rows() * proc_grid_.cols();
+        const size_type row_stride = // The stride to iterate across a row
+            proc_grid_.proc_cols();
+        const size_type end = TensorImpl_::size();
 
         // Iterate over all local tiles
         size_type tile_count = 0ul;
-        for(size_type t = 0ul; row_start < end; row_start += row_stride, row_end += row_stride) {
-          for(size_type index = row_start; index < row_end; index += col_stride, ++t) {
+        for(size_type t = 0ul; row_start < end; row_start += col_stride, row_end += col_stride) {
+          for(size_type index = row_start; index < row_end; index += row_stride, ++t) {
             // Skip zero tiles
             if(shape.is_zero(DistEvalImpl_::perm_index(index))) continue;
 
             // Initialize the reduction task
-            new(reduce_tasks_ + t) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+            ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
+            new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
             ++tile_count;
           }
         }
@@ -645,19 +650,24 @@ namespace TiledArray {
         size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
         size_type row_end = row_start + proc_grid_.cols();
         row_start += proc_grid_.rank_col();
+        const size_type col_stride = // The stride to iterate down a column
+            proc_grid_.proc_rows() * proc_grid_.cols();
+        const size_type row_stride = // The stride to iterate across a row
+            proc_grid_.proc_cols();
         const size_type end = TensorImpl_::size();
-        const size_type row_stride = proc_grid_.proc_rows() * proc_grid_.cols();
-        const size_type col_stride = proc_grid_.proc_cols();
 
         // Iterate over all local tiles
-        for(size_type t = 0ul; row_start < end; row_start += row_stride, row_end += row_stride) {
-          for(size_type index = row_start; index < row_end; index += col_stride, ++t) {
+        for(size_type t = 0ul; row_start < end; row_start += col_stride, row_end += col_stride) {
+          for(size_type index = row_start; index < row_end; index += row_stride, ++t) {
+
+            ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
+
             // Set the result tile
             DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(index),
-                reduce_tasks_[t].submit());
+                reduce_task->submit());
 
             // Destroy the the reduce task
-            reduce_tasks_[t].~ReducePairTask<op_type>();
+            reduce_task->~ReducePairTask<op_type>();
           }
         }
 
@@ -690,12 +700,14 @@ namespace TiledArray {
             // Skip zero tiles
             if(shape.is_zero(perm_index)) continue;
 
+            ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
+
             // Set the result tile
             DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(perm_index),
-                reduce_tasks_[t].submit());
+                reduce_task->submit());
 
             // Destroy the the reduce task
-            reduce_tasks_[t].~ReducePairTask<op_type>();
+            reduce_task->~ReducePairTask<op_type>();
           }
         }
 
@@ -877,11 +889,12 @@ namespace TiledArray {
             k_ = owner_->iterate(owner_, k_);
 
             if(k_ < owner_->k_) {
+              // Add a dependency to the finalize task
               finalize_task_->inc();
 
               // Initialize and submit next task
               StepTask* const next_next_step_task = next_step_task_->initialize(k_ + 1ul);
-              next_step_task_ = NULL;
+              next_step_task_ = NULL; // The next step task can start running after this point
 
               // Broadcast row and column
               std::vector<col_datum> col;
