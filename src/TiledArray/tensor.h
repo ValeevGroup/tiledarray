@@ -1075,38 +1075,43 @@ namespace TiledArray {
     /// This function will compute the sum of the hyper diagonal elements of
     /// tensor.
     /// \return The trace of this tensor
-    numeric_type trace() const {
+    value_type trace() const {
       TA_ASSERT(pimpl_);
 
       // Get pointers to the range data
       const size_type n = pimpl_.range_.dim();
       const size_type* restrict const start = pimpl_->range_.start().data();
       const size_type* restrict const finish = pimpl_->range_.finish().data();
-      const size_type* restrict const size = pimpl_->range_.size().data();
       const size_type* restrict const weight = pimpl_->range_.weight().data();
 
       // Search for the largest start index and the lowest
       size_type start_max = 0ul, finish_min = 0ul;
       for(size_type i = 0ul; i < n; ++i) {
-        start_max = std::max(start_max, start[i]);
-        finish_min = std::min(finish_min, finish[i]);
+        const size_type start_i = start[i];
+        const size_type finish_i = finish[i];
+
+        start_max = std::max(start_max, start_i);
+        finish_min = std::min(finish_min, finish_i);
       }
 
-      numeric_type result = 0;
+      value_type result = 0;
 
       if(start_max < finish_min) {
         // Compute the first and last ordinal index
         size_type first = 0ul, last = 0ul, stride = 0ul;
         for(size_type i = 0ul; i < n; ++i) {
-          first += (start_max - start[i]) * weight[i];
-          last += (finish_min - start[i]) * weight[i];
-          stride += weight[i];
+          const size_type start_i = start[i];
+          const size_type weight_i = weight[i];
+
+          first += (start_max - start_i) * weight_i;
+          last += (finish_min - start_i) * weight_i;
+          stride += weight_i;
         }
 
         // Compute the trace
         const value_type* restrict const data = pimpl_->data_.data();
         for(; first < last; first += stride)
-          result += data[start_max];
+          result += data[first];
       }
 
       return result;
