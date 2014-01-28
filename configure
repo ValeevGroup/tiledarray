@@ -106,7 +106,7 @@ prefix=$PWD
 build="Release"
 
 # log the command-line arguments, preserving quotes
-log="Last invoked on `date`:\n$0 "
+log="#!/bin/sh\n# Last invoked on `date`:\n$0 "
 for token in "$@"
   do
     log="$log '$token'"
