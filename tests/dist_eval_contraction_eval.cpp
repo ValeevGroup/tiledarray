@@ -137,12 +137,15 @@ struct ContractionEvalFixture : public TiledRangeFixture {
 
   static SparseShape<float> make_shape(const Range& range, const float fill_percent, const int seed) {
     GlobalFixture::world->srand(seed);
-    const float max = 27.0;
-    const float threshold = fill_percent * max;
+    float max = 0.0f;
+    const float threshold = fill_percent * 27.0f;
     Tensor<float> shape_data(range);
-    for(std::size_t i = 0ul; i < range.volume(); ++i)
-      shape_data[i] = max * float(GlobalFixture::world->rand()) /
-          float(std::numeric_limits<int>::max());
+    for(std::size_t i = 0ul; i < range.volume(); ++i) {
+      shape_data[i] = GlobalFixture::world->rand();
+      max = std::max(max, shape_data[i]);
+    }
+
+    shape_data *= 27.0f / max;
 
     return SparseShape<float>(shape_data, threshold);
   }
