@@ -303,23 +303,28 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   // Check that each tile has been properly scaled.
   for(; it != end; ++it) {
     // Skip zero tiles
-    if(contract.is_zero(*it))
-      continue;
+    if(contract.is_zero(*it)) {
+      dist_eval_type1::range_type range = contract.trange().make_tile_range(*it);
 
-    // Get the array evaluator tile.
-    madness::Future<dist_eval_type1::value_type> tile;
-    BOOST_REQUIRE_NO_THROW(tile = contract.move(*it));
+      BOOST_CHECK((reference.block(range.start()[0], range.start()[1],
+          range.size()[0], range.size()[1]).array() == 0).all());
 
-    // Force the evaluation of the tile
-    dist_eval_type1::eval_type eval_tile;
-    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
-    BOOST_CHECK(! eval_tile.empty());
+    } else {
+      // Get the array evaluator tile.
+      madness::Future<dist_eval_type1::value_type> tile;
+      BOOST_REQUIRE_NO_THROW(tile = contract.move(*it));
 
-    if(!eval_tile.empty()) {
-      // Check that the result tile is correctly modified.
-      BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
-      BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0],
-          eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
+      // Force the evaluation of the tile
+      dist_eval_type1::eval_type eval_tile;
+      BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+      BOOST_CHECK(! eval_tile.empty());
+
+      if(!eval_tile.empty()) {
+        // Check that the result tile is correctly modified.
+        BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+        BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0],
+            eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
+      }
     }
   }
 
