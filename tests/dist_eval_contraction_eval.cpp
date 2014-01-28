@@ -77,10 +77,10 @@ struct ContractionEvalFixture : public TiledRangeFixture {
   template <typename T, unsigned int DIM, typename Tile, typename Policy>
   static void rand_fill_array(Array<T, DIM, Tile, Policy>& array) {
     // Iterate over local, non-zero tiles
-    for(ArrayN::iterator it = array.begin(); it != array.end(); ++it) {
+    for(typename Array<T, DIM, Tile, Policy>::iterator it = array.begin(); it != array.end(); ++it) {
       // Construct a new tile with random data
-      ArrayN::value_type tile(array.trange().make_tile_range(it.index()));
-      for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
+      typename Array<T, DIM, Tile, Policy>::value_type tile(array.trange().make_tile_range(it.index()));
+      for(typename Array<T, DIM, Tile, Policy>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 27;
 
       // Set array tile
@@ -279,6 +279,10 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   array_type left(*GlobalFixture::world, tr, make_shape(tr.tiles(), 0.1, 23));
 
   array_type right(*GlobalFixture::world, tr, make_shape(tr.tiles(), 0.1, 42));
+
+  // Fill arrays with random data
+  rand_fill_array(left);
+  rand_fill_array(right);
 
   array_eval_type left_arg(detail::make_array_eval(left, left.get_world(), left.get_shape(),
       proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
