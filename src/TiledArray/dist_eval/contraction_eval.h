@@ -703,8 +703,7 @@ namespace TiledArray {
             ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
 
             // Set the result tile
-            DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(perm_index),
-                reduce_task->submit());
+            DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
 
             // Destroy the the reduce task
             reduce_task->~ReducePairTask<op_type>();
