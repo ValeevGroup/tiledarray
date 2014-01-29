@@ -525,8 +525,8 @@ namespace TiledArray {
         } else {
           // Get the result before submitting calling dec(), otherwise the
           // task could run and be deleted before we are done here.
-          world_.taskq.add(pimpl_);
           pimpl_->dec();
+          world_.taskq.add(pimpl_);
         }
 
         pimpl_ = NULL;
@@ -651,7 +651,7 @@ namespace TiledArray {
       /// complete
       ReducePairTask(madness::World& world, const opT& op = opT(), madness::CallbackInterface* callback = NULL) :
         ReduceTask_(world, op_type(op), callback)
-    { }
+      { }
 
       /// Add a pair of arguments to the reduction task
 
