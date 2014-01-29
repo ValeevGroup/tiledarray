@@ -125,10 +125,8 @@ namespace TiledArray {
 
       /// This will store \c value at ordinal index \c i . Typically, this
       /// function should be called by a task function.
-      /// \param i The index where value will be stored.
-      /// \param value The value or future value to be stored at index \c i
-      /// \note The index \c i and \c value may be permuted by this function
-      /// before storing the value.
+      /// \param i The index in the result space where value will be stored
+      /// \param value The value to be stored at index \c i
       void set_tile(size_type i, const value_type& value) {
         // Store value
         TensorImpl_::set(i, value);
@@ -141,11 +139,9 @@ namespace TiledArray {
 
       /// This will store \c value at ordinal index \c i . Typically, this
       /// function should be called by a task function.
-      /// \param i The index where value will be stored.
-      /// \param value The value or future value to be stored at index \c i
-      /// \note The index \c i and \c value may be permuted by this function
-      /// before storing the value.
-      void set_tile(size_type i, const madness::Future<value_type>& f) {
+      /// \param i The index in the result space where value will be stored
+      /// \param value The future value to be stored at index \c i
+      void set_tile(size_type i, madness::Future<value_type> f) {
         // Store value
         TensorImpl_::set(i, f);
 
