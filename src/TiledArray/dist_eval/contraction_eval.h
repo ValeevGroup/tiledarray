@@ -657,10 +657,10 @@ namespace TiledArray {
         const size_type end = TensorImpl_::size();
 
         // Iterate over all local tiles
-        for(size_type t = 0ul; row_start < end; row_start += col_stride, row_end += col_stride) {
-          for(size_type index = row_start; index < row_end; index += row_stride, ++t) {
+        for(ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+            row_start < end; row_start += col_stride, row_end += col_stride) {
+          for(size_type index = row_start; index < row_end; index += row_stride, ++reduce_task) {
 
-            ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
 
             // Set the result tile
             DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(index),
@@ -684,23 +684,25 @@ namespace TiledArray {
       template <typename Shape>
       void finalize(const Shape& shape) {
         // Initialize iteration variables
-        const size_type end = TensorImpl_::size();
         size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
         size_type row_end = row_start + proc_grid_.cols();
         row_start += proc_grid_.rank_col();
-        const size_type row_stride = proc_grid_.proc_rows() * proc_grid_.cols();
-        const size_type col_stride = proc_grid_.proc_cols();
+        const size_type col_stride = // The stride to iterate down a column
+            proc_grid_.proc_rows() * proc_grid_.cols();
+        const size_type row_stride = // The stride to iterate across a row
+            proc_grid_.proc_cols();
+        const size_type end = TensorImpl_::size();
 
         // Iterate over all local tiles
-        for(size_type t = 0ul; row_start < end; row_start += row_stride, row_end += row_stride) {
-          for(size_type index = row_start; index < row_end; index += col_stride, ++t) {
+        for(ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+            row_start < end; row_start += col_stride, row_end += col_stride) {
+          for(size_type index = row_start; index < row_end; index += row_stride, ++reduce_task) {
             // Compute the permuted index
             const size_type perm_index = DistEvalImpl_::perm_index(index);
 
             // Skip zero tiles
             if(shape.is_zero(perm_index)) continue;
 
-            ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
 
             // Set the result tile
             DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
