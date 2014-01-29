@@ -36,7 +36,7 @@ namespace TiledArray {
     /// \tparam Tile The output tile type
     /// \param Policy The tensor policy class
     template <typename Tile, typename Policy>
-    class DistEvalImpl : public TensorImpl<Tile, Policy> {
+    class DistEvalImpl : public TensorImpl<Tile, Policy>, public madness::CallbackInterface {
     public:
       typedef DistEvalImpl<Tile, Policy> DistEvalImpl_; ///< This object type
       typedef TiledArray::detail::TensorImpl<Tile, Policy> TensorImpl_;
@@ -134,8 +134,30 @@ namespace TiledArray {
         TensorImpl_::set(i, value);
 
         // Record the assignment of a tile
-        set_counter_++;
+        DistEvalImpl::notify();
       }
+
+      /// Set tensor value with a future
+
+      /// This will store \c value at ordinal index \c i . Typically, this
+      /// function should be called by a task function.
+      /// \param i The index where value will be stored.
+      /// \param value The value or future value to be stored at index \c i
+      /// \note The index \c i and \c value may be permuted by this function
+      /// before storing the value.
+      void set_tile(size_type i, const madness::Future<value_type>& f) {
+        // Store value
+        TensorImpl_::set(i, f);
+
+        // Record the assignment of a tile
+        if(f.probe())
+          DistEvalImpl::notify();
+        else
+          f.register_callback(this);
+      }
+
+      /// Tile set notification
+      virtual void notify() { set_counter_++; }
 
       /// Wait for all tiles to be assigned
       void wait() const {
