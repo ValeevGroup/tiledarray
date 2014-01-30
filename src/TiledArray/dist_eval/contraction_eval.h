@@ -433,9 +433,15 @@ namespace TiledArray {
         // Broadcast local row k of right.
         std::vector<col_datum> col;
         const col_datum null_value(0ul, left_future::default_initializer());
-        for(; k < end; k += ncols) {
-          bcast_col(right_.shape(), k, col);
-          col.resize(0ul, null_value);
+        for(; k < end; k += Pcols) {
+          // Search column k of left for non-zero tiles
+          for(size_type i = left_start_local_ + k; i < left_end_; i += left_stride_local_) {
+            if(! left_.shape().is_zero(i)) {
+              bcast_col(right_.shape(), k, col);
+              col.resize(0ul, null_value);
+              break;
+            }
+          }
         }
       }
 
@@ -447,9 +453,20 @@ namespace TiledArray {
         // Broadcast local row k of right.
         std::vector<row_datum> row;
         const row_datum null_value(0ul, right_future::default_initializer());
-        for(; k < end; k += nrows) {
-          bcast_row(left_.shape(), k, row);
-          row.resize(0ul, null_value);
+
+        for(size_type row_k_end = k * proc_grid_.cols(); k < end; k += Prows) {
+          // Compute the iterator range for row k
+
+          // Search column k for non-zero tiles
+          size_type i = row_k_end;
+          row_k_end += proc_grid_.cols();
+          for(i += proc_grid_.rank_col(); i < row_k_end; i += right_stride_local_) {
+            if(! right_.shape().is_zero(i)) {
+              bcast_row(left_.shape(), k, row);
+              row.resize(0ul, null_value);
+              break;
+            }
+          }
         }
       }
 
