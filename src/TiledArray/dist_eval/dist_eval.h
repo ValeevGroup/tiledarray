@@ -146,10 +146,7 @@ namespace TiledArray {
         TensorImpl_::set(i, f);
 
         // Record the assignment of a tile
-        if(f.probe())
-          DistEvalImpl::notify();
-        else
-          f.register_callback(this);
+        f.register_callback(this);
       }
 
       /// Tile set notification
