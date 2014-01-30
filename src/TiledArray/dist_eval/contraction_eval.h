@@ -427,8 +427,8 @@ namespace TiledArray {
 
       void bcast_col_range_task(size_type k, const size_type end) const {
         // Compute the first local row of right
-        const size_type ncols = proc_grid_.proc_cols();
-        k += (ncols - ((k - proc_grid_.rank_row()) % ncols)) % ncols;
+        const size_type Pcols = proc_grid_.proc_cols();
+        k += (Pcols - ((k + Pcols - proc_grid_.rank_col()) % Pcols)) % Pcols;
 
         // Broadcast local row k of right.
         std::vector<col_datum> col;
@@ -441,8 +441,8 @@ namespace TiledArray {
 
       void bcast_row_range_task(size_type k, const size_type end) const {
         // Compute the first local row of right
-        const size_type nrows = proc_grid_.proc_rows();
-        k += (nrows - ((k - proc_grid_.rank_row()) % nrows)) % nrows;
+        const size_type Prows = proc_grid_.proc_rows();
+        k += (Prows - ((k + Prows - proc_grid_.rank_row()) % Prows)) % Prows;
 
         // Broadcast local row k of right.
         std::vector<row_datum> row;
