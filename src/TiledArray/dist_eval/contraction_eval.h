@@ -546,15 +546,17 @@ namespace TiledArray {
           }
         }
 
-        // Spawn a task to broadcast any local columns of left that were skipped
-        TensorImpl_::get_world().taskq.add(self,
-            & ContractionEvalImpl_::bcast_col_range_task, k, k_row,
-            madness::TaskAttributes::hipri());
+        if(k < k_row) {
+          // Spawn a task to broadcast any local columns of left that were skipped
+          TensorImpl_::get_world().taskq.add(self,
+              & ContractionEvalImpl_::bcast_col_range_task, k, k_row,
+              madness::TaskAttributes::hipri());
 
-        // Spawn a task to broadcast any local rows of right that were skipped
-        TensorImpl_::get_world().taskq.add(self,
-            & ContractionEvalImpl_::bcast_row_range_task, k, k_col,
-            madness::TaskAttributes::hipri());
+          // Spawn a task to broadcast any local rows of right that were skipped
+          TensorImpl_::get_world().taskq.add(self,
+              & ContractionEvalImpl_::bcast_row_range_task, k, k_col,
+              madness::TaskAttributes::hipri());
+        }
 
         return k_col;
       }
