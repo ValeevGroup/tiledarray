@@ -238,6 +238,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
   // Check evaluation
   BOOST_REQUIRE_NO_THROW(contract.eval());
+  BOOST_REQUIRE_NO_THROW(contract.wait());
 
 
   // Compute the reference contraction
@@ -298,7 +299,7 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
 
   // Check evaluation
   BOOST_REQUIRE_NO_THROW(contract.eval());
-
+  BOOST_REQUIRE_NO_THROW(contract.wait());
 
   // Compute the reference contraction
   const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
