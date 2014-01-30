@@ -467,19 +467,18 @@ namespace TiledArray {
       /// \return The first row, greater than or equal to \c k with non-zero
       /// tiles, or \c k_ if none is found.
       size_type iterate_row(size_type k) const {
-        // Compute the iterator range for row k
-        const size_type cols = proc_grid_.cols();
-        size_type begin = k * cols;
-        size_type end = begin + cols;
-        begin += proc_grid_.rank_col();
 
         // Iterate over k's until a non-zero tile is found or the end of the
         // matrix is reached.
-        for(; k < k_; ++k, begin += cols, end += cols)
+        size_type end = k * proc_grid_.cols();
+        for(; k < k_; ++k) {
           // Search for non-zero tiles in row k of right
-          for(size_type i = begin; i < end; i += right_stride_local_)
+          size_type i = end;
+          end += proc_grid_.cols();
+          for(i += proc_grid_.rank_col(); i < end; i += right_stride_local_)
             if(! right_.shape().is_zero(i))
               return k;
+        }
 
         return k;
       }
