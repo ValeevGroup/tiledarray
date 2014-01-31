@@ -998,7 +998,7 @@ namespace TiledArray {
         right_.eval();
 
         size_type tile_count = 0ul;
-        if(proc_grid_.local_size() != 0ul) {
+        if(proc_grid_.local_size() > 0ul) {
           tile_count = initialize();
 
           // Construct the first SUMMA iteration task
