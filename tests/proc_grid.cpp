@@ -156,7 +156,8 @@ BOOST_AUTO_TEST_CASE( random_constructor_test )
 
 BOOST_AUTO_TEST_CASE( make_groups )
 {
-  madness::DistributedID did(madness::uniqueidT(), 0);
+  madness::DistributedID did_row(madness::uniqueidT(), 0);
+  madness::DistributedID did_col(madness::uniqueidT(), 1);
 
   // Construct the process grid
   TiledArray::detail::ProcGrid proc_grid(*GlobalFixture::world, 42, 84,
@@ -164,8 +165,8 @@ BOOST_AUTO_TEST_CASE( make_groups )
 
   // Create the row and column group
   madness::Group row_group, col_group;
-  BOOST_REQUIRE_NO_THROW(row_group = proc_grid.make_row_group(did));
-  BOOST_REQUIRE_NO_THROW(col_group = proc_grid.make_col_group(did));
+  BOOST_REQUIRE_NO_THROW(row_group = proc_grid.make_row_group(did_row));
+  BOOST_REQUIRE_NO_THROW(col_group = proc_grid.make_col_group(did_col));
 
   // Check group sizes
   BOOST_CHECK_EQUAL(row_group.size(), proc_grid.proc_cols());
