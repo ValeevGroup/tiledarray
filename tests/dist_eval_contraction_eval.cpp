@@ -195,6 +195,7 @@ BOOST_AUTO_TEST_CASE( eval )
 
   // Check evaluation
   BOOST_REQUIRE_NO_THROW(contract.eval());
+  BOOST_REQUIRE_NO_THROW(contract.wait());
 
 
   // Compute the reference contraction
