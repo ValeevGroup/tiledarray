@@ -117,7 +117,6 @@ BOOST_AUTO_TEST_CASE( lazy_sync_group )
 {
   // Create broadcast group
   madness::Group group(*GlobalFixture::world, group_list, did);
-  group.register_group();
 
   SyncTester sync_tester;
   int key = 1;
@@ -129,7 +128,6 @@ BOOST_AUTO_TEST_CASE( lazy_sync_group )
   BOOST_CHECK_EQUAL(sync_tester.f.get(), GlobalFixture::world->size());
 
   // Cleanup the group
-  group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 
@@ -137,7 +135,6 @@ BOOST_AUTO_TEST_CASE( lazy_sync_world_group )
 {
   // Create broadcast group
   madness::Group group(*GlobalFixture::world, world_group_list, did);
-  group.register_group();
 
   SyncTester sync_tester;
   int key = 1;
@@ -149,7 +146,6 @@ BOOST_AUTO_TEST_CASE( lazy_sync_world_group )
   BOOST_CHECK_EQUAL(sync_tester.f.get(), GlobalFixture::world->size());
 
   // Cleanup the group
-  group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 
@@ -175,7 +171,6 @@ BOOST_AUTO_TEST_CASE( bcast_group )
 {
   // Create broadcast group
   madness::Group group(*GlobalFixture::world, group_list, did);
-  group.register_group();
 
   // Pick a random root
   const ProcessID root = GlobalFixture::world->rand() % group.size();
@@ -192,7 +187,6 @@ BOOST_AUTO_TEST_CASE( bcast_group )
   BOOST_CHECK_EQUAL(data.get(), 42 + (GlobalFixture::world->rank() % 2));
 
   // Cleanup the group
-  group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 
@@ -200,7 +194,6 @@ BOOST_AUTO_TEST_CASE( bcast_world_group )
 {
   // Create broadcast group
   madness::Group group(*GlobalFixture::world, world_group_list, did);
-  group.register_group();
 
   // Pick a random root
   const ProcessID root = GlobalFixture::world->rand() % group.size();
@@ -217,7 +210,6 @@ BOOST_AUTO_TEST_CASE( bcast_world_group )
   BOOST_CHECK_EQUAL(data.get(), 42);
 
   // Cleanup the group
-  group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 
@@ -245,7 +237,6 @@ BOOST_AUTO_TEST_CASE( reduce_group )
 {
   // Create reduction group
   madness::Group group(*GlobalFixture::world, group_list, did);
-  group.register_group();
 
   // Pick a random root
   const ProcessID root = GlobalFixture::world->rand() % group.size();
@@ -265,7 +256,6 @@ BOOST_AUTO_TEST_CASE( reduce_group )
     BOOST_CHECK(result.is_default_initialized());
 
   // Cleanup the group
-  group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 
@@ -273,7 +263,6 @@ BOOST_AUTO_TEST_CASE( reduce_world_group )
 {
   // Create reduction group
   madness::Group group(*GlobalFixture::world, world_group_list, did);
-  group.register_group();
 
   // Pick a random root
   const ProcessID root = GlobalFixture::world->rand() % group.size();
@@ -293,7 +282,6 @@ BOOST_AUTO_TEST_CASE( reduce_world_group )
     BOOST_CHECK(result.is_default_initialized());
 
   // Cleanup the group
-  group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 
@@ -316,7 +304,6 @@ BOOST_AUTO_TEST_CASE( all_reduce_group )
 {
   // Create reduction group
   madness::Group group(*GlobalFixture::world, group_list, did);
-  group.register_group();
 
   // Setup the reduction
   madness::Future<int> data;
@@ -330,7 +317,6 @@ BOOST_AUTO_TEST_CASE( all_reduce_group )
   BOOST_CHECK_EQUAL(result.get(), group.size() * 42);
 
   // Cleanup the group
-  group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 
@@ -338,7 +324,6 @@ BOOST_AUTO_TEST_CASE( all_reduce_world_group )
 {
   // Create reduction group
   madness::Group group(*GlobalFixture::world, world_group_list, did);
-  group.register_group();
 
   // Setup the reduction
   madness::Future<int> data;
@@ -352,7 +337,6 @@ BOOST_AUTO_TEST_CASE( all_reduce_world_group )
   BOOST_CHECK_EQUAL(result.get(), group.size() * 42);
 
   // Cleanup the group
-  group.unregister_group();
   GlobalFixture::world->gop.fence();
 }
 BOOST_AUTO_TEST_SUITE_END()

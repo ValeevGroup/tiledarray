@@ -134,38 +134,4 @@ BOOST_AUTO_TEST_CASE( copy_group )
   BOOST_CHECK((child2 == -1) || (std::find(group_list.begin(), group_list.end(), child2) != group_list.end()));
 }
 
-
-BOOST_AUTO_TEST_CASE( register_unregister )
-{
-  Group group(* GlobalFixture::world, group_list, did);
-
-  // Test getting a group that has not been added to the registery
-  madness::Future<Group> future_group;
-  BOOST_REQUIRE_NO_THROW(future_group = Group::get_group(did));
-  BOOST_CHECK(! future_group.probe());
-
-  // Test adding a future to the registry
-  BOOST_REQUIRE_NO_THROW(group.register_group());
-  BOOST_CHECK(future_group.probe());
-
-#ifdef TA_EXCEPTION_ERROR
-
-  // Test duplicate registration
-  BOOST_CHECK_THROW(group.register_group(), madness::Exception);
-
-#endif // TA_EXCEPTION_ERROR
-
-  // Check unregistering the group
-  BOOST_REQUIRE_NO_THROW(group.unregister_group());
-
-  GlobalFixture::world->gop.fence();
-
-  // Check that the group was successfully unregistered by registering it again
-  BOOST_REQUIRE_NO_THROW(group.register_group());
-  madness::Future<Group> future_group2;
-  BOOST_REQUIRE_NO_THROW(future_group2 = Group::get_group(did));
-  BOOST_CHECK(future_group2.probe());
-  BOOST_REQUIRE_NO_THROW(group.unregister_group());
-}
-
 BOOST_AUTO_TEST_SUITE_END()

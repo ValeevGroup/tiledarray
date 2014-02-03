@@ -348,13 +348,9 @@ namespace TiledArray {
         const size_type right_end_k = right_begin_k + proc_grid_.cols();
         madness::Group group = make_group(right_shape, right_begin_k, right_end_k,
             right_stride_, proc_grid_.proc_cols(), k, k_, MapCol(proc_grid_));
-        group.register_group();
 
         // Broadcast column k of left_.
         bcast(left_, left_start_local_ + k, left_end_, left_stride_local_, group, 0ul, col);
-
-        // Cleanup broadcast group
-        group.unregister_group();
       }
 
       /// Broadcast column \c k of \c left_
@@ -402,7 +398,6 @@ namespace TiledArray {
         // Construct the sparse broadcast group
         madness::Group group = make_group(left_shape, k, left_end_, left_stride_,
             proc_grid_.proc_rows(), k, 0ul, MapRow(proc_grid_));
-        group.register_group();
 
         // Compute local iteration limits for row k of right_.
         size_type begin = k * proc_grid_.cols();
@@ -411,9 +406,6 @@ namespace TiledArray {
 
         // Broadcast row k of right_.
         bcast(right_, begin, end, right_stride_local_, group, left_.size(), row);
-
-        // Cleanup broadcast group
-        group.unregister_group();
       }
 
       /// Broadcast row \c k of \c right_
@@ -602,9 +594,7 @@ namespace TiledArray {
       size_type initialize(const DenseShape&) {
         // Construct static broadcast groups for dense arguments
         col_group_ = proc_grid_.make_col_group(madness::DistributedID(TensorImpl_::id(), 0ul));
-        col_group_.register_group();
         row_group_ = proc_grid_.make_row_group(madness::DistributedID(TensorImpl_::id(), k_));
-        row_group_.register_group();
 
         // Allocate memory for the reduce pair tasks.
         std::allocator<ReducePairTask<op_type> > alloc;
@@ -688,10 +678,6 @@ namespace TiledArray {
             reduce_task->~ReducePairTask<op_type>();
           }
         }
-
-        // Unregister groups if used.
-        col_group_.unregister_group();
-        row_group_.unregister_group();
 
         // Deallocate the memory for the reduce pair tasks.
         std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
