@@ -45,17 +45,17 @@ int main(int argc, char** argv) {
     std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
     return 1;
   }
-  if(sparsity < 0) {
+  if(sparsity <= 0) {
     std::cerr << "Error: Sparsity must be greater than zero.\n";
     return 1;
   }
-  if(sparsity > (matrix_size / 2)) {
-    std::cerr << "Error: Sparsity must be less than 100.\n";
+  if(sparsity > 100) {
+    std::cerr << "Error: Sparsity must be less than or equal to 100.\n";
     return 1;
   }
   const long repeat = (argc >= 5 ? atol(argv[4]) : 5);
   if(repeat <= 0) {
-    std::cerr << "Error: number of repititions must greater than zero.\n";
+    std::cerr << "Error: number of repetitions must greater than zero.\n";
     return 1;
   }
 
