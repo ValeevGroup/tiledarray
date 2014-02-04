@@ -30,6 +30,8 @@
 #include <world/worldtime.h>
 #include "TiledArray/math/vector_op.h"
 #include "TiledArray/error.h"
+#include "TiledArray/math/functional.h"
+#include "TiledArray/math/blas.h"
 
 #define EIGEN_NO_MALLOC
 
@@ -96,7 +98,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op(n, a, b, c, TiledArray::math::Plus<double, double, double>());
+    TiledArray::math::binary_vector_op(n, a, b, c, TiledArray::math::Plus<double, double, double>());
   }
   stop = madness::wall_time();
 
@@ -146,7 +148,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op(n, a, b, c, TiledArray::math::ScalPlus<double, double, double>(3.0));
+    TiledArray::math::binary_vector_op(n, a, b, c, TiledArray::math::ScalPlus<double, double, double>(3.0));
   }
   stop = madness::wall_time();
 
@@ -197,7 +199,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op(n, a, b, c, TiledArray::math::Multiplies<double, double, double>());
+    TiledArray::math::binary_vector_op(n, a, b, c, TiledArray::math::Multiplies<double, double, double>());
   }
   stop = madness::wall_time();
 
@@ -247,7 +249,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op(n, a, b, c, TiledArray::math::ScalMultiplies<double, double, double>(3.0));
+    TiledArray::math::binary_vector_op(n, a, b, c, TiledArray::math::ScalMultiplies<double, double, double>(3.0));
   }
   stop = madness::wall_time();
 
@@ -305,7 +307,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_assign(n, c, TiledArray::math::ScaleAssign<double>(3.0));
+    TiledArray::math::unary_vector_op(n, c, TiledArray::math::ScaleAssign<double>(3.0));
   }
   stop = madness::wall_time();
 
