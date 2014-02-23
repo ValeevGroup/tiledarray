@@ -22,6 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/madness.h>
+#include <TiledArray/math/outer.h>
 #include <algorithm>
 #include <vector>
 #include <iterator>
@@ -203,6 +204,64 @@ namespace TiledArray {
 
           return true;
         }
+
+        // Vector operations
+
+        template <typename Arg, typename Op>
+        void binary(const Arg* const arg, const Op& op) {
+          math::binary_vector_op(last_ - first_, arg, first_, op);
+        }
+
+        template <typename Left, typename Right, typename Op>
+        void binary(const Left* const left, const Right* const right, const Op& op) {
+          math::binary_vector_op(last_ - first_, left, right, first_, op);
+        }
+
+        template <typename Op>
+        void unary(const Op& op) {
+          math::unary_vector_op(last_ - first_, first_, op);
+        }
+
+        template <typename Arg, typename Op>
+        void unary(const Arg* const arg, const Op& op) {
+          math::unary_vector_op(last_ - first_, arg, first_, op);
+        }
+
+
+        template <typename Arg, typename Result, typename Op>
+        void reduce(const Arg* const arg, Result& result, const Op& op) {
+          math::binary_vector_op(last_ - first_, first_, arg, result, op);
+        }
+
+        template <typename Result, typename Op>
+        void reduce(Result& result, const Op& op) {
+          math::binary_vector_op(last_ - first_, first_, result, op);
+        }
+
+        template <typename Left, typename Right, typename Op>
+        void outer(const size_type m, const size_type n, const Left* const left,
+            const Right* const right, const Op& op)
+        {
+          TA_ASSERT((m * n) == size());
+          math::outer(m, n, left, right, first_, op);
+        }
+
+        template <typename Left, typename Right, typename Op>
+        void outer_fill(const size_type m, const size_type n, const Left* const left,
+            const Right* const right, const Op& op)
+        {
+          TA_ASSERT((m * n) == size());
+          math::outer_fill(m, n, left, right, first_, op);
+        }
+
+        template <typename Left, typename Right, typename Base, typename Op>
+        void outer_fill(const size_type m, const size_type n, const Left* const left,
+            const Right* const right, const Base* const base, const Op& op)
+        {
+          TA_ASSERT((m * n) == size());
+          math::outer_fill(m, n, left, right, base, first_, op);
+        }
+
 
     }; // class SizeArray
 
