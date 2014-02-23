@@ -165,12 +165,22 @@ namespace TiledArray {
 
     template <typename T>
     struct is_iterator<T*, void> : std::true_type {
-      typedef typename std::iterator_traits<T*>::iterator_category iterator_category;
+      typedef std::random_access_iterator_tag iterator_category;
     };
 
     template <typename T>
     struct is_iterator<const T*, void> : std::true_type {
-      typedef typename std::iterator_traits<const T*>::iterator_category iterator_category;
+      typedef std::random_access_iterator_tag iterator_category;
+    };
+
+    template <typename T>
+    struct is_iterator<T* const, void> : std::true_type {
+      typedef std::random_access_iterator_tag iterator_category;
+    };
+
+    template <typename T>
+    struct is_iterator<const T* const, void> : std::true_type {
+      typedef std::random_access_iterator_tag iterator_category;
     };
 
     template <typename T>
