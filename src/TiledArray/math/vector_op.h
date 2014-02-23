@@ -28,6 +28,19 @@
 
 #ifndef TILEDARRAY_LOOP_UNWIND
 #define TILEDARRAY_LOOP_UNWIND 8
+#else
+
+#if TILEDARRAY_LOOP_UNWIND != 1 || TILEDARRAY_LOOP_UNWIND != 2 || \
+    TILEDARRAY_LOOP_UNWIND != 4 || TILEDARRAY_LOOP_UNWIND != 8 || \
+    TILEDARRAY_LOOP_UNWIND != 16 || TILEDARRAY_LOOP_UNWIND != 32 || \
+    TILEDARRAY_LOOP_UNWIND != 64 || TILEDARRAY_LOOP_UNWIND != 128 || \
+    TILEDARRAY_LOOP_UNWIND != 256 || TILEDARRAY_LOOP_UNWIND != 512 || \
+    TILEDARRAY_LOOP_UNWIND != 1024
+
+#error TILEDARRAY_LOOP_UNWIND must be a power of 2 and less than or equal to 1024
+
+#endif
+
 #endif // TILEDARRAY_LOOP_UNWIND
 
 #include <TiledArray/math/math.h>
@@ -61,220 +74,474 @@
 namespace TiledArray {
   namespace math {
 
-    typedef uint_fast32_t uint_type;
 
-    /// Vector loop unwind helper class
+    template <typename T, typename Op, typename Result>
+    class BinderFirstHelper {
+      const T& restrict t_;
+      const Op& op_;
 
-    /// This object will unwind \c N steps of a vector operation loop.
-    /// \tparam N The number of steps to unwind
-    template <uint_type N>
-    struct VectorOpUnwind {
+    public:
+      typedef Result result_type;
 
-      // Binary operations
+      BinderFirstHelper(const T& restrict t, const Op& op) : t_(t), op_(op) { }
 
-      template <typename T, typename U, typename V, typename Op>
-      static TILEDARRAY_FORCE_INLINE void
-      binary_eval(const T* restrict const t, const U* restrict const u,
-          V* restrict const v, const Op& op)
-      {
-        VectorOpUnwind<N-1>::binary_eval(t, u, v, op);
-        v[N] = op(t[N], u[N]);
+      template <typename Arg>
+      TILEDARRAY_FORCE_INLINE result_type operator()(const Arg& restrict arg) const {
+        return op_(t_, arg);
       }
+    };
 
-      template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void
-      binary_eval(const T* restrict const t, U* restrict const u, const Op& op) {
-        VectorOpUnwind<N-1>::binary_eval(t, u, op);
-        op(u[N], t[N]);
+
+    template <typename T, typename Op>
+    class BinderFirstHelper<T, Op, void> {
+      const T& restrict t_;
+      const Op& op_;
+
+    public:
+      typedef void result_type;
+
+      BinderFirstHelper(const T& restrict t, const Op& op) : t_(t), op_(op) { }
+
+      template <typename Result, typename Arg>
+      TILEDARRAY_FORCE_INLINE void
+      operator()(Result& restrict result, const Arg& restrict arg) const {
+        return op_(result, t_, arg);
       }
+    };
 
-      // Unary operations
+    template <typename T, typename Op>
+    class BinderFirst : public BinderFirstHelper<T, Op, typename madness::detail::result_of<Op>::type> {
+      typedef BinderFirstHelper<T, Op, typename madness::detail::result_of<Op>::type> BinderFirstHelper_;
+    public:
+      typedef typename BinderFirstHelper_::result_type result_type;
 
-      template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void
-      unary_eval(const T* restrict const t, U* restrict const u, const Op& op) {
-        VectorOpUnwind<N-1>::unary_eval(t, u, op);
-        u[N] = op(t[N]);
+      BinderFirst(const T& restrict t, const Op& op) :
+        BinderFirstHelper_(t, op)
+      { }
+
+    };
+
+    template <typename T, typename Op>
+    inline BinderFirst<T, Op> bind_first(const T& restrict t, const Op& op) {
+      return BinderFirst<T, Op>(t, op);
+    }
+
+    template <typename T, typename Op, typename Result>
+    class BinderSecondHelper {
+      const T& restrict t_;
+      const Op& op_;
+
+    public:
+      typedef Result result_type;
+
+      BinderSecondHelper(const T& restrict t, const Op& op) : t_(t), op_(op) { }
+
+      template <typename Arg>
+      TILEDARRAY_FORCE_INLINE result_type operator()(const Arg& restrict arg) const {
+        return op_(t_, arg);
       }
+    };
 
-      template <typename T, typename Op>
-      static TILEDARRAY_FORCE_INLINE void unary_eval(T* restrict const t, const Op& op) {
-        VectorOpUnwind<N-1>::unary_eval(t, op);
-        op(t[N]);
+
+    template <typename T, typename Op>
+    class BinderSecondHelper<T, Op, void> {
+      const T& restrict t_;
+      const Op& op_;
+
+    public:
+      typedef void result_type;
+
+      BinderSecondHelper(const T& restrict t, const Op& op) : t_(t), op_(op) { }
+
+      template <typename Result, typename Arg>
+      TILEDARRAY_FORCE_INLINE void operator()(Result& restrict result, const Arg& restrict arg) const {
+        return op_(result, arg, t_);
       }
+    };
 
-      // Reduce operations
+    template <typename T, typename Op>
+    class BinderSecond : public BinderSecondHelper<T, Op, typename madness::detail::result_of<Op>::type> {
+      typedef BinderSecondHelper<T, Op, typename madness::detail::result_of<Op>::type> BinderSecondHelper_;
+    public:
+      typedef typename BinderSecondHelper_::result_type result_type;
 
-      template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void reduce(const T* restrict const t, U& restrict u, const Op& op) {
-        VectorOpUnwind<N-1>::reduce(t, u, op);
-        u = op(u, t[N]);
-      }
-    }; //  struct VectorOpUnwind
+      BinderSecond(const T& restrict t, const Op& op) :
+        BinderSecondHelper_(t, op)
+      { }
+
+    };
+
+    template <typename T, typename Op>
+    inline BinderSecond<T, Op> bind_second(const T& restrict t, const Op& op) {
+      return BinderSecond<T, Op>(t, op);
+    }
+
+    template <std::size_t N>
+    struct VectorOpUnwind;
 
     /// Vector loop unwind helper class
 
     /// This object will unwind \c 1 step of a vector operation loop, and
     /// terminate the loop
     template <>
-    struct VectorOpUnwind<0ul> {
+    struct VectorOpUnwind<0> {
 
-      template <typename T, typename U, typename V, typename Op>
-      static TILEDARRAY_FORCE_INLINE void binary_eval(const T* restrict const t,
-          const U* restrict const u, V* restrict const v, const Op& op)
+      static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - 1;
+
+      template <typename Arg, typename Result>
+      static TILEDARRAY_FORCE_INLINE void
+      copy(const Arg* restrict const arg, Result* restrict const result) {
+        result[offset] = arg[offset];
+      }
+
+      template <typename Arg, typename Result>
+      static TILEDARRAY_FORCE_INLINE void
+      scatter(const Arg* restrict const arg, Result* restrict const result, const std::size_t stride) {
+        *result = arg[offset];
+      }
+
+      template <typename Arg, typename Result>
+      static TILEDARRAY_FORCE_INLINE void
+      gather(const Arg* restrict const arg, Result* restrict const result, const std::size_t stride) {
+        *result = arg[offset];
+      }
+
+      template <typename Left, typename Right, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      binary(const Left* restrict const left, const Right* restrict const right,
+          Result* restrict const result, const Op& op)
       {
-        v[0ul] = op(t[0ul], u[0ul]);
+        result[offset] = op(left[offset], right[offset]);
       }
 
-      template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void binary_eval(const T* restrict const t,
-          U* restrict const u, const Op& op)
+      template <typename Arg, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      binary(const Arg* restrict const arg, Result* restrict const result, const Op& op) {
+        op(result[offset], arg[offset]);
+      }
+
+      template <typename Arg, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      unary(const Arg* restrict const arg, Result* restrict const result, const Op& op) {
+        result[offset] = op(arg[offset]);
+      }
+
+
+      template <typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      unary(Result* restrict const result, const Op& op) {
+        op(result[offset]);
+      }
+
+      template <typename Left, typename Right, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      reduce(const Left* restrict const left, const Right* restrict const right,
+          Result& restrict result, const Op& op)
       {
-        op(u[0ul], t[0ul]);
+        op(result, left[offset], right[offset]);
       }
 
-      // Unary operations
-
-      template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void unary_eval(const T* restrict const t,
-          U* restrict const u, const Op& op)
-      {
-        u[0ul] = op(t[0ul]);
+      template <typename Arg, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      reduce(const Arg* restrict const arg, Result& restrict result, const Op& op) {
+        op(result, arg[offset]);
       }
 
-      template <typename T, typename Op>
-      static TILEDARRAY_FORCE_INLINE void unary_eval(T* restrict const t, const Op& op) {
-        op(t[0ul]);
-      }
-
-      // Reduction operations
-
-      template <typename T, typename U, typename Op>
-      static TILEDARRAY_FORCE_INLINE void reduce(const T* restrict const t,
-          U& restrict u, const Op& op)
-      {
-        u = op(u, t[0ul]);
-      }
     }; //  struct VectorOpUnwind
 
+    /// Vector loop unwind helper class
 
-    template <typename T, typename U, typename V, typename Op>
-    inline void binary_vector_op(const uint_type n, const T* restrict const t,
-        const U* restrict const u, V* restrict const v, const Op& op)
-    {
-      uint_type i = 0ul;
+    /// This object will unwind \c N steps of a vector operation loop.
+    /// \tparam N The number of steps to unwind
+    template <std::size_t N>
+    struct VectorOpUnwind : public VectorOpUnwind<N - 1ul> {
 
-#if TILEDARRAY_LOOP_UNWIND > 1
+      typedef VectorOpUnwind<N - 1ul> VectorOpUnwindN1;
+
+      static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - N - 1ul;
+
+      template <typename Arg, typename Result>
+      static TILEDARRAY_FORCE_INLINE void
+      copy(const Arg* restrict const arg, Result* restrict const result) {
+        result[offset] = arg[offset];
+        VectorOpUnwindN1::copy(arg, result);
+      }
+
+      template <typename Arg, typename Result>
+      static TILEDARRAY_FORCE_INLINE void
+      scatter(const Arg* restrict const arg, Result* restrict const result, const std::size_t stride) {
+        *result = arg[offset];
+        VectorOpUnwindN1::scatter(arg, result + stride, stride);
+      }
+
+      template <typename Arg, typename Result>
+      static TILEDARRAY_FORCE_INLINE void
+      gather(const Arg* restrict const arg, Result* restrict const result, const std::size_t stride) {
+        result[offset] = *arg;
+        VectorOpUnwindN1::gather(arg + stride, result, stride);
+      }
+
+      template <typename Left, typename Right, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      binary(const Left* restrict const left, const Right* restrict const right,
+          Result* restrict const result, const Op& op)
       {
-        const uint_type nx = n - (n % TILEDARRAY_LOOP_UNWIND);
-        for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
-          VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1ul>::binary_eval(t + i, u + i, v + i, op);
+        result[offset] = op(left[offset], right[offset]);
+        VectorOpUnwindN1::binary(left, right, result, op);
       }
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
-      for(; i < n; ++i)
-        v[i] = op(t[i], u[i]);
-    }
-
-    template <typename T, typename U, typename Op>
-    inline void binary_vector_op(const uint_type n, const T* restrict const t,
-        U* restrict const u, const Op& op)
-    {
-      uint_type i = 0ul;
-
-#if TILEDARRAY_LOOP_UNWIND > 1
-      const uint_type nx = n - (n % TILEDARRAY_LOOP_UNWIND);
-      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
-        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1ul>::binary_eval(t + i, u + i, op);
+      template <typename Arg, typename Result, typename Op>
+      static void TILEDARRAY_FORCE_INLINE
+      binary(const Arg* restrict const arg, Result* restrict const result, const Op& op) {
+        op(result[offset], arg[offset]);
+        VectorOpUnwindN1::binary(arg, result, op);
       }
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
-      for(; i < n; ++i)
-        op(u[i], t[i]);
-    }
-
-    template <typename T, typename U, typename Op>
-    inline void unary_vector_op(const uint_type n, const T* restrict const t,
-        U* restrict const u, const Op& op)
-    {
-      uint_type i = 0ul;
-
-#if TILEDARRAY_LOOP_UNWIND > 1
-      const uint_type nx = n - (n % TILEDARRAY_LOOP_UNWIND);
-      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
-        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::unary_eval(t + i, u + i, op);
+      template <typename Arg, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      unary(const Arg* restrict const arg, Result* restrict const result, const Op& op) {
+        result[offset] = op(arg[offset]);
+        VectorOpUnwindN1::unary(arg, result, op);
       }
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
-      for(; i < n; ++i)
-        u[i] = op(t[i]);
-    }
-
-    template <typename T, typename Op>
-    inline void unary_vector_op(const uint_type n, T* restrict const t, const Op& op) {
-      uint_type i = 0ul;
-
-#if TILEDARRAY_LOOP_UNWIND > 1
-      const uint_type nx = n - (n % TILEDARRAY_LOOP_UNWIND);
-      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
-        VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::unary_eval(t + i, op);
+      template <typename Result, typename Op>
+      static void TILEDARRAY_FORCE_INLINE
+      unary(Result* restrict const result, const Op& op) {
+        op(result[offset]);
+        VectorOpUnwindN1::unary(result, op);
       }
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
-      for(; i < n; ++i)
-        op(t[i]);
-    }
-
-    template <typename T>
-    inline T maxabs(const uint_type n, const T* restrict const t) {
-      T result = 0;
-      uint_type i = 0ul;
-#if TILEDARRAY_LOOP_UNWIND > 1
+      template <typename Left, typename Right, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      reduce(const Left* restrict const left, const Right* restrict const right,
+          Result& restrict result, const Op& op)
       {
-        const uint_type nx = n - (n % TILEDARRAY_LOOP_UNWIND);
-        T temp[TILEDARRAY_LOOP_UNWIND];
-        for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
-          VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::unary_eval(t + i, temp,
-              TiledArray::math::abs<T>);
-          VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(temp, result,
-              TiledArray::math::max<T>);
-        }
+        op(result, left[offset], right[offset]);
+        VectorOpUnwindN1::reduce(left, right, result);
       }
-#endif // TILEDARRAY_LOOP_UNWIND > 1
-      for(; i < n; ++i)
-        result = std::max(result, std::abs(t[i]));
-      return result;
-    }
 
-    template <typename T>
-    inline T minabs(const uint_type n, const T* restrict const t) {
-      T result = std::numeric_limits<T>::max();
-      uint_type i = 0ul;
+      template <typename Arg, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      reduce(const Arg* restrict const arg, Result& restrict result, const Op& op) {
+        op(result, arg[offset]);
+        VectorOpUnwindN1::reduce(arg, result);
+      }
+
+    }; //  struct VectorOpUnwind
+
+    typedef VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1> VecOpUnwindN;
+    typedef std::integral_constant<std::size_t, ~std::size_t(TILEDARRAY_LOOP_UNWIND - 1ul)> index_mask;
+
+
+    template <typename Arg, typename Result, typename Op>
+    void binary_vector_op(const std::size_t n, const Arg* restrict const arg,
+        Result* restrict const result, const Op& op)
+    {
+      std::size_t i = 0ul;
+
 #if TILEDARRAY_LOOP_UNWIND > 1
-      {
-        const uint_type nx = n - (n % TILEDARRAY_LOOP_UNWIND);
-        T temp[TILEDARRAY_LOOP_UNWIND];
-        for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
-          VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::unary_eval(t + i, temp,
-              TiledArray::math::abs<T>);
-          VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1>::reduce(temp, result,
-              TiledArray::math::min<T>);
-        }
+
+      // Compute block iteration limit
+      const std::size_t nx = n & index_mask::value;
+
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
+        Result* restrict const result_i = result + i;
+
+        Result result_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(result_i, result_block);
+        Arg arg_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(arg + i, arg_block);
+
+        VecOpUnwindN::binary(arg_block, result_block, op);
+
+        VecOpUnwindN::copy(result_block, result_i);
+
       }
+
 #endif // TILEDARRAY_LOOP_UNWIND > 1
-      for(; i < n; ++i)
-        result = std::min(result, std::abs(t[i]));
-      return result;
+
+      for(; i < n; ++i) {
+
+        Result result_block = result[i];
+        const Arg arg_block = arg[i];
+
+        op(result_block, arg_block);
+
+        result[i] = result_block;
+      }
     }
 
-    template <typename T>
-    inline T square_norm(const uint_type n, const T* restrict const t) {
-      return eigen_map(t, n).squaredNorm();
+    template <typename Left, typename Right, typename Result, typename Op>
+    void binary_vector_op(const std::size_t n, const Left* restrict const left,
+        const Right* restrict const right, Result* restrict const result, const Op& op)
+    {
+      std::size_t i = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t nx = n & index_mask::value;
+
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
+
+        Left left_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(left + i, left_block);
+        Right right_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(right + i, right_block);
+
+        Result result_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::binary(left_block, right_block, result_block, op);
+
+        VecOpUnwindN::copy(result_block, result + i);
+      }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i) {
+
+        const Left left_i = left[i];
+        const Right right_i = right[i];
+
+        const Result temp_i = op(left_i, right_i);
+
+        result[i] = temp_i;
+
+      }
     }
 
-    template <int p, typename T>
-    inline T norm_2(const uint_type n, const T* restrict const t) {
-      return eigen_map(t, n).norm();
+    template <typename Result, typename Op>
+    void unary_vector_op(const std::size_t n, Result* restrict const result, const Op& op) {
+      std::size_t i = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t nx = n & index_mask::value;
+
+      for(; i < nx; i += 8ul) {
+        Result* restrict const result_i = result + i;
+
+        Result result_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(result_i, result_block);
+
+        VecOpUnwindN::unary(result_block, op);
+
+        VecOpUnwindN::copy(result_block, result_i);
+
+      }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i) {
+
+        Result temp_i = result[i];
+
+        op(temp_i);
+
+        result[i] = temp_i;
+
+      }
+    }
+
+    template <typename Arg, typename Result, typename Op>
+    void unary_vector_op(const std::size_t n, const Arg* restrict const arg,
+        Result* restrict const result, const Op& op)
+    {
+      std::size_t i = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t nx = n & index_mask::value;
+
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
+
+        Arg arg_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(arg + i, arg_block);
+
+        Result result_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::unary(arg_block, result_block, op);
+
+        VecOpUnwindN::copy(result_block, result + i);
+
+      }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i) {
+
+        const Arg arg_i = arg[i];
+
+        const Result temp_i = op(arg_i);
+
+        result[i] = temp_i;
+      }
+    }
+
+
+    template <typename Left, typename Right, typename Result, typename Op>
+    void reduce_vector_op(const std::size_t n, const Left* restrict const left,
+        const Right* restrict const right, Result& restrict result, const Op& op)
+    {
+      std::size_t i = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t nx = n & index_mask::value;
+
+      for(; i < nx; i += 8ul) {
+
+        Left left_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(left + i, left_block);
+        Right right_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(right + i, right_block);
+
+        VecOpUnwindN::reduce(left_block, right_block, result, op);
+
+      }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i) {
+
+        const Left left_block = left[i];
+        const Right right_block = right[i];
+
+        op(result, left_block, right_block);
+
+      }
+    }
+
+    template <typename Arg, typename Result, typename Op>
+    void reduce_vector_op(const std::size_t n, const Arg* restrict const arg,
+        Result& restrict result, const Op& op)
+    {
+      std::size_t i = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t nx = n & index_mask::value;
+
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
+
+        Arg arg_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(arg + i, arg_block);
+
+        VecOpUnwindN::reduce(arg_block, result, op);
+
+      }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i) {
+
+        const Arg arg_i = arg[i];
+
+        op(result, arg_i);
+
+      }
     }
 
   }  // namespace math
