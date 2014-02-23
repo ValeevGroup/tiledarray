@@ -169,7 +169,7 @@ namespace TiledArray {
         pointer data() { return first_; }
 
         // assign one value to all elements
-        void assign (const T& value) { std::fill(begin(), end(), value); }
+        void assign (const_reference value) { std::fill(first_, last_, value); }
 
         // Comparison operators
         template <typename U>
