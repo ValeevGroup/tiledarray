@@ -27,9 +27,126 @@
 #define TILEDARRAY_MATH_OUTER_H__INCLUDED
 
 #include <TiledArray/madness.h>
+#include <TiledArray/math/vector_op.h>
 
 namespace TiledArray {
   namespace math {
+
+    /// Outer algorithm automatic loop unwinding
+
+    /// \tparam N The number of steps to unwind
+    template <std::size_t N>
+    class OuterVectorOpUnwind;
+
+    template <>
+    class OuterVectorOpUnwind<0> {
+    public:
+
+      static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - 1;
+
+      template <typename X, typename Y, typename A, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      outer(const X* restrict const left, const Y* restrict const right,
+          A* restrict const result, const std::size_t stride, const Op& op)
+      {
+        A result_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(result, result_block);
+
+        VecOpUnwindN::binary(right, result_block, bind_first(left[offset], op));
+
+        VecOpUnwindN::copy(result_block, result);
+      }
+
+      template <typename X, typename Y, typename A, typename B, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      fill(const X* restrict const x_block, const Y* restrict const y_block,
+          const A* restrict const a, B* restrict const b,
+          const std::size_t stride, const Op& op)
+      {
+        A a_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(a, a_block);
+
+        VecOpUnwindN::binary(y_block, a_block, bind_first(x_block[offset], op));
+
+        VecOpUnwindN::copy(a_block, b);
+      }
+
+      template <typename X, typename Y, typename A, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      fill(const X* restrict const left, const Y* restrict const right,
+          A* restrict const result, const std::size_t stride, const Op& op)
+      {
+        A result_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::unary(right, result_block, bind_first(left[offset], op));
+
+        VecOpUnwindN::copy(result_block, result);
+      }
+    }; // class OuterVectorOpUnwind<0>
+
+
+    template <std::size_t N>
+    class OuterVectorOpUnwind : public OuterVectorOpUnwind<N - 1> {
+    public:
+
+      typedef OuterVectorOpUnwind<N - 1> OuterVectorOpUnwindN1;
+
+      static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - N - 1;
+
+      template <typename X, typename Y, typename A, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      outer(const X* restrict const x_block, const Y* restrict const y_block,
+          A* restrict const a, const std::size_t stride, const Op& op)
+      {
+        {
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(a, a_block);
+
+          VecOpUnwindN::binary(y_block, a_block, bind_first(x_block[offset], op));
+
+          VecOpUnwindN::copy(a_block, a);
+        }
+
+        OuterVectorOpUnwindN1::outer(x_block, y_block, a + stride, stride, op);
+      }
+
+
+      template <typename X, typename Y, typename A, typename B, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      fill(const X* restrict const x, const Y* restrict const y,
+          const A* restrict const a, B* restrict const b,
+          const std::size_t stride, const Op& op)
+      {
+        {
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(a, a_block);
+
+          VecOpUnwindN::binary(y, a_block, bind_first(x[offset], op));
+
+          VecOpUnwindN::copy(a_block, b);
+        }
+
+        OuterVectorOpUnwindN1::fill(x, y, a + stride, b + stride, stride, op);
+      }
+
+      template <typename X, typename Y, typename A, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      fill(const X* restrict const x_block, const Y* restrict const y_block,
+          A* restrict const a, const std::size_t stride, const Op& op)
+      {
+        {
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::unary(y_block, a_block, bind_first(x_block[offset], op));
+
+          VecOpUnwindN::copy(a_block, a);
+        }
+
+        OuterVectorOpUnwindN1::fill(x_block, y_block, a + stride, stride, op);
+      }
+    }; // class OuterVectorOpUnwind
+
+    // Convenience typedef
+    typedef OuterVectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1> OuterVectorOpUnwindN;
+
 
     /// Compute and store outer of \c x and \c y in \c a
 
@@ -44,170 +161,87 @@ namespace TiledArray {
     /// \param[out] a The result matrix of size \c m*n
     /// \param[in] op The operation that will compute the outer product elements
     template <typename X, typename Y, typename A, typename Op>
-    void outer(const std::size_t m, const std::size_t n,
+    void outer_fill(const std::size_t m, const std::size_t n,
         const X* restrict const x, const Y* restrict const y,
         A* restrict const a, const Op& op)
     {
-      // Compute limits of block iteration
-
-      const std::size_t mask = ~(std::size_t(3));
-      const std::size_t m4 = m & mask; // = m - m % 4
-      const std::size_t n4 = n & mask; // = n - n % 4
-
       std::size_t i = 0ul;
-      for(; i < m4; i += 4ul) {
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t mx = m & index_mask::value; // = m - m % TILEDARRAY_LOOP_UNWIND
+      const std::size_t nx = n & index_mask::value; // = n - n % TILEDARRAY_LOOP_UNWIND
+
+      for(; i < mx; i += TILEDARRAY_LOOP_UNWIND) {
 
         // Load x block
-
-        const X x_0 = x[i];
-        const X x_1 = x[i + 1];
-        const X x_2 = x[i + 2];
-        const X x_3 = x[i + 3];
-
-        // Compute a block pointers
-
-        A* restrict const a_0 = a + (i * n);
-        A* restrict const a_1 = a_0 + n;
-        A* restrict const a_2 = a_1 + n;
-        A* restrict const a_3 = a_2 + n;
-
-        std::size_t j = 0ul;
-        for(; j < n4; j += 4ul) {
-
-          // Compute j offsets
-
-          const std::size_t j1 = j + 1;
-          const std::size_t j2 = j + 2;
-          const std::size_t j3 = j + 3;
-
-          // Load y block
-
-          const Y y_0 = y[j ];
-          const Y y_1 = y[j1];
-          const Y y_2 = y[j2];
-          const Y y_3 = y[j3];
-
-          // Compute the outer product
-
-          const A temp_00 = op(x_0, y_0);
-          const A temp_01 = op(x_0, y_1);
-          const A temp_02 = op(x_0, y_2);
-          const A temp_03 = op(x_0, y_3);
-
-          const A temp_10 = op(x_1, y_0);
-          const A temp_11 = op(x_1, y_1);
-          const A temp_12 = op(x_1, y_2);
-          const A temp_13 = op(x_1, y_3);
-
-          const A temp_20 = op(x_2, y_0);
-          const A temp_21 = op(x_2, y_1);
-          const A temp_22 = op(x_2, y_2);
-          const A temp_23 = op(x_2, y_3);
-
-          const A temp_30 = op(x_3, y_0);
-          const A temp_31 = op(x_3, y_1);
-          const A temp_32 = op(x_3, y_2);
-          const A temp_33 = op(x_3, y_3);
-
-          // Store a block
-
-          a_0[j ] = temp_00;
-          a_0[j1] = temp_01;
-          a_0[j2] = temp_02;
-          a_0[j3] = temp_03;
-
-          a_1[j ] = temp_10;
-          a_1[j1] = temp_11;
-          a_1[j2] = temp_12;
-          a_1[j3] = temp_13;
-
-          a_2[j ] = temp_20;
-          a_2[j1] = temp_21;
-          a_2[j2] = temp_22;
-          a_2[j3] = temp_23;
-
-          a_3[j ] = temp_30;
-          a_3[j1] = temp_31;
-          a_3[j2] = temp_32;
-          a_3[j3] = temp_33;
-
-        }
-
-        for(; j < n; ++j) {
-
-
-          // Load y block
-
-          const Y y_j = y[j];
-
-          // Compute the outer product
-
-          const A temp_0 = op(x_0, y_j);
-          const A temp_1 = op(x_1, y_j);
-          const A temp_2 = op(x_2, y_j);
-          const A temp_3 = op(x_3, y_j);
-
-          // Store a block
-
-          a_0[j] = temp_0;
-          a_1[j] = temp_1;
-          a_2[j] = temp_2;
-          a_3[j] = temp_3;
-        }
-      }
-
-      for(; i < m; ++i) {
-
-        // Load x
-
-        const X x_i = x[i];
-
-        // Compute a block pointer
-
+        X x_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(x + i, x_block);
         A* restrict const a_i = a + (i * n);
 
         std::size_t j = 0ul;
-        for(; j < n4; j += 4) {
-
-          // Compute j offsets
-
-          const std::size_t j1 = j + 1;
-          const std::size_t j2 = j + 2;
-          const std::size_t j3 = j + 3;
+        for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
 
           // Load y block
+          Y y_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(y + i, y_block);
 
-          const Y y_0 = y[j ];
-          const Y y_1 = y[j1];
-          const Y y_2 = y[j2];
-          const Y y_3 = y[j3];
-
-          // Compute the outer product
-
-          const A temp_i0 = op(x_i, y_0);
-          const A temp_i1 = op(x_i, y_1);
-          const A temp_i2 = op(x_i, y_2);
-          const A temp_i3 = op(x_i, y_3);
-
-          // Store a block
-
-          a_i[j ] = temp_i0;
-          a_i[j1] = temp_i1;
-          a_i[j2] = temp_i2;
-          a_i[j3] = temp_i3;
+          // Compute and store a block
+          OuterVectorOpUnwindN::fill(x_block, y_block, a_i + j, n, op);
 
         }
 
         for(; j < n; ++j) {
 
-          // Load y
+          // Load y block
           const Y y_j = y[j];
 
-          // Compute the product
-          const A temp_ij = op(x_i, y_j);
+          // Compute a block
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::unary(x_block, a_block, bind_second(y_j, op));
 
-          // Store a
+          // Store a block
+          VecOpUnwindN::scatter(a_block, a_i + j, n);
+        }
+      }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < m; ++i) {
+
+        // Load x block
+        const X x_i = x[i];
+
+        A* restrict const a_i = a + (i * n);
+        std::size_t j = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+        for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
+
+          // Load y block
+          Y y_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(y + i, y_block);
+
+
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::unary(y_block, a_block, bind_second(x_i, op));
+
+          VecOpUnwindN::copy(a_block, a_i + j);
+
+        }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+
+        for(; j < n; ++j) {
+
+          const Y y_j = y[j];
+          A temp_ij;
+          temp_ij = op(x_i, y_j);
           a_i[j] = temp_ij;
+
         }
       }
     }
@@ -228,213 +262,98 @@ namespace TiledArray {
     /// \param[in,out] a The result matrix of size \c m*n
     /// \param[in]
     template <typename X, typename Y, typename A, typename Op>
-    void outer_product_to(const std::size_t m, const std::size_t n,
+    void outer(const std::size_t m, const std::size_t n,
         const X* restrict const x, const Y* restrict const y,
         A* restrict const a, const Op& op)
     {
-      // Compute limits of block iteration
-
-      const std::size_t mask = ~(std::size_t(3));
-      const std::size_t m4 = m & mask; // = m - m % 4
-      const std::size_t n4 = n & mask; // = n - n % 4
-
       std::size_t i = 0ul;
-      for(; i < m4; i += 4ul) {
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t mx = m & index_mask::value; // = m - m % TILEDARRAY_LOOP_UNWIND
+      const std::size_t nx = n & index_mask::value; // = n - n % TILEDARRAY_LOOP_UNWIND
+
+      for(; i < mx; i += TILEDARRAY_LOOP_UNWIND) {
 
         // Load x block
+        X x_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(x + i, x_block);
 
-        const X x_0 = x[i];
-        const X x_1 = x[i + 1];
-        const X x_2 = x[i + 2];
-        const X x_3 = x[i + 3];
-
-        // Compute a block pointers
-
-        A* restrict const a_0 = a + (i * n);
-        A* restrict const a_1 = a_0 + n;
-        A* restrict const a_2 = a_1 + n;
-        A* restrict const a_3 = a_2 + n;
-
-        std::size_t j = 0ul;
-        for(; j < n4; j += 4ul) {
-
-          // Compute j offsets
-
-          const std::size_t j1 = j + 1;
-          const std::size_t j2 = j + 2;
-          const std::size_t j3 = j + 3;
-
-          // Load the a data
-
-          A temp_00 = a_0[j ];
-          A temp_01 = a_0[j1];
-          A temp_02 = a_0[j2];
-          A temp_03 = a_0[j3];
-
-          A temp_10 = a_1[j ];
-          A temp_11 = a_1[j1];
-          A temp_12 = a_1[j2];
-          A temp_13 = a_1[j3];
-
-          A temp_20 = a_2[j ];
-          A temp_21 = a_2[j1];
-          A temp_22 = a_2[j2];
-          A temp_23 = a_2[j3];
-
-          A temp_30 = a_3[j ];
-          A temp_31 = a_3[j1];
-          A temp_32 = a_3[j2];
-          A temp_33 = a_3[j3];
-
-          // Load y block
-
-          const Y y_0 = y[j ];
-          const Y y_1 = y[j1];
-          const Y y_2 = y[j2];
-          const Y y_3 = y[j3];
-
-          // Compute the outer product
-
-          op(temp_00, x_0, y_0);
-          op(temp_01, x_0, y_1);
-          op(temp_02, x_0, y_2);
-          op(temp_03, x_0, y_3);
-
-          op(temp_10, x_1, y_0);
-          op(temp_11, x_1, y_1);
-          op(temp_12, x_1, y_2);
-          op(temp_13, x_1, y_3);
-
-          op(temp_20, x_2, y_0);
-          op(temp_21, x_2, y_1);
-          op(temp_22, x_2, y_2);
-          op(temp_23, x_2, y_3);
-
-          op(temp_30, x_3, y_0);
-          op(temp_31, x_3, y_1);
-          op(temp_32, x_3, y_2);
-          op(temp_33, x_3, y_3);
-
-          // Store a block
-
-          a_0[j ] = temp_00;
-          a_0[j1] = temp_01;
-          a_0[j2] = temp_02;
-          a_0[j3] = temp_03;
-
-          a_1[j ] = temp_10;
-          a_1[j1] = temp_11;
-          a_1[j2] = temp_12;
-          a_1[j3] = temp_13;
-
-          a_2[j ] = temp_20;
-          a_2[j1] = temp_21;
-          a_2[j2] = temp_22;
-          a_2[j3] = temp_23;
-
-          a_3[j ] = temp_30;
-          a_3[j1] = temp_31;
-          a_3[j2] = temp_32;
-          a_3[j3] = temp_33;
-
-        }
-
-        for(; j < n; ++j) {
-
-
-          // Load a block
-
-          A temp_0 = a_0[j];
-          A temp_1 = a_1[j];
-          A temp_2 = a_2[j];
-          A temp_3 = a_3[j];
-
-          // Load the y
-
-          const Y y_j = y[j];
-
-          // Compute the outer product
-
-          op(temp_0, x_0, y_j);
-          op(temp_1, x_1, y_j);
-          op(temp_2, x_2, y_j);
-          op(temp_3, x_3, y_j);
-
-          // Store a block
-
-          a_0[j] = temp_0;
-          a_1[j] = temp_1;
-          a_2[j] = temp_2;
-          a_3[j] = temp_3;
-        }
-      }
-
-      for(; i < m; ++i) {
-
-        // Load x
-
-        const X x_i = x[i];
-
-        // Compute a block pointer
-
+        // Compute pointer offset
         A* restrict const a_i = a + (i * n);
 
         std::size_t j = 0ul;
-        for(; j < n4; j += 4) {
-
-          // Compute j offsets
-
-          const std::size_t j1 = j + 1;
-          const std::size_t j2 = j + 2;
-          const std::size_t j3 = j + 3;
-
-          // Load a block
-
-          A temp_i0 = a_i[j ];
-          A temp_i1 = a_i[j1];
-          A temp_i2 = a_i[j2];
-          A temp_i3 = a_i[j3];
+        for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
 
           // Load y block
+          Y y_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(y + i, y_block);
 
-          const Y y_0 = y[j ];
-          const Y y_1 = y[j1];
-          const Y y_2 = y[j2];
-          const Y y_3 = y[j3];
-
-          // Compute outer product
-
-          op(temp_i0, x_i, y_0);
-          op(temp_i1, x_i, y_1);
-          op(temp_i2, x_i, y_2);
-          op(temp_i3, x_i, y_3);
-
-          // Store a block
-
-          a_i[j ] = temp_i0;
-          a_i[j1] = temp_i1;
-          a_i[j2] = temp_i2;
-          a_i[j3] = temp_i3;
+          // Load, compute, and store a block
+          OuterVectorOpUnwindN::outer(x_block, y_block, a_i + j, n, op);
 
         }
 
         for(; j < n; ++j) {
 
-          // Load a
+          // Load a block
+          A* restrict const a_ij = a_i + j;
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::gather(a_ij, a_block, n);
 
-          const A temp_ij = a_i[j];
-
-          // Load y
-
+          // Load y block
           const Y y_j = y[j];
 
-          // Compute outer product
+          // Compute a block
+          VecOpUnwindN::binary(x_block, a_block, bind_second(y_j, op));
 
-          op(temp_ij, x_i, y_j);
+          // Store a block
+          VecOpUnwindN::scatter(a_block, a_ij, n);
 
-          // Store a
+        }
+      }
 
-          a_i[j] = temp_ij;
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < m; ++i) {
+
+        // Load x block
+        const X x_i = x[i];
+        A* restrict const a_i = a + (i * n);
+
+        std::size_t j = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+        for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
+
+          // Load a block
+          A* restrict const a_ij = a_i + j;
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(a_ij, a_block);
+
+          // Load y block
+          Y y_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(y + i, y_block);
+
+          // Compute outer block
+          VecOpUnwindN::binary(y_block, a_block, bind_second(x_i, op));
+
+          // Store a block
+          VecOpUnwindN::copy(a_block, a_ij);
+
+        }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+        for(; j < n; ++j) {
+
+          A a_ij = a_i[j];
+          const Y y_block = y[j];
+          op(a_ij, x_i, y_block);
+          a_i[j] = a_ij;
+
         }
       }
     }
@@ -463,219 +382,100 @@ namespace TiledArray {
     /// \param[in] a The input matrix of size \c m*n
     /// \param[out] b The output matrix of size \c m*n
     template <typename X, typename Y, typename A, typename B, typename Op>
-    void outer_to(const std::size_t m, const std::size_t n,
+    void outer_fill(const std::size_t m, const std::size_t n,
         const X* restrict const x, const Y* restrict const y,
         const A* restrict const a, B* restrict const b, const Op& op)
     {
-      // Compute limits of block iteration
-
-      const std::size_t mask = ~(std::size_t(3));
-      const std::size_t m4 = m & mask; // = m - m % 4
-      const std::size_t n4 = n & mask; // = n - n % 4
-
       std::size_t i = 0ul;
-      for(; i < m4; i += 4ul) {
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t mx = m & index_mask::value; // = m - m % TILEDARRAY_LOOP_UNWIND
+      const std::size_t nx = n & index_mask::value; // = n - n % TILEDARRAY_LOOP_UNWIND
+
+      for(; i < mx; i += TILEDARRAY_LOOP_UNWIND) {
 
         // Load x block
-
-        const X x_0 = x[i];
-        const X x_1 = x[i + 1];
-        const X x_2 = x[i + 2];
-        const X x_3 = x[i + 3];
+        X x_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(x + i, x_block);
 
         // Compute a & b block pointers
-
-        const A* restrict const a_0 = a + (i * n);
-        const A* restrict const a_1 = a_0 + n;
-        const A* restrict const a_2 = a_1 + n;
-        const A* restrict const a_3 = a_2 + n;
-
-        B* restrict const b_0 = b + (i * n);
-        B* restrict const b_1 = b_0 + n;
-        B* restrict const b_2 = b_1 + n;
-        B* restrict const b_3 = b_2 + n;
+        const std::size_t in = i * n;
+        const A* restrict const a_i = a + (in);
+        B* restrict const b_i = b + (in);
 
         std::size_t j = 0ul;
-        for(; j < n4; j += 4ul) {
-
-          // Compute j offsets
-
-          const std::size_t j1 = j + 1;
-          const std::size_t j2 = j + 2;
-          const std::size_t j3 = j + 3;
-
-          // Load a block
-
-          A temp_00 = a_0[j ];
-          A temp_01 = a_0[j1];
-          A temp_02 = a_0[j2];
-          A temp_03 = a_0[j3];
-
-          A temp_10 = a_1[j ];
-          A temp_11 = a_1[j1];
-          A temp_12 = a_1[j2];
-          A temp_13 = a_1[j3];
-
-          A temp_20 = a_2[j ];
-          A temp_21 = a_2[j1];
-          A temp_22 = a_2[j2];
-          A temp_23 = a_2[j3];
-
-          A temp_30 = a_3[j ];
-          A temp_31 = a_3[j1];
-          A temp_32 = a_3[j2];
-          A temp_33 = a_3[j3];
+        for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
 
           // Load y block
+          Y y_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(y + i, y_block);
 
-          const Y y_0 = y[j ];
-          const Y y_1 = y[j1];
-          const Y y_2 = y[j2];
-          const Y y_3 = y[j3];
-
-          // Compute outer
-
-          op(temp_00, x_0, y_0);
-          op(temp_01, x_0, y_1);
-          op(temp_02, x_0, y_2);
-          op(temp_03, x_0, y_3);
-
-          op(temp_10, x_1, y_0);
-          op(temp_11, x_1, y_1);
-          op(temp_12, x_1, y_2);
-          op(temp_13, x_1, y_3);
-
-          op(temp_20, x_2, y_0);
-          op(temp_21, x_2, y_1);
-          op(temp_22, x_2, y_2);
-          op(temp_23, x_2, y_3);
-
-          op(temp_30, x_3, y_0);
-          op(temp_31, x_3, y_1);
-          op(temp_32, x_3, y_2);
-          op(temp_33, x_3, y_3);
-
-          // Store b block
-
-          b_0[j ] = temp_00;
-          b_0[j1] = temp_01;
-          b_0[j2] = temp_02;
-          b_0[j3] = temp_03;
-
-          b_1[j ] = temp_10;
-          b_1[j1] = temp_11;
-          b_1[j2] = temp_12;
-          b_1[j3] = temp_13;
-
-          b_2[j ] = temp_20;
-          b_2[j1] = temp_21;
-          b_2[j2] = temp_22;
-          b_2[j3] = temp_23;
-
-          b_3[j ] = temp_30;
-          b_3[j1] = temp_31;
-          b_3[j2] = temp_32;
-          b_3[j3] = temp_33;
+          // Load, compute, and store a block
+          OuterVectorOpUnwindN::fill(x_block, y_block, a_i + j, b_i + j, n, op);
 
         }
 
         for(; j < n; ++j) {
 
           // Load a block
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::gather(a_i + j, a_block, n);
 
-          A temp_0 = a_0[j];
-          A temp_1 = a_1[j];
-          A temp_2 = a_2[j];
-          A temp_3 = a_3[j];
-
-          // Load y
-
+          // Load y block
           const Y y_j = y[j];
 
-          // Compute the outer product
+          // Compute a block
+          VecOpUnwindN::binary(x_block, a_block, bind_second(y_j, op));
 
-          op(temp_0, x_0, y_j);
-          op(temp_1, x_1, y_j);
-          op(temp_2, x_2, y_j);
-          op(temp_3, x_3, y_j);
-
-          // Store b block
-
-          b_0[j] = temp_0;
-          b_1[j] = temp_1;
-          b_2[j] = temp_2;
-          b_3[j] = temp_3;
+          // Store a block
+          VecOpUnwindN::scatter(a_block, b_i + j, n);
         }
       }
 
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
       for(; i < m; ++i) {
 
-        // Load x
-
+        // Load x block
         const X x_i = x[i];
 
-        // Compute a & b block pointers
-
-        const A* restrict const a_i = a + (i * n);
-
-        B* restrict const b_i = b + (i * n);
-
         std::size_t j = 0ul;
-        for(; j < n4; j += 4) {
 
-          // Compute j offsets
+#if TILEDARRAY_LOOP_UNWIND > 1
 
-          const std::size_t j1 = j + 1;
-          const std::size_t j2 = j + 2;
-          const std::size_t j3 = j + 3;
+        // Compute a & b block pointers
+        const std::size_t in = i * n;
+        const A* restrict const a_i = a + in;
+        B* restrict const b_i = b + in;
+
+        for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
 
           // Load a block
-
-          A temp_i0 = a_i[j ];
-          A temp_i1 = a_i[j1];
-          A temp_i2 = a_i[j2];
-          A temp_i3 = a_i[j3];
+          A a_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(a_i + j, a_block);
 
           // Load y block
+          Y y_block[TILEDARRAY_LOOP_UNWIND];
+          VecOpUnwindN::copy(y + i, y_block);
 
-          const Y y_0 = y[j ];
-          const Y y_1 = y[j1];
-          const Y y_2 = y[j2];
-          const Y y_3 = y[j3];
-
-          // Compute outer product
-
-          op(temp_i0, x_i, y_0);
-          op(temp_i1, x_i, y_1);
-          op(temp_i2, x_i, y_2);
-          op(temp_i3, x_i, y_3);
+          // Compute outer block
+          VecOpUnwindN::binary(y_block, a_block, bind_second(x_i, op));
 
           // Store a block
-
-          b_i[j ] = temp_i0;
-          b_i[j1] = temp_i1;
-          b_i[j2] = temp_i2;
-          b_i[j3] = temp_i3;
+          VecOpUnwindN::copy(a_block, b_i + j);
 
         }
 
-        for(std::size_t j = n4; j < n; ++j) {
+#endif // TILEDARRAY_LOOP_UNWIND > 1
 
-          // Load a
+        for(; j < n; ++j) {
 
-          A temp_ij = a_i[j];
-
-          // Load y
-
+          A a_ij = a_i[j];
           const Y y_j = y[j];
-
-          // Compute outer product
-
-          op(temp_ij, x_i, y_j);
-
-          // Store b
-
-          b_i[j] = temp_ij;
+          op(a_ij, x_i, y_j);
+          b_i[j] = a_ij;
         }
       }
     }
