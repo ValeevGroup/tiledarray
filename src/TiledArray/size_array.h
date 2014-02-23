@@ -69,6 +69,11 @@ namespace TiledArray {
           last_ = first + n;
         }
 
+        void set(pointer const first, pointer const last) {
+          first_ = first;
+          last_ = last;
+        }
+
         SizeArray<T>& operator=(const SizeArray<T>& other) {
           TA_ASSERT(size() == other.size());
           std::copy(other.begin(), other.end(), first_);
