@@ -174,6 +174,9 @@ namespace TiledArray {
         // Comparison operators
         template <typename U>
         bool operator==(const SizeArray<U>& other) const {
+          if(first_ == other.data())
+            return true;
+
           const std::size_t n = size();
           if(n != other.size())
             return false;
@@ -187,6 +190,9 @@ namespace TiledArray {
 
         template <typename U>
         bool operator!=(const SizeArray<U>& other) const {
+          if(first_ == other.data())
+            return false;
+
           const std::size_t n = size();
           if(n != other.size())
             return true;
