@@ -53,16 +53,18 @@ namespace TiledArray {
         typedef const T*       const_iterator;
         typedef T&             reference;
         typedef const T&       const_reference;
+        typedef T*             pointer;
+        typedef const T*       const_pointer;
         typedef std::size_t    size_type;
         typedef std::ptrdiff_t difference_type;
 
         SizeArray() : first_(NULL), last_(NULL) { }
 
-        SizeArray(value_type* first, value_type* last) :
+        SizeArray(pointer const first, pointer const last) :
           first_(first), last_(last)
         { }
 
-        void set(value_type* const first, const size_type n) {
+        void set(pointer const first, const size_type n) {
           first_ = first;
           last_ = first + n;
         }
@@ -156,10 +158,10 @@ namespace TiledArray {
         }
 
         // direct access to data (read-only)
-        const T* data() const { return first_; }
+        const_pointer data() const { return first_; }
 
         // use array as C array (direct read/write access to data)
-        T* data() { return first_; }
+        pointer data() { return first_; }
 
         // assign one value to all elements
         void assign (const T& value) { std::fill(begin(), end(), value); }
