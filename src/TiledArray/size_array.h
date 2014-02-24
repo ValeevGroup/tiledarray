@@ -77,7 +77,7 @@ namespace TiledArray {
 
         SizeArray<T>& operator=(const SizeArray<T>& other) {
           TA_ASSERT(size() == other.size());
-          std::copy(other.begin(), other.end(), first_);
+          math::copy_vector(last_ - first_, other.data(), first_);
           return *this;
         }
 
@@ -97,7 +97,7 @@ namespace TiledArray {
         operator std::array<U, N> () const {
           TA_ASSERT(N == size());
           std::array<U, N> temp;
-          std::copy(first_, last_, temp.begin());
+          math::copy_vector(last_ - first_, first_, temp.begin());
 
           return temp;
         }
@@ -170,7 +170,7 @@ namespace TiledArray {
         pointer data() { return first_; }
 
         // assign one value to all elements
-        void assign (const_reference value) { std::fill(first_, last_, value); }
+        void assign (const_reference value) { math::fill_vector(last_ - first_, value, first_); }
 
         // Comparison operators
         template <typename U>
