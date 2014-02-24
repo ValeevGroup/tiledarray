@@ -137,13 +137,8 @@ namespace TiledArray {
     };
 
     template <typename T>
-    struct param<T, typename madness::enable_if<TiledArray::detail::is_numeric<T> >::type> {
+    struct param<T, typename madness::enable_if<std::is_scalar<T> >::type> {
       typedef const T type;
-    };
-
-    template <typename T>
-    struct param<T, typename madness::enable_if<std::is_pointer<T> >::type> {
-      typedef T const type;
     };
 
     template <typename T>
