@@ -27,6 +27,8 @@
 #include "unit_test_config.h"
 #include "array_fixture.h"
 #include "TiledArray/tile_op/scal.h"
+#include "TiledArray/tile_op/noop.h"
+#include "TiledArray/tile_op/add.h"
 #include "TiledArray/shape.h"
 
 
