@@ -143,6 +143,16 @@ namespace TiledArray {
       /// \return The rank of the right-hand tile
       unsigned int right_rank() const { return right_.rank; }
 
+      unsigned int left_inner_begin() const { return left_.inner[0]; }
+      unsigned int left_inner_end()   const { return left_.inner[1]; }
+      unsigned int left_outer_begin() const { return left_.outer[0]; }
+      unsigned int left_outer_end()   const { return left_.outer[1]; }
+
+      unsigned int right_inner_begin() const { return right_.inner[0]; }
+      unsigned int right_inner_end()   const { return right_.inner[1]; }
+      unsigned int right_outer_begin() const { return right_.outer[0]; }
+      unsigned int right_outer_end()   const { return right_.outer[1]; }
+
       /// Construct a result range based on \c left and \c right ranges
 
       /// \tparam R The result range type
