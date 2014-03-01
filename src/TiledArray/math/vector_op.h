@@ -137,7 +137,8 @@ namespace TiledArray {
       }
 
       template <typename Left, typename Right, typename Result, typename Op>
-      static TILEDARRAY_FORCE_INLINE void
+      static TILEDARRAY_FORCE_INLINE
+      typename madness::disable_if<std::is_pointer<Result> >::type
       reduce(const Left* restrict const left, const Right* restrict const right,
           Result& restrict result, const Op& op)
       {
@@ -145,9 +146,24 @@ namespace TiledArray {
       }
 
       template <typename Arg, typename Result, typename Op>
-      static TILEDARRAY_FORCE_INLINE void
+      static TILEDARRAY_FORCE_INLINE
+      typename madness::disable_if<std::is_pointer<Result> >::type
       reduce(const Arg* restrict const arg, Result& restrict result, const Op& op) {
         op(result, arg[offset]);
+      }
+
+      template <typename Left, typename Right, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      reduce(const Left* restrict const left, const Right* restrict const right,
+          Result* restrict result, const Op& op)
+      {
+        op(result[offset], left[offset], right[offset]);
+      }
+
+      template <typename Arg, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      reduce(const Arg* restrict const arg, Result* restrict result, const Op& op) {
+        op(result[offset], arg[offset]);
       }
 
       template <typename Arg, typename Result>
@@ -254,19 +270,37 @@ namespace TiledArray {
       }
 
       template <typename Left, typename Right, typename Result, typename Op>
-      static TILEDARRAY_FORCE_INLINE void
+      static TILEDARRAY_FORCE_INLINE
+      typename madness::disable_if<std::is_pointer<Result> >::type
       reduce(const Left* restrict const left, const Right* restrict const right,
           Result& restrict result, const Op& op)
       {
         op(result, left[offset], right[offset]);
-        VectorOpUnwindN1::reduce(left, right, result);
+        VectorOpUnwindN1::reduce(left, right, result, op);
+      }
+
+      template <typename Arg, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE
+      typename madness::disable_if<std::is_pointer<Result> >::type
+      reduce(const Arg* restrict const arg, Result& restrict result, const Op& op) {
+        op(result, arg[offset]);
+        VectorOpUnwindN1::reduce(arg, result, op);
+      }
+
+      template <typename Left, typename Right, typename Result, typename Op>
+      static TILEDARRAY_FORCE_INLINE void
+      reduce(const Left* restrict const left, const Right* restrict const right,
+          Result* restrict result, const Op& op)
+      {
+        op(result[offset], left[offset], right[offset]);
+        VectorOpUnwindN1::reduce(left, right, result, op);
       }
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      reduce(const Arg* restrict const arg, Result& restrict result, const Op& op) {
-        op(result, arg[offset]);
-        VectorOpUnwindN1::reduce(arg, result);
+      reduce(const Arg* restrict const arg, Result* restrict result, const Op& op) {
+        op(result[offset], arg[offset]);
+        VectorOpUnwindN1::reduce(arg, result, op);
       }
 
       template <typename Arg, typename Result>
@@ -680,7 +714,8 @@ namespace TiledArray {
     }
 
     template <typename Left, typename Right, typename Result, typename Op>
-    void reduce_vector_op(const std::size_t n, const Left* restrict const left,
+    typename madness::disable_if<std::is_pointer<Result> >::type
+    reduce_vector_op(const std::size_t n, const Left* restrict const left,
         const Right* restrict const right, Result& restrict result, const Op& op)
     {
       std::size_t i = 0ul;
@@ -714,7 +749,8 @@ namespace TiledArray {
     }
 
     template <typename Arg, typename Result, typename Op>
-    void reduce_vector_op(const std::size_t n, const Arg* restrict const arg,
+    typename madness::disable_if<std::is_pointer<Result> >::type
+    reduce_vector_op(const std::size_t n, const Arg* restrict const arg,
         Result& restrict result, const Op& op)
     {
       std::size_t i = 0ul;
@@ -740,6 +776,84 @@ namespace TiledArray {
         const Arg arg_i = arg[i];
 
         op(result, arg_i);
+
+      }
+    }
+
+
+    template <typename Left, typename Right, typename Result, typename Op>
+    void reduce_vector_op(const std::size_t n, const Left* restrict const left,
+        const Right* restrict const right, Result* restrict result, const Op& op)
+    {
+      std::size_t i = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t nx = n & index_mask::value;
+
+      for(; i < nx; i += 8ul) {
+
+        Result result_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(result + i, result_block);
+        Left left_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(left + i, left_block);
+        Right right_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(right + i, right_block);
+
+        VecOpUnwindN::reduce(left_block, right_block, static_cast<Result*>(result_block), op);
+
+        VecOpUnwindN::copy(result_block, result + i);
+      }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i) {
+
+        Result result_block = result[i];
+        const Left left_block = left[i];
+        const Right right_block = right[i];
+
+        op(result_block, left_block, right_block);
+
+        result[i] = result_block;
+
+      }
+    }
+
+    template <typename Arg, typename Result, typename Op>
+    void reduce_vector_op(const std::size_t n, const Arg* restrict const arg,
+        Result* restrict result, const Op& op)
+    {
+      std::size_t i = 0ul;
+
+#if TILEDARRAY_LOOP_UNWIND > 1
+
+      // Compute block iteration limit
+      const std::size_t nx = n & index_mask::value;
+
+      for(; i < nx; i += TILEDARRAY_LOOP_UNWIND) {
+
+        Result result_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(result + i, result_block);
+        Arg arg_block[TILEDARRAY_LOOP_UNWIND];
+        VecOpUnwindN::copy(arg + i, arg_block);
+
+        VecOpUnwindN::reduce(arg_block, static_cast<Result*>(result_block), op);
+
+        VecOpUnwindN::copy(result_block, result + i);
+      }
+
+#endif // TILEDARRAY_LOOP_UNWIND > 1
+
+      for(; i < n; ++i) {
+
+        Result result_block = result[i];
+        const Arg arg_i = arg[i];
+
+        op(result_block, arg_i);
+
+        result[i] = result_block;
 
       }
     }
