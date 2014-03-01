@@ -29,9 +29,6 @@
 #pragma GCC diagnostic push
 #pragma GCC system_header
 #include <Eigen/Core>
-#include <Eigen/Householder>
-#include <Eigen/QR>
-#include <unsupported/Eigen/Polynomials>
 #pragma GCC diagnostic pop
 
 #include <TiledArray/error.h>
