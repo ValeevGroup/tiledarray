@@ -23,6 +23,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/madness.h>
 #include <TiledArray/math/outer.h>
+#include <TiledArray/math/partial_reduce.h>
 #include <algorithm>
 #include <vector>
 #include <iterator>
@@ -292,6 +293,67 @@ namespace TiledArray {
       Result reduce(Result result, const Op& op) const {
         math::reduce_vector_op(last_ - first_, first_, result, op);
         return result;
+      }
+
+      /// Row reduce operation
+
+      /// Reduce rows of \c left matrix to this array. The reduced result is
+      /// computed by <tt>op(result[i], left[i][j], right[j])</tt>.
+      /// \tparam Left The matrix element type
+      /// \tparam Right The vector element type
+      /// \tparam Op The reduction operation
+      /// \param n The number of columns in the matrix
+      /// \param left The matrix pointer of size \c size()*n
+      /// \param right The vector pointer of size \c n
+      /// \param op The reduction operation
+      template <typename Left, typename Right, typename Op>
+      void row_reduce(const size_type n, const Left* const left, const Right* right, const Op& op) {
+        math::row_reduce(last_ - first_, n, left, right, first_, op);
+      }
+
+      /// Row reduce operation
+
+      /// Reduce rows of \c arg matrix to this array. The reduced result is
+      /// computed by <tt>op(result[i], arg[i][j])</tt>.
+      /// \tparam Arg The matrix element type
+      /// \tparam Op The reduction operation
+      /// \param n The number of columns in the matrix
+      /// \param arg The matrix pointer of size \c size()*n
+      /// \param op The reduction operation
+      template <typename Arg, typename Op>
+      void row_reduce(const size_type m, const Arg* const arg, const Op& op) {
+        math::row_reduce(last_ - first_, n, arg, first_, op);
+      }
+
+
+      /// Column reduce operation
+
+      /// Reduce columns of \c left matrix to this array. The reduced result is
+      /// computed by <tt>op(result[j], left[i][j], right[i])</tt>.
+      /// \tparam Left The matrix element type
+      /// \tparam Right The vector element type
+      /// \tparam Op The reduction operation
+      /// \param m The number of rows in the matrix
+      /// \param left The matrix pointer of size \c m*size()
+      /// \param right The vector pointer of size \c m
+      /// \param op The reduction operation
+      template <typename Left, typename Right, typename Op>
+      void col_reduce(const size_type m, const Left* const left, const Right* right, const Op& op) {
+        math::col_reduce(m, last_ - first_, left, right, first_, op);
+      }
+
+      /// Columns reduce operation
+
+      /// Reduce columns of \c arg matrix to this array. The reduced result is
+      /// computed by <tt>op(result[j], arg[i][j])</tt>.
+      /// \tparam Arg The matrix element type
+      /// \tparam Op The reduction operation
+      /// \param m The number of rows in the matrix
+      /// \param arg The matrix pointer of size \c m*size()
+      /// \param op The reduction operation
+      template <typename Arg, typename Op>
+      void col_reduce(const size_type m, const Arg* const arg, const Op& op) {
+        math::col_reduce(m, last_ - first_, arg, first_, op);
       }
 
       /// Outer operation
