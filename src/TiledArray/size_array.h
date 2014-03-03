@@ -298,7 +298,7 @@ namespace TiledArray {
       /// Row reduce operation
 
       /// Reduce rows of \c left matrix to this array. The reduced result is
-      /// computed by <tt>op(result[i], left[i][j], right[j])</tt>.
+      /// computed by <tt>op(*this[i], left[i][j], right[j])</tt>.
       /// \tparam Left The matrix element type
       /// \tparam Right The vector element type
       /// \tparam Op The reduction operation
@@ -314,14 +314,14 @@ namespace TiledArray {
       /// Row reduce operation
 
       /// Reduce rows of \c arg matrix to this array. The reduced result is
-      /// computed by <tt>op(result[i], arg[i][j])</tt>.
+      /// computed by <tt>op(*this[i], arg[i][j])</tt>.
       /// \tparam Arg The matrix element type
       /// \tparam Op The reduction operation
       /// \param n The number of columns in the matrix
       /// \param arg The matrix pointer of size \c size()*n
       /// \param op The reduction operation
       template <typename Arg, typename Op>
-      void row_reduce(const size_type m, const Arg* const arg, const Op& op) {
+      void row_reduce(const size_type n, const Arg* const arg, const Op& op) {
         math::row_reduce(last_ - first_, n, arg, first_, op);
       }
 
@@ -329,7 +329,7 @@ namespace TiledArray {
       /// Column reduce operation
 
       /// Reduce columns of \c left matrix to this array. The reduced result is
-      /// computed by <tt>op(result[j], left[i][j], right[i])</tt>.
+      /// computed by <tt>op(*this[j], left[i][j], right[i])</tt>.
       /// \tparam Left The matrix element type
       /// \tparam Right The vector element type
       /// \tparam Op The reduction operation
@@ -345,7 +345,7 @@ namespace TiledArray {
       /// Columns reduce operation
 
       /// Reduce columns of \c arg matrix to this array. The reduced result is
-      /// computed by <tt>op(result[j], arg[i][j])</tt>.
+      /// computed by <tt>op(*this[j], arg[i][j])</tt>.
       /// \tparam Arg The matrix element type
       /// \tparam Op The reduction operation
       /// \param m The number of rows in the matrix
