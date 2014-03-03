@@ -28,6 +28,7 @@
 
 #include <TiledArray/madness.h>
 #include <TiledArray/math/vector_op.h>
+#include <TiledArray/utility.h>
 
 namespace TiledArray {
   namespace math {
@@ -233,7 +234,8 @@ namespace TiledArray {
           // Compute a block
           Left left_block[TILEDARRAY_LOOP_UNWIND];
           VecOpUnwindN::gather(left_i + j, left_block, n);
-          VecOpUnwindN::reduce(left_block, result_block, bind_second(right_j, op));
+          VecOpUnwindN::reduce(left_block, result_block,
+              TiledArray::detail::bind_second(right_j, op));
 
         }
 
