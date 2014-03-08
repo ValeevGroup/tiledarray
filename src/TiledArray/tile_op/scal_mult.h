@@ -60,24 +60,57 @@ namespace TiledArray {
       typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
-      Permutation perm_; ///< The result permutation
+
       scalar_type factor_; ///< The scaling factor
 
-      // Make friends with base classes
-      friend class BinaryInterface<ScalMult_>;
-      friend class BinaryInterfaceBase<ScalMult_>;
+    public:
+      /// Default constructor
 
-      // Element operation functor types
+      /// Construct a multiplication operation that does not permute the result tile
+      /// and has a scaling factor of 1.
+      ScalMult() : BinaryInterface_(), factor_(1) { }
 
-      typedef ScalMultiplies<typename Left::value_type,
-          typename Right::value_type, typename Result::value_type> scal_multiplies_op;
+      /// Permute constructor
+
+      /// Construct a multiplication operation that scales the result tensor
+      /// \param factor The scaling factor for the operation [default = 1]
+      explicit ScalMult(const scalar_type factor) :
+        BinaryInterface_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct a multiplication operation that permutes and scales the result tensor
+      /// \param perm The permutation to apply to the result tile
+      /// \param factor The scaling factor for the operation [default = 1]
+      explicit ScalMult(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+        BinaryInterface_(perm), factor_(factor)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The multiplication operation object to be copied
+      ScalMult(const ScalMult_& other) : BinaryInterface_(other), factor_(other.factor_) { }
+
+      /// Copy assignment
+
+      /// \param other The multiplication operation object to be copied
+      /// \return A reference to this object
+      ScalMult_& operator=(const ScalMult_& other) {
+        BinaryInterface_::operator =(other);
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      // Import interface from base class
+      using BinaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return result_type(first, second, scal_multiplies_op(factor_), perm_);
+        return first.mult(second, factor_, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, const Right& second) const {
@@ -139,48 +172,6 @@ namespace TiledArray {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
-
-    public:
-      /// Default constructor
-
-      /// Construct a multiplication operation that does not permute the result tile
-      /// and has a scaling factor of 1.
-      ScalMult() : perm_(), factor_(1) { }
-
-      /// Permute constructor
-
-      /// Construct a multiplication operation that scales the result tensor
-      /// \param factor The scaling factor for the operation [default = 1]
-      ScalMult(const scalar_type factor) :
-        perm_(), factor_(factor)
-      { }
-
-      /// Permute constructor
-
-      /// Construct a multiplication operation that permutes and scales the result tensor
-      /// \param perm The permutation to apply to the result tile
-      /// \param factor The scaling factor for the operation [default = 1]
-      ScalMult(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
-        perm_(perm), factor_(factor)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The multiplication operation object to be copied
-      ScalMult(const ScalMult_& other) : perm_(other.perm_), factor_(other.factor_) { }
-
-      /// Copy assignment
-
-      /// \param other The multiplication operation object to be copied
-      /// \return A reference to this object
-      ScalMult_& operator=(const ScalMult_& other) {
-        perm_ = other.perm_;
-        factor_ = other.factor_;
-        return *this;
-      }
-
-      // Import interface from base class
-      using BinaryInterface_::operator();
 
     }; // class ScalMult
 

@@ -60,34 +60,65 @@ namespace TiledArray {
       typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
-      Permutation perm_; ///< The result permutation
+
       scalar_type factor_; ///< The scaling factor
 
-      // Make friends with base classes
-      friend class BinaryInterface<ScalSubt_>;
-      friend class BinaryInterfaceBase<ScalSubt_>;
+    public:
+      /// Default constructor
 
-      // Element operation functor types
+      /// Construct a subtraction operation that does not permute the result
+      /// tile and has a scaling factor of 1.
+      ScalSubt() : BinaryInterface_(), factor_(1) { }
 
-      typedef ScalMinus<typename Left::value_type, typename Right::value_type,
-          typename Result::value_type> scal_minus_op;
-      typedef Scale<typename Left::value_type> scale_left_op;
-      typedef Scale<typename Right::value_type> scale_right_op;
+      /// Permute constructor
+
+      /// Construct a subtraction operation that scales the result tensor
+      /// \param factor The scaling factor for the operation [default = 1]
+      explicit ScalSubt(const scalar_type factor) :
+        BinaryInterface_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct a subtraction operation that permutes and scales the result
+      /// tile.
+      /// \param perm The permutation to apply to the result tile
+      /// \param factor The scaling factor for the operation [default = 1]
+      explicit ScalSubt(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+        BinaryInterface_(perm), factor_(factor)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The subtraction operation object to be copied
+      ScalSubt(const ScalSubt_& other) : BinaryInterface_(other), factor_(other.factor_) { }
+
+      /// Copy assignment
+
+      /// \param other The subtraction operation object to be copied
+      /// \return A reference to this object
+      ScalSubt_& operator=(const ScalSubt_& other) {
+        BinaryInterface_::operator =(other);
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      using BinaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return result_type(first, second, scal_minus_op(factor_), perm_);
+        return first.subt(second, factor_, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, second_argument_type second) const {
-        return result_type(second, scale_right_op(-factor_), perm_);
+        return second.scale(-factor_, BinaryInterface_::permutation());
       }
 
       result_type permute(first_argument_type first, zero_right_type) const {
-        return result_type(first, scale_left_op(factor_), perm_);
+        return first.scale(factor_, BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -136,48 +167,6 @@ namespace TiledArray {
       no_permute(first_argument_type first, zero_right_type) const {
         return first.scale_to(factor_);
       }
-
-    public:
-      /// Default constructor
-
-      /// Construct a subtraction operation that does not permute the result
-      /// tile and has a scaling factor of 1.
-      ScalSubt() : perm_(), factor_(1) { }
-
-      /// Permute constructor
-
-      /// Construct a subtraction operation that scales the result tensor
-      /// \param factor The scaling factor for the operation [default = 1]
-      ScalSubt(const scalar_type factor) :
-        perm_(), factor_(factor)
-      { }
-
-      /// Permute constructor
-
-      /// Construct a subtraction operation that permutes and scales the result
-      /// tile.
-      /// \param perm The permutation to apply to the result tile
-      /// \param factor The scaling factor for the operation [default = 1]
-      ScalSubt(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
-        perm_(perm), factor_(factor)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The subtraction operation object to be copied
-      ScalSubt(const ScalSubt_& other) : perm_(other.perm_), factor_(other.factor_) { }
-
-      /// Copy assignment
-
-      /// \param other The subtraction operation object to be copied
-      /// \return A reference to this object
-      ScalSubt_& operator=(const ScalSubt_& other) {
-        perm_ = other.perm_;
-        factor_ = other.factor_;
-        return *this;
-      }
-
-      using BinaryInterface_::operator();
 
     }; // class ScalSubt
 

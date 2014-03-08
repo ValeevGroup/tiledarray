@@ -58,25 +58,41 @@ namespace TiledArray {
       typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
       typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
 
+    public:
+      /// Default constructor
 
-    private:
-      Permutation perm_; ///< The result permutation
+      /// Construct a multiplication operation that does not permute the result tile
+      Mult() : BinaryInterface_() { }
 
-      // Make friends with base classes
-      friend class BinaryInterface<Mult_>;
-      friend class BinaryInterfaceBase<Mult_>;
+      /// Permute constructor
 
-      // Element operation functor types
+      /// Construct a multiplication operation that permutes the result tensor
+      /// \param perm The permutation to apply to the result tile
+      explicit Mult(const Permutation& perm) : BinaryInterface_(perm) { }
 
-      typedef Multiplies<typename Left::value_type, typename Right::value_type,
-          typename Result::value_type> multiplies_op;
+      /// Copy constructor
+
+      /// \param other The multiplication operation object to be copied
+      Mult(const Mult_& other) : BinaryInterface_(other) { }
+
+      /// Copy assignment
+
+      /// \param other The multiplication operation object to be copied
+      /// \return A reference to this object
+      Mult_& operator=(const Mult_& other) {
+        BinaryInterface_::operator =(other);
+        return *this;
+      }
+
+      // Import interface from base class
+      using BinaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return result_type(first, second, multiplies_op(), perm_);
+        return first.mult(second, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, const Right& second) const {
@@ -139,34 +155,6 @@ namespace TiledArray {
         return result_type();
       }
 
-    public:
-      /// Default constructor
-
-      /// Construct a multiplication operation that does not permute the result tile
-      Mult() : perm_() { }
-
-      /// Permute constructor
-
-      /// Construct a multiplication operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Mult(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The multiplication operation object to be copied
-      Mult(const Mult_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The multiplication operation object to be copied
-      /// \return A reference to this object
-      Mult_& operator=(const Mult_& other) {
-        perm_ = other.perm_;
-        return *this;
-      }
-
-      // Import interface from base class
-      using BinaryInterface_::operator();
 
     }; // class Mult
 

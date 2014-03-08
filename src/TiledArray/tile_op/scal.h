@@ -41,7 +41,7 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Scal : UnaryInterface<Scal<Result, Arg, Consumable> > {
+    class Scal : public UnaryInterface<Scal<Result, Arg, Consumable> > {
     public:
       typedef Scal<Result, Arg, Consumable> Scal_; ///< This object type
       typedef UnaryInterface<Scal_> UnaryInterface_;
@@ -50,22 +50,56 @@ namespace TiledArray {
       typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
-      Permutation perm_; ///< The result permutation
+
       scalar_type factor_; ///< Scaling factor
 
-      // Make friends with base class
-      friend class UnaryInterface<Scal_>;
+    public:
+      /// Default constructor
 
-      // Element operation functor types
+      /// Construct a scaling operation that does not permute the result tile
+      /// and has a scaling factor of 1.
+      Scal() : UnaryInterface_(), factor_(1) { }
 
-      typedef Scale<typename Arg::value_type> scale_op;
+      /// Permute constructor
 
+      /// Construct a scaling operation that scales the result tensor
+      /// \param factor The scaling factor for the operation
+      explicit Scal(const scalar_type factor) :
+        UnaryInterface_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct a scaling operation that permutes and scales the result tensor.
+      /// \param perm The permutation to apply to the result tile
+      /// \param factor The scaling factor for the operation
+      Scal(const Permutation& perm, const scalar_type factor) :
+        UnaryInterface_(perm), factor_(factor)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The scaling operation object to be copied
+      Scal(const Scal_& other) : UnaryInterface_(other), factor_(other.factor_) { }
+
+      /// Copy assignment
+
+      /// \param other The scaling operation object to be copied
+      /// \return A reference to this object
+      Scal_& operator=(const Scal_& other) {
+        UnaryInterface_::operator =(other);
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      // Import interface from base class
+      using UnaryInterface_::operator();
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(const Arg& arg) const {
-        return result_type(arg, scale_op(factor_), perm_);
+        return arg.scale(factor_, UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -79,48 +113,6 @@ namespace TiledArray {
       template <bool C>
       typename madness::enable_if_c<C, result_type>::type
       no_permute(Arg& arg) const { return arg.scale_to(factor_); }
-
-    public:
-      /// Default constructor
-
-      /// Construct a scaling operation that does not permute the result tile
-      /// and has a scaling factor of 1.
-      Scal() : perm_(), factor_(1) { }
-
-      /// Permute constructor
-
-      /// Construct a scaling operation that scales the result tensor
-      /// \param factor The scaling factor for the operation
-      Scal(const scalar_type factor) :
-        perm_(), factor_(factor)
-      { }
-
-      /// Permute constructor
-
-      /// Construct a scaling operation that permutes and scales the result tensor.
-      /// \param perm The permutation to apply to the result tile
-      /// \param factor The scaling factor for the operation
-      Scal(const Permutation& perm, const scalar_type factor) :
-        perm_(perm), factor_(factor)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The scaling operation object to be copied
-      Scal(const Scal_& other) : perm_(other.perm_), factor_(other.factor_) { }
-
-      /// Copy assignment
-
-      /// \param other The scaling operation object to be copied
-      /// \return A reference to this object
-      Scal_& operator=(const Scal_& other) {
-        perm_ = other.perm_;
-        factor_ = other.factor_;
-        return *this;
-      }
-
-      // Import interface from base class
-      using UnaryInterface_::operator();
 
     }; // class Scal
 

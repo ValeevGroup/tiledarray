@@ -41,25 +41,47 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Noop : UnaryInterface<Noop<Result, Arg, Consumable> >  {
+    class Noop : public UnaryInterface<Noop<Result, Arg, Consumable> >  {
     public:
       typedef Noop<Result, Arg, Consumable> Noop_; ///< This object type
       typedef UnaryInterface<Noop_> UnaryInterface_;
       typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
       typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
 
-    private:
-      Permutation perm_; ///< The result permutation
+      /// Default constructor
 
-      // Make friends with base class
-      friend class UnaryInterface<Noop_>;
+      /// Construct a no operation that does not permute the result tile
+      Noop() : UnaryInterface_() { }
+
+      /// Permute constructor
+
+      /// Construct a no operation that permutes the result tensor
+      /// \param perm The permutation to apply to the result tile
+      Noop(const Permutation& perm) : UnaryInterface_(perm) { }
+
+      /// Copy constructor
+
+      /// \param other The no operation object to be copied
+      Noop(const Noop_& other) : UnaryInterface_(other) { }
+
+      /// Copy assignment
+
+      /// \param other The no operation object to be copied
+      /// \return A reference to this object
+      Noop_& operator=(const Noop_& other) {
+        UnaryInterface_::operator =(other);
+        return *this;
+      }
+
+      // Import interface from base class
+      using UnaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(const Arg& arg) const {
-        return result_type(arg, perm_);
+        return result_type(arg, UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -73,35 +95,6 @@ namespace TiledArray {
       template <bool C>
       static typename madness::enable_if_c<C, result_type>::type
       no_permute(Arg& arg) { return arg; }
-
-    public:
-      /// Default constructor
-
-      /// Construct a no operation that does not permute the result tile
-      Noop() : perm_() { }
-
-      /// Permute constructor
-
-      /// Construct a no operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Noop(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The no operation object to be copied
-      Noop(const Noop_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The no operation object to be copied
-      /// \return A reference to this object
-      Noop_& operator=(const Noop_& other) {
-        perm_ = other.perm_;
-        return *this;
-      }
-
-      // Import interface from base class
-      using UnaryInterface_::operator();
 
     }; // class Noop
 

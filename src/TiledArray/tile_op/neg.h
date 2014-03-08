@@ -41,29 +41,47 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Neg : UnaryInterface<Neg<Result, Arg, Consumable> > {
+    class Neg : public UnaryInterface<Neg<Result, Arg, Consumable> > {
     public:
       typedef Neg<Result, Arg, Consumable> Neg_; ///< This object type
       typedef UnaryInterface<Neg_> UnaryInterface_;
       typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
       typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
 
-    private:
-      Permutation perm_; ///< The result permutation
+      /// Default constructor
 
-      // Make friends with base class
-      friend class UnaryInterface<Neg_>;
+      /// Construct a negation operation that does not permute the result tile
+      Neg() : UnaryInterface_() { }
 
-      // Element operation functor types
+      /// Permute constructor
 
-      typedef Negate<typename Arg::value_type, typename Result::value_type> negate_op;
+      /// Construct a negation operation that permutes the result tensor
+      /// \param perm The permutation to apply to the result tile
+      Neg(const Permutation& perm) : UnaryInterface_(perm) { }
+
+      /// Copy constructor
+
+      /// \param other The negation operation object to be copied
+      Neg(const Neg_& other) : UnaryInterface_(other) { }
+
+      /// Copy assignment
+
+      /// \param other The negation operation object to be copied
+      /// \return A reference to this object
+      Neg_& operator=(const Neg_& other) {
+        UnaryInterface_::operator =(other);
+        return *this;
+      }
+
+      // Import interface from base class
+      using UnaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(const Arg& arg) const {
-        return result_type(arg, negate_op(), perm_);
+        return arg.neg(UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -81,35 +99,6 @@ namespace TiledArray {
       no_permute(Arg& arg) {
         return arg.neg_to();
       }
-
-    public:
-      /// Default constructor
-
-      /// Construct a negation operation that does not permute the result tile
-      Neg() : perm_() { }
-
-      /// Permute constructor
-
-      /// Construct a negation operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Neg(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The negation operation object to be copied
-      Neg(const Neg_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The negation operation object to be copied
-      /// \return A reference to this object
-      Neg_& operator=(const Neg_& other) {
-        perm_ = other.perm_;
-        return *this;
-      }
-
-      // Import interface from base class
-      using UnaryInterface_::operator();
 
     }; // class Neg
 

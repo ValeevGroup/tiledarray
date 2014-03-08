@@ -113,7 +113,7 @@ namespace TiledArray {
       result_type operator()(first_argument_type first, second_argument_type second) const {
         TA_ASSERT(first.range() == second.range());
 
-        if(derived().perm_.dim() > 1u)
+        if(derived().permutation().dim() > 1u)
           return derived().permute(first, second);
 
         return derived().template no_permute<left_is_consumable::value,
@@ -128,7 +128,7 @@ namespace TiledArray {
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
       result_type operator()(zero_left_type first, second_argument_type second) const {
-        if(derived().perm_.dim() > 1)
+        if(derived().permutation().dim() > 1)
           return derived().permute(first, second);
 
         return derived().template no_permute<left_is_consumable::value,
@@ -143,7 +143,7 @@ namespace TiledArray {
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
       result_type operator()(first_argument_type first, zero_right_type second) const {
-        if(derived().perm_.dim() > 1)
+        if(derived().permutation().dim() > 1)
           return derived().permute(first, second);
 
         return derived().template no_permute<left_is_consumable::value,
@@ -152,334 +152,408 @@ namespace TiledArray {
 
     }; // class BinaryInterfaceBase
 
-    /// Binary tile operation interface
 
-    /// In addition to the interface defined by \c BinaryInterfaceBase, this
-    /// class defines binary operations with lazy tiles. It will evaluate
-    /// arguments as necessary and pass them to the \c BinaryInterfaceBase
-    /// interface functions.
-    ///
-    /// To use this interface class, a derived class needs to have the following
-    /// form:
-    /// \code
-    /// template <typename Result, typename Left, typename Right, bool LeftConsumable,
-    ///     bool RightConsumable>
-    /// class Operation : public BinaryInterface<Operation<Result, Left, Right,
-    ///     LeftConsumable, RightConsumable>, LeftConsumable, RightConsumable>
-    /// {
-    /// public:
-    ///   typedef Operation<Result, Left, Right, LeftConsumable, RightConsumable> Operation_;
-    ///   typedef BinaryInterface<Operation_, LeftConsumable, RightConsumable> BinaryInterface_;
-    ///   typedef typename BinaryInterface_::first_argument_type first_argument_type;
-    ///   typedef typename BinaryInterface_::second_argument_type second_argument_type;
-    ///   typedef typename BinaryInterface_::zero_left_type zero_left_type;
-    ///   typedef typename BinaryInterface_::zero_right_type zero_right_type;
-    ///   typedef typename BinaryInterface_::result_type result_type;
-    ///
-    /// private:
-    ///
-    ///   // Make friends with base classes
-    ///   friend class BinaryInterface<Operation_, LeftConsumable, RightConsumable>;
-    ///   friend class BinaryInterfaceBase<Operation_, LeftConsumable, RightConsumable>;
-    ///
-    ///   // Permuting tile evaluation function
-    ///
-    ///   result_type permute(const Left& first, const Right& second) const {
-    ///     // ...
-    ///   }
-    ///
-    ///   result_type permute(zero_left_type, const Right& second) const {
-    ///     // ...
-    ///   }
-    ///
-    ///   result_type permute(const Left& first, zero_right_type) const {
-    ///     // ...
-    ///   }
-    ///
-    ///   // Non-permuting tile evaluation functions
-    ///   // The compiler will select the correct functions based on the
-    ///   // type ane consumability of the arguments.
-    ///
-    ///   template <bool LC, bool RC>
-    ///   typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-    ///       (RC && std::is_same<Result, Right>::value), result_type>::type
-    ///   no_permute(const Left& first, const Right& second) {
-    ///     // ...
-    ///   }
-    ///
-    ///   template <bool LC, bool RC>
-    ///   typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
-    ///   no_permute(Left& first, const Right& second) {
-    ///      // ...
-    ///   }
-    ///
-    ///   template <bool LC, bool RC>
-    ///   typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
-    ///       (!(LC && std::is_same<Result, Left>::value)), result_type>::type
-    ///   no_permute(const Left& first, Right& second) {
-    ///     // ...
-    ///   }
-    ///
-    ///   template <bool LC, bool RC>
-    ///   typename madness::disable_if_c<RC, result_type>::type
-    ///   no_permute(zero_left_type, const Right& second) {
-    ///     // ...
-    ///   }
-    ///
-    ///   template <bool LC, bool RC>
-    ///   typename madness::enable_if_c<RC, result_type>::type
-    ///   no_permute(zero_left_type, Right& second) {
-    ///     // ...
-    ///   }
-    ///
-    ///   template <bool LC, bool RC>
-    ///   typename madness::disable_if_c<LC, result_type>::type
-    ///   no_permute(const Left& first, zero_right_type) {
-    ///     // ...
-    ///   }
-    ///
-    ///   template <bool LC, bool RC>
-    ///   typename madness::enable_if_c<LC, result_type>::type
-    ///   no_permute(Left& first, zero_right_type) {
-    ///     // ...
-    ///   }
-    ///
-    /// public:
-    ///   // Implement default constructor, copy constructor and assignment operator
-    ///
-    ///   // Import interface from base class
-    ///   using BinaryInterface_::operator();
-    ///
-    /// }; // class Operation
-    /// \endcode
-    /// \tparam Derived The derived operation class type
-    /// \tparam LeftConsumable A flag that is \c true when the left-hand
-    /// argument is consumable
-    /// \tparam RightConsumable A flag that is \c true when the right-hand
-    /// argument is consumable
-    template <typename Derived>
-    class BinaryInterface : public BinaryInterfaceBase<Derived> {
-    public:
-      typedef BinaryInterfaceBase<Derived> BinaryInterfaceBase_; ///< This class type
-      typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
-      typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
-      typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
-      typedef typename BinaryInterfaceBase_::zero_right_type zero_right_type; ///< Zero right-hand tile type
-      typedef typename BinaryInterfaceBase_::result_type result_type; ///< The result tile type
+  } // namespace math
 
-    private:
+  /// Binary tile operation interface
 
-      // Import the derived accessor function
-      using BinaryInterfaceBase_::derived;
+  /// In addition to the interface defined by \c BinaryInterfaceBase, this
+  /// class defines binary operations with lazy tiles. It will evaluate
+  /// arguments as necessary and pass them to the \c BinaryInterfaceBase
+  /// interface functions.
+  ///
+  /// To use this interface class, a derived class needs to have the following
+  /// form:
+  /// \code
+  /// template <typename Result, typename Left, typename Right, bool LeftConsumable,
+  ///     bool RightConsumable>
+  /// class Operation : public BinaryInterface<Operation<Result, Left, Right,
+  ///     LeftConsumable, RightConsumable>, LeftConsumable, RightConsumable>
+  /// {
+  /// public:
+  ///   typedef Operation<Result, Left, Right, LeftConsumable, RightConsumable> Operation_;
+  ///   typedef BinaryInterface<Operation_, LeftConsumable, RightConsumable> BinaryInterface_;
+  ///   typedef typename BinaryInterface_::first_argument_type first_argument_type;
+  ///   typedef typename BinaryInterface_::second_argument_type second_argument_type;
+  ///   typedef typename BinaryInterface_::zero_left_type zero_left_type;
+  ///   typedef typename BinaryInterface_::zero_right_type zero_right_type;
+  ///   typedef typename BinaryInterface_::result_type result_type;
+  ///
+  /// public:
+  ///
+  ///   // Permuting tile evaluation function
+  ///
+  ///   result_type permute(const Left& first, const Right& second) const {
+  ///     // ...
+  ///   }
+  ///
+  ///   result_type permute(zero_left_type, const Right& second) const {
+  ///     // ...
+  ///   }
+  ///
+  ///   result_type permute(const Left& first, zero_right_type) const {
+  ///     // ...
+  ///   }
+  ///
+  ///   // Non-permuting tile evaluation functions
+  ///   // The compiler will select the correct functions based on the
+  ///   // type ane consumability of the arguments.
+  ///
+  ///   template <bool LC, bool RC>
+  ///   typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
+  ///       (RC && std::is_same<Result, Right>::value), result_type>::type
+  ///   no_permute(const Left& first, const Right& second) {
+  ///     // ...
+  ///   }
+  ///
+  ///   template <bool LC, bool RC>
+  ///   typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+  ///   no_permute(Left& first, const Right& second) {
+  ///      // ...
+  ///   }
+  ///
+  ///   template <bool LC, bool RC>
+  ///   typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
+  ///       (!(LC && std::is_same<Result, Left>::value)), result_type>::type
+  ///   no_permute(const Left& first, Right& second) {
+  ///     // ...
+  ///   }
+  ///
+  ///   template <bool LC, bool RC>
+  ///   typename madness::disable_if_c<RC, result_type>::type
+  ///   no_permute(zero_left_type, const Right& second) {
+  ///     // ...
+  ///   }
+  ///
+  ///   template <bool LC, bool RC>
+  ///   typename madness::enable_if_c<RC, result_type>::type
+  ///   no_permute(zero_left_type, Right& second) {
+  ///     // ...
+  ///   }
+  ///
+  ///   template <bool LC, bool RC>
+  ///   typename madness::disable_if_c<LC, result_type>::type
+  ///   no_permute(const Left& first, zero_right_type) {
+  ///     // ...
+  ///   }
+  ///
+  ///   template <bool LC, bool RC>
+  ///   typename madness::enable_if_c<LC, result_type>::type
+  ///   no_permute(Left& first, zero_right_type) {
+  ///     // ...
+  ///   }
+  ///
+  ///   // Implement default constructor, copy constructor and assignment operator
+  ///
+  ///   // Import interface from base class
+  ///   using BinaryInterface_::operator();
+  ///
+  /// }; // class Operation
+  /// \endcode
+  /// \tparam Derived The derived operation class type
+  /// \tparam LeftConsumable A flag that is \c true when the left-hand
+  /// argument is consumable
+  /// \tparam RightConsumable A flag that is \c true when the right-hand
+  /// argument is consumable
+  template <typename Derived>
+  class BinaryInterface : public math::BinaryInterfaceBase<Derived> {
+  public:
+    typedef math::BinaryInterfaceBase<Derived> BinaryInterfaceBase_; ///< This class type
+    typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
+    typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
+    typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+    typedef typename BinaryInterfaceBase_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+    typedef typename BinaryInterfaceBase_::result_type result_type; ///< The result tile type
 
-    public:
+  private:
 
-      // Import interface of BinaryInterfaceBase
-      using BinaryInterfaceBase_::operator();
+    Permutation perm_; ///< The result permutation
 
-      // The following operators will evaluate lazy tile and use the base class
-      // interface functions to call the correct evaluation kernel.
+  protected:
 
-      /// Evaluate two lazy tiles
+    // Import the derived accessor function
+    using BinaryInterfaceBase_::derived;
 
-      /// This function will evaluate the \c first and \c second , then pass the
-      /// evaluated tiles to the appropriate \c BinaryInterfaceBase_::operator()
-      /// function.
-      /// \tparam L The left-hand, lazy tile type
-      /// \tparam R The right-hand, lazy tile type
-      /// \param first The left-hand, lazy tile argument
-      /// \param second The right-hand, lazy tile argument
-      /// \return The result tile from the binary operation applied to the
-      /// evaluated \c first and \c second .
-      template <typename L, typename R>
-      typename madness::enable_if_c<is_lazy_tile<L>::value && is_lazy_tile<R>::value,
-          result_type>::type
-      operator()(const L& first, const R& second) const {
-        typename L::eval_type eval_first(first);
-        typename R::eval_type eval_second(second);
-        return operator()(eval_first, eval_second);
-      }
+  public:
 
-      /// Evaluate lazy and non-lazy tiles
+    /// Default constructor
+    BinaryInterface() : perm_() { }
 
-      /// This function will evaluate the \c first , then pass the
-      /// evaluated tile and \c second to the appropriate
-      /// \c BinaryInterfaceBase_::operator() function.
-      /// \tparam L The left-hand, lazy tile type
-      /// \tparam R The right-hand, non-lazy tile type
-      /// \param first The left-hand, lazy tile argument
-      /// \param second The right-hand, non-lazy tile argument
-      /// \return The result tile from the binary operation applied to the
-      /// evaluated \c first and \c second .
-      template <typename L, typename R>
-      typename madness::enable_if_c<
-          is_lazy_tile<L>::value &&
-          (! is_lazy_tile<typename std::remove_const<R>::type >::value),
-          result_type>::type
-      operator()(const L& first, R& second) const {
-        typename L::eval_type eval_first(first);
-        return operator()(eval_first, second);
-      }
+    /// Permution constructor
 
-      /// Evaluate non-lazy and lazy tiles
+    /// \param perm The permutation that will be applied in this operation
+    explicit BinaryInterface(const Permutation& perm) : perm_(perm) { }
 
-      /// This function will evaluate the \c second , then pass the
-      /// evaluated tile and \c first to the appropriate
-      /// \c BinaryInterfaceBase_::operator() function.
-      /// \tparam L The left-hand, non-lazy tile type
-      /// \tparam R The right-hand, lazy tile type
-      /// \param first The left-hand, non-lazy tile argument
-      /// \param second The right-hand, lazy tile argument
-      /// \return The result tile from the binary operation applied to the
-      /// evaluated \c first and \c second .
-      template <typename L, typename R>
-      typename madness::enable_if_c<
-          (! is_lazy_tile<typename std::remove_const<L>::type>::value) &&
-          is_lazy_tile<R>::value,
-          result_type>::type
-      operator()(L& first, const R& second) const {
-        typename R::eval_type eval_second(second);
-        return operator()(first, eval_second);
-      }
+    /// Copy constructor
 
-    }; // class BinaryInterface
+    /// \param other The object to be copied
+    BinaryInterface(const BinaryInterface<Derived>& other) :
+      perm_(other.perm_)
+    { }
 
+    /// Assignment operator that will be applied in this operation
 
-    /// Binary tile operation interface
+    /// \param other The object to be copied
+    /// \return A reference to this object
+    BinaryInterface<Derived>& operator=(const BinaryInterface<Derived>& other) {
+      perm_ = other.perm_;
+      return *this;
+    }
 
-    /// In addition to the interface defined by \c BinaryInterfaceBase, this
-    /// class defines binary operations with lazy tiles. It will evaluate
-    /// arguments as necessary and pass them to the \c BinaryInterfaceBase
-    /// interface functions. This specialization is necessary to handle runtime
-    /// consumable resources, when the tiles are not marked as consumable at
-    /// compile time.
-    /// \tparam Derived The derived operation class type
-    /// \tparam LeftConsumable A flag that is \c true when the left-hand
-    /// argument is consumable
-    /// \tparam RightConsumable A flag that is \c true when the right-hand
-    /// argument is consumable
-    template <typename Result, typename Left, typename Right,
-        template <typename, typename, typename, bool, bool> class Op>
-    class BinaryInterface<Op<Result, Left, Right, false, false> > :
-        public BinaryInterfaceBase<Op<Result, Left, Right, false, false> >
-    {
-    public:
-      typedef BinaryInterfaceBase<Op<Result, Left, Right, false, false> > BinaryInterfaceBase_; ///< This class type
-      typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
-      typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
-      typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
-      typedef typename BinaryInterfaceBase_::zero_right_type zero_right_type; ///< Zero right-hand tile type
-      typedef typename BinaryInterfaceBase_::result_type result_type; ///< The result tile type
+    /// Set the permutation that will be applied in this operation
 
-    private:
+    /// \param perm The permutation that will be applied in this operation
+    void permutation(const Permutation& perm) { perm_ = perm; }
 
-      // Import the derived accessor function
-      using BinaryInterfaceBase_::derived;
+    /// Permutation accessor
 
-    public:
+    /// \return A const reference to this operation's permutation
+    const Permutation& permutation() const { return perm_; }
 
-      // Import interface of BinaryInterfaceBase
-      using BinaryInterfaceBase_::operator();
+    // Import interface of BinaryInterfaceBase
+    using BinaryInterfaceBase_::operator();
 
-      /// Evaluate two lazy-array tiles
+    // The following operators will evaluate lazy tile and use the base class
+    // interface functions to call the correct evaluation kernel.
 
-      /// This function will evaluate the \c first and \c second , then pass the
-      /// evaluated tiles to the appropriate \c Derived class evaluation kernel.
-      /// \tparam L The left-hand, lazy-array tile type
-      /// \tparam R The right-hand, lazy-array tile type
-      /// \param first The left-hand, non-lazy tile argument
-      /// \param second The right-hand, lazy tile argument
-      /// \return The result tile from the binary operation applied to the
-      /// evaluated \c first and \c second .
-      template <typename L, typename R>
-      typename madness::enable_if_c<is_array_tile<L>::value && is_array_tile<R>::value,
-          result_type>::type
-      operator()(const L& first, const R& second) const {
-        typename L::eval_type eval_first(first);
-        typename R::eval_type eval_second(second);
+    /// Evaluate two lazy tiles
 
-        if(derived().perm_.dim() > 1u)
-          return derived().permute(eval_first, eval_second);
+    /// This function will evaluate the \c first and \c second , then pass the
+    /// evaluated tiles to the appropriate \c BinaryInterfaceBase_::operator()
+    /// function.
+    /// \tparam L The left-hand, lazy tile type
+    /// \tparam R The right-hand, lazy tile type
+    /// \param first The left-hand, lazy tile argument
+    /// \param second The right-hand, lazy tile argument
+    /// \return The result tile from the binary operation applied to the
+    /// evaluated \c first and \c second .
+    template <typename L, typename R>
+    typename madness::enable_if_c<math::is_lazy_tile<L>::value && math::is_lazy_tile<R>::value,
+        result_type>::type
+    operator()(const L& first, const R& second) const {
+      typename L::eval_type eval_first(first);
+      typename R::eval_type eval_second(second);
+      return operator()(eval_first, eval_second);
+    }
 
-        if(first.is_consumable())
-          return derived().template no_permute<true, false>(eval_first, eval_second);
-        else if(second.is_consumable())
-          return derived().template no_permute<false, true>(eval_first, eval_second);
+    /// Evaluate lazy and non-lazy tiles
 
-        return derived().template no_permute<false, false>(eval_first, eval_second);
-      }
+    /// This function will evaluate the \c first , then pass the
+    /// evaluated tile and \c second to the appropriate
+    /// \c BinaryInterfaceBase_::operator() function.
+    /// \tparam L The left-hand, lazy tile type
+    /// \tparam R The right-hand, non-lazy tile type
+    /// \param first The left-hand, lazy tile argument
+    /// \param second The right-hand, non-lazy tile argument
+    /// \return The result tile from the binary operation applied to the
+    /// evaluated \c first and \c second .
+    template <typename L, typename R>
+    typename madness::enable_if_c<
+        math::is_lazy_tile<L>::value &&
+        (! math::is_lazy_tile<typename std::remove_const<R>::type >::value),
+        result_type>::type
+    operator()(const L& first, R& second) const {
+      typename L::eval_type eval_first(first);
+      return operator()(eval_first, second);
+    }
+
+    /// Evaluate non-lazy and lazy tiles
+
+    /// This function will evaluate the \c second , then pass the
+    /// evaluated tile and \c first to the appropriate
+    /// \c BinaryInterfaceBase_::operator() function.
+    /// \tparam L The left-hand, non-lazy tile type
+    /// \tparam R The right-hand, lazy tile type
+    /// \param first The left-hand, non-lazy tile argument
+    /// \param second The right-hand, lazy tile argument
+    /// \return The result tile from the binary operation applied to the
+    /// evaluated \c first and \c second .
+    template <typename L, typename R>
+    typename madness::enable_if_c<
+        (! math::is_lazy_tile<typename std::remove_const<L>::type>::value) &&
+        math::is_lazy_tile<R>::value,
+        result_type>::type
+    operator()(L& first, const R& second) const {
+      typename R::eval_type eval_second(second);
+      return operator()(first, eval_second);
+    }
+
+  }; // class BinaryInterface
 
 
-      template <typename L, typename R>
-      typename madness::enable_if_c<
-          is_array_tile<L>::value &&
-          (! is_lazy_tile<typename std::remove_const<R>::type>::value),
-          result_type>::type
-      operator()(const L& first, R& second) const {
-        typename L::eval_type eval_first(first);
+  /// Binary tile operation interface
 
-        if(derived().perm_.dim() > 1u)
-          return derived().permute(eval_first, second);
+  /// In addition to the interface defined by \c BinaryInterfaceBase, this
+  /// class defines binary operations with lazy tiles. It will evaluate
+  /// arguments as necessary and pass them to the \c BinaryInterfaceBase
+  /// interface functions. This specialization is necessary to handle runtime
+  /// consumable resources, when the tiles are not marked as consumable at
+  /// compile time.
+  /// \tparam Derived The derived operation class type
+  /// \tparam LeftConsumable A flag that is \c true when the left-hand
+  /// argument is consumable
+  /// \tparam RightConsumable A flag that is \c true when the right-hand
+  /// argument is consumable
+  template <typename Result, typename Left, typename Right,
+      template <typename, typename, typename, bool, bool> class Op>
+  class BinaryInterface<Op<Result, Left, Right, false, false> > :
+      public math::BinaryInterfaceBase<Op<Result, Left, Right, false, false> >
+  {
+  public:
+    typedef math::BinaryInterfaceBase<Op<Result, Left, Right, false, false> > BinaryInterfaceBase_; ///< This class type
+    typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
+    typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
+    typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+    typedef typename BinaryInterfaceBase_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+    typedef typename BinaryInterfaceBase_::result_type result_type; ///< The result tile type
 
-        if(first.is_consumable())
-          return derived().template no_permute<true, false>(eval_first, second);
+  private:
 
-        return derived().template no_permute<false, false>(eval_first, second);
-      }
+    Permutation perm_; ///< The result permutation
+
+  protected:
+
+    // Import the derived accessor function
+    using BinaryInterfaceBase_::derived;
+
+  public:
+
+    /// Default constructor
+    BinaryInterface() : perm_() { }
+
+    /// Permution constructor
+
+    /// \param perm The permutation that will be applied in this operation
+    explicit BinaryInterface(const Permutation& perm) : perm_(perm) { }
+
+    /// Copy constructor
+
+    /// \param other The object to be copied
+    BinaryInterface(const BinaryInterface<Op<Result, Left, Right, false, false> >& other) :
+      perm_(other.perm_)
+    { }
+
+    /// Assignment operator that will be applied in this operation
+
+    /// \param other The object to be copied
+    /// \return A reference to this object
+    BinaryInterface<Op<Result, Left, Right, false, false> >&
+    operator=(const BinaryInterface<Op<Result, Left, Right, false, false> >& other) {
+      perm_ = other.perm_;
+      return *this;
+    }
+
+    /// Set the permutation that will be applied in this operation
+
+    /// \param perm The permutation that will be applied in this operation
+    void permutation(const Permutation& perm) { perm_ = perm; }
+
+    /// Permutation accessor
+
+    /// \return A const reference to this operation's permutation
+    const Permutation& permutation() const { return perm_; }
+
+    // Import interface of BinaryInterfaceBase
+    using BinaryInterfaceBase_::operator();
+
+    /// Evaluate two lazy-array tiles
+
+    /// This function will evaluate the \c first and \c second , then pass the
+    /// evaluated tiles to the appropriate \c Derived class evaluation kernel.
+    /// \tparam L The left-hand, lazy-array tile type
+    /// \tparam R The right-hand, lazy-array tile type
+    /// \param first The left-hand, non-lazy tile argument
+    /// \param second The right-hand, lazy tile argument
+    /// \return The result tile from the binary operation applied to the
+    /// evaluated \c first and \c second .
+    template <typename L, typename R>
+    typename madness::enable_if_c<math::is_array_tile<L>::value && math::is_array_tile<R>::value,
+        result_type>::type
+    operator()(const L& first, const R& second) const {
+      typename L::eval_type eval_first(first);
+      typename R::eval_type eval_second(second);
+
+      if(perm_.dim() > 1u)
+        return derived().permute(eval_first, eval_second);
+
+      if(first.is_consumable())
+        return derived().template no_permute<true, false>(eval_first, eval_second);
+      else if(second.is_consumable())
+        return derived().template no_permute<false, true>(eval_first, eval_second);
+
+      return derived().template no_permute<false, false>(eval_first, eval_second);
+    }
 
 
-      template <typename L, typename R>
-      typename madness::enable_if_c<
-          (! is_lazy_tile<typename std::remove_const<L>::type>::value) &&
-          is_array_tile<R>::value,
-          result_type>::type
-      operator()(L& first, const R& second) const {
-        typename R::eval_type eval_second(second);
+    template <typename L, typename R>
+    typename madness::enable_if_c<
+        math::is_array_tile<L>::value &&
+        (! math::is_lazy_tile<typename std::remove_const<R>::type>::value),
+        result_type>::type
+    operator()(const L& first, R& second) const {
+      typename L::eval_type eval_first(first);
 
-        if(derived().perm_.dim() > 1u)
-          return derived().permute(first, eval_second);
+      if(perm_.dim() > 1u)
+        return derived().permute(eval_first, second);
 
-        if(second.is_consumable())
-          return derived().template no_permute<false, true>(first, eval_second);
+      if(first.is_consumable())
+        return derived().template no_permute<true, false>(eval_first, second);
 
-        return derived().template no_permute<false, false>(first, eval_second);
-      }
-
-      template <typename L, typename R>
-      typename madness::enable_if_c<
-          is_non_array_lazy_tile<L>::value && is_non_array_lazy_tile<R>::value,
-          result_type>::type
-      operator()(const L& first, const R& second) const {
-        typename L::eval_type eval_first(first);
-        typename R::eval_type eval_second(second);
-        return operator()(eval_first, eval_second);
-      }
+      return derived().template no_permute<false, false>(eval_first, second);
+    }
 
 
-      template <typename L, typename R>
-      typename madness::enable_if_c<
-          is_non_array_lazy_tile<L>::value &&
-          (! is_non_array_lazy_tile<typename std::remove_const<R>::type>::value),
-          result_type>::type
-      operator()(const L& first, R& second) const {
-        typename L::eval_type eval_first(first);
-        return operator()(eval_first, second);
-      }
+    template <typename L, typename R>
+    typename madness::enable_if_c<
+        (! math::is_lazy_tile<typename std::remove_const<L>::type>::value) &&
+        math::is_array_tile<R>::value,
+        result_type>::type
+    operator()(L& first, const R& second) const {
+      typename R::eval_type eval_second(second);
+
+      if(perm_.dim() > 1u)
+        return derived().permute(first, eval_second);
+
+      if(second.is_consumable())
+        return derived().template no_permute<false, true>(first, eval_second);
+
+      return derived().template no_permute<false, false>(first, eval_second);
+    }
+
+    template <typename L, typename R>
+    typename madness::enable_if_c<
+        math::is_non_array_lazy_tile<L>::value && math::is_non_array_lazy_tile<R>::value,
+        result_type>::type
+    operator()(const L& first, const R& second) const {
+      typename L::eval_type eval_first(first);
+      typename R::eval_type eval_second(second);
+      return operator()(eval_first, eval_second);
+    }
 
 
-      template <typename L, typename R>
-      typename madness::enable_if_c<
-          (! is_non_array_lazy_tile<typename std::remove_const<L>::type>::value) &&
-          is_non_array_lazy_tile<R>::value,
-          result_type>::type
-      operator()(L& first, const R& second) const {
-        typename R::eval_type eval_second(second);
-        return operator()(first, eval_second);
-      }
+    template <typename L, typename R>
+    typename madness::enable_if_c<
+        math::is_non_array_lazy_tile<L>::value &&
+        (! math::is_non_array_lazy_tile<typename std::remove_const<R>::type>::value),
+        result_type>::type
+    operator()(const L& first, R& second) const {
+      typename L::eval_type eval_first(first);
+      return operator()(eval_first, second);
+    }
 
-    }; // class BinaryInterface
 
-  }  // namespace math
+    template <typename L, typename R>
+    typename madness::enable_if_c<
+        (! math::is_non_array_lazy_tile<typename std::remove_const<L>::type>::value) &&
+        math::is_non_array_lazy_tile<R>::value,
+        result_type>::type
+    operator()(L& first, const R& second) const {
+      typename R::eval_type eval_second(second);
+      return operator()(first, eval_second);
+    }
+
+  }; // class BinaryInterface
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_BINARY_INTERFACE_H__INCLUDED

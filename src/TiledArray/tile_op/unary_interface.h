@@ -76,6 +76,10 @@ namespace TiledArray {
       typedef typename UnaryTileOpPolicy<Derived>::is_consumable
           is_consumable; ///< Left is consumable type trait
 
+    private:
+
+      Permutation perm_; ///< The result permutation
+
     protected:
 
       /// Derived type accessor
@@ -85,6 +89,46 @@ namespace TiledArray {
 
     public:
 
+      /// Default constructor
+      UnaryInterface() : perm_() { }
+
+      /// Permution constructor
+
+      /// \param perm The permutation that will be applied in this operation
+      explicit UnaryInterface(const Permutation& perm) : perm_(perm) { }
+
+      /// Copy constructor
+
+      /// \param other The object to be copied
+      UnaryInterface(const UnaryInterface<Derived>& other) :
+        perm_(other.perm_)
+      { }
+
+      /// Assignment operator that will be applied in this operation
+
+      /// \param other The object to be copied
+      /// \return A reference to this object
+      UnaryInterface<Derived>&
+      operator=(const UnaryInterface<Derived>& other) {
+        perm_ = other.perm_;
+        return *this;
+      }
+
+      /// Set the permutation that will be applied in this operation
+
+      /// \param perm The permutation that will be applied in this operation
+      void permutation(const Permutation& perm) { perm_ = perm; }
+
+      /// Permutation accessor
+
+      /// \return A const reference to this operation's permutation
+      const Permutation& permutation() const { return perm_; }
+
+
+      /// Permutation constructor
+
+      /// \param The permutation that will be
+
       /// Evaluate non-lazy tile argument
 
       /// Apply \c Derived class operation to \c arg.
@@ -92,7 +136,7 @@ namespace TiledArray {
       /// \return The result tile with the unary operation (and permuation)
       /// applied to \c arg.
       result_type operator()(argument_type arg) const {
-        if(derived().perm_.dim() > 1)
+        if(perm_.dim() > 1)
           return derived().permute(arg);
 
         return derived().template no_permute<is_consumable::value>(arg);
@@ -143,6 +187,10 @@ namespace TiledArray {
       typedef typename UnaryTileOpPolicy<Op<Result, Arg, false> >::result_type
           result_type; ///< The result tile type
 
+    private:
+
+      Permutation perm_; ///< The result permutation
+
     protected:
 
       /// Derived type accessor
@@ -154,6 +202,41 @@ namespace TiledArray {
 
     public:
 
+      /// Default constructor
+      UnaryInterface() : perm_() { }
+
+      /// Permution constructor
+
+      /// \param perm The permutation that will be applied in this operation
+      explicit UnaryInterface(const Permutation& perm) : perm_(perm) { }
+
+      /// Copy constructor
+
+      /// \param other The object to be copied
+      UnaryInterface(const UnaryInterface<Op<Result, Arg, false> >& other) :
+        perm_(other.perm_)
+      { }
+
+      /// Assignment operator that will be applied in this operation
+
+      /// \param other The object to be copied
+      /// \return A reference to this object
+      UnaryInterface<Op<Result, Arg, false> >&
+      operator=(const UnaryInterface<Op<Result, Arg, false> >& other) {
+        perm_ = other.perm_;
+        return *this;
+      }
+
+      /// Set the permutation that will be applied in this operation
+
+      /// \param perm The permutation that will be applied in this operation
+      void permutation(const Permutation& perm) { perm_ = perm; }
+
+      /// Permutation accessor
+
+      /// \return A const reference to this operation's permutation
+      const Permutation& permutation() const { return perm_; }
+
       /// Evaluate non-lazy tile argument
 
       /// Apply \c Derived class operation to \c arg.
@@ -161,7 +244,7 @@ namespace TiledArray {
       /// \return The result tile with the unary operation (and permuation)
       /// applied to \c arg.
       result_type operator()(argument_type arg) const {
-        if(derived().perm_.dim() > 1)
+        if(perm_.dim() > 1)
           return derived().permute(arg);
 
         return derived().template no_permute<false>(arg);
@@ -209,7 +292,7 @@ namespace TiledArray {
       typename madness::disable_if<is_lazy_tile<typename std::remove_const<A>::type>,
           result_type>::type
       operator()(A& arg, const bool consume) const {
-        if(derived().perm_.dim() > 1)
+        if(perm_.dim() > 1)
           return derived().permute(arg);
 
         if(consume)

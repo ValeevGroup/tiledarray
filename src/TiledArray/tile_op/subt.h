@@ -58,33 +58,47 @@ namespace TiledArray {
       typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
       typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
 
-    private:
-      Permutation perm_; ///< The result permutation
+      /// Default constructor
 
-      // Make friends with base classes
-      friend class BinaryInterface<Subt_>;
-      friend class BinaryInterfaceBase<Subt_>;
+      /// Construct an subtraction operation that does not permute the result tile
+      Subt() : BinaryInterface_() { }
 
-      // Element operation functor types
+      /// Permute constructor
 
-      typedef Minus<typename Left::value_type, typename Right::value_type,
-          typename Result::value_type> minus_op;
-      typedef Negate<typename Right::value_type, typename Result::value_type> negate_op;
+      /// Construct an subtraction operation that permutes the result tensor
+      /// \param perm The permutation to apply to the result tile
+      explicit Subt(const Permutation& perm) : BinaryInterface_(perm) { }
+
+      /// Copy constructor
+
+      /// \param other The subtraction operation object to be copied
+      Subt(const Subt_& other) : BinaryInterface_(other) { }
+
+      /// Copy assignment
+
+      /// \param other The subtraction operation object to be copied
+      /// \return A reference to this object
+      Subt_& operator=(const Subt_& other) {
+        BinaryInterface_::operator =(other);
+        return *this;
+      }
+
+      using BinaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return result_type(first, second, minus_op(), perm_);
+        return first.subt(second, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, second_argument_type second) const {
-        return result_type(second, negate_op(), perm_);
+        return second.neg(BinaryInterface_::permutation());
       }
 
       result_type permute(first_argument_type first, zero_right_type) const {
-        return result_type(first, perm_);
+        return first.permute(BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -132,34 +146,6 @@ namespace TiledArray {
       no_permute(first_argument_type first, zero_right_type) {
         return first;
       }
-
-    public:
-      /// Default constructor
-
-      /// Construct an subtraction operation that does not permute the result tile
-      Subt() : perm_() { }
-
-      /// Permute constructor
-
-      /// Construct an subtraction operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Subt(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The subtraction operation object to be copied
-      Subt(const Subt_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The subtraction operation object to be copied
-      /// \return A reference to this object
-      Subt_& operator=(const Subt_& other) {
-        perm_ = other.perm_;
-        return *this;
-      }
-
-      using BinaryInterface_::operator();
 
     }; // class Subt
 

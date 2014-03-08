@@ -58,33 +58,49 @@ namespace TiledArray {
       typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
       typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
 
-    private:
-      Permutation perm_; ///< The result permutation
+    public:
+      /// Default constructor
 
-      // Make friends with base classes
-      friend class BinaryInterface<Add_>;
-      friend class BinaryInterfaceBase<Add_>;
+      /// Construct an addition operation that does not permute the result tile
+      Add() : BinaryInterface_() { }
 
-      // Element operation functor types
+      /// Permute constructor
 
-      typedef Plus<typename Left::value_type, typename Right::value_type,
-          typename Result::value_type> plus_op;
+      /// Construct an addition operation that permutes the result tensor
+      /// \param perm The permutation to apply to the result tile
+      explicit Add(const Permutation& perm) : BinaryInterface_(perm) { }
 
+      /// Copy constructor
+
+      /// \param other The addition operation object to be copied
+      Add(const Add_& other) : BinaryInterface_(other) { }
+
+      /// Copy assignment
+
+      /// \param other The addition operation object to be copied
+      /// \return A reference to this object
+      Add_& operator=(const Add_& other) {
+        BinaryInterface_::operator =(other);
+        return *this;
+      }
+
+      // Import interface from base class
+      using BinaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(const Left& first, const Right& second) const {
-        return result_type(first, second, plus_op(), perm_);
+        return first.add(second, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, const Right& second) const {
-        return result_type(second, perm_);
+        return second.permute(BinaryInterface_::permutation());
       }
 
       result_type permute(const Left& first, zero_right_type) const {
-        return result_type(first, perm_);
+        return first.permute(BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -132,35 +148,6 @@ namespace TiledArray {
       no_permute(Left& first, zero_right_type) {
         return first;
       }
-
-    public:
-      /// Default constructor
-
-      /// Construct an addition operation that does not permute the result tile
-      Add() : perm_() { }
-
-      /// Permute constructor
-
-      /// Construct an addition operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Add(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The addition operation object to be copied
-      Add(const Add_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The addition operation object to be copied
-      /// \return A reference to this object
-      Add_& operator=(const Add_& other) {
-        perm_ = other.perm_;
-        return *this;
-      }
-
-      // Import interface from base class
-      using BinaryInterface_::operator();
 
     }; // class Add
 

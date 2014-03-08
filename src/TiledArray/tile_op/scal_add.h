@@ -60,34 +60,64 @@ namespace TiledArray {
       typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
-      Permutation perm_; ///< The result permutation
+
       scalar_type factor_; ///< The scaling factor
 
-      // Make friends with base classes
-      friend class BinaryInterface<ScalAdd_>;
-      friend class BinaryInterfaceBase<ScalAdd_>;
+    public:
+      /// Default constructor
 
-      // Element operation functor types
+      /// Construct an addition operation that does not permute the result tile
+      /// and has a scaling factor of 1.
+      ScalAdd() : BinaryInterface_(), factor_(1) { }
 
-      typedef ScalPlus<typename Left::value_type,
-          typename Right::value_type, typename Result::value_type> scal_plus_op;
-      typedef Scale<typename Left::value_type> scale_left_op;
-      typedef Scale<typename Right::value_type> scale_right_op;
+      /// Permute constructor
+
+      /// Construct an addition operation that scales the result tensor
+      /// \param factor The scaling factor for the operation [default = 1]
+      explicit ScalAdd(const scalar_type factor) :
+        BinaryInterface_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct an addition operation that permutes and scales the result tensor
+      /// \param perm The permutation to apply to the result tile
+      /// \param factor The scaling factor for the operation [default = 1]
+      explicit ScalAdd(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+        BinaryInterface_(perm), factor_(factor)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The addition operation object to be copied
+      ScalAdd(const ScalAdd_& other) : BinaryInterface_(other), factor_(other.factor_) { }
+
+      /// Copy assignment
+
+      /// \param other The addition operation object to be copied
+      /// \return A reference to this object
+      ScalAdd_& operator=(const ScalAdd_& other) {
+        BinaryInterface_::operator =(other);
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      using BinaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return result_type(first, second, scal_plus_op(factor_), perm_);
+        return first.add(second, factor_, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, second_argument_type second) const {
-        return result_type(second, scale_right_op(factor_), perm_);
+        return second.scale(factor_, BinaryInterface_::permutation());
       }
 
       result_type permute(first_argument_type first, zero_right_type) const {
-        return result_type(first, scale_left_op(factor_), perm_);
+        return first.scale(factor_, BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -136,47 +166,6 @@ namespace TiledArray {
       no_permute(first_argument_type first, zero_right_type) const {
         return first.scale_to(factor_);
       }
-
-    public:
-      /// Default constructor
-
-      /// Construct an addition operation that does not permute the result tile
-      /// and has a scaling factor of 1.
-      ScalAdd() : perm_(), factor_(1) { }
-
-      /// Permute constructor
-
-      /// Construct an addition operation that scales the result tensor
-      /// \param factor The scaling factor for the operation [default = 1]
-      ScalAdd(const scalar_type factor) :
-        perm_(), factor_(factor)
-      { }
-
-      /// Permute constructor
-
-      /// Construct an addition operation that permutes and scales the result tensor
-      /// \param perm The permutation to apply to the result tile
-      /// \param factor The scaling factor for the operation [default = 1]
-      ScalAdd(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
-        perm_(perm), factor_(factor)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The addition operation object to be copied
-      ScalAdd(const ScalAdd_& other) : perm_(other.perm_), factor_(other.factor_) { }
-
-      /// Copy assignment
-
-      /// \param other The addition operation object to be copied
-      /// \return A reference to this object
-      ScalAdd_& operator=(const ScalAdd_& other) {
-        perm_ = other.perm_;
-        factor_ = other.factor_;
-        return *this;
-      }
-
-      using BinaryInterface_::operator();
 
     }; // class ScalAdd
 
