@@ -55,7 +55,7 @@ namespace TiledArray {
       UnaryEvalImpl(const arg_type& arg, madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm, const op_type& op) :
-        DistEvalImpl_(world, arg.trange(), shape, pmap, perm),
+        DistEvalImpl_(world, trange, shape, pmap, perm),
         arg_(arg),
         op_(op)
       { }
