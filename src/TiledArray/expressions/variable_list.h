@@ -200,6 +200,26 @@ namespace TiledArray {
         return detail::var_perm(*this, other);
       }
 
+      /// Check that this variable list is a permutation of \c other
+
+      /// \return \c true if all variable in this variable list are in \c other,
+      /// otherwise \c false.
+      bool is_permutation(const VariableList& other) const {
+        if(vars_.size() != other.vars_.size())
+          return false;
+
+        for(const_iterator it = begin(); it != end(); ++it) {
+          const_iterator other_it = other.begin();
+          for(; other_it != other.end(); ++other_it)
+            if(*it == *other_it)
+              break;
+          if(other_it == other.end())
+            return false;
+        }
+
+        return true;
+      }
+
     private:
 
       /// Copies a comma separated list into a vector of strings. All spaces are
