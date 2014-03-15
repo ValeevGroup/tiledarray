@@ -335,7 +335,7 @@ namespace TiledArray {
       typedef typename Policy::range_type range_type; ///< Tile range type
       typedef typename Policy::size_type size_type; ///< Size type
       typedef typename Policy::shape_type shape_type; ///< Tensor shape type
-      typedef Pmap pmap_interface; ///< Process map interface type
+      typedef typename Policy::pmap_interface pmap_interface; ///< Process map interface type
       typedef Tile value_type; ///< Tile or data type
       typedef typename expression_traits<Tile>::eval_type eval_type; ///< The tile evaluation type
       typedef typename TiledArray::detail::scalar_type<typename value_type::value_type>::type
@@ -365,7 +365,8 @@ namespace TiledArray {
       /// zero
       TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap) :
-        trange_(trange), shape_(shape), data_(world, trange_.tiles().volume(), pmap)
+        trange_(trange), shape_(shape), data_(world, trange_.tiles().volume(),
+            (pmap != NULL ? pmap : Policy::default_pmap(world, trange.tiles().volume())))
       {
         TA_ASSERT(shape_.validate(trange_.tiles()));
       }
