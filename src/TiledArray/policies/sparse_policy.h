@@ -34,20 +34,21 @@ namespace TiledArray {
 
   class SparsePolicy {
   public:
-    typedef TiledRange trange_type;
+    typedef TiledArray::TiledRange trange_type;
     typedef typename trange_type::range_type range_type;
     typedef typename range_type::size_type size_type;
-    typedef SparseShape<float> shape_type;
-    typedef detail::BlockedPmap default_pmap_type;
+    typedef TiledArray::SparseShape<float> shape_type;
+    typedef TiledArray::Pmap pmap_interface;
+    typedef TiledArray::detail::BlockedPmap default_pmap_type;
 
     /// Create a default process map
 
     /// \param world The world of the process map
     /// \param size The number of tiles in the array
     /// \return A shared pointer to a process map
-    static std::shared_ptr<TiledArray::Pmap>
+    static std::shared_ptr<pmap_interface>
     default_pmap(madness::World& world, const std::size_t size) {
-      return std::shared_ptr<TiledArray::Pmap>(new default_pmap_type(world, size));
+      return std::shared_ptr<pmap_interface>(new default_pmap_type(world, size));
     }
   }; // class SparsePolicy
 
