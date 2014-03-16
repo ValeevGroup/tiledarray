@@ -56,8 +56,8 @@ BOOST_AUTO_TEST_CASE( constructors )
     BOOST_CHECK(! it->probe());
 
   // Construct a sparse array
-  BOOST_REQUIRE_NO_THROW(SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, 0.5)));
-  SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, 0.5));
+  BOOST_REQUIRE_NO_THROW(SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr)));
+  SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr));
 
   // Check that none of the tiles have been set.
   for(SpArrayN::const_iterator it = as.begin(); it != as.end(); ++it)

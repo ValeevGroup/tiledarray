@@ -31,11 +31,13 @@
 #include "TiledArray/tile_op/contract_reduce.h"
 #include "TiledArray/eigen.h"
 #include "TiledArray/proc_grid.h"
+#include "TiledArray/tile_op/noop.h"
 #include "array_fixture.h"
+#include "sparse_shape_fixture.h"
 
 using namespace TiledArray;
 
-struct ContractionEvalFixture : public TiledRangeFixture {
+struct ContractionEvalFixture : public SparseShapeFixture {
   typedef Array<int, GlobalFixture::dim> ArrayN;
   typedef math::Noop<ArrayN::value_type::eval_type,
       ArrayN::value_type::eval_type, true> array_op_type;
@@ -133,21 +135,6 @@ struct ContractionEvalFixture : public TiledRangeFixture {
     }
 
     return matrix;
-  }
-
-  static SparseShape<float> make_shape(const Range& range, const float fill_percent, const int seed) {
-    GlobalFixture::world->srand(seed);
-    float max = 0.0f;
-    const float threshold = fill_percent * 27.0f;
-    Tensor<float> shape_data(range);
-    for(std::size_t i = 0ul; i < range.volume(); ++i) {
-      shape_data[i] = GlobalFixture::world->rand();
-      max = std::max(max, shape_data[i]);
-    }
-
-    shape_data *= 27.0f / max;
-
-    return SparseShape<float>(shape_data, threshold);
   }
 
   ArrayN left;
@@ -278,9 +265,9 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   typedef detail::DistEval<detail::LazyArrayTile<array_type::value_type, array_op_type>,
       SparsePolicy> array_eval_type;
 
-  array_type left(*GlobalFixture::world, tr, make_shape(tr.tiles(), 0.1, 23));
+  array_type left(*GlobalFixture::world, tr, make_shape(tr, 0.1, 23));
 
-  array_type right(*GlobalFixture::world, tr, make_shape(tr.tiles(), 0.1, 42));
+  array_type right(*GlobalFixture::world, tr, make_shape(tr, 0.1, 42));
 
   // Fill arrays with random data
   rand_fill_array(left);

@@ -19,7 +19,7 @@
 
 #include "TiledArray/tensor_impl.h"
 #include "TiledArray/tensor.h"
-#include "range_fixture.h"
+#include "sparse_shape_fixture.h"
 #include "unit_test_config.h"
 #include "TiledArray/pmap/hash_pmap.h"
 #include "TiledArray/policies/dense_policy.h"
@@ -27,19 +27,13 @@
 
 using namespace TiledArray;
 
-struct TensorImplBaseFixture : public TiledRangeFixture {
+struct TensorImplBaseFixture : public SparseShapeFixture {
   typedef Tensor<int> value_type;
   typedef detail::TensorImpl<value_type, DensePolicy> tensor_impl_base;
   TensorImplBaseFixture() :
-    shape_tensor(tr.tiles(), 0.0),
     pmap(new detail::HashPmap(* GlobalFixture::world, tr.tiles().volume()))
-  {
-    for(Tensor<float>::iterator it = shape_tensor.begin(); it != shape_tensor.end(); ++it)
-      if((std::distance(shape_tensor.begin(), it) % 3) == 0)
-        *it = 1.0;
-  }
+  { }
 
-  Tensor<float> shape_tensor;
   std::shared_ptr<tensor_impl_base::pmap_interface> pmap;
 }; // struct TensorImplBaseFixture
 
@@ -53,7 +47,7 @@ struct TensorImplFixture : public TensorImplBaseFixture {
 
   TensorImplFixture() :
     impl(* GlobalFixture::world, tr, dense_shape_type(), pmap),
-    sp_impl(* GlobalFixture::world, tr, sparse_shape_type(shape_tensor, 0.5), pmap)
+    sp_impl(* GlobalFixture::world, tr, make_shape(tr, 0.5, 42), pmap)
   { }
 
   ~TensorImplFixture() {
@@ -84,8 +78,8 @@ BOOST_AUTO_TEST_CASE( constructor_dense_policy )
 
 BOOST_AUTO_TEST_CASE( constructor_shape_policy )
 {
-  BOOST_REQUIRE_NO_THROW(sp_tensor_impl_base(* GlobalFixture::world, tr, sparse_shape_type(shape_tensor, 0.5), pmap));
-  sp_tensor_impl_base x(* GlobalFixture::world, tr, sparse_shape_type(shape_tensor, 0.5), pmap);
+  BOOST_REQUIRE_NO_THROW(sp_tensor_impl_base(* GlobalFixture::world, tr, make_shape(tr, 0.5, 23), pmap));
+  sp_tensor_impl_base x(* GlobalFixture::world, tr, make_shape(tr, 0.5, 23), pmap);
 
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
