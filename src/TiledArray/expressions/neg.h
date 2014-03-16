@@ -20,31 +20,69 @@
 #ifndef TILEDARRAY_EXPRESSIONS_TSR_NEG_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_TSR_NEG_H__INCLUDED
 
+#include <TiledArray/expressions/unary.h>
+#include <TiledArray/dist_eval/unary_eval.h>
+#include <TiledArray/tile_op/neg.h>
+
 namespace TiledArray {
   namespace expressions {
 
-    template <typename ExpArg>
-    class TsrNeg : public UnaryBase<TsrNeg<ExpArg> > {
-    private:
-      typedef UnaryBase<TsrNeg<ExpArg> > base;
+    /// Addition expression
 
+    /// \tparam Arg The argument expression type
+    template <typename Arg>
+    class Neg : public Unary<Neg<Arg> > {
     public:
-      typedef ExpArg arg_exp_type;
-      typedef NegateTsr<ExpArg> tensor_type;
-      typedef ScalNegateTsr<ExpArg> scaled_tensor_type;
+      typedef Unary<Neg<Arg> > Unary_; ///< Unary base class type
+      typedef typename Unary_::Base_ Base_; ///< Base expression type
+      typedef Arg argument_type; ///< The argument expression type
+      typedef TiledArray::math::Neg<typename argument_type::eval_type,
+          typename argument_type::eval_type, argument_type::consumable> op_type; ///< The tile operation type
+      typedef typename op_type::result_type value_type; ///< The result tile type
+      typedef typename argument_type::policy policy; ///< The result policy type
+      typedef DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
-      TsrNeg(const arg_exp_type& arg) :
-        base(arg)
-      { }
+      /// Expression constructor
 
-      TsrNeg(const TsrNeg<ExpArg>& other) :
-        base(other)
-      { }
+      /// \param arg The argument expression
+      Neg(const argument_type& arg) : Unary_(arg) { }
 
-      using base::derived;
-      using base::arg;
+      /// Copy constructor
 
-    }; // class TsrNeg
+      /// \param other The expression to be copied
+      Neg(const Neg<Arg>& other) : Unary_(other) { }
+
+      /// Non-permuting shape factory function
+
+      /// \param arg_shape The shape of the argument
+      /// \return The result shape
+      static typename dist_eval_type::shape_type
+      make_shape(const typename argument_type::shape_type& arg_shape) const {
+        return arg_shape;
+      }
+
+      /// Permuting shape factory function
+
+      /// \param arg_shape The shape of the argument
+      /// \param perm The permutation to be applied to the argument
+      /// \return The result shape
+      static typename dist_eval_type::shape_type
+      make_shape(const typename argument_type::shape_type& arg_shape, const Permutation& perm) const {
+        return arg_shape.perm(perm);
+      }
+
+      /// Non-permuting tile operation factory function
+
+      /// \return The tile operation
+      static op_type make_tile_op() const { return op_type(); }
+
+      /// Permuting tile operation factory function
+
+      /// \param perm The permutation to be applied to tiles
+      /// \return The tile operation
+      static op_type make_tile_op(const Permutation& perm) const { return op_type(perm); }
+
+    }; // class Add
 
   }  // namespace expressions
 } // namespace TiledArray
