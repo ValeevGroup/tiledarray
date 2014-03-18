@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_EXPRESSIONS_UNARY_BASE_H__INCLUDED
-#define TILEDARRAY_EXPRESSIONS_UNARY_BASE_H__INCLUDED
+#ifndef TILEDARRAY_EXPRESSIONS_UNARY_H__INCLUDED
+#define TILEDARRAY_EXPRESSIONS_UNARY_H__INCLUDED
 
 #include <TiledArray/expressions/base.h>
 #include <TiledArray/dist_eval/unary_eval.h>
@@ -148,4 +148,4 @@ namespace TiledArray {
   }  // namespace expressions
 } // namespace TiledArray
 
-#endif // TILEDARRAY_EXPRESSIONS_UNARY_BASE_H__INCLUDED
+#endif // TILEDARRAY_EXPRESSIONS_UNARY_H__INCLUDED
