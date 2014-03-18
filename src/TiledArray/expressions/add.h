@@ -116,8 +116,8 @@ namespace TiledArray {
       typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
       typedef typename op_type::result_type value_type; ///< The result tile type
       typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef BinaryEvalImpl<typename left_type::dist_eval,
-          typename right_type::dist_eval, op_type, policy> binary_impl_type; ///< The distributed evaluator impl type
+      typedef BinaryEvalImpl<typename left_type::dist_eval_type,
+          typename right_type::dist_eval_type, op_type, policy> binary_impl_type; ///< The distributed evaluator impl type
       typedef DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
     private:

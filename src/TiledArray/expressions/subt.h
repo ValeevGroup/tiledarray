@@ -44,9 +44,9 @@ namespace TiledArray {
           left_type::consumable, right_type::consumable> op_type; ///< The tile operation type
       typedef typename op_type::result_type value_type; ///< The result tile type
       typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef BinaryEvalImpl<typename left_type::dist_eval,
-          typename right_type::dist_eval, op_type, policy> binary_impl_type; ///< The distributed evaluator impl type
-      typedef DistEval<value_type, policy> dist_eval; ///< The distributed evaluator type
+      typedef BinaryEvalImpl<typename left_type::dist_eval_type,
+          typename right_type::dist_eval_type, op_type, policy> binary_impl_type; ///< The distributed evaluator impl type
+      typedef DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
       /// Expression constructor
 
@@ -72,7 +72,7 @@ namespace TiledArray {
       /// \param left The shape of the left-hand argument
       /// \param right The shape of the right-hand argument
       /// \return The result shape
-      static typename dist_eval::shape_type
+      static typename dist_eval_type::shape_type
       make_shape(const typename left_type::shape_type& left_shape,
           const typename right_type::shape_type& right_shape) {
         return left_shape.add(right_shape);
@@ -84,7 +84,7 @@ namespace TiledArray {
       /// \param right The shape of the right-hand argument
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
-      static typename dist_eval::shape_type
+      static typename dist_eval_type::shape_type
       make_shape(const typename left_type::shape_type& left_shape,
           const typename right_type::shape_type& right_shape, const Permutation& perm) {
         return left_shape.add(right_shape, perm);
@@ -126,9 +126,9 @@ namespace TiledArray {
       typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
       typedef typename op_type::result_type value_type; ///< The result tile type
       typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef BinaryEvalImpl<typename left_type::dist_eval,
-          typename right_type::dist_eval, op_type, policy> binary_impl_type; ///< The distributed evaluator impl type
-      typedef DistEval<value_type, policy> dist_eval; ///< The distributed evaluator type
+      typedef BinaryEvalImpl<typename left_type::dist_eval_type,
+          typename right_type::dist_eval_type, op_type, policy> binary_impl_type; ///< The distributed evaluator impl type
+      typedef DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
     private:
 
@@ -177,7 +177,7 @@ namespace TiledArray {
       /// \param left The shape of the left-hand argument
       /// \param right The shape of the right-hand argument
       /// \return The result shape
-      typename dist_eval::shape_type
+      typename dist_eval_type::shape_type
       make_shape(const typename left_type::shape_type& left_shape,
           const typename right_type::shape_type& right_shape) {
         return left_shape.add(right_shape, factor_);
@@ -189,7 +189,7 @@ namespace TiledArray {
       /// \param right The shape of the right-hand argument
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
-      typename dist_eval::shape_type
+      typename dist_eval_type::shape_type
       make_shape(const typename left_type::shape_type& left_shape,
           const typename right_type::shape_type& right_shape, const Permutation& perm) {
         return left_shape.add(right_shape, factor_, perm);

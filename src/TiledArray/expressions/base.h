@@ -43,7 +43,7 @@ namespace TiledArray {
     public:
 
       typedef Derived derived_type; ///< The derived object type
-      typedef typename Derived::disteval_type disteval_type; ///< The distributed evaluator type
+      typedef typename Derived::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       /// Default constructor
       Base() : vars_() { }
@@ -88,16 +88,16 @@ namespace TiledArray {
           pmap = tsr.array().get_pmap();
 
         // Create the distributed evaluator from this expression
-        disteval_type dist_eval = derived().make_dist_eval(world, tsr.vars(), pmap);
+        dist_eval_type dist_eval = derived().make_dist_eval(world, tsr.vars(), pmap);
 
         // Create the result array
         typename Tsr<A>::array_type result(dist_eval.get_world(), dist_eval.trange(),
             dist_eval.shape(), dist_eval.pmap());
 
         // Move the data from disteval into the result array
-        typename disteval_type::pmap_interface::const_iterator it =
+        typename dist_eval_type::pmap_interface::const_iterator it =
             dist_eval.pmap().begin();
-        const typename disteval_type::pmap_interface::const_iterator end =
+        const typename dist_eval_type::pmap_interface::const_iterator end =
             dist_eval.pmap().end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))
@@ -132,16 +132,16 @@ namespace TiledArray {
         std::shared_ptr<typename Tsr<A>::array_type::pmap_interface> pmap;
 
         // Create the distributed evaluator from this expression
-        disteval_type dist_eval = derived().make_dist_eval(world,
+        dist_eval_type dist_eval = derived().make_dist_eval(world,
             derived().vars(), pmap);
 
         // Create a local reduction task
         TiledArray::detail::ReduceTask<Op> reduce_task(world, op);
 
         // Move the data from dist_eval into the local reduction task
-        typename disteval_type::pmap_interface::const_iterator it =
+        typename dist_eval_type::pmap_interface::const_iterator it =
             dist_eval.pmap().begin();
-        const typename disteval_type::pmap_interface::const_iterator end =
+        const typename dist_eval_type::pmap_interface::const_iterator end =
             dist_eval.pmap().end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))

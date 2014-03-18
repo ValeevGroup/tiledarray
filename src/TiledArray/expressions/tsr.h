@@ -270,7 +270,7 @@ namespace TiledArray {
 
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
-      typename dist_eval::shape_type
+      typename dist_eval_type::shape_type
       make_shape(const Permutation& perm) { return array_.get_shape().perm(perm); }
 
       /// Non-permuting tile operation factory function

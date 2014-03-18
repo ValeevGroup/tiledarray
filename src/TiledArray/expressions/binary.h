@@ -147,20 +147,20 @@ namespace TiledArray {
       /// \param pmap The process map for the output
       /// \return The distributed evaluator that will evaluate this expression
       dist_eval_type make_dist_eval(madness::World& world, const VariableList& target_vars,
-          const std::shared_ptr<typename dist_eval::pmap_interface>& pmap) const
+          const std::shared_ptr<typename dist_eval_type::pmap_interface>& pmap) const
       {
-        typedef BinaryEvalImpl<typename left_type::dist_eval,
-            typename right_type::dist_eval, op_type, policy>
+        typedef BinaryEvalImpl<typename left_type::dist_eval_type,
+            typename right_type::dist_eval_type, op_type, policy>
           binary_impl_type;
         // Verify input
         TA_ASSERT(pmap->procs() == world.size());
 
         // Construct left and right distributed evaluators
-        const typename left_type::dist_eval left =
+        const typename left_type::dist_eval_type left =
             left_.make_dist_eval(world, Base_::vars_, pmap);
         if(pmap == NULL)
           pmap = left.pmap();
-        const typename right_type::dist_eval right =
+        const typename right_type::dist_eval_type right =
             right_.make_dist_eval(world, Base_::vars_, pmap);
 
         // Check that the tiled ranges of the left- and right-hand arguments are equal.

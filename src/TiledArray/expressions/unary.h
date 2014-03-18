@@ -91,14 +91,14 @@ namespace TiledArray {
       /// \param pmap The process map for the output
       /// \return The distributed evaluator that will evaluate this expression
       dist_eval_type make_dist_eval(madness::World& world, const VariableList& target_vars,
-          const std::shared_ptr<typename dist_eval::pmap_interface>& pmap) const
+          const std::shared_ptr<typename dist_eval_type::pmap_interface>& pmap) const
       {
         // Verify input
         TA_ASSERT(pmap->procs() == world.size());
 
 
         // Construct left and right distributed evaluators
-        typename argument_type::dist_eval arg =
+        typename argument_type::dist_eval_type arg =
             arg_.make_dist_eval(world, Base_::vars_, pmap);
 
         // If the pmap provided was NULL, the use the pmap from the argument.
