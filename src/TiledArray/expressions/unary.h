@@ -30,7 +30,6 @@ namespace TiledArray {
 
     public:
       typedef typename Derived::argument_type argument_type; ///< The expression type
-      typedef typename Derived::unary_impl_type unary_impl_type; ///< The unary distributed evaluator implementation type
       typedef typename Derived::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
 
       static const bool consumable = true;
@@ -93,6 +92,9 @@ namespace TiledArray {
       dist_eval_type make_dist_eval(madness::World& world, const VariableList& target_vars,
           const std::shared_ptr<typename dist_eval_type::pmap_interface>& pmap) const
       {
+        typedef UnaryEvalImpl<typename argument_type::dist_eval_type,
+            typename Derived::op_type, typename dist_eval_type::policy> unary_impl_type;
+
         // Verify input
         TA_ASSERT(pmap->procs() == world.size());
 

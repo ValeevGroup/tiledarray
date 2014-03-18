@@ -150,8 +150,9 @@ namespace TiledArray {
           const std::shared_ptr<typename dist_eval_type::pmap_interface>& pmap) const
       {
         typedef BinaryEvalImpl<typename left_type::dist_eval_type,
-            typename right_type::dist_eval_type, op_type, policy>
-          binary_impl_type;
+            typename right_type::dist_eval_type, typename Derived::op_type,
+            typename dist_eval_type::policy> binary_impl_type;
+
         // Verify input
         TA_ASSERT(pmap->procs() == world.size());
 

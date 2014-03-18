@@ -39,9 +39,10 @@ namespace TiledArray {
       typedef typename Binary_::Base_ Base_; ///< Base expression type
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
-      typedef TiledArray::math::Add<typename left_type::eval_type,
-          typename left_type::eval_type, typename right_type::eval_type,
-          left_type::consumable, right_type::consumable> op_type; ///< The tile operation type
+      typedef typename left_type::eval_type value_type; ///< The result tile type
+      typedef TiledArray::math::Add<value_type, typename left_type::eval_type,
+          typename right_type::eval_type, left_type::consumable,
+          right_type::consumable> op_type; ///< The tile operation type
       typedef typename op_type::result_type value_type; ///< The result tile type
       typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
       typedef DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type

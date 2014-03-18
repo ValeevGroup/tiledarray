@@ -41,10 +41,10 @@ namespace TiledArray {
       typedef Unary<Scal<Arg> > Unary_; ///< Binary base class type
       typedef typename Unary_::Base_ Base_; ///< Base expression type
       typedef Arg argument_type; ///< The argument expression type
-      typedef TiledArray::math::Scal<typename argument_type::eval_type,
-          typename argument_type::eval_type, argument_type::consumable> op_type; ///< The tile operation type
+      typedef typename argument_type::eval_type value_type; ///< The result tile type
+      typedef TiledArray::math::Scal<value_type, typename argument_type::eval_type,
+          argument_type::consumable> op_type; ///< The tile operation type
       typedef typename op_type::scalar_type scalar_type; ///< The scalar type
-      typedef typename op_type::result_type value_type; ///< The result tile type
       typedef typename argument_type::policy policy; ///< The result policy type
       typedef DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
