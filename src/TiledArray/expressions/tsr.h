@@ -79,11 +79,11 @@ namespace TiledArray {
       void init_vars(const VariableList& target_vars) {
 #ifndef NDEBUG
         if(! target_vars.is_permutation(Base_::vars_)) {
-          if(derived().array().get_world().rank() == 0) {
+          if(madness::World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The array variable list is not compatible with the expected output:" \
-                << "\n    array    = " << Base_::vars_ << \
-                << "\n    expected = " << target_vars << "." );
+                << "\n    expected = " << target_vars << \
+                << "\n    array    = " << Base_::vars_ );
           }
 
           TA_EXCEPTION("Target variable is not a permutation of the given array variable list.");
