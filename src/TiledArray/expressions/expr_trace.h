@@ -49,7 +49,7 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The stream object to be copied
-      ExprOStream(const ExprOStream& other) : os_(other.os_), tab_(other.tab_) { }
+      ExprOStream(const ExprOStream& other) : os_(other.os_), tab_(other.tab_ + 1u) { }
 
       /// Output operator
 
