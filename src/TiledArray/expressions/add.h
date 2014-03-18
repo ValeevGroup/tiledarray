@@ -21,7 +21,6 @@
 #define TILEDARRAY_EXPRESSIONS_ADD_H__INCLUDED
 
 #include <TiledArray/expressions/binary.h>
-#include <TiledArray/dist_eval/binary_eval.h>
 #include <TiledArray/tile_op/add.h>
 #include <TiledArray/tile_op/scal_add.h>
 

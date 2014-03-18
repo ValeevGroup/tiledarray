@@ -21,6 +21,7 @@
 #define TILEDARRAY_EXPRESSIONS_BINARY_H__INCLUDED
 
 #include <TiledArray/expressions/base.h>
+#include <TiledArray/dist_eval/binary_eval.h>
 
 namespace TiledArray {
   namespace expressions {
