@@ -130,6 +130,15 @@ namespace TiledArray {
       /// \return The tile operation
       op_type make_tile_op(const Permutation& perm) const { return op_type(perm, factor_); }
 
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      std::string print_tag() const {
+        std::stringstream ss;
+        ss << "[" << factor_ << "]";
+        return ss.str();
+      }
+
     }; // class ScalTsr
 
   }  // namespace expressions

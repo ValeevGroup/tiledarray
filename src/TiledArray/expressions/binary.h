@@ -195,6 +195,21 @@ namespace TiledArray {
         return dist_eval_type(pimpl);
       }
 
+      /// Expression print
+
+      /// \param os The output stream
+      /// \param target_vars The target variable list for this expression
+      void print(ExprOStream os, const VariableList& target_vars) const {
+        if(target_vars != Base_::vars_) {
+          const Permutation perm = target_vars.permutation(Base_::vars());
+          os << "[P" << perm << "] " << derived().print_tag() << " " << Base_::vars_ << "\n";
+        } else {
+          os << derived().print_tag() << Base_::vars_ << "\n";
+        }
+
+        left_.print(os, Base_::vars_);
+        right_.print(os, Base_::vars_);
+      }
     }; // class Binary
 
   }  // namespace expressions

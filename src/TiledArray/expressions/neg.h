@@ -82,6 +82,11 @@ namespace TiledArray {
       /// \return The tile operation
       static op_type make_tile_op(const Permutation& perm) const { return op_type(perm); }
 
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      const char* print_tag() const { return "[-1]"; }
+
     }; // class Add
 
   }  // namespace expressions

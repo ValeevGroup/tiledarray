@@ -271,7 +271,12 @@ namespace TiledArray {
         return op_type(perm, factor_);
       }
 
-    }; // class ScalAdd
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      const char* print_tag() const { return "[*]"; }
+
+    }; // class Mult
 
   }  // namespace expressions
 } // namespace TiledArray

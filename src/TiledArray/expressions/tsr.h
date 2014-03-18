@@ -131,6 +131,20 @@ namespace TiledArray {
 
         return dist_eval_type(pimpl);
       }
+
+      /// Expression print
+
+      /// \param os The output stream
+      /// \param target_vars The target variable list for this expression
+      void print(ExprOStream os, const VariableList& target_vars) const {
+        if(target_vars != Base_::vars_) {
+          const Permutation perm = target_vars.permutation(Base_::vars());
+          os << "[P" << perm << "] " << derived().print_tag() << " [Array] " << Base_::vars_ << "\n";
+        } else {
+          os << derived().print_tag() << " [Array] " << Base_::vars_ << "\n";
+        }
+      }
+
     }; // class TsrBase
 
     template <typename> class Tsr;
@@ -270,6 +284,11 @@ namespace TiledArray {
       /// \return The tile operation
       op_type make_tile_op(const Permutation& perm) const { return op_type(perm); }
 
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      const char* print_tag() const { return ""; }
+
     }; // class Tsr
 
 
@@ -354,6 +373,12 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
       op_type make_tile_op(const Permutation& perm) const { return op_type(perm); }
+
+
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      const char* print_tag() const { return ""; }
 
     }; // class Tsr<const A>
 

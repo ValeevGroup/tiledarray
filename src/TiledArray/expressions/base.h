@@ -20,6 +20,9 @@
 #ifndef TILEDARRAY_EXPRESSIONS_BASE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_BASE_H__INCLUDED
 
+#include <TiledArray/expressions/variable_list.h>
+#include <TiledArray/expressions/expr_trace.h>
+
 namespace TiledArray {
   namespace expressions {
 
