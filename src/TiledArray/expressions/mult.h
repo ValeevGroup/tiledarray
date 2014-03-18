@@ -36,7 +36,7 @@ namespace TiledArray {
     template <typename Left, typename Right>
     class Mult : public Binary<Mult<Left, Right> > {
     public:
-      typedef Binary<Add<Left, Right> > Binary_; ///< Binary base class type
+      typedef Binary<Mult<Left, Right> > Binary_; ///< Binary base class type
       typedef typename Binary_::Base_ Base_; ///< Base expression type
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
