@@ -59,7 +59,7 @@ namespace TiledArray {
       /// Argument expression accessor
 
       /// \return A const reference to the argument expression object
-      const right_type& arg() const { return arg_; }
+      const argument_type& arg() const { return arg_; }
 
       /// Set the variable list for this expression
 
