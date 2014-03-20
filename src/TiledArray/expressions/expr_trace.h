@@ -56,7 +56,7 @@ namespace TiledArray {
       /// \tparam T The object type
       /// \param t The object to be added to the steam
       template <typename T>
-      std::ostream& operator <<(const T& t) const {
+      std::ostream& operator <<(const T& t) {
         for(unsigned int i = 0u; i < tab_; ++i) {
           os_ << "  ";
         }
@@ -105,7 +105,7 @@ namespace TiledArray {
       /// \param expr The expression to be printed
       /// \return The output stream
       template <typename D>
-      std::ostream& operator=(const Base<D>& expr) {
+      std::ostream& operator<<(const Base<D>& expr) {
         if(madness::World::get_default().rank() == 0) {
           os_ << target_vars_ << " =\n";
 

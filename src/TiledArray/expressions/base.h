@@ -126,6 +126,19 @@ namespace TiledArray {
       /// Permute tile accessor
       bool permute_tiles() const { return permute_tiles_; }
 
+      /// Expression print
+
+      /// \param os The output stream
+      /// \param target_vars The target variable list for this expression
+      void print(ExprOStream& os, const VariableList& target_vars) const {
+        if((target_vars != vars_) && permute_tiles_) {
+          const Permutation perm = target_vars.permutation(vars_);
+          os << "[P" << perm << "] " << derived().print_tag() << " " << Base_::vars_ << "\n";
+        } else {
+          os << derived().print_tag() << vars_ << "\n";
+        }
+      }
+
     private:
 
       struct ExpressionReduceTag { };
