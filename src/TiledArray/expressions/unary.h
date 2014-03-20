@@ -67,6 +67,8 @@ namespace TiledArray {
       /// children such that the number of permutations is minimized.
       /// \param target_vars The target variable list for this expression
       void vars(const VariableList& target_vars) {
+        TA_ASSERT(Base_::permute_tiles_);
+
         Base_::vars_ = target_vars;
         if(arg_.vars() != target_vars)
           arg_.vars(target_vars);
@@ -118,7 +120,7 @@ namespace TiledArray {
 
           pimpl.reset(new unary_impl_type(arg, world, perm ^ arg.trange(),
               derived().make_shape(arg.shape(), perm), pmap, perm,
-              derived().make_tile_op(perm)));
+              (Base_::permute_tiles_ ? derived().make_tile_op(perm) : derived().make_tile_op())));
         } else {
           pimpl.reset(new unary_impl_type(arg, world, arg.trange(),
               derived().make_shape(arg.shape()), pmap, perm,

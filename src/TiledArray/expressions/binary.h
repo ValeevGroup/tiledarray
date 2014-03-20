@@ -94,6 +94,8 @@ namespace TiledArray {
       /// result of this expression will be permuted to match \c target_vars.
       /// \param target_vars The target variable list for this expression
       void vars(const VariableList& target_vars) {
+        TA_ASSERT(Base_::permute_tiles_);
+
         // Determine the equality of the variable lists
         bool left_target = true, right_target = true, left_right = true;
         for(unsigned int i = 0u; i < target_vars.dim(); ++i) {
@@ -187,7 +189,7 @@ namespace TiledArray {
 
           pimpl.reset(new binary_impl_type(left, right, world, perm ^ left.trange(),
               derived().make_shape(left.shape(), right.shape(), perm), pmap, perm,
-              derived().make_tile_op(perm)));
+              (Base_::permute_tiles_ ? derived().make_tile_op(perm) : derived().make_tile_op())));
         } else {
           pimpl.reset(new binary_impl_type(left, right, world, left.trange(),
               derived().make_shape(left.shape(), right.shape()), pmap, perm,

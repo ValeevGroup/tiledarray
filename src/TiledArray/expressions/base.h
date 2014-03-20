@@ -34,6 +34,7 @@ namespace TiledArray {
     protected:
 
       VariableList vars_; ///< The variable list for the result of this expression
+      bool permute_tiles_; ///< Enables and disables permute
 
     private:
 
@@ -46,17 +47,19 @@ namespace TiledArray {
       typedef typename Derived::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       /// Default constructor
-      Base() : vars_() { }
+      Base() : vars_(), permute_tiles_(true) { }
 
       /// Variable list constructor
 
       /// \param vars The variable list for this expression
-      explicit Base(const VariableList& vars) : vars_(vars) { }
+      explicit Base(const VariableList& vars) : vars_(vars), permute_tiles_(true) { }
 
       /// Copy constructor
 
       /// \param other The expression to be copied
-      Base(const Base<Derived>& other) : vars_(other.vars_) { }
+      Base(const Base<Derived>& other) :
+        vars_(other.vars_), permute_tiles_(other.permute_tiles_)
+      { }
 
       /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
@@ -114,6 +117,14 @@ namespace TiledArray {
 
       /// \return a const reference to the variable list
       const VariableList& vars() const { return vars_; }
+
+      /// Enable or disable the tile permutation
+
+      /// \param permute New state for permute tile flag (true == permute, false == no_permute)
+      void permute_tiles(const bool permute) { permute_tiles_ = permute; }
+
+      /// Permute tile accessor
+      bool permute_tiles() const { return permute_tiles_; }
 
     private:
 

@@ -126,7 +126,8 @@ namespace TiledArray {
 
           pimpl.reset(new impl_type(derived().array(), world,
               perm ^ derived().array().trange(), derived().make_shape().perm(perm),
-              pmap, perm, derived().make_tile_op(perm)));
+              pmap, perm, (Base_::permute_tiles_ ? derived().make_tile_op(perm) :
+              derived().make_tile_op())));
         }
 
         return dist_eval_type(pimpl);
