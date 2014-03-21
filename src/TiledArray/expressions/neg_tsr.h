@@ -45,7 +45,7 @@ namespace TiledArray {
     class NegTsr<Array<T, DIM, Tile, Policy> > :
         public TsrBase<NegTsr<Array<T, DIM, Tile, Policy> > >
     {
-    private:
+    protected:
       typedef NegTsr<Array<T, DIM, Tile, Policy> > NegTsr_;
       typedef TsrBase<NegTsr_> TsrBase_;
       typedef typename TsrBase_::Base_ Base_;

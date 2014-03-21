@@ -38,8 +38,10 @@ namespace TiledArray {
 
     template <typename Derived>
     class TsrBase : public Base<Derived>{
-    public:
+    protected:
       typedef Base<Derived> Base_;
+
+    public:
       typedef typename Derived::dist_eval_type dist_eval_type;
 
       static const bool consumable = false;
@@ -155,7 +157,7 @@ namespace TiledArray {
     class Tsr<Array<T, DIM, Tile, Policy> > :
         public TsrBase<Tsr<Array<T, DIM, Tile, Policy> > >
     {
-    private:
+    protected:
       typedef Tsr<Array<T, DIM, Tile, Policy> > Tsr_;
       typedef TsrBase<Tsr_> TsrBase_;
       typedef typename TsrBase_::Base_ Base_;
@@ -300,7 +302,7 @@ namespace TiledArray {
     class Tsr<const Array<T, DIM, Tile, Policy> > :
         public TsrBase<Tsr<const Array<T, DIM, Tile, Policy> > >
     {
-    private:
+    protected:
       typedef Tsr<const Array<T, DIM, Tile, Policy> > Tsr_;
       typedef TsrBase<Tsr_> TsrBase_;
       typedef typename TsrBase_::Base_ Base_;

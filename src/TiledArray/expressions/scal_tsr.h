@@ -39,7 +39,7 @@ namespace TiledArray {
     class ScalTsr<Array<T, DIM, Tile, Policy> > :
         public TsrBase<ScalTsr<Array<T, DIM, Tile, Policy> > >
     {
-    private:
+    protected:
       typedef ScalTsr<Array<T, DIM, Tile, Policy> > ScalTsr_;
       typedef TsrBase<ScalTsr_> TsrBase_;
       typedef typename TsrBase_::Base_ Base_;
