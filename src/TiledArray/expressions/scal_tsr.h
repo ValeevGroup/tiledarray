@@ -50,7 +50,7 @@ namespace TiledArray {
           typename array_type::eval_type, false> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
-      typedef typename op_type::scalar_type ///< The scalar type
+      typedef typename op_type::scalar_type; ///< The scalar type
       typedef Policy policy; ///< Policy type
       typedef DistEval<value_type, policy> dist_eval_type; ///< Distributed evaluator
 
