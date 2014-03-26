@@ -366,8 +366,8 @@ namespace TiledArray {
       if(n > 1ul) {
         // Create a permuted copy of start and finish
         madness::ScopedArray<size_type> buffer(new size_type[n * 2ul]);
-        register size_type* const perm_start = buffer.get();
-        register size_type* const perm_finish = buffer.get() + n;
+        restrict size_type* const perm_start = buffer.get();
+        restrict size_type* const perm_finish = buffer.get() + n;
         for(size_type i = 0ul; i < n; ++i) {
           perm_start[perm[i]] = start_[i];
           perm_finish[perm[i]] = finish_[i];
@@ -615,8 +615,8 @@ namespace TiledArray {
 
       // Create a permuted copy of start and finish
       madness::ScopedArray<Range::size_type> buffer(new Range::size_type[n * 2ul]);
-      register Range::size_type* const perm_start = buffer.get();
-      register Range::size_type* const perm_finish = buffer.get() + n;
+      restrict Range::size_type* const perm_start = buffer.get();
+      restrict Range::size_type* const perm_finish = buffer.get() + n;
       for(Range::size_type i = 0ul; i < n; ++i) {
         perm_start[perm[i]] = start[i];
         perm_finish[perm[i]] = finish[i];
