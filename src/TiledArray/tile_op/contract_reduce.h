@@ -48,21 +48,41 @@ namespace TiledArray {
 
     private:
 
-      GemmHelper gemm_helper_; ///< Gemm helper object
-      scalar_type alpha_; ///< Scaling factor applied to the contraction of the left- and right-hand arguments
-      Permutation perm_; ///< Permutation that is applied to the final result tensor
+      struct Impl {
+        Impl(const madness::cblas::CBLAS_TRANSPOSE left_op,
+            const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
+            const unsigned int result_rank, const unsigned int left_rank,
+            const unsigned int right_rank, const Permutation& perm = Permutation()) :
+          gemm_helper_(left_op, right_op, result_rank, left_rank, right_rank),
+          alpha_(alpha), perm_(perm)
+        { }
+
+        GemmHelper gemm_helper_; ///< Gemm helper object
+        scalar_type alpha_; ///< Scaling factor applied to the contraction of the left- and right-hand arguments
+        Permutation perm_; ///< Permutation that is applied to the final result tensor
+      };
+
+      std::shared_ptr<Impl> pimpl_;
 
     public:
 
+      /// Default constructor
+      ContractReduce() : pimpl_() { }
+
       /// Construct contract/reduce functor
 
-      /// \param num_cont_ranks The number of contracted ranks
+      /// \param left_op The left-hand BLAS matrix operation
+      /// \param right_op The right-hand BLAS matrix operation
+      /// \param result_rank The rank of the result tensor
+      /// \param left_rank The rank of the left-hand tensor
+      /// \param right_rank The rank of the right-hand tensor
+      /// \param perm The permutation to be applied to the result tensor
+      /// (default = no permute)
       ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
           const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
           const unsigned int result_rank, const unsigned int left_rank,
           const unsigned int right_rank, const Permutation& perm = Permutation()) :
-        gemm_helper_(left_op, right_op, result_rank, left_rank, right_rank),
-        alpha_(alpha), perm_(perm)
+        pimpl_(new Impl(left_op, right_op, alpha, result_rank, left_rank, right_rank, perm))
       { }
 
       /// Functor copy constructor
@@ -70,44 +90,57 @@ namespace TiledArray {
       /// Shallow copy of this functor
       /// \param other The functor to be copied
       ContractReduce(const ContractReduce_& other) :
-        gemm_helper_(other.gemm_helper_), alpha_(other.alpha_), perm_(other.perm_)
+        pimpl_(other.pimpl_)
       { }
 
       /// Functor assignment operator
 
+      /// Shallow copy of this functor
       /// \param other The functor to be copied
       ContractReduce_& operator=(const ContractReduce_& other) {
-        gemm_helper_ = other.gemm_helper_;
-        alpha_ = other.alpha_;
-        perm_ = other.perm_;
-
+        pimpl_ = other.pimpl_;
         return *this;
       }
 
       /// Gemm meta data accessor
 
       /// \return A reference to the gemm helper object
-      const GemmHelper& gemm_helper() const { return gemm_helper_; }
+      const GemmHelper& gemm_helper() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->gemm_helper_;
+      }
 
       /// Compute the number of contracted ranks
 
       /// \return The number of ranks that are summed by this operation
-      unsigned int num_contract_ranks() const { return gemm_helper_.num_contract_ranks(); }
+      unsigned int num_contract_ranks() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->gemm_helper_.num_contract_ranks();
+      }
 
       /// Result rank accessor
 
       /// \return The rank of the result tile
-      unsigned int result_rank() const { return gemm_helper_.result_rank(); }
+      unsigned int result_rank() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->gemm_helper_.result_rank();
+      }
 
       /// Left-hand argument rank accessor
 
       /// \return The rank of the left-hand tile
-      unsigned int left_rank() const { return gemm_helper_.left_rank(); }
+      unsigned int left_rank() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->gemm_helper_.left_rank();
+      }
 
       /// Right-hand argument rank accessor
 
       /// \return The rank of the right-hand tile
-      unsigned int right_rank() const { return gemm_helper_.right_rank(); }
+      unsigned int right_rank() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->gemm_helper_.right_rank();
+      }
 
       /// Create a result type object
 
@@ -118,13 +151,15 @@ namespace TiledArray {
 
       /// Post processing step
       result_type operator()(const result_type& temp) const {
+        TA_ASSERT(pimpl_);
+
         result_type result;
 
         if(! temp.empty()) {
-          if(perm_.dim() < 1u)
+          if(pimpl_->perm_.dim() < 1u)
             result = temp;
           else
-            TiledArray::math::permute(result, perm_, temp);
+            TiledArray::math::permute(result, pimpl_->perm_, temp);
         }
 
         return result;
@@ -148,10 +183,12 @@ namespace TiledArray {
       void operator()(result_type& result, first_argument_type left,
           second_argument_type right) const
       {
+        TA_ASSERT(pimpl_);
+
         if(result.empty())
-          result = left.gemm(right, alpha_, gemm_helper_);
+          result = left.gemm(right, pimpl_->alpha_, pimpl_->gemm_helper_);
         else
-          result.gemm(left, right, alpha_, gemm_helper_);
+          result.gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
       }
 
       /// Contract a pair of tiles and add to a target tile
@@ -168,12 +205,14 @@ namespace TiledArray {
           first_argument_type left1, second_argument_type right1,
           first_argument_type left2, second_argument_type right2) const
       {
-        if(result.empty())
-          result = left1.gemm(right1, alpha_, gemm_helper_);
-        else
-          result.gemm(left1, right1, alpha_, gemm_helper_);
+        TA_ASSERT(pimpl_);
 
-        result.gemm(left2, right2, alpha_, gemm_helper_);
+        if(result.empty())
+          result = left1.gemm(right1, pimpl_->alpha_, pimpl_->gemm_helper_);
+        else
+          result.gemm(left1, right1, pimpl_->alpha_, pimpl_->gemm_helper_);
+
+        result.gemm(left2, right2, pimpl_->alpha_, pimpl_->gemm_helper_);
       }
 
     }; // class ContractReduce
