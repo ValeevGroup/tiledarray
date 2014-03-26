@@ -24,4 +24,8 @@
 #include <TiledArray/expressions.h>
 #include <TiledArray/eigen.h>
 
+# ifdef HAVE_ELEMENTAL
+#include <TiledArray/elemental.h>
+# endif
+
 #endif // TILED_ARRAY_H__INCLUDED
