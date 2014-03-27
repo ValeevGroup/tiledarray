@@ -65,7 +65,7 @@ namespace TiledArray {
       typedef uint_fast32_t size_type;
 
     private:
-      madness::World& world_; ///< The world where this process grid lives
+      madness::World* world_; ///< The world where this process grid lives
       size_type rows_; ///< Number of element rows
       size_type cols_; ///< Number of element columns
       size_type size_; ///< Number of elements
@@ -251,6 +251,14 @@ namespace TiledArray {
       }
 
     public:
+      /// Default constructor
+
+      /// All sizes are initialized to zero.
+      ProcGrid() :
+        world_(NULL), rows_(0), cols_(0), size_(0), proc_rows_(0),
+        proc_cols_(0), proc_size_(0), rank_row_(0), rank_col_(0),
+        local_rows_(0), local_cols_(0), local_size_(0)
+      { }
 
       /// Construct a process grid
 
@@ -264,7 +272,7 @@ namespace TiledArray {
       /// \param col_size The number of element columns
       ProcGrid(madness::World& world, const size_type rows, const size_type cols,
           const std::size_t row_size, const std::size_t col_size) :
-        world_(world), rows_(rows), cols_(cols), size_(rows_ * cols_),
+        world_(&world), rows_(rows), cols_(cols), size_(rows_ * cols_),
         proc_rows_(0ul), proc_cols_(0ul), proc_size_(0ul),
         rank_row_(-1), rank_col_(-1),
         local_rows_(0ul), local_cols_(0ul), local_size_(0ul)
@@ -275,7 +283,7 @@ namespace TiledArray {
         TA_ASSERT(row_size >= 1ul);
         TA_ASSERT(col_size >= 1ul);
 
-        init(world_.rank(), world_.size(), row_size, col_size);
+        init(world_->rank(), world_->size(), row_size, col_size);
       }
 
 #ifdef TILEDARRAY_ENABLE_TEST_PROC_GRID
@@ -299,7 +307,7 @@ namespace TiledArray {
       ProcGrid(madness::World& world, const size_type test_rank, size_type test_nprocs,
           const size_type rows, const size_type cols,
           const std::size_t row_size, const std::size_t col_size) :
-        world_(world), rows_(rows), cols_(cols), size_(rows_ * cols_),
+        world_(&world), rows_(rows), cols_(cols), size_(rows_ * cols_),
         proc_rows_(0ul), proc_cols_(0ul), proc_size_(0ul), rank_row_(-1),
         rank_col_(-1), local_rows_(0ul), local_cols_(0ul), local_size_(0ul)
       {
@@ -328,6 +336,26 @@ namespace TiledArray {
         local_rows_(other.local_rows_), local_cols_(other.local_cols_),
         local_size_(other.local_size_)
       { }
+
+      /// Copy assignment operator
+
+      /// \param other The other process grid to be copied
+      ProcGrid& operator=(const ProcGrid& other) {
+        world_ = other.world_;
+        rows_ = other.rows_;
+        cols_ = other.cols_;
+        size_ = other.size_;
+        proc_rows_ = other.proc_rows_;
+        proc_cols_ = other.proc_cols_;
+        proc_size_ = other.proc_size_;
+        rank_row_ = other.rank_row_;
+        rank_col_ = other.rank_col_;
+        local_rows_ = other.local_rows_;
+        local_cols_ = other.local_cols_;
+        local_size_ = other.local_size_;
+
+        return *this;
+      }
 
       /// Element row count accessor
 
@@ -393,6 +421,8 @@ namespace TiledArray {
       /// group.
       /// \return A \c Group object that includes all processes in \c rank_row
       madness::Group make_row_group(const madness::DistributedID& did) const {
+        TA_ASSERT(world_);
+
         madness::Group group;
 
         if(local_size_ != 0u) {
@@ -407,7 +437,7 @@ namespace TiledArray {
             proc_list.push_back(p);
 
           // Construct the group
-          group = madness::Group(world_, proc_list, did);
+          group = madness::Group(*world_, proc_list, did);
         }
 
         return group;
@@ -420,6 +450,8 @@ namespace TiledArray {
       /// group.
       /// \return A \c Group object that includes all processes in \c rank_col
       madness::Group make_col_group(const madness::DistributedID& did) const {
+        TA_ASSERT(world_);
+
         madness::Group group;
 
         if(local_size_ != 0u) {
@@ -433,7 +465,7 @@ namespace TiledArray {
 
           // Construct the group
           if(proc_list.size() != 0)
-            group = madness::Group(world_, proc_list, did);
+            group = madness::Group(*world_, proc_list, did);
         }
 
         return group;
@@ -457,6 +489,15 @@ namespace TiledArray {
         return rank_row_ * proc_cols_ + col;
       }
 
+      /// Construct a cyclic process
+
+      /// Construct a cyclic process map with the same phase as the process grid.
+      /// \return Cyclic process map
+      std::shared_ptr<Pmap> make_pmap() const {
+        TA_ASSERT(world_);
+
+        return std::shared_ptr<Pmap>(new CyclicPmap(*world_, rows_, cols_, proc_rows_, proc_cols_));
+      }
 
       /// Construct column phased a cyclic process
 
@@ -465,7 +506,9 @@ namespace TiledArray {
       /// \param rows The number of rows in the process map
       /// \return Cyclic process map with matching column phase
       std::shared_ptr<Pmap> make_col_phase_pmap(const size_type rows) const {
-        return std::shared_ptr<Pmap>(new CyclicPmap(world_, rows, cols_, proc_rows_, proc_cols_));
+        TA_ASSERT(world_);
+
+        return std::shared_ptr<Pmap>(new CyclicPmap(*world_, rows, cols_, proc_rows_, proc_cols_));
       }
 
       /// Construct row phased a cyclic process
@@ -475,7 +518,9 @@ namespace TiledArray {
       /// \param cols The number of columns in the process map
       /// \return Cyclic process map with matching column phase
       std::shared_ptr<Pmap> make_row_phase_pmap(const size_type cols) const {
-        return std::shared_ptr<Pmap>(new CyclicPmap(world_, rows_, cols, proc_rows_, proc_cols_));
+        TA_ASSERT(world_);
+
+        return std::shared_ptr<Pmap>(new CyclicPmap(*world_, rows_, cols, proc_rows_, proc_cols_));
       }
     }; // class Grid
 
