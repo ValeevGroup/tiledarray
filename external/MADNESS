@@ -192,6 +192,15 @@ else()
     PATTERN ".deps" EXCLUDE
     )
 
+  install(
+    DIRECTORY
+        ${EXTERNAL_BUILD_DIR}/config/
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    COMPONENT madness
+    FILES_MATCHING PATTERN "MADNESS.pc"
+    PATTERN ".deps" EXCLUDE
+    )
+
   # Set build dependencies and compiler arguments
   add_dependencies(External madness)
   
