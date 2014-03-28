@@ -26,7 +26,6 @@
 # ta_sparse executable
 
 # Add include directories
-ADD_DEFINITIONS(-DHAVE_ELEMENTAL=${HAVE_ELEMENTAL})
 include_directories(${TiledArray_INCLUDE_DIRS})
 
 # Add the blas executable

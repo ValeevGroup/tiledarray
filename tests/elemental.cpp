@@ -25,14 +25,12 @@ struct ElemFixture : public TiledRangeFixture {
   ElemFixture():
     trange(dims.begin(), dims.begin() + 2),
     array(*GlobalFixture::world, trange),
-    grid(elem::DefaultGrid().Comm()),
-    matrix(grid)
+    grid(elem::DefaultGrid().Comm())
   {}
 
   TiledRange trange;
   Array<int, 2> array;
   elem::Grid grid;
-  elem::DistMatrix<int> matrix;
 };
 
 BOOST_FIXTURE_TEST_SUITE(elemental_suite, ElemFixture)
@@ -49,10 +47,58 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
   }
 
   // Convert the array to an elemental matrix
+  elem::DistMatrix<int> matrix(grid);
   BOOST_CHECK_NO_THROW(matrix = array_to_elem(array, grid));
   // Check dims
   BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements().size()[0]);
   BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().size()[1]);
+
+  //Check data
+  for(auto i = array.range().begin(); i != array.range().end(); ++i){
+    madness::Future<Array<int,2>::value_type > tile = array.find(*i);
+    for(auto j = tile.get().range().begin(); j != tile.get().range().end();++j){
+      BOOST_CHECK_EQUAL(tile.get()[*j], matrix.Get((*j)[0], (*j)[1]) );
+    }
+  }
+}
+
+
+BOOST_AUTO_TEST_CASE(elem_to_array_test) {
+  // Fill array with random data
+  GlobalFixture::world->srand(27);
+  for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
+    Array<int, 2>::value_type tile(array.trange().make_tile_range(*it));
+    for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
+      *tile_it = GlobalFixture::world->rand();
+    }
+    array.set(*it, tile);
+  }
+
+  // Convert the array to an elemental matrix
+  elem::DistMatrix<int> matrix(grid);
+  BOOST_CHECK_NO_THROW(matrix = array_to_elem(array, grid));
+  // Check dims
+  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements().size()[0]);
+  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().size()[1]);
+
+  // Reassign elemental matrix to something else
+  for(int i = 0; i < matrix.Width(); ++i){
+    for(int j = 0; j < matrix.Height(); ++j){
+      matrix.Set(i,j, i+j);
+    }
+  }
+
+  // Copy matrix to TiledArray Array
+  elem_to_array(array, matrix);
+  array.get_world().gop.fence();
+
+  //Check data
+  for(auto i = array.range().begin(); i != array.range().end(); ++i){
+    madness::Future<Array<int,2>::value_type > tile = array.find(*i);
+    for(auto j = tile.get().range().begin(); j != tile.get().range().end();++j){
+      BOOST_CHECK_EQUAL(tile.get()[*j], matrix.Get((*j)[0], (*j)[1]) );
+    }
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

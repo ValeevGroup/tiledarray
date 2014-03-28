@@ -23,7 +23,6 @@
 #
 
 # library headers
-ADD_DEFINITIONS(-DHAVE_ELEMENTAL=${HAVE_ELEMENTAL})
 install(
   DIRECTORY
       ${PROJECT_SOURCE_DIR}/src/

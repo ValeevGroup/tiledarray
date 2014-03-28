@@ -72,7 +72,7 @@ namespace TiledArray {
 
       // Make Elemental local matrix and attach the data.
       elem::Matrix<T> ElemBlock;
-      ElemBlock.Attach(CMatrix.cols(), CMatrix.rows(), CMatrix.data(), CMatrix.cols());
+      ElemBlock.Attach(CMatrix.rows(), CMatrix.cols(), CMatrix.data(), CMatrix.rows());
 
       // Attach elem local matrix to elem global matrix
       interface.Axpy(1.0, ElemBlock, t0start, t1start);

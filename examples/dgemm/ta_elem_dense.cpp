@@ -96,26 +96,67 @@ int main(int argc, char** argv) {
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 
-  if(world.rank() == 0)
+  if(world.rank() == 0){
     std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
         << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
             matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+  }
 
+  // Copying matrices to elemental
+  const double wall_time_copy0 = madness::wall_time();
   elem::DistMatrix<double> a_elem = array_to_elem(a,grid);
   elem::DistMatrix<double> b_elem = array_to_elem(b,grid);
+  elem::mpi::Barrier(grid.Comm());
+  int j = 0;
+  while(j++ < repeat){
+    a_elem = array_to_elem(a,grid);
+    b_elem = array_to_elem(b,grid);
+    elem::mpi::Barrier(grid.Comm());
+  }
+  const double wall_time_copy1 = madness::wall_time();
+
+  // How long the copy took
+  if(world.rank() == 0){
+    std::cout << "Spent " <<
+      (wall_time_copy1 - wall_time_copy0)/(2.0 + 2.0 * double(repeat)) <<
+      " s for an array copy to elemental on average." << std::endl;
+  }
+
+  // Make the data output array
   elem::DistMatrix<double> c_elem(matrix_size, matrix_size, grid);
   elem::Zero(c_elem);
   elem::mpi::Barrier(grid.Comm());
+
+  // Do the multiply
   const double wt_elem_start = madness::wall_time();
   for(auto i = 0; i < repeat; ++i){
     elem::Gemm(elem::NORMAL, elem::NORMAL, 1., a_elem, b_elem, 0., c_elem);
     elem::mpi::Barrier(grid.Comm());
+    if(grid.Rank() == 0){
+      std::cout << "Elem Iteration " << i + 1 << "\n";
+    }
   }
   const double wt_elem_end = madness::wall_time();
-  if(world.rank() == 0)
-    std::cout << "elemental took " << (wt_elem_end - wt_elem_start)/double(repeat) << " seconds per multiply" << std::endl;
 
-  world.gop.fence();
+  // Time elemental
+  if(world.rank() == 0){
+    std::cout << "Average Elemental wall time   = " << (wt_elem_end - wt_elem_start) / double(repeat)
+        << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
+            matrix_size * matrix_size) / (wt_elem_end - wt_elem_start) / 1.0e9 << "\n";
+  }
+
+  // copy back to ta
+  int i = 0;
+  const double e_to_t_start = madness::wall_time();
+  while(i++ < repeat){
+    TiledArray::elem_to_array(c, c_elem);
+    elem::mpi::Barrier(grid.Comm());
+  }
+  const double e_to_t_end = madness::wall_time();
+
+  if(world.rank() == 0){
+    std::cout << "Copying to TA from Elemental took " << (e_to_t_end - e_to_t_start)/(double(repeat)) << " s on average." << std::endl;
+  }
 
   madness::finalize();
   return 0;
