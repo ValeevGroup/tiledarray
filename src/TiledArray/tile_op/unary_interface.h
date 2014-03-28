@@ -136,7 +136,7 @@ namespace TiledArray {
       /// \return The result tile with the unary operation (and permuation)
       /// applied to \c arg.
       result_type operator()(argument_type arg) const {
-        if(perm_.dim() > 1)
+        if(perm_)
           return derived().permute(arg);
 
         return derived().template no_permute<is_consumable::value>(arg);
@@ -244,7 +244,7 @@ namespace TiledArray {
       /// \return The result tile with the unary operation (and permuation)
       /// applied to \c arg.
       result_type operator()(argument_type arg) const {
-        if(perm_.dim() > 1)
+        if(perm_)
           return derived().permute(arg);
 
         return derived().template no_permute<false>(arg);
@@ -292,7 +292,7 @@ namespace TiledArray {
       typename madness::disable_if<is_lazy_tile<typename std::remove_const<A>::type>,
           result_type>::type
       operator()(A& arg, const bool consume) const {
-        if(perm_.dim() > 1)
+        if(perm_)
           return derived().permute(arg);
 
         if(consume)

@@ -235,7 +235,7 @@ namespace TiledArray {
 
         alloc_arrays(n);
 
-        if(perm.dim() > 1ul) {
+        if(perm) {
           const size_type* restrict const other_start = other.start().data();
           const size_type* restrict const other_finish = other.finish().data();
           const size_type* restrict const other_size = other.size().data();

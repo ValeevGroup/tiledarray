@@ -473,7 +473,7 @@ namespace TiledArray {
       typename L::eval_type eval_first(first);
       typename R::eval_type eval_second(second);
 
-      if(perm_.dim() > 1u)
+      if(perm_)
         return derived().permute(eval_first, eval_second);
 
       if(first.is_consumable())
@@ -493,7 +493,7 @@ namespace TiledArray {
     operator()(const L& first, R& second) const {
       typename L::eval_type eval_first(first);
 
-      if(perm_.dim() > 1u)
+      if(perm_)
         return derived().permute(eval_first, second);
 
       if(first.is_consumable())
@@ -511,7 +511,7 @@ namespace TiledArray {
     operator()(L& first, const R& second) const {
       typename R::eval_type eval_second(second);
 
-      if(perm_.dim() > 1u)
+      if(perm_)
         return derived().permute(first, eval_second);
 
       if(second.is_consumable())

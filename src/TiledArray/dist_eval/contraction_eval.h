@@ -1028,7 +1028,7 @@ namespace TiledArray {
     {
       TA_ASSERT(left.range().dim() == op.left_rank());
       TA_ASSERT(right.range().dim() == op.right_rank());
-      TA_ASSERT((perm.dim() == op.result_rank()) || (perm.dim() == 0u));
+      TA_ASSERT((perm.dim() == op.result_rank()) || !perm);
 
       // Define the impl type
       typedef ContractionEvalImpl<DistEval<LeftTile, Policy>, DistEval<RightTile,
@@ -1048,12 +1048,12 @@ namespace TiledArray {
       std::size_t M = 1ul, m = 1ul, N = 1ul, n = 1ul;
       std::size_t pi = 0ul;
       for(unsigned int i = 0ul; i < left_middle; ++i) {
-        ranges[(perm.dim() > 0ul ? perm[pi++] : pi++)] = left.trange().data()[i];
+        ranges[(perm ? perm[pi++] : pi++)] = left.trange().data()[i];
         M *= left.range().size()[i];
         m *= left.trange().elements().size()[i];
       }
       for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
-        ranges[(perm.dim() > 0ul ? perm[pi++] : pi++)] = right.trange().data()[i];
+        ranges[(perm ? perm[pi++] : pi++)] = right.trange().data()[i];
         N *= right.range().size()[i];
         n *= right.trange().elements().size()[i];
       }

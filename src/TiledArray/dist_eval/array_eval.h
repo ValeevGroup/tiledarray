@@ -289,7 +289,7 @@ namespace TiledArray {
       typedef typename impl_type::DistEvalImpl_ impl_base_type;
       return DistEval<LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
           std::shared_ptr<impl_base_type>(new impl_type(array, world,
-              (perm.dim() > 1u ? perm ^ array.trange() : array.trange()), shape,
+              (perm ? perm ^ array.trange() : array.trange()), shape,
               pmap, perm, op)));
     }
 

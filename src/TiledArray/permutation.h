@@ -244,6 +244,16 @@ namespace TiledArray {
       return *this ^ make_unit_permutation(dim());
     }
 
+    /// Bool conversion
+
+    /// \return \c true if the permutation is not empty, otherwise \c false.
+    operator bool() const { return ! p_.empty(); }
+
+    /// Not operator
+
+    /// \return \c true if the permutation is empty, otherwise \c false.
+    bool operator!() const { return p_.empty(); }
+
     /// Return a reference to the array that represents the permutation.
     const Array& data() const { return p_; }
 

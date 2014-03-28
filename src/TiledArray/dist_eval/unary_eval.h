@@ -156,7 +156,7 @@ namespace TiledArray {
       typedef typename impl_type::DistEvalImpl_ impl_base_type;
       return DistEval<typename Op::result_type, Policy>(
           std::shared_ptr<impl_base_type>(new impl_type(arg, world,
-              (perm.dim() > 1u ? perm ^ arg.trange() : arg.trange()), shape,
+              (perm ? perm ^ arg.trange() : arg.trange()), shape,
               pmap, perm, op)));
     }
 

@@ -72,7 +72,7 @@ namespace TiledArray {
       /// \return The corresponding index in the permuted index space
       size_type perm_index(size_type index) const {
         size_type result_index;
-        if(perm_.dim() > 1u) {
+        if(perm_) {
           result_index = 0ul;
           // Permute the index
           for(size_type i = 0ul; i < TensorImpl_::range().dim(); ++i) {
@@ -112,7 +112,7 @@ namespace TiledArray {
       {
         set_counter_ = 0;
 
-        if(perm.dim() > 1u) {
+        if(perm) {
           Permutation inv_perm(-perm);
           range_ = inv_perm ^ trange.tiles();
           ip_weight_ = inv_perm ^ TensorImpl_::range().weight();

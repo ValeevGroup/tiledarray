@@ -156,7 +156,7 @@ namespace TiledArray {
         result_type result;
 
         if(! temp.empty()) {
-          if(pimpl_->perm_.dim() < 1u)
+          if(pimpl_->perm_)
             result = temp;
           else
             TiledArray::math::permute(result, pimpl_->perm_, temp);
