@@ -104,10 +104,18 @@ namespace TiledArray {
 
       /// Gemm meta data accessor
 
-      /// \return A reference to the gemm helper object
+      /// \return A const reference to the gemm helper object
       const GemmHelper& gemm_helper() const {
         TA_ASSERT(pimpl_);
         return pimpl_->gemm_helper_;
+      }
+
+      /// Permutation accessor
+
+      /// \return A const reference to the permutation for this operation
+      const Permutation& perm() const {
+        TA_ASSERT(pimpl_);
+        return pimpl_->perm_;
       }
 
       /// Compute the number of contracted ranks
