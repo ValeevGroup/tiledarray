@@ -126,10 +126,17 @@ endif()
 add_custom_target(External)
 include(external/MADNESS)
 include(external/Eigen)
-MESSAGE(STATUS "Elemental director = ${Elemental_DIR}")
+
+# Add elemental
 if (Elemental_DIR)
   include(external/Elemental)
+  if(HAVE_ELEMENTAL)
+    ADD_DEFINITIONS(-DTILEDARRAY_HAS_ELEMENTAL=1)
+  endif(HAVE_ELEMENTAL)
 endif()
+
+message(STATUS "HAVE ELEM = ${HAVE_ELEMENTAL}")
+  
 if (TA_BUILD_UNITTEST)
   include(external/Boost)
 endif()
@@ -151,7 +158,6 @@ list(APPEND TiledArray_LIBRARIES
     ${Madness_LIBRARIES})
 if(HAVE_ELEMENTAL)
     list(APPEND TiledArray_LIBRARIES ${ELEMENTAL_LIBRARIES})
-    ADD_DEFINITIONS(-DHAVE_ELEMENTAL=${HAVE_ELEMENTAL})
 endif()
 set(TiledArray_LINK_FLAGS ${Madness_LINK_FLAGS})
 set(TiledArray_COMPILE_FLAGS ${Madness_COMPILE_FLAGS})

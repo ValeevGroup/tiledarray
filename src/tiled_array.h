@@ -24,7 +24,7 @@
 #include <TiledArray/expressions.h>
 #include <TiledArray/eigen.h>
 
-# ifdef HAVE_ELEMENTAL
+# if TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>
 # endif
 

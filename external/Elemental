@@ -47,7 +47,6 @@ if (ELEMENTAL_LIBRARIES)
     " 
     ELEMENTAL_COMPILES
   )   
-  SET(ELEMENTAL_COMPILES TRUE)
   
   if (NOT ELEMENTAL_COMPILES)
     message(STATUS "Could not compile Elemental test program")
