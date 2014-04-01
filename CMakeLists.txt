@@ -134,8 +134,6 @@ if (Elemental_DIR)
     ADD_DEFINITIONS(-DTILEDARRAY_HAS_ELEMENTAL=1)
   endif(HAVE_ELEMENTAL)
 endif()
-
-message(STATUS "HAVE ELEM = ${HAVE_ELEMENTAL}")
   
 if (TA_BUILD_UNITTEST)
   include(external/Boost)
