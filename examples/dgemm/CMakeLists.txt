@@ -73,15 +73,6 @@ target_link_libraries(ta_elem_dense ${TiledArray_LIBRARIES})
 add_dependencies(ta_elem_dense External)
 add_dependencies(example ta_elem_dense)
 
-# Add the ta_fock_build executable
-add_executable(ta_fock_build EXCLUDE_FROM_ALL ta_fock_build.cpp)
-set_target_properties(ta_fock_build PROPERTIES
-    COMPILE_FLAGS "${CMAKE_CPP_FLAGS} ${TiledArray_COMPILE_FLAGS}"
-    LINK_FLAGS "${TiledArray_LINK_FLAGS}")
-target_link_libraries(ta_fock_build ${TiledArray_LIBRARIES})
-add_dependencies(ta_fock_build External)
-add_dependencies(example ta_fock_build)
-
 # Add the ta_asymm_dense executable
 add_executable(ta_asymm_dense EXCLUDE_FROM_ALL ta_asymm_dense.cpp)
 set_target_properties(ta_asymm_dense PROPERTIES
