@@ -46,15 +46,15 @@ namespace TiledArray {
     class MultEngine : public virtual BinaryEngine<Derived> {
     public:
       typedef BinaryEngine<MultEngine<Derived> > BinaryEngine_; ///< Binary base class type
-      typedef typename Derived::left_type left_type; ///< The left-hand expression type
-      typedef typename Derived::right_type right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<Derived>::left_type left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<Derived>::right_type right_type; ///< The right-hand expression type
       typedef typename left_type::eval_type value_type; ///< The result tile type
       typedef TiledArray::math::Mult<value_type, typename left_type::value_type::eval_type,
           typename right_type::value_type::eval_type, left_type::consumable,
           right_type::consumable> op_type; ///< The tile operation type
-      typedef typename Derived::trange_type trange_type; ///< Tiled range type
-      typedef typename Derived::shape_type shape_type; ///< Shape type
-      typedef typename Derived::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename ExprTrait<Derived>::trange_type trange_type; ///< Tiled range type
+      typedef typename ExprTrait<Derived>::shape_type shape_type; ///< Shape type
+      typedef typename ExprTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
       /// Constructor
 

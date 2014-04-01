@@ -42,11 +42,11 @@ namespace TiledArray {
     public:
       typedef ExprEngine<Derived> ExprEngine_;
       typedef Derived derived_type; ///< The derived object type
-      typedef typename Derived::size_type size_type;
-      typedef typename Derived::trange_type trange_type;
-      typedef typename Derived::pmap_interface pmap_interface;
-      typedef typename Derived::shape_type shape_type;
-      typedef typename Derived::op_type op_type;
+      typedef typename ExprTraits<Derived>::size_type size_type;
+      typedef typename ExprTraits<Derived>::trange_type trange_type;
+      typedef typename ExprTraits<Derived>::pmap_interface pmap_interface;
+      typedef typename ExprTraits<Derived>::shape_type shape_type;
+      typedef typename ExprTraits<Derived>::op_type op_type;
 
     protected:
       // The member variables of this class are protected because derived

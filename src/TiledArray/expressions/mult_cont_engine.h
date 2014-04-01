@@ -32,7 +32,6 @@
 namespace TiledArray {
   namespace expressions {
 
-
     /// Multiply/contract expression engine
 
     /// This expression engine will select the correct engine operations at
@@ -53,8 +52,8 @@ namespace TiledArray {
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<MultContEngine_>::left_tpye left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<MultContEngine_>::right_tpye right_type; ///< The right-hand expression type
 
       // Operational typedefs
       typedef typename left_type::eval_type value_type; ///< The result tile type

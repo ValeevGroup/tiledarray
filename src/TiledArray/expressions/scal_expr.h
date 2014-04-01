@@ -32,6 +32,20 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename A>
+    struct ExprTrait<ScalExpr<A> > {
+      typedef A argument_type; ///< Expression argument type
+      typedef ScalEngine<typename A::engine_type> engine_type; ///< Expression engine type
+      typedef typename engine_type::policy policy; ///< policy
+      typedef typename policy::size_type size_type; ///< size type
+      typedef typename policy::trange_type trange_type; ///< trange type
+      typedef typename policy::shape_type shape_type; ///< shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< pmap interface
+      typedef typename argument_type::eval_type value_type; ///< The result tile type
+      typedef TiledArray::math::Scal<value_type, typename argument_type::value_type::eval_type,
+          argument_type::consumable> op_type; ///< The tile operation type
+    };
+
     /// Scaled expression expression
 
     /// \tparam Arg The argument expression type
@@ -41,8 +55,17 @@ namespace TiledArray {
       typedef ScalExpr<Arg> ScalExpr_; ///< This class type
       typedef UnaryExpr<ScalExpr_> UnaryExpr_; ///< Binary base class type
       typedef typename UnaryExpr_::Expr_ Expr_; ///< Base expression type
-      typedef Arg argument_type; ///< The argument expression type
-      typedef ScalEngine<typename argument_type::engine_type> engine_type; ///< Expression engine type
+      typedef typename ExprTrait<ScalExpr_>::argument_type argument_type; ///< Expression argument type
+      typedef typename ExprTrait<ScalExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename engine_type::policy policy; ///< Expression policy type
+      typedef typename policy::size_type size_type; ///< size type
+      typedef typename policy::trange_type trange_type; ///< trange type
+      typedef typename policy::shape_type shape_type; ///< shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< pmap interface
+      typedef typename argument_type::eval_type value_type; ///< The result tile type
+      typedef typename argument_type::eval_type value_type; ///< The result tile type
+      typedef TiledArray::math::Scal<value_type, typename argument_type::value_type::eval_type,
+          argument_type::consumable> op_type; ///< The tile operation type
       typedef typename engine_type::scalar_type scalar_type; ///< Scalar type
 
     private:

@@ -298,7 +298,7 @@ namespace TiledArray {
     /// \return A non-const tensor expression object
     TiledArray::expressions::TsrExpr<Array_>
     operator ()(const std::string& vars) {
-      return TiledArray::expressions::TsrExpr<const Array_>(*this, vars);
+      return TiledArray::expressions::TsrExpr<Array_>(*this, vars);
     }
 
     /// World accessor

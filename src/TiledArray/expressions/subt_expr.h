@@ -33,6 +33,20 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename L, typename R>
+    struct ExprTrait<SubtExpr<L,R> > {
+      typedef L left_type;
+      typedef R right_type;
+      typedef SubtEngine<typename L::engine_type, typename R::engine_type> type; ///< Expression engine type
+    };
+
+    template <typename L, typename R>
+    struct ExprTrait<ScalSubtExpr<L,R> > {
+      typedef L left_type;
+      typedef R right_type;
+      typedef ScalSubtEngine<typename L::engine_type, typename R::engine_type> type; ///< Expression engine type
+    };
+
     /// Subtraction expression
 
     /// \tparam Left The left-hand expression type
@@ -42,10 +56,9 @@ namespace TiledArray {
     public:
       typedef SubtExpr<Left, Right> SubtExpr_;
       typedef BinaryExpr<SubtExpr_> BinaryExpr_; ///< Binary base class type
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
-      typedef SubtEngine<typename left_type::engine_type,
-          typename right_type::engine_type> engine_type; ///< Expression engine type
+      typedef typename ExprTrait<SubtExpr_>::left_type left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<SubtExpr_>::right_type right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<SubtExpr_>::type engine_type; ///< Expression engine type
 
     private:
 
@@ -77,10 +90,9 @@ namespace TiledArray {
     public:
       typedef ScalSubtExpr<Left, Right> ScalSubtExpr_; ///< This class type
       typedef BinaryExpr<ScalSubtExpr_> BinaryExpr_; ///< Binary base class type
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
-      typedef ScalSubtEngine<typename left_type::engine_type,
-          typename right_type::engine_type> engine_type; ///< Expression engine type
+      typedef typename ExprTrait<ScalSubtExpr_>::left_type left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<ScalSubtExpr_>::right_type right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<ScalSubtExpr_>::type engine_type; ///< Expression engine type
       typedef typename engine_type::scalar_type scalar_type; ///< Scalar type
 
     private:

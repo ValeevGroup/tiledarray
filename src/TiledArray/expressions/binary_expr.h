@@ -37,8 +37,8 @@ namespace TiledArray {
     template <typename Derived>
     class BinaryExpr : public Expr<Derived> {
     public:
-      typedef typename Derived::left_type left_type; ///< The left-hand expression type
-      typedef typename Derived::right_type right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<Derived>::left_type left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<Derived>::right_type right_type; ///< The right-hand expression type
 
     private:
 

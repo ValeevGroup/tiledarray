@@ -32,6 +32,8 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename> struct ExprTrait;
+
     /// Base class for expression evaluation
 
     /// \tparam Derived The derived class type
@@ -39,13 +41,12 @@ namespace TiledArray {
     class Expr {
     private:
 
-      // Not allowed
       Expr<Derived>& operator=(const Expr<Derived>&);
 
     public:
 
       typedef Derived derived_type; ///< The derived object type
-      typedef typename Derived::expr_engine expr_engine; ///< Expression data object
+      typedef typename ExprTrait<derived_type>::engine_type engine_type; ///< Expression engine type
 
       /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
@@ -61,7 +62,7 @@ namespace TiledArray {
       /// \tparam A The array type
       /// \param tsr The tensor to be assigned
       template <typename A>
-      void eval_to(TsrExpr<A>& tsr) {
+      void eval_to(TsrExpr<A>& tsr) const {
 
         // Get the target world
         madness::World& world = (tsr.array().is_initialized() ?
@@ -75,20 +76,20 @@ namespace TiledArray {
 
 
         // Construct the expression engine
-        expr_engine engine(derived());
+        engine_type engine(derived());
         engine.init(world, pmap, tsr.vars());
 
         // Create the distributed evaluator from this expression
-        typename expr_engine::dist_eval_type dist_eval = engine.make_dist_eval();
+        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
 
         // Create the result array
         typename TsrExpr<A>::array_type result(dist_eval.get_world(), dist_eval.trange(),
             dist_eval.shape(), dist_eval.pmap());
 
         // Move the data from disteval into the result array
-        typename expr_engine::dist_eval_type::pmap_interface::const_iterator it =
+        typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
             dist_eval.pmap().begin();
-        const typename expr_engine::dist_eval_type::pmap_interface::const_iterator end =
+        const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
             dist_eval.pmap().end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))
@@ -107,7 +108,7 @@ namespace TiledArray {
       /// \param target_vars The target variable list for this expression
       void print(ExprOStream& os, const VariableList& target_vars) const {
         // Construct the expression engine
-        expr_engine engine(derived());
+        engine_type engine(derived());
         engine.init_vars(target_vars);
         engine.init_struct(target_vars);
         engine.print(os, target_vars);
@@ -126,21 +127,21 @@ namespace TiledArray {
         typedef madness::TaggedKey<madness::uniqueidT, ExpressionReduceTag> key_type;
 
         // Construct the expression engine
-        expr_engine engine(derived());
-        engine.init(world, std::shared_ptr<typename expr_engine::pmap_interface>(),
+        engine_type engine(derived());
+        engine.init(world, std::shared_ptr<typename engine_type::pmap_interface>(),
             VariableList());
 
         // Create the distributed evaluator from this expression
-        typename expr_engine::dist_eval_type dist_eval =
+        typename engine_type::dist_eval_type dist_eval =
             derived().make_dist_eval();
 
         // Create a local reduction task
         TiledArray::detail::ReduceTask<Op> reduce_task(world, op);
 
         // Move the data from dist_eval into the local reduction task
-        typename expr_engine::dist_eval_type::pmap_interface::const_iterator it =
+        typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
             dist_eval.pmap().begin();
-        const typename expr_engine::dist_eval_type::pmap_interface::const_iterator end =
+        const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
             dist_eval.pmap().end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))

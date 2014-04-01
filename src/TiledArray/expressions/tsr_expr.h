@@ -34,6 +34,11 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename A>
+    struct ExprTrait<TsrExpr<A> > {
+      typedef TsrEngine<A> engine_type; ///< Expression engine type
+    };
+
     /// Expression wrapper for array objects
 
     /// \tparam T The array element type
@@ -48,7 +53,7 @@ namespace TiledArray {
       typedef TsrExpr<Array<T, DIM, Tile, Policy> > TsrExpr_; ///< This class type
       typedef Expr<TsrExpr_> Expr_; ///< Base class type
       typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
-      typedef TsrEngine<array_type> engine_type; ///< Expression engine type
+      typedef typename ExprTrait<TsrExpr_>::engine_type engine_type; ///< Expression engine type
 
     private:
 
@@ -161,7 +166,7 @@ namespace TiledArray {
       typedef TsrExpr<const Array<T, DIM, Tile, Policy> > TsrExpr_; ///< This class type
       typedef Expr<TsrExpr_> Expr_; ///< Expression base type
       typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
-      typedef TsrEngine<array_type> engine_type; ///< Expression engine type
+      typedef typename ExprTrait<TsrExpr_>::engine_type engine_type; ///< Expression engine type
 
     private:
 
