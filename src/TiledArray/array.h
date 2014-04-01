@@ -394,7 +394,7 @@ namespace TiledArray {
       }
     }
 
-    bool is_initialized() const { return pimpl_; }
+    bool is_initialized() const { return static_cast<bool>(pimpl_); }
 
   private:
 

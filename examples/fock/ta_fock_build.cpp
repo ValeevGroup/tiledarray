@@ -121,6 +121,7 @@ int main(int argc, char** argv) {
       G("i,j") = 2.0 * TCInts("i,j,P") * ( D("n,m") * TCInts("n,m,P") ) -
                        ExchTemp("s,i,P") * ExchTemp("s,j,P");
       F("i,j") = G("i,j") + H("i,j");
+      world.gop.fence();
     if(world.rank() == 0)
       std::cout << "Iteration " << i + 1 << "\n";
   }
@@ -128,14 +129,14 @@ int main(int argc, char** argv) {
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 
-  if(world.rank() == 0)
+  if(world.rank() == 0){
     std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
         << " sec\nAverage GFLOPS      = " << double(repeat) *
         (double(4.0 * matrix_size * matrix_size * df_size) + // Coulomb flops
         double(4.0 * matrix_size * matrix_size * matrix_size * df_size)) // Exchange flops
         / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+  }
 
-  world.gop.fence();
   madness::finalize();
   return 0;
 }

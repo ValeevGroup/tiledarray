@@ -24,4 +24,8 @@
 #include <TiledArray/eigen.h>
 #include <TiledArray/policies/sparse_policy.h>
 
+# if TILEDARRAY_HAS_ELEMENTAL
+#include <TiledArray/elemental.h>
+# endif
+
 #endif // TILEDARRAY_H__INCLUDED

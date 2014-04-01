@@ -104,6 +104,11 @@ else()
   append_flags(MAD_LDFLAGS "${STATIC_LIBRARY_FLAGS}")
   append_flags(MAD_LDFLAGS "${MADNESS_LINK_FLAGS}")
   
+  #Check for elemental
+  if(Elemental_DIR)
+    set(MAD_ELEMENTAL "${Elemental_DIR}")
+  endif()
+  
   ExternalProject_Add(madness
     PREFIX ${CMAKE_INSTALL_PREFIX}
     STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
@@ -125,6 +130,7 @@ else()
       --enable-dependency-tracking
       --with-mpi-thread=multiple
       --with-fortran-int32=${MAD_F77_INT32}
+      --with-elemental=${MAD_ELEMENTAL}
       --with-stubmpi=${MAD_STUB_MPI}
       "MPICXX=${CMAKE_CXX_COMPILER}"
       "MPICC=${CMAKE_C_COMPILER}"
@@ -189,6 +195,15 @@ else()
     PATTERN "*MADtensor*"
     PATTERN "*MADtinyxml*"
     PATTERN "*MADworld*"
+    PATTERN ".deps" EXCLUDE
+    )
+
+  install(
+    DIRECTORY
+        ${EXTERNAL_BUILD_DIR}/config/
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    COMPONENT madness
+    FILES_MATCHING PATTERN "MADNESS.pc"
     PATTERN ".deps" EXCLUDE
     )
 
