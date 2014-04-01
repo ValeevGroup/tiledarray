@@ -15,13 +15,19 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  expr.h
+ *  Apr 1, 2014
+ *
  */
 
-#ifndef TILEDARRAY_EXPRESSIONS_BASE_H__INCLUDED
-#define TILEDARRAY_EXPRESSIONS_BASE_H__INCLUDED
+#ifndef TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
+#define TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 
-#include <TiledArray/expressions/variable_list.h>
-#include <TiledArray/expressions/expr_trace.h>
+#include <TiledArray/expressions/expr_engine.h>
+#include <TiledArray/reduce_task.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -30,36 +36,16 @@ namespace TiledArray {
 
     /// \tparam Derived The derived class type
     template <typename Derived>
-    class Base {
-    protected:
-
-      VariableList vars_; ///< The variable list for the result of this expression
-      bool permute_tiles_; ///< Enables and disables permute
-
+    class Expr {
     private:
 
       // Not allowed
-      Base<Derived>& operator=(const Base<Derived>&);
+      Expr<Derived>& operator=(const Expr<Derived>&);
 
     public:
 
       typedef Derived derived_type; ///< The derived object type
-      typedef typename Derived::dist_eval_type dist_eval_type; ///< The distributed evaluator type
-
-      /// Default constructor
-      Base() : vars_(), permute_tiles_(true) { }
-
-      /// Variable list constructor
-
-      /// \param vars The variable list for this expression
-      explicit Base(const VariableList& vars) : vars_(vars), permute_tiles_(true) { }
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      Base(const Base<Derived>& other) :
-        vars_(other.vars_), permute_tiles_(other.permute_tiles_)
-      { }
+      typedef typename Derived::expr_engine expr_engine; ///< Expression data object
 
       /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
@@ -75,68 +61,56 @@ namespace TiledArray {
       /// \tparam A The array type
       /// \param tsr The tensor to be assigned
       template <typename A>
-      void eval_to(Tsr<A>& tsr) {
-        // Set the variable lists for this expression with the variable list of
-        // tsr as the target.
-        derived().init_vars(tsr.vars());
+      void eval_to(TsrExpr<A>& tsr) {
 
         // Get the target world
         madness::World& world = (tsr.array().is_initialized() ?
-            tsr.array().world() :
+            tsr.array().get_world() :
             madness::World::get_default());
 
         // Get the output process map
-        std::shared_ptr<typename Tsr<A>::array_type::pmap_interface> pmap;
+        std::shared_ptr<typename TsrExpr<A>::array_type::pmap_interface> pmap;
         if(tsr.array().is_initialized())
           pmap = tsr.array().get_pmap();
 
+
+        // Construct the expression engine
+        expr_engine engine(derived());
+        engine.init(world, pmap, tsr.vars());
+
         // Create the distributed evaluator from this expression
-        dist_eval_type dist_eval = derived().make_dist_eval(world, tsr.vars(), pmap);
+        typename expr_engine::dist_eval_type dist_eval = engine.make_dist_eval();
 
         // Create the result array
-        typename Tsr<A>::array_type result(dist_eval.get_world(), dist_eval.trange(),
+        typename TsrExpr<A>::array_type result(dist_eval.get_world(), dist_eval.trange(),
             dist_eval.shape(), dist_eval.pmap());
 
         // Move the data from disteval into the result array
-        typename dist_eval_type::pmap_interface::const_iterator it =
+        typename expr_engine::dist_eval_type::pmap_interface::const_iterator it =
             dist_eval.pmap().begin();
-        const typename dist_eval_type::pmap_interface::const_iterator end =
+        const typename expr_engine::dist_eval_type::pmap_interface::const_iterator end =
             dist_eval.pmap().end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))
             result.set(*it, dist_eval.move(*it));
 
-        // Wait for child expressions of dist
+        // Wait for child expressions of dist_eval
         dist_eval.wait();
 
         // Swap the new array with the result array object.
         tsr.array().swap(result);
       }
 
-      /// Variable list accessor
-
-      /// \return a const reference to the variable list
-      const VariableList& vars() const { return vars_; }
-
-      /// Enable or disable the tile permutation
-
-      /// \param permute New state for permute tile flag (true == permute, false == no_permute)
-      void permute_tiles(const bool permute) { permute_tiles_ = permute; }
-
-      /// Permute tile accessor
-      bool permute_tiles() const { return permute_tiles_; }
-
       /// Expression print
 
       /// \param os The output stream
       /// \param target_vars The target variable list for this expression
       void print(ExprOStream& os, const VariableList& target_vars) const {
-        if((target_vars != vars_) && permute_tiles_) {
-          const Permutation perm = target_vars.permutation(vars_);
-          os << "[P" << perm << "] " << derived().print_tag() << " " << Base_::vars_ << "\n";
-        } else {
-          os << derived().print_tag() << vars_ << "\n";
-        }
+        // Construct the expression engine
+        expr_engine engine(derived());
+        engine.init_vars(target_vars);
+        engine.init_struct(target_vars);
+        engine.print(os, target_vars);
       }
 
     private:
@@ -148,37 +122,37 @@ namespace TiledArray {
       template <typename Op>
       madness::Future<typename Op::result_type>
       reduce(const Op& op, madness::World& world = madness::World::get_default()) {
-        // Set the variable lists for this expression with the variable list of
-        // tsr as the target.
-        derived().init_vars();
+        // Typedefs
+        typedef madness::TaggedKey<madness::uniqueidT, ExpressionReduceTag> key_type;
 
-        // Get the output process map
-        std::shared_ptr<typename Tsr<A>::array_type::pmap_interface> pmap;
+        // Construct the expression engine
+        expr_engine engine(derived());
+        engine.init(world, std::shared_ptr<typename expr_engine::pmap_interface>(),
+            VariableList());
 
         // Create the distributed evaluator from this expression
-        dist_eval_type dist_eval = derived().make_dist_eval(world,
-            derived().vars(), pmap);
+        typename expr_engine::dist_eval_type dist_eval =
+            derived().make_dist_eval();
 
         // Create a local reduction task
         TiledArray::detail::ReduceTask<Op> reduce_task(world, op);
 
         // Move the data from dist_eval into the local reduction task
-        typename dist_eval_type::pmap_interface::const_iterator it =
+        typename expr_engine::dist_eval_type::pmap_interface::const_iterator it =
             dist_eval.pmap().begin();
-        const typename dist_eval_type::pmap_interface::const_iterator end =
+        const typename expr_engine::dist_eval_type::pmap_interface::const_iterator end =
             dist_eval.pmap().end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))
             reduce_task.add(dist_eval.move(*it));
 
-
-        typedef madness::TaggedKey<madness::uniqueidT, ExpressionReduceTag> key_type;
+        // All reduce the result of the expression
         return world.gop.all_reduce(key_type(dist_eval.id()), reduce_task.submit(), op);
       }
 
-    }; // class Base
+    }; // class Expr
 
   } // namespace expressions
 } // namespace TiledArray
 
-#endif // TILEDARRAY_EXPRESSIONS_BASE_H__INCLUDED
+#endif // TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED

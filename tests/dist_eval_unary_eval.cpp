@@ -40,16 +40,16 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::dim> ArrayN;
   typedef math::Noop<ArrayN::value_type::eval_type,
       ArrayN::value_type::eval_type, true> array_op_type;
-  typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
-      DensePolicy> dist_eval_type;
+  typedef TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<ArrayN::value_type,
+      array_op_type>, DensePolicy> dist_eval_type;
   typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
       false> op_type;
-  typedef detail::UnaryEvalImpl<dist_eval_type, op_type, DensePolicy> impl_type;
+  typedef TiledArray::detail::UnaryEvalImpl<dist_eval_type, op_type, DensePolicy> impl_type;
 
 
   UnaryEvalImplFixture() :
     array(*GlobalFixture::world, tr),
-    arg(detail::make_array_eval(array, array.get_world(), DenseShape(),
+    arg(TiledArray::detail::make_array_eval(array, array.get_world(), DenseShape(),
         array.get_pmap(), Permutation(), array_op_type()))
   {
     // Fill array with random data
@@ -74,9 +74,9 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(impl_type(arg, arg.get_world(), arg.trange(),
       DenseShape(), arg.pmap(), Permutation(), op_type(3)));
 
-  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
+  typedef TiledArray::detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 
-  dist_eval_type1 unary = detail::make_unary_eval(arg, arg.get_world(),
+  dist_eval_type1 unary = TiledArray::detail::make_unary_eval(arg, arg.get_world(),
       DenseShape(), arg.pmap(), Permutation(), op_type(3));
 
   BOOST_CHECK_EQUAL(& unary.get_world(), GlobalFixture::world);
@@ -90,14 +90,14 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
       true> op_type2;
-  typedef detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
-  typedef detail::UnaryEvalImpl<dist_eval_type2, op_type2, DensePolicy> impl_type2;
+  typedef TiledArray::detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
+  typedef TiledArray::detail::UnaryEvalImpl<dist_eval_type2, op_type2, DensePolicy> impl_type2;
 
 
   BOOST_REQUIRE_NO_THROW(impl_type2(unary, unary.get_world(), unary.trange(),
       DenseShape(), arg.pmap(), Permutation(), op_type2(5)));
 
-  dist_eval_type2 unary2 = detail::make_unary_eval(unary, unary.get_world(),
+  dist_eval_type2 unary2 = TiledArray::detail::make_unary_eval(unary, unary.get_world(),
       DenseShape(), unary.pmap(), Permutation(), op_type2(5));
 
 
@@ -114,9 +114,9 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( eval )
 {
-  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
+  typedef TiledArray::detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 
-  dist_eval_type1 dist_eval = detail::make_unary_eval(arg, arg.get_world(),
+  dist_eval_type1 dist_eval =TiledArray:: detail::make_unary_eval(arg, arg.get_world(),
       DenseShape(), arg.pmap(), Permutation(), op_type(3));
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
@@ -149,18 +149,18 @@ BOOST_AUTO_TEST_CASE( eval )
 
 BOOST_AUTO_TEST_CASE( double_eval )
 {
-  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
+  typedef TiledArray::detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
   typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
       true> op_type2;
-  typedef detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
+  typedef TiledArray::detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
 
 
   /// Construct a scaling unary evaluator
-  dist_eval_type1 dist_eval = detail::make_unary_eval(arg, arg.get_world(),
+  dist_eval_type1 dist_eval = TiledArray::detail::make_unary_eval(arg, arg.get_world(),
       DenseShape(), arg.pmap(), Permutation(), op_type(3));
 
   /// Construct a two-step, scaling unary evaluator
-  dist_eval_type2 dist_eval2 = detail::make_unary_eval(dist_eval,
+  dist_eval_type2 dist_eval2 = TiledArray::detail::make_unary_eval(dist_eval,
       dist_eval.get_world(), DenseShape(), dist_eval.pmap(), Permutation(), op_type2(5));
 
   BOOST_REQUIRE_NO_THROW(dist_eval2.eval());
@@ -193,10 +193,10 @@ BOOST_AUTO_TEST_CASE( double_eval )
 
 BOOST_AUTO_TEST_CASE( perm_eval )
 {
-  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
+  typedef TiledArray::detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
   typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
       true> op_type2;
-  typedef detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
+  typedef TiledArray::detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
 
   // Create permutation to be applied in the array evaluations
   std::array<std::size_t, GlobalFixture::dim> p;
@@ -205,11 +205,11 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   const Permutation perm(p.begin(), p.end());
 
   /// Construct a scaling unary evaluator
-  dist_eval_type1 dist_eval = detail::make_unary_eval(arg, arg.get_world(),
+  dist_eval_type1 dist_eval = TiledArray::detail::make_unary_eval(arg, arg.get_world(),
       DenseShape(), arg.pmap(), Permutation(), op_type(3));
 
   /// Construct a two-step, scaling unary evaluator
-  dist_eval_type2 dist_eval2 = detail::make_unary_eval(dist_eval,
+  dist_eval_type2 dist_eval2 = TiledArray::detail::make_unary_eval(dist_eval,
       dist_eval.get_world(), DenseShape(), dist_eval.pmap(), perm, op_type2(perm, 5));
 
   BOOST_REQUIRE_NO_THROW(dist_eval2.eval());

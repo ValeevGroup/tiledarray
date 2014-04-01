@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  justus
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  expr_trace.h
@@ -32,7 +32,8 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename> class Base;
+    template <typename> class Expr;
+    template <typename> class TsrExpr;
 
     /// Expression output stream
     class ExprOStream {
@@ -105,7 +106,7 @@ namespace TiledArray {
       /// \param expr The expression to be printed
       /// \return The output stream
       template <typename D>
-      std::ostream& operator<<(const Base<D>& expr) {
+      std::ostream& operator<<(const Expr<D>& expr) {
         if(madness::World::get_default().rank() == 0) {
           os_ << target_vars_ << " =\n";
 
@@ -127,7 +128,7 @@ namespace TiledArray {
     /// \param tsr The tensor that will be the target of the expression
     /// \return The expression trace object
     template <typename A>
-    inline ExprTraceTarget operator<<(std::ostream& os, const Tsr<A>& tsr) {
+    inline ExprTraceTarget operator<<(std::ostream& os, const TsrExpr<A>& tsr) {
       return ExprTraceTarget(os, tsr.vars());
     }
 

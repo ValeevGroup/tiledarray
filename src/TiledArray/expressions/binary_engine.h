@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2013  Virginia Tech
+ *  Copyright (C) 2014  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,19 +15,28 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  binary_engine.h
+ *  Mar 31, 2014
+ *
  */
 
-#ifndef TILEDARRAY_EXPRESSIONS_BINARY_H__INCLUDED
-#define TILEDARRAY_EXPRESSIONS_BINARY_H__INCLUDED
+#ifndef TILEDARRAY_EXPRESSIONS_BINARY_ENGINE_H__INCLUDED
+#define TILEDARRAY_EXPRESSIONS_BINARY_ENGINE_H__INCLUDED
 
-#include <TiledArray/expressions/base.h>
+#include <TiledArray/expressions/expr_engine.h>
 #include <TiledArray/dist_eval/binary_eval.h>
 
 namespace TiledArray {
   namespace expressions {
 
+    // Forward declarations
+    template <typename> class BinaryExpr;
+
     template <typename, typename>
-    struct BinaryExprPolicyHelper { }; // Different policy types is an error
+    struct BinaryExprPolicyHelper { }; // Different policy types is an error.
 
     template <typename Policy>
     struct BinaryExprPolicyHelper<Policy, Policy> {
@@ -39,52 +48,47 @@ namespace TiledArray {
         public BinaryExprPolicyHelper<typename Left::policy, typename Right::policy>
     { };
 
-    template <typename Derived>
-    class Binary : public Base<Derived> {
-    private:
-      typedef Base<Derived> Base_;
 
+    template <typename Derived>
+    class BinaryEngine : ExprEngine<Derived> {
     public:
+      // Class hierarchy typedefs
+      typedef BinaryEngine<Derived> BinaryEngine_; ///< This class type
+      typedef ExprEngine<Derived> ExprEngine_; ///< Base class type
+
+      // Argument typedefs
       typedef typename Derived::left_type left_type; ///< The left-hand expression type
       typedef typename Derived::right_type right_type; ///< The right-hand expression type
+
+      // Operational typedefs
       typedef typename Derived::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename Derived::size_type size_type; ///< This expression's distributed evaluator type
+      typedef typename Derived::trange_type trange_type; ///< This expression's distributed evaluator type
+      typedef typename Derived::shape_type shape_type; ///< This expression's distributed evaluator type
+      typedef typename Derived::pmap_interface pmap_interface; ///< This expression's distributed evaluator type
 
       static const bool consumable = true;
       static const unsigned int leaves = left_type::leaves + right_type::leaves;
 
     protected:
+
+      // Import base class variables to this scope
+      using ExprEngine_::vars_;
+
       left_type left_; ///< The left-hand argument
       right_type right_; ///< The right-hand argument
 
-    private:
-
-      // Not allowed
-      Binary<Derived>& operator=(const Binary<Derived>&);
-
     public:
 
-      /// Binary expression constructor
-      Binary(const left_type& left, const right_type& right) const :
-        Base_(), left_(left), right_(right)
-      { }
-
-      /// Copy constructor
-      Binary(const Binary<Derived>& other) :
-        Base_(other), left_(other.left_), right_(other.right_)
+      template <typename D>
+      BinaryEngine(const BinaryExpr<D>& expr) :
+        ExprEngine_(), left_(expr.left()), right_(expr.right())
       { }
 
       // Pull base class functions into this class.
-      using Base_::vars;
-
-      /// Left-hand expression argument accessor
-
-      /// \return A const reference to the left-hand expression object
-      const left_type& left() const { return left_; }
-
-      /// Right-hand expression argument accessor
-
-      /// \return A const reference to the right-hand expression object
-      const right_type& right() const { return right_; }
+      using ExprEngine_::derived;
 
       /// Set the variable list for this expression
 
@@ -94,7 +98,7 @@ namespace TiledArray {
       /// result of this expression will be permuted to match \c target_vars.
       /// \param target_vars The target variable list for this expression
       void vars(const VariableList& target_vars) {
-        TA_ASSERT(Base_::permute_tiles_);
+        TA_ASSERT(ExprEngine_::permute_tiles());
 
         // Determine the equality of the variable lists
         bool left_target = true, right_target = true, left_right = true;
@@ -105,17 +109,17 @@ namespace TiledArray {
         }
 
         if(left_right) {
-          Base_::vars_ = left_.vars();
+          vars_ = left_.vars();
         } else {
           // Determine which argument will be permuted
           const bool perm_left = (right_target || ((! (left_target || right_target))
               && (left_type::leaves <= right_type::leaves)));
 
           if(perm_left) {
-            Base_::vars_ = right_.vars();
+            vars_ = right_.vars();
             left_.vars(right_.target());
           } else {
-            Base_::vars_ = left_.vars();
+            vars_ = left_.vars();
             right_.vars(left_.vars());
           }
         }
@@ -130,71 +134,76 @@ namespace TiledArray {
         vars(target_vars);
       }
 
+
       /// Initialize the variable list of this expression
       void init_vars() {
         if(left_type::leaves <= right_type::leaves) {
           left_.init_vars();
-          Base_::vars_ = left_.vars();
-          right_.vars(Base_::vars_);
+          vars_ = left_.vars();
+          right_.vars(vars_);
         } else {
           right_.init_vars();
-          Base_::vars_ = right_.vars();
-          left_.vars(Base_::vars_);
+          vars_ = right_.vars();
+          left_.vars(vars_);
         }
+      }
+
+      /// Initialize result tensor structure
+
+      /// This function will initialize the permutation, tiled range, and shape
+      /// for the left-hand, right-hand, and result tensor.
+      /// \param target_vars The target variable list for the result tensor
+      void init_struct(const VariableList& target_vars) {
+        left_.init_struct(ExprEngine_::vars());
+        right_.init_struct(ExprEngine_::vars());
+        TA_ASSERT(left_.trange() == right_.trange());
+        ExprEngine_::init_struct(target_vars);
+      }
+
+      /// Initialize result tensor distribution
+
+      /// This function will initialize the world and process map for the result
+      /// tensor.
+      /// \param world The world were the result will be distributed
+      /// \param pmap The process map for the result tensor tiles
+      void init_distribution(madness::World* world,
+          const std::shared_ptr<pmap_interface>& pmap)
+      {
+        left_.init_distribution(world, pmap);
+        right_.init_distribution(world, left_.pmap());
+        ExprEngine_::init_distribution(world, left_.pmap());
+      }
+
+      /// Non-permuting tiled range factory function
+
+      /// \return The result tiled range
+      trange_type make_trange() const { return left_.trange(); }
+
+      /// Permuting tiled range factory function
+
+      /// \param perm The permutation to be applied to the tiled range
+      /// \return The result shape
+      trange_type make_trange(const Permutation& perm) const {
+        return perm ^ left_.trange();
       }
 
       /// Construct the distributed evaluator for this expression
 
-      /// \param world The world where this expression will be evaluated
-      /// \param vars The variable list for the output data layout
-      /// \param pmap The process map for the output
       /// \return The distributed evaluator that will evaluate this expression
-      dist_eval_type make_dist_eval(madness::World& world, const VariableList& target_vars,
-          const std::shared_ptr<typename dist_eval_type::pmap_interface>& pmap) const
-      {
-        typedef BinaryEvalImpl<typename left_type::dist_eval_type,
+      dist_eval_type make_dist_eval() const {
+        typedef TiledArray::detail::BinaryEvalImpl<typename left_type::dist_eval_type,
             typename right_type::dist_eval_type, typename Derived::op_type,
             typename dist_eval_type::policy> binary_impl_type;
 
-        // Verify input
-        TA_ASSERT(pmap->procs() == world.size());
-
         // Construct left and right distributed evaluators
-        const typename left_type::dist_eval_type left =
-            left_.make_dist_eval(world, Base_::vars_, pmap);
-        if(pmap == NULL)
-          pmap = left.pmap();
-        const typename right_type::dist_eval_type right =
-            right_.make_dist_eval(world, Base_::vars_, pmap);
-
-        // Check that the tiled ranges of the left- and right-hand arguments are equal.
-#ifndef NDEBUG
-        if(left.trange() != right.trange()) {
-          if(left.get_world().rank() == 0) {
-            TA_USER_ERROR_MESSAGE( "The left- and right-hand tiled ranges are not equal, "
-                << Base_::vars_ << " is not compatible with the expected output, "
-                << target_vars << "." );
-          }
-
-          TA_EXCEPTION("Incompatible TiledRange objects were given in left- and right-hand expressions.");
-        }
-#endif // NDEBUG
-
+        const typename left_type::dist_eval_type left = left_.make_dist_eval();
+        const typename right_type::dist_eval_type right = right_.make_dist_eval();
 
         // Construct the distributed evaluator type
-        std::shared_ptr<typename dist_eval_type::impl_type> pimpl;
-        if(Base_::vars_ != target_vars) {
-          // Determine the permutation that will be applied to the result, if any.
-          Permutation perm = target_vars.permutation(Base_::vars_);
-
-          pimpl.reset(new binary_impl_type(left, right, world, perm ^ left.trange(),
-              derived().make_shape(left.shape(), right.shape(), perm), pmap, perm,
-              (Base_::permute_tiles_ ? derived().make_tile_op(perm) : derived().make_tile_op())));
-        } else {
-          pimpl.reset(new binary_impl_type(left, right, world, left.trange(),
-              derived().make_shape(left.shape(), right.shape()), pmap, perm,
-              derived().make_tile_op()));
-        }
+        std::shared_ptr<typename dist_eval_type::impl_type> pimpl(
+            new binary_impl_type(left, right, *ExprEngine_::world(),
+                ExprEngine_::trange(), ExprEngine_::shape(), ExprEngine_::pmap(),
+                ExprEngine_::perm(), ExprEngine_::make_op()));
 
         return dist_eval_type(pimpl);
       }
@@ -204,13 +213,13 @@ namespace TiledArray {
       /// \param os The output stream
       /// \param target_vars The target variable list for this expression
       void print(ExprOStream os, const VariableList& target_vars) const {
-        Base_::print(os, target_vars);
-        left_.print(os, Base_::vars_);
-        right_.print(os, Base_::vars_);
+        ExprEngine_::print(os, target_vars);
+        left_.print(os, vars_);
+        right_.print(os, vars_);
       }
-    }; // class Binary
+    }; // class BinaryEngine
 
   }  // namespace expressions
 } // namespace TiledArray
 
-#endif // TILEDARRAY_EXPRESSIONS_BINARY_BASE_H__INCLUDED
+#endif // TILEDARRAY_EXPRESSIONS_BINARY_ENGINE_H__INCLUDED
