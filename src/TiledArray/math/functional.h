@@ -41,6 +41,45 @@ namespace TiledArray {
 
     }; // class Square
 
+    /// Square and add function object
+
+    /// \tparam T argument and result type
+    template <typename First, typename Second>
+    struct SquareAddAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::param<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+
+      /// Square \c t
+
+      /// \param t The value to be squared
+      /// \return first +=  second * second
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first +=  second * second;
+      }
+
+    }; // class SquareAddAssign
+
+
+    /// Square and add function object
+
+    /// \tparam T argument and result type
+    template <typename First, typename Second, typename Result>
+    struct MultAddAssign {
+      typedef typename TiledArray::detail::param<First>::type first_argument_type; ///< The argument type
+      typedef typename TiledArray::detail::param<Second>::type second_argument_type; ///< The argument type
+      typedef void result_type; ///< The result type
+
+      /// Square \c t
+
+      /// \param t The value to be squared
+      /// \return first +=  second * second
+      result_type operator()(Result& result, first_argument_type first, second_argument_type second) const {
+        result += first * second;
+      }
+
+    }; // class first
+
     /// Generalization of \c std::plus, but \c First plus \c Second yielding \c Result
 
     /// \tparam First Left-hand argument type
@@ -533,6 +572,80 @@ namespace TiledArray {
       }
 
     }; // struct PlusAssignConst
+
+
+
+    /// Minimum assign
+
+    /// \tparam Arg Argument type
+    template <typename First, typename Second>
+    struct MinAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::param<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+
+      /// Compute set first to the minimum of first and second
+
+      /// \param[in,out] first The left-hand argument and result
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first = std::min(first, second);
+      }
+    }; // class MinAssign
+
+    /// Maximum assign
+
+    /// \tparam Arg Argument type
+    template <typename First, typename Second>
+    struct MaxAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::param<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+
+      /// Compute set first to the maximum of first and second
+
+      /// \param[in,out] first The left-hand argument and result
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first = std::max(first, second);
+      }
+    }; // class MaxAssign
+
+    /// Absolute minimum assign
+
+    /// \tparam Arg Argument type
+    template <typename First, typename Second>
+    struct AbsMinAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::param<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+
+      /// Compute set first to the absolute minimum of first and second
+
+      /// \param[in,out] first The left-hand argument and result
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first = std::min(first, std::abs(second));
+      }
+    }; // class AbsMinAssign
+
+    /// Absolute maximum assign
+
+    /// \tparam Arg Argument type
+    template <typename First, typename Second>
+    struct AbsMaxAssign {
+      typedef First& first_argument_type; ///< The left-hand argument type
+      typedef typename TiledArray::detail::param<Second>::type second_argument_type; ///< The right-hand argument type
+      typedef void result_type; ///< The result type
+
+      /// Compute set first to the absolute maximum of first and second
+
+      /// \param[in,out] first The left-hand argument and result
+      /// \param second The right-hand argument
+      result_type operator()(first_argument_type first, second_argument_type second) const {
+        first = std::max(first, std::abs(second));
+      }
+    }; // class AbsMaxAssign
 
   }  // namespace detail
 }  // namespace TiledArray

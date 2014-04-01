@@ -432,6 +432,7 @@ namespace TiledArray {
     /// Element accessor
 
     /// \return The element at the \c i position.
+    /// \throw TiledArray::Exception When this tensor is empty.
     reference operator[](const size_type i) {
       TA_ASSERT(pimpl_);
       return pimpl_->data_[i];
@@ -441,6 +442,7 @@ namespace TiledArray {
     /// Element accessor
 
     /// \return The element at the \c i position.
+    /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Index>
     typename madness::disable_if<std::is_integral<Index>, const_reference>::type
     operator[](const Index& i) const {
@@ -451,6 +453,7 @@ namespace TiledArray {
     /// Element accessor
 
     /// \return The element at the \c i position.
+    /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Index>
     typename madness::disable_if<std::is_integral<Index>, reference>::type
     operator[](const Index& i) {
@@ -513,6 +516,9 @@ namespace TiledArray {
 
     /// \param perm The permutation to be applied to this tensor
     /// \return A permuted copy of this tensor
+    /// \throw TiledArray::Exception When this tensor is empty.
+    /// \throw TiledArray::Exception The dimension of \c perm does not match
+    /// that of this tensor.
     Tensor_ permute(const Permutation& perm) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(perm.dim() == pimpl_->range_.dim());
@@ -530,6 +536,10 @@ namespace TiledArray {
     /// \param op The binary, element-wise operation
     /// \return A tensor where element \c i of the new tensor is equal to
     /// \c op(*this[i],other[i])
+    /// \throw TiledArray::Exception When this tensor is empty.
+    /// \throw TiledArray::Exception When \c other is empty.
+    /// \throw TiledArray::Exception When the range of this tensor is not equal
+    /// to the range of \c other.
     template <typename U, typename AU, typename Op>
     Tensor_ binary(const Tensor<U, AU>& other, const Op& op) const {
       TA_ASSERT(pimpl_);
@@ -549,6 +559,12 @@ namespace TiledArray {
     /// \param perm The permutation to be applied to this tensor
     /// \return A tensor where element \c i of the new tensor is equal to
     /// \c op(*this[i],other[i])
+    /// \throw TiledArray::Exception When this tensor is empty.
+    /// \throw TiledArray::Exception When \c other is empty.
+    /// \throw TiledArray::Exception When the range of this tensor is not equal
+    /// to the range of \c other.
+    /// \throw TiledArray::Exception The dimension of \c perm does not match
+    /// that of this tensor.
     template <typename U, typename AU, typename Op>
     Tensor_ binary(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) const {
       TA_ASSERT(pimpl_);
@@ -567,6 +583,11 @@ namespace TiledArray {
     /// \param other The right-hand argument in the binary operation
     /// \param op The binary, element-wise operation
     /// \return A reference to this object
+    /// \throw TiledArray::Exception When this tensor is empty.
+    /// \throw TiledArray::Exception When \c other is empty.
+    /// \throw TiledArray::Exception When the range of this tensor is not equal
+    /// to the range of \c other.
+    /// \throw TiledArray::Exception When this and \c other are the same.
     template <typename U, typename AU, typename Op>
     Tensor_& inplace_binary(const Tensor<U, AU>& other, const Op& op) {
       TA_ASSERT(pimpl_);
@@ -585,6 +606,7 @@ namespace TiledArray {
     /// \param op The unary, element-wise operation
     /// \return A tensor where element \c i of the new tensor is equal to
     /// \c op(*this[i])
+    /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
     Tensor_ unary(const Op& op) const {
       TA_ASSERT(pimpl_);
@@ -598,6 +620,9 @@ namespace TiledArray {
     /// \param op The unary operation
     /// \param perm The permutation to be applied to this tensor
     /// \return A permuted tensor with elements that have been modified by \c op
+    /// \throw TiledArray::Exception When this tensor is empty.
+    /// \throw TiledArray::Exception The dimension of \c perm does not match
+    /// that of this tensor.
     template <typename Op>
     Tensor_ unary(const Op& op, const Permutation& perm) const {
       TA_ASSERT(pimpl_);
@@ -611,6 +636,7 @@ namespace TiledArray {
     /// \tparam Op The unary operation type
     /// \param op The unary, element-wise operation
     /// \return A reference to this object
+    /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
     Tensor_& inplace_unary(const Op& op) {
       TA_ASSERT(pimpl_);
@@ -988,6 +1014,8 @@ namespace TiledArray {
     /// \param gemm_helper The *GEMM operation meta data
     /// \return A new tensor which is the result of contracting this tensor with
     /// other
+    /// \throw TiledArray::Exception When this tensor is empty.
+    /// \throw TiledArray::Exception When \c other is empty.
     template <typename U, typename AU>
     Tensor_ gemm(const Tensor<U, AU>& other, const numeric_type factor, const math::GemmHelper& gemm_helper) const {
       // Check that this tensor is not empty and has the correct rank
@@ -1029,6 +1057,7 @@ namespace TiledArray {
     /// \param gemm_helper The *GEMM operation meta data
     /// \return A new tensor which is the result of contracting this tensor with
     /// other
+    /// \throw TiledArray::Exception When this tensor is empty.
     template <typename U, typename AU, typename V, typename AV>
     Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
         const numeric_type factor, const math::GemmHelper& gemm_helper)
@@ -1075,6 +1104,7 @@ namespace TiledArray {
     /// This function will compute the sum of the hyper diagonal elements of
     /// tensor.
     /// \return The trace of this tensor
+    /// \throw TiledArray::Exception When this tensor is empty.
     value_type trace() const {
       TA_ASSERT(pimpl_);
 
@@ -1116,10 +1146,193 @@ namespace TiledArray {
 
       return result;
     }
+
+  private:
+
+    /// Unary reduction operation
+
+    /// Perform an element-wise reduction of the tile data.
+    /// \tparam U The numeric element type
+    /// \tparam Op The reduction operation
+    /// \param n The number of elements to reduce
+    /// \param u The data to be reduced
+    /// \param value The initial value of the reduction
+    /// \param op The element-wise reduction operation
+    template <typename U, typename Op>
+    static typename madness::enable_if<TiledArray::detail::is_numeric<U> >::type
+    reduce(const size_type n, const U* u, numeric_type& value, const Op& op) {
+      math::reduce_vector_op(n, u, value, op);
+    }
+
+    /// Unary reduction operation
+
+    /// Perform an element-wise reduction of the tile data.
+    /// \tparam U The numeric element type
+    /// \tparam Op The reduction operation
+    /// \param n The number of elements to reduce
+    /// \param u The data to be reduced
+    /// \param value The initial value of the reduction
+    /// \param op The element-wise reduction operation
+    /// \param The element-wise reduction operation
+    template <typename U, typename AU, typename Op>
+    static typename madness::disable_if<TiledArray::detail::is_numeric<U> >::type
+    reduce(const size_type n, const U* u, numeric_type& value, const Op& op) {
+      for(size_type i = 0ul; i < n; ++i)
+        u[i].reduce(value, op);
+    }
+
+    /// Binary reduction operation
+
+    /// Perform an element-wise reduction of the tile data.
+    /// \tparam U The left-hand numeric element type
+    /// \tparam V The right-hand numeric element type
+    /// \tparam Op The reduction operation
+    /// \param n The number of elements to reduce
+    /// \param u The left-hand data to be reduced
+    /// \param v The right-hand data to be reduced
+    /// \param value The initial value of the reduction
+    /// \param op The element-wise reduction operation
+    template <typename U, typename V, typename Op>
+    static typename madness::enable_if_c<TiledArray::detail::is_numeric<U>::value &&
+        TiledArray::detail::is_numeric<V>::value >::type
+    reduce(const size_type n, const U* left, const U* right,
+        numeric_type& value, const Op& op) {
+      math::reduce_vector_op(n, left, right, value, op);
+    }
+
+    /// Unary reduction operation
+
+    /// Perform an element-wise reduction of the tile data.
+    /// \tparam U The numeric element type
+    /// \tparam Op The reduction operation
+    /// \param n The number of elements to reduce
+    /// \param u The data to be reduced
+    /// \param value The initial value of the reduction
+    /// \param op The element-wise reduction operation
+    /// \param The element-wise reduction operation
+    template <typename U, typename V, typename Op>
+    static typename madness::enable_if_c<! (TiledArray::detail::is_numeric<U>::value ||
+        TiledArray::detail::is_numeric<V>::value) >::type
+    reduce(const size_type n, const U* left, const V* right, numeric_type& value, const Op& op) {
+      for(size_type i = 0ul; i < n; ++i)
+        left[i].reduce(right[i], value, op);
+    }
+
+  public:
+
+    /// Unary reduction operation
+
+    /// Perform an element-wise reduction of the tile data.
+    /// \tparam Op The reduction operation
+    /// \param init_value The initial value of the reduction
+    /// \param The element-wise reduction operation
+    /// \throw TiledArray::Exception When this tensor is empty.
+    template <typename Op>
+    numeric_type reduce(numeric_type init_value, const Op& op) const {
+      TA_ASSERT(pimpl_);
+      reduce(pimpl_->range_.volume(), pimpl_->data_.data(), init_value, op);
+      return init_value;
+    }
+
+    /// Binary reduction operation
+
+    /// \tparam Op The reduction operation
+    /// \param init_value The initial value of the reduction
+    /// \param The element-wise reduction operation
+    /// \throw TiledArray::Exception When this tensor is empty.
+    /// \throw TiledArray::Exception When the range of this tensor is not equal
+    /// to the range of \c other.
+    template <typename U, typename AU, typename Op>
+    numeric_type reduce(const Tensor<U, AU>& other, numeric_type init_value, const Op& op) const {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_ == other.range());
+
+      reduce(pimpl_->range_.volume(), pimpl_->data_.data(), other.data(), init_value, op);
+      return init_value;
+    }
+
+    /// Sum of elements
+
+    /// \return The sum of all elements of this tensor
+    numeric_type sum() const {
+      numeric_type result = 0;
+      return reduce(result, math::PlusAssign<numeric_type, numeric_type>());
+    }
+
+    /// Product of elements
+
+    /// \return The product of all elements of this tensor
+    numeric_type product() const {
+      numeric_type result = 1;
+      reduce(result, math::MultipliesAssign<numeric_type, numeric_type>());
+      return result;
+    }
+
+    /// Vector norm_2
+
+    /// \return The vector norm of this tensor
+    numeric_type squred_norm() const {
+      numeric_type result = 0;
+      reduce(result, math::SquareAddAssign<numeric_type, numeric_type>());
+      return result;
+    }
+
+    /// Vector norm_2
+
+    /// \return The vector norm of this tensor
+    numeric_type norm() const {
+      return std::sqrt(squred_norm());
+    }
+
+    /// Minimum element
+
+    /// \return The minimum elements of this tensor
+    numeric_type min() const {
+      numeric_type result = std::numeric_limits<numeric_type>::max();
+      reduce(result, math::MinAssign<numeric_type, numeric_type>());
+      return result;
+    }
+
+    /// Maximum element
+
+    /// \return The maximum elements of this tensor
+    numeric_type max() const {
+      numeric_type result = std::numeric_limits<numeric_type>::min();
+      reduce(result, math::MaxAssign<numeric_type, numeric_type>());
+      return result;
+    }
+
+    /// Absolute minimum element
+
+    /// \return The minimum elements of this tensor
+    numeric_type abs_min() const {
+      numeric_type result = std::numeric_limits<numeric_type>::max();
+      reduce(result, math::AbsMinAssign<numeric_type, value_type>());
+      return result;
+    }
+
+    /// Absolute maximum element
+
+    /// \return The maximum elements of this tensor
+    numeric_type abs_max() const {
+      numeric_type result = 0;
+      reduce(result, math::AbsMaxAssign<numeric_type, value_type>());
+      return result;
+    }
+
+    template <typename U, typename AU>
+    numeric_type dot(const Tensor<U, AU>& other) const {
+      numeric_type result = 0;
+      reduce(other, result, math::MultAddAssign<numeric_type, typename Tensor<U,
+          AU>::numeric_type, numeric_type>());
+    }
+
   }; // class Tensor
 
   template <typename T, typename A>
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
+
+
 
   /// Tensor plus operator
 
