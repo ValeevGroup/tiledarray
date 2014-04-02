@@ -31,15 +31,15 @@
 namespace TiledArray {
   namespace math {
 
-    /// Policy class for binary tile operations
+    /// Trait class for unary tile operations
 
     /// \tparam Op The derived class type to \c UnaryInterface
     /// \note \c Op must be a template class with the following signature:
     /// <tt>template <typename, typename, bool> class Operation;</tt>.
     template <typename Op>
-    struct UnaryTileOpPolicy;
+    struct UnaryTileOpTrait;
 
-    /// Policy class for binary tile operations
+    /// Trait class for unary tile operations
 
     /// \tparam Result The result type
     /// \tparam Arg The argument type
@@ -47,15 +47,13 @@ namespace TiledArray {
     /// \tparam Op The unary tile operation template
     template <typename Result, typename Arg, bool Consumable,
         template <typename, typename, bool> class Op>
-    struct UnaryTileOpPolicy<Op<Result, Arg, Consumable> > {
+    struct UnaryTileOpTrait<Op<Result, Arg, Consumable> > {
       typedef typename madness::if_c<Consumable, Arg, const Arg>::type &
           argument_type; ///< The argument type
       typedef Result result_type; ///< The result tile type
-
-
       typedef std::integral_constant<bool, Consumable && std::is_same<Result,
-          Arg>::value> is_consumable; ///< Left is consumable type trait
-    }; // struct UnaryTileOpPolicy
+          Arg>::value> is_consumable; ///< Argument is consumable trait
+    }; // struct UnaryTileOpTrait
 
 
     /// Unary tile operation interface base
@@ -67,13 +65,13 @@ namespace TiledArray {
     template <typename Derived>
     class UnaryInterface {
     public:
-      typedef typename UnaryTileOpPolicy<Derived>::argument_type
+      typedef typename UnaryTileOpTrait<Derived>::argument_type
           argument_type; ///< The argument type
-      typedef typename UnaryTileOpPolicy<Derived>::result_type
+      typedef typename UnaryTileOpTrait<Derived>::result_type
           result_type; ///< The result tile type
 
 
-      typedef typename UnaryTileOpPolicy<Derived>::is_consumable
+      typedef typename UnaryTileOpTrait<Derived>::is_consumable
           is_consumable; ///< Left is consumable type trait
 
     private:
@@ -182,9 +180,9 @@ namespace TiledArray {
         template <typename, typename, bool> class Op>
     class UnaryInterface<Op<Result, Arg, false> > {
     public:
-      typedef typename UnaryTileOpPolicy<Op<Result, Arg, false> >::argument_type
+      typedef typename UnaryTileOpTrait<Op<Result, Arg, false> >::argument_type
           argument_type; ///< The argument type
-      typedef typename UnaryTileOpPolicy<Op<Result, Arg, false> >::result_type
+      typedef typename UnaryTileOpTrait<Op<Result, Arg, false> >::result_type
           result_type; ///< The result tile type
 
     private:
