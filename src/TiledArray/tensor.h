@@ -1105,7 +1105,7 @@ namespace TiledArray {
     /// tensor.
     /// \return The trace of this tensor
     /// \throw TiledArray::Exception When this tensor is empty.
-    numeric_type trace() const {
+    value_type trace() const {
       TA_ASSERT(pimpl_);
 
       // Get pointers to the range data
@@ -1124,7 +1124,7 @@ namespace TiledArray {
         finish_min = std::min(finish_min, finish_i);
       }
 
-      numeric_type result = 0;
+      value_type result = 0;
 
       if(start_max < finish_min) {
         // Compute the first and last ordinal index
@@ -1274,7 +1274,7 @@ namespace TiledArray {
       return result;
     }
 
-    /// Vector norm_2
+    /// Square of vector norm_2
 
     /// \return The vector norm of this tensor
     numeric_type squred_norm() const {
