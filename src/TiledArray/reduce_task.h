@@ -111,17 +111,6 @@ namespace TiledArray {
         op_(result, arg.first, arg.second);
       }
 
-      /// Reduce two argument pairs
-
-      /// \param[out] result The object that will hold the result of this reduction
-      /// \parma[in] arg1 The first argument pair to be reduced
-      /// \parma[in] arg2 The second argument pair to be reduced
-      void operator()(result_type& result, const argument_type& arg1,
-          const argument_type& arg2) const
-      {
-        op_(result, arg1.first, arg1.second, arg2.first, arg2.second);
-      }
-
     }; // class ReducePairOpWrapper
 
 
@@ -155,14 +144,15 @@ namespace TiledArray {
     ///     // Make an empty result object
     ///     result_type operator()() const;
     ///
+    ///     // Post process the result
+    ///     result_type operator(const result_type&)() const;
+    ///
     ///     // Reduce two result objects
     ///     void operator()(result_type&, const result_type&) const;
     ///
-    ///     // Reduce an argument pair
+    ///     // Reduce an argument
     ///     void operator()(result_type&, const argument_type&) const;
     ///
-    ///     // Reduce two argument pairs
-    ///     void operator()(result_type& result, const argument_type&, const argument_type&) const;
     /// }; // struct ReductionOp
     /// \endcode
     ///
@@ -181,6 +171,11 @@ namespace TiledArray {
     ///     // Make an empty result object
     ///     result_type operator()() const { return 0; }
     ///
+    ///     // Post process the result (no operation, passthrough)
+    ///     const result_type& operator()(const result_type& result) const {
+    ///       return result;
+    ///     }
+    ///
     ///     void operator()(result_type& result, const result_type& arg) const {
     ///         result += arg;
     ///     }
@@ -190,17 +185,7 @@ namespace TiledArray {
     ///         for(std::size_t i = 0ul; i < first.size(); ++i)
     ///             result *= arg[i];
     ///     }
-    ///
-    ///     /// Reduce two argument pairs
-    ///     void operator()(result_type& result,
-    ///             const argument_type& arg1, const argument_type& arg2) const
-    ///     {
-    ///         for(std::size_t i = 0ul; i < arg1.size(); ++i)
-    ///             result *= arg1[i];
-    ///         for(std::size_t i = 0ul; i < arg2.size(); ++i)
-    ///             result *= arg2[i];
-    ///     }
-    /// }; // struct DotProduct
+    /// }; // struct VectorProduct
     /// \endcode
     /// \note There is no need to add this object to the MADNESS task queue. It
     /// will be handled internally by the object. Simply call \c submit() to add
@@ -373,7 +358,8 @@ namespace TiledArray {
           std::shared_ptr<result_type> result(new result_type(op_()));
 
           // Reduce the two arguments
-          op_(*result, object1->arg(), object2->arg());
+          op_(*result, object1->arg());
+          op_(*result, object2->arg());
 
           // Cleanup arguments
           ReduceObject::destroy(object1);
@@ -567,6 +553,9 @@ namespace TiledArray {
     ///     // Make an empty result object
     ///     result_type operator()() const;
     ///
+    ///     // Post process the result
+    ///     const result_type& operator()(const result_type&) const;
+    ///
     ///     // Reduce two result objects
     ///     void operator()(result_type&, const result_type&) const;
     ///
@@ -574,10 +563,6 @@ namespace TiledArray {
     ///     void operator()(result_type&, const first_argument_type&,
     ///         const second_argument_type&) const;
     ///
-    ///     // Reduce two argument pairs
-    ///     void operator()(result_type& result,
-    ///             const first_argument_type& first1, const second_argument_type& second1,
-    ///             const first_argument_type& first2, const second_argument_type& second2) const;
     /// }; // struct ReductionOp
     /// \endcode
     ///
@@ -597,6 +582,11 @@ namespace TiledArray {
     ///     // Make an empty result object
     ///     result_type operator()() const { return 0; }
     ///
+    ///     // Post process the result (no operation, passthrough)
+    ///     const result_type& operator()(const result_type& result) const {
+    ///       return result;
+    ///     }
+    ///
     ///     void operator()(result_type& result, const result_type& arg) const {
     ///         result += arg;
     ///     }
@@ -610,17 +600,6 @@ namespace TiledArray {
     ///             result += first[i] * second[i];
     ///     }
     ///
-    ///     /// Reduce two argument pairs
-    ///     void operator()(result_type& result,
-    ///             const first_argument_type& first1, const second_argument_type& second1,
-    ///             const first_argument_type& first2, const second_argument_type& second2) const
-    ///     {
-    ///         assert(first1.size() == second1.size());
-    ///         assert(first2.size() == second2.size());
-    ///         assert(first1.size() == first2.size());
-    ///         for(std::size_t i = 0ul; i < first1.size(); ++i)
-    ///             result += first1[i] * second1[i] + first2[i] * second2[i];
-    ///     }
     /// }; // struct DotProduct
     /// \endcode
     /// \note There is no need to add this object to the MADNESS task queue. It
