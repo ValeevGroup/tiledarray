@@ -1105,7 +1105,7 @@ namespace TiledArray {
     /// tensor.
     /// \return The trace of this tensor
     /// \throw TiledArray::Exception When this tensor is empty.
-    value_type trace() const {
+    numeric_type trace() const {
       TA_ASSERT(pimpl_);
 
       // Get pointers to the range data
@@ -1124,7 +1124,7 @@ namespace TiledArray {
         finish_min = std::min(finish_min, finish_i);
       }
 
-      value_type result = 0;
+      numeric_type result = 0;
 
       if(start_max < finish_min) {
         // Compute the first and last ordinal index
@@ -1164,10 +1164,11 @@ namespace TiledArray {
       math::reduce_vector_op(n, u, value, op);
     }
 
-    /// Unary reduction operation
+    /// Unary \c Tensor reduction
 
-    /// Perform an element-wise reduction of the tile data.
-    /// \tparam U The numeric element type
+    /// Perform an element-wise reduction on an array of \c Tensors.
+    /// \tparam U The tensor element type
+    /// \tparam AU The tensor allocator type
     /// \tparam Op The reduction operation
     /// \param n The number of elements to reduce
     /// \param u The data to be reduced
@@ -1175,8 +1176,9 @@ namespace TiledArray {
     /// \param op The element-wise reduction operation
     /// \param The element-wise reduction operation
     template <typename U, typename AU, typename Op>
-    static typename madness::disable_if<TiledArray::detail::is_numeric<U> >::type
-    reduce(const size_type n, const U* u, numeric_type& value, const Op& op) {
+    static void reduce(const size_type n, const Tensor<U, AU>* u,
+        numeric_type& value, const Op& op)
+    {
       for(size_type i = 0ul; i < n; ++i)
         u[i].reduce(value, op);
     }
@@ -1184,36 +1186,40 @@ namespace TiledArray {
     /// Binary reduction operation
 
     /// Perform an element-wise reduction of the tile data.
-    /// \tparam U The left-hand numeric element type
-    /// \tparam V The right-hand numeric element type
+    /// \tparam Left The left-hand element type
+    /// \tparam Right The right-hand element type
     /// \tparam Op The reduction operation
     /// \param n The number of elements to reduce
-    /// \param u The left-hand data to be reduced
-    /// \param v The right-hand data to be reduced
+    /// \param left The left-hand data to be reduced
+    /// \param right The right-hand data to be reduced
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
-    template <typename U, typename V, typename Op>
-    static typename madness::enable_if_c<TiledArray::detail::is_numeric<U>::value &&
-        TiledArray::detail::is_numeric<V>::value >::type
-    reduce(const size_type n, const U* left, const U* right,
+    template <typename Left, typename Right, typename Op>
+    static typename madness::enable_if_c<TiledArray::detail::is_numeric<Left>::value &&
+        TiledArray::detail::is_numeric<Right>::value >::type
+    reduce(const size_type n, const Left* left, const Right* right,
         numeric_type& value, const Op& op) {
       math::reduce_vector_op(n, left, right, value, op);
     }
 
-    /// Unary reduction operation
+    /// Binary \c Tensor reduction
 
-    /// Perform an element-wise reduction of the tile data.
-    /// \tparam U The numeric element type
+    /// Perform an element-wise reduction on arrays of \c Tensors.
+    /// \tparam U The left-hand tensor element type
+    /// \tparam AU The left-hand tensor allocator type
+    /// \tparam V The right-hand tensor element type
+    /// \tparam AV The right-hand tensor allocator type
     /// \tparam Op The reduction operation
     /// \param n The number of elements to reduce
-    /// \param u The data to be reduced
+    /// \param left The left-hand \c Tensors to be reduced
+    /// \param left The left-hand \c Tensors to be reduced
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
     /// \param The element-wise reduction operation
-    template <typename U, typename V, typename Op>
-    static typename madness::enable_if_c<! (TiledArray::detail::is_numeric<U>::value ||
-        TiledArray::detail::is_numeric<V>::value) >::type
-    reduce(const size_type n, const U* left, const V* right, numeric_type& value, const Op& op) {
+    template <typename U, typename AU, typename V, typename AV, typename Op>
+    static void reduce(const size_type n, const Tensor<U, AU>* left,
+        const Tensor<V, AV>* right, numeric_type& value, const Op& op)
+    {
       for(size_type i = 0ul; i < n; ++i)
         left[i].reduce(right[i], value, op);
     }
@@ -1320,11 +1326,18 @@ namespace TiledArray {
       return result;
     }
 
+    /// Vector dot product
+
+    /// \tparam U The other tensor element type
+    /// \tparam AU The other tensor allocator type
+    /// \param other The other tensor to be reduced
+    /// \return The inner product of the this and \c other
     template <typename U, typename AU>
     numeric_type dot(const Tensor<U, AU>& other) const {
       numeric_type result = 0;
       reduce(other, result, math::MultAddAssign<numeric_type, typename Tensor<U,
           AU>::numeric_type, numeric_type>());
+      return result;
     }
 
   }; // class Tensor
