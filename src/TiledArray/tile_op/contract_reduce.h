@@ -199,30 +199,6 @@ namespace TiledArray {
           result.gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
       }
 
-      /// Contract a pair of tiles and add to a target tile
-
-      /// Contract \c left1 with \c right1 and \c left2 with \c right2 ,
-      /// and add the two results.
-      /// \param[in,out] result The object that will hold the result of this
-      /// reduction operation.
-      /// \param[in] left1 The first left-hand tile to be contracted
-      /// \param[in] right1 The first right-hand tile to be contracted
-      /// \param[in] left2 The second left-hand tile to be contracted
-      /// \param[in] right2 The second right-hand tile to be contracted
-      void operator()(result_type& result,
-          first_argument_type left1, second_argument_type right1,
-          first_argument_type left2, second_argument_type right2) const
-      {
-        TA_ASSERT(pimpl_);
-
-        if(result.empty())
-          result = left1.gemm(right1, pimpl_->alpha_, pimpl_->gemm_helper_);
-        else
-          result.gemm(left1, right1, pimpl_->alpha_, pimpl_->gemm_helper_);
-
-        result.gemm(left2, right2, pimpl_->alpha_, pimpl_->gemm_helper_);
-      }
-
     }; // class ContractReduce
 
   }  // namespace math
