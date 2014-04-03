@@ -34,7 +34,8 @@ namespace TiledArray {
     /// This reduction operation computes the vector dot product of a tile.
     /// \tparam Tile The tile type
     template <typename Left, typename Right>
-    struct DotReduction {
+    class DotReduction {
+    public:
       // typedefs
       typedef typename Left::numeric_type result_type;
       typedef Left first_argument_type;
@@ -59,7 +60,7 @@ namespace TiledArray {
         result += left.dot(right);
       }
 
-    }; // struct DotReduction
+    }; // class DotReduction
 
   }  // namespace math
 } // namespace TiledArray
