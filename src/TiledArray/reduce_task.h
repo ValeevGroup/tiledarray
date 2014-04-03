@@ -145,7 +145,7 @@ namespace TiledArray {
     ///     result_type operator()() const;
     ///
     ///     // Post process the result
-    ///     result_type operator(const result_type&)() const;
+    ///     result_type operator()(const result_type&) const;
     ///
     ///     // Reduce two result objects
     ///     void operator()(result_type&, const result_type&) const;
