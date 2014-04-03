@@ -122,7 +122,7 @@ namespace TiledArray {
     struct BinaryReduceWrapper {
     public:
       // typedefs
-      typedef UnaryReduceWrapper<Left, Right, Op> UnaryReduceWrapper_; ///< This class type
+      typedef BinaryReduceWrapper<Left, Right, Op> BinaryReduceWrapper_; ///< This class type
       typedef typename Op::result_type result_type; ///< The reduction result type
       typedef Left first_argument_type; ///< The reduction left-hand argument type
       typedef Right second_argument_type; ///< The reduction right-hand argument type
@@ -130,9 +130,9 @@ namespace TiledArray {
       // Constructors
       BinaryReduceWrapper() : Op() { }
       BinaryReduceWrapper(const Op& op) : Op(op) { }
-      BinaryReduceWrapper(const UnaryReduceWrapper_& other) : Op(other) { }
+      BinaryReduceWrapper(const BinaryReduceWrapper_& other) : Op(other) { }
 
-      UnaryReduceWrapper_& operator=(const UnaryReduceWrapper_& other) {
+      BinaryReduceWrapper_& operator=(const BinaryReduceWrapper_& other) {
         Op::operator=(other);
         return *this;
       }
@@ -140,7 +140,7 @@ namespace TiledArray {
     private:
 
       template <typename L, typename R>
-      typename madness::enable_if<is_lazy_tile<L>::value && is_lazy_tile<R>::value>::type
+      typename madness::enable_if_c<is_lazy_tile<L>::value && is_lazy_tile<R>::value>::type
       reduce(result_type& result, const L& left, const R& right) const {
         typename L::eval_type eval_left(left);
         typename R::eval_type eval_right(right);
@@ -148,21 +148,21 @@ namespace TiledArray {
       }
 
       template <typename L, typename R>
-      typename madness::enable_if<(!is_lazy_tile<L>::value) && is_lazy_tile<R>::value>::type
+      typename madness::enable_if_c<(!is_lazy_tile<L>::value) && is_lazy_tile<R>::value>::type
       reduce(result_type& result, const L& left, const R& right) const {
         typename R::eval_type eval_right(right);
         Op::operator()(result, left, eval_right);
       }
 
       template <typename L, typename R>
-      typename madness::enable_if<is_lazy_tile<L>::value && (!is_lazy_tile<R>::value)>::type
+      typename madness::enable_if_c<is_lazy_tile<L>::value && (!is_lazy_tile<R>::value)>::type
       reduce(result_type& result, const L& left, const R& right) const {
         typename L::eval_type eval_left(left);
         Op::operator()(result, eval_left, right);
       }
 
       template <typename L, typename R>
-      typename madness::enable_if<!(is_lazy_tile<L>::value || is_lazy_tile<R>::value)>::type
+      typename madness::enable_if_c<!(is_lazy_tile<L>::value || is_lazy_tile<R>::value)>::type
       reduce(result_type& result, const L& left, const R& right) const {
         Op::operator()(result, left, right);
       }
@@ -186,8 +186,8 @@ namespace TiledArray {
         typename Op::second_argument_type, Op>
     {
       // typedefs
-      typedef UnaryReduceWrapper<typename Op::first_argument_type,
-          typename Op::second_argument_type, Op> UnaryReduceWrapper_; ///< This class type
+      typedef BinaryReduceWrapper<typename Op::first_argument_type,
+          typename Op::second_argument_type, Op> BinaryReduceWrapper_; ///< This class type
       typedef typename Op::result_type result_type; ///< The reduction result type
       typedef typename Op::first_argument_type first_argument_type; ///< The reduction left-hand argument type
       typedef typename Op::second_argument_type second_argument_type; ///< The reduction right-hand argument type
@@ -195,9 +195,9 @@ namespace TiledArray {
       // Constructors
       BinaryReduceWrapper() : Op() { }
       BinaryReduceWrapper(const Op& op) : Op(op) { }
-      BinaryReduceWrapper(const UnaryReduceWrapper_& other) : Op(other) { }
+      BinaryReduceWrapper(const BinaryReduceWrapper_& other) : Op(other) { }
 
-      UnaryReduceWrapper_& operator=(const UnaryReduceWrapper_& other) {
+      BinaryReduceWrapper_& operator=(const BinaryReduceWrapper_& other) {
         Op::operator=(other);
         return *this;
       }
