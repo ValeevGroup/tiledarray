@@ -28,11 +28,16 @@
 
 #include <TiledArray/expressions/expr_engine.h>
 #include <TiledArray/reduce_task.h>
+#include <TiledArray/tile_op/unary_reduction.h>
+#include <TiledArray/tile_op/binary_reduction.h>
+#include <TiledArray/tile_op/reduce_wrapper.h>
 
 namespace TiledArray {
   namespace expressions {
 
+    // Forward declaration
     template <typename> struct ExprTrait;
+
 
     /// Base class for expression evaluation
 
@@ -45,8 +50,9 @@ namespace TiledArray {
 
     public:
 
+      typedef Expr<Derived> Expr_; ///< This class type
       typedef Derived derived_type; ///< The derived object type
-      typedef typename ExprTrait<derived_type>::engine_type engine_type; ///< Expression engine type
+      typedef typename ExprTrait<Derived>::engine_type engine_type; ///< Expression engine type
 
       /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
@@ -77,7 +83,8 @@ namespace TiledArray {
 
         // Construct the expression engine
         engine_type engine(derived());
-        engine.init(world, pmap, tsr.vars());
+        VariableList target_vars(tsr.vars());
+        engine.init(world, pmap, target_vars);
 
         // Create the distributed evaluator from this expression
         typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -88,9 +95,9 @@ namespace TiledArray {
 
         // Move the data from disteval into the result array
         typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
-            dist_eval.pmap().begin();
+            dist_eval.pmap()->begin();
         const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
-            dist_eval.pmap().end();
+            dist_eval.pmap()->end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))
             result.set(*it, dist_eval.move(*it));
@@ -149,6 +156,134 @@ namespace TiledArray {
 
         // All reduce the result of the expression
         return world.gop.all_reduce(key_type(dist_eval.id()), reduce_task.submit(), op);
+      }
+
+      template <typename D, typename Op>
+      madness::Future<typename Op::result_type>
+      reduce(const Expr<D>& right_expr, const Op& op,
+          madness::World& world = madness::World::get_default()) const
+      {
+        // Evaluate this expression
+        engine_type left_engine(derived());
+        left_engine.init(world, std::shared_ptr<typename engine_type::pmap_interface>(),
+            VariableList());
+
+        // Create the distributed evaluator for this expression
+        typename engine_type::dist_eval_type left_dist_eval =
+            derived().make_dist_eval();
+
+        // Evaluate the right-hand expression
+        typename D::engine_type right_engine(right_expr.derived());
+        right_engine.init(world, left_engine.pmap(), left_engine.vars());
+
+        // Create the distributed evaluator for the right-hand expression
+        typename engine_type::dist_eval_type right_dist_eval =
+            derived().make_dist_eval();
+
+        // Create a local reduction task
+        TiledArray::detail::ReduceTask<Op> local_reduce_task(world, op);
+
+        // Move the data from dist_eval into the local reduction task
+        typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
+            left_dist_eval.pmap().begin();
+        const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
+            left_dist_eval.pmap().end();
+        for(; it != end; ++it) {
+          if(!left_dist_eval.is_zero(*it)) {
+            madness::Future<typename engine_type::value_type> left_tile =
+                left_dist_eval.move(*it);
+
+            if(!right_dist_eval.is_zero(*it))
+              local_reduce_task.add(left_tile, right_dist_eval.move(*it));
+          } else {
+            if(!right_dist_eval.is_zero(*it))
+              right_dist_eval.move(*it);
+          }
+        }
+
+        return world.gop.all_reduce(key_type(left_dist_eval.id()),
+            local_reduce_task.submit(), op);
+      }
+
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      sum(madness::World& world = madness::World::get_default()) const {
+        typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
+            TiledArray::math::SumReduction<typename engine_type::value_type::eval_type> >
+            reduction_type;
+        return reduce(reduction_type(), world);
+      }
+
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      product(madness::World& world = madness::World::get_default()) const {
+        typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
+            TiledArray::math::ProductReduction<typename engine_type::value_type::eval_type> >
+            reduction_type;
+        return reduce(reduction_type(), world);
+      }
+
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      squared_norm(madness::World& world = madness::World::get_default()) const {
+        typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
+            TiledArray::math::SquaredNormReduction<typename engine_type::value_type::eval_type> >
+            reduction_type;
+        return reduce(reduction_type(), world);
+      }
+
+    private:
+
+      template <typename T>
+      static T sqrt(const T t) { return std::sqrt(t); }
+
+    public:
+
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      norm(madness::World& world = madness::World::get_default()) const {
+        return world.taskq.add(Expr_::template sqrt<
+            typename engine_type::value_type::eval_type::numeric_type>,
+            squared_norm(world));
+      }
+
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      min(madness::World& world = madness::World::get_default()) const {
+        typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
+            TiledArray::math::MinReduction<typename engine_type::value_type::eval_type> >
+            reduction_type;
+        return reduce(reduction_type(), world);
+      }
+
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      max(madness::World& world = madness::World::get_default()) const {
+        typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
+            TiledArray::math::MaxReduction<typename engine_type::value_type::eval_type> >
+            reduction_type;
+        return reduce(reduction_type(), world);
+      }
+
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      abs_min(madness::World& world = madness::World::get_default()) const {
+        typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
+            TiledArray::math::AbsMinReduction<typename engine_type::value_type::eval_type> >
+            reduction_type;
+        return reduce(reduction_type(), world);
+      }
+
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      abs_max(madness::World& world = madness::World::get_default()) const {
+        typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
+            TiledArray::math::AbsMaxReduction<typename engine_type::value_type::eval_type> >
+            reduction_type;
+        return reduce(reduction_type(), world);
+      }
+
+      template <typename D>
+      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      dot(const Expr<D>& right_expr, madness::World& world = madness::World::get_default()) const {
+        typedef TiledArray::math::BinaryReduceWrapper<typename engine_type::value_type,
+            typename D::engine_type::value_type,
+            TiledArray::math::DotReduction<typename engine_type::value_type::eval_type,
+            typename D::engine_type::value_type::eval_type> > reduction_type;
+
+        return reduce(right_expr, reduction_type(), world);
       }
 
     }; // class Expr

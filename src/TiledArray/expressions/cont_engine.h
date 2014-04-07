@@ -43,22 +43,31 @@ namespace TiledArray {
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
     template <typename Derived>
-    class ContEngine : public virtual BinaryEngine<Derived> {
+    class ContEngine : public MultEngine<Derived> {
     public:
+      // Class hierarchy typedefs
       typedef ContEngine<Derived> ContEngine_; ///< This class type
-      typedef BinaryEngine<ContEngine_> BinaryEngine_; ///< Binary base class type
+      typedef MultEngine<Derived> MultEngin_; /// Multiply base engine
+      typedef BinaryEngine<Derived> BinaryEngine_; ///< Binary base class type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
-      typedef typename Derived::left_type left_type; ///< The left-hand expression type
-      typedef typename Derived::right_type right_type; ///< The right-hand expression type
-      typedef typename left_type::eval_type value_type; ///< The result tile type
+
+      // Argument typedefs
+      typedef typename EngineTrait<Derived>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<Derived>::right_type right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
       typedef TiledArray::math::ContractReduce<value_type, typename left_type::value_type::eval_type,
           typename right_type::value_type::eval_type> op_type; ///< The tile operation type
-      typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
-      typedef typename Derived::size_type size_type; ///< Process map interface type
-      typedef typename Derived::trange_type trange_type; ///< Tiled range type
-      typedef typename Derived::shape_type shape_type; ///< Shape type
-      typedef typename Derived::pmap_interface pmap_interface; ///< Process map interface type
-      typedef typename Derived::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
     protected:
 
@@ -96,7 +105,7 @@ namespace TiledArray {
       /// \param expr The parent expression
       template <typename L, typename R>
       ContEngine(const MultExpr<L, R>& expr) :
-        BinaryEngine_(expr), factor_(1), left_vars_(), right_vars_(),
+        MultEngin_(expr), factor_(1), left_vars_(), right_vars_(),
         left_op_(permute_to_no_trans), right_op_(permute_to_no_trans), op_(),
         proc_grid_(), K_(1u)
       { }
@@ -113,6 +122,10 @@ namespace TiledArray {
         proc_grid_(), K_(1u)
       { }
 
+      // Pull base class functions into this class.
+      using ExprEngine_::derived;
+      using ExprEngine_::vars;
+
       /// Set the variable list for this expression
 
       /// This function will set the variable list for this expression and its
@@ -121,7 +134,7 @@ namespace TiledArray {
       /// result of this expression will be permuted to match \c target_vars.
       /// \param target_vars The target variable list for this expression
       template <typename Binary>
-      void vars(const VariableList& target_vars) {
+      void perm_vars(const VariableList& target_vars) {
         // Only permute if the arguments can be permuted
         if((left_op_ == permute_to_no_trans) || (left_op_ == permute_to_no_trans)) {
 
@@ -151,7 +164,7 @@ namespace TiledArray {
               }
 
               // Permute the left argument with the new variable list.
-              BinaryEngine_::left().vars(left_vars_);
+              BinaryEngine_::left().perm_vars(left_vars_);
             } else {
               // Copy left-hand outer variables to that of result.
               for(unsigned int i = 0u; i < left_outer_rank; ++i)
@@ -167,7 +180,7 @@ namespace TiledArray {
               }
 
               // Permute the left argument with the new variable list.
-              BinaryEngine_::right().vars(right_vars_);
+              BinaryEngine_::right().perm_vars(right_vars_);
             } else {
               // Copy right-hand outer variables to that of result.
               for(unsigned int i = left_outer_rank, j = inner_rank; i < result_rank; ++i, ++j)
@@ -285,7 +298,7 @@ namespace TiledArray {
           left_op_ = trans;
           BinaryEngine_::left().permute_tiles(false);
         } else {
-          BinaryEngine_::left().vars(left_vars_);
+          BinaryEngine_::left().perm_vars(left_vars_);
         }
         if(right_is_no_trans) {
           right_op_ = no_trans;
@@ -294,7 +307,7 @@ namespace TiledArray {
           right_op_ = trans;
           BinaryEngine_::right().permute_tiles(false);
         } else {
-          BinaryEngine_::right().vars(right_vars_);
+          BinaryEngine_::right().perm_vars(right_vars_);
         }
 
       }
@@ -387,7 +400,7 @@ namespace TiledArray {
 
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
-      shape_type make_trange(const Permutation& perm = Permutation()) const {
+      trange_type make_trange(const Permutation& perm = Permutation()) const {
         // Compute iteration limits
         const unsigned int inner_rank = op_.gemm_helper().num_contract_ranks();
         const unsigned int left_outer_rank = op_.gemm_helper().left_rank() - left_outer_rank;

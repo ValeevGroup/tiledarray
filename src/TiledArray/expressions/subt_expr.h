@@ -33,19 +33,13 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename L, typename R>
-    struct ExprTrait<SubtExpr<L,R> > {
-      typedef L left_type;
-      typedef R right_type;
-      typedef SubtEngine<typename L::engine_type, typename R::engine_type> type; ///< Expression engine type
-    };
+    template <typename Left, typename Right>
+    struct ExprTrait<SubtExpr<Left, Right> > : public BinaryExprTrait<Left, Right, SubtEngine>
+    { };
 
-    template <typename L, typename R>
-    struct ExprTrait<ScalSubtExpr<L,R> > {
-      typedef L left_type;
-      typedef R right_type;
-      typedef ScalSubtEngine<typename L::engine_type, typename R::engine_type> type; ///< Expression engine type
-    };
+    template <typename Left, typename Right>
+    struct ExprTrait<ScalSubtExpr<Left, Right> > : public BinaryExprTrait<Left, Right, ScalSubtEngine>
+    { };
 
     /// Subtraction expression
 
@@ -93,7 +87,7 @@ namespace TiledArray {
       typedef typename ExprTrait<ScalSubtExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<ScalSubtExpr_>::right_type right_type; ///< The right-hand expression type
       typedef typename ExprTrait<ScalSubtExpr_>::type engine_type; ///< Expression engine type
-      typedef typename engine_type::scalar_type scalar_type; ///< Scalar type
+      typedef typename ExprTrait<ScalSubtExpr_>::scalar_type scalar_type; ///< Scalar type
 
     private:
 

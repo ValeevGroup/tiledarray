@@ -32,28 +32,14 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename L, typename R>
-    struct ExprTrait<AddExpr<L,R> > {
-      typedef L left_type; ///< The left-hand expression type
-      typedef R right_type; ///< The right-hand expression type
-      typedef AddEngine<typename L::engine_type, typename R::engine_type> engine_type; ///< Expression engine type
-      typedef typename engine_type::policy policy; ///< Expression policy type
-      typedef typename policy::size_type size_type; ///< size type
-      typedef typename policy::trange_type trange_type; ///< trange type
-      typedef typename policy::shape_type shape_type; ///< shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< pmap interface
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::Add<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-    };
+    template <typename Left, typename Right>
+    struct ExprTrait<AddExpr<Left, Right> > : public BinaryExprTrait<Left, Right, AddEngine>
+    { };
 
-    template <typename L, typename R>
-    struct ExprTrait<ScalAddExpr<L,R> > {
-      typedef L left_type; ///< The left-hand expression type
-      typedef R right_type; ///< The right-hand expression type
-      typedef ScalAddEngine<typename L::engine_type, typename R::engine_type> engine_type; ///< Expression engine type
-    };
+    template <typename Left, typename Right>
+    struct ExprTrait<ScalAddExpr<Left, Right> > : public BinaryExprTrait<Left, Right, ScalAddEngine>
+    { };
+
 
     /// Addition expression
 
@@ -64,9 +50,9 @@ namespace TiledArray {
     public:
       typedef AddExpr<Left, Right> AddExpr_; ///< This class type
       typedef BinaryExpr<AddExpr<Left, Right> > BinaryExpr_; ///< Binary base class type
-      typedef typename ExprTrait<AddExpr_>::left_type left_type; ///< The left-hand expression type
-      typedef typename ExprTrait<AddExpr_>::right_type right_type; ///< The right-hand expression type
-      typedef typename ExprTrait<AddExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename EngineTrait<AddExpr_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<AddExpr_>::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<AddExpr_>::engine_type engine_type; ///< Expression engine type
 
 
       /// Expression constructor
@@ -92,9 +78,9 @@ namespace TiledArray {
     public:
       typedef ScalAddExpr<Left, Right> ScalAddExpr_; ///< This class type
       typedef BinaryExpr<AddExpr<Left, Right> > BinaryExpr_; ///< Binary base class type
-      typedef typename ExprTrait<ScalAddExpr_>::left_type left_type; ///< The left-hand expression type
-      typedef typename ExprTrait<ScalAddExpr_>::right_type right_type; ///< The right-hand expression type
-      typedef typename ExprTrait<ScalAddExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename EngineTrait<ScalAddExpr_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalAddExpr_>::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<ScalAddExpr_>::engine_type engine_type; ///< Expression engine type
       typedef typename engine_type::scalar_type scalar_type; ///< Scalar type
 
 

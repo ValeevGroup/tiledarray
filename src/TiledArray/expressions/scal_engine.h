@@ -34,6 +34,14 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename> class ScalExpr;
+    template <typename Arg> class ScalEngine;
+
+
+    template <typename Arg>
+    struct EngineTrait<ScalEngine<Arg> > :
+      public UnaryEngineTrait<Arg, TiledArray::math::Scal>
+    { };
+
 
     /// Scaling expression engine
 
@@ -47,21 +55,20 @@ namespace TiledArray {
       typedef typename UnaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
-      typedef Arg argument_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalEngine_>::argument_type argument_type; ///< The argument expression engine type
 
       // Operational typedefs
-      typedef typename argument_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::Scal<value_type, typename argument_type::value_type::eval_type,
-          argument_type::consumable> op_type; ///< The tile operation type
-      typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
-      typedef typename argument_type::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<ScalEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<ScalEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<ScalEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<ScalEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<ScalEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<ScalEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<ScalEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 

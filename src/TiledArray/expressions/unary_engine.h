@@ -36,6 +36,30 @@ namespace TiledArray {
     // Forward declarations
     template <typename> class UnaryExpr;
 
+    template <typename Arg, template <typename, typename, bool> class Op>
+    struct UnaryEngineTrait {
+      // Argument typedefs
+      typedef Arg argument_type; ///< The argument expression engine type
+
+      // Operational typedefs
+      typedef typename EngineTrait<Arg>::eval_type value_type; ///< The result tile type
+      typedef value_type eval_type; ///< The evaluation tile type
+      typedef Op<eval_type, typename EngineTrait<Arg>::eval_type, EngineTrait<Arg>::consumable> op_type; ///< The tile operation type
+      typedef typename EngineTrait<Arg>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename argument_type::policy policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static const bool consumable = true;
+      static const unsigned int leaves = EngineTrait<Arg>::leaves;
+    };
+
+
     template <typename Derived>
     class UnaryEngine : ExprEngine<Derived> {
     public:
@@ -44,16 +68,21 @@ namespace TiledArray {
       typedef ExprEngine<Derived> ExprEngine_; ///< Base class type
 
       // Argument typedefs
-      typedef typename Derived::argument_type argument_type; ///< The argument expression engine type
+      typedef typename EngineTrait<Derived>::argument_type argument_type; ///< The argument expression engine type
 
       // Operational typedefs
-      typedef typename Derived::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+      typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<Derived>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename Derived::size_type size_type; ///< This expression's distributed evaluator type
-      typedef typename Derived::trange_type trange_type; ///< This expression's distributed evaluator type
-      typedef typename Derived::shape_type shape_type; ///< This expression's distributed evaluator type
-      typedef typename Derived::pmap_interface pmap_interface; ///< This expression's distributed evaluator type
+      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
+
 
       static const bool consumable = true;
       static const unsigned int leaves = argument_type::leaves;
@@ -86,18 +115,19 @@ namespace TiledArray {
 
       // Pull base class functions into this class.
       using ExprEngine_::derived;
+      using ExprEngine_::vars;
 
       /// Set the variable list for this expression
 
       /// This function will set the variable list for this expression and its
       /// children such that the number of permutations is minimized.
       /// \param target_vars The target variable list for this expression
-      void vars(const VariableList& target_vars) {
+      void perm_vars(const VariableList& target_vars) {
         TA_ASSERT(permute_tiles_);
 
         vars_ = target_vars;
         if(arg_.vars() != target_vars)
-          arg_.vars(target_vars);
+          arg_.perm_vars(target_vars);
       }
 
       /// Initialize the variable list of this expression
@@ -105,7 +135,7 @@ namespace TiledArray {
       /// \param target_vars The target variable list for this expression
       void init_vars(const VariableList& target_vars) {
         arg_.init_vars(target_vars);
-        vars(target_vars);
+        perm_vars(target_vars);
       }
 
       /// Initialize the variable list of this expression

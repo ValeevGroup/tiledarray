@@ -36,6 +36,18 @@ namespace TiledArray {
     // Forward declarations
     template <typename, typename> class AddExpr;
     template <typename, typename> class ScalAddExpr;
+    template <typename, typename> class AddEngine;
+    template <typename, typename> class ScalAddEngine;
+
+    template <typename Left, typename Right>
+    struct EngineTrait<AddEngine<Left, Right> > :
+      public BinaryEngineTrait<Left, Right, TiledArray::math::Add>
+    { };
+
+    template <typename Left, typename Right>
+    struct EngineTrait<ScalAddEngine<Left, Right> > :
+      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalAdd>
+    { };
 
     /// Addition expression engine
 
@@ -45,26 +57,25 @@ namespace TiledArray {
     class AddEngine : public BinaryEngine<AddEngine<Left, Right> > {
     public:
       // Class hierarchy typedefs
-      typedef BinaryEngine<AddEngine<Left, Right> > BinaryEngine_; ///< Binary expression engine base type
+      typedef AddEngine<Left, Right> AddEngine_; ///< This class type
+      typedef BinaryEngine<AddEngine_> BinaryEngine_; ///< Binary expression engine base type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<AddEngine_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<AddEngine_>::right_type right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::Add<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-      typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<AddEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<AddEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<AddEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<AddEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<AddEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<AddEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<AddEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<AddEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
       /// Constructor
 
@@ -116,27 +127,26 @@ namespace TiledArray {
     class ScalAddEngine : public BinaryEngine<ScalAddEngine<Left, Right> > {
     public:
       // Class hierarchy typedefs
+      typedef ScalAddEngine<Left, Right> ScalAddEngine_; ///< This class type
       typedef BinaryEngine<ScalAddEngine<Left, Right> > BinaryEngine_; ///< Binary expression engine base type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<ScalAddEngine_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalAddEngine_>::right_type right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::ScalAdd<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-      typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
-      typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<ScalAddEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<ScalAddEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalAddEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalAddEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<ScalAddEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<ScalAddEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<ScalAddEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<ScalAddEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<ScalAddEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 

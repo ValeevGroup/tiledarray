@@ -40,31 +40,18 @@ namespace TiledArray {
     template <typename> class TsrExpr;
     template <typename> class TsrEngine;
 
-
-    /// Tensor expression engine
-
-    /// \tparam T The array element type
-    /// \tparam DIM The array dimension
-    /// \tparam Tile The array tile type
-    /// \tparam Policy The array policy type
     template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    class TsrEngine<Array<T, DIM, Tile, Policy> > :
-        public LeafEngine<TsrEngine<Array<T, DIM, Tile, Policy> > >
-    {
-    public:
-      // Class hierarchy typedefs
-      typedef TsrEngine<Array<T, DIM, Tile, Policy> > TsrEngine_; ///< This class type
-      typedef LeafEngine<TsrEngine_> LeafEngine_; ///< Leaf base class type
-      typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
-
+    struct EngineTrait<TsrEngine<Array<T, DIM, Tile, Policy> > > {
       // Argument typedefs
       typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
       typedef TiledArray::math::Noop<typename array_type::eval_type,
-          typename array_type::eval_type, false> op_type; ///< The tile operation
+          typename array_type::eval_type, true> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
+      typedef typename value_type::eval_type eval_type;  ///< Evaluation tile type
+      typedef typename TiledArray::detail::scalar_type<Array<T, DIM, Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -73,6 +60,36 @@ namespace TiledArray {
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static const bool consumable = false;
+      static const unsigned int leaves = 1;
+    };
+
+    /// Tensor expression engine
+
+    /// \tparam A The array type
+    template <typename A>
+    class TsrEngine : public LeafEngine<TsrEngine<A> > {
+    public:
+      // Class hierarchy typedefs
+      typedef TsrEngine<A> TsrEngine_; ///< This class type
+      typedef LeafEngine<TsrEngine_> LeafEngine_; ///< Leaf base class type
+      typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
+
+      // Argument typedefs
+      typedef typename EngineTrait<TsrEngine_>::array_type array_type; ///< The left-hand expression type
+
+      // Operational typedefs
+      typedef typename EngineTrait<TsrEngine_>::value_type value_type; ///< Tensor value type
+      typedef typename EngineTrait<TsrEngine_>::op_type op_type; ///< Tile operation type
+      typedef typename EngineTrait<TsrEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<TsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename EngineTrait<TsrEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<TsrEngine_>::trange_type trange_type; ///< Tiled range type type
+      typedef typename EngineTrait<TsrEngine_>::shape_type shape_type; ///< Tensor shape type
+      typedef typename EngineTrait<TsrEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
       TsrEngine(const TsrExpr<array_type>& expr) : LeafEngine_(expr) { }
       TsrEngine(const TsrExpr<const array_type>& expr) : LeafEngine_(expr) { }

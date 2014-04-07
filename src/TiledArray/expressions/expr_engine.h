@@ -35,6 +35,17 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename> class Expr;
+    template <typename> class ExprEngine;
+    template <typename> struct EngineTrait;
+
+    template <typename T>
+    struct DerivedType {
+      template <template <typename> class Base>
+      static T* cast(Base<T>* expr) { return static_cast<T*>(expr); }
+
+      template <template <typename> class Base>
+      static const T* cast(const Base<T>* expr) { return static_cast<const T*>(expr); }
+    };
 
     /// Expression engine
     template <typename Derived>
@@ -42,11 +53,18 @@ namespace TiledArray {
     public:
       typedef ExprEngine<Derived> ExprEngine_;
       typedef Derived derived_type; ///< The derived object type
-      typedef typename ExprTraits<Derived>::size_type size_type;
-      typedef typename ExprTraits<Derived>::trange_type trange_type;
-      typedef typename ExprTraits<Derived>::pmap_interface pmap_interface;
-      typedef typename ExprTraits<Derived>::shape_type shape_type;
-      typedef typename ExprTraits<Derived>::op_type op_type;
+
+      // Operational typedefs
+      typedef typename EngineTrait<Derived>::value_type value_type; ///< Tensor value type
+      typedef typename EngineTrait<Derived>::op_type op_type; ///< Tile operation type
+      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type type
+      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Tensor shape type
+      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
     protected:
       // The member variables of this class are protected because derived
@@ -126,7 +144,7 @@ namespace TiledArray {
       {
         TA_ASSERT(world);
         TA_ASSERT(pmap);
-        TA_ASSERT(pmap->proc() == world->size());
+        TA_ASSERT(pmap->procs() == world->size());
         TA_ASSERT(pmap->size() == trange_.tiles().volume());
 
         world_ = world;
@@ -156,10 +174,10 @@ namespace TiledArray {
       }
 
       /// Cast this object to it's derived type
-      derived_type& derived() { return *static_cast<derived_type*>(this); }
+      derived_type& derived() { return *DerivedType<derived_type>::cast(this); }
 
       /// Cast this object to it's derived type
-      const derived_type& derived() const { return *static_cast<const derived_type*>(this); }
+      const derived_type& derived() const { return *DerivedType<derived_type>::cast(this); }
 
       /// World accessor
 
@@ -180,6 +198,11 @@ namespace TiledArray {
 
       /// \return A const reference to the tiled range
       const trange_type& trange() const { return trange_; }
+
+      /// Shape accessor
+
+      /// \return A const reference to the tiled range
+      const shape_type& shape() const { return shape_; }
 
       /// Process map accessor
 

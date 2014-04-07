@@ -36,7 +36,16 @@ namespace TiledArray {
 
     template <typename A>
     struct ExprTrait<TsrExpr<A> > {
+      typedef A array_type; ///< The \c Array type
       typedef TsrEngine<A> engine_type; ///< Expression engine type
+      typedef TiledArray::detail::scalar_type<A> scalar_type;  ///< Tile scalar type
+    };
+
+    template <typename A>
+    struct ExprTrait<TsrExpr<const A> > {
+      typedef A array_type; ///< The \c Array type
+      typedef TsrEngine<A> engine_type; ///< Expression engine type
+      typedef TiledArray::detail::scalar_type<A> scalar_type;  ///< Tile scalar type
     };
 
     /// Expression wrapper for array objects
@@ -45,14 +54,12 @@ namespace TiledArray {
     /// \tparam DIM The array dimension
     /// \tparam Tile The array tile type
     /// \tparam Policy The array policy type
-    template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    class TsrExpr<Array<T, DIM, Tile, Policy> > :
-        public Expr<TsrExpr<Array<T, DIM, Tile, Policy> > >
-    {
+    template <typename A>
+    class TsrExpr : public Expr<TsrExpr<A> > {
     public:
-      typedef TsrExpr<Array<T, DIM, Tile, Policy> > TsrExpr_; ///< This class type
+      typedef TsrExpr<A> TsrExpr_; ///< This class type
       typedef Expr<TsrExpr_> Expr_; ///< Base class type
-      typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
+      typedef typename ExprTrait<TsrExpr_>::array_type array_type; ///< The array type
       typedef typename ExprTrait<TsrExpr_>::engine_type engine_type; ///< Expression engine type
 
     private:
@@ -158,14 +165,14 @@ namespace TiledArray {
     /// \tparam DIM The array dimension
     /// \tparam Tile The array tile type
     /// \tparam Policy The array policy type
-    template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    class TsrExpr<const Array<T, DIM, Tile, Policy> > :
-        public Expr<TsrExpr<const Array<T, DIM, Tile, Policy> > >
+    template <typename A>
+    class TsrExpr<const A> :
+        public Expr<TsrExpr<const A> >
     {
     public:
-      typedef TsrExpr<const Array<T, DIM, Tile, Policy> > TsrExpr_; ///< This class type
+      typedef TsrExpr<const A> TsrExpr_; ///< This class type
       typedef Expr<TsrExpr_> Expr_; ///< Expression base type
-      typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
+      typedef A array_type; ///< The array type
       typedef typename ExprTrait<TsrExpr_>::engine_type engine_type; ///< Expression engine type
 
     private:

@@ -35,22 +35,29 @@ namespace TiledArray {
 
     template <typename> class ScalTsrExpr;
 
+    template <typename A>
+    struct ExprTrait<ScalTsrExpr<A> > {
+      typedef A array_type; ///< The \c Array type
+      typedef ScalTsrEngine<A> engine_type; ///< Expression engine type
+      typedef TiledArray::detail::scalar_type<typename A::value_type> scalar_type;  ///< Tile scalar type
+    };
+
     /// Expression wrapper for scaled array objects
 
     /// \tparam T The array element type
     /// \tparam DIM The array dimension
     /// \tparam Tile The array tile type
     /// \tparam Policy The array policy type
-    template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    class ScalTsrExpr<Array<T, DIM, Tile, Policy> > :
-        public Expr<ScalTsrExpr<Array<T, DIM, Tile, Policy> > >
+    template <typename A>
+    class ScalTsrExpr :
+        public Expr<ScalTsrExpr<A> >
     {
     public:
-      typedef ScalTsrExpr<const Array<T, DIM, Tile, Policy> > ScalTsrExpr_; ///< This class type
+      typedef ScalTsrExpr<A> ScalTsrExpr_; ///< This class type
       typedef Expr<ScalTsrExpr_> Expr_; ///< Expression base type
-      typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
-      typedef ScalTsrEngine<array_type> engine_type; ///< Expression engine type
-      typedef typename engine_type::scalar_type scalar_type; ///< Scalar type
+      typedef typename ExprTrait<ScalTsrExpr_>::array_type array_type; ///< The array type
+      typedef typename ExprTrait<ScalTsrExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename ExprTrait<ScalTsrExpr_>::scalar_type scalar_type; ///< Scalar type
 
     private:
 

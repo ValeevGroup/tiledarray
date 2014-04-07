@@ -32,6 +32,23 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename, typename> class MultContExpr;
+    template <typename, typename> class ScalMultContExpr;
+    template <typename, typename> class MultContEngine;
+    template <typename, typename> class ScalMultContEngine;
+
+
+    template <typename Left, typename Right>
+    struct EngineTrait<MultContEngine<Left, Right> > :
+      public BinaryEngineTrait<Left, Right, TiledArray::math::Mult>
+    { };
+
+    template <typename Left, typename Right>
+    struct EngineTrait<ScalMultContEngine<Left, Right> > :
+      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalMult>
+    { };
+
+
     /// Multiply/contract expression engine
 
     /// This expression engine will select the correct engine operations at
@@ -40,33 +57,31 @@ namespace TiledArray {
     /// \tparam Right The right-hand expression engine type
     template <typename Left, typename Right>
     class MultContEngine :
-        public MultEngine<MultContEngine<Left, Right> >,
         public ContEngine<MultContEngine<Left, Right> >
     {
     public:
       // Class hierarchy typedefs
       typedef MultContEngine<Left, Right> MultContEngine_; ///< This class type
-      typedef MultEngine<MultContEngine_> MultEngine_; ///< Multiply expression engine base class
       typedef ContEngine<MultContEngine_> ContEngine_; ///< Contraction expression engine base class
-      typedef typename MultEngine_::BinaryEngine_ BinaryEngine_; ///< Binary base class type
-      typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
+      typedef MultEngine<MultContEngine_> MultEngine_; ///< Multiply expression engine base class
+      typedef BinaryEngine<MultContEngine_> BinaryEngine_; ///< Binary base class type
+      typedef ExprEngine<MultContEngine_> ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
-      typedef typename ExprTrait<MultContEngine_>::left_tpye left_type; ///< The left-hand expression type
-      typedef typename ExprTrait<MultContEngine_>::right_tpye right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<MultContEngine_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<MultContEngine_>::right_type right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef typename MultEngine_::op_type op_type; ///< The tile operation type
-      typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
-      typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<MultContEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<MultContEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<MultContEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<MultContEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Process map interface type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<MultContEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<MultContEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<MultContEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<MultContEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 
@@ -82,7 +97,7 @@ namespace TiledArray {
       /// \param expr The parent expression
       template <typename L, typename R>
       MultContEngine(const MultExpr<L, R>& expr) :
-        BinaryEngine_(expr), MultEngine_(expr), ContEngine_(expr), contract_(false)
+        ContEngine_(expr), contract_(false)
       { }
 
       /// Set the variable list for this expression
@@ -92,35 +107,35 @@ namespace TiledArray {
       /// variable list may not be set to target, which indicates that the
       /// result of this expression will be permuted to match \c target_vars.
       /// \param target_vars The target variable list for this expression
-      void vars(const VariableList& target_vars) {
+      void perm_vars(const VariableList& target_vars) {
         if(contract_)
-          ContEngine_::vars(target_vars);
+          ContEngine_::perm_vars(target_vars);
         else
-          MultEngine_::vars(target_vars);
+          MultEngine_::perm_vars(target_vars);
       }
 
       /// Initialize the variable list of this expression
 
       /// \param target_vars The target variable list for this expression
       void init_vars(const VariableList& target_vars) {
-        BinaryEngine_::left().init_vars();
-        BinaryEngine_::right().init_vars();
+        BinaryEngine_::left_.init_vars();
+        BinaryEngine_::right_.init_vars();
 
-        if(BinaryEngine_::left().vars().is_permutation(BinaryEngine_::right().vars())) {
-          MultEngine_::vars(target_vars);
+        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
+          MultEngine_::perm_vars(target_vars);
         } else {
           contract_ = true;
           ContEngine_::init_vars();
-          ContEngine_::vars(target_vars);
+          ContEngine_::perm_vars(target_vars);
         }
       }
 
       /// Initialize the variable list of this expression
       void init_vars() {
-        BinaryEngine_::left().init_vars();
-        BinaryEngine_::right().init_vars();
+        BinaryEngine_::left_.init_vars();
+        BinaryEngine_::right_.init_vars();
 
-        if(BinaryEngine_::left().vars().is_permutation(BinaryEngine_::right().vars())) {
+        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
           MultEngine_::vars();
         } else {
           contract_ = true;
@@ -187,21 +202,20 @@ namespace TiledArray {
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<ScalMultContEngine_>::left_tpye left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalMultContEngine_>::right_tpye right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef typename ScalMultEngine_::op_type op_type; ///< The tile operation type
-      typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
-      typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<ScalMultContEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<ScalMultContEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalMultContEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<ScalMultContEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Process map interface type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<ScalMultContEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<ScalMultContEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<ScalMultContEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<ScalMultContEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 
@@ -220,11 +234,11 @@ namespace TiledArray {
         BinaryEngine_(expr), ScalMultEngine_(expr), ContEngine_(expr), contract_(false)
       { }
 
-      void vars(const VariableList& target_vars) {
+      void perm_vars(const VariableList& target_vars) {
         if(contract_)
-          ContEngine_::vars(target_vars);
+          ContEngine_::perm_vars(target_vars);
         else
-          ScalMultEngine_::vars(target_vars);
+          ScalMultEngine_::perm_vars(target_vars);
       }
 
       void init_vars(const VariableList& target_vars) {
@@ -232,11 +246,11 @@ namespace TiledArray {
         BinaryEngine_::right().init_vars();
 
         if(BinaryEngine_::left().vars().is_permutation(BinaryEngine_::right().vars())) {
-          ScalMultEngine_::vars(target_vars);
+          ScalMultEngine_::perm_vars(target_vars);
         } else {
           contract_ = true;
           ContEngine_::init_vars();
-          ContEngine_::vars(target_vars);
+          ContEngine_::perm_vars(target_vars);
         }
       }
 

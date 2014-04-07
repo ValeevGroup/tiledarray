@@ -34,43 +34,64 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename> class BinaryExpr;
+    template <typename> class BinaryEngine;
 
-    template <typename, typename>
-    struct BinaryExprPolicyHelper { }; // Different policy types is an error.
+    template <typename Left, typename Right, template <typename, typename, typename, bool, bool> class Op>
+    struct BinaryEngineTrait {
+      // Argument typedefs
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
 
-    template <typename Policy>
-    struct BinaryExprPolicyHelper<Policy, Policy> {
-      typedef Policy policy;
+      // Operational typedefs
+      typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
+      typedef value_type eval_type; ///< The evaluation tile type
+      typedef Op<value_type, typename EngineTrait<Left>::eval_type,
+          typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
+          EngineTrait<Right>::consumable> op_type; ///< The tile operation type
+      typedef typename EngineTrait<Left>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename madness::enable_if<std::is_same<typename EngineTrait<Left>::policy,
+          typename EngineTrait<Right>::policy>, typename Left::policy>::type policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static const bool consumable = true;
+      static const unsigned int leaves =
+          EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
     };
-
-    template <typename Left, typename Right>
-    struct BinaryExprPolicy :
-        public BinaryExprPolicyHelper<typename Left::policy, typename Right::policy>
-    { };
 
 
     template <typename Derived>
-    class BinaryEngine : ExprEngine<Derived> {
+    class BinaryEngine : public ExprEngine<Derived> {
     public:
       // Class hierarchy typedefs
       typedef BinaryEngine<Derived> BinaryEngine_; ///< This class type
       typedef ExprEngine<Derived> ExprEngine_; ///< Base class type
 
       // Argument typedefs
-      typedef typename Derived::left_type left_type; ///< The left-hand expression type
-      typedef typename Derived::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<Derived>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<Derived>::right_type right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename Derived::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+      typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<Derived>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename Derived::size_type size_type; ///< This expression's distributed evaluator type
-      typedef typename Derived::trange_type trange_type; ///< This expression's distributed evaluator type
-      typedef typename Derived::shape_type shape_type; ///< This expression's distributed evaluator type
-      typedef typename Derived::pmap_interface pmap_interface; ///< This expression's distributed evaluator type
+      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
-      static const bool consumable = true;
-      static const unsigned int leaves = left_type::leaves + right_type::leaves;
+
+      static const bool consumable = EngineTrait<Derived>::consumable;
+      static const unsigned int leaves = EngineTrait<Derived>::leaves;
 
     protected:
 
@@ -89,6 +110,7 @@ namespace TiledArray {
 
       // Pull base class functions into this class.
       using ExprEngine_::derived;
+      using ExprEngine_::vars;
 
       /// Set the variable list for this expression
 
@@ -97,7 +119,7 @@ namespace TiledArray {
       /// variable list may not be set to target, which indicates that the
       /// result of this expression will be permuted to match \c target_vars.
       /// \param target_vars The target variable list for this expression
-      void vars(const VariableList& target_vars) {
+      void perm_vars(const VariableList& target_vars) {
         TA_ASSERT(ExprEngine_::permute_tiles());
 
         // Determine the equality of the variable lists
@@ -117,10 +139,10 @@ namespace TiledArray {
 
           if(perm_left) {
             vars_ = right_.vars();
-            left_.vars(right_.target());
+            left_.perm_vars(right_.target());
           } else {
             vars_ = left_.vars();
-            right_.vars(left_.vars());
+            right_.perm_vars(left_.vars());
           }
         }
       }
@@ -131,7 +153,7 @@ namespace TiledArray {
       void init_vars(const VariableList& target_vars) {
         left_.init_vars(target_vars);
         right_.init_vars(target_vars);
-        vars(target_vars);
+        perm_vars(target_vars);
       }
 
 
@@ -140,11 +162,11 @@ namespace TiledArray {
         if(left_type::leaves <= right_type::leaves) {
           left_.init_vars();
           vars_ = left_.vars();
-          right_.vars(vars_);
+          right_.perm_vars(vars_);
         } else {
           right_.init_vars();
           vars_ = right_.vars();
-          left_.vars(vars_);
+          left_.perm_vars(vars_);
         }
       }
 
@@ -192,8 +214,7 @@ namespace TiledArray {
       /// \return The distributed evaluator that will evaluate this expression
       dist_eval_type make_dist_eval() const {
         typedef TiledArray::detail::BinaryEvalImpl<typename left_type::dist_eval_type,
-            typename right_type::dist_eval_type, typename Derived::op_type,
-            typename dist_eval_type::policy> binary_impl_type;
+            typename right_type::dist_eval_type, op_type, policy> binary_impl_type;
 
         // Construct left and right distributed evaluators
         const typename left_type::dist_eval_type left = left_.make_dist_eval();
