@@ -45,6 +45,7 @@
 
 #include <TiledArray/math/math.h>
 #include <TiledArray/math/eigen.h>
+#include <TiledArray/madness.h>
 #include <stdint.h>
 
 // Add macro TILEDARRAY_FORCE_INLINE which does as the name implies.
