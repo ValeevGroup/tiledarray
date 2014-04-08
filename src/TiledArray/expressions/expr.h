@@ -33,6 +33,10 @@
 #include <TiledArray/tile_op/reduce_wrapper.h>
 
 namespace TiledArray {
+
+  // Forward declaration
+  template <typename, unsigned int, typename, typename> class Array;
+
   namespace expressions {
 
     // Forward declaration
@@ -107,6 +111,38 @@ namespace TiledArray {
 
         // Swap the new array with the result array object.
         tsr.array().swap(result);
+      }
+
+
+      template <typename T, unsigned int DIM, typename Tile, typename Policy>
+      operator Array<T, DIM, Tile, Policy>() {
+        typedef Array<T, DIM, Tile, Policy> array_type;
+
+        // Construct the expression engine
+        engine_type engine(derived());
+        engine.init(madness::World::get_default(),
+            std::shared_ptr<typename array_type::pmap_interface>(), VariableList());
+
+        // Create the distributed evaluator from this expression
+        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
+
+        // Create the result array
+        array_type result(dist_eval.get_world(), dist_eval.trange(),
+            dist_eval.shape(), dist_eval.pmap());
+
+        // Move the data from disteval into the result array
+        typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
+            dist_eval.pmap()->begin();
+        const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
+            dist_eval.pmap()->end();
+        for(; it != end; ++it)
+          if(! dist_eval.is_zero(*it))
+            result.set(*it, dist_eval.move(*it));
+
+        // Wait for child expressions of dist_eval
+        dist_eval.wait();
+
+        return result;
       }
 
       /// Expression print
