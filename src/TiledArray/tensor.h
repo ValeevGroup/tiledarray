@@ -1277,7 +1277,7 @@ namespace TiledArray {
     /// Square of vector norm_2
 
     /// \return The vector norm of this tensor
-    numeric_type squred_norm() const {
+    numeric_type squared_norm() const {
       numeric_type result = 0;
       reduce(result, math::SquareAddAssign<numeric_type, numeric_type>());
       return result;
@@ -1287,7 +1287,7 @@ namespace TiledArray {
 
     /// \return The vector norm of this tensor
     numeric_type norm() const {
-      return std::sqrt(squred_norm());
+      return std::sqrt(squared_norm());
     }
 
     /// Minimum element
