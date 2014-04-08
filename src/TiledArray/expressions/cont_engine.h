@@ -96,6 +96,17 @@ namespace TiledArray {
       TiledArray::detail::ProcGrid proc_grid_; ///< Process grid for the contraction
       size_type K_; ///< Inner dimension size
 
+
+      static unsigned int
+      find(const VariableList& vars, std::string var, unsigned int i, const unsigned int n) {
+        for(; i < n; ++i) {
+          if(vars[i] == var)
+            break;
+        }
+
+        return i;
+      }
+
     public:
 
       /// Constructor
