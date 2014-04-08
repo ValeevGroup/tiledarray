@@ -61,7 +61,7 @@ namespace TiledArray {
 
     private:
 
-      array_type array_; ///< The array that this expression
+      const array_type& array_; ///< The array that this expression
       std::string vars_; ///< The tensor variable list
       scalar_type factor_; ///< The scaling factor
 
