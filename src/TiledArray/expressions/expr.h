@@ -243,7 +243,7 @@ namespace TiledArray {
             local_reduce_task.submit(), op);
       }
 
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       sum(madness::World& world = madness::World::get_default()) const {
         typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
             TiledArray::math::SumReduction<typename engine_type::value_type::eval_type> >
@@ -251,7 +251,7 @@ namespace TiledArray {
         return reduce(reduction_type(), world);
       }
 
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       product(madness::World& world = madness::World::get_default()) const {
         typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
             TiledArray::math::ProductReduction<typename engine_type::value_type::eval_type> >
@@ -259,7 +259,7 @@ namespace TiledArray {
         return reduce(reduction_type(), world);
       }
 
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       squared_norm(madness::World& world = madness::World::get_default()) const {
         typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
             TiledArray::math::SquaredNormReduction<typename engine_type::value_type::eval_type> >
@@ -274,14 +274,14 @@ namespace TiledArray {
 
     public:
 
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       norm(madness::World& world = madness::World::get_default()) const {
         return world.taskq.add(Expr_::template sqrt<
             typename engine_type::value_type::eval_type::numeric_type>,
             squared_norm(world));
       }
 
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       min(madness::World& world = madness::World::get_default()) const {
         typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
             TiledArray::math::MinReduction<typename engine_type::value_type::eval_type> >
@@ -289,7 +289,7 @@ namespace TiledArray {
         return reduce(reduction_type(), world);
       }
 
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       max(madness::World& world = madness::World::get_default()) const {
         typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
             TiledArray::math::MaxReduction<typename engine_type::value_type::eval_type> >
@@ -297,7 +297,7 @@ namespace TiledArray {
         return reduce(reduction_type(), world);
       }
 
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       abs_min(madness::World& world = madness::World::get_default()) const {
         typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
             TiledArray::math::AbsMinReduction<typename engine_type::value_type::eval_type> >
@@ -305,7 +305,7 @@ namespace TiledArray {
         return reduce(reduction_type(), world);
       }
 
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       abs_max(madness::World& world = madness::World::get_default()) const {
         typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
             TiledArray::math::AbsMaxReduction<typename engine_type::value_type::eval_type> >
@@ -314,7 +314,7 @@ namespace TiledArray {
       }
 
       template <typename D>
-      madness::Future<typename engine_type::value_type::eval_type::numeric_type>
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       dot(const Expr<D>& right_expr, madness::World& world = madness::World::get_default()) const {
         typedef TiledArray::math::BinaryReduceWrapper<typename engine_type::value_type,
             typename D::engine_type::value_type,
