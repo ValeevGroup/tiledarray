@@ -136,12 +136,38 @@ namespace TiledArray {
 
     /// \tparam A An array type
     /// \tparam Scalar A scalar type
+    /// \param expr The tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar>
+    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
+    operator*(const TsrExpr<const A>& expr, const Scalar& factor) {
+      return ScalTsrExpr<A>(expr, factor);
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam A An array type
+    /// \tparam Scalar A scalar type
     /// \param factor The scaling factor
     /// \param expr The tensor expression object
     /// \return A scaled-tensor expression object
     template <typename A, typename Scalar>
     inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
     operator*(const Scalar& factor, const TsrExpr<A>& expr) {
+      return ScalTsrExpr<A>(expr, factor);
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam A An array type
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param expr The tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar>
+    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
+    operator*(const Scalar& factor, const TsrExpr<const A>& expr) {
       return ScalTsrExpr<A>(expr, factor);
     }
 
@@ -178,6 +204,16 @@ namespace TiledArray {
     /// \return A scaled-tensor expression object
     template <typename A>
     inline ScalTsrExpr<A> operator-(const TsrExpr<A>& expr) {
+      return ScalTsrExpr<A>(expr, -1);
+    }
+
+    /// Negated-tensor expression factor
+
+    /// \tparam A An array type
+    /// \param expr The tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A>
+    inline ScalTsrExpr<A> operator-(const TsrExpr<const A>& expr) {
       return ScalTsrExpr<A>(expr, -1);
     }
 
