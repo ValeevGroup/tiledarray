@@ -50,9 +50,9 @@ namespace TiledArray {
     public:
       typedef AddExpr<Left, Right> AddExpr_; ///< This class type
       typedef BinaryExpr<AddExpr<Left, Right> > BinaryExpr_; ///< Binary base class type
-      typedef typename EngineTrait<AddExpr_>::left_type left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<AddExpr_>::right_type right_type; ///< The right-hand expression type
-      typedef typename EngineTrait<AddExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename ExprTrait<AddExpr_>::left_type left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<AddExpr_>::right_type right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<AddExpr_>::engine_type engine_type; ///< Expression engine type
 
 
       /// Expression constructor
@@ -78,10 +78,10 @@ namespace TiledArray {
     public:
       typedef ScalAddExpr<Left, Right> ScalAddExpr_; ///< This class type
       typedef BinaryExpr<AddExpr<Left, Right> > BinaryExpr_; ///< Binary base class type
-      typedef typename EngineTrait<ScalAddExpr_>::left_type left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<ScalAddExpr_>::right_type right_type; ///< The right-hand expression type
-      typedef typename EngineTrait<ScalAddExpr_>::engine_type engine_type; ///< Expression engine type
-      typedef typename engine_type::scalar_type scalar_type; ///< Scalar type
+      typedef typename ExprTrait<ScalAddExpr_>::left_type left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<ScalAddExpr_>::right_type right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<ScalAddExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename ExprTrait<ScalAddExpr_>::scalar_type scalar_type; ///< Scalar type
 
 
     private:
