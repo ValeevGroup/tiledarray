@@ -217,7 +217,7 @@ namespace TiledArray {
       /// Set the permute tiles flag
 
       /// \param status The new status for permute tiles (true == permtue result tiles)
-      void permute_tiles(const bool status) { return permute_tiles_ = status; }
+      void permute_tiles(const bool status) { permute_tiles_ = status; }
 
       /// Expression print
 
