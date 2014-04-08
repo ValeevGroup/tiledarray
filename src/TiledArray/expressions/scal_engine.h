@@ -87,7 +87,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() const {
-        return UnaryEngine_::arg().shape().scale(factor_);
+        return UnaryEngine_::arg_.shape().scale(factor_);
       }
 
       /// Permuting shape factory function
@@ -95,7 +95,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) const {
-        return UnaryEngine_::left().shape().add(factor_, perm);
+        return UnaryEngine_::arg_.shape().scale(factor_, perm);
       }
 
       /// Non-permuting tile operation factory function
