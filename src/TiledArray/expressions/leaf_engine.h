@@ -94,7 +94,7 @@ namespace TiledArray {
 
       /// This function is a noop since the variable list is fixed.
       /// \param target_vars The target variable list for this expression
-      void vars(const VariableList&) { }
+      void perm_vars(const VariableList&) { }
 
       /// Initialize the variable list of this expression
 
