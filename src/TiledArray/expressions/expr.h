@@ -165,7 +165,7 @@ namespace TiledArray {
 
       template <typename Op>
       madness::Future<typename Op::result_type>
-      reduce(const Op& op, madness::World& world = madness::World::get_default()) {
+      reduce(const Op& op, madness::World& world = madness::World::get_default()) const {
         // Typedefs
         typedef madness::TaggedKey<madness::uniqueidT, ExpressionReduceTag> key_type;
 
@@ -175,17 +175,16 @@ namespace TiledArray {
             VariableList());
 
         // Create the distributed evaluator from this expression
-        typename engine_type::dist_eval_type dist_eval =
-            derived().make_dist_eval();
+        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
 
         // Create a local reduction task
         TiledArray::detail::ReduceTask<Op> reduce_task(world, op);
 
         // Move the data from dist_eval into the local reduction task
         typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
-            dist_eval.pmap().begin();
+            dist_eval.pmap()->begin();
         const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
-            dist_eval.pmap().end();
+            dist_eval.pmap()->end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))
             reduce_task.add(dist_eval.move(*it));
@@ -199,6 +198,9 @@ namespace TiledArray {
       reduce(const Expr<D>& right_expr, const Op& op,
           madness::World& world = madness::World::get_default()) const
       {
+        // Typedefs
+        typedef madness::TaggedKey<madness::uniqueidT, ExpressionReduceTag> key_type;
+
         // Evaluate this expression
         engine_type left_engine(derived());
         left_engine.init(world, std::shared_ptr<typename engine_type::pmap_interface>(),
@@ -206,7 +208,7 @@ namespace TiledArray {
 
         // Create the distributed evaluator for this expression
         typename engine_type::dist_eval_type left_dist_eval =
-            derived().make_dist_eval();
+            left_engine.make_dist_eval();
 
         // Evaluate the right-hand expression
         typename D::engine_type right_engine(right_expr.derived());
@@ -214,16 +216,16 @@ namespace TiledArray {
 
         // Create the distributed evaluator for the right-hand expression
         typename engine_type::dist_eval_type right_dist_eval =
-            derived().make_dist_eval();
+            right_engine.make_dist_eval();
 
         // Create a local reduction task
-        TiledArray::detail::ReduceTask<Op> local_reduce_task(world, op);
+        TiledArray::detail::ReducePairTask<Op> local_reduce_task(world, op);
 
         // Move the data from dist_eval into the local reduction task
         typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
-            left_dist_eval.pmap().begin();
+            left_dist_eval.pmap()->begin();
         const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
-            left_dist_eval.pmap().end();
+            left_dist_eval.pmap()->end();
         for(; it != end; ++it) {
           if(!left_dist_eval.is_zero(*it)) {
             madness::Future<typename engine_type::value_type> left_tile =
