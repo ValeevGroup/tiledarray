@@ -89,8 +89,6 @@ namespace TiledArray {
 
     protected:
 
-      argument_type arg_; ///< The argument
-
       // Import base class variables to this scope
       using ExprEngine_::world_;
       using ExprEngine_::vars_;
@@ -99,6 +97,8 @@ namespace TiledArray {
       using ExprEngine_::shape_;
       using ExprEngine_::pmap_;
       using ExprEngine_::permute_tiles_;
+
+      argument_type arg_; ///< The argument
 
     private:
 
