@@ -448,7 +448,7 @@ namespace TiledArray {
             factor_, op_.gemm_helper(), perm);
       }
 
-      dist_eval_type make_dist_eval() {
+      dist_eval_type make_dist_eval() const {
         // Define the impl type
         typedef TiledArray::detail::ContractionEvalImpl<typename left_type::dist_eval_type,
             typename right_type::dist_eval_type, op_type, typename Derived::policy> impl_type;
