@@ -46,15 +46,15 @@ int main(int argc, char** argv) {
       std::cout << " done.\nConstructing Fock tensors...";
 
     // Construct Fock tensor
-//    Array<double, 2> f_a_oo = data.make_f(world, alpha, occ, occ);
-//    Array<double, 2> f_a_vo = data.make_f(world, alpha, vir, occ);
-//    Array<double, 2> f_a_ov = data.make_f(world, alpha, occ, vir);
-//    Array<double, 2> f_a_vv = data.make_f(world, alpha, vir, vir);
+//    TArray2s f_a_oo = data.make_f(world, alpha, occ, occ);
+//    TArray2s f_a_vo = data.make_f(world, alpha, vir, occ);
+//    TArray2s f_a_ov = data.make_f(world, alpha, occ, vir);
+//    TArray2s f_a_vv = data.make_f(world, alpha, vir, vir);
 //    // Just make references to the data since the input is closed shell.
-//    Array<double, 2>& f_b_oo = f_a_oo;
-//    Array<double, 2>& f_b_vo = f_a_vo;
-//    Array<double, 2>& f_b_ov = f_a_ov;
-//    Array<double, 2>& f_b_vv = f_a_vv;
+//    TArray2s& f_b_oo = f_a_oo;
+//    TArray2s& f_b_vo = f_a_vo;
+//    TArray2s& f_b_ov = f_a_ov;
+//    TArray2s& f_b_vv = f_a_vv;
 //
 //    // Fence to make sure Fock tensors are initialized on all nodes
 //    world.gop.fence();
@@ -63,22 +63,22 @@ int main(int argc, char** argv) {
 //      std::cout << " done.\nConstructing v_ab tensors...";
 //
 //    // Construct the integral tensors
-//    Array<double, 4> v_ab_oooo = data.make_v_ab(world, occ, occ, occ, occ);
-//    Array<double, 4> v_ab_ooov = data.make_v_ab(world, occ, occ, occ, vir);
-//    Array<double, 4> v_ab_oovo = data.make_v_ab(world, occ, occ, vir, occ);
-//    Array<double, 4> v_ab_ovoo = data.make_v_ab(world, occ, vir, occ, occ);
-//    Array<double, 4> v_ab_vooo = data.make_v_ab(world, vir, occ, occ, occ);
-//    Array<double, 4> v_ab_vvoo = data.make_v_ab(world, vir, vir, occ, occ);
-//    Array<double, 4> v_ab_oovv = data.make_v_ab(world, occ, occ, vir, vir);
-//    Array<double, 4> v_ab_vovo = data.make_v_ab(world, vir, occ, vir, occ);
-//    Array<double, 4> v_ab_ovov = data.make_v_ab(world, occ, vir, occ, vir);
-//    Array<double, 4> v_ab_voov = data.make_v_ab(world, vir, occ, occ, vir);
-//    Array<double, 4> v_ab_ovvo = data.make_v_ab(world, occ, vir, vir, occ);
-//    Array<double, 4> v_ab_vvvo = data.make_v_ab(world, vir, vir, vir, occ);
-//    Array<double, 4> v_ab_vvov = data.make_v_ab(world, vir, vir, occ, vir);
-//    Array<double, 4> v_ab_vovv = data.make_v_ab(world, vir, occ, vir, vir);
-//    Array<double, 4> v_ab_ovvv = data.make_v_ab(world, occ, vir, vir, vir);
-//    Array<double, 4> v_ab_vvvv = data.make_v_ab(world, vir, vir, vir, vir);
+//    TArray4s v_ab_oooo = data.make_v_ab(world, occ, occ, occ, occ);
+//    TArray4s v_ab_ooov = data.make_v_ab(world, occ, occ, occ, vir);
+//    TArray4s v_ab_oovo = data.make_v_ab(world, occ, occ, vir, occ);
+//    TArray4s v_ab_ovoo = data.make_v_ab(world, occ, vir, occ, occ);
+//    TArray4s v_ab_vooo = data.make_v_ab(world, vir, occ, occ, occ);
+//    TArray4s v_ab_vvoo = data.make_v_ab(world, vir, vir, occ, occ);
+//    TArray4s v_ab_oovv = data.make_v_ab(world, occ, occ, vir, vir);
+//    TArray4s v_ab_vovo = data.make_v_ab(world, vir, occ, vir, occ);
+//    TArray4s v_ab_ovov = data.make_v_ab(world, occ, vir, occ, vir);
+//    TArray4s v_ab_voov = data.make_v_ab(world, vir, occ, occ, vir);
+//    TArray4s v_ab_ovvo = data.make_v_ab(world, occ, vir, vir, occ);
+//    TArray4s v_ab_vvvo = data.make_v_ab(world, vir, vir, vir, occ);
+//    TArray4s v_ab_vvov = data.make_v_ab(world, vir, vir, occ, vir);
+//    TArray4s v_ab_vovv = data.make_v_ab(world, vir, occ, vir, vir);
+//    TArray4s v_ab_ovvv = data.make_v_ab(world, occ, vir, vir, vir);
+//    TArray4s v_ab_vvvv = data.make_v_ab(world, vir, vir, vir, vir);
 //
 //    // Fence to make sure data on all nodes has been initialized
 //    world.gop.fence();
@@ -86,26 +86,26 @@ int main(int argc, char** argv) {
 //    if(world.rank() == 0)
 //      std::cout << " done.\nConstructing v_aa and v_bb tensors...";
 //
-//    Array<double, 4> v_aa_oooo = v_ab_oooo("i,j,k,l") - v_ab_oooo("i,j,l,k");
-//    Array<double, 4> v_aa_ooov = v_ab_ooov("i,j,k,a") - v_ab_oovo("i,j,a,k");
-//    Array<double, 4> v_aa_vooo = v_ab_vooo("a,i,j,k") - v_ab_vooo("a,i,k,j");
-//    Array<double, 4> v_aa_vvoo = v_ab_vvoo("a,b,i,j") - v_ab_vvoo("a,b,j,i");
-//    Array<double, 4> v_aa_vovo = v_ab_vovo("a,i,b,j") - v_ab_voov("a,i,j,b");
-//    Array<double, 4> v_aa_oovv = v_ab_oovv("i,j,a,b") - v_ab_oovv("i,j,b,a");
-//    Array<double, 4> v_aa_voov = v_ab_voov("a,i,j,b") - v_ab_vovo("a,i,b,j");
-//    Array<double, 4> v_aa_ovvo = v_ab_ovvo("i,a,b,j") - v_ab_ovov("i,a,j,b");
-//    Array<double, 4> v_aa_vovv = v_ab_vovv("a,i,b,c") - v_ab_vovv("a,i,c,b");
-//    Array<double, 4> v_aa_vvov = v_ab_vvov("a,b,i,c") - v_ab_vvvo("a,b,c,i");
-//    Array<double, 4> v_aa_vvvv = v_ab_vvvv("a,b,c,d") - v_ab_vvvv("a,b,d,c");
+//    TArray4s v_aa_oooo = v_ab_oooo("i,j,k,l") - v_ab_oooo("i,j,l,k");
+//    TArray4s v_aa_ooov = v_ab_ooov("i,j,k,a") - v_ab_oovo("i,j,a,k");
+//    TArray4s v_aa_vooo = v_ab_vooo("a,i,j,k") - v_ab_vooo("a,i,k,j");
+//    TArray4s v_aa_vvoo = v_ab_vvoo("a,b,i,j") - v_ab_vvoo("a,b,j,i");
+//    TArray4s v_aa_vovo = v_ab_vovo("a,i,b,j") - v_ab_voov("a,i,j,b");
+//    TArray4s v_aa_oovv = v_ab_oovv("i,j,a,b") - v_ab_oovv("i,j,b,a");
+//    TArray4s v_aa_voov = v_ab_voov("a,i,j,b") - v_ab_vovo("a,i,b,j");
+//    TArray4s v_aa_ovvo = v_ab_ovvo("i,a,b,j") - v_ab_ovov("i,a,j,b");
+//    TArray4s v_aa_vovv = v_ab_vovv("a,i,b,c") - v_ab_vovv("a,i,c,b");
+//    TArray4s v_aa_vvov = v_ab_vvov("a,b,i,c") - v_ab_vvvo("a,b,c,i");
+//    TArray4s v_aa_vvvv = v_ab_vvvv("a,b,c,d") - v_ab_vvvv("a,b,d,c");
 //    // Just make references to the data since the input is closed shell.
-//    Array<double, 4>& v_bb_oooo = v_aa_oooo;
-//    Array<double, 4>& v_bb_ooov = v_aa_ooov;
-//    Array<double, 4>& v_bb_vvoo = v_aa_vvoo;
-//    Array<double, 4>& v_bb_vovo = v_aa_vovo;
-//    Array<double, 4>& v_bb_oovv = v_aa_oovv;
-//    Array<double, 4>& v_bb_voov = v_aa_voov;
-//    Array<double, 4>& v_bb_vovv = v_aa_vovv;
-//    Array<double, 4>& v_bb_vvvv = v_aa_vvvv;
+//    TArray4s& v_bb_oooo = v_aa_oooo;
+//    TArray4s& v_bb_ooov = v_aa_ooov;
+//    TArray4s& v_bb_vvoo = v_aa_vvoo;
+//    TArray4s& v_bb_vovo = v_aa_vovo;
+//    TArray4s& v_bb_oovv = v_aa_oovv;
+//    TArray4s& v_bb_voov = v_aa_voov;
+//    TArray4s& v_bb_vovv = v_aa_vovv;
+//    TArray4s& v_bb_vvvv = v_aa_vvvv;
 //
 //    // Fence again to make sure data all the integral tensors have been initialized
 //    world.gop.fence();
@@ -114,28 +114,28 @@ int main(int argc, char** argv) {
 //      std::cout << " done.\n";
 //
 //
-//    Array<double, 2> t_a_vo(world, f_a_vo.trange(), f_a_vo.get_shape());
+//    TArray2s t_a_vo(world, f_a_vo.trange(), f_a_vo.get_shape());
 //    t_a_vo.set_all_local(0.0);
 //
-//    Array<double, 2>& t_b_vo = t_a_vo;
+//    TArray2s& t_b_vo = t_a_vo;
 //
-//    Array<double, 4> t_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.get_shape());
+//    TArray4s t_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.get_shape());
 //    t_aa_vvoo.set_all_local(0.0);
 //
-//    Array<double, 4> t_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
+//    TArray4s t_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
 //    t_ab_vvoo.set_all_local(0.0);
 //
-//    Array<double, 4> t_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
+//    TArray4s t_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
 //    t_bb_vvoo.set_all_local(0.0);
 //
 //
-//    Array<double, 2> D_vo(world, f_a_vo.trange(), f_a_vo.get_shape());
-//    for(Array<double, 2>::range_type::const_iterator it = D_vo.range().begin(); it != D_vo.range().end(); ++it)
+//    TArray2s D_vo(world, f_a_vo.trange(), f_a_vo.get_shape());
+//    for(TArray2s::range_type::const_iterator it = D_vo.range().begin(); it != D_vo.range().end(); ++it)
 //      if(D_vo.is_local(*it) && (! D_vo.is_zero(*it)))
 //        D_vo.set(*it, world.taskq.add(data, & InputData::make_D_vo_tile, D_vo.trange().make_tile_range(*it)));
 //
-//    Array<double, 4> D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
-//    for(Array<double, 4>::range_type::const_iterator it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
+//    TArray4s D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
+//    for(TArray4s::range_type::const_iterator it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
 //      if(D_vvoo.is_local(*it) && (! D_vvoo.is_zero(*it)))
 //        D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_vvoo_tile, D_vvoo.trange().make_tile_range(*it)));
 
@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
       if(world.rank() == 0)
         std::cout << "Iteration " << i << "\n";
 
-//      Array<double, 2> r_a_vo = f_a_vo("p1a,h1a");
+//      TArray2s r_a_vo = f_a_vo("p1a,h1a");
 //
 //      world.gop.fence();
 //
@@ -208,11 +208,11 @@ int main(int argc, char** argv) {
 //          +t_a_vo("p2a,h2a")*v_aa_voov("p1a,h2a,h1a,p2a")
 //          +t_b_vo("p4b,h4b")*v_ab_voov("p1a,h4b,h1a,p4b");
 //
-//      Array<double, 2>& r_b_vo = r_a_vo;
+//      TArray2s& r_b_vo = r_a_vo;
 //
 //      world.gop.fence();
 //
-//      Array<double, 4> r_aa_vvoo = v_aa_vvoo("p7a,p8a,h7a,h8a");
+//      TArray4s r_aa_vvoo = v_aa_vvoo("p7a,p8a,h7a,h8a");
 //
 //      world.gop.fence();
 //
@@ -704,9 +704,9 @@ int main(int argc, char** argv) {
 //      r_aa_vvoo("p7a,p8a,h7a,h8a") = r_aa_vvoo("p7a,p8a,h7a,h8a")
 //          +t_a_vo("p9a,h8a")*v_aa_vvov("p7a,p8a,h7a,p9a");
 //
-//      Array<double, 4>& r_bb_vvoo = r_aa_vvoo;
+//      TArray4s& r_bb_vvoo = r_aa_vvoo;
 //
-//      Array<double, 4> r_ab_vvoo = v_ab_vvoo("p17a,p16b,h17a,h15b");
+//      TArray4s r_ab_vvoo = v_ab_vvoo("p17a,p16b,h17a,h15b");
 //
 //      world.gop.fence();
 //
@@ -1150,13 +1150,13 @@ int main(int argc, char** argv) {
 //
 //      world.gop.fence();
 //
-//      Array<double, 4> tau_aa_vvoo =
+//      TArray4s tau_aa_vvoo =
 //          t_aa_vvoo("a,b,i,j") + t_a_vo("a,i") * t_a_vo("b,j") - t_a_vo("b,i") * t_a_vo("a,j");
 //
-//      Array<double, 4> tau_bb_vvoo =
+//      TArray4s tau_bb_vvoo =
 //          t_bb_vvoo("a,b,i,j") + t_b_vo("a,i") * t_b_vo("b,j") - t_b_vo("b,i") * t_b_vo("a,j");
 //
-//      Array<double, 4> tau_ab_vvoo =
+//      TArray4s tau_ab_vvoo =
 //          t_ab_vvoo("a,b,i,j") + t_a_vo("a,i") * t_b_vo("b,j");
 //
 //
