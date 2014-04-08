@@ -237,6 +237,25 @@ namespace TiledArray {
       normalize();
     }
 
+    /// Copy constructor
+
+    /// Shallow copy of \c other.
+    /// \param other The other shape object to be copied
+    SparseShape(const SparseShape<T>& other) :
+      tile_norms_(other.tile_norms_), size_vectors_(other.size_vectors_)
+    { }
+
+    /// Copy assignment operator
+
+    /// Shallow copy of \c other.
+    /// \param other The other shape object to be copied
+    /// \return A reference to this object.
+    SparseShape<T>& operator=(const SparseShape<T>& other) {
+      tile_norms_ = other.tile_norms_;
+      size_vectors_ = other.size_vectors_;
+      return *this;
+    }
+
     /// Validate shape range
 
     /// \return \c true when range matches the range of this shape
