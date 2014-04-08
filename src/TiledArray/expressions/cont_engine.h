@@ -47,7 +47,7 @@ namespace TiledArray {
     public:
       // Class hierarchy typedefs
       typedef ContEngine<Derived> ContEngine_; ///< This class type
-      typedef MultEngine<Derived> MultEngin_; /// Multiply base engine
+      typedef MultEngine<Derived> MultEngine_; /// Multiply base engine
       typedef BinaryEngine<Derived> BinaryEngine_; ///< Binary base class type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
 
@@ -105,7 +105,7 @@ namespace TiledArray {
       /// \param expr The parent expression
       template <typename L, typename R>
       ContEngine(const MultExpr<L, R>& expr) :
-        MultEngin_(expr), factor_(1), left_vars_(), right_vars_(),
+        MultEngine_(expr), factor_(1), left_vars_(), right_vars_(),
         left_op_(permute_to_no_trans), right_op_(permute_to_no_trans), op_(),
         proc_grid_(), K_(1u)
       { }
@@ -117,7 +117,7 @@ namespace TiledArray {
       /// \param expr The parent expression
       template <typename L, typename R>
       ContEngine(const ScalMultExpr<L, R>& expr) :
-        BinaryEngine_(expr), factor_(expr.factor()), left_vars_(), right_vars_(),
+        MultEngine_(expr), factor_(expr.factor()), left_vars_(), right_vars_(),
         left_op_(permute_to_no_trans), right_op_(permute_to_no_trans), op_(),
         proc_grid_(), K_(1u)
       { }
