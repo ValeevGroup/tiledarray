@@ -39,7 +39,7 @@ namespace TiledArray {
     struct ExprTrait<ScalTsrExpr<A> > {
       typedef A array_type; ///< The \c Array type
       typedef ScalTsrEngine<A> engine_type; ///< Expression engine type
-      typedef TiledArray::detail::scalar_type<typename A::value_type> scalar_type;  ///< Tile scalar type
+      typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;  ///< Tile scalar type
     };
 
     /// Expression wrapper for scaled array objects
