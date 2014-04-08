@@ -241,7 +241,7 @@ namespace TiledArray {
         /// \param tile A future to the tile
         /// \return \c tile
         template <typename Tile>
-        typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile>,
+        static typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile>,
             const madness::Future<Tile>& >::type
         convert(const madness::Future<Tile>& tile) { return tile; }
 
