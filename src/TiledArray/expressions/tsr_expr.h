@@ -38,14 +38,14 @@ namespace TiledArray {
     struct ExprTrait<TsrExpr<A> > {
       typedef A array_type; ///< The \c Array type
       typedef TsrEngine<A> engine_type; ///< Expression engine type
-      typedef TiledArray::detail::scalar_type<A> scalar_type;  ///< Tile scalar type
+      typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;  ///< Tile scalar type
     };
 
     template <typename A>
     struct ExprTrait<TsrExpr<const A> > {
       typedef A array_type; ///< The \c Array type
       typedef TsrEngine<A> engine_type; ///< Expression engine type
-      typedef TiledArray::detail::scalar_type<A> scalar_type;  ///< Tile scalar type
+      typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;  ///< Tile scalar type
     };
 
     /// Expression wrapper for array objects
