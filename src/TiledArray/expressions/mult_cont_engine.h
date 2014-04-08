@@ -171,7 +171,7 @@ namespace TiledArray {
       /// Construct the distributed evaluator for this expression
 
       /// \return The distributed evaluator that will evaluate this expression
-      dist_eval_type make_dist_eval() {
+      dist_eval_type make_dist_eval() const {
         if(contract_)
           return ContEngine_::make_dist_eval();
         else
