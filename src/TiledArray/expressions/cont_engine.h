@@ -133,7 +133,6 @@ namespace TiledArray {
       /// variable list may not be set to target, which indicates that the
       /// result of this expression will be permuted to match \c target_vars.
       /// \param target_vars The target variable list for this expression
-      template <typename Binary>
       void perm_vars(const VariableList& target_vars) {
         // Only permute if the arguments can be permuted
         if((left_op_ == permute_to_no_trans) || (left_op_ == permute_to_no_trans)) {
