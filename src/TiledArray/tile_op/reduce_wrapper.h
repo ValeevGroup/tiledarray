@@ -119,7 +119,7 @@ namespace TiledArray {
     /// \tparam Right The right-hand tile argument type
     /// \tparam Op The base reduction operation type
     template <typename Left, typename Right, typename Op>
-    struct BinaryReduceWrapper {
+    struct BinaryReduceWrapper : public Op {
     public:
       // typedefs
       typedef BinaryReduceWrapper<Left, Right, Op> BinaryReduceWrapper_; ///< This class type
@@ -183,7 +183,7 @@ namespace TiledArray {
     /// Binary reduction operation wrapper
     template <typename Op>
     struct BinaryReduceWrapper<typename Op::first_argument_type,
-        typename Op::second_argument_type, Op>
+        typename Op::second_argument_type, Op> : public Op
     {
       // typedefs
       typedef BinaryReduceWrapper<typename Op::first_argument_type,
