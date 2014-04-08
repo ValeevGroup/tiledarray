@@ -108,10 +108,6 @@ namespace TiledArray {
         ExprEngine_(), left_(expr.left()), right_(expr.right())
       { }
 
-      // Pull base class functions into this class.
-      using ExprEngine_::derived;
-      using ExprEngine_::vars;
-
       /// Set the variable list for this expression
 
       /// This function will set the variable list for this expression and its
@@ -139,7 +135,7 @@ namespace TiledArray {
 
           if(perm_left) {
             vars_ = right_.vars();
-            left_.perm_vars(right_.target());
+            left_.perm_vars(right_.vars());
           } else {
             vars_ = left_.vars();
             right_.perm_vars(left_.vars());
