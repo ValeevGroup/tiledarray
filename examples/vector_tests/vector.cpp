@@ -349,7 +349,8 @@ int main(int argc, char** argv) {
   start = madness::wall_time();
   double x = 0.0;
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    x += TiledArray::math::maxabs(n, a);
+    TiledArray::math::reduce_vector_op(n, a, x,
+        TiledArray::math::AbsMaxAssign<double, double>());
   }
   stop = madness::wall_time();
   x += 1.0;
