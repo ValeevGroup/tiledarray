@@ -413,7 +413,7 @@ namespace TiledArray {
       trange_type make_trange(const Permutation& perm = Permutation()) const {
         // Compute iteration limits
         const unsigned int inner_rank = op_.gemm_helper().num_contract_ranks();
-        const unsigned int left_outer_rank = op_.gemm_helper().left_rank() - left_outer_rank;
+        const unsigned int left_outer_rank = op_.gemm_helper().left_rank() - inner_rank;
         const unsigned int right_rank = op_.gemm_helper().right_rank();
 
         // Construct the trange input and compute the gemm sizes
