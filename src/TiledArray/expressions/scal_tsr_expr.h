@@ -110,6 +110,12 @@ namespace TiledArray {
       /// \return A const reference to the variable string for this tensor
       const std::string& vars() const { return vars_; }
 
+
+      /// Scaling factor accessor
+
+      /// \return The expression scaling factor
+      scalar_type factor() const { return factor_; }
+
     }; // class ScalTsrExpr
 
 
