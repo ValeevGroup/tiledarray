@@ -200,7 +200,7 @@ namespace TiledArray {
       /// Copy conversion
 
       /// \param other The expression to be copied
-      TsrExpr(const TsrExpr<array_type>& other) : array_(other.array_), vars_(other.vars_) { }
+      explicit TsrExpr(const TsrExpr<array_type>& other) : array_(other.array_), vars_(other.vars_) { }
 
       /// Array accessor
 
