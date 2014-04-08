@@ -71,8 +71,6 @@ namespace TiledArray {
       using ExprEngine_::pmap_;
       using ExprEngine_::permute_tiles_;
 
-    private:
-
       array_type array_; ///< The array object
 
     public:
