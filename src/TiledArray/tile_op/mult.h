@@ -117,13 +117,13 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
+      no_permute(Left& first, second_argument_type second) {
         return first.mult_to(second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!LC && RC, result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
+      no_permute(first_argument_type first, Right& second) {
         return second.mult_to(first);
       }
 

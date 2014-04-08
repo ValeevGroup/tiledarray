@@ -113,13 +113,13 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
+      no_permute(Left& first, second_argument_type second) {
         return first.subt_to(second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!LC && RC, result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
+      no_permute(first_argument_type first, Right& second) {
         return second.subt_to(first, -1);
       }
 
@@ -131,7 +131,7 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<RC, result_type>::type
-      no_permute(zero_left_type, second_argument_type second) {
+      no_permute(zero_left_type, Right& second) {
         return second.neg_to();
       }
 
@@ -143,7 +143,7 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
-      no_permute(first_argument_type first, zero_right_type) {
+      no_permute(Left& first, zero_right_type) {
         return first;
       }
 
