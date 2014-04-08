@@ -89,7 +89,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() const {
-        return BinaryEngine_::left().shape().add(BinaryEngine_::right().shape());
+        return BinaryEngine_::left_.shape().add(BinaryEngine_::right_.shape());
       }
 
       /// Permuting shape factory function
@@ -97,7 +97,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) const {
-        return BinaryEngine_::left().shape().add(BinaryEngine_::right().shape(), perm);
+        return BinaryEngine_::left_.shape().add(BinaryEngine_::right_.shape(), perm);
       }
 
       /// Non-permuting tile operation factory function
@@ -168,7 +168,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() const {
-        return BinaryEngine_::left().shape().add(BinaryEngine_::right().shape(),
+        return BinaryEngine_::left_.shape().add(BinaryEngine_::right_.shape(),
             factor_);
       }
 
@@ -177,7 +177,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) const {
-        return BinaryEngine_::left().shape().add(BinaryEngine_::right().shape(),
+        return BinaryEngine_::left_.shape().add(BinaryEngine_::right_.shape(),
             factor_, perm);
       }
 
