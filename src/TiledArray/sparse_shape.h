@@ -448,7 +448,7 @@ namespace TiledArray {
 
   public:
 
-    SparseShape_ add(const value_type value) {
+    SparseShape_ add(const value_type value) const {
       TA_ASSERT(! tile_norms_.empty());
 
       Tensor<T> result_tile_norms(tile_norms_.range());
