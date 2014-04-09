@@ -32,9 +32,47 @@ using namespace TiledArray;
 
 BOOST_FIXTURE_TEST_SUITE( sparse_shape_suite, SparseShapeFixture )
 
-BOOST_AUTO_TEST_CASE( constructor )
+BOOST_AUTO_TEST_CASE( default_constructor )
 {
-//  BOOST_CHECK_NO_THROW(SparseShape<float> x);
+  BOOST_CHECK_NO_THROW(SparseShape<float> x);
+  SparseShape<float> x, y;
+  Permutation perm;
+  math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
+      2u, 2u, 2u);
+
+  BOOST_CHECK(x.empty());
+  BOOST_CHECK(! x.is_dense());
+
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(x[0], Exception);
+
+  BOOST_CHECK_THROW(x.perm(perm), Exception);
+
+  BOOST_CHECK_THROW(x.scale(2.0), Exception);
+  BOOST_CHECK_THROW(x.scale(2.0, perm), Exception);
+
+  BOOST_CHECK_THROW(x.add(y), Exception);
+  BOOST_CHECK_THROW(x.add(y, 2.0), Exception);
+  BOOST_CHECK_THROW(x.add(y, perm), Exception);
+  BOOST_CHECK_THROW(x.add(y, 2.0, perm), Exception);
+  BOOST_CHECK_THROW(x.add(2.0), Exception);
+  BOOST_CHECK_THROW(x.add(2.0, perm), Exception);
+
+  BOOST_CHECK_THROW(x.subt(y), Exception);
+  BOOST_CHECK_THROW(x.subt(y, 2.0), Exception);
+  BOOST_CHECK_THROW(x.subt(y, perm), Exception);
+  BOOST_CHECK_THROW(x.subt(y, 2.0, perm), Exception);
+  BOOST_CHECK_THROW(x.subt(2.0), Exception);
+  BOOST_CHECK_THROW(x.subt(2.0, perm), Exception);
+
+  BOOST_CHECK_THROW(x.mult(y), Exception);
+  BOOST_CHECK_THROW(x.mult(y, 2.0), Exception);
+  BOOST_CHECK_THROW(x.mult(y, perm), Exception);
+  BOOST_CHECK_THROW(x.mult(y, 2.0, perm), Exception);
+
+  BOOST_CHECK_THROW(x.gemm(y, 2.0, gemm_helper), Exception);
+  BOOST_CHECK_THROW(x.gemm(y, 2.0, gemm_helper, perm), Exception);
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( cont_sparse_sparse )
