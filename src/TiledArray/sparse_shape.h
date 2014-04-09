@@ -319,6 +319,11 @@ namespace TiledArray {
     /// \return A reference to the \c Tensor object that stores shape data
     const Tensor<value_type>& data() const { return tile_norms_; }
 
+    /// Initialization check
+
+    /// \return \c true when this shape has been initialized.
+    bool empty() const { return tile_norms_.empty(); }
+
     /// Scale shape
 
     /// Construct a new scaled shape as:
