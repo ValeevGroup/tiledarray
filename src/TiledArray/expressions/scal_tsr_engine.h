@@ -100,10 +100,6 @@ namespace TiledArray {
         LeafEngine_(expr), factor_(expr.factor())
       { }
 
-      ScalTsrEngine(const ScalTsrExpr<const array_type>& expr) :
-        LeafEngine_(expr), factor_(expr.factor())
-      { }
-
       /// Non-permuting shape factory function
 
       /// \return The result shape
