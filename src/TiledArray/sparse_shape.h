@@ -265,7 +265,7 @@ namespace TiledArray {
 
     /// \return \c true when range matches the range of this shape
     bool validate(const Range& range) const {
-      if(! tile_norms_.empty())
+      if(tile_norms_.empty())
         return false;
       return (range == tile_norms_.range());
     }
