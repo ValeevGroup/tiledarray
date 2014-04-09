@@ -453,7 +453,7 @@ namespace TiledArray {
 
       Tensor<T> result_tile_norms(tile_norms_.range());
 
-      const ConstTensorNorm op(value);
+      const ConstTensorNorm op(std::abs(value));
       const unsigned int dim = tile_norms_.range().dim();
       const vector_type* restrict const size_vectors = size_vectors_.get();
 
