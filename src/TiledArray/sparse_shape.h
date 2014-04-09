@@ -389,7 +389,7 @@ namespace TiledArray {
     /// \return A scaled sum of shapes
     SparseShape_ add(const SparseShape_& other, value_type factor) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.add(other, std::abs(factor)), size_vectors_);
+      return SparseShape_(tile_norms_.add(other.tile_norms_, std::abs(factor)), size_vectors_);
     }
 
     /// Add, scale, and permute shapes
@@ -513,24 +513,24 @@ namespace TiledArray {
 
     SparseShape_ mult(const SparseShape_& other) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.mult(other.tile_norms_));
+      return SparseShape_(tile_norms_.mult(other.tile_norms_), size_vectors_);
     }
 
     SparseShape_ mult(const SparseShape_& other, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.mult(other.tile_norms_, perm));
+      return SparseShape_(tile_norms_.mult(other.tile_norms_, perm), size_vectors_);
     }
 
     SparseShape_ mult(const SparseShape_& other, const value_type factor) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.mult(other.tile_norms_, std::abs(factor)));
+      return SparseShape_(tile_norms_.mult(other.tile_norms_, std::abs(factor)), size_vectors_);
     }
 
     SparseShape_ mult(const SparseShape_& other, const value_type factor,
         const Permutation& perm) const
     {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.mult(other.tile_norms_, std::abs(factor), perm));
+      return SparseShape_(tile_norms_.mult(other.tile_norms_, std::abs(factor), perm), size_vectors_);
     }
 
   private:
