@@ -125,7 +125,7 @@ namespace TiledArray {
           A a_block[TILEDARRAY_LOOP_UNWIND];
           VecOpUnwindN::copy(a, a_block);
 
-          VecOpUnwindN::binary(y, a_block, bind_first(x[offset], op));
+          VecOpUnwindN::binary(y, a_block, TiledArray::detail::bind_first(x[offset], op));
 
           VecOpUnwindN::copy(a_block, b);
         }
