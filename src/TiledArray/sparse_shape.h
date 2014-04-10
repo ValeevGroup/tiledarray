@@ -308,14 +308,6 @@ namespace TiledArray {
       return tile_norms_[index];
     }
 
-    /// Create a permuted shape of this shape
-
-    /// \param perm The permutation to be applied
-    /// \return A new, permuted shape
-    SparseShape_ perm(const Permutation& perm) const {
-      return SparseShape_(tile_norms_.permute(perm), perm_size_vectors(perm));
-    }
-
     /// Data accessor
 
     /// \return A reference to the \c Tensor object that stores shape data
@@ -325,6 +317,14 @@ namespace TiledArray {
 
     /// \return \c true when this shape has been initialized.
     bool empty() const { return tile_norms_.empty(); }
+
+    /// Create a permuted shape of this shape
+
+    /// \param perm The permutation to be applied
+    /// \return A new, permuted shape
+    SparseShape_ perm(const Permutation& perm) const {
+      return SparseShape_(tile_norms_.permute(perm), perm_size_vectors(perm));
+    }
 
     /// Scale shape
 
@@ -350,7 +350,7 @@ namespace TiledArray {
     /// \return A new, scaled-and-permuted shape
     SparseShape_ scale(const value_type factor, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.scale(std::abs(factor), perm), size_vectors_);
+      return SparseShape_(tile_norms_.scale(std::abs(factor), perm), perm_size_vectors(perm));
     }
 
     /// Add shapes
@@ -377,7 +377,7 @@ namespace TiledArray {
     /// \return A new, scaled shape
     SparseShape_ add(const SparseShape_& other, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.add(other.tile_norms_, perm), size_vectors_);
+      return SparseShape_(tile_norms_.add(other.tile_norms_, perm), perm_size_vectors(perm));
     }
 
     /// Add and scale shapes
@@ -408,7 +408,7 @@ namespace TiledArray {
     {
       TA_ASSERT(! tile_norms_.empty());
       return SparseShape_(tile_norms_.add(other.tile_norms_, std::abs(factor),
-          perm), size_vectors_);
+          perm), perm_size_vectors(perm));
     }
 
   private:
@@ -479,11 +479,12 @@ namespace TiledArray {
             tile_norms_.data(), result_tile_norms.data(), op);
       }
 
-
       return SparseShape_(result_tile_norms, size_vectors_);
     }
 
     SparseShape_ add(const value_type value, const Permutation& perm) const {
+      // TODO: Optimize this function so it does the permutation at the same
+      // time as the addition.
       return add(value).perm(perm);
     }
 
@@ -513,26 +514,102 @@ namespace TiledArray {
       return add(value, perm);
     }
 
+  private:
+
+    struct ScaleBySize {
+      typedef void result_type;
+
+      TILEDARRAY_FORCE_INLINE void
+      operator()(value_type& restrict norm, const value_type size) const {
+        norm *= size;
+      }
+
+      TILEDARRAY_FORCE_INLINE const vector_type& operator()(const vector_type& size_vector) const {
+        return size_vector;
+      }
+
+      TILEDARRAY_FORCE_INLINE void
+      operator()(value_type& restrict norm, const value_type x, const value_type y) const {
+        norm *= x * y;
+        if(norm < threshold_)
+          norm = 0;
+      }
+    }; // struct ScaleBySize
+
+    static void scale_by_size(Tensor<T>& tile_norms,
+        const vector_type* restrict const size_vectors)
+    {
+      const unsigned int dim = tile_norms.range().dim();
+      ScaleBySize op;
+
+      if(dim == 1u) {
+        // This is the easy case where the data is a vector and can be
+        // normalized directly.
+        math::binary_vector_op(size_vectors[0].size(), size_vectors[0].data(),
+            tile_norms.data(), op);
+      } else {
+        // Here the normalization constants are computed and multiplied by the
+        // norm data using a recursive, outer algorithm. This is done to
+        // minimize temporary memory requirements, memory bandwidth, and work.
+
+        // Compute the left and right outer products
+        const unsigned int middle = (dim >> 1u) + (dim & 1u);
+        const vector_type left = recursive_outer_product(size_vectors, middle, op);
+        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, op);
+
+        math::outer(left.size(), right.size(), left.data(), right.data(),
+            tile_norms.data(), op);
+      }
+    }
+
+  public:
+
     SparseShape_ mult(const SparseShape_& other) const {
+      // TODO: Optimize this function so that the tensor arithmetic and
+      // scale_by_size operations are performed in one step instead of two.
+
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.mult(other.tile_norms_), size_vectors_);
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_);
+      scale_by_size(result_tile_norms, size_vectors_.get());
+
+      return SparseShape_(result_tile_norms, size_vectors_);
     }
 
     SparseShape_ mult(const SparseShape_& other, const Permutation& perm) const {
+      // TODO: Optimize this function so that the tensor arithmetic and
+      // scale_by_size operations are performed in one step instead of two.
+
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.mult(other.tile_norms_, perm), size_vectors_);
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, perm);
+      std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
+      scale_by_size(result_tile_norms, result_size_vector.get());
+
+      return SparseShape_(result_tile_norms, result_size_vector);
     }
 
     SparseShape_ mult(const SparseShape_& other, const value_type factor) const {
+      // TODO: Optimize this function so that the tensor arithmetic and
+      // scale_by_size operations are performed in one step instead of two.
+
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.mult(other.tile_norms_, std::abs(factor)), size_vectors_);
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor));
+      scale_by_size(result_tile_norms, size_vectors_.get());
+
+      return SparseShape_(result_tile_norms, size_vectors_);
     }
 
     SparseShape_ mult(const SparseShape_& other, const value_type factor,
         const Permutation& perm) const
     {
+      // TODO: Optimize this function so that the tensor arithmetic and
+      // scale_by_size operations are performed in one step instead of two.
+
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.mult(other.tile_norms_, std::abs(factor), perm), size_vectors_);
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor), perm);
+      std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
+      scale_by_size(result_tile_norms, result_size_vector.get());
+
+      return SparseShape_(result_tile_norms, result_size_vector);
     }
 
   private:
