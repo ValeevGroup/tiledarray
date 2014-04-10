@@ -83,9 +83,9 @@ namespace TiledArray {
     /// This object will unwind \c 1 step of a vector operation loop, and
     /// terminate the loop
     template <>
-    struct VectorOpUnwind<0> {
+    struct VectorOpUnwind<0ul> {
 
-      static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - 1;
+      static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - 1ul;
 
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
@@ -206,9 +206,9 @@ namespace TiledArray {
     /// This object will unwind \c N steps of a vector operation loop.
     /// \tparam N The number of steps to unwind
     template <std::size_t N>
-    struct VectorOpUnwind : public VectorOpUnwind<N - 1> {
+    struct VectorOpUnwind : public VectorOpUnwind<N - 1ul> {
 
-      typedef VectorOpUnwind<N - 1> VectorOpUnwindN1;
+      typedef VectorOpUnwind<N - 1ul> VectorOpUnwindN1;
 
       static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - N - 1ul;
 
