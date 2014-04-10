@@ -210,7 +210,7 @@ namespace TiledArray {
 
       template <typename Arg>
       result_type operator()(const Arg& restrict arg) const {
-        return op_(t_, arg);
+        return op_(arg, t_);
       }
     };
 
