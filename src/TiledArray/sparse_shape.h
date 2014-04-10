@@ -107,6 +107,7 @@ namespace TiledArray {
       NormalizeAndZero() : threshold_(SparseShape::threshold_) { }
 
       void operator()(value_type& restrict norm, const value_type size) const {
+        TA_ASSERT(norm >= value_type(0));
         norm /= size;
         if(norm < threshold_)
           norm = 0;
@@ -121,6 +122,7 @@ namespace TiledArray {
       }
 
       void operator()(value_type& restrict norm, const value_type x, const value_type y) const {
+        TA_ASSERT(norm >= value_type(0));
         norm *= x * y;
         if(norm < threshold_)
           norm = 0;
