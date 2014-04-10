@@ -36,9 +36,12 @@ namespace TiledArray {
     typedef std::vector<std::size_t> vec_type;
 
     SparseShapeFixture() :
-      sparse_shape(make_shape(tr, 0.5, 23)),
+      sparse_shape(make_shape(tr, 0.5, 42)),
       left(make_shape(tr, 0.1, 23)),
-      right(make_shape(tr, 0.1, 23))
+      right(make_shape(tr, 0.1, 82)),
+      perm(make_perm()),
+      tolerance(0.0001)
+
     {
       SparseShape<float>::threshold(0.001);
     }
@@ -69,10 +72,21 @@ namespace TiledArray {
       return SparseShape<float>(shape_data, trange);
     }
 
+    static Permutation make_perm() {
+      std::array<std::size_t, GlobalFixture::dim> temp;
+      for(std::size_t i = 0; i < temp.size(); ++i)
+        temp[i] = i + 1;
+
+      temp.back() = 0;
+
+      return Permutation(temp);
+    }
+
     SparseShape<float> sparse_shape;
     SparseShape<float> left;
     SparseShape<float> right;
-
+    Permutation perm;
+    const float tolerance;
   }; // SparseShapeFixture
 
 } // namespace TiledArray
