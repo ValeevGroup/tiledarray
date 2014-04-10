@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  justus
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  math_outer.cpp
@@ -181,9 +181,6 @@ BOOST_AUTO_TEST_CASE( outer_fill )
   // Check the result
   for(std::size_t i = 0ul; i < left.size(); ++i) {
     for(std::size_t j = 0ul; j < right.size(); ++j) {
-      if(result[i * right.size() + j] != left[i] - right[j]) {
-        std::cout << i << "," << j << "\n";
-      }
       BOOST_CHECK_EQUAL(result[i * right.size() + j], left[i] - right[j]);
     }
   }
