@@ -24,6 +24,7 @@
  */
 
 #include "TiledArray/sparse_shape.h"
+#include "TiledArray/pmap/blocked_pmap.h"
 #include "TiledArray/eigen.h"
 #include "unit_test_config.h"
 #include "sparse_shape_fixture.h"
@@ -42,6 +43,7 @@ BOOST_AUTO_TEST_CASE( default_constructor )
 
   BOOST_CHECK(x.empty());
   BOOST_CHECK(! x.is_dense());
+  BOOST_CHECK(! x.validate(tr.tiles()));
 
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(x[0], Exception);
@@ -75,47 +77,97 @@ BOOST_AUTO_TEST_CASE( default_constructor )
 #endif // TA_EXCEPTION_ERROR
 }
 
-BOOST_AUTO_TEST_CASE( cont_sparse_sparse )
+BOOST_AUTO_TEST_CASE( non_comm_constructor )
 {
-  // Create a matrix with the expected output
-  const std::size_t m = left.data().range().size().front();
-  const std::size_t n = right.data().range().size().back();
-  const std::size_t k = left.data().size() / m;
-  EigenMatrixXf test_result =
-      math::eigen_map(left.data().data(), m, k) * math::eigen_map(right.data().data(), k, n);
+  // Construct test tile norms
+  Tensor<float> tile_norms = make_norm_tensor(tr, 42);
 
-  // Evaluate the contraction of sparse shapes
-  math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-      2u, left.data().range().dim(), right.data().range().dim());
-  SparseShape<float> result = left.gemm(right, 1.0, gemm_helper);
+  // Construct the shape
+  BOOST_CHECK_NO_THROW(SparseShape<float> x(tile_norms, tr));
+  SparseShape<float> x(tile_norms, tr);
 
-  // Check that the result is correct
-  std::array<std::size_t, 2> i = {{ 0, 0 }};
-  for(i[0] = 0ul; i[0] < 5; ++i[0])
-    for(i[1] = 0ul; i[1] < 5; ++i[1])
-      BOOST_CHECK_EQUAL(result[i], test_result(i[0], i[1]));
+  // Check that the shape has been initialized
+  BOOST_CHECK(! x.empty());
+  BOOST_CHECK(! x.is_dense());
+  BOOST_CHECK(x.validate(tr.tiles()));
+
+  for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
+    // Compute the expected value
+    const TiledRange::range_type range = tr.make_tile_range(i);
+    float expected = tile_norms[i] / float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
+
+    // Check that the tile has been normalized correctly
+    BOOST_CHECK_CLOSE(x[i], expected, 0.01);
+
+    // Check zero threshold
+    if(x[i] < SparseShape<float>::threshold())
+      BOOST_CHECK(x.is_zero(i));
+    else
+      BOOST_CHECK(! x.is_zero(i));
+  }
+
 }
 
-BOOST_AUTO_TEST_CASE( cont_sparse_sparse_perm )
+
+BOOST_AUTO_TEST_CASE( comm_constructor )
 {
-  // Create a matrix with the expected output
-  const std::size_t m = left.data().range().size().front();
-  const std::size_t n = right.data().range().size().back();
-  const std::size_t k = left.data().size() / m;
-  EigenMatrixXf test_result =
-      (math::eigen_map(left.data().data(), m, k) *
-          math::eigen_map(right.data().data(), k, n)).transpose();
+  // Construct test tile norms
+  Tensor<float> tile_norms = make_norm_tensor(tr, 98);
+  Tensor<float> tile_norms_ref = tile_norms.clone();
 
-  // Evaluate the contraction of sparse shapes
-  math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-      2u, left.data().range().dim(), right.data().range().dim());
-  SparseShape<float> result = left.gemm(right, 1.0, gemm_helper).perm(Permutation(1,0));
+  // Zero non-local tiles
+  TiledArray::detail::BlockedPmap pmap(*GlobalFixture::world, tr.tiles().volume());
+  for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i)
+    if(! pmap.is_local(i))
+      tile_norms[i] = 0.0f;
 
-  // Check that the result is correct
-  std::array<std::size_t, 2> i = {{ 0, 0 }};
-  for(i[0] = 0ul; i[0] < 5; ++i[0])
-    for(i[1] = 0ul; i[1] < 5; ++i[1])
-      BOOST_CHECK_EQUAL(result.data()[i], test_result(i[0], i[1]));
+  // Construct the shape
+  BOOST_CHECK_NO_THROW(SparseShape<float> x(*GlobalFixture::world, tile_norms, tr));
+  SparseShape<float> x(*GlobalFixture::world, tile_norms, tr);
+
+  // Check that the shape has been initialized
+  BOOST_CHECK(! x.empty());
+  BOOST_CHECK(! x.is_dense());
+  BOOST_CHECK(x.validate(tr.tiles()));
+
+  for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
+    // Compute the expected value
+    const TiledRange::range_type range = tr.make_tile_range(i);
+    float expected = tile_norms_ref[i] / float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
+
+    // Check that the tile has been normalized correctly
+    BOOST_CHECK_CLOSE(x[i], expected, 0.01);
+
+    // Check zero threshold
+    if(x[i] < SparseShape<float>::threshold())
+      BOOST_CHECK(x.is_zero(i));
+    else
+      BOOST_CHECK(! x.is_zero(i));
+  }
+
+}
+
+
+BOOST_AUTO_TEST_CASE( copy_constructor )
+{
+  // Construct the shape
+  BOOST_CHECK_NO_THROW(SparseShape<float> y(sparse_shape));
+  SparseShape<float> y(sparse_shape);
+
+  // Check that the shape has been initialized
+  BOOST_CHECK(! y.empty());
+  BOOST_CHECK(! y.is_dense());
+  BOOST_CHECK(y.validate(tr.tiles()));
+
+  // Check that all the tiles have been normalized correctly
+  for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
+    // Check that the tile data has been copied correctly
+    BOOST_CHECK_CLOSE(y[i], sparse_shape[i], 0.01);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
