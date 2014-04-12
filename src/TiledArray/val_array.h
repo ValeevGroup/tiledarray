@@ -96,7 +96,7 @@ namespace TiledArray {
 
         // Allocate buffer
         void* buffer = NULL;
-        if(posix_memalign(& buffer, alignment, (n * sizeof(value_type)) + sizeof_aligned_atomic_int::value) == 0)
+        if(posix_memalign(& buffer, alignment, (n * sizeof(value_type)) + sizeof_aligned_atomic_int::value) != 0)
           throw std::bad_alloc();
 
         // Initialize counter

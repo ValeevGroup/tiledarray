@@ -32,37 +32,14 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename L, typename R>
-    struct ExprTrait<MultExpr<L,R> > {
-      typedef L left_type;
-      typedef R right_type;
-      typedef MultContEngine<typename L::engine_type, typename R::engine_type> engine_type; ///< Expression engine type
-      typedef typename engine_type::policy policy; ///< Expression policy type
-      typedef typename policy::size_type size_type; ///< size type
-      typedef typename policy::trange_type trange_type; ///< trange type
-      typedef typename policy::shape_type shape_type; ///< shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< pmap interface
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::Mult<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-    };
+    template <typename Left, typename Right>
+    struct ExprTrait<MultExpr<Left, Right> > : public BinaryExprTrait<Left, Right, MultContEngine>
+    { };
 
-    template <typename L, typename R>
-    struct ExprTrait<ScalMultExpr<L,R> > {
-      typedef L left_type;
-      typedef R right_type;
-      typedef ScalMultContEngine<typename L::engine_type, typename R::engine_type> engine_type; ///< Expression engine type
-      typedef typename engine_type::policy policy; ///< Expression policy type
-      typedef typename policy::size_type size_type; ///< size type
-      typedef typename policy::trange_type trange_type; ///< trange type
-      typedef typename policy::shape_type shape_type; ///< shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< pmap interface
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::ScalMult<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-    };
+    template <typename Left, typename Right>
+    struct ExprTrait<ScalMultExpr<Left, Right> > : public BinaryExprTrait<Left, Right, ScalMultContEngine>
+    { };
+
 
     /// Multiplication expression
 
@@ -76,9 +53,6 @@ namespace TiledArray {
       typedef typename ExprTrait<MultExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<MultExpr_>::right_type right_type; ///< The right-hand expression type
       typedef typename ExprTrait<MultExpr_>::engine_type engine_type; ///< Expression engine type
-      typedef typename ExprTrait<MultExpr_>::size_type size_type; ///< The left-hand size type
-      typedef typename ExprTrait<MultExpr_>::shape_type shape_type; ///< The right-hand shape type
-      typedef typename ExprTrait<MultExpr_>::pmap_interface pmap_interface; ///< Expression pmap interface
 
     private:
 
@@ -113,7 +87,7 @@ namespace TiledArray {
       typedef typename ExprTrait<ScalMultExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<ScalMultExpr_>::right_type right_type; ///< The right-hand expression type
       typedef typename ExprTrait<ScalMultExpr_>::engine_type engine_type; ///< Expression engine type
-      typedef typename engine_type::scalar_type scalar_type;
+      typedef typename ExprTrait<ScalMultExpr_>::scalar_type scalar_type; ///< Tile scalar type
 
     private:
 

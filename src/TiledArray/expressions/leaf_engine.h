@@ -36,27 +36,29 @@ namespace TiledArray {
 
     /// \tparam Derive The derived class type
     template <typename Derived>
-    class LeafEngine : public ExprEngine<LeafEngine<Derived> > {
+    class LeafEngine : public ExprEngine<Derived> {
     public:
       // Class hierarchy typedefs
       typedef LeafEngine<Derived> LeafEngine_; ///< This class type
-      typedef ExprEngine<LeafEngine_> ExprEngine_; ///< Base class type
+      typedef ExprEngine<Derived> ExprEngine_; ///< Base class type
 
       // Argument typedefs
-      typedef typename Derived::array_type array_type; ///< The left-hand expression type
+      typedef typename EngineTrait<Derived>::array_type array_type; ///< The left-hand expression type
 
       // Operational typedefs
-      typedef typename Derived::op_type op_type; ///< Tile operation
-      typedef typename Derived::policy policy; ///< The result policy type
-      typedef typename Derived::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+      typedef typename EngineTrait<Derived>::value_type value_type; ///< Tensor value type
+      typedef typename EngineTrait<Derived>::op_type op_type; ///< Tile operation type
+      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
 
       // Meta data typedefs
-      typedef typename Derived::trange_type trange_type; ///< Tiled range type
-      typedef typename Derived::shape_type shape_type; ///< Shape type
-      typedef typename Derived::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type type
+      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Tensor shape type
+      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
-      static const bool consumable = false;
-      static const unsigned int leaves = 1;
+      static const bool consumable = EngineTrait<Derived>::consumable;
+      static const unsigned int leaves = EngineTrait<Derived>::leaves;
 
     protected:
 
@@ -68,8 +70,6 @@ namespace TiledArray {
       using ExprEngine_::shape_;
       using ExprEngine_::pmap_;
       using ExprEngine_::permute_tiles_;
-
-    private:
 
       array_type array_; ///< The array object
 
@@ -92,7 +92,7 @@ namespace TiledArray {
 
       /// This function is a noop since the variable list is fixed.
       /// \param target_vars The target variable list for this expression
-      void vars(const VariableList&) { }
+      void perm_vars(const VariableList&) { }
 
       /// Initialize the variable list of this expression
 
@@ -104,7 +104,7 @@ namespace TiledArray {
           if(madness::World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The array variable list is not compatible with the expected output:" \
-                << "\n    expected = " << target_vars << \
+                << "\n    expected = " << target_vars \
                 << "\n    array    = " << vars_ );
           }
 

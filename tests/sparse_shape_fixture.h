@@ -36,38 +36,57 @@ namespace TiledArray {
     typedef std::vector<std::size_t> vec_type;
 
     SparseShapeFixture() :
-      sparse_shape(make_shape(tr, 0.5, 23)),
+      sparse_shape(make_shape(tr, 0.5, 42)),
       left(make_shape(tr, 0.1, 23)),
-      right(make_shape(tr, 0.1, 23))
+      right(make_shape(tr, 0.1, 82)),
+      perm(make_perm()),
+      tolerance(0.0001)
+
     {
-      SparseShape<float>::threshold(0.5);
+      SparseShape<float>::threshold(0.001);
     }
 
     ~SparseShapeFixture() { }
 
-    static SparseShape<float> make_shape(const TiledRange& trange, const float fill_percent, const int seed) {
+
+    static Tensor<float> make_norm_tensor(const TiledRange& trange, const int seed) {
       GlobalFixture::world->srand(seed);
-      float max = 0.0f;
-      Tensor<float> shape_data(trange.tiles());
-      for(std::size_t i = 0ul; i < shape_data.size(); ++i) {
-        shape_data[i] = GlobalFixture::world->rand();
-        max = std::max(max, shape_data[i]);
+      Tensor<float> norms(trange.tiles());
+      for(Tensor<float>::size_type i = 0ul; i < norms.size(); ++i) {
+        const Range range = trange.make_tile_range(i);
+        norms[i] = (GlobalFixture::world->rand() % 101);
+        norms[i] = std::sqrt(norms[i] * norms[i] * range.volume());
       }
 
-      shape_data *= 27.0f / max;
+      return norms;
+    }
 
-      const std::size_t n = shape_data.size() * ((1.0 - fill_percent) - (1.0 / (2.0 * 27.0)));
+    static SparseShape<float> make_shape(const TiledRange& trange, const float fill_percent, const int seed) {
+      Tensor<float> shape_data = make_norm_tensor(trange, seed);
+
+      const std::size_t n = float(shape_data.size()) * (1.0 - fill_percent);
       for(std::size_t i = 0ul; i < n; ++i) {
-        shape_data[GlobalFixture::world->rand() % shape_data.size()] = 0.1;
+        shape_data[GlobalFixture::world->rand() % shape_data.size()] = SparseShape<float>::threshold() * 0.1;
       }
 
       return SparseShape<float>(shape_data, trange);
     }
 
+    static Permutation make_perm() {
+      std::array<std::size_t, GlobalFixture::dim> temp;
+      for(std::size_t i = 0; i < temp.size(); ++i)
+        temp[i] = i + 1;
+
+      temp.back() = 0;
+
+      return Permutation(temp);
+    }
+
     SparseShape<float> sparse_shape;
     SparseShape<float> left;
     SparseShape<float> right;
-
+    Permutation perm;
+    const float tolerance;
   }; // SparseShapeFixture
 
 } // namespace TiledArray

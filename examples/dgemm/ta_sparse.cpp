@@ -92,14 +92,14 @@ int main(int argc, char** argv) {
     const long process_block_count = block_count / world.size() +
         (world.rank() < (block_count / world.size()) ? 1 : 0);
     for(long i = 0; i < process_block_count; ++i)
-      a_shape.data()[world.rand() % trange.tiles().volume()] = 1.0;
+      a_shape_tensor.data()[world.rand() % trange.tiles().volume()] = 1.0;
 
     for(long i = 0; i < process_block_count; ++i)
-      b_shape.data()[world.rand() % trange.tiles().volume()] = 1.0;
+      b_shape_tensor.data()[world.rand() % trange.tiles().volume()] = 1.0;
   }
-  TiledArray::SparseShape
-      a_shape(world, a_shape_tensor, 0.5),
-      b_shape(world, b_shape_tensor, 0.5);
+  TiledArray::SparseShape<float>
+      a_shape(world, a_shape_tensor, trange),
+      b_shape(world, b_shape_tensor, trange);
 
 
   typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
   const double wall_time_stop = madness::wall_time();
 
   // Print results
-  const long flop = 2.0 * TiledArray::expressions::sum(c("m,n"));
+  const long flop = 2.0 * c("m,n").sum();
   if(world.rank() == 0) {
     std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
         << "\nAverage GFLOPS = " << double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";

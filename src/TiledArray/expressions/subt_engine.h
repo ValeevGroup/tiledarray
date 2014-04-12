@@ -36,6 +36,19 @@ namespace TiledArray {
     // Forward declarations
     template <typename, typename> class SubtExpr;
     template <typename, typename> class ScalSubtExpr;
+    template <typename, typename> class SubtEngine;
+    template <typename, typename> class ScalSubtEngine;
+
+    template <typename Left, typename Right>
+    struct EngineTrait<SubtEngine<Left, Right> > :
+      public BinaryEngineTrait<Left, Right, TiledArray::math::Subt>
+    { };
+
+    template <typename Left, typename Right>
+    struct EngineTrait<ScalSubtEngine<Left, Right> > :
+      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalSubt>
+    { };
+
 
     /// Subtraction expression engine
 
@@ -45,26 +58,25 @@ namespace TiledArray {
     class SubtEngine : public BinaryEngine<SubtEngine<Left, Right> > {
     public:
       // Class hierarchy typedefs
+      typedef SubtEngine<Left, Right> SubtEngine_; ///< This class type
       typedef BinaryEngine<SubtEngine<Left, Right> > BinaryEngine_; ///< Binary base class type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<SubtEngine_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<SubtEngine_>::right_type right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::Subt<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-      typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<SubtEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<SubtEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<SubtEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<SubtEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<SubtEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<SubtEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<SubtEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<SubtEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
       /// Constructor
 
@@ -78,7 +90,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() const {
-        return BinaryEngine_::left().shape().subt(BinaryEngine_::right().shape());
+        return BinaryEngine_::left_.shape().subt(BinaryEngine_::right_.shape());
       }
 
       /// Permuting shape factory function
@@ -86,7 +98,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) const {
-        return BinaryEngine_::left().shape().subt(BinaryEngine_::right().shape(), perm);
+        return BinaryEngine_::left_.shape().subt(BinaryEngine_::right_.shape(), perm);
       }
 
       /// Non-permuting tile operation factory function
@@ -116,27 +128,26 @@ namespace TiledArray {
     class ScalSubtEngine : public BinaryEngine<ScalSubtEngine<Left, Right> > {
     public:
       // Class hierarchy typedefs
+      typedef ScalSubtEngine<Left, Right> ScalSubtEngine_; ///< This class type
       typedef BinaryEngine<ScalSubtEngine<Left, Right> > BinaryEngine_; ///< Binary expression engine base type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<ScalSubtEngine_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalSubtEngine_>::right_type right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::ScalSubt<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-      typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
-      typedef typename BinaryExprPolicy<Left, Right>::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<ScalSubtEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<ScalSubtEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalSubtEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalSubtEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<ScalSubtEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<ScalSubtEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<ScalSubtEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<ScalSubtEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<ScalSubtEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 
@@ -158,7 +169,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() const {
-        return BinaryEngine_::left().shape().subt(BinaryEngine_::right().shape(),
+        return BinaryEngine_::left_.shape().subt(BinaryEngine_::right_.shape(),
             factor_);
       }
 
@@ -167,7 +178,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) const {
-        return BinaryEngine_::left().shape().subt(BinaryEngine_::right().shape(),
+        return BinaryEngine_::left_.shape().subt(BinaryEngine_::right_.shape(),
             factor_, perm);
       }
 

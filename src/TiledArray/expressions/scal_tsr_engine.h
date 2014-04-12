@@ -35,22 +35,9 @@ namespace TiledArray {
     template <typename> class ScalTsrExpr;
     template <typename> class ScalTsrEngine;
 
-    /// Scaled tensor expression engine
 
-    /// \tparam T The array element type
-    /// \tparam DIM The array dimension
-    /// \tparam Tile The array tile type
-    /// \tparam Policy The array policy type
     template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    class ScalTsrEngine<Array<T, DIM, Tile, Policy> > :
-        public LeafEngine<ScalTsrEngine<Array<T, DIM, Tile, Policy> > >
-    {
-    public:
-      // Class hierarchy typedefs
-      typedef ScalTsrEngine<Array<T, DIM, Tile, Policy> > ScalTsrEngine_; ///< This class type
-      typedef LeafEngine<ScalTsrEngine_> LeafEngine_; ///< Leaf base class type
-      typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
-
+    struct EngineTrait<ScalTsrEngine<Array<T, DIM, Tile, Policy> > > {
       // Argument typedefs
       typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
 
@@ -59,15 +46,49 @@ namespace TiledArray {
           typename array_type::eval_type, false> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
-      typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
+      typedef typename value_type::eval_type eval_type;  ///< Evaluation tile type
+      typedef typename TiledArray::detail::scalar_type<Array<T, DIM, Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< Distributed evaluator
+      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static const bool consumable = false;
+      static const unsigned int leaves = 1;
+
+    };
+
+
+    /// Scaled tensor expression engine
+
+    /// \tparam A The \c Array type
+    template <typename A>
+    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<A> > {
+    public:
+      // Class hierarchy typedefs
+      typedef ScalTsrEngine<A> ScalTsrEngine_; ///< This class type
+      typedef LeafEngine<ScalTsrEngine_> LeafEngine_; ///< Leaf base class type
+      typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
+
+      // Argument typedefs
+      typedef typename EngineTrait<ScalTsrEngine_>::array_type array_type; ///< The left-hand expression type
+
+      // Operational typedefs
+      typedef typename EngineTrait<ScalTsrEngine_>::value_type value_type; ///< Tensor value type
+      typedef typename EngineTrait<ScalTsrEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalTsrEngine_>::op_type op_type; ///< Tile operation type
+      typedef typename EngineTrait<ScalTsrEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<ScalTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename EngineTrait<ScalTsrEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<ScalTsrEngine_>::trange_type trange_type; ///< Tiled range type type
+      typedef typename EngineTrait<ScalTsrEngine_>::shape_type shape_type; ///< Tensor shape type
+      typedef typename EngineTrait<ScalTsrEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 
@@ -79,21 +100,17 @@ namespace TiledArray {
         LeafEngine_(expr), factor_(expr.factor())
       { }
 
-      ScalTsrEngine(const ScalTsrExpr<const array_type>& expr) :
-        LeafEngine_(expr), factor_(expr.factor())
-      { }
-
       /// Non-permuting shape factory function
 
       /// \return The result shape
-      shape_type make_shape() { return LeafEngine_::array().get_shape().scale(factor_); }
+      shape_type make_shape() { return LeafEngine_::array_.get_shape().scale(factor_); }
 
       /// Permuting shape factory function
 
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) {
-        return LeafEngine_::array().get_shape().scale(factor_, perm);
+        return LeafEngine_::array_.get_shape().scale(factor_, perm);
       }
 
       /// Non-permuting tile operation factory function

@@ -740,7 +740,7 @@ namespace TiledArray {
     /// \param value The constant to be added to this tensor
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
-    Tensor_ add(const numeric_type value) {
+    Tensor_ add(const numeric_type value) const {
       return unary(math::PlusConst<value_type>(value));
     }
 
@@ -750,7 +750,7 @@ namespace TiledArray {
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
-    Tensor_ add(const numeric_type value, const Permutation& perm) {
+    Tensor_ add(const numeric_type value, const Permutation& perm) const {
       return unary(math::PlusConst<value_type>(value), perm);
     }
 
@@ -848,7 +848,7 @@ namespace TiledArray {
 
     /// \return A new tensor where the elements are the different between the
     /// elements of \c this and \c value
-    Tensor_ subt(const numeric_type value) {
+    Tensor_ subt(const numeric_type value) const {
       return add(-value);
     }
 
@@ -858,7 +858,7 @@ namespace TiledArray {
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the different between the
     /// elements of \c this and \c value
-    Tensor_ subt(const numeric_type value, const Permutation& perm) {
+    Tensor_ subt(const numeric_type value, const Permutation& perm) const {
       return add(-value, perm);
     }
 
@@ -1277,7 +1277,7 @@ namespace TiledArray {
     /// Square of vector norm_2
 
     /// \return The vector norm of this tensor
-    numeric_type squred_norm() const {
+    numeric_type squared_norm() const {
       numeric_type result = 0;
       reduce(result, math::SquareAddAssign<numeric_type, numeric_type>());
       return result;
@@ -1287,7 +1287,7 @@ namespace TiledArray {
 
     /// \return The vector norm of this tensor
     numeric_type norm() const {
-      return std::sqrt(squred_norm());
+      return std::sqrt(squared_norm());
     }
 
     /// Minimum element

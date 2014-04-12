@@ -177,7 +177,7 @@ namespace TiledArray {
 
       template <typename Result, typename Arg>
       void operator()(Result& restrict result, const Arg& restrict arg) const {
-        return op_(result, t_, arg);
+        op_(result, t_, arg);
       }
     };
 
@@ -210,7 +210,7 @@ namespace TiledArray {
 
       template <typename Arg>
       result_type operator()(const Arg& restrict arg) const {
-        return op_(t_, arg);
+        return op_(arg, t_);
       }
     };
 
@@ -227,7 +227,7 @@ namespace TiledArray {
 
       template <typename Result, typename Arg>
       void operator()(Result& restrict result, const Arg& restrict arg) const {
-        return op_(result, arg, t_);
+        op_(result, arg, t_);
       }
     };
 

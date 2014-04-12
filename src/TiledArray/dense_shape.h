@@ -79,64 +79,62 @@ namespace TiledArray {
     /// \return true
     static bool is_dense() { return true; }
 
-    DenseShape perm(const Permutation&) const { return DenseShape(); }
+    static DenseShape perm(const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape scale(const Scalar) const { return DenseShape(); }
+    static DenseShape scale(const Scalar) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape scale(const Scalar, const Permutation&) const { return DenseShape(); }
+    static DenseShape scale(const Scalar, const Permutation&) { return DenseShape(); }
 
-    DenseShape add(const DenseShape&) const { return DenseShape(); }
+    static DenseShape add(const DenseShape&) { return DenseShape(); }
 
-    DenseShape add(const DenseShape&, const Permutation&) const { return DenseShape(); }
-
-    template <typename Scalar>
-    DenseShape add(const DenseShape&, const Scalar) const { return DenseShape(); }
+    static DenseShape add(const DenseShape&, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape add(const DenseShape&, const Scalar, const Permutation&) const { return DenseShape(); }
+    static DenseShape add(const DenseShape&, const Scalar) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape add(const Scalar) { return DenseShape(); }
+    static DenseShape add(const DenseShape&, const Scalar, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape add(const Scalar, const Permutation&) { return DenseShape(); }
-
-    DenseShape subt(const DenseShape&) const { return DenseShape(); }
-
-    DenseShape subt(const DenseShape&, const Permutation&) const { return DenseShape(); }
+    static DenseShape add(const Scalar) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape subt(const DenseShape& other, const Scalar) const { return DenseShape(); }
+    static DenseShape add(const Scalar, const Permutation&) { return DenseShape(); }
+
+    static DenseShape subt(const DenseShape&) { return DenseShape(); }
+
+    static DenseShape subt(const DenseShape&, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape subt(const DenseShape& other, const Scalar, const Permutation&) const { return DenseShape(); }
+    static DenseShape subt(const DenseShape& other, const Scalar) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape subt(const Scalar) { return DenseShape(); }
+    static DenseShape subt(const DenseShape& other, const Scalar, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape subt(const Scalar, const Permutation&) { return DenseShape(); }
-
-    DenseShape mult(const DenseShape&) const { return DenseShape(); }
-
-    DenseShape mult(const DenseShape&, const Permutation&) const { return DenseShape(); }
+    static DenseShape subt(const Scalar) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape mult(const DenseShape& other, const Scalar) const { return DenseShape(); }
+    static DenseShape subt(const Scalar, const Permutation&) { return DenseShape(); }
+
+    static DenseShape mult(const DenseShape&) { return DenseShape(); }
+
+    static DenseShape mult(const DenseShape&, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape mult(const DenseShape& other, const Scalar, const Permutation&) const { return DenseShape(); }
+    static DenseShape mult(const DenseShape& other, const Scalar) { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape gemm(const DenseShape&, const DenseShape&, const Scalar,
-        const math::GemmHelper&)
+    static DenseShape mult(const DenseShape& other, const Scalar, const Permutation&) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape gemm(const DenseShape&, const Scalar, const math::GemmHelper&)
     { return DenseShape(); }
 
     template <typename Scalar>
-    DenseShape gemm(const DenseShape&, const DenseShape&, const Scalar,
-        const math::GemmHelper&, const Permutation&)
+    static DenseShape gemm(const DenseShape&, const Scalar, const math::GemmHelper&, const Permutation&)
     { return DenseShape(); }
 
   }; // class DenseShape

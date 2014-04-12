@@ -43,18 +43,29 @@ namespace TiledArray {
 
     /// \tparam Derived The derived class type
     template <typename Derived>
-    class MultEngine : public virtual BinaryEngine<Derived> {
+    class MultEngine : public BinaryEngine<Derived> {
     public:
-      typedef BinaryEngine<MultEngine<Derived> > BinaryEngine_; ///< Binary base class type
-      typedef typename ExprTrait<Derived>::left_type left_type; ///< The left-hand expression type
-      typedef typename ExprTrait<Derived>::right_type right_type; ///< The right-hand expression type
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::Mult<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-      typedef typename ExprTrait<Derived>::trange_type trange_type; ///< Tiled range type
-      typedef typename ExprTrait<Derived>::shape_type shape_type; ///< Shape type
-      typedef typename ExprTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
+      // Class hierarchy typedefs
+      typedef MultEngine<Derived> MultEngine_; ///< This class type
+      typedef BinaryEngine<Derived> BinaryEngine_; ///< Binary base class type
+      typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
+
+      // Argument typedefs
+      typedef typename EngineTrait<Derived>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<Derived>::right_type right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<Derived>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
       /// Constructor
 
@@ -77,7 +88,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() const {
-        return BinaryEngine_::left().shape().mult(BinaryEngine_::right().shape());
+        return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape());
       }
 
       /// Permuting shape factory function
@@ -85,7 +96,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) const {
-        return BinaryEngine_::left().shape().mult(BinaryEngine_::right().shape(), perm);
+        return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(), perm);
       }
 
       /// Non-permuting tile operation factory function
@@ -111,10 +122,10 @@ namespace TiledArray {
 
     /// \tparam Derived The derived class type
     template <typename Derived>
-    class ScalMultEngine : public virtual BinaryEngine<Derived> {
+    class ScalMultEngine : public BinaryEngine<Derived> {
     public:
       // Class hierarchy typedefs
-      typedef BinaryEngine<ScalMultEngine<Derived> > BinaryEngine_; ///< Binary base class type
+      typedef BinaryEngine<Derived> BinaryEngine_; ///< Binary base class type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
@@ -159,7 +170,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() const {
-        return BinaryEngine_::left().shape().mult(BinaryEngine_::right().shape(),
+        return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(),
             factor_);
       }
 
@@ -168,7 +179,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) const {
-        return BinaryEngine_::left().shape().mult(BinaryEngine_::right().shape(),
+        return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(),
             factor_, perm);
       }
 
