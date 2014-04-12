@@ -37,6 +37,11 @@ namespace TiledArray {
     template <typename T>
     inline T min(const T t1, const T t2) { return std::min(t1, t2); }
 
+    template <typename T>
+    inline T maxabs(const T t1, const T t2) { return std::max(std::abs(t1), std::abs(t2)); }
+
+    template <typename T>
+    inline T minabs(const T t1, const T t2) { return std::min(std::abs(t1), std::abs(t2)); }
 
     /// Compute the integer log_2 of x
 
