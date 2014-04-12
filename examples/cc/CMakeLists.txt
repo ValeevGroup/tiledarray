@@ -41,7 +41,7 @@ target_link_libraries(ccd ${TiledArray_LIBRARIES})
 add_dependencies(ccd External)
 add_dependencies(example ccd)
 
-# Add the ccd executable
+# Add the ccsd executable
 add_executable(ccsd EXCLUDE_FROM_ALL ccsd.cpp $<TARGET_OBJECTS:inputlib>)
 set_target_properties(ccsd PROPERTIES
     COMPILE_FLAGS "${CMAKE_CPP_FLAGS} ${TiledArray_COMPILE_FLAGS}"
