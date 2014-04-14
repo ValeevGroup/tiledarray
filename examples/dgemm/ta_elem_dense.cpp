@@ -24,7 +24,7 @@
 
 template <typename it, typename tiletype>
 void random_tile_task(it iter, tiletype tile){
-  auto size = tile.size();
+  std::size_t size = tile.size();
   std::generate(tile.data(), tile.data()+size, []{return std::rand()%100;});
   *iter = tile;
 }
@@ -32,9 +32,9 @@ void random_tile_task(it iter, tiletype tile){
 TiledArray::Array<double, 2>
 make_random_array(madness::World &world, TiledArray::TiledRange &trange){
   TiledArray::Array<double, 2> array(world, trange);
-  auto it = array.begin();
+  typename TiledArray::Array<double, 2>::iterator it = array.begin();
   for(; it != array.end(); ++it){
-    TiledArray::Array<double, 2>::value_type tile(
+    typename TiledArray::Array<double, 2>::value_type tile(
                                 array.trange().make_tile_range(it.ordinal()));
     world.taskq.add(&random_tile_task<decltype(it), decltype(tile)>, it, tile);
   }
@@ -96,8 +96,8 @@ int main(int argc, char** argv) {
     trange(blocking2.begin(), blocking2.end());
 
   // Construct and initialize arrays
-  auto a = make_random_array(world, trange);
-  auto b = make_random_array(world, trange);
+  TiledArray::Array<double, 2> a = make_random_array(world, trange);
+  TiledArray::Array<double, 2> b = make_random_array(world, trange);
   TiledArray::Array<double, 2> c(world, trange);
   if(world.rank() == 0 && matrix_size < 11){
     std::cout << "a = \n" << a << std::endl;
@@ -122,20 +122,6 @@ int main(int argc, char** argv) {
     std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
         << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
             matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n" << std::endl;
-  }
-
-  // Expression only timer
-  const double exp0 = madness::wall_time();
-  for(int i = 0; i < repeat; ++i) {
-    auto expr = a("m,k") * b("k,n");
-    world.gop.fence();
-    if(world.rank() == 0)
-      std::cout << "Expression Iteration " << i + 1 << "\n";
-  }
-  const double exp1 = madness::wall_time();
-
-  if(world.rank() == 0){
-    std::cout << "Average expression time = " << (exp1 - exp0) / double(repeat) << std::endl;
   }
 
   // Copying matrices to elemental
@@ -171,7 +157,7 @@ int main(int argc, char** argv) {
 
   // Do the multiply
   const double wt_elem_start = madness::wall_time();
-  for(auto i = 0; i < repeat; ++i){
+  for(std::size_t i = 0; i < repeat; ++i){
     elem::Gemm(elem::NORMAL, elem::NORMAL, 1., a_elem, b_elem, 0., c_elem);
     elem::mpi::Barrier(grid.Comm());
     if(grid.Rank() == 0){
