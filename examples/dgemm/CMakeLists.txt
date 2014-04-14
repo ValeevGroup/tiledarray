@@ -64,14 +64,6 @@ target_link_libraries(ta_dense ${TiledArray_LIBRARIES})
 add_dependencies(ta_dense External)
 add_dependencies(example ta_dense)
 
-# Add the ta_elem_dense executable
-add_executable(ta_elem_dense EXCLUDE_FROM_ALL ta_elem_dense.cpp)
-set_target_properties(ta_elem_dense PROPERTIES
-    COMPILE_FLAGS "${CMAKE_CPP_FLAGS} ${TiledArray_COMPILE_FLAGS}"
-    LINK_FLAGS "${TiledArray_LINK_FLAGS}")
-target_link_libraries(ta_elem_dense ${TiledArray_LIBRARIES})
-add_dependencies(ta_elem_dense External)
-add_dependencies(example ta_elem_dense)
 
 # Add the ta_asymm_dense executable
 add_executable(ta_asymm_dense EXCLUDE_FROM_ALL ta_asymm_dense.cpp)
@@ -91,3 +83,13 @@ target_link_libraries(ta_sparse ${TiledArray_LIBRARIES})
 add_dependencies(ta_sparse External)
 add_dependencies(example ta_sparse)
 
+IF(HAVE_ELEMENTAL)
+    # Add the ta_elem_dense executable
+    add_executable(ta_elem_dense EXCLUDE_FROM_ALL ta_elem_dense.cpp)
+    set_target_properties(ta_elem_dense PROPERTIES
+        COMPILE_FLAGS "${CMAKE_CPP_FLAGS} ${TiledArray_COMPILE_FLAGS}"
+        LINK_FLAGS "${TiledArray_LINK_FLAGS}")
+    target_link_libraries(ta_elem_dense ${TiledArray_LIBRARIES})
+    add_dependencies(ta_elem_dense External)
+    add_dependencies(example ta_elem_dense)
+ENDIF(HAVE_ELEMENTAL)
