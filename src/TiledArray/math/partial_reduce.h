@@ -76,11 +76,15 @@ namespace TiledArray {
           const Right* restrict const right, Result* restrict const result,
           const Op& op)
       {
-        // Load the left block
+        // Load right block
+        const Right right_block = right[offset];
+
+        // Load left block
         Left left_block[TILEDARRAY_LOOP_UNWIND];
         VecOpUnwindN::copy(left, left_block);
 
-        VecOpUnwindN::reduce(left_block, right, result, op);
+        VecOpUnwindN::reduce(left_block, result,
+            TiledArray::detail::bind_second(right_block, op));
       }
 
 
@@ -149,11 +153,15 @@ namespace TiledArray {
           const Op& op)
       {
         {
-          // Load the left block
+          // Load right block
+          const Right right_block = right[offset];
+
+          // Load left block
           Left left_block[TILEDARRAY_LOOP_UNWIND];
           VecOpUnwindN::copy(left, left_block);
 
-          VecOpUnwindN::reduce(left_block, right, result, op);
+          VecOpUnwindN::reduce(left_block, result,
+              TiledArray::detail::bind_second(right_block, op));
         }
 
         PartialReduceUnwindN1::col_reduce(left + stride, stride, right, result, op);
@@ -368,6 +376,8 @@ namespace TiledArray {
           // Compute and store a block
           PartialReduceUnwindN::col_reduce(left_i + j, n, right_block, result_block, op);
 
+          // Store the result
+          VecOpUnwindN::copy(result_block, result + j);
         }
 
         for(; j < n; ++j) {
@@ -375,12 +385,11 @@ namespace TiledArray {
           // Load result block
           Result result_block = result[j];
 
-          // Compute result block
+          // Compute a block
           Left left_block[TILEDARRAY_LOOP_UNWIND];
           VecOpUnwindN::gather(left_i + j, left_block, n);
           VecOpUnwindN::reduce(left_block, right_block, result_block, op);
 
-          // Store result block
           result[j] = result_block;
 
         }
@@ -392,7 +401,7 @@ namespace TiledArray {
       for(; i < m; ++i) {
 
         // Reduce row i to result
-        reduce_vector_op(n, left + (i * n), right, result, op);
+        reduce_vector_op(n, left + (i * n), result, TiledArray::detail::bind_second(right[i], op));
       }
 
       unary_vector_op(n, result, op);
@@ -437,6 +446,8 @@ namespace TiledArray {
           // Compute and store a block
           PartialReduceUnwindN::col_reduce(arg_i + j, n, result_block, op);
 
+          // Store the result
+          VecOpUnwindN::copy(result_block, result + j);
         }
 
         for(; j < n; ++j) {
