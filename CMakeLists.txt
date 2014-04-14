@@ -135,8 +135,6 @@ if (Elemental_DIR)
   endif(HAVE_ELEMENTAL)
 endif()
 
-message(STATUS "HAVE ELEM = ${HAVE_ELEMENTAL}")
-  
 if (TA_BUILD_UNITTEST)
   include(external/Boost)
 endif()
