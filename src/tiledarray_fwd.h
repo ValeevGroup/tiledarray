@@ -32,31 +32,35 @@ namespace TiledArray {
   template<typename, typename>
   class Tensor;
 
-  // Tensor Typedefs
-  using TensorD = Tensor<double, Eigen::aligned_allocator<double> >;
-  using TensorI = Tensor<int, Eigen::aligned_allocator<int> >;
-  using TensorF = Tensor<float, Eigen::aligned_allocator<float> >;
+  typedef Tensor<double, Eigen::aligned_allocator<double> > TensorD;
+  typedef Tensor<int, Eigen::aligned_allocator<int> > TensorI;
+  typedef Tensor<float, Eigen::aligned_allocator<float> > TensorF;
+  typedef Tensor<long, Eigen::aligned_allocator<long> > TensorL;
 
   // TiledArray Arrays
   template<typename, unsigned int, typename>
   class Array;
 
   // Array Typedefs
-  using Array1D = Array<double, 1, TensorD>;
-  using Array2D = Array<double, 2, TensorD>;
-  using Array3D = Array<double, 3, TensorD>;
-  using Array4D = Array<double, 4, TensorD>;
+  typedef Array<double, 1, TensorD> TArray1D;
+  typedef Array<double, 2, TensorD> TArray2D;
+  typedef Array<double, 3, TensorD> TArray3D;
+  typedef Array<double, 4, TensorD> TArray4D;
 
-  using Array1I = Array<int, 1, TensorI>;
-  using Array2I = Array<int, 2, TensorI>;
-  using Array3I = Array<int, 3, TensorI>;
-  using Array4I = Array<int, 4, TensorI>;
+  typedef Array<int, 1, TensorI> TArray1I;
+  typedef Array<int, 2, TensorI> TArray2I;
+  typedef Array<int, 3, TensorI> TArray3I;
+  typedef Array<int, 4, TensorI> TArray4I;
 
-  using Array1F = Array<float, 1, TensorF>;
-  using Array2F = Array<float, 2, TensorF>;
-  using Array3F = Array<float, 3, TensorF>;
-  using Array4F = Array<float, 4, TensorF>;
+  typedef Array<float, 1, TensorF> TArray1F;
+  typedef Array<float, 2, TensorF> TArray2F;
+  typedef Array<float, 3, TensorF> TArray3F;
+  typedef Array<float, 4, TensorF> TArray4F;
 
+  typedef Array<long, 1, TensorL> TArray1L;
+  typedef Array<long, 2, TensorL> TArray2L;
+  typedef Array<long, 3, TensorL> TArray3L;
+  typedef Array<long, 4, TensorL> TArray4L;
 } // namespace TiledArray
 
 #endif // TILEDARRAY_FWD_H__INCLUDED
