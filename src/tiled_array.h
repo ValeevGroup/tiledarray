@@ -20,12 +20,13 @@
 #ifndef TILED_ARRAY_H__INCLUDED
 #define TILED_ARRAY_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/array.h>
 #include <TiledArray/expressions.h>
 #include <TiledArray/eigen.h>
 
-# if TILEDARRAY_HAS_ELEMENTAL
+#ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>
-# endif
+#endif
 
 #endif // TILED_ARRAY_H__INCLUDED

@@ -124,21 +124,15 @@ endif()
 # external dependencies
 ##########################
 add_custom_target(External)
-include(external/MADNESS)
 include(external/Eigen)
-
-# Add elemental
-if (Elemental_DIR)
-  include(external/Elemental)
-  if(HAVE_ELEMENTAL)
-    ADD_DEFINITIONS(-DTILEDARRAY_HAS_ELEMENTAL=1)
-  endif(HAVE_ELEMENTAL)
-endif()
-
-message(STATUS "HAVE ELEM = ${HAVE_ELEMENTAL}")
-  
 if (TA_BUILD_UNITTEST)
   include(external/Boost)
+endif()
+
+include(external/MADNESS)
+
+if (Elemental_DIR)
+  include(external/Elemental)
 endif()
 
 ##########################
@@ -149,14 +143,12 @@ list(APPEND TiledArray_INCLUDE_DIRS
     ${PROJECT_BINARY_DIR}/src
     ${Madness_INCLUDE_DIRS}
     ${EIGEN_INCLUDE_DIR})
-
-if(HAVE_ELEMENTAL)
-    list(APPEND TiledArray_INCLUDE_DIRS
-        ${ELEMENTAL_INCLUDE_DIR})
-endif()
 list(APPEND TiledArray_LIBRARIES
     ${Madness_LIBRARIES})
-if(HAVE_ELEMENTAL)
+
+if(TILEDARRAY_HAS_ELEMENTAL)
+    list(APPEND TiledArray_INCLUDE_DIRS
+        ${ELEMENTAL_INCLUDE_DIR})
     list(APPEND TiledArray_LIBRARIES ${ELEMENTAL_LIBRARIES})
 endif()
 set(TiledArray_LINK_FLAGS ${Madness_LINK_FLAGS})

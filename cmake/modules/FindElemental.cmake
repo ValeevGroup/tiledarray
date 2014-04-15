@@ -23,8 +23,8 @@
 #
 
 # - Try to find Elemental 
-# This module will look for elemental in the Elemental_DIR
-# Elemental_FOUND -System has elemental
+# This module will look for elemental in Elemental_DIR
+# Elemental_FOUND - Elemental found
 # ELEMENTAL_INCLUDE_DIR
 # ELEMENTAL_LIBRARY_DIR
 # ELEMENTAL_LIBRARY
