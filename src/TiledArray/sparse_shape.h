@@ -641,15 +641,18 @@ namespace TiledArray {
     };
 
     class MultAndZero {
+      value_type factor_;
       value_type threshold_;
     public:
       typedef value_type result_type;
 
-      MultAndZero() : threshold_(SparseShape::threshold_) { }
+      MultAndZero(const value_type factor) :
+        factor_(factor), threshold_(SparseShape::threshold_)
+      { }
 
       TILEDARRAY_FORCE_INLINE value_type
       operator()(const value_type left, const value_type right) const {
-        value_type norm = left * right;
+        value_type norm = left * right * factor_;
         if(norm < threshold_)
           norm = 0;
         return norm;
@@ -694,15 +697,15 @@ namespace TiledArray {
         left.row_reduce(k, tile_norms_.data(), k_size_vector.data(), GemmArgReduce());
 
         vector_type right(n, value_type(0));
-        right.col_reduce(n, other.tile_norms_.data(), k_size_vector.data(), GemmArgReduce());
+        right.col_reduce(k, other.tile_norms_.data(), k_size_vector.data(), GemmArgReduce());
 
         math::outer_fill(m, n, left.data(), right.data(), result_norms.data(),
-            MultAndZero());
+            MultAndZero(std::abs(factor)));
       } else {
 
         // This is an outer product, so the inputs can be used directly
         math::outer_fill(m, n, tile_norms_.data(), other.tile_norms_.data(), result_norms.data(),
-            MultAndZero());
+            MultAndZero(std::abs(factor)));
       }
 
       return SparseShape_(result_norms, result_size_vectors);
