@@ -30,12 +30,6 @@
 #include <elemental.hpp>
 
 namespace TiledArray {
-  // Useful typedef
-  template<typename T>
-  using EigenColMajorMatrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-
-  template<typename T>
-  using EigenRowMajorMatrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
   template<typename T, unsigned int DIM, typename Tile>
   elem::DistMatrix<T> array_to_elem(const Array<T,DIM, Tile> &array,
@@ -55,20 +49,24 @@ namespace TiledArray {
     interface.Attach(elem::LOCAL_TO_GLOBAL, mat);
 
     // Get array iterators
-    auto it = array.begin();
-    auto end = array.end();
+    typename Array<T,DIM,Tile>::iterator it = array.begin();
+    typename Array<T,DIM,Tile>::iterator end = array.end();
 
     for(; it != end; ++it){
       // Get tile matrix location info
-      typename Array<T,DIM,Tile>::value_type tile = *it;
-      std::size_t t0start = tile.range().start()[0];
-      std::size_t t1start = tile.range().start()[1];
-      std::size_t t0size = tile.range().size()[0];
-      std::size_t t1size = tile.range().size()[1];
+      const typename Array<T,DIM,Tile>::value_type tile = *it;
+      const std::size_t t0start = tile.range().start()[0];
+      const std::size_t t1start = tile.range().start()[1];
+      const std::size_t t0size = tile.range().size()[0];
+      const std::size_t t1size = tile.range().size()[1];
 
-      // Switch to column major ordering using eigen
-      const auto eig_row_map = eigen_map(tile, t0size, t1size);
-      EigenColMajorMatrix<T> CMatrix = eig_row_map; // This is copy
+      // Create Eigen RowMajor Map of tile
+      const Eigen::Map<
+        const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
+        Eigen::AutoAlign> eig_row_map = eigen_map(tile, t0size, t1size);
+
+      // Create ColMajor EigenMatrix from RowMajor Map
+      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> CMatrix = eig_row_map;
 
       // Make Elemental local matrix and attach the data.
       elem::Matrix<T> ElemBlock;
@@ -93,8 +91,8 @@ namespace TiledArray {
     interface.Attach(elem::GLOBAL_TO_LOCAL, mat);
 
     // Get iterators to array
-    auto it = array.begin();
-    auto end = array.end();
+    typename Array<T,DIM, Tile>::iterator it = array.begin();
+    typename Array<T,DIM, Tile>::iterator end = array.end();
 
     // Loop over tiles and improperly assign the data to them in column major
     // format.
@@ -127,8 +125,9 @@ namespace TiledArray {
       std::size_t t1size = tile.range().size()[1];
 
       // copy to row major matrix
-      EigenRowMajorMatrix<T> row_mat =
-        Eigen::Map<const EigenColMajorMatrix<T>, Eigen::AutoAlign >(tile.data(),t0size,t1size);
+      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> row_mat =
+        Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>,
+                   Eigen::AutoAlign > (tile.data(),t0size,t1size);
 
       // Finally copy the data back into the tile in the correct format.
       std::copy(row_mat.data(), row_mat.data()+row_mat.size(), tile.data());
