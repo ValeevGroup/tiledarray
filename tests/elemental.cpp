@@ -54,9 +54,9 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
   BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().size()[1]);
 
   //Check data
-  for(auto i = array.range().begin(); i != array.range().end(); ++i){
+  for(std::size_t i = array.range().begin(); i != array.range().end(); ++i){
     madness::Future<Array<int,2>::value_type > tile = array.find(*i);
-    for(auto j = tile.get().range().begin(); j != tile.get().range().end();++j){
+    for(std::size_t j = tile.get().range().begin(); j != tile.get().range().end();++j){
       BOOST_CHECK_EQUAL(tile.get()[*j], matrix.Get((*j)[0], (*j)[1]) );
     }
   }
@@ -93,9 +93,9 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   array.get_world().gop.fence();
 
   //Check data
-  for(auto i = array.range().begin(); i != array.range().end(); ++i){
+  for(std::size_t i = array.range().begin(); i != array.range().end(); ++i){
     madness::Future<Array<int,2>::value_type > tile = array.find(*i);
-    for(auto j = tile.get().range().begin(); j != tile.get().range().end();++j){
+    for(std::size_t j = tile.get().range().begin(); j != tile.get().range().end();++j){
       BOOST_CHECK_EQUAL(tile.get()[*j], matrix.Get((*j)[0], (*j)[1]) );
     }
   }

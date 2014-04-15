@@ -57,6 +57,11 @@ else()
   endif()
   
     
+  # If user provided elemental add it to MAD_INCLUDE_DIRS
+  if(Elemental_DIR)
+    list(APPEND MAD_INCLUDE_DIRS "${Elemental_DIR}/include")
+  endif()
+
   # Convert Madness_INCLUDE_DIRS to compiler arguments for MADNESS configure script
   convert_incs_to_compargs(MAD_CPPFLAGS "${Madness_INCLUDE_DIRS}")
   append_flags(MAD_CPPFLAGS "${CMAKE_CPP_FLAGS}")
@@ -116,7 +121,9 @@ else()
   
   # Check for elemental
   if(Elemental_DIR)
-    set(MAD_ELEMENTAL "${Elemental_DIR}")
+    set(MAD_ELEMENTAL_FLAG "--with-elemental=${Elemental_DIR}")
+  else()
+    set(MAD_ELEMENTAL_FLAG "--without-elemental")
   endif()
   
   ExternalProject_Add(madness
@@ -140,8 +147,8 @@ else()
       --enable-dependency-tracking
       --with-mpi-thread=multiple
       --with-fortran-int32=${MAD_F77_INT32}
-      --with-elemental=${MAD_ELEMENTAL}
       --with-stubmpi=${MAD_STUB_MPI}
+      ${MAD_ELEMENTAL_FLAG}
       "MPICXX=${CMAKE_CXX_COMPILER}"
       "MPICC=${CMAKE_C_COMPILER}"
       "CPPFLAGS=${MAD_CPPFLAGS}"

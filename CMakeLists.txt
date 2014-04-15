@@ -133,6 +133,13 @@ include(external/MADNESS)
 
 if (Elemental_DIR)
   include(external/Elemental)
+  if(HAVE_ELEMENTAL)
+    ADD_DEFINITIONS(-DTILEDARRAY_HAS_ELEMENTAL=1)
+  endif(HAVE_ELEMENTAL)
+endif()
+
+if (TA_BUILD_UNITTEST)
+  include(external/Boost)
 endif()
 
 ##########################
