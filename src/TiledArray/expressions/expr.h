@@ -58,17 +58,35 @@ namespace TiledArray {
 
       Expr<Derived>& operator=(const Expr<Derived>&);
 
+      /// Tile assignment functor
+
+      /// This functor will set tiles of a distributed evaluator to an array,
+      /// given a process map iterator. If the input tile is a lazy tile, then
+      /// it is evaluated on the stack or a task is spawned to evaluate it when
+      /// the tile is ready.
+      /// \tparam A An \c Array type
+      /// \tparam DE A distributed evaluator type
       template <typename A, typename DE>
       struct EvalTiles {
       private:
-        A& array_;
-        DE& dist_eval_;
+        A& array_; ///< The array object that will hold the result tiles
+        DE& dist_eval_; ///< The distributed evaluator that holds the input tiles
 
+        /// Task function used to evaluate lazy tiles
+
+        /// \tparam Tile The lazy tile type
+        /// \param The lazy tile
+        /// \return The evaluated tile
         template <typename Tile>
         static typename Tile::eval_type eval_tile(const Tile& tile) {
           return tile;
         }
 
+        /// Set an array tile from a lazy tile
+
+        /// \tparam Tile The lazy tile type
+        /// \param index The tile index
+        /// \param tile The lazy tile
         template <typename Tile>
         typename madness::enable_if<TiledArray::math::is_lazy_tile<Tile> >::type
         set_tile(typename A::size_type index, const madness::Future<Tile>& tile) const {
@@ -80,6 +98,11 @@ namespace TiledArray {
           }
         }
 
+        /// Set an array tile
+
+        /// \tparam Tile The tile type
+        /// \param index The tile index
+        /// \param tile The tile
         template <typename Tile>
         typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile> >::type
         set_tile(typename A::size_type index, const madness::Future<Tile>& tile) const {
@@ -88,14 +111,25 @@ namespace TiledArray {
 
       public:
 
+        /// Constructor
+
+        /// \param array The array object that will hold the result
+        /// \param dist_eval The distributed evaluator that holds the input tiles
         EvalTiles(A& array, DE& dist_eval) :
           array_(array), dist_eval_(dist_eval)
         { }
 
+        /// Copy constructor
+
+        /// \param other The functor to be copied
         EvalTiles(const EvalTiles& other) :
           array_(other.array_), dist_eval_(other.dist_eval_)
         { }
 
+        /// Set tile operator
+
+        /// \param it An index iterator from a process map
+        /// \return true
         bool operator()(const typename DE::pmap_interface::const_iterator& it) const {
           madness::Future<typename DE::value_type> tile = dist_eval_.move(*it);
           set_tile(*it, tile);
@@ -103,14 +137,22 @@ namespace TiledArray {
         }
       };
 
+      /// Array factor function
 
+      /// Construct an array that will hold the result of this expression
+      /// \tparam A The output array type
+      /// \param world The world that will hold the result
+      /// \param pmap The process map for the result
+      /// \param vars The target variable list
       template <typename A>
       A make_array(madness::World& world, const std::shared_ptr<typename A::pmap_interface>& pmap,
-          const VariableList& vars) const
+          const VariableList& target_vars) const
       {
+        typedef madness::Range<typename engine_type::dist_eval_type::pmap_interface::const_iterator> range_type;
+
         // Construct the expression engine
         engine_type engine(derived());
-        engine.init(world, pmap, vars);
+        engine.init(world, pmap, target_vars);
 
         // Create the distributed evaluator from this expression
         typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -120,15 +162,11 @@ namespace TiledArray {
             dist_eval.shape(), dist_eval.pmap());
 
         // Move the data from disteval into the result array
-        int chuck_size = std::max<int>(
-            std::distance(dist_eval.pmap()->begin(), dist_eval.pmap()->end()) / madness::ThreadPool::queue_size(),
-            1u);
-        madness::Range<typename engine_type::dist_eval_type::pmap_interface::const_iterator>
-            range(dist_eval.pmap()->begin(), dist_eval.pmap()->end(), chuck_size);
-
-
-
-        world.taskq.for_each(range, EvalTiles<A, typename engine_type::dist_eval_type>(result, dist_eval)).get();
+        int chuck_size = std::max<int>(1u,
+            std::distance(dist_eval.pmap()->begin(), dist_eval.pmap()->end()) /
+            madness::ThreadPool::queue_size());
+        world.taskq.for_each(range_type(dist_eval.pmap()->begin(), dist_eval.pmap()->end(), chuck_size),
+            EvalTiles<A, typename engine_type::dist_eval_type>(result, dist_eval)).get();
 
         // Wait for child expressions of dist_eval
         dist_eval.wait();
@@ -171,7 +209,13 @@ namespace TiledArray {
         make_array<A>(world, pmap, vars).swap(tsr.array());
       }
 
+      /// Array conversion operator
 
+      /// \tparam T The array element type
+      /// \tparam DIM The array dimension
+      /// \tparam Tile The array tile type
+      /// \tparam Policy The array policy type
+      /// \return A array object that holds the result of this expression
       template <typename T, unsigned int DIM, typename Tile, typename Policy>
       operator Array<T, DIM, Tile, Policy>() {
         return make_array<Array<T, DIM, Tile, Policy> >(madness::World::get_default(),
