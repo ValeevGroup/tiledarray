@@ -48,15 +48,95 @@ namespace TiledArray {
     /// \tparam Derived The derived class type
     template <typename Derived>
     class Expr {
-    private:
-
-      Expr<Derived>& operator=(const Expr<Derived>&);
-
     public:
 
       typedef Expr<Derived> Expr_; ///< This class type
       typedef Derived derived_type; ///< The derived object type
       typedef typename ExprTrait<Derived>::engine_type engine_type; ///< Expression engine type
+
+    private:
+
+      Expr<Derived>& operator=(const Expr<Derived>&);
+
+      template <typename A, typename DE>
+      struct EvalTiles {
+      private:
+        A& array_;
+        DE& dist_eval_;
+
+        template <typename Tile>
+        static typename Tile::eval_type eval_tile(const Tile& tile) {
+          return tile;
+        }
+
+        template <typename Tile>
+        typename madness::enable_if<TiledArray::math::is_lazy_tile<Tile> >::type
+        set_tile(typename A::size_type index, const madness::Future<Tile>& tile) const {
+          if(tile.probe()) {
+            array_.set(index, tile.get());
+          } else {
+            array_.set(index, array_.get_world().taskq.add(
+                EvalTiles::template eval_tile<Tile>, tile));
+          }
+        }
+
+        template <typename Tile>
+        typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile> >::type
+        set_tile(typename A::size_type index, const madness::Future<Tile>& tile) const {
+          array_.set(index, tile);
+        }
+
+      public:
+
+        EvalTiles(A& array, DE& dist_eval) :
+          array_(array), dist_eval_(dist_eval)
+        { }
+
+        EvalTiles(const EvalTiles& other) :
+          array_(other.array_), dist_eval_(other.dist_eval_)
+        { }
+
+        bool operator()(const typename DE::pmap_interface::const_iterator& it) const {
+          madness::Future<typename DE::value_type> tile = dist_eval_.move(*it);
+          set_tile(*it, tile);
+          return true;
+        }
+      };
+
+
+      template <typename A>
+      A make_array(madness::World& world, const std::shared_ptr<typename A::pmap_interface>& pmap,
+          const VariableList& vars) const
+      {
+        // Construct the expression engine
+        engine_type engine(derived());
+        engine.init(world, pmap, vars);
+
+        // Create the distributed evaluator from this expression
+        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
+
+        // Create the result array
+        A result(dist_eval.get_world(), dist_eval.trange(),
+            dist_eval.shape(), dist_eval.pmap());
+
+        // Move the data from disteval into the result array
+        int chuck_size = std::max<int>(
+            std::distance(dist_eval.pmap()->begin(), dist_eval.pmap()->end()) / madness::ThreadPool::queue_size(),
+            1u);
+        madness::Range<typename engine_type::dist_eval_type::pmap_interface::const_iterator>
+            range(dist_eval.pmap()->begin(), dist_eval.pmap()->end(), chuck_size);
+
+
+
+        world.taskq.for_each(range, EvalTiles<A, typename engine_type::dist_eval_type>(result, dist_eval)).get();
+
+        // Wait for child expressions of dist_eval
+        dist_eval.wait();
+
+        return result;
+      }
+
+    public:
 
       /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
@@ -74,75 +154,29 @@ namespace TiledArray {
       template <typename A>
       void eval_to(TsrExpr<A>& tsr) const {
 
-        // Get the target world
+        // Get the target world.
         madness::World& world = (tsr.array().is_initialized() ?
             tsr.array().get_world() :
             madness::World::get_default());
 
-        // Get the output process map
+        // Get the output process map.
         std::shared_ptr<typename TsrExpr<A>::array_type::pmap_interface> pmap;
         if(tsr.array().is_initialized())
           pmap = tsr.array().get_pmap();
 
-
-        // Construct the expression engine
-        engine_type engine(derived());
-        VariableList target_vars(tsr.vars());
-        engine.init(world, pmap, target_vars);
-
-        // Create the distributed evaluator from this expression
-        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
-
-        // Create the result array
-        typename TsrExpr<A>::array_type result(dist_eval.get_world(), dist_eval.trange(),
-            dist_eval.shape(), dist_eval.pmap());
-
-        // Move the data from disteval into the result array
-        typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
-            dist_eval.pmap()->begin();
-        const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
-            dist_eval.pmap()->end();
-        for(; it != end; ++it)
-          if(! dist_eval.is_zero(*it))
-            result.set(*it, dist_eval.move(*it));
-
-        // Wait for child expressions of dist_eval
-        dist_eval.wait();
+        // Get result variable list.
+        VariableList vars(tsr.vars());
 
         // Swap the new array with the result array object.
-        tsr.array().swap(result);
+        make_array<A>(world, pmap, vars).swap(tsr.array());
       }
 
 
       template <typename T, unsigned int DIM, typename Tile, typename Policy>
       operator Array<T, DIM, Tile, Policy>() {
-        typedef Array<T, DIM, Tile, Policy> array_type;
-
-        // Construct the expression engine
-        engine_type engine(derived());
-        engine.init(madness::World::get_default(),
-            std::shared_ptr<typename array_type::pmap_interface>(), VariableList());
-
-        // Create the distributed evaluator from this expression
-        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
-
-        // Create the result array
-        array_type result(dist_eval.get_world(), dist_eval.trange(),
-            dist_eval.shape(), dist_eval.pmap());
-
-        // Move the data from disteval into the result array
-        typename engine_type::dist_eval_type::pmap_interface::const_iterator it =
-            dist_eval.pmap()->begin();
-        const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
-            dist_eval.pmap()->end();
-        for(; it != end; ++it)
-          if(! dist_eval.is_zero(*it))
-            result.set(*it, dist_eval.move(*it));
-
-        // Wait for child expressions of dist_eval
-        dist_eval.wait();
-
-        return result;
+        return make_array<Array<T, DIM, Tile, Policy> >(madness::World::get_default(),
+            std::shared_ptr<typename Array<T, DIM, Tile, Policy>::pmap_interface>(),
+            VariableList());
       }
 
       /// Expression print

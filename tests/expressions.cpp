@@ -114,23 +114,41 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
 BOOST_FIXTURE_TEST_SUITE( expressions_suite, ExpressionsFixture )
 
-//BOOST_AUTO_TEST_CASE( outer_product )
-//{
-//  // Generate Eigen matrices from input arrays.
-//  EigenMatrixXi ev = make_matrix(v);
-//  EigenMatrixXi eu = make_matrix(u);
-//
-//  // Generate the expected result
-//  EigenMatrixXi ew_test = eu * ev.transpose();
-//
-//  // Test that outer product works
-//  BOOST_CHECK_NO_THROW(w("i,j") = u("i") * v("j"));
-//
-//  GlobalFixture::world->gop.fence();
-//
-//  EigenMatrixXi ew = make_matrix(w);
-//
-//  BOOST_CHECK_EQUAL(ew, ew_test);
-//}
+
+BOOST_AUTO_TEST_CASE( permute )
+{
+  Permutation perm(2, 1, 0);
+  BOOST_CHECK_NO_THROW(a("a,b,c") = b("c,b,a"));
+
+  for(std::size_t i = 0ul; i < a.size(); ++i) {
+    if(a.is_local(i)) {
+      Array3::value_type a_tile = a.find(i);
+      Array3::value_type b_tile = perm ^ b.find(perm ^ b.range().idx(i)).get();
+
+      BOOST_CHECK_EQUAL(a_tile.range(), b_tile.range());
+      for(std::size_t j = 0ul; j < a_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(a_tile[j], b_tile[j]);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( outer_product )
+{
+  // Generate Eigen matrices from input arrays.
+  EigenMatrixXi ev = make_matrix(v);
+  EigenMatrixXi eu = make_matrix(u);
+
+  // Generate the expected result
+  EigenMatrixXi ew_test = eu * ev.transpose();
+
+  // Test that outer product works
+  BOOST_CHECK_NO_THROW(w("i,j") = u("i") * v("j"));
+
+  GlobalFixture::world->gop.fence();
+
+  EigenMatrixXi ew = make_matrix(w);
+
+  BOOST_CHECK_EQUAL(ew, ew_test);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
