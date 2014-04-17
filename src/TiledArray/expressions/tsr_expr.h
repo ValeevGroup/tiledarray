@@ -159,8 +159,6 @@ namespace TiledArray {
 
     /// Expression wrapper for const array objects
 
-    /// Expression wrapper for array objects
-
     /// \tparam T The array element type
     /// \tparam DIM The array dimension
     /// \tparam Tile The array tile type
@@ -177,7 +175,7 @@ namespace TiledArray {
 
     private:
 
-      array_type& array_; ///< The array that this expression
+      const array_type& array_; ///< The array that this expression
       std::string vars_; ///< The tensor variable string
 
       // Not allowed
