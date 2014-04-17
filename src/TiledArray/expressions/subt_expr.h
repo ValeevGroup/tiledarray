@@ -86,7 +86,7 @@ namespace TiledArray {
       typedef BinaryExpr<ScalSubtExpr_> BinaryExpr_; ///< Binary base class type
       typedef typename ExprTrait<ScalSubtExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<ScalSubtExpr_>::right_type right_type; ///< The right-hand expression type
-      typedef typename ExprTrait<ScalSubtExpr_>::type engine_type; ///< Expression engine type
+      typedef typename ExprTrait<ScalSubtExpr_>::engine_type engine_type; ///< Expression engine type
       typedef typename ExprTrait<ScalSubtExpr_>::scalar_type scalar_type; ///< Scalar type
 
     private:
