@@ -265,9 +265,9 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   typedef detail::DistEval<detail::LazyArrayTile<array_type::value_type, array_op_type>,
       SparsePolicy> array_eval_type;
 
-  array_type left(*GlobalFixture::world, tr, make_shape(tr, 0.1, 23));
+  array_type left(*GlobalFixture::world, tr, make_shape(tr, 0.4, 23));
 
-  array_type right(*GlobalFixture::world, tr, make_shape(tr, 0.1, 42));
+  array_type right(*GlobalFixture::world, tr, make_shape(tr, 0.4, 42));
 
   // Fill arrays with random data
   rand_fill_array(left);
