@@ -366,7 +366,7 @@ namespace TiledArray {
       TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap) :
         trange_(trange), shape_(shape), data_(world, trange_.tiles().volume(),
-            (!pmap ? pmap : Policy::default_pmap(world, trange.tiles().volume())))
+            (pmap ? pmap : Policy::default_pmap(world, trange.tiles().volume())))
       {
         TA_ASSERT(shape_.validate(trange_.tiles()));
       }
