@@ -51,8 +51,6 @@ struct PartialReduceFixture {
     void operator()(int& result, const int arg) const {
       result += arg;
     }
-
-    void operator()(int& result) const { result = -result; }
   };
 
   struct MultSum {
@@ -61,8 +59,6 @@ struct PartialReduceFixture {
     void operator()(int& result, const int left, const int right) const {
       result += left * right;
     }
-
-    void operator()(int& result) const { result = -result; }
   };
 
   static const std::size_t m = TILEDARRAY_LOOP_UNWIND * 2.5;
@@ -91,7 +87,7 @@ BOOST_AUTO_TEST_CASE( unary_row_reduce )
       expected += a[i * n + j];
     }
 
-    BOOST_CHECK_EQUAL(x[i], -expected);
+    BOOST_CHECK_EQUAL(x[i], expected);
   }
 }
 
@@ -111,7 +107,7 @@ BOOST_AUTO_TEST_CASE( binary_row_reduce )
       expected += a[i * n + j] * y[j];
     }
 
-    BOOST_CHECK_EQUAL(x[i], -expected);
+    BOOST_CHECK_EQUAL(x[i], expected);
   }
 }
 
@@ -131,7 +127,7 @@ BOOST_AUTO_TEST_CASE( unary_col_reduce )
       expected += a[i * n + j];
     }
 
-    BOOST_CHECK_EQUAL(y[j], -expected);
+    BOOST_CHECK_EQUAL(y[j], expected);
   }
 }
 
@@ -151,7 +147,7 @@ BOOST_AUTO_TEST_CASE( binary_col_reduce )
       expected += a[i * n + j] * x[i];
     }
 
-    BOOST_CHECK_EQUAL(y[j], -expected);
+    BOOST_CHECK_EQUAL(y[j], expected);
   }
 }
 

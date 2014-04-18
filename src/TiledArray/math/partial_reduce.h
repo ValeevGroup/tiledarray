@@ -247,8 +247,7 @@ namespace TiledArray {
 
         }
 
-        // Post process and store result
-        VecOpUnwindN::unary(result_block, op);
+        // Post store result
         VecOpUnwindN::copy(result_block, result + i);
       }
 
@@ -259,7 +258,6 @@ namespace TiledArray {
         // Load result block
         Result result_block = result[i];
         reduce_vector_op(n, left + (i * n), right, result_block, op);
-        op(result_block);
         result[i] = result_block;
       }
     }
@@ -316,7 +314,6 @@ namespace TiledArray {
         }
 
         // Post process and store result
-        VecOpUnwindN::unary(result_block, op);
         VecOpUnwindN::copy(result_block, result + i);
       }
 
@@ -327,7 +324,6 @@ namespace TiledArray {
         // Load result block
         Result result_block = result[i];
         reduce_vector_op(n, arg + (i * n), result_block, op);
-        op(result_block);
         result[i] = result_block;
       }
     }
@@ -403,8 +399,6 @@ namespace TiledArray {
         // Reduce row i to result
         reduce_vector_op(n, left + (i * n), result, TiledArray::detail::bind_second(right[i], op));
       }
-
-      unary_vector_op(n, result, op);
     }
 
     /// Reduce the columns of a matrix
@@ -473,8 +467,6 @@ namespace TiledArray {
         // Reduce row i to result
         reduce_vector_op(n, arg + (i * n), result, op);
       }
-
-      unary_vector_op(n, result, op);
     }
 
   }  // namespace math

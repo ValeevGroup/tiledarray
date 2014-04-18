@@ -617,17 +617,17 @@ namespace TiledArray {
     class GemmArgReduce {
     public:
       typedef void result_type;
-
-      void operator()(value_type& restrict result, const value_type inner_size, value_type norm) const {
+      void operator()(value_type& restrict result, value_type norm, const value_type inner_size) const {
         norm *= inner_size;
         result += norm * norm;
       }
 
-      void operator()(value_type& restrict arg) const { arg = std::sqrt(arg); }
-
+      void operator()(value_type& restrict result) const {
+        result = std::sqrt(result);
+      }
     }; // class GemmLeftReduce
 
-    class Product {
+    class OuterProduct {
     public:
       typedef value_type result_type;
 
@@ -640,24 +640,23 @@ namespace TiledArray {
       }
     };
 
-    class MultAndZero {
+    class GemmOuterProduct {
       value_type factor_;
       value_type threshold_;
     public:
       typedef value_type result_type;
 
-      MultAndZero(const value_type factor) :
+      GemmOuterProduct(const value_type factor) :
         factor_(factor), threshold_(SparseShape::threshold_)
       { }
 
-      TILEDARRAY_FORCE_INLINE value_type
-      operator()(const value_type left, const value_type right) const {
+      value_type operator()(const value_type left, const value_type right) const {
         value_type norm = left * right * factor_;
         if(norm < threshold_)
           norm = 0;
         return norm;
       }
-    }; // class NormalizeAndZero
+    }; // class MultAndZero
 
   public:
 
@@ -673,7 +672,7 @@ namespace TiledArray {
       std::shared_ptr<vector_type> result_size_vectors(new vector_type[gemm_helper.result_rank()],
           madness::detail::CheckedArrayDeleter<vector_type>());
 
-      // Initialize the size vectors
+      // Initialize the result size vectors
       unsigned int x = 0ul;
       for(unsigned int i = gemm_helper.left_outer_begin(); i < gemm_helper.left_outer_end(); ++i, ++x)
         result_size_vectors.get()[x] = size_vectors_.get()[i];
@@ -683,29 +682,33 @@ namespace TiledArray {
       // Compute the number of inner ranks
       const unsigned int k_rank = gemm_helper.left_inner_end() - gemm_helper.left_inner_begin();
 
+      // Construct the result norm tensor
       Tensor<T> result_norms(gemm_helper.make_result_range<typename Tensor<T>::range_type>(
-          tile_norms_.range(), other.tile_norms_.range()));
+          tile_norms_.range(), other.tile_norms_.range()), 0);
 
       if(k_rank > 0) {
 
-        // Compute k size vector
+        // Compute size vector
         const vector_type k_size_vector =
             recursive_outer_product(size_vectors_.get() + gemm_helper.left_inner_begin(),
-                k_rank, Product());
+                k_rank, OuterProduct());
 
+        GemmArgReduce op;
         vector_type left(m, value_type(0));
-        left.row_reduce(k, tile_norms_.data(), k_size_vector.data(), GemmArgReduce());
+        left.row_reduce(k, tile_norms_.data(), k_size_vector.data(), op);
+        left.unary(op);
 
         vector_type right(n, value_type(0));
-        right.col_reduce(k, other.tile_norms_.data(), k_size_vector.data(), GemmArgReduce());
+        right.col_reduce(k, other.tile_norms_.data(), k_size_vector.data(), op);
+        right.unary(op);
 
         math::outer_fill(m, n, left.data(), right.data(), result_norms.data(),
-            MultAndZero(std::abs(factor)));
+            GemmOuterProduct(std::abs(factor)));
       } else {
 
         // This is an outer product, so the inputs can be used directly
         math::outer_fill(m, n, tile_norms_.data(), other.tile_norms_.data(), result_norms.data(),
-            MultAndZero(std::abs(factor)));
+            GemmOuterProduct(std::abs(factor)));
       }
 
       return SparseShape_(result_norms, result_size_vectors);
