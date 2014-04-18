@@ -156,7 +156,7 @@ namespace TiledArray {
 
     /// Minimum tile reduction
 
-    /// This reduction operation is used to find the minimum value of tiles.
+    /// This reduction operation is used to find the minimum value of elements in a Tile.
     /// \tparam Tile The tile type
     template <typename Tile>
     class MinReduction {
@@ -187,7 +187,7 @@ namespace TiledArray {
 
     /// Maximum tile reduction
 
-    /// This reduction operation is used to find the maximum value of tiles.
+    /// This reduction operation is used to find the maximum value of elements in a Tile.
     /// \tparam Tile The tile type
     template <typename Tile>
     class MaxReduction {
@@ -216,9 +216,9 @@ namespace TiledArray {
 
     }; // class MaxReduction
 
-    /// Minimum tile reduction
+    /// Minabs tile reduction
 
-    /// This reduction operation is used to find the absolute minimum value of
+    /// This reduction operation is used to find the minimum absolute value of elements in a Tile.
     /// tiles.
     /// \tparam Tile The tile type
     template <typename Tile>
@@ -238,20 +238,19 @@ namespace TiledArray {
 
       // Reduce two result objects
       void operator()(result_type& result, const result_type& arg) const {
-        result = std::min(result, arg);
+        result = std::min(result, std::abs(arg));
       }
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result = std::min(result, arg.min());
+        result = std::min(result, arg.abs_min());
       }
 
     }; // class AbsMinReduction
 
-    /// Maximum tile reduction
+    /// Maxabs tile reduction
 
-    /// This reduction operation is used to find the absolute maximum value of
-    /// tiles.
+    /// This reduction operation is used to find the maximum absolute value of element in a Tile.
     /// \tparam Tile The tile type
     template <typename Tile>
     class AbsMaxReduction {
@@ -270,7 +269,7 @@ namespace TiledArray {
 
       // Reduce two result objects
       void operator()(result_type& result, const result_type& arg) const {
-        result = std::max(result, arg);
+        result = std::max(result, std::abs(arg));
       }
 
       // Reduce an argument
