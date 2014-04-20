@@ -27,6 +27,7 @@
 #define TILEDARRAY_ALGEBRA_DIIS_H__INCLUDED
 
 #include <deque>
+#include <Eigen/QR>
 #include <TiledArray/array.h>
 #include <TiledArray/eigen.h>
 #include <TiledArray/algebra/utils.h>
