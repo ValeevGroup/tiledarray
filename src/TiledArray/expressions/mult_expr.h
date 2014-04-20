@@ -83,7 +83,8 @@ namespace TiledArray {
     class ScalMultExpr : public BinaryExpr<MultExpr<Left, Right> > {
     public:
       typedef ScalMultExpr<Left, Right> ScalMultExpr_; ///< This class type
-      typedef BinaryExpr<ScalMultExpr_> BinaryExpr_; ///< Binary expression base type
+      typedef MultExpr<Left, Right> MultExpr_; ///< Base expr type
+      typedef BinaryExpr<MultExpr_> BinaryExpr_; ///< Binary expression base type
       typedef typename ExprTrait<ScalMultExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<ScalMultExpr_>::right_type right_type; ///< The right-hand expression type
       typedef typename ExprTrait<ScalMultExpr_>::engine_type engine_type; ///< Expression engine type
