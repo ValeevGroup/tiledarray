@@ -27,6 +27,7 @@
 #define TILEDARRAY_ALGEBRA_UTILS_H__INCLUDED
 
 #include <sstream>
+#include <type_traits>
 #include <TiledArray/array.h>
 
 namespace TiledArray {
@@ -92,6 +93,13 @@ namespace TiledArray {
               const TiledArray::Array<T,DIM,Tile,Policy>& a2) {
     const std::string vars = detail::dummy_annotation(DIM);
     return a1(vars).dot(a2(vars)).get();
+  }
+
+  template <typename ArrayL, typename ArrayR>
+  inline typename std::common_type<typename ArrayL::element_type, typename ArrayL::element_type>::type
+  dot(const TiledArray::expressions::TsrExpr<ArrayL>& a1,
+      const TiledArray::expressions::TsrExpr<ArrayR>& a2) {
+    return a1.dot(a2).get();
   }
 
   template <typename T, unsigned int DIM, typename Tile, typename Policy>
