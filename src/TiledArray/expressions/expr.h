@@ -293,7 +293,7 @@ namespace TiledArray {
         right_engine.init(world, left_engine.pmap(), left_engine.vars());
 
         // Create the distributed evaluator for the right-hand expression
-        typename engine_type::dist_eval_type right_dist_eval =
+        typename D::engine_type::dist_eval_type right_dist_eval =
             right_engine.make_dist_eval();
 
         // Create a local reduction task
