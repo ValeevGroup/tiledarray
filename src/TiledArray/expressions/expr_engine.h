@@ -123,7 +123,7 @@ namespace TiledArray {
       /// \param target_vars The target variable list for the result tensor
       void init_struct(const VariableList& target_vars) {
         if(target_vars != vars_) {
-          perm_ = derived().make_perm(vars_);
+          perm_ = derived().make_perm(target_vars);
           trange_ = derived().make_trange(perm_);
           shape_ = derived().make_shape(perm_);
         } else {
