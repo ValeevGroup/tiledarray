@@ -118,7 +118,7 @@ BOOST_FIXTURE_TEST_SUITE( expressions_suite, ExpressionsFixture )
 BOOST_AUTO_TEST_CASE( permute )
 {
   Permutation perm(2, 1, 0);
-  BOOST_CHECK_NO_THROW(a("a,b,c") = b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(a("a,b,c") = b("c,b,a"));
 
   for(std::size_t i = 0ul; i < a.size(); ++i) {
     if(a.is_local(i)) {
@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE( outer_product )
   EigenMatrixXi ew_test = eu * ev.transpose();
 
   // Test that outer product works
-  BOOST_CHECK_NO_THROW(w("i,j") = u("i") * v("j"));
+  BOOST_REQUIRE_NO_THROW(w("i,j") = u("i") * v("j"));
 
   GlobalFixture::world->gop.fence();
 
