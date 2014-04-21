@@ -332,11 +332,7 @@ namespace TiledArray {
     /// no communication required.
     /// \return A bitset that maps the existence of tiles.
     /// \throw TiledArray::Exception When the Array is dense.
-    const shape_type& get_shape() const {
-      TA_USER_ASSERT(! is_dense(),
-          "You cannot access the shape of a dense array. Use Array::is_dense() to check for a dense array.");
-      return pimpl_->shape();
-    }
+    const shape_type& get_shape() const {  return pimpl_->shape(); }
 
     /// Tile ownership
 
