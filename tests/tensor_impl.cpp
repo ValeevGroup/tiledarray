@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE( constructor_shape_policy )
   BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
   BOOST_CHECK(! x.is_dense());
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
-    if(i % 3) {
+    if(x.shape()[i] < SparseShape<float>::threshold()) {
       BOOST_CHECK(x.is_zero(i));
     } else {
       BOOST_CHECK(! x.is_zero(i));
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE( zero )
 
   // Check that every third tile is non-zero
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
-    if(i % 3) {
+    if(sp_impl.shape()[i] < SparseShape<float>::threshold()) {
       BOOST_CHECK(sp_impl.is_zero(i));
     } else {
       BOOST_CHECK(! sp_impl.is_zero(i));
