@@ -461,7 +461,9 @@ namespace TiledArray {
             ExprEngine_::shape(), ExprEngine_::pmap(), ExprEngine_::perm(), op_,
             K_, proc_grid_));
 
-        return dist_eval_type(pimpl);
+        dist_eval_type result(pimpl);
+        result.eval();
+        return result;
       }
 
       /// Expression identification tag
