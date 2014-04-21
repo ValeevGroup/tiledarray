@@ -154,9 +154,10 @@ namespace TiledArray {
 
       /// Wait for all tiles to be assigned
       void wait() const {
-        TA_ASSERT(task_count_ >= 0);
-        CounterProbe probe(set_counter_, task_count_);
-        TensorImpl_::get_world().await(probe);
+        if(task_count_ > 0) {
+          CounterProbe probe(set_counter_, task_count_);
+          TensorImpl_::get_world().await(probe);
+        }
       }
 
     private:
