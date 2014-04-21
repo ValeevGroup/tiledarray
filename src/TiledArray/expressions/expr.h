@@ -135,7 +135,7 @@ namespace TiledArray {
           set_tile(*it, tile);
           return true;
         }
-      };
+      }; // struct EvalTiles
 
       /// Array factor function
 
@@ -202,10 +202,10 @@ namespace TiledArray {
           pmap = tsr.array().get_pmap();
 
         // Get result variable list.
-        VariableList vars(tsr.vars());
+        VariableList target_vars(tsr.vars());
 
         // Swap the new array with the result array object.
-        make_array<A>(world, pmap, vars).swap(tsr.array());
+        make_array<A>(world, pmap, target_vars).swap(tsr.array());
       }
 
       /// Array conversion operator
