@@ -343,7 +343,7 @@ namespace TiledArray {
 
         if(target_vars != vars_) {
           // Initialize permuted structure
-          perm_ = ContEngine_::make_perm(vars_);
+          perm_ = ExprEngine_::make_perm(target_vars);
           op_ = op_type(left_op, right_op, factor_, vars_.dim(), left_vars_.dim(),
               right_vars_.dim(), (ExprEngine_::permute_tiles() ? perm_ : Permutation()));
           trange_ = ContEngine_::make_trange(perm_);
