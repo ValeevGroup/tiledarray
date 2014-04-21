@@ -103,7 +103,7 @@ namespace TiledArray {
 
       /// \param other The expression to be copied
       ScalMultExpr(const MultExpr<Left, Right>& arg, const scalar_type factor) :
-        BinaryExpr_(arg), factor_(factor)
+        BinaryExpr_(arg.left(), arg.right()), factor_(factor)
       { }
 
       /// Expression constructor

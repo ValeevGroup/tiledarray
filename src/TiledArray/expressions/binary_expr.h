@@ -64,8 +64,7 @@ namespace TiledArray {
       { }
 
       /// Copy constructor
-      template <typename D>
-      BinaryExpr(const BinaryExpr<D>& other) :
+      BinaryExpr(const BinaryExpr<Derived>& other) :
         left_(other.left()), right_(other.right())
       { }
 
