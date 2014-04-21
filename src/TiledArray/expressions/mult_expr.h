@@ -80,11 +80,10 @@ namespace TiledArray {
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
     template <typename Left, typename Right>
-    class ScalMultExpr : public BinaryExpr<MultExpr<Left, Right> > {
+    class ScalMultExpr : public BinaryExpr<ScalMultExpr<Left, Right> > {
     public:
       typedef ScalMultExpr<Left, Right> ScalMultExpr_; ///< This class type
-      typedef MultExpr<Left, Right> MultExpr_; ///< Base expr type
-      typedef BinaryExpr<MultExpr_> BinaryExpr_; ///< Binary expression base type
+      typedef BinaryExpr<ScalMultExpr_> BinaryExpr_; ///< Binary expression base type
       typedef typename ExprTrait<ScalMultExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<ScalMultExpr_>::right_type right_type; ///< The right-hand expression type
       typedef typename ExprTrait<ScalMultExpr_>::engine_type engine_type; ///< Expression engine type
