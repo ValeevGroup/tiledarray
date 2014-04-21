@@ -197,13 +197,13 @@ namespace TiledArray {
       // Class hierarchy typedefs
       typedef ScalMultContEngine<Left, Right> ScalMultContEngine_; ///< This class type
       typedef ScalMultEngine<ScalMultContEngine_> ScalMultEngine_; ///< Multiply expression engine base class
-      typedef ContEngine<ScalMultContEngine<Left, Right> > ContEngine_; ///< Contraction expression engine base class
+      typedef ContEngine<ScalMultContEngine_> ContEngine_;         ///< Contraction expression engine base class
       typedef typename ScalMultEngine_::BinaryEngine_ BinaryEngine_; ///< Binary base class type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
-      typedef typename EngineTrait<ScalMultContEngine_>::left_tpye left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<ScalMultContEngine_>::right_tpye right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<ScalMultContEngine_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalMultContEngine_>::right_type right_type; ///< The right-hand expression type
 
       // Operational typedefs
       typedef typename EngineTrait<ScalMultContEngine_>::value_type value_type; ///< The result tile type
@@ -229,9 +229,9 @@ namespace TiledArray {
       /// \param L The left-hand argument expression type
       /// \param R The right-hand argument expression type
       /// \param expr The parent expression
-      template <typename L, typename R>
-      ScalMultContEngine(const ScalMultExpr<L, R>& expr) :
-        BinaryEngine_(expr), ScalMultEngine_(expr), ContEngine_(expr), contract_(false)
+      //template <typename L, typename R>
+      ScalMultContEngine(const ScalMultExpr<Left, Right>& expr) :
+        ScalMultEngine_(expr), ContEngine_(expr), contract_(false)
       { }
 
       void perm_vars(const VariableList& target_vars) {
