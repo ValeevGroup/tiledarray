@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_EXPRESSIONS_CONT_ENGINE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_CONT_ENGINE_H__INCLUDED
 
-#include <TiledArray/expressions/binary_engine.h>
+#include <TiledArray/expressions/mult_engine.h>
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/proc_grid.h>
@@ -42,12 +42,12 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Derived>
-    class ContEngine : public MultEngine<Derived> {
+    template <typename Derived, template <typename> class BaseEngine>
+    class ContEngine : public BaseEngine<Derived> {
     public:
       // Class hierarchy typedefs
-      typedef ContEngine<Derived> ContEngine_; ///< This class type
-      typedef MultEngine<Derived> MultEngine_; /// Multiply base engine
+      typedef ContEngine<Derived, BaseEngine> ContEngine_; ///< This class type
+      typedef BaseEngine<Derived> MultEngine_; /// Multiply base engine
       typedef BinaryEngine<Derived> BinaryEngine_; ///< Binary base class type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
 

@@ -129,21 +129,21 @@ namespace TiledArray {
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
-      typedef typename Derived::left_type left_type; ///< The left-hand expression type
-      typedef typename Derived::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<Derived>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<Derived>::right_type right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename left_type::eval_type value_type; ///< The result tile type
-      typedef TiledArray::math::ScalMult<value_type, typename left_type::value_type::eval_type,
-          typename right_type::value_type::eval_type, left_type::consumable,
-          right_type::consumable> op_type; ///< The tile operation type
-      typedef typename op_type::scalar_type scalar_type; ///< The scaling factor type
+      typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<Derived>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename Derived::size_type size_type; ///< Size type
-      typedef typename Derived::trange_type trange_type; ///< Tiled range type
-      typedef typename Derived::shape_type shape_type; ///< Shape type
-      typedef typename Derived::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
 
