@@ -56,12 +56,12 @@ namespace TiledArray {
     /// \tparam Right The right-hand expression engine type
     template <typename Left, typename Right>
     class MultContEngine :
-        public ContEngine<MultContEngine<Left, Right> >
+        public ContEngine<MultContEngine<Left, Right>, MultEngine>
     {
     public:
       // Class hierarchy typedefs
       typedef MultContEngine<Left, Right> MultContEngine_; ///< This class type
-      typedef ContEngine<MultContEngine_> ContEngine_; ///< Contraction expression engine base class
+      typedef ContEngine<MultContEngine_, MultEngine> ContEngine_; ///< Contraction expression engine base class
       typedef MultEngine<MultContEngine_> MultEngine_; ///< Multiply expression engine base class
       typedef BinaryEngine<MultContEngine_> BinaryEngine_; ///< Binary base class type
       typedef ExprEngine<MultContEngine_> ExprEngine_; ///< Expression engine base class type
@@ -190,15 +190,15 @@ namespace TiledArray {
     template <typename Left, typename Right>
     class ScalMultContEngine :
         public ScalMultEngine<ScalMultContEngine<Left, Right> >,
-        public ContEngine<ScalMultContEngine<Left, Right> >
+        public ContEngine<ScalMultContEngine<Left, Right>, ScalMultEngine>
     {
     public:
       // Class hierarchy typedefs
-      typedef ScalMultContEngine<Left, Right> ScalMultContEngine_; ///< This class type
+      typedef MultContEngine<Left, Right> ScalMultContEngine_; ///< This class type
+      typedef ContEngine<ScalMultContEngine_, ScalMultEngine> ContEngine_; ///< Contraction expression engine base class
       typedef ScalMultEngine<ScalMultContEngine_> ScalMultEngine_; ///< Multiply expression engine base class
-      typedef ContEngine<ScalMultContEngine_> ContEngine_;         ///< Contraction expression engine base class
-      typedef typename ScalMultEngine_::BinaryEngine_ BinaryEngine_; ///< Binary base class type
-      typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
+      typedef BinaryEngine<ScalMultContEngine_> BinaryEngine_; ///< Binary base class type
+      typedef ExprEngine<ScalMultContEngine_> ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
       typedef typename EngineTrait<ScalMultContEngine_>::left_type left_type; ///< The left-hand expression type
