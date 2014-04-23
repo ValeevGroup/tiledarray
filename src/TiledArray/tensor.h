@@ -29,14 +29,6 @@
 
 namespace TiledArray {
 
-
-  /// Place-holder object for a zero tensor.
-  template <typename T>
-  struct ZeroTensor {
-    typedef T value_type;
-  }; // struct ZeroTensor
-
-
   /// An N-dimensional tensor object
 
   /// \tparma T the value type of this tensor

@@ -21,7 +21,7 @@
 #define TILEDARRAY_DIST_EVAL_BINARY_EVAL_H__INCLUDED
 
 #include <TiledArray/dist_eval/dist_eval.h>
-#include <TiledArray/tensor.h>
+#include <TiledArray/zero_tensor.h>
 
 namespace TiledArray {
   namespace detail {
