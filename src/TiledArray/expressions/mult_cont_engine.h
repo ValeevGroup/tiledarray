@@ -189,7 +189,6 @@ namespace TiledArray {
     /// \tparam Right The right-hand expression engine type
     template <typename Left, typename Right>
     class ScalMultContEngine :
-        public ScalMultEngine<ScalMultContEngine<Left, Right> >,
         public ContEngine<ScalMultContEngine<Left, Right>, ScalMultEngine>
     {
     public:
