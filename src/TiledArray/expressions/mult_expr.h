@@ -33,11 +33,13 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename Left, typename Right>
-    struct ExprTrait<MultExpr<Left, Right> > : public BinaryExprTrait<Left, Right, MultContEngine>
+    struct ExprTrait<MultExpr<Left, Right> > :
+        public BinaryExprTrait<Left, Right, MultContEngine>
     { };
 
     template <typename Left, typename Right>
-    struct ExprTrait<ScalMultExpr<Left, Right> > : public BinaryExprTrait<Left, Right, ScalMultContEngine>
+    struct ExprTrait<ScalMultExpr<Left, Right> > :
+        public BinaryExprTrait<Left, Right, ScalMultContEngine>
     { };
 
 
