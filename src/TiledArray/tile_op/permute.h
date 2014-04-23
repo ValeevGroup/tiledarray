@@ -26,10 +26,13 @@
 #ifndef TILEDARRAY_TILE_OP_PERMUTE_H__INCLUDED
 #define TILEDARRAY_TILE_OP_PERMUTE_H__INCLUDED
 
-#include <TiledArray/tensor.h>
 #include <TiledArray/permutation.h>
 
 namespace TiledArray {
+
+  class Permutation;
+  template <typename, typename> class Tensor;
+
   namespace math {
 
     /// Permute a tensor
@@ -161,21 +164,6 @@ namespace TiledArray {
     }
 
   }  // namespace math
-
-  /// Permute a tensor
-
-  /// Permute \c tensor by \c perm and place the permuted result in \c result .
-  /// \tparam T The tensor element type
-  /// \tparam A The tensor allocator type
-  /// \param perm The permutation to be applied to \c tensor
-  /// \param tensor The tensor to be permuted by \c perm
-  template <typename T, typename A>
-  inline Tensor<T,A> operator^(const Permutation& perm, const Tensor<T, A>& tensor) {
-    // Create tensor to hold the result
-    Tensor<T,A> result;
-    math::permute(result, perm, tensor);
-    return result;
-  }
 
 } // namespace TiledArray
 

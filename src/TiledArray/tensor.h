@@ -1427,6 +1427,18 @@ namespace TiledArray {
     return arg.neg();
   }
 
+  /// Permute a tensor
+
+  /// Permute \c tensor by \c perm and place the permuted result in \c result .
+  /// \tparam T The tensor element type
+  /// \tparam A The tensor allocator type
+  /// \param perm The permutation to be applied to \c tensor
+  /// \param tensor The tensor to be permuted by \c perm
+  template <typename T, typename A>
+  inline Tensor<T,A> operator^(const Permutation& perm, const Tensor<T, A>& tensor) {
+    return tensor.permute(perm);
+  }
+
   /// Tensor output operator
 
   /// Ouput tensor \c t to the output stream, \c os .
