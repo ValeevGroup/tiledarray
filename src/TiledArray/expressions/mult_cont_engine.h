@@ -228,9 +228,9 @@ namespace TiledArray {
       /// \param L The left-hand argument expression type
       /// \param R The right-hand argument expression type
       /// \param expr The parent expression
-      //template <typename L, typename R>
-      ScalMultContEngine(const ScalMultExpr<Left, Right>& expr) :
-        ScalMultEngine_(expr), ContEngine_(expr), contract_(false)
+      template <typename L, typename R>
+      ScalMultContEngine(const ScalMultExpr<L, R>& expr) :
+        ContEngine_(expr), contract_(false)
       { }
 
       void perm_vars(const VariableList& target_vars) {
