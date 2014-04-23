@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  justus
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  binary_reduction.h
@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_BINARY_REDUCTION_H__INCLUDED
-#define TILEDARRAY_BINARY_REDUCTION_H__INCLUDED
+#ifndef TILEDARRAY_TILE_OP_BINARY_REDUCTION_H__INCLUDED
+#define TILEDARRAY_TILE_OP_BINARY_REDUCTION_H__INCLUDED
 
 namespace TiledArray {
   namespace math {
@@ -65,4 +65,4 @@ namespace TiledArray {
   }  // namespace math
 } // namespace TiledArray
 
-#endif // TILEDARRAY_BINARY_REDUCTION_H__INCLUDED
+#endif // TILEDARRAY_TILE_OP_BINARY_REDUCTION_H__INCLUDED
