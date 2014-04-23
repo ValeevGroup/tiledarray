@@ -26,7 +26,6 @@
 #ifndef TILEDARRAY_SPARSE_SHAPE_H__INCLUDED
 #define TILEDARRAY_SPARSE_SHAPE_H__INCLUDED
 
-#include <TiledArray/madness.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/val_array.h>

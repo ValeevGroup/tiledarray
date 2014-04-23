@@ -26,7 +26,6 @@
 #ifndef TILEDARRAY_SHARED_BUFFER_H__INCLUDED
 #define TILEDARRAY_SHARED_BUFFER_H__INCLUDED
 
-#include <TiledArray/config.h>
 #include <TiledArray/size_array.h>
 
 #ifndef TILEDARRAY_DEFAULT_ALIGNMENT

@@ -28,7 +28,6 @@
 #define TILEDARRAY_EXPRESSIONS_SCAL_TSR_EXPR_H__INCLUDED
 
 #include <TiledArray/expressions/scal_tsr_engine.h>
-#include <TiledArray/tile_op/scal.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -49,9 +48,7 @@ namespace TiledArray {
     /// \tparam Tile The array tile type
     /// \tparam Policy The array policy type
     template <typename A>
-    class ScalTsrExpr :
-        public Expr<ScalTsrExpr<A> >
-    {
+    class ScalTsrExpr : public Expr<ScalTsrExpr<A> > {
     public:
       typedef ScalTsrExpr<A> ScalTsrExpr_; ///< This class type
       typedef Expr<ScalTsrExpr_> Expr_; ///< Expression base type

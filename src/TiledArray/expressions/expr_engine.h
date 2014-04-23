@@ -23,11 +23,10 @@
  *
  */
 
-#ifndef TILEDARRAY_EXPR_ENGINE_H__INCLUDED
-#define TILEDARRAY_EXPR_ENGINE_H__INCLUDED
+#ifndef TILEDARRAY_EXPRESSIONS_EXPR_ENGINE_H__INCLUDED
+#define TILEDARRAY_EXPRESSIONS_EXPR_ENGINE_H__INCLUDED
 
 #include <TiledArray/madness.h>
-#include <TiledArray/expressions/variable_list.h>
 #include <TiledArray/expressions/expr_trace.h>
 
 namespace TiledArray {
@@ -241,4 +240,4 @@ namespace TiledArray {
   }  // namespace expressions
 } // namespace TiledArray
 
-#endif // TILEDARRAY_EXPR_ENGINE_H__INCLUDED
+#endif // TILEDARRAY_EXPRESSIONS_EXPR_ENGINE_H__INCLUDED

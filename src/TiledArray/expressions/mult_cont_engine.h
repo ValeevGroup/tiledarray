@@ -26,7 +26,6 @@
 #ifndef TILEDARRAY_EXPRESSIONS_MULT_CONT_ENGINE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_MULT_CONT_ENGINE_H__INCLUDED
 
-#include <TiledArray/expressions/mult_engine.h>
 #include <TiledArray/expressions/cont_engine.h>
 
 namespace TiledArray {

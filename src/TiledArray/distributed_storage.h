@@ -20,9 +20,7 @@
 #ifndef TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 #define TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 
-#include <TiledArray/error.h>
 #include <TiledArray/pmap/pmap.h>
-#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {

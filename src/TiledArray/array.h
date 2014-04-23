@@ -25,7 +25,6 @@
 #include <TiledArray/tensor.h>
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/tensor_impl.h>
-#include <TiledArray/pmap/blocked_pmap.h>
 #include <TiledArray/expressions.h>
 
 namespace TiledArray {

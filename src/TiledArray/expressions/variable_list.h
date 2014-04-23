@@ -21,7 +21,6 @@
 #define TILEDARRAY_EXPRESSIONS_VARIABLE_LIST_H__INCLUDED
 
 #include <TiledArray/permutation.h>
-#include <vector>
 #include <string>
 #include <algorithm>
 #include <iosfwd>

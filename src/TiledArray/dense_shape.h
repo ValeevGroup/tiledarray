@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  justus
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  dense_shape.h
@@ -25,10 +25,6 @@
 
 #ifndef TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 #define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
-
-#include <TiledArray/permutation.h>
-#include <TiledArray/madness.h>
-#include <TiledArray/type_traits.h>
 
 namespace madness {
   class World;
@@ -44,6 +40,7 @@ namespace TiledArray {
     class GemmHelper;
   } // namespace math
   class Range;
+  class Permutation;
 
 
   /// Dense shape of an array
