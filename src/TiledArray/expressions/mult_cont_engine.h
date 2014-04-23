@@ -193,7 +193,7 @@ namespace TiledArray {
     {
     public:
       // Class hierarchy typedefs
-      typedef MultContEngine<Left, Right> ScalMultContEngine_; ///< This class type
+      typedef ScalMultContEngine<Left, Right> ScalMultContEngine_; ///< This class type
       typedef ContEngine<ScalMultContEngine_, ScalMultEngine> ContEngine_; ///< Contraction expression engine base class
       typedef ScalMultEngine<ScalMultContEngine_> ScalMultEngine_; ///< Multiply expression engine base class
       typedef BinaryEngine<ScalMultContEngine_> BinaryEngine_; ///< Binary base class type
