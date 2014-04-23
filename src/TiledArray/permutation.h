@@ -22,9 +22,8 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/size_array.h>
-#include <world/array.h>
-#include <numeric>
+#include <world/stdarray.h>
+#include <vector>
 #include <stdarg.h>
 
 namespace TiledArray {
@@ -60,22 +59,6 @@ namespace TiledArray {
         first_r[*first_p] = *first_o++;
     }
   } // namespace detail
-
-  /// permute a std::array
-  template <typename T, std::size_t N>
-  inline std::array<T,N> operator^(const Permutation&, const std::array<T, N>&);
-
-  /// permute a std::vector<T>
-  template <typename T, typename A>
-  inline std::vector<T> operator^(const Permutation&, const std::vector<T, A>&);
-
-  template <typename T, typename A>
-  inline std::vector<T> operator^=(std::vector<T, A>&, const Permutation&);
-
-  inline Permutation operator ^(const Permutation&, const Permutation&);
-
-  template <typename T, std::size_t N>
-  inline std::array<T,N> operator ^=(std::array<T,N>&, const Permutation&);
 
   /// Permutation
 
@@ -233,7 +216,11 @@ namespace TiledArray {
 
     /// return *this ^ other
     Permutation& operator^=(const Permutation& other) {
-      p_ ^= other;
+      TA_ASSERT(other.p_.size() == p_.size());
+
+      Array result(p_.size());
+      detail::permute_array(other.begin(), other.end(), p_.begin(), result.begin());
+      std::swap(result, p_);
       return *this;
     }
 
@@ -322,16 +309,6 @@ namespace TiledArray {
     return result;
   }
 
-  template <typename T>
-  inline std::vector<T> operator^(const Permutation& perm, const detail::SizeArray<T>& orig) {
-    TA_ASSERT(orig.size() == perm.dim());
-    std::vector<T> result(perm.dim());
-    detail::permute_array<Permutation::const_iterator, typename detail::SizeArray<T>::const_iterator, typename std::vector<T>::iterator>
-      (perm.begin(), perm.end(), orig.begin(), result.begin());
-    return result;
-  }
-
-
   inline Permutation operator ^(const Permutation& perm, const Permutation& p) {
     TA_ASSERT(perm.dim() == p.dim());
     return Permutation(perm ^ p.data());
@@ -346,13 +323,7 @@ namespace TiledArray {
 
     /// permute a std::vector<T>
     template <typename T, typename A>
-    inline const std::vector<T>& operator^(const NoPermutation&, const std::vector<T, A>& orig) {
-      return orig;
-    }
-
-    /// permute a std::vector<T>
-    template <typename T>
-    inline const detail::SizeArray<T>& operator^(const NoPermutation&, const detail::SizeArray<T>& orig) {
+    inline const std::vector<T, A>& operator^(const NoPermutation&, const std::vector<T, A>& orig) {
       return orig;
     }
 
@@ -369,7 +340,7 @@ namespace TiledArray {
   }
 
   template <typename T, typename A>
-  inline std::vector<T> operator^=(std::vector<T, A>& orig, const Permutation& perm) {
+  inline std::vector<T, A> operator^=(std::vector<T, A>& orig, const Permutation& perm) {
     TA_ASSERT(orig.size() == perm.dim());
     orig = perm ^ orig;
 

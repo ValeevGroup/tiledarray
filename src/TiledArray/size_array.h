@@ -20,13 +20,9 @@
 #ifndef TILEDARRAY_SIZE_ARRAY_H__INCLUDED
 #define TILEDARRAY_SIZE_ARRAY_H__INCLUDED
 
-#include <TiledArray/error.h>
-#include <TiledArray/madness.h>
 #include <TiledArray/math/outer.h>
 #include <TiledArray/math/partial_reduce.h>
-#include <algorithm>
-#include <vector>
-#include <iterator>
+#include <TiledArray/permutation.h>
 #include <cstddef>
 
 namespace TiledArray {
@@ -423,6 +419,20 @@ namespace TiledArray {
 
 
     }; // class SizeArray
+
+    template <typename T>
+    inline std::vector<T> operator^(const Permutation& perm, const detail::SizeArray<T>& orig) {
+      TA_ASSERT(orig.size() == perm.dim());
+      std::vector<T> result(perm.dim());
+      detail::permute_array<Permutation::const_iterator, typename detail::SizeArray<T>::const_iterator, typename std::vector<T>::iterator>
+        (perm.begin(), perm.end(), orig.begin(), result.begin());
+      return result;
+    }
+
+    template <typename T>
+    inline const detail::SizeArray<T>& operator^(const NoPermutation&, const detail::SizeArray<T>& orig) {
+      return orig;
+    }
 
   }  // namespace detail
 } // namespace TiledArray
