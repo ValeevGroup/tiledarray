@@ -31,7 +31,7 @@ if(Madness_FOUND)
     "
     #include <madness_config.h>
     #ifndef MADNESS_HAS_ELEMENTAL
-    # error "MADNESS does not have Elemental"
+    # error " MADNESS does not have Elemental "
     #endif
     int main(int argc, char** argv) {
       return 0;
