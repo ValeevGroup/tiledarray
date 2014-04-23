@@ -20,12 +20,8 @@
 #ifndef TILEDARRAY_RANGE_H__INCLUDED
 #define TILEDARRAY_RANGE_H__INCLUDED
 
-#include <TiledArray/size_array.h>
 #include <TiledArray/range_iterator.h>
-#include <TiledArray/permutation.h>
-#include <TiledArray/utility.h>
-#include <algorithm>
-#include <vector>
+#include <TiledArray/size_array.h>
 #include <functional>
 
 namespace TiledArray {

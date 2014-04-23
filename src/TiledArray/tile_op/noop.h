@@ -26,7 +26,6 @@
 #ifndef TILEDARRAY_TILE_OP_NOOP_H__INCLUDED
 #define TILEDARRAY_TILE_OP_NOOP_H__INCLUDED
 
-#include <TiledArray/tile_op/permute.h>
 #include <TiledArray/tile_op/unary_interface.h>
 
 namespace TiledArray {

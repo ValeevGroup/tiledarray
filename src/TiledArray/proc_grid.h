@@ -26,12 +26,9 @@
 #ifndef TILEDARRAY_GRID_H__INCLUDED
 #define TILEDARRAY_GRID_H__INCLUDED
 
-#include <TiledArray/error.h>
-#include <TiledArray/madness.h>
 #include <TiledArray/pmap/cyclic_pmap.h>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/math/math.h>
-#include <stdint.h>
 
 namespace TiledArray {
   namespace detail {

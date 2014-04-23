@@ -20,7 +20,6 @@
 #ifndef TILEDARRAY_TILE_BASE_H__INCLUDED
 #define TILEDARRAY_TILE_BASE_H__INCLUDED
 
-#include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/math/vector_op.h>
 #include <world/archive.h>

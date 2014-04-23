@@ -26,7 +26,6 @@
 #ifndef TILEDARRAY_MATH_OUTER_H__INCLUDED
 #define TILEDARRAY_MATH_OUTER_H__INCLUDED
 
-#include <TiledArray/madness.h>
 #include <TiledArray/math/vector_op.h>
 #include <TiledArray/utility.h>
 

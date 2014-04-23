@@ -26,8 +26,7 @@
 #ifndef TILEDARRAY_CONTRACT_REDUCE_H__INCLUDED
 #define TILEDARRAY_CONTRACT_REDUCE_H__INCLUDED
 
-#include <TiledArray/error.h>
-#include <TiledArray/tile_op/permute.h>
+#include <TiledArray/permutation.h>
 #include <TiledArray/math/gemm_helper.H>
 
 namespace TiledArray {

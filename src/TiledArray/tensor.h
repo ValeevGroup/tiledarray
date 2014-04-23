@@ -22,7 +22,6 @@
 
 #include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
-#include <TiledArray/madness.h>
 #include <TiledArray/math/functional.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>

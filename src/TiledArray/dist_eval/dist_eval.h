@@ -22,7 +22,7 @@
 
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/counter_probe.h>
-#include <TiledArray/tile_op/permute.h>
+#include <TiledArray/permutation.h>
 
 namespace TiledArray {
   namespace detail {

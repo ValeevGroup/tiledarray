@@ -28,7 +28,6 @@
 
 #include <TiledArray/madness.h>
 #include <TiledArray/error.h>
-#include <vector>
 
 namespace TiledArray {
 

@@ -26,10 +26,7 @@
 #ifndef TILEDARRAY_PMAP_CYCLIC_PMAP_H__INCLUDED
 #define TILEDARRAY_PMAP_CYCLIC_PMAP_H__INCLUDED
 
-#include <TiledArray/error.h>
 #include <TiledArray/pmap/pmap.h>
-#include <TiledArray/madness.h>
-#include <cmath>
 
 namespace TiledArray {
   namespace detail {

@@ -22,6 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <cmath>
+#include <algorithm>
 #include <stdint.h>
 
 namespace TiledArray {
