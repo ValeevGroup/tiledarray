@@ -151,6 +151,62 @@ BOOST_AUTO_TEST_CASE( scale_permute )
   }
 }
 
+BOOST_AUTO_TEST_CASE( add )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  +      b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) +      b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  + (3 * b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) + (3 * b("a,b,c")));
+
+}
+
+BOOST_AUTO_TEST_CASE( scale_add )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  +      b("a,b,c")) );
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) +      b("a,b,c")) );
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  + (3 * b("a,b,c"))));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) + (3 * b("a,b,c"))));
+
+}
+
+
+BOOST_AUTO_TEST_CASE( subt )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  -      b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) -      b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  - (3 * b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) - (3 * b("a,b,c")));
+
+}
+
+BOOST_AUTO_TEST_CASE( scale_subt )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  -      b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) -      b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  - (3 * b("a,b,c"))));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) - (3 * b("a,b,c"))));
+
+}
+
+
+BOOST_AUTO_TEST_CASE( mult )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  *      b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) *      b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  * (3 * b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * (3 * b("a,b,c")));
+
+}
+
+BOOST_AUTO_TEST_CASE( scale_mult )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  *      b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) *      b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  * (3 * b("a,b,c"))));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) * (3 * b("a,b,c"))));
+
+}
+
 BOOST_AUTO_TEST_CASE( outer_product )
 {
   // Generate Eigen matrices from input arrays.
