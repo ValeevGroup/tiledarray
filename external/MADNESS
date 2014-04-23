@@ -8,7 +8,6 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-
 find_package(Madness COMPONENTS MADworld)
 
 if(Madness_FOUND)
@@ -27,6 +26,17 @@ if(Madness_FOUND)
   if (NOT Madness_COMPILES)
     message(FATAL_ERROR "MADNESS found at ${Madness_INCLUDE_DIR}, but could not compile test program")
   endif()
+
+  CHECK_CXX_SOURCE_COMPILES(
+    "
+    #include <madness_config.h>
+    #ifndef MADNESS_HAS_ELEMENTAL
+    # error \"MADNESS does not have Elemental\"
+    #endif
+    int main(int argc, char** argv) {
+      return 0;
+    }
+    "  MADNESS_HAS_ELEMENTAL)
 
 elseif(TA_EXPERT)
 
@@ -109,7 +119,7 @@ else()
   append_flags(MAD_LDFLAGS "${STATIC_LIBRARY_FLAGS}")
   append_flags(MAD_LDFLAGS "${MADNESS_LINK_FLAGS}")
   
-  #Check for elemental
+  # Check for elemental
   if(Elemental_DIR)
     set(MAD_ELEMENTAL_FLAG "--with-elemental=${Elemental_DIR}")
   else()

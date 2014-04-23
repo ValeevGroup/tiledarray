@@ -105,7 +105,7 @@ libfind_package(Madness LAPACK)
 if(NOT LAPACK_FOUND)
   set(Madness_FOUND FALSE)
   if(Madness_FIND_REQUIRED)
-    message(FATAL_ERROR "MADNESS requires LaPACK.")
+    message(FATAL_ERROR "MADNESS requires LAPACK.")
   endif()
 endif()
 

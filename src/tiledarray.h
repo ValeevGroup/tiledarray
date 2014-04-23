@@ -20,12 +20,13 @@
 #ifndef TILEDARRAY_H__INCLUDED
 #define TILEDARRAY_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/array.h>
 #include <TiledArray/eigen.h>
 #include <TiledArray/policies/sparse_policy.h>
 
-# if TILEDARRAY_HAS_ELEMENTAL
+#ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>
-# endif
+#endif
 
 #endif // TILEDARRAY_H__INCLUDED
