@@ -167,7 +167,7 @@ namespace TiledArray {
           if(! pimpl_->perm_)
             result = temp;
           else
-            TiledArray::math::permute(result, pimpl_->perm_, temp);
+            result = temp.permute(pimpl_->perm_);
         }
 
         return result;
