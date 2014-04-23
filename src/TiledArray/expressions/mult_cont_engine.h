@@ -287,11 +287,11 @@ namespace TiledArray {
       /// tensor.
       /// \param world The world were the result will be distributed
       /// \param pmap The process map for the result tensor tiles
-      void init_distribution(const VariableList& target_vars) {
+      void init_distribution(madness::World* world, std::shared_ptr<pmap_interface> pmap) {
         if(contract_)
-          ContEngine_::init_distribution(target_vars);
+          ContEngine_::init_distribution(world, pmap);
         else
-          ScalMultEngine_::init_distribution(target_vars);
+          ScalMultEngine_::init_distribution(world, pmap);
       }
 
     }; // class ScalMultContEngine
