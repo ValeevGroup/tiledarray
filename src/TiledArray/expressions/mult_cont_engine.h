@@ -239,11 +239,14 @@ namespace TiledArray {
           ScalMultEngine_::perm_vars(target_vars);
       }
 
-      void init_vars(const VariableList& target_vars) {
-        BinaryEngine_::left().init_vars();
-        BinaryEngine_::right().init_vars();
+      /// Initialize the variable list of this expression
 
-        if(BinaryEngine_::left().vars().is_permutation(BinaryEngine_::right().vars())) {
+      /// \param target_vars The target variable list for this expression
+      void init_vars(const VariableList& target_vars) {
+        BinaryEngine_::left_.init_vars();
+        BinaryEngine_::right_.init_vars();
+
+        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
           ScalMultEngine_::perm_vars(target_vars);
         } else {
           contract_ = true;
