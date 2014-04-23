@@ -255,6 +255,20 @@ namespace TiledArray {
         }
       }
 
+
+      /// Initialize the variable list of this expression
+      void init_vars() {
+        BinaryEngine_::left_.init_vars();
+        BinaryEngine_::right_.init_vars();
+
+        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
+          ScalMultEngine_::vars();
+        } else {
+          contract_ = true;
+          ContEngine_::init_vars();
+        }
+      }
+
       /// Initialize result tensor structure
 
       /// This function will initialize the permutation, tiled range, and shape
