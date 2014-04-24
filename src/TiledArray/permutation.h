@@ -232,7 +232,14 @@ namespace TiledArray {
     /// given c2 = p ^ c1
     /// c1 == ((-p) ^ c2);
     Permutation operator -() const {
-      return *this ^ make_unit_permutation(dim());
+      const std::size_t n = p_.size();
+      Permutation result;
+      result.p_.resize(n, 0ul);
+      for(std::size_t i = 0ul; i < n; ++i) {
+        const std::size_t pi = p_[i];
+        result.p_[pi] = i;
+      }
+      return result;
     }
 
     /// Bool conversion
