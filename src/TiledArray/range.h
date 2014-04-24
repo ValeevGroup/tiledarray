@@ -225,10 +225,10 @@ namespace TiledArray {
     Range(const Permutation& perm, const Range_& other) :
       start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
+      TA_ASSERT(perm.dim() == other.dim());
+
       const size_type n = other.dim();
       if(n > 0ul) {
-        TA_ASSERT(perm.dim() == n);
-
         alloc_arrays(n);
 
         if(perm) {
