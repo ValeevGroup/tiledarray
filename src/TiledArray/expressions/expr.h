@@ -156,6 +156,7 @@ namespace TiledArray {
 
         // Create the distributed evaluator from this expression
         typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
+        dist_eval.eval();
 
         // Create the result array
         A result(dist_eval.get_world(), dist_eval.trange(),

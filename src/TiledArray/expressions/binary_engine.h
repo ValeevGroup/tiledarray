@@ -222,9 +222,7 @@ namespace TiledArray {
                 ExprEngine_::trange(), ExprEngine_::shape(), ExprEngine_::pmap(),
                 ExprEngine_::perm(), ExprEngine_::make_op()));
 
-        dist_eval_type result(pimpl);
-        result.eval();
-        return result;
+        return dist_eval_type(pimpl);
       }
 
       /// Expression print

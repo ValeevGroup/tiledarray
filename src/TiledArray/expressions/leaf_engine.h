@@ -164,9 +164,7 @@ namespace TiledArray {
             (ExprEngine_::perm() && ExprEngine_::permute_tiles() ?
             derived().make_tile_op(ExprEngine_::perm()) : derived().make_tile_op())));
 
-        dist_eval_type result(pimpl);
-        result.eval();
-        return result;
+        return dist_eval_type(pimpl);
       }
 
     }; // class LeafEngine
