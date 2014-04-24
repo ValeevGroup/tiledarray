@@ -22,6 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/utility.h>
 #include <world/stdarray.h>
 #include <vector>
 #include <stdarg.h>
@@ -50,13 +51,16 @@ namespace TiledArray {
     /// \arg \c [first_p, \c last_p) is an iterator range to the permutation
     /// \arg \c [irst_o is an input iterator to the beginning of the original array
     /// \arg \c result is a random access iterator that will contain the resulting permuted array
-    template <typename InIter0, typename InIter1, typename RandIter>
-    inline void permute_array(InIter0 first_p, InIter0 last_p, InIter1 first_o, RandIter first_r) {
-      TA_STATIC_ASSERT(detail::is_input_iterator<InIter0>::value);
-      TA_STATIC_ASSERT(detail::is_input_iterator<InIter1>::value);
-      TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
-      for(; first_p != last_p; ++first_p)
-        first_r[*first_p] = *first_o++;
+    template <typename Perm, typename Arg, typename Result>
+    inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
+      TA_ASSERT(perm.dim() == size(arg));
+      TA_ASSERT(perm.dim() == size(result));
+
+      const unsigned int n = perm.dim();
+      for(unsigned int i = 0u; i < n; ++i) {
+        const typename Perm::index_type pi = perm[i];
+        result[pi] = arg[i];
+      }
     }
   } // namespace detail
 
@@ -219,7 +223,7 @@ namespace TiledArray {
       TA_ASSERT(other.p_.size() == p_.size());
 
       Array result(p_.size());
-      detail::permute_array(other.begin(), other.end(), p_.begin(), result.begin());
+      detail::permute_array(other, p_, result);
       std::swap(result, p_);
       return *this;
     }
@@ -295,17 +299,15 @@ namespace TiledArray {
   inline std::array<T,N> operator^(const Permutation& perm, const std::array<T, N>& orig) {
     TA_ASSERT(perm.dim() == orig.size());
     std::array<T,N> result;
-    detail::permute_array(perm.begin(), perm.end(), orig.begin(), result.begin());
+    detail::permute_array(perm, orig, result);
     return result;
   }
 
   /// permute a std::vector<T>
   template <typename T, typename A>
   inline std::vector<T> operator^(const Permutation& perm, const std::vector<T, A>& orig) {
-    TA_ASSERT(orig.size() == perm.dim());
     std::vector<T> result(perm.dim());
-    detail::permute_array<Permutation::const_iterator, typename std::vector<T, A>::const_iterator, typename std::vector<T, A>::iterator>
-      (perm.begin(), perm.end(), orig.begin(), result.begin());
+    detail::permute_array(perm, orig, result);
     return result;
   }
 
@@ -334,16 +336,16 @@ namespace TiledArray {
   } // namespace detail
 
   template <typename T, std::size_t N>
-  inline std::array<T,N> operator ^=(std::array<T,N>& a, const Permutation& perm) {
-    TA_ASSERT(perm.dim() == N);
-    return (a = perm ^ a);
+  inline std::array<T,N>& operator ^=(std::array<T,N>& a, const Permutation& perm) {
+    const std::array<T,N> temp = a;
+    detail::permute_array(perm, temp, a);
+    return a;
   }
 
   template <typename T, typename A>
-  inline std::vector<T, A> operator^=(std::vector<T, A>& orig, const Permutation& perm) {
-    TA_ASSERT(orig.size() == perm.dim());
-    orig = perm ^ orig;
-
+  inline std::vector<T, A>& operator^=(std::vector<T, A>& orig, const Permutation& perm) {
+    const std::vector<T, A> temp = orig;
+    detail::permute_array(perm, temp, orig);
     return orig;
   }
 
