@@ -133,9 +133,9 @@ include(external/MADNESS)
 
 if (Elemental_DIR)
   include(external/Elemental)
-  if(HAVE_ELEMENTAL)
+  if(TILEDARRAY_HAS_ELEMENTAL)
     ADD_DEFINITIONS(-DTILEDARRAY_HAS_ELEMENTAL=1)
-  endif(HAVE_ELEMENTAL)
+  endif(TILEDARRAY_HAS_ELEMENTAL)
 endif()
 
 if (TA_BUILD_UNITTEST)
