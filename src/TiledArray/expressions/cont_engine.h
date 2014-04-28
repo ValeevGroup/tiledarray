@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_EXPRESSIONS_CONT_ENGINE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_CONT_ENGINE_H__INCLUDED
 
-#include <TiledArray/expressions/mult_engine.h>
+#include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/proc_grid.h>
@@ -42,14 +42,13 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Derived, template <typename> class BaseEngine>
-    class ContEngine : public BaseEngine<Derived> {
+    template <typename Derived>
+    class ContEngine : public BinaryEngine<Derived> {
     public:
       // Class hierarchy typedefs
-      typedef ContEngine<Derived, BaseEngine> ContEngine_; ///< This class type
-      typedef BaseEngine<Derived> MultEngine_; /// Multiply base engine
+      typedef ContEngine<Derived> ContEngine_; ///< This class type
       typedef BinaryEngine<Derived> BinaryEngine_; ///< Binary base class type
-      typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class type
+      typedef ExprEngine<Derived> ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
       typedef typename EngineTrait<Derived>::left_type left_type; ///< The left-hand expression type
@@ -87,7 +86,12 @@ namespace TiledArray {
         permute_to_no_trans = 3,
       } TensorOp;
 
+    protected:
+
       scalar_type factor_; ///< Contraction scaling factor
+
+    private:
+
       VariableList left_vars_; ///< Left-hand variable list
       VariableList right_vars_; ///< Right-hand variable list
       TensorOp left_op_; ///< Left-hand operation
@@ -116,7 +120,7 @@ namespace TiledArray {
       /// \param expr The parent expression
       template <typename L, typename R>
       ContEngine(const MultExpr<L, R>& expr) :
-        MultEngine_(expr), factor_(1), left_vars_(), right_vars_(),
+        BinaryEngine_(expr), factor_(1), left_vars_(), right_vars_(),
         left_op_(permute_to_no_trans), right_op_(permute_to_no_trans), op_(),
         proc_grid_(), K_(1u)
       { }
@@ -128,7 +132,7 @@ namespace TiledArray {
       /// \param expr The parent expression
       template <typename L, typename R>
       ContEngine(const ScalMultExpr<L, R>& expr) :
-        MultEngine_(expr), factor_(expr.factor()), left_vars_(), right_vars_(),
+        BinaryEngine_(expr), factor_(expr.factor()), left_vars_(), right_vars_(),
         left_op_(permute_to_no_trans), right_op_(permute_to_no_trans), op_(),
         proc_grid_(), K_(1u)
       { }
@@ -301,6 +305,7 @@ namespace TiledArray {
         // Here we set the operation that will be applied to the argument
         // tensors. If an argument is in matrix form, disable permutation.
         // Otherwise, permute the argument to a matrix form.
+
         if(left_is_no_trans) {
           left_op_ = no_trans;
           BinaryEngine_::left_.permute_tiles(false);

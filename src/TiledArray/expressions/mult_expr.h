@@ -27,19 +27,19 @@
 #define TILEDARRAY_EXPRESSIONS_MULT_EXPR_H__INCLUDED
 
 #include <TiledArray/expressions/binary_expr.h>
-#include <TiledArray/expressions/mult_cont_engine.h>
+#include <TiledArray/expressions/mult_engine.h>
 
 namespace TiledArray {
   namespace expressions {
 
     template <typename Left, typename Right>
     struct ExprTrait<MultExpr<Left, Right> > :
-        public BinaryExprTrait<Left, Right, MultContEngine>
+        public BinaryExprTrait<Left, Right, MultEngine>
     { };
 
     template <typename Left, typename Right>
     struct ExprTrait<ScalMultExpr<Left, Right> > :
-        public BinaryExprTrait<Left, Right, ScalMultContEngine>
+        public BinaryExprTrait<Left, Right, ScalMultEngine>
     { };
 
 
