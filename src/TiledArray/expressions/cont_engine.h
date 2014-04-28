@@ -343,7 +343,7 @@ namespace TiledArray {
         const madness::cblas::CBLAS_TRANSPOSE left_op =
             (left_op_ == trans ? madness::cblas::Trans : madness::cblas::NoTrans);
         const madness::cblas::CBLAS_TRANSPOSE right_op =
-            (left_op_ == trans ? madness::cblas::Trans : madness::cblas::NoTrans);
+            (right_op_ == trans ? madness::cblas::Trans : madness::cblas::NoTrans);
 
 
         if(target_vars != vars_) {
