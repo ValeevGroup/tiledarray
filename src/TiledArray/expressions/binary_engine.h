@@ -231,8 +231,10 @@ namespace TiledArray {
       /// \param target_vars The target variable list for this expression
       void print(ExprOStream os, const VariableList& target_vars) const {
         ExprEngine_::print(os, target_vars);
+        os.inc();
         left_.print(os, vars_);
         right_.print(os, vars_);
+        os.dec();
       }
     }; // class BinaryEngine
 

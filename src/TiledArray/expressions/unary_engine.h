@@ -204,10 +204,13 @@ namespace TiledArray {
 
       /// \param os The output stream
       /// \param target_vars The target variable list for this expression
-      void print(ExprOStream os) const {
-        print(os);
-        arg_.print(os);
+      void print(ExprOStream os, const VariableList& target_vars) const {
+        ExprEngine_::print(os, target_vars);
+        os.inc();
+        arg_.print(os, vars_);
+        os.dec();
       }
+
     }; // class UnaryEngine
 
   }  // namespace expressions
