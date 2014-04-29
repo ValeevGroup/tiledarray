@@ -50,7 +50,7 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The stream object to be copied
-      ExprOStream(const ExprOStream& other) : os_(other.os_), tab_(other.tab_ + 1u) { }
+      ExprOStream(const ExprOStream& other) : os_(other.os_), tab_(other.tab_) { }
 
       /// Output operator
 
@@ -89,7 +89,7 @@ namespace TiledArray {
 
       /// \param os Output stream
       /// \param target_vars The target variable list for an expression
-      ExprTraceTarget(std::ostream& os, const VariableList& target_vars) :
+      ExprTraceTarget(std::ostream& os, const std::string& target_vars) :
         os_(os), target_vars_(target_vars)
       { }
 
@@ -106,13 +106,12 @@ namespace TiledArray {
       /// \param expr The expression to be printed
       /// \return The output stream
       template <typename D>
-      std::ostream& operator<<(const Expr<D>& expr) {
+      std::ostream& operator<<(const Expr<D>& expr) const {
         if(madness::World::get_default().rank() == 0) {
           os_ << target_vars_ << " =\n";
 
-          expr.init_vars(target_vars_);
-
           ExprOStream expr_stream(os_);
+          expr_stream.inc();
           expr.derived().print(expr_stream, target_vars_);
         }
 
