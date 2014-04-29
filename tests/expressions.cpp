@@ -100,7 +100,9 @@ struct ExpressionsFixture : public TiledRangeFixture {
     return matrix;
   }
 
-  ~ExpressionsFixture() { }
+  ~ExpressionsFixture() {
+    GlobalFixture::world->gop.fence();
+  }
 
   TiledRange trange1;
   TiledRange trange2;
