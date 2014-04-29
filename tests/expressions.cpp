@@ -209,6 +209,25 @@ BOOST_AUTO_TEST_CASE( scale_mult )
 
 }
 
+
+BOOST_AUTO_TEST_CASE( cont )
+{
+  BOOST_REQUIRE_NO_THROW(w("i,j") =      a("i,b,c")  *      b("j,b,c") );
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) *      b("j,b,c") );
+  BOOST_REQUIRE_NO_THROW(w("i,j") =      a("i,b,c")  * (3 * b("j,b,c")));
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * (3 * b("j,b,c")));
+
+}
+
+BOOST_AUTO_TEST_CASE( scale_cont )
+{
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (     a("i,b,c")  *      b("j,b,c")));
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) *      b("j,b,c")));
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (     a("i,b,c")  * (3 * b("j,b,c"))));
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * (3 * b("j,b,c"))));
+
+}
+
 BOOST_AUTO_TEST_CASE( outer_product )
 {
   // Generate Eigen matrices from input arrays.
