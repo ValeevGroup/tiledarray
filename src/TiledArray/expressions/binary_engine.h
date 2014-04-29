@@ -117,6 +117,8 @@ namespace TiledArray {
       /// \param target_vars The target variable list for this expression
       void perm_vars(const VariableList& target_vars) {
         TA_ASSERT(ExprEngine_::permute_tiles());
+        TA_ASSERT(left_.vars().dim() == target_vars.dim());
+        TA_ASSERT(right_.vars().dim() == target_vars.dim());
 
         // Determine the equality of the variable lists
         bool left_target = true, right_target = true, left_right = true;
