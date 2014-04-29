@@ -160,11 +160,11 @@ namespace TiledArray {
         if(left_type::leaves <= right_type::leaves) {
           left_.init_vars();
           vars_ = left_.vars();
-          right_.perm_vars(vars_);
+          right_.init_vars(vars_);
         } else {
           right_.init_vars();
           vars_ = right_.vars();
-          left_.perm_vars(vars_);
+          left_.init_vars(vars_);
         }
       }
 
