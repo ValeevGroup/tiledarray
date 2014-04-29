@@ -111,6 +111,18 @@ namespace TiledArray {
         }
       }
 
+      /// Set the variable list for this expression
+
+      /// This function will set the variable list for this expression and its
+      /// children such that the number of permutations is minimized.
+      void perm_vars() {
+        if(contract_)
+          ContEngine_::perm_vars();
+        else {
+          BinaryEngine_::perm_vars();
+        }
+      }
+
       /// Initialize the variable list of this expression
 
       /// \param target_vars The target variable list for this expression
@@ -274,7 +286,6 @@ namespace TiledArray {
       template <typename L, typename R>
       ScalMultEngine(const ScalMultExpr<L, R>& expr) : ContEngine_(expr), contract_(false) { }
 
-
       /// Set the variable list for this expression
 
       /// This function will set the variable list for this expression and its
@@ -287,6 +298,18 @@ namespace TiledArray {
           ContEngine_::perm_vars(target_vars);
         else {
           BinaryEngine_::perm_vars(target_vars);
+        }
+      }
+
+      /// Set the variable list for this expression
+
+      /// This function will set the variable list for this expression and its
+      /// children such that the number of permutations is minimized.
+      void perm_vars() {
+        if(contract_)
+          ContEngine_::perm_vars();
+        else {
+          BinaryEngine_::perm_vars();
         }
       }
 
