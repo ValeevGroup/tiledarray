@@ -128,8 +128,8 @@ namespace TiledArray {
     public:
       // Class hierarchy typedefs
       typedef ScalAddEngine<Left, Right> ScalAddEngine_; ///< This class type
-      typedef BinaryEngine<ScalAddEngine<Left, Right> > BinaryEngine_; ///< Binary expression engine base type
-      typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
+      typedef BinaryEngine<ScalAddEngine_> BinaryEngine_; ///< Binary expression engine base type
+      typedef ExprEngine<ScalAddEngine_> ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
       typedef typename EngineTrait<ScalAddEngine_>::left_type left_type; ///< The left-hand expression type
