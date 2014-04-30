@@ -131,11 +131,14 @@ endif()
 
 include(external/MADNESS)
 
-if (Elemental_DIR)
-  include(external/Elemental)
-  if(TILEDARRAY_HAS_ELEMENTAL)
-    ADD_DEFINITIONS(-DTILEDARRAY_HAS_ELEMENTAL=1)
-  endif(TILEDARRAY_HAS_ELEMENTAL)
+# look for Elemental if MADNESS has it, or Elemental_DIR was given explicitly
+if (Elemental_DIR OR MADNESS_HAS_ELEMENTAL)
+  # if MADNESS found but does not support elemental, too much potential for error, skip
+  if (Madness_FOUND AND !MADNESS_HAS_ELEMENTAL)
+    message(WARNING "Found MADNESS but it does not know about Elemental ... will punt on Elemental")
+  else()
+    include(external/Elemental)
+  endif()
 endif()
 
 if (TA_BUILD_UNITTEST)

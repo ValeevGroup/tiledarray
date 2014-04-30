@@ -15,7 +15,7 @@ if (ELEMENTAL_LIBRARIES)
     message(FATAL_ERROR "Could not find elemental.hpp")
   endif(NOT ELEMENTAL_INCLUDE_DIR)
   
-  #Check for CXX11
+  # Check for CXX11
   CHECK_CXX_SOURCE_COMPILES(
     "
     template<typename T>
