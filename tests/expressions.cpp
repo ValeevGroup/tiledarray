@@ -155,59 +155,307 @@ BOOST_AUTO_TEST_CASE( scale_permute )
 
 BOOST_AUTO_TEST_CASE( add )
 {
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  +      b("a,b,c") );
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) +      b("a,b,c") );
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  + (3 * b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") + b("a,b,c") );
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] + b_tile[j]);
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) + b("a,b,c"));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) + b_tile[j]);
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c")  + (3 * b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] + (3 * b_tile[j]));
+  }
+
+
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) + (3 * b("a,b,c")));
 
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) + (3 * b_tile[j]));
+  }
 }
 
 BOOST_AUTO_TEST_CASE( scale_add )
 {
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  +      b("a,b,c")) );
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) +      b("a,b,c")) );
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  + (3 * b("a,b,c"))));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") + b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] + b_tile[j]));
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) + b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) + b_tile[j]));
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c")  + (3 * b("a,b,c"))));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] + (3 * b_tile[j])));
+  }
+
+
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) + (3 * b("a,b,c"))));
 
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) + (3 * b_tile[j])));
+  }
 }
 
 
 BOOST_AUTO_TEST_CASE( subt )
 {
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  -      b("a,b,c") );
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) -      b("a,b,c") );
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  - (3 * b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") - b("a,b,c") );
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] - b_tile[j]);
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) - b("a,b,c"));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) - b_tile[j]);
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c")  - (3 * b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] - (3 * b_tile[j]));
+  }
+
+
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) - (3 * b("a,b,c")));
 
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) - (3 * b_tile[j]));
+  }
 }
 
 BOOST_AUTO_TEST_CASE( scale_subt )
 {
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  -      b("a,b,c")));
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) -      b("a,b,c")));
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  - (3 * b("a,b,c"))));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") - b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] - b_tile[j]));
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) - b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) - b_tile[j]));
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") - (3 * b("a,b,c"))));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] - (3 * b_tile[j])));
+  }
+
+
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) - (3 * b("a,b,c"))));
 
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) - (3 * b_tile[j])));
+  }
 }
+
 
 
 BOOST_AUTO_TEST_CASE( mult )
 {
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  *      b("a,b,c") );
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) *      b("a,b,c") );
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") =      a("a,b,c")  * (3 * b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * b("a,b,c") );
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * b_tile[j]);
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * b("a,b,c"));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * b_tile[j]);
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * (3 * b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * (3 * b_tile[j]));
+  }
+
+
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * (3 * b("a,b,c")));
 
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
+  }
 }
 
 BOOST_AUTO_TEST_CASE( scale_mult )
 {
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  *      b("a,b,c")));
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) *      b("a,b,c")));
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (     a("a,b,c")  * (3 * b("a,b,c"))));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") * b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] * b_tile[j]));
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) * b("a,b,c")));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * b_tile[j]));
+  }
+
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") * (3 * b("a,b,c"))));
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] * (3 * b_tile[j])));
+  }
+
+
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) * (3 * b("a,b,c"))));
 
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * (3 * b_tile[j])));
+  }
 }
+
 
 
 BOOST_AUTO_TEST_CASE( cont )
