@@ -187,7 +187,7 @@ namespace TiledArray {
 
             // Check that the future has not been set already.
 #ifndef NDEBUG
-            check_future(f);
+            check_future(existing_f);
 #endif // NDEBUG
 
             // Set the future
