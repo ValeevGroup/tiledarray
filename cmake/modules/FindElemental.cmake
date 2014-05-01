@@ -156,7 +156,7 @@ if(Elemental_FOUND AND NOT ELEMENTAL_LIBRARY)
      endif()
     endforeach()
                 
-    foreach(COMPONENT elemental pmrrr lapackaddon)
+    foreach(COMPONENT elemental pmrrr lapack-addons)
         if(Elemental_${COMPONENT}_FOUND)
             list(APPEND ELEMENTAL_LIBRARY ${Elemental_${COMPONENT}_LIBRARY})               
         endif()

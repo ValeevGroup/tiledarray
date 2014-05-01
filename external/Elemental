@@ -8,7 +8,7 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(Elemental COMPONENTS elemental;pmrrr)
+find_package(Elemental COMPONENTS elemental;pmrrr;lapack-addons)
 
 if (ELEMENTAL_LIBRARIES)
   if (NOT ELEMENTAL_INCLUDE_DIR)
