@@ -195,6 +195,17 @@ elseif (TA_ERROR STREQUAL assert)
 endif()
 
 ##########################
+# QT CREATOR file grabber
+##########################
+if(USING_QT_CREATOR_AS_IDE)
+  include_directories(tests)
+  include_directories(examples)
+  file(GLOB_RECURSE QT_CREATOR_SRC "*.h" "*.cpp" "*.c" "*.cc" "*.hpp" "*.txt" ".in")
+  add_library(qt_creator_get_sources EXCLUDE_FROM_ALL ${QT_CREATOR_SRC})
+  set_target_properties(qt_creator_get_sources PROPERTIES LINKER_LANGUAGE CXX)
+endif(USING_QT_CREATOR_AS_IDE)
+
+##########################
 # wrap up
 ##########################
 CONFIGURE_FILE(

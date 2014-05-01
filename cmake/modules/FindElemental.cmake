@@ -64,6 +64,21 @@ endmacro()
 set(Elemental_FOUND TRUE)
 
 ########################################
+# Find Dependencies
+########################################
+
+# Find MPI
+if(NOT DISABLE_MPI)
+  libfind_package(Elemental MPI)
+  if(NOT MPI_FOUND)
+    set(Elemental_FOUND FALSE)
+  endif()
+else()
+  message(FATAL_ERROR "Elemental needs MPI")
+endif()
+
+
+########################################
 # Find Elemental include dir
 ########################################
 
@@ -79,9 +94,33 @@ if(Elemental_FOUND AND NOT Elemental_INCLUDE_DIR)
     endif()
 endif()
 
+if(NOT Elemental_INCLUDE_DIRS)
+
+  if(Elemental_INCLUDE_DIR)
+    set(Elemental_INCLUDE_DIRS ${Elemental_INCLUDE_DIR})
+  endif()
+
+  foreach(lang _C_ _CXX_ _)
+
+    if(MPI${lang}FOUND)
+      if(MPI${lang}INCLUDE_PATH)
+        list(APPEND Elemental_INCLUDE_DIRS ${MPI${lang}INCLUDE_PATH})
+      endif()
+      break()
+    endif()
+
+  endforeach()
+
+endif()
+
+########################################
+# Find Elemental Components
+########################################
+
 if(Elemental_FOUND AND NOT ELEMENTAL_LIBRARY)
 
     lib_add_dep(Elemental_FIND_COMPONENTS elemental "pmrrr")
+    lib_add_dep(Elemental_FIND_COMPONENTS elemental "elemental")
     
     if(ELEMENTAL_LIBRARY_DIR)
         set(test_lib_dir ${ELEMENTAL_LIBRARY_DIR})
@@ -117,7 +156,7 @@ if(Elemental_FOUND AND NOT ELEMENTAL_LIBRARY)
      endif()
     endforeach()
                 
-    foreach(COMPONENT elemental pmrrr)
+    foreach(COMPONENT elemental pmrrr lapackaddon)
         if(Elemental_${COMPONENT}_FOUND)
             list(APPEND ELEMENTAL_LIBRARY ${Elemental_${COMPONENT}_LIBRARY})               
         endif()
@@ -125,24 +164,66 @@ if(Elemental_FOUND AND NOT ELEMENTAL_LIBRARY)
 
 endif() 
 
+########################################
+# Find Elemental Components
+########################################
+
 if(NOT ELEMENTAL_LIBRARIES)
     if(ELEMENTAL_LIBRARY)
         set(ELEMENTAL_LIBRARIES ${ELEMENTAL_LIBRARY})
     endif()
+
+    #add MPI libraries
+    foreach(lang _C_ _CXX_ _)
+      if(MPI${lang}FOUND)
+        if(MPI${lang}LIBRARIES)
+          list(APPEND ELEMENTAL_LIBRARIES ${MPI${lang}LIBRARIES})
+        endif()
+        break()
+      endif()
+    endforeach()
+
+    #Add LAPACK_LIBRARIES
+    if(LAPACK_LIBRARIES)
+      list(APPEND ELEMENTAL_LIBRARIES ${LAPACK_LIBRARIES})
+    endif()
+
 endif()
 
-set(Elemental_DIR ${Elemental_DIR} "Elemental install path")
-set(ELEMENTAL_LIBRARIES "${ELEMENTAL_LIBRARIES}")
-set(ELEMENTAL_INCLUDE_DIRS "${ELEMENTAL_INCLUDE_DIR}")
+########################################
+# Set ELEM LINK
+########################################
+if(NOT ELEMENTAL_LINK_FLAGS)
 
+  # ADD ELEMENTAL LIBRARIES
+  set(ELEMENTAL_LINK_FLAGS "")
 
+  # ADD MPI 
+  foreach(lang _C_ _CXX_ _)
+    if(MPI${lang}FOUND)
+      append_flags(ELEMENTAL_LINK_FLAGS "${MPI${lang}LINK_FLAGS}")
+      break()
+    endif()
+  endforeach()
 
+  # Add LAPACK libraries
+  append_flags(ELEMENTAL_LINK_FLAGS "${LAPACK_LINKER_FLAGS}")
 
+endif()
 
+########################################
+# Set ELEM cache variables
+########################################
 
+mark_as_advanced(ELEMENTAL_INCLUDE_DIR ELEMENTAL_INCLUDE_DIRS ELEMENTAL_LIBRARIES
+  ELEMENTAL_LINK_FLAGS ELEMENTAL_LIBRARY)
 
-
-
+set(Elemental_DIR ${Elemental_DIR} CACHE PATH "Elemental install path")
+set(ELEMENTAL_LIBRARIES "${ELEMENTAL_LIBRARIES}" CACHE STRING "A comma seperated list of ELEMENTAL
+  libraries and their dependencies")
+set(ELEMENTAL_INCLUDE_DIRS "${ELEMENTAL_INCLUDE_DIR}" CACHE STRING "A comma 
+  seperated list of Elemental include paths and its dependencies")
+  set(ELEMENTAL_LINK_FLAGS "${ELEMENTAL_LINK_FLAGS}" CACHE STRING "ELemental link flags")
 
 
 
