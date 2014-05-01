@@ -38,7 +38,8 @@ namespace TiledArray {
     template <typename S1, typename T1, typename T2, typename S2, typename T3>
     inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
         madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
-        const integer k, const S1 alpha, const T1* a, const T2* b, const S2 beta, T3* c)
+        const integer k, const S1 alpha, const T1* a, const integer lda,
+        const T2* b, const integer ldb, const S2 beta, T3* c, const integer ldc)
     {
       // Define operations
       static const unsigned int
@@ -56,13 +57,16 @@ namespace TiledArray {
       typedef Eigen::Matrix<T1, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixA_type;
       typedef Eigen::Matrix<T2, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixB_type;
       typedef Eigen::Matrix<T3, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrixC_type;
-      Eigen::Map<const matrixA_type, Eigen::AutoAlign> A(a,
+      Eigen::Map<const matrixA_type, Eigen::AutoAlign, Eigen::OuterStride<> > A(a,
           (op_a == madness::cblas::NoTrans ? m : k),
-          (op_a == madness::cblas::NoTrans ? k : m));
-      Eigen::Map<const matrixB_type, Eigen::AutoAlign> B(b,
+          (op_a == madness::cblas::NoTrans ? k : m),
+          Eigen::OuterStride<>(lda));
+      Eigen::Map<const matrixB_type, Eigen::AutoAlign, Eigen::OuterStride<> > B(b,
           (op_b == madness::cblas::NoTrans ? k : n),
-          (op_b == madness::cblas::NoTrans ? n : k));
-      Eigen::Map<matrixC_type, Eigen::AutoAlign> C(c, m, n);
+          (op_b == madness::cblas::NoTrans ? n : k),
+          Eigen::OuterStride<>(ldb));
+      Eigen::Map<matrixC_type, Eigen::AutoAlign, Eigen::OuterStride<> >
+          C(c, m, n, Eigen::OuterStride<>(ldc));
 
       switch(op_a | (op_b << 2)) {
         case notrans_notrans:
@@ -98,34 +102,36 @@ namespace TiledArray {
 
     inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
         madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
-        const integer k, const float alpha, const float* a, const float* b,
-        const float beta, float* c)
+        const integer k, const float alpha, const float* a, const integer lda,
+        const float* b, const integer ldb, const float beta, float* c, const integer ldc)
     {
-      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, n, a, k, beta, c, n);
+      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, ldb, a, lda, beta, c, ldc);
     }
 
     inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
         madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
-        const integer k, const double alpha, const double* a, const double* b,
-        const double beta, double* c)
+        const integer k, const double alpha, const double* a, const integer lda,
+        const double* b, const integer ldb, const double beta, double* c, const integer ldc)
     {
-      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, n, a, k, beta, c, n);
+      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, ldb, a, lda, beta, c, ldc);
     }
 
     inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
         madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
         const integer k, const std::complex<float> alpha, const std::complex<float>* a,
-        const std::complex<float>* b, const std::complex<float> beta, std::complex<float>* c)
+        const integer lda, const std::complex<float>* b, const integer ldb,
+        const std::complex<float> beta, std::complex<float>* c, const integer ldc)
     {
-      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, n, a, k, beta, c, n);
+      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, ldb, a, lda, beta, c, ldc);
     }
 
     inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
         madness::cblas::CBLAS_TRANSPOSE op_b, const integer m, const integer n,
         const integer k, const std::complex<double> alpha, const std::complex<double>* a,
-        const std::complex<double>* b, const std::complex<double> beta, std::complex<double>* c)
+        const integer lda, const std::complex<double>* b, const integer ldb,
+        const std::complex<double> beta, std::complex<double>* c, const integer ldc)
     {
-      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, n, a, k, beta, c, n);
+      madness::cblas::gemm(op_b, op_a, n, m, k, alpha, b, ldb, a, lda, beta, c, ldc);
     }
 
 
