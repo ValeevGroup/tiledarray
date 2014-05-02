@@ -68,20 +68,72 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( integral_gemm , T, int_types )
     rand_fill(b, k * n, 47);
     rand_fill(c, m * n, 99);
 
+    const integer lda = k, ldb = n, ldc = n;
+
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
-        madness::cblas::NoTrans, m, n, k, 3, a, k, b, n, 0, c, n));
+        madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
 
     for(std::size_t i = 0ul; i < m; ++i) {
       for(std::size_t j = 0ul; j < n; ++j) {
         // Compute the expected value
-        T expected = 0.0f;
+        T expected = 0;
         for(std::size_t x = 0ul; x < k; ++x)
-          expected += a[i * k + x] * b[x * n + j];
+          expected += a[i * lda + x] * b[x * ldb + j];
         expected *= 3;
 
         // Check the result against the expected value
-        BOOST_CHECK_EQUAL(c[i * n + j], expected);
+        BOOST_CHECK_EQUAL(c[i * ldc + j], expected);
+      }
+    }
+
+  } catch(...) {
+    delete [] a;
+    delete [] b;
+    delete [] c;
+
+    throw;
+  }
+
+  delete [] a;
+  delete [] b;
+  delete [] c;
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( integral_gemm_ld , T, int_types )
+{
+  // Allocate and initialize test input
+  T* a = NULL, * b = NULL, * c = NULL;
+
+  try {
+    // Allocate and fill matrices
+    a = new T[m * k];
+    b = new T[k * n];
+    c = new T[m * n];
+
+    rand_fill(a, m * k, 29);
+    rand_fill(b, k * n, 47);
+    rand_fill(c, m * n, 99);
+
+    integer lda = k, ldb = n, ldc = n;
+    m /= 2;
+    n /= 2;
+    k /= 2;
+
+    // Test the gemm operation
+    BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
+        madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+
+    for(std::size_t i = 0ul; i < m; ++i) {
+      for(std::size_t j = 0ul; j < n; ++j) {
+        // Compute the expected value
+        T expected = 0;
+        for(std::size_t x = 0ul; x < k; ++x)
+          expected += a[i * lda + x] * b[x * ldb + j];
+        expected *= 3;
+
+        // Check the result against the expected value
+        BOOST_CHECK_EQUAL(c[i * ldc + j], expected);
       }
     }
 
@@ -115,19 +167,70 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( floating_point_gemm , T, floating_point_types )
     rand_fill(b, k * n, 47);
     rand_fill(c, m * n, 99);
 
+    const integer lda = k, ldb = n, ldc = n;
+
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
-        madness::cblas::NoTrans, m, n, k, 3.0, a, k, b, n, 0.0, c, n));
+        madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+    for(std::size_t i = 0ul; i < m; ++i) {
+      for(std::size_t j = 0ul; j < n; ++j) {
+        // Compute the expected value
+        T expected = 0.0;
+        for(std::size_t x = 0ul; x < k; ++x)
+          expected += a[i * lda + x] * b[x * ldb + j];
+        expected *= 3.0;
+
+        BOOST_CHECK_CLOSE(c[i * ldc + j], expected, tol);
+      }
+    }
+
+  } catch(...) {
+    delete [] a;
+    delete [] b;
+    delete [] c;
+
+    throw;
+  }
+
+  delete [] a;
+  delete [] b;
+  delete [] c;
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( floating_point_gemm_ld , T, floating_point_types )
+{
+  // Allocate and initialize test input
+  T* a = NULL, * b = NULL, * c = NULL;
+
+  try {
+    // Allocate and fill matrices
+    a = new T[m * k];
+    b = new T[k * n];
+    c = new T[m * n];
+
+    rand_fill(a, m * k, 29);
+    rand_fill(b, k * n, 47);
+    rand_fill(c, m * n, 99);
+
+    integer lda = k, ldb = n, ldc = n;
+    m /= 2;
+    n /= 2;
+    k /= 2;
+
+    // Test the gemm operation
+    BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
+        madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
 
     for(std::size_t i = 0ul; i < m; ++i) {
       for(std::size_t j = 0ul; j < n; ++j) {
         // Compute the expected value
         T expected = 0.0;
         for(std::size_t x = 0ul; x < k; ++x)
-          expected += a[i * k + x] * b[x * n + j];
+          expected += a[i * lda + x] * b[x * ldb + j];
         expected *= 3.0;
 
-        BOOST_CHECK_CLOSE(c[i * n + j], expected, tol);
+        // Check the result against the expected value
+        BOOST_CHECK_CLOSE(c[i * ldc + j], expected, tol);
       }
     }
 
@@ -159,22 +262,76 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( complex_gemm , T, floating_point_types )
     rand_fill(reinterpret_cast<T*>(b), 2 * k * n, 47);
     rand_fill(reinterpret_cast<T*>(c), 2 * m * n, 99);
 
+    const integer lda = k, ldb = n, ldc = n;
+
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
-        madness::cblas::NoTrans, m, n, k, 3.0, a, k, b, n, 0.0, c, n));
+        madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
 
     for(std::size_t i = 0ul; i < m; ++i) {
       for(std::size_t j = 0ul; j < n; ++j) {
         // Compute the expected value
         std::complex<T> expected(0.0, 0.0);
         for(std::size_t x = 0ul; x < k; ++x) {
-          expected += a[i * k + x] * b[x * n + j];
+          expected += a[i * lda + x] * b[x * ldb + j];
         }
         expected *= 3.0;
 
         // Check the result against the expected value
-        BOOST_CHECK_CLOSE(c[i * n + j].real(), expected.real(), tol);
-        BOOST_CHECK_CLOSE(c[i * n + j].imag(), expected.imag(), tol);
+        BOOST_CHECK_CLOSE(c[i * ldc + j].real(), expected.real(), tol);
+        BOOST_CHECK_CLOSE(c[i * ldc + j].imag(), expected.imag(), tol);
+      }
+    }
+
+  } catch(...) {
+    delete [] a;
+    delete [] b;
+    delete [] c;
+
+    throw;
+  }
+
+  delete [] a;
+  delete [] b;
+  delete [] c;
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( complex_gemm_ld , T, floating_point_types )
+{
+  // Allocate and initialize test input
+  std::complex<T>* a = NULL, * b = NULL, * c = NULL;
+
+  try {
+    // Allocate and fill matrices
+    a = new std::complex<T>[m * k];
+    b = new std::complex<T>[k * n];
+    c = new std::complex<T>[m * n];
+
+    rand_fill(reinterpret_cast<T*>(a), 2 * m * k, 29);
+    rand_fill(reinterpret_cast<T*>(b), 2 * k * n, 47);
+    rand_fill(reinterpret_cast<T*>(c), 2 * m * n, 99);
+
+    const integer lda = k, ldb = n, ldc = n;
+    m /= 2;
+    n /= 2;
+    k /= 2;
+
+    // Test the gemm operation
+    BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
+        madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+
+    for(std::size_t i = 0ul; i < m; ++i) {
+      for(std::size_t j = 0ul; j < n; ++j) {
+        // Compute the expected value
+        std::complex<T> expected(0.0, 0.0);
+        for(std::size_t x = 0ul; x < k; ++x) {
+          expected += a[i * lda + x] * b[x * ldb + j];
+        }
+        expected *= 3.0;
+
+        // Check the result against the expected value
+        BOOST_CHECK_CLOSE(c[i * ldc + j].real(), expected.real(), tol);
+        BOOST_CHECK_CLOSE(c[i * ldc + j].imag(), expected.imag(), tol);
       }
     }
 
