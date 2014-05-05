@@ -35,8 +35,8 @@ namespace TiledArray {
   class SparsePolicy {
   public:
     typedef TiledArray::TiledRange trange_type;
-    typedef typename trange_type::range_type range_type;
-    typedef typename range_type::size_type size_type;
+    typedef trange_type::range_type range_type;
+    typedef range_type::size_type size_type;
     typedef TiledArray::SparseShape<float> shape_type;
     typedef TiledArray::Pmap pmap_interface;
     typedef TiledArray::detail::BlockedPmap default_pmap_type;
