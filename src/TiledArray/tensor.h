@@ -1030,8 +1030,12 @@ namespace TiledArray {
       integer m = 1, n = 1, k = 1;
       gemm_helper.compute_matrix_sizes(m, n, k, pimpl_->range_, other.range());
 
+      // Get the leading dimension for left and right matrices.
+      const integer lda = (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+      const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          pimpl_->data_.data(), k, other.data(), n, numeric_type(0), result.data(), n);
+          pimpl_->data_.data(), lda, other.data(), ldb, numeric_type(0), result.data(), n);
 
       return result;
     }
@@ -1082,8 +1086,12 @@ namespace TiledArray {
       integer m, n, k;
       gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
+      // Get the leading dimension for left and right matrices.
+      const integer lda = (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+      const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          left.data(), k, right.data(), n, numeric_type(1), pimpl_->data_.data(), n);
+          left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_.data(), n);
 
       return *this;
     }
