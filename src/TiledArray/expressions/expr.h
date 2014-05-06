@@ -308,15 +308,15 @@ namespace TiledArray {
         const typename engine_type::dist_eval_type::pmap_interface::const_iterator end =
             left_dist_eval.pmap()->end();
         for(; it != end; ++it) {
-          if(!left_dist_eval.is_zero(*it)) {
-            madness::Future<typename engine_type::value_type> left_tile =
-                left_dist_eval.move(*it);
+          const typename engine_type::size_type index = *it;
+          const bool left_not_zero = !left_dist_eval.is_zero(index);
+          const bool right_not_zero = !right_dist_eval.is_zero(index);
 
-            if(!right_dist_eval.is_zero(*it))
-              local_reduce_task.add(left_tile, right_dist_eval.move(*it));
+          if(left_not_zero && right_not_zero) {
+            local_reduce_task.add(left_dist_eval.move(index), right_dist_eval.move(index));
           } else {
-            if(!right_dist_eval.is_zero(*it))
-              right_dist_eval.move(*it);
+            if(left_not_zero) left_dist_eval.move(index);
+            if(right_not_zero) right_dist_eval.move(index);
           }
         }
 
