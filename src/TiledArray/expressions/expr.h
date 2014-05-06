@@ -254,6 +254,7 @@ namespace TiledArray {
 
         // Create the distributed evaluator from this expression
         typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
+        dist_eval.eval();
 
         // Create a local reduction task
         TiledArray::detail::ReduceTask<Op> reduce_task(world, op);
@@ -287,6 +288,7 @@ namespace TiledArray {
         // Create the distributed evaluator for this expression
         typename engine_type::dist_eval_type left_dist_eval =
             left_engine.make_dist_eval();
+        left_dist_eval.eval();
 
         // Evaluate the right-hand expression
         typename D::engine_type right_engine(right_expr.derived());
@@ -295,6 +297,7 @@ namespace TiledArray {
         // Create the distributed evaluator for the right-hand expression
         typename D::engine_type::dist_eval_type right_dist_eval =
             right_engine.make_dist_eval();
+        right_dist_eval.eval();
 
         // Create a local reduction task
         TiledArray::detail::ReducePairTask<Op> local_reduce_task(world, op);
@@ -397,9 +400,9 @@ namespace TiledArray {
         typedef TiledArray::math::BinaryReduceWrapper<typename engine_type::value_type,
             typename D::engine_type::value_type,
             TiledArray::math::DotReduction<typename engine_type::value_type::eval_type,
-            typename D::engine_type::value_type::eval_type> > reduction_type;
+            typename D::engine_type::value_type::eval_type> > reduction_op_type;
 
-        return reduce(right_expr, reduction_type(), world);
+        return reduce(right_expr, reduction_op_type(), world);
       }
 
     }; // class Expr
