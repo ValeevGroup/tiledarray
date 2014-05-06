@@ -1260,26 +1260,21 @@ namespace TiledArray {
 
     /// \return The sum of all elements of this tensor
     numeric_type sum() const {
-      numeric_type result = 0;
-      return reduce(result, math::PlusAssign<numeric_type, numeric_type>());
+      return reduce(0, math::PlusAssign<numeric_type, numeric_type>());
     }
 
     /// Product of elements
 
     /// \return The product of all elements of this tensor
     numeric_type product() const {
-      numeric_type result = 1;
-      reduce(result, math::MultipliesAssign<numeric_type, numeric_type>());
-      return result;
+      return reduce(1, math::MultipliesAssign<numeric_type, numeric_type>());
     }
 
     /// Square of vector norm_2
 
     /// \return The vector norm of this tensor
     numeric_type squared_norm() const {
-      numeric_type result = 0;
-      reduce(result, math::SquareAddAssign<numeric_type, numeric_type>());
-      return result;
+      return reduce(0, math::SquareAddAssign<numeric_type, numeric_type>());
     }
 
     /// Vector norm_2
@@ -1293,36 +1288,31 @@ namespace TiledArray {
 
     /// \return The minimum elements of this tensor
     numeric_type min() const {
-      numeric_type result = std::numeric_limits<numeric_type>::max();
-      reduce(result, math::MinAssign<numeric_type, numeric_type>());
-      return result;
+      return reduce(std::numeric_limits<numeric_type>::max(),
+          math::MinAssign<numeric_type, numeric_type>());
     }
 
     /// Maximum element
 
     /// \return The maximum elements of this tensor
     numeric_type max() const {
-      numeric_type result = std::numeric_limits<numeric_type>::min();
-      reduce(result, math::MaxAssign<numeric_type, numeric_type>());
-      return result;
+      return reduce(std::numeric_limits<numeric_type>::min(),
+          math::MaxAssign<numeric_type, numeric_type>());
     }
 
     /// Absolute minimum element
 
     /// \return The minimum elements of this tensor
     numeric_type abs_min() const {
-      numeric_type result = std::numeric_limits<numeric_type>::max();
-      reduce(result, math::AbsMinAssign<numeric_type, value_type>());
-      return result;
+      return reduce(std::numeric_limits<numeric_type>::max(),
+          math::AbsMinAssign<numeric_type, value_type>());
     }
 
     /// Absolute maximum element
 
     /// \return The maximum elements of this tensor
     numeric_type abs_max() const {
-      numeric_type result = 0;
-      reduce(result, math::AbsMaxAssign<numeric_type, value_type>());
-      return result;
+      return reduce(0, math::AbsMaxAssign<numeric_type, value_type>());
     }
 
     /// Vector dot product
@@ -1333,10 +1323,8 @@ namespace TiledArray {
     /// \return The inner product of the this and \c other
     template <typename U, typename AU>
     numeric_type dot(const Tensor<U, AU>& other) const {
-      numeric_type result = 0;
-      reduce(other, result, math::MultAddAssign<numeric_type, typename Tensor<U,
+      return reduce(other, 0, math::MultAddAssign<numeric_type, typename Tensor<U,
           AU>::numeric_type, numeric_type>());
-      return result;
     }
 
   }; // class Tensor
