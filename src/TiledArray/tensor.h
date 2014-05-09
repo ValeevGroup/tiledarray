@@ -25,6 +25,7 @@
 #include <TiledArray/math/functional.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
+#include <TiledArray/tile_op/permute.h>
 
 namespace TiledArray {
 
@@ -89,40 +90,9 @@ namespace TiledArray {
       {
         TA_ASSERT(perm.dim() == other.range().dim());
 
-        // Create tensor to hold the result
-        value_type* restrict const data = data_.data();
-
-        /// Get pointers to this tensors data and weight
-        const size_type* restrict const other_weight = other.range().weight().data();
-        const typename Tensor<U, AU>::value_type* restrict const other_data = other.data();
-
-        // Construct the inverse permuted weight for this tensor
-        const Permutation inv_perm(-perm);
-        const std::vector<size_type> ip_weight = inv_perm ^ range_.weight();
-        {
-          const size_type* restrict const r_ip_weight = & ip_weight.front();
-
-          // Cache constants needed for the perumtation loop
-          const size_type end = range_.volume();
-          const size_type ndim = range_.dim();
-          const size_type index_end_stride = range_.size()[inv_perm[range_.dim() - 1ul]];
-          const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
-
-          // Permute the data
-          for(size_type index = 0ul, index_end = index_end_stride; index < end; index_end += index_end_stride) {
-            // Compute the first permuted index of this vector
-            size_type i = index;
-            size_type perm_index = 0ul;
-            for(size_type dim = 0ul; dim < ndim; ++dim) {
-              perm_index += (i / other_weight[dim]) * r_ip_weight[dim];
-              i %= other_weight[dim];
-            }
-
-            for(; index < index_end; ++index, perm_index += perm_index_stride)
-              // Assign permuted data
-              data[perm_index] = other_data[index];
-          }
-        }
+        TiledArray::math::permute(range_.dim(), & perm.data().front(),
+            other.range().size().data(), other.range().weight().data(),
+            data_.data(), other.data());
       }
 
       /// Construct an evaluated tensor
@@ -140,41 +110,10 @@ namespace TiledArray {
       {
         TA_ASSERT(perm.dim() == other.range().dim());
 
-        // Create tensor to hold the result
-        value_type* restrict const data = data_.data();
 
-        /// Get pointers to this tensors data and weight
-        const size_type* restrict const other_weight = other.range().weight().data();
-        const typename Tensor<U, AU>::value_type* restrict const other_data = other.data();
-
-        // Construct the inverse permuted weight for this tensor
-        const Permutation inv_perm(-perm);
-        const std::vector<size_type> ip_weight = inv_perm ^ range_.weight();
-        {
-          const size_type* restrict const r_ip_weight = & ip_weight.front();
-
-          // Cache constants needed for the perumtation loop
-          const size_type end = range_.volume();
-          const size_type ndim = range_.dim();
-          const size_type index_end_stride = range_.size()[inv_perm[range_.dim() - 1ul]];
-          const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
-
-          // Permute the data
-          for(size_type index = 0ul, index_end = index_end_stride; index < end; index_end += index_end_stride) {
-            // Compute the first permuted index of this vector
-            size_type i = index;
-            size_type perm_index = 0ul;
-            for(size_type dim = 0ul; dim < ndim; ++dim) {
-              perm_index += (i / other_weight[dim]) * r_ip_weight[dim];
-              i %= other_weight[dim];
-            }
-
-            for(; index < index_end; ++index, perm_index += perm_index_stride)
-              // Assign permuted data
-              data[perm_index] = op(other_data[index]);
-
-          }
-        }
+        TiledArray::math::permute(range_.dim(), & perm.data().front(),
+            other.range().size().data(), other.range().weight().data(),
+            data_.data(), other.data(), op);
       }
 
       /// Construct an evaluated tensor
@@ -194,42 +133,10 @@ namespace TiledArray {
         TA_ASSERT(left.range() == right.range());
         TA_ASSERT(perm.dim() == left.range().dim());
 
-        // Create tensor to hold the result
-        value_type* restrict const data = data_.data();
 
-        /// Get pointers to this tensors data and weight
-        const size_type* restrict const other_weight = left.range().weight().data();
-        const typename Tensor<U, AU>::value_type* restrict const left_data = left.data();
-        const typename Tensor<V, AV>::value_type* restrict const right_data = right.data();
-
-        // Construct the inverse permuted weight for this tensor
-        const Permutation inv_perm(-perm);
-        const std::vector<size_type> ip_weight = inv_perm ^ range_.weight();
-        {
-          const size_type* restrict const r_ip_weight = & ip_weight.front();
-
-          // Cache constants needed for the perumtation loop
-          const size_type end = range_.volume();
-          const size_type ndim = range_.dim();
-          const size_type index_end_stride = range_.size()[inv_perm[range_.dim() - 1ul]];
-          const size_type perm_index_stride = r_ip_weight[range_.dim() - 1ul];
-
-          // Permute the data
-          for(size_type index = 0ul, index_end = index_end_stride; index < end; index_end += index_end_stride) {
-            // Compute the first permuted index of this vector
-            size_type i = index;
-            size_type perm_index = 0ul;
-            for(size_type dim = 0ul; dim < ndim; ++dim) {
-              perm_index += (i / other_weight[dim]) * r_ip_weight[dim];
-              i %= other_weight[dim];
-            }
-
-            for(; index < index_end; ++index, perm_index += perm_index_stride)
-              // Assign permuted data
-              data[perm_index] = op(left_data[index], right_data[index]);
-
-          }
-        }
+        TiledArray::math::permute(range_.dim(), & perm.data().front(),
+            left.range().size().data(), left.range().weight().data(),
+            data_.data(), left.data(), right.data(), op);
       }
 
       /// Copy constructor
@@ -287,11 +194,9 @@ namespace TiledArray {
     { }
 
     /// Construct an evaluated tensor
-    template <typename InIter, typename Op>
-    Tensor(const Range& r, InIter it, const Op& op,
-        typename madness::enable_if< TiledArray::detail::is_input_iterator<InIter>,
-        Enabler>::type = Enabler()) :
-      pimpl_(new Impl(r, it, op))
+    template <typename U, typename AU, typename Op>
+    Tensor(const Tensor<U, AU>& other, const Op& op) :
+      pimpl_(new Impl(other.range(), other.data(), op))
     { }
 
     /// Construct an evaluated tensor
@@ -301,19 +206,20 @@ namespace TiledArray {
     { }
 
     /// Construct an evaluated tensor
-    template <typename InIter1, typename InIter2, typename Op>
-    Tensor(const Range& r, InIter1 it1, InIter2 it2, const Op& op,
-        typename madness::enable_if_c<
-          TiledArray::detail::is_input_iterator<InIter1>::value &&
-          TiledArray::detail::is_input_iterator<InIter2>::value, Enabler>::type = Enabler()) :
-      pimpl_(new Impl(r, it1, it2, op))
-    { }
+    template <typename U, typename AU, typename V, typename AV, typename Op>
+    Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op) :
+      pimpl_(new Impl(left.range(), left.data(), right.data(), op))
+    {
+      TA_ASSERT(left.range() == right.range());
+    }
 
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename V, typename AV, typename Op>
     Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op, const Permutation& perm) :
       pimpl_(new Impl(left, right, op, perm))
-    { }
+    {
+      TA_ASSERT(left.range() == right.range());
+    }
 
     /// Copy constructor
 
@@ -537,7 +443,7 @@ namespace TiledArray {
       TA_ASSERT(! other.empty());
       TA_ASSERT(pimpl_->range_ == other.range());
 
-      return Tensor_(pimpl_->range_, pimpl_->data_.data(), other.data(), op);
+      return Tensor_(*this, other, op);
     }
 
     /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -602,7 +508,7 @@ namespace TiledArray {
     Tensor_ unary(const Op& op) const {
       TA_ASSERT(pimpl_);
 
-      return Tensor_(pimpl_->range_, pimpl_->data_.data(), op);
+      return Tensor_(*this, op);
     }
 
     /// Use a unary, element wise operation to construct a new, permuted tensor
