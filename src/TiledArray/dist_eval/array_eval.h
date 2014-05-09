@@ -153,7 +153,7 @@ namespace TiledArray {
       ArrayEvalImpl(const array_type& array, madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm, const op_type& op) :
-        DistEvalImpl_(world, array.trange(), shape, pmap, perm),
+        DistEvalImpl_(world, trange, shape, pmap, perm),
         array_(array),
         op_(new op_type(op)),
         inv_perm_(-perm)
