@@ -35,6 +35,119 @@ namespace TiledArray {
 
   namespace math {
 
+    template <typename Perm, typename Size, typename Weight, typename Result,
+        typename Arg>
+    inline void permute(const unsigned int ndim, const Perm* restrict const perm,
+        const Size* restrict const size, const Weight* restrict const weight,
+        Result* restrict const result, const Arg* restrict const arg)
+    {
+      // Compute the volume and inverse-permuted weight of the result
+      std::size_t volume = 1ul;
+      Weight* restrict const result_weight = new Weight[ndim];
+
+      for(int dim = int(ndim) - 1; dim >= 0; --dim) {
+        const Perm inv_perm_dim = perm[perm[dim]];
+        result_weight[inv_perm_dim] = volume;
+        volume *= size[inv_perm_dim];
+      }
+
+      std::size_t index = 0ul;
+      const std::size_t block_size = size[ndim - 1u];
+      const std::size_t stride = result_weight[ndim - 1u];
+      while(index < volume) {
+        // Compute the permuted index for the current block
+        std::size_t i = index;
+        std::size_t perm_index = 0ul;
+        for(unsigned int dim = 0u; dim < ndim; ++dim) {
+          perm_index += (i / weight[dim]) * result_weight[dim];
+          i %= weight[dim];
+        }
+
+        // Permute a block of arg
+        const std::size_t end = index + block_size;
+        for(; index < end; ++index, perm_index += stride)
+          result[perm_index] = arg[index];
+      }
+
+      delete [] result_weight;
+    }
+
+    template <typename Perm, typename Size, typename Weight, typename Result,
+        typename Arg, typename Op>
+    inline void permute(const unsigned int ndim, const Perm* restrict const perm,
+        const Size* restrict const size, const Weight* restrict const weight,
+        Result* restrict const result, const Arg* restrict const arg, const Op& op)
+    {
+      // Compute the volume and inverse-permuted weight of the result
+      std::size_t volume = 1ul;
+      Weight* restrict const result_weight = new Weight[ndim];
+
+      for(int dim = int(ndim) - 1; dim >= 0; --dim) {
+        const Perm inv_perm_dim = perm[perm[dim]];
+        result_weight[inv_perm_dim] = volume;
+        volume *= size[inv_perm_dim];
+      }
+
+      std::size_t index = 0ul;
+      const std::size_t block_size = size[ndim - 1u];
+      const std::size_t stride = result_weight[ndim - 1u];
+      while(index < volume) {
+        // Compute the permuted index for the current block
+        std::size_t i = index;
+        std::size_t perm_index = 0ul;
+        for(unsigned int dim = 0u; dim < ndim; ++dim) {
+          perm_index += (i / weight[dim]) * result_weight[dim];
+          i %= weight[dim];
+        }
+
+        // Permute a block of arg
+        const std::size_t end = index + block_size;
+        for(; index < end; ++index, perm_index += stride)
+          result[perm_index] = op(arg[index]);
+      }
+
+      delete [] result_weight;
+    }
+
+
+    template <typename Perm, typename Size, typename Weight, typename Result,
+        typename Left, typename Right, typename Op>
+    inline void permute(const unsigned int ndim, const Perm* restrict const perm,
+        const Size* restrict const size, const Weight* restrict const weight,
+        Result* restrict const result, const Left* restrict const left,
+        const Right* restrict const right, const Op& op)
+    {
+      // Compute the volume and inverse-permuted weight of the result
+      std::size_t volume = 1ul;
+      Weight* restrict const result_weight = new Weight[ndim];
+
+      for(int dim = int(ndim) - 1; dim >= 0; --dim) {
+        const Perm inv_perm_dim = perm[perm[dim]];
+        result_weight[inv_perm_dim] = volume;
+        volume *= size[inv_perm_dim];
+      }
+
+      std::size_t index = 0ul;
+      const std::size_t block_size = size[ndim - 1u];
+      const std::size_t stride = result_weight[ndim - 1u];
+      while(index < volume) {
+        // Compute the permuted index for the current block
+        std::size_t i = index;
+        std::size_t perm_index = 0ul;
+        for(unsigned int dim = 0u; dim < ndim; ++dim) {
+          perm_index += (i / weight[dim]) * result_weight[dim];
+          i %= weight[dim];
+        }
+
+        // Permute a block of arg
+        const std::size_t end = index + block_size;
+        for(; index < end; ++index, perm_index += stride)
+          result[perm_index] = op(left[index], right[index]);
+      }
+
+      delete [] result_weight;
+    }
+
     /// Permute a tensor
 
     /// Permute \c tensor by \c perm and place the permuted result in \c result .
@@ -54,24 +167,8 @@ namespace TiledArray {
       // Create tensor to hold the result
       result = perm ^ tensor.range();
 
-      // Construct the inverse permuted weight and size for this tensor
-      std::vector<std::size_t> ip_weight = (-perm) ^ result.range().weight();
-
-      // permute the data
-      const std::size_t end = result.size();
-      const std::size_t ndim = result.range().dim();
-      for(std::size_t index = 0ul; index != end; ++index) {
-        // Compute the permuted index
-        std::size_t i = index;
-        std::size_t perm_index = 0ul;
-        for(std::size_t dim = 0ul; dim < ndim; ++dim) {
-          perm_index += (i / tensor.range().weight()[dim]) * ip_weight[dim];
-          i %= tensor.range().weight()[dim];
-        }
-
-        // Assign permuted data
-        result[perm_index] = tensor[index];
-      }
+      permute(tensor.range().dim(), & perm.data().front(), tensor.range().size().data(),
+          tensor.range().weight().data(), result.data(), tensor.data());
     }
 
     /// Apply an operation to a tensor and permute the result
@@ -96,24 +193,8 @@ namespace TiledArray {
       // Create tensor to hold the result
       result = perm ^ tensor.range();
 
-      // Construct the inverse permuted weight of the result tensor
-      std::vector<std::size_t> ip_weight = (-perm) ^ result.range().weight();
-
-      // permute the data
-      const std::size_t end = result.size();
-      const std::size_t ndim = result.range().dim();
-      for(std::size_t index = 0ul; index != end; ++index) {
-        // Compute the permuted index
-        std::size_t i = index;
-        std::size_t perm_index = 0ul;
-        for(std::size_t dim = 0ul; dim < ndim; ++dim) {
-          perm_index += (i / tensor.range().weight()[dim]) * ip_weight[dim];
-          i %= tensor.range().weight()[dim];
-        }
-
-        // Assign permuted data
-        result[perm_index] = op(tensor[index]);
-      }
+      permute(tensor.range().dim(), & perm.data().front(), tensor.range().size().data(),
+          tensor.range().weight().data(), result.data(), tensor.data(), op);
     }
 
     /// Apply an operation to a pair of tensors and permute the result
@@ -143,24 +224,8 @@ namespace TiledArray {
       // Create tensor to hold the result
       result = perm ^ left.range();
 
-      // Construct the inverse permuted weight and size for this tensor
-      std::vector<std::size_t> ip_weight = (-perm) ^ result.range().weight();
-
-      // permute the data
-      const std::size_t end = result.size();
-      const std::size_t ndim = result.range().dim();
-      for(std::size_t index = 0ul; index != end; ++index) {
-        // Compute the permuted index
-        std::size_t i = index;
-        std::size_t perm_index = 0ul;
-        for(std::size_t dim = 0ul; dim < ndim; ++dim) {
-          perm_index += (i / left.range().weight()[dim]) * ip_weight[dim];
-          i %= left.range().weight()[dim];
-        }
-
-        // Assign permuted data
-        result[perm_index] = op(left[index], right[index]);
-      }
+      permute(left.range().dim(), & perm.data().front(), left.range().size().data(),
+          left.range().weight().data(), result.data(), left.data(), right.data(), op);
     }
 
   }  // namespace math
