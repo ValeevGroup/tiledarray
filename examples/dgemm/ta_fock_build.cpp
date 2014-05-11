@@ -114,8 +114,8 @@ int main(int argc, char** argv) {
 
   // Create C^T blocking
   std::vector<TiledArray::TiledRange1> coeff_blocking2{
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end())
-      TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end()),
+      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
+      TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end())
   };
 
   std::vector<TiledArray::TiledRange1> df_blocking2 = {
