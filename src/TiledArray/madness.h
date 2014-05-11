@@ -28,7 +28,7 @@
 #pragma GCC diagnostic push
 #pragma GCC system_header
 #include <world/world.h>
-#include <linalg/cblas.h>
+#include <tensor/cblas.h>
 #pragma GCC diagnostic pop
 
 #endif // TILEDARRAY_MADNESS_H__INCLUDED
