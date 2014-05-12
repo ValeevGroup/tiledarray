@@ -224,9 +224,9 @@ namespace TiledArray {
       /// \param target_vars The target variable list for this expression
       void print(ExprOStream& os, const VariableList& target_vars) const {
         if(perm_ && permute_tiles_) {
-          os << "[P " << target_vars << "] " << derived().make_tag() << " " << vars_ << "\n";
+          os << "[P " << target_vars << "] " << derived().make_tag() << vars_ << "\n";
         } else {
-          os << derived().make_tag() << " " << vars_ << "\n";
+          os << derived().make_tag() << vars_ << "\n";
         }
       }
 

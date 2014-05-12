@@ -115,7 +115,7 @@ namespace TiledArray {
       /// Expression identification tag
 
       /// \return An expression tag used to identify this expression
-      const char* make_tag() const { return "[-]"; }
+      const char* make_tag() const { return "[-] "; }
 
     }; // class SubtEngine
 
@@ -198,7 +198,7 @@ namespace TiledArray {
       /// \return An expression tag used to identify this expression
       std::string make_tag() const {
         std::stringstream ss;
-        ss << "[-] [" << factor_ << "]";
+        ss << "[-] [" << factor_ << "] ";
         return ss.str();
       }
 

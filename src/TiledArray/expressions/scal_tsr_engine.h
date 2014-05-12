@@ -129,7 +129,7 @@ namespace TiledArray {
       /// \return An expression tag used to identify this expression
       std::string make_tag() const {
         std::stringstream ss;
-        ss << "[" << factor_ << "]";
+        ss << "[" << factor_ << "] ";
         return ss.str();
       }
 
