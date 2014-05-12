@@ -91,7 +91,7 @@ namespace TiledArray {
       /// Query runtime consumable status
 
       /// \return \c true if this tile is consumable, otherwise \c false .
-      bool is_consumable() const { return consume_; }
+      bool is_consumable() const { return consume_ || op_->permutation(); }
 
       /// Convert tile to evaluation type
       operator eval_type() const { return (*op_)(tile_, consume_); }
