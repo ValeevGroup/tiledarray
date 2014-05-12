@@ -34,17 +34,7 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename> class Expr;
-    template <typename> class ExprEngine;
     template <typename> struct EngineTrait;
-
-    template <typename T>
-    struct DerivedType {
-      template <template <typename> class Base>
-      static T* cast(Base<T>* expr) { return static_cast<T*>(expr); }
-
-      template <template <typename> class Base>
-      static const T* cast(const Base<T>* expr) { return static_cast<const T*>(expr); }
-    };
 
     /// Expression engine
     template <typename Derived>
@@ -173,10 +163,10 @@ namespace TiledArray {
       }
 
       /// Cast this object to it's derived type
-      derived_type& derived() { return *DerivedType<derived_type>::cast(this); }
+      derived_type& derived() { return *static_cast<derived_type*>(this); }
 
       /// Cast this object to it's derived type
-      const derived_type& derived() const { return *DerivedType<derived_type>::cast(this); }
+      const derived_type& derived() const { return *static_cast<const derived_type*>(this); }
 
       /// World accessor
 
