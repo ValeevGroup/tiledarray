@@ -8,14 +8,14 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(Elemental COMPONENTS elemental;pmrrr)
+find_package(Elemental COMPONENTS elemental;pmrrr;lapack-addons)
 
 if (ELEMENTAL_LIBRARIES)
   if (NOT ELEMENTAL_INCLUDE_DIR)
     message(FATAL_ERROR "Could not find elemental.hpp")
   endif(NOT ELEMENTAL_INCLUDE_DIR)
   
-  #Check for CXX11
+  # Check for CXX11
   CHECK_CXX_SOURCE_COMPILES(
     "
     template<typename T>
@@ -40,7 +40,7 @@ if (ELEMENTAL_LIBRARIES)
     MESSAGE(FATAL_ERROR "Elemental requires a c++11 compatible compiler")
   ENDIF(NOT TILEDARRAY_HAS_CXX11)
   
-  # ELemental compiles check
+  # Elemental compiles check
   MESSAGE(STATUS "ELEMENTAL LIBRARIES = ${ELEMENTAL_LIBRARIES}")
   list(APPEND CMAKE_REQUIRED_INCLUDES ${ELEMENTAL_INCLUDE_DIR})
   list(APPEND CMAKE_REQUIRED_LIBRARIES ${ELEMENTAL_LIBRARIES})
@@ -68,7 +68,6 @@ if (ELEMENTAL_LIBRARIES)
   endif(NOT ELEMENTAL_COMPILES)
   
   if (ELEMENTAL_COMPILES)
-    set (HAVE_ELEMENTAL TRUE)
     set (TILEDARRAY_HAS_ELEMENTAL TRUE)
     message(STATUS "Found ELEMENTAL")
     message(STATUS "\tELEMENTAL_LIBRARIES = ${ELEMENTAL_LIBRARIES}")

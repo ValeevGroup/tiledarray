@@ -83,7 +83,17 @@ target_link_libraries(ta_sparse ${TiledArray_LIBRARIES})
 add_dependencies(ta_sparse External)
 add_dependencies(example ta_sparse)
 
-IF(HAVE_ELEMENTAL)
+
+# Add the blas executable
+add_executable(ta_fock EXCLUDE_FROM_ALL ta_fock_build.cpp)
+set_target_properties(ta_fock PROPERTIES
+    COMPILE_FLAGS "${CMAKE_CPP_FLAGS} ${TiledArray_COMPILE_FLAGS}"
+    LINK_FLAGS "${TiledArray_LINK_FLAGS}")
+target_link_libraries(ta_fock ${TiledArray_LIBRARIES})
+add_dependencies(ta_fock External)
+add_dependencies(example ta_fock)
+
+IF(TILEDARRAY_HAS_ELEMENTAL)
     # Add the ta_elem_dense executable
     add_executable(ta_elem_dense EXCLUDE_FROM_ALL ta_elem_dense.cpp)
     set_target_properties(ta_elem_dense PROPERTIES
@@ -92,4 +102,4 @@ IF(HAVE_ELEMENTAL)
     target_link_libraries(ta_elem_dense ${TiledArray_LIBRARIES})
     add_dependencies(ta_elem_dense External)
     add_dependencies(example ta_elem_dense)
-ENDIF(HAVE_ELEMENTAL)
+ENDIF(TILEDARRAY_HAS_ELEMENTAL)

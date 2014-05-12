@@ -30,6 +30,10 @@ CONFIGURE_FILE(
 # Create the ta_test executable
 set(executable ta_test)
 file(GLOB ta_test_src_files *.cpp)
+if(NOT TILEDARRAY_HAS_ELEMENTAL)
+    file(GLOB elem_file *elemental.cpp)
+    list(REMOVE_ITEM ta_test_src_files ${elem_file})
+endif(NOT TILEDARRAY_HAS_ELEMENTAL)
 add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
 
 # Add include directories and compiler flags for ta_test

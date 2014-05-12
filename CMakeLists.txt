@@ -131,11 +131,14 @@ endif()
 
 include(external/MADNESS)
 
-if (Elemental_DIR)
-  include(external/Elemental)
-  if(HAVE_ELEMENTAL)
-    ADD_DEFINITIONS(-DTILEDARRAY_HAS_ELEMENTAL=1)
-  endif(HAVE_ELEMENTAL)
+# look for Elemental if MADNESS has it, or Elemental_DIR was given explicitly
+if (Elemental_DIR OR MADNESS_HAS_ELEMENTAL)
+  # if MADNESS found but does not support elemental, too much potential for error, skip
+  if (Madness_FOUND AND !MADNESS_HAS_ELEMENTAL)
+    message(WARNING "Found MADNESS but it does not know about Elemental ... will punt on Elemental")
+  else()
+    include(external/Elemental)
+  endif()
 endif()
   
 if (TA_BUILD_UNITTEST)
@@ -192,6 +195,17 @@ elseif (TA_ERROR STREQUAL throw)
 elseif (TA_ERROR STREQUAL assert)
   set (TA_DEFAULT_ERROR 2)
 endif()
+
+##########################
+# QT CREATOR file grabber
+##########################
+if(USING_QT_CREATOR_AS_IDE)
+  include_directories(tests)
+  include_directories(examples)
+  file(GLOB_RECURSE QT_CREATOR_SRC "*.h" "*.cpp" "*.c" "*.cc" "*.hpp" "*.txt" ".in")
+  add_library(qt_creator_get_sources EXCLUDE_FROM_ALL ${QT_CREATOR_SRC})
+  set_target_properties(qt_creator_get_sources PROPERTIES LINKER_LANGUAGE CXX)
+endif(USING_QT_CREATOR_AS_IDE)
 
 ##########################
 # wrap up

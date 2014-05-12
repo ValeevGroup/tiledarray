@@ -83,7 +83,8 @@ namespace TiledArray {
   template<typename T, unsigned int DIM, typename Tile>
   void elem_to_array(Array<T,DIM,Tile> &array, elem::DistMatrix<T> &mat){
     TA_USER_ASSERT(DIM==2u, "TiledArray::elem_to_array(): requires the array to have dimension 2");
-    TA_USER_ASSERT((array.size()[0]==mat.Width()) && (array.size()[1] == mat.Height()),
+    TA_USER_ASSERT((array.trange().elements().extent()[0]==mat.Height()) &&
+                   (array.trange().elements().extent()[1] == mat.Width()),
                    "TiledArray::elem_to_array(): requires the shape of the elem matrix and the array to be the same.");
 
     // Make interface and attach mat
