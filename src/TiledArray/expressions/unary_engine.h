@@ -193,8 +193,7 @@ namespace TiledArray {
 
         // Construct the distributed evaluator type
         std::shared_ptr<typename dist_eval_type::impl_type> pimpl(
-            new unary_impl_type(arg, *ExprEngine_::world(), ExprEngine_::trange(),
-            ExprEngine_::shape(), ExprEngine_::pmap(), ExprEngine_::perm(),
+            new unary_impl_type(arg, *world_, trange_, shape_, pmap_, perm_,
             ExprEngine_::make_op()));
 
         return dist_eval_type(pimpl);

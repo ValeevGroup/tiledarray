@@ -96,7 +96,13 @@ namespace TiledArray {
     protected:
 
       // Import base class variables to this scope
+      using ExprEngine_::world_;
       using ExprEngine_::vars_;
+      using ExprEngine_::perm_;
+      using ExprEngine_::trange_;
+      using ExprEngine_::shape_;
+      using ExprEngine_::pmap_;
+      using ExprEngine_::permute_tiles_;
 
       left_type left_; ///< The left-hand argument
       right_type right_; ///< The right-hand argument
@@ -220,9 +226,8 @@ namespace TiledArray {
 
         // Construct the distributed evaluator type
         std::shared_ptr<typename dist_eval_type::impl_type> pimpl(
-            new binary_impl_type(left, right, *ExprEngine_::world(),
-                ExprEngine_::trange(), ExprEngine_::shape(), ExprEngine_::pmap(),
-                ExprEngine_::perm(), ExprEngine_::make_op()));
+            new binary_impl_type(left, right, *world_, trange_, shape_, pmap_,
+                perm_, ExprEngine_::make_op()));
 
         return dist_eval_type(pimpl);
       }
