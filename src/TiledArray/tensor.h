@@ -20,7 +20,6 @@
 #ifndef TILEDARRAY_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_H__INCLUDED
 
-#include <TiledArray/dense_storage.h>
 #include <TiledArray/range.h>
 #include <TiledArray/math/functional.h>
 #include <TiledArray/math/gemm_helper.h>
@@ -40,62 +39,61 @@ namespace TiledArray {
   public:
     typedef Tensor<T, A> Tensor_; ///< This class type
     typedef Tensor_ eval_type; ///< The type used when evaluating expressions
-    typedef DenseStorage<T,A> storage_type; ///< Tensor data storage container type
     typedef Range range_type; ///< Tensor range type
-    typedef typename storage_type::value_type value_type; ///< Element type
+    typedef typename range_type::size_type size_type; ///< size type
+    typedef A allocator_type; ///< Allocator type
+    typedef typename allocator_type::value_type value_type; ///< Array element type
+    typedef typename allocator_type::reference reference; ///< Element reference type
+    typedef typename allocator_type::const_reference const_reference; ///< Element reference type
+    typedef typename allocator_type::pointer pointer; ///< Element pointer type
+    typedef typename allocator_type::const_pointer const_pointer; ///< Element const pointer type
+    typedef typename allocator_type::difference_type difference_type; ///< Difference type
+    typedef pointer iterator; ///< Element iterator type
+    typedef const_pointer const_iterator; ///< Element const iterator type
     typedef typename TiledArray::detail::scalar_type<T>::type
         numeric_type; ///< the numeric type that supports T
-    typedef typename storage_type::const_reference const_reference; ///< Element const reference type
-    typedef typename storage_type::reference reference; ///< Element reference type
-    typedef typename storage_type::const_iterator const_iterator; ///< Const iterator type
-    typedef typename storage_type::iterator iterator; ///< Iterator type
-    typedef typename storage_type::difference_type difference_type; ///< Difference type (C++ std lib compliance)
-    typedef typename storage_type::const_pointer const_pointer; ///< Const data pointer type
-    typedef typename storage_type::pointer pointer; ///< Data pointer type
-    typedef typename storage_type::size_type size_type; ///< Size type (C++ std lib compliance)
 
   private:
 
     /// Evaluation tensor
 
     /// This tensor is used as an evaluated intermediate for other tensors.
-    class Impl {
+    class Impl : public allocator_type {
     public:
 
       /// Default constructor
 
       /// Construct an empty tensor that has no data or dimensions
-      Impl() : range_(), data_() { }
+      Impl() : allocator_type(), range_(), data_(NULL) { }
 
       /// Construct an evaluated tensor
 
       /// \param range The N-dimensional range for this tensor
       explicit Impl(const range_type& range) :
-        range_(range), data_(range.volume())
-      { }
+        allocator_type(), range_(range), data_(NULL)
+      {
+        data_ = allocator_type::allocate(range.volume());
+      }
 
-      /// Copy constructor
-
-      /// Do a deep copy of \c other
-      /// \param other The tile to be copied.
-      Impl(const Impl& other) :
-        range_(other.range_), data_(other.data_)
-      { }
-
-      /// Element accessor
-
-      /// Serialize tensor data
-
-      /// \tparam Archive The serialization archive type
-      /// \param ar The serialization archive
-      template <typename Archive>
-      void serialize(Archive& ar) {
-        ar & range_ & data_;
+      ~Impl() {
+        math::destroy_vector(range_.volume(), data_);
+        allocator_type::deallocate(data_, range_.volume());
+        data_ = NULL;
       }
 
       range_type range_; ///< Tensor size info
-      storage_type data_; ///< Tensor data
+      pointer data_; ///< Tensor data
     }; // class Impl
+
+    template <typename U>
+    static typename madness::enable_if<std::is_scalar<U> >::type
+    default_init(size_type n, U* u) { }
+
+    template <typename U>
+    static typename madness::disable_if<std::is_scalar<U> >::type
+    default_init(size_type n, U* u) {
+      math::uninitialized_fill_vector(n, U(), u);
+    }
 
     std::shared_ptr<Impl> pimpl_; ///< Shared pointer to implementation object
     static const range_type empty_range_; ///< Empty range
@@ -107,35 +105,40 @@ namespace TiledArray {
     /// Construct an empty tensor that has no data or dimensions
     Tensor() : pimpl_() { }
 
+    Tensor(const range_type& range) :
+      pimpl_(new Impl(range))
+    {
+      default_init(range.volume(), pimpl_->data_);
+    }
+
     /// Construct an evaluated tensor
 
     /// \param r An array with the size of of each dimension
     /// \param v The value of the tensor elements
-    explicit Tensor(const Range& r, const value_type& v = value_type()) :
-      pimpl_(new Impl(r))
+    Tensor(const range_type& range, const value_type& v) :
+      pimpl_(new Impl(range))
     {
-      math::fill_vector(r.volume(), v, pimpl_->data_.data());
+      math::uninitialized_fill_vector(range.volume(), v, pimpl_->data_);
     }
 
     /// Construct an evaluated tensor
     template <typename InIter>
-    Tensor(const Range& r, InIter it,
+    Tensor(const range_type& range, InIter it,
         typename madness::enable_if_c<TiledArray::detail::is_input_iterator<InIter>::value &&
         ! std::is_pointer<InIter>::value, Enabler>::type = Enabler()) :
-      pimpl_(new Impl(r))
+      pimpl_(new Impl(range))
     {
-      size_type n = r.volume();
-      pointer restrict const data = pimpl_->data_.data();
+      size_type n = range.volume();
+      pointer restrict const data = pimpl_->data_;
       for(size_type i = 0ul; i < n; ++i)
         data[i] = *it++;
     }
 
-    template <typename InIter>
-    Tensor(const Range& r, InIter it,
-        typename madness::enable_if<std::is_pointer<InIter>, Enabler>::type = Enabler()) :
+    template <typename U>
+    Tensor(const Range& r, const U* u) :
       pimpl_(new Impl(r))
     {
-      math::copy_vector(r.volume(), it, pimpl_->data_.data());
+      math::uninitialized_copy_vector(r.volume(), u, pimpl_->data_);
     }
 
     /// Construct an evaluated tensor
@@ -166,7 +169,7 @@ namespace TiledArray {
         // Get pointers to tensor data arrays
         typename Tensor<U, AU>::const_pointer restrict const other_data = other.data();
         TA_ASSERT(other_data);
-        pointer restrict const result_data = pimpl_->data_.data();
+        pointer restrict const result_data = pimpl_->data_;
 
         size_type index = 0ul;
         while(index < volume) {
@@ -183,7 +186,7 @@ namespace TiledArray {
           // Permute a block of arg
           const size_type end = index + block_size;
           for(; index < end; ++index, perm_index += stride)
-            result_data[perm_index] = other_data[index];
+            new(result_data + perm_index) value_type(other_data[index]);
         }
       }
     }
@@ -193,7 +196,7 @@ namespace TiledArray {
     Tensor(const Tensor<U, AU>& other, const Op& op) :
       pimpl_(new Impl(other.range()))
     {
-      math::unary_vector_op(other.size(), other.data(), pimpl_->data_.data(), op);
+      math::unary_vector_op(other.size(), other.data(), pimpl_->data_, op);
     }
 
     /// Construct an evaluated tensor
@@ -224,7 +227,7 @@ namespace TiledArray {
         // Get pointers to tensor data arrays
         typename Tensor<U, AU>::const_pointer restrict const other_data = other.data();
         TA_ASSERT(other_data);
-        pointer restrict const result_data = pimpl_->data_.data();
+        pointer restrict const result_data = pimpl_->data_;
 
         size_type index = 0ul;
         while(index < volume) {
@@ -241,7 +244,7 @@ namespace TiledArray {
           // Permute a block of arg
           const size_type end = index + block_size;
           for(; index < end; ++index, perm_index += stride)
-            result_data[perm_index] = op(other_data[index]);
+            new (result_data + perm_index) value_type(op(other_data[index]));
         }
       }
     }
@@ -253,7 +256,7 @@ namespace TiledArray {
     {
       TA_ASSERT(left.range() == right.range());
       math::binary_vector_op(left.size(), left.data(), right.data(),
-          pimpl_->data_.data(), op);
+          pimpl_->data_, op);
     }
 
     /// Construct an evaluated tensor
@@ -288,7 +291,7 @@ namespace TiledArray {
         TA_ASSERT(left_data);
         typename Tensor<V, AV>::const_pointer restrict const right_data = right.data();
         TA_ASSERT(right_data);
-        pointer restrict const result_data = pimpl_->data_.data();
+        pointer restrict const result_data = pimpl_->data_;
 
         size_type index = 0ul;
         while(index < volume) {
@@ -305,7 +308,7 @@ namespace TiledArray {
           // Permute a block of arg
           const size_type end = index + block_size;
           for(; index < end; ++index, perm_index += stride)
-            result_data[perm_index] = op(left_data[index], right_data[index]);
+            new (result_data + perm_index) value_type(op(left_data[index], right_data[index]));
         }
       }
     }
@@ -330,7 +333,7 @@ namespace TiledArray {
     }
 
     Tensor_ clone() const {
-      return (pimpl_ ? Tensor_(pimpl_->range_, pimpl_->data_.data()) : Tensor_());
+      return (pimpl_ ? Tensor_(pimpl_->range_, pimpl_->data_) : Tensor_());
     }
 
     /// Plus assignment
@@ -394,6 +397,7 @@ namespace TiledArray {
     /// \return The element at the \c i position.
     const_reference operator[](const size_type i) const {
       TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.includes(i));
       return pimpl_->data_[i];
     }
 
@@ -403,6 +407,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When this tensor is empty.
     reference operator[](const size_type i) {
       TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.includes(i));
       return pimpl_->data_[i];
     }
 
@@ -415,6 +420,7 @@ namespace TiledArray {
     typename madness::disable_if<std::is_integral<Index>, const_reference>::type
     operator[](const Index& i) const {
       TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.includes(i));
       return pimpl_->data_[pimpl_->range_.ord(i)];
     }
 
@@ -426,51 +432,81 @@ namespace TiledArray {
     typename madness::disable_if<std::is_integral<Index>, reference>::type
     operator[](const Index& i) {
       TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.includes(i));
       return pimpl_->data_[pimpl_->range_.ord(i)];
     }
 
     /// Iterator factory
 
     /// \return An iterator to the first data element
-    const_iterator begin() const { return (pimpl_ ? pimpl_->data_.begin() : NULL); }
+    const_iterator begin() const { return (pimpl_ ? pimpl_->data_ : NULL); }
 
     /// Iterator factory
 
     /// \return An iterator to the first data element
-    iterator begin() { return (pimpl_ ? pimpl_->data_.begin() : NULL); }
+    iterator begin() { return (pimpl_ ? pimpl_->data_ : NULL); }
 
     /// Iterator factory
 
     /// \return An iterator to the last data element
-    const_iterator end() const { return (pimpl_ ? pimpl_->data_.end() : NULL); }
+    const_iterator end() const { return (pimpl_ ? pimpl_->data_ + pimpl_->range_.volume() : NULL); }
 
     /// Iterator factory
 
     /// \return An iterator to the last data element
-    iterator end() { return (pimpl_ ? pimpl_->data_.end() : NULL); }
+    iterator end() { return (pimpl_ ? pimpl_->data_ + pimpl_->range_.volume() : NULL); }
 
     /// Data direct access
 
     /// \return A const pointer to the tensor data
-    const_pointer data() const { return (pimpl_ ? pimpl_->data_.data() : NULL); }
+    const_pointer data() const { return (pimpl_ ? pimpl_->data_ : NULL); }
 
     /// Data direct access
 
     /// \return A const pointer to the tensor data
-    pointer data() { return (pimpl_ ? pimpl_->data_.data() : NULL); }
+    pointer data() { return (pimpl_ ? pimpl_->data_ : NULL); }
 
-    bool empty() const { return (pimpl_ ? pimpl_->data_.empty() : true); }
+    bool empty() const { return !pimpl_; }
+
+    template <typename Archive>
+    typename madness::enable_if<madness::archive::is_output_archive<Archive> >::type
+    serialize(Archive& ar) {
+      if(pimpl_) {
+        ar & pimpl_->range_.volume();
+        ar & madness::archive::wrap(pimpl_->data_, pimpl_->range_.volume());
+        ar & pimpl_->range_;
+      } else {
+        ar & size_type(0ul);
+      }
+    }
 
     /// Serialize tensor data
 
     /// \tparam Archive The serialization archive type
     /// \param ar The serialization archive
     template <typename Archive>
-    void serialize(Archive& ar) {
-      if(!pimpl_)
-        pimpl_.reset(new Impl());
-      pimpl_->serialize(ar);
+    typename madness::enable_if<madness::archive::is_input_archive<Archive> >::type
+    serialize(Archive& ar) {
+      size_type n = 0ul;
+      ar & n;
+      if(n) {
+        std::shared_ptr<Impl> temp(new Impl());
+        temp->data_ = temp->allocate(n);
+        try {
+          ar & madness::archive::wrap(temp->data_, n);
+          ar & temp->range_;
+        } catch(...) {
+          temp->deallocate(temp->data_, n);
+          throw;
+        }
+
+        pimpl_ = temp;
+      } else {
+        pimpl_.reset();
+      }
     }
+
+
 
     /// Swap tensor data
 
@@ -561,9 +597,9 @@ namespace TiledArray {
       TA_ASSERT(pimpl_);
       TA_ASSERT(! other.empty());
       TA_ASSERT(pimpl_->range_ == other.range());
-      TA_ASSERT(pimpl_->data_.data() != other.data());
+      TA_ASSERT(pimpl_->data_ != other.data());
 
-      math::binary_vector_op(pimpl_->range_.volume(), other.data(), pimpl_->data_.data(), op);
+      math::binary_vector_op(pimpl_->range_.volume(), other.data(), pimpl_->data_, op);
 
       return *this;
     }
@@ -609,7 +645,7 @@ namespace TiledArray {
     Tensor_& inplace_unary(const Op& op) {
       TA_ASSERT(pimpl_);
 
-      math::unary_vector_op(pimpl_->range_.volume(), pimpl_->data_.data(), op);
+      math::unary_vector_op(pimpl_->range_.volume(), pimpl_->data_, op);
 
       return *this;
     }
@@ -1012,7 +1048,7 @@ namespace TiledArray {
       const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          pimpl_->data_.data(), lda, other.data(), ldb, numeric_type(0), result.data(), n);
+          pimpl_->data_, lda, other.data(), ldb, numeric_type(0), result.data(), n);
 
       return result;
     }
@@ -1068,7 +1104,7 @@ namespace TiledArray {
       const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_.data(), n);
+          left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
 
       return *this;
     }
@@ -1115,7 +1151,7 @@ namespace TiledArray {
         }
 
         // Compute the trace
-        const value_type* restrict const data = pimpl_->data_.data();
+        const value_type* restrict const data = pimpl_->data_;
         for(; first < last; first += stride)
           result += data[first];
       }
@@ -1212,7 +1248,7 @@ namespace TiledArray {
     template <typename Op>
     numeric_type reduce(numeric_type init_value, const Op& op) const {
       TA_ASSERT(pimpl_);
-      reduce(pimpl_->range_.volume(), pimpl_->data_.data(), init_value, op);
+      reduce(pimpl_->range_.volume(), pimpl_->data_, init_value, op);
       return init_value;
     }
 
@@ -1229,7 +1265,7 @@ namespace TiledArray {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_ == other.range());
 
-      reduce(pimpl_->range_.volume(), pimpl_->data_.data(), other.data(), init_value, op);
+      reduce(pimpl_->range_.volume(), pimpl_->data_, other.data(), init_value, op);
       return init_value;
     }
 
