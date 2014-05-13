@@ -70,74 +70,14 @@ namespace TiledArray {
 
       /// Construct an evaluated tensor
 
-      /// \param r An array with the size of of each dimension
-      /// \param v The value of the tensor elements
-      explicit Impl(const Range& r, const value_type& v) :
-        range_(r), data_(r.volume(), v)
+      /// \param range The N-dimensional range for this tensor
+      explicit Impl(const range_type& range) :
+        range_(range), data_(range.volume())
       { }
 
-      /// Construct an evaluated tensor
-      template <typename InIter>
-      Impl(const Range& r, InIter it,
-          typename madness::enable_if<TiledArray::detail::is_input_iterator<InIter>, Enabler>::type = Enabler()) :
-        range_(r), data_(r.volume(), it)
+      Impl(const range_type& range, const Permutation& perm) :
+        range_(perm, range), data_(range.volume())
       { }
-
-      /// Construct an evaluated tensor
-      template <typename U, typename AU>
-      Impl(const Tensor<U, AU>& other, const Permutation& perm) :
-        range_(perm, other.range()), data_(other.range().volume())
-      {
-        TA_ASSERT(perm.dim() == other.range().dim());
-
-        TiledArray::math::permute(range_.dim(), & perm.data().front(),
-            other.range().size().data(), other.range().weight().data(),
-            data_.data(), other.data());
-      }
-
-      /// Construct an evaluated tensor
-      template <typename InIter, typename Op>
-      Impl(const Range& r, InIter it, const Op& op,
-          typename madness::enable_if< TiledArray::detail::is_input_iterator<InIter>,
-          Enabler>::type = Enabler()) :
-        range_(r), data_(r.volume(), it, op)
-      { }
-
-      /// Construct an evaluated tensor
-      template <typename U, typename AU, typename Op>
-      Impl(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) :
-        range_(perm, other.range()), data_(other.range().volume())
-      {
-        TA_ASSERT(perm.dim() == other.range().dim());
-
-
-        TiledArray::math::permute(range_.dim(), & perm.data().front(),
-            other.range().size().data(), other.range().weight().data(),
-            data_.data(), other.data(), op);
-      }
-
-      /// Construct an evaluated tensor
-      template <typename InIter1, typename InIter2, typename Op>
-      Impl(const Range& r, InIter1 it1, InIter2 it2, const Op& op,
-          typename madness::enable_if_c<
-            TiledArray::detail::is_input_iterator<InIter1>::value &&
-            TiledArray::detail::is_input_iterator<InIter2>::value, Enabler>::type = Enabler()) :
-        range_(r), data_(r.volume(), it1, it2, op)
-      { }
-
-      /// Construct an evaluated tensor
-      template <typename U, typename AU, typename V, typename AV, typename Op>
-      Impl(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op, const Permutation& perm) :
-        range_(perm, left.range()), data_(left.range().volume())
-      {
-        TA_ASSERT(left.range() == right.range());
-        TA_ASSERT(perm.dim() == left.range().dim());
-
-
-        TiledArray::math::permute(range_.dim(), & perm.data().front(),
-            left.range().size().data(), left.range().weight().data(),
-            data_.data(), left.data(), right.data(), op);
-      }
 
       /// Copy constructor
 
@@ -177,48 +117,73 @@ namespace TiledArray {
     /// \param r An array with the size of of each dimension
     /// \param v The value of the tensor elements
     explicit Tensor(const Range& r, const value_type& v = value_type()) :
-      pimpl_(new Impl(r, v))
-    { }
+      pimpl_(new Impl(r))
+    {
+      math::fill_vector(r.volume(), v, pimpl_->data_.data());
+    }
 
     /// Construct an evaluated tensor
     template <typename InIter>
     Tensor(const Range& r, InIter it,
-        typename madness::enable_if<TiledArray::detail::is_input_iterator<InIter>, Enabler>::type = Enabler()) :
-      pimpl_(new Impl(r, it))
-    { }
+        typename madness::enable_if_c<TiledArray::detail::is_input_iterator<InIter>::value &&
+        ! std::is_pointer<InIter>::value, Enabler>::type = Enabler()) :
+      pimpl_(new Impl(r))
+    {
+      size_type n = r.volume();
+      pointer restrict const data = pimpl_->data_.data();
+      for(size_type i = 0ul; i < n; ++i)
+        data[i] = *it++;
+    }
+
+    template <typename InIter>
+    Tensor(const Range& r, InIter it,
+        typename madness::enable_if<std::is_pointer<InIter>, Enabler>::type = Enabler()) :
+      pimpl_(new Impl(r))
+    {
+      math::copy_vector(r.volume(), it, pimpl_->data_.data());
+    }
 
     /// Construct an evaluated tensor
     template <typename U, typename AU>
     Tensor(const Tensor<U, AU>& other, const Permutation& perm) :
-      pimpl_(new Impl(other, perm))
-    { }
+      pimpl_(new Impl(other.range(), perm))
+    {
+      math::permute(*this, perm, other);
+    }
 
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename Op>
     Tensor(const Tensor<U, AU>& other, const Op& op) :
-      pimpl_(new Impl(other.range(), other.data(), op))
-    { }
+      pimpl_(new Impl(other.range()))
+    {
+      math::unary_vector_op(other.size(), other.data(), pimpl_->data_.data(), op);
+    }
 
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename Op>
     Tensor(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) :
-      pimpl_(new Impl(other, op, perm))
-    { }
+      pimpl_(new Impl(other.range(), perm))
+    {
+      math::permute(*this, perm, other, op);
+    }
 
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename V, typename AV, typename Op>
     Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op) :
-      pimpl_(new Impl(left.range(), left.data(), right.data(), op))
+      pimpl_(new Impl(left.range()))
     {
       TA_ASSERT(left.range() == right.range());
+      math::binary_vector_op(left.size(), left.data(), right.data(),
+          pimpl_->data_.data(), op);
     }
 
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename V, typename AV, typename Op>
     Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op, const Permutation& perm) :
-      pimpl_(new Impl(left, right, op, perm))
+      pimpl_(new Impl(left.range(), perm))
     {
       TA_ASSERT(left.range() == right.range());
+      math::permute(*this, perm, left, right, op);
     }
 
     /// Copy constructor
