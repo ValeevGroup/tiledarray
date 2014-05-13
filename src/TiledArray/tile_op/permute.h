@@ -80,7 +80,9 @@ namespace TiledArray {
 
         // Get pointers to tensor data arrays
         typename Tensor<ArgT, ArgA>::const_pointer restrict const arg_data = arg.data();
+        TA_ASSERT(arg_data);
         typename Tensor<ResT,ResA>::pointer restrict const result_data = result.data();
+        TA_ASSERT(result_data);
 
         size_type index = 0ul;
         while(index < volume) {
@@ -151,7 +153,9 @@ namespace TiledArray {
 
         // Get pointers to tensor data arrays
         typename Tensor<ArgT, ArgA>::const_pointer restrict const arg_data = arg.data();
+        TA_ASSERT(arg_data);
         typename Tensor<ResT,ResA>::pointer restrict const result_data = result.data();
+        TA_ASSERT(result_data);
 
         size_type index = 0ul;
         while(index < volume) {
@@ -228,8 +232,11 @@ namespace TiledArray {
 
         // Get pointers to tensor data arrays
         typename Tensor<LeftT, LeftA>::const_pointer restrict const left_data = left.data();
+        TA_ASSERT(left_data);
         typename Tensor<RightT, RightA>::const_pointer restrict const right_data = right.data();
+        TA_ASSERT(right_data);
         typename Tensor<ResT,ResA>::pointer restrict const result_data = result.data();
+        TA_ASSERT(result_data);
 
         size_type index = 0ul;
         while(index < volume) {
