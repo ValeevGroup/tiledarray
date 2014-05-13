@@ -58,7 +58,7 @@ namespace TiledArray {
       TA_ASSERT(perm.dim() == arg.range().dim());
       if(result.empty()) {
         // Create tensor to hold the result
-        result = perm ^ arg.range();
+        result = Tensor<ResT, ResA>(perm ^ arg.range());
       } else {
         TA_ASSERT(result.range() == (perm ^ arg.range()));
       }
@@ -130,7 +130,7 @@ namespace TiledArray {
       TA_ASSERT(perm.dim() == arg.range().dim());
       if(result.empty()) {
         // Create tensor to hold the result
-        result = perm ^ arg.range();
+        result = Tensor<ResT, ResA>(perm ^ arg.range());
       } else {
         TA_ASSERT(result.range() == (perm ^ arg.range()));
       }
@@ -210,7 +210,7 @@ namespace TiledArray {
       TA_ASSERT(left.range() == right.range());
       if(result.empty()) {
         // Create tensor to hold the result
-        result = perm ^ left.range();
+        result = Tensor<ResT, ResA>(perm ^ left.range());
       } else {
         TA_ASSERT(result.range() == (perm ^ left.range()));
       }
