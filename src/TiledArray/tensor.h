@@ -25,7 +25,6 @@
 #include <TiledArray/math/functional.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
-#include <TiledArray/tile_op/permute.h>
 
 namespace TiledArray {
 
@@ -144,7 +143,49 @@ namespace TiledArray {
     Tensor(const Tensor<U, AU>& other, const Permutation& perm) :
       pimpl_(new Impl(perm ^ other.range()))
     {
-      math::permute(*this, perm, other);
+      // Check inputs.
+      TA_ASSERT(! other.empty());
+      TA_ASSERT(perm);
+      TA_ASSERT(perm.dim() == other.range().dim());
+
+      // Construct the inverse permuted result weight
+      const std::vector<typename range_type::size_type> inv_weight =
+          -perm ^ pimpl_->range_.weight();
+
+      // Cache constants
+      const unsigned int ndim = other.range().dim();
+      const size_type volume = other.range().volume();
+      const size_type block_size = other.range().size()[ndim - 1u];
+      const size_type stride = inv_weight[ndim - 1u];
+
+      {
+        // Get pointers to weight arrays
+        const size_type* restrict const weight = other.range().weight().data();
+        const size_type* restrict const inv_result_weight = & inv_weight.front();
+
+        // Get pointers to tensor data arrays
+        typename Tensor<U, AU>::const_pointer restrict const other_data = other.data();
+        TA_ASSERT(other_data);
+        pointer restrict const result_data = pimpl_->data_.data();
+
+        size_type index = 0ul;
+        while(index < volume) {
+          // Compute the permuted index for the current block
+          size_type i = index;
+          size_type perm_index = 0ul;
+          for(unsigned int dim = 0u; dim < ndim; ++dim) {
+            const size_type weight_dim = weight[dim];
+            const size_type inv_result_weight_dim = inv_result_weight[dim];
+            perm_index += i / weight_dim * inv_result_weight_dim;
+            i %= weight_dim;
+          }
+
+          // Permute a block of arg
+          const size_type end = index + block_size;
+          for(; index < end; ++index, perm_index += stride)
+            result_data[perm_index] = other_data[index];
+        }
+      }
     }
 
     /// Construct an evaluated tensor
@@ -160,7 +201,49 @@ namespace TiledArray {
     Tensor(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) :
       pimpl_(new Impl(perm ^ other.range()))
     {
-      math::permute(*this, perm, other, op);
+      // Check inputs.
+      TA_ASSERT(! other.empty());
+      TA_ASSERT(perm);
+      TA_ASSERT(perm.dim() == other.range().dim());
+
+      // Construct the inverse permuted result weight
+      const std::vector<typename range_type::size_type> inv_weight =
+          -perm ^ pimpl_->range_.weight();
+
+      // Cache constants
+      const unsigned int ndim = other.range().dim();
+      const size_type volume = other.range().volume();
+      const size_type block_size = other.range().size()[ndim - 1u];
+      const size_type stride = inv_weight[ndim - 1u];
+
+      {
+        // Get pointers to weight arrays
+        const size_type* restrict const weight = other.range().weight().data();
+        const size_type* restrict const inv_result_weight = & inv_weight.front();
+
+        // Get pointers to tensor data arrays
+        typename Tensor<U, AU>::const_pointer restrict const other_data = other.data();
+        TA_ASSERT(other_data);
+        pointer restrict const result_data = pimpl_->data_.data();
+
+        size_type index = 0ul;
+        while(index < volume) {
+          // Compute the permuted index for the current block
+          size_type i = index;
+          size_type perm_index = 0ul;
+          for(unsigned int dim = 0u; dim < ndim; ++dim) {
+            const size_type weight_dim = weight[dim];
+            const size_type inv_result_weight_dim = inv_result_weight[dim];
+            perm_index += i / weight_dim * inv_result_weight_dim;
+            i %= weight_dim;
+          }
+
+          // Permute a block of arg
+          const size_type end = index + block_size;
+          for(; index < end; ++index, perm_index += stride)
+            result_data[perm_index] = op(other_data[index]);
+        }
+      }
     }
 
     /// Construct an evaluated tensor
@@ -178,8 +261,53 @@ namespace TiledArray {
     Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op, const Permutation& perm) :
       pimpl_(new Impl(perm ^ left.range()))
     {
+      // Check inputs.
+      TA_ASSERT(! left.empty());
+      TA_ASSERT(! right.empty());
       TA_ASSERT(left.range() == right.range());
-      math::permute(*this, perm, left, right, op);
+      TA_ASSERT(perm);
+      TA_ASSERT(perm.dim() == left.range().dim());
+
+      // Construct the inverse permuted result weight
+      const std::vector<typename range_type::size_type> inv_weight =
+          -perm ^ pimpl_->range_.weight();
+
+      // Cache constants
+      const unsigned int ndim = left.range().dim();
+      const size_type volume = left.range().volume();
+      const size_type block_size = left.range().size()[ndim - 1u];
+      const size_type stride = inv_weight[ndim - 1u];
+
+      {
+        // Get pointers to weight arrays
+        const size_type* restrict const weight = left.range().weight().data();
+        const size_type* restrict const inv_result_weight = & inv_weight.front();
+
+        // Get pointers to tensor data arrays
+        typename Tensor<U, AU>::const_pointer restrict const left_data = left.data();
+        TA_ASSERT(left_data);
+        typename Tensor<V, AV>::const_pointer restrict const right_data = right.data();
+        TA_ASSERT(right_data);
+        pointer restrict const result_data = pimpl_->data_.data();
+
+        size_type index = 0ul;
+        while(index < volume) {
+          // Compute the permuted index for the current block
+          size_type i = index;
+          size_type perm_index = 0ul;
+          for(unsigned int dim = 0u; dim < ndim; ++dim) {
+            const size_type weight_dim = weight[dim];
+            const size_type inv_result_weight_dim = inv_result_weight[dim];
+            perm_index += i / weight_dim * inv_result_weight_dim;
+            i %= weight_dim;
+          }
+
+          // Permute a block of arg
+          const size_type end = index + block_size;
+          for(; index < end; ++index, perm_index += stride)
+            result_data[perm_index] = op(left_data[index], right_data[index]);
+        }
+      }
     }
 
     /// Copy constructor
