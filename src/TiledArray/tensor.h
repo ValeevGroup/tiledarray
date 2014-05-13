@@ -209,24 +209,6 @@ namespace TiledArray {
       return (pimpl_ ? Tensor_(pimpl_->range_, pimpl_->data_.data()) : Tensor_());
     }
 
-    /// Assign a range to this tensor
-
-    /// The new range must have the same dimensions as the original, unless this
-    /// tensor is empty. In which case the tensor will be resized to have the
-    /// dimensions of \c range .
-    /// \param range The new range for this tensor
-    /// \return A reference to this tensor.
-    Tensor_& operator=(const range_type& range) {
-      if(pimpl_) {
-        TA_ASSERT(range.volume() == pimpl_->range_.volume());
-        pimpl_->range_ = range;
-      } else {
-        pimpl_.reset(new Impl(range, value_type()));
-      }
-
-      return *this;
-    }
-
     /// Plus assignment
 
     /// Evaluate \c other to this tensor
