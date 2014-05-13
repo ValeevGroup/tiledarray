@@ -75,10 +75,6 @@ namespace TiledArray {
         range_(range), data_(range.volume())
       { }
 
-      Impl(const range_type& range, const Permutation& perm) :
-        range_(perm, range), data_(range.volume())
-      { }
-
       /// Copy constructor
 
       /// Do a deep copy of \c other
@@ -146,7 +142,7 @@ namespace TiledArray {
     /// Construct an evaluated tensor
     template <typename U, typename AU>
     Tensor(const Tensor<U, AU>& other, const Permutation& perm) :
-      pimpl_(new Impl(other.range(), perm))
+      pimpl_(new Impl(perm ^ other.range()))
     {
       math::permute(*this, perm, other);
     }
@@ -162,7 +158,7 @@ namespace TiledArray {
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename Op>
     Tensor(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) :
-      pimpl_(new Impl(other.range(), perm))
+      pimpl_(new Impl(perm ^ other.range()))
     {
       math::permute(*this, perm, other, op);
     }
@@ -180,7 +176,7 @@ namespace TiledArray {
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename V, typename AV, typename Op>
     Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op, const Permutation& perm) :
-      pimpl_(new Impl(left.range(), perm))
+      pimpl_(new Impl(perm ^ left.range()))
     {
       TA_ASSERT(left.range() == right.range());
       math::permute(*this, perm, left, right, op);
