@@ -66,25 +66,25 @@ namespace TiledArray {
   typedef Array<long, 4, TensorL, DensePolicy> TArray4L;
 
   // Sparse Array Typedefs
-  typedef Array<double, 1, TensorD, SparsePolicy> TArray1D;
-  typedef Array<double, 2, TensorD, SparsePolicy> TArray2D;
-  typedef Array<double, 3, TensorD, SparsePolicy> TArray3D;
-  typedef Array<double, 4, TensorD, SparsePolicy> TArray4D;
+  typedef Array<double, 1, TensorD, SparsePolicy> TSpArray1D;
+  typedef Array<double, 2, TensorD, SparsePolicy> TSpArray2D;
+  typedef Array<double, 3, TensorD, SparsePolicy> TSpArray3D;
+  typedef Array<double, 4, TensorD, SparsePolicy> TSpArray4D;
 
-  typedef Array<int, 1, TensorI, SparsePolicy> TArray1I;
-  typedef Array<int, 2, TensorI, SparsePolicy> TArray2I;
-  typedef Array<int, 3, TensorI, SparsePolicy> TArray3I;
-  typedef Array<int, 4, TensorI, SparsePolicy> TArray4I;
+  typedef Array<int, 1, TensorI, SparsePolicy> TSpArray1I;
+  typedef Array<int, 2, TensorI, SparsePolicy> TSpArray2I;
+  typedef Array<int, 3, TensorI, SparsePolicy> TSpArray3I;
+  typedef Array<int, 4, TensorI, SparsePolicy> TSpArray4I;
 
-  typedef Array<float, 1, TensorF, SparsePolicy> TArray1F;
-  typedef Array<float, 2, TensorF, SparsePolicy> TArray2F;
-  typedef Array<float, 3, TensorF, SparsePolicy> TArray3F;
-  typedef Array<float, 4, TensorF, SparsePolicy> TArray4F;
+  typedef Array<float, 1, TensorF, SparsePolicy> TSpArray1F;
+  typedef Array<float, 2, TensorF, SparsePolicy> TSpArray2F;
+  typedef Array<float, 3, TensorF, SparsePolicy> TSpArray3F;
+  typedef Array<float, 4, TensorF, SparsePolicy> TSpArray4F;
 
-  typedef Array<long, 1, TensorL, SparsePolicy> TArray1L;
-  typedef Array<long, 2, TensorL, SparsePolicy> TArray2L;
-  typedef Array<long, 3, TensorL, SparsePolicy> TArray3L;
-  typedef Array<long, 4, TensorL, SparsePolicy> TArray4L;
+  typedef Array<long, 1, TensorL, SparsePolicy> TSpArray1L;
+  typedef Array<long, 2, TensorL, SparsePolicy> TSpArray2L;
+  typedef Array<long, 3, TensorL, SparsePolicy> TSpArray3L;
+  typedef Array<long, 4, TensorL, SparsePolicy> TSpArray4L;
 } // namespace TiledArray
 
 #endif // TILEDARRAY_FWD_H__INCLUDED
