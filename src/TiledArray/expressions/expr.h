@@ -216,12 +216,12 @@ namespace TiledArray {
       /// \tparam Tile The array tile type
       /// \tparam Policy The array policy type
       /// \return A array object that holds the result of this expression
-      template <typename T, unsigned int DIM, typename Tile, typename Policy>
-      operator Array<T, DIM, Tile, Policy>() {
-        return make_array<Array<T, DIM, Tile, Policy> >(madness::World::get_default(),
-            std::shared_ptr<typename Array<T, DIM, Tile, Policy>::pmap_interface>(),
-            VariableList());
-      }
+//      template <typename T, unsigned int DIM, typename Tile, typename Policy>
+//      explicit operator Array<T, DIM, Tile, Policy>() {
+//        return make_array<Array<T, DIM, Tile, Policy> >(madness::World::get_default(),
+//            std::shared_ptr<typename Array<T, DIM, Tile, Policy>::pmap_interface>(),
+//            VariableList());
+//      }
 
       /// Expression print
 
