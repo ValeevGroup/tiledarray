@@ -64,7 +64,8 @@ namespace TiledArray {
 
   template <typename T, unsigned int DIM, typename Tile, typename Policy>
   inline void zero(TiledArray::Array<T,DIM,Tile,Policy>& a) {
-    a = typename TiledArray::Array<T,DIM,Tile,Policy>::element_type(0) * a(detail::dummy_annotation(DIM));
+    const std::string vars = detail::dummy_annotation(DIM);
+    a(vars) = typename TiledArray::Array<T,DIM,Tile,Policy>::element_type(0) * a(vars);
   }
 
   template <typename T, unsigned int DIM, typename Tile, typename Policy>
@@ -104,7 +105,8 @@ namespace TiledArray {
   template <typename T, unsigned int DIM, typename Tile, typename Policy>
   inline void scale(TiledArray::Array<T,DIM,Tile,Policy>& a,
                     typename TiledArray::Array<T,DIM,Tile,Policy>::element_type scaling_factor) {
-    a = scaling_factor * a(detail::dummy_annotation(DIM));
+    const std::string vars = detail::dummy_annotation(DIM);
+    a(vars) = scaling_factor * a(vars);
   }
 
   template <typename T, unsigned int DIM, typename Tile, typename Policy>
@@ -112,7 +114,7 @@ namespace TiledArray {
                    typename TiledArray::Array<T,DIM,Tile,Policy>::element_type a,
                    const TiledArray::Array<T,DIM,Tile,Policy>& x) {
     const std::string vars = detail::dummy_annotation(DIM);
-    y = y(vars) + a * x(vars);
+    y(vars) = y(vars) + a * x(vars);
   }
 
   template <typename T, unsigned int DIM, typename Tile, typename Policy>
