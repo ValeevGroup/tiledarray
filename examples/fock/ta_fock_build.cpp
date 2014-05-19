@@ -114,8 +114,8 @@ int main(int argc, char** argv) {
 
   // Create C^T blocking
   std::vector<TiledArray::TiledRange1> coeff_blocking2{
-      TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end()),
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end())
+      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
+      TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end())
   };
 
   std::vector<TiledArray::TiledRange1> df_blocking2 = {
@@ -160,12 +160,12 @@ int main(int argc, char** argv) {
   // Do fock build
   for(int i = 0; i < repeat; ++i) {
 
-    K_temp = C("Z,m") * Eri("m,n,P");
+    K_temp("j,Z,P") = C("m,Z") * Eri("m,j,P");
 
     // Compute coulomb and exchange
-    G("i,j") = 2.0 * ( Eri("i,j,P") * ( C("Z,n") * K_temp("Z,n,P") ) )
-                   - ( K_temp("Z,i,P") * K_temp("Z,j,P") );
-    D("mu,nu") = C("i,mu") * C("i,nu");
+    G("i,j") = 2.0 * ( Eri("i,j,P") * ( C("m,Z") * K_temp("m,Z,P") ) )
+                   - ( K_temp("i,Z,P") * K_temp("j,Z,P") );
+    D("mu,nu") = C("mu,i") * C("nu,i");
 
     F("i,j") = G("i,j") + H("i,j");
 
