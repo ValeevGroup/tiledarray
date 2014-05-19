@@ -27,6 +27,9 @@ namespace Eigen { // Eigen Alligned allocator for TA::Tensor
 
 namespace TiledArray {
 
+  //TiledArray Policy
+  class DensePolicy;
+  class SparsePolicy;
 
   // TiledArray Tensors
   template<typename, typename>
@@ -38,29 +41,50 @@ namespace TiledArray {
   typedef Tensor<long, Eigen::aligned_allocator<long> > TensorL;
 
   // TiledArray Arrays
-  template<typename, unsigned int, typename>
+  template<typename, unsigned int, typename, typename>
   class Array;
 
-  // Array Typedefs
-  typedef Array<double, 1, TensorD> TArray1D;
-  typedef Array<double, 2, TensorD> TArray2D;
-  typedef Array<double, 3, TensorD> TArray3D;
-  typedef Array<double, 4, TensorD> TArray4D;
+  // Dense Array Typedefs
+  typedef Array<double, 1, TensorD, DensePolicy> TArray1D;
+  typedef Array<double, 2, TensorD, DensePolicy> TArray2D;
+  typedef Array<double, 3, TensorD, DensePolicy> TArray3D;
+  typedef Array<double, 4, TensorD, DensePolicy> TArray4D;
 
-  typedef Array<int, 1, TensorI> TArray1I;
-  typedef Array<int, 2, TensorI> TArray2I;
-  typedef Array<int, 3, TensorI> TArray3I;
-  typedef Array<int, 4, TensorI> TArray4I;
+  typedef Array<int, 1, TensorI, DensePolicy> TArray1I;
+  typedef Array<int, 2, TensorI, DensePolicy> TArray2I;
+  typedef Array<int, 3, TensorI, DensePolicy> TArray3I;
+  typedef Array<int, 4, TensorI, DensePolicy> TArray4I;
 
-  typedef Array<float, 1, TensorF> TArray1F;
-  typedef Array<float, 2, TensorF> TArray2F;
-  typedef Array<float, 3, TensorF> TArray3F;
-  typedef Array<float, 4, TensorF> TArray4F;
+  typedef Array<float, 1, TensorF, DensePolicy> TArray1F;
+  typedef Array<float, 2, TensorF, DensePolicy> TArray2F;
+  typedef Array<float, 3, TensorF, DensePolicy> TArray3F;
+  typedef Array<float, 4, TensorF, DensePolicy> TArray4F;
 
-  typedef Array<long, 1, TensorL> TArray1L;
-  typedef Array<long, 2, TensorL> TArray2L;
-  typedef Array<long, 3, TensorL> TArray3L;
-  typedef Array<long, 4, TensorL> TArray4L;
+  typedef Array<long, 1, TensorL, DensePolicy> TArray1L;
+  typedef Array<long, 2, TensorL, DensePolicy> TArray2L;
+  typedef Array<long, 3, TensorL, DensePolicy> TArray3L;
+  typedef Array<long, 4, TensorL, DensePolicy> TArray4L;
+
+  // Sparse Array Typedefs
+  typedef Array<double, 1, TensorD, SparsePolicy> TArray1D;
+  typedef Array<double, 2, TensorD, SparsePolicy> TArray2D;
+  typedef Array<double, 3, TensorD, SparsePolicy> TArray3D;
+  typedef Array<double, 4, TensorD, SparsePolicy> TArray4D;
+
+  typedef Array<int, 1, TensorI, SparsePolicy> TArray1I;
+  typedef Array<int, 2, TensorI, SparsePolicy> TArray2I;
+  typedef Array<int, 3, TensorI, SparsePolicy> TArray3I;
+  typedef Array<int, 4, TensorI, SparsePolicy> TArray4I;
+
+  typedef Array<float, 1, TensorF, SparsePolicy> TArray1F;
+  typedef Array<float, 2, TensorF, SparsePolicy> TArray2F;
+  typedef Array<float, 3, TensorF, SparsePolicy> TArray3F;
+  typedef Array<float, 4, TensorF, SparsePolicy> TArray4F;
+
+  typedef Array<long, 1, TensorL, SparsePolicy> TArray1L;
+  typedef Array<long, 2, TensorL, SparsePolicy> TArray2L;
+  typedef Array<long, 3, TensorL, SparsePolicy> TArray3L;
+  typedef Array<long, 4, TensorL, SparsePolicy> TArray4L;
 } // namespace TiledArray
 
 #endif // TILEDARRAY_FWD_H__INCLUDED
