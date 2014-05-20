@@ -84,7 +84,7 @@ namespace TiledArray {
   inline void vec_multiply(TiledArray::Array<T,DIM,Tile,Policy>& a1,
                            const TiledArray::Array<T,DIM,Tile,Policy>& a2) {
     const std::string vars = detail::dummy_annotation(DIM);
-    a1 = a1(vars) * a2(vars);
+    a1(vars) = a1(vars) * a2(vars);
   }
 
   template <typename T, unsigned int DIM, typename Tile, typename Policy>
