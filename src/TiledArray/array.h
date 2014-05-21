@@ -26,6 +26,7 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/expressions.h>
+#include <TiledArray/distributed_deleter.h>
 
 namespace TiledArray {
 
@@ -74,8 +75,9 @@ namespace TiledArray {
     /// \param pmap The tile index -> process map
     Array(madness::World& w, const trange_type& tr,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(new impl_type(w, tr, shape_type(), (pmap ? pmap : Policy::default_pmap(w, tr.tiles().volume()))),
-          madness::make_deferred_deleter<impl_type>(w))
+      pimpl_(make_distributed_shared_ptr(new impl_type(w, tr, shape_type(),
+          (pmap ? pmap : Policy::default_pmap(w, tr.tiles().volume())))))
+
     {
       TA_USER_ASSERT(tr.tiles().dim() == DIM,
           "The dimensions of the tiled range do not match that of the array object.");
@@ -92,8 +94,8 @@ namespace TiledArray {
     /// shape will be invoced by the constructor
     Array(madness::World& w, const trange_type& tr, const shape_type& shape,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(new impl_type(w, tr, shape, (pmap ? pmap : Policy::default_pmap(w, tr.tiles().volume()))),
-          madness::make_deferred_deleter<impl_type>(w))
+      pimpl_(make_distributed_shared_ptr(new impl_type(w, tr, shape,
+          (pmap ? pmap : Policy::default_pmap(w, tr.tiles().volume())))))
     {
       TA_USER_ASSERT(tr.tiles().dim() == DIM,
           "The dimensions of the tiled range do not match that of the array object.");
