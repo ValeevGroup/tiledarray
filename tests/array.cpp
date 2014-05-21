@@ -146,8 +146,6 @@ BOOST_AUTO_TEST_CASE( find_local )
 
 BOOST_AUTO_TEST_CASE( find_remote )
 {
-  a.eval().get();
-
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
 
     if(! a.is_local(*it)) {
@@ -163,7 +161,6 @@ BOOST_AUTO_TEST_CASE( find_remote )
 BOOST_AUTO_TEST_CASE( fill_tiles )
 {
   ArrayN a(world, tr);
-  a.eval().get();
 
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
     if(a.is_local(*it)) {
@@ -184,7 +181,6 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
 {
   std::vector<int> data;
   ArrayN a(world, tr);
-  a.eval().get();
 
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
     ArrayN::trange_type::tile_range_type range = a.trange().make_tile_range(*it);

@@ -99,11 +99,6 @@ namespace TiledArray {
           "The dimensions of the tiled range do not match that of the array object.");
     }
 
-//    /// Construct Array from a pimpl
-//
-//    /// \param pimpl The implementation pointer
-//    Array(const std::shared_ptr<impl_type>& pimpl) : pimpl_(pimpl) { }
-
     /// Copy constructor
 
     /// This is a shallow copy, that is no data is copied.
@@ -112,11 +107,6 @@ namespace TiledArray {
       pimpl_ = other.pimpl_;
       return *this;
     }
-
-    /// Evaluate this object
-
-    /// \return A future that is set when the array evaluation is complete
-    madness::Future<bool> eval() { return madness::Future<bool>(true); }
 
     /// Begin iterator factory function
 
