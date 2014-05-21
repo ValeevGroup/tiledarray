@@ -139,6 +139,7 @@ namespace TiledArray {
       array_type array_; ///< The array that will be evaluated
       std::shared_ptr<op_type> op_; ///< The tile operation
       Permutation inv_perm_; ///< The inverse permutation
+      madness::AtomicInt local_set_counter_; ///< Atomic counter used to track the number local tiles set
 
     public:
 
@@ -157,12 +158,26 @@ namespace TiledArray {
         array_(array),
         op_(new op_type(op)),
         inv_perm_(-perm)
-      { }
+      {
+        local_set_counter_ = 0;
+      }
 
       /// Virtual destructor
       virtual ~ArrayEvalImpl() { }
 
     private:
+
+      /// Modify the local set counter
+
+      /// This function will update the local set counter. Once the set count is
+      /// equal to the maximum local set count, the array object stored in this
+      /// evaluator will be reset.
+      /// \param delta The value that will be added to the local set counter
+      void update_set_count(const int delta) {
+        const int set_count = (local_set_counter_ += delta);
+        if(set_count == 0)
+          array_ = array_type();
+      }
 
       /// Make an array tile and insert it into the distributed storage container
 
@@ -170,6 +185,7 @@ namespace TiledArray {
       /// \param tile The array tile that is the basis for lazy tile
       void set_tile(const size_type i, const typename array_type::value_type& tile, const bool consume) {
         DistEvalImpl_::set_tile(i, value_type(tile, op_, consume));
+        update_set_count(1);
       }
 
       /// Get the array tile that corresponds to the target tile
@@ -201,7 +217,7 @@ namespace TiledArray {
       template <typename Perm>
       size_type eval_kernel(const std::shared_ptr<ArrayEvalImpl_>& self, Perm inv_perm) {
         // Counter for the number of tasks submitted by this object
-        size_type task_count = 0ul;
+        int task_count = 0;
 
         // Create iterator to tiles that are local for this evaluator.
         const typename array_type::pmap_interface::const_iterator end =
@@ -224,7 +240,7 @@ namespace TiledArray {
             // Insert the tile into this evaluator for subsequent processing
             if(tile.probe()) {
               // Skip the task since the tile is ready
-              DistEvalImpl_::set_tile(i, value_type(tile, op_, consumable_tile));
+              ArrayEvalImpl_::set_tile(i, tile, consumable_tile);
             } else {
               // Spawn a task to set the tile the input tile is ready.
               TensorImpl_::get_world().taskq.add(self, & ArrayEvalImpl_::set_tile,
@@ -234,6 +250,8 @@ namespace TiledArray {
             ++task_count;
           }
         }
+
+        update_set_count(-task_count);
 
         return task_count;
       }
