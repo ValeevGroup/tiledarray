@@ -135,24 +135,6 @@ namespace TiledArray {
       /// \throw nothing
       size_type max_size() const { return max_size_; }
 
-      /// Insert element
-
-      /// Add element \c i to the container. If it is not local, a message is
-      /// sent to the owner to insert it.
-      /// \param i The element to be inserted.
-      /// \return true if the tile was inserted locally, otherwise false.
-      /// \throw TiledArray::Exception If \c i is greater than or equal to \c max_size() .
-      /// \note If you want to insert an element with a value, use the \c set()
-      /// function.
-      bool insert(size_type i) {
-        TA_ASSERT(i < max_size_);
-        if(is_local(i))
-          return data_.insert(typename container_type::datumT(i, future())).second;
-
-        WorldObject_::send(owner(i), & DistributedStorage_::remote_insert, i);
-        return false;
-      }
-
       /// Set element \c i with \c value
 
       /// The owner of \c i may be local or remote. If \c i is remote, a task
