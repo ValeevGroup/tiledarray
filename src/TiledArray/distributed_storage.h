@@ -356,15 +356,6 @@ namespace TiledArray {
         f.set(value);
       }
 
-      /// Remote insert without a return message
-
-      /// This is a task function that is used to spawn remote insert tasks
-      /// \param i The element to be inserted
-      void remote_insert(size_type i) {
-        TA_ASSERT(is_local(i));
-        data_.insert(typename container_type::datumT(i, future()));
-      }
-
       /// A delayed return callback object
 
       /// This object is used to register callbacks for local elements that will
