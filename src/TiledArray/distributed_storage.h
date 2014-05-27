@@ -169,7 +169,8 @@ namespace TiledArray {
 
             // Check that the future has not been set already.
 #ifndef NDEBUG
-            check_future(existing_f);
+            if(existing_f.probe())
+              TA_EXCEPTION("Tile has already been assigned.");
 #endif // NDEBUG
 
             // Set the future
@@ -250,15 +251,6 @@ namespace TiledArray {
 
     private:
 
-      /// Check that the future has not been previously assigned
-
-      /// \param f The future to be checked
-      /// \throw TiledArray::Exception When \c f has been previously set.
-      static void check_future(const future& f) {
-        if(f.probe())
-          TA_EXCEPTION("Tile has already been assigned.");
-      }
-
       /// Callback object to move a tile from this container once it has been set
 
       /// This callback object is used to remove elements from the container
@@ -326,34 +318,24 @@ namespace TiledArray {
       /// Set the value of an element
       void set_value(size_type i, const value_type& value) {
         if(is_local(i)) {
-          set_local_value(i, value);
+          // Get the future for element i
+          const_accessor acc;
+          data_.insert(acc, i);
+          future f = acc->second;
+          acc.release();
+
+          // Check that the future has not been set already.
+  #ifndef NDEBUG
+          if(f.probe())
+            TA_EXCEPTION("Tile has already been assigned.");
+  #endif // NDEBUG
+
+          // Assign the element
+          f.set(value);
         } else {
           WorldObject_::task(owner(i), & DistributedStorage_::set_value, i, value,
               madness::TaskAttributes::hipri());
         }
-      }
-
-      /// Set the value of a local element
-
-      /// Assume that the tile locality has already been checked
-      /// \tparam Value The element type
-      /// \param i The index of the element to be set
-      /// \param value The value that will be assigned to element \c i
-      template <typename Value>
-      void set_local_value(size_type i, const Value& value) {
-        // Get the future for element i
-        const_accessor acc;
-        data_.insert(acc, i);
-        future f = acc->second;
-        acc.release();
-
-        // Check that the future has not been set already.
-#ifndef NDEBUG
-        check_future(f);
-#endif // NDEBUG
-
-        // Assign the element
-        f.set(value);
       }
 
       /// A delayed return callback object
