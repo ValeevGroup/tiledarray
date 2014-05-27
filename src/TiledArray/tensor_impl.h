@@ -490,7 +490,7 @@ namespace TiledArray {
       template <typename Index>
       future get(const Index& i) const {
         TA_ASSERT(! is_zero(i));
-        return data_[trange_.tiles().ord(i)];
+        return data_.get(trange_.tiles().ord(i));
       }
 
       /// Tile accessor

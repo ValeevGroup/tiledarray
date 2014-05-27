@@ -195,7 +195,7 @@ namespace TiledArray {
       /// into the container on the owner's node.
       /// \return A future to the element.
       /// \throw TiledArray::Exception If \c i is greater than or equal to \c max_size() .
-      future operator[](size_type i) const {
+      future get(size_type i) const {
         TA_ASSERT(i < max_size_);
         if(is_local(i)) {
           // Return the local element.
