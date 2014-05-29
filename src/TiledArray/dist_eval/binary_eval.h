@@ -135,7 +135,7 @@ namespace TiledArray {
             // Schedule tile evaluation task
             TensorImpl_::get_world().taskq.add(self,
                 & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
-                target_index, left_.move(index), right_.move(index));
+                target_index, left_.get(index), right_.get(index));
 
             ++task_count;
           }
@@ -151,24 +151,24 @@ namespace TiledArray {
               if(left_.is_zero(index)) {
                 TensorImpl_::get_world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<const zero_left_type, right_argument_type>,
-                  target_index, zero_left_type(), right_.move(index));
+                  target_index, zero_left_type(), right_.get(index));
               } else if(right_.is_zero(index)) {
                 TensorImpl_::get_world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<left_argument_type, const zero_right_type>,
-                  target_index, left_.move(index), zero_right_type());
+                  target_index, left_.get(index), zero_right_type());
               } else {
                 TensorImpl_::get_world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
-                  target_index, left_.move(index), right_.move(index));
+                  target_index, left_.get(index), right_.get(index));
               }
 
               ++task_count;
             } else {
               // Cleanup unused tiles
               if(! left_.is_zero(index))
-                left_.move(index);
+                left_.get(index);
               if(! right_.is_zero(index))
-                right_.move(index);
+                right_.get(index);
             }
           }
         }

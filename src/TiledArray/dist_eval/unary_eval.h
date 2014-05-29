@@ -114,7 +114,7 @@ namespace TiledArray {
 
             // Schedule tile evaluation task
             TensorImpl_::get_world().taskq.add(self, & UnaryEvalImpl_::eval_tile,
-                target_index, arg_.move(index));
+                target_index, arg_.get(index));
 
             ++task_count;
           }

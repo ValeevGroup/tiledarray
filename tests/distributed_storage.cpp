@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE( move_local )
 
   for(std::size_t i = 0; i < t->max_size(); ++i) {
     if(t->is_local(i)) {
-      madness::Future<int> f = t->move(i);
+      madness::Future<int> f = t->get_cache(i);
       --local_size;
 
       BOOST_CHECK_EQUAL(f.get(), world.rank());
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE( delayed_move_local )
   std::vector<madness::Future<int> > local_data;
   for(std::size_t i = 0; i < t->max_size(); ++i) {
     if(t->is_local(i))
-      local_data.push_back(t->move(i));
+      local_data.push_back(t->get_cache(i));
   }
 
 
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE( move_remote )
 
   for(std::size_t i = 0; i < t->max_size(); ++i) {
     if(world.rank() == 0) {
-      madness::Future<int> f = t->move(i);
+      madness::Future<int> f = t->get_cache(i);
       BOOST_CHECK_EQUAL(f.get(), t->owner(i));
     }
 
@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE( delayed_move_remote )
   std::vector<madness::Future<int> > local_data;
   for(std::size_t i = 0; i < t->max_size(); ++i) {
     if(world.rank() == 0)
-      local_data.push_back(t->move(i));
+      local_data.push_back(t->get_cache(i));
   }
 
 

@@ -301,7 +301,7 @@ namespace TiledArray {
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
-      future move(size_type i) const { return pimpl_->move(i); }
+      future get(size_type i) const { return pimpl_->move(i); }
 
       /// World object accessor
 

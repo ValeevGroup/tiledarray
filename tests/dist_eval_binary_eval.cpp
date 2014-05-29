@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE( eval )
 
     // Get the array evaluator tile.
     madness::Future<dist_eval_type1::value_type> tile;
-    BOOST_REQUIRE_NO_THROW(tile = dist_eval.move(*it));
+    BOOST_REQUIRE_NO_THROW(tile = dist_eval.get(*it));
 
     // Force the evaluation of the tile
     dist_eval_type1::eval_type eval_tile;
@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
     // Get the array evaluator tile.
     madness::Future<dist_eval_type1::value_type> tile;
-    BOOST_REQUIRE_NO_THROW(tile = dist_eval.move(*it));
+    BOOST_REQUIRE_NO_THROW(tile = dist_eval.get(*it));
 
     // Force the evaluation of the tile
     dist_eval_type1::eval_type eval_tile;

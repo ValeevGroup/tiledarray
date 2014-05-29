@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE( eval )
 
     // Get the array evaluator tile.
     madness::Future<dist_eval_type1::value_type> tile;
-    BOOST_REQUIRE_NO_THROW(tile = contract.move(*it));
+    BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
 
     // Force the evaluation of the tile
     dist_eval_type1::eval_type eval_tile;
@@ -241,7 +241,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
     // Get the array evaluator tile.
     madness::Future<dist_eval_type1::value_type> tile;
-    BOOST_REQUIRE_NO_THROW(tile = contract.move(*it));
+    BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
 
     // Force the evaluation of the tile
     dist_eval_type1::eval_type eval_tile;
@@ -308,7 +308,7 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
     } else {
       // Get the array evaluator tile.
       madness::Future<dist_eval_type1::value_type> tile;
-      BOOST_REQUIRE_NO_THROW(tile = contract.move(*it));
+      BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
 
       // Force the evaluation of the tile
       dist_eval_type1::eval_type eval_tile;

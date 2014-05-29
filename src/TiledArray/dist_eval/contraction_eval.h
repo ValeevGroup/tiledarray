@@ -267,7 +267,7 @@ namespace TiledArray {
 
         madness::Future<typename Arg::eval_type> operator()(const size_type index) const {
           TA_ASSERT(arg_.is_local(index));
-          return convert(arg_.move(index));
+          return convert(arg_.get(index));
         }
       }; // class GenRootTile
 

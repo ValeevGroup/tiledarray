@@ -131,7 +131,7 @@ namespace TiledArray {
         /// \param it An index iterator from a process map
         /// \return true
         bool operator()(const typename DE::pmap_interface::const_iterator& it) const {
-          madness::Future<typename DE::value_type> tile = dist_eval_.move(*it);
+          madness::Future<typename DE::value_type> tile = dist_eval_.get(*it);
           set_tile(*it, tile);
           return true;
         }
@@ -313,10 +313,10 @@ namespace TiledArray {
           const bool right_not_zero = !right_dist_eval.is_zero(index);
 
           if(left_not_zero && right_not_zero) {
-            local_reduce_task.add(left_dist_eval.move(index), right_dist_eval.move(index));
+            local_reduce_task.add(left_dist_eval.get(index), right_dist_eval.get(index));
           } else {
-            if(left_not_zero) left_dist_eval.move(index);
-            if(right_not_zero) right_dist_eval.move(index);
+            if(left_not_zero) left_dist_eval.get(index);
+            if(right_not_zero) right_dist_eval.get(index);
           }
         }
 
