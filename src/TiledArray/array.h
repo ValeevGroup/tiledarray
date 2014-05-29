@@ -314,7 +314,7 @@ namespace TiledArray {
     bool is_dense() const {
       check_pimpl();
       return pimpl_->is_dense();
-      }
+    }
 
 
     /// Shape map accessor
