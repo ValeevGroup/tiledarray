@@ -71,7 +71,7 @@ struct ExpressionsFixture : public TiledRangeFixture {
   make_rand_tile(const typename A::value_type::range_type& r) {
     typename A::value_type tile(r);
     for(std::size_t i = 0ul; i < tile.size(); ++i)
-      tile[i] = GlobalFixture::world->rand() / 11;
+      tile[i] = GlobalFixture::world->rand() % 101;
     return tile;
   }
 
@@ -460,24 +460,243 @@ BOOST_AUTO_TEST_CASE( scale_mult )
 
 BOOST_AUTO_TEST_CASE( cont )
 {
-  BOOST_REQUIRE_NO_THROW(w("i,j") =      a("i,b,c")  *      b("j,b,c") );
-  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) *      b("j,b,c") );
-  BOOST_REQUIRE_NO_THROW(w("i,j") =      a("i,b,c")  * (3 * b("j,b,c")));
+  std::cout << "cont\n";
+  const std::size_t m = a.trange().elements().size()[0];
+  const std::size_t k = a.trange().elements().size()[1] * a.trange().elements().size()[2];
+  const std::size_t n = b.trange().elements().size()[2];
+
+  TiledArray::EigenMatrixXi left(m, k);
+  left.fill(0);
+
+  for(Array3::const_iterator it = a.begin(); it != a.end(); ++it) {
+    Array3::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      const std::size_t r = i[0];
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+        for(i[2] = tile.range().start()[2]; i[2] < tile.range().finish()[2]; ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements().weight()[1]
+                              + i[2] * a.trange().elements().weight()[2];
+
+          left(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(& left(0,0), left.rows() * left.cols());
+
+  TiledArray::EigenMatrixXi right(n, k);
+  right.fill(0);
+
+  for(Array3::const_iterator it = b.begin(); it != b.end(); ++it) {
+    Array3::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      const std::size_t r = i[0];
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+        for(i[2] = tile.range().start()[2]; i[2] < tile.range().finish()[2]; ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements().weight()[1]
+                              + i[2] * a.trange().elements().weight()[2];
+
+          right(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(& right(0,0), right.rows() * right.cols());
+
+  TiledArray::EigenMatrixXi result(m, n);
+
+  result = left * right.transpose();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * b("j,b,c"));
+  for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
+    std::stringstream ss;
+    ss << GlobalFixture::world->rank() << ": " << it.ordinal() << "\n";
+    std::cout << ss.str().c_str();
+    Array2::value_type tile = *it;
+    ss.clear();
+    ss << GlobalFixture::world->rank() << ": " << it.ordinal() << " *\n";
+    std::cout << ss.str().c_str();
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+          BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]));
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * b("j,b,c") );
+  std::cout << "w(\"i,j\") = (2 * a(\"i,b,c\")) * b(\"j,b,c\")\n";
+  for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
+    std::stringstream ss;
+    ss << GlobalFixture::world->rank() << " " << it.index() << "\n";
+    std::cout << ss.str().c_str();
+    Array2::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+          BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 2);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * (3 * b("j,b,c")));
+
+  for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
+    Array2::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+          BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 3);
+      }
+    }
+  }
+
   BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * (3 * b("j,b,c")));
 
+  for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
+    Array2::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+          BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 6);
+      }
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE( scale_cont )
 {
-  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (     a("i,b,c")  *      b("j,b,c")));
-  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) *      b("j,b,c")));
-  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (     a("i,b,c")  * (3 * b("j,b,c"))));
+  std::cout << "scale_cont\n";
+  const std::size_t m = a.trange().elements().size()[0];
+  const std::size_t k = a.trange().elements().size()[1] * a.trange().elements().size()[2];
+  const std::size_t n = b.trange().elements().size()[2];
+
+  TiledArray::EigenMatrixXi left(m, k);
+  left.fill(0);
+
+  for(Array3::const_iterator it = a.begin(); it != a.end(); ++it) {
+    Array3::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      const std::size_t r = i[0];
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+        for(i[2] = tile.range().start()[2]; i[2] < tile.range().finish()[2]; ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements().weight()[1]
+                              + i[2] * a.trange().elements().weight()[2];
+
+          left(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(& left(0,0), left.rows() * left.cols());
+
+  TiledArray::EigenMatrixXi right(n, k);
+  right.fill(0);
+
+  for(Array3::const_iterator it = b.begin(); it != b.end(); ++it) {
+    Array3::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      const std::size_t r = i[0];
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+        for(i[2] = tile.range().start()[2]; i[2] < tile.range().finish()[2]; ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements().weight()[1]
+                              + i[2] * a.trange().elements().weight()[2];
+
+          right(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(& right(0,0), right.rows() * right.cols());
+
+  TiledArray::EigenMatrixXi result(m, n);
+
+  result = left * right.transpose();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("i,b,c") * b("j,b,c")));
+
+  for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
+    Array2::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+          BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 5);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * b("j,b,c")) );
+
+  for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
+    Array2::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+          BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 10);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("i,b,c") * (3 * b("j,b,c"))));
+
+  for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
+    Array2::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+          BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 15);
+      }
+    }
+  }
+
   BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * (3 * b("j,b,c"))));
 
+  for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
+    Array2::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().start()[0]; i[0] < tile.range().finish()[0]; ++i[0]) {
+      for(i[1] = tile.range().start()[1]; i[1] < tile.range().finish()[1]; ++i[1]) {
+          BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 30);
+      }
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE( outer_product )
 {
+  std::cout << "outer_product\n";
   // Generate Eigen matrices from input arrays.
   EigenMatrixXi ev = make_matrix(v);
   EigenMatrixXi eu = make_matrix(u);
