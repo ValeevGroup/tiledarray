@@ -164,7 +164,7 @@ namespace TiledArray {
 
         // Move the data from disteval into the result array
         int chuck_size = std::max<int>(1u,
-            dist_eval.pmap()->local_size() / (4 * (madness::ThreadPool::size() + 1)));
+            dist_eval.pmap()->local_size() / (madness::ThreadPool::size() + 1));
         world.taskq.for_each(range_type(dist_eval.pmap()->begin(), dist_eval.pmap()->end(), chuck_size),
             EvalTiles<A, typename engine_type::dist_eval_type>(result, dist_eval)).get();
 
