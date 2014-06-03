@@ -89,12 +89,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
     // Spawn tasks to copy array tiles to the Eigen matrix
     for(std::size_t i = 0; i < array.size(); ++i) {
-      if(array.get_world().rank() == 1)
-        std::cout << i;
       if(! array.is_zero(i))
         tensor_to_eigen_submatrix(array.find(i).get(), matrix);
-      if(array.get_world().rank() == 1)
-        std::cout << "*\n";
     }
 
     return matrix;
@@ -460,7 +456,6 @@ BOOST_AUTO_TEST_CASE( scale_mult )
 
 BOOST_AUTO_TEST_CASE( cont )
 {
-  std::cout << "cont\n";
   const std::size_t m = a.trange().elements().size()[0];
   const std::size_t k = a.trange().elements().size()[1] * a.trange().elements().size()[2];
   const std::size_t n = b.trange().elements().size()[2];
@@ -517,13 +512,7 @@ BOOST_AUTO_TEST_CASE( cont )
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * b("j,b,c"));
   for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
-    std::stringstream ss;
-    ss << GlobalFixture::world->rank() << ": " << it.ordinal() << "\n";
-    std::cout << ss.str().c_str();
     Array2::value_type tile = *it;
-    ss.clear();
-    ss << GlobalFixture::world->rank() << ": " << it.ordinal() << " *\n";
-    std::cout << ss.str().c_str();
 
     std::array<std::size_t, 2> i;
 
@@ -535,11 +524,7 @@ BOOST_AUTO_TEST_CASE( cont )
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * b("j,b,c") );
-  std::cout << "w(\"i,j\") = (2 * a(\"i,b,c\")) * b(\"j,b,c\")\n";
   for(Array3::const_iterator it = w.begin(); it != w.end(); ++it) {
-    std::stringstream ss;
-    ss << GlobalFixture::world->rank() << " " << it.index() << "\n";
-    std::cout << ss.str().c_str();
     Array2::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
@@ -582,7 +567,6 @@ BOOST_AUTO_TEST_CASE( cont )
 
 BOOST_AUTO_TEST_CASE( scale_cont )
 {
-  std::cout << "scale_cont\n";
   const std::size_t m = a.trange().elements().size()[0];
   const std::size_t k = a.trange().elements().size()[1] * a.trange().elements().size()[2];
   const std::size_t n = b.trange().elements().size()[2];
@@ -696,7 +680,6 @@ BOOST_AUTO_TEST_CASE( scale_cont )
 
 BOOST_AUTO_TEST_CASE( outer_product )
 {
-  std::cout << "outer_product\n";
   // Generate Eigen matrices from input arrays.
   EigenMatrixXi ev = make_matrix(v);
   EigenMatrixXi eu = make_matrix(u);
