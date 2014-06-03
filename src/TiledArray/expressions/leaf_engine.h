@@ -160,7 +160,8 @@ namespace TiledArray {
         /// Create the pimpl for the distributed evaluator
         std::shared_ptr<typename dist_eval_type::impl_type> pimpl(
             new impl_type(array_, *world_, trange_, shape_, pmap_, perm_,
-            ExprEngine_::make_op()));
+            ExprEngine_::make_op()),
+            madness::make_deferred_deleter<typename dist_eval_type::impl_type>(*world_));
 
         return dist_eval_type(pimpl);
       }

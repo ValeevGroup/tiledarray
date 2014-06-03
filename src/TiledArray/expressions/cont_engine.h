@@ -465,7 +465,8 @@ namespace TiledArray {
 
         std::shared_ptr<typename dist_eval_type::impl_type> pimpl(
             new impl_type(left, right, *world_, trange_, shape_, pmap_, perm_, op_,
-            K_, proc_grid_));
+            K_, proc_grid_),
+            madness::make_deferred_deleter<typename dist_eval_type::impl_type>(*world_));
 
         return dist_eval_type(pimpl);
       }
