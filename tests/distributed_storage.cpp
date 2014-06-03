@@ -125,17 +125,15 @@ BOOST_AUTO_TEST_CASE( array_operator )
 
 BOOST_AUTO_TEST_CASE( move_local )
 {
-  // Insert all elements
-  for(std::size_t i = 0; i < t->max_size(); ++i) {
-    if(t->is_local(i))
-      t->get(i);
-  }
-
-  std::size_t local_size = t->size();
+  std::size_t local_size = 0ul;
 
   for(std::size_t i = 0; i < t->max_size(); ++i) {
-    if(t->is_local(i))
-      t->set(i, world.rank());
+    if(t->is_local(i)) {
+      t->set_cache(i, world.rank());
+      ++local_size;
+    }
+
+    BOOST_CHECK_EQUAL(t->size(), local_size);
   }
 
   world.gop.fence();
@@ -143,56 +141,61 @@ BOOST_AUTO_TEST_CASE( move_local )
   for(std::size_t i = 0; i < t->max_size(); ++i) {
     if(t->is_local(i)) {
       madness::Future<int> f = t->get_cache(i);
-      --local_size;
 
       BOOST_CHECK_EQUAL(f.get(), world.rank());
-      BOOST_CHECK_EQUAL(local_size, t->size());
+      --local_size;
     }
+
+    BOOST_CHECK_EQUAL(t->size(), local_size);
   }
+
+  BOOST_CHECK_EQUAL(t->size(), 0ul);
 }
 
 BOOST_AUTO_TEST_CASE( delayed_move_local )
 {
-  // Insert all elements
-  for(std::size_t i = 0; i < t->max_size(); ++i) {
-    if(t->is_local(i))
-      t->get(i);
-  }
-
-  std::size_t local_size = t->size();
-
-  std::vector<madness::Future<int> > local_data;
-  for(std::size_t i = 0; i < t->max_size(); ++i) {
-    if(t->is_local(i))
-      local_data.push_back(t->get_cache(i));
-  }
-
+  std::size_t local_size = 0ul;
+  std::deque<madness::Future<int> > local_data;
 
   for(std::size_t i = 0; i < t->max_size(); ++i) {
     if(t->is_local(i)) {
-      t->set(i, world.rank());
+      local_data.push_front(t->get_cache(i));
+      ++local_size;
+    }
+
+    BOOST_CHECK_EQUAL(t->size(), local_size);
+  }
+
+  world.gop.fence();
+
+  for(std::size_t i = 0; i < t->max_size(); ++i) {
+    if(t->is_local(i)) {
+      t->set_cache(i, world.rank());
+
+      BOOST_CHECK_EQUAL(local_data.back().get(), world.rank());
+      local_data.pop_back();
       --local_size;
     }
 
-    BOOST_CHECK_EQUAL(local_size, t->size());
+    BOOST_CHECK_EQUAL(t->size(), local_size);
   }
 
-
-  for(std::vector<madness::Future<int> >::const_iterator it = local_data.begin(); it != local_data.end(); ++it) {
-    BOOST_CHECK_EQUAL(it->get(), world.rank());
-  }
-
+  BOOST_CHECK_EQUAL(t->size(), 0ul);
 }
 
 BOOST_AUTO_TEST_CASE( move_remote )
 {
+  std::size_t local_size = 0ul;
+
   // Insert all elements
   for(std::size_t i = 0; i < t->max_size(); ++i) {
-    if(t->is_local(i))
-      t->set(i, world.rank());
-  }
+    if(t->is_local(i)) {
+      t->set_cache(i, world.rank());
+      ++local_size;
+    }
 
-  std::size_t local_size = t->size();
+    BOOST_CHECK_EQUAL(t->size(), local_size);
+  }
 
   world.gop.fence();
 
@@ -216,38 +219,32 @@ BOOST_AUTO_TEST_CASE( move_remote )
 
 BOOST_AUTO_TEST_CASE( delayed_move_remote )
 {
-  // Insert all elements
-  for(std::size_t i = 0; i < t->max_size(); ++i) {
-    if(t->is_local(i))
-      t->get(i);
-  }
-
-  std::size_t local_size = t->size();
-
   std::vector<madness::Future<int> > local_data;
+
   for(std::size_t i = 0; i < t->max_size(); ++i) {
     if(world.rank() == 0)
       local_data.push_back(t->get_cache(i));
   }
 
+  world.gop.fence();
+
+  std::size_t local_size = t->size();
 
   for(std::size_t i = 0; i < t->max_size(); ++i) {
 
     world.gop.fence();
 
     if(t->is_local(i)) {
-      t->set(i, world.rank());
+      t->set_cache(i, world.rank());
       --local_size;
     }
 
     BOOST_CHECK_EQUAL(local_size, t->size());
   }
 
-
   for(std::vector<madness::Future<int> >::iterator it = local_data.begin(); it != local_data.end(); ++it) {
     BOOST_CHECK_EQUAL(it->get(), t->owner(std::distance(local_data.begin(), it)));
   }
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

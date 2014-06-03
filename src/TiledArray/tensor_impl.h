@@ -504,9 +504,9 @@ namespace TiledArray {
       /// \note This function must be called exactly once, otherwise the program
       /// will likely hang.
       template <typename Index>
-      future move(const Index& i) {
+      future get_cache(const Index& i) {
         TA_ASSERT(! is_zero(i));
-        return data_.move(trange_.tiles().ord(i));
+        return data_.get_cache(trange_.tiles().ord(i));
       }
 
       /// Array begin iterator
@@ -583,6 +583,21 @@ namespace TiledArray {
       void set(const Index& i, const Value& value) {
         TA_ASSERT(! is_zero(i));
         data_.set(trange_.tiles().ord(i), value);
+      }
+
+      /// Set tile
+
+      /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,
+      /// \c madness::Future<value_type> , or
+      /// \c madness::detail::MoveWrapper<value_type> .
+      /// \tparam Index The index type
+      /// \tparam Value The value type
+      /// \param i The index of the tile to be set
+      /// \param value The object tat contains the tile value
+      template <typename Index, typename Value>
+      void set_cache(const Index& i, const Value& value) {
+        TA_ASSERT(! is_zero(i));
+        data_.set_cache(trange_.tiles().ord(i), value);
       }
 
     }; // class TensorImpl

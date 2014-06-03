@@ -129,7 +129,7 @@ namespace TiledArray {
       /// \param value The value to be stored at index \c i
       void set_tile(size_type i, const value_type& value) {
         // Store value
-        TensorImpl_::set(i, value);
+        TensorImpl_::set_cache(i, value);
 
         // Record the assignment of a tile
         DistEvalImpl::notify();
@@ -143,7 +143,7 @@ namespace TiledArray {
       /// \param value The future value to be stored at index \c i
       void set_tile(size_type i, madness::Future<value_type> f) {
         // Store value
-        TensorImpl_::set(i, f);
+        TensorImpl_::set_cache(i, f);
 
         // Record the assignment of a tile
         f.register_callback(this);
@@ -301,7 +301,7 @@ namespace TiledArray {
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
-      future get(size_type i) const { return pimpl_->move(i); }
+      future get(size_type i) const { return pimpl_->get_cache(i); }
 
       /// World object accessor
 
