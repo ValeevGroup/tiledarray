@@ -86,7 +86,7 @@ namespace TiledArray {
       /// \param world The world where the expression will be evaluated
       /// \param pmap The process map for the result tensor (may be NULL)
       /// \param target_vars The target variable list of the result tensor
-      void init(madness::World& world, const std::shared_ptr<pmap_interface>& pmap,
+      void init(madness::World& world, std::shared_ptr<pmap_interface> pmap,
           const VariableList& target_vars)
       {
         if(target_vars.dim()) {
@@ -95,6 +95,14 @@ namespace TiledArray {
         } else {
           derived().init_vars();
           derived().init_struct(vars_);
+        }
+
+        // Check for a valid process map.
+        if(pmap) {
+          // If process map is not valid, use the process map constructed by the
+          // expression engine.
+          if((world.size() != pmap->procs()) || (trange_.tiles().size() != pmap->size()))
+            pmap.reset();
         }
 
         derived().init_distribution(& world, pmap);
