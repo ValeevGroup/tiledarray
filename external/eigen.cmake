@@ -34,19 +34,10 @@ else()
   include(ExternalProject)
 
   # Set source and build path for Eigen in the TiledArray Project
-  set(EXTERNAL_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/eigen)
-
-  # Set the external source
-  if (EXISTS ${EXTERNAL_DOWNLOAD_DIR}/eigen.tar.gz)
-    # Use local file
-    set(EIGEN_URL ${EXTERNAL_DOWNLOAD_DIR}/eigen.tar.gz)
-    set(EIGEN_URL_HASH "")
-  else()
-    # Download remote file
-    set(EIGEN_URL https://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz)
-    set(EIGEN_URL_HASH MD5=d41d8cd98f00b204e9800998ecf8427e)
-  endif()
+  set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
+  set(EIGEN_URL https://bitbucket.org/eigen/eigen)
+  set(EIGEN_TAG 3.2.1)
 
   message("** Will build Eigen from ${EIGEN_URL}")
 
@@ -54,9 +45,8 @@ else()
     PREFIX ${CMAKE_INSTALL_PREFIX}
     STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
    #--Download step--------------
-    URL ${EIGEN_URL}
-    URL_HASH ${EIGEN_URL_HASH}
-    DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
+    HG_REPOSITORY ${EIGEN_URL}
+    HG_TAG ${EIGEN_TAG}
    #--Configure step-------------
     SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
     CONFIGURE_COMMAND ""
