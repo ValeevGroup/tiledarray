@@ -26,47 +26,249 @@
 #ifndef TILEDARRAY_SPARSE_SHAPE_H__INCLUDED
 #define TILEDARRAY_SPARSE_SHAPE_H__INCLUDED
 
-#include <TiledArray/madness.h>
 #include <TiledArray/tensor.h>
-#include <TiledArray/dense_shape.h>
-#include <TiledArray/tile_op/noop.h>
-#include <TiledArray/tile_op/add.h>
-#include <TiledArray/tile_op/scal_add.h>
-#include <TiledArray/tile_op/subt.h>
-#include <TiledArray/tile_op/scal_subt.h>
-#include <TiledArray/tile_op/mult.h>
-#include <TiledArray/tile_op/scal_mult.h>
-#include <TiledArray/tile_op/scal.h>
-#include <TiledArray/tile_op/neg.h>
-
+#include <TiledArray/tiled_range.h>
+#include <TiledArray/val_array.h>
 
 namespace TiledArray {
 
   /// Arbitrary sparse shape
+
+  /// Sparse shape uses a \c Tensor of Frobenius norms to estimate the magnitude
+  /// of the data contained in tiles of an Array object. Because tiles may have
+  /// an arbitrary size, the norm data is normalized, internally, by dividing
+  /// the norms by the number of elements in each tile.
+  /// \f[
+  /// {\rm{shape}}_{ij...} = \frac{\|A_{ij...}\|}{N_i N_j ...}
+  /// \f]
+  /// where \f$ij...\f$ are tile indices, \f$\|A_{ij}\|\f$ is norm of tile
+  /// \f$ij...\f$, and \f$N_i N_j ...\f$ is the product of tile \f$ij...\f$ in
+  /// each dimension.
+  /// \tparam T The sparse element value type
+  template <typename T>
   class SparseShape {
+  public:
+    typedef SparseShape<T> SparseShape_; ///< This object type
+    typedef T value_type; ///< The norm value type
+    typedef typename Tensor<value_type>::size_type size_type; ///< Size type
+
   private:
-    Tensor<float> data_; ///< Tile magnitude data
-    float threshold_; ///< The zero threshold
+
+    // T must be a numeric type
+    TA_STATIC_ASSERT(std::is_arithmetic<T>::value);
+
+    // Internal typedefs
+    typedef detail::ValArray<value_type> vector_type;
+
+    Tensor<value_type> tile_norms_; ///< Tile magnitude data
+    std::shared_ptr<vector_type> size_vectors_; ///< Tile volume data
+    static value_type threshold_; ///< The zero threshold
+
+    class Size {
+    public:
+      TILEDARRAY_FORCE_INLINE value_type
+      operator()(const TiledRange1::range_type& tile) const {
+        return value_type(tile.second - tile.first);
+      }
+    };
+
+    template <typename Op>
+    static vector_type
+    recursive_outer_product(const vector_type* const size_vectors,
+        const unsigned int dim, const Op& op)
+    {
+      vector_type result;
+
+      if(dim == 1u) {
+        // Construct a modified copy of size_vector[0]
+        result = op(*size_vectors);
+      } else {
+        // Compute split the range and compute the outer products
+        const unsigned int middle = (dim >> 1u) + (dim & 1u);
+        const vector_type left = recursive_outer_product(size_vectors, middle, op);
+        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, op);
+
+        // Compute the outer product of left and right
+
+        result = vector_type(left.size() * right.size());
+        result.outer_fill(left, right, math::Multiplies<value_type, value_type, value_type>());
+      }
+
+      return result;
+    }
+
+    /// Scale a number and set it to zero if less threshold
+    class NormalizeAndZero {
+      value_type threshold_;
+    public:
+      typedef void result_type;
+
+      NormalizeAndZero() : threshold_(SparseShape::threshold_) { }
+
+      void operator()(value_type& restrict norm, const value_type size) const {
+        TA_ASSERT(norm >= value_type(0));
+        norm /= size;
+        if(norm < threshold_)
+          norm = 0;
+      }
+
+      vector_type operator()(const vector_type& size_vector) const {
+        return vector_type(size_vector, *this);
+      }
+
+      value_type operator()(const value_type size) const {
+        return value_type(1) / size;
+      }
+
+      void operator()(value_type& restrict norm, const value_type x, const value_type y) const {
+        TA_ASSERT(norm >= value_type(0));
+        norm *= x * y;
+        if(norm < threshold_)
+          norm = 0;
+      }
+    }; // class NormalizeAndZero
+
+
+    /// Normalize tile norms
+
+    /// This function will divide each norm by the number of elements in the
+    /// tile. If the normalized norm is less than threshold, the value is set to
+    /// zero.
+    void normalize() {
+      const NormalizeAndZero op;
+      const unsigned int dim = tile_norms_.range().dim();
+      const vector_type* restrict const size_vectors = size_vectors_.get();
+
+      if(dim == 1u) {
+        // This is the easy case where the data is a vector and can be
+        // normalized directly.
+        math::binary_vector_op(size_vectors[0].size(), size_vectors[0].data(),
+            tile_norms_.data(), op);
+
+      } else {
+        // Here the normalization constants are computed and multiplied by the
+        // norm data using a recursive, outer-product algorithm. This is done to
+        // minimize temporary memory requirements, memory bandwidth, and work.
+
+        // Compute the left and right outer products
+        const unsigned int middle = (dim >> 1u) + (dim & 1u);
+        const vector_type left = recursive_outer_product(size_vectors, middle, op);
+        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, op);
+
+        math::outer(left.size(), right.size(), left.data(), right.data(),
+            tile_norms_.data(), op);
+      }
+    }
+
+    static std::shared_ptr<vector_type>
+    initialize_size_vectors(const TiledRange& trange) {
+      // Allocate memory for size vectors
+      const unsigned int dim = trange.tiles().dim();
+      std::shared_ptr<vector_type> size_vectors(new vector_type[dim],
+          madness::detail::CheckedArrayDeleter<vector_type>());
+
+      // Initialize the size vectors
+      for(unsigned int i = 0ul; i != dim; ++i) {
+        const size_type n = trange.data()[i].tiles().second - trange.data()[i].tiles().first;
+
+        size_vectors.get()[i] = vector_type(n, & (* trange.data()[i].begin()), Size());
+      }
+
+      return size_vectors;
+    }
+
+    std::shared_ptr<vector_type> perm_size_vectors(const Permutation& perm) const {
+      const unsigned int n = tile_norms_.range().dim();
+
+      // Allocate memory for the contracted size vectors
+      std::shared_ptr<vector_type> result_size_vectors(new vector_type[n],
+          madness::detail::CheckedArrayDeleter<vector_type>());
+
+      // Initialize the size vectors
+      for(unsigned int i = 0u; i < n; ++i) {
+        const unsigned int perm_i = perm[i];
+        result_size_vectors.get()[perm_i] = size_vectors_.get()[i];
+      }
+
+      return result_size_vectors;
+    }
+
+    SparseShape(const Tensor<T>& tile_norms, const std::shared_ptr<vector_type>& size_vectors) :
+      tile_norms_(tile_norms), size_vectors_(size_vectors)
+    { }
 
   public:
 
     /// Default constructor
-    SparseShape() : data_(), threshold_(0.0) { }
+
+    /// Construct a shape with no data.
+    SparseShape() : tile_norms_(), size_vectors_() { }
 
     /// Constructor
 
-    /// \param tensor The tile magnitude data
-    /// \param threshold The zero threshold
-    SparseShape(const Tensor<float>& tensor, float threshold) :
-      data_(tensor), threshold_(std::abs(threshold))
+    /// This constructor will normalize the tile norm, where the normalization
+    /// constant for each tile is the inverse of the number of elements in the
+    /// tile.
+    /// \param tile_norms The Frobenius norm of tiles
+    /// \param trange The tiled range of the tensor
+    SparseShape(const Tensor<T>& tile_norms, const TiledRange& trange) :
+      tile_norms_(tile_norms.clone()),
+      size_vectors_(initialize_size_vectors(trange))
+    {
+      TA_ASSERT(! tile_norms_.empty());
+      TA_ASSERT(tile_norms_.range() == trange.tiles());
+
+      normalize();
+    }
+
+    /// Collective constructor
+
+    /// This constructor will sum the tile_norms data across all processes (via
+    /// an all reduce). After the norms have been summed, it will be normalized.
+    /// The normalization constant for each tile is the inverse of the number of
+    /// elements in the tile.
+    /// \param world The world where the shape will live
+    /// \param tile_norms The Frobenius norm of tiles
+    /// \param trange The tiled range of the tensor
+    SparseShape(madness::World& world, const Tensor<value_type>& tile_norms, const TiledRange& trange) :
+      tile_norms_(tile_norms.clone()),
+      size_vectors_(initialize_size_vectors(trange))
+    {
+      TA_ASSERT(! tile_norms_.empty());
+      TA_ASSERT(tile_norms_.range() == trange.tiles());
+
+      // Do global initialization of norm data
+      world.gop.sum(tile_norms_.data(), tile_norms_.size());
+
+      normalize();
+    }
+
+    /// Copy constructor
+
+    /// Shallow copy of \c other.
+    /// \param other The other shape object to be copied
+    SparseShape(const SparseShape<T>& other) :
+      tile_norms_(other.tile_norms_), size_vectors_(other.size_vectors_)
     { }
 
+    /// Copy assignment operator
 
-    /// Collective initialization of a shape
+    /// Shallow copy of \c other.
+    /// \param other The other shape object to be copied
+    /// \return A reference to this object.
+    SparseShape<T>& operator=(const SparseShape<T>& other) {
+      tile_norms_ = other.tile_norms_;
+      size_vectors_ = other.size_vectors_;
+      return *this;
+    }
 
-    /// No operation since there is no data.
-    void collective_init(madness::World& world) {
-      world.gop.sum(data_.data(), data_.size());
+    /// Validate shape range
+
+    /// \return \c true when range matches the range of this shape
+    bool validate(const Range& range) const {
+      if(tile_norms_.empty())
+        return false;
+      return (range == tile_norms_.range());
     }
 
     /// Check that a tile is zero
@@ -74,7 +276,10 @@ namespace TiledArray {
     /// \tparam Index The type of the index
     /// \return false
     template <typename Index>
-    bool is_zero(const Index& i) { return (std::abs(data_[i]) < threshold_); }
+    bool is_zero(const Index& i) const {
+      TA_ASSERT(! tile_norms_.empty());
+      return tile_norms_[i] < threshold_;
+    }
 
     /// Check density
 
@@ -84,659 +289,441 @@ namespace TiledArray {
     /// Threshold accessor
 
     /// \return The current threshold
-    float threshold() const { return threshold_; }
+    static value_type threshold() { return threshold_; }
 
     /// Set threshold to \c thresh
 
     /// \param thresh The new threshold
-    void threshold(const float thresh) { threshold_ = thresh; }
+    static void threshold(const value_type thresh) { threshold_ = thresh; }
 
-    /// Shape data accessor
+    /// Tile norm accessor
 
-    /// \return A const reference to the shape data
-    const Tensor<float>& data() const { return data_; }
+    /// \tparam Index The index type
+    /// \param index The index of the tile norm to retrieve
+    /// \return The norm of the tile at \c index
+    template <typename Index>
+    value_type operator[](const Index& index) const {
+      TA_ASSERT(! tile_norms_.empty());
+      return tile_norms_[index];
+    }
 
-    /// Shape data accessor
+    /// Data accessor
 
-    /// \return A const reference to the shape data
-    Tensor<float>& data() { return data_; }
+    /// \return A reference to the \c Tensor object that stores shape data
+    const Tensor<value_type>& data() const { return tile_norms_; }
+
+    /// Initialization check
+
+    /// \return \c true when this shape has been initialized.
+    bool empty() const { return tile_norms_.empty(); }
+
+    /// Create a permuted shape of this shape
+
+    /// \param perm The permutation to be applied
+    /// \return A new, permuted shape
+    SparseShape_ perm(const Permutation& perm) const {
+      return SparseShape_(tile_norms_.permute(perm), perm_size_vectors(perm));
+    }
+
+    /// Scale shape
+
+    /// Construct a new scaled shape as:
+    /// \f[
+    /// {(\rm{result})}_{ij...} = |(\rm{factor})| (\rm{this})_{ij...}
+    /// \f]
+    /// \param factor The scaling factor
+    /// \return A new, scaled shape
+    SparseShape_ scale(const value_type factor) const {
+      TA_ASSERT(! tile_norms_.empty());
+      return SparseShape_(tile_norms_.scale(std::abs(factor)), size_vectors_);
+    }
+
+    /// Scale and permute shape
+
+    /// Compute a new scaled shape is computed as:
+    /// \f[
+    /// {(\rm{result})}_{ji...} = \rm{perm}(j,i) |(\rm{factor})| (\rm{this})_{ij...}
+    /// \f]
+    /// \param factor The scaling factor
+    /// \param perm The permutation that will be applied to this tensor.
+    /// \return A new, scaled-and-permuted shape
+    SparseShape_ scale(const value_type factor, const Permutation& perm) const {
+      TA_ASSERT(! tile_norms_.empty());
+      return SparseShape_(tile_norms_.scale(std::abs(factor), perm), perm_size_vectors(perm));
+    }
+
+    /// Add shapes
+
+    /// Construct a new sum of shapes as:
+    /// \f[
+    /// {(\rm{result})}_{ij...} = (\rm{this})_{ij...} + (\rm{other})_{ij...}
+    /// \f]
+    /// \param other The shape to be added to this shape
+    /// \return A sum of shapes
+    SparseShape_ add(const SparseShape_& other) const {
+      TA_ASSERT(! tile_norms_.empty());
+      return SparseShape_(tile_norms_.add(other.tile_norms_), size_vectors_);
+    }
+
+    /// Add and permute shapes
+
+    /// Construct a new sum of shapes as:
+    /// \f[
+    /// {(\rm{result})}_{ji...} = \rm{perm}(i,j) (\rm{this})_{ij...} + (\rm{other})_{ij...}
+    /// \f]
+    /// \param factor The scaling factor
+    /// \param perm The permutation that is applied to the result
+    /// \return A new, scaled shape
+    SparseShape_ add(const SparseShape_& other, const Permutation& perm) const {
+      TA_ASSERT(! tile_norms_.empty());
+      return SparseShape_(tile_norms_.add(other.tile_norms_, perm), perm_size_vectors(perm));
+    }
+
+    /// Add and scale shapes
+
+    /// Construct a new sum of shapes as:
+    /// \f[
+    /// {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...})
+    /// \f]
+    /// \param other The shape to be added to this shape
+    /// \param factor The scaling factor
+    /// \return A scaled sum of shapes
+    SparseShape_ add(const SparseShape_& other, value_type factor) const {
+      TA_ASSERT(! tile_norms_.empty());
+      return SparseShape_(tile_norms_.add(other.tile_norms_, std::abs(factor)), size_vectors_);
+    }
+
+    /// Add, scale, and permute shapes
+
+    /// Construct a new sum of shapes as:
+    /// \f[
+    /// {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...})
+    /// \f]
+    /// \param other The shape to be added to this shape
+    /// \param factor The scaling factor
+    /// \return A scaled and permuted sum of shapes
+    SparseShape_ add(const SparseShape_& other, const value_type factor,
+        const Permutation& perm) const
+    {
+      TA_ASSERT(! tile_norms_.empty());
+      return SparseShape_(tile_norms_.add(other.tile_norms_, std::abs(factor),
+          perm), perm_size_vectors(perm));
+    }
+
+  private:
+
+    class ConstTensorNorm {
+      const value_type value_;
+      const value_type threshold_;
+
+    public:
+      typedef void result_type;
+
+      ConstTensorNorm(const value_type value) :
+        value_(value), threshold_(SparseShape::threshold_)
+      { }
+
+      TILEDARRAY_FORCE_INLINE value_type
+      operator()(value_type norm, const value_type size) const {
+        norm += value_ / std::sqrt(size);
+        if(norm < threshold_)
+          norm = 0;
+        return norm;
+      }
+
+      TILEDARRAY_FORCE_INLINE vector_type operator()(const vector_type size_vector) const {
+        return vector_type(size_vector, *this);
+      }
+
+      TILEDARRAY_FORCE_INLINE value_type operator()(const value_type size) const {
+        return value_type(1) / std::sqrt(size);
+      }
+
+      TILEDARRAY_FORCE_INLINE void
+      operator()(value_type& restrict norm, const value_type x, const value_type y) const {
+        norm += value_ * x * y;
+        if(norm < threshold_)
+          norm = 0;
+      }
+    }; // class ConstTensorNorm
+
+  public:
+
+    SparseShape_ add(const value_type value) const {
+      TA_ASSERT(! tile_norms_.empty());
+
+      Tensor<T> result_tile_norms(tile_norms_.range());
+
+      const ConstTensorNorm op(std::abs(value));
+      const unsigned int dim = tile_norms_.range().dim();
+      const vector_type* restrict const size_vectors = size_vectors_.get();
+
+      if(dim == 1u) {
+        // This is the easy case where the data is a vector and can be
+        // normalized directly.
+        math::binary_vector_op(size_vectors[0].size(), tile_norms_.data(),
+            size_vectors[0].data(), result_tile_norms.data(), op);
+
+      } else {
+        // Here the normalization constants are computed and multiplied by the
+        // norm data using a recursive, outer algorithm. This is done to
+        // minimize temporary memory requirements, memory bandwidth, and work.
+
+        // Compute the left and right outer products
+        const unsigned int middle = (dim >> 1u) + (dim & 1u);
+        const vector_type left = recursive_outer_product(size_vectors, middle, op);
+        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, op);
+
+        math::outer_fill(left.size(), right.size(), left.data(), right.data(),
+            tile_norms_.data(), result_tile_norms.data(), op);
+      }
+
+      return SparseShape_(result_tile_norms, size_vectors_);
+    }
+
+    SparseShape_ add(const value_type value, const Permutation& perm) const {
+      // TODO: Optimize this function so it does the permutation at the same
+      // time as the addition.
+      return add(value).perm(perm);
+    }
+
+    SparseShape_ subt(const SparseShape_& other) const {
+      return add(other);
+    }
+
+    SparseShape_ subt(const SparseShape_& other, const Permutation& perm) const {
+      return add(other, perm);
+    }
+
+    SparseShape_ subt(const SparseShape_& other, const value_type factor) const {
+      return add(other, factor);
+    }
+
+    SparseShape_ subt(const SparseShape_& other, const value_type factor,
+        const Permutation& perm) const
+    {
+      return add(other, factor, perm);
+    }
+
+    SparseShape_ subt(const value_type value) const {
+      return add(value);
+    }
+
+    SparseShape_ subt(const value_type value, const Permutation& perm) const {
+      return add(value, perm);
+    }
+
+  private:
+
+    struct ScaleBySize {
+      typedef void result_type;
+
+      TILEDARRAY_FORCE_INLINE void
+      operator()(value_type& restrict norm, const value_type size) const {
+        norm *= size;
+      }
+
+      TILEDARRAY_FORCE_INLINE const vector_type& operator()(const vector_type& size_vector) const {
+        return size_vector;
+      }
+
+      TILEDARRAY_FORCE_INLINE void
+      operator()(value_type& restrict norm, const value_type x, const value_type y) const {
+        norm *= x * y;
+        if(norm < threshold_)
+          norm = 0;
+      }
+    }; // struct ScaleBySize
+
+    static void scale_by_size(Tensor<T>& tile_norms,
+        const vector_type* restrict const size_vectors)
+    {
+      const unsigned int dim = tile_norms.range().dim();
+      ScaleBySize op;
+
+      if(dim == 1u) {
+        // This is the easy case where the data is a vector and can be
+        // normalized directly.
+        math::binary_vector_op(size_vectors[0].size(), size_vectors[0].data(),
+            tile_norms.data(), op);
+      } else {
+        // Here the normalization constants are computed and multiplied by the
+        // norm data using a recursive, outer algorithm. This is done to
+        // minimize temporary memory requirements, memory bandwidth, and work.
+
+        // Compute the left and right outer products
+        const unsigned int middle = (dim >> 1u) + (dim & 1u);
+        const vector_type left = recursive_outer_product(size_vectors, middle, op);
+        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, op);
+
+        math::outer(left.size(), right.size(), left.data(), right.data(),
+            tile_norms.data(), op);
+      }
+    }
+
+  public:
+
+    SparseShape_ mult(const SparseShape_& other) const {
+      // TODO: Optimize this function so that the tensor arithmetic and
+      // scale_by_size operations are performed in one step instead of two.
+
+      TA_ASSERT(! tile_norms_.empty());
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_);
+      scale_by_size(result_tile_norms, size_vectors_.get());
+
+      return SparseShape_(result_tile_norms, size_vectors_);
+    }
+
+    SparseShape_ mult(const SparseShape_& other, const Permutation& perm) const {
+      // TODO: Optimize this function so that the tensor arithmetic and
+      // scale_by_size operations are performed in one step instead of two.
+
+      TA_ASSERT(! tile_norms_.empty());
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, perm);
+      std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
+      scale_by_size(result_tile_norms, result_size_vector.get());
+
+      return SparseShape_(result_tile_norms, result_size_vector);
+    }
+
+    SparseShape_ mult(const SparseShape_& other, const value_type factor) const {
+      // TODO: Optimize this function so that the tensor arithmetic and
+      // scale_by_size operations are performed in one step instead of two.
+
+      TA_ASSERT(! tile_norms_.empty());
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor));
+      scale_by_size(result_tile_norms, size_vectors_.get());
+
+      return SparseShape_(result_tile_norms, size_vectors_);
+    }
+
+    SparseShape_ mult(const SparseShape_& other, const value_type factor,
+        const Permutation& perm) const
+    {
+      // TODO: Optimize this function so that the tensor arithmetic and
+      // scale_by_size operations are performed in one step instead of two.
+
+      TA_ASSERT(! tile_norms_.empty());
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor), perm);
+      std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
+      scale_by_size(result_tile_norms, result_size_vector.get());
+
+      return SparseShape_(result_tile_norms, result_size_vector);
+    }
+
+  private:
+
+    class GemmArgReduce {
+    public:
+      typedef void result_type;
+      void operator()(value_type& restrict result, value_type norm, const value_type inner_size) const {
+        norm *= inner_size;
+        result += norm * norm;
+      }
+
+      void operator()(value_type& restrict result) const {
+        result = std::sqrt(result);
+      }
+    }; // class GemmLeftReduce
+
+    class OuterProduct {
+    public:
+      typedef value_type result_type;
+
+      const vector_type& operator()(const vector_type& size_vector) const {
+        return size_vector;
+      }
+
+      value_type operator()(const value_type left, const value_type right) const {
+        return left * right;
+      }
+    };
+
+    class GemmOuterProduct {
+      value_type factor_;
+      value_type threshold_;
+    public:
+      typedef value_type result_type;
+
+      GemmOuterProduct(const value_type factor) :
+        factor_(factor), threshold_(SparseShape::threshold_)
+      { }
+
+      value_type operator()(const value_type left, const value_type right) const {
+        value_type norm = left * right * factor_;
+        if(norm < threshold_)
+          norm = 0;
+        return norm;
+      }
+    }; // class MultAndZero
+
+  public:
+
+    SparseShape_ gemm(const SparseShape_& other, const value_type factor,
+        const math::GemmHelper& gemm_helper) const
+    {
+      TA_ASSERT(! tile_norms_.empty());
+
+      integer m, n, k;
+      gemm_helper.compute_matrix_sizes(m, n, k, tile_norms_.range(), other.tile_norms_.range());
+
+      // Allocate memory for the contracted size vectors
+      std::shared_ptr<vector_type> result_size_vectors(new vector_type[gemm_helper.result_rank()],
+          madness::detail::CheckedArrayDeleter<vector_type>());
+
+      // Initialize the result size vectors
+      unsigned int x = 0ul;
+      for(unsigned int i = gemm_helper.left_outer_begin(); i < gemm_helper.left_outer_end(); ++i, ++x)
+        result_size_vectors.get()[x] = size_vectors_.get()[i];
+      for(unsigned int i = gemm_helper.right_outer_begin(); i < gemm_helper.right_outer_end(); ++i, ++x)
+        result_size_vectors.get()[x] = other.size_vectors_.get()[i];
+
+      // Compute the number of inner ranks
+      const unsigned int k_rank = gemm_helper.left_inner_end() - gemm_helper.left_inner_begin();
+
+      // Construct the result norm tensor
+      Tensor<T> result_norms(gemm_helper.make_result_range<typename Tensor<T>::range_type>(
+          tile_norms_.range(), other.tile_norms_.range()), 0);
+
+      if(k_rank > 0) {
+
+        // Compute size vector
+        const vector_type k_size_vector =
+            recursive_outer_product(size_vectors_.get() + gemm_helper.left_inner_begin(),
+                k_rank, OuterProduct());
+
+        GemmArgReduce op;
+        vector_type left(m, value_type(0));
+        left.row_reduce(k, tile_norms_.data(), k_size_vector.data(), op);
+        left.unary(op);
+
+        vector_type right(n, value_type(0));
+        right.col_reduce(k, other.tile_norms_.data(), k_size_vector.data(), op);
+        right.unary(op);
+
+        math::outer_fill(m, n, left.data(), right.data(), result_norms.data(),
+            GemmOuterProduct(std::abs(factor)));
+      } else {
+
+        // This is an outer product, so the inputs can be used directly
+        math::outer_fill(m, n, tile_norms_.data(), other.tile_norms_.data(), result_norms.data(),
+            GemmOuterProduct(std::abs(factor)));
+      }
+
+      return SparseShape_(result_norms, result_size_vectors);
+    }
+
+    SparseShape_ gemm(const SparseShape_& other, const value_type factor,
+        const math::GemmHelper& gemm_helper, const Permutation& perm) const
+    {
+      return gemm(other, factor, gemm_helper).perm(perm);
+    }
+
   }; // class SparseShape
 
-  /// Permute sparse shape
-  template <>
-  class ShapeNoop<SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \param perm The permutation to be applied to \c arg
-    /// \param arg The sparse shape to be permuted
-    /// \return The permuted sparse shape
-    result_type operator()(const Permutation& perm, const SparseShape& arg) const {
-      math::Noop<Tensor<float>, Tensor<float>, false> op(perm);
-      return SparseShape(op(arg.data()), arg.threshold());
-    }
-  }; // class ShapePermute<SparseShape>
-
-  /// Add sparse shapes
-  template <>
-  class ShapeAdd<SparseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type;  ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left && right; }
-
-    /// Shape evaluation operator
-
-    /// \param left Left-hand shape
-    /// \param right Right-hand shape
-    /// \return The sum of \c left and \c right shapes
-    result_type operator()(const Permutation& perm, const SparseShape& left, const SparseShape& right) const {
-      math::Add<Tensor<float>, Tensor<float>, Tensor<float>, false, false> op(perm);
-      return SparseShape(op(left.data(), right.data()),
-          left.threshold() + right.threshold());
-    }
-  }; // class ShapeAdd<SparseShape, SparseShape>
-
-  /// Add a dense shape to a sparse shape
-  template <>
-  class ShapeAdd<DenseShape, SparseShape> {
-  public:
-    typedef DenseShape result_type;  ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \return \c false (never zero)
-    bool operator()(bool, bool) const { return false; }
-
-    /// Shape evaluation operator
-
-    /// \return A dense shape
-    result_type operator()(const Permutation&, const DenseShape&, const SparseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeAdd<DenseShape, SparseShape>
-
-  /// Add sparse shape to a dense shape
-  template <>
-  class ShapeAdd<SparseShape, DenseShape> {
-  public:
-    typedef DenseShape result_type;  ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \return \c false (never zero)
-    bool operator()(bool, bool) const { return false; }
-
-    /// Shape evaluation operator
-    result_type operator()(const Permutation&, const SparseShape&, const DenseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeAdd<SparseShape, DenseShape>
-
-  /// Add and scale sparse shapes
-  template <>
-  class ShapeScalAdd<SparseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type;  ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left && right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \param left The left-hand shape
-    /// \param right The right-hand shape
-    /// \return The sum of \c left and \c right shapes
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const SparseShape& left, const SparseShape& right, const N factor) {
-      math::ScalAdd<Tensor<float>, Tensor<float>, Tensor<float>, false, false>
-          op(perm, factor);
-      return SparseShape(op(left.data(), right.data()),
-          (left.threshold() + right.threshold()) * factor);
-    }
-
-  }; // class ShapeScalAdd<DenseShape, DenseShape>
-
-  /// Add and scale a dense shape to a sparse shape
-  template <>
-  class ShapeScalAdd<DenseShape, SparseShape> {
-  public:
-    typedef DenseShape result_type;  ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return false; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const DenseShape&, const SparseShape&, const N) const {
-      return result_type();
-    }
-  }; // class ShapeScalAdd<DenseShape, SparseShape>
-
-  /// Add and scale a sparse shape to a dense shape
-  template <>
-  class ShapeScalAdd<SparseShape, DenseShape> {
-  public:
-    typedef DenseShape result_type;  ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return false; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const SparseShape&, const DenseShape&, const N) const {
-      return result_type();
-    }
-  }; // class ShapeScalAdd<SparseShape, DenseShape>
-
-  /// Subtract sparse shapes
-  template <>
-  class ShapeSubt<SparseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left && right; }
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation& perm, const SparseShape& left, const SparseShape& right) const {
-      math::Subt<Tensor<float>, Tensor<float>, Tensor<float>, false, false>
-          op(perm);
-      return SparseShape(op(left.data(), right.data()),
-          left.threshold() - right.threshold());
-    }
-  }; // class ShapeSubt<SparseShape, SparseShape>
-
-  /// Subtract a dense shape from a sparse shape
-  template <>
-  class ShapeSubt<DenseShape, SparseShape> {
-  public:
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \return \c false (never zero)
-    bool operator()(bool, bool) const { return false; }
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation&, const DenseShape&, const SparseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeSubt<DenseShape, SparseShape>
-
-  /// Subtract sparse shape from a dense shape
-  template <>
-  class ShapeSubt<SparseShape, DenseShape> {
-  public:
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \return \c false (never zero)
-    bool operator()(bool, bool) const { return false; }
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation&, const SparseShape&, const DenseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeSubt<SparseShape, DenseShape>
-
-  /// Subtract and scale sparse shapes
-  template <>
-  class ShapeScalSubt<SparseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left && right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \param perm The permutation that will be applied to the result shape
-    /// \param left The left-hand argument shape
-    /// \param right The right-hand argument shape
-    /// \param factor The scaling factor that will be applied to the result shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const SparseShape& left, const SparseShape& right, const N factor) const {
-      math::ScalSubt<Tensor<float>, Tensor<float>, Tensor<float>, false, false>
-          op(perm, factor);
-      return SparseShape(op(left.data(), right.data()),
-          (left.threshold() - right.threshold()) * factor);
-    }
-  }; // class ShapeScalSubt<SparseShape, SparseShape>
-
-  /// Subtract and scale sparse shapes
-  template <>
-  class ShapeScalSubt<DenseShape, SparseShape> {
-  public:
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool, bool) const { return false; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const DenseShape&, const SparseShape&, const N) const {
-      return DenseShape();
-    }
-  }; // class ShapeScalSubt<DenseShape, DenseShape>
-
-  /// Subtract and scale sparse shapes
-  template <>
-  class ShapeScalSubt<SparseShape, DenseShape> {
-  public:
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool, bool) const { return false; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const SparseShape&, const DenseShape&, const N) const {
-      return DenseShape();
-    }
-  }; // class ShapeScalSubt<SparseShape, DenseShape>
-
-  /// Multiply sparse shapes
-  template <>
-  class ShapeMult<SparseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left || right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \param perm The permutation that will be applied to the result shape
-    /// \param left The left-hand argument shape
-    /// \param right The right-hand argument shape
-    /// \return The result sparse shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const SparseShape& left, const SparseShape& right) const {
-      math::ScalMult<Tensor<float>, Tensor<float>, Tensor<float>, false, false>
-          op(perm);
-      return SparseShape(op(left.data(), right.data()),
-          left.threshold() * right.threshold());
-    }
-  }; // class ShapeMult<SparseShape, SparseShape>
-
-  /// Multiply a dense shape by a sparse shape
-  template <>
-  class ShapeMult<DenseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left || right; }
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    inline result_type operator()(const Permutation& perm, const DenseShape&, const SparseShape& right) const {
-      // Note: Here it is assume that dense shape values and threshold are equal
-      // to one (1).
-      math::Noop<Tensor<float>, Tensor<float>, false> op(perm);
-      return SparseShape(op(right.data()), right.threshold());
-    }
-  }; // class ShapeMult<DenseShape, SparseShape>
-
-  /// Multiply a sparse shape by a dense shape
-  template <>
-  class ShapeMult<SparseShape, DenseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left || right; }
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation& perm, const SparseShape& left, const DenseShape&) const {
-      // Note: Here it is assume that dense shape values and threshold are equal
-      // to one (1).
-      math::Noop<Tensor<float>, Tensor<float>, false> op(perm);
-      return SparseShape(op(left.data()), left.threshold());
-    }
-  }; // class ShapeMult<SparseShape, DenseShape>
-
-  /// Multiply and scale sparse shape
-  template <>
-  class ShapeScalMult<SparseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left || right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const SparseShape& left, const SparseShape& right, const N factor) const {
-      math::ScalMult<Tensor<float>, Tensor<float>, Tensor<float>, false, false>
-          op(perm, factor);
-      return SparseShape(op(left.data(), right.data()),
-          left.threshold() * right.threshold() * factor);
-    }
-  }; // class ShapeScalMult<SparseShape, SparseShape>
-
-  /// Multiply and scale dense shape
-  template <>
-  class ShapeScalMult<DenseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left || right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    inline typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const DenseShape&, const SparseShape& right, const N factor) const {
-      math::Scal<Tensor<float>, Tensor<float>, false> op(perm, factor);
-      return SparseShape(op(right.data()), right.threshold() * factor);
-    }
-  }; // class ShapeScalMult<DenseShape, SparseShape>
-
-  /// Multiply and scale dense shape
-  template <>
-  class ShapeScalMult<SparseShape, DenseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left || right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    inline typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const SparseShape& left, const DenseShape&, const N factor) const {
-      math::Scal<Tensor<float>, Tensor<float>, false> op(perm, factor);
-      return SparseShape(op(left.data()), left.threshold() * factor);
-    }
-  }; // class ShapeScalMult<SparseShape, DenseShape>
-
-  /// Contract dense shape
-  template <>
-  class ShapeCont<SparseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type;
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation& perm, const std::size_t m,
-        const std::size_t n, const std::size_t k, const SparseShape& left,
-        const SparseShape& right, const Range& result_range) const
-    {
-      Tensor<float> result(result_range, 0.0);
-      math::gemm(m, n, k, 1.0, left.data().data(), right.data().data(), result.data());
-
-      if(perm.dim() > 1u)
-        result = perm ^ result;
-
-      return SparseShape(result, left.threshold() * right.threshold());
-    }
-  }; // class ShapeCont<SparseShape, SparseShape>
-
-  /// Contract dense shape
-  template <>
-  class ShapeCont<DenseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type;
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation& perm, const std::size_t m,
-        const std::size_t n, const std::size_t k, const DenseShape&,
-        const SparseShape& right, const Range& result_range) const
-    {
-      Tensor<float> result(result_range);
-
-      math::eigen_map(result.data(), m, n).rowwise() =
-          math::eigen_map(right.data().data(), k, n).colwise().sum();
-
-      if(perm.dim() > 1u)
-        result = perm ^ result;
-
-      return SparseShape(result, right.threshold());
-    }
-  }; // class ShapeCont<DenseShape, DenseShape>
-
-  /// Contract dense shape
-  template <>
-  class ShapeCont<SparseShape, DenseShape> {
-  public:
-    typedef SparseShape result_type;
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation& perm, const std::size_t m,
-        const std::size_t n, const std::size_t k, const SparseShape& left,
-        const DenseShape&, const Range& result_range) const
-    {
-      Tensor<float> result(result_range);
-
-      math::eigen_map(result.data(), m, n).colwise() =
-          math::eigen_map(left.data().data(), m, k).rowwise().sum();
-
-      if(perm.dim() > 1u)
-        result = perm ^ result;
-
-      return SparseShape(result, left.threshold());
-    }
-  }; // class ShapeCont<SparseShape, DenseShape>
-
-  /// Contract and scale sparse shapes
-  template <>
-  class ShapeScalCont<SparseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const std::size_t m,
-        const std::size_t n, const std::size_t k, const SparseShape& left,
-        const SparseShape& right, const Range& result_range, const N factor) const
-    {
-      Tensor<float> result(result_range, 0.0);
-      math::gemm(m, n, k, factor, left.data().data(), right.data().data(), result.data());
-
-      if(perm.dim() > 1u)
-        result = perm ^ result;
-
-      return SparseShape(result, left.threshold() * right.threshold() * factor);
-    }
-  }; // ShapeScalCont<SparseShape, SparseShape>
-
-  /// Contract and scale sparse shapes
-  template <>
-  class ShapeScalCont<DenseShape, SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const std::size_t m,
-        const std::size_t n, const std::size_t k, const DenseShape&,
-        const SparseShape& right, const Range& result_range, const N factor) const
-    {
-      Tensor<float> result(result_range);
-
-      math::eigen_map(result.data(), m, n).rowwise() =
-          math::eigen_map(right.data().data(), k, n).colwise().sum() * factor;
-
-      if(perm.dim() > 1u)
-        result = perm ^ result;
-
-      return SparseShape(result, right.threshold());
-    }
-  }; // ShapeScalCont<SparseShape, SparseShape>
-
-  /// Contract and scale sparse shapes
-  template <>
-  class ShapeScalCont<SparseShape, DenseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const std::size_t m,
-        const std::size_t n, const std::size_t k, const SparseShape& left,
-        const DenseShape&, const Range& result_range, const N factor) const
-    {
-      Tensor<float> result(result_range);
-
-      math::eigen_map(result.data(), m, n).colwise() =
-          math::eigen_map(left.data().data(), m, k).rowwise().sum() * factor;
-
-      if(perm.dim() > 1u)
-        result = perm ^ result;
-
-      return SparseShape(result, left.threshold());
-    }
-  }; // ShapeScalCont<SparseShape, SparseShape>
-
-  /// Scale sparse shape
-  template <>
-  class ShapeScale<SparseShape> {
-  public:
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation& perm, const SparseShape& arg, const N factor) const {
-      math::Scal<Tensor<float>, Tensor<float>, false> op(perm, factor);
-      return SparseShape(op(arg.data()), arg.threshold() * factor);
-    }
-  }; // class ShapeScale<SparseShape>
-
-  /// Negate sparse shape
-  template <>
-  class ShapeNeg<SparseShape> {
-  public:
-    typedef SparseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \param arg The argument shape
-    /// \return The result dense shape
-    result_type operator()(const Permutation& perm, const SparseShape& arg) const {
-      math::Neg<Tensor<float>, Tensor<float>, false> op(perm);
-      return SparseShape(op(arg.data()), arg.threshold());
-    }
-  }; // class ShapeNeg<SparseShape>
+  // Static member initialization
+  template <typename T>
+  typename SparseShape<T>::value_type SparseShape<T>::threshold_ = 0;
 
 } // namespace TiledArray
 

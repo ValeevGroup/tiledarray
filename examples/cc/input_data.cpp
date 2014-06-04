@@ -39,7 +39,7 @@ InputData::make_trange1(const obs_mosym::const_iterator& begin, obs_mosym::const
   return TiledArray::TiledRange1(tiles.begin(), tiles.end());
 }
 
-TiledArray::TiledRange
+TArray2s::trange_type
 InputData::trange(const Spin s, const RangeOV ov1, const RangeOV ov2) const {
 
   const obs_mosym& spin = (s == alpha ? obs_mosym_alpha_ : obs_mosym_beta_);
@@ -56,7 +56,7 @@ InputData::trange(const Spin s, const RangeOV ov1, const RangeOV ov2) const {
   return TiledArray::TiledRange(tr_list.begin(), tr_list.end());
 }
 
-TiledArray::TiledRange
+TArray4s::trange_type
 InputData::trange(const Spin s1, const Spin s2, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) const {
 
   const obs_mosym& spin1 = (s1 == alpha ? obs_mosym_alpha_ : obs_mosym_beta_);
@@ -142,22 +142,19 @@ InputData::InputData(std::ifstream& input) {
   } while(! input.eof());
 }
 
-TiledArray::Array<double, 2>
+TArray2s
 InputData::make_f(madness::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2) {
   // Construct the array
   TiledArray::TiledRange tr = trange(s, ov1, ov2);
 //  std::cout << tr << "\n";
-  std::vector<std::size_t> sparse_list = make_sparse_list(tr, f_);
-  TiledArray::Array<double, 2> f(w, tr, sparse_list.begin(), sparse_list.end());
+
+  TArray2s f(w, tr, make_sparse_shape(tr, f_));
 
   // Initialize tiles
-  for(std::vector<std::size_t>::const_iterator it = sparse_list.begin(); it != sparse_list.end(); ++it) {
-    if(f.is_local(*it))
-      f.set(*it, 0.0);
-  }
+  f.set_all_local(0.0);
 
   // Set the tile data
-  TiledArray::Array<double, 2>::range_type::index index;
+  TArray2s::range_type::index index;
   for(array2d::const_iterator it = f_.begin(); it != f_.end(); ++it) {
     if(f.trange().elements().includes(it->first)) {
       index = f.trange().element_to_tile(it->first);
@@ -169,22 +166,18 @@ InputData::make_f(madness::World& w, const Spin s, const RangeOV ov1, const Rang
   return f;
 }
 
-TiledArray::Array<double, 4>
+TArray4s
 InputData::make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) {
   // Construct the array
   TiledArray::TiledRange tr = trange(alpha, beta, ov1, ov2, ov3, ov4);
 //  std::cout << tr << "\n";
-  std::vector<std::size_t> sparse_list = make_sparse_list(tr, v_ab_);
-  TiledArray::Array<double, 4> v_ab(w, tr, sparse_list.begin(), sparse_list.end());
+  TArray4s v_ab(w, tr,make_sparse_shape(tr, v_ab_));
 
   // Initialize tiles
-  for(std::vector<std::size_t>::const_iterator it = sparse_list.begin(); it != sparse_list.end(); ++it) {
-    if(v_ab.is_local(*it))
-      v_ab.set(*it, 0.0);
-  }
+  v_ab.set_all_local(0.0);
 
   // Set the tile data
-  TiledArray::Array<double, 4>::range_type::index index;
+  TArray4s::range_type::index index;
   for(array4d::const_iterator it = v_ab_.begin(); it != v_ab_.end(); ++it) {
     if(v_ab.trange().elements().includes(it->first)) {
       index = v_ab.trange().element_to_tile(it->first);

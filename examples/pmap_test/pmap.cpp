@@ -17,8 +17,9 @@
  *
  */
 
-#include <tiled_array.h>
-#include <TiledArray/pmap/hash_pmap.h>
+#include "tiledarray.h"
+#include "TiledArray/pmap/cyclic_pmap.h"
+#include "TiledArray/pmap/hash_pmap.h"
 
 std::vector<ProcessID> make_map(std::size_t m, std::size_t n, std::shared_ptr<TiledArray::Pmap>& pmap) {
   std::vector<ProcessID> map;
@@ -56,11 +57,13 @@ int main(int argc, char** argv) {
 
   std::size_t m = 20;
   std::size_t n = 10;
+  std::size_t M = 200;
+  std::size_t N = 100;
 
   std::shared_ptr<TiledArray::Pmap> blocked_pmap(new TiledArray::detail::BlockedPmap(world, m * n));
   std::vector<ProcessID> blocked_map = make_map(m, n, blocked_pmap);
 
-  std::shared_ptr<TiledArray::Pmap> cyclic_pmap(new TiledArray::detail::CyclicPmap(world, m, n));
+  std::shared_ptr<TiledArray::Pmap> cyclic_pmap(new TiledArray::detail::CyclicPmap(world, m, n, M, N));
   std::vector<ProcessID> cyclic_map = make_map(m, n, cyclic_pmap);
 
   std::shared_ptr<TiledArray::Pmap> hash_pmap(new TiledArray::detail::HashPmap(world, m * n));

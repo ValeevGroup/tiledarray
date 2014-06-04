@@ -147,7 +147,7 @@ namespace TiledArray {
 #ifdef TILEDARRAY_NO_USER_ERROR_MESSAGES
 #define TA_USER_ERROR_MESSAGE( m )
 #else
-#define TA_USER_ERROR_MESSAGE( m ) std::cerr << "!!! ERROR " << m << "\n";
+#define TA_USER_ERROR_MESSAGE( m ) std::cerr << "!!! TiledArray ERROR: " << m << "\n";
 #endif // TILEDARRAY_NO_USER_ERROR_MESSAGES
 
 #ifndef NDEBUG

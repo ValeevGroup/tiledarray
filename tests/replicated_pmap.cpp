@@ -77,9 +77,6 @@ BOOST_AUTO_TEST_CASE( local_size )
 
 BOOST_AUTO_TEST_CASE( local_group )
 {
-  const std::size_t size = GlobalFixture::world->size();
-  ProcessID tile_owners[100];
-
   for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
     TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, tiles);
 

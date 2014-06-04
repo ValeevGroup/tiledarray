@@ -1,0 +1,450 @@
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2014  Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  mult_engine.h
+ *  Mar 31, 2014
+ *
+ */
+
+#ifndef TILEDARRAY_EXPRESSIONS_MULT_ENGINE_H__INCLUDED
+#define TILEDARRAY_EXPRESSIONS_MULT_ENGINE_H__INCLUDED
+
+#include <TiledArray/expressions/cont_engine.h>
+#include <TiledArray/tile_op/mult.h>
+#include <TiledArray/tile_op/scal_mult.h>
+
+
+namespace TiledArray {
+  namespace expressions {
+
+    // Forward declarations
+    template <typename, typename> class MultExpr;
+    template <typename, typename> class ScalMultExpr;
+    template <typename, typename> class MultEngine;
+    template <typename, typename> class ScalMultEngine;
+
+    template <typename Left, typename Right>
+    struct EngineTrait<MultEngine<Left, Right> > :
+      public BinaryEngineTrait<Left, Right, TiledArray::math::Mult>
+    { };
+
+    template <typename Left, typename Right>
+    struct EngineTrait<ScalMultEngine<Left, Right> > :
+      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalMult>
+    { };
+
+
+    /// Multiplication expression engine
+
+    /// \tparam Derived The derived class type
+    template <typename Left, typename Right>
+    class MultEngine : public ContEngine<MultEngine<Left, Right> > {
+    public:
+      // Class hierarchy typedefs
+      typedef MultEngine<Left, Right> MultEngine_; ///< This class type
+      typedef ContEngine<MultEngine_> ContEngine_; ///< Contraction engine base class
+      typedef BinaryEngine<MultEngine_> BinaryEngine_; ///< Binary base class type
+      typedef BinaryEngine<MultEngine_> ExprEngine_; ///< Expression engine base class type
+
+      // Argument typedefs
+      typedef typename EngineTrait<MultEngine_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<MultEngine_>::right_type right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef typename EngineTrait<MultEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<MultEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<MultEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<MultEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<MultEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename EngineTrait<MultEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<MultEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<MultEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<MultEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+
+    private:
+
+      bool contract_; ///< Expression type flag (true == contraction, false ==
+                      ///< coefficent-wise multiplication)
+
+    public:
+
+      /// Constructor
+
+      /// \param L The left-hand argument expression type
+      /// \param R The right-hand argument expression type
+      /// \param expr The parent expression
+      template <typename L, typename R>
+      MultEngine(const MultExpr<L, R>& expr) : ContEngine_(expr), contract_(false) { }
+
+
+      /// Set the variable list for this expression
+
+      /// This function will set the variable list for this expression and its
+      /// children such that the number of permutations is minimized. The final
+      /// variable list may not be set to target, which indicates that the
+      /// result of this expression will be permuted to match \c target_vars.
+      /// \param target_vars The target variable list for this expression
+      void perm_vars(const VariableList& target_vars) {
+        if(contract_)
+          ContEngine_::perm_vars(target_vars);
+        else {
+          BinaryEngine_::perm_vars(target_vars);
+        }
+      }
+
+      /// Set the variable list for this expression
+
+      /// This function will set the variable list for this expression and its
+      /// children such that the number of permutations is minimized.
+      void perm_vars() {
+        if(contract_)
+          ContEngine_::perm_vars();
+        else {
+          BinaryEngine_::perm_vars();
+        }
+      }
+
+      /// Initialize the variable list of this expression
+
+      /// \param target_vars The target variable list for this expression
+      void init_vars(const VariableList& target_vars) {
+        BinaryEngine_::left_.init_vars();
+        BinaryEngine_::right_.init_vars();
+
+        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
+          BinaryEngine_::perm_vars(target_vars);
+        } else {
+          contract_ = true;
+          ContEngine_::init_vars();
+          ContEngine_::perm_vars(target_vars);
+        }
+      }
+
+      /// Initialize the variable list of this expression
+      void init_vars() {
+        BinaryEngine_::left_.init_vars();
+        BinaryEngine_::right_.init_vars();
+
+        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
+          BinaryEngine_::vars();
+        } else {
+          contract_ = true;
+          ContEngine_::init_vars();
+        }
+      }
+
+      /// Initialize result tensor structure
+
+      /// This function will initialize the permutation, tiled range, and shape
+      /// for the result tensor.
+      /// \param target_vars The target variable list for the result tensor
+      void init_struct(const VariableList& target_vars) {
+        if(contract_)
+          ContEngine_::init_struct(target_vars);
+        else
+          BinaryEngine_::init_struct(target_vars);
+      }
+
+      /// Initialize result tensor distribution
+
+      /// This function will initialize the world and process map for the result
+      /// tensor.
+      /// \param world The world were the result will be distributed
+      /// \param pmap The process map for the result tensor tiles
+      void init_distribution(madness::World* world, std::shared_ptr<pmap_interface> pmap) {
+        if(contract_)
+          ContEngine_::init_distribution(world, pmap);
+        else
+          BinaryEngine_::init_distribution(world, pmap);
+      }
+
+      /// Non-permuting tiled range factory function
+
+      /// \return The result tiled range object
+      trange_type make_trange() const {
+        if(contract_)
+          return ContEngine_::make_trange();
+        else
+          return BinaryEngine_::make_trange();
+      }
+
+      /// Permuting tiled range factory function
+
+      /// \param perm The permutation to be applied to the array
+      /// \return The result tiled range object
+      trange_type make_trange(const Permutation& perm) const {
+        if(contract_)
+          return ContEngine_::make_trange(perm);
+        else
+          return BinaryEngine_::make_trange(perm);
+      }
+
+      /// Non-permuting shape factory function
+
+      /// \return The result shape
+      shape_type make_shape() const {
+        return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape());
+      }
+
+      /// Permuting shape factory function
+
+      /// \param perm The permutation to be applied to the array
+      /// \return The result shape
+      shape_type make_shape(const Permutation& perm) const {
+        return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(), perm);
+      }
+
+      /// Non-permuting tile operation factory function
+
+      /// \return The tile operation
+      static op_type make_tile_op() { return op_type(); }
+
+      /// Permuting tile operation factory function
+
+      /// \param perm The permutation to be applied to tiles
+      /// \return The tile operation
+      static op_type make_tile_op(const Permutation& perm) { return op_type(perm); }
+
+      /// Construct the distributed evaluator for this expression
+
+      /// \return The distributed evaluator that will evaluate this expression
+      dist_eval_type make_dist_eval() const {
+        if(contract_)
+          return ContEngine_::make_dist_eval();
+        else
+          return BinaryEngine_::make_dist_eval();
+      }
+
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      const char* make_tag() const { return "[*] "; }
+
+    }; // class MultEngine
+
+
+    /// Scaled multiplication expression engine
+
+    /// \tparam Derived The derived class type
+    template <typename Left, typename Right>
+    class ScalMultEngine : public ContEngine<ScalMultEngine<Left, Right> > {
+    public:
+      // Class hierarchy typedefs
+      typedef ScalMultEngine<Left, Right> ScalMultEngine_; ///< This class type
+      typedef ContEngine<ScalMultEngine_> ContEngine_; ///< Contraction engine base class
+      typedef BinaryEngine<ScalMultEngine_> BinaryEngine_; ///< Binary base class type
+      typedef BinaryEngine<ScalMultEngine_> ExprEngine_; ///< Expression engine base class type
+
+      // Argument typedefs
+      typedef typename EngineTrait<ScalMultEngine_>::left_type left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalMultEngine_>::right_type right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef typename EngineTrait<ScalMultEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<ScalMultEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalMultEngine_>::op_type op_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalMultEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<ScalMultEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename EngineTrait<ScalMultEngine_>::size_type size_type; ///< Size type
+      typedef typename EngineTrait<ScalMultEngine_>::trange_type trange_type; ///< Tiled range type
+      typedef typename EngineTrait<ScalMultEngine_>::shape_type shape_type; ///< Shape type
+      typedef typename EngineTrait<ScalMultEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+
+    private:
+
+      bool contract_; ///< Expression type flag (true == contraction, false ==
+                      ///< coefficent-wise multiplication)
+
+    public:
+
+      /// Constructor
+
+      /// \param L The left-hand argument expression type
+      /// \param R The right-hand argument expression type
+      /// \param expr The parent expression
+      template <typename L, typename R>
+      ScalMultEngine(const ScalMultExpr<L, R>& expr) : ContEngine_(expr), contract_(false) { }
+
+      /// Set the variable list for this expression
+
+      /// This function will set the variable list for this expression and its
+      /// children such that the number of permutations is minimized. The final
+      /// variable list may not be set to target, which indicates that the
+      /// result of this expression will be permuted to match \c target_vars.
+      /// \param target_vars The target variable list for this expression
+      void perm_vars(const VariableList& target_vars) {
+        if(contract_)
+          ContEngine_::perm_vars(target_vars);
+        else {
+          BinaryEngine_::perm_vars(target_vars);
+        }
+      }
+
+      /// Set the variable list for this expression
+
+      /// This function will set the variable list for this expression and its
+      /// children such that the number of permutations is minimized.
+      void perm_vars() {
+        if(contract_)
+          ContEngine_::perm_vars();
+        else {
+          BinaryEngine_::perm_vars();
+        }
+      }
+
+      /// Initialize the variable list of this expression
+
+      /// \param target_vars The target variable list for this expression
+      void init_vars(const VariableList& target_vars) {
+        BinaryEngine_::left_.init_vars();
+        BinaryEngine_::right_.init_vars();
+
+        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
+          BinaryEngine_::perm_vars(target_vars);
+        } else {
+          contract_ = true;
+          ContEngine_::init_vars();
+          ContEngine_::perm_vars(target_vars);
+        }
+      }
+
+      /// Initialize the variable list of this expression
+      void init_vars() {
+        BinaryEngine_::left_.init_vars();
+        BinaryEngine_::right_.init_vars();
+
+        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
+          if(left_type::leaves <= right_type::leaves)
+            ExprEngine_::vars_ = BinaryEngine_::left_.vars();
+          else
+            ExprEngine_::vars_ = BinaryEngine_::right_.vars();
+        } else {
+          contract_ = true;
+          ContEngine_::init_vars();
+        }
+      }
+
+      /// Initialize result tensor structure
+
+      /// This function will initialize the permutation, tiled range, and shape
+      /// for the result tensor.
+      /// \param target_vars The target variable list for the result tensor
+      void init_struct(const VariableList& target_vars) {
+        if(contract_)
+          ContEngine_::init_struct(target_vars);
+        else
+          BinaryEngine_::init_struct(target_vars);
+      }
+
+      /// Initialize result tensor distribution
+
+      /// This function will initialize the world and process map for the result
+      /// tensor.
+      /// \param world The world were the result will be distributed
+      /// \param pmap The process map for the result tensor tiles
+      void init_distribution(madness::World* world, std::shared_ptr<pmap_interface> pmap) {
+        if(contract_)
+          ContEngine_::init_distribution(world, pmap);
+        else
+          BinaryEngine_::init_distribution(world, pmap);
+      }
+
+      /// Construct the distributed evaluator for this expression
+
+      /// \return The distributed evaluator that will evaluate this expression
+      dist_eval_type make_dist_eval() const {
+        if(contract_)
+          return ContEngine_::make_dist_eval();
+        else
+          return BinaryEngine_::make_dist_eval();
+      }
+
+      /// Non-permuting tiled range factory function
+
+      /// \return The result tiled range object
+      trange_type make_trange() const {
+        if(contract_)
+          return ContEngine_::make_trange();
+        else
+          return BinaryEngine_::make_trange();
+      }
+
+      /// Permuting tiled range factory function
+
+      /// \param perm The permutation to be applied to the array
+      /// \return The result tiled range object
+      trange_type make_trange(const Permutation& perm) const {
+        if(contract_)
+          return ContEngine_::make_trange(perm);
+        else
+          return BinaryEngine_::make_trange(perm);
+      }
+
+      /// Non-permuting shape factory function
+
+      /// \return The result shape
+      shape_type make_shape() const {
+        return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(),
+            ContEngine_::factor_);
+      }
+
+      /// Permuting shape factory function
+
+      /// \param perm The permutation to be applied to the array
+      /// \return The result shape
+      shape_type make_shape(const Permutation& perm) const {
+        return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(),
+            ContEngine_::factor_, perm);
+      }
+
+      /// Non-permuting tile operation factory function
+
+      /// \return The tile operation
+      op_type make_tile_op() const { return op_type(ContEngine_::factor_); }
+
+      /// Permuting tile operation factory function
+
+      /// \param perm The permutation to be applied to tiles
+      /// \return The tile operation
+      op_type make_tile_op(const Permutation& perm) const {
+        return op_type(perm, ContEngine_::factor_);
+      }
+
+
+
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      std::string make_tag() const {
+        std::stringstream ss;
+        ss << "[*] [" << ContEngine_::factor_ << "] ";
+        return ss.str();
+      }
+
+    }; // class ScalMultEngine
+
+  }  // namespace expressions
+} // namespace TiledArray
+
+#endif // TILEDARRAY_EXPRESSIONS_MULT_ENGINE_H__INCLUDED

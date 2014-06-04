@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TILE_OP_NEG_H__INCLUDED
 #define TILEDARRAY_TILE_OP_NEG_H__INCLUDED
 
-#include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/unary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -40,28 +40,47 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Neg {
+    class Neg : public UnaryInterface<Neg<Result, Arg, Consumable> > {
     public:
       typedef Neg<Result, Arg, Consumable> Neg_; ///< This object type
-      typedef typename madness::if_c<Consumable, Arg&, const Arg&>::type argument_type; ///< The argument type
-      typedef Result result_type; ///< The result tile type
+      typedef UnaryInterface<Neg_> UnaryInterface_;
+      typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
+      typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
 
-    private:
-      Permutation perm_; ///< The result permutation
+      /// Default constructor
 
-      // Element operation functor types
+      /// Construct a negation operation that does not permute the result tile
+      Neg() : UnaryInterface_() { }
 
-      typedef Negate<typename Arg::value_type, typename Result::value_type> negate_op;
-      typedef NegateAssign<typename Arg::value_type> negate_assign_op;
+      /// Permute constructor
+
+      /// Construct a negation operation that permutes the result tensor
+      /// \param perm The permutation to apply to the result tile
+      Neg(const Permutation& perm) : UnaryInterface_(perm) { }
+
+      /// Copy constructor
+
+      /// \param other The negation operation object to be copied
+      Neg(const Neg_& other) : UnaryInterface_(other) { }
+
+      /// Copy assignment
+
+      /// \param other The negation operation object to be copied
+      /// \return A reference to this object
+      Neg_& operator=(const Neg_& other) {
+        UnaryInterface_::operator =(other);
+        return *this;
+      }
+
+      // Import interface from base class
+      using UnaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(argument_type arg) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, arg, negate_op());
-        return result;
+      result_type permute(const Arg& arg) const {
+        return arg.neg(UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -69,56 +88,17 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool C>
-      static typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
-          result_type>::type
-      no_permute(argument_type arg) {
-        return -arg;
+      static typename madness::enable_if_c<!C, result_type>::type
+      no_permute(const Arg& arg) {
+        return arg.neg();
       }
 
       template <bool C>
-      static typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
-          result_type>::type
-      no_permute(argument_type arg) {
-        vector_assign(arg.size(), arg.data(), negate_assign_op());
-        return arg;
+      static typename madness::enable_if_c<C, result_type>::type
+      no_permute(Arg& arg) {
+        return arg.neg_to();
       }
 
-    public:
-      /// Default constructor
-
-      /// Construct a negation operation that does not permute the result tile
-      Neg() : perm_() { }
-
-      /// Permute constructor
-
-      /// Construct a negation operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Neg(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The negation operation object to be copied
-      Neg(const Neg_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The negation operation object to be copied
-      /// \return A reference to this object
-      Neg_& operator=(const Neg_& other) {
-        perm_ = other.perm_;
-        return *this;
-      }
-
-      /// Negate a tile and possibly permute
-
-      /// \param arg The argument
-      /// \return The negation and permutation of \c arg
-      result_type operator()(argument_type arg) const {
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        return no_permute<Consumable>(arg);
-      }
     }; // class Neg
 
   } // namespace math

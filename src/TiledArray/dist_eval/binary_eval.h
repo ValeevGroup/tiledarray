@@ -21,7 +21,7 @@
 #define TILEDARRAY_DIST_EVAL_BINARY_EVAL_H__INCLUDED
 
 #include <TiledArray/dist_eval/dist_eval.h>
-#include <TiledArray/tensor.h>
+#include <TiledArray/zero_tensor.h>
 
 namespace TiledArray {
   namespace detail {
@@ -32,26 +32,32 @@ namespace TiledArray {
     /// expression.
     /// \tparam Left The left argument type
     /// \tparam Right The right argument type
-    /// \tparam Op The binary transform operator type.
-    template <typename Left, typename Right, typename Op>
+    /// \tparam Op The binary transform operator type
+    /// \tparam Policy The tensor policy class
+    template <typename Left, typename Right, typename Op, typename Policy>
     class BinaryEvalImpl :
-      public DistEvalImpl<typename Op::result_type>
+      public DistEvalImpl<typename Op::result_type, Policy>
     {
     public:
-      typedef Op op_type;
-      typedef BinaryTensorImpl<LExp, RExp, Op> BinaryEvalImpl_;
-      typedef DistEvalImpl<typename op_type::result_type> DistEvalImpl_;
-      typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_;
-      typedef Left left_type;
-      typedef Right right_type;
-      typedef typename DistEvalImpl_::size_type size_type;
-      typedef typename DistEvalImpl_::range_type range_type;
-      typedef typename DistEvalImpl_::shape_type shape_type;
-      typedef typename DistEvalImpl_::pmap_interface pmap_interface;
-      typedef typename DistEvalImpl_::trange_type trange_type;
-      typedef typename DistEvalImpl_::value_type value_type;
-      typedef typename DistEvalImpl_::const_reference const_reference;
-      typedef typename DistEvalImpl_::const_iterator const_iterator;
+      typedef BinaryEvalImpl<Left, Right, Op, Policy> BinaryEvalImpl_; ///< This object type
+      typedef DistEvalImpl<typename Op::result_type, Policy> DistEvalImpl_; ///< The base class type
+      typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
+      typedef Left left_type; ///< The left-hand argument type
+      typedef Right right_type; ///< The right-hand argument type
+      typedef typename DistEvalImpl_::size_type size_type; ///< Size type
+      typedef typename DistEvalImpl_::range_type range_type; ///< Range type
+      typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
+      typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename DistEvalImpl_::trange_type trange_type; ///< Tiled range type
+      typedef typename DistEvalImpl_::value_type value_type; ///< Tile type
+      typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
+      typedef Op op_type; ///< Tile evaluation operator type
+
+    private:
+
+      left_type left_; ///< Left argument
+      right_type right_; ///< Right argument
+      op_type op_; ///< binary element operator
 
     public:
 
@@ -60,11 +66,11 @@ namespace TiledArray {
       /// \param arg The argument
       /// \param op The element transform operation
       BinaryEvalImpl(const left_type& left, const right_type& right,
-          madness::World& world, const Permutation& perm, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap, const op_type& op,
-          const bool permute_tiles) :
-            DistEvalImpl_(world, perm, left.trange(), shape, pmap, perm_tiles),
-        op_(op), left_(left), right_(right)
+          madness::World& world, const trange_type& trange, const shape_type& shape,
+          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
+          const op_type& op) :
+        DistEvalImpl_(world, trange, shape, pmap, perm),
+        left_(left), right_(right), op_(op)
       {
         TA_ASSERT(left.trange() == right.trange());
       }
@@ -73,93 +79,142 @@ namespace TiledArray {
 
     private:
 
+      /// Task function for evaluating tiles
+
+      /// \param i The tile index
+      /// \param left The left-hand tile
+      /// \param right The right-hand tile
       template <typename L, typename R>
-      void eval_tile(const size_type i, const L& left, const R& right,
-          madness::AtomicInt* const counter)
-      {
-        DistEvalImpl_::set(i, op_(left, right), op_.permute());
-        (*counter)++;
+      void eval_tile(const size_type i, L left, R right) {
+        DistEvalImpl_::set_tile(i, op_(left, right));
       }
 
-      /// Function for evaluating this tensor's tiles
+      /// Evaluate the tiles of this tensor
 
-      /// This function is run inside a task, and will run after \c eval_children
-      /// has completed. It should spawn additional tasks that evaluate the
-      /// individual result tiles.
-      virtual void eval_tiles(const std::shared_ptr<DistEvalImpl>& pimpl,
-          madness::AtomicInt& counter, int& task_count)
-      {
+      /// This function will evaluate the children of this distributed evaluator
+      /// and evaluate the tiles for this distributed evaluator. It will block
+      /// until the tasks for the children are evaluated (not for the tasks of
+      /// this object).
+      /// \param pimpl A shared pointer to this object
+      /// \return The number of tiles that will be set by this process
+      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+        // Convert pimpl to this object type so it can be used in tasks
+        std::shared_ptr<BinaryEvalImpl_> self =
+            std::static_pointer_cast<BinaryEvalImpl_>(pimpl);
+
+        // Evaluate child tensors
+        left_.eval();
+        right_.eval();
+
+        // Task function argument types
+        typedef typename madness::if_<std::is_const<typename op_type::first_argument_type>,
+            const typename left_type::value_type,
+                  typename left_type::value_type>::type &
+                left_argument_type;
+        typedef typename madness::if_<std::is_const<typename op_type::second_argument_type>,
+            const typename right_type::value_type,
+                  typename right_type::value_type>::type &
+                right_argument_type;
         typedef ZeroTensor<typename left_type::value_type::value_type> zero_left_type;
         typedef ZeroTensor<typename right_type::value_type::value_type> zero_right_type;
 
-        // Convert pimpl to this object type so it can be used in tasks
-        TA_ASSERT(this == pimpl.get());
-        std::shared_ptr<BinaryEvalImpl_> this_pimpl =
-            std::static_pointer_cast<BinaryEvalImpl_>(pimpl);
+        size_type task_count = 0ul;
 
         // Construct local iterator
-        typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
-        const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
+        TA_ASSERT(left_.pmap() == right_.pmap());
+        typename pmap_interface::const_iterator it = left_.pmap()->begin();
+        const typename pmap_interface::const_iterator end = left_.pmap()->end();
 
         if(left_.is_dense() && right_.is_dense() && TensorImpl_::is_dense()) {
           // Evaluate tiles where both arguments and the result are dense
           for(; it != end; ++it) {
-            const size_type i = *it;
-            TensorImpl_::get_world().taskq.add(this_pimpl,
-                & BinaryEvalImpl_::template eval_tile<typename left_type::value_type, typename right_type::value_type>,
-                i, left_.move(i), right_.move(i), &counter);
+            // Get tile indices
+            const size_type index = *it;
+            const size_type target_index = DistEvalImpl_::perm_index(index);
+
+            // Schedule tile evaluation task
+            TensorImpl_::get_world().taskq.add(self,
+                & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
+                target_index, left_.get(index), right_.get(index));
+
             ++task_count;
           }
         } else {
           // Evaluate tiles where the result or one of the arguments is sparse
           for(; it != end; ++it) {
-            const size_type i = *it;
-            if(! TensorImpl_::is_zero(i)) {
-              if(left_.is_zero(i)) {
-                TensorImpl_::get_world().taskq.add(this_pimpl,
-                  & BinaryEvalImpl_::template eval_tile<zero_left_type, typename right_type::value_type>,
-                  i, zero_left_type(), right_.move(i), &counter);
-              } else if(right_.is_zero(i)) {
-                TensorImpl_::get_world().taskq.add(this_pimpl,
-                  & BinaryEvalImpl_::template eval_tile<typename left_type::value_type, zero_right_type>,
-                  i, left_.move(i), zero_right_type(), &counter);
+            // Get tile indices
+            const size_type index = *it;
+            const size_type target_index = DistEvalImpl_::perm_index(index);
+
+            if(! TensorImpl_::is_zero(target_index)) {
+              // Schedule tile evaluation task
+              if(left_.is_zero(index)) {
+                TensorImpl_::get_world().taskq.add(self,
+                  & BinaryEvalImpl_::template eval_tile<const zero_left_type, right_argument_type>,
+                  target_index, zero_left_type(), right_.get(index));
+              } else if(right_.is_zero(index)) {
+                TensorImpl_::get_world().taskq.add(self,
+                  & BinaryEvalImpl_::template eval_tile<left_argument_type, const zero_right_type>,
+                  target_index, left_.get(index), zero_right_type());
               } else {
-                TensorImpl_::get_world().taskq.add(this_pimpl,
-                  & BinaryEvalImpl_::template eval_tile<typename left_type::value_type, typename right_type::value_type>,
-                  i, left_.move(i), right_.move(i), &counter);
+                TensorImpl_::get_world().taskq.add(self,
+                  & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
+                  target_index, left_.get(index), right_.get(index));
               }
+
               ++task_count;
             } else {
               // Cleanup unused tiles
-              if(! left_.is_zero(i))
-                left_.move(i);
-              if(! right_.is_zero(i))
-                right_.move(i);
+              if(! left_.is_zero(index))
+                left_.get(index);
+              if(! right_.is_zero(index))
+                right_.get(index);
             }
           }
         }
 
-        left_.release();
-        right_.release();
+        // Wait for child tensors to be evaluated, and process tasks while waiting.
+        left_.wait();
+        right_.wait();
+
+        return task_count;
       }
 
-      /// Function for evaluating child tensors
+    }; // class BinaryEvalImpl
 
-      /// This function should return true when the child
 
-      /// This function should evaluate all child tensors.
-      /// \param vars The variable list for this tensor (may be different from
-      /// the variable list used to initialize this tensor).
-      /// \param pmap The process map for this tensor
-      virtual void eval_children(madness::AtomicInt& counter, long& task_count) {
-        left_.eval(counter, task_counter);
-        right_.eval(counter, task_counter);
-      }
+    /// Distributed binary evaluator factory function
 
-      op_type op_; ///< binary element operator
-      left_type left_; ///< Left argument
-      right_type right_; ///< Right argument
-    }; // class BinaryTensorImpl
+    /// Construct a distributed binary evaluator, which constructs a new tensor
+    /// by applying \c op to tiles of \c left and \c right .
+    /// \tparam Tile Tile type of the argument
+    /// \tparam Policy The policy type of the argument
+    /// \tparam Op The binary tile operation
+    /// \param left The left-hand argument
+    /// \param right The right-hand argument
+    /// \param world The world where the argument will be evaluated
+    /// \param shape The shape of the evaluated tensor
+    /// \param pmap The process map for the evaluated tensor
+    /// \param perm The permutation applied to the tensor
+    /// \param op The binary tile operation
+    template <typename LeftTile, typename RightTile, typename Policy, typename Op>
+    DistEval<typename Op::result_type, Policy> make_binary_eval(
+        const DistEval<LeftTile, Policy>& left,
+        const DistEval<RightTile, Policy>& right,
+        madness::World& world,
+        const typename DistEval<typename Op::result_type, Policy>::shape_type& shape,
+        const std::shared_ptr<typename DistEval<typename Op::result_type, Policy>::pmap_interface>& pmap,
+        const Permutation& perm,
+        const Op& op)
+    {
+      typedef BinaryEvalImpl<DistEval<LeftTile, Policy>, DistEval<RightTile,
+          Policy>, Op, Policy> impl_type;
+      return DistEval<typename Op::result_type, Policy>(
+          std::shared_ptr<typename impl_type::DistEvalImpl_>(
+              new impl_type(left, right, world,
+                  (perm ? perm ^ left.trange() : left.trange()),
+                  shape, pmap, perm, op)));
+    }
 
   }  // namespace detail
 }  // namespace TiledArray

@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
 
-#include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/binary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -45,47 +45,59 @@ namespace TiledArray {
     /// argument is consumable.
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
-    class Subt {
+    class Subt : public BinaryInterface<Subt<Result, Left, Right, LeftConsumable,
+        RightConsumable> >
+    {
     public:
-      typedef Subt<Result, Left, Right, false, false> Subt_; ///< This object type
-      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type first_argument_type; ///< The left-hand argument type
-      typedef typename madness::if_c<RightConsumable, Right&, const Right&>::type second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
-      typedef Result result_type; ///< The result tile type
+      typedef Subt<Result, Left, Right, LeftConsumable, RightConsumable> Subt_; ///< This object type
+      typedef BinaryInterface<Subt_> BinaryInterface_; ///< Interface base class type
+      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
+      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
+      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
 
-    private:
-      Permutation perm_; ///< The result permutation
+      /// Default constructor
 
-      // Element operation functor types
+      /// Construct an subtraction operation that does not permute the result tile
+      Subt() : BinaryInterface_() { }
 
-      typedef Minus<typename Left::value_type, typename Right::value_type,
-          typename Result::value_type> minus_op;
-      typedef Negate<typename Right::value_type, typename Result::value_type> negate_op;
-      typedef NegateAssign<typename Right::value_type> negate_assign_op;
+      /// Permute constructor
 
-      static void minus_assign_right(typename Right::value_type& first, const typename Left::value_type& second) {
-        first = second - first;
+      /// Construct an subtraction operation that permutes the result tensor
+      /// \param perm The permutation to apply to the result tile
+      explicit Subt(const Permutation& perm) : BinaryInterface_(perm) { }
+
+      /// Copy constructor
+
+      /// \param other The subtraction operation object to be copied
+      Subt(const Subt_& other) : BinaryInterface_(other) { }
+
+      /// Copy assignment
+
+      /// \param other The subtraction operation object to be copied
+      /// \return A reference to this object
+      Subt_& operator=(const Subt_& other) {
+        BinaryInterface_::operator =(other);
+        return *this;
       }
+
+      using BinaryInterface_::operator();
 
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, second, minus_op());
-        return result;
+        return first.subt(second, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, second, negate_op());
-        return result;
+        return second.neg(BinaryInterface_::permutation());
       }
 
       result_type permute(first_argument_type first, zero_right_type) const {
-        return perm_ ^ first;
+        return first.permute(BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -93,114 +105,47 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-          (RC && std::is_same<Result, Right>::value), result_type>::type
+      static typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        return first - second;
+        return first.subt(second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
-        first -= second;
-        return first;
+      static typename madness::enable_if_c<LC, result_type>::type
+      no_permute(Left& first, second_argument_type second) {
+        return first.subt_to(second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
-          (!(LC && std::is_same<Result, Left>::value)), result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
-        vector_assign(second.size(), first.data(), second.data(), minus_assign_right);
-        return second;
+      static typename madness::enable_if_c<!LC && RC, result_type>::type
+      no_permute(first_argument_type first, Right& second) {
+        return second.subt_to(first, -1);
       }
 
-
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<RC, result_type>::type
+      static typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) {
-        return result_type(second.range(), second.data(), negate_op());
+        return second.neg();
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<RC, result_type>::type
-      no_permute(zero_left_type, second_argument_type second) {
-        vector_assign(second.size(), second.data(), negate_assign_op());
-        return second;
+      no_permute(zero_left_type, Right& second) {
+        return second.neg_to();
       }
 
       template <bool LC, bool RC>
-      static typename madness::disable_if_c<LC, result_type>::type
+      static typename madness::enable_if_c<!LC, result_type>::type
       no_permute(first_argument_type first, zero_right_type) {
         return first.clone();
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
-      no_permute(first_argument_type first, zero_right_type) {
+      no_permute(Left& first, zero_right_type) {
         return first;
       }
 
-    public:
-      /// Default constructor
-
-      /// Construct an subtraction operation that does not permute the result tile
-      Subt() : perm_() { }
-
-      /// Permute constructor
-
-      /// Construct an subtraction operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Subt(const Permutation& perm) : perm_(perm) { }
-
-      /// Copy constructor
-
-      /// \param other The subtraction operation object to be copied
-      Subt(const Subt_& other) : perm_(other.perm_) { }
-
-      /// Copy assignment
-
-      /// \param other The subtraction operation object to be copied
-      /// \return A reference to this object
-      Subt_& operator=(const Subt_& other) {
-        perm_ = other.perm_;
-        return *this;
-      }
-
-      /// Subtract two non-zero tiles and possibly permute
-
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The difference and permutation of the first and second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
-
-      /// Subtract a zero tile from a non-zero tiles and possibly permute
-
-      /// \param second The right-hand argument
-      /// \return The difference and permutation of \c first and \c second
-      result_type operator()(zero_left_type first, second_argument_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
-
-      /// Subtract a non-zero tiles from a zero tile and possibly permute
-
-      /// \param first The left-hand argument
-      /// \return The difference and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, zero_right_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
-      }
     }; // class Subt
 
   } // namespace math

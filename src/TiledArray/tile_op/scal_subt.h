@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TILE_OP_SCAL_SUBT_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SCAL_SUBT_H__INCLUDED
 
-#include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/binary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -45,122 +45,36 @@ namespace TiledArray {
     /// argument is consumable.
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable>
-    class ScalSubt {
+    class ScalSubt : public BinaryInterface<ScalSubt<Result, Left, Right,
+        LeftConsumable, RightConsumable> >
+    {
     public:
-      typedef ScalSubt<Result, Left, Right, false, false> ScalSubt_; ///< This object type
-      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type first_argument_type; ///< The left-hand argument type
-      typedef typename madness::if_c<RightConsumable, Right&, const Right&>::type second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>& zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>& zero_right_type; ///< Zero right-hand tile type
-      typedef Result result_type; ///< The result tile type
-      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
+      typedef ScalSubt<Result, Left, Right, LeftConsumable, RightConsumable> ScalSubt_; ///< This object type
+      typedef BinaryInterface<ScalSubt_> BinaryInterface_; ///< Interface base class type
+      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
+      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
+      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
+      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
+      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
+      typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
-      Permutation perm_; ///< The result permutation
+
       scalar_type factor_; ///< The scaling factor
-
-      // Element operation functor types
-
-      typedef ScalMinus<typename Left::value_type, typename Right::value_type,
-          typename Result::value_type> scal_minus_op;
-      typedef Scale<typename Left::value_type> scale_left_op;
-      typedef Scale<typename Right::value_type> scale_right_op;
-      typedef ScalMinusAssign<typename Left::value_type,
-          typename Right::value_type> scal_minus_assign_left_op;
-      typedef ScalMinusAssign<typename Right::value_type,
-          typename Left::value_type> scal_minus_assign_right_op;
-
-      // Permuting tile evaluation function
-      // These operations cannot consume the argument tile since this operation
-      // requires temporary storage space.
-
-      result_type permute(first_argument_type first, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, second, scal_minus_op(factor_));
-        return result;
-      }
-
-      result_type permute(zero_left_type, second_argument_type second) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, second, scale_right_op(-factor_));
-        return result;
-      }
-
-      result_type permute(first_argument_type first, zero_right_type) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, first, scale_left_op(factor_));
-        return result;
-      }
-
-      // Non-permuting tile evaluation functions
-      // The compiler will select the correct functions based on the consumability
-      // of the arguments.
-
-      template <bool LC, bool RC>
-      typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-          (RC && std::is_same<Result, Right>::value), result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) const {
-        return result_type(first.range(), first.data(), second.data(),
-            scal_minus_op(factor_));
-      }
-
-      template <bool LC, bool RC>
-      typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) const {
-        vector_assign(first.size(), second.data(), first.data(),
-            scal_minus_assign_left_op(factor_));
-        return first;
-      }
-
-      template <bool LC, bool RC>
-      typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
-          (!(LC && std::is_same<Result, Left>::value)), result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) const {
-        vector_assign(second.size(), first.data(), second.data(),
-            scal_minus_assign_right_op(-factor_));
-        return second;
-      }
-
-
-      template <bool LC, bool RC>
-      typename madness::disable_if_c<RC, result_type>::type
-      no_permute(zero_left_type, second_argument_type second) const {
-        return second * -factor_;
-      }
-
-      template <bool LC, bool RC>
-      typename madness::enable_if_c<RC, result_type>::type
-      no_permute(zero_left_type, second_argument_type second) const {
-        second *= -factor_;
-        return second;
-      }
-
-      template <bool LC, bool RC>
-      typename madness::disable_if_c<LC, result_type>::type
-      no_permute(first_argument_type first, zero_right_type) const {
-        return first * factor_;
-      }
-
-      template <bool LC, bool RC>
-      typename madness::enable_if_c<LC, result_type>::type
-      no_permute(first_argument_type first, zero_right_type) const {
-        first *= factor_;
-        return first;
-      }
 
     public:
       /// Default constructor
 
       /// Construct a subtraction operation that does not permute the result
       /// tile and has a scaling factor of 1.
-      ScalSubt() : perm_(), factor_(1) { }
+      ScalSubt() : BinaryInterface_(), factor_(1) { }
 
       /// Permute constructor
 
       /// Construct a subtraction operation that scales the result tensor
       /// \param factor The scaling factor for the operation [default = 1]
-      ScalSubt(const scalar_type factor) :
-        perm_(), factor_(factor)
+      explicit ScalSubt(const scalar_type factor) :
+        BinaryInterface_(), factor_(factor)
       { }
 
       /// Permute constructor
@@ -169,60 +83,90 @@ namespace TiledArray {
       /// tile.
       /// \param perm The permutation to apply to the result tile
       /// \param factor The scaling factor for the operation [default = 1]
-      ScalSubt(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
-        perm_(perm), factor_(factor)
+      explicit ScalSubt(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
+        BinaryInterface_(perm), factor_(factor)
       { }
 
       /// Copy constructor
 
       /// \param other The subtraction operation object to be copied
-      ScalSubt(const ScalSubt_& other) : perm_(other.perm_), factor_(other.factor_) { }
+      ScalSubt(const ScalSubt_& other) : BinaryInterface_(other), factor_(other.factor_) { }
 
       /// Copy assignment
 
       /// \param other The subtraction operation object to be copied
       /// \return A reference to this object
       ScalSubt_& operator=(const ScalSubt_& other) {
-        perm_ = other.perm_;
+        BinaryInterface_::operator =(other);
         factor_ = other.factor_;
         return *this;
       }
 
-      /// Subtract and scale two non-zero tiles and possibly permute
+      using BinaryInterface_::operator();
 
-      /// \param first The left-hand argument
-      /// \param second The right-hand argument
-      /// \return The scaled difference and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
+      // Permuting tile evaluation function
+      // These operations cannot consume the argument tile since this operation
+      // requires temporary storage space.
 
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
+      result_type permute(first_argument_type first, second_argument_type second) const {
+        return first.subt(second, factor_, BinaryInterface_::permutation());
       }
 
-      /// Subtract and scale a zero tile from a non-zero tiles and possibly permute
-
-      /// \param second The right-hand argument
-      /// \return The scaled difference and permutation of \c first and \c second
-      result_type operator()(zero_left_type first, second_argument_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
+      result_type permute(zero_left_type, second_argument_type second) const {
+        return second.scale(-factor_, BinaryInterface_::permutation());
       }
 
-      /// Subtract and scale a non-zero tiles from a zero tile and possibly permute
-
-      /// \param first The left-hand argument
-      /// \return The scaled difference and permutation of \c first and \c second
-      result_type operator()(first_argument_type first, zero_right_type second) const {
-        if(perm_.dim() > 1)
-          return permute(first, second);
-
-        return no_permute<LeftConsumable, RightConsumable>(first, second);
+      result_type permute(first_argument_type first, zero_right_type) const {
+        return first.scale(factor_, BinaryInterface_::permutation());
       }
+
+      // Non-permuting tile evaluation functions
+      // The compiler will select the correct functions based on the consumability
+      // of the arguments.
+
+      template <bool LC, bool RC>
+      typename madness::enable_if_c<!(LC || RC), result_type>::type
+      no_permute(first_argument_type first, second_argument_type second) const {
+        return first.subt(second, factor_);
+      }
+
+      template <bool LC, bool RC>
+      typename madness::enable_if_c<LC, result_type>::type
+      no_permute(Left& first, second_argument_type second) const {
+        return first.subt_to(second, factor_);
+      }
+
+      template <bool LC, bool RC>
+      typename madness::enable_if_c<!LC && RC, result_type>::type
+      no_permute(first_argument_type first, Right& second) const {
+        return second.subt_to(first, -factor_);
+      }
+
+
+      template <bool LC, bool RC>
+      typename madness::enable_if_c<!RC, result_type>::type
+      no_permute(zero_left_type, second_argument_type second) const {
+        return second.scale(-factor_);
+      }
+
+      template <bool LC, bool RC>
+      typename madness::enable_if_c<RC, result_type>::type
+      no_permute(zero_left_type, Right& second) const {
+        return second.scale_to(-factor_);
+      }
+
+      template <bool LC, bool RC>
+      typename madness::enable_if_c<!LC, result_type>::type
+      no_permute(first_argument_type first, zero_right_type) const {
+        return first.scale(factor_);
+      }
+
+      template <bool LC, bool RC>
+      typename madness::enable_if_c<LC, result_type>::type
+      no_permute(Left& first, zero_right_type) const {
+        return first.scale_to(factor_);
+      }
+
     }; // class ScalSubt
 
   }  // namespace math

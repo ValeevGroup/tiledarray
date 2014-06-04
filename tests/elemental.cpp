@@ -17,6 +17,10 @@
  *
  */
 
+#include "TiledArray/config.h"
+
+#ifdef TILEDARRAY_HAS_ELEMENTAL
+
 #include "TiledArray/elemental.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
@@ -102,3 +106,5 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif // TILEDARRAY_HAS_ELEMENTAL

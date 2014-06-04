@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  justus
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  sparse_array.h
@@ -26,27 +26,31 @@
 #ifndef TILEDARRAY_SPARSE_ARRAY_H__INCLUDED
 #define TILEDARRAY_SPARSE_ARRAY_H__INCLUDED
 
-#include <TiledArray/error.h>
+#include <TiledArray/tiled_range.h>
+#include <TiledArray/pmap/blocked_pmap.h>
 #include <TiledArray/sparse_shape.h>
 
 namespace TiledArray {
 
-  // Forward declarations
-  template <typename> class Tensor;
-
-  template <typename T>
   class SparsePolicy {
-    typedef T element_type;
-    typedef Tensor<T> tile_type;
-    typedef Tensor<T> eval_type;
-    typedef SparseShape shape_type;
+  public:
+    typedef TiledArray::TiledRange trange_type;
+    typedef trange_type::range_type range_type;
+    typedef range_type::size_type size_type;
+    typedef TiledArray::SparseShape<float> shape_type;
+    typedef TiledArray::Pmap pmap_interface;
+    typedef TiledArray::detail::BlockedPmap default_pmap_type;
 
-    static shape_type default_shape() {
-      TA_USER_ASSERT(false,
-          "A SparseShape object must be provided to Array constructor.");
-      return shape_type();
+    /// Create a default process map
+
+    /// \param world The world of the process map
+    /// \param size The number of tiles in the array
+    /// \return A shared pointer to a process map
+    static std::shared_ptr<pmap_interface>
+    default_pmap(madness::World& world, const std::size_t size) {
+      return std::shared_ptr<pmap_interface>(new default_pmap_type(world, size));
     }
-  }; // class DensePolicy
+  }; // class SparsePolicy
 
 } // namespace TiledArray
 

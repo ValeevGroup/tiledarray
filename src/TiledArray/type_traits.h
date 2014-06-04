@@ -81,6 +81,12 @@ namespace TiledArray {
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };
 
+    template <typename T>
+    struct is_complex : public std::false_type { };
+
+    template <typename T>
+    struct is_complex<std::complex<T> > : public std::true_type { };
+
     // helps to implement other metafunctions
     template<typename> struct is_type : public std::true_type { };
 
@@ -125,13 +131,19 @@ namespace TiledArray {
       typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
     };
 
-    /// Analogous to std::add_const but adds const only to nonnumeric types
-    template< class T, typename Enabler = void> struct add_const_to_nonnumeric {
-        typedef const T type;
+    template <typename T, typename Enabler = void>
+    struct param {
+      typedef const T& type;
     };
-    template< class T>
-    struct add_const_to_nonnumeric<T, typename madness::enable_if_c<TiledArray::detail::is_numeric<T>::value>::type> {
-        typedef T type;
+
+    template <typename T>
+    struct param<T, typename madness::enable_if<std::is_scalar<T> >::type> {
+      typedef const T type;
+    };
+
+    template <typename T>
+    struct param<T, typename madness::enable_if<std::is_reference<T> >::type> {
+      typedef T type;
     };
 
     struct non_iterator_tag { };
@@ -148,12 +160,22 @@ namespace TiledArray {
 
     template <typename T>
     struct is_iterator<T*, void> : std::true_type {
-      typedef typename std::iterator_traits<T*>::iterator_category iterator_category;
+      typedef std::random_access_iterator_tag iterator_category;
     };
 
     template <typename T>
     struct is_iterator<const T*, void> : std::true_type {
-      typedef typename std::iterator_traits<const T*>::iterator_category iterator_category;
+      typedef std::random_access_iterator_tag iterator_category;
+    };
+
+    template <typename T>
+    struct is_iterator<T* const, void> : std::true_type {
+      typedef std::random_access_iterator_tag iterator_category;
+    };
+
+    template <typename T>
+    struct is_iterator<const T* const, void> : std::true_type {
+      typedef std::random_access_iterator_tag iterator_category;
     };
 
     template <typename T>

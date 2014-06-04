@@ -18,9 +18,7 @@
  */
 
 #include <iostream>
-#include <algorithm>
-#include <cstdlib>
-#include <tiled_array.h>
+#include <tiledarray.h>
 
 template <typename it, typename tiletype>
 void random_tile_task(it iter, tiletype tile){

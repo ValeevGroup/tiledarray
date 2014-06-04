@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_UTILITY_H__INCLUDED
 #define TILEDARRAY_UTILITY_H__INCLUDED
 
-#include <world/enable_if.h>
+#include <TiledArray/madness.h>
 #include <iostream>
 #include <vector>
 
@@ -145,6 +145,107 @@ namespace TiledArray {
           out << ",";
       }
       out << "]";
+    }
+
+
+    template <typename T, typename Op, typename Result>
+    class BinderFirstHelper {
+      const T& restrict t_;
+      const Op& op_;
+
+    public:
+      typedef Result result_type;
+
+      BinderFirstHelper(const T& restrict t, const Op& op) : t_(t), op_(op) { }
+
+      template <typename Arg>
+      result_type operator()(const Arg& restrict arg) const {
+        return op_(t_, arg);
+      }
+    };
+
+
+    template <typename T, typename Op>
+    class BinderFirstHelper<T, Op, void> {
+      const T& restrict t_;
+      const Op& op_;
+
+    public:
+      typedef void result_type;
+
+      BinderFirstHelper(const T& restrict t, const Op& op) : t_(t), op_(op) { }
+
+      template <typename Result, typename Arg>
+      void operator()(Result& restrict result, const Arg& restrict arg) const {
+        op_(result, t_, arg);
+      }
+    };
+
+    template <typename T, typename Op>
+    class BinderFirst : public BinderFirstHelper<T, Op, typename madness::detail::result_of<Op>::type> {
+      typedef BinderFirstHelper<T, Op, typename madness::detail::result_of<Op>::type> BinderFirstHelper_;
+    public:
+      typedef typename BinderFirstHelper_::result_type result_type;
+
+      BinderFirst(const T& restrict t, const Op& op) :
+        BinderFirstHelper_(t, op)
+      { }
+
+    };
+
+    template <typename T, typename Op>
+    inline BinderFirst<T, Op> bind_first(const T& restrict t, const Op& op) {
+      return BinderFirst<T, Op>(t, op);
+    }
+
+    template <typename T, typename Op, typename Result>
+    class BinderSecondHelper {
+      const T& restrict t_;
+      const Op& op_;
+
+    public:
+      typedef Result result_type;
+
+      BinderSecondHelper(const T& restrict t, const Op& op) : t_(t), op_(op) { }
+
+      template <typename Arg>
+      result_type operator()(const Arg& restrict arg) const {
+        return op_(arg, t_);
+      }
+    };
+
+
+    template <typename T, typename Op>
+    class BinderSecondHelper<T, Op, void> {
+      const T& restrict t_;
+      const Op& op_;
+
+    public:
+      typedef void result_type;
+
+      BinderSecondHelper(const T& restrict t, const Op& op) : t_(t), op_(op) { }
+
+      template <typename Result, typename Arg>
+      void operator()(Result& restrict result, const Arg& restrict arg) const {
+        op_(result, arg, t_);
+      }
+    };
+
+    template <typename T, typename Op>
+    class BinderSecond : public BinderSecondHelper<T, Op, typename madness::detail::result_of<Op>::type> {
+      typedef BinderSecondHelper<T, Op, typename madness::detail::result_of<Op>::type> BinderSecondHelper_;
+    public:
+      typedef typename BinderSecondHelper_::result_type result_type;
+
+      BinderSecond(const T& restrict t, const Op& op) :
+        BinderSecondHelper_(t, op)
+      { }
+
+    };
+
+    template <typename T, typename Op>
+    inline BinderSecond<T, Op> bind_second(const T& restrict t, const Op& op) {
+      return BinderSecond<T, Op>(t, op);
     }
 
   } // namespace detail

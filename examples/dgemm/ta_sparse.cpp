@@ -19,7 +19,7 @@
 
 #include <iostream>
 #include <time.h> // for time
-#include <tiled_array.h>
+#include <tiledarray.h>
 
 int main(int argc, char** argv) {
   // Initialize runtime
@@ -45,17 +45,17 @@ int main(int argc, char** argv) {
     std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
     return 1;
   }
-  if(sparsity < 0) {
+  if(sparsity <= 0) {
     std::cerr << "Error: Sparsity must be greater than zero.\n";
     return 1;
   }
-  if(sparsity > (matrix_size / 2)) {
-    std::cerr << "Error: Sparsity must be less than 100.\n";
+  if(sparsity > 100) {
+    std::cerr << "Error: Sparsity must be less than or equal to 100.\n";
     return 1;
   }
   const long repeat = (argc >= 5 ? atol(argv[4]) : 5);
   if(repeat <= 0) {
-    std::cerr << "Error: number of repititions must greater than zero.\n";
+    std::cerr << "Error: number of repetitions must greater than zero.\n";
     return 1;
   }
 
@@ -84,22 +84,31 @@ int main(int argc, char** argv) {
     trange(blocking2.begin(), blocking2.end());
 
   // Construct shape
-  std::vector<std::size_t> a_shape, b_shape;
+  TiledArray::Tensor<float>
+      a_shape_tensor(trange.tiles(), 0.0),
+      b_shape_tensor(trange.tiles(), 0.0);
   if(world.rank() == 0) {
-    a_shape.reserve(block_count);
     world.srand(time(NULL));
-    for(long i = 0; i < block_count; ++i)
-      a_shape.push_back(world.rand() % trange.tiles().volume());
+    const long process_block_count = block_count / world.size() +
+        (world.rank() < (block_count / world.size()) ? 1 : 0);
+    for(long i = 0; i < process_block_count; ++i)
+      a_shape_tensor.data()[world.rand() % trange.tiles().volume()] = 1.0;
 
-    b_shape.reserve(block_count);
-    for(long i = 0; i < block_count; ++i)
-      b_shape.push_back(world.rand() % trange.tiles().volume());
+    for(long i = 0; i < process_block_count; ++i)
+      b_shape_tensor.data()[world.rand() % trange.tiles().volume()] = 1.0;
   }
+  TiledArray::SparseShape<float>
+      a_shape(world, a_shape_tensor, trange),
+      b_shape(world, b_shape_tensor, trange);
+
+
+  typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
+      TiledArray::SparsePolicy > SpTArray2;
 
   // Construct and initialize arrays
-  TiledArray::Array<double, 2> a(world, trange, a_shape.begin(), a_shape.end());
-  TiledArray::Array<double, 2> b(world, trange, b_shape.begin(), b_shape.end());
-  TiledArray::Array<double, 2> c(world, trange);
+  SpTArray2 a(world, trange, a_shape);
+  SpTArray2 b(world, trange, b_shape);
+  SpTArray2 c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
 
@@ -119,7 +128,7 @@ int main(int argc, char** argv) {
   const double wall_time_stop = madness::wall_time();
 
   // Print results
-  const long flop = 2.0 * TiledArray::expressions::sum(c("m,n"));
+  const long flop = 2.0 * c("m,n").sum();
   if(world.rank() == 0) {
     std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
         << "\nAverage GFLOPS = " << double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
