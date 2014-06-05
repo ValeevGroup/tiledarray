@@ -266,7 +266,7 @@ namespace TiledArray {
             dist_eval.pmap()->end();
         for(; it != end; ++it)
           if(! dist_eval.is_zero(*it))
-            reduce_task.add(dist_eval.move(*it));
+            reduce_task.add(dist_eval.get(*it));
 
         // All reduce the result of the expression
         return world.gop.all_reduce(key_type(dist_eval.id()), reduce_task.submit(), op);
