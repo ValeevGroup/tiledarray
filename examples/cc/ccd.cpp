@@ -75,11 +75,16 @@ int main(int argc, char** argv) {
     if(world.rank() == 0)
       std::cout << " done.\nConstructing v_aa and v_bb tensors...";
 
-    TArray4s v_aa_oooo = v_ab_oooo("i,j,k,l") - v_ab_oooo("i,j,l,k");
-    TArray4s v_aa_vvoo = v_ab_vvoo("a,b,i,j") - v_ab_vvoo("a,b,j,i");
-    TArray4s v_aa_vovo = v_ab_vovo("a,i,b,j") - v_ab_voov("a,i,j,b");
-    TArray4s v_aa_oovv = v_ab_oovv("i,j,a,b") - v_ab_oovv("i,j,b,a");
-    TArray4s v_aa_vvvv = v_ab_vvvv("a,b,c,d") - v_ab_vvvv("a,b,d,c");
+    TArray4s v_aa_oooo;
+    v_aa_oooo("i,j,k,l") = v_ab_oooo("i,j,k,l") - v_ab_oooo("i,j,l,k");
+    TArray4s v_aa_vvoo;
+    v_aa_vvoo("a,b,i,j") = v_ab_vvoo("a,b,i,j") - v_ab_vvoo("a,b,j,i");
+    TArray4s v_aa_vovo;
+    v_aa_vovo("a,i,b,j") = v_ab_vovo("a,i,b,j") - v_ab_voov("a,i,j,b");
+    TArray4s v_aa_oovv;
+    v_aa_oovv("i,j,a,b") = v_ab_oovv("i,j,a,b") - v_ab_oovv("i,j,b,a");
+    TArray4s v_aa_vvvv;
+    v_aa_vvvv("a,b,c,d") = v_ab_vvvv("a,b,c,d") - v_ab_vvvv("a,b,d,c");
     // Just make references to the data since the input is closed shell.
     TArray4s& v_bb_oooo = v_aa_oooo;
     TArray4s& v_bb_vvoo = v_aa_vvoo;
@@ -129,7 +134,8 @@ int main(int argc, char** argv) {
       if(world.rank() == 0)
         std::cout << "Iteration " << i << "\n";
 
-      TArray4s r_aa_vvoo =
+      TArray4s r_aa_vvoo;
+      r_aa_vvoo("p1a,p2a,h1a,h2a") =
           v_aa_vvoo("p1a,p2a,h1a,h2a")
           -f_a_vv("p1a,p3a")*t_aa_vvoo("p2a,p3a,h1a,h2a")
           +f_a_vv("p2a,p3a")*t_aa_vvoo("p1a,p3a,h1a,h2a")
@@ -165,7 +171,8 @@ int main(int argc, char** argv) {
 
       world.gop.fence();
 
-      TArray4s r_ab_vvoo =
+      TArray4s r_ab_vvoo;
+      r_ab_vvoo("p1a,p2b,h1a,h2b") =
           v_ab_vvoo("p1a,p2b,h1a,h2b")
           +f_a_vv("p1a,p3a")*t_ab_vvoo("p3a,p2b,h1a,h2b")
           +f_b_vv("p2b,p3b")*t_ab_vvoo("p1a,p3b,h1a,h2b")
@@ -196,7 +203,8 @@ int main(int argc, char** argv) {
 
       world.gop.fence();
 
-      TArray4s r_bb_vvoo =
+      TArray4s r_bb_vvoo;
+      r_bb_vvoo("p1b,p2b,h1b,h2b") =
           v_bb_vvoo("p1b,p2b,h1b,h2b")
           -f_b_vv("p1b,p3b")*t_bb_vvoo("p2b,p3b,h1b,h2b")
           +f_b_vv("p2b,p3b")*t_bb_vvoo("p1b,p3b,h1b,h2b")
