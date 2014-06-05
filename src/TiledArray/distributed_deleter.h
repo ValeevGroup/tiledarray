@@ -138,8 +138,12 @@ namespace TiledArray {
       /// \param t The pointer to be deleted
       void operator()(T* t) {
         TA_ASSERT(t);
-        t->get_world().gop.lazy_sync(madness::TaggedKey<madness::uniqueidT, DistributedDeleterTag>(t->id()),
-            LazyDelete(t, deleter_));
+        if(madness::initialized())
+          t->get_world().gop.lazy_sync(
+              madness::TaggedKey<madness::uniqueidT, DistributedDeleterTag>(t->id()),
+              LazyDelete(t, deleter_));
+        else
+          deleter_(t);
       }
     }; // class DistributedDeleter
 
