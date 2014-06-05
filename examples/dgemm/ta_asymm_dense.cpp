@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
   const std::size_t row_blocks = row_size / row_block_size;
   const std::size_t col_blocks = col_size / col_block_size;
   const std::size_t block_count = row_blocks * col_blocks;
-  const std::size_t matrix_size = row_size * col_size;
+//  const std::size_t matrix_size = row_size * col_size;
 
   if(world.rank() == 0)
     std::cout << "TiledArray: dense matrix multiply test...\n"
