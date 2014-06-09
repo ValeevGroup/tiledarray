@@ -183,6 +183,7 @@ namespace TiledArray {
       typedef TensorIterator<Impl, Reference> TensorIterator_; ///< This object type
       typedef typename Impl::range_type::index index_type;
       typedef typename Impl::size_type ordinal_type;
+      typedef typename Impl::range_type range_type;
 
     private:
 
@@ -314,6 +315,15 @@ namespace TiledArray {
       ordinal_type ordinal() const {
         TA_ASSERT(tensor_);
         return *it_;
+      }
+
+      /// Tile range factory function
+
+      /// Construct a range object for the current tile
+      range_type make_range() const {
+        TA_ASSERT(tensor_);
+        TA_ASSERT(it_ != tensor_->pmap()->end());
+        return tensor_->trange().make_tile_range(*it_);
       }
 
     }; // class TensorIterator
