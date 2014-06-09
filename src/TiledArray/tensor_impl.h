@@ -184,6 +184,7 @@ namespace TiledArray {
       typedef typename Impl::range_type::index index_type;
       typedef typename Impl::size_type ordinal_type;
       typedef typename Impl::range_type range_type;
+      typedef typename Impl::value_type tile_type;
 
     private:
 
