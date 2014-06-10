@@ -37,8 +37,11 @@
 /* define if compiler supports variadic templates. */
 #cmakedefine TILEDARRAY_HAVE_VARIADIC_TEMPLATES
 
-/* Define the number of iterations to unwind in a loop. */
-#cmakedefine TILEDARRAY_LOOP_UNWIND
+/* Define the default alignment for arrays required by vector operations. */
+#cmakedefine TILEDARRAY_ALIGNMENT @TILEARRAY_ALIGNMENT@
+
+/* Define the size of the CPU L1 cache lines. */
+#cmakedefine TILEDARRAY_CACHELINE_SIZE @TILEDARRAY_CACHELINE_SIZE@
 
 /* Was TiledArray configured with Elemental? */
 #cmakedefine TILEDARRAY_HAS_ELEMENTAL

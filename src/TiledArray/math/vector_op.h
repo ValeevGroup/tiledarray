@@ -26,26 +26,19 @@
 #ifndef TILEDARRAY_MATH_VECTOR_OP_H__INCLUDED
 #define TILEDARRAY_MATH_VECTOR_OP_H__INCLUDED
 
-#ifndef TILEDARRAY_LOOP_UNWIND
-#define TILEDARRAY_LOOP_UNWIND 8
-#else
-
-#if TILEDARRAY_LOOP_UNWIND != 1 || TILEDARRAY_LOOP_UNWIND != 2 || \
-    TILEDARRAY_LOOP_UNWIND != 4 || TILEDARRAY_LOOP_UNWIND != 8 || \
-    TILEDARRAY_LOOP_UNWIND != 16 || TILEDARRAY_LOOP_UNWIND != 32 || \
-    TILEDARRAY_LOOP_UNWIND != 64 || TILEDARRAY_LOOP_UNWIND != 128 || \
-    TILEDARRAY_LOOP_UNWIND != 256 || TILEDARRAY_LOOP_UNWIND != 512 || \
-    TILEDARRAY_LOOP_UNWIND != 1024
-
-#error TILEDARRAY_LOOP_UNWIND must be a power of 2 and less than or equal to 1024
-
-#endif
-
-#endif // TILEDARRAY_LOOP_UNWIND
-
 #include <TiledArray/math/math.h>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/madness.h>
+
+#ifndef TILEARRAY_ALIGNMENT
+#define TILEARRAY_ALIGNMENT 16
+#endif // TILEARRAY_ALIGNMENT
+
+#ifndef TILEDARRAY_CACHELINE_SIZE
+#define TILEDARRAY_CACHELINE_SIZE 64
+#endif // TILEDARRAY_CACHELINE_SIZE
+
+#define TILEDARRAY_LOOP_UNWIND ::TiledArray::math::LoopUnwind<sizeof(double)>::value
 
 // Add macro TILEDARRAY_FORCE_INLINE which does as the name implies.
 #if (defined _MSC_VER) || (defined __INTEL_COMPILER)
@@ -73,6 +66,9 @@
 
 namespace TiledArray {
   namespace math {
+
+    template <std::size_t N>
+    struct LoopUnwind : public std::integral_constant<std::size_t, TILEDARRAY_CACHELINE_SIZE / N> { };
 
     template <std::size_t N>
     struct VectorOpUnwind;
@@ -352,8 +348,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -370,8 +364,6 @@ namespace TiledArray {
         VecOpUnwindN::copy(result_block, result_i);
 
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -390,8 +382,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -407,8 +397,6 @@ namespace TiledArray {
 
         VecOpUnwindN::copy(result_block, result + i);
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -426,8 +414,6 @@ namespace TiledArray {
     void unary_vector_op(const std::size_t n, Result* restrict const result, const Op& op) {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -442,8 +428,6 @@ namespace TiledArray {
         VecOpUnwindN::copy(result_block, result_i);
 
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -462,8 +446,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -478,8 +460,6 @@ namespace TiledArray {
         VecOpUnwindN::copy(result_block, result + i);
 
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -498,16 +478,11 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
         VecOpUnwindN::copy(arg + i, result + i);
-
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
         result[i] = arg[i];
@@ -523,16 +498,11 @@ namespace TiledArray {
     void fill_vector(const std::size_t n, const Arg& restrict arg, Result* restrict const result) {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
         VecOpUnwindN::fill(arg, result + i);
-
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
         result[i] = arg;
@@ -546,15 +516,11 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
         VecOpUnwindN::uninitialized_copy(arg + i, result + i);
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
         new(result + i) Result(arg[i]);
@@ -573,15 +539,11 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
         VecOpUnwindN::uninitialized_fill(arg, result + i);
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
         new(result + i) Result(arg);
@@ -600,15 +562,11 @@ namespace TiledArray {
     destroy_vector(const std::size_t n, const Arg* restrict const arg) {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
         VecOpUnwindN::destroy(arg + i);
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i)
         arg[i].~Arg();
@@ -626,8 +584,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -642,8 +598,6 @@ namespace TiledArray {
         VecOpUnwindN::copy(result_block, result + i);
 
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -672,8 +626,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -689,8 +641,6 @@ namespace TiledArray {
 
         VecOpUnwindN::copy(result_block, result + i);
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -720,8 +670,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -735,8 +683,6 @@ namespace TiledArray {
         VecOpUnwindN::reduce(left_block, right_block, result, op);
 
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -755,8 +701,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -768,8 +712,6 @@ namespace TiledArray {
         VecOpUnwindN::reduce(arg_block, result, op);
 
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -787,8 +729,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -805,8 +745,6 @@ namespace TiledArray {
 
         VecOpUnwindN::copy(result_block, result + i);
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 
@@ -827,8 +765,6 @@ namespace TiledArray {
     {
       std::size_t i = 0ul;
 
-#if TILEDARRAY_LOOP_UNWIND > 1
-
       // Compute block iteration limit
       const std::size_t nx = n & index_mask::value;
 
@@ -843,8 +779,6 @@ namespace TiledArray {
 
         VecOpUnwindN::copy(result_block, result + i);
       }
-
-#endif // TILEDARRAY_LOOP_UNWIND > 1
 
       for(; i < n; ++i) {
 

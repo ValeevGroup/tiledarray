@@ -44,9 +44,19 @@ if (NOT CMAKE_CXX_COMPILER)
   message(FATAL_ERROR "C++ compiler not found")
 endif()
 
-# Set set the default fortran integer type. This is only used by MADNESS.
+# Set the default fortran integer type. This is only used by MADNESS.
 set(INTEGER4 "FALSE" CACHE BOOL "Set the default Fortran integer type to integer*4")
 mark_as_advanced(INTEGER4)
+
+# Set the CPU L1 cache line size.
+set(VECTOR_ALIGNMENT "16" CACHE STRING "Set the vector alignment in memory (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
+mark_as_advanced(VECTOR_ALIGNMENT)
+set(TILEDARRAY_ALIGNMENT ${VECTOR_ALIGNMENT})
+
+# Set the vectory.
+set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
+mark_as_advanced(CACHE_LINE_SIZE)
+set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
 
 # extra cmake files are shipped with TiledArray
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
