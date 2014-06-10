@@ -83,6 +83,12 @@
 namespace TiledArray {
   namespace math {
 
+    // Define compile time constant for loop unwinding.
+    typedef std::integral_constant<std::size_t, TILEDARRAY_CACHELINE_SIZE / sizeof(double)> LoopUnwind;
+    typedef std::integral_constant<std::size_t, ~std::size_t(TILEDARRAY_LOOP_UNWIND - 1ul)> index_mask;
+
+    template <std::size_t> struct VectorOpUnwind;
+
     /// Vector loop unwind helper class
 
     /// This object will unwind \c 1 step of a vector operation loop, and
@@ -349,8 +355,6 @@ namespace TiledArray {
     }; //  struct VectorOpUnwind
 
     typedef VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1> VecOpUnwindN;
-    typedef std::integral_constant<std::size_t, TILEDARRAY_CACHELINE_SIZE / sizeof(double)> LoopUnwind;
-    typedef std::integral_constant<std::size_t, ~std::size_t(TILEDARRAY_LOOP_UNWIND - 1ul)> index_mask;
 
 
     template <typename Arg, typename Result, typename Op>
