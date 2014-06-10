@@ -79,7 +79,7 @@ namespace TiledArray {
 
   public:
     typedef Permutation Permutation_;
-    typedef std::size_t index_type;
+    typedef unsigned int index_type;
     typedef std::vector<index_type> Array;
     typedef Array::const_iterator const_iterator;
 
