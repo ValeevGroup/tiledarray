@@ -38,7 +38,7 @@
 #define TILEDARRAY_CACHELINE_SIZE 64
 #endif // TILEDARRAY_CACHELINE_SIZE
 
-#define TILEDARRAY_LOOP_UNWIND ::TiledArray::math::LoopUnwind<sizeof(double)>::value
+#define TILEDARRAY_LOOP_UNWIND ::TiledArray::math::LoopUnwind::value
 
 // Add macro TILEDARRAY_FORCE_INLINE which does as the name implies.
 #if (defined _MSC_VER) || (defined __INTEL_COMPILER)
@@ -82,12 +82,6 @@
 
 namespace TiledArray {
   namespace math {
-
-    template <std::size_t N>
-    struct LoopUnwind : public std::integral_constant<std::size_t, TILEDARRAY_CACHELINE_SIZE / N> { };
-
-    template <std::size_t N>
-    struct VectorOpUnwind;
 
     /// Vector loop unwind helper class
 
@@ -355,6 +349,7 @@ namespace TiledArray {
     }; //  struct VectorOpUnwind
 
     typedef VectorOpUnwind<TILEDARRAY_LOOP_UNWIND - 1> VecOpUnwindN;
+    typedef std::integral_constant<std::size_t, TILEDARRAY_CACHELINE_SIZE / sizeof(double)> LoopUnwind;
     typedef std::integral_constant<std::size_t, ~std::size_t(TILEDARRAY_LOOP_UNWIND - 1ul)> index_mask;
 
 
