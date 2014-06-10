@@ -248,8 +248,6 @@ namespace TiledArray {
         VecOpUnwindN::copy(result_block, result + i);
       }
 
-#endif // TILEDARRAY_LOOP_UNWIND > 1
-
       for(; i < m; ++i) {
 
         // Load result block
