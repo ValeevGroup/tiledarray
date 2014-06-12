@@ -432,6 +432,7 @@ namespace TiledArray {
           os << i << ": " << tile  << "\n";
         }
     }
+    a.get_world().gop.fence();
     return os;
   }
 
