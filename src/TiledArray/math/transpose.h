@@ -57,7 +57,7 @@ namespace TiledArray {
       block_scatter(const Arg* restrict const arg, Result* restrict const result,
           const std::size_t result_stride)
       {
-        VecOpUnwindN::copy(arg, result);
+        VecOpUnwindN::uninitialized_copy(arg, result);
       }
 
     }; // class TransposeUnwind<0>
@@ -87,7 +87,7 @@ namespace TiledArray {
       block_scatter(const Arg* restrict const arg, Result* restrict const result,
           const std::size_t result_stride)
       {
-        VecOpUnwindN::copy(arg, result);
+        VecOpUnwindN::uninitialized_copy(arg, result);
 
         TransposeUnwindN1::block_scatter(arg + TILEDARRAY_LOOP_UNWIND,
             result + result_stride, result_stride);
@@ -150,7 +150,7 @@ namespace TiledArray {
     /// \param[out] result A pointer to the first element of the result matrix
     /// \param[in] result_stride THe stride between result rows
     template <typename Arg, typename Result>
-    void transpose(const std::size_t m, const std::size_t n,
+    void uninitialized_copy_transpose(const std::size_t m, const std::size_t n,
         const Arg* const arg, const std::size_t arg_stride,
         Result* const result, const std::size_t result_stride)
     {

@@ -54,12 +54,7 @@ BOOST_AUTO_TEST_CASE( constructor )
     for(std::size_t y = 1ul; y < n; ++y) {
       std::fill_n(b, mn, 0);
 
-      TiledArray::math::transpose(x, y, a, n, b, m);
-
-//      Eigen::Map<const TiledArray::EigenMatrixXi> A(a, m, n);
-//      Eigen::Map<const TiledArray::EigenMatrixXi> B(b, n, m);
-//
-//      std::cout << "A(" << x << ", " << y << ")\n" << A << "\n\nB=(" << y << ", " << x << ")\n" << B << "\n\n";
+      TiledArray::math::uninitialized_copy_transpose(x, y, a, n, b, m);
 
       for(std::size_t i = 0ul; i < m; ++i) {
         for(std::size_t j = 0ul; j < n; ++j) {
