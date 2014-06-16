@@ -32,6 +32,24 @@
 namespace TiledArray {
   namespace math {
 
+    // define these for your tile types
+
+    /// Computes Arg1 += Arg2
+
+    /// Must provide \code void operator()(Arg1& arg1, const Arg2& arg2) \endcode
+    template <typename Arg1,
+              typename Arg2>
+    struct add_to;
+
+    /// Computes the result of applying permutation \c perm to \c arg
+
+    /// Must provide \code Result operator()(const Arg& arg, const Permutation& perm) \endcode
+    template <typename Result,
+              typename Arg,
+              typename Permutation>
+    struct permute;
+
+
     /// Contract and reduce operation
 
     /// This object uses a tile contraction operation to form a pair reduction
@@ -166,7 +184,8 @@ namespace TiledArray {
           if(! pimpl_->perm_)
             result = temp;
           else
-            result = temp.permute(pimpl_->perm_);
+            result = permute<result_type,result_type,Permutation>(temp,pimpl_->perm_);
+            //result = temp.permute(pimpl_->perm_);
         }
 
         return result;
@@ -178,7 +197,8 @@ namespace TiledArray {
       /// \param[in,out] result The result object that will be the reduction target
       /// \param[in] arg The argument that will be added to \c result
       void operator()(result_type& result, const result_type& arg) const {
-        result.add_to(arg);
+        add_to<result_type,result_type>(result,arg);
+        //result.add_to(arg);
       }
 
       /// Contract a pair of tiles and add to a target tile
