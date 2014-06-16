@@ -181,13 +181,13 @@ namespace TiledArray {
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
       uninitialized_copy(const Arg* restrict const arg, Result* restrict const result) {
-        new(result) Result(arg[offset]);
+        new(result + offset) Result(arg[offset]);
       }
 
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
       uninitialized_fill(const Arg& restrict arg, Result* restrict const result) {
-        new(result) Result(arg);
+        new(result + offset) Result(arg);
       }
 
       template <typename Left, typename Right, typename Result, typename Op>
@@ -195,13 +195,13 @@ namespace TiledArray {
       uninitialized_binary(const Left* restrict const left, const Right* restrict const right,
           Result* restrict const result, const Op& op)
       {
-        new(result) Result(op(left[offset], right[offset]));
+        new(result + offset) Result(op(left[offset], right[offset]));
       }
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
       uninitialized_unary(const Arg* restrict const arg, Result* restrict const result, const Op& op) {
-        new(result) Result(op(arg[offset]));
+        new(result + offset) Result(op(arg[offset]));
       }
 
       template <typename Arg>
@@ -318,15 +318,15 @@ namespace TiledArray {
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
       uninitialized_copy(const Arg* restrict const arg, Result* restrict const result) {
-        new(result) Result(arg[offset]);
-        VectorOpUnwindN1::uninitialized_copy(arg, result + 1);
+        new(result + offset) Result(arg[offset]);
+        VectorOpUnwindN1::uninitialized_copy(arg, result);
       }
 
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
       uninitialized_fill(const Arg& restrict arg, Result* restrict const result) {
-        new(result) Result(arg);
-        VectorOpUnwindN1::uninitialized_fill(arg, result + 1);
+        new(result + offset) Result(arg);
+        VectorOpUnwindN1::uninitialized_fill(arg, result);
       }
 
       template <typename Left, typename Right, typename Result, typename Op>
@@ -334,15 +334,15 @@ namespace TiledArray {
       uninitialized_binary(const Left* restrict const left, const Right* restrict const right,
           Result* restrict const result, const Op& op)
       {
-        new(result) Result(op(left[offset], right[offset]));
-        VectorOpUnwindN1::uninitialized_binary(left, right, result + 1, op);
+        new(result + offset) Result(op(left[offset], right[offset]));
+        VectorOpUnwindN1::uninitialized_binary(left, right, result, op);
       }
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
       uninitialized_unary(const Arg* restrict const arg, Result* restrict const result, const Op& op) {
-        new(result) Result(op(arg[offset]));
-        VectorOpUnwindN1::uninitialized_unary(arg, result + 1, op);
+        new(result + offset) Result(op(arg[offset]));
+        VectorOpUnwindN1::uninitialized_unary(arg, result, op);
       }
 
       template <typename Arg>
