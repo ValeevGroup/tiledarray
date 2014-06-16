@@ -29,7 +29,7 @@ namespace TiledArray {
 
   /// An N-dimensional tensor object
 
-  /// \tparma T the value type of this tensor
+  /// \tparam T the value type of this tensor
   /// \tparam A The allocator type for the data
   template <typename T, typename A = Eigen::aligned_allocator<T> >
   class Tensor {
@@ -1408,7 +1408,7 @@ namespace TiledArray {
     return left.scale(right);
   }
 
-  /// Tensor multiplication operator
+  /// Tensor scale-by-constant operator
 
   /// Scale a tensor
   /// \tparam N Numeric type
@@ -1423,7 +1423,7 @@ namespace TiledArray {
     return right.scale(left);
   }
 
-  /// Tensor multiplication operator
+  /// Tensor subtraction operator
 
   /// Negate a tensor
   /// \tparam T The element type of \c arg
