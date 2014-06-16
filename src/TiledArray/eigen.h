@@ -23,7 +23,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/array.h>
 #include <TiledArray/counter_probe.h>
-#include <TiledArray/eigen3.h>
+#include <TiledArray/math/eigen.h>
 
 namespace TiledArray {
 

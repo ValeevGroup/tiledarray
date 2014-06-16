@@ -44,9 +44,19 @@ if (NOT CMAKE_CXX_COMPILER)
   message(FATAL_ERROR "C++ compiler not found")
 endif()
 
-# Set set the default fortran integer type. This is only used by MADNESS.
+# Set the default fortran integer type. This is only used by MADNESS.
 set(INTEGER4 "FALSE" CACHE BOOL "Set the default Fortran integer type to integer*4")
 mark_as_advanced(INTEGER4)
+
+# Set the CPU L1 cache line size.
+set(VECTOR_ALIGNMENT "16" CACHE STRING "Set the vector alignment in memory (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
+mark_as_advanced(VECTOR_ALIGNMENT)
+set(TILEDARRAY_ALIGNMENT ${VECTOR_ALIGNMENT})
+
+# Set the vectory.
+set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
+mark_as_advanced(CACHE_LINE_SIZE)
+set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
 
 # extra cmake files are shipped with TiledArray
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
@@ -124,10 +134,25 @@ endif()
 # external dependencies
 ##########################
 add_custom_target(External)
-include(external/MADNESS)
-include(external/Eigen)
+include(external/eigen.cmake)
 if (TA_BUILD_UNITTEST)
-  include(external/Boost)
+  include(external/boost.cmake)
+endif()
+
+include(external/madness.cmake)
+
+# look for Elemental if MADNESS has it, or Elemental_DIR was given explicitly
+if (Elemental_DIR OR MADNESS_HAS_ELEMENTAL)
+  # if MADNESS found but does not support elemental, too much potential for error, skip
+  if (Madness_FOUND AND !MADNESS_HAS_ELEMENTAL)
+    message(WARNING "Found MADNESS but it does not know about Elemental ... will punt on Elemental")
+  else()
+    include(external/elemental.cmake)
+  endif()
+endif()
+  
+if (TA_BUILD_UNITTEST)
+  include(external/boost.cmake)
 endif()
 
 ##########################
@@ -138,8 +163,16 @@ list(APPEND TiledArray_INCLUDE_DIRS
     ${PROJECT_BINARY_DIR}/src
     ${Madness_INCLUDE_DIRS}
     ${EIGEN_INCLUDE_DIR})
-list(APPEND TiledArray_LIBRARIES
-    ${Madness_LIBRARIES})
+if(TILEDARRAY_HAS_ELEMENTAL)
+  list(APPEND TiledArray_INCLUDE_DIRS
+      ${ELEMENTAL_INCLUDE_DIR})
+endif()
+
+list(APPEND TiledArray_LIBRARIES ${Madness_LIBRARIES})
+if(TILEDARRAY_HAS_ELEMENTAL)
+  list(APPEND TiledArray_LIBRARIES ${ELEMENTAL_LIBRARIES})
+endif()
+#list(APPEND TiledArray_LIBRARIES tiledarray)
 set(TiledArray_LINK_FLAGS ${Madness_LINK_FLAGS})
 set(TiledArray_COMPILE_FLAGS ${Madness_COMPILE_FLAGS})
 
@@ -172,6 +205,17 @@ elseif (TA_ERROR STREQUAL throw)
 elseif (TA_ERROR STREQUAL assert)
   set (TA_DEFAULT_ERROR 2)
 endif()
+
+##########################
+# QT CREATOR file grabber
+##########################
+if(USING_QT_CREATOR_AS_IDE)
+  include_directories(tests)
+  include_directories(examples)
+  file(GLOB_RECURSE QT_CREATOR_SRC "*.h" "*.cpp" "*.c" "*.cc" "*.hpp" "*.txt" ".in")
+  add_library(qt_creator_get_sources EXCLUDE_FROM_ALL ${QT_CREATOR_SRC})
+  set_target_properties(qt_creator_get_sources PROPERTIES LINKER_LANGUAGE CXX)
+endif(USING_QT_CREATOR_AS_IDE)
 
 ##########################
 # wrap up

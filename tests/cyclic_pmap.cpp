@@ -38,18 +38,40 @@ BOOST_FIXTURE_TEST_SUITE( cyclic_pmap_suite, CyclicPmapFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  for(std::size_t x = 1ul; x < 10ul; ++x) {
-    for(std::size_t y = 1ul; y < 10ul; ++y) {
-      BOOST_REQUIRE_NO_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y));
-      TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y);
+  for(std::size_t x = 1ul; x <= GlobalFixture::world->size(); ++x) {
+    for(std::size_t y = 1ul; y <= GlobalFixture::world->size(); ++y) {
+
+      // Compute the limits for process rows
+      const std::size_t min_proc_rows =
+          std::max<std::size_t>(((GlobalFixture::world->size() + y - 1ul) / y), 1ul);
+      const std::size_t max_proc_rows = std::min<std::size_t>(GlobalFixture::world->size(), x);
+
+      // Compute process rows and process columns
+      const std::size_t p_rows = std::max<std::size_t>(min_proc_rows,
+          std::min<std::size_t>(std::sqrt(GlobalFixture::world->size() * x / y), max_proc_rows));
+      const std::size_t p_cols = GlobalFixture::world->size() / p_rows;
+
+      BOOST_REQUIRE_NO_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y, p_rows, p_cols));
+      TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y, p_rows, p_cols);
       BOOST_CHECK_EQUAL(pmap.rank(), GlobalFixture::world->rank());
       BOOST_CHECK_EQUAL(pmap.procs(), GlobalFixture::world->size());
       BOOST_CHECK_EQUAL(pmap.size(), x * y);
     }
   }
 
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 0ul, 10ul), TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 10ul, 0ul), TiledArray::Exception);
+#ifdef TA_EXCEPTION_ERROR
+  ProcessID size = GlobalFixture::world->size();
+
+  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 0ul, 10ul, 1, 1), TiledArray::Exception);
+  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 10ul, 0ul, 1, 1), TiledArray::Exception);
+  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 10ul, 10ul, 0, 1), TiledArray::Exception);
+  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 10ul, 10ul, 1, 0), TiledArray::Exception);
+  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 10ul, 10ul, size * 2, 1), TiledArray::Exception);
+  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 10ul, 10ul, 1, size * 2), TiledArray::Exception);
+  if(size > 1) {
+    BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, 10ul, 10ul, size, size), TiledArray::Exception);
+  }
+#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( owner )
@@ -62,8 +84,18 @@ BOOST_AUTO_TEST_CASE( owner )
   // Check various pmap sizes
   for(std::size_t x = 1ul; x < 10ul; ++x) {
     for(std::size_t y = 1ul; y < 10ul; ++y) {
+      // Compute the limits for process rows
+      const std::size_t min_proc_rows =
+          std::max<std::size_t>(((GlobalFixture::world->size() + y - 1ul) / y), 1ul);
+      const std::size_t max_proc_rows = std::min<std::size_t>(GlobalFixture::world->size(), x);
+
+      // Compute process rows and process columns
+      const std::size_t p_rows = std::max<std::size_t>(min_proc_rows,
+          std::min<std::size_t>(std::sqrt(GlobalFixture::world->size() * x / y), max_proc_rows));
+      const std::size_t p_cols = GlobalFixture::world->size() / p_rows;
+
       const std::size_t tiles = x * y;
-      TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y);
+      TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y, p_rows, p_cols);
 
       for(std::size_t tile = 0; tile < tiles; ++tile) {
         std::fill_n(p_owner, size, 0);
@@ -86,8 +118,18 @@ BOOST_AUTO_TEST_CASE( local_size )
 {
   for(std::size_t x = 1ul; x < 10ul; ++x) {
     for(std::size_t y = 1ul; y < 10ul; ++y) {
+      // Compute the limits for process rows
+      const std::size_t min_proc_rows =
+          std::max<std::size_t>(((GlobalFixture::world->size() + y - 1ul) / y), 1ul);
+      const std::size_t max_proc_rows = std::min<std::size_t>(GlobalFixture::world->size(), x);
+
+      // Compute process rows and process columns
+      const std::size_t p_rows = std::max<std::size_t>(min_proc_rows,
+          std::min<std::size_t>(std::sqrt(GlobalFixture::world->size() * x / y), max_proc_rows));
+      const std::size_t p_cols = GlobalFixture::world->size() / p_rows;
+
       const std::size_t tiles = x * y;
-      TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y);
+      TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y, p_rows, p_cols);
 
       std::size_t total_size = pmap.local_size();
       GlobalFixture::world->gop.sum(total_size);
@@ -106,8 +148,18 @@ BOOST_AUTO_TEST_CASE( local_group )
 
   for(std::size_t x = 1ul; x < 10ul; ++x) {
     for(std::size_t y = 1ul; y < 10ul; ++y) {
+      // Compute the limits for process rows
+      const std::size_t min_proc_rows =
+          std::max<std::size_t>(((GlobalFixture::world->size() + y - 1ul) / y), 1ul);
+      const std::size_t max_proc_rows = std::min<std::size_t>(GlobalFixture::world->size(), x);
+
+      // Compute process rows and process columns
+      const std::size_t p_rows = std::max<std::size_t>(min_proc_rows,
+          std::min<std::size_t>(std::sqrt(GlobalFixture::world->size() * x / y), max_proc_rows));
+      const std::size_t p_cols = GlobalFixture::world->size() / p_rows;
+
       const std::size_t tiles = x * y;
-      TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y);
+      TiledArray::detail::CyclicPmap pmap(* GlobalFixture::world, x, y, p_rows, p_cols);
 
       // Check that all local elements map to this rank
       for(detail::CyclicPmap::const_iterator it = pmap.begin(); it != pmap.end(); ++it) {

@@ -19,11 +19,14 @@
 
 #include "array_fixture.h"
 #include "unit_test_config.h"
-#include "TiledArray/expressions.h"
 
 using namespace TiledArray;
 
-ArrayFixture::ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
+ArrayFixture::ArrayFixture() :
+    shape_tensor(tr.tiles(), 0.0),
+    world(*GlobalFixture::world),
+    a(world, tr)
+{
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it)
     if(a.is_local(*it))
       a.set(*it, world.rank() + 1); // Fill the tile at *it (the index)
@@ -32,7 +35,7 @@ ArrayFixture::ArrayFixture() : world(*GlobalFixture::world), a(world, tr) {
 
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
     if(i % 3)
-      list.push_back(i);
+      shape_tensor[i] = 1.0;
 }
 
 ArrayFixture::~ArrayFixture() {
@@ -53,11 +56,11 @@ BOOST_AUTO_TEST_CASE( constructors )
     BOOST_CHECK(! it->probe());
 
   // Construct a sparse array
-  BOOST_REQUIRE_NO_THROW(ArrayN as(world, tr, list.begin(), list.end()));
-  ArrayN as(world, tr, list.begin(), list.end());
+  BOOST_REQUIRE_NO_THROW(SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr)));
+  SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr));
 
   // Check that none of the tiles have been set.
-  for(ArrayN::const_iterator it = as.begin(); it != as.end(); ++it)
+  for(SpArrayN::const_iterator it = as.begin(); it != as.end(); ++it)
     BOOST_CHECK(! it->probe());
 
 }
@@ -143,8 +146,6 @@ BOOST_AUTO_TEST_CASE( find_local )
 
 BOOST_AUTO_TEST_CASE( find_remote )
 {
-  a.eval().get();
-
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
 
     if(! a.is_local(*it)) {
@@ -160,7 +161,6 @@ BOOST_AUTO_TEST_CASE( find_remote )
 BOOST_AUTO_TEST_CASE( fill_tiles )
 {
   ArrayN a(world, tr);
-  a.eval().get();
 
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
     if(a.is_local(*it)) {
@@ -181,7 +181,6 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
 {
   std::vector<int> data;
   ArrayN a(world, tr);
-  a.eval().get();
 
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
     ArrayN::trange_type::tile_range_type range = a.trange().make_tile_range(*it);

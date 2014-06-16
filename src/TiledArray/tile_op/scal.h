@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
 
-#include <TiledArray/tile_op/permute.h>
+#include <TiledArray/tile_op/unary_interface.h>
 
 namespace TiledArray {
   namespace math {
@@ -40,30 +40,65 @@ namespace TiledArray {
     /// \tparam Arg The argument type
     /// \tparam Consumable Flag that is \c true when Arg is consumable
     template <typename Result, typename Arg, bool Consumable>
-    class Scal {
+    class Scal : public UnaryInterface<Scal<Result, Arg, Consumable> > {
     public:
       typedef Scal<Result, Arg, Consumable> Scal_; ///< This object type
-      typedef typename madness::if_c<Consumable, Arg&, const Arg&>::type argument_type; ///< The argument type
-      typedef Result result_type; ///< The result tile type
-      typedef typename TiledArray::detail::scalar_type<Result>::type scalar_type; ///< Scalar type
+      typedef UnaryInterface<Scal_> UnaryInterface_;
+      typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
+      typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
+      typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
 
     private:
-      Permutation perm_; ///< The result permutation
+
       scalar_type factor_; ///< Scaling factor
 
-      // Element operation functor types
+    public:
+      /// Default constructor
 
-      typedef Scale<typename Arg::value_type> scale_op;
-      typedef ScaleAssign<typename Arg::value_type> scale_assign_op;
+      /// Construct a scaling operation that does not permute the result tile
+      /// and has a scaling factor of 1.
+      Scal() : UnaryInterface_(), factor_(1) { }
 
+      /// Permute constructor
+
+      /// Construct a scaling operation that scales the result tensor
+      /// \param factor The scaling factor for the operation
+      explicit Scal(const scalar_type factor) :
+        UnaryInterface_(), factor_(factor)
+      { }
+
+      /// Permute constructor
+
+      /// Construct a scaling operation that permutes and scales the result tensor.
+      /// \param perm The permutation to apply to the result tile
+      /// \param factor The scaling factor for the operation
+      Scal(const Permutation& perm, const scalar_type factor) :
+        UnaryInterface_(perm), factor_(factor)
+      { }
+
+      /// Copy constructor
+
+      /// \param other The scaling operation object to be copied
+      Scal(const Scal_& other) : UnaryInterface_(other), factor_(other.factor_) { }
+
+      /// Copy assignment
+
+      /// \param other The scaling operation object to be copied
+      /// \return A reference to this object
+      Scal_& operator=(const Scal_& other) {
+        UnaryInterface_::operator =(other);
+        factor_ = other.factor_;
+        return *this;
+      }
+
+      // Import interface from base class
+      using UnaryInterface_::operator();
       // Permuting tile evaluation function
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(argument_type arg) const {
-        result_type result;
-        TiledArray::math::permute(result, perm_, arg, scale_op(factor_));
-        return result;
+      result_type permute(const Arg& arg) const {
+        return arg.scale(factor_, UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -71,69 +106,13 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool C>
-      typename madness::disable_if_c<C && std::is_same<Result, Arg>::value,
-          result_type>::type
-      no_permute(argument_type arg) const {
-        return arg * factor_;
-      }
+      typename madness::enable_if_c<!C, result_type>::type
+      no_permute(const Arg& arg) const { return arg.scale(factor_); }
 
       template <bool C>
-      typename madness::enable_if_c<C && std::is_same<Result, Arg>::value,
-          result_type>::type
-      no_permute(argument_type arg) const {
-        vector_assign(arg.size(), arg.data(), scale_assign_op(factor_));
-        return arg;
-      }
+      typename madness::enable_if_c<C, result_type>::type
+      no_permute(Arg& arg) const { return arg.scale_to(factor_); }
 
-    public:
-      /// Default constructor
-
-      /// Construct a scaling operation that does not permute the result tile
-      /// and has a scaling factor of 1.
-      Scal() : perm_(), factor_(1) { }
-
-      /// Permute constructor
-
-      /// Construct a scaling operation that scales the result tensor
-      /// \param factor The scaling factor for the operation
-      Scal(const scalar_type factor) :
-        perm_(), factor_(factor)
-      { }
-
-      /// Permute constructor
-
-      /// Construct a scaling operation that permutes and scales the result tensor.
-      /// \param perm The permutation to apply to the result tile
-      /// \param factor The scaling factor for the operation [default = 1]
-      Scal(const Permutation& perm, const scalar_type factor = scalar_type(1)) :
-        perm_(perm), factor_(factor)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The scaling operation object to be copied
-      Scal(const Scal_& other) : perm_(other.perm_), factor_(other.factor_) { }
-
-      /// Copy assignment
-
-      /// \param other The scaling operation object to be copied
-      /// \return A reference to this object
-      Scal_& operator=(const Scal_& other) {
-        perm_ = other.perm_;
-        factor_ = other.factor_;
-        return *this;
-      }
-
-      /// Scale a tile and possibly permute
-
-      /// \param arg The argument
-      /// \return A scaled and permuted \c arg
-      result_type operator()(argument_type arg) const {
-        if(perm_.dim() > 1)
-          return permute(arg);
-
-        return no_permute<Consumable>(arg);
-      }
     }; // class Scal
 
   } // namespace math

@@ -100,14 +100,14 @@ BOOST_AUTO_TEST_CASE( permute_function )
     std::vector<int> ar(3);
     ar[0] = 2; ar[1] = 3; ar[2] = 1;
     std::vector<int> a2(3);
-    detail::permute_array(p.begin(), p.end(), a1.begin(), a2.begin());
+    detail::permute_array(p, a1, a2);
     BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), ar.begin(), ar.end()); // check permutation applied via detail::permute_array()
   }
   {
     std::array<int, 3> a1 = {{1, 2, 3}};
     std::array<int, 3> ar = {{2, 3, 1}};
     std::array<int, 3> a2;
-    detail::permute_array(p.begin(), p.end(), a1.begin(), a2.begin());
+    detail::permute_array(p, a1, a2);
     BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), ar.begin(), ar.end()); // check permutation applied via detail::permute()
   }
 }

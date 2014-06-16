@@ -23,7 +23,10 @@
 #
 
 # library headers
+include_directories(${TiledArray_INCLUDE_DIRS})
+file(GLOB_RECURSE tiledarray_header_files RELATIVE_PATH *.h)
 
+# Install header files
 install(
   DIRECTORY
       ${PROJECT_SOURCE_DIR}/src/
@@ -32,3 +35,10 @@ install(
   FILES_MATCHING PATTERN "*.h"
   PATTERN "CMakeFiles" EXCLUDE
 )
+
+# Create the TiledArray library
+#file(GLOB_RECURSE tiledarray_src_files RELATIVE_PATH *.cpp)
+#add_library(tiledarray ${tiledarray_src_files} ${tiledarray_header_files})
+
+# Install library
+#install(TARGETS tiledarray DESTINATION lib)

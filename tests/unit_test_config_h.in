@@ -32,7 +32,9 @@
 #include <boost/test/unit_test.hpp>
 #endif // BOOST_TEST_MAIN
 
+#include <boost/test/test_case_template.hpp>
 #include <boost/test/output_test_stream.hpp>
+#include <boost/mpl/list.hpp>
 
 #pragma GCC diagnostic pop
 

@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  justus
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  dense_shape.h
@@ -25,10 +25,6 @@
 
 #ifndef TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 #define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
-
-#include <TiledArray/permutation.h>
-#include <TiledArray/madness.h>
-#include <TiledArray/type_traits.h>
 
 namespace madness {
   class World;
@@ -40,6 +36,12 @@ namespace TiledArray {
   namespace expressions {
     class VariableList;
   }  // namespace expressions
+  namespace math {
+    class GemmHelper;
+  } // namespace math
+  class Range;
+  class Permutation;
+
 
   /// Dense shape of an array
 
@@ -57,6 +59,11 @@ namespace TiledArray {
     /// No operation since there is no data.
     static void collective_init(madness::World&) { }
 
+    /// Validate shape range
+
+    /// \return \c true when range matches the range of this shape
+    static bool validate(const Range&) { return true; }
+
     /// Check that a tile is zero
 
     /// \tparam Index The type of the index
@@ -68,245 +75,66 @@ namespace TiledArray {
 
     /// \return true
     static bool is_dense() { return true; }
+
+    static DenseShape perm(const Permutation&) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape scale(const Scalar) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape scale(const Scalar, const Permutation&) { return DenseShape(); }
+
+    static DenseShape add(const DenseShape&) { return DenseShape(); }
+
+    static DenseShape add(const DenseShape&, const Permutation&) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape add(const DenseShape&, const Scalar) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape add(const DenseShape&, const Scalar, const Permutation&) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape add(const Scalar) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape add(const Scalar, const Permutation&) { return DenseShape(); }
+
+    static DenseShape subt(const DenseShape&) { return DenseShape(); }
+
+    static DenseShape subt(const DenseShape&, const Permutation&) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape subt(const DenseShape& other, const Scalar) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape subt(const DenseShape& other, const Scalar, const Permutation&) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape subt(const Scalar) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape subt(const Scalar, const Permutation&) { return DenseShape(); }
+
+    static DenseShape mult(const DenseShape&) { return DenseShape(); }
+
+    static DenseShape mult(const DenseShape&, const Permutation&) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape mult(const DenseShape& other, const Scalar) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape mult(const DenseShape& other, const Scalar, const Permutation&) { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape gemm(const DenseShape&, const Scalar, const math::GemmHelper&)
+    { return DenseShape(); }
+
+    template <typename Scalar>
+    static DenseShape gemm(const DenseShape&, const Scalar, const math::GemmHelper&, const Permutation&)
+    { return DenseShape(); }
+
   }; // class DenseShape
-
-
-  // Shape math operations
-
-  /// Permute shape operator
-  template <typename>
-  class ShapeNoop;
-
-  template <>
-  class ShapeNoop<DenseShape> {
-    typedef DenseShape result_type; ///< Operation result type
-
-    result_type operator()(const Permutation&, const DenseShape&) const {
-      return result_type();
-    }
-  }; // class ShapePermute<DenseShape>
-
-  /// Add shapes
-  template <typename, typename>
-  class ShapeAdd;
-
-  template <>
-  class ShapeAdd<DenseShape, DenseShape> {
-    typedef DenseShape result_type;  ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left && right; }
-
-    /// Add shape operator
-    result_type operator()(const Permutation&, const DenseShape&, const DenseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeAdd<DenseShape, DenseShape>
-
-  /// Add and scale shapes
-  template <typename, typename>
-  class ShapeScalAdd;
-
-  /// Add and scale dense shapes
-  template <>
-  class ShapeScalAdd<DenseShape, DenseShape> {
-    typedef DenseShape result_type;  ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left && right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const DenseShape&, const DenseShape&, const N) const {
-      return result_type();
-    }
-  }; // class ShapeScalAdd<DenseShape, DenseShape>
-
-  /// Subtract shapes
-  template <typename, typename>
-  class ShapeSubt;
-
-  template <>
-  class ShapeSubt<DenseShape, DenseShape> {
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left && right; }
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation&, const DenseShape&, const DenseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeSubt<DenseShape, DenseShape>
-
-  /// Subtract and scale shapes
-  template <typename, typename>
-  class ShapeScalSubt;
-
-  template <>
-  class ShapeScalSubt<DenseShape, DenseShape> {
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left && right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const DenseShape&, const DenseShape&, const N) const {
-      return result_type();
-    }
-  }; // class ShapeScalSubt<DenseShape, DenseShape>
-
-  /// Multiply shape
-  template <typename, typename>
-  class ShapeMult;
-
-  template <>
-  class ShapeMult<DenseShape, DenseShape> {
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left || right; }
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation&, const DenseShape&, const DenseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeMult<DenseShape, DenseShape>
-
-
-  /// Multiply and scale shapes
-  template <typename, typename>
-  class ShapeScalMult;
-
-  /// Multiply and scale dense shape
-  template <>
-  class ShapeScalMult<DenseShape, DenseShape> {
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Result tile is zero test
-
-    /// \param left Is zero result for left-hand tile
-    /// \param right Is zero result for right-hand tile
-    /// \return \c true When the result is zero, otherwise \c false
-    bool operator()(bool left, bool right) const { return left || right; }
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const DenseShape&, const DenseShape&, const N) const {
-      return result_type();
-    }
-  }; // class ShapeScalMult<DenseShape, DenseShape>
-
-  /// Contract shapes
-  template <typename, typename>
-  class ShapeCont;
-
-  /// Contract dense shape
-  template <>
-  class ShapeCont<DenseShape, DenseShape> {
-    typedef DenseShape result_type;
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation&, const DenseShape&, const DenseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeCont<DenseShape, DenseShape>
-
-  /// Contract and scale shapes
-  template <typename, typename>
-  class ShapeScalCont;
-
-  /// Contract and scale dense shape
-  template <>
-  class ShapeScalCont<DenseShape, DenseShape> {
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const DenseShape&, const DenseShape&, const N) const {
-      return result_type();
-    }
-  }; // ShapeScalCont<DenseShape, DenseShape>
-
-  /// Scale shape
-  template <typename>
-  class ShapeScale;
-
-  /// Scale dense shape
-  template <>
-  class ShapeScale<DenseShape> {
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \tparam N Numeric scalar type
-    /// \return The result dense shape
-    template <typename N>
-    typename madness::enable_if<detail::is_numeric<N>, result_type>::type
-    operator()(const Permutation&, const DenseShape&, const N) const {
-      return result_type();
-    }
-  }; // class ShapeScale<DenseShape>
-
-  /// Negate shape
-  template <typename>
-  class ShapeNeg;
-
-  /// Negate dense shape
-  template <>
-  class ShapeNeg<DenseShape> {
-    typedef DenseShape result_type; ///< Operation result type
-
-    /// Shape evaluation operator
-
-    /// \return The result dense shape
-    result_type operator()(const Permutation&, const DenseShape&) const {
-      return result_type();
-    }
-  }; // class ShapeNeg<DenseShape>
 
 } // namespace TiledArray
 

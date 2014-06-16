@@ -28,6 +28,7 @@ add_custom_target(example)
 # Add Subdirectories
 add_subdirectory (cc)
 add_subdirectory (dgemm)
+add_subdirectory (fock)
 add_subdirectory (mpi_tests)
 add_subdirectory (pmap_test)
 add_subdirectory (vector_tests)

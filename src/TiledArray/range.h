@@ -20,12 +20,8 @@
 #ifndef TILEDARRAY_RANGE_H__INCLUDED
 #define TILEDARRAY_RANGE_H__INCLUDED
 
-#include <TiledArray/size_array.h>
 #include <TiledArray/range_iterator.h>
-#include <TiledArray/permutation.h>
-#include <TiledArray/utility.h>
-#include <algorithm>
-#include <vector>
+#include <TiledArray/size_array.h>
 #include <functional>
 
 namespace TiledArray {
@@ -43,7 +39,7 @@ namespace TiledArray {
       TA_ASSERT(detail::size(start) == n);
 
       // Compute ordinal
-      typename std::size_t o = 0ul;
+      std::size_t o = 0ul;
       for(std::size_t i = 0ul; i < n; ++i)
         o += (index[i] - start[i]) * weight[i];
 
@@ -86,7 +82,7 @@ namespace TiledArray {
 
     /// \param n The size of each of the range arrays
     /// \throw std::bad_alloc When memory allocation fails
-    void alloc_arrays(const size_type n) { init_arrays(new size_type[n * 4ul], n); }
+    void alloc_arrays(const size_type n) { init_arrays(new size_type[n << 2], n); }
 
     /// Reallocate and reinitialize range arrays
 
@@ -98,7 +94,7 @@ namespace TiledArray {
     void realloc_arrays(const size_type n) {
       if(dim() != n) {
         delete_arrays();
-        size_type* const buffer = (n > 0ul ? new size_type[n * 4ul] : NULL);
+        size_type* const buffer = (n > 0ul ? new size_type[n << 2] : NULL);
         init_arrays(buffer, n);
       }
     }
@@ -176,7 +172,7 @@ namespace TiledArray {
     /// \param size An array with the size of each dimension
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename SizeArray>
-    Range(const SizeArray& size) :
+    explicit Range(const SizeArray& size) :
       start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = detail::size(size);
@@ -197,10 +193,10 @@ namespace TiledArray {
     /// \throw std::bad_alloc When memory allocation fails.
     template<typename... _sizes>
     explicit Range(const size_type& size0, const _sizes&... sizes) :
-    start_(), finish_(), size_(), weight_(), volume_(0ul)
+      start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = sizeof...(_sizes) + 1;
-      
+
       // Initialize array memory
       alloc_arrays(n);
       size_type range_extent[n] = {size0, static_cast<size_type>(sizes)...};
@@ -218,7 +214,51 @@ namespace TiledArray {
       const size_type n = other.dim();
       if(n > 0ul) {
         alloc_arrays(n);
-        memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4ul * n);
+        memcpy(start_.data(), other.start_.begin(), (sizeof(size_type) << 2) * n);
+      }
+    }
+
+    /// Permuting copy constructor
+
+    /// \param other The range to be copied
+    /// \throw std::bad_alloc When memory allocation fails.
+    Range(const Permutation& perm, const Range_& other) :
+      start_(), finish_(), size_(), weight_(), volume_(0ul)
+    {
+      TA_ASSERT(perm.dim() == other.dim());
+
+      const size_type n = other.dim();
+      if(n > 0ul) {
+        alloc_arrays(n);
+
+        if(perm) {
+          const size_type* restrict const other_start = other.start().data();
+          const size_type* restrict const other_finish = other.finish().data();
+          const size_type* restrict const other_size = other.size().data();
+
+          size_type* restrict const start = start_.data();
+          size_type* restrict const finish = finish_.data();
+          size_type* restrict const size = size_.data();
+
+          // Copy the permuted start, finish, and size to this range.
+          for(size_type i = 0ul; i < n; ++i) {
+            const size_type pi = perm[i];
+            start[pi] = other_start[i];
+            finish[pi] = other_finish[i];
+            size[pi] = other_size[i];
+          }
+          // Compute weight and volume
+          volume_ = 1ul;
+          size_type* restrict const weight = weight_.data();
+          for(int i = n - 1; i >= 0; --i) {
+            weight[i] = volume_;
+            volume_ *= size[i];
+          }
+        } else {
+          // Simple copy will due.
+          memcpy(start_.data(), other.start_.data(), (sizeof(size_type) << 2) * n);
+          volume_ = other.volume_;
+        }
       }
     }
 
@@ -233,7 +273,7 @@ namespace TiledArray {
     Range_& operator=(const Range_& other) {
       const size_type n = other.dim();
       realloc_arrays(n);
-      memcpy(start_.data(), other.start_.begin(), sizeof(size_type) * 4ul * n);
+      memcpy(start_.data(), other.start_.begin(), (sizeof(size_type) << 2) * n);
       volume_ = other.volume();
 
       return *this;
@@ -365,15 +405,27 @@ namespace TiledArray {
 
       if(n > 1ul) {
         // Create a permuted copy of start and finish
-        madness::ScopedArray<size_type> buffer(new size_type[n * 2ul]);
-        register size_type* const perm_start = buffer.get();
-        register size_type* const perm_finish = buffer.get() + n;
+        const size_type* restrict const start =
+            static_cast<size_type*>(memcpy(new size_type[n << 1], start_.data(), (sizeof(size_type) << 1) * n));
+        const size_type* restrict const finish = start + n;
+        size_type* restrict const this_start = start_.data();
+        size_type* restrict const this_finish = finish_.data();
+        size_type* restrict const this_size = size_.data();
         for(size_type i = 0ul; i < n; ++i) {
-          perm_start[perm[i]] = start_[i];
-          perm_finish[perm[i]] = finish_[i];
+          const size_type pi = perm[i];
+          this_start[pi] = start[i];
+          this_finish[pi] = finish[i];
+          this_size[pi] = finish[i] - start[i];
+        }
+        volume_ = 1ul;
+        size_type* restrict const this_weight = weight_.data();
+        for(int i = n - 1; i >= 0; --i) {
+          this_weight[i] = volume_;
+          volume_ *= this_size[i];
         }
 
-        compute_range_data(n, perm_start, perm_finish);
+        // Cleanup old memory.
+        delete [] start;
       }
 
       return *this;
@@ -450,7 +502,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When \c index is not included in this range
     /// \throw std::bad_alloc When memory allocation fails
     index idx(size_type index) const {
-      // Check that o is contained by range.
+      // Check that index is contained by range.
       TA_ASSERT(includes(index));
 
       // Construct result coordinate index object and allocate its memory.
@@ -488,14 +540,14 @@ namespace TiledArray {
 
       // Get range data
       realloc_arrays(n);
-      ar & madness::archive::wrap(start_.data(), n * 4ul) & volume_;
+      ar & madness::archive::wrap(start_.data(), n << 2) & volume_;
     }
 
     template <typename Archive>
     typename madness::enable_if<madness::archive::is_output_archive<Archive> >::type
     serialize(const Archive& ar) const {
       const size_type n = dim();
-      ar & n & madness::archive::wrap(start_.data(), n * 4ul) & volume_;
+      ar & n & madness::archive::wrap(start_.data(), n << 2) & volume_;
     }
 
     void swap(Range_& other) {
@@ -604,31 +656,7 @@ namespace TiledArray {
   /// \param r The range to be permuted
   /// \return A permuted copy of \c r.
   inline Range operator ^(const Permutation& perm, const Range& r) {
-    const Range::size_type n = r.dim();
-    TA_ASSERT(perm.dim() == n);
-    Range result;
-
-    if(n > 1ul) {
-      // Get the start and finish of the original range.
-      const Range::size_array& start = r.start();
-      const Range::size_array& finish = r.finish();
-
-      // Create a permuted copy of start and finish
-      madness::ScopedArray<Range::size_type> buffer(new Range::size_type[n * 2ul]);
-      register Range::size_type* const perm_start = buffer.get();
-      register Range::size_type* const perm_finish = buffer.get() + n;
-      for(Range::size_type i = 0ul; i < n; ++i) {
-        perm_start[perm[i]] = start[i];
-        perm_finish[perm[i]] = finish[i];
-      }
-
-      result.resize(Range::size_array(perm_start, perm_start + n),
-          Range::size_array(perm_finish, perm_finish + n));
-    } else {
-      result = r;
-    }
-
-    return result;
+    return Range(perm, r);
   }
 
   /// No permutation function

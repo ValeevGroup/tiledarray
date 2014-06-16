@@ -8,7 +8,7 @@
  *   (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  but WITHOUT ANY WARRANTY; without even the implied war ranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
@@ -23,7 +23,7 @@
 #include <vector>
 #include <iosfwd>
 #include <world/stdarray.h>
-#include <tiled_array.h>
+#include <tiledarray.h>
 
 /// Spin enum type
 typedef enum {
@@ -36,6 +36,9 @@ typedef enum {
   occ = 0,
   vir = 1
 } RangeOV;
+
+typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>, TiledArray::SparsePolicy> TArray2s;
+typedef TiledArray::Array<double, 4, TiledArray::Tensor<double>, TiledArray::SparsePolicy> TArray4s;
 
 /// Read input file and generate tensors for the algorithm
 class InputData {
@@ -79,20 +82,17 @@ private:
       const RangeOV ov3, const RangeOV ov4) const;
 
   template <typename R, typename T>
-  std::vector<std::size_t> make_sparse_list(const R& r, const T& t) const {
-    std::vector<std::size_t> result;
+  TiledArray::SparseShape<float> make_sparse_shape(const R& r, const T& t) const {
+    TiledArray::Tensor<float> tile_norms(r.tiles(), 0.0f);
 
     // Find and store the tile for each element in the tensor.
     for(typename T::const_iterator it = t.begin(); it != t.end(); ++it)
-      if(r.elements().includes(it->first))
-        result.push_back(r.tiles().ord(r.element_to_tile(it->first)));
+        tile_norms[r.element_to_tile(it->first)] += it->second * it->second;
+
+    tile_norms.inplace_unary(& std::sqrt<float>);
 
 
-    // Remove duplicates.
-    std::sort(result.begin(), result.end());
-    result.resize(std::distance(result.begin(), std::unique(result.begin(), result.end())));
-
-    return result;
+    return TiledArray::SparseShape<float>(tile_norms, r);
   }
 
 public:
@@ -101,13 +101,13 @@ public:
 
   std::string name() const { return name_; }
 
-  TiledArray::Array<double, 2>
+  TArray2s
   make_f(madness::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2);
 
-  TiledArray::Array<double, 4>
+  TArray4s
   make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4);
 
-  TiledArray::Array<double, 2>::value_type
+  TArray2s::value_type
   make_D_vo_tile(const TiledArray::Array<double, 2>::trange_type::tile_range_type& range) const {
     typedef TiledArray::Array<double, 2>::value_type tile_type;
     typedef tile_type::range_type range_type;
@@ -120,7 +120,7 @@ public:
     return tile;
   }
 
-  TiledArray::Array<double, 4>::value_type
+  TArray4s::value_type
   make_D_vvoo_tile(const TiledArray::Array<double, 4>::trange_type::tile_range_type& range) const {
     typedef TiledArray::Array<double, 4>::value_type tile_type;
     typedef tile_type::range_type range_type;
