@@ -1471,63 +1471,31 @@ namespace TiledArray {
 
   namespace math {
 
-    /// Computes Result = Arg1 * Arg2
-    template <typename Result,
-              typename Arg1,
-              typename Arg2>
-    struct mult;
-
-    /// Computes Arg1 *= Arg2
-    template <typename Arg1,
-              typename Arg2>
-    struct mult_to;
+    template <typename T1, typename A1, typename T2, typename A2>
+    Tensor<T1,A1> mult(const Tensor<T1,A1>& arg1,
+                       const Tensor<T2,A2>& arg2) {
+      return arg1.mult(arg2);
+    }
 
     template <typename T1, typename A1, typename T2, typename A2>
-    struct mult<Tensor<T1,A1>, Tensor<T1,A1>, Tensor<T2,A2> > {
-        Tensor<T1,A1> operator()(const Tensor<T1,A1>& arg1,
-                                 const Tensor<T2,A2>& arg2) {
-          return arg1.mult(arg2);
-        }
-    };
-
-    template <typename T1, typename A1, typename T2, typename A2>
-    struct mult_to<Tensor<T1,A1>, Tensor<T2,A2> > {
-        Tensor<T1,A1>& operator()(Tensor<T1,A1>& arg1,
-                                  const Tensor<T2,A2>& arg2) {
-          return arg1.mult_to(arg2);
-        }
-    };
+    Tensor<T1,A1>& mult_to(Tensor<T1,A1>& arg1,
+                           const Tensor<T2,A2>& arg2) {
+      return arg1.mult_to(arg2);
+    }
 
     /// Computes Arg1 += Arg2
-
-    /// Must provide \code void operator()(Arg1& arg1, const Arg2& arg2) \endcode
-    template <typename Arg1,
-              typename Arg2>
-    struct add_to;
+    template <typename T1, typename A1, typename T2, typename A2>
+    void add_to(Tensor<T1,A1>& arg1,
+                const Tensor<T2,A2>& arg2) {
+      arg1.add_to(arg2);
+    }
 
     /// Computes the result of applying permutation \c perm to \c arg
-
-    /// Must provide \code Result operator()(const Arg& arg, const Permutation& perm) \endcode
-    template <typename Result,
-              typename Arg,
-              typename Permutation>
-    struct permute;
-
-    template <typename T1, typename A1, typename T2, typename A2>
-    struct add_to<Tensor<T1,A1>, Tensor<T2,A2> > {
-        void operator()(Tensor<T1,A1>& arg1,
-                        const Tensor<T2,A2>& arg2) {
-          arg1.add_to(arg2);
-        }
-    };
-
     template <typename T, typename A>
-    struct permute<Tensor<T,A>, Tensor<T,A>, Permutation> {
-        Tensor<T,A> operator()(const Tensor<T,A>& arg,
-                               const Permutation& perm) {
-          return arg.permute(perm);
-        }
-    };
+    Tensor<T,A> permute(const Tensor<T,A>& arg,
+                        const Permutation& perm) {
+      return arg.permute(perm);
+    }
 
   } // namespace TiledArray::math
 

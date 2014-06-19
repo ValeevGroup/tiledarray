@@ -23,9 +23,9 @@
  *
  */
 
+#include "TiledArray/tensor.h"
 #include "TiledArray/tile_op/mult.h"
 #include "unit_test_config.h"
-#include "TiledArray/tensor.h"
 #include "range_fixture.h"
 
 using namespace TiledArray;
