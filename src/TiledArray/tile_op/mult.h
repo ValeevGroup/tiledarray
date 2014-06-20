@@ -31,25 +31,6 @@
 namespace TiledArray {
   namespace math {
 
-    /* define these for your tile types
-
-    Computes Result = Arg1 * Arg2
-    \code
-    template <typename Result,
-              typename Arg1,
-              typename Arg2>
-    Result mult(const Arg1& arg1, const Arg2& arg2);
-    \endcode
-
-    Computes Arg1 *= Arg2
-    \code
-    template <typename Arg1,
-              typename Arg2>
-    Arg1& mult_to(Arg1& arg1, const Arg2& arg2);
-    \endcode
-
-    */
-
     /// Tile multiplication operation
 
     /// This multiplication operation will multiply the content two tiles and
@@ -110,7 +91,7 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return mult(first,second);
+        return mult(first,second,BinaryInterface_::permutation());
         //return first.mult(second, BinaryInterface_::permutation());
       }
 
@@ -138,14 +119,14 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
       no_permute(Left& first, second_argument_type second) {
-        return mult_to(first,second);
+        mult_to(first,second); return first;
         //return first.mult_to(second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(first_argument_type first, Right& second) {
-        return mult_to(second,first);
+        mult_to(second,first); return second;
         //return second.mult_to(first);
       }
 

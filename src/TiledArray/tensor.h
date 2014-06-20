@@ -1007,7 +1007,7 @@ namespace TiledArray {
       return inplace_unary(math::NegateAssign<value_type>());
     }
 
-    // *GEMM operations
+    // GEMM operations
 
     /// Contract this tensor with \c other
 
@@ -1017,7 +1017,7 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param gemm_helper The *GEMM operation meta data
     /// \return A new tensor which is the result of contracting this tensor with
-    /// other
+    ///         \c other
     /// \throw TiledArray::Exception When this tensor is empty.
     /// \throw TiledArray::Exception When \c other is empty.
     template <typename U, typename AU>
@@ -1467,38 +1467,8 @@ namespace TiledArray {
     return os;
   }
 
-  // implement necessary free functions for the use by TiledArray algebra
-
-  namespace math {
-
-    template <typename T1, typename A1, typename T2, typename A2>
-    Tensor<T1,A1> mult(const Tensor<T1,A1>& arg1,
-                       const Tensor<T2,A2>& arg2) {
-      return arg1.mult(arg2);
-    }
-
-    template <typename T1, typename A1, typename T2, typename A2>
-    Tensor<T1,A1>& mult_to(Tensor<T1,A1>& arg1,
-                           const Tensor<T2,A2>& arg2) {
-      return arg1.mult_to(arg2);
-    }
-
-    /// Computes Arg1 += Arg2
-    template <typename T1, typename A1, typename T2, typename A2>
-    void add_to(Tensor<T1,A1>& arg1,
-                const Tensor<T2,A2>& arg2) {
-      arg1.add_to(arg2);
-    }
-
-    /// Computes the result of applying permutation \c perm to \c arg
-    template <typename T, typename A>
-    Tensor<T,A> permute(const Tensor<T,A>& arg,
-                        const Permutation& perm) {
-      return arg.permute(perm);
-    }
-
-  } // namespace TiledArray::math
-
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TENSOR_H__INCLUDED
+
+#include <TiledArray/tensor_nonintrusive_api.h>

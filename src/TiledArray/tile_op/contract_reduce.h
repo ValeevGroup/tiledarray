@@ -32,25 +32,6 @@
 namespace TiledArray {
   namespace math {
 
-    /* define these for your tile types
-
-    Computes Arg1 += Arg2
-    \code
-    template <typename Arg1,
-              typename Arg2>
-    void add_to(Arg1& arg1, const Arg2& arg2);
-    \endcode
-
-    Computes the result of applying permutation \c perm to \c arg
-    \code
-    template <typename Result,
-              typename Arg,
-              typename Permutation>
-    Result permute(const Arg& arg,
-                   const Permutation& perm);
-    \endcode
-    */
-
     /// Contract and reduce operation
 
     /// This object uses a tile contraction operation to form a pair reduction
@@ -214,9 +195,11 @@ namespace TiledArray {
         TA_ASSERT(pimpl_);
 
         if(result.empty())
-          result = left.gemm(right, pimpl_->alpha_, pimpl_->gemm_helper_);
+          result = gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
+//          result = left.gemm(right, pimpl_->alpha_, pimpl_->gemm_helper_);
         else
-          result.gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
+          gemm(result, left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
+//          result.gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
       }
 
     }; // class ContractReduce
