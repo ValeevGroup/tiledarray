@@ -80,7 +80,8 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(const Arg& arg) const {
-        return result_type(arg, UnaryInterface_::permutation());
+        //return result_type(arg, UnaryInterface_::permutation());
+        return TiledArray::math::permute(arg, UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
