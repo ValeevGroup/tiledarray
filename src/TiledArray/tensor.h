@@ -332,42 +332,63 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == other.range().dim());
 
-      // Construct the inverse permuted result weight
-      const std::vector<typename range_type::size_type> inv_weight =
-          -perm ^ pimpl_->range_.weight();
+      PermIndex perm_index_op(other.range(), pimpl_->range_, perm);
 
       // Cache constants
       const unsigned int ndim = other.range().dim();
+      const unsigned int ndim1 = ndim - 1u;
       const size_type volume = other.range().volume();
-      const size_type block_size = other.range().size()[ndim - 1u];
-      const size_type stride = inv_weight[ndim - 1u];
 
-      {
-        // Get pointers to weight arrays
-        const size_type* restrict const weight = other.range().weight().data();
-        const size_type* restrict const inv_result_weight = & inv_weight.front();
+      if(perm[ndim1] == ndim1) {
+        // This is the simple case where the last dimension is not permuted.
+        // Therefore, it can be shuffled in chunks.
 
-        // Get pointers to tensor data arrays
-        typename Tensor<U, AU>::const_pointer restrict const other_data = other.data();
-        TA_ASSERT(other_data);
-        pointer restrict const result_data = pimpl_->data_;
+        // Determine which dimensions can be permuted with the least significant
+        // dimension.
+        size_type block_size = other.range().size()[ndim1];
+        for(int i = -1 + ndim1 ; i >= 0; --i) {
+          if(perm[i] != i)
+            break;
+          block_size *= other.range().size()[i];
+        }
 
-        size_type index = 0ul;
-        while(index < volume) {
-          // Compute the permuted index for the current block
-          size_type i = index;
-          size_type perm_index = 0ul;
-          for(unsigned int dim = 0u; dim < ndim; ++dim) {
-            const size_type weight_dim = weight[dim];
-            const size_type inv_result_weight_dim = inv_result_weight[dim];
-            perm_index += i / weight_dim * inv_result_weight_dim;
-            i %= weight_dim;
+        // Permute the data
+        for(size_type index = 0ul; index < volume; index += block_size) {
+          const size_type perm_index = perm_index_op(index);
+
+          // Copy the block
+          math::uninitialized_unary_vector_op(block_size, other.data() + index,
+              pimpl_->data_ + perm_index, op);
+        }
+
+      } else {
+        // This is the more complicated case. Here we permute in terms of matrix
+        // transposes. The data layout of the input and output matrices are
+        // chosen such that they both contain stride one dimensions.
+
+        size_type other_fused_size[4];
+        size_type other_fused_weight[4];
+        fuse_dimensions(other_fused_size, other_fused_weight,
+            other.range().size().data(), perm);
+
+        // Compute the fused stride for the result matrix transpose.
+        size_type  result_outer_stride = 1ul;
+        for(unsigned int i = perm[ndim1] + 1u; i < ndim; ++i)
+          result_outer_stride *= pimpl_->range_.size()[i];
+
+        // Copy data from the input to the output matrix via a series of matrix
+        // transposes.
+        for(size_type i = 0ul; i < other_fused_size[0]; ++i) {
+          size_type index = i * other_fused_weight[0];
+          for(size_type j = 0ul; j < other_fused_size[2]; ++j, index += other_fused_weight[2]) {
+            // Compute the ordinal index of the input and output matrices.
+            size_type perm_index = perm_index_op(index);
+
+            // Copy a transposed matrix from the input tensor to the this tensor.
+            math::uninitialized_unary_transpose(other_fused_size[1], other_fused_size[3],
+                other.data() + index, other_fused_weight[1],
+                pimpl_->data_ + perm_index, result_outer_stride, op);
           }
-
-          // Permute a block of arg
-          const size_type end = index + block_size;
-          for(; index < end; ++index, perm_index += stride)
-            new (result_data + perm_index) value_type(op(other_data[index]));
         }
       }
     }
@@ -394,44 +415,63 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == left.range().dim());
 
-      // Construct the inverse permuted result weight
-      const std::vector<typename range_type::size_type> inv_weight =
-          -perm ^ pimpl_->range_.weight();
+      PermIndex perm_index_op(left.range(), pimpl_->range_, perm);
 
       // Cache constants
       const unsigned int ndim = left.range().dim();
+      const unsigned int ndim1 = ndim - 1u;
       const size_type volume = left.range().volume();
-      const size_type block_size = left.range().size()[ndim - 1u];
-      const size_type stride = inv_weight[ndim - 1u];
 
-      {
-        // Get pointers to weight arrays
-        const size_type* restrict const weight = left.range().weight().data();
-        const size_type* restrict const inv_result_weight = & inv_weight.front();
+      if(perm[ndim1] == ndim1) {
+        // This is the simple case where the last dimension is not permuted.
+        // Therefore, it can be shuffled in chunks.
 
-        // Get pointers to tensor data arrays
-        typename Tensor<U, AU>::const_pointer restrict const left_data = left.data();
-        TA_ASSERT(left_data);
-        typename Tensor<V, AV>::const_pointer restrict const right_data = right.data();
-        TA_ASSERT(right_data);
-        pointer restrict const result_data = pimpl_->data_;
+        // Determine which dimensions can be permuted with the least significant
+        // dimension.
+        size_type block_size = left.range().size()[ndim1];
+        for(int i = -1 + ndim1 ; i >= 0; --i) {
+          if(perm[i] != i)
+            break;
+          block_size *= left.range().size()[i];
+        }
 
-        size_type index = 0ul;
-        while(index < volume) {
-          // Compute the permuted index for the current block
-          size_type i = index;
-          size_type perm_index = 0ul;
-          for(unsigned int dim = 0u; dim < ndim; ++dim) {
-            const size_type weight_dim = weight[dim];
-            const size_type inv_result_weight_dim = inv_result_weight[dim];
-            perm_index += i / weight_dim * inv_result_weight_dim;
-            i %= weight_dim;
+        // Permute the data
+        for(size_type index = 0ul; index < volume; index += block_size) {
+          const size_type perm_index = perm_index_op(index);
+
+          // Copy the block
+          math::uninitialized_binary_vector_op(block_size, left.data() + index,
+              right.data() + index, pimpl_->data_ + perm_index, op);
+        }
+
+      } else {
+        // This is the more complicated case. Here we permute in terms of matrix
+        // transposes. The data layout of the input and output matrices are
+        // chosen such that they both contain stride one dimensions.
+
+        size_type other_fused_size[4];
+        size_type other_fused_weight[4];
+        fuse_dimensions(other_fused_size, other_fused_weight,
+            left.range().size().data(), perm);
+
+        // Compute the fused stride for the result matrix transpose.
+        size_type  result_outer_stride = 1ul;
+        for(unsigned int i = perm[ndim1] + 1u; i < ndim; ++i)
+          result_outer_stride *= pimpl_->range_.size()[i];
+
+        // Copy data from the input to the output matrix via a series of matrix
+        // transposes.
+        for(size_type i = 0ul; i < other_fused_size[0]; ++i) {
+          size_type index = i * other_fused_weight[0];
+          for(size_type j = 0ul; j < other_fused_size[2]; ++j, index += other_fused_weight[2]) {
+            // Compute the ordinal index of the input and output matrices.
+            size_type perm_index = perm_index_op(index);
+
+            // Copy a transposed matrix from the input tensor to the this tensor.
+            math::uninitialized_binary_transpose(other_fused_size[1], other_fused_size[3],
+                left.data() + index, right.data() + index, other_fused_weight[1],
+                pimpl_->data_ + perm_index, result_outer_stride, op);
           }
-
-          // Permute a block of arg
-          const size_type end = index + block_size;
-          for(; index < end; ++index, perm_index += stride)
-            new (result_data + perm_index) value_type(op(left_data[index], right_data[index]));
         }
       }
     }
