@@ -125,6 +125,17 @@ namespace TiledArray {
         public scalar_type<PlainObjectType>
     { };
 
+    /// Describes traits of nodes in TiledArray expressions
+    template <typename T, typename Enabler = void>
+    struct eval_trait {
+      typedef T type;
+    };
+
+    template <typename T>
+    struct eval_trait<T, typename madness::enable_if<is_type<typename T::eval_type> >::type>  {
+        typedef typename T::eval_type type;
+    };
+
     /// Remove const, volatile, and reference qualifiers.
     template <typename T>
     struct remove_cvr {

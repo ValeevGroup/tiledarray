@@ -39,7 +39,6 @@ namespace TiledArray {
     struct Enabler { };
   public:
     typedef Tensor<T, A> Tensor_; ///< This class type
-    typedef Tensor_ eval_type; ///< The type used when evaluating expressions
     typedef Range range_type; ///< Tensor range type
     typedef typename range_type::size_type size_type; ///< size type
     typedef A allocator_type; ///< Allocator type

@@ -152,7 +152,7 @@ namespace TiledArray {
       template <typename A>
       typename madness::enable_if<is_lazy_tile<A>, result_type>::type
       operator()(const A& arg) const {
-        typename A::eval_type eval_arg(arg);
+        typename TiledArray::detail::eval_trait<A>::type eval_arg(arg);
         return operator()(eval_arg);
       }
 
@@ -260,7 +260,7 @@ namespace TiledArray {
       template <typename A>
       typename madness::enable_if<is_non_array_lazy_tile<A>, result_type>::type
       operator()(const A& arg) const {
-        typename A::eval_type eval_arg(arg);
+        typename TiledArray::detail::eval_trait<A>::type eval_arg(arg);
         return operator()(eval_arg);
       }
 
@@ -311,7 +311,7 @@ namespace TiledArray {
       template <typename A>
       typename madness::enable_if<is_array_tile<A>, result_type>::type
       operator()(const A& arg) const {
-        typename A::eval_type eval_arg(arg);
+        typename TiledArray::detail::eval_trait<A>::type eval_arg(arg);
         return operator()(eval_arg, arg.is_consumable());
       }
 
@@ -327,7 +327,7 @@ namespace TiledArray {
       template <typename A>
       typename madness::enable_if<is_non_array_lazy_tile<A>, result_type>::type
       operator()(const A& arg, const bool consume) const {
-        typename A::eval_type eval_arg(arg);
+        typename TiledArray::detail::eval_trait<A>::type eval_arg(arg);
         return operator()(eval_arg, consume);
       }
 

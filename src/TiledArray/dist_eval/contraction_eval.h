@@ -231,7 +231,7 @@ namespace TiledArray {
         /// \param tile The input tile
         /// \return The evaluated version of the lazy tile
         template <typename Tile>
-        static typename Tile::eval_type convert_task(const Tile& tile) { return tile; }
+        static typename eval_trait<Tile>::type convert_task(const Tile& tile) { return tile; }
 
 
         /// Conversion function
@@ -255,7 +255,7 @@ namespace TiledArray {
         /// \return A future to the evaluated tile
         template <typename Tile>
         typename madness::enable_if< TiledArray::math::is_lazy_tile<Tile>,
-            madness::Future<typename Tile::eval_type> >::type
+            madness::Future<typename eval_trait<Tile>::type> >::type
         convert(const madness::Future<Tile>& tile) const {
           return arg_.get_world().taskq.add(
               & GenRootTile<Arg>::template convert_task<Tile>,

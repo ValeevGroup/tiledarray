@@ -34,8 +34,8 @@
 
 struct BinaryEvalFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::dim> ArrayN;
-  typedef math::Noop<ArrayN::value_type::eval_type,
-      ArrayN::value_type::eval_type, true> array_op_type;
+  typedef math::Noop<ArrayN::value_type,
+      ArrayN::value_type, true> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
       DensePolicy> array_eval_type;
   typedef math::Add<ArrayN::value_type, ArrayN::value_type, ArrayN::value_type,

@@ -44,12 +44,9 @@ namespace TiledArray {
     /// uses the lazy evaluation mechanism (i.e. when <tt>T != T::eval_type</tt>),
     /// otherwise it evaluates to \c std::false_type .
     /// \tparam T The tile type to test
-    template <typename T, typename Enable = void>
-    struct is_lazy_tile : public std::false_type { };
-
     template <typename T>
-    struct is_lazy_tile<T, typename madness::enable_if<TiledArray::detail::is_type<typename T::eval_type> >::type> :
-        public std::integral_constant<bool, ! std::is_same<T, typename T::eval_type>::value>
+    struct is_lazy_tile :
+        public std::integral_constant<bool, ! std::is_same<T, typename TiledArray::detail::eval_trait<T>::type>::value>
     { }; // struct is_lazy_tile
 
     /// Detect tiles used by \c ArrayEvalImpl

@@ -37,8 +37,8 @@ using namespace TiledArray;
 // Array evaluator fixture
 struct ArrayEvalImplFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::dim> ArrayN;
-  typedef math::Scal<ArrayN::value_type::eval_type,
-      ArrayN::value_type::eval_type, false> op_type;
+  typedef math::Scal<ArrayN::value_type,
+      ArrayN::value_type, false> op_type;
   typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
   typedef detail::DistEval<detail::LazyArrayTile<typename ArrayN::value_type,
       op_type>, DensePolicy> dist_eval_type;
