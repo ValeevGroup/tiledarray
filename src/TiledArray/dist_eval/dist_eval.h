@@ -23,6 +23,7 @@
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/counter_probe.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/expression_traits.h>
 
 namespace TiledArray {
   namespace detail {
@@ -48,7 +49,7 @@ namespace TiledArray {
       typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
       typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
       typedef typename TensorImpl_::value_type value_type; ///< Tile type
-      typedef typename value_type::eval_type eval_type; ///< Tile evaluation type
+      typedef typename expression_traits<value_type>::eval_type eval_type; ///< Tile evaluation type
 
     private:
       const Permutation perm_; ///< The permutation to be applied to this tensor
