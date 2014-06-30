@@ -333,8 +333,8 @@ namespace TiledArray {
     typename madness::enable_if_c<math::is_lazy_tile<L>::value && math::is_lazy_tile<R>::value,
         result_type>::type
     operator()(const L& first, const R& second) const {
-      typename L::eval_type eval_first(first);
-      typename R::eval_type eval_second(second);
+      typename TiledArray::detail::eval_trait<L>::type eval_first(first);
+      typename TiledArray::detail::eval_trait<R>::type eval_second(second);
       return operator()(eval_first, eval_second);
     }
 
@@ -355,7 +355,7 @@ namespace TiledArray {
         (! math::is_lazy_tile<typename std::remove_const<R>::type >::value),
         result_type>::type
     operator()(const L& first, R& second) const {
-      typename L::eval_type eval_first(first);
+      typename TiledArray::detail::eval_trait<L>::type eval_first(first);
       return operator()(eval_first, second);
     }
 
@@ -376,7 +376,7 @@ namespace TiledArray {
         math::is_lazy_tile<R>::value,
         result_type>::type
     operator()(L& first, const R& second) const {
-      typename R::eval_type eval_second(second);
+      typename TiledArray::detail::eval_trait<R>::type eval_second(second);
       return operator()(first, eval_second);
     }
 
@@ -472,8 +472,8 @@ namespace TiledArray {
     typename madness::enable_if_c<math::is_array_tile<L>::value && math::is_array_tile<R>::value,
         result_type>::type
     operator()(const L& first, const R& second) const {
-      typename L::eval_type eval_first(first);
-      typename R::eval_type eval_second(second);
+      typename TiledArray::detail::eval_trait<L>::type eval_first(first);
+      typename TiledArray::detail::eval_trait<R>::type eval_second(second);
 
       if(perm_)
         return derived().permute(eval_first, eval_second);
@@ -493,7 +493,7 @@ namespace TiledArray {
         (! math::is_lazy_tile<typename std::remove_const<R>::type>::value),
         result_type>::type
     operator()(const L& first, R& second) const {
-      typename L::eval_type eval_first(first);
+      typename TiledArray::detail::eval_trait<L>::type eval_first(first);
 
       if(perm_)
         return derived().permute(eval_first, second);
@@ -511,7 +511,7 @@ namespace TiledArray {
         math::is_array_tile<R>::value,
         result_type>::type
     operator()(L& first, const R& second) const {
-      typename R::eval_type eval_second(second);
+      typename TiledArray::detail::eval_trait<R>::type eval_second(second);
 
       if(perm_)
         return derived().permute(first, eval_second);
@@ -527,8 +527,8 @@ namespace TiledArray {
         math::is_non_array_lazy_tile<L>::value && math::is_non_array_lazy_tile<R>::value,
         result_type>::type
     operator()(const L& first, const R& second) const {
-      typename L::eval_type eval_first(first);
-      typename R::eval_type eval_second(second);
+      typename TiledArray::detail::eval_trait<L>::type eval_first(first);
+      typename TiledArray::detail::eval_trait<R>::type eval_second(second);
       return operator()(eval_first, eval_second);
     }
 
@@ -539,7 +539,7 @@ namespace TiledArray {
         (! math::is_non_array_lazy_tile<typename std::remove_const<R>::type>::value),
         result_type>::type
     operator()(const L& first, R& second) const {
-      typename L::eval_type eval_first(first);
+      typename TiledArray::detail::eval_trait<L>::type eval_first(first);
       return operator()(eval_first, second);
     }
 
@@ -550,7 +550,7 @@ namespace TiledArray {
         math::is_non_array_lazy_tile<R>::value,
         result_type>::type
     operator()(L& first, const R& second) const {
-      typename R::eval_type eval_second(second);
+      typename TiledArray::detail::eval_trait<R>::type eval_second(second);
       return operator()(first, eval_second);
     }
 

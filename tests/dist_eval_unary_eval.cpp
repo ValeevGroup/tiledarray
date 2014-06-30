@@ -38,12 +38,10 @@ using namespace TiledArray::expressions;
 // Array evaluator fixture
 struct UnaryEvalImplFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::dim> ArrayN;
-  typedef math::Noop<ArrayN::value_type::eval_type,
-      ArrayN::value_type::eval_type, true> array_op_type;
+  typedef math::Noop<ArrayN::value_type, ArrayN::value_type, true> array_op_type;
   typedef TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<ArrayN::value_type,
       array_op_type>, DensePolicy> dist_eval_type;
-  typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
-      false> op_type;
+  typedef math::Scal<ArrayN::value_type, ArrayN::value_type, false> op_type;
   typedef TiledArray::detail::UnaryEvalImpl<dist_eval_type, op_type, DensePolicy> impl_type;
 
 
@@ -88,8 +86,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
     BOOST_CHECK(! unary.is_zero(i));
 
-  typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
-      true> op_type2;
+  typedef math::Scal<ArrayN::value_type, ArrayN::value_type, true> op_type2;
   typedef TiledArray::detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
   typedef TiledArray::detail::UnaryEvalImpl<dist_eval_type2, op_type2, DensePolicy> impl_type2;
 
@@ -150,8 +147,7 @@ BOOST_AUTO_TEST_CASE( eval )
 BOOST_AUTO_TEST_CASE( double_eval )
 {
   typedef TiledArray::detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
-  typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
-      true> op_type2;
+  typedef math::Scal<ArrayN::value_type, ArrayN::value_type, true> op_type2;
   typedef TiledArray::detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
 
 
@@ -194,8 +190,7 @@ BOOST_AUTO_TEST_CASE( double_eval )
 BOOST_AUTO_TEST_CASE( perm_eval )
 {
   typedef TiledArray::detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
-  typedef math::Scal<ArrayN::value_type::eval_type, ArrayN::value_type::eval_type,
-      true> op_type2;
+  typedef math::Scal<ArrayN::value_type, ArrayN::value_type, true> op_type2;
   typedef TiledArray::detail::DistEval<op_type2::result_type, DensePolicy> dist_eval_type2;
 
   // Create permutation to be applied in the array evaluations
