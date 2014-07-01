@@ -25,6 +25,7 @@
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/transpose.h>
+#include <TiledArray/tile_interface.h>
 
 namespace TiledArray {
 
@@ -1179,7 +1180,7 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param gemm_helper The *GEMM operation meta data
     /// \return A new tensor which is the result of contracting this tensor with
-    ///         \c other
+    /// \c other
     /// \throw TiledArray::Exception When this tensor is empty.
     /// \throw TiledArray::Exception When \c other is empty.
     template <typename U, typename AU>
@@ -1445,14 +1446,14 @@ namespace TiledArray {
       return reduce(1, math::MultipliesAssign<numeric_type, numeric_type>());
     }
 
-    /// Square of vector norm_2
+    /// Square of vector 2-norm
 
     /// \return The vector norm of this tensor
     numeric_type squared_norm() const {
       return reduce(0, math::SquareAddAssign<numeric_type, numeric_type>());
     }
 
-    /// Vector norm_2
+    /// Vector 2-norm
 
     /// \return The vector norm of this tensor
     numeric_type norm() const {
@@ -1632,5 +1633,3 @@ namespace TiledArray {
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TENSOR_H__INCLUDED
-
-#include <TiledArray/tensor_nonintrusive_api.h>

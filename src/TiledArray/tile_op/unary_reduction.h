@@ -26,6 +26,8 @@
 #ifndef TILEDARRAY_TILE_OP_UNARY_REDUCTION_H__INCLUDED
 #define TILEDARRAY_TILE_OP_UNARY_REDUCTION_H__INCLUDED
 
+#include <TiledArray/tile_interface.h>
+
 namespace TiledArray {
   namespace math {
 
@@ -55,7 +57,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result += arg.sum();
+        result += TiledArray::sum(arg);
       }
     }; // class SumReduction
 
@@ -85,7 +87,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result *= arg.product();
+        result *= TiledArray::prod(arg);
       }
 
     }; // class ProductReduction
@@ -117,7 +119,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result += arg.trace();
+        result += TiledArray::trace(arg);
       }
 
     }; // class TraceReduction
@@ -149,7 +151,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result += arg.squared_norm();
+        result += TiledArray::squared_norm(arg);
       }
 
     }; // class SquaredNormReduction
@@ -180,7 +182,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result = std::min(result, arg.min());
+        result = std::min(result, TiledArray::min(arg));
       }
 
     }; // class MinReduction
@@ -211,7 +213,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result = std::max(result, arg.max());
+        result = std::max(result, TiledArray::max(arg));
       }
 
     }; // class MaxReduction
@@ -243,7 +245,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result = std::min(result, arg.abs_min());
+        result = std::min(result, TiledArray::abs_min(arg));
       }
 
     }; // class AbsMinReduction
@@ -274,7 +276,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result = std::max(result, arg.abs_max());
+        result = std::max(result, TiledArray::abs_max(arg));
       }
 
     }; // class AbsMaxReduction

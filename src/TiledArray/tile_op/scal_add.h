@@ -108,15 +108,15 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return first.add(second, factor_, BinaryInterface_::permutation());
+        return TiledArray::add(first, second, factor_, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, second_argument_type second) const {
-        return second.scale(factor_, BinaryInterface_::permutation());
+        return TiledArray::scale(second, factor_, BinaryInterface_::permutation());
       }
 
       result_type permute(first_argument_type first, zero_right_type) const {
-        return first.scale(factor_, BinaryInterface_::permutation());
+        return TiledArray::scale(first, factor_, BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -126,44 +126,44 @@ namespace TiledArray {
       template <bool LC, bool RC>
       typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
-        return first.add(second, factor_);
+        return TiledArray::add(first, second, factor_);
       }
 
       template <bool LC, bool RC>
       typename madness::enable_if_c<LC, result_type>::type
       no_permute(Left& first, second_argument_type second) const {
-        return first.add_to(second, factor_);
+        return TiledArray::add_to(first, second, factor_);
       }
 
       template <bool LC, bool RC>
       typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(first_argument_type first, Right& second) const {
-        return second.add_to(first, factor_);
+        return TiledArray::add_to(second, first, factor_);
       }
 
 
       template <bool LC, bool RC>
       typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) const {
-        return second.scale(factor_);
+        return TiledArray::scale(second, factor_);
       }
 
       template <bool LC, bool RC>
       typename madness::enable_if_c<RC, result_type>::type
       no_permute(zero_left_type, Right& second) const {
-        return second.scale_to(factor_);
+        return TiledArray::scale_to(second, factor_);
       }
 
       template <bool LC, bool RC>
       typename madness::enable_if_c<!LC, result_type>::type
       no_permute(first_argument_type first, zero_right_type) const {
-        return first.scale(factor_);
+        return TiledArray::scale(first, factor_);
       }
 
       template <bool LC, bool RC>
       typename madness::enable_if_c<LC, result_type>::type
       no_permute(Left& first, zero_right_type) const {
-        return first.scale_to(factor_);
+        return TiledArray::scale_to(first, factor_);
       }
 
     }; // class ScalAdd

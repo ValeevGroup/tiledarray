@@ -109,7 +109,7 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return first.mult(second, factor_, BinaryInterface_::permutation());
+        return TiledArray::mult(first, second, factor_, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, const Right& second) const {
@@ -129,19 +129,19 @@ namespace TiledArray {
       template <bool LC, bool RC>
       typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
-        return first.mult(second, factor_);
+        return TiledArray::mult(first, second, factor_);
       }
 
       template <bool LC, bool RC>
       typename madness::enable_if_c<LC, result_type>::type
       no_permute(Left& first, second_argument_type second) const {
-        return first.mult_to(second, factor_);
+        return TiledArray::mult_to(first, second, factor_);
       }
 
       template <bool LC, bool RC>
       typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(first_argument_type first, Right& second) const {
-        return second.mult_to(first, factor_);
+        return TiledArray::mult_to(second, first, factor_);
       }
 
       template <bool LC, bool RC>
