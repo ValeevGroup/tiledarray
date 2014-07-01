@@ -46,11 +46,11 @@ int main(int argc, char** argv) {
     return 1;
   }
   if(sparsity <= 0) {
-    std::cerr << "Error: Sparsity must be greater than zero.\n";
+    std::cerr << "Error: sparsity must be greater than zero.\n";
     return 1;
   }
   if(sparsity > 100) {
-    std::cerr << "Error: Sparsity must be less than or equal to 100.\n";
+    std::cerr << "Error: sparsity must be less than or equal to 100.\n";
     return 1;
   }
   const long repeat = (argc >= 5 ? atol(argv[4]) : 5);
