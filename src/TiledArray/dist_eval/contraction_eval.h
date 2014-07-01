@@ -89,9 +89,7 @@ namespace TiledArray {
       typedef std::pair<size_type, left_future> col_datum; ///< Datum element type for a left-hand argument column
 
 
-      //------------------------------------------------------------------------
-      // Process groups
-
+      // Process groups --------------------------------------------------------
 
       /// Process group factory function
 
@@ -150,9 +148,7 @@ namespace TiledArray {
       }
 
 
-      //------------------------------------------------------------------------
-      // Broadcast kernels
-
+      // Broadcast kernels -----------------------------------------------------
 
       /// Broadcast a dense row or column
 
@@ -312,9 +308,7 @@ namespace TiledArray {
       }
 
 
-      //------------------------------------------------------------------------
-      // Broadcast specialization for left and right arguments
-
+      // Broadcast specialization for left and right arguments -----------------
 
       /// Broadcast column \c k of \c left_ with a dense right-hand argument
 
@@ -463,9 +457,7 @@ namespace TiledArray {
       }
 
 
-      //------------------------------------------------------------------------
-      // Row and column iteration functions
-
+      // Row and column iteration functions ------------------------------------
 
       /// Find next non-zero row of \c right_ for a sparse shape
 
@@ -586,9 +578,7 @@ namespace TiledArray {
       }
 
 
-
-      //------------------------------------------------------------------------
-      // Initialization functions
+      // Initialization functions ----------------------------------------------
 
       /// Initialize reduce tasks and construct broadcast groups
       size_type initialize(const DenseShape&) {
@@ -648,9 +638,7 @@ namespace TiledArray {
       size_type initialize() { return initialize(TensorImpl_::shape()); }
 
 
-      //------------------------------------------------------------------------
-      // Finalize functions
-
+      // Finalize functions ----------------------------------------------------
 
       /// Set the result tiles, destroy reduce tasks, and destroy broadcast groups
       void finalize(const DenseShape&) {
@@ -743,9 +731,7 @@ namespace TiledArray {
       }; // class FinalizeTask
 
 
-      //------------------------------------------------------------------------
-      // Contraction functions
-
+      // Contraction functions -------------------------------------------------
 
       /// Schedule local contraction tasks for \c col and \c row tile pairs
 
@@ -830,9 +816,7 @@ namespace TiledArray {
       { contract(TensorImpl_::shape(), k, col, row, task); }
 
 
-      //------------------------------------------------------------------------
-      // SUMMA step task
-
+      // SUMMA step task -------------------------------------------------------
 
       /// SUMMA step task
 
