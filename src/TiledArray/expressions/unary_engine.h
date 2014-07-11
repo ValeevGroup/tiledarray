@@ -43,7 +43,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<Arg>::eval_type value_type; ///< The result tile type
-      typedef value_type eval_type; ///< The evaluation tile type
+      typedef typename TiledArray::detail::eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
       typedef Op<eval_type, typename EngineTrait<Arg>::eval_type, EngineTrait<Arg>::consumable> op_type; ///< The tile operation type
       typedef typename EngineTrait<Arg>::scalar_type scalar_type; ///< Tile scalar type
       typedef typename argument_type::policy policy; ///< The result policy type
