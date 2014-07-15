@@ -82,6 +82,9 @@ int main(int argc, char** argv) {
 
   // Start clock
   world.gop.fence();
+  if(world.rank() == 0)
+    std::cout << "Starting iterations: " << "\n";
+
   const double wall_time_start = madness::wall_time();
 
   // Do matrix multiplication
