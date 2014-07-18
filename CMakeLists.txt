@@ -144,7 +144,7 @@ include(external/madness.cmake)
 # look for Elemental if MADNESS has it, or Elemental_DIR was given explicitly
 if (Elemental_DIR OR MADNESS_HAS_ELEMENTAL)
   # if MADNESS found but does not support elemental, too much potential for error, skip
-  if (Madness_FOUND AND !MADNESS_HAS_ELEMENTAL)
+  if (Madness_FOUND AND NOT MADNESS_HAS_ELEMENTAL)
     message(WARNING "Found MADNESS but it does not know about Elemental ... will punt on Elemental")
   else()
     include(external/elemental.cmake)
@@ -224,4 +224,18 @@ CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
   ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
 )
+
+# Add target to allow on-the-fly switching of build type
+
+ADD_CUSTOM_TARGET(debug
+  COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Debug ${CMAKE_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
+  COMMENT "Switch CMAKE_BUILD_TYPE to Debug"
+  )
+
+ADD_CUSTOM_TARGET(release
+  COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release ${CMAKE_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
+  COMMENT "Switch CMAKE_BUILD_TYPE to Release"
+  )
 
