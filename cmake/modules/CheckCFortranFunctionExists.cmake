@@ -1,0 +1,13 @@
+include(CheckFunctionExists)
+
+macro(check_c_fortran_function_exists _func_base _result)
+  string(TOLOWER "${_func_base}" _func_base_lower)
+  string(TOUPPER "${_func_base}" _func_base_upper)
+  foreach(_func ${_func_base_lower}_;${_func_base_lower};${_func_base_lower}__;${_func_base_upper};${_func_base_upper}_)
+    check_function_exists(${_func} _${_func}_found)
+    if(_${_func}_found)
+      set(${_result} ${_result})
+      break()
+    endif()
+  endforeach()
+endmacro()

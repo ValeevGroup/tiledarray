@@ -56,6 +56,8 @@
 
 include(LibFindMacros)
 include(AppendFlags)
+include(CMakePushCheckState)
+include(CheckCFortranFunctionExists)
 
 macro(lib_add_dep _lib_list _lib _deps)
   
@@ -90,13 +92,56 @@ if(NOT CMAKE_USE_PTHREADS_INIT AND NOT CMAKE_USE_HP_PTHREAD_INIT)
 endif()
 
 # Find LAPACK
-libfind_package(Madness LAPACK)
-if(NOT LAPACK_FOUND)
-  set(Madness_FOUND FALSE)
-  if(Madness_FIND_REQUIRED)
-    message(FATAL_ERROR "MADNESS requires LAPACK.")
+if(LAPACK_LIBRARIES OR BLAS_LIBRARIES OR BLAS_LINKER_FLAGS OR LAPACK_LINKER_FLAGS)
+  if(NOT BLAS_FOUND OR NOT LAPACK_FOUND)
+    # Check if we have BLAS and LAPACK support
+
+    cmake_push_check_state()
+    
+    # Set the linker flags
+    if(BLAS_LINKER_FLAGS)
+      append_flags(LAPACK_LINKER_FLAGS "${BLAS_LINKER_FLAGS}")
+    endif()
+    if(LAPACK_LINKER_FLAGS)
+      append_flags(CMAKE_REQUIRED_FLAGS "${LAPACK_LINKER_FLAGS}")
+    endif()
+    
+    # Set the BLAS libraries
+    if(BLAS_LIBRARIES)
+      list(APPEND LAPACK_LIBRARIES ${BLAS_LIBRARIES})
+    endif()
+    if(LAPACK_LIBRARIES)
+      if(UNIX AND BLA_STATIC)
+        set(LAPACK_LIBRARIES "-Wl,--start-group" ${LAPACK_LIBRARIES} "-Wl,--end-group")
+      endif()
+      set(CMAKE_REQUIRED_LIBRARIES ${LAPACK_LIBRARIES} ${CMAKE_REQUIRED_LIBRARIES})
+    endif()
+    
+    
+    # Check for BLAS and LAPCK interface functions    
+    check_c_fortran_function_exists(sgemm BLAS_FOUND)
+    if(BLAS_FOUND)
+      message(STATUS "A library with BLAS API found.")
+    else()
+      message(FATAL_ERROR "The user specified BLAS libraries do not support the BLAS API.")
+    endif()
+    check_c_fortran_function_exists(cheev LAPACK_FOUND)
+    if(LAPACK_FOUND)
+      message(STATUS "A library with LAPACK API found.")
+    else()
+      message(FATAL_ERROR "The user specified LAPACK libraries do not support the LAPACK API.")
+    endif()
+    
+    cmake_push_check_state()
   endif()
+else()
+  # Try to find BLAS and LAPACK
+  libfind_package(Madness LAPACK)
+  if(NOT LAPACK_FOUND)
+    message(FATAL_ERROR "MADNESS requires LAPACK and BLAS.\nSpecify the BLAS and LAPACK libraries, and reconfigure.")
+  endif() 
 endif()
+
 
 # Find MPI
 if(NOT DISABLE_MPI)
