@@ -33,18 +33,7 @@
 # Module macros
 #######################################
 include(LibFindMacros)
-
-macro(append_flags _flags _append_flag)
-
-  string(REGEX REPLACE "^[ ]+(.*)$" "\\1" _temp_flags "${_append_flag}")
-  string(REGEX REPLACE "^(.*)[ ]+$" "\\1" _temp_flags "${_temp_flags}")
-  
-  set(${_flags} "${${_flags}} ${_temp_flags}")
-
-  string(REGEX REPLACE "^[ ]+(.*)$" "\\1" ${_flags} "${${_flags}}")
-  string(REGEX REPLACE "^(.*)[ ]+$" "\\1" ${_flags} "${${_flags}}")
-
-endmacro()
+include(AppendFlags)
 
 macro(lib_add_dep _lib_list _lib _deps)
   
