@@ -1,28 +1,29 @@
 # Set compilers
-set(CMAKE_C_COMPILER mpicc)
-set(CMAKE_CXX_COMPILER mpic++11)
+set(CMAKE_C_COMPILER bgclang)
+set(CMAKE_CXX_COMPILER bgclang++11)
+set(MPI_C_COMPILER mpicc)
+
+# Set compile flags
+#set(CMAKE_CXX_COMPILE_FLAGS "")
+#set(CMAKE_EXE_LINKER_FLAGS "")
+#set(CMAKE_STATIC_LINKER_FLAGS "")
 
 # Set environment paths
-set(GCC_ROOT  "/bgsys/drivers/ppcfloor/gnu-linux")
-set(CLANG_ROOT "/home/projects/llvm")
-
-set(IBM_DIR $ENV{IBM_MAIN_DIR})
-set(XLF_DIR "${IBM_DIR}/xlf/bg/14.1")
-set(XLSMP_DIR "${IBM_DIR}/xlsmp/bg/3.1")
-set(ESSL_DIR "/soft/libraries/essl/current/essl/5.1")
+set(CLANG_DIR  "/home/projects/llvm")
+set(IBM_DIR    "$ENV{IBM_MAIN_DIR}")
+set(XLF_DIR    "${IBM_DIR}/xlf/bg/14.1")
+set(XLSMP_DIR  "${IBM_DIR}/xlsmp/bg/3.1")
+set(ESSL_DIR   "/soft/libraries/essl/current/essl/5.1")
 set(LAPACK_DIR "/soft/libraries/alcf/current/xl/LAPACK")
 
-set(CMAKE_CXX_COMPILE_FLAGS "")
-set(CMAKE_EXE_LINKER_FLAGS "")
-set(CMAKE_STATIC_LINKER_FLAGS "")
-
 # V1R2M0
-#set(MPI_ROOT  "/bgsys/drivers/ppcfloor/comm/gcc")
-#set(PAMI_ROOT "/bgsys/drivers/ppcfloor/comm/sys")
+#set(MPI_DIR   "/bgsys/drivers/ppcfloor/comm/gcc")
+#set(PAMI_DIR  "/bgsys/drivers/ppcfloor/comm/sys")
 # V1R2M1
-set(MPI_ROOT  "/bgsys/drivers/ppcfloor/comm")
-set(PAMI_ROOT "/bgsys/drivers/ppcfloor/comm")
-set(SPI_ROOT  "/bgsys/drivers/ppcfloor/spi")
+set(GCC_DIR    "/bgsys/drivers/ppcfloor/gnu-linux/powerpc64-bgq-linux")
+set(MPI_DIR    "/bgsys/drivers/ppcfloor/comm")
+set(PAMI_DIR   "/bgsys/drivers/ppcfloor/comm")
+set(SPI_DIR    "/bgsys/drivers/ppcfloor/spi")
 
 # Set library
 
@@ -39,9 +40,11 @@ set(LAPACK_LIBRARIES ${LAPACK_LIBRARY};${BLAS_LIBRARIES})
 # and a directory where you can install your own compiled software
 set(CMAKE_FIND_ROOT_PATH
     /bgsys/drivers/ppcfloor/
-    ${MPI_ROOT}
-    ${PAMI_ROOT}
-    ${GCC_ROOT}
+    ${MPI_DIR}
+    ${PAMI_DIR}
+    ${SPI_DIR}
+    ${GCC_DIR}
+    ${CLANG_DIR}
     ${IBM_DIR}
     ${XLF_DIR}
     ${XLSMP_DIR}
