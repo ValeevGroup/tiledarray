@@ -132,7 +132,7 @@ if(LAPACK_LIBRARIES OR BLAS_LIBRARIES OR BLAS_LINKER_FLAGS OR LAPACK_LINKER_FLAG
       message(FATAL_ERROR "The user specified LAPACK libraries do not support the LAPACK API.")
     endif()
     
-    cmake_push_check_state()
+    cmake_pop_check_state()
   endif()
 else()
   # Try to find BLAS and LAPACK
