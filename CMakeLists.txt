@@ -105,14 +105,8 @@ set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_CURRENT})
 
 # Check type support
 include(CheckTypeSize)
-check_type_size("long double" LONG_DOUBLE)
-check_type_size("long long" LONG_LONG)
-if (HAVE_LONG_DOUBLE)
-  set (TILEDARRAY_HAS_LONG_DOUBLE TRUE)
-endif()
-if (HAVE_LONG_LONG)
-  set (TILEDARRAY_HAS_LONG_LONG TRUE)
-endif()
+check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
+check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
 
 include(GNUInstallDirs)
 
