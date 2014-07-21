@@ -73,7 +73,7 @@ set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 #include(TestCXXAcceptsFlag)
 include(CheckCXXSourceCompiles)
 
-set(CMAKE_REQUIRED_FLAGS_CURRENT ${CMAKE_REQUIRED_FLAGS})
+cmake_push_check_state()
 list(APPEND CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS})
 
 # static_assert is desired, but an implementation is included
@@ -100,8 +100,8 @@ CHECK_CXX_SOURCE_COMPILES("
     return 0;
   }"
   TILEDARRAY_HAVE_VARIADIC_TEMPLATES)  
-  
-set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_CURRENT})
+
+cmake_pop_check_state()
 
 # Check type support
 include(CheckTypeSize)
