@@ -15,30 +15,9 @@ if (ELEMENTAL_LIBRARIES)
     message(FATAL_ERROR "Could not find elemental.hpp")
   endif(NOT ELEMENTAL_INCLUDE_DIR)
   
-  # Check for CXX11
-  CHECK_CXX_SOURCE_COMPILES(
-    "
-    template<typename T>
-    class custom_type {
-      T elem;
-    };
-    
-    template<typename T>
-    using c_type = custom_type<T>; 
-    
-    int main(){
-      auto x = 0;
-      constexpr int i = 1;
-      decltype(i) a = 2;
-      c_type<double> b;
-      return 0;
-    }
-    "
-    TILEDARRAY_HAS_CXX11
-  )
-  IF(NOT TILEDARRAY_HAS_CXX11)
-    MESSAGE(FATAL_ERROR "Elemental requires a c++11 compatible compiler")
-  ENDIF(NOT TILEDARRAY_HAS_CXX11)
+  if(NOT TILEDARRAY_HAS_CXX11)
+    message(FATAL_ERROR "Elemental requires a C++11 compatible compiler.")
+  endif(NOT TILEDARRAY_HAS_CXX11)
   
   # Elemental compiles check
   MESSAGE(STATUS "ELEMENTAL LIBRARIES = ${ELEMENTAL_LIBRARIES}")
