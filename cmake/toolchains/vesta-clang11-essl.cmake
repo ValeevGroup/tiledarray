@@ -1,3 +1,7 @@
+# Set the system name so CMake uses the appropriate platform settings.
+# NOTE: The platforms settings for BlueGeneP are the same for BlueGeneQ 
+set(CMAKE_SYSTEM_NAME BlueGeneP-static)
+
 # Set compilers
 set(CMAKE_C_COMPILER bgclang)
 set(CMAKE_CXX_COMPILER bgclang++11)
@@ -38,23 +42,23 @@ set(LAPACK_LIBRARIES ${LAPACK_LIBRARY};${BLAS_LIBRARIES})
 
 # set the search path for the environment coming with the compiler
 # and a directory where you can install your own compiled software
-set(CMAKE_FIND_ROOT_PATH
-    /bgsys/drivers/ppcfloor/
-    ${MPI_DIR}
-    ${PAMI_DIR}
-    ${SPI_DIR}
-    ${GCC_DIR}
-    ${CLANG_DIR}
-    ${IBM_DIR}
-    ${XLF_DIR}
-    ${XLSMP_DIR}
-    ${ESSL_DIR})
+#set(CMAKE_FIND_ROOT_PATH
+#    /bgsys/drivers/ppcfloor/
+#    ${MPI_DIR}
+#    ${PAMI_DIR}
+#    ${SPI_DIR}
+#    ${GCC_DIR}
+#    ${CLANG_DIR}
+#    ${IBM_DIR}
+#    ${XLF_DIR}
+#    ${XLSMP_DIR}
+#    ${ESSL_DIR})
 
 # adjust the default behaviour of the FIND_XXX() commands:
 # search headers and libraries in the target environment, search
 # programs in the host environment
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+#set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+#set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+#set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
 ##############################################################
