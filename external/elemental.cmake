@@ -5,8 +5,6 @@
 ######################
 
 include(ExternalProject)
-include(ConvertIncludesListToCompilerArgs)
-include(ConvertLibrariesListToCompilerArgs)
 
 find_package(Elemental COMPONENTS elemental;pmrrr;lapack-addons)
 
