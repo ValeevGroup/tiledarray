@@ -192,7 +192,9 @@ else()
         ${EXTERNAL_BUILD_DIR}/src/lib/world/
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
     COMPONENT madness
-    FILES_MATCHING PATTERN "*MADlinalg*"
+    FILES_MATCHING PATTERN "*MADchem*" 
+    PATTERN "*MADmra*" 
+    PATTERN "*MADlinalg*"
     PATTERN "*MADmisc*"
     PATTERN "*MADmuparser*"
     PATTERN "*MADtensor*"
