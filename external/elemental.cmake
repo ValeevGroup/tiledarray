@@ -17,6 +17,8 @@ if (ELEMENTAL_LIBRARIES)
     message(FATAL_ERROR "Elemental requires a C++11 compatible compiler.")
   endif(NOT TILEDARRAY_HAS_CXX11)
   
+  cmake_push_check_state()
+  
   # Elemental compiles check
   MESSAGE(STATUS "ELEMENTAL LIBRARIES = ${ELEMENTAL_LIBRARIES}")
   list(APPEND CMAKE_REQUIRED_INCLUDES ${ELEMENTAL_INCLUDE_DIR})
@@ -39,6 +41,8 @@ if (ELEMENTAL_LIBRARIES)
     " 
     ELEMENTAL_COMPILES
   )   
+
+  cmake_pop_check_state()
   
   if (NOT ELEMENTAL_COMPILES)
     message(STATUS "Could not compile Elemental test program")
