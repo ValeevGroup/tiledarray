@@ -27,16 +27,6 @@ if(Madness_FOUND)
     message(FATAL_ERROR "MADNESS found at ${Madness_INCLUDE_DIR}, but could not compile test program")
   endif()
 
-  CHECK_CXX_SOURCE_COMPILES(
-    "
-    #include <madness_config.h>
-    #ifndef MADNESS_HAS_ELEMENTAL
-    # error \"MADNESS does not have Elemental\"
-    #endif
-    int main(int argc, char** argv) {
-      return 0;
-    }
-    "  MADNESS_HAS_ELEMENTAL)
 
 elseif(TA_EXPERT)
 
