@@ -86,5 +86,5 @@ else()
 
 endif()
 
+# Set the  build variables
 include_directories(${EIGEN_INCLUDE_DIR})
-message(STATUS "\tEigen include dir: ${EIGEN_INCLUDE_DIR}")

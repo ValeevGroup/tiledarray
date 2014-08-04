@@ -83,6 +83,5 @@ else()
 
 endif()
 
+# Set the  build variables
 include_directories(${Boost_INCLUDE_DIRS})
-
-message(STATUS "\tBoost include dir: ${Boost_INCLUDE_DIRS}")
