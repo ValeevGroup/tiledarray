@@ -1,5 +1,5 @@
 # Version 1.0 (2013-04-12)
-# Public Domain, originally written by Lasse Kärkkäinen <tronic@zi.fi>
+# Public Domain, originally written by Lasse Karkkainen <tronic@zi.fi>
 # Published at http://www.cmake.org/Wiki/CMake:How_To_Find_Libraries
 
 # If you improve the script, please modify the forementioned wiki page because
@@ -9,7 +9,6 @@
 # Changelog:
 # 2013-04-12  Added version number (1.0) and this header, no other changes
 # 2009-10-08  Originally published
-
 
 # Works the same as find_package, but forwards the "REQUIRED" and "QUIET" arguments
 # used for the current package. For this to work, the first parameter must be the
@@ -41,6 +40,31 @@ macro (libfind_pkg_check_modules PREFIX PKGNAME)
     endif (PKG_CONFIG_FOUND)
   endif (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} EQUAL 4)
 endmacro (libfind_pkg_check_modules)
+
+# This macro searchs the _lib_list list for _lib, and, if found, adds any 
+# missing dependencies in the _deps list. Also, the ${PREFIX}_FIND_REQUIRED_${_dep}
+# variable is set to true if the ${PREFIX}_FIND_REQUIRED_${_lib} is true
+macro(libfind_add_dep PREFIX _lib_list _lib _deps)
+  
+  list(FIND ${_lib_list} ${_lib} _lib_find)
+  if(NOT _lib_find EQUAL -1)
+    foreach(_dep ${_deps})
+      # Add missing dependencies to the list.
+      list(FIND ${_lib_list} ${_dep} _dep_find)
+      if(_dep_find EQUAL -1)
+        list(APPEND ${_lib_list} ${_dep})
+      endif()
+
+      # Set the find required flag for the dependency 
+      if(${PREFIX}_FIND_REQUIRED_${_lib})
+        set(${PREFIX}_FIND_REQUIRED_${_dep} TRUE)
+      else()
+        set(${PREFIX}_FIND_REQUIRED_${_dep} FALSE)
+      endif()
+    endforeach()
+  endif()
+
+endmacro()
 
 # Do the final processing once the paths have been detected.
 # If include dirs are needed, ${PREFIX}_PROCESS_INCLUDES should be set to contain
@@ -90,23 +114,54 @@ macro (libfind_process PREFIX)
   endif (NOT ${PREFIX}_FOUND)
 endmacro (libfind_process)
 
-macro(libfind_library PREFIX basename)
-  set(TMP "")
-  if(MSVC80)
-    set(TMP -vc80)
-  endif(MSVC80)
-  if(MSVC90)
-    set(TMP -vc90)
-  endif(MSVC90)
-  set(${PREFIX}_LIBNAMES ${basename}${TMP})
-  if(${ARGC} GREATER 2)
-    set(${PREFIX}_LIBNAMES ${basename}${TMP}-${ARGV2})
-    string(REGEX REPLACE "\\." "_" TMP ${${PREFIX}_LIBNAMES})
-    set(${PREFIX}_LIBNAMES ${${PREFIX}_LIBNAMES} ${TMP})
-  endif(${ARGC} GREATER 2)
-  find_library(${PREFIX}_LIBRARY
-    NAMES ${${PREFIX}_LIBNAMES}
-    PATHS ${${PREFIX}_PKGCONF_LIBRARY_DIRS}
-  )
-endmacro(libfind_library)
+macro(libfind_header PREFIX _var _header)
+  set(${PREFIX}_INCLUDE_SEARCH_DIR)
+  if(${PREFIX}_ROOT_DIR)
+    set(${PREFIX}_INCLUDE_SEARCH_DIR "${${PREFIX}_ROOT_DIR}/include")
+  endif()
+
+  find_path(${_var} ${_header}
+      HINTS ${${PREFIX}_INCLUDE_DIR} ${${PREFIX}_INCLUDE_SEARCH_DIR}
+      NO_CMAKE_SYSTEM_PATH)
+endmacro()
+
+macro(libfind_library PREFIX _name)
+  if(NOT ${PREFIX}_${_name}_LIBRARY)
+    if(${PREFIX}_LIBRARY)
+      # Search the user provided libraries for _name
+      foreach(_lib ${${PREFIX}_LIBRARY})
+        get_filename_component(_lib_name ${_lib} NAME)
+        string(FIND ${_lib_name} ${_name} _lib_found)
+    
+        if(NOT _lib_found EQUAL -1)
+          # Set the component library list
+          set(${PREFIX}_${_name}_LIBRARY ${_lib})
+          break()
+        endif()
+      endforeach()
+      
+    else()
+      set(${PREFIX}_LIB_SERACH_DIRS)
+      if(${PREFIX}_ROOT_DIR)
+        set(${PREFIX}_LIB_SERACH_DIRS "${${PREFIX}_ROOT_DIR}/lib")
+      endif()
+
+      # Search for the library
+      find_library(${PREFIX}_${_name}_LIBRARY ${_name}
+          HINTS ${${PREFIX}_PKGCONF_LIBRARY_DIRS} ${${PREFIX}_LIB_SERACH_DIRS}
+          NO_CMAKE_SYSTEM_PATH)
+
+    endif()
+  endif()
+
+  # Check that it exists and set the found variable
+  if(${PREFIX}_${_name}_LIBRARY AND EXISTS ${${PREFIX}_${_name}_LIBRARY})
+    set(${PREFIX}_${_name}_FOUND TRUE)
+  else()
+    set(${PREFIX}_${_name}_FOUND FALSE)
+  endif()
+  
+  mark_as_advanced(${PREFIX}_${_name}_LIBRARY)
+
+endmacro()
 
