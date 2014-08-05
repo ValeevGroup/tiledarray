@@ -40,7 +40,7 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
   typedef math::Scal<ArrayN::value_type,
       ArrayN::value_type, false> op_type;
   typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
-  typedef detail::DistEval<detail::LazyArrayTile<typename ArrayN::value_type,
+  typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type,
       op_type>, DensePolicy> dist_eval_type;
 
 
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE( eval_permute )
 
   // Redefine the types for the new operation.
   typedef math::Noop<ArrayN::value_type, ArrayN::value_type, false> op_type;
-  typedef detail::DistEval<detail::LazyArrayTile<typename ArrayN::value_type,
+  typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type,
       op_type>, DensePolicy> dist_eval_type;
 
   // Construct and evaluate

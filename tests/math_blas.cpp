@@ -44,9 +44,11 @@ struct BlasFixture {
   }
 
   integer m, n, k;
-  double tol = 0.001;
+  static const double tol;
 
-}; // Fixture
+}; // BlasFixture
+
+const double BlasFixture::tol = 0.001;
 
 BOOST_FIXTURE_TEST_SUITE( blas_suite, BlasFixture )
 

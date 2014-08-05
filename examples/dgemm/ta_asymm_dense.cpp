@@ -77,19 +77,22 @@ int main(int argc, char** argv) {
     blocking_col.push_back(i);
 
   // Stucture of c
-  std::vector<TiledArray::TiledRange1> blocking_result = {
-      TiledArray::TiledRange1(blocking_row.begin(),blocking_row.end()),
-      TiledArray::TiledRange1(blocking_row.begin(), blocking_row.end())};
+  std::vector<TiledArray::TiledRange1> blocking_result;
+  blocking_result.reserve(2);
+  blocking_result.push_back(TiledArray::TiledRange1(blocking_row.begin(),blocking_row.end()));
+  blocking_result.push_back(TiledArray::TiledRange1(blocking_row.begin(), blocking_row.end()));
 
   // Strucure of a
-  std::vector<TiledArray::TiledRange1> blocking_rowxcol = {
-      TiledArray::TiledRange1(blocking_row.begin(),blocking_row.end()),
-      TiledArray::TiledRange1(blocking_col.begin(), blocking_col.end())};
+  std::vector<TiledArray::TiledRange1> blocking_rowxcol;
+  blocking_rowxcol.reserve(2);
+  blocking_rowxcol.push_back(TiledArray::TiledRange1(blocking_row.begin(),blocking_row.end()));
+  blocking_rowxcol.push_back(TiledArray::TiledRange1(blocking_col.begin(), blocking_col.end()));
 
   // Structure of b
-  std::vector<TiledArray::TiledRange1> blocking_colxrow = {
-      TiledArray::TiledRange1(blocking_col.begin(),blocking_col.end()),
-      TiledArray::TiledRange1(blocking_row.begin(), blocking_row.end())};
+  std::vector<TiledArray::TiledRange1> blocking_colxrow;
+  blocking_colxrow.reserve(2);
+  blocking_rowxcol.push_back(TiledArray::TiledRange1(blocking_col.begin(),blocking_col.end()));
+  blocking_rowxcol.push_back(TiledArray::TiledRange1(blocking_row.begin(), blocking_row.end()));
 
   TiledArray::TiledRange // TRange for c
     trange(blocking_result.begin(), blocking_result.end());

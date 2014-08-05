@@ -138,8 +138,8 @@ int main(int argc, char** argv) {
       // Stop clock
       const double wall_time_stop = madness::wall_time();
       const long flop = 2.0 * c("m,n").sum();
-      inner_gflops.emplace_back(double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9);
-      inner_times.emplace_back((wall_time_stop - wall_time_start)/double(repeat));
+      inner_gflops.push_back(double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9);
+      inner_times.push_back((wall_time_stop - wall_time_start)/double(repeat));
 
       // Print results
       if(world.rank() == 0) {

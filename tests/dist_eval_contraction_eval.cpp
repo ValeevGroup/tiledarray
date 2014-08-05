@@ -67,7 +67,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
 
     std::array<TiledRange1, 2ul> tranges =
         {{ left.trange().data().front(), right.trange().data().back() }};
-    result_tr = typename impl_type::trange_type(tranges.begin(), tranges.end());
+    result_tr = impl_type::trange_type(tranges.begin(), tranges.end());
 
     pmap.reset(new detail::BlockedPmap(* GlobalFixture::world, result_tr.tiles().volume()));
   }
@@ -142,7 +142,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   detail::ProcGrid proc_grid;
   array_eval_type left_arg;
   array_eval_type right_arg;
-  typename impl_type::trange_type result_tr;
+  impl_type::trange_type result_tr;
   std::shared_ptr<impl_type::pmap_interface> pmap;
   op_type op;
 

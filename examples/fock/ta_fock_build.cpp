@@ -113,22 +113,22 @@ int main(int argc, char** argv) {
   );
 
   // Create C^T blocking
-  std::vector<TiledArray::TiledRange1> coeff_blocking2{
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
-      TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end())
-  };
+  std::vector<TiledArray::TiledRange1> coeff_blocking2;
+  coeff_blocking2.reserve(2);
+  coeff_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
+  coeff_blocking2.push_back(TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end()));
 
-  std::vector<TiledArray::TiledRange1> df_blocking2 = {
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
-      TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end())
-  };
+  std::vector<TiledArray::TiledRange1> df_blocking2;
+  df_blocking2.reserve(3);
+  df_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
+  df_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
+  df_blocking2.push_back(TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end()));
 
-  std::vector<TiledArray::TiledRange1> temp_blocking2 = {
-      TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end()),
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
-      TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end())
-  };
+  std::vector<TiledArray::TiledRange1> temp_blocking2;
+  temp_blocking2.reserve(3);
+  temp_blocking2.push_back(TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end()));
+  temp_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
+  temp_blocking2.push_back(TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end()));
 
 
   TiledArray::TiledRange matrix_trange(matrix_blocking2.begin(), matrix_blocking2.end());
