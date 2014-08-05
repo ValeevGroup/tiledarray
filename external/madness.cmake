@@ -75,8 +75,8 @@ elseif(TA_EXPERT)
 
 else()
 
-  if(NOT DEFINED MADNESS_URL)
-    set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
+  if(NOT DEFINED Madness_URL)
+    set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
   endif()
   message(STATUS "Will pull MADNESS from ${MADNESS_URL}")  
   
@@ -179,7 +179,7 @@ else()
     PREFIX ${CMAKE_INSTALL_PREFIX}
     STAMP_DIR ${MADNESS_BINARY_DIR}/stamp
    #--Download step--------------
-    GIT_REPOSITORY ${MADNESS_URL}
+    GIT_REPOSITORY ${Madness_URL}
    #--Update/Patch step----------
     UPDATE_COMMAND ""
     PATCH_COMMAND /bin/sh ${MADNESS_SOURCE_DIR}/autogen.sh

@@ -55,8 +55,8 @@ elseif(TA_EXPERT)
 
 else()
 
-  if(NOT DEFINED ELEMENTAL_URL)
-    set(ELEMENTAL_URL https://github.com/elemental/Elemental.git)
+  if(NOT DEFINED Elemental_URL)
+    set(Elemental_URL https://github.com/elemental/Elemental.git)
   endif()
   message(STATUS "Will pull Elemental from ${ELEMENTAL_URL}")
   
@@ -95,7 +95,7 @@ else()
     PREFIX ${CMAKE_INSTALL_PREFIX}
     STAMP_DIR ${ELEMENTAL_BINARY_DIR}/stamp
    #--Download step--------------
-    GIT_REPOSITORY ${ELEMENTAL_URL}
+    GIT_REPOSITORY ${Elemental_URL}
     GIT_TAG v0.84
    #--Update/Patch step----------
     UPDATE_COMMAND ""
