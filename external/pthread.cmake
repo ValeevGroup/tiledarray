@@ -5,3 +5,5 @@ find_package(Threads REQUIRED)
 if(NOT CMAKE_USE_PTHREADS_INIT AND NOT CMAKE_USE_HP_PTHREAD_INIT)
   message(FATAL_ERROR "TiledArray requires pthreads.")
 endif()
+
+list(APPEND TiledArray_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})

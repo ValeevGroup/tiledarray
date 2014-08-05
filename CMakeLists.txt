@@ -27,6 +27,12 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (TiledArray)
 
+# Configure options
+option(ENABLE_MPI "Enable MPI" ON)
+option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
+option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
+option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+
 # Set TiledArray version
 set(TILEDARRAY_MAJOR_VERSION 1)
 set(TILEDARRAY_MINOR_VERSION 0)
@@ -35,9 +41,37 @@ set(TILEDARRAY_BUILDID alpha)
 set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
 set(TARGET_ARCH "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
 
-option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
-option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
-option(DISABLE_MPI "Disable the use of MPI" OFF)
+# extra cmake files are shipped with TiledArray
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
+
+include(CMakePushCheckState)
+include(GNUInstallDirs)
+include(AppendFlags)
+
+##########################
+# Standard build variables
+##########################
+
+# Get standard build variables from the environment if they have not already been set
+if(NOT CMAKE_C_FLAGS OR NOT DEFINED CMAKE_C_FLAGS)
+  set(CMAKE_C_FLAGS "$ENV{CPPFLAGS}")
+  append_flags(CMAKE_C_FLAGS "$ENV{CFLAGS}")
+endif()
+if(NOT CMAKE_CXX_FLAGS OR NOT DEFINED CMAKE_CXX_FLAGS)
+  set(CMAKE_CXX_FLAGS "$ENV{CPPFLAGS}")
+  append_flags(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS}")
+endif()
+if(NOT CMAKE_EXE_LINKER_FLAGS OR NOT DEFINED CMAKE_EXE_LINKER_FLAGS)
+  set(CMAKE_EXE_LINKER_FLAGS "$ENV{LDFLAGS}")
+endif()
+if(NOT CMAKE_SHARED_LINKER_FLAGS OR NOT DEFINED CMAKE_SHARED_LINKER_FLAGS)
+  set(CMAKE_SHARED_LINKER_FLAGS "$ENV{LDFLAGS}")
+endif()
+if(NOT CMAKE_STATIC_LINKER_FLAGS OR NOT DEFINED CMAKE_STATIC_LINKER_FLAGS)
+  set(CMAKE_STATIC_LINKER_FLAGS "$ENV{LDFLAGS}")
+endif()
+
+
 
 enable_language (CXX)
 if (NOT CMAKE_CXX_COMPILER)
@@ -57,9 +91,6 @@ set(TILEDARRAY_ALIGNMENT ${VECTOR_ALIGNMENT})
 set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
 mark_as_advanced(CACHE_LINE_SIZE)
 set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
-
-# extra cmake files are shipped with TiledArray
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
 
 set(CMAKE_SKIP_RPATH FALSE)
 
@@ -121,71 +152,26 @@ include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
 check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
 
-include(GNUInstallDirs)
-
-##########################
-# Set the MPI compliers
-##########################
-
-# Set the MPICC compiler
-if(NOT DEFINED MPI_C_COMPILER AND NOT DISABLE_MPI)
-  set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
-endif()
-
-# Set the MPICXX complier
-if(NOT DEFINED MPI_CXX_COMPILER AND NOT DISABLE_MPI)
-  set(MPI_CXX_COMPILER ${CMAKE_CXX_COMPILER})
-endif()
-
 ##########################
 # external dependencies
 ##########################
 add_custom_target(External)
+
+include(external/pthread.cmake)
+include(external/mpi.cmake)
+include(external/lapack.cmake)
 include(external/eigen.cmake)
-if (TA_BUILD_UNITTEST)
-  include(external/boost.cmake)
-endif()
-
 include(external/madness.cmake)
-
-# look for Elemental if MADNESS has it, or Elemental_DIR was given explicitly
-if (Elemental_DIR OR MADNESS_HAS_ELEMENTAL)
-  # if MADNESS found but does not support elemental, too much potential for error, skip
-  if (Madness_FOUND AND NOT MADNESS_HAS_ELEMENTAL)
-    message(WARNING "Found MADNESS but it does not know about Elemental ... will punt on Elemental")
-  else()
-    include(external/elemental.cmake)
-  endif()
-endif()
-  
 if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
-
-##########################
-# TiledArray compile options
-##########################
-list(APPEND TiledArray_INCLUDE_DIRS 
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_BINARY_DIR}/src
-    ${Madness_INCLUDE_DIRS}
-    ${EIGEN_INCLUDE_DIR})
-if(TILEDARRAY_HAS_ELEMENTAL)
-  list(APPEND TiledArray_INCLUDE_DIRS
-      ${ELEMENTAL_INCLUDE_DIR})
-endif()
-
-list(APPEND TiledArray_LIBRARIES ${Madness_LIBRARIES})
-if(TILEDARRAY_HAS_ELEMENTAL)
-  list(APPEND TiledArray_LIBRARIES ${ELEMENTAL_LIBRARIES})
-endif()
-#list(APPEND TiledArray_LIBRARIES tiledarray)
-set(TiledArray_LINK_FLAGS ${Madness_LINK_FLAGS})
-set(TiledArray_COMPILE_FLAGS ${Madness_COMPILE_FLAGS})
 
 ##########################
 # sources
 ##########################
+
+include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
+
 add_subdirectory(src)
 add_subdirectory(examples)
 add_subdirectory(doc)
