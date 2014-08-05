@@ -3,15 +3,6 @@
 include(AppendFlags)
 
 if(ENABLE_MPI)
-  # Set the MPICC compiler
-  if(NOT DEFINED MPI_C_COMPILER)
-    set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
-  endif()
-  
-  # Set the MPICXX complier
-  if(NOT DEFINED MPI_CXX_COMPILER)
-    set(MPI_CXX_COMPILER ${CMAKE_CXX_COMPILER})
-  endif()
 
   # Try to find MPI
   find_package(MPI)
