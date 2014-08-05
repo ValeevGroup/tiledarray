@@ -47,7 +47,7 @@ Configuration:
   --help                  print this message
   --prefix=               install prefix (CMAKE_INSTALL_PREFIX=)
   --debug                 debug build (CMAKE_BUILD_TYPE=Debug)
-  --unittest              build unit tests (CMAKE_BUILD_UNITTESTS=TRUE)
+  --unittest              build unit tests (TA_BUILD_UNITTEST=TRUE)
   --lapack=               LAPACK libraries (LAPACK_LIBRARIES=)
   --integer4              Assume integer*4 in Fortran (INTEGER4=TRUE), otherwise
                           integer*8 is the default Fortran integer size.
