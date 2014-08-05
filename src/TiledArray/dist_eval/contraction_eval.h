@@ -1025,7 +1025,7 @@ namespace TiledArray {
       const unsigned int right_end = op.right_rank();
 
       // Construct a vector TiledRange1 objects from the left- and right-hand
-      // arguments that will be used to construct the result TiledTange. Also,
+      // arguments that will be used to construct the result TiledRange. Also,
       // compute the fused outer dimension sizes, number of tiles and elements,
       // for the contraction.
       typename impl_type::trange_type::Ranges ranges(op.result_rank());
