@@ -65,7 +65,6 @@ if(NOT CMAKE_EXE_LINKER_FLAGS OR NOT DEFINED CMAKE_EXE_LINKER_FLAGS)
   set(CMAKE_EXE_LINKER_FLAGS "$ENV{LDFLAGS}")
 endif()
 
-
 enable_language (CXX)
 if (NOT CMAKE_CXX_COMPILER)
   message(FATAL_ERROR "C++ compiler not found")
@@ -103,7 +102,7 @@ list(APPEND CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS})
 # Check for gerneral C++11 support
 CHECK_CXX_SOURCE_COMPILES(
     "
-    #if __cplusplus <= 199711L
+    #if (__cplusplus < 201103L) || (defined(__INTEL_CXX11_MODE__)
     #error C++11 support not enabled.
     #endif
     int main(){ return 0; }
