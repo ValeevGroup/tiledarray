@@ -8,9 +8,16 @@ set(CMAKE_CXX_COMPILER bgclang++11)
 set(MPI_C_COMPILER mpicc)
 
 # Set compile flags
-#set(CMAKE_CXX_COMPILE_FLAGS "")
-#set(CMAKE_EXE_LINKER_FLAGS "")
-#set(CMAKE_STATIC_LINKER_FLAGS "")
+set(CMAKE_C_FLAGS_INIT             "-std=c99" CACHE STRING "Inital C compile flags")
+set(CMAKE_C_FLAGS_DEBUG            "-g -Wall" CACHE STRING "Inital C debug compile flags")
+set(CMAKE_C_FLAGS_MINSIZEREL       "-Os -march=native -DNDEBUG" CACHE STRING "Inital C minimum size release compile flags")
+set(CMAKE_C_FLAGS_RELEASE          "-O3 -march=native -DNDEBUG" CACHE STRING "Inital C release compile flags")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-O2 -g -Wall" CACHE STRING "Inital C release with debug info compile flags")
+set(CMAKE_CXX_FLAGS_INIT           "" CACHE STRING "Inital C++ compile flags")
+set(CMAKE_CXX_FLAGS_DEBUG          "-g -Wall" CACHE STRING "Inital C++ debug compile flags")
+set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -march=native -DNDEBUG" CACHE STRING "Inital C++ minimum size release compile flags")
+set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -march=native -DNDEBUG" CACHE STRING "Inital C++ release compile flags")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ release with debug info compile flags")
 
 # Set environment paths
 set(CLANG_DIR  "/home/projects/llvm")
@@ -37,6 +44,7 @@ set(BLAS_LIBRARY ${ESSL_DIR}/lib64/libesslbg.a)
 set(BLAS_LIBRARIES ${BLAS_LIBRARY};${XLF_LIBRARIES};${XL_LIBRARIES})
 set(LAPACK_LIBRARY ${LAPACK_DIR}/lib/liblapack.a)
 set(LAPACK_LIBRARIES ${LAPACK_LIBRARY};${BLAS_LIBRARIES})
+set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 
 ##############################################################
 
