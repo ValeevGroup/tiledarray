@@ -20,7 +20,7 @@
 #ifndef TILEDARRAY_CONFIG_H__INCLUDED
 #define TILEDARRAY_CONFIG_H__INCLUDED
 
-#include <madness_config.h>
+#include <madness/madness_config.h>
 
 /* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
 #define TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@

@@ -23,7 +23,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/utility.h>
-#include <world/stdarray.h>
+#include <madness/world/stdarray.h>
 #include <vector>
 #include <stdarg.h>
 

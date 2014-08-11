@@ -27,8 +27,8 @@
 
 #pragma GCC diagnostic push
 #pragma GCC system_header
-#include <world/world.h>
-#include <tensor/cblas.h>
+#include <madness/world/world.h>
+#include <madness/tensor/cblas.h>
 #pragma GCC diagnostic pop
 
 #endif // TILEDARRAY_MADNESS_H__INCLUDED

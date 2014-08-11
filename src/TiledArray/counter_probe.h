@@ -20,7 +20,7 @@
 #ifndef TILEDARRAY_COUNTER_PROBE_H__INCLUDED
 #define TILEDARRAY_COUNTER_PROBE_H__INCLUDED
 
-#include <world/atomicint.h>
+#include <madness/world/atomicint.h>
 
 namespace TiledArray {
   namespace detail {

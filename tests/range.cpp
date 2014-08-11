@@ -22,7 +22,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include <sstream>
-#include <world/bufar.h>
+#include <madness/world/bufar.h>
 
 template <typename SizeArray>
 inline std::size_t calc_volume(const SizeArray& size) {

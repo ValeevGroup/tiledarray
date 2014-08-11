@@ -31,7 +31,7 @@ if(MADNESS_FOUND)
   # sanity check: try compiling a simple program
   CHECK_CXX_SOURCE_COMPILES(
     "
-    #include <world/world.h>
+    #include <madness/world/world.h>
     int main(int argc, char** argv) {
       madness::World& world = madness::initialize(argc, argv);
       madness::finalize();
@@ -50,7 +50,7 @@ if(MADNESS_FOUND)
     # Check to that MADNESS was compiled with Elemental support.
     CHECK_CXX_SOURCE_COMPILES(
         "
-        #include <madness_config.h>
+        #include <madness/madness_config.h>
         #ifndef MADNESS_HAS_ELEMENTAL
         # error MADNESS does not have Elemental
         #endif
