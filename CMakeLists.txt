@@ -96,13 +96,10 @@ set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 #include(TestCXXAcceptsFlag)
 include(CheckCXXSourceCompiles)
 
-cmake_push_check_state()
-list(APPEND CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS})
-
 # Check for gerneral C++11 support
 CHECK_CXX_SOURCE_COMPILES(
     "
-    #if (__cplusplus < 201103L) || (defined(__INTEL_CXX11_MODE__)
+    #if (__cplusplus < 201103L) || defined(__INTEL_CXX11_MODE__)
     #error C++11 support not enabled.
     #endif
     int main(){ return 0; }
@@ -136,8 +133,6 @@ if(TILEDARRAY_HAS_CXX11)
     TILEDARRAY_HAVE_VARIADIC_TEMPLATES) 
  
 endif(TILEDARRAY_HAS_CXX11)
-
-cmake_pop_check_state()
 
 # Check type support
 include(CheckTypeSize)
