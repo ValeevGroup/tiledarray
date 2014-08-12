@@ -28,3 +28,6 @@ endif()
 set(BLAS_LIBRARIES "-Wl,--start-group;${MKLROOT}/lib/intel64/libmkl_intel_lp64.a;${MKLROOT}/lib/intel64/libmkl_core.a;${MKLROOT}/lib/intel64/libmkl_sequential.a;-Wl,--end-group;-lpthread;-lm" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES "${BLAS_LIBRARIES};-ldl" CACHE STRING "LAPACK linker flags")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
+
+# Set BOOST directory
+set(BOOST_ROOT "$ENV{BOOST_DIR}" CACHE STRING "Boost root directory")
