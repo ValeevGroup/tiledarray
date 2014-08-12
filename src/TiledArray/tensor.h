@@ -268,7 +268,7 @@ namespace TiledArray {
         // dimension.
         size_type block_size = other.range().size()[ndim1];
         for(int i = -1 + ndim1 ; i >= 0; --i) {
-          if(perm[i] != i)
+          if(int(perm[i]) != i)
             break;
           block_size *= other.range().size()[i];
         }
@@ -347,7 +347,7 @@ namespace TiledArray {
         // dimension.
         size_type block_size = other.range().size()[ndim1];
         for(int i = -1 + ndim1 ; i >= 0; --i) {
-          if(perm[i] != i)
+          if(int(perm[i]) != i)
             break;
           block_size *= other.range().size()[i];
         }
@@ -430,7 +430,7 @@ namespace TiledArray {
         // dimension.
         size_type block_size = left.range().size()[ndim1];
         for(int i = -1 + ndim1 ; i >= 0; --i) {
-          if(perm[i] != i)
+          if(int(perm[i]) != i)
             break;
           block_size *= left.range().size()[i];
         }

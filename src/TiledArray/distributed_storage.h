@@ -192,8 +192,8 @@ namespace TiledArray {
         // Check that the process map is appropriate for this storage object
         TA_ASSERT(pmap_);
         TA_ASSERT(pmap_->size() == max_size);
-        TA_ASSERT(pmap_->rank() == world.rank());
-        TA_ASSERT(pmap_->procs() == world.size());
+        TA_ASSERT(pmap_->rank() == pmap_interface::size_type(world.rank()));
+        TA_ASSERT(pmap_->procs() == pmap_interface::size_type(world.size()));
         WorldObject_::process_pending();
       }
 
