@@ -259,7 +259,7 @@ else()
   set(Madness_INCLUDE_DIRS
       ${MADNESS_BINARY_DIR}/src
       ${MADNESS_SOURCE_DIR}/src)
-  set(Madness_LIBRARIES ${MADNESS_BINARY_DIR}/src/madnes/world/libMADworld.a)
+  set(Madness_LIBRARIES ${MADNESS_BINARY_DIR}/src/madness/world/libMADworld.a)
 
 endif()
 
