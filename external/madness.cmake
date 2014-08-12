@@ -78,6 +78,9 @@ else()
   if(NOT DEFINED Madness_URL)
     set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
   endif()
+  if(NOT DEFINED Madness_TAG)
+    set(Madness_TAG "2bb778d3141db70bd2b59a823aa371d5470f49a2")
+  endif()
   message(STATUS "Will pull MADNESS from ${MADNESS_URL}")  
   
   if(ENABLE_ELEMENTAL)
@@ -180,6 +183,7 @@ else()
     STAMP_DIR ${MADNESS_BINARY_DIR}/stamp
    #--Download step--------------
     GIT_REPOSITORY ${Madness_URL}
+    GIT_TAG ${Madness_TAG}
    #--Update/Patch step----------
     UPDATE_COMMAND ""
     PATCH_COMMAND /bin/sh ${MADNESS_SOURCE_DIR}/autogen.sh
@@ -252,12 +256,10 @@ else()
   # dependencies. So all that needs to be done here is set Madness_INCLUDE_DIR,
   # Madness_INCLUDE_DIRS, Madness_LIBRARY, and Madness_LIBRARIES with the paths
   # and libraries for the built version of MADNESS above.
-  set(Madness_INCLUDE_DIRS 
-      ${MADNESS_BINARY_DIR}/include
-      ${MADNESS_SOURCE_DIR}/include
-      ${MADNESS_BINARY_DIR}/src/lib
-      ${MADNESS_SOURCE_DIR}/src/lib)
-  set(Madness_LIBRARIES ${MADNESS_BINARY_DIR}/src/lib/world/libMADworld.a)
+  set(Madness_INCLUDE_DIRS
+      ${MADNESS_BINARY_DIR}/src
+      ${MADNESS_SOURCE_DIR}/src)
+  set(Madness_LIBRARIES ${MADNESS_BINARY_DIR}/src/madnes/world/libMADworld.a)
 
 endif()
 
