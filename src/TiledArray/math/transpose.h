@@ -44,7 +44,7 @@ namespace TiledArray {
 
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
-      gather_trans(const Arg* restrict const arg, const std::size_t arg_stride,
+      gather_trans(const Arg* restrict const arg, const std::size_t /*arg_stride*/,
           Result* restrict const result)
       {
         // Load arg block
@@ -57,7 +57,7 @@ namespace TiledArray {
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      unary_gather_trans(const Arg* restrict const arg, const std::size_t arg_stride,
+      unary_gather_trans(const Arg* restrict const arg, const std::size_t /*arg_stride*/,
           Result* restrict const result, const Op& op)
       {
         // Load arg block
@@ -76,7 +76,7 @@ namespace TiledArray {
       template <typename Left, typename Right, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
       binary_gather_trans(const Left* restrict const left,
-          const Right* restrict const right, const std::size_t arg_stride,
+          const Right* restrict const right, const std::size_t /*arg_stride*/,
           Result* restrict const result, const Op& op)
       {
         // Load left block
@@ -98,7 +98,7 @@ namespace TiledArray {
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
       block_scatter(const Arg* restrict const arg, Result* restrict const result,
-          const std::size_t result_stride)
+          const std::size_t /*result_stride*/)
       {
         VecOpUnwindN::uninitialized_copy(arg, result);
       }

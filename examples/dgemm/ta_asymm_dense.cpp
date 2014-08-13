@@ -68,12 +68,12 @@ int main(int argc, char** argv) {
   // Construct TiledRange
   std::vector<unsigned int> blocking_row;
   blocking_row.reserve(row_blocks + 1);
-  for(std::size_t i = 0; i <= row_size; i += row_block_size)
+  for(long i = 0l; i <= row_size; i += row_block_size)
     blocking_row.push_back(i);
 
   std::vector<unsigned int> blocking_col;
   blocking_col.reserve(col_blocks + 1);
-  for(std::size_t i = 0; i <= col_size; i += col_block_size)
+  for(long i = 0l; i <= col_size; i += col_block_size)
     blocking_col.push_back(i);
 
   // Stucture of c

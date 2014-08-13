@@ -97,7 +97,8 @@ struct ContractionEvalFixture : public SparseShapeFixture {
     // that is bisected the row and column dimensions.
     std::vector<std::size_t> weight(array.range().dim(), 0ul);
     std::size_t MN[2] = { 1ul, 1ul };
-    int i = array.range().dim() - 1;
+    const int dim = array.range().dim();
+    int i = dim - 1;
     for(; i >= middle; --i) {
       weight[i] = MN[1];
       MN[1] *= array.trange().elements().size()[i];
@@ -125,7 +126,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
         start[0] += tile.range().start()[i] * weight[i] * size[0];
         size[0] *= tile.range().size()[i];
       }
-      for(; i < array.range().dim(); ++i) {
+      for(; i < dim; ++i) {
         start[1] += tile.range().start()[i] * weight[i] * size[1];
         size[1] *= tile.range().size()[i];
       }

@@ -112,12 +112,12 @@ namespace TiledArray {
         return TiledArray::mult(first, second, factor_, BinaryInterface_::permutation());
       }
 
-      result_type permute(zero_left_type, const Right& second) const {
+      result_type permute(zero_left_type, const Right&) const {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
-      result_type permute(const Left& first, zero_right_type) const {
+      result_type permute(const Left&, zero_right_type) const {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
@@ -146,28 +146,28 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!RC, result_type>::type
-      no_permute(zero_left_type, const Right& second) {
+      no_permute(zero_left_type, const Right&) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<RC, result_type>::type
-      no_permute(zero_left_type, Right& second) {
+      no_permute(zero_left_type, Right&) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!LC, result_type>::type
-      no_permute(const Left& first, zero_right_type) {
+      no_permute(const Left&, zero_right_type) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
-      no_permute(Left& first, zero_right_type) {
+      no_permute(Left&, zero_right_type) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }

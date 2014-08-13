@@ -177,12 +177,12 @@ namespace TiledArray {
           const std::size_t row_size, const std::size_t col_size)
       {
         // Check for the simple cases first ...
-        if(nprocs == 1ul) { // Only one process
+        if(nprocs == 1u) { // Only one process
 
           // Set process grid sizes
-          proc_rows_ = 1ul;
-          proc_cols_ = 1ul;
-          proc_size_ = 1ul;
+          proc_rows_ = 1u;
+          proc_cols_ = 1u;
+          proc_size_ = 1u;
 
           // Set this process rank
           rank_row_ = 0;
@@ -206,9 +206,9 @@ namespace TiledArray {
             rank_col_ = rank % proc_cols_;
 
             // Set local counts
-            local_rows_ = 1ul;
-            local_cols_ = 1ul;
-            local_size_ = 1ul;
+            local_rows_ = 1u;
+            local_cols_ = 1u;
+            local_size_ = 1u;
           }
 
         } else { // The not so simple case
@@ -240,8 +240,8 @@ namespace TiledArray {
             rank_col_ = rank % proc_cols_;
 
             // Set local counts
-            local_rows_ = (rows_ / proc_rows_) + (rank_row_ < (rows_ % proc_rows_) ? 1ul : 0ul);
-            local_cols_ = (cols_ / proc_cols_) + (rank_col_ < (cols_ % proc_cols_) ? 1ul : 0ul);
+            local_rows_ = (rows_ / proc_rows_) + (size_type(rank_row_) < (rows_ % proc_rows_) ? 1u : 0u);
+            local_cols_ = (cols_ / proc_cols_) + (size_type(rank_col_) < (cols_ % proc_cols_) ? 1u : 0u);
             local_size_ = local_rows_ * local_cols_;
           }
         }
@@ -252,9 +252,9 @@ namespace TiledArray {
 
       /// All sizes are initialized to zero.
       ProcGrid() :
-        world_(NULL), rows_(0), cols_(0), size_(0), proc_rows_(0),
-        proc_cols_(0), proc_size_(0), rank_row_(0), rank_col_(0),
-        local_rows_(0), local_cols_(0), local_size_(0)
+        world_(NULL), rows_(0u), cols_(0u), size_(0u), proc_rows_(0u),
+        proc_cols_(0u), proc_size_(0u), rank_row_(0), rank_col_(0),
+        local_rows_(0u), local_cols_(0u), local_size_(0u)
       { }
 
       /// Construct a process grid
@@ -275,8 +275,8 @@ namespace TiledArray {
         local_rows_(0ul), local_cols_(0ul), local_size_(0ul)
       {
         // Check for non-zero sizes
-        TA_ASSERT(rows_ >= 1ul);
-        TA_ASSERT(cols_ >= 1ul);
+        TA_ASSERT(rows_ >= 1u);
+        TA_ASSERT(cols_ >= 1u);
         TA_ASSERT(row_size >= 1ul);
         TA_ASSERT(col_size >= 1ul);
 
@@ -305,14 +305,14 @@ namespace TiledArray {
           const size_type rows, const size_type cols,
           const std::size_t row_size, const std::size_t col_size) :
         world_(&world), rows_(rows), cols_(cols), size_(rows_ * cols_),
-        proc_rows_(0ul), proc_cols_(0ul), proc_size_(0ul), rank_row_(-1),
-        rank_col_(-1), local_rows_(0ul), local_cols_(0ul), local_size_(0ul)
+        proc_rows_(0u), proc_cols_(0u), proc_size_(0u), rank_row_(-1),
+        rank_col_(-1), local_rows_(0u), local_cols_(0u), local_size_(0u)
       {
         // Check for non-zero sizes
-        TA_ASSERT(rows >= 1ul);
-        TA_ASSERT(cols >= 1ul);
-        TA_ASSERT(row_size >= 1ul);
-        TA_ASSERT(col_size >= 1ul);
+        TA_ASSERT(rows >= 1u);
+        TA_ASSERT(cols >= 1u);
+        TA_ASSERT(row_size >= 1u);
+        TA_ASSERT(col_size >= 1u);
         TA_ASSERT(test_rank < test_nprocs);
 
         init(test_rank, test_nprocs, row_size, col_size);
@@ -474,7 +474,7 @@ namespace TiledArray {
       /// \return The process the corresponds to the process coordinate \c (row,rank_col)
       ProcessID map_row(const size_type row) const {
         TA_ASSERT(row < proc_rows_);
-        return row * proc_cols_ + rank_col_;
+        return rank_col_ + row * proc_cols_;
       }
 
       /// Map a column to the process in this process's row

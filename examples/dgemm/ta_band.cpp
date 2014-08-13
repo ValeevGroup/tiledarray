@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
   // Construct TiledRange
   std::vector<unsigned int> blocking;
   blocking.reserve(num_blocks + 1);
-  for(std::size_t i = 0; i <= matrix_size; i += block_size)
+  for(long i = 0l; i <= matrix_size; i += block_size)
     blocking.push_back(i);
 
   std::vector<TiledArray::TiledRange1> blocking2(2,
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
   // Construct shape
   TiledArray::Tensor<float> shape_tensor(trange.tiles(), 0.0f);
-  for(long i = 0; i < num_blocks; ++i) {
+  for(long i = 0l; i < num_blocks; ++i) {
     long j = std::max<long>(i - band_width + 1, 0);
     const long j_end = std::min<long>(i + band_width - 1, num_blocks);
     long ij = i * num_blocks + j;

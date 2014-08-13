@@ -47,7 +47,7 @@ namespace TiledArray {
       template <typename X, typename Y, typename A, typename Op>
       static TILEDARRAY_FORCE_INLINE void
       outer(const X* restrict const left, const Y* restrict const right,
-          A* restrict const result, const std::size_t stride, const Op& op)
+          A* restrict const result, const std::size_t /*stride*/, const Op& op)
       {
         TILEDARRAY_ALIGNED_STORAGE A result_block[TILEDARRAY_LOOP_UNWIND];
         VecOpUnwindN::copy(result, result_block);
@@ -62,7 +62,7 @@ namespace TiledArray {
       static TILEDARRAY_FORCE_INLINE void
       fill(const X* restrict const x_block, const Y* restrict const y_block,
           const A* restrict const a, B* restrict const b,
-          const std::size_t stride, const Op& op)
+          const std::size_t /*stride*/, const Op& op)
       {
         TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
         VecOpUnwindN::copy(a, a_block);
@@ -76,7 +76,7 @@ namespace TiledArray {
       template <typename X, typename Y, typename A, typename Op>
       static TILEDARRAY_FORCE_INLINE void
       fill(const X* restrict const left, const Y* restrict const right,
-          A* restrict const result, const std::size_t stride, const Op& op)
+          A* restrict const result, const std::size_t /*stride*/, const Op& op)
       {
         TILEDARRAY_ALIGNED_STORAGE A result_block[TILEDARRAY_LOOP_UNWIND];
         VecOpUnwindN::unary(right, result_block,

@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
       // Construct TiledRange
       std::vector<unsigned int> blocking;
       blocking.reserve(num_blocks + 1);
-      for(std::size_t i = 0; i <= matrix_size; i += block_size)
+      for(long i = 0l; i <= matrix_size; i += block_size)
         blocking.push_back(i);
 
       std::vector<TiledArray::TiledRange1> blocking2(2,

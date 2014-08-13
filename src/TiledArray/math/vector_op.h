@@ -112,13 +112,13 @@ namespace TiledArray {
 
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
-      scatter(const Arg* restrict const arg, Result* restrict const result, const std::size_t stride) {
+      scatter(const Arg* restrict const arg, Result* restrict const result, const std::size_t /*stride*/) {
         *result = arg[offset];
       }
 
       template <typename Arg, typename Result>
       static TILEDARRAY_FORCE_INLINE void
-      gather(const Arg* restrict const arg, Result* restrict const result, const std::size_t stride) {
+      gather(const Arg* restrict const arg, Result* restrict const result, const std::size_t /*stride*/) {
         result[offset] = *arg;
       }
 

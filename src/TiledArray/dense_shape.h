@@ -105,10 +105,10 @@ namespace TiledArray {
     static DenseShape subt(const DenseShape&, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
-    static DenseShape subt(const DenseShape& other, const Scalar) { return DenseShape(); }
+    static DenseShape subt(const DenseShape&, const Scalar) { return DenseShape(); }
 
     template <typename Scalar>
-    static DenseShape subt(const DenseShape& other, const Scalar, const Permutation&) { return DenseShape(); }
+    static DenseShape subt(const DenseShape&, const Scalar, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
     static DenseShape subt(const Scalar) { return DenseShape(); }
@@ -121,10 +121,10 @@ namespace TiledArray {
     static DenseShape mult(const DenseShape&, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
-    static DenseShape mult(const DenseShape& other, const Scalar) { return DenseShape(); }
+    static DenseShape mult(const DenseShape&, const Scalar) { return DenseShape(); }
 
     template <typename Scalar>
-    static DenseShape mult(const DenseShape& other, const Scalar, const Permutation&) { return DenseShape(); }
+    static DenseShape mult(const DenseShape&, const Scalar, const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
     static DenseShape gemm(const DenseShape&, const Scalar, const math::GemmHelper&)

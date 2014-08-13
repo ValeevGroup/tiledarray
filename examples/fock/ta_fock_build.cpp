@@ -95,17 +95,17 @@ int main(int argc, char** argv) {
   // Construct TiledRange
   std::vector<unsigned int> matrix_blocking;
   matrix_blocking.reserve(num_blocks + 1);
-  for(std::size_t i = 0; i <= matrix_size; i += block_size)
+  for(long i = 0; i <= matrix_size; i += block_size)
     matrix_blocking.push_back(i);
 
   std::vector<unsigned int> coeff_blocking;
   coeff_blocking.reserve(coeff_num_blocks + 1);
-  for(std::size_t i = 0; i <= coeff_size; i += coeff_block_size)
+  for(long i = 0; i <= coeff_size; i += coeff_block_size)
     coeff_blocking.push_back(i);
 
   std::vector<unsigned int> df_blocking;
   df_blocking.reserve(df_num_blocks + 1);
-  for(std::size_t i = 0; i <= df_size; i += df_block_size)
+  for(long i = 0; i <= df_size; i += df_block_size)
     df_blocking.push_back(i);
 
   std::vector<TiledArray::TiledRange1> matrix_blocking2(

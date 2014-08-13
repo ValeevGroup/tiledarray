@@ -71,7 +71,7 @@ namespace TiledArray {
 
       template <typename Left, typename Right, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      col_reduce(const Left* restrict const left, const std::size_t stride,
+      col_reduce(const Left* restrict const left, const std::size_t /*stride*/,
           const Right* restrict const right, Result* restrict const result,
           const Op& op)
       {
@@ -89,7 +89,7 @@ namespace TiledArray {
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      col_reduce(const Arg* restrict const arg, const std::size_t stride,
+      col_reduce(const Arg* restrict const arg, const std::size_t /*stride*/,
           Result* restrict const result, const Op& op)
       {
         // Load the arg block

@@ -63,7 +63,7 @@ namespace TiledArray {
 
       template <typename U>
       typename madness::enable_if<std::is_scalar<U> >::type
-      default_construct(const size_type n, U* restrict) { }
+      default_construct(const size_type, U* restrict) { }
 
       template <typename U>
       typename madness::disable_if<std::is_scalar<U> >::type
