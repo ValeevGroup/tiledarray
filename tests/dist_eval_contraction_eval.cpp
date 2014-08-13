@@ -138,6 +138,81 @@ struct ContractionEvalFixture : public SparseShapeFixture {
     return matrix;
   }
 
+
+  /// Distributed contraction evaluator factory function
+
+  /// Construct a distributed contraction evaluator, which constructs a new
+  /// tensor by applying \c op to tiles of \c left and \c right.
+  /// \tparam LeftTile Tile type of the left-hand argument
+  /// \tparam RightTile Tile type of the right-hand argument
+  /// \tparam Policy The policy type of the argument
+  /// \tparam Op The unary tile operation
+  /// \param left The left-hand argument
+  /// \param right The right-hand argument
+  /// \param world The world where the argument will be evaluated
+  /// \param shape The shape of the evaluated tensor
+  /// \param pmap The process map for the evaluated tensor
+  /// \param perm The permutation applied to the tensor
+  /// \param op The contraction/reduction tile operation
+  template <typename LeftTile, typename RightTile, typename Policy, typename Op>
+  TiledArray::detail::DistEval<typename Op::result_type, Policy> make_contract_eval(
+      const TiledArray::detail::DistEval<LeftTile, Policy>& left,
+      const TiledArray::detail::DistEval<RightTile, Policy>& right,
+      madness::World& world,
+      const typename TiledArray::detail::DistEval<typename Op::result_type, Policy>::shape_type& shape,
+      const std::shared_ptr<typename TiledArray::detail::DistEval<typename Op::result_type, Policy>::pmap_interface>& pmap,
+      const Permutation& perm,
+      const Op& op)
+  {
+    TA_ASSERT(left.range().dim() == op.left_rank());
+    TA_ASSERT(right.range().dim() == op.right_rank());
+    TA_ASSERT((perm.dim() == op.result_rank()) || !perm);
+
+    // Define the impl type
+    typedef TiledArray::detail::ContractionEvalImpl<
+        TiledArray::detail::DistEval<LeftTile, Policy>,
+        TiledArray::detail::DistEval<RightTile, Policy>, Op, Policy> impl_type;
+
+    // Precompute iteration range data
+    const unsigned int num_contract_ranks = op.num_contract_ranks();
+    const unsigned int left_end = op.left_rank();
+    const unsigned int left_middle = left_end - num_contract_ranks;
+    const unsigned int right_end = op.right_rank();
+
+    // Construct a vector TiledRange1 objects from the left- and right-hand
+    // arguments that will be used to construct the result TiledRange. Also,
+    // compute the fused outer dimension sizes, number of tiles and elements,
+    // for the contraction.
+    typename impl_type::trange_type::Ranges ranges(op.result_rank());
+    std::size_t M = 1ul, m = 1ul, N = 1ul, n = 1ul;
+    std::size_t pi = 0ul;
+    for(unsigned int i = 0ul; i < left_middle; ++i) {
+      ranges[(perm ? perm[pi++] : pi++)] = left.trange().data()[i];
+      M *= left.range().size()[i];
+      m *= left.trange().elements().size()[i];
+    }
+    for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
+      ranges[(perm ? perm[pi++] : pi++)] = right.trange().data()[i];
+      N *= right.range().size()[i];
+      n *= right.trange().elements().size()[i];
+    }
+
+    // Compute the number of tiles in the inner dimension.
+    std::size_t K = 1ul;
+    for(std::size_t i = left_middle; i < left_end; ++i)
+      K *= left.range().size()[i];
+
+    // Construct the result range
+    typename impl_type::trange_type trange(ranges.begin(), ranges.end());
+
+    // Construct the process grid
+    TiledArray::detail::ProcGrid proc_grid(world, M, N, m, n);
+
+    return TiledArray::detail::DistEval<typename Op::result_type, Policy>(
+        std::shared_ptr<typename impl_type::DistEvalImpl_>(new impl_type(left,
+            right, world, trange, shape, pmap, perm, op, K, proc_grid)));
+  }
+
   ArrayN left;
   ArrayN right;
   detail::ProcGrid proc_grid;
@@ -155,11 +230,11 @@ BOOST_AUTO_TEST_CASE( constructor )
 {
   typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 
-  BOOST_REQUIRE_NO_THROW(detail::make_contract_eval(left_arg, right_arg, left.get_world(),
+  BOOST_REQUIRE_NO_THROW(make_contract_eval(left_arg, right_arg, left.get_world(),
       DenseShape(), pmap, Permutation(), op));
 
 
-  dist_eval_type1 contract = detail::make_contract_eval(left_arg, right_arg,
+  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
       left_arg.get_world(), DenseShape(), pmap, Permutation(), op);
 
   BOOST_CHECK_EQUAL(& contract.get_world(), GlobalFixture::world);
@@ -178,7 +253,7 @@ BOOST_AUTO_TEST_CASE( eval )
 {
   typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 
-  dist_eval_type1 contract = detail::make_contract_eval(left_arg, right_arg,
+  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
       left_arg.get_world(), DenseShape(), pmap, Permutation(), op);
 
   // Check evaluation
@@ -222,7 +297,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   Permutation perm(1,0);
   op_type pop(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().dim(), tr.tiles().dim(), perm);
 
-  dist_eval_type1 contract = detail::make_contract_eval(left_arg, right_arg,
+  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
       left_arg.get_world(), DenseShape(), pmap, perm, pop);
 
   // Check evaluation
@@ -283,7 +358,7 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
 
   const SparseShape<float> result_shape = left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
 
-  dist_eval_type1 contract = detail::make_contract_eval(left_arg, right_arg,
+  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
       left_arg.get_world(), result_shape, pmap, Permutation(), op);
 
   // Check evaluation
