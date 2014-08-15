@@ -23,7 +23,7 @@
 #
 
 # - Try to find Elemental 
-# This module will look for elemental in Elemental_DIR
+# This module will look for elemental in Elemental_ROOT_DIR
 # ELEMENTAL_FOUND - Elemental found
 # Elemental_INCLUDE_DIR
 # Elemental_LIBRARY_DIR

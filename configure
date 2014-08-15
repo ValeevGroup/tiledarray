@@ -128,7 +128,7 @@ while test $# != 0; do
   --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
   --boost=*)       args="$args -DBOOST_ROOT=`arg \"$1\"`" ;;
   --madness=*)     args="$args -DMadness_ROOT_DIR=`arg \"$1\"`" ;;
-  --elemental=*)   args="$args -DElemental_ROOT_DIR=`arg \"$1\"`" ;;
+  --elemental=*)   args="$args -DElemental_ROOT_DIR=`arg \"$1\"` -DENABLE_ELEMENTAL=1" ;;
   --error-checking=*)   args="$args -DTA_ERROR=`arg \"$1\"`" ;;
   --expert)        args="$args -DTA_EXPERT=TRUE" ;;
   -D*) args="$args $1" ;; # raw  cmake arg
