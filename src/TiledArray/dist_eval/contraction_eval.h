@@ -150,132 +150,45 @@ namespace TiledArray {
 
       // Broadcast kernels -----------------------------------------------------
 
-      /// Broadcast a dense row or column
+      /// Tile conversion task function
 
-      /// \tparam Datum The result vector datum type
-      /// \tparam GenTile Functor type that will generate the tiles to be broadcast
-      /// \param[in] index The index of the first tile to be broadcast
-      /// \param[in] end The end of the tile index range
-      /// \param[in] stride The stride between tile indices
-      /// \param[in] group_root The group root process of the broadcast
-      /// \param[in] group The broadcast group
-      /// \param[in] key_offset The offset that is applied to broadcast keys
-      /// \param[in] gen_tile The tile generation functor
-      /// \param[out] vec The vector that will return the broadcast tiles
-      template <typename Datum, typename GenTile>
-      void bcast(const DenseShape&, size_type index, const size_type end,
-          const size_type stride, const ProcessID group_root, const madness::Group& group,
-          const size_type key_offset, const GenTile& gen_tile, std::vector<Datum>& vec) const
-      {
-        // Iterate over tiles to be broadcast
-        for(size_type i = 0ul; index < end; ++i, index += stride) {
-          // Get tile
-          vec.push_back(Datum(i, gen_tile(index)));
+      /// \tparam Tile The input tile type
+      /// \param tile The input tile
+      /// \return The evaluated version of the lazy tile
+      template <typename Tile>
+      static typename eval_trait<Tile>::type convert_tile_task(const Tile& tile) { return tile; }
 
-          // Broadcast the tile
-          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
-          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
-        }
-      }
 
-      /// Broadcast a sparse row or column
+      /// Conversion function
 
-      /// \tparam Shape The sparse shape type
-      /// \tparam Datum The result vector datum type
-      /// \tparam GenTile Tile generation functor type
-      /// \param[in] shape The shape that will be used to filter zero tiles from
-      /// the broadcast
-      /// \param[in] index The index of the first tile to be broadcast
-      /// \param[in] end The end of the tile index range
-      /// \param[in] stride The stride between tile indices
-      /// \param[in] group_root The group root process of the broadcast
-      /// \param[in] group The broadcast group
-      /// \param[in] key_offset The offset that is applied to broadcast keys
-      /// \param[in] gen_tile The tile generation functor
-      /// \param[out] vec The vector that will return the broadcast tiles
-      template <typename Shape, typename Datum, typename GenTile>
-      void bcast(const Shape& shape, size_type index, const size_type end,
-          const size_type stride, const ProcessID group_root, const madness::Group& group,
-          const size_type key_offset, const GenTile& gen_tile, std::vector<Datum>& vec) const
-      {
-        // Iterate over tiles to be broadcast
-        for(size_type i = 0ul; index < end; ++i, index += stride) {
-          if(shape.is_zero(index)) continue;
-
-          // Get tile
-          vec.push_back(Datum(i, gen_tile(index)));
-
-          // Broadcast the tile
-          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
-          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
-        }
-      }
-
-      /// Tile generator for the root process (owner of the data)
-
-      /// This functor is used by the broadcast function to move tiles from the
-      /// owner on the root process. If the tiles are lazy tiles, a conversion
-      /// task is spawned.
+      /// This function does nothing since tile is not a lazy tile.
       /// \param Arg The type of the argument that holds the input tiles
+      /// \param tile A future to the tile
+      /// \return \c tile
       template <typename Arg>
-      class GenRootTile {
-        Arg& arg_; ///< The argument object that owns the input tiles
-
-        /// Tile conversion task function
-
-        /// \tparam Tile The input tile type
-        /// \param tile The input tile
-        /// \return The evaluated version of the lazy tile
-        template <typename Tile>
-        static typename eval_trait<Tile>::type convert_task(const Tile& tile) { return tile; }
+      static typename madness::disable_if<
+          TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+          madness::Future<typename Arg::eval_type> >::type
+      get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
 
 
-        /// Conversion function
+      /// Conversion function
 
-        /// This function does nothing since tile is not a lazy tile.
-        /// \tparam Tile The input tile type
-        /// \param tile A future to the tile
-        /// \return \c tile
-        template <typename Tile>
-        static typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile>,
-            const madness::Future<Tile>& >::type
-        convert(const madness::Future<Tile>& tile) { return tile; }
-
-
-        /// Conversion function
-
-        /// This function spawns a task that will convert a lazy tile from the
-        /// tile type to the evaluated tile type.
-        /// \tparam Tile The input tile type
-        /// \param tile A future to the lazy tile
-        /// \return A future to the evaluated tile
-        template <typename Tile>
-        typename madness::enable_if< TiledArray::math::is_lazy_tile<Tile>,
-            madness::Future<typename eval_trait<Tile>::type> >::type
-        convert(const madness::Future<Tile>& tile) const {
-          return arg_.get_world().taskq.add(
-              & GenRootTile<Arg>::template convert_task<Tile>,
-              tile, madness::TaskAttributes::hipri());
-        }
-
-      public:
-        GenRootTile(Arg& arg) : arg_(arg) { }
-
-        madness::Future<typename Arg::eval_type> operator()(const size_type index) const {
-          TA_ASSERT(arg_.is_local(index));
-          return convert(arg_.get(index));
-        }
-      }; // class GenRootTile
-
-      /// Tile generator object that generates new futures for tiles
+      /// This function spawns a task that will convert a lazy tile from the
+      /// tile type to the evaluated tile type.
+      /// \param Arg The type of the argument that holds the input tiles
+      /// \param arg The argument that holds the tiles
+      /// \param index The tile index of arg
+      /// \return A future to the evaluated tile
       template <typename Arg>
-      class GenEmptyTile {
-      public:
-
-        madness::Future<typename Arg::eval_type> operator()(const size_type) const {
-          return madness::Future<typename Arg::eval_type>();
-        }
-      }; // class GenEmptyTile
+      static typename madness::enable_if<
+          TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+          madness::Future<typename Arg::eval_type> >::type
+      get_tile(Arg& arg, const typename Arg::size_type index) {
+        return arg.get_world().taskq.add(
+            & ContractionEvalImpl_::template convert_tile_task<typename Arg::value_type>,
+            arg.get(index), madness::TaskAttributes::hipri());
+      }
 
       /// Broadcast tiles from \c arg
 
@@ -285,7 +198,7 @@ namespace TiledArray {
       /// \param[in] stride The stride between tile indices to be broadcast
       /// \param[in] group The process group where the tiles will be broadcast
       /// \param[in] key_offset The broadcast key offset value
-      /// \param[in] vec The vector that will hold broadcast tiles
+      /// \param[out] vec The vector that will hold broadcast tiles
       template <typename Arg, typename Datum>
       void bcast(Arg& arg, size_type index, const size_type end, const size_type stride,
           const madness::Group& group, const size_type key_offset, std::vector<Datum>& vec) const
@@ -296,14 +209,20 @@ namespace TiledArray {
         const ProcessID group_root = group.rank(arg.owner(index));
         TA_ASSERT(group_root < group.size());
 
-        if(group_root == group.rank()) {
-          // Broadcast data from root process
-          bcast(arg.shape(), index, end, stride, group_root, group,
-              key_offset, GenRootTile<Arg>(arg), vec);
-        } else {
-          // Receive broadcast data on non-root processes
-          bcast(arg.shape(), index, end, stride, group_root, group,
-              key_offset, GenEmptyTile<Arg>(), vec);
+
+        // Iterate over tiles to be broadcast
+        for(size_type i = 0ul; index < end; ++i, index += stride) {
+          if(arg.shape().is_zero(index)) continue;
+
+          // Get tile
+          if(group_root == group.rank())
+            vec.push_back(Datum(i, get_tile(arg, index)));
+          else
+            vec.push_back(Datum(i, madness::Future<typename Arg::eval_type>()));
+
+          // Broadcast the tile
+          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
+          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
         }
       }
 
