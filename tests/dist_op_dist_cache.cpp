@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE( set_and_get_cache )
   BOOST_CHECK_EQUAL(data.get(), value);
 }
 
-BOOST_AUTO_TEST_CASE( set_and_get_cache_v2 )
+BOOST_AUTO_TEST_CASE( get_and_set_cache )
 {
   const int key = 1;
   const madness::Future<int> value(42);
