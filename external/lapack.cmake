@@ -5,10 +5,10 @@ include(CMakePushCheckState)
 if(LAPACK_LIBRARIES OR BLAS_LIBRARIES OR LAPACK_LINKER_FLAGS OR BLAS_LINKER_FLAGS)
   # Here we verify that the we can link against LAPACK and BLAS based on the
   # given library and linker flags. If BLAS_FOUND and/or LAPACK_FOUND are true,
-  # we assume that these values have been varified.
+  # we assume that these values have been verified.
 
   if(NOT BLAS_FOUND)
-    # Varify that we can link against BLAS
+    # Verify that we can link against BLAS
 
     cmake_push_check_state()
     
