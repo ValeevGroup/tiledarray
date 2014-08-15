@@ -116,7 +116,7 @@ for token in "$@"
 while test $# != 0; do
   case "$1" in
   --help|-h) help ;;
-  --prefix=*)      prefix="`arg -DCMAKE_INSTALL_PREFIX=\"$1\"`" ;;
+  --prefix=*)      prefix="`arg \"$1\"`" ;;
   --lapack=*)      lapack="`arg \"$1\"`"
                    args="$args -DLAPACK_LIBRARIES=\"$lapack\"" ;;
   --integer4)      args="$args -DINTEGER4=TRUE" ;;
