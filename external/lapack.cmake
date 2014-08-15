@@ -3,7 +3,7 @@ include(CheckCFortranFunctionExists)
 include(CMakePushCheckState)
 
 if(LAPACK_LIBRARIES OR BLAS_LIBRARIES OR LAPACK_LINKER_FLAGS OR BLAS_LINKER_FLAGS)
-  # Here we varify that the we can link against LAPACK and BLAS based on the
+  # Here we verify that the we can link against LAPACK and BLAS based on the
   # given library and linker flags. If BLAS_FOUND and/or LAPACK_FOUND are true,
   # we assume that these values have been varified.
 
@@ -33,7 +33,7 @@ if(LAPACK_LIBRARIES OR BLAS_LIBRARIES OR LAPACK_LINKER_FLAGS OR BLAS_LINKER_FLAG
   endif()
   
   if(NOT LAPACK_FOUND)
-    # Varify that we can link against LAPACK
+    # Verify that we can link against LAPACK
 
     cmake_push_check_state()
 
