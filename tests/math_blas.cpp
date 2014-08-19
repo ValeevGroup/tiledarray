@@ -76,11 +76,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( integral_gemm , T, int_types )
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
         madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
 
-    for(std::size_t i = 0ul; i < m; ++i) {
-      for(std::size_t j = 0ul; j < n; ++j) {
+    for(integer i = 0; i < m; ++i) {
+      for(integer j = 0; j < n; ++j) {
         // Compute the expected value
         T expected = 0;
-        for(std::size_t x = 0ul; x < k; ++x)
+        for(integer x = 0; x < k; ++x)
           expected += a[i * lda + x] * b[x * ldb + j];
         expected *= 3;
 
@@ -126,11 +126,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( integral_gemm_ld , T, int_types )
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
         madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
 
-    for(std::size_t i = 0ul; i < m; ++i) {
-      for(std::size_t j = 0ul; j < n; ++j) {
+    for(integer i = 0; i < m; ++i) {
+      for(integer j = 0; j < n; ++j) {
         // Compute the expected value
         T expected = 0;
-        for(std::size_t x = 0ul; x < k; ++x)
+        for(integer x = 0; x < k; ++x)
           expected += a[i * lda + x] * b[x * ldb + j];
         expected *= 3;
 
@@ -174,11 +174,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( floating_point_gemm , T, floating_point_types )
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
         madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
-    for(std::size_t i = 0ul; i < m; ++i) {
-      for(std::size_t j = 0ul; j < n; ++j) {
+    for(integer i = 0; i < m; ++i) {
+      for(integer j = 0; j < n; ++j) {
         // Compute the expected value
         T expected = 0.0;
-        for(std::size_t x = 0ul; x < k; ++x)
+        for(integer x = 0; x < k; ++x)
           expected += a[i * lda + x] * b[x * ldb + j];
         expected *= 3.0;
 
@@ -223,11 +223,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( floating_point_gemm_ld , T, floating_point_types 
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
         madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
 
-    for(std::size_t i = 0ul; i < m; ++i) {
-      for(std::size_t j = 0ul; j < n; ++j) {
+    for(integer i = 0; i < m; ++i) {
+      for(integer j = 0; j < n; ++j) {
         // Compute the expected value
         T expected = 0.0;
-        for(std::size_t x = 0ul; x < k; ++x)
+        for(integer x = 0; x < k; ++x)
           expected += a[i * lda + x] * b[x * ldb + j];
         expected *= 3.0;
 
@@ -270,11 +270,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( complex_gemm , T, floating_point_types )
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
         madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
 
-    for(std::size_t i = 0ul; i < m; ++i) {
-      for(std::size_t j = 0ul; j < n; ++j) {
+    for(integer i = 0; i < m; ++i) {
+      for(integer j = 0; j < n; ++j) {
         // Compute the expected value
         std::complex<T> expected(0.0, 0.0);
-        for(std::size_t x = 0ul; x < k; ++x) {
+        for(integer x = 0; x < k; ++x) {
           expected += a[i * lda + x] * b[x * ldb + j];
         }
         expected *= 3.0;
@@ -322,11 +322,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( complex_gemm_ld , T, floating_point_types )
     BOOST_REQUIRE_NO_THROW(TiledArray::math::gemm(madness::cblas::NoTrans,
         madness::cblas::NoTrans, m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
 
-    for(std::size_t i = 0ul; i < m; ++i) {
-      for(std::size_t j = 0ul; j < n; ++j) {
+    for(integer i = 0; i < m; ++i) {
+      for(integer j = 0; j < n; ++j) {
         // Compute the expected value
         std::complex<T> expected(0.0, 0.0);
-        for(std::size_t x = 0ul; x < k; ++x) {
+        for(integer x = 0; x < k; ++x) {
           expected += a[i * lda + x] * b[x * ldb + j];
         }
         expected *= 3.0;
