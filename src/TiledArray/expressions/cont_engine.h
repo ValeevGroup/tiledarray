@@ -458,7 +458,7 @@ namespace TiledArray {
 
       dist_eval_type make_dist_eval() const {
         // Define the impl type
-        typedef TiledArray::detail::ContractionEvalImpl<typename left_type::dist_eval_type,
+        typedef TiledArray::detail::Summa<typename left_type::dist_eval_type,
             typename right_type::dist_eval_type, op_type, typename Derived::policy> impl_type;
 
         typename left_type::dist_eval_type left = left_.make_dist_eval();

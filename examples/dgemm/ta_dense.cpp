@@ -61,48 +61,58 @@ int main(int argc, char** argv) {
               << " GB\nNumber of blocks    = " << block_count
               << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
 
-  // Construct TiledRange
-  std::vector<unsigned int> blocking;
-  blocking.reserve(num_blocks + 1);
-  for(long i = 0l; i <= matrix_size; i += block_size)
-    blocking.push_back(i);
+  try {
 
-  std::vector<TiledArray::TiledRange1> blocking2(2,
-      TiledArray::TiledRange1(blocking.begin(), blocking.end()));
+    // Construct TiledRange
+    std::vector<unsigned int> blocking;
+    blocking.reserve(num_blocks + 1);
+    for(long i = 0l; i <= matrix_size; i += block_size)
+      blocking.push_back(i);
 
-  TiledArray::TiledRange
-    trange(blocking2.begin(), blocking2.end());
+    std::vector<TiledArray::TiledRange1> blocking2(2,
+        TiledArray::TiledRange1(blocking.begin(), blocking.end()));
 
-  // Construct and initialize arrays
-  TiledArray::Array<double, 2> a(world, trange);
-  TiledArray::Array<double, 2> b(world, trange);
-  TiledArray::Array<double, 2> c(world, trange);
-  a.set_all_local(1.0);
-  b.set_all_local(1.0);
+    TiledArray::TiledRange
+      trange(blocking2.begin(), blocking2.end());
 
-  // Start clock
-  world.gop.fence();
-  if(world.rank() == 0)
-    std::cout << "Starting iterations: " << "\n";
+    // Construct and initialize arrays
+    TiledArray::Array<double, 2> a(world, trange);
+    TiledArray::Array<double, 2> b(world, trange);
+    TiledArray::Array<double, 2> c(world, trange);
+    a.set_all_local(1.0);
+    b.set_all_local(1.0);
 
-  const double wall_time_start = madness::wall_time();
-
-  // Do matrix multiplication
-  for(int i = 0; i < repeat; ++i) {
-    c("m,n") = a("m,k") * b("k,n");
+    // Start clock
     world.gop.fence();
     if(world.rank() == 0)
-      std::cout << "Iteration " << i + 1 << "\n";
+      std::cout << "Starting iterations: " << "\n";
+
+    const double wall_time_start = madness::wall_time();
+
+    // Do matrix multiplication
+    for(int i = 0; i < repeat; ++i) {
+      c("m,n") = a("m,k") * b("k,n");
+      world.gop.fence();
+      if(world.rank() == 0)
+        std::cout << "Iteration " << i + 1 << "\n";
+    }
+
+    // Stop clock
+    const double wall_time_stop = madness::wall_time();
+
+    if(world.rank() == 0)
+      std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
+          << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
+              matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+
+    madness::finalize();
+
+  } catch(TiledArray::Exception& e) {
+    std::cerr << e.what();
+  } catch(madness::MadnessException& e) {
+    std::cerr << e.what();
+  } catch(std::exception& e) {
+    std::cerr << e.what();
   }
-
-  // Stop clock
-  const double wall_time_stop = madness::wall_time();
-
-  if(world.rank() == 0)
-    std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
-        << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
-            matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
-
-  madness::finalize();
   return 0;
 }
