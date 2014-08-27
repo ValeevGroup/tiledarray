@@ -21,47 +21,50 @@
 #include <tiledarray.h>
 
 int main(int argc, char** argv) {
-  // Initialize runtime
-  madness::World& world = madness::initialize(argc, argv);
-
-  // Get command line arguments
-  if(argc < 2) {
-    std::cout << "Usage: ta_dense matrix_size block_size [repetitions]\n";
-    return 0;
-  }
-  const long matrix_size = atol(argv[1]);
-  const long block_size = atol(argv[2]);
-  if (matrix_size <= 0) {
-    std::cerr << "Error: matrix size must greater than zero.\n";
-    return 1;
-  }
-  if (block_size <= 0) {
-    std::cerr << "Error: block size must greater than zero.\n";
-    return 1;
-  }
-  if((matrix_size % block_size) != 0ul) {
-    std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
-    return 1;
-  }
-  const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
-  if (repeat <= 0) {
-    std::cerr << "Error: number of repetitions must greater than zero.\n";
-    return 1;
-  }
-
-  const std::size_t num_blocks = matrix_size / block_size;
-  const std::size_t block_count = num_blocks * num_blocks;
-
-  if(world.rank() == 0)
-    std::cout << "TiledArray: dense matrix multiply test...\n"
-              << "Number of nodes     = " << world.size()
-              << "\nMatrix size         = " << matrix_size << "x" << matrix_size
-              << "\nBlock size          = " << block_size << "x" << block_size
-              << "\nMemory per matrix   = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
-              << " GB\nNumber of blocks    = " << block_count
-              << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
+  int rc = 0;
 
   try {
+
+    // Initialize runtime
+    madness::World& world = madness::initialize(argc, argv);
+
+    // Get command line arguments
+    if(argc < 2) {
+      std::cout << "Usage: ta_dense matrix_size block_size [repetitions]\n";
+      return 0;
+    }
+    const long matrix_size = atol(argv[1]);
+    const long block_size = atol(argv[2]);
+    if (matrix_size <= 0) {
+      std::cerr << "Error: matrix size must greater than zero.\n";
+      return 1;
+    }
+    if (block_size <= 0) {
+      std::cerr << "Error: block size must greater than zero.\n";
+      return 1;
+    }
+    if((matrix_size % block_size) != 0ul) {
+      std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
+      return 1;
+    }
+    const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
+    if (repeat <= 0) {
+      std::cerr << "Error: number of repetitions must greater than zero.\n";
+      return 1;
+    }
+
+    const std::size_t num_blocks = matrix_size / block_size;
+    const std::size_t block_count = num_blocks * num_blocks;
+
+    if(world.rank() == 0)
+      std::cout << "TiledArray: dense matrix multiply test...\n"
+                << "Number of nodes     = " << world.size()
+                << "\nMatrix size         = " << matrix_size << "x" << matrix_size
+                << "\nBlock size          = " << block_size << "x" << block_size
+                << "\nMemory per matrix   = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
+                << " GB\nNumber of blocks    = " << block_count
+                << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
+
 
     // Construct TiledRange
     std::vector<unsigned int> blocking;
@@ -108,11 +111,18 @@ int main(int argc, char** argv) {
     madness::finalize();
 
   } catch(TiledArray::Exception& e) {
-    std::cerr << e.what();
+    std::cerr << e.what() << "\n";
+    rc = 1;
   } catch(madness::MadnessException& e) {
-    std::cerr << e.what();
+    std::cerr << e.what() << "\n";
+    rc = 1;
   } catch(std::exception& e) {
-    std::cerr << e.what();
+    std::cerr << e.what() << "\n";
+    rc = 1;
+  } catch(...) {
+    std::cerr << "Caught unknown exception\n";
+    rc = 1;
   }
+
   return 0;
 }
