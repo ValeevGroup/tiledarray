@@ -39,7 +39,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ relea
 # Set library
 
 set(XL_LIBRARIES ${XLSMP_DIR}/bglib64/libxlsmp.a)
-set(XLF_LIBRARIES ${XLF_DIR}/bglib64/libxlf90_r.a;${XLF_DIR}/bglib64/libxlfmath.a;${XLF_DIR}/bglib64/libxlopt.a;${XLF_DIR}/bglib64/libxl.a)
+set(XLF_LIBRARIES ${XLF_DIR}/bglib64/libxlf90_r.a;${XLF_DIR}/bglib64/libxlfmath.a;${XLF_DIR}/bglib64/libxlopt.a;${XLF_DIR}/bglib64/libxl.a;-ldl)
 set(BLAS_LIBRARIES ${ESSL_DIR}/lib64/libesslbg.a;${BLAS_LIBRARY};${XLF_LIBRARIES};${XL_LIBRARIES})
 set(LAPACK_LIBRARIES ${LAPACK_DIR}/lib/liblapack.a;${LAPACK_LIBRARY};${BLAS_LIBRARIES})
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
