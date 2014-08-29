@@ -165,4 +165,4 @@ else()
 endif()
 
 include_directories(${Elemental_INCLUDE_DIRS})
-list(APPEND TiledArray_LIBRARIES "${Elemental_LIBRARIES}")
+set(TiledArray_LIBRARIES "${Elemental_LIBRARIES}" ${TiledArray_LIBRARIES})
