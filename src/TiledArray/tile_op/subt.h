@@ -113,7 +113,7 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
       no_permute(Left& first, second_argument_type second) {
-        return first.subt_to(second);
+        return TiledArray::subt_to(first, second);
       }
 
       template <bool LC, bool RC>
