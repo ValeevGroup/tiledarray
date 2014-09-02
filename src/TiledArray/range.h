@@ -556,7 +556,7 @@ namespace TiledArray {
       const size_type n = start_.size();
 
       // Swap data
-      init_arrays(other.start_.data(), n);
+      init_arrays(other.start_.data(), other.start_.size());
       other.init_arrays(temp_start, n);
       std::swap(volume_, other.volume_);
     }
