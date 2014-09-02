@@ -81,7 +81,7 @@ else()
   if(NOT DEFINED Madness_TAG)
     set(Madness_TAG "2fb4463ab1875a5dc82f37f8356ed995241ad401")
   endif()
-  message(STATUS "Will pull MADNESS from ${MADNESS_URL}")  
+  message(STATUS "Will pull MADNESS from ${Madness_URL}")  
   
   if(ENABLE_ELEMENTAL)
     include(external/elemental.cmake)
