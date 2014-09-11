@@ -183,7 +183,7 @@ else()
     STAMP_DIR ${MADNESS_BINARY_DIR}/stamp
    #--Download step--------------
     GIT_REPOSITORY ${Madness_URL}
-    GIT_TAG ${Madness_TAG}
+    GIT_TAG --detach ${Madness_TAG}
    #--Update/Patch step----------
     UPDATE_COMMAND ""
     PATCH_COMMAND /bin/sh ${MADNESS_SOURCE_DIR}/autogen.sh
@@ -224,7 +224,8 @@ else()
   # madness from doing a full pull, configure, and build everytime the project
   # is built.
   add_custom_target(madness-update
-    COMMAND ${GIT_EXECUTABLE} pull --rebase origin master
+    COMMAND ${GIT_EXECUTABLE} fetch
+    COMMAND ${GIT_EXECUTABLE} checkout --detach ${Madness_TAG}
     COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${MADNESS_BINARY_DIR}/stamp/madness-configure
     WORKING_DIRECTORY ${MADNESS_SOURCE_DIR}
     COMMENT "Updating source for 'madness' from ${MADNESS_URL}")
