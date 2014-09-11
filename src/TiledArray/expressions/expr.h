@@ -332,6 +332,12 @@ namespace TiledArray {
       }
 
       madness::Future<typename ExprTrait<Derived>::scalar_type>
+      trace(madness::World& world = madness::World::get_default()) const {
+        typedef typename EngineTrait<engine_type>::eval_type value_type;
+        return reduce(TiledArray::math::TraceReduction<value_type>(), world);
+      }
+
+      madness::Future<typename ExprTrait<Derived>::scalar_type>
       sum(madness::World& world = madness::World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::SumReduction<value_type>(), world);
