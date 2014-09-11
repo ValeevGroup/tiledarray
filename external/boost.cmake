@@ -38,8 +38,9 @@ else()
   include(ExternalProject)
   
   # Set source and build path for Boost in the TiledArray Project
-  set(EXTERNAL_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
-  set(EXTERNAL_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/boost)
+  set(BOOST_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
+  set(BOOST_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/boost)
+  set(BOOST_BUILD_DIR   ${PROJECT_BINARY_DIR}/external/build/boost)
 
   # Set the external source
   if (EXISTS ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
@@ -57,13 +58,13 @@ else()
 
   ExternalProject_Add(boost
     PREFIX ${CMAKE_INSTALL_PREFIX}
-    STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
+    STAMP_DIR ${BOOST_BUILD_DIR}/stamp
    #--Download step--------------
     URL ${BOOST_URL}
     URL_HASH ${BOOST_URL_HASH}
-    DOWNLOAD_DIR ${EXTERNAL_DOWNLOAD_DIR}
+    DOWNLOAD_DIR ${BOOST_DOWNLOAD_DIR}
    #--Configure step-------------
-    SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
+    SOURCE_DIR ${BOOST_SOURCE_DIR}
     CONFIGURE_COMMAND ""
    #--Build step-----------------
     BUILD_COMMAND ""
@@ -79,7 +80,7 @@ else()
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     COMPONENT boost
     )
-  set(Boost_INCLUDE_DIRS ${EXTERNAL_SOURCE_DIR})
+  set(Boost_INCLUDE_DIRS ${BOOST_SOURCE_DIR})
 
 endif()
 
