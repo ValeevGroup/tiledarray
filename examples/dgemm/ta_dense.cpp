@@ -111,16 +111,16 @@ int main(int argc, char** argv) {
     madness::finalize();
 
   } catch(TiledArray::Exception& e) {
-    std::cerr << e.what() << "\n";
+    std::cerr << "!!ERROR TiledArray: " << e.what() << "\n";
     rc = 1;
   } catch(madness::MadnessException& e) {
-    std::cerr << e.what() << "\n";
+    std::cerr << "!!ERROR MADNESS: " << e.what() << "\n";
     rc = 1;
   } catch(std::exception& e) {
-    std::cerr << e.what() << "\n";
+    std::cerr << "!!ERROR std: " << e.what() << "\n";
     rc = 1;
   } catch(...) {
-    std::cerr << "Caught unknown exception\n";
+    std::cerr << "!!ERROR: unknown exception\n";
     rc = 1;
   }
 
