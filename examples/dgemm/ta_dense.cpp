@@ -127,5 +127,5 @@ int main(int argc, char** argv) {
     rc = 1;
   }
 
-  return 0;
+  return rc;
 }
