@@ -65,6 +65,7 @@ int main(int argc, char** argv) {
                 << " GB\nNumber of blocks    = " << block_count
                 << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
 
+    const double flop = 2.0 * double(matrix_size * matrix_size * matrix_size) / 1.0e9;
 
     // Construct TiledRange
     std::vector<unsigned int> blocking;
@@ -90,23 +91,24 @@ int main(int argc, char** argv) {
     if(world.rank() == 0)
       std::cout << "Starting iterations: " << "\n";
 
-    const double wall_time_start = madness::wall_time();
+    double total_time = 0.0;
 
     // Do matrix multiplication
     for(int i = 0; i < repeat; ++i) {
+      const double start = madness::wall_time();
       c("m,n") = a("m,k") * b("k,n");
       world.gop.fence();
+      const double time = madness::wall_time() - start;
+      total_time += time;
       if(world.rank() == 0)
-        std::cout << "Iteration " << i + 1 << "\n";
+        std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
+            << flop / time <<"\n";
     }
 
-    // Stop clock
-    const double wall_time_stop = madness::wall_time();
-
+    // Print results
     if(world.rank() == 0)
-      std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
-          << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
-              matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+      std::cout << "Average wall time   = " << total_time / double(repeat)
+          << " sec\nAverage GFLOPS      = " << double(repeat) * flop / total_time << "\n";
 
     madness::finalize();
 
