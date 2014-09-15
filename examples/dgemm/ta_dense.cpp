@@ -116,6 +116,9 @@ int main(int argc, char** argv) {
   } catch(madness::MadnessException& e) {
     std::cerr << "!!ERROR MADNESS: " << e.what() << "\n";
     rc = 1;
+  } catch(SafeMPI::Exception& e) {
+    std::cerr << "!!ERROR SafeMPI: " << e.what() << "\n";
+    rc = 1;
   } catch(std::exception& e) {
     std::cerr << "!!ERROR std: " << e.what() << "\n";
     rc = 1;
