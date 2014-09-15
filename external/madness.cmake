@@ -202,6 +202,7 @@ else()
       --with-stubmpi=${MAD_STUB_MPI}
       --with-elemental=${MAD_ELEMENTAL_FLAG}
       --without-mkl
+      ${MAD_EXTRA_CONFIGURE_FLAGS}
       MPICXX=${CMAKE_CXX_COMPILER}
       MPICC=${CMAKE_C_COMPILER}
       CPPFLAGS=${MAD_CPPFLAGS}
@@ -213,7 +214,7 @@ else()
     CMAKE_GENERATOR "Unix Makefiles"
    #--Build step-----------------
     BINARY_DIR ${MADNESS_BINARY_DIR}
-    BUILD_COMMAND $(MAKE) libraries V=0
+    BUILD_COMMAND $(MAKE) tensor world V=0
    #--Install step---------------
     INSTALL_COMMAND ""
     STEP_TARGETS download patch configure build
@@ -242,7 +243,7 @@ else()
   install(CODE
       "
       execute_process(
-          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-libraries\" 
+          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-tensor\" \"install-world\" 
           WORKING_DIRECTORY \"${MADNESS_BINARY_DIR}\"
           RESULT_VARIABLE error_code)
       if(error_code)
