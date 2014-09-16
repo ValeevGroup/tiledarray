@@ -271,7 +271,7 @@ namespace TiledArray {
             std::static_pointer_cast<ArrayEvalImpl_>(pimpl);
 
         return (DistEvalImpl_::perm() ?
-            eval_kernel(self, -DistEvalImpl_::perm()) :
+            eval_kernel(self, inv_perm_) :
             eval_kernel(self, NoPermutation()));
       }
 
