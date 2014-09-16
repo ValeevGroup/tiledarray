@@ -167,17 +167,6 @@ namespace TiledArray {
 
     private:
 
-      /// Modify the local set counter
-
-      /// This function will update the local set counter. Once the set count is
-      /// equal to the maximum local set count, the array object stored in this
-      /// evaluator will be reset.
-      /// \param delta The value that will be added to the local set counter
-      void update_set_count(const int delta) {
-        const int set_count = (local_set_counter_ += delta);
-        if(set_count == 0)
-          array_ = array_type();
-      }
 
       /// Make an array tile and insert it into the distributed storage container
 
@@ -185,7 +174,6 @@ namespace TiledArray {
       /// \param tile The array tile that is the basis for lazy tile
       void set_tile(const size_type i, const typename array_type::value_type& tile, const bool consume) {
         DistEvalImpl_::set_tile(i, value_type(tile, op_, consume));
-        update_set_count(1);
       }
 
       /// Get the array tile that corresponds to the target tile
@@ -220,10 +208,10 @@ namespace TiledArray {
         int task_count = 0;
 
         // Create iterator to tiles that are local for this evaluator.
-        const typename array_type::pmap_interface::const_iterator end =
-            TensorImpl_::pmap()->end();
         typename array_type::pmap_interface::const_iterator it =
             TensorImpl_::pmap()->begin();
+        const typename array_type::pmap_interface::const_iterator end =
+            TensorImpl_::pmap()->end();
 
         for(; it != end; ++it) {
           const size_type i = *it; // The target index
@@ -250,8 +238,6 @@ namespace TiledArray {
             ++task_count;
           }
         }
-
-        update_set_count(-task_count);
 
         return task_count;
       }
