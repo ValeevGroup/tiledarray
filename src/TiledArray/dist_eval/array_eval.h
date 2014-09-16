@@ -263,40 +263,6 @@ namespace TiledArray {
 
     }; // class ArrayEvalImpl
 
-    /// Distrubuted array evaluator factory function
-
-    /// Construct a distributed array evaluator, which wraps an \c Array object
-    /// in a distributed evaluator so that it can be used by other distributed
-    /// evaluators.
-    /// \tparam T The element type of \c array
-    /// \tparam DIM The number of dimensions of \c array
-    /// \tparam Tile Tile type of \c array
-    /// \tparam Policy The policy type of \c array
-    /// \tparam Op The unary tile operation type
-    /// \param arg Argument to be modified
-    /// \param world The world where \c array will be evaluated
-    /// \param shape The shape of the evaluated tensor
-    /// \param pmap The process map for the evaluated tensor
-    /// \param perm The permutation applied to the tensor
-    /// \param op The unary tile operation
-    template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
-    DistEval<LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
-    make_array_eval(
-        const Array<T, DIM, Tile, Policy>& array,
-        madness::World& world,
-        const typename DistEval<Tile, Policy>::shape_type& shape,
-        const std::shared_ptr<typename DistEval<Tile, Policy>::pmap_interface>& pmap,
-        const Permutation& perm,
-        const Op& op)
-    {
-      typedef ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
-      typedef typename impl_type::DistEvalImpl_ impl_base_type;
-      return DistEval<LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
-          std::shared_ptr<impl_base_type>(new impl_type(array, world,
-              (perm ? perm ^ array.trange() : array.trange()), shape,
-              pmap, perm, op)));
-    }
-
   }  // namespace detail
 } // namespace TiledArray
 

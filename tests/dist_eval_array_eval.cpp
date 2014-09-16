@@ -56,6 +56,24 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
 
   ~ArrayEvalImplFixture() { }
 
+  template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
+  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
+  make_array_eval(
+      const Array<T, DIM, Tile, Policy>& array,
+      madness::World& world,
+      const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
+      const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
+      const Permutation& perm,
+      const Op& op)
+  {
+    typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
+    typedef typename impl_type::DistEvalImpl_ impl_base_type;
+    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+        std::shared_ptr<impl_base_type>(new impl_type(array, world,
+            (perm ? perm ^ array.trange() : array.trange()), shape,
+            pmap, perm, op)));
+  }
+
    op_type op;
    ArrayN array;
 }; // ArrayEvalFixture
@@ -67,7 +85,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_REQUIRE_NO_THROW(impl_type(array, array.get_world(), array.trange(),
       DenseShape(), array.get_pmap(), Permutation(), op));
 
-  dist_eval_type dist_eval = detail::make_array_eval(array, array.get_world(),
+  dist_eval_type dist_eval = make_array_eval(array, array.get_world(),
       DenseShape(), array.get_pmap(), Permutation(), op);
 
   BOOST_CHECK_EQUAL(& dist_eval.get_world(), GlobalFixture::world);
@@ -82,7 +100,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( eval_scale )
 {
-  dist_eval_type dist_eval = detail::make_array_eval(array, array.get_world(),
+  dist_eval_type dist_eval = make_array_eval(array, array.get_world(),
       DenseShape(), array.get_pmap(), Permutation(), op);
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
 
@@ -125,7 +143,7 @@ BOOST_AUTO_TEST_CASE( eval_permute )
       op_type>, DensePolicy> dist_eval_type;
 
   // Construct and evaluate
-  dist_eval_type dist_eval = detail::make_array_eval(array, array.get_world(),
+  dist_eval_type dist_eval = make_array_eval(array, array.get_world(),
       DenseShape(), array.get_pmap(), perm, op_type(perm));
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
 

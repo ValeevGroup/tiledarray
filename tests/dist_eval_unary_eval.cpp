@@ -47,7 +47,7 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
 
   UnaryEvalImplFixture() :
     array(*GlobalFixture::world, tr),
-    arg(TiledArray::detail::make_array_eval(array, array.get_world(), DenseShape(),
+    arg(make_array_eval(array, array.get_world(), DenseShape(),
         array.get_pmap(), Permutation(), array_op_type()))
   {
     // Fill array with random data
@@ -60,6 +60,24 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   }
 
   ~UnaryEvalImplFixture() { }
+
+  template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
+  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
+  make_array_eval(
+      const Array<T, DIM, Tile, Policy>& array,
+      madness::World& world,
+      const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
+      const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
+      const Permutation& perm,
+      const Op& op)
+  {
+    typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
+    typedef typename impl_type::DistEvalImpl_ impl_base_type;
+    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+        std::shared_ptr<impl_base_type>(new impl_type(array, world,
+            (perm ? perm ^ array.trange() : array.trange()), shape,
+            pmap, perm, op)));
+  }
 
    ArrayN array;
    dist_eval_type arg;

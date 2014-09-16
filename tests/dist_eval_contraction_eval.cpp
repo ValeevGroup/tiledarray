@@ -52,10 +52,10 @@ struct ContractionEvalFixture : public SparseShapeFixture {
     right(*GlobalFixture::world, tr),
     proc_grid(*GlobalFixture::world, tr.tiles().size().front(), tr.tiles().size().back(),
         tr.elements().size().front(), tr.elements().size().back()),
-    left_arg(detail::make_array_eval(left, left.get_world(), DenseShape(),
+    left_arg(make_array_eval(left, left.get_world(), DenseShape(),
         proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
         Permutation(), array_op_type())),
-    right_arg(detail::make_array_eval(right, right.get_world(), DenseShape(),
+    right_arg(make_array_eval(right, right.get_world(), DenseShape(),
         proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size().back()),
         Permutation(), array_op_type())),
     result_tr(),
@@ -213,6 +213,24 @@ struct ContractionEvalFixture : public SparseShapeFixture {
             right, world, trange, shape, pmap, perm, op, K, proc_grid)));
   }
 
+  template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
+  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
+  make_array_eval(
+      const Array<T, DIM, Tile, Policy>& array,
+      madness::World& world,
+      const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
+      const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
+      const Permutation& perm,
+      const Op& op)
+  {
+    typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
+    typedef typename impl_type::DistEvalImpl_ impl_base_type;
+    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+        std::shared_ptr<impl_base_type>(new impl_type(array, world,
+            (perm ? perm ^ array.trange() : array.trange()), shape,
+            pmap, perm, op)));
+  }
+
   ArrayN left;
   ArrayN right;
   detail::ProcGrid proc_grid;
@@ -349,10 +367,10 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 //  rand_fill_array(left);
 //  rand_fill_array(right);
 //
-//  array_eval_type left_arg(detail::make_array_eval(left, left.get_world(), left.get_shape(),
+//  array_eval_type left_arg(make_array_eval(left, left.get_world(), left.get_shape(),
 //      proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
 //      Permutation(), array_op_type()));
-//  array_eval_type right_arg(detail::make_array_eval(right, right.get_world(), right.get_shape(),
+//  array_eval_type right_arg(make_array_eval(right, right.get_world(), right.get_shape(),
 //      proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size().back()),
 //      Permutation(), array_op_type()));
 //
