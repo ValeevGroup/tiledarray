@@ -183,7 +183,7 @@ else()
     STAMP_DIR ${MADNESS_BINARY_DIR}/stamp
    #--Download step--------------
     GIT_REPOSITORY ${Madness_URL}
-    GIT_TAG --detach ${Madness_TAG}
+    GIT_TAG ${Madness_TAG}
    #--Update/Patch step----------
     UPDATE_COMMAND ""
     PATCH_COMMAND /bin/sh ${MADNESS_SOURCE_DIR}/autogen.sh
