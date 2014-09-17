@@ -139,7 +139,6 @@ namespace TiledArray {
       array_type array_; ///< The array that will be evaluated
       std::shared_ptr<op_type> op_; ///< The tile operation
       Permutation inv_perm_; ///< The inverse permutation
-      madness::AtomicInt local_set_counter_; ///< Atomic counter used to track the number local tiles set
 
     public:
 
@@ -158,9 +157,7 @@ namespace TiledArray {
         array_(array),
         op_(new op_type(op)),
         inv_perm_(-perm)
-      {
-        local_set_counter_ = 0;
-      }
+      { }
 
       /// Virtual destructor
       virtual ~ArrayEvalImpl() { }
