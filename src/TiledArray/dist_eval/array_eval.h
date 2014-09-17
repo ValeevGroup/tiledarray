@@ -162,8 +162,47 @@ namespace TiledArray {
       /// Virtual destructor
       virtual ~ArrayEvalImpl() { }
 
+      virtual madness::Future<value_type>
+      get_tile(const std::shared_ptr<DistEvalImpl_>& pimpl, size_type i) {
+        // Convert pimpl to this object type so it can be used in tasks
+        TA_ASSERT(this == pimpl.get());
+        std::shared_ptr<ArrayEvalImpl_> self =
+            std::static_pointer_cast<ArrayEvalImpl_>(pimpl);
+
+        // Get the array index that corresponds to the target index
+        const size_type array_index = (inv_perm_ ?
+            get_array_index(inv_perm_, i) : i);
+
+        // Get the tile from array_, which may be located on a remote node.
+        madness::Future<typename array_type::value_type> tile =
+            array_.find(array_index);
+
+        const bool consumable_tile = ! array_.is_local(array_index);
+        // Insert the tile into this evaluator for subsequent processing
+        if(tile.probe()) {
+          // Skip the task since the tile is ready
+          madness::Future<value_type> result;
+          result.set(make_tile(tile, consumable_tile));
+          result.register_callback(this);
+          return result;
+        } else {
+          // Spawn a task to set the tile the input tile is ready.
+          madness::Future<value_type> result =
+              TensorImpl_::get_world().taskq.add(self,
+              & ArrayEvalImpl_::make_tile, tile, consumable_tile,
+              madness::TaskAttributes::hipri());
+
+          result.register_callback(this);
+          return result;
+        }
+
+      }
+
     private:
 
+      value_type make_tile(const typename array_type::value_type& tile, const bool consume) const {
+        return value_type(tile, op_, consume);
+      }
 
       /// Make an array tile and insert it into the distributed storage container
 
@@ -191,71 +230,33 @@ namespace TiledArray {
         return i;
       }
 
-      /// Evaluate tiles for this operation
+      /// Evaluate the tiles of this tensor
 
-      /// This function will construct the local tiles of this object, which may
-      /// be different from that of \c array_ . Array tiles are consumed using a
-      /// "pull" algorithm.
-      /// \tparam Perm The permutation type (Permutation or NoPermutation)
-      /// \param self A shared pointer to this object
-      /// \param inv_perm The inverse permutation applied to the target tile index
-      template <typename Perm>
-      size_type eval_kernel(const std::shared_ptr<ArrayEvalImpl_>& self, Perm inv_perm) {
+      /// This function will evaluate the children of this distributed evaluator
+      /// and evaluate the tiles for this distributed evaluator.
+      /// \param pimpl A shared pointer to this object
+      /// \return The number of tiles that will be set by this process
+      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>&) {
         // Counter for the number of tasks submitted by this object
         int task_count = 0;
 
-        // Create iterator to tiles that are local for this evaluator.
-        typename array_type::pmap_interface::const_iterator it =
-            TensorImpl_::pmap()->begin();
-        const typename array_type::pmap_interface::const_iterator end =
-            TensorImpl_::pmap()->end();
+        // Get a count of the number of local tiles.
+        if(TensorImpl_::shape().is_dense()) {
+          task_count = TensorImpl_::pmap()->local_size();
+        } else {
+          // Create iterator to tiles that are local for this evaluator.
+          typename array_type::pmap_interface::const_iterator it =
+              TensorImpl_::pmap()->begin();
+          const typename array_type::pmap_interface::const_iterator end =
+              TensorImpl_::pmap()->end();
 
-        for(; it != end; ++it) {
-          const size_type i = *it; // The target index
-          if(! TensorImpl_::is_zero(i)) {
-
-            // Get the array index that corresponds to the target index
-            const size_type array_index = get_array_index(inv_perm, i);
-
-            // Get the tile from array_, which may be located on a remote node.
-            const bool consumable_tile = ! array_.is_local(array_index);
-            madness::Future<typename array_type::value_type> tile =
-                array_.find(array_index);
-
-            // Insert the tile into this evaluator for subsequent processing
-            if(tile.probe()) {
-              // Skip the task since the tile is ready
-              ArrayEvalImpl_::set_tile(i, tile, consumable_tile);
-            } else {
-              // Spawn a task to set the tile the input tile is ready.
-              TensorImpl_::get_world().taskq.add(self, & ArrayEvalImpl_::set_tile,
-                  i, tile, consumable_tile, madness::TaskAttributes::hipri());
-            }
-
-            ++task_count;
+          for(; it != end; ++it) {
+            if(! TensorImpl_::is_zero(*it))
+              ++task_count;
           }
         }
 
         return task_count;
-      }
-
-      /// Evaluate the tiles of this tensor
-
-      /// This function will evaluate the children of this distributed evaluator
-      /// and evaluate the tiles for this distributed evaluator. It will block
-      /// until the tasks for the children are evaluated (not for the tasks of
-      /// this object).
-      /// \param pimpl A shared pointer to this object
-      /// \return The number of tiles that will be set by this process
-      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
-        // Convert pimpl to this object type so it can be used in tasks
-        TA_ASSERT(this == pimpl.get());
-        std::shared_ptr<ArrayEvalImpl_> self =
-            std::static_pointer_cast<ArrayEvalImpl_>(pimpl);
-
-        return (DistEvalImpl_::perm() ?
-            eval_kernel(self, inv_perm_) :
-            eval_kernel(self, NoPermutation()));
       }
 
     }; // class ArrayEvalImpl

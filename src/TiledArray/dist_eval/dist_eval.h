@@ -121,6 +121,16 @@ namespace TiledArray {
 
       virtual ~DistEvalImpl() { }
 
+      /// Get tile at index \c i
+
+      /// \param i The index of the tile
+      /// \return Tile at index i
+      /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
+      virtual madness::Future<value_type> get_tile(const std::shared_ptr<DistEvalImpl_>&, size_type i) {
+        TA_ASSERT(TensorImpl_::is_local(i));
+        return TensorImpl_::get_cache(i);
+      }
+
       /// Set tensor value
 
       /// This will store \c value at ordinal index \c i . Typically, this
@@ -301,7 +311,7 @@ namespace TiledArray {
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
-      future get(size_type i) const { return pimpl_->get_cache(i); }
+      future get(size_type i) const { return pimpl_->get_tile(pimpl_, i); }
 
       /// World object accessor
 
