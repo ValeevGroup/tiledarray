@@ -655,7 +655,21 @@ namespace TiledArray {
           norm = 0;
         return norm;
       }
-    }; // class MultAndZero
+    }; // class GemmOuterProduct
+
+    class GemmRenormalize {
+      const value_type threshold_;
+    public:
+      typedef void result_type;
+
+      GemmRenormalize() : threshold_(SparseShape::threshold_) { }
+
+      void operator()(value_type& restrict norm, const value_type left, const value_type right) const {
+        norm *= left * right;
+        if(norm < threshold_)
+          norm = 0;
+      }
+    }; // class GemmOuterProduct
 
   public:
 
@@ -682,28 +696,35 @@ namespace TiledArray {
       const unsigned int k_rank = gemm_helper.left_inner_end() - gemm_helper.left_inner_begin();
 
       // Construct the result norm tensor
-      Tensor<T> result_norms(gemm_helper.make_result_range<typename Tensor<T>::range_type>(
-          tile_norms_.range(), other.tile_norms_.range()), 0);
+      Tensor<T> result_norms;
 
-      if(k_rank > 0) {
+      if(k_rank > 0u) {
 
         // Compute size vector
         const vector_type k_size_vector =
             recursive_outer_product(size_vectors_.get() + gemm_helper.left_inner_begin(),
                 k_rank, OuterProduct());
 
-        GemmArgReduce op;
-        vector_type left(m, value_type(0));
-        left.row_reduce(k, tile_norms_.data(), k_size_vector.data(), op);
-        left.unary(op);
+        result_norms = tile_norms_.gemm(other.tile_norms_, std::abs(factor), gemm_helper);
 
-        vector_type right(n, value_type(0));
-        right.col_reduce(k, other.tile_norms_.data(), k_size_vector.data(), op);
-        right.unary(op);
+        math::outer(m, n, k_size_vector.data(), k_size_vector.data(),
+            result_norms.data(), GemmRenormalize());
 
-        math::outer_fill(m, n, left.data(), right.data(), result_norms.data(),
-            GemmOuterProduct(std::abs(factor)));
+//        GemmArgReduce op;
+//        vector_type left(m, value_type(0));
+//        left.row_reduce(k, tile_norms_.data(), k_size_vector.data(), op);
+//        left.unary(op);
+//
+//        vector_type right(n, value_type(0));
+//        right.col_reduce(k, other.tile_norms_.data(), k_size_vector.data(), op);
+//        right.unary(op);
+//
+//        math::outer_fill(m, n, left.data(), right.data(), result_norms.data(),
+//            GemmOuterProduct(std::abs(factor)));
       } else {
+
+        result_norms = Tensor<T>(gemm_helper.make_result_range<typename Tensor<T>::range_type>(
+            tile_norms_.range(), other.tile_norms_.range()), 0);
 
         // This is an outer product, so the inputs can be used directly
         math::outer_fill(m, n, tile_norms_.data(), other.tile_norms_.data(), result_norms.data(),
