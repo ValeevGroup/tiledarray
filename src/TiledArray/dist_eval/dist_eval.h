@@ -172,7 +172,7 @@ namespace TiledArray {
             std::stringstream ss;
             ss << "!!TiledArray: Aborting due to exception.\n"
                << "!!TiledArray: rank=" << TensorImpl_::get_world().rank()
-               << " id=" << TensorImpl_::id() << " " << set_counter_ << " of " task_count_ << " tiles set\n";
+               << " id=" << TensorImpl_::id() << " " << set_counter_ << " of " << task_count_ << " tiles set\n";
             printf(ss.str().c_str());
             throw;
           }
