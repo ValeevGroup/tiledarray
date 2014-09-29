@@ -159,17 +159,12 @@ namespace TiledArray {
       /// Post processing step
       result_type operator()(const result_type& temp) const {
         TA_ASSERT(pimpl_);
+        TA_ASSERT(! temp.empty());
 
-        result_type result;
+        if(! pimpl_->perm_)
+          return temp;
 
-        if(! temp.empty()) {
-          if(! pimpl_->perm_)
-            result = temp;
-          else
-            result = TiledArray::permute(temp, pimpl_->perm_);
-        }
-
-        return result;
+        return TiledArray::permute(temp, pimpl_->perm_);
       }
 
       /// Reduce two result objects
