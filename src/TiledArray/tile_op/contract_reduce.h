@@ -159,7 +159,7 @@ namespace TiledArray {
       /// Post processing step
       result_type operator()(const result_type& temp) const {
         TA_ASSERT(pimpl_);
-        TA_ASSERT(! temp.empty());
+        TA_ASSERT(! TiledArray::empty(temp));
 
         if(! pimpl_->perm_)
           return temp;
@@ -187,7 +187,7 @@ namespace TiledArray {
       {
         TA_ASSERT(pimpl_);
 
-        if(result.empty())
+        if(TiledArray::empty(result))
           result = TiledArray::gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
         else
           TiledArray::gemm(result, left, right, pimpl_->alpha_, pimpl_->gemm_helper_);

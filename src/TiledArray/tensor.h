@@ -25,7 +25,7 @@
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/transpose.h>
-#include <TiledArray/tile_interface.h>
+#include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {
 

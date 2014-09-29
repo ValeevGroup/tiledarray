@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2013  Virginia Tech
+ *  Copyright (C) 2014  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,6 +14,12 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Justusu Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  tile_interface.h
+ *  Sep 29, 2014
  *
  */
 
@@ -32,8 +38,11 @@ namespace TiledArray {
 
   }  // namespace math
 
+  // The following functions define the non-intrusive interface used to apply
+  // math operations to Array tiles. Users are expected to proved The default implementation for these
 
-  // Clone operations ----------------------------------------------------
+
+  // Clone operations ----------------------------------------------------------
 
   /// Create a copy of \c arg
 
@@ -43,6 +52,19 @@ namespace TiledArray {
   template <typename Arg>
   inline Arg clone(const Arg& arg) {
     return arg.clone();
+  }
+
+
+  // Empty operations ----------------------------------------------------------
+
+  /// Check that \c arg is empty (no data)
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The tile argument to be permuted
+  /// \return \c true if \c arg is empty, otherwise \c false.
+  template <typename Arg>
+  inline bool empty(const Arg& arg) {
+    return arg.empty();
   }
 
 
