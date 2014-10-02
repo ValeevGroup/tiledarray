@@ -100,7 +100,7 @@ namespace TiledArray {
       }
 
       bool converged = false;
-      const unsigned int max_niter = 500;
+      const unsigned int max_niter = n;
       value_type rnorm2 = 0.0;
       const std::size_t rhs_size = size(b);
 
