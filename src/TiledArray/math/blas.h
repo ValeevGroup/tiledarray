@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_BLAS_H__INCLUDED
 #define TILEDARRAY_BLAS_H__INCLUDED
 
-#include <tensor/cblas.h>
+#include <madness/tensor/cblas.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/math/eigen.h>
 

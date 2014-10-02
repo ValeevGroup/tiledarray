@@ -20,7 +20,7 @@
 #include "TiledArray/distributed_storage.h"
 #include "TiledArray/pmap/blocked_pmap.h"
 #include "unit_test_config.h"
-#include <world/worlddc.h>
+#include <madness/world/worlddc.h>
 #include <iterator>
 
 using namespace TiledArray;

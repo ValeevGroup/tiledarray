@@ -91,15 +91,15 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(const Left& first, const Right& second) const {
-        return first.add(second, BinaryInterface_::permutation());
+        return TiledArray::add(first, second, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, const Right& second) const {
-        return second.permute(BinaryInterface_::permutation());
+        return TiledArray::permute(second, BinaryInterface_::permutation());
       }
 
       result_type permute(const Left& first, zero_right_type) const {
-        return first.permute(BinaryInterface_::permutation());
+        return TiledArray::permute(first, BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -109,25 +109,25 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(const Left& first, const Right& second) {
-        return first.add(second);
+        return TiledArray::add(first, second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
       no_permute(Left& first, const Right& second) {
-        return first.add_to(second);
+        return TiledArray::add_to(first, second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(const Left& first, Right& second) {
-        return second.add_to(first);
+        return add_to(second, first);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, const Right& second) {
-        return second.clone();
+        return TiledArray::clone(second);
       }
 
       template <bool LC, bool RC>
@@ -139,7 +139,7 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!LC, result_type>::type
       no_permute(const Left& first, zero_right_type) {
-        return first.clone();
+        return TiledArray::clone(first);
       }
 
       template <bool LC, bool RC>

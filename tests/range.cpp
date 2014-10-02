@@ -22,7 +22,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include <sstream>
-#include <world/bufar.h>
+#include <madness/world/bufar.h>
 
 template <typename SizeArray>
 inline std::size_t calc_volume(const SizeArray& size) {
@@ -311,6 +311,48 @@ BOOST_AUTO_TEST_CASE( serialization )
   BOOST_CHECK_EQUAL_COLLECTIONS(rs.weight().begin(), rs.weight().end(), r.weight().begin(), r.weight().end()); // check weight()
   BOOST_CHECK_EQUAL(rs.volume(), r.volume()); // check volume()
   BOOST_CHECK_EQUAL_COLLECTIONS(rs.begin(), rs.end(), r.begin(), r.end());
+}
+
+BOOST_AUTO_TEST_CASE( swap )
+{
+  Range empty_range;
+
+  // Check range swap
+  BOOST_CHECK_NO_THROW(r.swap(empty_range));
+
+  // Check that r contains the data of empty_range.
+  BOOST_CHECK_EQUAL(r.dim(), 0u);
+  BOOST_CHECK_EQUAL(r.start().size(), 0ul);
+  BOOST_CHECK_EQUAL(r.finish().size(), 0ul);
+  BOOST_CHECK_EQUAL(r.size().size(), 0ul);
+  BOOST_CHECK_EQUAL(r.weight().size(), 0ul);
+  BOOST_CHECK_EQUAL(r.volume(), 0ul);
+
+  // Check that empty_range contains the data of r.
+  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.start().begin(), empty_range.start().end(),
+      start.begin(), start.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.finish().begin(), empty_range.finish().end(),
+      finish.begin(), finish.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.size().begin(), empty_range.size().end(),
+      size.begin(), size.end());
+  BOOST_CHECK_EQUAL(empty_range.volume(), volume);
+
+  // Swap the data back
+  BOOST_CHECK_NO_THROW(r.swap(empty_range));
+
+  // Check that empty_range contains its original data.
+  BOOST_CHECK_EQUAL(empty_range.dim(), 0u);
+  BOOST_CHECK_EQUAL(empty_range.start().size(), 0ul);
+  BOOST_CHECK_EQUAL(empty_range.finish().size(), 0ul);
+  BOOST_CHECK_EQUAL(empty_range.size().size(), 0ul);
+  BOOST_CHECK_EQUAL(empty_range.weight().size(), 0ul);
+  BOOST_CHECK_EQUAL(empty_range.volume(), 0ul);
+
+  // Check that r its original data.
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.start().begin(), r.start().end(), start.begin(), start.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.finish().begin(), r.finish().end(), finish.begin(), finish.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.size().begin(), r.size().end(), size.begin(), size.end());
+  BOOST_CHECK_EQUAL(r.volume(), volume);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

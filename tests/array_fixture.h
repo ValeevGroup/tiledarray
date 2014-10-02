@@ -24,7 +24,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include <vector>
-#include <world/array.h>
+#include <madness/world/array.h>
 #include "TiledArray/policies/sparse_policy.h"
 
 struct ArrayFixture : public TiledRangeFixture {

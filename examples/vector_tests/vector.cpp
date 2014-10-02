@@ -27,7 +27,7 @@
 
 #include <iostream>
 #include <algorithm>
-#include <world/worldtime.h>
+#include <madness/world/worldtime.h>
 #include "TiledArray/math/vector_op.h"
 #include "TiledArray/error.h"
 #include "TiledArray/math/functional.h"
@@ -35,7 +35,7 @@
 
 #define EIGEN_NO_MALLOC
 
-int main(int argc, char** argv) {
+int main(int, char**) {
   const std::size_t repeat = 100;
   // Allocate some memory for tests
   const std::size_t n = 10000000;

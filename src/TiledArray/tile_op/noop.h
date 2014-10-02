@@ -80,7 +80,8 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(const Arg& arg) const {
-        return result_type(arg, UnaryInterface_::permutation());
+        //return result_type(arg, UnaryInterface_::permutation());
+        return TiledArray::permute(arg, UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -89,7 +90,7 @@ namespace TiledArray {
 
       template <bool C>
       static typename madness::enable_if_c<!C, result_type>::type
-      no_permute(const Arg& arg) { return arg.clone(); }
+      no_permute(const Arg& arg) { return TiledArray::clone(arg); }
 
       template <bool C>
       static typename madness::enable_if_c<C, result_type>::type

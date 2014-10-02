@@ -37,17 +37,42 @@ struct ElemFixture : public TiledRangeFixture {
   elem::Grid grid;
 };
 
+void check_equal(Array<int,2> &array, elem::DistMatrix<int> &matrix){
+  elem::DistMatrix<int, elem::STAR, elem::STAR> rep_matrix(matrix);
+  for(Array<int,2>::range_type::const_iterator it = array.range().begin();
+                                               it != array.range().end();
+    ++it){
+      madness::Future<Array<int,2>::value_type> tile = array.find(*it);
+      for(Array<int,2>::value_type::range_type::const_iterator it = tile.get().range().begin();
+                                             it != tile.get().range().end();
+          ++it){
+            BOOST_CHECK_EQUAL(tile.get()[*it], rep_matrix.Get((*it)[0], (*it)[1]));
+      }
+  }
+}
+
 BOOST_FIXTURE_TEST_SUITE(elemental_suite, ElemFixture)
 
 BOOST_AUTO_TEST_CASE(array_to_elem_test) {
+  if(false){
+      volatile int i = 0;
+      char hostname[256];
+      gethostname(hostname, sizeof(hostname));
+      printf("PID %d on %s ready for attach\n", getpid(), hostname);
+      fflush(stdout);
+      while (0 == i)
+          sleep(5);
+  }
+  GlobalFixture::world->gop.fence();
+
   // Fill array with random data
   GlobalFixture::world->srand(27);
-  for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-    Array<int, 2>::value_type tile(array.trange().make_tile_range(*it));
+  for(Array<int,2>::iterator it = array.begin(); it != array.end(); ++it) {
+    Array<int, 2>::value_type tile(it.make_range());
     for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
       *tile_it = GlobalFixture::world->rand();
     }
-    array.set(*it, tile);
+    *it = tile;
   }
 
   // Convert the array to an elemental matrix
@@ -57,25 +82,21 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
   BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements().size()[0]);
   BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().size()[1]);
 
-  //Check data
-  for(std::size_t i = array.range().begin(); i != array.range().end(); ++i){
-    madness::Future<Array<int,2>::value_type > tile = array.find(*i);
-    for(std::size_t j = tile.get().range().begin(); j != tile.get().range().end();++j){
-      BOOST_CHECK_EQUAL(tile.get()[*j], matrix.Get((*j)[0], (*j)[1]) );
-    }
-  }
+  check_equal(array, matrix);
+  GlobalFixture::world->gop.fence();
+
 }
 
 
 BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   // Fill array with random data
   GlobalFixture::world->srand(27);
-  for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-    Array<int, 2>::value_type tile(array.trange().make_tile_range(*it));
+  for(Array<int,2>::iterator it = array.begin(); it != array.end(); ++it) {
+    Array<int, 2>::value_type tile(it.make_range());
     for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
       *tile_it = GlobalFixture::world->rand();
     }
-    array.set(*it, tile);
+    *it = tile;
   }
 
   // Convert the array to an elemental matrix
@@ -96,13 +117,7 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   elem_to_array(array, matrix);
   array.get_world().gop.fence();
 
-  //Check data
-  for(std::size_t i = array.range().begin(); i != array.range().end(); ++i){
-    madness::Future<Array<int,2>::value_type > tile = array.find(*i);
-    for(std::size_t j = tile.get().range().begin(); j != tile.get().range().end();++j){
-      BOOST_CHECK_EQUAL(tile.get()[*j], matrix.Get((*j)[0], (*j)[1]) );
-    }
-  }
+  check_equal(array, matrix);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

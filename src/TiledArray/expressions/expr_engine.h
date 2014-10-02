@@ -101,7 +101,8 @@ namespace TiledArray {
         if(pmap) {
           // If process map is not valid, use the process map constructed by the
           // expression engine.
-          if((world.size() != pmap->procs()) || (trange_.tiles().volume() != pmap->size()))
+          if((typename pmap_interface::size_type(world.size()) != pmap->procs()) ||
+              (trange_.tiles().volume() != pmap->size()))
             pmap.reset();
         }
 
@@ -141,7 +142,7 @@ namespace TiledArray {
       {
         TA_ASSERT(world);
         TA_ASSERT(pmap);
-        TA_ASSERT(pmap->procs() == world->size());
+        TA_ASSERT(pmap->procs() == typename pmap_interface::size_type(world->size()));
         TA_ASSERT(pmap->size() == trange_.tiles().volume());
 
         world_ = world;

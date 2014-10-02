@@ -182,40 +182,6 @@ namespace TiledArray {
 
     }; // class BinaryEvalImpl
 
-
-    /// Distributed binary evaluator factory function
-
-    /// Construct a distributed binary evaluator, which constructs a new tensor
-    /// by applying \c op to tiles of \c left and \c right .
-    /// \tparam Tile Tile type of the argument
-    /// \tparam Policy The policy type of the argument
-    /// \tparam Op The binary tile operation
-    /// \param left The left-hand argument
-    /// \param right The right-hand argument
-    /// \param world The world where the argument will be evaluated
-    /// \param shape The shape of the evaluated tensor
-    /// \param pmap The process map for the evaluated tensor
-    /// \param perm The permutation applied to the tensor
-    /// \param op The binary tile operation
-    template <typename LeftTile, typename RightTile, typename Policy, typename Op>
-    DistEval<typename Op::result_type, Policy> make_binary_eval(
-        const DistEval<LeftTile, Policy>& left,
-        const DistEval<RightTile, Policy>& right,
-        madness::World& world,
-        const typename DistEval<typename Op::result_type, Policy>::shape_type& shape,
-        const std::shared_ptr<typename DistEval<typename Op::result_type, Policy>::pmap_interface>& pmap,
-        const Permutation& perm,
-        const Op& op)
-    {
-      typedef BinaryEvalImpl<DistEval<LeftTile, Policy>, DistEval<RightTile,
-          Policy>, Op, Policy> impl_type;
-      return DistEval<typename Op::result_type, Policy>(
-          std::shared_ptr<typename impl_type::DistEvalImpl_>(
-              new impl_type(left, right, world,
-                  (perm ? perm ^ left.trange() : left.trange()),
-                  shape, pmap, perm, op)));
-    }
-
   }  // namespace detail
 }  // namespace TiledArray
 

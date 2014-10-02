@@ -28,28 +28,8 @@
 
 #else
 
-// This implementation of static assert is based on Boost.StaticAssert
-
-//  (C) Copyright John Maddock 2000.
-//  Use, modification and distribution are subject to the
-//  Boost Software License, Version 1.0. (See accompanying file
-//  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-
-//  See http://www.boost.org/libs/static_assert for documentation.
-
-//namespace TiledArray {
-//  namespace error {
-//    template <bool x> struct STATIC_ASSERTION_FAILURE;
-//
-//    template <> struct STATIC_ASSERTION_FAILURE<true> { enum { value = 1 }; };
-//
-//    template<int x> struct static_assert_test{};
-//  }  // namespace error
-//} // namespace TiledArray
 #define TA_STATIC_ASSERT( A )
-//       typedef ::TiledArray::error::static_assert_test<\
-//          sizeof(::TiledArray::error::STATIC_ASSERTION_FAILURE< (( A ) == 0 ? false : true) >)>\
-//             static_assert_##__FILE__##_##__LINE__
+
 #endif // TILEDARRAY_HAVE_STATIC_ASSERT
 
 // Check for default error checking method, which is determined by TA_DEFAULT_ERROR,

@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
   }
   const long repeat = (argc >= 8 ? atol(argv[7]) : 5);
   if (repeat <= 0) {
-    std::cerr << "Error: number of repititions must greater than zero.\n";
+    std::cerr << "Error: number of repetitions must greater than zero.\n";
     return 1;
   }
 
@@ -95,17 +95,17 @@ int main(int argc, char** argv) {
   // Construct TiledRange
   std::vector<unsigned int> matrix_blocking;
   matrix_blocking.reserve(num_blocks + 1);
-  for(std::size_t i = 0; i <= matrix_size; i += block_size)
+  for(long i = 0; i <= matrix_size; i += block_size)
     matrix_blocking.push_back(i);
 
   std::vector<unsigned int> coeff_blocking;
   coeff_blocking.reserve(coeff_num_blocks + 1);
-  for(std::size_t i = 0; i <= coeff_size; i += coeff_block_size)
+  for(long i = 0; i <= coeff_size; i += coeff_block_size)
     coeff_blocking.push_back(i);
 
   std::vector<unsigned int> df_blocking;
   df_blocking.reserve(df_num_blocks + 1);
-  for(std::size_t i = 0; i <= df_size; i += df_block_size)
+  for(long i = 0; i <= df_size; i += df_block_size)
     df_blocking.push_back(i);
 
   std::vector<TiledArray::TiledRange1> matrix_blocking2(
@@ -113,22 +113,22 @@ int main(int argc, char** argv) {
   );
 
   // Create C^T blocking
-  std::vector<TiledArray::TiledRange1> coeff_blocking2{
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
-      TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end())
-  };
+  std::vector<TiledArray::TiledRange1> coeff_blocking2;
+  coeff_blocking2.reserve(2);
+  coeff_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
+  coeff_blocking2.push_back(TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end()));
 
-  std::vector<TiledArray::TiledRange1> df_blocking2 = {
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
-      TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end())
-  };
+  std::vector<TiledArray::TiledRange1> df_blocking2;
+  df_blocking2.reserve(3);
+  df_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
+  df_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
+  df_blocking2.push_back(TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end()));
 
-  std::vector<TiledArray::TiledRange1> temp_blocking2 = {
-      TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end()),
-      TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()),
-      TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end())
-  };
+  std::vector<TiledArray::TiledRange1> temp_blocking2;
+  temp_blocking2.reserve(3);
+  temp_blocking2.push_back(TiledArray::TiledRange1(coeff_blocking.begin(), coeff_blocking.end()));
+  temp_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
+  temp_blocking2.push_back(TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end()));
 
 
   TiledArray::TiledRange matrix_trange(matrix_blocking2.begin(), matrix_blocking2.end());

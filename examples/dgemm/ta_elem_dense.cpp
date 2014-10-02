@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
   }
   const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
   if (repeat <= 0) {
-    std::cerr << "Error: number of repititions must greater than zero.\n";
+    std::cerr << "Error: number of repetitions must greater than zero.\n";
     return 1;
   }
 

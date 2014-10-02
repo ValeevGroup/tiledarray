@@ -89,15 +89,15 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(first_argument_type first, second_argument_type second) const {
-        return first.subt(second, BinaryInterface_::permutation());
+        return TiledArray::subt(first, second, BinaryInterface_::permutation());
       }
 
       result_type permute(zero_left_type, second_argument_type second) const {
-        return second.neg(BinaryInterface_::permutation());
+        return TiledArray::neg(second, BinaryInterface_::permutation());
       }
 
       result_type permute(first_argument_type first, zero_right_type) const {
-        return first.permute(BinaryInterface_::permutation());
+        return TiledArray::permute(first, BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -107,37 +107,37 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
-        return first.subt(second);
+        return TiledArray::subt(first, second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<LC, result_type>::type
       no_permute(Left& first, second_argument_type second) {
-        return first.subt_to(second);
+        return TiledArray::subt_to(first, second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!LC && RC, result_type>::type
       no_permute(first_argument_type first, Right& second) {
-        return second.subt_to(first, -1);
+        return TiledArray::subt_to(second, first, -1);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) {
-        return second.neg();
+        return TiledArray::neg(second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<RC, result_type>::type
       no_permute(zero_left_type, Right& second) {
-        return second.neg_to();
+        return TiledArray::neg_to(second);
       }
 
       template <bool LC, bool RC>
       static typename madness::enable_if_c<!LC, result_type>::type
       no_permute(first_argument_type first, zero_right_type) {
-        return first.clone();
+        return TiledArray::clone(first);
       }
 
       template <bool LC, bool RC>

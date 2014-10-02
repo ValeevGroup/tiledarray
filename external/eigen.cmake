@@ -1,11 +1,15 @@
 # -*- mode: cmake -*-
 
+include(CMakePushCheckState)
+
 # Check for Eigen
 find_package(Eigen 3.0)
 
 if (EIGEN_FOUND)
 
   # Perform a compile check with Eigen
+  cmake_push_check_state()
+  
   list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN_INCLUDE_DIR})
   CHECK_CXX_SOURCE_COMPILES("
     #include <Eigen/Core>
@@ -19,6 +23,8 @@ if (EIGEN_FOUND)
       std::cout << m_invsqrt << std::endl;
     }"
     EIGEN_COMPILES)
+    
+  cmake_pop_check_state()
 
   if (NOT EIGEN_COMPILES)
     message(FATAL_ERROR "Eigen found at ${Eigen_INCLUDE_DIR}, but failed to compile test program")
@@ -80,5 +86,5 @@ else()
 
 endif()
 
+# Set the  build variables
 include_directories(${EIGEN_INCLUDE_DIR})
-message(STATUS "\tEigen include dir: ${EIGEN_INCLUDE_DIR}")

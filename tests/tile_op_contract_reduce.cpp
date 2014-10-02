@@ -23,8 +23,8 @@
  *
  */
 
-#include "TiledArray/tile_op/contract_reduce.h"
 #include "TiledArray/tensor.h"
+#include "TiledArray/tile_op/contract_reduce.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
@@ -42,7 +42,7 @@ struct ContractReduceFixture {
       const std::size_t i, const std::size_t j)
   {
     std::size_t start[2] = {i0, j0}, finish[2] = {i, j};
-    tensor_type result(typename tensor_type::range_type(start, finish));
+    tensor_type result(tensor_type::range_type(start, finish));
     rand_fill(result);
     return result;
   }
@@ -51,7 +51,7 @@ struct ContractReduceFixture {
       const std::size_t i, const std::size_t j, const std::size_t k)
   {
     std::size_t start[3] = {i0, j0, k0}, finish[3] = {i, j, k};
-    tensor_type result(typename tensor_type::range_type(start, finish));
+    tensor_type result(tensor_type::range_type(start, finish));
     rand_fill(result);
     return result;
   }

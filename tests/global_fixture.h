@@ -20,7 +20,7 @@
 #ifndef TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 
-#include <world/stdarray.h>
+#include <madness/world/stdarray.h>
 
 namespace madness {
   class World;

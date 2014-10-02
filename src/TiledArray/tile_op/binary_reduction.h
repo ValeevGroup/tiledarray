@@ -26,6 +26,8 @@
 #ifndef TILEDARRAY_TILE_OP_BINARY_REDUCTION_H__INCLUDED
 #define TILEDARRAY_TILE_OP_BINARY_REDUCTION_H__INCLUDED
 
+#include <TiledArray/tile_interface.h>
+
 namespace TiledArray {
   namespace math {
 
@@ -57,7 +59,7 @@ namespace TiledArray {
       // Reduce an argument pair
       void operator()(result_type& result, const first_argument_type& left,
           const second_argument_type& right) const {
-        result += left.dot(right);
+        result += TiledArray::dot(left, right);
       }
 
     }; // class DotReduction

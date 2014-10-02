@@ -159,11 +159,12 @@ namespace TiledArray {
   /// range of \c matrix .
   template <typename T, typename A, typename Derived>
   inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix, Tensor<T, A>& tensor) {
+    typedef typename Tensor<T, A>::size_type size_type;
     TA_ASSERT((tensor.range().dim() == 2u) || (tensor.range().dim() == 1u));
 
     if(tensor.range().dim() == 2u) {
-      TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
-      TA_ASSERT(tensor.range().finish()[1] <= matrix.cols());
+      TA_ASSERT(tensor.range().finish()[0] <= size_type(matrix.rows()));
+      TA_ASSERT(tensor.range().finish()[1] <= size_type(matrix.cols()));
 
       // Copy matrix
       eigen_map(tensor, tensor.range().size()[0], tensor.range().size()[1]) =
@@ -174,13 +175,13 @@ namespace TiledArray {
       TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
 
       if(matrix.rows() == 1) {
-        TA_ASSERT(tensor.range().finish()[0] <= matrix.cols());
+        TA_ASSERT(tensor.range().finish()[0] <= size_type(matrix.cols()));
 
         // Copy the row vector to tensor
         eigen_map(tensor, 1, tensor.range().size()[0]) =
             matrix.block(0, tensor.range().start()[0], 1, tensor.range().size()[0]);
       } else {
-        TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
+        TA_ASSERT(tensor.range().finish()[0] <= size_type(matrix.rows()));
 
         // Copy the column vector to tensor
         eigen_map(tensor, tensor.range().size()[0], 1) =
@@ -203,11 +204,12 @@ namespace TiledArray {
   /// range of \c matrix .
   template <typename T, typename A, typename Derived>
   inline void tensor_to_eigen_submatrix(const Tensor<T, A>& tensor, Eigen::MatrixBase<Derived>& matrix) {
+    typedef typename Tensor<T, A>::size_type size_type;
     TA_ASSERT((tensor.range().dim() == 2u) || (tensor.range().dim() == 1u));
 
     if(tensor.range().dim() == 2) {
-      TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
-      TA_ASSERT(tensor.range().finish()[1] <= matrix.cols());
+      TA_ASSERT(tensor.range().finish()[0] <= size_type(matrix.rows()));
+      TA_ASSERT(tensor.range().finish()[1] <= size_type(matrix.cols()));
 
       // Copy tensor into matrix
       matrix.block(tensor.range().start()[0], tensor.range().start()[1],
@@ -217,13 +219,13 @@ namespace TiledArray {
       TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
 
       if(matrix.rows() == 1) {
-        TA_ASSERT(tensor.range().finish()[0] <= matrix.cols());
+        TA_ASSERT(tensor.range().finish()[0] <= size_type(matrix.cols()));
 
         // Copy tensor into row vector
         matrix.block(0, tensor.range().start()[0], 1, tensor.range().size()[0]) =
             eigen_map(tensor, 1, tensor.range().size()[0]);
       } else {
-        TA_ASSERT(tensor.range().finish()[0] <= matrix.rows());
+        TA_ASSERT(tensor.range().finish()[0] <= size_type(matrix.rows()));
 
         // Copy tensor into column vector
         matrix.block(tensor.range().start()[0], 0, tensor.range().size()[0], 1) =
@@ -313,18 +315,19 @@ namespace TiledArray {
   A eigen_to_array(madness::World& world, const typename A::trange_type& trange,
       const Eigen::MatrixBase<Derived>& matrix, bool replicated = false)
   {
+    typedef typename A::size_type size_type;
     // Check that trange matches the dimensions of other
     if((matrix.cols() > 1) && (matrix.rows() > 1)) {
       TA_USER_ASSERT(trange.tiles().dim() == 2,
           "TiledArray::eigen_to_array(): The number of dimensions in trange is not equal to that of the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements().size()[0] == matrix.rows(),
+      TA_USER_ASSERT(trange.elements().size()[0] == size_type(matrix.rows()),
           "TiledArray::eigen_to_array(): The number of rows in trange is not equal to the number of rows in the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements().size()[1] == matrix.cols(),
+      TA_USER_ASSERT(trange.elements().size()[1] == size_type(matrix.cols()),
           "TiledArray::eigen_to_array(): The number of columns in trange is not equal to the number of columns in the Eigen matrix.");
     } else {
       TA_USER_ASSERT(trange.tiles().dim() == 1,
           "TiledArray::eigen_to_array(): The number of dimensions in trange must match that of the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements().size()[0] == matrix.size(),
+      TA_USER_ASSERT(trange.elements().size()[0] == size_type(matrix.size()),
           "TiledArray::eigen_to_array(): The size of trange must be equal to the matrix size.");
     }
 

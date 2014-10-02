@@ -98,7 +98,7 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute(const Arg& arg) const {
-        return arg.scale(factor_, UnaryInterface_::permutation());
+        return TiledArray::scale(arg, factor_, UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -107,11 +107,11 @@ namespace TiledArray {
 
       template <bool C>
       typename madness::enable_if_c<!C, result_type>::type
-      no_permute(const Arg& arg) const { return arg.scale(factor_); }
+      no_permute(const Arg& arg) const { return TiledArray::scale(arg, factor_); }
 
       template <bool C>
       typename madness::enable_if_c<C, result_type>::type
-      no_permute(Arg& arg) const { return arg.scale_to(factor_); }
+      no_permute(Arg& arg) const { return TiledArray::scale_to(arg, factor_); }
 
     }; // class Scal
 

@@ -20,22 +20,25 @@
 #ifndef TILEDARRAY_CONFIG_H__INCLUDED
 #define TILEDARRAY_CONFIG_H__INCLUDED
 
-#include <madness_config.h>
+#include <madness/madness_config.h>
+
+/* Defines a string with the Git SHA1 revision hash tag of TiledArray */
+#define TILEDARRAY_REVISION "@TILEDARRAY_REVISION@"
 
 /* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
 #define TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@
 
 /* define if compiler supports long double, the value is sizeof(long double) */
-#cmakedefine TILEDARRAY_HAS_LONG_DOUBLE @HAVE_LONG_DOUBLE@
+#cmakedefine TILEDARRAY_HAS_LONG_DOUBLE 1
 
 /* define if compiler supports long long, the value is sizeof(long long) */
-#cmakedefine TILEDARRAY_HAS_LONG_LONG @HAVE_LONG_LONG@
+#cmakedefine TILEDARRAY_HAS_LONG_LONG 1
 
 /* define if compiler supports static_assert. */
-#cmakedefine TILEDARRAY_HAVE_STATIC_ASSERT
+#cmakedefine TILEDARRAY_HAVE_STATIC_ASSERT 1
 
 /* define if compiler supports variadic templates. */
-#cmakedefine TILEDARRAY_HAVE_VARIADIC_TEMPLATES
+#cmakedefine TILEDARRAY_HAVE_VARIADIC_TEMPLATES 1
 
 /* Define the default alignment for arrays required by vector operations. */
 #cmakedefine TILEDARRAY_ALIGNMENT @TILEARRAY_ALIGNMENT@
@@ -43,7 +46,7 @@
 /* Define the size of the CPU L1 cache lines. */
 #cmakedefine TILEDARRAY_CACHELINE_SIZE @TILEDARRAY_CACHELINE_SIZE@
 
-/* Was TiledArray configured with Elemental? */
-#cmakedefine TILEDARRAY_HAS_ELEMENTAL
+/* Define if MADNESS configured with Elemental support */
+#cmakedefine TILEDARRAY_HAS_ELEMENTAL 1
 
 #endif // TILEDARRAY_CONFIG_H__INCLUDED

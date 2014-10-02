@@ -25,7 +25,7 @@
 const TensorFixture::range_type TensorFixture::r = make_range(81);
 
 
-BOOST_FIXTURE_TEST_SUITE( tile_suite , TensorFixture )
+BOOST_FIXTURE_TEST_SUITE( tensor_suite , TensorFixture )
 
 BOOST_AUTO_TEST_CASE( default_constructor ) {
   // check constructor
@@ -143,39 +143,26 @@ BOOST_AUTO_TEST_CASE( permute_constructor ) {
   }
 }
 
-BOOST_AUTO_TEST_CASE( permute_constructor_tensor4 ) {
+BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
   const std::array<std::size_t, 4> start = {{0ul, 0ul, 0ul, 0ul}};
-  const std::array<std::size_t, 4> finish = {{6ul, 6ul, 6ul, 6ul}};
+  const std::array<std::size_t, 4> finish = {{24ul, 42ul, 16ul, 30ul}};
   TensorN x(range_type(start, finish));
   rand_fill(1693, x.size(), x.data());
 
-  Permutation perm = Permutation(1,0,3,2);
+  std::array<unsigned int, 4> p = {{0,1,2,3}};
 
-  // check constructor
-  BOOST_REQUIRE_NO_THROW(TensorN y(x, perm));
-  TensorN y(x, perm);
-
-  BOOST_CHECK(! x.empty());
-
-  // Check that range data is correct.
-  BOOST_CHECK_NE(y.data(), x.data());
-  BOOST_CHECK_EQUAL(y.size(), x.size());
-  BOOST_CHECK_EQUAL(y.range(), perm ^ x.range());
-  BOOST_CHECK_EQUAL(std::distance(y.begin(), y.end()), y.size());
-  BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(y).begin(), const_cast<const TensorN&>(y).end()), y.size());
+  while(std::next_permutation(p.begin(), p.end())) {
+    Permutation perm(p.begin(), p.end());
 
 
-  for(std::size_t i1 = start[0]; i1 < finish[0]; ++i1) {
-    for(std::size_t i2 = start[1]; i2 < finish[1]; ++i2) {
-      for(std::size_t j1 = start[2]; j1 < finish[2]; ++j1) {
-        for(std::size_t j2 = start[3]; j2 < finish[3]; ++j2) {
+    TensorN px;
+    // check constructor
+    BOOST_REQUIRE_NO_THROW(px = TensorN(x, perm));
+    BOOST_CHECK(! px.empty());
 
-          const std::array<std::size_t, 4> index = {{i1, i2, j1, j2}};
-          const std::array<std::size_t, 4> perm_index = {{i2, i1, j2, j1}};
-
-          BOOST_CHECK_EQUAL(y[perm_index], x[index]);
-        }
-      }
+    for(std::size_t i = 0ul; i < x.size(); ++i) {
+      std::size_t pi = px.range().ord(perm ^ x.range().idx(i));
+      BOOST_CHECK_EQUAL(px[pi], x[i]);
     }
   }
 }

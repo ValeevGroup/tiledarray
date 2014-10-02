@@ -22,8 +22,8 @@
 
 #include <TiledArray/config.h>
 #include <iterator>
-#include <world/enable_if.h>
-#include <world/typestuff.h>
+#include <madness/world/enable_if.h>
+#include <madness/world/typestuff.h>
 #include <complex>
 
 namespace Eigen {
@@ -124,6 +124,17 @@ namespace TiledArray {
     struct scalar_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
         public scalar_type<PlainObjectType>
     { };
+
+    /// Describes traits of nodes in TiledArray expressions
+    template <typename T, typename Enabler = void>
+    struct eval_trait {
+      typedef T type;
+    };
+
+    template <typename T>
+    struct eval_trait<T, typename madness::enable_if<is_type<typename T::eval_type> >::type>  {
+        typedef typename T::eval_type type;
+    };
 
     /// Remove const, volatile, and reference qualifiers.
     template <typename T>

@@ -26,8 +26,641 @@
 #include <TiledArray/tile_op/type_traits.h>
 #include <TiledArray/shape.h>
 
+//#define TILEDARRAY_ENABLE_SUMMA_TRACE 1
+
 namespace TiledArray {
   namespace detail {
+
+#if 1
+
+    template <typename Left, typename Right, typename Op, typename Policy>
+    class ContractionEvalImpl : public DistEvalImpl<typename Op::result_type, Policy> {
+    public:
+      typedef ContractionEvalImpl<Left, Right, Op, Policy> ContractionEvalImpl_; ///< This object type
+      typedef DistEvalImpl<typename Op::result_type, Policy> DistEvalImpl_; ///< The base class type
+      typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
+      typedef Left left_type; ///< The left-hand argument type
+      typedef Right right_type; ///< The right-hand argument type
+      typedef typename DistEvalImpl_::size_type size_type; ///< Size type
+      typedef typename DistEvalImpl_::range_type range_type; ///< Range type
+      typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
+      typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename DistEvalImpl_::trange_type trange_type; ///< Tiled range type
+      typedef typename DistEvalImpl_::value_type value_type; ///< Tile type
+      typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
+      typedef Op op_type; ///< Tile evaluation operator type
+      typedef typename left_type::eval_type left_value_type;
+      typedef typename right_type::eval_type right_value_type;
+
+    private:
+      left_type left_; ///< The left argument tensor
+      right_type right_; /// < The right argument tensor
+
+    protected:
+      op_type op_; /// < The operation used to evaluate tile-tile contractions
+
+      const ProcessID rank_; ///< This process's rank
+      const ProcessID size_; ///< Then number of processes
+      size_type m_; ///< Number of element rows in the result and left matrix
+      size_type n_; ///< Number of element columns in the result matrix and rows in the right argument matrix
+      size_type k_; ///< Number of element columns in the left and right argument matrices
+      size_type mk_; ///< Number of elements in left matrix
+      size_type kn_; ///< Number of elements in right matrix
+      size_type proc_cols_; ///< Number of columns in the result process map
+      size_type proc_rows_; ///< Number of rows in the result process map
+      size_type proc_size_; ///< Number of process in the process map. This may be
+                         ///< less than the number of processes in world.
+      ProcessID rank_row_; ///< This node's row in the process map
+      ProcessID rank_col_; ///< This node's column in the process map
+      size_type local_rows_; ///< The number of local element rows
+      size_type local_cols_; ///< The number of local element columns
+      size_type local_size_; ///< Number of local elements
+
+    public:
+
+      /// Constructor
+
+      /// \param left The left-hand argument evaluator
+      /// \param right The right-hand argument evaluator
+      /// \param world The world where this evaluator will live
+      /// \param trange The tiled range of the result tensor
+      /// \param shape The shape of the result tensor
+      /// \param pmap The process map for the result tensor
+      /// \param perm The permutation that will be applied to tiles and the
+      /// coordinate index after contraction of the result tile
+      /// \param op The operation that will be used to contract tile pairs
+      /// \param k The number of tiles in the inner dimension
+      /// \param proc_grid The process grid that defines the layout of the tiles
+      /// during the contraction evaluation
+      /// \note The trange, shape, and pmap are assumed to be in the final,
+      /// permuted, state for the result.
+      ContractionEvalImpl(const left_type& left, const right_type& right,
+          madness::World& world, const trange_type trange, const shape_type& shape,
+          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
+          const op_type& op, const size_type k, const ProcGrid& proc_grid) :
+            DistEvalImpl_(world, trange, shape, pmap, perm),
+            left_(left), right_(right), op_(op),
+            rank_(world.rank()), size_(world.size()),
+            m_(proc_grid.rows()), n_(proc_grid.cols()), k_(k),
+            mk_(left.size()), kn_(right.size()),
+            proc_cols_(proc_grid.proc_cols()), proc_rows_(proc_grid.proc_rows()),
+            proc_size_(proc_grid.proc_size()), rank_row_(proc_grid.rank_row()),
+            rank_col_(proc_grid.rank_col()), local_rows_(proc_grid.local_rows()),
+            local_cols_(proc_grid.local_cols()), local_size_(proc_grid.local_size())
+      { }
+
+      virtual ~ContractionEvalImpl() { }
+
+      const left_type& left() const { return left_; }
+
+      left_type& left() { return left_; }
+
+      const right_type& right() const { return right_; }
+
+      right_type& right() { return right_; }
+
+    public:
+
+      /// Contraction operation
+
+      /// Contract \c left and \c right to \c result .
+      /// \param[out] result The tensor that will store the result
+      /// \param[in] left The left hand tensor argument
+      /// \param[in] right The right hand tensor argument
+      void contract(value_type& result, const left_value_type& left, const right_value_type& right) const {
+        op_(result, left, right);
+      }
+
+    }; // class ContractionTensorImpl
+
+    /// Scalable Universal Matrix Multiplication Algorithm (SUMMA)
+
+    /// This algorithm is used to contract dense tensor. The arguments are
+    /// permuted such that the outer and inner indices are fused such that a
+    /// standard matrix multiplication algorithm can be used to contract the
+    /// tensors. SUMMA is described in:
+    /// Van De Geijn, R. A.; Watts, J. Concurrency Practice and Experience 1997, 9, 255-274.
+    /// \tparam Left The left-hand-argument type
+    /// \tparam Right The right-hand-argument type
+    template <typename Left, typename Right, typename Op, typename Policy>
+    class Summa :
+        public madness::WorldObject<Summa<Left, Right, Op, Policy> >,
+        public ContractionEvalImpl<Left, Right, Op, Policy>
+    {
+    public:
+      typedef Summa<Left, Right, Op, Policy> Summa_; ///< This object type
+      typedef madness::WorldObject<Summa_> WorldObject_; ///< Madness world object base class
+      typedef ContractionEvalImpl<Left, Right, Op, Policy> ContractionEvalImpl_;
+      typedef typename ContractionEvalImpl_::DistEvalImpl_ DistEvalImpl_; ///< The base class type
+      typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
+      typedef Left left_type; ///< The left-hand argument type
+      typedef Right right_type; ///< The right-hand argument type
+      typedef typename DistEvalImpl_::size_type size_type; ///< Size type
+      typedef typename DistEvalImpl_::range_type range_type; ///< Range type
+      typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
+      typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename DistEvalImpl_::trange_type trange_type; ///< Tiled range type
+      typedef typename DistEvalImpl_::value_type value_type; ///< Tile type
+      typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
+      typedef typename ContractionEvalImpl_::op_type op_type; ///< Tile evaluation operator type
+
+    private:
+      // import functions from world object
+      using WorldObject_::task;
+      using WorldObject_::get_world;
+
+      /// The left tensor cache container type
+      typedef typename left_type::eval_type left_value_type;
+      typedef madness::ConcurrentHashMap<size_type, madness::Future<left_value_type> > left_container;
+
+      /// The right tensor cache container type
+      typedef typename right_type::eval_type right_value_type;
+      typedef madness::ConcurrentHashMap<size_type, madness::Future<right_value_type> > right_container;
+
+
+      /// Contraction and reduction task type
+      typedef TiledArray::detail::ReducePairTask<op_type> reduce_pair_task;
+
+      /// Datum type for
+      typedef std::pair<size_type, madness::Future<right_value_type> > row_datum;
+      typedef std::pair<size_type, madness::Future<left_value_type> > col_datum;
+      typedef reduce_pair_task result_datum;
+
+      // Constants that define the data layout and sizes
+      using ContractionEvalImpl_::rank_; ///< This process's rank
+      using ContractionEvalImpl_::size_; ///< Then number of processes
+      using ContractionEvalImpl_::m_; ///< Number of element rows in the result and left matrix
+      using ContractionEvalImpl_::n_; ///< Number of element columns in the result matrix and rows in the right argument matrix
+      using ContractionEvalImpl_::k_; ///< Number of element columns in the left and right argument matrices
+      using ContractionEvalImpl_::mk_; ///< Number of elements in left matrix
+      using ContractionEvalImpl_::kn_; ///< Number of elements in right matrix
+      using ContractionEvalImpl_::proc_cols_; ///< Number of columns in the result process map
+      using ContractionEvalImpl_::proc_rows_; ///< Number of rows in the result process map
+      using ContractionEvalImpl_::proc_size_; ///< Number of process in the process map. This may be
+                         ///< less than the number of processes in world.
+      using ContractionEvalImpl_::rank_row_; ///< This node's row in the process map
+      using ContractionEvalImpl_::rank_col_; ///< This node's column in the process map
+      using ContractionEvalImpl_::local_rows_; ///< The number of local element rows
+      using ContractionEvalImpl_::local_cols_; ///< The number of local element columns
+      using ContractionEvalImpl_::local_size_; ///< Number of local elements
+
+      std::vector<ProcessID> row_group_; ///< The group of processes included in this node's row
+      std::vector<ProcessID> col_group_; ///< The group of processes included in this node's column
+      left_container left_cache_; ///< Cache for left bcast tiles
+      right_container right_cache_; ///< Cache for right bcast tiles
+      result_datum* results_; ///< Task object that will contract and reduce tiles
+
+    private:
+      // Not allowed
+      Summa(const Summa_&);
+      Summa_& operator=(const Summa_&);
+
+      /// Broadcast a tile to child nodes within group
+
+      /// This function will broadcast tiles from
+      template <typename Handler, typename Value>
+      void bcast(Handler handler, const size_type i, const Value& value,
+          const std::vector<ProcessID>& group, const ProcessID rank, const ProcessID root)
+      {
+        const ProcessID size = group.size();
+
+        // Get the group child nodes
+        ProcessID child0, child1;
+
+        // Renumber processes so root has me=0
+        const int me = (rank + size - root) % size;
+
+        // Left child
+        child0 = (me << 1) + 1 + root;
+        if((child0 >= size) && (child0 < (size + root)))
+          child0 -= size;
+        if(child0 >= size)
+          child0 = -1;
+
+        // Right child
+        child1 = (me << 1) + 2 + root;
+        if((child1 >= size) && (child1 < (size + root)))
+          child1 -= size;
+        if(child1 >= size)
+          child1 = -1;
+
+        // Send the data to child nodes
+        if(child0 != -1)
+          task(group[child0], handler, i, value, child0, root);
+        if(child1 != -1)
+          task(group[child1], handler, i, value, child1, root);
+      }
+
+      /// Spawn broadcast task for tile \c i with \c value
+
+      /// If \c value has been set, two remote broadcast tasks will be spawned
+      /// on the child nodes. Otherwise a local task is spawned that will
+      /// broadcast the tile to the child nodes when the tile has been set.
+      /// \tparam Handler The type of the remote task broadcast handler function
+      /// \tparam Value The value type of the tile to be broadcast
+      /// \param handler The remote task broadcast handler function
+      /// \param i The index of the tile being broadcast
+      /// \param value The tile value being broadcast
+      /// \param group The broadcast group
+      /// \param rank The rank of this process in group
+      template <typename Handler, typename Value>
+      void spawn_bcast_task(Handler handler, const size_type i, const madness::Future<Value>& value,
+          const std::vector<ProcessID>& group, const ProcessID rank)
+      {
+        if(value.probe())
+          bcast(handler, i, value, group, rank, rank);
+        else
+          task(rank_, & Summa_::template bcast<Handler, Value>, handler, i, value,
+              group, rank, rank);
+      }
+
+      /// Task function used for broadcasting tiles along the row
+
+      /// \param i The tile index
+      /// \param group_rank The rank of this node within the group
+      /// \param group_root The broadcast group root node
+      void bcast_row_handler(const size_type i, left_value_type& value,
+          const ProcessID group_rank, const ProcessID group_root)
+      {
+        // Broadcast this task to the next nodes in the tree
+        bcast(& Summa_::bcast_row_handler, i, value, row_group_, group_rank, group_root);
+
+        // Copy tile into local cache
+        typename left_container::const_accessor acc;
+        const bool erase_cache = ! left_cache_.insert(acc, i);
+        madness::Future<left_value_type> tile = acc->second;
+
+        // If the local future is already present, the cached value is not needed
+        if(erase_cache)
+          left_cache_.erase(acc);
+        else
+          acc.release();
+
+        // Set the local future with the broadcast value
+        tile.set(value);
+      }
+
+      /// Task function used for broadcasting tiles along the column
+
+      /// \param i The tile index
+      /// \param group_rank The rank of this node within the group
+      /// \param group_root The broadcast group root node
+      void bcast_col_handler(const size_type i, right_value_type& value,
+          const ProcessID group_rank, const ProcessID group_root)
+      {
+        // Broadcast this task to the next nodes in the tree
+        bcast(& Summa_::bcast_col_handler, i, value, col_group_, group_rank, group_root);
+
+        // Copy tile into local cache
+        typename right_container::const_accessor acc;
+        const bool erase_cache = ! right_cache_.insert(acc, i);
+        madness::Future<right_value_type> tile = acc->second;
+
+        // If the local future is already present, the cached value is not needed
+        if(erase_cache)
+          right_cache_.erase(acc);
+        else
+          acc.release();
+
+        // Set the local future with the broadcast value
+        tile.set(value);
+      }
+
+      /// Broadcast task for rows or columns
+      class BcastRowColTask : public madness::TaskInterface {
+      private:
+        Summa_* owner_;
+        const size_type bcast_k_;
+        std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > > results_;
+
+        virtual void get_id(std::pair<void*,unsigned short>& id) const {
+            return madness::PoolTaskInterface::make_id(id, *this);
+        }
+
+        /// Tile conversion task function
+
+        /// \tparam Tile The input tile type
+        /// \param tile The input tile
+        /// \return The evaluated version of the lazy tile
+        template <typename Tile>
+        static typename eval_trait<Tile>::type convert_tile_task(const Tile& tile) { return tile; }
+
+
+        /// Conversion function
+
+        /// This function does nothing since tile is not a lazy tile.
+        /// \param Arg The type of the argument that holds the input tiles
+        /// \param tile A future to the tile
+        /// \return \c tile
+        template <typename Arg>
+        static typename madness::disable_if<
+            TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+            madness::Future<typename Arg::eval_type> >::type
+        get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
+
+
+        /// Conversion function
+
+        /// This function spawns a task that will convert a lazy tile from the
+        /// tile type to the evaluated tile type.
+        /// \param Arg The type of the argument that holds the input tiles
+        /// \param arg The argument that holds the tiles
+        /// \param index The tile index of arg
+        /// \return A future to the evaluated tile
+        template <typename Arg>
+        static typename madness::enable_if<
+            TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+            madness::Future<typename Arg::eval_type> >::type
+        get_tile(Arg& arg, const typename Arg::size_type index) {
+          return arg.get_world().taskq.add(
+              & BcastRowColTask::template convert_tile_task<typename Arg::value_type>,
+              arg.get(index), madness::TaskAttributes::hipri());
+        }
+
+        /// Task function for broadcasting the k-th column of the left tensor argument
+
+        /// This function will construct a task that broadcasts the k-th column of
+        /// the left tensor argument and return a vector of futures to the local
+        /// elements of the k-th column.  This task must be run on all nodes
+        /// for each k.
+        std::vector<col_datum> bcast_column() {
+          // Construct the result column vector
+          std::vector<col_datum> col;
+          col.reserve(owner_->local_rows_);
+
+          // Iterate over local rows of the k-th column of the left argument tensor
+          size_type i = owner_->rank_row_ * owner_->k_ + bcast_k_;
+          const size_type step = owner_->proc_rows_ * owner_->k_;
+          const size_type end = owner_->mk_;
+          if(owner_->left().is_local(i)) {
+            if(! owner_->left().pmap()->is_replicated()) {
+              for(; i < end; i += step) {
+                // Take the tile's local copy and add it to the column vector
+                col.push_back(col_datum(i, get_tile(owner_->left(), i)));
+
+                // Broadcast the tile to all nodes in the row
+                owner_->spawn_bcast_task(& Summa_::bcast_row_handler, i,
+                    col.back().second, owner_->row_group_, owner_->rank_col_);
+              }
+            } else {
+              for(; i < end; i += step)
+                // Take the tile's local copy and add it to the column vector
+                col.push_back(col_datum(i, get_tile(owner_->left(), i)));
+            }
+          } else {
+            for(; i < end; i += step) {
+              // Insert a future into the cache as a placeholder for the broadcast tile.
+              typename left_container::const_accessor acc;
+              const bool erase_cache = ! owner_->left_cache_.insert(acc, i);
+              madness::Future<left_value_type> tile = acc->second;
+
+              // If the local future is already present, the cached value is not needed
+              if(erase_cache)
+                owner_->left_cache_.erase(acc);
+              else
+                acc.release();
+
+              // Add tile to column vector
+              col.push_back(col_datum(i, tile));
+            }
+          }
+
+          return col;
+        }
+
+        /// Task function for broadcasting the k-th column of the right tensor argument
+
+        /// This function will broadcast and return a vector of futures to the k-th
+        /// column of the right tensor argument. Only the tiles that are needed for
+        /// local contractions are returned. This task must be run on all nodes
+        /// for each k.
+        std::vector<row_datum> bcast_row() {
+          // Construct the result row vector
+          std::vector<row_datum> row;
+          row.reserve(owner_->local_cols_);
+
+          // Iterate over local columns of the k-th row of the right argument tensor
+          size_type i = bcast_k_ * owner_->n_ + owner_->rank_col_;
+          const size_type end = (bcast_k_ + 1) * owner_->n_;
+          if(owner_->right().is_local(i)) {
+            if(! owner_->right().pmap()->is_replicated()) {
+              for(; i < end; i += owner_->proc_cols_) {
+                // Take the tile's local copy and add it to the row vector
+                row.push_back(row_datum(i, get_tile(owner_->right(), i)));
+
+                // Broadcast the tile to all nodes in the column
+                owner_->spawn_bcast_task(& Summa_::bcast_col_handler, i,
+                    row.back().second, owner_->col_group_, owner_->rank_row_);
+              }
+            } else {
+              for(; i < end; i += owner_->proc_cols_)
+                // Take the tile's local copy and add it to the row vector
+                row.push_back(row_datum(i, get_tile(owner_->right(), i)));
+            }
+          } else {
+            for(; i < end; i += owner_->proc_cols_) {
+              // Insert a future into the cache as a placeholder for the broadcast tile.
+              typename right_container::const_accessor acc;
+              const bool erase_cache = ! owner_->right_cache_.insert(acc, i);
+              madness::Future<right_value_type> tile = acc->second;
+
+              if(erase_cache)
+                owner_->right_cache_.erase(acc); // Bcast data has arived, so erase cache
+              else
+                acc.release();
+
+              // Add tile to row vector
+              row.push_back(row_datum(i, tile));
+
+            }
+          }
+
+          return row;
+        }
+
+      public:
+        BcastRowColTask(Summa_* owner, size_type k, const int ndep) :
+            madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
+            owner_(owner), bcast_k_(k), results_()
+        { }
+
+        virtual ~BcastRowColTask() { }
+
+        virtual void run(const madness::TaskThreadEnv&) {
+          results_.first.set(bcast_column());
+          results_.second.set(bcast_row());
+        }
+
+        const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >&
+        result() const { return results_; }
+      }; // class BcastTask
+
+      /// Spawn broadcast tasks for column and row \c k
+
+      /// Spawn two high priority tasks that will broadcast tiles needed for
+      /// local tile contractions.
+      /// \param k The column and row to broadcast
+      /// \return A broad cast task pointer
+      BcastRowColTask* bcast_row_and_column(const size_type k, const int ndep = 0) const {
+        return (k < k_ ? new BcastRowColTask(const_cast<Summa_*>(this), k, ndep) : NULL);
+      }
+
+      /// Task function that is created for each iteration of the SUMMA algorithm
+
+      /// This task function spawns the tasks for local contraction tiles,
+      /// the next SUMMA iteration (k + 1), broadcast of the k + 2 column of
+      /// the left argument tensor, and broadcast of the k + 2 row of the right
+      /// argument. The next SUMMA iteration task depends on the results of the
+      /// schedule contraction task. The broadcast tasks depend on all of the
+      /// individual contraction tasks and the schedule contraction task.
+      /// When \c k==k_ , the finalize task is spawned instead, which will assign
+      /// the final value to the local tiles.
+      /// \param k The SUMMA iteration step, in the range [0,k_].
+      /// \param col_k0 The column tiles of the left argument tensor needed for
+      /// SUMMA iteration \c k
+      /// \param row_k0 The row tiles of the right argument tensor needed for
+      /// SUMMA iteration \c k
+      /// \param col_row_k1 The column and row tiles for SUMMA iteration \c k+1
+      /// for the left and right tensors respectively.
+      void step(const size_type k,
+          const std::vector<col_datum>& col_k0, const std::vector<row_datum>& row_k0,
+          const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >& col_row_k1)
+      {
+        const bool assign = (k == (k_ - 1));
+
+        BcastRowColTask* task_row_col_k2 = bcast_row_and_column(k + 2, local_size_);
+
+        // Schedule contraction tasks
+        result_datum* restrict it = results_;
+        for(typename std::vector<col_datum>::const_iterator col_it = col_k0.begin(); col_it != col_k0.end(); ++col_it)
+          for(typename std::vector<row_datum>::const_iterator row_it = row_k0.begin(); row_it != row_k0.end(); ++row_it, ++it)
+            it->add(col_it->second, row_it->second, task_row_col_k2);
+
+        // Spawn the task for the next iteration
+        if(assign) {
+          // Signal the reduce task that all the reduction pairs have been added
+          result_datum* restrict it = results_;
+          for(size_type i = rank_row_; i < m_; i += proc_rows_) {
+            for(size_type j = rank_col_; j < n_; j += proc_cols_, ++it) {
+              const size_type index = i * n_ + j;
+              DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(index), it->submit());
+
+              it->~result_datum();
+            }
+          }
+          std::allocator<result_datum> alloc;
+          alloc.deallocate(results_, local_size_);
+        } else {
+          if(task_row_col_k2) {
+            task(rank_, & Summa_::step, k + 1, col_row_k1.first,
+                col_row_k1.second, task_row_col_k2->result(),
+                madness::TaskAttributes::hipri());
+            get_world().taskq.add(task_row_col_k2);
+          } else {
+            task(rank_, & Summa_::step, k + 1, col_row_k1.first,
+                col_row_k1.second, std::make_pair(
+                    madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
+                    madness::Future<std::vector<row_datum> >(std::vector<row_datum>())),
+                madness::TaskAttributes::hipri());
+          }
+        }
+      }
+
+    public:
+
+      Summa(const left_type& left, const right_type& right,
+          madness::World& world, const trange_type trange, const shape_type& shape,
+          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
+          const op_type& op, const size_type k, const ProcGrid& proc_grid) :
+          WorldObject_(world),
+          ContractionEvalImpl_(left, right, world, trange, shape, pmap, perm, op, k, proc_grid),
+          row_group_(),
+          col_group_(),
+          left_cache_(local_rows_ * k_),
+          right_cache_(local_cols_ * k_),
+          results_(NULL)
+      {
+        if(local_size_ > 0ul) {
+          // Fill the row group with all the processes in rank's row
+          row_group_.reserve(proc_cols_);
+          ProcessID row_first = rank_ - rank_col_;
+          const ProcessID row_last = row_first + proc_cols_;
+          for(; row_first < row_last; ++row_first)
+            row_group_.push_back(row_first);
+
+          // Fill the col group with all the processes in rank's column
+          col_group_.reserve(proc_rows_);
+          for(size_type col_first = rank_col_; col_first < proc_size_; col_first += proc_cols_)
+            col_group_.push_back(col_first);
+        }
+
+        WorldObject_::process_pending();
+      }
+
+      /// Virtual destructor
+      virtual ~Summa() { }
+
+    private:
+
+      /// Evaluate the tiles of this tensor
+
+      /// This function will evaluate the children of this distributed evaluator
+      /// and evaluate the tiles for this distributed evaluator. It will block
+      /// until the tasks for the children are evaluated (not for the tasks of
+      /// this object).
+      /// \param pimpl A shared pointer to this object
+      /// \return The number of tiles that will be set by this process
+      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+        // Convert pimpl to this object type so it can be used in tasks
+        std::shared_ptr<Summa_> self =
+            std::static_pointer_cast<Summa_>(pimpl);
+
+        // Start evaluate child tensors
+        ContractionEvalImpl_::left().eval();
+        ContractionEvalImpl_::right().eval();
+
+        size_type tile_count = 0ul;
+
+        if(local_size_ > 0ul) {
+          // Start broadcast tasks of column and row for k = 0
+          BcastRowColTask* task_col_row_k0 = bcast_row_and_column(0ul);
+          std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
+          col_row_k0 = task_col_row_k0->result();
+          get_world().taskq.add(task_col_row_k0);
+
+          // Start broadcast tasks of column and row for k = 1
+          BcastRowColTask* task_col_row_k1 = bcast_row_and_column(1ul);
+          std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
+          col_row_k1 = (task_col_row_k1 ? task_col_row_k1->result() :
+              std::make_pair(
+                  madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
+                  madness::Future<std::vector<row_datum> >(std::vector<row_datum>())));
+          if(task_col_row_k1)
+            get_world().taskq.add(task_col_row_k1);
+
+          // Construct a pair reduction object for each local tile
+          std::allocator<result_datum> alloc;
+          results_ = alloc.allocate(local_size_);
+          {
+            const result_datum* restrict const end = results_ + local_size_;
+            for(result_datum* restrict it = results_; it != end; ++it)
+              new(it) result_datum(get_world(), ContractionEvalImpl_::op_);
+          }
+          // Spawn the first step in the algorithm
+          task(rank_, & Summa_::step, 0ul, col_row_k0.first, col_row_k0.second,
+              col_row_k1, madness::TaskAttributes::hipri());
+        }
+
+        // Wait for child tensors to be evaluated, and process tasks while waiting.
+        ContractionEvalImpl_::left().wait();
+        ContractionEvalImpl_::right().wait();
+
+        return tile_count;
+      }
+
+    }; // class Summa
+
+#else
 
     /// Distributed contraction evaluator implementation
 
@@ -89,9 +722,7 @@ namespace TiledArray {
       typedef std::pair<size_type, left_future> col_datum; ///< Datum element type for a left-hand argument column
 
 
-      //------------------------------------------------------------------------
-      // Process groups
-
+      // Process groups --------------------------------------------------------
 
       /// Process group factory function
 
@@ -150,136 +781,47 @@ namespace TiledArray {
       }
 
 
-      //------------------------------------------------------------------------
-      // Broadcast kernels
+      // Broadcast kernels -----------------------------------------------------
+
+      /// Tile conversion task function
+
+      /// \tparam Tile The input tile type
+      /// \param tile The input tile
+      /// \return The evaluated version of the lazy tile
+      template <typename Tile>
+      static typename eval_trait<Tile>::type convert_tile_task(const Tile& tile) { return tile; }
 
 
-      /// Broadcast a dense row or column
+      /// Conversion function
 
-      /// \tparam Datum The result vector datum type
-      /// \tparam GenTile Functor type that will generate the tiles to be broadcast
-      /// \param[in] index The index of the first tile to be broadcast
-      /// \param[in] end The end of the tile index range
-      /// \param[in] stride The stride between tile indices
-      /// \param[in] group_root The group root process of the broadcast
-      /// \param[in] group The broadcast group
-      /// \param[in] key_offset The offset that is applied to broadcast keys
-      /// \param[in] gen_tile The tile generation functor
-      /// \param[out] vec The vector that will return the broadcast tiles
-      template <typename Datum, typename GenTile>
-      void bcast(const DenseShape&, size_type index, const size_type end,
-          const size_type stride, const ProcessID group_root, const madness::Group& group,
-          const size_type key_offset, const GenTile& gen_tile, std::vector<Datum>& vec) const
-      {
-        // Iterate over tiles to be broadcast
-        for(size_type i = 0ul; index < end; ++i, index += stride) {
-          // Get tile
-          vec.push_back(Datum(i, gen_tile(index)));
-
-          // Broadcast the tile
-          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
-          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
-        }
-      }
-
-      /// Broadcast a sparse row or column
-
-      /// \tparam Shape The sparse shape type
-      /// \tparam Datum The result vector datum type
-      /// \tparam GenTile Tile generation functor type
-      /// \param[in] shape The shape that will be used to filter zero tiles from
-      /// the broadcast
-      /// \param[in] index The index of the first tile to be broadcast
-      /// \param[in] end The end of the tile index range
-      /// \param[in] stride The stride between tile indices
-      /// \param[in] group_root The group root process of the broadcast
-      /// \param[in] group The broadcast group
-      /// \param[in] key_offset The offset that is applied to broadcast keys
-      /// \param[in] gen_tile The tile generation functor
-      /// \param[out] vec The vector that will return the broadcast tiles
-      template <typename Shape, typename Datum, typename GenTile>
-      void bcast(const Shape& shape, size_type index, const size_type end,
-          const size_type stride, const ProcessID group_root, const madness::Group& group,
-          const size_type key_offset, const GenTile& gen_tile, std::vector<Datum>& vec) const
-      {
-        // Iterate over tiles to be broadcast
-        for(size_type i = 0ul; index < end; ++i, index += stride) {
-          if(shape.is_zero(index)) continue;
-
-          // Get tile
-          vec.push_back(Datum(i, gen_tile(index)));
-
-          // Broadcast the tile
-          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
-          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
-        }
-      }
-
-      /// Tile generator for the root process (owner of the data)
-
-      /// This functor is used by the broadcast function to move tiles from the
-      /// owner on the root process. If the tiles are lazy tiles, a conversion
-      /// task is spawned.
+      /// This function does nothing since tile is not a lazy tile.
       /// \param Arg The type of the argument that holds the input tiles
+      /// \param tile A future to the tile
+      /// \return \c tile
       template <typename Arg>
-      class GenRootTile {
-        Arg& arg_; ///< The argument object that owns the input tiles
-
-        /// Tile conversion task function
-
-        /// \tparam Tile The input tile type
-        /// \param tile The input tile
-        /// \return The evaluated version of the lazy tile
-        template <typename Tile>
-        static typename Tile::eval_type convert_task(const Tile& tile) { return tile; }
+      static typename madness::disable_if<
+          TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+          madness::Future<typename Arg::eval_type> >::type
+      get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
 
 
-        /// Conversion function
+      /// Conversion function
 
-        /// This function does nothing since tile is not a lazy tile.
-        /// \tparam Tile The input tile type
-        /// \param tile A future to the tile
-        /// \return \c tile
-        template <typename Tile>
-        static typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile>,
-            const madness::Future<Tile>& >::type
-        convert(const madness::Future<Tile>& tile) { return tile; }
-
-
-        /// Conversion function
-
-        /// This function spawns a task that will convert a lazy tile from the
-        /// tile type to the evaluated tile type.
-        /// \tparam Tile The input tile type
-        /// \param tile A future to the lazy tile
-        /// \return A future to the evaluated tile
-        template <typename Tile>
-        typename madness::enable_if< TiledArray::math::is_lazy_tile<Tile>,
-            madness::Future<typename Tile::eval_type> >::type
-        convert(const madness::Future<Tile>& tile) const {
-          return arg_.get_world().taskq.add(
-              & GenRootTile<Arg>::template convert_task<Tile>,
-              tile, madness::TaskAttributes::hipri());
-        }
-
-      public:
-        GenRootTile(Arg& arg) : arg_(arg) { }
-
-        madness::Future<typename Arg::eval_type> operator()(const size_type index) const {
-          TA_ASSERT(arg_.is_local(index));
-          return convert(arg_.get(index));
-        }
-      }; // class GenRootTile
-
-      /// Tile generator object that generates new futures for tiles
+      /// This function spawns a task that will convert a lazy tile from the
+      /// tile type to the evaluated tile type.
+      /// \param Arg The type of the argument that holds the input tiles
+      /// \param arg The argument that holds the tiles
+      /// \param index The tile index of arg
+      /// \return A future to the evaluated tile
       template <typename Arg>
-      class GenEmptyTile {
-      public:
-
-        madness::Future<typename Arg::eval_type> operator()(const size_type) const {
-          return madness::Future<typename Arg::eval_type>();
-        }
-      }; // class GenEmptyTile
+      static typename madness::enable_if<
+          TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+          madness::Future<typename Arg::eval_type> >::type
+      get_tile(Arg& arg, const typename Arg::size_type index) {
+        return arg.get_world().taskq.add(
+            & ContractionEvalImpl_::template convert_tile_task<typename Arg::value_type>,
+            arg.get(index), madness::TaskAttributes::hipri());
+      }
 
       /// Broadcast tiles from \c arg
 
@@ -289,7 +831,7 @@ namespace TiledArray {
       /// \param[in] stride The stride between tile indices to be broadcast
       /// \param[in] group The process group where the tiles will be broadcast
       /// \param[in] key_offset The broadcast key offset value
-      /// \param[in] vec The vector that will hold broadcast tiles
+      /// \param[out] vec The vector that will hold broadcast tiles
       template <typename Arg, typename Datum>
       void bcast(Arg& arg, size_type index, const size_type end, const size_type stride,
           const madness::Group& group, const size_type key_offset, std::vector<Datum>& vec) const
@@ -300,21 +842,39 @@ namespace TiledArray {
         const ProcessID group_root = group.rank(arg.owner(index));
         TA_ASSERT(group_root < group.size());
 
-        if(group_root == group.rank()) {
-          // Broadcast data from root process
-          bcast(arg.shape(), index, end, stride, group_root, group,
-              key_offset, GenRootTile<Arg>(arg), vec);
-        } else {
-          // Receive broadcast data on non-root processes
-          bcast(arg.shape(), index, end, stride, group_root, group,
-              key_offset, GenEmptyTile<Arg>(), vec);
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        std::stringstream ss;
+        ss  << "bcast: rank=" << TensorImpl_::get_world().rank()
+            << " id=(" << group.id().first << "," << group.id().second
+            << ") root=" << group.world_rank(group_root) << "\n";
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
+        // Iterate over tiles to be broadcast
+        for(size_type i = 0ul; index < end; ++i, index += stride) {
+          if(arg.shape().is_zero(index)) continue;
+
+          // Get tile
+          if(group_root == group.rank())
+            vec.push_back(Datum(i, get_tile(arg, index)));
+          else
+            vec.push_back(Datum(i, madness::Future<typename Arg::eval_type>()));
+
+          // Broadcast the tile
+          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
+          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        ss  << "    bcast > index=" << index << " key=(" << key.first << "," << key.second << ")\n";
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
         }
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        std::cout << ss.str().c_str();
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
       }
 
 
-      //------------------------------------------------------------------------
-      // Broadcast specialization for left and right arguments
-
+      // Broadcast specialization for left and right arguments -----------------
 
       /// Broadcast column \c k of \c left_ with a dense right-hand argument
 
@@ -463,9 +1023,7 @@ namespace TiledArray {
       }
 
 
-      //------------------------------------------------------------------------
-      // Row and column iteration functions
-
+      // Row and column iteration functions ------------------------------------
 
       /// Find next non-zero row of \c right_ for a sparse shape
 
@@ -586,15 +1144,28 @@ namespace TiledArray {
       }
 
 
-
-      //------------------------------------------------------------------------
-      // Initialization functions
+      // Initialization functions ----------------------------------------------
 
       /// Initialize reduce tasks and construct broadcast groups
       size_type initialize(const DenseShape&) {
         // Construct static broadcast groups for dense arguments
-        col_group_ = proc_grid_.make_col_group(madness::DistributedID(TensorImpl_::id(), 0ul));
-        row_group_ = proc_grid_.make_row_group(madness::DistributedID(TensorImpl_::id(), k_));
+        const madness::DistributedID col_did(TensorImpl_::id(), 0ul);
+        col_group_ = proc_grid_.make_col_group(col_did);
+        const madness::DistributedID row_did(TensorImpl_::id(), k_);
+        row_group_ = proc_grid_.make_row_group(row_did);
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        std::stringstream ss;
+        ss << "init: rank=" << TensorImpl_::get_world().rank()
+           << "\n    col_group_=(" << col_did.first << ", " << col_did.second << ") { ";
+        for(ProcessID gproc = 0ul; gproc < col_group_.size(); ++gproc)
+          ss << col_group_.world_rank(gproc) << " ";
+        ss << "}\n    row_group_=(" << row_did.first << ", " << row_did.second << ") { ";
+        for(ProcessID gproc = 0ul; gproc < row_group_.size(); ++gproc)
+          ss << row_group_.world_rank(gproc) << " ";
+        ss << "}\n";
+        std::cout << ss.str().c_str();
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
         // Allocate memory for the reduce pair tasks.
         std::allocator<ReducePairTask<op_type> > alloc;
@@ -645,12 +1216,24 @@ namespace TiledArray {
         return tile_count;
       }
 
-      size_type initialize() { return initialize(TensorImpl_::shape()); }
+      size_type initialize() {
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        if(TensorImpl_::get_world().rank() == 0)
+          printf("init: start\n");
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
+        const size_type result = initialize(TensorImpl_::shape());
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        if(TensorImpl_::get_world().rank() == 0)
+          printf("init: finish\n");
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
+        return result;
+      }
 
 
-      //------------------------------------------------------------------------
-      // Finalize functions
-
+      // Finalize functions ----------------------------------------------------
 
       /// Set the result tiles, destroy reduce tasks, and destroy broadcast groups
       void finalize(const DenseShape&) {
@@ -721,7 +1304,19 @@ namespace TiledArray {
             proc_grid_.local_size());
       }
 
-      void finalize() { finalize(TensorImpl_::shape()); }
+      void finalize() {
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        if(TensorImpl_::get_world().rank() == 0)
+          printf("finalize: start\n");
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
+        finalize(TensorImpl_::shape());
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        if(TensorImpl_::get_world().rank() == 0)
+          printf("finalize: finish\n");
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+      }
 
       /// SUMMA finalization task
 
@@ -743,9 +1338,7 @@ namespace TiledArray {
       }; // class FinalizeTask
 
 
-      //------------------------------------------------------------------------
-      // Contraction functions
-
+      // Contraction functions -------------------------------------------------
 
       /// Schedule local contraction tasks for \c col and \c row tile pairs
 
@@ -830,9 +1423,7 @@ namespace TiledArray {
       { contract(TensorImpl_::shape(), k, col, row, task); }
 
 
-      //------------------------------------------------------------------------
-      // SUMMA step task
-
+      // SUMMA step task -------------------------------------------------------
 
       /// SUMMA step task
 
@@ -888,6 +1479,11 @@ namespace TiledArray {
         }
 
         virtual void run(const madness::TaskThreadEnv&) {
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+          printf("step:  start rank=%i k=%lu\n",
+              owner_->get_world().rank(), k_);
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
           // Search for the next k to be processed
           if(k_ < owner_->k_) {
 
@@ -923,6 +1519,11 @@ namespace TiledArray {
               }
             }
           }
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+          printf("step: finish rank=%i k=%lu\n",
+              owner_->get_world().rank(), k_);
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
         }
 
       }; // class StepTask
@@ -999,80 +1600,7 @@ namespace TiledArray {
       }
 
     }; // class ContractionEvalImpl
-
-
-    /// Distributed contraction evaluator factory function
-
-    /// Construct a distributed contraction evaluator, which constructs a new
-    /// tensor by applying \c op to tiles of \c left and \c right.
-    /// \tparam LeftTile Tile type of the left-hand argument
-    /// \tparam RightTile Tile type of the right-hand argument
-    /// \tparam Policy The policy type of the argument
-    /// \tparam Op The unary tile operation
-    /// \param left The left-hand argument
-    /// \param right The right-hand argument
-    /// \param world The world where the argument will be evaluated
-    /// \param shape The shape of the evaluated tensor
-    /// \param pmap The process map for the evaluated tensor
-    /// \param perm The permutation applied to the tensor
-    /// \param op The contraction/reduction tile operation
-    template <typename LeftTile, typename RightTile, typename Policy, typename Op>
-    DistEval<typename Op::result_type, Policy> make_contract_eval(
-        const DistEval<LeftTile, Policy>& left,
-        const DistEval<RightTile, Policy>& right,
-        madness::World& world,
-        const typename DistEval<typename Op::result_type, Policy>::shape_type& shape,
-        const std::shared_ptr<typename DistEval<typename Op::result_type, Policy>::pmap_interface>& pmap,
-        const Permutation& perm,
-        const Op& op)
-    {
-      TA_ASSERT(left.range().dim() == op.left_rank());
-      TA_ASSERT(right.range().dim() == op.right_rank());
-      TA_ASSERT((perm.dim() == op.result_rank()) || !perm);
-
-      // Define the impl type
-      typedef ContractionEvalImpl<DistEval<LeftTile, Policy>, DistEval<RightTile,
-          Policy>, Op, Policy> impl_type;
-
-      // Precompute iteration range data
-      const unsigned int num_contract_ranks = op.num_contract_ranks();
-      const unsigned int left_end = op.left_rank();
-      const unsigned int left_middle = left_end - num_contract_ranks;
-      const unsigned int right_end = op.right_rank();
-
-      // Construct a vector TiledRange1 objects from the left- and right-hand
-      // arguments that will be used to construct the result TiledTange. Also,
-      // compute the fused outer dimension sizes, number of tiles and elements,
-      // for the contraction.
-      typename impl_type::trange_type::Ranges ranges(op.result_rank());
-      std::size_t M = 1ul, m = 1ul, N = 1ul, n = 1ul;
-      std::size_t pi = 0ul;
-      for(unsigned int i = 0ul; i < left_middle; ++i) {
-        ranges[(perm ? perm[pi++] : pi++)] = left.trange().data()[i];
-        M *= left.range().size()[i];
-        m *= left.trange().elements().size()[i];
-      }
-      for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
-        ranges[(perm ? perm[pi++] : pi++)] = right.trange().data()[i];
-        N *= right.range().size()[i];
-        n *= right.trange().elements().size()[i];
-      }
-
-      // Compute the number of tiles in the inner dimension.
-      std::size_t K = 1ul;
-      for(std::size_t i = left_middle; i < left_end; ++i)
-        K *= left.range().size()[i];
-
-      // Construct the result range
-      typename impl_type::trange_type trange(ranges.begin(), ranges.end());
-
-      // Construct the process grid
-      ProcGrid proc_grid(world, M, N, m, n);
-
-      return DistEval<typename Op::result_type, Policy>(
-          std::shared_ptr<typename impl_type::DistEvalImpl_>(new impl_type(left,
-              right, world, trange, shape, pmap, perm, op, K, proc_grid)));
-    }
+#endif
 
   } // namespace detail
 }  // namespace TiledArray

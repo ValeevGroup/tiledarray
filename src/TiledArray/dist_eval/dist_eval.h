@@ -48,7 +48,7 @@ namespace TiledArray {
       typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
       typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
       typedef typename TensorImpl_::value_type value_type; ///< Tile type
-      typedef typename value_type::eval_type eval_type; ///< Tile evaluation type
+      typedef typename eval_trait<value_type>::type eval_type; ///< Tile evaluation type
 
     private:
       const Permutation perm_; ///< The permutation to be applied to this tensor
@@ -121,6 +121,16 @@ namespace TiledArray {
 
       virtual ~DistEvalImpl() { }
 
+      /// Get tile at index \c i
+
+      /// \param i The index of the tile
+      /// \return Tile at index i
+      /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
+      virtual madness::Future<value_type> get_tile(const std::shared_ptr<DistEvalImpl_>&, size_type i) {
+        TA_ASSERT(TensorImpl_::is_local(i));
+        return TensorImpl_::get_cache(i);
+      }
+
       /// Set tensor value
 
       /// This will store \c value at ordinal index \c i . Typically, this
@@ -155,8 +165,17 @@ namespace TiledArray {
       /// Wait for all tiles to be assigned
       void wait() const {
         if(task_count_ > 0) {
-          CounterProbe probe(set_counter_, task_count_);
-          TensorImpl_::get_world().await(probe);
+          try {
+            CounterProbe probe(set_counter_, task_count_);
+            TensorImpl_::get_world().await(probe);
+          } catch(...) {
+            std::stringstream ss;
+            ss << "!!TiledArray: Aborting due to exception.\n"
+               << "!!TiledArray: rank=" << TensorImpl_::get_world().rank()
+               << " id=" << TensorImpl_::id() << " " << set_counter_ << " of " << task_count_ << " tiles set\n";
+            printf(ss.str().c_str());
+            throw;
+          }
         }
       }
 
@@ -301,7 +320,7 @@ namespace TiledArray {
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
-      future get(size_type i) const { return pimpl_->get_cache(i); }
+      future get(size_type i) const { return pimpl_->get_tile(pimpl_, i); }
 
       /// World object accessor
 

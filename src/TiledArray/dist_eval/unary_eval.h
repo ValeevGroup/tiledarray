@@ -130,36 +130,6 @@ namespace TiledArray {
       op_type op_; ///< The unary tile operation
     }; // class UnaryEvalImpl
 
-    /// Distrubuted unary evaluator factory function
-
-    /// Construct a distributed unary evaluator, which constructs a new tensor
-    /// by applying \c op to tiles of \c arg .
-    /// \tparam Tile Tile type of the argument
-    /// \tparam Policy The policy type of the argument
-    /// \tparam Op The unary tile operation
-    /// \param arg Argument to be modified
-    /// \param world The world where the argument will be evaluated
-    /// \param shape The shape of the evaluated tensor
-    /// \param pmap The process map for the evaluated tensor
-    /// \param perm The permutation applied to the tensor
-    /// \param op The unary tile operation
-    template <typename Tile, typename Policy, typename Op>
-    DistEval<typename Op::result_type, Policy> make_unary_eval(
-        const DistEval<Tile, Policy>& arg,
-        madness::World& world,
-        const typename DistEval<Tile, Policy>::shape_type& shape,
-        const std::shared_ptr<typename DistEval<Tile, Policy>::pmap_interface>& pmap,
-        const Permutation& perm,
-        const Op& op)
-    {
-      typedef UnaryEvalImpl<DistEval<Tile, Policy>, Op, Policy> impl_type;
-      typedef typename impl_type::DistEvalImpl_ impl_base_type;
-      return DistEval<typename Op::result_type, Policy>(
-          std::shared_ptr<impl_base_type>(new impl_type(arg, world,
-              (perm ? perm ^ arg.trange() : arg.trange()), shape,
-              pmap, perm, op)));
-    }
-
   }  // namespace detail
 }  // namespace TiledArray
 

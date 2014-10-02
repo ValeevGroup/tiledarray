@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
   }
   const long repeat = (argc >= 6 ? atol(argv[5]) : 5);
   if (repeat <= 0) {
-    std::cerr << "Error: number of repititions must greater than zero.\n";
+    std::cerr << "Error: number of repetitions must greater than zero.\n";
     return 1;
   }
 
@@ -68,28 +68,31 @@ int main(int argc, char** argv) {
   // Construct TiledRange
   std::vector<unsigned int> blocking_row;
   blocking_row.reserve(row_blocks + 1);
-  for(std::size_t i = 0; i <= row_size; i += row_block_size)
+  for(long i = 0l; i <= row_size; i += row_block_size)
     blocking_row.push_back(i);
 
   std::vector<unsigned int> blocking_col;
   blocking_col.reserve(col_blocks + 1);
-  for(std::size_t i = 0; i <= col_size; i += col_block_size)
+  for(long i = 0l; i <= col_size; i += col_block_size)
     blocking_col.push_back(i);
 
   // Stucture of c
-  std::vector<TiledArray::TiledRange1> blocking_result = {
-      TiledArray::TiledRange1(blocking_row.begin(),blocking_row.end()),
-      TiledArray::TiledRange1(blocking_row.begin(), blocking_row.end())};
+  std::vector<TiledArray::TiledRange1> blocking_result;
+  blocking_result.reserve(2);
+  blocking_result.push_back(TiledArray::TiledRange1(blocking_row.begin(),blocking_row.end()));
+  blocking_result.push_back(TiledArray::TiledRange1(blocking_row.begin(), blocking_row.end()));
 
   // Strucure of a
-  std::vector<TiledArray::TiledRange1> blocking_rowxcol = {
-      TiledArray::TiledRange1(blocking_row.begin(),blocking_row.end()),
-      TiledArray::TiledRange1(blocking_col.begin(), blocking_col.end())};
+  std::vector<TiledArray::TiledRange1> blocking_rowxcol;
+  blocking_rowxcol.reserve(2);
+  blocking_rowxcol.push_back(TiledArray::TiledRange1(blocking_row.begin(),blocking_row.end()));
+  blocking_rowxcol.push_back(TiledArray::TiledRange1(blocking_col.begin(), blocking_col.end()));
 
   // Structure of b
-  std::vector<TiledArray::TiledRange1> blocking_colxrow = {
-      TiledArray::TiledRange1(blocking_col.begin(),blocking_col.end()),
-      TiledArray::TiledRange1(blocking_row.begin(), blocking_row.end())};
+  std::vector<TiledArray::TiledRange1> blocking_colxrow;
+  blocking_colxrow.reserve(2);
+  blocking_rowxcol.push_back(TiledArray::TiledRange1(blocking_col.begin(),blocking_col.end()));
+  blocking_rowxcol.push_back(TiledArray::TiledRange1(blocking_row.begin(), blocking_row.end()));
 
   TiledArray::TiledRange // TRange for c
     trange(blocking_result.begin(), blocking_result.end());

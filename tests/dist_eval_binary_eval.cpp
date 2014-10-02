@@ -34,8 +34,8 @@
 
 struct BinaryEvalFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::dim> ArrayN;
-  typedef math::Noop<ArrayN::value_type::eval_type,
-      ArrayN::value_type::eval_type, true> array_op_type;
+  typedef math::Noop<ArrayN::value_type,
+      ArrayN::value_type, true> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
       DensePolicy> array_eval_type;
   typedef math::Add<ArrayN::value_type, ArrayN::value_type, ArrayN::value_type,
@@ -45,9 +45,9 @@ struct BinaryEvalFixture : public TiledRangeFixture {
   BinaryEvalFixture() :
     left(*GlobalFixture::world, tr),
     right(*GlobalFixture::world, tr),
-    left_arg(detail::make_array_eval(left, left.get_world(), DenseShape(),
+    left_arg(make_array_eval(left, left.get_world(), DenseShape(),
         left.get_pmap(), Permutation(), array_op_type())),
-    right_arg(detail::make_array_eval(right, right.get_world(), DenseShape(),
+    right_arg(make_array_eval(right, right.get_world(), DenseShape(),
         left.get_pmap(), Permutation(), array_op_type()))
   {
     // Fill array with random data
@@ -67,6 +67,44 @@ struct BinaryEvalFixture : public TiledRangeFixture {
 
   ~BinaryEvalFixture() { }
 
+  template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
+  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
+  make_array_eval(
+      const Array<T, DIM, Tile, Policy>& array,
+      madness::World& world,
+      const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
+      const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
+      const Permutation& perm,
+      const Op& op)
+  {
+    typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
+    typedef typename impl_type::DistEvalImpl_ impl_base_type;
+    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+        std::shared_ptr<impl_base_type>(new impl_type(array, world,
+            (perm ? perm ^ array.trange() : array.trange()), shape,
+            pmap, perm, op)));
+  }
+
+  template <typename LeftTile, typename RightTile, typename Policy, typename Op>
+  static TiledArray::detail::DistEval<typename Op::result_type, Policy> make_binary_eval(
+      const TiledArray::detail::DistEval<LeftTile, Policy>& left,
+      const TiledArray::detail::DistEval<RightTile, Policy>& right,
+      madness::World& world,
+      const typename TiledArray::detail::DistEval<typename Op::result_type, Policy>::shape_type& shape,
+      const std::shared_ptr<typename TiledArray::detail::DistEval<typename Op::result_type, Policy>::pmap_interface>& pmap,
+      const Permutation& perm,
+      const Op& op)
+  {
+    typedef TiledArray::detail::BinaryEvalImpl<
+        TiledArray::detail::DistEval<LeftTile, Policy>,
+        TiledArray::detail::DistEval<RightTile, Policy>, Op, Policy> impl_type;
+    return TiledArray::detail::DistEval<typename Op::result_type, Policy>(
+        std::shared_ptr<typename impl_type::DistEvalImpl_>(
+            new impl_type(left, right, world,
+                (perm ? perm ^ left.trange() : left.trange()),
+                shape, pmap, perm, op)));
+  }
+
    ArrayN left;
    ArrayN right;
    array_eval_type left_arg;
@@ -82,7 +120,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 
-  dist_eval_type1 binary = detail::make_binary_eval(left_arg, right_arg,
+  dist_eval_type1 binary = make_binary_eval(left_arg, right_arg,
       left_arg.get_world(), DenseShape(), left_arg.pmap(), Permutation(), op_type());
 
   BOOST_CHECK_EQUAL(& binary.get_world(), GlobalFixture::world);
@@ -99,7 +137,7 @@ BOOST_AUTO_TEST_CASE( eval )
 {
   typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 
-  dist_eval_type1 dist_eval = detail::make_binary_eval(left_arg, right_arg,
+  dist_eval_type1 dist_eval = make_binary_eval(left_arg, right_arg,
       left_arg.get_world(), DenseShape(), left_arg.pmap(), Permutation(), op_type());
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
@@ -142,7 +180,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   const Permutation perm(p.begin(), p.end());
 
 
-  dist_eval_type1 dist_eval = detail::make_binary_eval(left_arg, right_arg,
+  dist_eval_type1 dist_eval = make_binary_eval(left_arg, right_arg,
       left_arg.get_world(), DenseShape(), left_arg.pmap(), perm, op_type(perm));
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());

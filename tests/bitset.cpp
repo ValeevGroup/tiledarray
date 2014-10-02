@@ -20,7 +20,7 @@
 #include "unit_test_config.h"
 #include "global_fixture.h"
 #include "TiledArray/bitset.h"
-#include <world/world.h>
+#include <madness/world/world.h>
 #include <algorithm>
 
 using namespace TiledArray;

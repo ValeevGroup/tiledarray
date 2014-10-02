@@ -31,7 +31,8 @@ struct DistOpFixture {
   DistOpFixture() :
     group_list(),
     world_group_list(),
-    did(madness::uniqueidT(), 1)
+    group_did(GlobalFixture::world->unique_obj_id(), GlobalFixture::world->rank() % 2),
+    world_did(GlobalFixture::world->unique_obj_id(), GlobalFixture::world->size())
   {
 
     for(ProcessID p = GlobalFixture::world->rank() % 2; p < GlobalFixture::world->size(); p += 2)
@@ -46,7 +47,8 @@ struct DistOpFixture {
 
   std::vector<ProcessID> group_list;
   std::vector<ProcessID> world_group_list;
-  madness::DistributedID did;
+  madness::DistributedID group_did;
+  madness::DistributedID world_did;
 
 }; // DistOpFixture
 
@@ -116,7 +118,7 @@ BOOST_AUTO_TEST_CASE( lazy_sync )
 BOOST_AUTO_TEST_CASE( lazy_sync_group )
 {
   // Create broadcast group
-  madness::Group group(*GlobalFixture::world, group_list, did);
+  madness::Group group(*GlobalFixture::world, group_list, group_did);
 
   SyncTester sync_tester;
   int key = 1;
@@ -134,7 +136,7 @@ BOOST_AUTO_TEST_CASE( lazy_sync_group )
 BOOST_AUTO_TEST_CASE( lazy_sync_world_group )
 {
   // Create broadcast group
-  madness::Group group(*GlobalFixture::world, world_group_list, did);
+  madness::Group group(*GlobalFixture::world, world_group_list, world_did);
 
   SyncTester sync_tester;
   int key = 1;
@@ -152,8 +154,7 @@ BOOST_AUTO_TEST_CASE( lazy_sync_world_group )
 BOOST_AUTO_TEST_CASE( bcast_world )
 {
   // Pick a random root
-  GlobalFixture::world->srand(42);
-  const ProcessID root = GlobalFixture::world->rand() % GlobalFixture::world->size();
+  const ProcessID root = 101 % GlobalFixture::world->size();
 
   // Setup the broadcast
   madness::Future<int> data;
@@ -170,10 +171,10 @@ BOOST_AUTO_TEST_CASE( bcast_world )
 BOOST_AUTO_TEST_CASE( bcast_group )
 {
   // Create broadcast group
-  madness::Group group(*GlobalFixture::world, group_list, did);
+  madness::Group group(*GlobalFixture::world, group_list, group_did);
 
   // Pick a random root
-  const ProcessID root = GlobalFixture::world->rand() % group.size();
+  const ProcessID root = 101 % group.size();
 
   // Setup the group broadcast
   madness::Future<int> data;
@@ -193,10 +194,10 @@ BOOST_AUTO_TEST_CASE( bcast_group )
 BOOST_AUTO_TEST_CASE( bcast_world_group )
 {
   // Create broadcast group
-  madness::Group group(*GlobalFixture::world, world_group_list, did);
+  madness::Group group(*GlobalFixture::world, world_group_list, world_did);
 
   // Pick a random root
-  const ProcessID root = GlobalFixture::world->rand() % group.size();
+  const ProcessID root = 101 % group.size();
 
   // Setup the group broadcast
   madness::Future<int> data;
@@ -216,7 +217,7 @@ BOOST_AUTO_TEST_CASE( bcast_world_group )
 BOOST_AUTO_TEST_CASE( reduce_world )
 {
   // Pick a random root
-  const ProcessID root = GlobalFixture::world->rand() % GlobalFixture::world->size();
+  const ProcessID root = 101 % GlobalFixture::world->size();
 
   // Setup the reduction
   madness::Future<int> data;
@@ -236,10 +237,10 @@ BOOST_AUTO_TEST_CASE( reduce_world )
 BOOST_AUTO_TEST_CASE( reduce_group )
 {
   // Create reduction group
-  madness::Group group(*GlobalFixture::world, group_list, did);
+  madness::Group group(*GlobalFixture::world, group_list, group_did);
 
   // Pick a random root
-  const ProcessID root = GlobalFixture::world->rand() % group.size();
+  const ProcessID root = 101 % group.size();
 
   // Setup the reduction
   madness::Future<int> data;
@@ -262,10 +263,10 @@ BOOST_AUTO_TEST_CASE( reduce_group )
 BOOST_AUTO_TEST_CASE( reduce_world_group )
 {
   // Create reduction group
-  madness::Group group(*GlobalFixture::world, world_group_list, did);
+  madness::Group group(*GlobalFixture::world, world_group_list, world_did);
 
   // Pick a random root
-  const ProcessID root = GlobalFixture::world->rand() % group.size();
+  const ProcessID root = 101 % group.size();
 
   // Setup the reduction
   madness::Future<int> data;
@@ -303,7 +304,7 @@ BOOST_AUTO_TEST_CASE( all_reduce_world )
 BOOST_AUTO_TEST_CASE( all_reduce_group )
 {
   // Create reduction group
-  madness::Group group(*GlobalFixture::world, group_list, did);
+  madness::Group group(*GlobalFixture::world, group_list, group_did);
 
   // Setup the reduction
   madness::Future<int> data;
@@ -323,7 +324,7 @@ BOOST_AUTO_TEST_CASE( all_reduce_group )
 BOOST_AUTO_TEST_CASE( all_reduce_world_group )
 {
   // Create reduction group
-  madness::Group group(*GlobalFixture::world, world_group_list, did);
+  madness::Group group(*GlobalFixture::world, world_group_list, world_did);
 
   // Setup the reduction
   madness::Future<int> data;
@@ -339,5 +340,6 @@ BOOST_AUTO_TEST_CASE( all_reduce_world_group )
   // Cleanup the group
   GlobalFixture::world->gop.fence();
 }
+
 BOOST_AUTO_TEST_SUITE_END()
 

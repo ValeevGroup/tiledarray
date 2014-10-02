@@ -234,11 +234,11 @@ namespace TiledArray {
 
       if(pimpl_->is_dense()) {
         for(; it != end; ++it)
-          set(*it, v);
+          pimpl_->get_world().taskq.add(new MakeTile<size_type, value_type>(pimpl_, *it, v));
       } else {
         for(; it != end; ++it)
           if(! pimpl_->is_zero(*it))
-            set(*it, v);
+            pimpl_->get_world().taskq.add(new MakeTile<size_type, value_type>(pimpl_, *it, v));
       }
     }
 

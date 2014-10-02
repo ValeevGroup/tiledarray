@@ -44,15 +44,15 @@ BOOST_AUTO_TEST_CASE( set_and_get_cache )
   const int value = 42;
 
   madness::Future<int> data = madness::Future<int>::default_initializer();
-  BOOST_CHECK_NO_THROW(data = DistCache<int>::template get_cache_value<int>(key));
+  BOOST_CHECK_NO_THROW(data = DistCache<int>::get_cache_value<int>(key));
   BOOST_CHECK(! data.probe());
-  BOOST_CHECK_NO_THROW(DistCache<int>::template set_cache_value<int>(key, value));
+  BOOST_CHECK_NO_THROW(DistCache<int>::set_cache_value<int>(key, value));
 
   BOOST_CHECK(data.probe());
   BOOST_CHECK_EQUAL(data.get(), value);
 }
 
-BOOST_AUTO_TEST_CASE( set_and_get_cache_v2 )
+BOOST_AUTO_TEST_CASE( get_and_set_cache )
 {
   const int key = 1;
   const madness::Future<int> value(42);
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE( set_and_get_cache_v2 )
   madness::Future<int> data;
   BOOST_CHECK_NO_THROW(DistCache<int>::get_cache_value(key, data));
   BOOST_CHECK(! data.probe());
-  BOOST_CHECK_NO_THROW(DistCache<int>::template set_cache_value<int>(key, value));
+  BOOST_CHECK_NO_THROW(DistCache<int>::set_cache_value<int>(key, value));
 
   BOOST_CHECK(data.probe());
   BOOST_CHECK_EQUAL(data.get(), value.get());

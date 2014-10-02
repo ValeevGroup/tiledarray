@@ -27,6 +27,12 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (TiledArray)
 
+# Configure options
+option(ENABLE_MPI "Enable MPI" ON)
+option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
+option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
+option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+
 # Set TiledArray version
 set(TILEDARRAY_MAJOR_VERSION 1)
 set(TILEDARRAY_MINOR_VERSION 0)
@@ -35,9 +41,29 @@ set(TILEDARRAY_BUILDID alpha)
 set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
 set(TARGET_ARCH "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
 
-option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
-option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
-option(DISABLE_MPI "Disable the use of MPI" OFF)
+# extra cmake files are shipped with TiledArray
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
+
+include(CMakePushCheckState)
+include(GNUInstallDirs)
+include(AppendFlags)
+
+##########################
+# Standard build variables
+##########################
+
+# Get standard build variables from the environment if they have not already been set
+if(NOT CMAKE_C_FLAGS OR NOT DEFINED CMAKE_C_FLAGS)
+  set(CMAKE_C_FLAGS "$ENV{CPPFLAGS}")
+  append_flags(CMAKE_C_FLAGS "$ENV{CFLAGS}")
+endif()
+if(NOT CMAKE_CXX_FLAGS OR NOT DEFINED CMAKE_CXX_FLAGS)
+  set(CMAKE_CXX_FLAGS "$ENV{CPPFLAGS}")
+  append_flags(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS}")
+endif()
+if(NOT CMAKE_EXE_LINKER_FLAGS OR NOT DEFINED CMAKE_EXE_LINKER_FLAGS)
+  set(CMAKE_EXE_LINKER_FLAGS "$ENV{LDFLAGS}")
+endif()
 
 enable_language (CXX)
 if (NOT CMAKE_CXX_COMPILER)
@@ -58,14 +84,24 @@ set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (
 mark_as_advanced(CACHE_LINE_SIZE)
 set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
 
-# extra cmake files are shipped with TiledArray
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
-
 set(CMAKE_SKIP_RPATH FALSE)
 
 set(BUILD_TESTING FALSE CACHE BOOLEAN "BUILD_TESTING")
 set(BUILD_TESTING_STATIC FALSE CACHE BOOLEAN "BUILD_TESTING_STATIC")
 set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
+
+
+##########################
+# Get the git revision tag information
+##########################
+
+find_package(Git REQUIRED)
+execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse -q HEAD
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE TILEDARRAY_REVISION )
+string(REGEX MATCH "[0-9a-f]*"
+    TILEDARRAY_REVISION "${TILEDARRAY_REVISION}")
 
 ##########################
 # Check C++11 features
@@ -73,112 +109,69 @@ set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 #include(TestCXXAcceptsFlag)
 include(CheckCXXSourceCompiles)
 
-set(CMAKE_REQUIRED_FLAGS_CURRENT ${CMAKE_REQUIRED_FLAGS})
-list(APPEND CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS})
+# Check for gerneral C++11 support
+CHECK_CXX_SOURCE_COMPILES(
+    "
+    #if (__cplusplus < 201103L) || defined(__INTEL_CXX11_MODE__)
+    #error C++11 support not enabled.
+    #endif
+    int main(){ return 0; }
+    "
+    TILEDARRAY_HAS_CXX11)
 
-# static_assert is desired, but an implementation is included
-CHECK_CXX_SOURCE_COMPILES("
-  int main(int argc, char* argv[]) {
-    static_assert(true, \"don't worry, be happy\");
-    return 0;
-  }"
-  TILEDARRAY_HAVE_STATIC_ASSERT)  
-
-# check for variadic templates
-CHECK_CXX_SOURCE_COMPILES("
-  #include <iostream>
-  #include <iterator>
-  #include <algorithm>
-  template <typename... args> void print_numbers(const args&... numbers) {
-    const int n = sizeof...(args);
-    int nums[sizeof...(args)] = { static_cast<int>(numbers)... };
-    std::copy(nums, nums+n, std::ostream_iterator<int>(std::cout, \" \"));
-  }
-  int main(int argc, char* argv[]) {
-    print_numbers(-1);
-    print_numbers(0, 1, 2, 3, 4);
-    return 0;
-  }"
-  TILEDARRAY_HAVE_VARIADIC_TEMPLATES)  
+if(TILEDARRAY_HAS_CXX11)
+  # static_assert is desired, but an implementation is included
+  CHECK_CXX_SOURCE_COMPILES("
+    int main(int argc, char* argv[]) {
+      static_assert(true, \"don't worry, be happy\");
+      return 0;
+    }"
+    TILEDARRAY_HAVE_STATIC_ASSERT)  
   
-set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_CURRENT})
+  # check for variadic templates
+  CHECK_CXX_SOURCE_COMPILES("
+    #include <iostream>
+    #include <iterator>
+    #include <algorithm>
+    template <typename... args> void print_numbers(const args&... numbers) {
+      const int n = sizeof...(args);
+      int nums[sizeof...(args)] = { static_cast<int>(numbers)... };
+      std::copy(nums, nums+n, std::ostream_iterator<int>(std::cout, \" \"));
+    }
+    int main(int argc, char* argv[]) {
+      print_numbers(-1);
+      print_numbers(0, 1, 2, 3, 4);
+      return 0;
+    }"
+    TILEDARRAY_HAVE_VARIADIC_TEMPLATES) 
+ 
+endif(TILEDARRAY_HAS_CXX11)
 
 # Check type support
 include(CheckTypeSize)
-check_type_size("long double" LONG_DOUBLE)
-check_type_size("long long" LONG_LONG)
-if (HAVE_LONG_DOUBLE)
-  set (TILEDARRAY_HAS_LONG_DOUBLE TRUE)
-endif()
-if (HAVE_LONG_LONG)
-  set (TILEDARRAY_HAS_LONG_LONG TRUE)
-endif()
-
-include(GNUInstallDirs)
-
-##########################
-# Set the MPI compliers
-##########################
-
-# Set the MPICC compiler
-if(NOT DEFINED MPI_C_COMPILER AND NOT DISABLE_MPI)
-  set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
-endif()
-
-# Set the MPICXX complier
-if(NOT DEFINED MPI_CXX_COMPILER AND NOT DISABLE_MPI)
-  set(MPI_CXX_COMPILER ${CMAKE_CXX_COMPILER})
-endif()
+check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
+check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
 
 ##########################
 # external dependencies
 ##########################
 add_custom_target(External)
+
+include(external/pthread.cmake)
+include(external/mpi.cmake)
+include(external/lapack.cmake)
 include(external/eigen.cmake)
-if (TA_BUILD_UNITTEST)
-  include(external/boost.cmake)
-endif()
-
 include(external/madness.cmake)
-
-# look for Elemental if MADNESS has it, or Elemental_DIR was given explicitly
-if (Elemental_DIR OR MADNESS_HAS_ELEMENTAL)
-  # if MADNESS found but does not support elemental, too much potential for error, skip
-  if (Madness_FOUND AND !MADNESS_HAS_ELEMENTAL)
-    message(WARNING "Found MADNESS but it does not know about Elemental ... will punt on Elemental")
-  else()
-    include(external/elemental.cmake)
-  endif()
-endif()
-  
 if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
-
-##########################
-# TiledArray compile options
-##########################
-list(APPEND TiledArray_INCLUDE_DIRS 
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_BINARY_DIR}/src
-    ${Madness_INCLUDE_DIRS}
-    ${EIGEN_INCLUDE_DIR})
-if(TILEDARRAY_HAS_ELEMENTAL)
-  list(APPEND TiledArray_INCLUDE_DIRS
-      ${ELEMENTAL_INCLUDE_DIR})
-endif()
-
-list(APPEND TiledArray_LIBRARIES ${Madness_LIBRARIES})
-if(TILEDARRAY_HAS_ELEMENTAL)
-  list(APPEND TiledArray_LIBRARIES ${ELEMENTAL_LIBRARIES})
-endif()
-#list(APPEND TiledArray_LIBRARIES tiledarray)
-set(TiledArray_LINK_FLAGS ${Madness_LINK_FLAGS})
-set(TiledArray_COMPILE_FLAGS ${Madness_COMPILE_FLAGS})
 
 ##########################
 # sources
 ##########################
+
+include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
+
 add_subdirectory(src)
 add_subdirectory(examples)
 add_subdirectory(doc)
@@ -224,4 +217,18 @@ CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
   ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
 )
+
+# Add target to allow on-the-fly switching of build type
+
+ADD_CUSTOM_TARGET(debug
+  COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Debug ${CMAKE_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
+  COMMENT "Switch CMAKE_BUILD_TYPE to Debug"
+  )
+
+ADD_CUSTOM_TARGET(release
+  COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release ${CMAKE_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
+  COMMENT "Switch CMAKE_BUILD_TYPE to Release"
+  )
 
