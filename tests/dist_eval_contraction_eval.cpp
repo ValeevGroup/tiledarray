@@ -44,7 +44,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
       DensePolicy> array_eval_type;
   typedef math::ContractReduce<ArrayN::value_type, ArrayN::value_type, ArrayN::value_type> op_type;
-  typedef detail::ContractionEvalImpl<array_eval_type, array_eval_type, op_type, DensePolicy> impl_type;
+  typedef detail::Summa<array_eval_type, array_eval_type, op_type, DensePolicy> impl_type;
   typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
   ContractionEvalFixture() :
@@ -351,72 +351,76 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
 }
 
-//BOOST_AUTO_TEST_CASE( sparse_eval )
-//{
-//  typedef detail::DistEval<op_type::result_type, SparsePolicy> dist_eval_type1;
-//  typedef Array<int, GlobalFixture::dim, Tensor<int>, SparsePolicy> array_type;
-//  typedef detail::DistEval<detail::LazyArrayTile<array_type::value_type, array_op_type>,
-//      SparsePolicy> array_eval_type;
-//
-//  array_type left(*GlobalFixture::world, tr, make_shape(tr, 0.4, 23));
-//
-//  array_type right(*GlobalFixture::world, tr, make_shape(tr, 0.4, 42));
-//
-//  // Fill arrays with random data
-//  rand_fill_array(left);
-//  rand_fill_array(right);
-//
-//  array_eval_type left_arg(make_array_eval(left, left.get_world(), left.get_shape(),
-//      proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
-//      Permutation(), array_op_type()));
-//  array_eval_type right_arg(make_array_eval(right, right.get_world(), right.get_shape(),
-//      proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size().back()),
-//      Permutation(), array_op_type()));
-//
-//  const SparseShape<float> result_shape = left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
-//
-//  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
-//      left_arg.get_world(), result_shape, pmap, Permutation(), op);
-//
-//  // Check evaluation
-//  BOOST_REQUIRE_NO_THROW(contract.eval());
-//  BOOST_REQUIRE_NO_THROW(contract.wait());
-//
-//  // Compute the reference contraction
-//  const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
-//  const matrix_type reference = l * r;
-//
-//  dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
-//  const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
-//
-//  // Check that each tile has been properly scaled.
-//  for(; it != end; ++it) {
-//    // Skip zero tiles
-//    if(contract.is_zero(*it)) {
-//      dist_eval_type1::range_type range = contract.trange().make_tile_range(*it);
-//
-//      BOOST_CHECK((reference.block(range.start()[0], range.start()[1],
-//          range.size()[0], range.size()[1]).array() == 0).all());
-//
-//    } else {
-//      // Get the array evaluator tile.
-//      madness::Future<dist_eval_type1::value_type> tile;
-//      BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
-//
-//      // Force the evaluation of the tile
-//      dist_eval_type1::eval_type eval_tile;
-//      BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
-//      BOOST_CHECK(! eval_tile.empty());
-//
-//      if(!eval_tile.empty()) {
-//        // Check that the result tile is correctly modified.
-//        BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
-//        BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0],
-//            eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
-//      }
-//    }
-//  }
-//
-//}
+#ifndef TILEDARRAY_ENABLE_OLD_SUMMA
+
+BOOST_AUTO_TEST_CASE( sparse_eval )
+{
+  typedef detail::DistEval<op_type::result_type, SparsePolicy> dist_eval_type1;
+  typedef Array<int, GlobalFixture::dim, Tensor<int>, SparsePolicy> array_type;
+  typedef detail::DistEval<detail::LazyArrayTile<array_type::value_type, array_op_type>,
+      SparsePolicy> array_eval_type;
+
+  array_type left(*GlobalFixture::world, tr, make_shape(tr, 0.4, 23));
+
+  array_type right(*GlobalFixture::world, tr, make_shape(tr, 0.4, 42));
+
+  // Fill arrays with random data
+  rand_fill_array(left);
+  rand_fill_array(right);
+
+  array_eval_type left_arg(make_array_eval(left, left.get_world(), left.get_shape(),
+      proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
+      Permutation(), array_op_type()));
+  array_eval_type right_arg(make_array_eval(right, right.get_world(), right.get_shape(),
+      proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size().back()),
+      Permutation(), array_op_type()));
+
+  const SparseShape<float> result_shape = left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
+
+  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
+      left_arg.get_world(), result_shape, pmap, Permutation(), op);
+
+  // Check evaluation
+  BOOST_REQUIRE_NO_THROW(contract.eval());
+  BOOST_REQUIRE_NO_THROW(contract.wait());
+
+  // Compute the reference contraction
+  const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
+  const matrix_type reference = l * r;
+
+  dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
+  const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
+
+  // Check that each tile has been properly scaled.
+  for(; it != end; ++it) {
+    // Skip zero tiles
+    if(contract.is_zero(*it)) {
+      dist_eval_type1::range_type range = contract.trange().make_tile_range(*it);
+
+      BOOST_CHECK((reference.block(range.start()[0], range.start()[1],
+          range.size()[0], range.size()[1]).array() == 0).all());
+
+    } else {
+      // Get the array evaluator tile.
+      madness::Future<dist_eval_type1::value_type> tile;
+      BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
+
+      // Force the evaluation of the tile
+      dist_eval_type1::eval_type eval_tile;
+      BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+      BOOST_CHECK(! eval_tile.empty());
+
+      if(!eval_tile.empty()) {
+        // Check that the result tile is correctly modified.
+        BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+        BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().start()[0],
+            eval_tile.range().start()[1], eval_tile.range().size()[0], eval_tile.range().size()[1]));
+      }
+    }
+  }
+
+}
+
+#endif // TILEDARRAY_ENABLE_OLD_SUMMA
 
 BOOST_AUTO_TEST_SUITE_END()

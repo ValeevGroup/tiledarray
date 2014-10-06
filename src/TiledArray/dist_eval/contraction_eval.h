@@ -31,7 +31,7 @@
 namespace TiledArray {
   namespace detail {
 
-#if 1
+#ifdef TILEDARRAY_ENABLE_OLD_SUMMA
 
     template <typename Left, typename Right, typename Op, typename Policy>
     class ContractionEvalImpl : public DistEvalImpl<typename Op::result_type, Policy> {
@@ -662,7 +662,7 @@ namespace TiledArray {
 
     }; // class Summa
 
-#else
+#else // TILEDARRAY_ENABLE_OLD_SUMMA
 
     /// Distributed contraction evaluator implementation
 
@@ -676,9 +676,12 @@ namespace TiledArray {
     /// the number of rows and columns, respectively, in the \c ProcGrid object
     /// passed to the constructor.
     template <typename Left, typename Right, typename Op, typename Policy>
-    class ContractionEvalImpl : public DistEvalImpl<typename Op::result_type, Policy> {
+    class Summa :
+        public DistEvalImpl<typename Op::result_type, Policy>,
+        public std::enable_shared_from_this<Summa<Left, Right, Op, Policy> >
+    {
     public:
-      typedef ContractionEvalImpl<Left, Right, Op, Policy> ContractionEvalImpl_; ///< This object type
+      typedef Summa<Left, Right, Op, Policy> Summa_; ///< This object type
       typedef DistEvalImpl<typename Op::result_type, Policy> DistEvalImpl_; ///< The base class type
       typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
       typedef Left left_type; ///< The left-hand argument type
@@ -722,6 +725,13 @@ namespace TiledArray {
       typedef madness::Future<typename left_type::eval_type> left_future; ///< Future to a left-hand argument tile
       typedef std::pair<size_type, right_future> row_datum; ///< Datum element type for a right-hand argument row
       typedef std::pair<size_type, left_future> col_datum; ///< Datum element type for a left-hand argument column
+
+    protected:
+
+      // Import base class functions
+      using std::enable_shared_from_this<Summa_>::shared_from_this;
+
+    private:
 
 
       // Process groups --------------------------------------------------------
@@ -821,7 +831,7 @@ namespace TiledArray {
           madness::Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) {
         return arg.get_world().taskq.add(
-            & ContractionEvalImpl_::template convert_tile_task<typename Arg::value_type>,
+            & Summa_::template convert_tile_task<typename Arg::value_type>,
             arg.get(index), madness::TaskAttributes::hipri());
       }
 
@@ -1082,9 +1092,7 @@ namespace TiledArray {
       /// \param k The first row/column to check
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
-      size_type iterate(const DenseShape&, const DenseShape&,
-          const std::shared_ptr<ContractionEvalImpl_>&, const size_type k) const
-      {
+      size_type iterate(const DenseShape&, const DenseShape&, const size_type k) const {
         return k;
       }
 
@@ -1099,9 +1107,7 @@ namespace TiledArray {
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
       template <typename LeftShape, typename RightShape>
-      size_type iterate(const LeftShape&, const RightShape&,
-          const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const
-      {
+      size_type iterate(const LeftShape&, const RightShape&, const size_type k) const {
         // Initial step for k_col and k_row.
         size_type k_col = iterate_col(k);
         size_type k_row = iterate_row(k);
@@ -1117,13 +1123,13 @@ namespace TiledArray {
 
         if(k < k_row) {
           // Spawn a task to broadcast any local columns of left that were skipped
-          TensorImpl_::get_world().taskq.add(self,
-              & ContractionEvalImpl_::bcast_col_range_task, k, k_row,
+          TensorImpl_::get_world().taskq.add(shared_from_this(),
+              & Summa_::bcast_col_range_task, k, k_row,
               madness::TaskAttributes::hipri());
 
           // Spawn a task to broadcast any local rows of right that were skipped
-          TensorImpl_::get_world().taskq.add(self,
-              & ContractionEvalImpl_::bcast_row_range_task, k, k_col,
+          TensorImpl_::get_world().taskq.add(shared_from_this(),
+              & Summa_::bcast_row_range_task, k, k_col,
               madness::TaskAttributes::hipri());
         }
 
@@ -1141,8 +1147,8 @@ namespace TiledArray {
       /// \param k The first row/column to check
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
-      size_type iterate(const std::shared_ptr<ContractionEvalImpl_>& self, const size_type k) const {
-        return iterate(left_.shape(), right_.shape(), self, k);
+      size_type iterate(const size_type k) const {
+        return iterate(left_.shape(), right_.shape(), k);
       }
 
 
@@ -1325,10 +1331,10 @@ namespace TiledArray {
       /// This task will set the tiles and do cleanup.
       class FinalizeTask : public madness::TaskInterface {
       private:
-        std::shared_ptr<ContractionEvalImpl_> owner_; ///< The parent object for this task
+        std::shared_ptr<Summa_> owner_; ///< The parent object for this task
 
       public:
-        FinalizeTask(const std::shared_ptr<ContractionEvalImpl_>& owner) :
+        FinalizeTask(const std::shared_ptr<Summa_>& owner) :
           madness::TaskInterface(1, madness::TaskAttributes::hipri()),
           owner_(owner)
         { }
@@ -1434,7 +1440,7 @@ namespace TiledArray {
       class StepTask : public madness::TaskInterface {
       private:
         // Member variables
-        std::shared_ptr<ContractionEvalImpl_> owner_; ///< The owner of this task
+        std::shared_ptr<Summa_> owner_; ///< The owner of this task
         size_type k_; ///< The SUMMA that will be processed by this task
         FinalizeTask* finalize_task_; ///< The SUMMA finalization task
         StepTask* next_step_task_; ///< The next SUMMA step task
@@ -1453,7 +1459,7 @@ namespace TiledArray {
 
       public:
 
-        StepTask(const std::shared_ptr<ContractionEvalImpl_>& owner) :
+        StepTask(const std::shared_ptr<Summa_>& owner) :
           madness::TaskInterface(madness::TaskAttributes::hipri()),
           owner_(owner),
           k_(0ul),
@@ -1489,7 +1495,7 @@ namespace TiledArray {
           // Search for the next k to be processed
           if(k_ < owner_->k_) {
 
-            k_ = owner_->iterate(owner_, k_);
+            k_ = owner_->iterate(k_);
 
             if(k_ < owner_->k_) {
               // Add a dependency to the finalize task
@@ -1548,7 +1554,7 @@ namespace TiledArray {
       /// during the contraction evaluation
       /// \note The trange, shape, and pmap are assumed to be in the final,
       /// permuted, state for the result.
-      ContractionEvalImpl(const left_type& left, const right_type& right,
+      Summa(const left_type& left, const right_type& right,
           madness::World& world, const trange_type trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
           const op_type& op, const size_type k, const ProcGrid& proc_grid) :
@@ -1565,7 +1571,7 @@ namespace TiledArray {
         right_stride_local_(proc_grid.proc_cols())
       { }
 
-      virtual ~ContractionEvalImpl() { }
+      virtual ~Summa() { }
 
     private:
 
@@ -1577,11 +1583,7 @@ namespace TiledArray {
       /// this object).
       /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
-      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
-        // Convert pimpl to this object type so it can be used in tasks
-        std::shared_ptr<ContractionEvalImpl_> self =
-            std::static_pointer_cast<ContractionEvalImpl_>(pimpl);
-
+      virtual int internal_eval() {
         // Start evaluate child tensors
         left_.eval();
         right_.eval();
@@ -1591,7 +1593,7 @@ namespace TiledArray {
           tile_count = initialize();
 
           // Construct the first SUMMA iteration task
-          TensorImpl_::get_world().taskq.add(new StepTask(self));
+          TensorImpl_::get_world().taskq.add(new StepTask(shared_from_this()));
         }
 
         // Wait for child tensors to be evaluated, and process tasks while waiting.
@@ -1601,8 +1603,9 @@ namespace TiledArray {
         return tile_count;
       }
 
-    }; // class ContractionEvalImpl
-#endif
+    }; // class Summa
+
+#endif // TILEDARRAY_ENABLE_OLD_SUMMA
 
   } // namespace detail
 }  // namespace TiledArray
