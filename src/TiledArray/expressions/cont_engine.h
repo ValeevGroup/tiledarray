@@ -30,6 +30,7 @@
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/proc_grid.h>
+#include <TiledArray/distributed_deleter.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -464,10 +465,10 @@ namespace TiledArray {
         typename left_type::dist_eval_type left = left_.make_dist_eval();
         typename right_type::dist_eval_type right = right_.make_dist_eval();
 
-        std::shared_ptr<typename dist_eval_type::impl_type> pimpl(
-            new impl_type(left, right, *world_, trange_, shape_, pmap_, perm_, op_,
-            K_, proc_grid_),
-            madness::make_deferred_deleter<typename dist_eval_type::impl_type>(*world_));
+        std::shared_ptr<impl_type> pimpl =
+            TiledArray::detail::make_distributed_shared_ptr(
+            new impl_type(left, right, *world_, trange_, shape_, pmap_, perm_,
+            op_, K_, proc_grid_));
 
         return dist_eval_type(pimpl);
       }

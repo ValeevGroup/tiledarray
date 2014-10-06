@@ -164,10 +164,13 @@ namespace TiledArray {
       typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
       typedef typename ContractionEvalImpl_::op_type op_type; ///< Tile evaluation operator type
 
+      // import functions from base classes
+      using TensorImpl_::get_world;
+      using WorldObject_::id;
+
     private:
-      // import functions from world object
+      // import functions from base classes
       using WorldObject_::task;
-      using WorldObject_::get_world;
 
       /// The left tensor cache container type
       typedef typename left_type::eval_type left_value_type;

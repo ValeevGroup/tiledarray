@@ -78,11 +78,10 @@ struct BinaryEvalFixture : public TiledRangeFixture {
       const Op& op)
   {
     typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
-    typedef typename impl_type::DistEvalImpl_ impl_base_type;
-    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
-        std::shared_ptr<impl_base_type>(new impl_type(array, world,
-            (perm ? perm ^ array.trange() : array.trange()), shape,
-            pmap, perm, op)));
+    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+        TiledArray::detail::make_distributed_shared_ptr(
+        new impl_type(array, world, (perm ? perm ^ array.trange() : array.trange()),
+        shape, pmap, perm, op)));
   }
 
   template <typename LeftTile, typename RightTile, typename Policy, typename Op>
@@ -99,10 +98,9 @@ struct BinaryEvalFixture : public TiledRangeFixture {
         TiledArray::detail::DistEval<LeftTile, Policy>,
         TiledArray::detail::DistEval<RightTile, Policy>, Op, Policy> impl_type;
     return TiledArray::detail::DistEval<typename Op::result_type, Policy>(
-        std::shared_ptr<typename impl_type::DistEvalImpl_>(
-            new impl_type(left, right, world,
-                (perm ? perm ^ left.trange() : left.trange()),
-                shape, pmap, perm, op)));
+        TiledArray::detail::make_distributed_shared_ptr(
+        new impl_type(left, right, world, (perm ? perm ^ left.trange() : left.trange()),
+        shape, pmap, perm, op)));
   }
 
    ArrayN left;

@@ -28,6 +28,7 @@
 
 #include <TiledArray/expressions/expr_engine.h>
 #include <TiledArray/dist_eval/unary_eval.h>
+#include <TiledArray/distributed_deleter.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -186,16 +187,16 @@ namespace TiledArray {
       /// \return The distributed evaluator that will evaluate this expression
       dist_eval_type make_dist_eval() const {
         typedef TiledArray::detail::UnaryEvalImpl<typename argument_type::dist_eval_type,
-            typename Derived::op_type, typename dist_eval_type::policy> unary_impl_type;
+            typename Derived::op_type, typename dist_eval_type::policy> impl_type;
 
         // Construct left and right distributed evaluators
         const typename argument_type::dist_eval_type arg = arg_.make_dist_eval();
 
         // Construct the distributed evaluator type
-        std::shared_ptr<typename dist_eval_type::impl_type> pimpl(
-            new unary_impl_type(arg, *world_, trange_, shape_, pmap_, perm_,
-            ExprEngine_::make_op()),
-            madness::make_deferred_deleter<typename dist_eval_type::impl_type>(*world_));
+        std::shared_ptr<impl_type> pimpl =
+            TiledArray::detail::make_distributed_shared_ptr(
+            new impl_type(arg, *world_, trange_, shape_, pmap_, perm_,
+            ExprEngine_::make_op()));
 
         return dist_eval_type(pimpl);
       }
