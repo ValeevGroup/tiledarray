@@ -19,8 +19,8 @@
 
 #include "TiledArray/distributed_storage.h"
 #include "TiledArray/pmap/blocked_pmap.h"
+#include "TiledArray/distributed_deleter.h"
 #include "unit_test_config.h"
-#include <madness/world/worlddc.h>
 #include <iterator>
 
 using namespace TiledArray;
@@ -32,7 +32,7 @@ struct DistributedStorageFixture {
   DistributedStorageFixture() :
       world(* GlobalFixture::world),
       pmap(new detail::BlockedPmap(world, 10)),
-      t(new Storage(world, 10, pmap), madness::make_deferred_deleter<Storage>(world))
+      t(TiledArray::detail::make_distributed_shared_ptr(new Storage(world, 10, pmap)))
   { }
 
   ~DistributedStorageFixture() {
@@ -63,8 +63,7 @@ BOOST_FIXTURE_TEST_SUITE( distributed_storage_suite , DistributedStorageFixture 
 BOOST_AUTO_TEST_CASE( constructor )
 {
   std::shared_ptr<Storage> s;
-  BOOST_CHECK_NO_THROW(s.reset(new Storage(world, 10, pmap),
-      madness::make_deferred_deleter<Storage>(world)));
+  BOOST_CHECK_NO_THROW(s = TiledArray::detail::make_distributed_shared_ptr(new Storage(world, 10, pmap)));
 
   BOOST_CHECK_EQUAL(s->size(), 0ul);
   BOOST_CHECK_EQUAL(s->max_size(), 10ul);
