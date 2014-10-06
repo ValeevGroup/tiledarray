@@ -222,8 +222,8 @@ namespace TiledArray {
 
       /// This function will broadcast tiles from
       template <typename Handler, typename Value>
-      void bcast(Handler handler, const size_type i, const Value& value,
-          const std::vector<ProcessID>& group, const ProcessID rank, const ProcessID root)
+      void bcast(const size_type i, const Value& value, const std::vector<ProcessID>& group,
+          const ProcessID rank, const ProcessID root, Handler handler)
       {
         const ProcessID size = group.size();
 
@@ -271,10 +271,10 @@ namespace TiledArray {
           const std::vector<ProcessID>& group, const ProcessID rank)
       {
         if(value.probe())
-          bcast(handler, i, value, group, rank, rank);
+          bcast(i, value, group, rank, rank, handler);
         else
-          task(rank_, & Summa_::template bcast<Handler, Value>, handler, i, value,
-              group, rank, rank);
+          task(rank_, & Summa_::template bcast<Handler, Value>, i, value,
+              group, rank, rank, handler);
       }
 
       /// Task function used for broadcasting tiles along the row
@@ -286,7 +286,7 @@ namespace TiledArray {
           const ProcessID group_rank, const ProcessID group_root)
       {
         // Broadcast this task to the next nodes in the tree
-        bcast(& Summa_::bcast_row_handler, i, value, row_group_, group_rank, group_root);
+        bcast(i, value, row_group_, group_rank, group_root, & Summa_::bcast_row_handler);
 
         // Copy tile into local cache
         typename left_container::const_accessor acc;
@@ -312,7 +312,7 @@ namespace TiledArray {
           const ProcessID group_rank, const ProcessID group_root)
       {
         // Broadcast this task to the next nodes in the tree
-        bcast(& Summa_::bcast_col_handler, i, value, col_group_, group_rank, group_root);
+        bcast(i, value, col_group_, group_rank, group_root, & Summa_::bcast_col_handler);
 
         // Copy tile into local cache
         typename right_container::const_accessor acc;
