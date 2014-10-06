@@ -31,4 +31,8 @@
 #include <madness/tensor/cblas.h>
 #pragma GCC diagnostic pop
 
+#ifdef MADNESS_DISABLE_SHARED_FROM_THIS
+#error The MADNESS implementation of std::shared_ptr does not support std::enable_shared_from_this. Use a compiler that supports TR1, C++11, or C++14.
+#endif
+
 #endif // TILEDARRAY_MADNESS_H__INCLUDED

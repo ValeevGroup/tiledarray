@@ -365,19 +365,19 @@ namespace TiledArray {
       if((! pimpl_->pmap()->is_replicated()) && (get_world().size() > 1)) {
         // Construct a replicated array
         std::shared_ptr<pmap_interface> pmap(new detail::ReplicatedPmap(get_world(), size()));
-        Array_ result = (is_dense() ? Array_(get_world(), trange(), pmap) : Array_(get_world(), trange(), get_shape(), pmap));
+        Array_ result = Array_(get_world(), trange(), get_shape(), pmap);
 
         // Create the replicator object that will do an all-to-all broadcast of
         // the local tile data.
-        detail::Replicator<Array_>* replicator = new detail::Replicator<Array_>(*this, result);
+        std::shared_ptr<detail::Replicator<Array_> > replicator(
+            new detail::Replicator<Array_>(*this, result));
 
         // Put the replicator pointer in the deferred cleanup object so it will
         // be deleted at the end of the next fence.
-        madness::DeferredDeleter<detail::Replicator<Array_> > deleter =
-            madness::make_deferred_deleter<detail::Replicator<Array_> >(get_world());
-        deleter(replicator);
+        TA_ASSERT(replicator.unique()); // Required for deferred_cleanup
+        madness::detail::deferred_cleanup(get_world(), replicator);
 
-        result.swap(*this);
+        Array_::operator=(result);
       }
     }
 
