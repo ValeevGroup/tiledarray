@@ -156,6 +156,7 @@ namespace TiledArray {
     /// \return A shared pointer to p
     template <typename T>
     inline std::shared_ptr<T> make_distributed_shared_ptr(T* p) {
+      TA_ASSERT(p);
       return std::shared_ptr<T>(p, DistributedDeleter<T>());
     }
 
