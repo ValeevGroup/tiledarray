@@ -120,7 +120,8 @@ namespace TiledArray {
     /// \tparam Policy The evaluator policy type
     template <typename Array, typename Op, typename Policy>
     class ArrayEvalImpl :
-        public DistEvalImpl<LazyArrayTile<typename Array::value_type, Op>, Policy>
+        public DistEvalImpl<LazyArrayTile<typename Array::value_type, Op>, Policy>,
+        public std::enable_shared_from_this<ArrayEvalImpl<Array, Op, Policy> >
     {
     public:
       typedef ArrayEvalImpl<Array, Op, Policy> ArrayEvalImpl_; ///< This object type
@@ -236,7 +237,7 @@ namespace TiledArray {
       /// and evaluate the tiles for this distributed evaluator.
       /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
-      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>&) {
+      virtual int internal_eval() {
         // Counter for the number of tasks submitted by this object
         int task_count = 0;
 

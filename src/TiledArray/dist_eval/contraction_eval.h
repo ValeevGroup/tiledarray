@@ -332,7 +332,7 @@ namespace TiledArray {
       /// Broadcast task for rows or columns
       class BcastRowColTask : public madness::TaskInterface {
       private:
-        Summa_* owner_;
+        std::shared_ptr<Summa_> owner_;
         const size_type bcast_k_;
         std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > > results_;
 
@@ -482,7 +482,7 @@ namespace TiledArray {
         }
 
       public:
-        BcastRowColTask(Summa_* owner, size_type k, const int ndep) :
+        BcastRowColTask(const std::shared_ptr<Summa_>& owner, size_type k, const int ndep) :
             madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
             owner_(owner), bcast_k_(k), results_()
         { }
@@ -504,8 +504,11 @@ namespace TiledArray {
       /// local tile contractions.
       /// \param k The column and row to broadcast
       /// \return A broad cast task pointer
-      BcastRowColTask* bcast_row_and_column(const size_type k, const int ndep = 0) const {
-        return (k < k_ ? new BcastRowColTask(const_cast<Summa_*>(this), k, ndep) : NULL);
+      BcastRowColTask* bcast_row_and_column(const size_type k, const int ndep = 0) {
+        BcastRowColTask* task = NULL;
+        if(k < k_)
+          task = new BcastRowColTask(std::enable_shared_from_this<Summa_>::shared_from_this(), k, ndep);
+        return task;
       }
 
       /// Task function that is created for each iteration of the SUMMA algorithm
@@ -613,11 +616,7 @@ namespace TiledArray {
       /// this object).
       /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
-      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
-        // Convert pimpl to this object type so it can be used in tasks
-        std::shared_ptr<Summa_> self =
-            std::static_pointer_cast<Summa_>(pimpl);
-
+      virtual int internal_eval() {
         // Start evaluate child tensors
         ContractionEvalImpl_::left().eval();
         ContractionEvalImpl_::right().eval();

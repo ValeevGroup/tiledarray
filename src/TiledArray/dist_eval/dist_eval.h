@@ -189,7 +189,7 @@ namespace TiledArray {
       /// this object).
       /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
-      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) = 0;
+      virtual int internal_eval() = 0;
 
     public:
 
@@ -200,10 +200,9 @@ namespace TiledArray {
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
       /// \param pimpl A shared pointer to this object
-      void eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+      void eval() {
         TA_ASSERT(task_count_ == -1);
-        TA_ASSERT(this == pimpl.get());
-        task_count_ = this->internal_eval(pimpl);
+        task_count_ = this->internal_eval();
         TA_ASSERT(task_count_ >= 0);
       }
 
@@ -238,8 +237,9 @@ namespace TiledArray {
       /// Constructor
 
       /// \param pimpl A pointer to the expression implementation object
-      DistEval(const std::shared_ptr<impl_type>& pimpl) :
-        pimpl_(pimpl)
+      template <typename Impl>
+      DistEval(const std::shared_ptr<Impl>& pimpl) :
+        pimpl_(std::static_pointer_cast<impl_type>(pimpl))
       {
         TA_ASSERT(pimpl_);
       }
@@ -264,7 +264,7 @@ namespace TiledArray {
 
       /// \c v is the dimension ordering that the parent expression expects.
       /// The returned future will be evaluated once the tensor has been evaluated.
-      void eval() { return pimpl_->eval(pimpl_); }
+      void eval() { return pimpl_->eval(); }
 
 
       /// Tensor tile size array accessor

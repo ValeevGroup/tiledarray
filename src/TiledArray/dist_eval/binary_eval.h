@@ -36,7 +36,8 @@ namespace TiledArray {
     /// \tparam Policy The tensor policy class
     template <typename Left, typename Right, typename Op, typename Policy>
     class BinaryEvalImpl :
-      public DistEvalImpl<typename Op::result_type, Policy>
+      public DistEvalImpl<typename Op::result_type, Policy>,
+      public std::enable_shared_from_this<BinaryEvalImpl<Left, Right, Op, Policy> >
     {
     public:
       typedef BinaryEvalImpl<Left, Right, Op, Policy> BinaryEvalImpl_; ///< This object type
@@ -97,10 +98,10 @@ namespace TiledArray {
       /// this object).
       /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
-      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+      virtual int internal_eval() {
         // Convert pimpl to this object type so it can be used in tasks
         std::shared_ptr<BinaryEvalImpl_> self =
-            std::static_pointer_cast<BinaryEvalImpl_>(pimpl);
+            std::enable_shared_from_this<BinaryEvalImpl_>::shared_from_this();
 
         // Evaluate child tensors
         left_.eval();

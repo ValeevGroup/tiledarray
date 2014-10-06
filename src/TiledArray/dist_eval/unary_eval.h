@@ -33,7 +33,10 @@ namespace TiledArray {
     /// \tparam Op The tile operation to be applied to the input tiles
     /// \tparam Policy The evaluator policy type
     template <typename Arg, typename Op, typename Policy>
-    class UnaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy> {
+    class UnaryEvalImpl :
+        public DistEvalImpl<typename Op::result_type, Policy>,
+        public std::enable_shared_from_this<UnaryEvalImpl<Arg, Op, Policy> >
+    {
     public:
       typedef UnaryEvalImpl<Arg, Op, Policy> UnaryEvalImpl_; ///< This object type
       typedef DistEvalImpl<typename Op::result_type, Policy> DistEvalImpl_; ///< The base class type
@@ -90,10 +93,10 @@ namespace TiledArray {
       /// this object).
       /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
-      virtual int internal_eval(const std::shared_ptr<DistEvalImpl_>& pimpl) {
+      virtual int internal_eval() {
         // Convert pimpl to this object type so it can be used in tasks
         std::shared_ptr<UnaryEvalImpl_> self =
-            std::static_pointer_cast<UnaryEvalImpl_>(pimpl);
+            std::enable_shared_from_this<UnaryEvalImpl_>::shared_from_this();
 
         // Evaluate argument
         arg_.eval();
