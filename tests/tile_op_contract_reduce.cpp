@@ -93,15 +93,17 @@ BOOST_AUTO_TEST_CASE( make_result )
 
 }
 
+
+#ifdef TA_EXCEPTION_ERROR
 BOOST_AUTO_TEST_CASE( permute_empty )
 {
   // Check the seed operation produces an empty tensor.
   ContractReduce<tensor_type, tensor_type, tensor_type>
   op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, 2u, 2u);
   tensor_type t, result;
-  BOOST_REQUIRE_NO_THROW(result = op(t));
-
+  BOOST_REQUIRE_THROW(result = op(t), TiledArray::Exception);
 }
+#endif // TA_EXCEPTION_ERROR
 
 // TODO: Test non-empty permutation
 
