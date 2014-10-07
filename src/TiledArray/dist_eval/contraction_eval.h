@@ -145,7 +145,8 @@ namespace TiledArray {
     template <typename Left, typename Right, typename Op, typename Policy>
     class Summa :
         public madness::WorldObject<Summa<Left, Right, Op, Policy> >,
-        public ContractionEvalImpl<Left, Right, Op, Policy>
+        public ContractionEvalImpl<Left, Right, Op, Policy>,
+        public std::enable_shared_from_this<Summa<Left, Right, Op, Policy> >
     {
     public:
       typedef Summa<Left, Right, Op, Policy> Summa_; ///< This object type
