@@ -97,7 +97,8 @@ int main(int argc, char** argv) {
         // Construct shape
         TiledArray::Tensor<float>
             a_shape_tensor(trange.tiles(), 0.0),
-            b_shape_tensor(trange.tiles(), 0.0);
+            b_shape_tensor(trange.tiles(), 0.0),
+            c_shape_tensor(trange.tiles(), 0.0);
         if(world.rank() == 0) {
           world.srand(time(NULL));
           const long l_process_block_count = l_block_count / world.size() +
@@ -113,7 +114,8 @@ int main(int argc, char** argv) {
         }
         TiledArray::SparseShape<float>
             a_shape(world, a_shape_tensor, trange),
-            b_shape(world, b_shape_tensor, trange);
+            b_shape(world, b_shape_tensor, trange),
+            c_shape(world, c_shape_tensor, trange);
 
 
         typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
@@ -122,7 +124,7 @@ int main(int argc, char** argv) {
         // Construct and initialize arrays
         SpTArray2 a(world, trange, a_shape);
         SpTArray2 b(world, trange, b_shape);
-        SpTArray2 c(world, trange);
+        SpTArray2 c(world, trange, c_shape);
         a.set_all_local(1.0);
         b.set_all_local(1.0);
 
