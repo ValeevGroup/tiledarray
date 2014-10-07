@@ -77,9 +77,9 @@ namespace TiledArray {
         return future().get();
       }
 
-      operator typename Impl::future() const { return future(); }
+      operator typename Impl::future&() const { return future(); }
 
-      operator typename Impl::value_type() const { return get(); }
+      operator typename Impl::value_type&() const { return get(); }
     }; // class TileReference
 
     /// Tensor tile reference
@@ -121,9 +121,9 @@ namespace TiledArray {
         return future().get();
       }
 
-      operator typename Impl::future() const { return future(); }
+      operator typename Impl::future&() const { return future(); }
 
-      operator typename Impl::value_type() const { return get(); }
+      operator typename Impl::value_type&() const { return get(); }
     }; // class TileConstReference
 
   } // namespace detail
