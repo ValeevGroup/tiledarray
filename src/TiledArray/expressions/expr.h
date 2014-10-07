@@ -131,8 +131,10 @@ namespace TiledArray {
         /// \param it An index iterator from a process map
         /// \return true
         bool operator()(const typename DE::pmap_interface::const_iterator& it) const {
-          madness::Future<typename DE::value_type> tile = dist_eval_.get(*it);
-          set_tile(*it, tile);
+          if(! dist_eval_.is_zero(*it)) {
+            madness::Future<typename DE::value_type> tile = dist_eval_.get(*it);
+            set_tile(*it, tile);
+          }
           return true;
         }
       }; // struct EvalTiles
