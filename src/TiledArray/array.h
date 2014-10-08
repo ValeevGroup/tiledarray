@@ -58,7 +58,50 @@ namespace TiledArray {
     typedef typename impl_type::const_iterator const_iterator; ///< Local tile const iterator
     typedef typename impl_type::pmap_interface pmap_interface; ///< Process map interface type
 
+  private:
 
+    /// Sparse array initialization
+
+    /// \param w The world where the array will live.
+    /// \param tr The tiled range object that will be used to set the array tiling.
+    /// \param shape Bitset of the same length as \c tr. Describes the array shape: bit set (1)
+    ///        means tile exists, else tile does not exist.
+    /// \param pmap The tile index -> process map
+    /// \param collective_shape_init If true then the collective_init method for
+    /// shape will be invoced by the constructor
+    static std::shared_ptr<impl_type>
+    init(madness::World& w, const trange_type& tr, const shape_type& shape,
+        std::shared_ptr<pmap_interface> pmap)
+    {
+      // User level validation of input
+
+      // Validate the tiled range
+      TA_USER_ASSERT(tr.tiles().dim() == DIM,
+          "Array::Array() -- The dimension of tiled range is not equal to the array.");
+
+      if(! pmap) {
+        // Construct a default process map
+        pmap = Policy::default_pmap(w, tr.tiles().volume());
+      } else {
+        // Validate the process map
+        TA_USER_ASSERT(pmap->size() == tr.tiles().volume(),
+            "Array::Array() -- The size of the process map is not equal to the number of tiles in the TiledRange object.");
+        TA_USER_ASSERT(pmap->rank() == w.rank(),
+            "Array::Array() -- The rank of the process map is not equal to that of the world object.");
+        TA_USER_ASSERT(pmap->procs() == w.size(),
+            "Array::Array() -- The number of processes in the process map is not equal to that of the world object.");
+      }
+
+      // Validate the shape
+      TA_USER_ASSERT(! shape.empty(),
+          "Array::Array() -- The shape is not initialized.");
+      TA_USER_ASSERT(shape.validate(tr.tiles()),
+          "Array::Array() -- The range of the shape is not equal to the tiles range.");
+
+      return make_distributed_shared_ptr(new impl_type(w, tr, shape, pmap));
+    }
+
+  public:
     /// Default constructor
     Array() : pimpl_() { }
 
@@ -75,13 +118,9 @@ namespace TiledArray {
     /// \param pmap The tile index -> process map
     Array(madness::World& w, const trange_type& tr,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(make_distributed_shared_ptr(new impl_type(w, tr, shape_type(),
-          (pmap ? pmap : Policy::default_pmap(w, tr.tiles().volume())))))
+      pimpl_(init(w, tr, shape_type(), pmap))
 
-    {
-      TA_USER_ASSERT(tr.tiles().dim() == DIM,
-          "The dimensions of the tiled range do not match that of the array object.");
-    }
+    { }
 
     /// Sparse array constructor
 
@@ -94,12 +133,8 @@ namespace TiledArray {
     /// shape will be invoced by the constructor
     Array(madness::World& w, const trange_type& tr, const shape_type& shape,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(make_distributed_shared_ptr(new impl_type(w, tr, shape,
-          (pmap ? pmap : Policy::default_pmap(w, tr.tiles().volume())))))
-    {
-      TA_USER_ASSERT(tr.tiles().dim() == DIM,
-          "The dimensions of the tiled range do not match that of the array object.");
-    }
+      pimpl_(init(w, tr, shape, pmap))
+    { }
 
     /// Copy constructor
 

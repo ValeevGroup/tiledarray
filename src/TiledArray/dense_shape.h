@@ -76,6 +76,12 @@ namespace TiledArray {
     /// \return true
     static bool is_dense() { return true; }
 
+
+    /// Check if the shape is empty (uninitialized)
+
+    /// \return Always \c false
+    static bool empty() { return false; }
+
     static DenseShape perm(const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>
