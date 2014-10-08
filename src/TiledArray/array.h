@@ -209,13 +209,6 @@ namespace TiledArray {
       const typename Value::value_type value_;
       madness::Future<Value> result_;
 
-      static const std::shared_ptr<impl_type>&
-      checked_pimpl(const std::shared_ptr<impl_type>& pimpl) {
-        TA_USER_ASSERT(pimpl,
-            "The Array::pimpl has not been initialized, likely reason: it was default constructed and used.");
-        return pimpl;
-      }
-
     public:
       MakeTile(const std::shared_ptr<impl_type>& pimpl, const Index& index, const T& value) :
         madness::TaskInterface(),
