@@ -66,18 +66,17 @@ namespace TiledArray {
         return *this;
       }
 
-
       typename Impl::future future() const {
         TA_ASSERT(tensor_);
         return tensor_->get(index_);
       }
 
-      const typename Impl::value_type get() const {
+      typename Impl::value_type& get() const {
         TA_ASSERT(tensor_);
         return future().get();
       }
 
-      operator typename Impl::future&() const { return future(); }
+      operator typename Impl::future() const { return tensor_->get(index_); }
 
       operator typename Impl::value_type&() const { return get(); }
     }; // class TileReference
@@ -116,14 +115,14 @@ namespace TiledArray {
         return tensor_->get(index_);
       }
 
-      const typename Impl::value_type get() const {
+      const typename Impl::value_type& get() const {
         TA_ASSERT(tensor_);
         return future().get();
       }
 
-      operator typename Impl::future&() const { return future(); }
+      operator typename Impl::future() const { return tensor_->get(index_); }
 
-      operator typename Impl::value_type&() const { return get(); }
+      operator const typename Impl::value_type&() const { return get(); }
     }; // class TileConstReference
 
   } // namespace detail
