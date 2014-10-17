@@ -164,15 +164,16 @@ namespace TiledArray {
 
       /// Wait for all tiles to be assigned
       void wait() const {
-        if(task_count_ > 0) {
+        const int task_count = task_count_;
+        if(task_count > 0) {
           try {
-            CounterProbe probe(set_counter_, task_count_);
+            CounterProbe probe(set_counter_, task_count);
             TensorImpl_::get_world().await(probe);
           } catch(...) {
             std::stringstream ss;
             ss << "!!TiledArray: Aborting due to exception.\n"
                << "!!TiledArray: rank=" << TensorImpl_::get_world().rank()
-               << " id=" << TensorImpl_::id() << " " << set_counter_ << " of " << task_count_ << " tiles set\n";
+               << " id=" << TensorImpl_::id() << " " << set_counter_ << " of " << task_count << " tiles set\n";
             std::cout << ss.str().c_str();
             throw;
           }
