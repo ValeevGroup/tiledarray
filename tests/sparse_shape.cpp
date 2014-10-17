@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE( default_constructor )
 BOOST_AUTO_TEST_CASE( non_comm_constructor )
 {
   // Construct test tile norms
-  Tensor<float> tile_norms = make_norm_tensor(tr, 42);
+  Tensor<float> tile_norms = make_norm_tensor(tr, 1, 42);
 
   // Construct the shape
   BOOST_CHECK_NO_THROW(SparseShape<float> x(tile_norms, tr));
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE( non_comm_constructor )
 BOOST_AUTO_TEST_CASE( comm_constructor )
 {
   // Construct test tile norms
-  Tensor<float> tile_norms = make_norm_tensor(tr, 98);
+  Tensor<float> tile_norms = make_norm_tensor(tr, 1, 98);
   Tensor<float> tile_norms_ref = tile_norms.clone();
 
   // Zero non-local tiles

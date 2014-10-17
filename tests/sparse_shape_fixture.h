@@ -49,7 +49,7 @@ namespace TiledArray {
     ~SparseShapeFixture() { }
 
 
-    static Tensor<float> make_norm_tensor(const TiledRange& trange, const int seed) {
+    static Tensor<float> make_norm_tensor(const TiledRange& trange, const float fill_percent, const int seed) {
       GlobalFixture::world->srand(seed);
       Tensor<float> norms(trange.tiles());
       for(Tensor<float>::size_type i = 0ul; i < norms.size(); ++i) {
@@ -58,18 +58,17 @@ namespace TiledArray {
         norms[i] = std::sqrt(norms[i] * norms[i] * range.volume());
       }
 
+      const std::size_t n = float(norms.size()) * (1.0 - fill_percent);
+      for(std::size_t i = 0ul; i < n; ++i) {
+        norms[GlobalFixture::world->rand() % norms.size()] = SparseShape<float>::threshold() * 0.1;
+      }
+
       return norms;
     }
 
     static SparseShape<float> make_shape(const TiledRange& trange, const float fill_percent, const int seed) {
-      Tensor<float> shape_data = make_norm_tensor(trange, seed);
-
-      const std::size_t n = float(shape_data.size()) * (1.0 - fill_percent);
-      for(std::size_t i = 0ul; i < n; ++i) {
-        shape_data[GlobalFixture::world->rand() % shape_data.size()] = SparseShape<float>::threshold() * 0.1;
-      }
-
-      return SparseShape<float>(shape_data, trange);
+      Tensor<float> tile_norms = make_norm_tensor(trange, fill_percent, seed);
+      return SparseShape<float>(tile_norms, trange);
     }
 
     static Permutation make_perm() {
