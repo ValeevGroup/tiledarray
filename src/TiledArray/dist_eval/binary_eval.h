@@ -80,6 +80,25 @@ namespace TiledArray {
 
       virtual ~BinaryEvalImpl() { }
 
+      /// Get tile at index \c i
+
+      /// \param i The index of the tile
+      /// \return A \c madness::Future to the tile at index i
+      /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
+      /// \throw TiledArray::Exception When tile \c i a zero tile.
+      virtual madness::Future<value_type> get_tile(size_type i) const {
+        TA_ASSERT(TensorImpl_::is_local(i));
+        TA_ASSERT(! TensorImpl_::is_zero(i));
+
+
+        const size_type source_index = DistEvalImpl_::perm_index_to_source(i);
+        const ProcessID source =  left_.owner(source_index); // Left and right
+                                                  // should have the same owner
+
+        const madness::DistributedID key(TensorImpl_::id(), i);
+        return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
+      }
+
     private:
 
       /// Task function for evaluating tiles

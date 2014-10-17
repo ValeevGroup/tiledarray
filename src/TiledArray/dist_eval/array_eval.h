@@ -163,8 +163,7 @@ namespace TiledArray {
       /// Virtual destructor
       virtual ~ArrayEvalImpl() { }
 
-      virtual madness::Future<value_type>
-      get_tile(const std::shared_ptr<DistEvalImpl_>& pimpl, size_type i) {
+      virtual madness::Future<value_type> get_tile(size_type i) const {
 
         // Get the array index that corresponds to the target index
         const size_type array_index = DistEvalImpl_::perm_index_to_source(i);
@@ -179,7 +178,7 @@ namespace TiledArray {
           // Skip the task since the tile is ready
           madness::Future<value_type> result;
           result.set(make_tile(tile, consumable_tile));
-          result.register_callback(this);
+          const_cast<ArrayEvalImpl_*>(this)->notify();
           return result;
         } else {
           // Spawn a task to set the tile the input tile is ready.
@@ -188,10 +187,9 @@ namespace TiledArray {
               & ArrayEvalImpl_::make_tile, tile, consumable_tile,
               madness::TaskAttributes::hipri());
 
-          result.register_callback(this);
+          result.register_callback(const_cast<ArrayEvalImpl_*>(this));
           return result;
         }
-
       }
 
     private:

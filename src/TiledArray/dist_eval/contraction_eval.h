@@ -607,6 +607,32 @@ namespace TiledArray {
       /// Virtual destructor
       virtual ~Summa() { }
 
+
+      /// Get tile at index \c i
+
+      /// \param i The index of the tile
+      /// \return A \c madness::Future to the tile at index i
+      /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
+      /// \throw TiledArray::Exception When tile \c i a zero tile.
+      virtual madness::Future<value_type> get_tile(size_type i) const {
+        TA_ASSERT(TensorImpl_::is_local(i));
+        TA_ASSERT(! TensorImpl_::is_zero(i));
+
+        const size_type source_index = DistEvalImpl_::perm_index_to_source(i);
+
+        // Compute tile coordinate in tile grid
+        const size_type tile_row = source_index / n_;
+        const size_type tile_col = source_index % n_;
+        // Compute process coordinate of tile in the process grid
+        const size_type proc_row = tile_row % proc_rows_;
+        const size_type proc_col = tile_col % proc_cols_;
+        // Compute the process that owns tile
+        const ProcessID source = proc_row * proc_cols_ + proc_col;
+
+        const madness::DistributedID key(TensorImpl_::id(), i);
+        return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
+      }
+
     private:
 
       /// Evaluate the tiles of this tensor
@@ -1573,6 +1599,31 @@ namespace TiledArray {
       { }
 
       virtual ~Summa() { }
+
+      /// Get tile at index \c i
+
+      /// \param i The index of the tile
+      /// \return A \c madness::Future to the tile at index i
+      /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
+      /// \throw TiledArray::Exception When tile \c i a zero tile.
+      virtual madness::Future<value_type> get_tile(size_type i) const {
+        TA_ASSERT(TensorImpl_::is_local(i));
+        TA_ASSERT(! TensorImpl_::is_zero(i));
+
+        const size_type source_index = DistEvalImpl_::perm_index_to_source(i);
+
+        // Compute tile coordinate in tile grid
+        const size_type tile_row = source_index / cols_;
+        const size_type tile_col = source_index % cols_;
+        // Compute process coordinate of tile in the process grid
+        const size_type proc_row = tile_row % proc_rows_;
+        const size_type proc_col = tile_col % proc_cols_;
+        // Compute the process that owns tile
+        const ProcessID source = proc_row * proc_cols_ + proc_col;
+
+        const madness::DistributedID key(TensorImpl_::id(), i);
+        return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
+      }
 
     private:
 

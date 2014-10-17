@@ -127,10 +127,7 @@ namespace TiledArray {
       /// \param i The index of the tile
       /// \return Tile at index i
       /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
-      virtual madness::Future<value_type> get_tile(const std::shared_ptr<DistEvalImpl_>&, size_type i) {
-        TA_ASSERT(TensorImpl_::is_local(i));
-        return TensorImpl_::get_cache(i);
-      }
+      virtual madness::Future<value_type> get_tile(size_type i) const = 0;
 
       /// Set tensor value
 
@@ -140,10 +137,11 @@ namespace TiledArray {
       /// \param value The value to be stored at index \c i
       void set_tile(size_type i, const value_type& value) {
         // Store value
-        TensorImpl_::set_cache(i, value);
+        madness::DistributedID id(TensorImpl_::id(), i);
+        TensorImpl_::get_world().gop.send(TensorImpl_::owner(i), id, value);
 
         // Record the assignment of a tile
-        DistEvalImpl::notify();
+        DistEvalImpl_::notify();
       }
 
       /// Set tensor value with a future
@@ -154,7 +152,8 @@ namespace TiledArray {
       /// \param value The future value to be stored at index \c i
       void set_tile(size_type i, madness::Future<value_type> f) {
         // Store value
-        TensorImpl_::set_cache(i, f);
+        madness::DistributedID id(TensorImpl_::id(), i);
+        TensorImpl_::get_world().gop.send(TensorImpl_::owner(i), id, f);
 
         // Record the assignment of a tile
         f.register_callback(this);
@@ -321,7 +320,7 @@ namespace TiledArray {
       /// Tile is removed after it is set.
       /// \param i The tile index
       /// \return Tile \c i
-      future get(size_type i) const { return pimpl_->get_tile(pimpl_, i); }
+      future get(size_type i) const { return pimpl_->get_tile(i); }
 
       /// World object accessor
 
