@@ -54,6 +54,8 @@ namespace TiledArray {
       typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
       typedef Op op_type; ///< Tile evaluation operator type
 
+      using std::enable_shared_from_this<BinaryEvalImpl_>::shared_from_this;
+
     private:
 
       left_type left_; ///< Left argument
@@ -99,9 +101,6 @@ namespace TiledArray {
       /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
       virtual int internal_eval() {
-        // Convert pimpl to this object type so it can be used in tasks
-        std::shared_ptr<BinaryEvalImpl_> self =
-            std::enable_shared_from_this<BinaryEvalImpl_>::shared_from_this();
 
         // Evaluate child tensors
         left_.eval();
@@ -123,6 +122,7 @@ namespace TiledArray {
 
         // Construct local iterator
         TA_ASSERT(left_.pmap() == right_.pmap());
+        std::shared_ptr<BinaryEvalImpl_> self = shared_from_this();
         typename pmap_interface::const_iterator it = left_.pmap()->begin();
         const typename pmap_interface::const_iterator end = left_.pmap()->end();
 

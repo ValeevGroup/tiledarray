@@ -136,6 +136,8 @@ namespace TiledArray {
       typedef typename DistEvalImpl_::value_type value_type; ///< value type
       typedef Op op_type; ///< Tile evaluation operator type
 
+      using std::enable_shared_from_this<ArrayEvalImpl<Array, Op, Policy> >::shared_from_this;
+
     private:
       array_type array_; ///< The array that will be evaluated
       std::shared_ptr<op_type> op_; ///< The tile operation
@@ -165,10 +167,6 @@ namespace TiledArray {
 
       virtual madness::Future<value_type>
       get_tile(const std::shared_ptr<DistEvalImpl_>& pimpl, size_type i) {
-        // Convert pimpl to this object type so it can be used in tasks
-        TA_ASSERT(this == pimpl.get());
-        std::shared_ptr<ArrayEvalImpl_> self =
-            std::static_pointer_cast<ArrayEvalImpl_>(pimpl);
 
         // Get the array index that corresponds to the target index
         const size_type array_index = (inv_perm_ ?
@@ -189,7 +187,7 @@ namespace TiledArray {
         } else {
           // Spawn a task to set the tile the input tile is ready.
           madness::Future<value_type> result =
-              TensorImpl_::get_world().taskq.add(self,
+              TensorImpl_::get_world().taskq.add(shared_from_this(),
               & ArrayEvalImpl_::make_tile, tile, consumable_tile,
               madness::TaskAttributes::hipri());
 
