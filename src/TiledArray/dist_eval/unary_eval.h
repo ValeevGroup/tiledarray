@@ -113,7 +113,7 @@ namespace TiledArray {
 
           if(! arg_.is_zero(index)) {
             // Get target tile index
-            const size_type target_index = DistEvalImpl_::perm_index(index);
+            const size_type target_index = DistEvalImpl_::perm_index_to_target(index);
 
             // Schedule tile evaluation task
             TensorImpl_::get_world().taskq.add(self, & UnaryEvalImpl_::eval_tile,

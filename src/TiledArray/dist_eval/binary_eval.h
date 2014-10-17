@@ -130,13 +130,13 @@ namespace TiledArray {
           // Evaluate tiles where both arguments and the result are dense
           for(; it != end; ++it) {
             // Get tile indices
-            const size_type index = *it;
-            const size_type target_index = DistEvalImpl_::perm_index(index);
+            const size_type source_index = *it;
+            const size_type target_index = DistEvalImpl_::perm_index_to_target(source_index);
 
             // Schedule tile evaluation task
             TensorImpl_::get_world().taskq.add(self,
                 & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
-                target_index, left_.get(index), right_.get(index));
+                target_index, left_.get(source_index), right_.get(source_index));
 
             ++task_count;
           }
@@ -145,7 +145,7 @@ namespace TiledArray {
           for(; it != end; ++it) {
             // Get tile indices
             const size_type index = *it;
-            const size_type target_index = DistEvalImpl_::perm_index(index);
+            const size_type target_index = DistEvalImpl_::perm_index_to_target(index);
 
             if(! TensorImpl_::is_zero(target_index)) {
               // Schedule tile evaluation task

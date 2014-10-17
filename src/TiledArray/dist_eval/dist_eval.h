@@ -23,6 +23,7 @@
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/counter_probe.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/perm_index.h>
 
 namespace TiledArray {
   namespace detail {
@@ -52,8 +53,8 @@ namespace TiledArray {
 
     private:
       const Permutation perm_; ///< The permutation to be applied to this tensor
-      typename TensorImpl_::range_type range_; ///< The original tiled range for this tensor
-      std::vector<size_type> ip_weight_; ///< The inverse permuted weight of the result range
+      PermIndex source_to_target_; ///< Functor used to permute a source index to a target index.
+      PermIndex target_to_source_; ///< Functor used to permute a target index to a source index.
 
       // The following variables are used to track the total number of tasks run
       // on the local node, task_count_, and the number of tiles set on this
@@ -66,24 +67,23 @@ namespace TiledArray {
 
     protected:
 
-      /// Map an index value from the unpermuted index space to the permuted index space
 
-      /// \param i The index in the unpermuted index space
-      /// \return The corresponding index in the permuted index space
-      size_type perm_index(size_type index) const {
-        size_type result_index;
-        if(perm_) {
-          result_index = 0ul;
-          // Permute the index
-          for(size_type i = 0ul; i < TensorImpl_::range().dim(); ++i) {
-            result_index += (index / range_.weight()[i]) * ip_weight_[i];
-            index %= range_.weight()[i];
-          }
-        } else {
-          // Return the unmodified index if no permutation needs to be applied
-          result_index = index;
-        }
-        return result_index;
+      /// Permute \c index from a source index to a target index
+
+      /// \param i An ordinal index in the source index space
+      /// \return The ordinal index in the target index space
+      size_type perm_index_to_target(size_type index) const {
+        TA_ASSERT(index < TensorImpl_::trange().tiles().volume());
+        return (source_to_target_ ? source_to_target_(index) : index);
+      }
+
+      /// Permute \c index from a target index to a source index
+
+      /// \param i An ordinal index in the target index space
+      /// \return The ordinal index in the source index space
+      size_type perm_index_to_source(size_type index) const {
+        TA_ASSERT(index < TensorImpl_::trange().tiles().volume());
+        return (target_to_source_ ? target_to_source_(index) : index);
       }
 
       /// Permutation accessor
@@ -105,8 +105,8 @@ namespace TiledArray {
           const Permutation& perm) :
         TensorImpl_(world, trange, shape, pmap),
         perm_(perm),
-        range_(),
-        ip_weight_(),
+        source_to_target_(),
+        target_to_source_(),
         task_count_(-1),
         set_counter_()
       {
@@ -114,8 +114,9 @@ namespace TiledArray {
 
         if(perm) {
           Permutation inv_perm(-perm);
-          range_ = inv_perm ^ trange.tiles();
-          ip_weight_ = inv_perm ^ TensorImpl_::range().weight();
+          range_type target_range = inv_perm ^ trange.tiles();
+          source_to_target_ = PermIndex(trange.tiles(), perm);
+          target_to_source_ = PermIndex(target_range, inv_perm);
         }
       }
 

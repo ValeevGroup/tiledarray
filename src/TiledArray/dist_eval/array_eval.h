@@ -141,7 +141,6 @@ namespace TiledArray {
     private:
       array_type array_; ///< The array that will be evaluated
       std::shared_ptr<op_type> op_; ///< The tile operation
-      Permutation inv_perm_; ///< The inverse permutation
 
     public:
 
@@ -158,8 +157,7 @@ namespace TiledArray {
           const Permutation& perm, const op_type& op) :
         DistEvalImpl_(world, trange, shape, pmap, perm),
         array_(array),
-        op_(new op_type(op)),
-        inv_perm_(-perm)
+        op_(new op_type(op))
       { }
 
       /// Virtual destructor
@@ -169,8 +167,7 @@ namespace TiledArray {
       get_tile(const std::shared_ptr<DistEvalImpl_>& pimpl, size_type i) {
 
         // Get the array index that corresponds to the target index
-        const size_type array_index = (inv_perm_ ?
-            get_array_index(inv_perm_, i) : i);
+        const size_type array_index = DistEvalImpl_::perm_index_to_source(i);
 
         // Get the tile from array_, which may be located on a remote node.
         madness::Future<typename array_type::value_type> tile =
@@ -209,24 +206,6 @@ namespace TiledArray {
       /// \param tile The array tile that is the basis for lazy tile
       void set_tile(const size_type i, const typename array_type::value_type& tile, const bool consume) {
         DistEvalImpl_::set_tile(i, value_type(tile, op_, consume));
-      }
-
-      /// Get the array tile that corresponds to the target tile
-
-      /// This function applies the inverse permutation to the target index to
-      /// get the array tile index.
-      /// \param inv_perm The inverse permutation
-      /// \param i The target tile index
-      size_type get_array_index(const Permutation& inv_perm, const size_type i) {
-        return array_.range().ord(inv_perm ^ TensorImpl_::range().idx(i));
-      }
-
-      /// Get the array tile that corresponds to the target tile
-
-      /// No permutation is applied to the target index.
-      /// \param i The target tile index
-      size_type get_array_index(const NoPermutation, const size_type i) {
-        return i;
       }
 
       /// Evaluate the tiles of this tensor

@@ -550,7 +550,7 @@ namespace TiledArray {
           for(size_type i = rank_row_; i < m_; i += proc_rows_) {
             for(size_type j = rank_col_; j < n_; j += proc_cols_, ++it) {
               const size_type index = i * n_ + j;
-              DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(index), it->submit());
+              DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index), it->submit());
 
               it->~result_datum();
             }
