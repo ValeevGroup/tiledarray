@@ -445,7 +445,14 @@ namespace TiledArray {
         return SizeArray<T>::operator!=(other);
       }
 
-    }; // class SharedVector
+    }; // class ValArray
+
+
+    template <typename T>
+    inline std::ostream& operator<<(std::ostream& os, const ValArray<T>& val_array) {
+      print_array(os, val_array);
+      return os;
+    }
 
   } // namespace detail
 } // namespace TiledArray

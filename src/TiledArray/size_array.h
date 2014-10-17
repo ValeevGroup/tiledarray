@@ -433,6 +433,12 @@ namespace TiledArray {
       return orig;
     }
 
+    template <typename T>
+    inline std::ostream& operator<<(std::ostream& os, const SizeArray<T>& size_array) {
+      print_array(os, size_array);
+      return os;
+    }
+
   }  // namespace detail
 } // namespace TiledArray
 
