@@ -450,53 +450,38 @@ BOOST_AUTO_TEST_CASE( gemm )
   // Create a matrix with the expected output
   const std::size_t m = left.data().range().size().front();
   const std::size_t n = right.data().range().size().back();
-  const std::size_t k = left.data().size() / m;
+//  const std::size_t k = left.data().size() / m;
 
-  madness::ScopedArray<float> left_value(new float[m]);
-  madness::ScopedArray<float> right_value(new float[n]);
-
-  std::array<std::size_t, 2> i = {{ 0, 0 }};
-
-  // Compute the left reduced value
-  for(i[0] = 0ul; i[0] < m; ++i[0]) {
-    left_value[i[0]] = 0.0f;
-    for(i[1] = 0ul; i[1] < k; ++i[1]) {
-      // Compute expected value
-      std::size_t index = i[0] * k + i[1];
-      const TiledRange::range_type range = tr.make_tile_range(index);
-      const float temp = left[index] * float(range.volume());
-      left_value[i[0]] +=  temp * temp;
-    }
-
-    const TiledRange1::range_type r = tr.data()[0].tile(i[0]);
-    left_value[i[0]] = std::sqrt(left_value[i[0]]) / (r.second - r.first);
-  }
-
-  // Compute the right reduced value
-  for(i[1] = 0ul; i[1] < n; ++i[1]) {
-    right_value[i[1]] = 0.0f;
-
-    for(i[0] = 0ul; i[0] < k; ++i[0]) {
-      std::size_t index = i[0] * n + i[1];
-      const TiledRange::range_type range = tr.make_tile_range(index);
-      const float temp = right[index] * float(range.volume());
-      right_value[i[1]] +=  temp * temp;
-    }
-
-    const TiledRange1::range_type r = tr.data()[2].tile(i[1]);
-    right_value[i[1]] = std::sqrt(right_value[i[1]]) / (r.second - r.first);
-  }
 
   // Evaluate the contraction of sparse shapes
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
       2u, left.data().range().dim(), right.data().range().dim());
-  SparseShape<float> result = left.gemm(right, -7.2, gemm_helper);
+  SparseShape<float> result;
+  BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper));
+
+  // Create volumes tensors for the arguments
+  Tensor<float> volumes(tr.tiles(), 0.0f);
+  for(std::size_t i = 0ul; i < tr.tiles().volume(); ++i) {
+    const float volume = tr.make_tile_range(i).volume();
+    volumes[i] = volume;
+  }
+
+  Tensor<float> result_norms = left.data().mult(volumes).gemm(right.data().mult(volumes), 7.2, gemm_helper);
 
   // Check that the result is correct
+  std::array<std::size_t, 2> i = {{ 0, 0 }};
   for(i[0] = 0ul; i[0] < m; ++i[0]) {
+
+    const TiledRange1::range_type r_0 = tr.data()[0].tile(i[0]);
+    const float size_0 = r_0.second - r_0.first;
+
     for(i[1] = 0ul; i[1] < n; ++i[1]) {
+
+      const TiledRange1::range_type r_1 = tr.data()[2].tile(i[1]);
+      const float size_1 = r_1.second - r_1.first;
+
       // Compute expected value
-      float expected = left_value[i[0]] * right_value[i[1]] * 7.2f;
+      float expected = result_norms[i] / (size_0 * size_1);
       if(expected < SparseShape<float>::threshold())
         expected = 0.0f;
 

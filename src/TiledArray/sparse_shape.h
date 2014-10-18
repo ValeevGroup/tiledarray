@@ -678,8 +678,8 @@ namespace TiledArray {
     {
       TA_ASSERT(! tile_norms_.empty());
 
-      integer m, n, k;
-      gemm_helper.compute_matrix_sizes(m, n, k, tile_norms_.range(), other.tile_norms_.range());
+      integer M = 0, N = 0, K = 0;
+      gemm_helper.compute_matrix_sizes(M, N, K, tile_norms_.range(), other.tile_norms_.range());
 
       // Allocate memory for the contracted size vectors
       std::shared_ptr<vector_type> result_size_vectors(new vector_type[gemm_helper.result_rank()],
@@ -696,38 +696,38 @@ namespace TiledArray {
       const unsigned int k_rank = gemm_helper.left_inner_end() - gemm_helper.left_inner_begin();
 
       // Construct the result norm tensor
-      Tensor<T> result_norms;
+      Tensor<value_type> result_norms(gemm_helper.make_result_range<typename Tensor<T>::range_type>(
+          tile_norms_.range(), other.tile_norms_.range()), 0);
 
       if(k_rank > 0u) {
 
         // Compute size vector
-        const vector_type k_size_vector =
+        const vector_type k_sizes =
             recursive_outer_product(size_vectors_.get() + gemm_helper.left_inner_begin(),
                 k_rank, OuterProduct());
 
-        result_norms = tile_norms_.gemm(other.tile_norms_, std::abs(factor), gemm_helper);
+        // TODO: Make this faster. It can be done without using temporaries
+        // for the arguments, but requires a custom matrix multiply.
 
-        math::outer(m, n, k_size_vector.data(), k_size_vector.data(),
-            result_norms.data(), GemmRenormalize());
+        Tensor<value_type> left(tile_norms_.range());
+        const size_type mk = M * K;
+        math::Multiplies<value_type, value_type, value_type> left_op;
+        for(size_type i = 0ul; i < mk; i += K)
+          math::binary_vector_op(K, tile_norms_.data() + i, k_sizes.data(),
+              left.data() + i, left_op);
 
-//        GemmArgReduce op;
-//        vector_type left(m, value_type(0));
-//        left.row_reduce(k, tile_norms_.data(), k_size_vector.data(), op);
-//        left.unary(op);
-//
-//        vector_type right(n, value_type(0));
-//        right.col_reduce(k, other.tile_norms_.data(), k_size_vector.data(), op);
-//        right.unary(op);
-//
-//        math::outer_fill(m, n, left.data(), right.data(), result_norms.data(),
-//            GemmOuterProduct(std::abs(factor)));
+        Tensor<value_type> right(other.tile_norms_.range());
+        for(integer i = 0ul, k = 0; k < K; i += N, ++k) {
+          math::Scale<value_type> right_op(k_sizes[k]);
+          math::unary_vector_op(N, other.tile_norms_.data() + i, right.data() + i, right_op);
+        }
+
+        result_norms = left.gemm(right, std::abs(factor), gemm_helper);
+
       } else {
 
-        result_norms = Tensor<T>(gemm_helper.make_result_range<typename Tensor<T>::range_type>(
-            tile_norms_.range(), other.tile_norms_.range()), 0);
-
         // This is an outer product, so the inputs can be used directly
-        math::outer_fill(m, n, tile_norms_.data(), other.tile_norms_.data(), result_norms.data(),
+        math::outer_fill(M, N, tile_norms_.data(), other.tile_norms_.data(), result_norms.data(),
             GemmOuterProduct(std::abs(factor)));
       }
 
