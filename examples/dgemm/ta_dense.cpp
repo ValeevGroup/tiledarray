@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
     for(int i = 0; i < repeat; ++i) {
       const double start = madness::wall_time();
       c("m,n") = a("m,k") * b("k,n");
-      world.gop.fence();
+//      world.gop.fence();
       const double time = madness::wall_time() - start;
       total_time += time;
       if(world.rank() == 0)
