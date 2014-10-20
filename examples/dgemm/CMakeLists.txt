@@ -52,6 +52,11 @@ target_link_libraries(ta_dense ${TiledArray_LIBRARIES})
 add_dependencies(ta_dense External)
 add_dependencies(example ta_dense)
 
+# Add the ta_dense_nonuniform executable
+add_executable(ta_dense_nonuniform EXCLUDE_FROM_ALL ta_dense_nonuniform.cpp)
+target_link_libraries(ta_dense_nonuniform ${TiledArray_LIBRARIES})
+add_dependencies(ta_dense_nonuniform External)
+add_dependencies(example ta_dense_nonuniform)
 
 # Add the ta_asymm_dense executable
 add_executable(ta_asymm_dense EXCLUDE_FROM_ALL ta_asymm_dense.cpp)
