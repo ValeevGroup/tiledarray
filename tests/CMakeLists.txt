@@ -29,10 +29,25 @@ CONFIGURE_FILE(
 
 # Create the ta_test executable
 set(executable ta_test)
-file(GLOB ta_test_src_files *.cpp)
+set(ta_test_src_files  ta_test.cpp                                                  
+    array.cpp                  bitset.cpp                      blocked_pmap.cpp
+    cyclic_pmap.cpp            dense_shape.cpp                 dist_eval_array_eval.cpp
+    dist_eval_binary_eval.cpp  dist_eval_contraction_eval.cpp  dist_eval_unary_eval.cpp
+    dist_op_communicator.cpp   dist_op_dist_cache.cpp          dist_op_group.cpp         
+    distributed_storage.cpp    eigen.cpp                       elemental.cpp             
+    hash_pmap.cpp              math_blas.cpp                   math_outer.cpp            
+    math_partial_reduce.cpp    math_transpose.cpp              perm_index.cpp            
+    permutation.cpp            proc_grid.cpp                   range.cpp
+    range_iterator.cpp         reduce_task.cpp                 replicated_pmap.cpp
+    sparse_shape.cpp           tensor.cpp                      tensor_impl.cpp
+    tile_op_add.cpp            tile_op_contract_reduce.cpp     tile_op_mult.cpp
+    tile_op_neg.cpp            tile_op_noop.cpp                tile_op_scal.cpp
+    tile_op_scal_add.cpp       tile_op_scal_mult.cpp           tile_op_scal_subt.cpp
+    tile_op_subt.cpp           tiled_range.cpp                 tiled_range1.cpp
+    transform_iterator.cpp     utility.cpp                     variable_list.cpp)
+        
 if(NOT ENABLE_ELEMENTAL)
-    file(GLOB elem_file *elemental.cpp)
-    list(REMOVE_ITEM ta_test_src_files ${elem_file})
+    list(APPEND ta_test_src_files elemental.cpp)
 endif()
 add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
 
