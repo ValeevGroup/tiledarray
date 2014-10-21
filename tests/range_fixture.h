@@ -68,9 +68,10 @@ struct RangeFixture {
 
 struct Range1Fixture {
 
+  static const size_t ntiles = 5;
 
   Range1Fixture() :
-      a(init_tiling<6>()),
+      a(init_tiling<ntiles+1>()),
       tiles(0, a.size() - 1),
       elements(a.front(), a.back()),
       tr1(a.begin(), a.end())
@@ -86,11 +87,11 @@ struct Range1Fixture {
     return result;
   }
 
-  const std::array<std::size_t, 6> a;
+  const std::array<std::size_t, ntiles+1> a;
   const TiledRange1::range_type tiles;
   const TiledRange1::range_type elements;
   TiledRange1 tr1;
-  std::array<TiledRange1::range_type, 5> tile;
+  std::array<TiledRange1::range_type, ntiles> tile;
 };
 
 struct TiledRangeFixtureBase : public Range1Fixture {

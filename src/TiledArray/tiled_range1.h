@@ -63,35 +63,23 @@ namespace TiledArray {
         tile_ranges_(rng.tile_ranges_), elem2tile_(rng.elem2tile_)
     { }
 
+#ifdef TILEDARRAY_HAVE_VARIADIC_TEMPLATES
     /// Construct a 1D tiled range.
 
-    /// This will construct a 1D tiled range with the given tile boundaries. The
-    /// first argument is the number of tiles. The number of tile boundaries
-    /// must be n + 1. Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
-    /// \param start_tile_index The starting value for the tile indices
-    /// \param n The number of tiles.
-    /// \param t0 The first lower bound
-    /// \param t1 ... are the tile boundaries.
-    explicit TiledRange1(const size_type start_tile_index, const std::size_t n, const size_type t0, const size_type t1, ...) {
-      TA_ASSERT(n >= 1);
-      va_list ap;
-      va_start(ap, t1);
-
-      std::vector<size_type> r;
-      r.push_back(t0);
-      r.push_back(t1);
-      size_type ti; // ci is used as an intermediate
-      for(unsigned int i = 1; i < n; ++i) {
-        ti = 0ul;
-        ti = va_arg(ap, size_type);
-        r.push_back(ti);
-      }
-
-      va_end(ap);
-
-      init_tiles_(r.begin(), r.end(), start_tile_index);
+    /// This will construct a 1D tiled range with tile boundaries {t0, t_rest}
+    /// The number of tile boundaries is n + 1, where n is the number of tiles.
+    /// Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
+    /// \param t0 The starting index of the first tile
+    /// \param t_rest The rest of tile boundaries
+    template<typename... _sizes>
+    explicit TiledRange1(const size_type& t0, const _sizes&... t_rest)
+    {
+      const size_type n = sizeof...(_sizes) + 1;
+      size_type tile_boundaries[n] = {t0, static_cast<size_type>(t_rest)...};
+      init_tiles_(tile_boundaries, tile_boundaries+n, 0);
       init_map_();
     }
+#endif
 
     /// Assignment operator
     TiledRange1& operator =(const TiledRange1& rng) {

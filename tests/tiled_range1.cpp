@@ -81,6 +81,23 @@ BOOST_AUTO_TEST_CASE( constructor )
     }
   }
 
+#ifdef TILEDARRAY_HAVE_VARIADIC_TEMPLATES
+  // check variadic constructor using a's tile boundaries. NOTE: a is a runtime object, must manually specify sizes here
+  {
+    BOOST_REQUIRE_NO_THROW(TiledRange1 r(0,1,2,3,4,5));
+    if (Range1Fixture::ntiles == 5) {
+      TiledRange1 r(0,2,5,10,17,28);
+      BOOST_CHECK_EQUAL(r.tiles().first, tiles.first);
+      BOOST_CHECK_EQUAL(r.tiles().second, tiles.second);
+      BOOST_CHECK_EQUAL(r.elements().first, elements.first);
+      BOOST_CHECK_EQUAL(r.elements().second, elements.second);
+      for(std::size_t i = 0; i < a.size() - 1; ++i) {
+        BOOST_CHECK_EQUAL(r.tile(i).first, a[i]);
+        BOOST_CHECK_EQUAL(r.tile(i).second, a[i + 1]);
+      }
+    }
+  }
+#endif
 
   // check copy constructor
   {
