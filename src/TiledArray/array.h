@@ -451,8 +451,8 @@ namespace TiledArray {
   /// \param os The output stream
   /// \param a The array to be put in the output stream
   /// \return A reference to the output stream
-  template <typename T, unsigned int DIM, typename Tile>
-  inline std::ostream& operator<<(std::ostream& os, const Array<T, DIM, Tile>& a) {
+  template <typename T, unsigned int DIM, typename Tile, typename Policy>
+  inline std::ostream& operator<<(std::ostream& os, const Array<T, DIM, Tile, Policy>& a) {
     if(a.get_world().rank() == 0) {
       for(std::size_t i = 0; i < a.size(); ++i)
         if(! a.is_zero(i)) {
