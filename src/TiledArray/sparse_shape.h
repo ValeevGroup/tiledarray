@@ -744,7 +744,7 @@ namespace TiledArray {
 
   // Static member initialization
   template <typename T>
-  typename SparseShape<T>::value_type SparseShape<T>::threshold_ = 0;
+  typename SparseShape<T>::value_type SparseShape<T>::threshold_ = std::numeric_limits<T>::epsilon();
 
 } // namespace TiledArray
 
