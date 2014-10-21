@@ -73,9 +73,8 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   {
     typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
     return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
-        TiledArray::detail::make_distributed_shared_ptr(
-        new impl_type(array, world, (perm ? perm ^ array.trange() : array.trange()),
-        shape, pmap, perm, op)));
+        std::shared_ptr<impl_type>( new impl_type(array, world,
+        (perm ? perm ^ array.trange() : array.trange()), shape, pmap, perm, op)));
   }
 
   template <typename Tile, typename Policy, typename Op>
@@ -90,9 +89,8 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
     typedef TiledArray::detail::UnaryEvalImpl<
         TiledArray::detail::DistEval<Tile, Policy>, Op, Policy> impl_type;
     return TiledArray::detail::DistEval<typename Op::result_type, Policy>(
-        TiledArray::detail::make_distributed_shared_ptr(
-        new impl_type(arg, world, (perm ? perm ^ arg.trange() : arg.trange()),
-        shape, pmap, perm, op)));
+        std::shared_ptr<impl_type>(new impl_type(arg, world,
+        (perm ? perm ^ arg.trange() : arg.trange()), shape, pmap, perm, op)));
   }
 
    ArrayN array;

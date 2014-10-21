@@ -98,7 +98,7 @@ namespace TiledArray {
       TA_USER_ASSERT(shape.validate(tr.tiles()),
           "Array::Array() -- The range of the shape is not equal to the tiles range.");
 
-      return make_distributed_shared_ptr(new impl_type(w, tr, shape, pmap));
+      return std::shared_ptr<impl_type>(new impl_type(w, tr, shape, pmap));
     }
 
   public:
@@ -135,6 +135,51 @@ namespace TiledArray {
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
       pimpl_(init(w, tr, shape, pmap))
     { }
+
+  private:
+
+    class LazyDelete {
+      mutable std::shared_ptr<impl_type> pimpl_;
+
+    public:
+      LazyDelete() : pimpl_() { }
+      LazyDelete(const std::shared_ptr<impl_type>& pimpl) : pimpl_(pimpl) { }
+      LazyDelete(const LazyDelete& other) : pimpl_(other.pimpl_) { }
+
+      LazyDelete& operator=(const LazyDelete& other) {
+        pimpl_ = other.pimpl_;
+        return *this;
+      }
+
+      void operator()() const {
+        madness::World& world = pimpl_->get_world();
+        madness::uniqueidT id = pimpl_->id();
+        pimpl_.reset();
+        std::stringstream ss;
+        ss << world.rank() << ": " << id << " deleted\n";
+        std::cout << ss.str().c_str();
+      }
+    }; // class LazyDelete
+
+  public:
+
+    /// Destructor
+
+    /// This is a distributed lazy destructor. The object will only be deleted
+    /// after the last reference to the world object on all nodes has been
+    /// destroyed.
+    ~Array() {
+      if(pimpl_) {
+        if(pimpl_.unique()) {
+          madness::World& world = pimpl_->get_world();
+          madness::uniqueidT id = pimpl_->id();
+          std::stringstream ss;
+          ss << world.rank() << ": " << id << " ready for cleanup\n";
+          std::cout << ss.str().c_str();
+          world.gop.lazy_sync(id, LazyDelete(pimpl_));
+        }
+      }
+    }
 
     /// Copy constructor
 
@@ -204,34 +249,48 @@ namespace TiledArray {
     template <typename Index, typename Value>
     class MakeTile : public madness::TaskInterface {
     private:
-      std::shared_ptr<impl_type> pimpl_;
+      Array_ array_;
       const Index index_;
       const typename Value::value_type value_;
-      madness::Future<Value> result_;
 
     public:
-      MakeTile(const std::shared_ptr<impl_type>& pimpl, const Index& index, const T& value) :
+      MakeTile(const Array_& array, const Index& index, const T& value) :
         madness::TaskInterface(),
-        pimpl_(pimpl),
+        array_(array),
         index_(index),
-        value_(value),
-        result_(pimpl->get(index))
+        value_(value)
       { }
 
       virtual void run(madness::World&) {
-        result_.set(value_type(pimpl_->trange().make_tile_range(index_), value_));
+        array_.set(index_, value_);
       }
 
-      const madness::Future<value_type>& result() const { return result_; }
-
     }; // class MakeTile
+
+    class Fill {
+    private:
+      mutable Array_ array_;
+      const T value_;
+
+    public:
+      Fill() : array_(), value_() { }
+      Fill(const Array_& array, const T& value) : array_(array), value_(value) { }
+      Fill(const Fill& other) : array_(other.array_), value_(other.value_) { }
+
+      bool operator()(const typename pmap_interface::const_iterator& it) const {
+        const size_type index = *it;
+        if(! array_.is_zero(index))
+          array_.set(index, value_);
+        return true;
+      }
+    }; // class Fill
 
   public:
 
     template <typename Index>
-    void set(const Index& i, const T& v = T()) {
-      check_index(i);
-      pimpl_->get_world().taskq.add(new MakeTile<Index, value_type>(pimpl_, i, v));
+    void set(const Index& index, const T& value = T()) {
+      check_index(index);
+      pimpl_->set(index, value_type(pimpl_->trange().make_tile_range(index), value));
     }
 
     /// Set tile \c i with future \c f
@@ -255,19 +314,22 @@ namespace TiledArray {
       pimpl_->set(i, v);
     }
 
-    void set_all_local(const T& v = T()) {
-      check_pimpl();
-      typename pmap_interface::const_iterator it = pimpl_->pmap()->begin();
-      const typename pmap_interface::const_iterator end = pimpl_->pmap()->end();
+    /// Fill all local tiles
 
-      if(pimpl_->is_dense()) {
-        for(; it != end; ++it)
-          pimpl_->get_world().taskq.add(new MakeTile<size_type, value_type>(pimpl_, *it, v));
-      } else {
-        for(; it != end; ++it)
-          if(! pimpl_->is_zero(*it))
-            pimpl_->get_world().taskq.add(new MakeTile<size_type, value_type>(pimpl_, *it, v));
-      }
+    /// \param value The fill value
+    void fill_local(const T& value = T()) {
+      check_pimpl();
+      madness::Range<typename pmap_interface::const_iterator>
+          range(pimpl_->pmap()->begin(), pimpl_->pmap()->end(), 8);
+
+      pimpl_->get_world().taskq.for_each(range, Fill(*this, value));
+    }
+
+    /// Fill all local tiles
+
+    /// \param value The fill value
+    void set_all_local(const T& v = T()) {
+      fill_local(v);
     }
 
     /// Tiled range accessor
