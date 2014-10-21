@@ -289,6 +289,13 @@ BOOST_AUTO_TEST_CASE( element_access )
     BOOST_CHECK_EQUAL(t[r.idx(i)], t[i]);
   }
 
+  // check access via call operator, if implemented
+#if defined(TILEDARRAY_HAS_VARIADIC_TEMPLATES)
+# if TEST_DIM == 3u
+  BOOST_CHECK_EQUAL(t(0,0,0), t[0]);
+# endif
+#endif
+
   // check out of range error
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t[r.finish()], Exception);

@@ -599,6 +599,42 @@ namespace TiledArray {
       return pimpl_->data_[pimpl_->range_.ord(i)];
     }
 
+#ifdef TILEDARRAY_HAVE_VARIADIC_TEMPLATES
+    /// Element accessor
+
+    /// \tparam Index index type for the first dimension
+    /// \tparam Indices index type for the pack of the rest of indices
+    /// \param idx0 the index for dimension 0
+    /// \param idxs_rest a pack of indices for dimensions 1 through n
+    template<typename Index, typename... Indices>
+    typename madness::enable_if<typename std::is_integral<Index>::type, reference>::type
+    operator()(const Index& idx0, const Indices&... idxs_rest)
+    {
+      TA_ASSERT(pimpl_);
+      const size_type n = sizeof...(Indices) + 1;
+      Index idx[n] = {idx0, static_cast<Indices>(idxs_rest)...};
+      TA_ASSERT(pimpl_->range_.includes(idx));
+      return pimpl_->data_[pimpl_->range_.ord(idx)];
+    }
+
+    /// Element accessor
+
+    /// \tparam Index index type for the first dimension
+    /// \tparam Indices index type for the pack of the rest of indices
+    /// \param idx0 the index for dimension 0
+    /// \param idxs_rest a pack of indices for dimensions 1 through n
+    template<typename Index, typename... Indices>
+    typename madness::enable_if<typename std::is_integral<Index>::type, const_reference>::type
+    operator()(const Index& idx0, const Indices&... idxs_rest) const
+    {
+      TA_ASSERT(pimpl_);
+      const size_type n = sizeof...(Indices) + 1;
+      Index idx[n] = {idx0, static_cast<Indices>(idxs_rest)...};
+      TA_ASSERT(pimpl_->range_.includes(idx));
+      return pimpl_->data_[pimpl_->range_.ord(idx)];
+    }
+#endif
+
     /// Iterator factory
 
     /// \return An iterator to the first data element
