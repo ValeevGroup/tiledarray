@@ -28,7 +28,6 @@
 
 #include <TiledArray/expressions/expr_engine.h>
 #include <TiledArray/dist_eval/array_eval.h>
-#include <TiledArray/distributed_deleter.h>
 
 namespace TiledArray {
   namespace expressions {

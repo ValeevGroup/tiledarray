@@ -26,7 +26,6 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/expressions.h>
-#include <TiledArray/distributed_deleter.h>
 
 namespace TiledArray {
 

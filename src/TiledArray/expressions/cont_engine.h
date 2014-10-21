@@ -30,7 +30,6 @@
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/proc_grid.h>
-#include <TiledArray/distributed_deleter.h>
 
 namespace TiledArray {
   namespace expressions {
