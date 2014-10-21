@@ -1289,7 +1289,7 @@ namespace TiledArray {
 
 
             // Set the result tile
-            DistEvalImpl_::set_tile(DistEvalImpl_::perm_index(index),
+            DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index),
                 reduce_task->submit());
 
             // Destroy the the reduce task
@@ -1613,13 +1613,13 @@ namespace TiledArray {
         const size_type source_index = DistEvalImpl_::perm_index_to_source(i);
 
         // Compute tile coordinate in tile grid
-        const size_type tile_row = source_index / cols_;
-        const size_type tile_col = source_index % cols_;
+        const size_type tile_row = source_index / proc_grid_.cols();
+        const size_type tile_col = source_index % proc_grid_.cols();
         // Compute process coordinate of tile in the process grid
-        const size_type proc_row = tile_row % proc_rows_;
-        const size_type proc_col = tile_col % proc_cols_;
+        const size_type proc_row = tile_row % proc_grid_.proc_rows();
+        const size_type proc_col = tile_col % proc_grid_.proc_cols();
         // Compute the process that owns tile
-        const ProcessID source = proc_row * proc_cols_ + proc_col;
+        const ProcessID source = proc_row * proc_grid_.proc_cols() + proc_col;
 
         const madness::DistributedID key(TensorImpl_::id(), i);
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
