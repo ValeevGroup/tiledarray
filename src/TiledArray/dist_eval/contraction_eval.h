@@ -33,12 +33,26 @@ namespace TiledArray {
 
 #ifdef TILEDARRAY_ENABLE_OLD_SUMMA
 
+    /// Scalable Universal Matrix Multiplication Algorithm (SUMMA)
+
+    /// This algorithm is used to contract dense tensor. The arguments are
+    /// permuted such that the outer and inner indices are fused such that a
+    /// standard matrix multiplication algorithm can be used to contract the
+    /// tensors. SUMMA is described in:
+    /// Van De Geijn, R. A.; Watts, J. Concurrency Practice and Experience 1997, 9, 255-274.
+    /// \tparam Left The left-hand-argument type
+    /// \tparam Right The right-hand-argument type
     template <typename Left, typename Right, typename Op, typename Policy>
-    class ContractionEvalImpl : public DistEvalImpl<typename Op::result_type, Policy> {
+    class Summa :
+        public DistEvalImpl<typename Op::result_type, Policy>,
+        public madness::WorldObject<Summa<Left, Right, Op, Policy> >,
+        public std::enable_shared_from_this<Summa<Left, Right, Op, Policy> >
+    {
     public:
-      typedef ContractionEvalImpl<Left, Right, Op, Policy> ContractionEvalImpl_; ///< This object type
+      typedef Summa<Left, Right, Op, Policy> Summa_; ///< This object type
       typedef DistEvalImpl<typename Op::result_type, Policy> DistEvalImpl_; ///< The base class type
       typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
+      typedef madness::WorldObject<Summa<Left, Right, Op, Policy> > WorldObject_; ///< World object base class
       typedef Left left_type; ///< The left-hand argument type
       typedef Right right_type; ///< The right-hand argument type
       typedef typename DistEvalImpl_::size_type size_type; ///< Size type
@@ -49,14 +63,34 @@ namespace TiledArray {
       typedef typename DistEvalImpl_::value_type value_type; ///< Tile type
       typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
       typedef Op op_type; ///< Tile evaluation operator type
-      typedef typename left_type::eval_type left_value_type;
-      typedef typename right_type::eval_type right_value_type;
+
+      // import functions from base classes
+      using TensorImpl_::get_world;
+      using WorldObject_::id;
+      using WorldObject_::task;
 
     private:
+
+      /// The left tensor cache container type
+      typedef typename left_type::eval_type left_value_type;
+      typedef madness::ConcurrentHashMap<size_type, madness::Future<left_value_type> > left_container;
+
+      /// The right tensor cache container type
+      typedef typename right_type::eval_type right_value_type;
+      typedef madness::ConcurrentHashMap<size_type, madness::Future<right_value_type> > right_container;
+
+
+      /// Contraction and reduction task type
+      typedef TiledArray::detail::ReducePairTask<op_type> reduce_pair_task;
+
+      /// Datum type for
+      typedef std::pair<size_type, madness::Future<right_value_type> > row_datum;
+      typedef std::pair<size_type, madness::Future<left_value_type> > col_datum;
+      typedef reduce_pair_task result_datum;
+
       left_type left_; ///< The left argument tensor
       right_type right_; /// < The right argument tensor
 
-    protected:
       op_type op_; /// < The operation used to evaluate tile-tile contractions
 
       const ProcessID rank_; ///< This process's rank
@@ -76,145 +110,12 @@ namespace TiledArray {
       size_type local_cols_; ///< The number of local element columns
       size_type local_size_; ///< Number of local elements
 
-    public:
-
-      /// Constructor
-
-      /// \param left The left-hand argument evaluator
-      /// \param right The right-hand argument evaluator
-      /// \param world The world where this evaluator will live
-      /// \param trange The tiled range of the result tensor
-      /// \param shape The shape of the result tensor
-      /// \param pmap The process map for the result tensor
-      /// \param perm The permutation that will be applied to tiles and the
-      /// coordinate index after contraction of the result tile
-      /// \param op The operation that will be used to contract tile pairs
-      /// \param k The number of tiles in the inner dimension
-      /// \param proc_grid The process grid that defines the layout of the tiles
-      /// during the contraction evaluation
-      /// \note The trange, shape, and pmap are assumed to be in the final,
-      /// permuted, state for the result.
-      ContractionEvalImpl(const left_type& left, const right_type& right,
-          madness::World& world, const trange_type trange, const shape_type& shape,
-          const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
-          const op_type& op, const size_type k, const ProcGrid& proc_grid) :
-            DistEvalImpl_(world, trange, shape, pmap, perm),
-            left_(left), right_(right), op_(op),
-            rank_(world.rank()), size_(world.size()),
-            m_(proc_grid.rows()), n_(proc_grid.cols()), k_(k),
-            mk_(left.size()), kn_(right.size()),
-            proc_cols_(proc_grid.proc_cols()), proc_rows_(proc_grid.proc_rows()),
-            proc_size_(proc_grid.proc_size()), rank_row_(proc_grid.rank_row()),
-            rank_col_(proc_grid.rank_col()), local_rows_(proc_grid.local_rows()),
-            local_cols_(proc_grid.local_cols()), local_size_(proc_grid.local_size())
-      { }
-
-      virtual ~ContractionEvalImpl() { }
-
-      const left_type& left() const { return left_; }
-
-      left_type& left() { return left_; }
-
-      const right_type& right() const { return right_; }
-
-      right_type& right() { return right_; }
-
-    public:
-
-      /// Contraction operation
-
-      /// Contract \c left and \c right to \c result .
-      /// \param[out] result The tensor that will store the result
-      /// \param[in] left The left hand tensor argument
-      /// \param[in] right The right hand tensor argument
-      void contract(value_type& result, const left_value_type& left, const right_value_type& right) const {
-        op_(result, left, right);
-      }
-
-    }; // class ContractionTensorImpl
-
-    /// Scalable Universal Matrix Multiplication Algorithm (SUMMA)
-
-    /// This algorithm is used to contract dense tensor. The arguments are
-    /// permuted such that the outer and inner indices are fused such that a
-    /// standard matrix multiplication algorithm can be used to contract the
-    /// tensors. SUMMA is described in:
-    /// Van De Geijn, R. A.; Watts, J. Concurrency Practice and Experience 1997, 9, 255-274.
-    /// \tparam Left The left-hand-argument type
-    /// \tparam Right The right-hand-argument type
-    template <typename Left, typename Right, typename Op, typename Policy>
-    class Summa :
-        public madness::WorldObject<Summa<Left, Right, Op, Policy> >,
-        public ContractionEvalImpl<Left, Right, Op, Policy>,
-        public std::enable_shared_from_this<Summa<Left, Right, Op, Policy> >
-    {
-    public:
-      typedef Summa<Left, Right, Op, Policy> Summa_; ///< This object type
-      typedef madness::WorldObject<Summa_> WorldObject_; ///< Madness world object base class
-      typedef ContractionEvalImpl<Left, Right, Op, Policy> ContractionEvalImpl_;
-      typedef typename ContractionEvalImpl_::DistEvalImpl_ DistEvalImpl_; ///< The base class type
-      typedef typename DistEvalImpl_::TensorImpl_ TensorImpl_; ///< The base, base class type
-      typedef Left left_type; ///< The left-hand argument type
-      typedef Right right_type; ///< The right-hand argument type
-      typedef typename DistEvalImpl_::size_type size_type; ///< Size type
-      typedef typename DistEvalImpl_::range_type range_type; ///< Range type
-      typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
-      typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
-      typedef typename DistEvalImpl_::trange_type trange_type; ///< Tiled range type
-      typedef typename DistEvalImpl_::value_type value_type; ///< Tile type
-      typedef typename DistEvalImpl_::eval_type eval_type; ///< Tile evaluation type
-      typedef typename ContractionEvalImpl_::op_type op_type; ///< Tile evaluation operator type
-
-      // import functions from base classes
-      using TensorImpl_::get_world;
-      using WorldObject_::id;
-
-    private:
-      // import functions from base classes
-      using WorldObject_::task;
-
-      /// The left tensor cache container type
-      typedef typename left_type::eval_type left_value_type;
-      typedef madness::ConcurrentHashMap<size_type, madness::Future<left_value_type> > left_container;
-
-      /// The right tensor cache container type
-      typedef typename right_type::eval_type right_value_type;
-      typedef madness::ConcurrentHashMap<size_type, madness::Future<right_value_type> > right_container;
-
-
-      /// Contraction and reduction task type
-      typedef TiledArray::detail::ReducePairTask<op_type> reduce_pair_task;
-
-      /// Datum type for
-      typedef std::pair<size_type, madness::Future<right_value_type> > row_datum;
-      typedef std::pair<size_type, madness::Future<left_value_type> > col_datum;
-      typedef reduce_pair_task result_datum;
-
-      // Constants that define the data layout and sizes
-      using ContractionEvalImpl_::rank_; ///< This process's rank
-      using ContractionEvalImpl_::size_; ///< Then number of processes
-      using ContractionEvalImpl_::m_; ///< Number of element rows in the result and left matrix
-      using ContractionEvalImpl_::n_; ///< Number of element columns in the result matrix and rows in the right argument matrix
-      using ContractionEvalImpl_::k_; ///< Number of element columns in the left and right argument matrices
-      using ContractionEvalImpl_::mk_; ///< Number of elements in left matrix
-      using ContractionEvalImpl_::kn_; ///< Number of elements in right matrix
-      using ContractionEvalImpl_::proc_cols_; ///< Number of columns in the result process map
-      using ContractionEvalImpl_::proc_rows_; ///< Number of rows in the result process map
-      using ContractionEvalImpl_::proc_size_; ///< Number of process in the process map. This may be
-                         ///< less than the number of processes in world.
-      using ContractionEvalImpl_::rank_row_; ///< This node's row in the process map
-      using ContractionEvalImpl_::rank_col_; ///< This node's column in the process map
-      using ContractionEvalImpl_::local_rows_; ///< The number of local element rows
-      using ContractionEvalImpl_::local_cols_; ///< The number of local element columns
-      using ContractionEvalImpl_::local_size_; ///< Number of local elements
-
       std::vector<ProcessID> row_group_; ///< The group of processes included in this node's row
       std::vector<ProcessID> col_group_; ///< The group of processes included in this node's column
       left_container left_cache_; ///< Cache for left bcast tiles
       right_container right_cache_; ///< Cache for right bcast tiles
       result_datum* results_; ///< Task object that will contract and reduce tiles
 
-    private:
       // Not allowed
       Summa(const Summa_&);
       Summa_& operator=(const Summa_&);
@@ -396,11 +297,11 @@ namespace TiledArray {
           size_type i = owner_->rank_row_ * owner_->k_ + bcast_k_;
           const size_type step = owner_->proc_rows_ * owner_->k_;
           const size_type end = owner_->mk_;
-          if(owner_->left().is_local(i)) {
-            if(! owner_->left().pmap()->is_replicated()) {
+          if(owner_->left_.is_local(i)) {
+            if(! owner_->left_.pmap()->is_replicated()) {
               for(; i < end; i += step) {
                 // Take the tile's local copy and add it to the column vector
-                col.push_back(col_datum(i, get_tile(owner_->left(), i)));
+                col.push_back(col_datum(i, get_tile(owner_->left_, i)));
 
                 // Broadcast the tile to all nodes in the row
                 owner_->spawn_bcast_task(& Summa_::bcast_row_handler, i,
@@ -409,7 +310,7 @@ namespace TiledArray {
             } else {
               for(; i < end; i += step)
                 // Take the tile's local copy and add it to the column vector
-                col.push_back(col_datum(i, get_tile(owner_->left(), i)));
+                col.push_back(col_datum(i, get_tile(owner_->left_, i)));
             }
           } else {
             for(; i < end; i += step) {
@@ -446,11 +347,11 @@ namespace TiledArray {
           // Iterate over local columns of the k-th row of the right argument tensor
           size_type i = bcast_k_ * owner_->n_ + owner_->rank_col_;
           const size_type end = (bcast_k_ + 1) * owner_->n_;
-          if(owner_->right().is_local(i)) {
-            if(! owner_->right().pmap()->is_replicated()) {
+          if(owner_->right_.is_local(i)) {
+            if(! owner_->right_.pmap()->is_replicated()) {
               for(; i < end; i += owner_->proc_cols_) {
                 // Take the tile's local copy and add it to the row vector
-                row.push_back(row_datum(i, get_tile(owner_->right(), i)));
+                row.push_back(row_datum(i, get_tile(owner_->right_, i)));
 
                 // Broadcast the tile to all nodes in the column
                 owner_->spawn_bcast_task(& Summa_::bcast_col_handler, i,
@@ -459,7 +360,7 @@ namespace TiledArray {
             } else {
               for(; i < end; i += owner_->proc_cols_)
                 // Take the tile's local copy and add it to the row vector
-                row.push_back(row_datum(i, get_tile(owner_->right(), i)));
+                row.push_back(row_datum(i, get_tile(owner_->right_, i)));
             }
           } else {
             for(; i < end; i += owner_->proc_cols_) {
@@ -575,17 +476,40 @@ namespace TiledArray {
 
     public:
 
+      /// Constructor
+
+      /// \param left The left-hand argument evaluator
+      /// \param right The right-hand argument evaluator
+      /// \param world The world where this evaluator will live
+      /// \param trange The tiled range of the result tensor
+      /// \param shape The shape of the result tensor
+      /// \param pmap The process map for the result tensor
+      /// \param perm The permutation that will be applied to tiles and the
+      /// coordinate index after contraction of the result tile
+      /// \param op The operation that will be used to contract tile pairs
+      /// \param k The number of tiles in the inner dimension
+      /// \param proc_grid The process grid that defines the layout of the tiles
+      /// during the contraction evaluation
+      /// \note The trange, shape, and pmap are assumed to be in the final,
+      /// permuted, state for the result.
       Summa(const left_type& left, const right_type& right,
           madness::World& world, const trange_type trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
           const op_type& op, const size_type k, const ProcGrid& proc_grid) :
-          WorldObject_(world),
-          ContractionEvalImpl_(left, right, world, trange, shape, pmap, perm, op, k, proc_grid),
-          row_group_(),
-          col_group_(),
-          left_cache_(local_rows_ * k_),
-          right_cache_(local_cols_ * k_),
-          results_(NULL)
+        DistEvalImpl_(world, trange, shape, pmap, perm), WorldObject_(world),
+        left_(left), right_(right), op_(op),
+        rank_(world.rank()), size_(world.size()),
+        m_(proc_grid.rows()), n_(proc_grid.cols()), k_(k),
+        mk_(left.size()), kn_(right.size()),
+        proc_cols_(proc_grid.proc_cols()), proc_rows_(proc_grid.proc_rows()),
+        proc_size_(proc_grid.proc_size()), rank_row_(proc_grid.rank_row()),
+        rank_col_(proc_grid.rank_col()), local_rows_(proc_grid.local_rows()),
+        local_cols_(proc_grid.local_cols()), local_size_(proc_grid.local_size()),
+        row_group_(),
+        col_group_(),
+        left_cache_(local_rows_ * k_),
+        right_cache_(local_cols_ * k_),
+        results_(NULL)
       {
         if(local_size_ > 0ul) {
           // Fill the row group with all the processes in rank's row
@@ -645,8 +569,8 @@ namespace TiledArray {
       /// \return The number of tiles that will be set by this process
       virtual int internal_eval() {
         // Start evaluate child tensors
-        ContractionEvalImpl_::left().eval();
-        ContractionEvalImpl_::right().eval();
+        left_.eval();
+        right_.eval();
 
         size_type tile_count = 0ul;
 
@@ -673,7 +597,7 @@ namespace TiledArray {
           {
             const result_datum* restrict const end = results_ + local_size_;
             for(result_datum* restrict it = results_; it != end; ++it)
-              new(it) result_datum(get_world(), ContractionEvalImpl_::op_);
+              new(it) result_datum(get_world(), op_);
           }
           // Spawn the first step in the algorithm
           task(rank_, & Summa_::step, 0ul, col_row_k0.first, col_row_k0.second,
@@ -681,8 +605,8 @@ namespace TiledArray {
         }
 
         // Wait for child tensors to be evaluated, and process tasks while waiting.
-        ContractionEvalImpl_::left().wait();
-        ContractionEvalImpl_::right().wait();
+        left_.wait();
+        right_.wait();
 
         return tile_count;
       }
