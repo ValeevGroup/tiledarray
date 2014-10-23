@@ -71,14 +71,15 @@ namespace TiledArray {
         return tensor_->get(index_);
       }
 
-      typename Impl::value_type& get() const {
+      typename Impl::value_type get() const {
+        // NOTE: return by value to avoid lifetime issues.
         TA_ASSERT(tensor_);
         return future().get();
       }
 
       operator typename Impl::future() const { return tensor_->get(index_); }
 
-      operator typename Impl::value_type&() const { return get(); }
+      operator typename Impl::value_type() const { return get(); }
     }; // class TileReference
 
     /// Tensor tile reference
@@ -115,14 +116,15 @@ namespace TiledArray {
         return tensor_->get(index_);
       }
 
-      const typename Impl::value_type& get() const {
+      typename Impl::value_type get() const {
+        // NOTE: return by value to avoid lifetime issues.
         TA_ASSERT(tensor_);
         return future().get();
       }
 
       operator typename Impl::future() const { return tensor_->get(index_); }
 
-      operator const typename Impl::value_type&() const { return get(); }
+      operator typename Impl::value_type() const { return get(); }
     }; // class TileConstReference
 
   } // namespace detail
