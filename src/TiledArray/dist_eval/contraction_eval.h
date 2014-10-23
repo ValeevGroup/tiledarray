@@ -524,8 +524,6 @@ namespace TiledArray {
           for(size_type col_first = rank_col_; col_first < proc_size_; col_first += proc_cols_)
             col_group_.push_back(col_first);
         }
-
-        WorldObject_::process_pending();
       }
 
       /// Virtual destructor
@@ -572,6 +570,7 @@ namespace TiledArray {
         left_.eval();
         right_.eval();
 
+        WorldObject_::process_pending();
 
         if(local_size_ > 0ul) {
           // Start broadcast tasks of column and row for k = 0
