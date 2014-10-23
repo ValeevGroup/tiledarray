@@ -572,7 +572,6 @@ namespace TiledArray {
         left_.eval();
         right_.eval();
 
-        size_type tile_count = 0ul;
 
         if(local_size_ > 0ul) {
           // Start broadcast tasks of column and row for k = 0
@@ -608,7 +607,7 @@ namespace TiledArray {
         left_.wait();
         right_.wait();
 
-        return tile_count;
+        return local_size_;
       }
 
     }; // class Summa
