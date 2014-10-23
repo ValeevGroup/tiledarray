@@ -189,6 +189,13 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Global object id
+
+    /// \return A globally unique identifier.
+    /// \note This function is primarily used for debugging purposes. Users
+    /// should not rely on this function.
+    madness::uniqueidT id() const { return pimpl_->id(); }
+
     /// Begin iterator factory function
 
     /// \return An iterator to the first local tile.
