@@ -29,22 +29,51 @@ CONFIGURE_FILE(
 
 # Create the ta_test executable
 set(executable ta_test)
-set(ta_test_src_files  ta_test.cpp                                                  
-    array.cpp                  bitset.cpp                      blocked_pmap.cpp
-    cyclic_pmap.cpp            dense_shape.cpp                 dist_eval_array_eval.cpp
-    dist_eval_binary_eval.cpp  dist_eval_contraction_eval.cpp  dist_eval_unary_eval.cpp
-    dist_op_communicator.cpp   dist_op_dist_cache.cpp          dist_op_group.cpp         
-    distributed_storage.cpp    eigen.cpp                       elemental.cpp             
-    hash_pmap.cpp              math_blas.cpp                   math_outer.cpp            
-    math_partial_reduce.cpp    math_transpose.cpp              perm_index.cpp            
-    permutation.cpp            proc_grid.cpp                   range.cpp
-    range_iterator.cpp         reduce_task.cpp                 replicated_pmap.cpp
-    sparse_shape.cpp           tensor.cpp                      tensor_impl.cpp
-    tile_op_add.cpp            tile_op_contract_reduce.cpp     tile_op_mult.cpp
-    tile_op_neg.cpp            tile_op_noop.cpp                tile_op_scal.cpp
-    tile_op_scal_add.cpp       tile_op_scal_mult.cpp           tile_op_scal_subt.cpp
-    tile_op_subt.cpp           tiled_range.cpp                 tiled_range1.cpp
-    transform_iterator.cpp     utility.cpp                     variable_list.cpp)
+set(ta_test_src_files  ta_test.cpp
+    utility.cpp
+    permutation.cpp 
+    range.cpp                   
+    range_iterator.cpp
+    perm_index.cpp
+    tiled_range1.cpp
+    tiled_range.cpp
+    blocked_pmap.cpp
+    hash_pmap.cpp
+    cyclic_pmap.cpp
+    replicated_pmap.cpp          
+    dense_shape.cpp
+    math_outer.cpp                               
+    math_partial_reduce.cpp
+    bitset.cpp
+    sparse_shape.cpp
+    math_transpose.cpp             
+    math_blas.cpp   
+    tensor.cpp                                 
+    distributed_storage.cpp
+    tensor_impl.cpp
+    variable_list.cpp
+    array.cpp
+    eigen.cpp
+    dist_op_dist_cache.cpp
+    dist_op_group.cpp
+    dist_op_communicator.cpp
+    tile_op_noop.cpp
+    tile_op_scal.cpp
+    tile_op_neg.cpp
+    dist_eval_array_eval.cpp 
+    dist_eval_unary_eval.cpp                                     
+    tile_op_add.cpp
+    tile_op_scal_add.cpp
+    tile_op_subt.cpp
+    tile_op_scal_subt.cpp                 
+    dist_eval_binary_eval.cpp
+    tile_op_mult.cpp
+    tile_op_scal_mult.cpp
+    tile_op_contract_reduce.cpp 
+    reduce_task.cpp                              
+    proc_grid.cpp
+    dist_eval_contraction_eval.cpp                  
+    transform_iterator.cpp)
         
 if(NOT ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
