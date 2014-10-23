@@ -151,12 +151,7 @@ namespace TiledArray {
       }
 
       void operator()() const {
-        madness::World& world = pimpl_->get_world();
-        madness::uniqueidT id = pimpl_->id();
         pimpl_.reset();
-        std::stringstream ss;
-        ss << world.rank() << ": " << id << " deleted\n";
-        std::cout << ss.str().c_str();
       }
     }; // class LazyDelete
 
@@ -172,9 +167,6 @@ namespace TiledArray {
         if(pimpl_.unique()) {
           madness::World& world = pimpl_->get_world();
           madness::uniqueidT id = pimpl_->id();
-          std::stringstream ss;
-          ss << world.rank() << ": " << id << " ready for cleanup\n";
-          std::cout << ss.str().c_str();
           world.gop.lazy_sync(id, LazyDelete(pimpl_));
         }
       }
