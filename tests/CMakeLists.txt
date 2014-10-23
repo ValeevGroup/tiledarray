@@ -29,10 +29,12 @@ CONFIGURE_FILE(
 
 # Create the ta_test executable
 set(executable ta_test)
+# NOTE: The order of files here represent the order that tests are run and
+# dependencies.
 set(ta_test_src_files  ta_test.cpp
     utility.cpp
-    permutation.cpp 
-    range.cpp                   
+    permutation.cpp
+    range.cpp
     range_iterator.cpp
     perm_index.cpp
     tiled_range1.cpp
@@ -40,15 +42,16 @@ set(ta_test_src_files  ta_test.cpp
     blocked_pmap.cpp
     hash_pmap.cpp
     cyclic_pmap.cpp
-    replicated_pmap.cpp          
+    replicated_pmap.cpp
     dense_shape.cpp
-    math_outer.cpp                               
+    math_outer.cpp
     math_partial_reduce.cpp
+    transform_iterator.cpp
     bitset.cpp
     sparse_shape.cpp
-    math_transpose.cpp             
-    math_blas.cpp   
-    tensor.cpp                                 
+    math_transpose.cpp
+    math_blas.cpp
+    tensor.cpp
     distributed_storage.cpp
     tensor_impl.cpp
     variable_list.cpp
@@ -60,20 +63,19 @@ set(ta_test_src_files  ta_test.cpp
     tile_op_noop.cpp
     tile_op_scal.cpp
     tile_op_neg.cpp
-    dist_eval_array_eval.cpp 
-    dist_eval_unary_eval.cpp                                     
+    dist_eval_array_eval.cpp
+    dist_eval_unary_eval.cpp
     tile_op_add.cpp
     tile_op_scal_add.cpp
     tile_op_subt.cpp
-    tile_op_scal_subt.cpp                 
+    tile_op_scal_subt.cpp
     dist_eval_binary_eval.cpp
     tile_op_mult.cpp
     tile_op_scal_mult.cpp
-    tile_op_contract_reduce.cpp 
-    reduce_task.cpp                              
+    tile_op_contract_reduce.cpp
+    reduce_task.cpp
     proc_grid.cpp
-    dist_eval_contraction_eval.cpp                  
-    transform_iterator.cpp)
+    dist_eval_contraction_eval.cpp)
         
 if(NOT ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
