@@ -137,6 +137,7 @@ BOOST_AUTO_TEST_CASE( eval )
       left_arg.get_world(), DenseShape(), left_arg.pmap(), Permutation(), op_type());
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
+  BOOST_REQUIRE_NO_THROW(dist_eval.wait());
 
   dist_eval_type1::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
   const dist_eval_type1::pmap_interface::const_iterator end = dist_eval.pmap()->end();
@@ -180,6 +181,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
       left_arg.get_world(), DenseShape(), left_arg.pmap(), perm, op_type(perm));
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
+  BOOST_REQUIRE_NO_THROW(dist_eval.wait());
 
   dist_eval_type1::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
   const dist_eval_type1::pmap_interface::const_iterator end = dist_eval.pmap()->end();

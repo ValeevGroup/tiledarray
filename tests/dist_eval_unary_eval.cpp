@@ -149,6 +149,7 @@ BOOST_AUTO_TEST_CASE( eval )
       DenseShape(), arg.pmap(), Permutation(), op_type(3));
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
+  BOOST_REQUIRE_NO_THROW(dist_eval.wait());
 
   dist_eval_type1::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
   const dist_eval_type1::pmap_interface::const_iterator end = dist_eval.pmap()->end();
@@ -192,6 +193,7 @@ BOOST_AUTO_TEST_CASE( double_eval )
       dist_eval.get_world(), DenseShape(), dist_eval.pmap(), Permutation(), op_type2(5));
 
   BOOST_REQUIRE_NO_THROW(dist_eval2.eval());
+  BOOST_REQUIRE_NO_THROW(dist_eval2.wait());
 
   dist_eval_type2::pmap_interface::const_iterator it = dist_eval2.pmap()->begin();
   const impl_type::pmap_interface::const_iterator end = dist_eval2.pmap()->end();
@@ -240,6 +242,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
       dist_eval.get_world(), DenseShape(), dist_eval.pmap(), perm, op_type2(perm, 5));
 
   BOOST_REQUIRE_NO_THROW(dist_eval2.eval());
+  BOOST_REQUIRE_NO_THROW(dist_eval2.wait());
 
   // Check that each tile has been properly scaled and permuted.
   impl_type::pmap_interface::const_iterator it = dist_eval2.pmap()->begin();
