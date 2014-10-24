@@ -164,7 +164,7 @@ namespace TiledArray {
     /// destroyed.
     ~Array() {
       if(pimpl_) {
-        if(pimpl_.unique()) {
+        if(pimpl_.unique() && madness::initialized()) {
           madness::World& world = pimpl_->get_world();
           madness::uniqueidT id = pimpl_->id();
           world.gop.lazy_sync(id, LazyDelete(pimpl_));
