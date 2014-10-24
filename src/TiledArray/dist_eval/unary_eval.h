@@ -76,7 +76,7 @@ namespace TiledArray {
         TA_ASSERT(TensorImpl_::is_local(i));
         TA_ASSERT(! TensorImpl_::is_zero(i));
         const size_type source = arg_.owner(DistEvalImpl_::perm_index_to_source(i));
-        const madness::DistributedID key(TensorImpl_::id(), i);
+        const madness::DistributedID key(DistEvalImpl_::id(), i);
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
       }
 

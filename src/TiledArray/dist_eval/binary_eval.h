@@ -95,7 +95,7 @@ namespace TiledArray {
         const ProcessID source =  left_.owner(source_index); // Left and right
                                                   // should have the same owner
 
-        const madness::DistributedID key(TensorImpl_::id(), i);
+        const madness::DistributedID key(DistEvalImpl_::id(), i);
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
       }
 

@@ -20,349 +20,34 @@
 #ifndef TILEDARRAY_TENSOR_IMPL_H__INCLUDED
 #define TILEDARRAY_TENSOR_IMPL_H__INCLUDED
 
-#include <TiledArray/distributed_storage.h>
-#include <TiledArray/transform_iterator.h>
-#include <TiledArray/type_traits.h>
+#include <TiledArray/error.h>
+#include <TiledArray/madness.h>
 
 namespace TiledArray {
   namespace detail {
-
-    // Forward declaration
-    template <typename> class TensorReference;
-    template <typename> class TensorConstReference;
-    template <typename, typename> class TensorIterator;
-
-    /// Tensor tile reference
-
-    /// \tparam Impl The TensorImpl type
-    template <typename Impl>
-    class TileReference {
-    private:
-
-      template <typename, typename>
-      friend class TensorIterator;
-
-      template <typename>
-      friend class TileConstReference;
-
-      Impl* tensor_; ///< The tensor that owns the referenced tile
-      typename Impl::size_type index_; ///< The index of the tensor
-
-      // Not allowed
-      TileReference<Impl>& operator=(const TileReference<Impl>&);
-    public:
-
-      TileReference(Impl* tensor, const typename Impl::size_type index) :
-        tensor_(tensor), index_(index)
-      { }
-
-      TileReference(const TileReference<Impl>& other) :
-        tensor_(other.tensor_), index_(other.index_)
-      { }
-
-      template <typename Value>
-      TileReference<Impl>& operator=(const Value& value) {
-        tensor_->set(index_, value);
-        return *this;
-      }
-
-      typename Impl::future future() const {
-        TA_ASSERT(tensor_);
-        return tensor_->get(index_);
-      }
-
-      typename Impl::value_type get() const {
-        // NOTE: return by value to avoid lifetime issues.
-        TA_ASSERT(tensor_);
-        return future().get();
-      }
-
-      operator typename Impl::future() const { return tensor_->get(index_); }
-
-      operator typename Impl::value_type() const { return get(); }
-    }; // class TileReference
-
-    /// Tensor tile reference
-
-    /// \tparam Impl The TensorImpl type
-    template <typename Impl>
-    class TileConstReference {
-    private:
-
-      template <typename, typename>
-      friend class TensorIterator;
-
-      Impl* tensor_; ///< The tensor that owns the referenced tile
-      typename Impl::size_type index_; ///< The index of the tensor
-
-      // Not allowed
-      TileConstReference<Impl>& operator=(const TileConstReference<Impl>&);
-    public:
-
-      TileConstReference(Impl* tensor, const typename Impl::size_type index) :
-        tensor_(tensor), index_(index)
-      { }
-
-      TileConstReference(const TileConstReference<Impl>& other) :
-        tensor_(other.tensor_), index_(other.index_)
-      { }
-
-      TileConstReference(const TileReference<Impl>& other) :
-        tensor_(other.tensor_), index_(other.index_)
-      { }
-
-      typename Impl::future future() const {
-        TA_ASSERT(tensor_);
-        return tensor_->get(index_);
-      }
-
-      typename Impl::value_type get() const {
-        // NOTE: return by value to avoid lifetime issues.
-        TA_ASSERT(tensor_);
-        return future().get();
-      }
-
-      operator typename Impl::future() const { return tensor_->get(index_); }
-
-      operator typename Impl::value_type() const { return get(); }
-    }; // class TileConstReference
-
-  } // namespace detail
-} // namespace TiledArray
-
-
-namespace madness {
-  namespace detail {
-
-    // The following class specializations are required so MADNESS will do the
-    // right thing when given a TileReference or TileConstReference object
-    // as an input for task functions.
-
-    template <typename Impl>
-    struct task_arg<TiledArray::detail::TileReference<Impl> > {
-        typedef typename Impl::value_type type;
-        typedef typename Impl::future holderT;
-    }; // struct task_arg<TiledArray::detail::TileReference<Impl> >
-
-    template <typename Impl>
-    struct task_arg<TiledArray::detail::TileConstReference<Impl> > {
-        typedef typename Impl::value_type type;
-        typedef typename Impl::future holderT;
-    }; // struct task_arg<TiledArray::detail::TileConstReference<Impl> >
-
-  }  // namespace detail
-}  // namespace madness
-
-
-namespace TiledArray {
-  namespace detail {
-
-    /// Distributed tensor iterator
-
-    /// This iterator will reference local tiles for a TensorImpl object. It can
-    /// be used to get or set futures to a tile, or access the coordinate and
-    /// ordinal index of the tile.
-    /// \tparam Impl The TensorImpl type
-    /// \tparam Reference The iterator reference type
-    template <typename Impl, typename Reference>
-    class TensorIterator {
-    private:
-      // Give access to other iterator types.
-      template <typename, typename>
-      friend class TensorIterator;
-
-      Impl* tensor_;
-      typename Impl::pmap_interface::const_iterator it_;
-
-    public:
-      typedef ptrdiff_t difference_type; ///< Difference type
-      typedef typename Impl::future value_type; ///< Iterator dereference value type
-      typedef PointerProxy<value_type> pointer; ///< Pointer type to iterator value
-      typedef Reference reference; ///< Reference type to iterator value
-      typedef std::forward_iterator_tag iterator_category; ///< Iterator category type
-      typedef TensorIterator<Impl, Reference> TensorIterator_; ///< This object type
-      typedef typename Impl::range_type::index index_type;
-      typedef typename Impl::size_type ordinal_type;
-      typedef typename Impl::range_type range_type;
-      typedef typename Impl::value_type tile_type;
-
-    private:
-
-      void advance() {
-        TA_ASSERT(tensor_);
-        const typename Impl::pmap_interface::const_iterator end =
-            tensor_->pmap()->end();
-        do {
-          ++it_;
-        } while((it_ != end) && tensor_->is_zero(*it_));
-      }
-
-    public:
-
-      /// Default constructor
-      TensorIterator() : tensor_(NULL), it_() { }
-
-      /// Constructor
-      TensorIterator(Impl* tensor, typename Impl::pmap_interface::const_iterator it) :
-        tensor_(tensor), it_(it)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The transform iterator to copy
-      TensorIterator(const TensorIterator_& other) :
-        tensor_(other.tensor_), it_(other.it_)
-      { }
-
-      /// Copy const iterator constructor
-
-      /// \tparam R Iterator reference type
-      /// \param other The transform iterator to copy
-      template <typename R>
-      TensorIterator(const TensorIterator<Impl, R>& other) :
-        tensor_(other.tensor_), it_(other.it_)
-      { }
-
-      /// Copy operator
-
-      /// \param other The transform iterator to copy
-      /// \return A reference to this object
-      TensorIterator_& operator=(const TensorIterator_& other) {
-        tensor_ = other.tensor_;
-        it_ = other.it_;
-
-        return *this;
-      }
-
-      /// Copy operator
-
-      /// \tparam R Iterator reference type
-      /// \param other The transform iterator to copy
-      /// \return A reference to this object
-      template <typename R>
-      TensorIterator_& operator=(const TensorIterator<Impl, R>& other) {
-        tensor_ = other.tensor_;
-        it_ = other.it_;
-
-        return *this;
-      }
-
-      /// Prefix increment operator
-
-      /// \return A reference to this object after it has been incremented.
-      TensorIterator_& operator++() {
-        advance();
-        return *this;
-      }
-
-      /// Post-fix increment operator
-
-      /// \return A copy of this object before it is incremented.
-      TensorIterator_ operator++(int) {
-        TensorIterator_ tmp(*this);
-        advance();
-        return tmp;
-      }
-
-      /// Equality operator
-
-      /// \tparam R Iterator reference type
-      /// \param other The iterator to compare to this iterator.
-      /// \return \c true when the iterators are equal to each other, otherwise
-      /// \c false.
-      template <typename R>
-      bool operator==(const TensorIterator<Impl, R>& other) const {
-        return (tensor_ == other.tensor_) && (it_ == other.it_);
-      }
-
-      /// Inequality operator
-
-      /// \tparam R Iterator reference type
-      /// \param other The iterator to compare to this iterator.
-      /// \return \c true when the iterators are not equal to each other,
-      /// otherwise \c false.
-      template <typename R>
-      bool operator!=(const TensorIterator<Impl, R>& other) const {
-        return (tensor_ != other.tensor_) || (it_ != other.it_);
-      }
-
-      /// Dereference operator
-
-      /// \return A referenc to the current tile future.
-      reference operator*() const {
-        TA_ASSERT(tensor_);
-        return reference(tensor_, *it_);
-      }
-
-      /// Arrow dereference operator
-
-      /// \return A pointer-proxy to the current tile
-      pointer operator->() const {
-        TA_ASSERT(tensor_);
-        return pointer(tensor_->get(*it_));
-      }
-
-      /// Tile coordinate index accessor
-
-      /// \return The coordinate index of the current tile
-      index_type index() const {
-        TA_ASSERT(tensor_);
-        return tensor_->range().idx(*it_);
-      }
-
-      /// Tile ordinal index accessor
-
-      /// \return The ordinal index of the current tile
-      ordinal_type ordinal() const {
-        TA_ASSERT(tensor_);
-        return *it_;
-      }
-
-      /// Tile range factory function
-
-      /// Construct a range object for the current tile
-      range_type make_range() const {
-        TA_ASSERT(tensor_);
-        TA_ASSERT(it_ != tensor_->pmap()->end());
-        return tensor_->trange().make_tile_range(*it_);
-      }
-
-    }; // class TensorIterator
 
     /// Tensor implementation and base for other tensor implementation objects
 
-    /// This implementation object holds the data for tensor object, which
-    /// includes tiled range, shape, and tiles. The tiles are held in a
-    /// distributed container, stored according to a given process map.
-    /// \tparam Tile The tile or value_type of this tensor
+    /// This implementation object holds the meta data for tensor object, which
+    /// includes tiled range, shape, and process map.
     /// \note The process map must be set before data elements can be set.
     /// \note It is the users responsibility to ensure the process maps on all
     /// nodes are identical.
-    template <typename Tile, typename Policy>
+    template <typename Policy>
     class TensorImpl : private NO_DEFAULTS {
     public:
-      typedef TensorImpl<Tile, Policy> TensorImpl_;
+      typedef TensorImpl<Policy> TensorImpl_;
       typedef typename Policy::trange_type trange_type; ///< Tiled range type
       typedef typename Policy::range_type range_type; ///< Tile range type
       typedef typename Policy::size_type size_type; ///< Size type
       typedef typename Policy::shape_type shape_type; ///< Tensor shape type
       typedef typename Policy::pmap_interface pmap_interface; ///< Process map interface type
-      typedef Tile value_type; ///< Tile or data type
-      typedef typename eval_trait<Tile>::type eval_type; ///< The tile evaluation type
-      typedef typename scalar_type<typename value_type::value_type>::type
-          numeric_type; ///< the numeric type that supports Tile
-      typedef DistributedStorage<value_type> storage_type; ///< The data container type
-      typedef typename storage_type::future future; ///< Future tile type
-      typedef TileReference<TensorImpl_> reference; ///< Tile reference type
-      typedef TileConstReference<TensorImpl_> const_reference; ///< Tile constant reference type
-      typedef TensorIterator<TensorImpl_, reference> iterator; ///< Iterator type
-      typedef TensorIterator<TensorImpl_, const_reference> const_iterator; ///< Constant iterator type
 
     private:
-
+      madness::World& world_; ///< World that contains
       const trange_type trange_; ///< Tiled range type
       const shape_type shape_; ///< Tensor shape
-      storage_type data_; ///< Tile container
+      std::shared_ptr<pmap_interface> pmap_; ///< Process map for tiles
 
     public:
 
@@ -376,9 +61,13 @@ namespace TiledArray {
       /// zero
       TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap) :
-        trange_(trange), shape_(shape), data_(world, trange_.tiles().volume(),
-            (pmap ? pmap : Policy::default_pmap(world, trange.tiles().volume())))
+        world_(world), trange_(trange), shape_(shape), pmap_(pmap)
       {
+        // Validate input data.
+        TA_ASSERT(pmap_);
+        TA_ASSERT(pmap_->size() == trange_.tiles().volume());
+        TA_ASSERT(pmap_->rank() == typename pmap_interface::size_type(world_.rank()));
+        TA_ASSERT(pmap_->procs() == typename pmap_interface::size_type(world_.size()));
         TA_ASSERT(shape_.validate(trange_.tiles()));
       }
 
@@ -389,7 +78,7 @@ namespace TiledArray {
 
       /// \return A shared pointer to the process map of this tensor
       /// \throw nothing
-      const std::shared_ptr<pmap_interface>& pmap() const { return data_.get_pmap(); }
+      const std::shared_ptr<pmap_interface>& pmap() const { return pmap_; }
 
       /// Tensor tile size array accessor
 
@@ -409,7 +98,7 @@ namespace TiledArray {
       /// returned value is volatile and may change at any time; you should not
       /// rely on it in your algorithms.
       /// \return The current number of local tiles stored in the tensor.
-      size_type local_size() const { return data_.size(); }
+      size_type local_size() const { return pmap_->local_size(); }
 
       /// Query a tile owner
 
@@ -422,7 +111,7 @@ namespace TiledArray {
       template <typename Index>
       ProcessID owner(const Index& i) const {
         TA_ASSERT(trange_.tiles().includes(i));
-        return data_.owner(trange_.tiles().ord(i));
+        return pmap_->owner(trange_.tiles().ord(i));
       }
 
       /// Query for a locally owned tile
@@ -434,7 +123,7 @@ namespace TiledArray {
       template <typename Index>
       bool is_local(const Index& i) const {
         TA_ASSERT(trange_.tiles().includes(i));
-        return data_.is_local(trange_.tiles().ord(i));
+        return pmap_->is_local(trange_.tiles().ord(i));
       }
 
       /// Query for a zero tile
@@ -460,156 +149,17 @@ namespace TiledArray {
 
       /// \return A reference to the tensor shape map
       /// \throw TiledArray::Exception When this tensor is dense
-      const shape_type& shape() const {
-        return shape_;
-      }
+      const shape_type& shape() const { return shape_; }
 
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor
       const trange_type& trange() const { return trange_; }
 
-      /// Tile future accessor
-
-      /// \tparam Index The index type
-      /// \param i The tile index
-      /// \return A \c future to tile \c i
-      /// \throw TiledArray::Exception When tile \c i is zero
-      template <typename Index>
-      future get(const Index& i) const {
-        TA_ASSERT(! is_zero(i));
-        return data_.get(trange_.tiles().ord(i));
-      }
-
-      /// Tile accessor
-
-      /// \tparam Index The index type
-      /// \param i The tile index
-      /// \return A const reference to tile \c i
-      /// \throw TiledArray::Exception When tile \c i is zero
-      template <typename Index>
-      const_reference operator[](const Index& i) const {
-        TA_ASSERT(! is_zero(i));
-        return const_reference(this, trange_.tiles().ord(i));
-      }
-
-      /// Tile accessor
-
-      /// \param i The tile index
-      /// \return A reference to tile \c i
-      /// \throw TiledArray::Exception When tile \c i is zero
-      template <typename Index>
-      reference operator[](const Index& i) {
-        TA_ASSERT(! is_zero(i));
-        return reference(this, trange_.tiles().ord(i));
-      }
-
-      /// Tile move
-
-      /// Tile is removed from this tensor after it is set. If the tile has
-      /// already been set, it is removed before this function exits.
-      /// \tparam Index The index type
-      /// \param i The tile index
-      /// \return A \c future to tile \c i
-      /// \throw TiledArray::Exception When tile \c i is zero
-      /// \note This function must be called exactly once, otherwise the program
-      /// will likely hang.
-      template <typename Index>
-      future get_cache(const Index& i) {
-        TA_ASSERT(! is_zero(i));
-        return data_.get_cache(trange_.tiles().ord(i));
-      }
-
-      /// Array begin iterator
-
-      /// \return A const iterator to the first element of the array.
-      const_iterator begin() const {
-        TA_ASSERT(data_.get_pmap());
-
-        // Get the pmap iterator
-        typename pmap_interface::const_iterator it = data_.get_pmap()->begin();
-
-        // Find the fist non-zero iterator
-        const typename pmap_interface::const_iterator end = data_.get_pmap()->end();
-        while(is_zero(*it) && (it != end)) ++it;
-
-        // Construct and return the iterator
-        return iterator(this, it);
-      }
-
-      /// Array begin iterator
-
-      /// \return A const iterator to the first element of the array.
-      iterator begin() {
-        TA_ASSERT(data_.get_pmap());
-
-        // Get the pmap iterator
-        typename pmap_interface::const_iterator it = data_.get_pmap()->begin();
-
-        // Find the fist non-zero iterator
-        const typename pmap_interface::const_iterator end = data_.get_pmap()->end();
-        while(is_zero(*it) && (it != end)) ++it;
-
-        // Construct and return the iterator
-        return iterator(this, it);
-      }
-
-      /// Array end iterator
-
-      /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const {
-        TA_ASSERT(data_.get_pmap());
-        return iterator(this, data_.get_pmap()->end());
-      }
-
-      /// Array end iterator
-
-      /// \return A const iterator to one past the last element of the array.
-      iterator end() {
-        TA_ASSERT(data_.get_pmap());
-        return iterator(this, data_.get_pmap()->end());
-      }
-
       /// World accessor
 
       /// \return A reference to the world that contains this tensor
-      madness::World& get_world() const { return data_.get_world(); }
-
-
-      /// Unique object id accessor
-
-      /// \return A const reference to this object unique id
-      const madness::uniqueidT& id() const { return data_.id(); }
-
-      /// Set tile
-
-      /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,
-      /// \c madness::Future<value_type> , or
-      /// \c madness::detail::MoveWrapper<value_type> .
-      /// \tparam Index The index type
-      /// \tparam Value The value type
-      /// \param i The index of the tile to be set
-      /// \param value The object tat contains the tile value
-      template <typename Index, typename Value>
-      void set(const Index& i, const Value& value) {
-        TA_ASSERT(! is_zero(i));
-        data_.set(trange_.tiles().ord(i), value);
-      }
-
-      /// Set tile
-
-      /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,
-      /// \c madness::Future<value_type> , or
-      /// \c madness::detail::MoveWrapper<value_type> .
-      /// \tparam Index The index type
-      /// \tparam Value The value type
-      /// \param i The index of the tile to be set
-      /// \param value The object tat contains the tile value
-      template <typename Index, typename Value>
-      void set_cache(const Index& i, const Value& value) {
-        TA_ASSERT(! is_zero(i));
-        data_.set_cache(trange_.tiles().ord(i), value);
-      }
+      madness::World& get_world() const { return world_; }
 
     }; // class TensorImpl
 

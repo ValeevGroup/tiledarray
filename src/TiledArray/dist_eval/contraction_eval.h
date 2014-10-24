@@ -551,7 +551,7 @@ namespace TiledArray {
         // Compute the process that owns tile
         const ProcessID source = proc_row * proc_cols_ + proc_col;
 
-        const madness::DistributedID key(TensorImpl_::id(), i);
+        const madness::DistributedID key(DistEvalImpl_::id(), i);
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
       }
 
@@ -738,7 +738,7 @@ namespace TiledArray {
         proc_list.resize(count);
 
         return madness::Group(TensorImpl_::get_world(), proc_list,
-            madness::DistributedID(TensorImpl_::id(), k + key_offset));
+            madness::DistributedID(DistEvalImpl_::id(), k + key_offset));
       }
 
 
@@ -821,7 +821,7 @@ namespace TiledArray {
             vec.push_back(Datum(i, madness::Future<typename Arg::eval_type>()));
 
           // Broadcast the tile
-          const madness::DistributedID key(TensorImpl_::id(), index + key_offset);
+          const madness::DistributedID key(DistEvalImpl_::id(), index + key_offset);
           TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
@@ -1106,9 +1106,9 @@ namespace TiledArray {
       /// Initialize reduce tasks and construct broadcast groups
       size_type initialize(const DenseShape&) {
         // Construct static broadcast groups for dense arguments
-        const madness::DistributedID col_did(TensorImpl_::id(), 0ul);
+        const madness::DistributedID col_did(DistEvalImpl_::id(), 0ul);
         col_group_ = proc_grid_.make_col_group(col_did);
-        const madness::DistributedID row_did(TensorImpl_::id(), k_);
+        const madness::DistributedID row_did(DistEvalImpl_::id(), k_);
         row_group_ = proc_grid_.make_row_group(row_did);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
@@ -1543,7 +1543,7 @@ namespace TiledArray {
         // Compute the process that owns tile
         const ProcessID source = proc_row * proc_grid_.proc_cols() + proc_col;
 
-        const madness::DistributedID key(TensorImpl_::id(), i);
+        const madness::DistributedID key(DistEvalImpl_::id(), i);
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
       }
 

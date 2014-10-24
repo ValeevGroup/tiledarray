@@ -24,7 +24,7 @@
 #include <TiledArray/pmap/replicated_pmap.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/policies/dense_policy.h>
-#include <TiledArray/tensor_impl.h>
+#include <TiledArray/array_impl.h>
 #include <TiledArray/expressions.h>
 
 namespace TiledArray {
@@ -41,7 +41,7 @@ namespace TiledArray {
   class Array {
   public:
     typedef Array<T, DIM, Tile, Policy> Array_; ///< This object's type
-    typedef TiledArray::detail::TensorImpl<Tile, Policy> impl_type;
+    typedef TiledArray::detail::ArrayImpl<Tile, Policy> impl_type;
     typedef T element_type; ///< The tile element type
     typedef typename impl_type::trange_type trange_type; ///< Tile range type
     typedef typename impl_type::range_type range_type; ///< Range type for array tiling
@@ -226,7 +226,7 @@ namespace TiledArray {
     template <typename Index>
     madness::Future<value_type> find(const Index& i) const {
       check_index(i);
-      return pimpl_->operator[](i);
+      return pimpl_->get(i);
     }
 
     /// Set the data of tile \c i

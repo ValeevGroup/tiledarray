@@ -57,16 +57,17 @@ set(tiledarray_header_files
     TiledArray/tile_op/scal_subt.h            TiledArray/tile_op/subt.h
     TiledArray/tile_op/tile_interface.h       TiledArray/tile_op/type_traits.h
     TiledArray/tile_op/unary_interface.h      TiledArray/tile_op/unary_reduction.h
-    TiledArray/array.h         TiledArray/bitset.h          TiledArray/counter_probe.h
-    TiledArray/dense_shape.h   TiledArray/eigen.h           TiledArray/elemental.h
-    TiledArray/error.h         TiledArray/expressions.h     TiledArray/madness.h
-    TiledArray/perm_index.h    TiledArray/permutation.h     TiledArray/proc_grid.h
-    TiledArray/range.h         TiledArray/range_iterator.h  TiledArray/reduce_task.h
-    TiledArray/replicator.h    TiledArray/shape.h           TiledArray/size_array.h
-    TiledArray/sparse_shape.h  TiledArray/tensor.h          TiledArray/tensor_impl.h
-    TiledArray/tiled_range.h   TiledArray/tiled_range1.h    TiledArray/transform_iterator.h
-    TiledArray/type_traits.h   TiledArray/utility.h         TiledArray/val_array.h
-    TiledArray/zero_tensor.h   tiledarray.h                 tiledarray_fwd.h)
+    TiledArray/array.h         TiledArray/array.h         TiledArray/bitset.h
+    TiledArray/counter_probe.h TiledArray/dense_shape.h   TiledArray/eigen.h
+    TiledArray/elemental.h     TiledArray/error.h         TiledArray/expressions.h
+    TiledArray/madness.h       TiledArray/perm_index.h    TiledArray/permutation.h
+    TiledArray/proc_grid.h     TiledArray/range.h         TiledArray/range_iterator.h
+    TiledArray/reduce_task.h   TiledArray/replicator.h    TiledArray/shape.h
+    TiledArray/size_array.h    TiledArray/sparse_shape.h  TiledArray/tensor.h
+    TiledArray/tensor_impl.h   TiledArray/tiled_range.h   TiledArray/tiled_range1.h
+    TiledArray/transform_iterator.h TiledArray/type_traits.h  TiledArray/utility.h
+    TiledArray/val_array.h     TiledArray/zero_tensor.h   tiledarray.h
+    tiledarray_fwd.h)
 
 # Install header files
 install(

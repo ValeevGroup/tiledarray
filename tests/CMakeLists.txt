@@ -54,6 +54,7 @@ set(ta_test_src_files  ta_test.cpp
     tensor.cpp
     distributed_storage.cpp
     tensor_impl.cpp
+    array_impl.cpp
     variable_list.cpp
     array.cpp
     eigen.cpp

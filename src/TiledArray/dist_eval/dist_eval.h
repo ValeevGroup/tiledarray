@@ -37,10 +37,10 @@ namespace TiledArray {
     /// \tparam Tile The output tile type
     /// \param Policy The tensor policy class
     template <typename Tile, typename Policy>
-    class DistEvalImpl : public TensorImpl<Tile, Policy>, public madness::CallbackInterface {
+    class DistEvalImpl : public TensorImpl<Policy>, public madness::CallbackInterface {
     public:
       typedef DistEvalImpl<Tile, Policy> DistEvalImpl_; ///< This object type
-      typedef TiledArray::detail::TensorImpl<Tile, Policy> TensorImpl_;
+      typedef TiledArray::detail::TensorImpl<Policy> TensorImpl_;
                                           ///< Tensor implementation base class
 
       typedef typename TensorImpl_::size_type size_type; ///< Size type
@@ -48,10 +48,11 @@ namespace TiledArray {
       typedef typename TensorImpl_::range_type range_type; ///< Range type this tensor
       typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
       typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
-      typedef typename TensorImpl_::value_type value_type; ///< Tile type
+      typedef Tile value_type; ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type; ///< Tile evaluation type
 
     private:
+      madness::uniqueidT id_; ///< Globally unique object identifier.
       PermIndex source_to_target_; ///< Functor used to permute a source index to a target index.
       PermIndex target_to_source_; ///< Functor used to permute a target index to a source index.
 
@@ -98,6 +99,7 @@ namespace TiledArray {
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm) :
         TensorImpl_(world, trange, shape, pmap),
+        id_(world.unique_obj_id()),
         source_to_target_(),
         target_to_source_(),
         task_count_(-1),
@@ -115,6 +117,12 @@ namespace TiledArray {
 
       virtual ~DistEvalImpl() { }
 
+
+      /// Unique object id accessor
+
+      /// \return This object's unique identifier
+      const madness::uniqueidT& id() const { return id_; }
+
       /// Get tile at index \c i
 
       /// \param i The index of the tile
@@ -130,7 +138,7 @@ namespace TiledArray {
       /// \param value The value to be stored at index \c i
       void set_tile(size_type i, const value_type& value) {
         // Store value
-        madness::DistributedID id(TensorImpl_::id(), i);
+        madness::DistributedID id(id_, i);
         TensorImpl_::get_world().gop.send(TensorImpl_::owner(i), id, value);
 
         // Record the assignment of a tile
@@ -145,7 +153,7 @@ namespace TiledArray {
       /// \param value The future value to be stored at index \c i
       void set_tile(size_type i, madness::Future<value_type> f) {
         // Store value
-        madness::DistributedID id(TensorImpl_::id(), i);
+        madness::DistributedID id(id_, i);
         TensorImpl_::get_world().gop.send(TensorImpl_::owner(i), id, f);
 
         // Record the assignment of a tile
@@ -166,7 +174,7 @@ namespace TiledArray {
             std::stringstream ss;
             ss << "!!TiledArray: Aborting due to exception.\n"
                << "!!TiledArray: rank=" << TensorImpl_::get_world().rank()
-               << " id=" << TensorImpl_::id() << " " << set_counter_ << " of " << task_count << " tiles set\n";
+               << " id=" << id_ << " " << set_counter_ << " of " << task_count << " tiles set\n";
             std::cout << ss.str().c_str();
             throw;
           }
@@ -222,7 +230,7 @@ namespace TiledArray {
       typedef typename impl_type::pmap_interface pmap_interface; ///< Process map interface type
       typedef typename impl_type::value_type value_type; ///< Tile type
       typedef typename impl_type::eval_type eval_type; ///< Tile evaluation type
-      typedef typename impl_type::future future; ///< Future of tile type
+      typedef madness::Future<value_type> future; ///< Future of tile type
 
     private:
       std::shared_ptr<impl_type> pimpl_; ///< pointer to the implementation object
