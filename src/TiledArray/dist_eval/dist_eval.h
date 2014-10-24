@@ -52,7 +52,6 @@ namespace TiledArray {
       typedef typename eval_trait<value_type>::type eval_type; ///< Tile evaluation type
 
     private:
-      const Permutation perm_; ///< The permutation to be applied to this tensor
       PermIndex source_to_target_; ///< Functor used to permute a source index to a target index.
       PermIndex target_to_source_; ///< Functor used to permute a target index to a source index.
 
@@ -86,11 +85,6 @@ namespace TiledArray {
         return (target_to_source_ ? target_to_source_(index) : index);
       }
 
-      /// Permutation accessor
-
-      /// \return A const reference to the permutation
-      const Permutation& perm() const { return perm_; }
-
     public:
       /// Constructor
 
@@ -104,7 +98,6 @@ namespace TiledArray {
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm) :
         TensorImpl_(world, trange, shape, pmap),
-        perm_(perm),
         source_to_target_(),
         target_to_source_(),
         task_count_(-1),
