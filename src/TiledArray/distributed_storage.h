@@ -74,17 +74,6 @@ namespace TiledArray {
         return acc->second;
       }
 
-      future get_cache_local(const size_type i) const {
-        TA_ASSERT(pmap_->is_local(i));
-
-        accessor acc;
-        const bool do_cleanup = !data_.insert(acc, i);
-        const future f = acc->second;
-        if(do_cleanup)
-          data_.erase(acc);
-        return f;
-      }
-
       void set_handler(const size_type i, const value_type& value) {
         future f = get_local(i);
 
@@ -103,31 +92,8 @@ namespace TiledArray {
         remote_f.set(f);
       }
 
-      void set_cache_handler(const size_type i, const value_type& value) {
-        future f = get_cache_local(i);
-
-#ifndef NDEBUG
-        // Check that the future has not been set already.
-        if(f.probe())
-          TA_EXCEPTION("Tile has already been assigned.");
-#endif // NDEBUG
-
-        f.set(value);
-      }
-
-      void get_cache_handler(const size_type i, const typename future::remote_refT& ref) {
-        future f = get_cache_local(i);
-        future remote_f(ref);
-        remote_f.set(f);
-      }
-
       void set_remote(const size_type i, const value_type& value) {
         WorldObject_::task(owner(i), & DistributedStorage_::set_handler,
-            i, value, madness::TaskAttributes::hipri());
-      }
-
-      void set_cache_remote(const size_type i, const value_type& value) {
-        WorldObject_::task(owner(i), & DistributedStorage_::set_cache_handler,
             i, value, madness::TaskAttributes::hipri());
       }
 
@@ -150,27 +116,6 @@ namespace TiledArray {
           delete this;
         }
       }; // struct DelayedSet
-
-      struct DelayedSetCache : public madness::CallbackInterface {
-      private:
-        DistributedStorage_& ds_; ///< A reference to the owning object
-        size_type index_; ///< The index that will own the future
-        future future_; ///< The future that we are waiting on.
-
-      public:
-
-        DelayedSetCache(DistributedStorage_& ds, size_type i, const future& f) :
-            ds_(ds), index_(i), future_(f)
-        { }
-
-        virtual ~DelayedSetCache() { }
-
-        virtual void notify() {
-          ds_.set_cache_remote(index_, future_);
-          delete this;
-        }
-      }; // struct DelayedSetCache
-
 
     public:
 
@@ -307,84 +252,6 @@ namespace TiledArray {
             set_remote(i, f);
           } else {
             DelayedSet* set_callback = new DelayedSet(*this, i, f);
-            const_cast<future&>(f).register_callback(set_callback);
-          }
-        }
-      }
-
-      /// Element accessor
-
-      /// This operator returns a future to the local or remote element \c i .
-      /// If the element is not present, either locally or remotely, it is
-      /// inserted into the container on the owner's node.
-      /// \param i The element to get
-      /// \return A future to element \c i
-      /// \throw TiledArray::Exception If \c i is greater than or equal to \c max_size() .
-      future get_cache(size_type i) const {
-        TA_ASSERT(i < max_size_);
-        if(is_local(i)) {
-          return get_cache_local(i);
-        } else {
-          // Send a request to the owner of i for the element.
-          future result;
-          WorldObject_::task(owner(i), & DistributedStorage_::get_cache_handler, i,
-              result.remote_ref(get_world()), madness::TaskAttributes::hipri());
-
-          return result;
-        }
-      }
-
-
-      /// Set element \c i with \c value
-
-      /// The owner of \c i may be local or remote. If \c i is remote, a task
-      /// is spawned on the owning node to set it. If \c i is not already in
-      /// the container, it will be inserted.
-      /// \param i The element to be set
-      /// \param value The value of element \c i
-      /// \throw TiledArray::Exception If \c i is greater than or equal to \c max_size() .
-      /// \throw madness::MadnessException If \c i has already been set.
-      void set_cache(size_type i, const value_type& value) {
-        TA_ASSERT(i < max_size_);
-        if(is_local(i))
-          set_cache_handler(i, value);
-        else
-          set_cache_remote(i, value);
-      }
-
-      /// Set element \c i with a \c madness::Future \c f
-
-      /// The owner of \c i may be local or remote. If \c i is remote, a task
-      /// is spawned on the owning node after the local future has been assigned.
-      /// If \c i is not already in the container, it will be inserted.
-      /// \param i The element to be set
-      /// \param f The future for element \c i
-      /// \throw madness::MadnessException If \c i has already been set.
-      /// \throw TiledArray::Exception If \c i is greater than or equal to \c max_size() .
-      void set_cache(size_type i, const future& f) {
-        TA_ASSERT(i < max_size_);
-        if(is_local(i)) {
-          const_accessor acc;
-          if(! data_.insert(acc, typename container_type::datumT(i, f))) {
-            // The element was already in the container, so set it with f.
-            future existing_f = acc->second;
-            data_.erase(acc);
-
-            // Check that the future has not been set already.
-#ifndef NDEBUG
-            if(existing_f.probe())
-              TA_EXCEPTION("Tile has already been assigned.");
-#endif // NDEBUG
-
-            // Set the future
-            existing_f.set(f);
-          }
-
-        } else {
-          if(f.probe()) {
-            set_cache_remote(i, f);
-          } else {
-            DelayedSetCache* set_callback = new DelayedSetCache(*this, i, f);
             const_cast<future&>(f).register_callback(set_callback);
           }
         }
