@@ -112,7 +112,7 @@ include(CheckCXXSourceCompiles)
 # Check for gerneral C++11 support
 CHECK_CXX_SOURCE_COMPILES(
     "
-    #if (__cplusplus < 201103L) || defined(__INTEL_CXX11_MODE__)
+    #if (__cplusplus < 201103L) && ! defined(__INTEL_CXX11_MODE__)
     #error C++11 support not enabled.
     #endif
     int main(){ return 0; }
