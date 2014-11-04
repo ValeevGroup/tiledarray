@@ -1161,7 +1161,7 @@ namespace TiledArray {
         for(size_type t = 0ul; row_start < end; row_start += col_stride, row_end += col_stride) {
           for(size_type index = row_start; index < row_end; index += row_stride, ++t) {
             // Skip zero tiles
-            if(shape.is_zero(DistEvalImpl_::perm_index(index))) continue;
+            if(shape.is_zero(DistEvalImpl_::perm_index_to_target(index))) continue;
 
             // Initialize the reduction task
             ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
@@ -1242,7 +1242,7 @@ namespace TiledArray {
             row_start < end; row_start += col_stride, row_end += col_stride) {
           for(size_type index = row_start; index < row_end; index += row_stride, ++reduce_task) {
             // Compute the permuted index
-            const size_type perm_index = DistEvalImpl_::perm_index(index);
+            const size_type perm_index = DistEvalImpl_::perm_index_to_target(index);
 
             // Skip zero tiles
             if(shape.is_zero(perm_index)) continue;
