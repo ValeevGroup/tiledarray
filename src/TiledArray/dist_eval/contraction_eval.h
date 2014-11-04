@@ -93,22 +93,8 @@ namespace TiledArray {
 
       op_type op_; /// < The operation used to evaluate tile-tile contractions
 
-      const ProcessID rank_; ///< This process's rank
-      const ProcessID size_; ///< Then number of processes
-      size_type m_; ///< Number of element rows in the result and left matrix
-      size_type n_; ///< Number of element columns in the result matrix and rows in the right argument matrix
+      ProcGrid proc_grid_; ///< Process grid
       size_type k_; ///< Number of element columns in the left and right argument matrices
-      size_type mk_; ///< Number of elements in left matrix
-      size_type kn_; ///< Number of elements in right matrix
-      size_type proc_cols_; ///< Number of columns in the result process map
-      size_type proc_rows_; ///< Number of rows in the result process map
-      size_type proc_size_; ///< Number of process in the process map. This may be
-                         ///< less than the number of processes in world.
-      ProcessID rank_row_; ///< This node's row in the process map
-      ProcessID rank_col_; ///< This node's column in the process map
-      size_type local_rows_; ///< The number of local element rows
-      size_type local_cols_; ///< The number of local element columns
-      size_type local_size_; ///< Number of local elements
 
       std::vector<ProcessID> row_group_; ///< The group of processes included in this node's row
       std::vector<ProcessID> col_group_; ///< The group of processes included in this node's column
@@ -175,7 +161,7 @@ namespace TiledArray {
         if(value.probe())
           bcast(i, value, group, rank, rank, handler);
         else
-          task(rank_, & Summa_::template bcast<Handler, Value>, i, value,
+          task(get_world().rank(), & Summa_::template bcast<Handler, Value>, i, value,
               group, rank, rank, handler);
       }
 
@@ -291,12 +277,12 @@ namespace TiledArray {
         std::vector<col_datum> bcast_column() {
           // Construct the result column vector
           std::vector<col_datum> col;
-          col.reserve(owner_->local_rows_);
+          col.reserve(owner_->proc_grid_.local_rows());
 
           // Iterate over local rows of the k-th column of the left argument tensor
-          size_type i = owner_->rank_row_ * owner_->k_ + bcast_k_;
-          const size_type step = owner_->proc_rows_ * owner_->k_;
-          const size_type end = owner_->mk_;
+          size_type i = owner_->proc_grid_.rank_row() * owner_->k_ + bcast_k_;
+          const size_type step = owner_->proc_grid_.proc_rows() * owner_->k_;
+          const size_type end = owner_->left_.size();
           if(owner_->left_.is_local(i)) {
             if(! owner_->left_.pmap()->is_replicated()) {
               for(; i < end; i += step) {
@@ -305,7 +291,7 @@ namespace TiledArray {
 
                 // Broadcast the tile to all nodes in the row
                 owner_->spawn_bcast_task(& Summa_::bcast_row_handler, i,
-                    col.back().second, owner_->row_group_, owner_->rank_col_);
+                    col.back().second, owner_->row_group_, owner_->proc_grid_.rank_col());
               }
             } else {
               for(; i < end; i += step)
@@ -342,28 +328,28 @@ namespace TiledArray {
         std::vector<row_datum> bcast_row() {
           // Construct the result row vector
           std::vector<row_datum> row;
-          row.reserve(owner_->local_cols_);
+          row.reserve(owner_->proc_grid_.local_cols());
 
           // Iterate over local columns of the k-th row of the right argument tensor
-          size_type i = bcast_k_ * owner_->n_ + owner_->rank_col_;
-          const size_type end = (bcast_k_ + 1) * owner_->n_;
+          size_type i = bcast_k_ * owner_->proc_grid_.cols() + owner_->proc_grid_.rank_col();
+          const size_type end = (bcast_k_ + 1) * owner_->proc_grid_.cols();
           if(owner_->right_.is_local(i)) {
             if(! owner_->right_.pmap()->is_replicated()) {
-              for(; i < end; i += owner_->proc_cols_) {
+              for(; i < end; i += owner_->proc_grid_.proc_cols()) {
                 // Take the tile's local copy and add it to the row vector
                 row.push_back(row_datum(i, get_tile(owner_->right_, i)));
 
                 // Broadcast the tile to all nodes in the column
                 owner_->spawn_bcast_task(& Summa_::bcast_col_handler, i,
-                    row.back().second, owner_->col_group_, owner_->rank_row_);
+                    row.back().second, owner_->col_group_, owner_->proc_grid_.rank_row());
               }
             } else {
-              for(; i < end; i += owner_->proc_cols_)
+              for(; i < end; i += owner_->proc_grid_.proc_cols())
                 // Take the tile's local copy and add it to the row vector
                 row.push_back(row_datum(i, get_tile(owner_->right_, i)));
             }
           } else {
-            for(; i < end; i += owner_->proc_cols_) {
+            for(; i < end; i += owner_->proc_grid_.proc_cols()) {
               // Insert a future into the cache as a placeholder for the broadcast tile.
               typename right_container::const_accessor acc;
               const bool erase_cache = ! owner_->right_cache_.insert(acc, i);
@@ -436,7 +422,7 @@ namespace TiledArray {
       {
         const bool assign = (k == (k_ - 1));
 
-        BcastRowColTask* task_row_col_k2 = bcast_row_and_column(k + 2, local_size_);
+        BcastRowColTask* task_row_col_k2 = bcast_row_and_column(k + 2, proc_grid_.local_size());
 
         // Schedule contraction tasks
         result_datum* restrict it = results_;
@@ -448,24 +434,24 @@ namespace TiledArray {
         if(assign) {
           // Signal the reduce task that all the reduction pairs have been added
           result_datum* restrict it = results_;
-          for(size_type i = rank_row_; i < m_; i += proc_rows_) {
-            for(size_type j = rank_col_; j < n_; j += proc_cols_, ++it) {
-              const size_type index = i * n_ + j;
+          for(size_type i = proc_grid_.rank_row(); i < proc_grid_.rows(); i += proc_grid_.proc_rows()) {
+            for(size_type j = proc_grid_.rank_col(); j < proc_grid_.cols(); j += proc_grid_.proc_cols(), ++it) {
+              const size_type index = i * proc_grid_.cols() + j;
               DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index), it->submit());
 
               it->~result_datum();
             }
           }
           std::allocator<result_datum> alloc;
-          alloc.deallocate(results_, local_size_);
+          alloc.deallocate(results_, proc_grid_.local_size());
         } else {
           if(task_row_col_k2) {
-            task(rank_, & Summa_::step, k + 1, col_row_k1.first,
+            task(get_world().rank(), & Summa_::step, k + 1, col_row_k1.first,
                 col_row_k1.second, task_row_col_k2->result(),
                 madness::TaskAttributes::hipri());
             get_world().taskq.add(task_row_col_k2);
           } else {
-            task(rank_, & Summa_::step, k + 1, col_row_k1.first,
+            task(get_world().rank(), & Summa_::step, k + 1, col_row_k1.first,
                 col_row_k1.second, std::make_pair(
                     madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
                     madness::Future<std::vector<row_datum> >(std::vector<row_datum>())),
@@ -498,30 +484,23 @@ namespace TiledArray {
           const op_type& op, const size_type k, const ProcGrid& proc_grid) :
         DistEvalImpl_(world, trange, shape, pmap, perm), WorldObject_(world),
         left_(left), right_(right), op_(op),
-        rank_(world.rank()), size_(world.size()),
-        m_(proc_grid.rows()), n_(proc_grid.cols()), k_(k),
-        mk_(left.size()), kn_(right.size()),
-        proc_cols_(proc_grid.proc_cols()), proc_rows_(proc_grid.proc_rows()),
-        proc_size_(proc_grid.proc_size()), rank_row_(proc_grid.rank_row()),
-        rank_col_(proc_grid.rank_col()), local_rows_(proc_grid.local_rows()),
-        local_cols_(proc_grid.local_cols()), local_size_(proc_grid.local_size()),
-        row_group_(),
-        col_group_(),
-        left_cache_(local_rows_ * k_),
-        right_cache_(local_cols_ * k_),
+        proc_grid_(proc_grid), k_(k),
+        row_group_(), col_group_(),
+        left_cache_(proc_grid.local_rows() * k),
+        right_cache_(proc_grid.local_cols() * k),
         results_(NULL)
       {
-        if(local_size_ > 0ul) {
+        if(proc_grid_.local_size() > 0ul) {
           // Fill the row group with all the processes in rank's row
-          row_group_.reserve(proc_cols_);
-          ProcessID row_first = rank_ - rank_col_;
-          const ProcessID row_last = row_first + proc_cols_;
+          row_group_.reserve(proc_grid_.proc_cols());
+          ProcessID row_first = get_world().rank() - proc_grid_.rank_col();
+          const ProcessID row_last = row_first + proc_grid_.proc_cols();
           for(; row_first < row_last; ++row_first)
             row_group_.push_back(row_first);
 
           // Fill the col group with all the processes in rank's column
-          col_group_.reserve(proc_rows_);
-          for(size_type col_first = rank_col_; col_first < proc_size_; col_first += proc_cols_)
+          col_group_.reserve(proc_grid_.proc_rows());
+          for(size_type col_first = proc_grid_.rank_col(); col_first < proc_grid_.proc_size(); col_first += proc_grid_.proc_cols())
             col_group_.push_back(col_first);
         }
       }
@@ -543,13 +522,13 @@ namespace TiledArray {
         const size_type source_index = DistEvalImpl_::perm_index_to_source(i);
 
         // Compute tile coordinate in tile grid
-        const size_type tile_row = source_index / n_;
-        const size_type tile_col = source_index % n_;
+        const size_type tile_row = source_index / proc_grid_.cols();
+        const size_type tile_col = source_index % proc_grid_.cols();
         // Compute process coordinate of tile in the process grid
-        const size_type proc_row = tile_row % proc_rows_;
-        const size_type proc_col = tile_col % proc_cols_;
+        const size_type proc_row = tile_row % proc_grid_.proc_rows();
+        const size_type proc_col = tile_col % proc_grid_.proc_cols();
         // Compute the process that owns tile
-        const ProcessID source = proc_row * proc_cols_ + proc_col;
+        const ProcessID source = proc_row * proc_grid_.proc_cols() + proc_col;
 
         const madness::DistributedID key(DistEvalImpl_::id(), i);
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
@@ -572,7 +551,7 @@ namespace TiledArray {
 
         WorldObject_::process_pending();
 
-        if(local_size_ > 0ul) {
+        if(proc_grid_.local_size() > 0ul) {
           // Start broadcast tasks of column and row for k = 0
           BcastRowColTask* task_col_row_k0 = bcast_row_and_column(0ul);
           std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
@@ -591,14 +570,14 @@ namespace TiledArray {
 
           // Construct a pair reduction object for each local tile
           std::allocator<result_datum> alloc;
-          results_ = alloc.allocate(local_size_);
+          results_ = alloc.allocate(proc_grid_.local_size());
           {
-            const result_datum* restrict const end = results_ + local_size_;
+            const result_datum* restrict const end = results_ + proc_grid_.local_size();
             for(result_datum* restrict it = results_; it != end; ++it)
               new(it) result_datum(get_world(), op_);
           }
           // Spawn the first step in the algorithm
-          task(rank_, & Summa_::step, 0ul, col_row_k0.first, col_row_k0.second,
+          task(get_world().rank(), & Summa_::step, 0ul, col_row_k0.first, col_row_k0.second,
               col_row_k1, madness::TaskAttributes::hipri());
         }
 
@@ -606,7 +585,7 @@ namespace TiledArray {
         left_.wait();
         right_.wait();
 
-        return local_size_;
+        return proc_grid_.local_size();
       }
 
     }; // class Summa
