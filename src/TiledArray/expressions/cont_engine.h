@@ -163,7 +163,7 @@ namespace TiledArray {
               right_.vars().dim() - result_rank) >> 1;
           const unsigned int left_outer_rank = left_.vars().dim() - inner_rank;
 
-          // Check that the left- and right-hand variables are correctly
+          // Check that the left- and right-hand outer variables are correctly
           // partitioned in the target variable list.
           bool target_partitioned = true;
           for(unsigned int i = 0u; i < left_outer_rank; ++i)
@@ -229,7 +229,7 @@ namespace TiledArray {
             const_cast<std::vector<std::string>&>(vars_.data());
         result_vars.reserve(std::max(left_rank, right_rank));
 
-        // Extract variables from the left-hand argument
+        // Extract left-most result and inner variables from the left-hand argument.
         for(unsigned int i = 0ul; i < left_rank; ++i) {
           const std::string& var = left_.vars()[i];
           if(find(right_.vars(), var, 0u, right_rank) == right_rank) {
@@ -253,6 +253,8 @@ namespace TiledArray {
 
         // Check for an outer product
         if(inner_rank == 0u) {
+
+          // Extract the right most outer variables from right hand argument.
           for(unsigned int i = 0ul; i < right_rank; ++i) {
             const std::string& var = right_.vars()[i];
             right_vars.push_back(var);
@@ -261,15 +263,18 @@ namespace TiledArray {
           return; // Quick exit
         }
 
-        // Initialize flags that will be used to determine the type of operation
-        // that must be performed on the arguments.
+        // Initialize flags that will be used to determine the type of permutation
+        // that will be applied to the arguments (i.e. no permutation, transpose,
+        // or arbitrary permutation).
         bool inner_vars_ordered = true, left_is_no_trans = true, left_is_trans = true,
             right_is_no_trans = true, right_is_trans = true;
 
-        // Determine which argument, left or right, will be permuted if a permutation
-        // is required. We prefer to permute the argument with the lowest rank
-        // since it likely has a smaller memory footprint, or the fewest leaves
-        // to minimize the number of per
+        // If the inner variable lists of the arguments are not in the same
+        // order, one of them will need to be permuted. Here, we determine which
+        // argument, left or right, will be permuted if a permutation is
+        // required. The argument with the lowest rank is preferred since it is
+        // likely to have the smaller memory footprint, or the fewest leaves to
+        // minimize the number of permutations in the expression.
         const bool perm_left = (left_rank < right_rank) || ((left_rank == right_rank)
             && (left_type::leaves <= right_type::leaves));
 
@@ -312,10 +317,9 @@ namespace TiledArray {
           }
         }
 
-        // Here we set the operation that will be applied to the argument
-        // tensors. If an argument is in matrix form, disable permutation.
-        // Otherwise, permute the argument to a matrix form.
-
+        // Here we set the type of permutation that will be applied to the
+        // argument tensors. If an argument is in matrix form, permutation of
+        // the tiles is disabled.
         if(left_is_no_trans) {
           left_op_ = no_trans;
           left_.permute_tiles(false);
