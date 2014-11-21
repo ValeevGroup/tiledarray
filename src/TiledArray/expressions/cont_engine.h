@@ -155,7 +155,7 @@ namespace TiledArray {
       /// \param target_vars The target variable list for this expression
       void perm_vars(const VariableList& target_vars) {
         // Only permute if the arguments can be permuted
-        if((left_op_ == permute_to_no_trans) || (left_op_ == permute_to_no_trans)) {
+        if((left_op_ == permute_to_no_trans) || (right_op_ == permute_to_no_trans)) {
 
           // Compute ranks
           const unsigned int result_rank = target_vars.dim();
@@ -265,6 +265,11 @@ namespace TiledArray {
         // that must be performed on the arguments.
         bool inner_vars_ordered = true, left_is_no_trans = true, left_is_trans = true,
             right_is_no_trans = true, right_is_trans = true;
+
+        // Determine which argument, left or right, will be permuted if a permutation
+        // is required. We prefer to permute the argument with the lowest rank
+        // since it likely has a smaller memory footprint, or the fewest leaves
+        // to minimize the number of per
         const bool perm_left = (left_rank < right_rank) || ((left_rank == right_rank)
             && (left_type::leaves <= right_type::leaves));
 
