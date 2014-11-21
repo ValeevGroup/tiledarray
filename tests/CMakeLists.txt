@@ -76,7 +76,8 @@ set(ta_test_src_files  ta_test.cpp
     tile_op_contract_reduce.cpp
     reduce_task.cpp
     proc_grid.cpp
-    dist_eval_contraction_eval.cpp)
+    dist_eval_contraction_eval.cpp
+    expressions.cpp)
         
 if(NOT ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
