@@ -122,7 +122,7 @@ namespace TiledArray {
       /// result of this expression will be permuted to match \c target_vars.
       /// \param target_vars The target variable list for this expression
       void perm_vars(const VariableList& target_vars) {
-        TA_ASSERT(ExprEngine_::permute_tiles());
+        TA_ASSERT(permute_tiles_);
         TA_ASSERT(left_.vars().dim() == target_vars.dim());
         TA_ASSERT(right_.vars().dim() == target_vars.dim());
 

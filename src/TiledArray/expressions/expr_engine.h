@@ -207,11 +207,6 @@ namespace TiledArray {
       /// \return A const reference to the process map
       const std::shared_ptr<pmap_interface>& pmap() const { return pmap_; }
 
-      /// Permute tile flag accessor
-
-      /// \return The permute tile flag (true == permtue result tiles)
-      bool permute_tiles() const { return permute_tiles_; }
-
       /// Set the permute tiles flag
 
       /// \param status The new status for permute tiles (true == permtue result tiles)
