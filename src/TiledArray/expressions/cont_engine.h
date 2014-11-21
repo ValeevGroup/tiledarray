@@ -491,6 +491,19 @@ namespace TiledArray {
         return ss.str();
       }
 
+
+      /// Expression print
+
+      /// \param os The output stream
+      /// \param target_vars The target variable list for this expression
+      void print(ExprOStream os, const VariableList& target_vars) const {
+        ExprEngine_::print(os, target_vars);
+        os.inc();
+        left_.print(os, left_vars_);
+        right_.print(os, right_vars_);
+        os.dec();
+      }
+
     }; // class ContEngine
 
   }  // namespace expressions

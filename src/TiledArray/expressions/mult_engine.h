@@ -239,6 +239,17 @@ namespace TiledArray {
       /// \return An expression tag used to identify this expression
       const char* make_tag() const { return "[*] "; }
 
+      /// Expression print
+
+      /// \param os The output stream
+      /// \param target_vars The target variable list for this expression
+      void print(ExprOStream os, const VariableList& target_vars) const {
+        if(contract_)
+          return ContEngine_::print(os, target_vars);
+        else
+          return BinaryEngine_::print(os, target_vars);
+      }
+
     }; // class MultEngine
 
 
@@ -440,6 +451,17 @@ namespace TiledArray {
         std::stringstream ss;
         ss << "[*] [" << ContEngine_::factor_ << "] ";
         return ss.str();
+      }
+
+      /// Expression print
+
+      /// \param os The output stream
+      /// \param target_vars The target variable list for this expression
+      void print(ExprOStream os, const VariableList& target_vars) const {
+        if(contract_)
+          return ContEngine_::print(os, target_vars);
+        else
+          return BinaryEngine_::print(os, target_vars);
       }
 
     }; // class ScalMultEngine
