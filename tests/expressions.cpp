@@ -75,6 +75,24 @@ struct ExpressionsFixture : public TiledRangeFixture {
     return tile;
   }
 
+  template <typename M, typename A>
+  static void rand_fill_matrix_and_array(M& matrix, A& array, int seed = 42) {
+    TA_ASSERT(matrix.size() == array.trange().elements().volume());
+    matrix.fill(0);
+
+    GlobalFixture::world->srand(seed);
+
+    // Iterate over locall tiles
+    for(typename A::iterator it = array.begin(); it != array.end(); ++it) {
+      typename A::value_type tile(array.trange().make_tile_range(it.index()));
+      for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
+        const std::size_t elem_index = array.elements().ord(*rit);
+        tile[*rit] = (matrix.array()(elem_index) = (GlobalFixture::world->rand() % 101));
+      }
+      *it = tile;
+    }
+    GlobalFixture::world->gop.sum(& matrix(0,0), matrix.size());
+  }
 
   template <typename T, unsigned int DIM, typename Tile>
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
@@ -689,40 +707,21 @@ BOOST_AUTO_TEST_CASE( cont_non_uniform1 )
   std::array<TiledRange1, 4> tiling4 = {{ tr1_1, tr1_2, tr1_1, tr1_1 }};
   TiledRange trange(tiling4.begin(), tiling4.end());
 
+  const std::size_t m = 5;
+  const std::size_t k = 40 * 5 * 5;
+  const std::size_t n = 5;
+
   // Construct the test arguments
   Array<int, 4> left(*GlobalFixture::world, trange);
   Array<int, 4> right(*GlobalFixture::world, trange);
 
   // Construct the reference matrices
-  const std::size_t m = 5;
-  const std::size_t k = 40 * 5 * 5;
-  const std::size_t n = 5;
   TiledArray::EigenMatrixXi left_ref(m, k);
   TiledArray::EigenMatrixXi right_ref(n, k);
 
-  GlobalFixture::world->srand(42);
-
-  // Initialize left and left_ref
-  for(Array<int, 4>::iterator it = left.begin(); it != left.end(); ++it) {
-    Array<int, 4>::value_type tile(left.trange().make_tile_range(it.index()));
-    for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
-      const std::size_t elem_index = left.elements().ord(*rit);
-      const int element = left_ref.array()(elem_index) = GlobalFixture::world->rand();
-      tile[*rit] = element;
-    }
-    *it = tile;
-  }
-
-  // Initialize right and right_ref
-  for(Array<int, 4>::iterator it = right.begin(); it != right.end(); ++it) {
-    Array<int, 4>::value_type tile(right.trange().make_tile_range(it.index()));
-    for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
-      const std::size_t elem_index = right.elements().ord(*rit);
-      const int element = right_ref.array()(elem_index) = GlobalFixture::world->rand();
-      tile[*rit] = element;
-    }
-    *it = tile;
-  }
+  // Initialize input
+  rand_fill_matrix_and_array(left_ref, left, 23);
+  rand_fill_matrix_and_array(right_ref, right, 42);
 
   // Compute the reference result
   TiledArray::EigenMatrixXi result_ref = 5 * left_ref * right_ref.transpose();
@@ -752,40 +751,21 @@ BOOST_AUTO_TEST_CASE( cont_non_uniform2 )
   std::array<TiledRange1, 4> tiling4 = {{ tr1_1, tr1_1, tr1_2, tr1_2 }};
   TiledRange trange(tiling4.begin(), tiling4.end());
 
+  const std::size_t m = 5;
+  const std::size_t k = 5 * 40 * 40;
+  const std::size_t n = 5;
+
   // Construct the test arguments
   Array<int, 4> left(*GlobalFixture::world, trange);
   Array<int, 4> right(*GlobalFixture::world, trange);
 
   // Construct the reference matrices
-  const std::size_t m = 5;
-  const std::size_t k = 5 * 40 * 40;
-  const std::size_t n = 5;
   TiledArray::EigenMatrixXi left_ref(m, k);
   TiledArray::EigenMatrixXi right_ref(n, k);
 
-  GlobalFixture::world->srand(42);
-
-  // Initialize left and left_ref
-  for(Array<int, 4>::iterator it = left.begin(); it != left.end(); ++it) {
-    Array<int, 4>::value_type tile(left.trange().make_tile_range(it.index()));
-    for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
-      const std::size_t elem_index = left.elements().ord(*rit);
-      const int element = left_ref.array()(elem_index) = GlobalFixture::world->rand();
-      tile[*rit] = element;
-    }
-    *it = tile;
-  }
-
-  // Initialize right and right_ref
-  for(Array<int, 4>::iterator it = right.begin(); it != right.end(); ++it) {
-    Array<int, 4>::value_type tile(right.trange().make_tile_range(it.index()));
-    for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
-      const std::size_t elem_index = right.elements().ord(*rit);
-      const int element = right_ref.array()(elem_index) = GlobalFixture::world->rand();
-      tile[*rit] = element;
-    }
-    *it = tile;
-  }
+  // Initialize input
+  rand_fill_matrix_and_array(left_ref, left, 23);
+  rand_fill_matrix_and_array(right_ref, right, 42);
 
   // Compute the reference result
   TiledArray::EigenMatrixXi result_ref = 5 * left_ref * right_ref.transpose();
