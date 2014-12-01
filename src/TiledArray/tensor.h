@@ -21,6 +21,7 @@
 #define TILEDARRAY_TENSOR_H__INCLUDED
 
 #include <TiledArray/range.h>
+#include <TiledArray/perm_index.h>
 #include <TiledArray/math/functional.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
@@ -152,51 +153,6 @@ namespace TiledArray {
       }
     }
 
-    /// This functor computes the permuted ordinal index
-    class PermIndex {
-      const unsigned int ndim_;
-      const size_type* restrict const input_weight_;
-      size_type* restrict const output_weight_;
-
-    public:
-      PermIndex(const range_type& input_range, const range_type& output_range,
-          const Permutation& perm) :
-        ndim_(perm.dim()),
-        input_weight_(input_range.weight().data()),
-        output_weight_(new size_type[ndim_])
-      {
-        TA_ASSERT(ndim_ > 1u);
-        TA_ASSERT(input_weight_);
-
-        // Construct temporaries.
-        const Permutation inv_perm = -perm;
-
-        // Inverse permute output weight data.
-        for(Permutation::index_type i = 0u; i < ndim_; ++i) {
-          const Permutation::index_type pi = inv_perm[i];
-          const size_type weight_i = output_range.weight()[i];
-          output_weight_[pi] = weight_i;
-        }
-      }
-
-      ~PermIndex() {
-        delete [] output_weight_;
-      }
-
-      /// Compute the permuted index for the current block
-      size_type operator()(size_type index) const {
-        size_type perm_index = 0ul;
-        for(unsigned int dim = 0u; dim < ndim_; ++dim) {
-          const size_type weight_dim = input_weight_[dim];
-          const size_type inv_result_weight_dim = output_weight_[dim];
-          perm_index += index / weight_dim * inv_result_weight_dim;
-          index %= weight_dim;
-        }
-
-        return perm_index;
-      }
-    }; // class PermIndex
-
     std::shared_ptr<Impl> pimpl_; ///< Shared pointer to implementation object
     static const range_type empty_range_; ///< Empty range
 
@@ -253,7 +209,7 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == other.range().dim());
 
-      PermIndex perm_index_op(other.range(), pimpl_->range_, perm);
+      detail::PermIndex perm_index_op(other.range(), perm);
 
       // Cache constants
       const unsigned int ndim = other.range().dim();
@@ -332,7 +288,7 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == other.range().dim());
 
-      PermIndex perm_index_op(other.range(), pimpl_->range_, perm);
+      detail::PermIndex perm_index_op(other.range(), perm);
 
       // Cache constants
       const unsigned int ndim = other.range().dim();
@@ -415,7 +371,7 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == left.range().dim());
 
-      PermIndex perm_index_op(left.range(), pimpl_->range_, perm);
+      detail::PermIndex perm_index_op(left.range(), perm);
 
       // Cache constants
       const unsigned int ndim = left.range().dim();
