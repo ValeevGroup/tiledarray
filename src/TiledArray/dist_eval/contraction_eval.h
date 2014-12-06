@@ -1307,6 +1307,7 @@ namespace TiledArray {
         }
       }
 
+#define TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
 #ifndef TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
       /// Schedule local contraction tasks for \c col and \c row tile pairs
 
