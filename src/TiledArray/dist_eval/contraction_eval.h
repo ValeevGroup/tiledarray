@@ -637,7 +637,7 @@ namespace TiledArray {
       madness::Group col_group_; ///< The column process group for this rank
 
       // Dimension information
-      size_type k_; ///< Number of tiles in the inner dimension
+      const size_type k_; ///< Number of tiles in the inner dimension
       const ProcGrid proc_grid_; ///< Process grid for this contraction
 
       // Contraction results
@@ -780,6 +780,7 @@ namespace TiledArray {
           const madness::Group& group, const size_type key_offset, std::vector<Datum>& vec) const
       {
         TA_ASSERT(vec.size() == 0ul);
+        TA_ASSERT(group.size() > 0ul);
 
         // Get the root process of the group
         const ProcessID group_root = group.rank(arg.owner(index));
@@ -788,8 +789,12 @@ namespace TiledArray {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
         std::stringstream ss;
         ss  << "bcast: rank=" << TensorImpl_::get_world().rank()
-            << " id=(" << group.id().first << "," << group.id().second
-            << ") root=" << group.world_rank(group_root) << "\n";
+            << " root=" << group.world_rank(group_root)
+            << " groupid=(" << group.id().first << "," << group.id().second
+            << ") keyoffset=" << key_offset << " group={ ";
+        for(ProcessID group_proc = 0; group_proc < group.size(); ++group_proc)
+          ss << group.world_rank(group_proc) << " ";
+        ss << "} tiles={ ";
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
         // Iterate over tiles to be broadcast
@@ -807,12 +812,14 @@ namespace TiledArray {
           TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-        ss  << "    bcast > index=" << index << " key=(" << key.first << "," << key.second << ")\n";
+        ss  << index << " ";
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
         }
+        TA_ASSERT(vec.size() > 0ul);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-        std::cout << ss.str().c_str();
+        ss << "}\n";
+        printf(ss.str().c_str());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
       }
 
@@ -949,15 +956,23 @@ namespace TiledArray {
         std::vector<row_datum> row;
         const row_datum null_value(0ul, right_future::default_initializer());
 
-        for(size_type row_k_end = k * proc_grid_.cols(); k < end; k += Prows) {
-          // Compute the iterator range for row k
+        for(; k < end; k += Prows) {
 
-          // Search column k for non-zero tiles
-          size_type i = row_k_end;
-          row_k_end += proc_grid_.cols();
-          for(i += proc_grid_.rank_col(); i < row_k_end; i += right_stride_local_) {
-            if(! right_.shape().is_zero(i)) {
-              bcast_row(left_.shape(), k, row);
+          // Compute local iteration limits for row k of right_.
+          size_type begin = k * proc_grid_.cols();
+          const size_type end = begin + proc_grid_.cols();
+          begin += proc_grid_.rank_col();
+
+          // Search for and broadcast non-zero row
+          for(; begin < end; begin += right_stride_local_) {
+            if(! right_.shape().is_zero(begin)) {
+              // Construct the sparse broadcast group
+              madness::Group group = make_group(left_.shape(), k, left_end_, left_stride_,
+                  proc_grid_.proc_rows(), k, 0ul, MapRow(proc_grid_));
+
+              // Broadcast row k of right_.
+              bcast(right_, begin, end, right_stride_local_, group, left_.size(), row);
+
               row.resize(0ul, null_value);
               break;
             }
@@ -983,9 +998,9 @@ namespace TiledArray {
         size_type end = k * proc_grid_.cols();
         for(; k < k_; ++k) {
           // Search for non-zero tiles in row k of right
-          size_type i = end;
+          size_type i = end + proc_grid_.rank_col();
           end += proc_grid_.cols();
-          for(i += proc_grid_.rank_col(); i < end; i += right_stride_local_)
+          for(; i < end; i += right_stride_local_)
             if(! right_.shape().is_zero(i))
               return k;
         }
@@ -1103,7 +1118,7 @@ namespace TiledArray {
         for(ProcessID gproc = 0ul; gproc < row_group_.size(); ++gproc)
           ss << row_group_.world_rank(gproc) << " ";
         ss << "}\n";
-        std::cout << ss.str().c_str();
+        printf(ss.str().c_str());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
         // Allocate memory for the reduce pair tasks.
@@ -1124,6 +1139,12 @@ namespace TiledArray {
       /// Initialize reduce tasks
       template <typename Shape>
       size_type initialize(const Shape& shape) {
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        std::stringstream ss;
+        ss << "    initialize rank=" << TensorImpl_::get_world().rank() << " tiles={ ";
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
         // Allocate memory for the reduce pair tasks.
         std::allocator<ReducePairTask<op_type> > alloc;
         reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
@@ -1145,6 +1166,10 @@ namespace TiledArray {
             // Skip zero tiles
             if(shape.is_zero(DistEvalImpl_::perm_index_to_target(index))) continue;
 
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+            ss << index << " ";
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
             // Initialize the reduction task
             ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
             new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
@@ -1152,20 +1177,23 @@ namespace TiledArray {
           }
         }
 
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        ss << "}\n";
+        printf(ss.str().c_str());
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
         return tile_count;
       }
 
       size_type initialize() {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-        if(TensorImpl_::get_world().rank() == 0)
-          printf("init: start\n");
+        printf("init: start rank=%i\n", TensorImpl_::get_world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
         const size_type result = initialize(TensorImpl_::shape());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-        if(TensorImpl_::get_world().rank() == 0)
-          printf("init: finish\n");
+        printf("init: finish rank=%i\n", TensorImpl_::get_world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
         return result;
@@ -1209,6 +1237,12 @@ namespace TiledArray {
       /// Set the result tiles and destroy reduce tasks
       template <typename Shape>
       void finalize(const Shape& shape) {
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        std::stringstream ss;
+        ss << "    finalize rank=" << TensorImpl_::get_world().rank() << " tiles={ ";
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
         // Initialize iteration variables
         size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
         size_type row_end = row_start + proc_grid_.cols();
@@ -1229,6 +1263,9 @@ namespace TiledArray {
             // Skip zero tiles
             if(shape.is_zero(perm_index)) continue;
 
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+            ss << index << " ";
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
             // Set the result tile
             DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
@@ -1241,19 +1278,22 @@ namespace TiledArray {
         // Deallocate the memory for the reduce pair tasks.
         std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
             proc_grid_.local_size());
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+        ss << "}\n";
+        printf(ss.str().c_str());
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
       }
 
       void finalize() {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-        if(TensorImpl_::get_world().rank() == 0)
-          printf("finalize: start\n");
+        printf("finalize: start rank=%i\n", TensorImpl_::get_world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
         finalize(TensorImpl_::shape());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-        if(TensorImpl_::get_world().rank() == 0)
-          printf("finalize: finish\n");
+        printf("finalize: finish rank=%i\n", TensorImpl_::get_world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
       }
 
@@ -1420,8 +1460,7 @@ namespace TiledArray {
 
         virtual void run(const madness::TaskThreadEnv&) {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-          printf("step:  start rank=%i k=%lu\n",
-              owner_->get_world().rank(), k_);
+          printf("step:  start rank=%i k=%lu\n", owner_->get_world().rank(), k_);
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
           // Search for the next k to be processed
@@ -1461,8 +1500,7 @@ namespace TiledArray {
           }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-          printf("step: finish rank=%i k=%lu\n",
-              owner_->get_world().rank(), k_);
+          printf("step: finish rank=%i k=%lu\n", owner_->get_world().rank(), k_);
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
         }
 
