@@ -26,7 +26,6 @@ void print_results(const madness::World& world, const std::vector<std::vector<do
   if(world.rank() == 0) {
     for(unsigned int i = 0; i < results.size(); ++i) {
       if(i == 0) {
-        std::cout << std::defaultfloat;
         std::cout << "   ";
         for(unsigned int j = 10; j <= 100; j+=10){
           std::cout << "        " << j;
@@ -42,7 +41,7 @@ void print_results(const madness::World& world, const std::vector<std::vector<do
           } else { std::cout << num << "|"; }
         }
 
-        std::cout << std::setprecision(3) << std::scientific;
+        std::cout.precision(6);
         std::cout << double(results[i][j]) << " ";
       }
       std::cout << std::endl;
