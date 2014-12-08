@@ -201,6 +201,7 @@ else()
       --with-fortran-int32=${MAD_F77_INT32}
       --with-stubmpi=${MAD_STUB_MPI}
       --with-elemental=${MAD_ELEMENTAL_FLAG}
+      --with-tbb=no
       --without-mkl
       ${MAD_EXTRA_CONFIGURE_FLAGS}
       MPICXX=${CMAKE_CXX_COMPILER}
