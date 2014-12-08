@@ -22,7 +22,33 @@
 #include <tiledarray.h>
 #include <iomanip>
 
+void print_results(const madness::World& world, const std::vector<std::vector<double> >& results) {
+  if(world.rank() == 0) {
+    for(unsigned int i = 0; i < results.size(); ++i) {
+      if(i == 0) {
+        std::cout << std::defaultfloat;
+        std::cout << "   ";
+        for(unsigned int j = 10; j <= 100; j+=10){
+          std::cout << "        " << j;
+        }
+        std::cout << std::endl;
+      }
+      for(unsigned int j = 0; j < results[i].size(); ++j) {
+        if(j == 0) {
+          std::cout << std::defaultfloat;
+          int num = (i+1) * 10;
+          if(num < 100){
+            std::cout << num << " |";
+          } else { std::cout << num << "|"; }
+        }
 
+        std::cout << std::setprecision(3) << std::scientific;
+        std::cout << double(results[i][j]) << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
+}
 
 int main(int argc, char** argv) {
   int rc = 0;
@@ -58,27 +84,27 @@ int main(int argc, char** argv) {
 
     // Print information about the test
     const std::size_t num_blocks = matrix_size / block_size;
+    const double app_flop = 2.0 * matrix_size * matrix_size * matrix_size;
     std::vector<std::vector<double> > gflops;
     std::vector<std::vector<double> > times;
+    std::vector<std::vector<double> > app_gflops;
 
-    std::cout << "TiledArray: block-sparse matrix multiply test...\n"
-              << "Number of nodes    = " << world.size()
-              << "\nMatrix size        = " << matrix_size << "x" << matrix_size
-              << "\nBlock size         = " << block_size << "x" << block_size;
+    if(world.rank() == 0)
+      std::cout << "TiledArray: block-sparse matrix multiply test...\n"
+          << "Number of nodes    = " << world.size()
+          << "\nMatrix size        = " << matrix_size << "x" << matrix_size
+          << "\nBlock size         = " << block_size << "x" << block_size;
 
     for(unsigned int left_sparsity = 10; left_sparsity <= 100; left_sparsity += 10){
-      std::vector<double> inner_gflops;
-      std::vector<double> inner_times;
+      std::vector<double> inner_gflops, inner_times, inner_app_gflops;
       for(unsigned int right_sparsity = 10; right_sparsity <= left_sparsity; right_sparsity += 10){
         const long l_block_count = (double(left_sparsity) / 100.0) * double(num_blocks * num_blocks);
         const long r_block_count = (double(right_sparsity) / 100.0) * double(num_blocks * num_blocks);
         if(world.rank() == 0)
                     std::cout << "\nMemory per left matrix  = " << double(l_block_count * block_size * block_size * sizeof(double)) / 1.0e9 << " GB"
                     << "\nMemory per right matrix  = " << double(r_block_count * block_size * block_size * sizeof(double)) / 1.0e9 << " GB"
-                    << "\nNumber of left blocks   = " << l_block_count
-                    << " " << left_sparsity << " percent"
-                    << "\nNumber of right blocks   = " << r_block_count
-                    << " " << right_sparsity << " percent"
+                    << "\nNumber of left blocks   = " << l_block_count << "   " << left_sparsity << "%"
+                    << "\nNumber of right blocks   = " << r_block_count << "   " << right_sparsity << "%"
                     << "\nAverage left blocks/node = " << double(l_block_count) / double(world.size())
                     << "\nAverage right blocks/node = " << double(r_block_count) / double(world.size()) << "\n";
 
@@ -101,21 +127,29 @@ int main(int argc, char** argv) {
             c_shape_tensor(trange.tiles(), 0.0);
         if(world.rank() == 0) {
           world.srand(time(NULL));
-          const long l_process_block_count = l_block_count / world.size() +
-              (world.rank() < (l_block_count / world.size()) ? 1 : 0);
-          const long r_process_block_count = r_block_count / world.size() +
-              (world.rank() < (r_block_count / world.size()) ? 1 : 0);
-          for(long i = 0; i < l_process_block_count; ++i)
-            a_shape_tensor.data()[world.rand() % trange.tiles().volume()] = 1.0;
+          for(long count = 0l; count < l_block_count; ++count) {
+            std::size_t index = world.rand() % trange.tiles().volume();
 
-          for(long i = 0; i < r_process_block_count; ++i)
-            b_shape_tensor.data()[world.rand() % trange.tiles().volume()] = 1.0;
+            // Avoid setting the same tile to non-zero.
+            while(a_shape_tensor[index] > TiledArray::SparseShape<float>::threshold())
+              index = world.rand() % trange.tiles().volume();
+
+            a_shape_tensor[index] = std::sqrt(float(block_size * block_size));
+          }
+          for(long count = 0l; count < r_block_count; ++count) {
+            std::size_t index = world.rand() % trange.tiles().volume();
+
+            // Avoid setting the same tile to non-zero.
+            while(b_shape_tensor[index] > TiledArray::SparseShape<float>::threshold())
+              index = world.rand() % trange.tiles().volume();
+
+            b_shape_tensor[index] = std::sqrt(float(block_size * block_size));
+          }
 
         }
         TiledArray::SparseShape<float>
             a_shape(world, a_shape_tensor, trange),
-            b_shape(world, b_shape_tensor, trange),
-            c_shape(world, c_shape_tensor, trange);
+            b_shape(world, b_shape_tensor, trange);
 
 
         typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
@@ -124,89 +158,59 @@ int main(int argc, char** argv) {
         // Construct and initialize arrays
         SpTArray2 a(world, trange, a_shape);
         SpTArray2 b(world, trange, b_shape);
-        SpTArray2 c(world, trange, c_shape);
+        SpTArray2 c;
         a.set_all_local(1.0);
         b.set_all_local(1.0);
 
         // Start clock
         world.gop.fence();
-        const double wall_time_start = madness::wall_time();
+        if(world.rank() == 0)
+          std::cout << "Starting iterations:\n";
+
+        double total_time = 0.0, flop = 0.0;
 
         // Do matrix multiplication
         for(int i = 0; i < repeat; ++i) {
+          const double start = madness::wall_time();
           c("m,n") = a("m,k") * b("k,n");
-          world.gop.fence();
+//          world.gop.fence();
+          const double time = madness::wall_time() - start;
+          total_time += time;
+          if(flop < 1.0)
+            flop = 2.0 * c("m,n").sum();
           if(world.rank() == 0)
-            std::cout << "Iteration " << i + 1 << "\n";
+            std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
+                << flop / time / 1.0e9 << "   apparent GFLOPS=" << app_flop / time / 1.0e9 << "\n";
         }
 
         // Stop clock
-        const double wall_time_stop = madness::wall_time();
-        const long flop = 2.0 * c("m,n").sum();
-        inner_gflops.push_back(double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9);
-        inner_times.push_back((wall_time_stop - wall_time_start)/double(repeat));
+        inner_gflops.push_back(double(repeat) * flop / total_time / 1.0e9);
+        inner_times.push_back(total_time / repeat);
+        inner_app_gflops.push_back(double(repeat) * app_flop / total_time / 1.0e9);
 
         // Print results
         if(world.rank() == 0) {
-          std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
-              << "\nAverage GFLOPS = " << double(repeat) * double(flop) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+          std::cout << "Average wall time = " << total_time / double(repeat)
+              << "\nAverage GFLOPS = " << double(repeat) * double(flop) / total_time / 1.0e9
+              << "\nAverage apparent GFLOPS = " << double(repeat) * double(app_flop) / total_time / 1.0e9 << "\n";
         }
       }
       gflops.push_back(inner_gflops);
       times.push_back(inner_times);
+      app_gflops.push_back(inner_app_gflops);
       world.gop.fence();
     }
-    if(world.rank() == 0){
-      for(unsigned int i = 0; i < gflops.size(); ++i){
-        if(i == 0){
-          std::cout << std::defaultfloat;
-          std::cout << "   ";
-          for(unsigned int j = 10; j <= 100; j+=10){
-            std::cout << "        " << j;
-          }
-          std::cout << std::endl;
-        }
-        for(unsigned int j = 0; j < gflops[i].size(); ++j){
-          if(j == 0){
-            std::cout << std::defaultfloat;
-            int num = (i+1) * 10;
-            if(num < 100){
-              std::cout << num << " |";
-            } else { std::cout << num << "|"; }
-          }
 
-          std::cout << std::setprecision(3) << std::scientific;
-          std::cout << double(gflops[i][j]) << " ";
-        }
-        std::cout << std::endl;
-      }
-    }
+    if(world.rank() == 0)
+      std::cout << "\n----------------------------------------------------\nGFLOPS\n";
+    print_results(world, gflops);
+    if(world.rank() == 0)
+      std::cout << "\n----------------------------------------------------\nAverage wall times\n";
+    print_results(world, times);
+    if(world.rank() == 0)
+      std::cout << "\n----------------------------------------------------\nApparent GFLOPS\n";
+    print_results(world, app_gflops);
 
-    if(world.rank() == 0){
-      for(unsigned int i = 0; i < times.size(); ++i){
-        if(i == 0){
-          std::cout << std::defaultfloat;
-          std::cout << "   ";
-          for(unsigned int j = 10; j <= 100; j+=10){
-            std::cout << "        " << j;
-          }
-          std::cout << std::endl;
-        }
-        for(unsigned int j = 0; j < times[i].size(); ++j){
-          if(j == 0){
-            std::cout << std::defaultfloat;
-            int num = (i+1) * 10;
-            if(num < 100){
-              std::cout << num << " |";
-            } else { std::cout << num << "|"; }
-          }
-
-          std::cout << std::setprecision(3) << std::scientific;
-          std::cout << double(times[i][j]) << " ";
-        }
-        std::cout << std::endl;
-      }
-    }
 
     madness::finalize();
 
