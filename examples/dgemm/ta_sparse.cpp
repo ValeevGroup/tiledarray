@@ -34,7 +34,6 @@ void print_results(const madness::World& world, const std::vector<std::vector<do
       }
       for(unsigned int j = 0; j < results[i].size(); ++j) {
         if(j == 0) {
-          std::cout << std::defaultfloat;
           int num = (i+1) * 10;
           if(num < 100){
             std::cout << num << " |";
