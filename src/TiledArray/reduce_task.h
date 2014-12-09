@@ -382,7 +382,7 @@ namespace TiledArray {
         madness::Spinlock lock_; ///< Task lock
         madness::CallbackInterface* callback_; ///< The completion callback
 
-        public:
+      public:
 
         /// Implementation constructor
 
@@ -440,10 +440,14 @@ namespace TiledArray {
         /// \return A future that will hold the result of the reduction task
         const madness::Future<result_type>& result() const { return result_; }
 
+        /// World accessor
+
+        /// \return The world that owns this task.
+        madness::World& get_world() const { return world_; }
+
       }; // class ReduceTaskImpl
 
 
-      madness::World& world_; ///< The world that owns the task queue.
       ReduceTaskImpl* pimpl_; ///< The reduction task object.
       std::size_t count_; ///< Reduction argument counter
 
@@ -463,7 +467,7 @@ namespace TiledArray {
       /// complete
       ReduceTask(madness::World& world, const opT& op = opT(),
           madness::CallbackInterface* callback = NULL) :
-        world_(world), pimpl_(new ReduceTaskImpl(world, op, callback)), count_(0ul)
+        pimpl_(new ReduceTaskImpl(world, op, callback)), count_(0ul)
       { }
 
       /// Destructor
@@ -502,6 +506,8 @@ namespace TiledArray {
       madness::Future<result_type> submit() {
         MADNESS_ASSERT(pimpl_);
 
+        // Get the result before submitting/running the task, otherwise the
+        // task could run and be deleted before we are done here.
         madness::Future<result_type> result = pimpl_->result();
 
         if(count_ == 0ul) {
@@ -509,10 +515,9 @@ namespace TiledArray {
           pimpl_->run(madness::TaskThreadEnv(1,0,0));
           delete pimpl_;
         } else {
-          // Get the result before submitting calling dec(), otherwise the
-          // task could run and be deleted before we are done here.
           pimpl_->dec();
-          world_.taskq.add(pimpl_);
+          madness::World& world = pimpl_->get_world();
+          world.taskq.add(pimpl_);
         }
 
         pimpl_ = NULL;
