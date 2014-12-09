@@ -1276,13 +1276,13 @@ namespace TiledArray {
       TA_ASSERT(pimpl_);
 
       // Get pointers to the range data
-      const size_type n = pimpl_.range_.dim();
+      const size_type n = pimpl_->range_.dim();
       const size_type* restrict const start = pimpl_->range_.start().data();
       const size_type* restrict const finish = pimpl_->range_.finish().data();
       const size_type* restrict const weight = pimpl_->range_.weight().data();
 
       // Search for the largest start index and the lowest
-      size_type start_max = 0ul, finish_min = 0ul;
+      size_type start_max = 0ul, finish_min = std::numeric_limits<size_type>::max();
       for(size_type i = 0ul; i < n; ++i) {
         const size_type start_i = start[i];
         const size_type finish_i = finish[i];
