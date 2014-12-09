@@ -1161,19 +1161,25 @@ namespace TiledArray {
 
         // Iterate over all local tiles
         size_type tile_count = 0ul;
-        for(size_type t = 0ul; row_start < end; row_start += col_stride, row_end += col_stride) {
-          for(size_type index = row_start; index < row_end; index += row_stride, ++t) {
-            // Skip zero tiles
-            if(shape.is_zero(DistEvalImpl_::perm_index_to_target(index))) continue;
-
-#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-            ss << index << " ";
-#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+        ReducePairTask<op_type>* restrict reduce_task = reduce_tasks_;
+        for(; row_start < end; row_start += col_stride, row_end += col_stride) {
+          for(size_type index = row_start; index < row_end; index += row_stride, ++reduce_task) {
 
             // Initialize the reduction task
-            ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
-            new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
-            ++tile_count;
+
+            // Skip zero tiles
+            if(! shape.is_zero(DistEvalImpl_::perm_index_to_target(index))) {
+
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
+              ss << index << " ";
+#endif // TILEDARRAY_ENABLE_SUMMA_TRACE
+
+              new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+              ++tile_count;
+            } else {
+              // Construct an empty task to represent zero tiles.
+              new(reduce_task) ReducePairTask<op_type>();
+            }
           }
         }
 
@@ -1261,14 +1267,15 @@ namespace TiledArray {
             const size_type perm_index = DistEvalImpl_::perm_index_to_target(index);
 
             // Skip zero tiles
-            if(shape.is_zero(perm_index)) continue;
+            if(! shape.is_zero(perm_index)) {
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE
-            ss << index << " ";
+              ss << index << " ";
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE
 
-            // Set the result tile
-            DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
+              // Set the result tile
+              DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
+            }
 
             // Destroy the the reduce task
             reduce_task->~ReducePairTask<op_type>();
@@ -1328,6 +1335,38 @@ namespace TiledArray {
       /// \param row A row of tiles from the right-hand argument
       /// \param callback The callback that will be invoked after each tile-pair
       /// has been contracted
+      void contract(const DenseShape&, const size_type,
+          const std::vector<col_datum>& col, const std::vector<row_datum>& row,
+          madness::TaskInterface* const task)
+      {
+        // Iterate over the row
+        for(size_type i = 0ul; i < col.size(); ++i) {
+          // Compute the local, result-tile offset
+          const size_type reduce_task_offset = col[i].first * proc_grid_.local_cols();
+
+          // Iterate over columns
+          for(size_type j = 0ul; j < row.size(); ++j) {
+            const size_type reduce_task_index = reduce_task_offset + row[j].first;
+
+            // Schedule task for contraction pairs
+            if(task)
+              task->inc();
+            const left_future left = col[i].second;
+            const right_future right = row[j].second;
+            reduce_tasks_[reduce_task_index].add(left, right, task);
+          }
+        }
+      }
+
+      /// Schedule local contraction tasks for \c col and \c row tile pairs
+
+      /// Schedule tile contractions for each tile pair of \c row and \c col. A
+      /// callback to \c task will be registered with each tile contraction
+      /// task.
+      /// \param col A column of tiles from the left-hand argument
+      /// \param row A row of tiles from the right-hand argument
+      /// \param callback The callback that will be invoked after each tile-pair
+      /// has been contracted
       template <typename Shape>
       void contract(const Shape&, const size_type,
           const std::vector<col_datum>& col, const std::vector<row_datum>& row,
@@ -1336,15 +1375,22 @@ namespace TiledArray {
         // Iterate over the row
         for(size_type i = 0ul; i < col.size(); ++i) {
           // Compute the local, result-tile offset
-          const size_type offset = col[i].first * proc_grid_.local_cols();
+          const size_type reduce_task_offset = col[i].first * proc_grid_.local_cols();
 
           // Iterate over columns
           for(size_type j = 0ul; j < row.size(); ++j) {
+            const size_type reduce_task_index = reduce_task_offset + row[j].first;
+
+            // Skip zero tiles
+            if(! reduce_tasks_[reduce_task_index])
+              continue;
+
+            // Schedule task for contraction pairs
             if(task)
               task->inc();
-            const size_type index = offset + row[j].first;
-            if(! TensorImpl_::shape().is_zero(index))
-              reduce_tasks_[index].add(col[i].second, row[j].second, task);
+            const left_future left = col[i].second;
+            const right_future right = row[j].second;
+            reduce_tasks_[reduce_task_index].add(left, right, task);
           }
         }
       }
