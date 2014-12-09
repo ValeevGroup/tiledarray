@@ -1342,7 +1342,9 @@ namespace TiledArray {
           for(size_type j = 0ul; j < row.size(); ++j) {
             if(task)
               task->inc();
-            reduce_tasks_[offset + row[j].first].add(col[i].second, row[j].second, task);
+            const size_type index = offset + row[j].first;
+            if(! TensorImpl_::shape().is_zero(index))
+              reduce_tasks_[index].add(col[i].second, row[j].second, task);
           }
         }
       }
