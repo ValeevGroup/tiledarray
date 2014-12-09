@@ -169,14 +169,14 @@ namespace TiledArray {
       default_init(range.volume(), pimpl_->data_);
     }
 
-    /// Construct an evaluated tensor
+    /// Construct a tensor with a fill value
 
-    /// \param r An array with the size of of each dimension
-    /// \param v The value of the tensor elements
-    Tensor(const range_type& range, const value_type& v) :
+    /// \param range An array with the size of of each dimension
+    /// \param value The value of the tensor elements
+    Tensor(const range_type& range, const value_type& value) :
       pimpl_(new Impl(range))
     {
-      math::uninitialized_fill_vector(range.volume(), v, pimpl_->data_);
+      math::uninitialized_fill_vector(range.volume(), value, pimpl_->data_);
     }
 
     /// Construct an evaluated tensor
@@ -199,7 +199,12 @@ namespace TiledArray {
       math::uninitialized_copy_vector(r.volume(), u, pimpl_->data_);
     }
 
-    /// Construct an evaluated tensor
+    /// Construct a permuted tensor copy
+
+    /// \tparam U The element type of other
+    /// \tparam AU The allocator type of other
+    /// \param other The tensor to be copied
+    /// \param perm The permutation that will be applied to the copy
     template <typename U, typename AU>
     Tensor(const Tensor<U, AU>& other, const Permutation& perm) :
       pimpl_(new Impl(perm ^ other.range()))
@@ -1281,7 +1286,7 @@ namespace TiledArray {
       const size_type* restrict const finish = pimpl_->range_.finish().data();
       const size_type* restrict const weight = pimpl_->range_.weight().data();
 
-      // Search for the largest start index and the lowest
+      // Search for the largest start index and the smallest finish
       size_type start_max = 0ul, finish_min = std::numeric_limits<size_type>::max();
       for(size_type i = 0ul; i < n; ++i) {
         const size_type start_i = start[i];
