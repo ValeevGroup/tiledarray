@@ -459,6 +459,10 @@ namespace TiledArray {
 
     public:
 
+      /// Default constructor
+      ReduceTask() : pimpl_(NULL), count_(0ul) { }
+
+
       /// Constructor
 
       /// \param worl The world that owns this task
@@ -523,6 +527,11 @@ namespace TiledArray {
         pimpl_ = NULL;
         return result;
       }
+
+      /// Type conversion operator
+
+      /// \return \c true if the task object is initialized.
+      operator bool() const { return pimpl_ != NULL; }
 
     }; // class ReduceTask
 
@@ -626,6 +635,9 @@ namespace TiledArray {
       ReducePairTask<opT> operator=(const ReducePairTask<opT>&);
 
     public:
+
+      /// Default constructor
+      ReducePairTask() : ReduceTask_() { }
 
       /// Constructor
 
