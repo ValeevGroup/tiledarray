@@ -335,7 +335,12 @@ namespace TiledArray {
     /// \return A new, scaled shape
     SparseShape_ scale(const value_type factor) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.scale(std::abs(factor)), size_vectors_);
+      const value_type abs_factor = std::abs(factor);
+      auto op = [=](value_type value) {
+        value *= abs_factor;
+        return (value < threshold_ ? value_type(0) : value);
+      };
+      return SparseShape_(tile_norms_.unary(op), size_vectors_);
     }
 
     /// Scale and permute shape
@@ -349,7 +354,12 @@ namespace TiledArray {
     /// \return A new, scaled-and-permuted shape
     SparseShape_ scale(const value_type factor, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.scale(std::abs(factor), perm), perm_size_vectors(perm));
+      const value_type abs_factor = std::abs(factor);
+      auto op = [=](value_type value) {
+        value *= abs_factor;
+        return (value < threshold_ ? value_type(0) : value);
+      };
+      return SparseShape_(tile_norms_.unary(op, perm), perm_size_vectors(perm));
     }
 
     /// Add shapes
@@ -390,7 +400,12 @@ namespace TiledArray {
     /// \return A scaled sum of shapes
     SparseShape_ add(const SparseShape_& other, value_type factor) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.add(other.tile_norms_, std::abs(factor)), size_vectors_);
+      const value_type abs_factor = std::abs(factor);
+      auto op = [=](const value_type left, const value_type right) {
+        const value_type result = (left + right) * abs_factor;
+        return (result < threshold_ ? value_type(0) : result);
+      };
+      return SparseShape_(tile_norms_.binary(other.tile_norms_, op), size_vectors_);
     }
 
     /// Add, scale, and permute shapes
@@ -406,7 +421,12 @@ namespace TiledArray {
         const Permutation& perm) const
     {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.add(other.tile_norms_, std::abs(factor),
+      const value_type abs_factor = std::abs(factor);
+      auto op = [=](const value_type left, const value_type right) {
+        const value_type result = (left + right) * abs_factor;
+        return (result < threshold_ ? value_type(0) : result);
+      };
+      return SparseShape_(tile_norms_.binary(other.tile_norms_, op,
           perm), perm_size_vectors(perm));
     }
 
