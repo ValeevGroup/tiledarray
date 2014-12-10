@@ -751,6 +751,9 @@ namespace TiledArray {
             GemmOuterProduct(std::abs(factor)));
       }
 
+      // Hard zero tiles that are below the zero threshold.
+      result_norms.inplace_unary([=](value_type restrict& value) {if(value < threshold_) value = 0;});
+
       return SparseShape_(result_norms, result_size_vectors);
     }
 
