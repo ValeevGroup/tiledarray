@@ -177,7 +177,7 @@ namespace TiledArray {
     /// This is a shallow copy, that is no data is copied.
     /// \param other The array to be copied
     Array_& operator=(const Array_& other) {
-      pimpl_ = other.pimpl_;
+      Array_(other).swap(*this);
       return *this;
     }
 
