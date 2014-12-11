@@ -90,8 +90,11 @@ namespace TiledArray {
       // Construct the new truncated array
       A result(array.get_world(), array.trange(), shape_type(array.get_world(),
           tile_norms, array.trange()), array.get_pmap());
-      for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it)
-        result.set(it->first, it->second);
+      for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
+        const size_type index = it->first;
+        if(! result.is_zero(index))
+          result.set(it->first, it->second);
+      }
 
       // Set array with the new data
       array = result;
