@@ -64,7 +64,7 @@ namespace TiledArray {
 
       // Create a vector to hold local tiles
       std::vector<datum_type> tiles;
-      tiles.reserve(array.get_pmap->size());
+      tiles.reserve(array.get_pmap()->size());
 
       // Collect updated shape data.
       TiledArray::Tensor<float> tile_norms(array.trange().tiles(), 0.0f);
