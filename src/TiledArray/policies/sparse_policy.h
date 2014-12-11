@@ -58,8 +58,9 @@ namespace TiledArray {
     /// \param array The array object to be truncated
     template <typename A>
     static void truncate(A& array) {
-      typedef madness::Future<typename A::value_type> value_type;
-      typedef std::pair<size_type, value_type> datum_type;
+      typedef typename A::value_type value_type;
+      typedef madness::Future<value_type> future_type;
+      typedef std::pair<size_type, future_type> datum_type;
 
       // Create a vector to hold local tiles
       std::vector<datum_type> tiles;
@@ -73,11 +74,11 @@ namespace TiledArray {
       int task_count = 0;
       auto task = [&](const size_type index, const value_type& tile) {
         tile_norms[index] = tile.norm();
-        tiles.push_back(datum_type(index, tile));
         ++counter;
       };
       for(typename A::const_iterator it = array.begin(); it != array.end(); ++it) {
         array.get_world().taskq.add(task, it.ordinal(), *it);
+        tiles.push_back(datum_type(it.ordinal(), *it));
         ++task_count;
       }
 
