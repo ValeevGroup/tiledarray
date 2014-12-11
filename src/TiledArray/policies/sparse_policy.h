@@ -77,8 +77,9 @@ namespace TiledArray {
         ++counter;
       };
       for(typename A::const_iterator it = array.begin(); it != array.end(); ++it) {
-        array.get_world().taskq.add(task, it.ordinal(), *it);
-        tiles.push_back(datum_type(it.ordinal(), *it));
+        future_type tile = *it;
+        array.get_world().taskq.add(task, it.ordinal(), tile);
+        tiles.push_back(datum_type(it.ordinal(), tile));
         ++task_count;
       }
 
