@@ -469,6 +469,8 @@ namespace TiledArray {
       }
     }
 
+    void truncate() { Policy::trunkate(*this); }
+
     bool is_initialized() const { return static_cast<bool>(pimpl_); }
 
   private:

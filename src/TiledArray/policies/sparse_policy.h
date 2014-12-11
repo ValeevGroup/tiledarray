@@ -29,6 +29,7 @@
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/pmap/blocked_pmap.h>
 #include <TiledArray/sparse_shape.h>
+#include <TiledArray/counter_probe.h>
 
 namespace TiledArray {
 
@@ -50,6 +51,52 @@ namespace TiledArray {
     default_pmap(madness::World& world, const std::size_t size) {
       return std::shared_ptr<pmap_interface>(new default_pmap_type(world, size));
     }
+
+    /// Truncate an Array
+
+    /// \tparam A Array type
+    /// \param array The array object to be truncated
+    template <typename A>
+    static void truncate(A& array) {
+      typedef madness::Future<typename A::value_type> value_type;
+      typedef std::pair<size_type, value_type> datum_type;
+
+      // Create a vector to hold local tiles
+      std::vector<datum_type> tiles;
+      tiles.reserve(array.get_pmap->size());
+
+      // Collect updated shape data.
+      TiledArray::Tensor<float> tile_norms(array.trange().tiles(), 0.0f);
+
+      // Construct the new tile norms and
+      madness::AtomicInt counter;
+      int task_count = 0;
+      auto task = [&](const size_type index, const value_type& tile) {
+        tile_norms[index] = tile.norm();
+        tiles.push_back(datum_type(index, tile));
+        ++counter;
+      };
+      for(typename A::const_iterator it = array.begin(); it != array.end(); ++it) {
+        array.get_world().taskq.add(task, it.ordinal(), *it);
+        ++task_count;
+      }
+
+      // Wait for tile data to be collected
+      if(task_count > 0) {
+        TiledArray::detail::CounterProbe probe(counter, task_count);
+        array.get_world().await(probe);
+      }
+
+      // Construct the new truncated array
+      A result(array.get_world(), array.trange(), shape_type(array.get_world(),
+          tile_norms, array.trange()), array.get_pmap());
+      for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it)
+        result.set(it->first, it->second);
+
+      // Set array with the new data
+      array = result;
+    }
+
   }; // class SparsePolicy
 
 } // namespace TiledArray
