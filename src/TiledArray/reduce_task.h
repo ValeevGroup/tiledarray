@@ -474,11 +474,32 @@ namespace TiledArray {
         pimpl_(new ReduceTaskImpl(world, op, callback)), count_(0ul)
       { }
 
+      /// Move constructor
+
+      /// \param other The object to be moved
+      ReduceTask(ReduceTask<opT>&& other) noexcept :
+        pimpl_(other.pimpl_), count_(other.count_)
+      {
+        other.pimpl_ = nullptr;
+        other.count_ = 0ul;
+      }
+
       /// Destructor
 
       /// If the reduction has not been submitted or \c destroy() has not been
       /// called, it well be submitted when the the destructor is called.
       ~ReduceTask() { delete pimpl_; }
+
+      /// Move assignment operator
+
+      /// \param other The object to be moved
+      ReduceTask<opT>& operator=(ReduceTask<opT>&& other) noexcept {
+        pimpl_ = other.pimpl_;
+        count_ = other.count_;
+        other.pimpl_ = nullptr;
+        other.count_ = 0;
+        return *this;
+      }
 
       /// Add an argument to the reduction task
 
@@ -648,6 +669,21 @@ namespace TiledArray {
       ReducePairTask(madness::World& world, const opT& op = opT(), madness::CallbackInterface* callback = NULL) :
         ReduceTask_(world, op_type(op), callback)
       { }
+
+      /// Move constructor
+
+      /// \param other The object to be moved
+      ReducePairTask(ReducePairTask<opT>&& other) noexcept :
+        ReduceTask_(std::move(other))
+      { }
+
+      /// Move assignment operator
+
+      /// \param other The object to be moved
+      ReducePairTask<opT>& operator=(ReducePairTask<opT>&& other) noexcept {
+        ReduceTask_::operator=(std::move(other));
+        return *this;
+      }
 
       /// Add a pair of arguments to the reduction task
 
