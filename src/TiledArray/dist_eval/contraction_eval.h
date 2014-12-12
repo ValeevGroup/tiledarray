@@ -27,9 +27,6 @@
 #include <TiledArray/shape.h>
 
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE 1
-//#ifndef TILEDARRAY_ENABLE_OLD_SUMMA
-//#define TILEDARRAY_ENABLE_OLD_SUMMA
-//#endif
 
 namespace TiledArray {
   namespace detail {
