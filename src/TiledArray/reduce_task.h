@@ -451,12 +451,6 @@ namespace TiledArray {
       ReduceTaskImpl* pimpl_; ///< The reduction task object.
       std::size_t count_; ///< Reduction argument counter
 
-    private:
-
-      // Copy not allowed.
-      ReduceTask(const ReduceTask<opT>&);
-      ReduceTask<opT>& operator=(const ReduceTask<opT>&);
-
     public:
 
       /// Default constructor
@@ -500,6 +494,10 @@ namespace TiledArray {
         other.count_ = 0;
         return *this;
       }
+
+      // Non-copyable
+      ReduceTask(const ReduceTask<opT>&) = delete;
+      ReduceTask<opT>& operator=(const ReduceTask<opT>&) = delete;
 
       /// Add an argument to the reduction task
 
@@ -651,10 +649,6 @@ namespace TiledArray {
       typedef typename op_type::argument_type argument_type; ///< The pair reduction argument type
       typedef ReduceTask<op_type> ReduceTask_; ///< The base class
 
-      // Not allowed
-      ReducePairTask(const ReducePairTask<opT>&);
-      ReducePairTask<opT> operator=(const ReducePairTask<opT>&);
-
     public:
 
       /// Default constructor
@@ -684,6 +678,10 @@ namespace TiledArray {
         ReduceTask_::operator=(std::move(other));
         return *this;
       }
+
+      /// Non-copyabe
+      ReducePairTask(const ReducePairTask<opT>&) = delete;
+      ReducePairTask<opT> operator=(const ReducePairTask<opT>&) = delete;
 
       /// Add a pair of arguments to the reduction task
 
