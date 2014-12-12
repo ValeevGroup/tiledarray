@@ -304,7 +304,7 @@ namespace TiledArray {
             if(ready_object_) {
               // Get the ready argument
               ReduceObject* ready_object = const_cast<ReduceObject*>(ready_object_);
-              ready_object_ = NULL;
+              ready_object_ = nullptr;
               lock_.unlock(); // <<< End critical section
 
               // Reduce the argument that was held by ready_object_
@@ -393,7 +393,7 @@ namespace TiledArray {
         ReduceTaskImpl(madness::World& world, opT op, madness::CallbackInterface* callback) :
           madness::TaskInterface(1, TaskAttributes::hipri()),
           world_(world), op_(op), ready_result_(new result_type(op())),
-          ready_object_(NULL), result_(), lock_(), callback_(callback)
+          ready_object_(nullptr), result_(), lock_(), callback_(callback)
         { }
 
         virtual ~ReduceTaskImpl() { }
@@ -424,7 +424,7 @@ namespace TiledArray {
                 ready_result, object, TaskAttributes::hipri());
           } else if(ready_object_) {
             ReduceObject* ready_object = const_cast<ReduceObject*>(ready_object_);
-            ready_object_ = NULL;
+            ready_object_ = nullptr;
             lock_.unlock(); // <<< End critical section
             MADNESS_ASSERT(ready_object);
             world_.taskq.add(this, & ReduceTaskImpl::reduce_object_object,
@@ -454,7 +454,7 @@ namespace TiledArray {
     public:
 
       /// Default constructor
-      ReduceTask() : pimpl_(NULL), count_(0ul) { }
+      ReduceTask() : pimpl_(nullptr), count_(0ul) { }
 
 
       /// Constructor
@@ -464,7 +464,7 @@ namespace TiledArray {
       /// \param callback The callback that will be invoked when this task is
       /// complete
       ReduceTask(madness::World& world, const opT& op = opT(),
-          madness::CallbackInterface* callback = NULL) :
+          madness::CallbackInterface* callback = nullptr) :
         pimpl_(new ReduceTaskImpl(world, op, callback)), count_(0ul)
       { }
 
@@ -507,9 +507,9 @@ namespace TiledArray {
       /// \tparam A The argument type
       /// \param arg The argument that will be reduced
       /// \param callback The callback that will be invoked when this argument
-      /// pair has been reduced [ default = NULL ]
+      /// pair has been reduced [ default = nullptr ]
       template <typename Arg>
-      int add(const Arg& arg, madness::CallbackInterface* callback = NULL) {
+      int add(const Arg& arg, madness::CallbackInterface* callback = nullptr) {
         MADNESS_ASSERT(pimpl_);
         pimpl_->inc();
         new typename ReduceTaskImpl::ReduceObject(pimpl_, arg, callback);
@@ -543,14 +543,14 @@ namespace TiledArray {
           world.taskq.add(pimpl_);
         }
 
-        pimpl_ = NULL;
+        pimpl_ = nullptr;
         return result;
       }
 
       /// Type conversion operator
 
       /// \return \c true if the task object is initialized.
-      operator bool() const { return pimpl_ != NULL; }
+      operator bool() const { return pimpl_ != nullptr; }
 
     }; // class ReduceTask
 
@@ -660,7 +660,7 @@ namespace TiledArray {
       /// \param op The pair reduction operation [ default = opT() ]
       /// \param callback The callback that will be invoked when this task is
       /// complete
-      ReducePairTask(madness::World& world, const opT& op = opT(), madness::CallbackInterface* callback = NULL) :
+      ReducePairTask(madness::World& world, const opT& op = opT(), madness::CallbackInterface* callback = nullptr) :
         ReduceTask_(world, op_type(op), callback)
       { }
 
@@ -694,9 +694,9 @@ namespace TiledArray {
       /// \param left The left-hand argument that will be reduced
       /// \param right The right-hand argument that will be reduced
       /// \param callback The callback that will be invoked when this argument
-      /// pair has been reduced [ default = NULL ]
+      /// pair has been reduced [ default = nullptr ]
       template <typename L, typename R>
-      void add(const L& left, const R& right, madness::CallbackInterface* callback = NULL) {
+      void add(const L& left, const R& right, madness::CallbackInterface* callback = nullptr) {
         ReduceTask_::add(argument_type(madness::Future<first_argument_type>(left),
             madness::Future<second_argument_type>(right)), callback);
       }
