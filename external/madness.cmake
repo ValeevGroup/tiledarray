@@ -79,7 +79,7 @@ else()
     set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
   endif()
   if(NOT DEFINED Madness_TAG)
-    set(Madness_TAG "57630451525a5d874297e3bfd5114caaecc67e7e")
+    set(Madness_TAG "379566250807a800b934d41e93691d91aef2732f")
   endif()
   message(STATUS "Will pull MADNESS from ${Madness_URL}")  
   
