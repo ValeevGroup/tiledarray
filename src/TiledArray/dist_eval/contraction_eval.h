@@ -832,16 +832,6 @@ namespace TiledArray {
         bcast(left_, left_start_local_ + k, left_end_, left_stride_local_, row_group_, 0ul, col);
       }
 
-      /// Map a process column to a process
-      class MapCol {
-        const ProcGrid& proc_grid_;  ///< Process grid that will be used to map columns
-      public:
-        MapCol(const ProcGrid& proc_grid) : proc_grid_(proc_grid) { }
-
-        ProcessID operator()(const ProcGrid::size_type col) const
-        { return proc_grid_.map_col(col); }
-      }; // class MapCol
-
       /// Broadcast column \c k of \c left_ with a sparse right-hand argument
 
       /// \tparam RightShape The shape type of the left-hand argument
@@ -854,7 +844,8 @@ namespace TiledArray {
         const size_type right_begin_k = k * proc_grid_.cols();
         const size_type right_end_k = right_begin_k + proc_grid_.cols();
         madness::Group group = make_group(right_shape, right_begin_k, right_end_k,
-            right_stride_, proc_grid_.proc_cols(), k, k_, MapCol(proc_grid_));
+            right_stride_, proc_grid_.proc_cols(), k, k_,
+            [&](const ProcGrid::size_type col) { return proc_grid_.map_col(col); });
 
         // Broadcast column k of left_.
         bcast(left_, left_start_local_ + k, left_end_, left_stride_local_, group, 0ul, col);
@@ -883,17 +874,6 @@ namespace TiledArray {
         bcast(right_, begin, end, right_stride_local_, col_group_, left_.size(), row);
       }
 
-      /// Map a process row to a process
-      class MapRow {
-        const ProcGrid& proc_grid_; ///< Process grid that will be used to map rows
-      public:
-        MapRow(const ProcGrid& proc_grid) : proc_grid_(proc_grid) { }
-
-        ProcessID operator()(const ProcGrid::size_type row) const
-        { return proc_grid_.map_row(row); }
-      }; // class MapRow
-
-
       /// Broadcast row \c k of \c right_ with a sparse left-hand argument
 
       /// \tparam LeftShape The shape type of the left-hand argument
@@ -904,7 +884,8 @@ namespace TiledArray {
       void bcast_row(const LeftShape& left_shape, const size_type k, std::vector<row_datum>& row) const {
         // Construct the sparse broadcast group
         madness::Group group = make_group(left_shape, k, left_end_, left_stride_,
-            proc_grid_.proc_rows(), k, 0ul, MapRow(proc_grid_));
+            proc_grid_.proc_rows(), k, 0ul,
+            [&](const ProcGrid::size_type row) { return proc_grid_.map_row(row); });
 
         // Compute local iteration limits for row k of right_.
         size_type begin = k * proc_grid_.cols();
@@ -929,14 +910,28 @@ namespace TiledArray {
         const size_type Pcols = proc_grid_.proc_cols();
         k += (Pcols - ((k + Pcols - proc_grid_.rank_col()) % Pcols)) % Pcols;
 
-        // Broadcast local row k of right.
+        // Vector to hold the broadcast tiles.
         std::vector<col_datum> col;
         const col_datum null_value(0ul, left_future::default_initializer());
+
         for(; k < end; k += Pcols) {
+
+          // Compute local iteration limits for column k of left_.
+          size_type begin = left_start_local_ + k;
+
           // Search column k of left for non-zero tiles
-          for(size_type i = left_start_local_ + k; i < left_end_; i += left_stride_local_) {
-            if(! left_.shape().is_zero(i)) {
-              bcast_col(right_.shape(), k, col);
+          for(; begin < left_end_; begin += left_stride_local_) {
+            if(! left_.shape().is_zero(begin)) {
+              // Construct the sparse broadcast group
+              const size_type right_begin_k = k * proc_grid_.cols();
+              const size_type right_end_k = right_begin_k + proc_grid_.cols();
+              madness::Group group = make_group(right_.shape(), right_begin_k, right_end_k,
+                  right_stride_, proc_grid_.proc_cols(), k, k_,
+                  [&](const ProcGrid::size_type col) { return proc_grid_.map_col(col); });
+
+              // Broadcast column k of left_.
+              bcast(left_, begin, left_end_, left_stride_local_, group, 0ul, col);
+
               col.resize(0ul, null_value);
               break;
             }
@@ -949,7 +944,7 @@ namespace TiledArray {
         const size_type Prows = proc_grid_.proc_rows();
         k += (Prows - ((k + Prows - proc_grid_.rank_row()) % Prows)) % Prows;
 
-        // Broadcast local row k of right.
+        // Vector to hold the broadcast tiles.
         std::vector<row_datum> row;
         const row_datum null_value(0ul, right_future::default_initializer());
 
@@ -965,7 +960,8 @@ namespace TiledArray {
             if(! right_.shape().is_zero(begin)) {
               // Construct the sparse broadcast group
               madness::Group group = make_group(left_.shape(), k, left_end_, left_stride_,
-                  proc_grid_.proc_rows(), k, 0ul, MapRow(proc_grid_));
+                  proc_grid_.proc_rows(), k, 0ul,
+                  [&](const ProcGrid::size_type row) { return proc_grid_.map_row(row); });
 
               // Broadcast row k of right_.
               bcast(right_, begin, end, right_stride_local_, group, left_.size(), row);
