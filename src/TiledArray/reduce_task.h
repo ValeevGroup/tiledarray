@@ -156,15 +156,15 @@ namespace TiledArray {
     /// }; // struct ReductionOp
     /// \endcode
     ///
-    /// For example, a vector product function might look like:
+    /// For example, a vector sum function might look like:
     ///
     /// \code
-    /// struct VectorProduct {
+    /// struct VectorSum {
     ///     // typedefs
     ///     typedef double result_type;
     ///     typedef std::vector<double> argument_type;
     ///
-    ///     // No constructors or assignment operator needed
+    ///     // Compiler generated constructors and assignment operators are OK here
     ///
     ///     // Reduction functions
     ///
@@ -183,7 +183,7 @@ namespace TiledArray {
     ///     /// Reduce an argument pair
     ///     void operator()(result_type& result, const argument_type& arg) const {
     ///         for(std::size_t i = 0ul; i < first.size(); ++i)
-    ///             result *= arg[i];
+    ///             result += arg[i];
     ///     }
     /// }; // struct VectorProduct
     /// \endcode
