@@ -23,28 +23,26 @@
 #include <iomanip>
 
 void print_results(const madness::World& world, const std::vector<std::vector<double> >& results) {
-  if(world.rank() == 0) {
-    for(unsigned int i = 0; i < results.size(); ++i) {
-      if(i == 0) {
-        std::cout << "   ";
-        for(unsigned int j = 10; j <= 100; j+=10){
-          std::cout << "        " << j;
-        }
-        std::cout << std::endl;
-      }
-      for(unsigned int j = 0; j < results[i].size(); ++j) {
-        if(j == 0) {
-          int num = (i+1) * 10;
-          if(num < 100){
-            std::cout << num << " |";
-          } else { std::cout << num << "|"; }
-        }
-
-        std::cout.precision(6);
-        std::cout << double(results[i][j]) << " ";
+  for(unsigned int i = 0; i < results.size(); ++i) {
+    if(i == 0) {
+      std::cout << "   ";
+      for(unsigned int j = 10; j <= 100; j+=10){
+        std::cout << "        " << j;
       }
       std::cout << std::endl;
     }
+    for(unsigned int j = 0; j < results[i].size(); ++j) {
+      if(j == 0) {
+        int num = (i+1) * 10;
+        if(num < 100){
+          std::cout << num << " |";
+        } else { std::cout << num << "|"; }
+      }
+
+      std::cout.precision(6);
+      std::cout << double(results[i][j]) << " ";
+    }
+    std::cout << std::endl;
   }
 }
 
@@ -198,15 +196,14 @@ int main(int argc, char** argv) {
       app_gflops.push_back(inner_app_gflops);
     }
 
-    if(world.rank() == 0)
+    if(world.rank() == 0) {
       std::cout << "\n----------------------------------------------------\nGFLOPS\n";
-    print_results(world, gflops);
-    if(world.rank() == 0)
+      print_results(world, gflops);
       std::cout << "\n----------------------------------------------------\nAverage wall times\n";
-    print_results(world, times);
-    if(world.rank() == 0)
+      print_results(world, times);
       std::cout << "\n----------------------------------------------------\nApparent GFLOPS\n";
-    print_results(world, app_gflops);
+      print_results(world, app_gflops);
+    }
 
 
     madness::finalize();
