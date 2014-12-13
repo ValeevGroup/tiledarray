@@ -196,7 +196,6 @@ int main(int argc, char** argv) {
       gflops.push_back(inner_gflops);
       times.push_back(inner_times);
       app_gflops.push_back(inner_app_gflops);
-      world.gop.fence();
     }
 
     if(world.rank() == 0)
