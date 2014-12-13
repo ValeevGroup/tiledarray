@@ -85,9 +85,9 @@ namespace TiledArray {
         // Validate the process map
         TA_USER_ASSERT(pmap->size() == tr.tiles().volume(),
             "Array::Array() -- The size of the process map is not equal to the number of tiles in the TiledRange object.");
-        TA_USER_ASSERT(pmap->rank() == w.rank(),
+        TA_USER_ASSERT(pmap->rank() == typename pmap_interface::size_type(w.rank()),
             "Array::Array() -- The rank of the process map is not equal to that of the world object.");
-        TA_USER_ASSERT(pmap->procs() == w.size(),
+        TA_USER_ASSERT(pmap->procs() == typename pmap_interface::size_type(w.size()),
             "Array::Array() -- The number of processes in the process map is not equal to that of the world object.");
       }
 

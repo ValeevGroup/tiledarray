@@ -148,7 +148,7 @@ namespace TiledArray {
         // create result index
         std::size_t perm_index = 0ul;
 
-        for(unsigned int i = 0u; i < ndim_; ++i) {
+        for(int i = 0u; i < ndim_; ++i) {
           const std::size_t input_weight_i = input_weight[i];
           const std::size_t output_weight_i = output_weight[i];
           perm_index += index / input_weight_i * output_weight_i;

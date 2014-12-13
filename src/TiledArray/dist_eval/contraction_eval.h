@@ -777,7 +777,7 @@ namespace TiledArray {
           const madness::Group& group, const size_type key_offset, std::vector<Datum>& vec) const
       {
         TA_ASSERT(vec.size() == 0ul);
-        TA_ASSERT(group.size() > 0ul);
+        TA_ASSERT(group.size() > 0);
 
         // Get the root process of the group
         const ProcessID group_root = group.rank(arg.owner(index));
