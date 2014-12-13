@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     // Construct TiledRange
     std::vector<unsigned long> blocking[3];
     world.srand(42);
-    unsigned long min = 0, max = 0;
+    unsigned long min = std::numeric_limits<unsigned long>::max(), max = 0;
     for(long n = 0l; n < 3l; ++n) {
       blocking[n].resize(num_blocks + 1, 1);
 
