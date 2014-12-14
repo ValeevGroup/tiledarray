@@ -99,8 +99,8 @@ int main(int argc, char** argv) {
         if(world.rank() == 0)
                     std::cout << "\nMemory per left matrix  = " << double(l_block_count * block_size * block_size * sizeof(double)) / 1.0e9 << " GB"
                     << "\nMemory per right matrix  = " << double(r_block_count * block_size * block_size * sizeof(double)) / 1.0e9 << " GB"
-                    << "\nNumber of left blocks   = " << l_block_count << "   " << left_sparsity << "%"
-                    << "\nNumber of right blocks   = " << r_block_count << "   " << right_sparsity << "%"
+                    << "\nNumber of left blocks   = " << l_block_count << "   " << 100.0 * double(l_block_count) / double(num_blocks * num_blocks) << "%"
+                    << "\nNumber of right blocks   = " << r_block_count << "   " << 100.0 * double(r_block_count) / double(num_blocks * num_blocks) << "%"
                     << "\nAverage left blocks/node = " << double(l_block_count) / double(world.size())
                     << "\nAverage right blocks/node = " << double(r_block_count) / double(world.size()) << "\n";
 
