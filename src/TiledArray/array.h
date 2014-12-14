@@ -317,10 +317,19 @@ namespace TiledArray {
     /// \param value The fill value
     void fill_local(const T& value = T()) {
       check_pimpl();
-      madness::Range<typename pmap_interface::const_iterator>
-          range(pimpl_->pmap()->begin(), pimpl_->pmap()->end(), 8);
+//      madness::Range<typename pmap_interface::const_iterator>
+//          range(pimpl_->pmap()->begin(), pimpl_->pmap()->end(), 8);
+//
+//      pimpl_->get_world().taskq.for_each(range, Fill(*this, value));
 
-      pimpl_->get_world().taskq.for_each(range, Fill(*this, value));
+      typename pmap_interface::const_iterator
+          it = pimpl_->pmap()->begin(),
+          end = pimpl_->pmap()->end();
+      for(; it != end; ++it) {
+        const size_type index = *it;
+        if(! pimpl_->is_zero(index))
+          pimpl_->set(index, value_type(pimpl_->trange().make_tile_range(index), value));
+      }
     }
 
     /// Fill all local tiles
