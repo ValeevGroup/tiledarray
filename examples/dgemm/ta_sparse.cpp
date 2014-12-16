@@ -115,34 +115,33 @@ int main(int argc, char** argv) {
 
         // Construct shape
         TiledArray::Tensor<float>
-            a_shape_tensor(trange.tiles(), 0.0),
-            b_shape_tensor(trange.tiles(), 0.0),
-            c_shape_tensor(trange.tiles(), 0.0);
+            a_tile_norms(trange.tiles(), 0.0),
+            b_tile_norms(trange.tiles(), 0.0);
         if(world.rank() == 0) {
           world.srand(time(NULL));
           for(long count = 0l; count < l_block_count; ++count) {
             std::size_t index = world.rand() % trange.tiles().volume();
 
             // Avoid setting the same tile to non-zero.
-            while(a_shape_tensor[index] > TiledArray::SparseShape<float>::threshold())
+            while(a_tile_norms[index] > TiledArray::SparseShape<float>::threshold())
               index = world.rand() % trange.tiles().volume();
 
-            a_shape_tensor[index] = std::sqrt(float(block_size * block_size));
+            a_tile_norms[index] = std::sqrt(float(block_size * block_size));
           }
           for(long count = 0l; count < r_block_count; ++count) {
             std::size_t index = world.rand() % trange.tiles().volume();
 
             // Avoid setting the same tile to non-zero.
-            while(b_shape_tensor[index] > TiledArray::SparseShape<float>::threshold())
+            while(b_tile_norms[index] > TiledArray::SparseShape<float>::threshold())
               index = world.rand() % trange.tiles().volume();
 
-            b_shape_tensor[index] = std::sqrt(float(block_size * block_size));
+            b_tile_norms[index] = std::sqrt(float(block_size * block_size));
           }
 
         }
         TiledArray::SparseShape<float>
-            a_shape(world, a_shape_tensor, trange),
-            b_shape(world, b_shape_tensor, trange);
+            a_shape(world, a_tile_norms, trange),
+            b_shape(world, b_tile_norms, trange);
 
 
         typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
