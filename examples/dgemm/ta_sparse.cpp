@@ -155,6 +155,7 @@ int main(int argc, char** argv) {
         b.set_all_local(1.0);
 
         // Start clock
+        SpTArray2::wait_for_lazy_cleanup(world);
         world.gop.fence();
         if(world.rank() == 0)
           std::cout << "Starting iterations:\n";
