@@ -26,21 +26,17 @@ void print_results(const madness::World& world, const std::vector<std::vector<do
   for(unsigned int i = 0; i < results.size(); ++i) {
     if(i == 0) {
       std::cout << "   ";
-      for(unsigned int j = 10; j <= 100; j+=10){
-        std::cout << "        " << j;
-      }
+      for(unsigned int j = 10; j <= 100; j+=10)
+        std::cout << std::setw(10) << j;
+
       std::cout << std::endl;
     }
     for(unsigned int j = 0; j < results[i].size(); ++j) {
-      if(j == 0) {
-        int num = (i+1) * 10;
-        if(num < 100){
-          std::cout << num << " |";
-        } else { std::cout << num << "|"; }
-      }
+      if(j == 0)
+        std::cout << std::setw(3) << (i+1) * 10 << "|";
 
       std::cout.precision(6);
-      std::cout << double(results[i][j]) << " ";
+      std::cout << std::setw(9) << double(results[i][j]) << " ";
     }
     std::cout << std::endl;
   }
@@ -198,11 +194,11 @@ int main(int argc, char** argv) {
     }
 
     if(world.rank() == 0) {
-      std::cout << "\n----------------------------------------------------\nGFLOPS\n";
+      std::cout << "\n--------------------------------------------------------------------------------------------------------\nGFLOPS\n";
       print_results(world, gflops);
-      std::cout << "\n----------------------------------------------------\nAverage wall times\n";
+      std::cout << "\n--------------------------------------------------------------------------------------------------------\nAverage wall times\n";
       print_results(world, times);
-      std::cout << "\n----------------------------------------------------\nApparent GFLOPS\n";
+      std::cout << "\n--------------------------------------------------------------------------------------------------------\nApparent GFLOPS\n";
       print_results(world, app_gflops);
     }
 
