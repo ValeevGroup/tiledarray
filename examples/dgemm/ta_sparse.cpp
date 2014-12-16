@@ -86,10 +86,11 @@ int main(int argc, char** argv) {
     std::vector<std::vector<double> > app_gflops;
 
     if(world.rank() == 0)
-      std::cout << "TiledArray: block-sparse matrix multiply test...\n"
-          << "Number of nodes    = " << world.size()
-          << "\nMatrix size        = " << matrix_size << "x" << matrix_size
-          << "\nBlock size         = " << block_size << "x" << block_size;
+      std::cout << "TiledArray: block-sparse matrix multiply test..."
+                << "\nGit HASH: " << TILEDARRAY_REVISION
+                << "\nNumber of nodes    = " << world.size()
+                << "\nMatrix size        = " << matrix_size << "x" << matrix_size
+                << "\nBlock size         = " << block_size << "x" << block_size;
 
     for(unsigned int left_sparsity = 10; left_sparsity <= 100; left_sparsity += 10){
       std::vector<double> inner_gflops, inner_times, inner_app_gflops;

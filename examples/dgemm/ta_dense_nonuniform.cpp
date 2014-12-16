@@ -77,8 +77,9 @@ int main(int argc, char** argv) {
     }
 
     if(world.rank() == 0)
-      std::cout << "TiledArray: dense matrix multiply test...\n"
-                << "Number of nodes     = " << world.size()
+      std::cout << "TiledArray: dense-nonuniform matrix multiply test..."
+                << "\nGit HASH: " << TILEDARRAY_REVISION
+                << "\nNumber of nodes     = " << world.size()
                 << "\nMatrix size         = " << matrix_size << "x" << matrix_size
                 << "\nAverage block size  = " << block_size << "x" << block_size
                 << "\nMaximum block size  = " << max

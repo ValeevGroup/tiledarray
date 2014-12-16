@@ -57,8 +57,9 @@ int main(int argc, char** argv) {
     const std::size_t block_count = num_blocks * num_blocks;
 
     if(world.rank() == 0)
-      std::cout << "TiledArray: dense matrix multiply test...\n"
-                << "Number of nodes     = " << world.size()
+      std::cout << "TiledArray: dense matrix multiply test..."
+                << "\nGit HASH: " << TILEDARRAY_REVISION
+                << "\nNumber of nodes     = " << world.size()
                 << "\nMatrix size         = " << matrix_size << "x" << matrix_size
                 << "\nBlock size          = " << block_size << "x" << block_size
                 << "\nMemory per matrix   = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
