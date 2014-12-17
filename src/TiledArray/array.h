@@ -63,19 +63,30 @@ namespace TiledArray {
 
     static madness::AtomicInt cleanup_counter_;
 
+    /// Array deleter function
+
+    /// This function schedules a task for lazy cleanup. Array objects are
+    /// deleted only after the object has been deleted in all processes.
+    /// \param pimpl The implementation pointer to be deleted.
     static void lazy_deleter(const impl_type* const pimpl) {
-      if(pimpl) {
-        if(madness::initialized()) {
-          madness::World& world = pimpl->get_world();
-          const madness::uniqueidT id = pimpl->id();
-          cleanup_counter_++;
-          world.gop.lazy_sync(id, [pimpl]() {
+      try {
+        if(pimpl) {
+          if(madness::initialized()) {
+            madness::World& world = pimpl->get_world();
+            const madness::uniqueidT id = pimpl->id();
+            cleanup_counter_++;
+            world.gop.lazy_sync(id, [pimpl]() {
+              delete pimpl;
+              Array_::cleanup_counter_--;
+            });
+          } else {
             delete pimpl;
-            Array_::cleanup_counter_--;
-          });
-        } else {
-          delete pimpl;
+          }
         }
+      } catch(...) {
+        fprintf(stderr, "!! TiledArray ERROR: An error occurred in Array::lazy_deleter()\n");
+        // Abort since we cannot throw from a destructor.
+        SafeMPI::COMM_WORLD.Abort(1);
       }
     }
 
