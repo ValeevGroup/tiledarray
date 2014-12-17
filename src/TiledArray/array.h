@@ -59,6 +59,26 @@ namespace TiledArray {
 
   private:
 
+    std::shared_ptr<impl_type> pimpl_; ///< Array implementation pointer
+
+    static madness::AtomicInt cleanup_counter_;
+
+    static void lazy_deleter(const impl_type* const pimpl) {
+      if(pimpl) {
+        if(madness::initialized()) {
+          madness::World& world = pimpl->get_world();
+          const madness::uniqueidT id = pimpl->id();
+          cleanup_counter_++;
+          world.gop.lazy_sync(id, [pimpl]() {
+            delete pimpl;
+            Array_::cleanup_counter_--;
+          });
+        } else {
+          delete pimpl;
+        }
+      }
+    }
+
     /// Sparse array initialization
 
     /// \param w The world where the array will live.
@@ -97,7 +117,7 @@ namespace TiledArray {
       TA_USER_ASSERT(shape.validate(tr.tiles()),
           "Array::Array() -- The range of the shape is not equal to the tiles range.");
 
-      return std::shared_ptr<impl_type>(new impl_type(w, tr, shape, pmap));
+      return std::shared_ptr<impl_type>(new impl_type(w, tr, shape, pmap), lazy_deleter);
     }
 
   public:
@@ -135,46 +155,12 @@ namespace TiledArray {
       pimpl_(init(w, tr, shape, pmap))
     { }
 
-  private:
-
-    static madness::AtomicInt cleanup_counter_;
-
-    class LazyDelete {
-      mutable std::shared_ptr<impl_type> pimpl_;
-
-    public:
-      LazyDelete() : pimpl_() { }
-      LazyDelete(const std::shared_ptr<impl_type>& pimpl) : pimpl_(pimpl) { }
-      LazyDelete(const LazyDelete& other) : pimpl_(other.pimpl_) { }
-
-      LazyDelete& operator=(const LazyDelete& other) {
-        pimpl_ = other.pimpl_;
-        return *this;
-      }
-
-      void operator()() const {
-        pimpl_.reset();
-        cleanup_counter_--;
-      }
-    }; // class LazyDelete
-
-  public:
-
     /// Destructor
 
     /// This is a distributed lazy destructor. The object will only be deleted
     /// after the last reference to the world object on all nodes has been
     /// destroyed.
-    ~Array() {
-      if(pimpl_) {
-        if(pimpl_.unique() && madness::initialized()) {
-          madness::World& world = pimpl_->get_world();
-          madness::uniqueidT id = pimpl_->id();
-          cleanup_counter_++;
-          world.gop.lazy_sync(id, LazyDelete(pimpl_));
-        }
-      }
-    }
+    ~Array() { }
 
     static void wait_for_lazy_cleanup(madness::World& world, const double timeout = 60.0) {
       int pending_cleanups = cleanup_counter_;
@@ -197,7 +183,8 @@ namespace TiledArray {
     /// This is a shallow copy, that is no data is copied.
     /// \param other The array to be copied
     Array_& operator=(const Array_& other) {
-      Array_(other).swap(*this);
+      pimpl_ = other.pimpl_;
+
       return *this;
     }
 
@@ -522,7 +509,6 @@ namespace TiledArray {
           "The Array has not been initialized, likely reason: it was default constructed and used.");
     }
 
-    std::shared_ptr<impl_type> pimpl_; ///< Array implementation pointer
   }; // class Array
 
 
