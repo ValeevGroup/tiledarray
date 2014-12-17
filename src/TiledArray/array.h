@@ -163,18 +163,11 @@ namespace TiledArray {
     ~Array() { }
 
     static void wait_for_lazy_cleanup(madness::World& world, const double timeout = 60.0) {
-      int pending_cleanups = cleanup_counter_;
       try {
-        const double start = madness::wall_time();
-        while(pending_cleanups) {
-          madness::myusleep(100);
-          const double wait_time = madness::wall_time() - start;
-          if(wait_time > timeout)
-            throw std::runtime_error("Array lazy cleanup wait timeout.");
-          pending_cleanups = cleanup_counter_;
-        }
+        madness::ThreadPool::await([&]() { return (cleanup_counter_ == 0); }, true);
       } catch(std::runtime_error& e) {
-        printf("%i: Array lazy cleanup timeout with %i pending cleanup(s)\n", world.rank(), pending_cleanups);
+        printf("%i: Array lazy cleanup timeout with %i pending cleanup(s)\n", world.rank(), cleanup_counter_);
+        throw;
       }
     }
 
