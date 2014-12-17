@@ -163,25 +163,26 @@ int main(int argc, char** argv) {
         double total_time = 0.0, flop = 0.0;
 
         // Do matrix multiplication
-        for(int i = 0; i < repeat; ++i) {
-          try {
+        try {
+          for(int i = 0; i < repeat; ++i) {
             const double start = madness::wall_time();
             c("m,n") = a("m,k") * b("k,n");
             const double time = madness::wall_time() - start;
             total_time += time;
-          } catch(...) {
-            if(world.rank() == 0) {
-              std::stringstream ss;
-              ss << "left shape  = " << a.shape().data() << "\n"
-                 << "right shape = " << b.shape().data() << "\n";
-              printf(ss.str().c_str());
-            }
+            if(flop < 1.0)
+              flop = 2.0 * c("m,n").sum();
+            if(world.rank() == 0)
+              std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
+                  << flop / time / 1.0e9 << "   apparent GFLOPS=" << app_flop / time / 1.0e9 << "\n";
+
           }
-          if(flop < 1.0)
-            flop = 2.0 * c("m,n").sum();
-          if(world.rank() == 0)
-            std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
-                << flop / time / 1.0e9 << "   apparent GFLOPS=" << app_flop / time / 1.0e9 << "\n";
+        } catch(...) {
+          if(world.rank() == 0) {
+            std::stringstream ss;
+            ss << "left shape  = " << a.get_shape().data() << "\n"
+               << "right shape = " << b.get_shape().data() << "\n";
+            printf(ss.str().c_str());
+          }
         }
 
         // Stop clock
