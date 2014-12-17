@@ -164,11 +164,19 @@ int main(int argc, char** argv) {
 
         // Do matrix multiplication
         for(int i = 0; i < repeat; ++i) {
-          const double start = madness::wall_time();
-          c("m,n") = a("m,k") * b("k,n");
-//          world.gop.fence();
-          const double time = madness::wall_time() - start;
-          total_time += time;
+          try {
+            const double start = madness::wall_time();
+            c("m,n") = a("m,k") * b("k,n");
+            const double time = madness::wall_time() - start;
+            total_time += time;
+          } catch(...) {
+            if(world.rank() == 0) {
+              std::stringstream ss;
+              ss << "left shape  = " << a.shape().data() << "\n"
+                 << "right shape = " << b.shape().data() << "\n";
+              printf(ss.str().c_str());
+            }
+          }
           if(flop < 1.0)
             flop = 2.0 * c("m,n").sum();
           if(world.rank() == 0)
