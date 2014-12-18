@@ -177,7 +177,8 @@ namespace TiledArray {
       try {
         madness::ThreadPool::await([&]() { return (cleanup_counter_ == 0); }, true);
       } catch(std::runtime_error& e) {
-        printf("%i: Array lazy cleanup timeout with %i pending cleanup(s)\n", world.rank(), cleanup_counter_);
+        printf("%i: Array lazy cleanup timeout with %i pending cleanup(s)\n",
+            world.rank(), int(cleanup_counter_));
         throw;
       }
     }
