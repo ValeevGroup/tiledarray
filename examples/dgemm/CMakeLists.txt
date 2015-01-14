@@ -64,7 +64,7 @@ target_link_libraries(ta_asymm_dense ${TiledArray_LIBRARIES})
 add_dependencies(ta_asymm_dense External)
 add_dependencies(example ta_asymm_dense)
 
-# Add the blas executable
+# Add the ta_sparse executable
 add_executable(ta_sparse EXCLUDE_FROM_ALL ta_sparse.cpp)
 target_link_libraries(ta_sparse ${TiledArray_LIBRARIES})
 add_dependencies(ta_sparse External)

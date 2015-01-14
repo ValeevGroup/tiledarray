@@ -426,7 +426,7 @@ namespace TiledArray {
 
         // Find the fist non-zero iterator
         const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
-        while(TensorImpl_::is_zero(*it) && (it != end)) ++it;
+        while((it != end) && TensorImpl_::is_zero(*it)) ++it;
 
         // Construct and return the iterator
         return iterator(this, it);
