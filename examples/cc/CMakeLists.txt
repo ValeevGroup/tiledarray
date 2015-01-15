@@ -25,9 +25,7 @@
 # Create the ccd and ccsd executable
 
 # Add include directories
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${TiledArray_INCLUDE_DIRS})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(inputlib OBJECT input_data.cpp)
 add_dependencies(inputlib External)

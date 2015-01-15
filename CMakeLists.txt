@@ -166,6 +166,22 @@ if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
 
+
+# Set the  build variables for this project; not to be used by the *users* of TiledArray
+include_directories(${Madness_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
+include_directories(${Elemental_INCLUDE_DIRS})
+  include_directories()
+include_directories( 
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_BINARY_DIR}/src
+    ${MPI_INCLUDE_PATH})
+set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
+
+append_flags(CMAKE_EXE_LINKER_FLAGS "${BLAS_LINKER_FLAGS}")
+append_flags(CMAKE_EXE_LINKER_FLAGS "${LAPACK_LINKER_FLAGS}")
+set(TiledArray_LIBRARIES "${LAPACK_LIBRARIES}" "${BLAS_LIBRARIES}" ${TiledArray_LIBRARIES})
+
+
 ##########################
 # sources
 ##########################
@@ -216,6 +232,17 @@ endif(USING_QT_CREATOR_AS_IDE)
 CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
   ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
+)
+
+foreach(_lib ${TiledArray_LIBRARIES})
+  append_flags(TiledArray_LIBRARIES_DEMANGLED "${_lib}")
+endforeach()
+foreach(_path ${TiledArray_INCLUDE_DIRS})
+  append_flags(TiledArray_INCLUDE_DIRS_DEMANGLED "-I${_path}")
+endforeach()
+CONFIGURE_FILE(
+  ${PROJECT_SOURCE_DIR}/tiledarray.pc.in
+  ${PROJECT_BINARY_DIR}/tiledarray.pc
 )
 
 # Add target to allow on-the-fly switching of build type

@@ -23,7 +23,6 @@
 #
 
 # library headers
-include_directories(${TiledArray_INCLUDE_DIRS})
 set(tiledarray_header_files 
     TiledArray/algebra/conjgrad.h             TiledArray/algebra/diis.h
     TiledArray/algebra/utils.h                TiledArray/dist_eval/array_eval.h

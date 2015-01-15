@@ -24,9 +24,6 @@
 
 # Create the pmap executable
 
-# Add include directories
-include_directories(${TiledArray_INCLUDE_DIRS})
-
 # Add the pmap executable
 add_executable(pmap EXCLUDE_FROM_ALL pmap.cpp)
 target_link_libraries(pmap ${TiledArray_LIBRARIES})

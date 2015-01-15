@@ -24,9 +24,6 @@
 
 # Create the vector executable
 
-# Add include directories
-include_directories(${TiledArray_INCLUDE_DIRS})
-
 # Add the vector executable
 add_executable(vector EXCLUDE_FROM_ALL vector.cpp)
 target_link_libraries(vector ${TiledArray_LIBRARIES})

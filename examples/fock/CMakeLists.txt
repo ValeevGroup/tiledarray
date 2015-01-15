@@ -24,9 +24,6 @@
 
 # Create the ta_fock_build executable
 
-# Add include directories
-include_directories(${TiledArray_INCLUDE_DIRS})
-
 # Add the ta_fock_build executable
 add_executable(ta_fock_build EXCLUDE_FROM_ALL ta_fock_build.cpp)
 target_link_libraries(ta_fock_build ${TiledArray_LIBRARIES})

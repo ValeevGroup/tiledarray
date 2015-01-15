@@ -5,7 +5,7 @@ include(AppendFlags)
 if(ENABLE_MPI)
 
   # Try to find MPI
-  find_package(MPI)
+  find_package(MPI REQUIRED)
   
   # Set the variables 
   if(MPI_C_FOUND)
@@ -25,12 +25,10 @@ if(ENABLE_MPI)
   endif()
   
   # Set the  build variables
-  include_directories(${MPI_INCLUDE_PATH})
   append_flags(CMAKE_CXX_FLAGS "${MPI_COMPILE_FLAGS}")
   append_flags(CMAKE_EXE_LINKER_FLAGS "${MPI_LINK_FLAGS}")
 #  append_flags(CMAKE_STATIC_LINKER_FLAGS "${MPI_LINK_FLAGS}")
 #  append_flags(CMAKE_SHARED_LINKER_FLAGS "${MPI_LINK_FLAGS}")
-  set(TiledArray_LIBRARIES ${MPI_LIBRARIES} ${TiledArray_LIBRARIES})
   add_definitions(-DOMPI_SKIP_MPICXX=1 -DMPICH_SKIP_MPICXX=1)
   
   # Add compile definitions to disable C++ bindings for OpenMPI and MPICH

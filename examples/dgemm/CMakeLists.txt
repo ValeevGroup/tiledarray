@@ -25,9 +25,6 @@
 # Create the blas, eigen, ta_band, ta_dense, ta_fock_build, ta_asymm_dense and 
 # ta_sparse executable
 
-# Add include directories
-include_directories(${TiledArray_INCLUDE_DIRS})
-
 # Add the blas executable
 add_executable(blas EXCLUDE_FROM_ALL blas.cpp)
 target_link_libraries(blas ${TiledArray_LIBRARIES})
