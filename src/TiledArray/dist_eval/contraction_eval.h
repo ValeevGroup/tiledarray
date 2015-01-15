@@ -360,7 +360,7 @@ namespace TiledArray {
               madness::Future<right_value_type> tile = acc->second;
 
               if(erase_cache)
-                owner_->right_cache_.erase(acc); // Bcast data has arived, so erase cache
+                owner_->right_cache_.erase(acc); // Bcast data has arrived, so erase cache
               else
                 acc.release();
 
