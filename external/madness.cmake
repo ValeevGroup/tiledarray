@@ -16,7 +16,7 @@ if(MADNESS_FOUND)
     find_package(Elemental REQUIRED COMPONENTS pmrrr)
     
     include_directories(${Elemental_INCLUDE_DIRS})
-    list(APPEND TiledArray_LIBRARIES "${Elemental_LIBRARIES}")
+    set(TiledArray_LIBRARIES "${Elemental_LIBRARIES}" ${TiledArray_LIBRARIES})
   endif()
 
   cmake_push_check_state()
