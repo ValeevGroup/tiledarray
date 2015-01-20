@@ -44,8 +44,6 @@ if(MADNESS_FOUND)
   endif()
     
   if(ENABLE_ELEMENTAL)
-  
-    find_package(Elemental COMPONENTS pmrrr;lapack-addons REQUIRED)
     
     # Check to that MADNESS was compiled with Elemental support.
     CHECK_CXX_SOURCE_COMPILES(
