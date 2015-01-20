@@ -152,6 +152,13 @@ include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
 check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
 
+
+##########################
+# Include source dirctories
+##########################
+
+include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
+
 ##########################
 # external dependencies
 ##########################
@@ -169,8 +176,6 @@ endif()
 ##########################
 # sources
 ##########################
-
-include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 
 add_subdirectory(src)
 add_subdirectory(examples)
