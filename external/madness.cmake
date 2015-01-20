@@ -14,6 +14,9 @@ if(MADNESS_FOUND)
   
   if(ENABLE_ELEMENTAL)
     find_package(Elemental REQUIRED COMPONENTS pmrrr)
+    
+    include_directories(${Elemental_INCLUDE_DIRS})
+    list(APPEND TiledArray_LIBRARIES "${Elemental_LIBRARIES}")
   endif()
 
   cmake_push_check_state()
@@ -262,3 +265,7 @@ else()
   set(Madness_LIBRARIES ${MADNESS_BINARY_DIR}/src/madness/world/libMADworld.a)
 
 endif()
+
+include_directories(${Madness_INCLUDE_DIRS})
+set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
+

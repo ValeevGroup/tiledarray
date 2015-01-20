@@ -84,3 +84,5 @@ else()
 
 endif()
 
+# Set the  build variables
+include_directories(${Boost_INCLUDE_DIRS})

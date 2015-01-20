@@ -85,3 +85,6 @@ else()
     )
 
 endif()
+
+# Set the  build variables
+include_directories(${EIGEN_INCLUDE_DIR})

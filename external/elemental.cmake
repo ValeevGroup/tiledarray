@@ -163,3 +163,6 @@ else()
   set(MAD_DEPENDS elemental)
 
 endif()
+
+include_directories(${Elemental_INCLUDE_DIRS})
+set(TiledArray_LIBRARIES "${Elemental_LIBRARIES}" ${TiledArray_LIBRARIES})

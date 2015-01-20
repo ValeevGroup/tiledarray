@@ -166,22 +166,6 @@ if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
 
-
-# Set the  build variables for this project; not to be used by the *users* of TiledArray
-include_directories(${Madness_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
-include_directories(${Elemental_INCLUDE_DIRS})
-  include_directories()
-include_directories( 
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_BINARY_DIR}/src
-    ${MPI_INCLUDE_PATH})
-set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
-
-append_flags(CMAKE_EXE_LINKER_FLAGS "${BLAS_LINKER_FLAGS}")
-append_flags(CMAKE_EXE_LINKER_FLAGS "${LAPACK_LINKER_FLAGS}")
-set(TiledArray_LIBRARIES "${LAPACK_LIBRARIES}" "${BLAS_LIBRARIES}" ${TiledArray_LIBRARIES})
-
-
 ##########################
 # sources
 ##########################
