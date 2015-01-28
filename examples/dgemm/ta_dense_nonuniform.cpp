@@ -53,8 +53,8 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    const std::size_t num_blocks = matrix_size / block_size;
-    const std::size_t block_count = num_blocks * num_blocks;
+    const long num_blocks = matrix_size / block_size;
+    const long block_count = num_blocks * num_blocks;
 
     const double flop = 2.0 * double(matrix_size * matrix_size * matrix_size) / 1.0e9;
 
