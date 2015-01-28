@@ -373,7 +373,7 @@ namespace TiledArray {
       madness::Future<typename ExprTrait<Derived>::scalar_type>
       min(madness::World& world = madness::World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::MinReduction<typename engine_type::eval_type>(), world);
+        return reduce(TiledArray::math::MinReduction<value_type>(), world);
       }
 
       madness::Future<typename ExprTrait<Derived>::scalar_type>
