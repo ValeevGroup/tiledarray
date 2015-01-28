@@ -88,8 +88,8 @@ BOOST_AUTO_TEST_CASE( random_constructor_test )
     // Check that the process grids on other ranks match what was obtained on
     // rank 0.
     ProcessID rank = 0;
-    for(ProcessID rank_row = 0; rank_row < proc_grid0.proc_rows(); ++rank_row) {
-      for(ProcessID rank_col = 0; rank_col < proc_grid0.proc_cols(); ++rank_col, ++rank) {
+    for(std::size_t rank_row = 0; rank_row < proc_grid0.proc_rows(); ++rank_row) {
+      for(std::size_t rank_col = 0; rank_col < proc_grid0.proc_cols(); ++rank_col, ++rank) {
 
         // Skip rank 0
         if(rank == 0)
@@ -110,8 +110,8 @@ BOOST_AUTO_TEST_CASE( random_constructor_test )
         BOOST_CHECK_EQUAL(proc_grid0.proc_size(), proc_grid0.proc_size());
 
         // Check process grid rank
-        BOOST_CHECK_EQUAL(proc_grid.rank_row(), rank_row);
-        BOOST_CHECK_EQUAL(proc_grid.rank_col(), rank_col);
+        BOOST_CHECK_EQUAL(proc_grid.rank_row(), ProcessID(rank_row));
+        BOOST_CHECK_EQUAL(proc_grid.rank_col(), ProcessID(rank_col));
 
         // Accumulate the number of local elements on each node
         local_rows += proc_grid.local_rows();
@@ -173,18 +173,18 @@ BOOST_AUTO_TEST_CASE( make_groups )
   BOOST_CHECK_EQUAL(col_group.size(), proc_grid.proc_rows());
 
   // Check that the groups contain the correct processes.
-  ProcessID rank = 0;
-  for(ProcessID rank_row = 0; rank_row < proc_grid.proc_rows(); ++rank_row) {
-    for(ProcessID rank_col = 0; rank_col < proc_grid.proc_cols(); ++rank_col, ++rank) {
+  std::size_t rank = 0;
+  for(std::size_t rank_row = 0; rank_row < proc_grid.proc_rows(); ++rank_row) {
+    for(std::size_t rank_col = 0; rank_col < proc_grid.proc_cols(); ++rank_col, ++rank) {
       // Check that the row group includes ranks in this this processes
-      if(rank_row == proc_grid.rank_row()) {
+      if(ProcessID(rank_row) == proc_grid.rank_row()) {
         BOOST_CHECK_NE(row_group.rank(rank), -1);
       } else {
         BOOST_CHECK_EQUAL(row_group.rank(rank), -1);
       }
 
       // Check that the column group includes the correct ranks
-      if(rank_col == proc_grid.rank_col()) {
+      if(ProcessID(rank_col) == proc_grid.rank_col()) {
         BOOST_CHECK_NE(col_group.rank(rank), -1);
       } else {
         BOOST_CHECK_EQUAL(col_group.rank(rank), -1);

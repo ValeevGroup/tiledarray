@@ -540,8 +540,8 @@ BOOST_AUTO_TEST_CASE( left_shift_assign )
     temp <<= shift;
 
     // Check that the head is filled with zeros
-    int i = 0;
-    int j = 0;
+    std::size_t i = 0;
+    std::size_t j = 0;
     while((i < shift) && (i < size)) {
       BOOST_CHECK(temp[i] == 0ul);
       if(temp[i])
@@ -573,8 +573,8 @@ BOOST_AUTO_TEST_CASE( left_shift )
     Bitset temp = set << shift;
 
     // Check that the head is filled with zeros
-    int i = 0;
-    int j = 0;
+    std::size_t i = 0;
+    std::size_t j = 0;
     while((i < shift) && (i < size)) {
       BOOST_CHECK(temp[i] == 0ul);
       if(temp[i])
@@ -607,8 +607,8 @@ BOOST_AUTO_TEST_CASE( right_shift_assign )
     temp >>= shift;
 
     // Check that the data has been shifted correctly
-    int i = 0;
-    int j = shift;
+    std::size_t i = 0;
+    std::size_t j = shift;
     while((i < (size - shift)) && (j < size)) {
       BOOST_CHECK(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul)));
       if(!(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul))))
@@ -640,8 +640,8 @@ BOOST_AUTO_TEST_CASE( right_shift )
     Bitset temp = set >> shift;
 
     // Check that the data has been shifted correctly
-    int i = 0;
-    int j = shift;
+    std::size_t i = 0;
+    std::size_t j = shift;
     while((i < (size - shift)) && (j < size)) {
       BOOST_CHECK(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul)));
       if(!(((temp[i] != 0ul) && (set[j] != 0ul)) || ((temp[i] == 0ul) && (set[j] == 0ul))))

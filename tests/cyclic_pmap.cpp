@@ -38,8 +38,8 @@ BOOST_FIXTURE_TEST_SUITE( cyclic_pmap_suite, CyclicPmapFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  for(std::size_t x = 1ul; x <= GlobalFixture::world->size(); ++x) {
-    for(std::size_t y = 1ul; y <= GlobalFixture::world->size(); ++y) {
+  for(ProcessID x = 1ul; x <= GlobalFixture::world->size(); ++x) {
+    for(ProcessID y = 1ul; y <= GlobalFixture::world->size(); ++y) {
 
       // Compute the limits for process rows
       const std::size_t min_proc_rows =
