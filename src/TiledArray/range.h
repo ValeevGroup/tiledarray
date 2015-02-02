@@ -53,9 +53,9 @@ namespace TiledArray {
   public:
     typedef Range Range_; ///< This object type
     typedef std::size_t size_type; ///< Size type
-    typedef std::vector<std::size_t> index; ///< Coordinate index type
+    typedef std::vector<size_type> index; ///< Coordinate index type
     typedef index index_type; ///< Coordinate index type, to conform Tensor Working Group spec
-    typedef detail::SizeArray<std::size_t> size_array; ///< Size array type
+    typedef detail::SizeArray<size_type> size_array; ///< Size array type
     typedef index extent_type;    ///< Range extent type, to conform Tensor Working Group spec
     typedef std::size_t ordinal_type; ///< Ordinal type, to conform Tensor Working Group spec
     typedef detail::RangeIterator<index, Range_> const_iterator; ///< Coordinate iterator
@@ -505,14 +505,27 @@ namespace TiledArray {
       // Check that index is contained by range.
       TA_ASSERT(includes(index));
 
+      const unsigned int end = dim();
+
       // Construct result coordinate index object and allocate its memory.
-      Range_::index result;
-      result.reserve(dim());
+      Range_::index result(end, 0);
+
+      // Get pointers to the data
+      size_type restrict * const result_data = & result.front();
+      size_type restrict const * const weight = weight_.data();
+      size_type restrict const * const start = start_.data();
 
       // Compute the coordinate index of o in range.
-      for(std::size_t i = 0ul; i < dim(); ++i) {
-        result.push_back((index / weight_[i]) + start_[i]);
-        index %= weight_[i];
+      for(unsigned int i = 0u; i < end; ++i) {
+        const size_type weight_i = weight[i];
+        const size_type start_i = start[i];
+
+        // Compute result index element i
+        const size_type result_i = (index / weight_i) + start_i;
+        index %= weight_i;
+
+        // Store result
+        result_data[i] = result_i;
       }
 
       return result;
