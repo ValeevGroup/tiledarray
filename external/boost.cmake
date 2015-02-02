@@ -50,8 +50,8 @@ else()
   else()
     # Downlaod remote file
     set(BOOST_URL
-        http://downloads.sourceforge.net/project/boost/boost/1.54.0/boost_1_54_0.tar.gz)
-    set(BOOST_URL_HASH MD5=efbfbff5a85a9330951f243d0a46e4b9)
+        http://downloads.sourceforge.net/project/boost/boost/1.57.0/boost_1_57_0.tar.gz)
+    set(BOOST_URL_HASH MD5=25f9a8ac28beeb5ab84aa98510305299)
   endif()
 
   message("** Will build Boost from ${BOOST_URL}")
@@ -84,3 +84,5 @@ else()
 
 endif()
 
+# Set the  build variables
+include_directories(${Boost_INCLUDE_DIRS})

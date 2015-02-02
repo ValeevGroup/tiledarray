@@ -62,3 +62,8 @@ else()
   find_package(LAPACK REQUIRED)
 endif()
 
+# Set the  build variables
+append_flags(CMAKE_EXE_LINKER_FLAGS "${BLAS_LINKER_FLAGS}")
+append_flags(CMAKE_EXE_LINKER_FLAGS "${LAPACK_LINKER_FLAGS}")
+set(TiledArray_LIBRARIES "${LAPACK_LIBRARIES}" "${BLAS_LIBRARIES}" ${TiledArray_LIBRARIES})
+

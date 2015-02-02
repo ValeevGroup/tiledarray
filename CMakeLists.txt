@@ -34,8 +34,8 @@ option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
 # Set TiledArray version
-set(TILEDARRAY_MAJOR_VERSION 1)
-set(TILEDARRAY_MINOR_VERSION 0)
+set(TILEDARRAY_MAJOR_VERSION 0)
+set(TILEDARRAY_MINOR_VERSION 3)
 set(TILEDARRAY_MICRO_VERSION 0)
 set(TILEDARRAY_BUILDID alpha)
 set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
@@ -152,6 +152,13 @@ include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
 check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
 
+
+##########################
+# Include source dirctories
+##########################
+
+include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
+
 ##########################
 # external dependencies
 ##########################
@@ -166,27 +173,9 @@ if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
 
-
-# Set the  build variables for this project; not to be used by the *users* of TiledArray
-include_directories(${Madness_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
-include_directories(${Elemental_INCLUDE_DIRS})
-  include_directories()
-include_directories( 
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_BINARY_DIR}/src
-    ${MPI_INCLUDE_PATH})
-set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
-
-append_flags(CMAKE_EXE_LINKER_FLAGS "${BLAS_LINKER_FLAGS}")
-append_flags(CMAKE_EXE_LINKER_FLAGS "${LAPACK_LINKER_FLAGS}")
-set(TiledArray_LIBRARIES "${LAPACK_LIBRARIES}" "${BLAS_LIBRARIES}" ${TiledArray_LIBRARIES})
-
-
 ##########################
 # sources
 ##########################
-
-include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 
 add_subdirectory(src)
 add_subdirectory(examples)

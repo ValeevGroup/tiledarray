@@ -77,7 +77,7 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
   template <typename M, typename A>
   static void rand_fill_matrix_and_array(M& matrix, A& array, int seed = 42) {
-    TA_ASSERT(matrix.size() == array.trange().elements().volume());
+    TA_ASSERT(std::size_t(matrix.size()) == array.trange().elements().volume());
     matrix.fill(0);
 
     GlobalFixture::world->srand(seed);

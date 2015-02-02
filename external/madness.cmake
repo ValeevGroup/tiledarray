@@ -14,6 +14,9 @@ if(MADNESS_FOUND)
   
   if(ENABLE_ELEMENTAL)
     find_package(Elemental REQUIRED COMPONENTS pmrrr)
+    
+    include_directories(${Elemental_INCLUDE_DIRS})
+    set(TiledArray_LIBRARIES "${Elemental_LIBRARIES}" ${TiledArray_LIBRARIES})
   endif()
 
   cmake_push_check_state()
@@ -41,8 +44,6 @@ if(MADNESS_FOUND)
   endif()
     
   if(ENABLE_ELEMENTAL)
-  
-    find_package(Elemental COMPONENTS pmrrr;lapack-addons REQUIRED)
     
     # Check to that MADNESS was compiled with Elemental support.
     CHECK_CXX_SOURCE_COMPILES(
@@ -262,3 +263,7 @@ else()
   set(Madness_LIBRARIES ${MADNESS_BINARY_DIR}/src/madness/world/libMADworld.a)
 
 endif()
+
+include_directories(${Madness_INCLUDE_DIRS})
+set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
+
