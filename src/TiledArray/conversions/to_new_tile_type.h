@@ -7,15 +7,20 @@
 namespace TiledArray {
 namespace conversion {
 
+namespace detail {
+template <typename T>
+using result_of_t = typename std::result_of<T>::type;
+}
+
 /// Function to convert an array to a new array with a different tile type.
 
-template <
-    typename T, unsigned int DIM, typename Tile, typename Policy, typename Fn,
-    typename std::enable_if<!std::is_same<Tile, typename Fn::TileType>::value,
-                            Tile>::type * = nullptr>
-Array<T, DIM, typename std::result_of<Fn(Tile)>::type, Policy> to_new_tile_type(
+template <typename T, unsigned int DIM, typename Tile, typename Policy,
+          typename Fn,
+          typename std::enable_if<!std::is_same<Tile, detail::result_of_t<Fn(Tile)>>::value,
+                                  Tile>::type * = nullptr>
+Array<T, DIM, detail::result_of_t<Fn(Tile>>, Policy> to_new_tile_type(
     Array<T, DIM, Tile, Policy> const &old_array, Fn converting_function) {
-    using TileType = typename std::result_of<Fn(Tile)>::type;
+    using TileType = detail::result_of_t<Fn(Tile)>;
 
     auto new_array = Array<T, DIM, TileType, Policy>{
         old_array.get_world(), old_array.trange(), old_array.get_shape()};
