@@ -156,7 +156,6 @@ check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
 ##########################
 # Include source dirctories
 ##########################
-
 include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 
 ##########################
@@ -216,6 +215,16 @@ if(USING_QT_CREATOR_AS_IDE)
 endif(USING_QT_CREATOR_AS_IDE)
 
 ##########################
+# pkg-config variables
+##########################
+foreach(_inc ${TiledArray_CONFIG_INCLUDE_DIRS})
+  append_flags(TiledArray_PC_CFLAGS "-I${_inc}")
+endforeach()
+foreach(_lib ${TiledArray_CONFIG_LIBRARIES})
+  append_flags(TiledArray_PC_LIBS "${_lib}")
+endforeach()
+
+##########################
 # wrap up
 ##########################
 CONFIGURE_FILE(
@@ -223,16 +232,22 @@ CONFIGURE_FILE(
   ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
 )
 
-foreach(_lib ${TiledArray_LIBRARIES})
-  append_flags(TiledArray_LIBRARIES_DEMANGLED "${_lib}")
-endforeach()
-foreach(_path ${TiledArray_INCLUDE_DIRS})
-  append_flags(TiledArray_INCLUDE_DIRS_DEMANGLED "-I${_path}")
-endforeach()
 CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/tiledarray.pc.in
   ${PROJECT_BINARY_DIR}/tiledarray.pc
 )
+
+CONFIGURE_FILE(
+  ${PROJECT_SOURCE_DIR}/tiledarray-config.cmake.in
+  ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
+  @ONLY)
+
+# install config files
+install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+install(FILES ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/CMake/TiledArray)
+
 
 # Add target to allow on-the-fly switching of build type
 

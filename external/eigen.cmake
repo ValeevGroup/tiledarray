@@ -29,6 +29,8 @@ if (EIGEN_FOUND)
   if (NOT EIGEN_COMPILES)
     message(FATAL_ERROR "Eigen found at ${Eigen_INCLUDE_DIR}, but failed to compile test program")
   endif()
+
+  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${EIGEN_INCLUDE_DIR})
   
 elseif(TA_EXPERT)
 
