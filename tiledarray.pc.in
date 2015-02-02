@@ -1,5 +1,5 @@
 Name: tiledarray
-Description: a modern C++ library for block-sparse tensor computing
+Description: A modern C++ library for block-sparse tensor computation
 Version: @TILEDARRAY_VERSION@
-Libs: @TiledArray_LIBRARIES_DEMANGLED@ @CMAKE_LINKER_FLAGS@
-Cflags: @TiledArray_INCLUDE_DIRS_DEMANGLED@ @CMAKE_REQUIRED_FLAGS@ @CMAKE_CXX_FLAGS@
+Cflags: -I@CMAKE_INSTALL_PREFIX@/include @CMAKE_CXX_FLAGS@ @TiledArray_PC_CFLAGS@
+Libs: -L@CMAKE_INSTALL_PREFIX@/lib @CMAKE_EXE_LINKER_FLAGS@  @TiledArray_PC_LIBS@

@@ -48,6 +48,10 @@ if(Elemental_FOUND)
 
   set(TILEDARRAY_HAS_ELEMENTAL ${ELEMENTAL_COMPILES})
   
+  # Set config variables
+  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${Elemental_INCLUDE_DIRS})
+  set(TiledArray_CONFIG_LIBRARIES ${Elemental_LIBRARIES} ${TiledArray_CONFIG_LIBRARIES})
+  
 elseif(TA_EXPERT)
 
   message("** Elemetal was not found or explicitly set")
@@ -58,7 +62,7 @@ else()
   if(NOT DEFINED Elemental_URL)
     set(Elemental_URL https://github.com/elemental/Elemental.git)
   endif()
-  message(STATUS "Will pull Elemental from ${ELEMENTAL_URL}")
+  message(STATUS "Will pull Elemental from ${Elemental_URL}")
   
   set(ELEMENTAL_CFLAGS "${CMAKE_CPP_FLAGS}")
   append_flags(ELEMENTAL_CFLAGS "${CMAKE_C_FLAGS}")
@@ -82,8 +86,8 @@ else()
   
   
   # LAPACK
-  set(ELEMENTAL_MATH_LIBS "${LAPACK_LINKER_FLAGS}")
-  foreach(_lib ${LAPACK_LIBRARIES})
+  append_flags(ELEMENTAL_MATH_LIBS "${LAPACK_LINKER_FLAGS} ${BLAS_LINKER_FLAGS}")
+  foreach(_lib ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
     list(APPEND ELEMENTAL_MATH_LIBS ${_lib})
   endforeach()
   
@@ -114,8 +118,6 @@ else()
         -DCXX_FLAGS=${ELEMENTAL_CXXFLAGS}
         -DMATH_LIBS=${ELEMENTAL_MATH_LIBS}
         -DCMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}
-        -DCMAKE_STATIC_LINKER_FLAGS=${CMAKE_STATIC_LINKER_FLAGS}
-        -DCMAKE_SHARED_LINKER_FLAGS=${CMAKE_SHARED_LINKER_FLAGS}
     CMAKE_GENERATOR "Unix Makefiles"
    #--Build step-----------------
     BINARY_DIR ${ELEMENTAL_BINARY_DIR}
@@ -158,9 +160,18 @@ else()
   
   # Set the build variables
   set(Elemental_INCLUDE_DIRS "${ELEMENTAL_BINARY_DIR}/include")
-  set(Elemental_LIBRARIES "${ELEMENTAL_BINARY_DIR}/libelemental.a" "${ELEMENTAL_BINARY_DIR}/external/pmrrr/libpmrrr.a")
+  set(Elemental_LIBRARIES 
+      "${ELEMENTAL_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}elemental${CMAKE_STATIC_LIBRARY_SUFFIX}"
+      "${ELEMENTAL_BINARY_DIR}/external/pmrrr/${CMAKE_STATIC_LIBRARY_PREFIX}pmrrr${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(TILEDARRAY_HAS_ELEMENTAL 1)
   set(MAD_DEPENDS elemental)
+  
+  
+  # Set config variables
+  set(TiledArray_CONFIG_LIBRARIES 
+      "${CMAKE_INSTALL_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}elemental${CMAKE_STATIC_LIBRARY_SUFFIX}"
+      "${CMAKE_INSTALL_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}pmrrr${CMAKE_STATIC_LIBRARY_SUFFIX}"
+      ${TiledArray_CONFIG_LIBRARIES})
 
 endif()
 

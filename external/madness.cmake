@@ -8,25 +8,42 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(Madness COMPONENTS MADworld MADlinalg)
+find_package(Madness CONFIG COMPONENTS MADworld MADlinalg)
 
 if(MADNESS_FOUND)
   
   if(ENABLE_ELEMENTAL)
     find_package(Elemental REQUIRED COMPONENTS pmrrr)
     
+    # Set config variables
     include_directories(${Elemental_INCLUDE_DIRS})
-    set(TiledArray_LIBRARIES "${Elemental_LIBRARIES}" ${TiledArray_LIBRARIES})
+    set(TiledArray_LIBRARIES ${Elemental_LIBRARIES} ${TiledArray_LIBRARIES})
+    list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${Elemental_INCLUDE_DIRS})
+    set(TiledArray_CONFIG_LIBRARIES ${Elemental_LIBRARIES} ${TiledArray_CONFIG_LIBRARIES})
+    
+    # Check to that MADNESS was compiled with Elemental support.
+    CHECK_CXX_SOURCE_COMPILES(
+        "
+        #include <madness/madness_config.h>
+        #ifndef MADNESS_HAS_ELEMENTAL
+        # error MADNESS does not have Elemental
+        #endif
+        int main(int, char**) { return 0; }
+        "  MADNESS_HAS_ELEMENTAL_SUPPORT)
+        
+    if(NOT MADNESS_HAS_ELEMENTAL_SUPPORT)
+      message(FATAL_ERROR "MADNESS does not include Elemental support.")
+    endif() 
+    
+    set(TILEDARRAY_HAS_ELEMENTAL ${MADNESS_HAS_ELEMENTAL_SUPPORT})
   endif()
 
   cmake_push_check_state()
   
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${Madness_INCLUDE_DIRS} 
-      ${Elemental_INCLUDE_DIRS} ${MPI_INCLUDE_PATH})
-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${Madness_LIBRARIES} ${Elemental_LIBRARIES}
-      ${LAPACK_LINKER_FLAGS} ${BLAS_LINKER_FLAGS} ${MPI_LINK_FLAGS}
-      ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} ${MPI_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${MPI_COMPILE_FLAGS}")
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${Madness_INCLUDE_DIRS} ${TiledArray_CONFIG_INCLUDE_DIRS})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES "${Madness_LINKER_FLAGS}" ${Madness_LIBRARIES}
+      "${CMAKE_EXE_LINKER_FLAGS}" ${TiledArray_CONFIG_LIBRARIES})
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${Madness_COMPILE_FLAGS} ${CMAKE_CXX_FLAGS}")
 
   # sanity check: try compiling a simple program
   CHECK_CXX_SOURCE_COMPILES(
@@ -45,26 +62,15 @@ if(MADNESS_FOUND)
     
   if(ENABLE_ELEMENTAL)
     
-    # Check to that MADNESS was compiled with Elemental support.
-    CHECK_CXX_SOURCE_COMPILES(
-        "
-        #include <madness/madness_config.h>
-        #ifndef MADNESS_HAS_ELEMENTAL
-        # error MADNESS does not have Elemental
-        #endif
-        int main(int argc, char** argv) {
-          return 0;
-        }
-        "  MADNESS_HAS_ELEMENTAL_SUPPORT)
-        
-    if(NOT MADNESS_HAS_ELEMENTAL_SUPPORT)
-      message(FATAL_ERROR "MADNESS does not include Elemental support.")
-    endif() 
-    
-    set(TILEDARRAY_HAS_ELEMENTAL ${MADNESS_HAS_ELEMENTAL_SUPPORT})
   endif()
 
   cmake_pop_check_state()
+
+  # Set config variables
+  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${Madness_INCLUDE_DIRS})
+  set(TiledArray_CONFIG_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_CONFIG_LIBRARIES})
+  set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
+
   
 elseif(TA_EXPERT)
 
@@ -77,13 +83,9 @@ else()
     set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
   endif()
   if(NOT DEFINED Madness_TAG)
-    set(Madness_TAG "af8954201fda236d0601a92f5d5b6a860ccdf6d4")
+    set(Madness_TAG "c0bbe0a44e655ecc4fde77722d6f5e80721819a0")
   endif()
-  message(STATUS "Will pull MADNESS from ${Madness_URL}")  
-  
-  if(ENABLE_ELEMENTAL)
-    include(external/elemental.cmake)
-  endif()
+  message(STATUS "Will pull MADNESS from ${Madness_URL}")
   
   # Setup configure variables
   
@@ -92,7 +94,7 @@ else()
   set(MAD_CFLAGS "${CMAKE_C_FLAGS}")
   set(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS}")
   set(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-  
+
   if(CMAKE_BUILD_TYPE STREQUAL Debug)
     append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_DEBUG}")
     append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_DEBUG}")
@@ -113,6 +115,8 @@ else()
   
   # Set compile flags required for Elemental
   if(ENABLE_ELEMENTAL)
+    include(external/elemental.cmake)
+    
     foreach(_inc_dir ${Elemental_INCLUDE_DIRS})
       append_flags(MAD_CPPFLAGS "-I${_inc_dir}")
     endforeach()
@@ -140,16 +144,13 @@ else()
     set(MAD_STUB_MPI "yes")
   endif()
   
-  # Set compile flags required for LAPACK
+  # Set compile flags required for LAPACK, BLAS, and Pthreads
   append_flags(MAD_LDFLAGS "${LAPACK_LINKER_FLAGS}")
-  foreach(_lib ${LAPACK_LIBRARIES})
+  append_flags(MAD_LDFLAGS "${BLAS_LINKER_FLAGS}")
+  foreach(_lib ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
     append_flags(MAD_LIBS "${_lib}")
   endforeach()
-  
-  # Set compile flags required for Pthreads
-  foreach(_lib ${CMAKE_THREAD_LIBS_INIT})
-    append_flags(MAD_LIBS "${_lib}")
-  endforeach()
+  append_flags(MAD_LIBS "${CMAKE_THREAD_LIBS_INIT}")
   
   # Set the configuration flags for MADNESS
   
@@ -253,17 +254,22 @@ else()
   # Set build dependencies and compiler arguments
   add_dependencies(External madness)
 
-  # MadnessFind will set Madness_INCLUDE_DIRS and Madness_LIBRARIES with the
-  # dependencies. So all that needs to be done here is set Madness_INCLUDE_DIR,
-  # Madness_INCLUDE_DIRS, Madness_LIBRARY, and Madness_LIBRARIES with the paths
-  # and libraries for the built version of MADNESS above.
-  set(Madness_INCLUDE_DIRS
-      ${MADNESS_BINARY_DIR}/src
-      ${MADNESS_SOURCE_DIR}/src)
-  set(Madness_LIBRARIES ${MADNESS_BINARY_DIR}/src/madness/world/libMADworld.a)
+  # Set config variables 
+  if(NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
+    # Building on OS X 10.7 or later, so add "-Wl,-no_pie" linker flags.
+    set(Madness_LINKER_FLAGS "-Wl,-no_pie")
+  endif()
+  set(Madness_INCLUDE_DIRS ${MADNESS_BINARY_DIR}/src ${MADNESS_SOURCE_DIR}/src)
+  set(Madness_LIBRARIES 
+      ${MADNESS_BINARY_DIR}/src/madness/world/${CMAKE_STATIC_LIBRARY_PREFIX}MADworld${CMAKE_STATIC_LIBRARY_SUFFIX})
+  set(TiledArray_CONFIG_LIBRARIES 
+      "${CMAKE_INSTALL_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}MADworld${CMAKE_STATIC_LIBRARY_SUFFIX}"
+      ${TiledArray_CONFIG_LIBRARIES})
 
 endif()
 
 include_directories(${Madness_INCLUDE_DIRS})
 set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
+append_flags(CMAKE_CXX_FLAGS "${Madness_COMPILE_FLAGS}")
+append_flags(CMAKE_EXE_LINKER_FLAGS "${Madness_LINKER_FLAGS}")
 

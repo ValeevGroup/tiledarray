@@ -22,7 +22,7 @@
 
 #include <vector>
 #include <iosfwd>
-#include <madness/world/stdarray.h>
+#include <array>
 #include <tiledarray.h>
 
 /// Spin enum type

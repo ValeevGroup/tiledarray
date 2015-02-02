@@ -1,0 +1,22 @@
+# - CMAKE Config file for the TiledArray package
+# The following variables are defined:
+#  TiledArray_INCLUDE_DIRS         - The TiledArray include directory
+#  TiledArray_LIBRARIES            - The TiledArray libraries and their dependencies
+#  TiledArray_COMPILE_FLAGS        - Compile flags required to build with TiledArray
+#  TiledArray_LINKER_FLAGS         - Linker flags required to link with TiledArray
+#  TiledArray_VERSION              - TiledArray version number
+
+# Compute paths
+get_filename_component(TiledArray_CONFIG_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(TiledArray_DIR "${TiledArray_CONFIG_DIR}/../../.." ABSOLUTE)
+set(TiledArray_INCLUDE_DIRS ${TiledArray_DIR}/include)
+
+# Set package version
+set(TiledArray_VERSION "@TILEDARRAY_VERSION@")
+
+# Set compile and link flags, and remove optimization and debug flags
+set(TiledArray_COMPILE_FLAGS "@CMAKE_CXX_FLAGS@")
+set(TiledArray_LINKER_FLAGS "@CMAKE_EXE_LINKER_FLAGS@")
+list(APPEND TiledArray_INCLUDE_DIRS @TiledArray_CONFIG_INCLUDE_DIRS@)
+set(TiledArray_LIBRARIES @TiledArray_CONFIG_LIBRARIES@)
+

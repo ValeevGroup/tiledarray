@@ -23,7 +23,7 @@
 #include <TiledArray/config.h>
 #include <iterator>
 #include <madness/world/enable_if.h>
-#include <madness/world/typestuff.h>
+#include <madness/world/type_traits.h>
 #include <complex>
 
 namespace Eigen {
