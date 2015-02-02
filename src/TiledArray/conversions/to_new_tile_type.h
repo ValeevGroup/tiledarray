@@ -18,7 +18,7 @@ template <typename T, unsigned int DIM, typename Tile, typename Policy,
           typename Fn,
           typename std::enable_if<!std::is_same<Tile, detail::result_of_t<Fn(Tile)>>::value,
                                   Tile>::type * = nullptr>
-Array<T, DIM, detail::result_of_t<Fn(Tile>>, Policy> to_new_tile_type(
+Array<T, DIM, detail::result_of_t<Fn(Tile)>, Policy> to_new_tile_type(
     Array<T, DIM, Tile, Policy> const &old_array, Fn converting_function) {
     using TileType = detail::result_of_t<Fn(Tile)>;
 
