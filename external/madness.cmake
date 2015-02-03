@@ -128,6 +128,15 @@ else()
     set(MAD_ELEMENTAL_FLAG "no")
   endif()
   
+    # Set compile flags required for Elemental
+  if(ENABLE_TBB)
+    message(FATAL_ERROR "MADNESSS with TBB is not implemented")
+    set(MAD_TBB_FLAG "yes")
+  else()
+    set(MAD_TBB_FLAG "no")
+  endif()
+  
+  
   # Set compile flags required for MPI
   if(ENABLE_MPI)
     foreach(_inc_dir ${MPI_INCLUDE_PATH})
@@ -200,6 +209,7 @@ else()
       --with-fortran-int32=${MAD_F77_INT32}
       --with-stubmpi=${MAD_STUB_MPI}
       --with-elemental=${MAD_ELEMENTAL_FLAG}
+      --with-tbb=${MAD_TBB_FLAG}
       --without-mkl
       ${MAD_EXTRA_CONFIGURE_FLAGS}
       MPICXX=${CMAKE_CXX_COMPILER}
