@@ -70,7 +70,7 @@ namespace TiledArray {
       TiledArray::Tensor<float> tile_norms(array.trange().tiles(), 0.0f);
 
       // Construct the new tile norms and
-      madness::AtomicInt counter;
+      madness::AtomicInt counter; counter = 0;
       int task_count = 0;
       auto task = [&](const size_type index, const value_type& tile) {
         tile_norms[index] = tile.norm();
