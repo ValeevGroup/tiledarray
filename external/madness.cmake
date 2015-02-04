@@ -83,7 +83,7 @@ else()
     set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
   endif()
   if(NOT DEFINED Madness_TAG)
-    set(Madness_TAG "c0bbe0a44e655ecc4fde77722d6f5e80721819a0")
+    set(Madness_TAG "8e220d0c46741673ece3d03381942ab99b4ef19d")
   endif()
   message(STATUS "Will pull MADNESS from ${Madness_URL}")
   
@@ -127,6 +127,15 @@ else()
   else()
     set(MAD_ELEMENTAL_FLAG "no")
   endif()
+  
+    # Set compile flags required for Elemental
+  if(ENABLE_TBB)
+    message(FATAL_ERROR "MADNESSS with TBB is not implemented")
+    set(MAD_TBB_FLAG "yes")
+  else()
+    set(MAD_TBB_FLAG "no")
+  endif()
+  
   
   # Set compile flags required for MPI
   if(ENABLE_MPI)
@@ -200,6 +209,7 @@ else()
       --with-fortran-int32=${MAD_F77_INT32}
       --with-stubmpi=${MAD_STUB_MPI}
       --with-elemental=${MAD_ELEMENTAL_FLAG}
+      --with-tbb=${MAD_TBB_FLAG}
       --without-mkl
       ${MAD_EXTRA_CONFIGURE_FLAGS}
       MPICXX=${CMAKE_CXX_COMPILER}
