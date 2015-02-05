@@ -22,50 +22,17 @@
 #  Sep 4, 2013
 #
 
-# Create the blas, eigen, ta_band, ta_dense, ta_fock_build, ta_asymm_dense and 
-# ta_sparse executable
+# Create example executable
 
-# Add the blas executable
-add_executable(blas EXCLUDE_FROM_ALL blas.cpp)
-target_link_libraries(blas ${TiledArray_LIBRARIES})
-add_dependencies(blas External)
-add_dependencies(example blas)
+foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform ta_asymm_dense ta_sparse_grow)
 
-# Add the eigen executable
-add_executable(eigen EXCLUDE_FROM_ALL eigen.cpp)
-target_link_libraries(eigen ${TiledArray_LIBRARIES})
-add_dependencies(eigen External)
-add_dependencies(example eigen)
+  # Add executable
+  add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
+  target_link_libraries(${_exec} ${TiledArray_LIBRARIES})
+  add_dependencies(${_exec} External)
+  add_dependencies(example ${_exec})
 
-# Add the blas executable
-add_executable(ta_band EXCLUDE_FROM_ALL ta_band.cpp)
-target_link_libraries(ta_band ${TiledArray_LIBRARIES})
-add_dependencies(ta_band External)
-add_dependencies(example ta_band)
-
-# Add the ta_dense executable
-add_executable(ta_dense EXCLUDE_FROM_ALL ta_dense.cpp)
-target_link_libraries(ta_dense ${TiledArray_LIBRARIES})
-add_dependencies(ta_dense External)
-add_dependencies(example ta_dense)
-
-# Add the ta_dense_nonuniform executable
-add_executable(ta_dense_nonuniform EXCLUDE_FROM_ALL ta_dense_nonuniform.cpp)
-target_link_libraries(ta_dense_nonuniform ${TiledArray_LIBRARIES})
-add_dependencies(ta_dense_nonuniform External)
-add_dependencies(example ta_dense_nonuniform)
-
-# Add the ta_asymm_dense executable
-add_executable(ta_asymm_dense EXCLUDE_FROM_ALL ta_asymm_dense.cpp)
-target_link_libraries(ta_asymm_dense ${TiledArray_LIBRARIES})
-add_dependencies(ta_asymm_dense External)
-add_dependencies(example ta_asymm_dense)
-
-# Add the ta_sparse executable
-add_executable(ta_sparse EXCLUDE_FROM_ALL ta_sparse.cpp)
-target_link_libraries(ta_sparse ${TiledArray_LIBRARIES})
-add_dependencies(ta_sparse External)
-add_dependencies(example ta_sparse)
+endforeach()
 
 if(ENABLE_ELEMENTAL)
     # Add the ta_elem_dense executable
