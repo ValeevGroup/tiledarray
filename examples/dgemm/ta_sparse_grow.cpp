@@ -85,8 +85,9 @@ int main(int argc, char** argv) {
       const long sparse_matrix_size = sparse_num_blocks * block_size;
       const long sparse_block_count = sparse_fraction * double(sparse_num_blocks * sparse_num_blocks);
 
-      std::cout << "\nSparsity = " << sparsity << "%"
-          << "\nMatrix size = " << sparse_matrix_size << "x" << sparse_matrix_size << "\n";
+      if(world.rank() == 0)
+        std::cout << "\nSparsity = " << sparsity << "%"
+            << "\nMatrix size = " << sparse_matrix_size << "x" << sparse_matrix_size << "\n";
 
       // Construct TiledRange
       std::vector<unsigned int> blocking;
