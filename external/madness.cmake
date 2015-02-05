@@ -253,7 +253,7 @@ else()
   add_dependencies(External madness)
 
   # Set config variables 
-  if(NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
     # Building on OS X 10.7 or later, so add "-Wl,-no_pie" linker flags.
     set(Madness_LINKER_FLAGS "-Wl,-no_pie")
   endif()
