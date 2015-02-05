@@ -6,7 +6,7 @@
 
 include(ExternalProject)
 
-find_package(Elemental COMPONENTS pmrrr;lapack-addons)
+find_package(Elemental QUIET COMPONENTS pmrrr;lapack-addons)
 
 if(Elemental_FOUND)
   
