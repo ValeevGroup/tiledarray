@@ -23,10 +23,7 @@
  *
  */
 
-
-
 #include <iostream>
-#include <time.h> // for time
 #include <tiledarray.h>
 #include <iomanip>
 
@@ -180,7 +177,6 @@ int main(int argc, char** argv) {
                     << "Average speed          = " << speeds.back() << " GFLOPS\n"
                     << "Average apparent speed = " << app_speeds.back() << " GFLOPS\n";
       }
-
     }
 
     // Print out comma separated list of all results
