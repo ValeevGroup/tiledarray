@@ -511,9 +511,9 @@ namespace TiledArray {
       Range_::index result(end, 0);
 
       // Get pointers to the data
-      size_type restrict * const result_data = & result.front();
-      size_type restrict const * const weight = weight_.data();
-      size_type restrict const * const start = start_.data();
+      size_type* restrict const result_data = & result.front();
+      size_type const * restrict const weight = weight_.data();
+      size_type const * restrict const start = start_.data();
 
       // Compute the coordinate index of o in range.
       for(unsigned int i = 0u; i < end; ++i) {
