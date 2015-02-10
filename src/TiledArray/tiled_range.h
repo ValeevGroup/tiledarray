@@ -26,25 +26,10 @@ namespace TiledArray {
 
   /// Range data of an N-dimensional, tiled tensor.
   class TiledRange {
-  public:
-    // typedefs
-    typedef TiledRange TiledRange_;
-    typedef Range range_type;
-    typedef Range tile_range_type;
-    typedef std::size_t size_type;
-    typedef range_type::index index;
-    typedef range_type::size_array size_array;
-    typedef std::vector<TiledRange1> Ranges;
-
-    /// Default constructor
-    TiledRange() : range_(), element_range_(), ranges_() { }
+  private:
 
     /// Constructed with a set of ranges pointed to by [ first, last ).
-    template <typename InIter>
-    TiledRange(InIter first, InIter last) :
-      ranges_(first, last)
-    {
-      TA_STATIC_ASSERT(detail::is_input_iterator<InIter>::value);
+    void init() {
       const std::size_t dim = ranges_.size();
 
       // Indices used to store range start and finish.
@@ -68,6 +53,35 @@ namespace TiledArray {
       }
       range_type(start, finish).swap(range_);
       tile_range_type(start_element, finish_element).swap(element_range_);
+    }
+
+  public:
+    // typedefs
+    typedef TiledRange TiledRange_;
+    typedef Range range_type;
+    typedef Range tile_range_type;
+    typedef std::size_t size_type;
+    typedef range_type::index index;
+    typedef range_type::size_array size_array;
+    typedef std::vector<TiledRange1> Ranges;
+
+    /// Default constructor
+    TiledRange() : range_(), element_range_(), ranges_() { }
+
+    /// Constructed with a set of ranges pointed to by [ first, last ).
+    template <typename InIter>
+    TiledRange(InIter first, InIter last) :
+      range_(), element_range_(), ranges_(first, last)
+    {
+      init();
+    }
+
+    /// Constructed with a set of ranges pointed to by [ first, last ).
+    template <typename T>
+    TiledRange(const std::initializer_list<std::initializer_list<T> >& list) :
+      range_(), element_range_(), ranges_(list.begin(), list.end())
+    {
+      init();
     }
 
     /// Copy constructor

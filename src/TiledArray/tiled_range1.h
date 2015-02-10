@@ -21,6 +21,7 @@
 #define TILEDARRAY_TILED_RANGE1_H__INCLUDED
 
 #include <TiledArray/range.h>
+#include <initializer_list>
 
 namespace TiledArray {
 
@@ -63,7 +64,6 @@ namespace TiledArray {
         tile_ranges_(rng.tile_ranges_), elem2tile_(rng.elem2tile_)
     { }
 
-#ifdef TILEDARRAY_HAVE_VARIADIC_TEMPLATES
     /// Construct a 1D tiled range.
 
     /// This will construct a 1D tiled range with tile boundaries {t0, t_rest}
@@ -79,7 +79,20 @@ namespace TiledArray {
       init_tiles_(tile_boundaries, tile_boundaries+n, 0);
       init_map_();
     }
-#endif
+
+    /// Construct a 1D tiled range.
+
+    /// This will construct a 1D tiled range with tile boundaries {t0, t_rest}
+    /// The number of tile boundaries is n + 1, where n is the number of tiles.
+    /// Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
+    /// \param t0 The starting index of the first tile
+    /// \param t_rest The rest of tile boundaries
+    template<typename T>
+    explicit TiledRange1(const std::initializer_list<T>& list)
+    {
+      init_tiles_(list.begin(), list.end(), 0);
+      init_map_();
+    }
 
     /// Assignment operator
     TiledRange1& operator =(const TiledRange1& rng) {
