@@ -59,10 +59,6 @@ if(MADNESS_FOUND)
   if (NOT Madness_COMPILES)
     message(FATAL_ERROR "MADNESS found, but does not compile correctly.")
   endif()
-    
-  if(ENABLE_ELEMENTAL)
-    
-  endif()
 
   cmake_pop_check_state()
 
