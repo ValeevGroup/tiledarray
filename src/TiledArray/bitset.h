@@ -39,7 +39,8 @@ namespace TiledArray {
     template <typename Block = unsigned long>
     class Bitset {
     private:
-      TA_STATIC_ASSERT( (std::is_integral<Block>::value || std::is_same<Block, char>::value) );
+      static_assert( (std::is_integral<Block>::value || std::is_same<Block, char>::value),
+          "Bitset template type Block must be an integral or char type");
 
       static const std::size_t block_bits; ///< The number of bits in a block
       static const Block zero;

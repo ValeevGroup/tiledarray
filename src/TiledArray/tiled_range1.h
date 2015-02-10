@@ -53,7 +53,8 @@ namespace TiledArray {
         typename madness::enable_if<detail::is_random_iterator<RandIter>, Enabler >::type = Enabler()) :
         range_(), element_range_(), tile_ranges_(), elem2tile_()
     {
-      TA_STATIC_ASSERT(detail::is_random_iterator<RandIter>::value);
+      static_assert(detail::is_random_iterator<RandIter>::value,
+          "TiledRange1 constructor requires a random access iterator");
       init_tiles_(first, last, start_tile_index);
       init_map_();
     }

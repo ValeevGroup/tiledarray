@@ -55,7 +55,8 @@ namespace TiledArray {
   private:
 
     // T must be a numeric type
-    TA_STATIC_ASSERT(std::is_arithmetic<T>::value);
+    static_assert(std::is_arithmetic<T>::value,
+        "SparseShape template type T must be an arithmatic type");
 
     // Internal typedefs
     typedef detail::ValArray<value_type> vector_type;

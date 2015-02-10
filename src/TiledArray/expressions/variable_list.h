@@ -123,7 +123,8 @@ namespace TiledArray {
 
       template<typename InIter>
       VariableList(InIter first, InIter last) {
-        TA_STATIC_ASSERT(TiledArray::detail::is_input_iterator<InIter>::value);
+        static_assert(TiledArray::detail::is_input_iterator<InIter>::value,
+            "VariableList constructor requires an input iterator");
         TA_ASSERT( unique_(first, last) );
 
         for(; first != last; ++first)

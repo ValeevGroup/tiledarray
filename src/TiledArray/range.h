@@ -183,7 +183,6 @@ namespace TiledArray {
       }
     }
 
-#ifdef TILEDARRAY_HAVE_VARIADIC_TEMPLATES
     /// Range constructor from a pack of sizes for each dimension
 
     /// \tparam _size0 A
@@ -202,7 +201,6 @@ namespace TiledArray {
       size_type range_extent[n] = {size0, static_cast<size_type>(sizes)...};
       compute_range_data(n, range_extent);
     }
-#endif
 
     /// Copy Constructor
 

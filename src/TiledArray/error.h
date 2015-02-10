@@ -22,15 +22,6 @@
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAVE_STATIC_ASSERT
-
-#define TA_STATIC_ASSERT( a ) static_assert( a , #a )
-
-#else
-
-#define TA_STATIC_ASSERT( A )
-
-#endif // TILEDARRAY_HAVE_STATIC_ASSERT
 
 // Check for default error checking method, which is determined by TA_DEFAULT_ERROR,
 // which is defined in TiledArray/config.h.
