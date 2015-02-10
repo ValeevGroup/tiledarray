@@ -392,6 +392,31 @@ namespace TiledArray {
       return include_ordinal_(i);
     }
 
+  private:
+
+    template <std::size_t N>
+    static constexpr bool includes_helper() { return true; }
+
+    template <std::size_t N, typename Index1, typename... Index>
+    typename std::enable_if<std::is_integral<Index1>::value, bool>::type
+    includes_helper(const Index1& index1, const Index&... index) const {
+      constexpr std::size_t i = N - sizeof...(Index) - 1;
+      return (static_cast<size_type>(index1) >= start_[i])
+          && (static_cast<size_type>(index1) < finish_[i])
+          && includes_helper<N>(index...);
+    }
+
+  public:
+
+    template <typename... Index>
+    typename std::enable_if<(sizeof...(Index) > 1ul), size_type>::type
+    includes(const Index&... index) const {
+      TA_ASSERT(sizeof...(Index) == dim());
+      return includes_helper<sizeof...(Index)>(index...);
+    }
+
+
+
     /// Permute this range
 
     /// \param perm The permutation to be applied to this range
@@ -487,12 +512,30 @@ namespace TiledArray {
       return o;
     }
 
-    /// alias to ord<Index>(), to conform with the Tensor Working Group spec \sa ord()
-    template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, size_type>::type
-    ordinal(const Index& index) const {
-      return ord<Index>(index);
+  private:
+
+    template <std::size_t N>
+    static constexpr size_type ord_helper() { return 0ul; }
+
+    template <std::size_t N, typename Index1, typename... Index>
+    typename std::enable_if<std::is_integral<Index1>::value, size_type>::type
+    ord_helper(const Index1& index1, const Index&... index) const {
+      constexpr std::size_t i = N - sizeof...(Index) - 1;
+      return (index1 - start_[i]) * weight_[i] + ord_helper<N>(index...);
     }
+
+  public:
+
+    template <typename... Index>
+    typename std::enable_if<(sizeof...(Index) > 1ul), size_type>::type
+    ord(const Index&... index) const {
+      TA_ASSERT(sizeof...(Index) == dim());
+      return ord_helper<sizeof...(Index)>(index...);
+    }
+
+    /// alias to ord<Index>(), to conform with the Tensor Working Group spec \sa ord()
+    template <typename... Index>
+    size_type ordinal(const Index&... index) const { return ord(index...); }
 
     /// calculate the coordinate index of the ordinal index, \c index.
 
