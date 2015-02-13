@@ -62,25 +62,25 @@ namespace TiledArray {
     /// Validate shape range
 
     /// \return \c true when range matches the range of this shape
-    static bool validate(const Range&) { return true; }
+    static constexpr bool validate(const Range&) { return true; }
 
     /// Check that a tile is zero
 
     /// \tparam Index The type of the index
     /// \return false
     template <typename Index>
-    static bool is_zero(const Index&) { return false; }
+    static constexpr bool is_zero(const Index&) { return false; }
 
     /// Check density
 
     /// \return true
-    static bool is_dense() { return true; }
+    static constexpr bool is_dense() { return true; }
 
 
     /// Check if the shape is empty (uninitialized)
 
     /// \return Always \c false
-    static bool empty() { return false; }
+    static constexpr bool empty() { return false; }
 
     static DenseShape perm(const Permutation&) { return DenseShape(); }
 
