@@ -219,7 +219,7 @@ else()
   # is built.
   add_custom_target(madness-update
     COMMAND ${GIT_EXECUTABLE} fetch
-    COMMAND ${GIT_EXECUTABLE} checkout --detach ${Madness_TAG}
+    COMMAND ${GIT_EXECUTABLE} checkout ${Madness_TAG}
     COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${MADNESS_BINARY_DIR}/stamp/madness-configure
     WORKING_DIRECTORY ${MADNESS_SOURCE_DIR}
     COMMENT "Updating source for 'madness' from ${MADNESS_URL}")
