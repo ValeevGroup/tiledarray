@@ -1041,7 +1041,6 @@ namespace TiledArray {
       /// \return The first row, greater than or equal to \c k with non-zero
       /// tiles, or \c k_ if none is found.
       size_type iterate_row(size_type k) const {
-
         // Iterate over k's until a non-zero tile is found or the end of the
         // matrix is reached.
         size_type end = k * proc_grid_.cols();
@@ -1077,19 +1076,6 @@ namespace TiledArray {
         return k;
       }
 
-      /// Find the next k where the left- and right-hand argument have non-zero tiles
-
-      /// Search for the next k-th column and row of the left- and right-hand
-      /// arguments, respectively, that both contain non-zero tiles. This search
-      /// only checks for non-zero tiles in this process's row or column. If a
-      /// non-zero, local tile is found that does not contribute to local
-      /// contractions, the tiles will be immediately broadcast.
-      /// \param k The first row/column to check
-      /// \return The next k-th column and row of the left- and right-hand
-      /// arguments, respectively, that both have non-zero tiles
-      size_type iterate(const DenseShape&, const DenseShape&, const size_type k) const {
-        return k;
-      }
 
       /// Find the next k where the left- and right-hand argument have non-zero tiles
 
@@ -1101,11 +1087,10 @@ namespace TiledArray {
       /// \param k The first row/column to check
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
-      template <typename LeftShape, typename RightShape>
-      size_type iterate(const LeftShape&, const RightShape&, const size_type k) const {
+      size_type iterate_sparse(const size_type k) const {
         // Initial step for k_col and k_row.
         size_type k_col = iterate_col(k);
-        size_type k_row = iterate_row(k);
+        size_type k_row = iterate_row(k_col);
 
         // Search for a row and column that both have non-zero tiles
         while(k_col != k_row) {
@@ -1143,7 +1128,8 @@ namespace TiledArray {
       /// \return The next k-th column and row of the left- and right-hand
       /// arguments, respectively, that both have non-zero tiles
       size_type iterate(const size_type k) const {
-        return iterate(left_.shape(), right_.shape(), k);
+        return (left_.shape().is_dense() && right_.shape().is_dense() ?
+            k : iterate_sparse(k));
       }
 
 
