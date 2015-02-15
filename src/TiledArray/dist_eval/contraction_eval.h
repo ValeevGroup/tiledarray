@@ -678,12 +678,13 @@ namespace TiledArray {
       /// \param index The first index of the row or column range
       /// \param end The end of the row or column range
       /// \param stride The row or column index stride
+      /// \param k The broadcast group index
       /// \param max_group_size The maximum number of processes in the result
       /// group, which is equal to the number of process in this process row or
       /// column as defined by \c proc_grid_.
+      /// \param key_offset The key that will be used to identify the process group
       /// \param proc_map The operator that will convert a process row/column
       /// into a process
-      /// \param key The key that will be used to identify the process group
       /// \return A sparse process group that includes process in the row or
       /// column of this process as defined by \c proc_grid_.
       template <typename Shape, typename ProcMap>
@@ -698,14 +699,13 @@ namespace TiledArray {
         // by shape.
         size_type p = k % max_group_size;
         proc_list[p] = proc_map(p);
+        size_type count = 1ul;
 
         // Flag all process that have non-zero tiles
-        size_type count = 1ul;
         for(p = 0ul; (index < end) && (count < max_group_size); index += stride,
             p = (p + 1u) % max_group_size)
         {
-          if(proc_list[p] != -1) continue;
-          if(shape.is_zero(index)) continue;
+          if((proc_list[p] != -1) || (shape.is_zero(index))) continue;
 
           proc_list[p] = proc_map(p);
           ++count;
@@ -724,6 +724,29 @@ namespace TiledArray {
             madness::DistributedID(DistEvalImpl_::id(), k + key_offset));
       }
 
+      /// Row process group factory function
+
+      /// \param k The broadcast group index
+      /// \return A row process group
+      madness::Group make_row_group(const size_type k) const {
+        // Construct the sparse broadcast group
+        const size_type right_begin_k = k * proc_grid_.cols();
+        const size_type right_end_k = right_begin_k + proc_grid_.cols();
+        return make_group(right_.shape(), right_begin_k, right_end_k,
+            right_stride_, proc_grid_.proc_cols(), k, k_,
+            [&](const ProcGrid::size_type col) { return proc_grid_.map_col(col); });
+      }
+
+      /// Column process group factory function
+
+      /// \param k The broadcast group index
+      /// \return A column process group
+      madness::Group make_col_group(const size_type k) const {
+        // Construct the sparse broadcast group
+        return make_group(left_.shape(), k, left_end_, left_stride_,
+            proc_grid_.proc_rows(), k, 0ul,
+            [&](const ProcGrid::size_type row) { return proc_grid_.map_row(row); });
+      }
 
       // Broadcast kernels -----------------------------------------------------
 
@@ -767,6 +790,64 @@ namespace TiledArray {
             arg.get(index), madness::TaskAttributes::hipri());
       }
 
+
+      /// Collect non-zero tiles from \c arg
+
+      /// \tparam Arg The argument type
+      /// \tparam Datum The vector datum type
+      /// \param[in] arg The owner of the input tiles
+      /// \param[in] index The index of the first tile to be broadcast
+      /// \param[in] end The end of the range of tiles to be broadcast
+      /// \param[in] stride The stride between tile indices to be broadcast
+      /// \param[in] group The process group where the tiles will be broadcast
+      /// \param[in] key_offset The broadcast key offset value
+      /// \param[out] vec The vector that will hold broadcast tiles
+      template <typename Arg, typename Datum>
+      void get_vector(Arg& arg, size_type index, const size_type end,
+          const size_type stride, std::vector<Datum>& vec) const
+      {
+        TA_ASSERT(vec.size() == 0ul);
+
+        // Iterate over vector of tiles
+        if(arg.is_local(index)) {
+          for(size_type i = 0ul; index < end; ++i, index += stride) {
+            if(arg.shape().is_zero(index)) continue;
+            vec.emplace_back(i, get_tile(arg, index));
+          }
+        } else {
+          for(size_type i = 0ul; index < end; ++i, index += stride) {
+            if(arg.shape().is_zero(index)) continue;
+            vec.emplace_back(i, madness::Future<typename Arg::eval_type>());
+          }
+        }
+
+        TA_ASSERT(vec.size() > 0ul);
+      }
+
+      /// Collect non-zero tiles from column \c k of \c left_
+
+      /// \param[in] k The column to be retrieved
+      /// \param[out] col The column vector that will hold the tiles
+      void get_col(const size_type k, std::vector<col_datum>& col) const {
+        col.reserve(proc_grid_.local_rows());
+        get_vector(left_, left_start_local_ + k, left_end_, left_stride_local_, col);
+      }
+
+      /// Collect non-zero tiles from row \c k of \c right_
+
+      /// \param[in] k The row to be retrieved
+      /// \param[out] col The row vector that will hold the tiles
+      void get_row(const size_type k, std::vector<row_datum>& row) const {
+        row.reserve(proc_grid_.local_cols());
+
+        // Compute local iteration limits for row k of right_.
+        size_type begin = k * proc_grid_.cols();
+        const size_type end = begin + proc_grid_.cols();
+        begin += proc_grid_.rank_col();
+
+        get_vector(right_, begin, end, right_stride_local_, row);
+      }
+
       /// Broadcast tiles from \c arg
 
       /// \param[in] arg The owner of the input tiles
@@ -776,15 +857,13 @@ namespace TiledArray {
       /// \param[in] group The process group where the tiles will be broadcast
       /// \param[in] key_offset The broadcast key offset value
       /// \param[out] vec The vector that will hold broadcast tiles
-      template <typename Arg, typename Datum>
-      void bcast(Arg& arg, size_type index, const size_type end, const size_type stride,
-          const madness::Group& group, const size_type key_offset, std::vector<Datum>& vec) const
+      template <typename Datum>
+      void bcast(const size_type start, const size_type stride,
+          const madness::Group& group, const ProcessID group_root,
+          const size_type key_offset, std::vector<Datum>& vec) const
       {
-        TA_ASSERT(vec.size() == 0ul);
+        TA_ASSERT(vec.size() != 0ul);
         TA_ASSERT(group.size() > 0);
-
-        // Get the root process of the group
-        const ProcessID group_root = group.rank(arg.owner(index));
         TA_ASSERT(group_root < group.size());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
@@ -799,23 +878,18 @@ namespace TiledArray {
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
 
         // Iterate over tiles to be broadcast
-        for(size_type i = 0ul; index < end; ++i, index += stride) {
-          if(arg.shape().is_zero(index)) continue;
-
-          // Get tile
-          if(group_root == group.rank())
-            vec.push_back(Datum(i, get_tile(arg, index)));
-          else
-            vec.push_back(Datum(i, madness::Future<typename Arg::eval_type>()));
+        for(typename std::vector<Datum>::iterator it = vec.begin(); it != vec.end(); ++it) {
+          const size_type index = it->first * stride + start;
 
           // Broadcast the tile
           const madness::DistributedID key(DistEvalImpl_::id(), index + key_offset);
-          TensorImpl_::get_world().gop.bcast(key, vec.back().second, group_root, group);
+          TensorImpl_::get_world().gop.bcast(key, it->second, group_root, group);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
-        ss  << index << " ";
+          ss  << index << " ";
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
         }
+
         TA_ASSERT(vec.size() > 0ul);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
@@ -824,35 +898,48 @@ namespace TiledArray {
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
       }
 
-
       // Broadcast specialization for left and right arguments -----------------
+
+
+      ProcessID get_row_group_root(const size_type k, const madness::Group& row_group) const {
+        ProcessID group_root = k % proc_grid_.proc_cols();
+        if(! right_.shape().is_dense() && row_group.size() < proc_grid_.proc_cols()) {
+          const ProcessID world_root = proc_grid_.rank_row() * proc_grid_.proc_cols() + group_root;
+          group_root = row_group.rank(world_root);
+        }
+        return group_root;
+      }
+
+      ProcessID get_col_group_root(const size_type k, const madness::Group& col_group) const {
+        ProcessID group_root = k % proc_grid_.proc_rows();
+        if(! left_.shape().is_dense() && col_group.size() < proc_grid_.proc_rows()) {
+          const ProcessID world_root = group_root * proc_grid_.proc_cols() + proc_grid_.rank_col();
+          group_root = col_group.rank(world_root);
+        }
+        return group_root;
+      }
 
       /// Broadcast column \c k of \c left_ with a dense right-hand argument
 
       /// \param[in] k The column of \c left_ to be broadcast
       /// \param[out] col The vector that will hold the results of the broadcast
-      void bcast_col(const DenseShape&, const size_type k, std::vector<col_datum>& col) const {
+      void bcast_col(const size_type k, std::vector<col_datum>& col, const madness::Group& row_group) const {
         // Broadcast column k of left_.
-        bcast(left_, left_start_local_ + k, left_end_, left_stride_local_, row_group_, 0ul, col);
+        ProcessID group_root = get_row_group_root(k, row_group);
+        bcast(left_start_local_ + k, left_stride_local_, row_group, group_root, 0ul, col);
       }
 
-      /// Broadcast column \c k of \c left_ with a sparse right-hand argument
+      /// Broadcast row \c k of \c right_ with a dense left-hand argument
 
-      /// \tparam RightShape The shape type of the left-hand argument
-      /// \param[in] right_shape The shape of the right-hand argument
-      /// \param[in] k The column of \c left_ to be broadcast
-      /// \param[out] col The vector that will hold the results of the broadcast
-      template <typename RightShape>
-      void bcast_col(const RightShape& right_shape, const size_type k, std::vector<col_datum>& col) const {
-        // Construct the sparse broadcast group
-        const size_type right_begin_k = k * proc_grid_.cols();
-        const size_type right_end_k = right_begin_k + proc_grid_.cols();
-        madness::Group group = make_group(right_shape, right_begin_k, right_end_k,
-            right_stride_, proc_grid_.proc_cols(), k, k_,
-            [&](const ProcGrid::size_type col) { return proc_grid_.map_col(col); });
+      /// \param[in] k The row of \c right to be broadcast
+      /// \param[out] row The vector that will hold the results of the broadcast
+      void bcast_row(const size_type k, std::vector<row_datum>& row, const madness::Group& col_group) const {
+        // Compute the group root process.
+        ProcessID group_root = get_col_group_root(k, col_group);
 
-        // Broadcast column k of left_.
-        bcast(left_, left_start_local_ + k, left_end_, left_stride_local_, group, 0ul, col);
+        // Broadcast row k of right_.
+        bcast(k * proc_grid_.cols() + proc_grid_.rank_col(),
+            right_stride_local_, col_group, group_root, left_.size(), row);
       }
 
       /// Broadcast column \c k of \c left_
@@ -860,44 +947,8 @@ namespace TiledArray {
       /// \param[in] k The column of \c left_ to be broadcast
       /// \param[out] col The vector that will hold the results of the broadcast
       void bcast_col(const size_type k, std::vector<col_datum>& col) const {
-        col.reserve(proc_grid_.local_rows());
-        bcast_col(right_.shape(), k, col);
-      }
-
-      /// Broadcast row \c k of \c right_ with a dense left-hand argument
-
-      /// \param[in] k The row of \c right to be broadcast
-      /// \param[out] row The vector that will hold the results of the broadcast
-      void bcast_row(const DenseShape&, const size_type k, std::vector<row_datum>& row) const {
-        // Compute local iteration limits for row k of right_.
-        size_type begin = k * proc_grid_.cols();
-        const size_type end = begin + proc_grid_.cols();
-        begin += proc_grid_.rank_col();
-
-        // Broadcast row k of right_.
-        bcast(right_, begin, end, right_stride_local_, col_group_, left_.size(), row);
-      }
-
-      /// Broadcast row \c k of \c right_ with a sparse left-hand argument
-
-      /// \tparam LeftShape The shape type of the left-hand argument
-      /// \param[in] left_shape The shape of the left-hand argument
-      /// \param[in] k The row of \c right to be broadcast
-      /// \param[out] row The vector that will hold the results of the broadcast
-      template <typename LeftShape>
-      void bcast_row(const LeftShape& left_shape, const size_type k, std::vector<row_datum>& row) const {
-        // Construct the sparse broadcast group
-        madness::Group group = make_group(left_shape, k, left_end_, left_stride_,
-            proc_grid_.proc_rows(), k, 0ul,
-            [&](const ProcGrid::size_type row) { return proc_grid_.map_row(row); });
-
-        // Compute local iteration limits for row k of right_.
-        size_type begin = k * proc_grid_.cols();
-        const size_type end = begin + proc_grid_.cols();
-        begin += proc_grid_.rank_col();
-
-        // Broadcast row k of right_.
-        bcast(right_, begin, end, right_stride_local_, group, left_.size(), row);
+        get_col(k, col);
+        bcast_col(k, col, (right_.shape().is_dense() ? row_group_ : make_row_group(k)));
       }
 
       /// Broadcast row \c k of \c right_
@@ -905,40 +956,40 @@ namespace TiledArray {
       /// \param[in] k The row of \c right to be broadcast
       /// \param[out] row The vector that will hold the results of the broadcast
       void bcast_row(const size_type k, std::vector<row_datum>& row) const {
-        row.reserve(proc_grid_.local_cols());
-        bcast_row(left_.shape(), k, row);
+        get_row(k, row);
+        bcast_row(k, row, (left_.shape().is_dense() ? col_group_ : make_col_group(k)));
       }
+
 
       void bcast_col_range_task(size_type k, const size_type end) const {
         // Compute the first local row of right
         const size_type Pcols = proc_grid_.proc_cols();
         k += (Pcols - ((k + Pcols - proc_grid_.rank_col()) % Pcols)) % Pcols;
 
-        // Vector to hold the broadcast tiles.
-        std::vector<col_datum> col;
-        const col_datum null_value(0ul, left_future::default_initializer());
-
         for(; k < end; k += Pcols) {
 
           // Compute local iteration limits for column k of left_.
-          size_type begin = left_start_local_ + k;
+          size_type index = left_start_local_ + k;
 
           // Search column k of left for non-zero tiles
-          for(; begin < left_end_; begin += left_stride_local_) {
-            if(! left_.shape().is_zero(begin)) {
-              // Construct the sparse broadcast group
-              const size_type right_begin_k = k * proc_grid_.cols();
-              const size_type right_end_k = right_begin_k + proc_grid_.cols();
-              madness::Group group = make_group(right_.shape(), right_begin_k, right_end_k,
-                  right_stride_, proc_grid_.proc_cols(), k, k_,
-                  [&](const ProcGrid::size_type col) { return proc_grid_.map_col(col); });
+          for(; index < left_end_; index += left_stride_local_) {
+            if(left_.shape().is_zero(index)) continue;
 
-              // Broadcast column k of left_.
-              bcast(left_, begin, left_end_, left_stride_local_, group, 0ul, col);
+            // Construct broadcast group
+            const madness::Group row_group = make_row_group(k);
+            const ProcessID group_root = get_row_group_root(k, row_group);
 
-              col.resize(0ul, null_value);
-              break;
+            // Broadcast column k of left_.
+            for(; index < left_end_; index += left_stride_local_) {
+              if(left_.shape().is_zero(index)) continue;
+
+              // Broadcast the tile
+              const madness::DistributedID key(DistEvalImpl_::id(), index);
+              auto tile = get_tile(left_, index);
+              TensorImpl_::get_world().gop.bcast(key, tile, group_root, row_group);
             }
+
+            break;
           }
         }
       }
@@ -948,31 +999,32 @@ namespace TiledArray {
         const size_type Prows = proc_grid_.proc_rows();
         k += (Prows - ((k + Prows - proc_grid_.rank_row()) % Prows)) % Prows;
 
-        // Vector to hold the broadcast tiles.
-        std::vector<row_datum> row;
-        const row_datum null_value(0ul, right_future::default_initializer());
-
         for(; k < end; k += Prows) {
 
           // Compute local iteration limits for row k of right_.
-          size_type begin = k * proc_grid_.cols();
-          const size_type end = begin + proc_grid_.cols();
-          begin += proc_grid_.rank_col();
+          size_type index = k * proc_grid_.cols();
+          const size_type row_end = index + proc_grid_.cols();
+          index += proc_grid_.rank_col();
 
           // Search for and broadcast non-zero row
-          for(; begin < end; begin += right_stride_local_) {
-            if(! right_.shape().is_zero(begin)) {
-              // Construct the sparse broadcast group
-              madness::Group group = make_group(left_.shape(), k, left_end_, left_stride_,
-                  proc_grid_.proc_rows(), k, 0ul,
-                  [&](const ProcGrid::size_type row) { return proc_grid_.map_row(row); });
+          for(; index < row_end; index += right_stride_local_) {
+            if(right_.shape().is_zero(index)) continue;
 
-              // Broadcast row k of right_.
-              bcast(right_, begin, end, right_stride_local_, group, left_.size(), row);
+            // Construct broadcast group
+            const madness::Group col_group = make_col_group(k);
+            const ProcessID group_root = get_col_group_root(k, col_group);
 
-              row.resize(0ul, null_value);
-              break;
+            // Broadcast row k of right_.
+            for(; index < row_end; index += right_stride_local_) {
+              if(right_.shape().is_zero(index)) continue;
+
+              // Broadcast the tile
+              const madness::DistributedID key(DistEvalImpl_::id(), index + left_.size());
+              auto tile = get_tile(right_, index);
+              TensorImpl_::get_world().gop.bcast(key, tile, group_root, col_group);
             }
+
+            break;
           }
         }
       }
