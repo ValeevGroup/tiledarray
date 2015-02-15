@@ -285,7 +285,7 @@ namespace TiledArray {
     /// Check density
 
     /// \return true
-    static bool is_dense() { return false; }
+    static constexpr bool is_dense() { return false; }
 
     /// Threshold accessor
 
