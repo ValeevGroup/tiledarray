@@ -73,7 +73,12 @@ int main(int argc, char** argv) {
                 << "\nMemory per matrix   = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9 << " GB"
                 << "\nAverage blocks/node = " << double(num_blocks * num_blocks) / double(world.size()) << "\n";
 
+
+    typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
+        TiledArray::SparsePolicy> SpTArray2;
+
     for(unsigned int sparsity = 100u; sparsity > 0u; sparsity -= 10u) {
+      SpTArray2::wait_for_lazy_cleanup(world);
 
       // Compute the number of blocks and matrix size for the sparse matrix
       const double sparse_fraction = double(sparsity) / 100.0;
@@ -134,9 +139,6 @@ int main(int argc, char** argv) {
       TiledArray::SparseShape<float>
           a_shape(world, a_tile_norms, trange),
           b_shape(world, b_tile_norms, trange);
-
-      typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
-          TiledArray::SparsePolicy> SpTArray2;
 
       // Construct and initialize arrays
       SpTArray2 a(world, trange, a_shape);
