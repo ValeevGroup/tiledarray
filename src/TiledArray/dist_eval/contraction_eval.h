@@ -942,25 +942,6 @@ namespace TiledArray {
             right_stride_local_, col_group, group_root, left_.size(), row);
       }
 
-      /// Broadcast column \c k of \c left_
-
-      /// \param[in] k The column of \c left_ to be broadcast
-      /// \param[out] col The vector that will hold the results of the broadcast
-      void bcast_col(const size_type k, std::vector<col_datum>& col) const {
-        get_col(k, col);
-        bcast_col(k, col, (right_.shape().is_dense() ? row_group_ : make_row_group(k)));
-      }
-
-      /// Broadcast row \c k of \c right_
-
-      /// \param[in] k The row of \c right to be broadcast
-      /// \param[out] row The vector that will hold the results of the broadcast
-      void bcast_row(const size_type k, std::vector<row_datum>& row) const {
-        get_row(k, row);
-        bcast_row(k, row, (left_.shape().is_dense() ? col_group_ : make_col_group(k)));
-      }
-
-
       void bcast_col_range_task(size_type k, const size_type end) const {
         // Compute the first local row of right
         const size_type Pcols = proc_grid_.proc_cols();
@@ -1347,8 +1328,8 @@ namespace TiledArray {
         std::shared_ptr<Summa_> owner_; ///< The parent object for this task
 
       public:
-        FinalizeTask(const std::shared_ptr<Summa_>& owner) :
-          madness::TaskInterface(1, madness::TaskAttributes::hipri()),
+        FinalizeTask(const std::shared_ptr<Summa_>& owner, const int ndep) :
+          madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
           owner_(owner)
         { }
 
@@ -1493,12 +1474,27 @@ namespace TiledArray {
       /// This task will perform a single SUMMA iteration, and start the next
       /// step task.
       class StepTask : public madness::TaskInterface {
-      private:
+      protected:
         // Member variables
+        size_type k_ = std::numeric_limits<size_type>::max();
         std::shared_ptr<Summa_> owner_; ///< The owner of this task
-        size_type k_; ///< The SUMMA that will be processed by this task
+        madness::World& world_;
+        std::vector<col_datum> col_{};
+        std::vector<row_datum> row_{};
         FinalizeTask* finalize_task_; ///< The SUMMA finalization task
-        StepTask* next_step_task_; ///< The next SUMMA step task
+        StepTask* next_step_task_ = nullptr; ///< The next SUMMA step task
+        StepTask* tail_step_task_ = nullptr; ///< The next SUMMA step task
+
+      public:
+
+        StepTask(const std::shared_ptr<Summa_>& owner, int finalize_ndep) :
+          madness::TaskInterface(0ul, madness::TaskAttributes::hipri()),
+          owner_(owner),
+          world_(owner->get_world()),
+          finalize_task_(new FinalizeTask(owner, finalize_ndep))
+        {
+          owner_->get_world().taskq.add(finalize_task_);
+        }
 
         /// Construct the task for the next step
 
@@ -1507,79 +1503,92 @@ namespace TiledArray {
         StepTask(StepTask* const parent, const int ndep) :
           madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
           owner_(parent->owner_),
-          k_(0ul),
-          finalize_task_(parent->finalize_task_),
-          next_step_task_(NULL)
-        { }
-
-      public:
-
-        StepTask(const std::shared_ptr<Summa_>& owner) :
-          madness::TaskInterface(madness::TaskAttributes::hipri()),
-          owner_(owner),
-          k_(0ul),
-          finalize_task_(new FinalizeTask(owner)),
-          next_step_task_(new StepTask(this, 1))
+          world_(parent->world_),
+          finalize_task_(parent->finalize_task_)
         {
-          owner_->get_world().taskq.add(next_step_task_);
-          owner_->get_world().taskq.add(finalize_task_);
+          parent->next_step_task_ = this;
         }
 
         virtual ~StepTask() { }
 
-        // Initialize member variables
-        StepTask* initialize(const size_type k) {
-          k_ = k;
-          StepTask* step_task = NULL;
-          if(k < owner_->k_) {
-            next_step_task_ = step_task = new StepTask(this, 2);
-            owner_->get_world().taskq.add(step_task);
-          } else {
-            finalize_task_->notify();
-          }
-          this->notify();
-          return step_task;
+        void spawn_get_row_col_tasks(const size_type k) {
+          // Submit the task to collect column tiles of left for iteration k
+          inc();
+          world_.taskq.add([=]() {
+            owner_->get_col(k, col_);
+            madness::DependencyInterface::notify();
+          }, madness::TaskAttributes::hipri());
+
+          // Submit the task to collect row tiles of right for iteration k
+          inc();
+          world_.taskq.add([=]() {
+            owner_->get_row(k, row_);
+            madness::DependencyInterface::notify();
+          }, madness::TaskAttributes::hipri());
         }
 
-        virtual void run(const madness::TaskThreadEnv&) {
+        template <typename Derived>
+        void make_next_step_tasks(Derived* task, size_type depth) {
+          TA_ASSERT(depth > 0);
+          // Set the depth to be no greater than the maximumn number steps
+          if(depth > owner_->k_)
+            depth = owner_->k_;
+
+          // Spawn the first (depth - 1) step tasks
+          for(; depth > 0ul; --depth) {
+            Derived* const next = new Derived(task, 0);
+            task = next;
+          }
+
+          // Initialize the tail pointer
+          tail_step_task_ = task;
+          tail_step_task_->inc();
+        }
+
+        template <typename Derived, typename GroupType>
+        void run(const GroupType& row_group, const GroupType& col_group) {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
           printf("step:  start rank=%i k=%lu\n", owner_->get_world().rank(), k_);
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
 
-          // Search for the next k to be processed
           if(k_ < owner_->k_) {
+            // Initialize next tail task and submit next task
+            TA_ASSERT(next_step_task_);
+            next_step_task_->tail_step_task_ =
+                new Derived(static_cast<Derived*>(tail_step_task_), 1);
+            world_.taskq.add(next_step_task_);
+            next_step_task_ = nullptr;
 
-            k_ = owner_->iterate(k_);
+            // Start broadcast of column and row tiles for this step
+            world_.taskq.add(owner_, & Summa_::bcast_col, k_, col_, row_group,
+                madness::TaskAttributes::hipri());
+            world_.taskq.add(owner_, & Summa_::bcast_row, k_, row_, col_group,
+                madness::TaskAttributes::hipri());
 
-            if(k_ < owner_->k_) {
-              // Add a dependency to the finalize task
-              finalize_task_->inc();
+            // Submit tasks for the contraction of col and row tiles.
+            owner_->contract(k_, col_, row_, tail_step_task_);
 
-              // Initialize and submit next task
-              StepTask* const next_next_step_task = next_step_task_->initialize(k_ + 1ul);
-              next_step_task_ = NULL; // The next step task can start running after this point
+            // Notify task dependencies
+            TA_ASSERT(tail_step_task_);
+            tail_step_task_->notify();
+            finalize_task_->notify();
 
-              // Broadcast row and column
-              std::vector<col_datum> col;
-              owner_->bcast_col(k_, col);
-              std::vector<row_datum> row;
-              owner_->bcast_row(k_, row);
+          } else if(finalize_task_) {
+            // Signal the finalize task so it can run after all non-zero step
+            // tasks have completed.
+            finalize_task_->notify();
 
-              // Submit tasks for the contraction of col and row tiles.
-              owner_->contract(k_, col, row, next_next_step_task);
-
-              // Notify task dependencies
-              if(next_next_step_task)
-                next_next_step_task->notify();
-              finalize_task_->notify();
-
-            } else {
-              finalize_task_->notify();
-              if(next_step_task_) {
-                next_step_task_->k_ = std::numeric_limits<size_type>::max();
-                next_step_task_->notify();
-              }
+            // Cleanup any remaining step tasks
+            StepTask* step_task = next_step_task_;
+            while(step_task) {
+              StepTask* const next_step_task = step_task->next_step_task_;
+              step_task->next_step_task_ = nullptr;
+              step_task->finalize_task_ = nullptr;
+              world_.taskq.add(step_task);
+              step_task = next_step_task;
             }
+
+            tail_step_task_->notify();
           }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
@@ -1588,6 +1597,109 @@ namespace TiledArray {
         }
 
       }; // class StepTask
+
+      class DenseStepTask : public StepTask {
+      protected:
+        using StepTask::owner_;
+        using StepTask::k_;
+
+      public:
+        DenseStepTask(const std::shared_ptr<Summa_>& owner, const size_type depth) :
+          StepTask(owner, owner->k_ + 1ul)
+        {
+          k_ = 0ul;
+          StepTask::make_next_step_tasks(this, depth);
+          StepTask::spawn_get_row_col_tasks(k_);
+        }
+
+        DenseStepTask(DenseStepTask* const parent, const int ndep) :
+          StepTask(parent, ndep)
+        {
+          k_ = parent->k_ + 1ul;
+          // Spawn tasks to get k-th row and column tiles
+          if(k_ < owner_->k_)
+            StepTask::spawn_get_row_col_tasks(k_);
+        }
+
+        virtual ~DenseStepTask() { }
+
+        virtual void run(const madness::TaskThreadEnv&) {
+          StepTask::template run<DenseStepTask>(owner_->row_group_, owner_->col_group_);
+        }
+      }; // class DenseStepTask
+
+      class SparseStepTask : public StepTask {
+      protected:
+        madness::Future<madness::Group> row_group_{};
+        madness::Future<madness::Group> col_group_{};
+        using StepTask::owner_;
+        using StepTask::world_;
+        using StepTask::k_;
+        using StepTask::finalize_task_;
+        using StepTask::next_step_task_;
+
+      private:
+
+        /// Spawn task to construct process groups and get tiles.
+        void iterate_task(size_type k) {
+          // Search for the next non-zero row and column
+          k_ = owner_->iterate_sparse(k);
+
+          if(k_ < owner_->k_) {
+            // NOTE: The order of task submissions is dependent on the order in
+            // which we want the tasks to complete.
+
+            // Spawn tasks to get k-th row and column tiles
+            StepTask::spawn_get_row_col_tasks(k_);
+
+            // Spawn a task to construct the row broadcast group
+            world_.taskq.add([=] () {
+              row_group_.set(owner_->make_row_group(k_));
+            }, madness::TaskAttributes::hipri());
+
+            // Spawn a task to construct the column broadcast group
+            world_.taskq.add([=] () {
+              row_group_.set(owner_->make_col_group(k_));
+            }, madness::TaskAttributes::hipri());
+
+            // Start the iteration task for the next step.
+            TA_ASSERT(next_step_task_);
+            static_cast<SparseStepTask*>(next_step_task_)->spawn_iterate_task(k_ + 1ul);
+
+            // Increment the finalize task dependency counter, which indicates
+            // that this task is not the terminating step task.
+            finalize_task_->inc();
+          }
+
+          madness::DependencyInterface::notify();
+        }
+
+        void spawn_iterate_task(const size_type k) {
+          madness::DependencyInterface::inc();
+          // Spawn a task to find the next non-zero iteration
+          world_.taskq.add(this, & SparseStepTask::iterate_task, k,
+              madness::TaskAttributes::hipri());
+        }
+
+      public:
+
+        SparseStepTask(const std::shared_ptr<Summa_>& owner, size_type depth) :
+          StepTask(owner, 1ul)
+        {
+          StepTask::make_next_step_tasks(this, depth);
+          spawn_iterate_task(0ul);
+        }
+
+        SparseStepTask(SparseStepTask* const parent, const int ndep) :
+          StepTask(parent, ndep)
+        { }
+
+        virtual ~SparseStepTask() { }
+
+        virtual void run(const madness::TaskThreadEnv&) {
+          StepTask::template run<SparseStepTask>(row_group_, col_group_);
+        }
+      }; // class SparseStepTask
 
     public:
 
@@ -1679,7 +1791,10 @@ namespace TiledArray {
           tile_count = initialize();
 
           // Construct the first SUMMA iteration task
-          TensorImpl_::get_world().taskq.add(new StepTask(shared_from_this()));
+          if(TensorImpl_::shape().is_dense())
+            TensorImpl_::get_world().taskq.add(new DenseStepTask(shared_from_this(), 2));
+          else
+            TensorImpl_::get_world().taskq.add(new SparseStepTask(shared_from_this(), 2));
         }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
