@@ -1659,7 +1659,7 @@ namespace TiledArray {
 
             // Spawn a task to construct the column broadcast group
             world_.taskq.add([=] () {
-              row_group_.set(owner_->make_col_group(k_));
+              col_group_.set(owner_->make_col_group(k_));
             }, madness::TaskAttributes::hipri());
 
             // Start the iteration task for the next step.
