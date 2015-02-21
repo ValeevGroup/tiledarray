@@ -1516,14 +1516,14 @@ namespace TiledArray {
           inc();
           world_.taskq.add([=]() {
             owner_->get_col(k, col_);
-            madness::DependencyInterface::notify();
+            this->notify();
           }, madness::TaskAttributes::hipri());
 
           // Submit the task to collect row tiles of right for iteration k
           inc();
           world_.taskq.add([=]() {
             owner_->get_row(k, row_);
-            madness::DependencyInterface::notify();
+            this->notify();
           }, madness::TaskAttributes::hipri());
         }
 
