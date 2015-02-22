@@ -1469,6 +1469,7 @@ namespace TiledArray {
 
       // SUMMA step task -------------------------------------------------------
 
+
       /// SUMMA step task
 
       /// This task will perform a single SUMMA iteration, and start the next
@@ -1476,23 +1477,32 @@ namespace TiledArray {
       class StepTask : public madness::TaskInterface {
       protected:
         // Member variables
-        size_type k_ = std::numeric_limits<size_type>::max();
         std::shared_ptr<Summa_> owner_; ///< The owner of this task
         madness::World& world_;
-        std::vector<col_datum> col_{};
-        std::vector<row_datum> row_{};
+        std::vector<col_datum> col_;
+        std::vector<row_datum> row_;
         FinalizeTask* finalize_task_; ///< The SUMMA finalization task
         StepTask* next_step_task_ = nullptr; ///< The next SUMMA step task
         StepTask* tail_step_task_ = nullptr; ///< The next SUMMA step task
+
+        void get_col(const size_type k) {
+          owner_->get_col(k, col_);
+          this->notify();
+        }
+
+        void get_row(const size_type k) {
+          owner_->get_row(k, row_);
+          this->notify();
+        }
 
       public:
 
         StepTask(const std::shared_ptr<Summa_>& owner, int finalize_ndep) :
           madness::TaskInterface(0ul, madness::TaskAttributes::hipri()),
-          owner_(owner),
-          world_(owner->get_world()),
+          owner_(owner), world_(owner->get_world()), col_(), row_(),
           finalize_task_(new FinalizeTask(owner, finalize_ndep))
         {
+          TA_ASSERT(owner_);
           owner_->get_world().taskq.add(finalize_task_);
         }
 
@@ -1502,10 +1512,10 @@ namespace TiledArray {
         /// \param ndep The number of dependencies for this task
         StepTask(StepTask* const parent, const int ndep) :
           madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
-          owner_(parent->owner_),
-          world_(parent->world_),
+          owner_(parent->owner_), world_(parent->world_), col_(), row_(),
           finalize_task_(parent->finalize_task_)
         {
+          TA_ASSERT(parent);
           parent->next_step_task_ = this;
         }
 
@@ -1513,24 +1523,18 @@ namespace TiledArray {
 
         void spawn_get_row_col_tasks(const size_type k) {
           // Submit the task to collect column tiles of left for iteration k
-          inc();
-          world_.taskq.add([=]() {
-            owner_->get_col(k, col_);
-            this->notify();
-          }, madness::TaskAttributes::hipri());
+          madness::DependencyInterface::inc();
+          world_.taskq.add(this, & StepTask::get_col, k, madness::TaskAttributes::hipri());
 
           // Submit the task to collect row tiles of right for iteration k
-          inc();
-          world_.taskq.add([=]() {
-            owner_->get_row(k, row_);
-            this->notify();
-          }, madness::TaskAttributes::hipri());
+          madness::DependencyInterface::inc();
+          world_.taskq.add(this, & StepTask::get_row, k, madness::TaskAttributes::hipri());
         }
 
         template <typename Derived>
         void make_next_step_tasks(Derived* task, size_type depth) {
           TA_ASSERT(depth > 0);
-          // Set the depth to be no greater than the maximumn number steps
+          // Set the depth to be no greater than the maximum number steps
           if(depth > owner_->k_)
             depth = owner_->k_;
 
@@ -1541,17 +1545,17 @@ namespace TiledArray {
           }
 
           // Initialize the tail pointer
+          task->inc();
           tail_step_task_ = task;
-          tail_step_task_->inc();
         }
 
         template <typename Derived, typename GroupType>
-        void run(const GroupType& row_group, const GroupType& col_group) {
+        void run(const size_type k, const GroupType& row_group, const GroupType& col_group) {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
-          printf("step:  start rank=%i k=%lu\n", owner_->get_world().rank(), k_);
+          printf("step:  start rank=%i k=%lu\n", owner_->get_world().rank(), k);
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
 
-          if(k_ < owner_->k_) {
+          if(k < owner_->k_) {
             // Initialize next tail task and submit next task
             TA_ASSERT(next_step_task_);
             next_step_task_->tail_step_task_ =
@@ -1560,13 +1564,13 @@ namespace TiledArray {
             next_step_task_ = nullptr;
 
             // Start broadcast of column and row tiles for this step
-            world_.taskq.add(owner_, & Summa_::bcast_col, k_, col_, row_group,
+            world_.taskq.add(owner_, & Summa_::bcast_col, k, col_, row_group,
                 madness::TaskAttributes::hipri());
-            world_.taskq.add(owner_, & Summa_::bcast_row, k_, row_, col_group,
+            world_.taskq.add(owner_, & Summa_::bcast_row, k, row_, col_group,
                 madness::TaskAttributes::hipri());
 
             // Submit tasks for the contraction of col and row tiles.
-            owner_->contract(k_, col_, row_, tail_step_task_);
+            owner_->contract(k, col_, row_, tail_step_task_);
 
             // Notify task dependencies
             TA_ASSERT(tail_step_task_);
@@ -1592,7 +1596,7 @@ namespace TiledArray {
           }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
-          printf("step: finish rank=%i k=%lu\n", owner_->get_world().rank(), k_);
+          printf("step: finish rank=%i k=%lu\n", owner_->get_world().rank(), k);
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
         }
 
@@ -1600,22 +1604,20 @@ namespace TiledArray {
 
       class DenseStepTask : public StepTask {
       protected:
+        const size_type k_;
         using StepTask::owner_;
-        using StepTask::k_;
 
       public:
         DenseStepTask(const std::shared_ptr<Summa_>& owner, const size_type depth) :
-          StepTask(owner, owner->k_ + 1ul)
+          StepTask(owner, owner->k_ + 1ul), k_(0)
         {
-          k_ = 0ul;
           StepTask::make_next_step_tasks(this, depth);
           StepTask::spawn_get_row_col_tasks(k_);
         }
 
         DenseStepTask(DenseStepTask* const parent, const int ndep) :
-          StepTask(parent, ndep)
+          StepTask(parent, ndep), k_(parent->k_ + 1ul)
         {
-          k_ = parent->k_ + 1ul;
           // Spawn tasks to get k-th row and column tiles
           if(k_ < owner_->k_)
             StepTask::spawn_get_row_col_tasks(k_);
@@ -1624,61 +1626,48 @@ namespace TiledArray {
         virtual ~DenseStepTask() { }
 
         virtual void run(const madness::TaskThreadEnv&) {
-          StepTask::template run<DenseStepTask>(owner_->row_group_, owner_->col_group_);
+          StepTask::template run<DenseStepTask>(k_, owner_->row_group_, owner_->col_group_);
         }
       }; // class DenseStepTask
 
       class SparseStepTask : public StepTask {
       protected:
+        madness::Future<size_type> k_{};
         madness::Future<madness::Group> row_group_{};
         madness::Future<madness::Group> col_group_{};
         using StepTask::owner_;
         using StepTask::world_;
-        using StepTask::k_;
         using StepTask::finalize_task_;
         using StepTask::next_step_task_;
 
       private:
 
         /// Spawn task to construct process groups and get tiles.
-        void iterate_task(size_type k) {
+        void iterate_task(size_type k, const size_type offset) {
           // Search for the next non-zero row and column
-          k_ = owner_->iterate_sparse(k);
+          k = owner_->iterate_sparse(k + offset);
+          k_.set(k);
 
-          if(k_ < owner_->k_) {
+          if(k < owner_->k_) {
             // NOTE: The order of task submissions is dependent on the order in
             // which we want the tasks to complete.
 
             // Spawn tasks to get k-th row and column tiles
-            StepTask::spawn_get_row_col_tasks(k_);
+            StepTask::spawn_get_row_col_tasks(k);
 
-            // Spawn a task to construct the row broadcast group
-            world_.taskq.add([=] () {
-              row_group_.set(owner_->make_row_group(k_));
-            }, madness::TaskAttributes::hipri());
-
-            // Spawn a task to construct the column broadcast group
-            world_.taskq.add([=] () {
-              col_group_.set(owner_->make_col_group(k_));
-            }, madness::TaskAttributes::hipri());
-
-            // Start the iteration task for the next step.
-            TA_ASSERT(next_step_task_);
-            static_cast<SparseStepTask*>(next_step_task_)->spawn_iterate_task(k_ + 1ul);
+            // Spawn tasks to construct the row and column broadcast group
+            row_group_ = world_.taskq.add(owner_, & Summa_::make_row_group, k,
+                madness::TaskAttributes::hipri());
+            col_group_ = world_.taskq.add(owner_, & Summa_::make_col_group, k,
+                madness::TaskAttributes::hipri());
 
             // Increment the finalize task dependency counter, which indicates
             // that this task is not the terminating step task.
+            TA_ASSERT(finalize_task_);
             finalize_task_->inc();
           }
 
           madness::DependencyInterface::notify();
-        }
-
-        void spawn_iterate_task(const size_type k) {
-          madness::DependencyInterface::inc();
-          // Spawn a task to find the next non-zero iteration
-          world_.taskq.add(this, & SparseStepTask::iterate_task, k,
-              madness::TaskAttributes::hipri());
         }
 
       public:
@@ -1687,17 +1676,31 @@ namespace TiledArray {
           StepTask(owner, 1ul)
         {
           StepTask::make_next_step_tasks(this, depth);
-          spawn_iterate_task(0ul);
+
+          // Spawn a task to find the next non-zero iteration
+          madness::DependencyInterface::inc();
+          world_.taskq.add(this, & SparseStepTask::iterate_task,
+              0ul, 0ul, madness::TaskAttributes::hipri());
         }
 
         SparseStepTask(SparseStepTask* const parent, const int ndep) :
           StepTask(parent, ndep)
-        { }
+        {
+          if(parent->k_.probe() && (parent->k_.get() >= owner_->k_)) {
+            // Avoid running extra tasks if not needed.
+            k_.set(parent->k_.get());
+          } else {
+            // Spawn a task to find the next non-zero iteration
+            madness::DependencyInterface::inc();
+            world_.taskq.add(this, & SparseStepTask::iterate_task,
+                parent->k_, 1ul, madness::TaskAttributes::hipri());
+          }
+        }
 
         virtual ~SparseStepTask() { }
 
         virtual void run(const madness::TaskThreadEnv&) {
-          StepTask::template run<SparseStepTask>(row_group_, col_group_);
+          StepTask::template run<SparseStepTask>(k_, row_group_, col_group_);
         }
       }; // class SparseStepTask
 
