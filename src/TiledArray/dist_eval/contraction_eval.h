@@ -1479,8 +1479,8 @@ namespace TiledArray {
         // Member variables
         std::shared_ptr<Summa_> owner_; ///< The owner of this task
         madness::World& world_;
-        std::vector<col_datum> col_;
-        std::vector<row_datum> row_;
+        std::vector<col_datum> col_{};
+        std::vector<row_datum> row_{};
         FinalizeTask* finalize_task_; ///< The SUMMA finalization task
         StepTask* next_step_task_ = nullptr; ///< The next SUMMA step task
         StepTask* tail_step_task_ = nullptr; ///< The next SUMMA step task
@@ -1499,7 +1499,7 @@ namespace TiledArray {
 
         StepTask(const std::shared_ptr<Summa_>& owner, int finalize_ndep) :
           madness::TaskInterface(0ul, madness::TaskAttributes::hipri()),
-          owner_(owner), world_(owner->get_world()), col_(), row_(),
+          owner_(owner), world_(owner->get_world()),
           finalize_task_(new FinalizeTask(owner, finalize_ndep))
         {
           TA_ASSERT(owner_);
@@ -1512,7 +1512,7 @@ namespace TiledArray {
         /// \param ndep The number of dependencies for this task
         StepTask(StepTask* const parent, const int ndep) :
           madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
-          owner_(parent->owner_), world_(parent->world_), col_(), row_(),
+          owner_(parent->owner_), world_(parent->world_),
           finalize_task_(parent->finalize_task_)
         {
           TA_ASSERT(parent);
