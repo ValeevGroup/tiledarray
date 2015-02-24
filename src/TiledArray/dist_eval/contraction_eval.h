@@ -32,6 +32,12 @@
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST 1
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE 1
 
+// TILEDARRAY_SUMMA_DEPTH controls the number of simultaneous SUMMA iterations
+// that are scheduled.
+#ifndef TILEDARRAY_SUMMA_DEPTH
+#define TILEDARRAY_SUMMA_DEPTH 2
+#endif //TILEDARRAY_SUMMA_DEPTH
+
 namespace TiledArray {
   namespace detail {
 
@@ -1795,9 +1801,11 @@ namespace TiledArray {
 
           // Construct the first SUMMA iteration task
           if(TensorImpl_::shape().is_dense())
-            TensorImpl_::get_world().taskq.add(new DenseStepTask(shared_from_this(), 2));
+            TensorImpl_::get_world().taskq.add(new DenseStepTask(shared_from_this(),
+                TILEDARRAY_SUMMA_DEPTH));
           else
-            TensorImpl_::get_world().taskq.add(new SparseStepTask(shared_from_this(), 2));
+            TensorImpl_::get_world().taskq.add(new SparseStepTask(shared_from_this(),
+                TILEDARRAY_SUMMA_DEPTH));
         }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
