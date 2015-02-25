@@ -20,7 +20,7 @@ template <typename T, unsigned int DIM, typename Tile, typename Policy,
               Tile>::type * = nullptr>
 Array<T, DIM, detail::result_of_t<Fn(Tile)>, Policy> to_new_tile_type(
     Array<T, DIM, Tile, Policy> const &old_array, Fn converting_function) {
-    auto const &world = old_array.get_world();
+    auto &world = old_array.get_world();
 
     // Create new array
     using TileType = detail::result_of_t<Fn(Tile)>;
