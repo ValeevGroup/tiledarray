@@ -13,20 +13,21 @@ namespace TiledArray {
 /// sparse array.
 template <typename T, unsigned int DIM, typename Tile, typename Policy,
           typename std::enable_if<std::is_same<DensePolicy, Policy>::value,
-                                  Policy>::type* = nullptr>
+                                  Policy>::type * = nullptr>
 Array<T, DIM, Tile, SparsePolicy> to_sparse(
     Array<T, DIM, Tile, Policy> const &dense_array) {
-    typedef Array<T, DIM, Tile, SparsePolicy> ArrayType;  // return type
+
+    using ArrayType = Array<T, DIM, Tile, SparsePolicy>;  // return type
+    auto &world = dense_array.get_world();
 
     // Constructing a tensor to hold the norm of each tile in the Dense Array
     TiledArray::Tensor<float> tile_norms(dense_array.trange().tiles(), 0.0);
 
     const auto end = dense_array.end();
     const auto begin = dense_array.begin();
-    for (auto it = begin; it != end; ++it) {
-        // write the norm of each local tile to the tensor
-        tile_norms[it.ordinal()] = it->get().norm();
-    }
+    world.taskq.for_each(
+        madness::Range<decltype(end)>(begin, end),
+        [&](decltype(end) it) { tile_norms[it.ordinal()] = it->get().norm(); });
 
     // Construct a sparse shape the constructor will handle comunicating the
     // norms of the local tiles to the other nodes
@@ -39,12 +40,14 @@ Array<T, DIM, Tile, SparsePolicy> to_sparse(
     // Loop over the local dense tiles and if that tile is in the
     // sparse_array set the sparse array tile with a clone so as not to hold
     // a pointer to the original tile.
-    for (auto it = begin; it != end; ++it) {
+
+    world.taskq.for_each(madness::Range<decltype(end)>(begin, end),
+                         [&](decltype(end) it) {
         const auto ord = it.ordinal();
         if (!sparse_array.is_zero(ord)) {
             sparse_array.set(ord, it->get().clone());
         }
-    }
+    });
 
     return sparse_array;
 }
@@ -52,7 +55,7 @@ Array<T, DIM, Tile, SparsePolicy> to_sparse(
 /// If the array is already sparse return a copy of the array.
 template <typename T, unsigned int DIM, typename Tile, typename Policy,
           typename std::enable_if<std::is_same<SparsePolicy, Policy>::value,
-                                  Policy>::type* = nullptr>
+                                  Policy>::type * = nullptr>
 Array<T, DIM, Tile, SparsePolicy> to_sparse(
     Array<T, DIM, Tile, Policy> const &sparse_array) {
     return sparse_array;

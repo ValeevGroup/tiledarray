@@ -13,29 +13,30 @@ template <typename T, unsigned int DIM, typename Tile, typename Policy,
                                   Policy>::type* = nullptr>
 Array<T, DIM, Tile, DensePolicy> to_dense(
     Array<T, DIM, Tile, Policy> const& sparse_array) {
-    typedef Array<T, DIM, Tile, DensePolicy> ArrayType;
-    ArrayType dense_array(sparse_array.get_world(), sparse_array.trange());
 
-    typedef typename ArrayType::pmap_interface pmap_interface;
+    using ArrayType = Array<T, DIM, Tile, DensePolicy>;
+
+    auto& world = sparse_array.get_world();
+    ArrayType dense_array(world, sparse_array.trange());
+
+    using pmap_interface = typename ArrayType::pmap_interface;
+    using pmap_iter = typename pmap_interface::const_iterator;
+
     std::shared_ptr<pmap_interface> const& pmap = dense_array.get_pmap();
 
-    typename pmap_interface::const_iterator end = pmap->end();
-
-    // iteratate over sparse tiles
-    for (typename pmap_interface::const_iterator it = pmap->begin(); it != end;
-         ++it) {
+    auto conv = [&](pmap_iter it) {
         const std::size_t ord = *it;
         if (!sparse_array.is_zero(ord)) {
-            // clone because tiles are shallow copied
             Tile tile(sparse_array.find(ord).get().clone());
             dense_array.set(ord, tile);
         } else {
-            // This is how Array::set_all_local() sets tiles to a value,
-            // This likely means that what ever type Tile is must be
-            // constructable from a type T
-            dense_array.set(ord, T(0.0));  // This is how Array::set_all_local()
+            dense_array.set(ord, T(0.0));
         }
-    }
+        return madness::Future<bool>(true);
+    };
+
+    world.taskq.for_each(madness::Range<pmap_iter>(pmap->begin(), pmap->end()),
+                         conv);
 
     return dense_array;
 }
