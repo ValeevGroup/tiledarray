@@ -35,47 +35,74 @@ BOOST_AUTO_TEST_CASE( accessor )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // check default constructor
-  BOOST_REQUIRE_NO_THROW(TiledRange r0);
-  TiledRange r0;
-  std::vector<std::size_t> s0(3,0);
-  BOOST_CHECK_EQUAL(r0.tiles().size().size(), 0);
-  BOOST_CHECK_EQUAL(r0.elements().size().size(), 0);
+  {
+    BOOST_REQUIRE_NO_THROW(TiledRange r0);
+    TiledRange r0;
+    std::vector<std::size_t> s0(3,0);
+    BOOST_CHECK_EQUAL(r0.tiles().size().size(), 0);
+    BOOST_CHECK_EQUAL(r0.elements().size().size(), 0);
+  }
+
 
   // check ranges constructor
-  BOOST_REQUIRE_NO_THROW(TiledRange r1(dims.begin(), dims.end()));
-  TiledRange r1(dims.begin(), dims.end());
-  BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
-  BOOST_CHECK_EQUAL(r1.elements(), element_range);
+  {
+    BOOST_REQUIRE_NO_THROW(TiledRange r1(dims.begin(), dims.end()));
+    TiledRange r1(dims.begin(), dims.end());
+    BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
+    BOOST_CHECK_EQUAL(r1.elements(), element_range);
 
-  std::vector<TiledRange1> dims2;
-  for(std::size_t i = 0; i < GlobalFixture::dim; ++i)
-    dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
-  TiledRange::range_type t2(p1, p6);
+    std::vector<TiledRange1> dims2;
+    for(std::size_t i = 0; i < GlobalFixture::dim; ++i)
+      dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
+    TiledRange::range_type t2(p1, p6);
+  }
+
+  // check initializer list of initializer list constructor
+  {
+    TiledRange r1 { {0,2,5,10,17,28},
+                    {0,2,5,10,17,28},
+                    {0,2,5,10,17,28} };
+    BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
+    BOOST_CHECK_EQUAL(r1.elements(), element_range);
+  }
 
   // check ranges constructor w/ offset tile origin.
-  BOOST_REQUIRE_NO_THROW(TiledRange r2(dims2.begin(), dims2.end()));
-  TiledRange r2(dims2.begin(), dims2.end());
-  BOOST_CHECK_EQUAL(r2.tiles(), t2);
-  BOOST_CHECK_EQUAL(r2.elements(), element_range);
+  {
 
-  std::array<std::size_t, 6> a3;
-  std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
-  std::vector<TiledRange1> dims3(GlobalFixture::dim, TiledRange1(a3.begin(), a3.end()));
-  TiledRange::tile_range_type e3 = TiledRange::tile_range_type(
-      tile_index(GlobalFixture::dim,a3[0]),
-      tile_index(GlobalFixture::dim,a3[5]));
+    std::vector<TiledRange1> dims2;
+    for(std::size_t i = 0; i < GlobalFixture::dim; ++i)
+      dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
+    TiledRange::range_type t2(p1, p6);
+
+    BOOST_REQUIRE_NO_THROW(TiledRange r2(dims2.begin(), dims2.end()));
+    TiledRange r2(dims2.begin(), dims2.end());
+    BOOST_CHECK_EQUAL(r2.tiles(), t2);
+    BOOST_CHECK_EQUAL(r2.elements(), element_range);
+
+  }
 
   // check ranges constructor w/ offset element origin.
-  BOOST_REQUIRE_NO_THROW(TiledRange r3(dims3.begin(), dims3.end()));
-  TiledRange r3(dims3.begin(), dims3.end());
-  BOOST_CHECK_EQUAL(r3.tiles(), tile_range);
-  BOOST_CHECK_EQUAL(r3.elements(), e3);
+  {
+    std::array<std::size_t, 6> a3;
+    std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
+    std::vector<TiledRange1> dims3(GlobalFixture::dim, TiledRange1(a3.begin(), a3.end()));
+    TiledRange::tile_range_type e3 = TiledRange::tile_range_type(
+        tile_index(GlobalFixture::dim,a3[0]),
+        tile_index(GlobalFixture::dim,a3[5]));
+
+    BOOST_REQUIRE_NO_THROW(TiledRange r3(dims3.begin(), dims3.end()));
+    TiledRange r3(dims3.begin(), dims3.end());
+    BOOST_CHECK_EQUAL(r3.tiles(), tile_range);
+    BOOST_CHECK_EQUAL(r3.elements(), e3);
+  }
 
   // check copy constructor
-  BOOST_REQUIRE_NO_THROW(TiledRange r4(tr));
-  TiledRange r4(tr);
-  BOOST_CHECK_EQUAL(r4.tiles(), tr.tiles());
-  BOOST_CHECK_EQUAL(r4.elements(), tr.elements());
+  {
+    BOOST_REQUIRE_NO_THROW(TiledRange r4(tr));
+    TiledRange r4(tr);
+    BOOST_CHECK_EQUAL(r4.tiles(), tr.tiles());
+    BOOST_CHECK_EQUAL(r4.elements(), tr.elements());
+  }
 }
 
 BOOST_AUTO_TEST_CASE( ostream )

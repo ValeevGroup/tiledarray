@@ -88,6 +88,19 @@ int main(int argc, char** argv) {
                 << "\nMatrix size        = " << matrix_size << "x" << matrix_size
                 << "\nBlock size         = " << block_size << "x" << block_size;
 
+
+    // Construct TiledRange
+    std::vector<unsigned int> blocking;
+    blocking.reserve(num_blocks + 1);
+    for(long i = 0l; i <= matrix_size; i += block_size)
+      blocking.push_back(i);
+
+    std::vector<TiledArray::TiledRange1> blocking2(2,
+        TiledArray::TiledRange1(blocking.begin(), blocking.end()));
+
+    TiledArray::TiledRange
+      trange(blocking2.begin(), blocking2.end());
+
     for(unsigned int left_sparsity = 10; left_sparsity <= 100; left_sparsity += 10){
       std::vector<double> inner_gflops, inner_times, inner_app_gflops;
       for(unsigned int right_sparsity = 10; right_sparsity <= left_sparsity; right_sparsity += 10){
@@ -100,18 +113,6 @@ int main(int argc, char** argv) {
                     << "\nNumber of right blocks   = " << r_block_count << "   " << 100.0 * double(r_block_count) / double(num_blocks * num_blocks) << "%"
                     << "\nAverage left blocks/node = " << double(l_block_count) / double(world.size())
                     << "\nAverage right blocks/node = " << double(r_block_count) / double(world.size()) << "\n";
-
-        // Construct TiledRange
-        std::vector<unsigned int> blocking;
-        blocking.reserve(num_blocks + 1);
-        for(long i = 0l; i <= matrix_size; i += block_size)
-          blocking.push_back(i);
-
-        std::vector<TiledArray::TiledRange1> blocking2(2,
-            TiledArray::TiledRange1(blocking.begin(), blocking.end()));
-
-        TiledArray::TiledRange
-          trange(blocking2.begin(), blocking2.end());
 
         // Construct shape
         TiledArray::Tensor<float>

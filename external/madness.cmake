@@ -8,7 +8,7 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(Madness CONFIG COMPONENTS MADworld MADlinalg)
+find_package(Madness CONFIG QUIET COMPONENTS MADworld MADlinalg)
 
 if(MADNESS_FOUND)
   
@@ -59,10 +59,6 @@ if(MADNESS_FOUND)
   if (NOT Madness_COMPILES)
     message(FATAL_ERROR "MADNESS found, but does not compile correctly.")
   endif()
-    
-  if(ENABLE_ELEMENTAL)
-    
-  endif()
 
   cmake_pop_check_state()
 
@@ -83,7 +79,7 @@ else()
     set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
   endif()
   if(NOT DEFINED Madness_TAG)
-    set(Madness_TAG "8e220d0c46741673ece3d03381942ab99b4ef19d")
+    set(Madness_TAG "5f144e5889928bd46f31d5eb8b67334a4b77c393")
   endif()
   message(STATUS "Will pull MADNESS from ${Madness_URL}")
   
@@ -95,22 +91,10 @@ else()
   set(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS}")
   set(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
-  if(CMAKE_BUILD_TYPE STREQUAL Debug)
-    append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_DEBUG}")
-    append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_DEBUG}")
-    append_flags(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
-  elseif(CMAKE_BUILD_TYPE STREQUAL Release)
-    append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_RELEASE}")
-    append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_RELEASE}")
-    append_flags(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
-  elseif(CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo)
-    append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-    append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-    append_flags(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
-  elseif(CMAKE_BUILD_TYPE STREQUAL MinSizeRel)
-    append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_MINSIZEREL}")
-    append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_MINSIZEREL}")
-    append_flags(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL}")
+  if(CMAKE_BUILD_TYPE)
+    string(TOLOWER MAD_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+    append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
+    append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
   endif()
   
   # Set compile flags required for Elemental
@@ -235,7 +219,7 @@ else()
   # is built.
   add_custom_target(madness-update
     COMMAND ${GIT_EXECUTABLE} fetch
-    COMMAND ${GIT_EXECUTABLE} checkout --detach ${Madness_TAG}
+    COMMAND ${GIT_EXECUTABLE} checkout ${Madness_TAG}
     COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${MADNESS_BINARY_DIR}/stamp/madness-configure
     WORKING_DIRECTORY ${MADNESS_SOURCE_DIR}
     COMMENT "Updating source for 'madness' from ${MADNESS_URL}")
@@ -265,7 +249,7 @@ else()
   add_dependencies(External madness)
 
   # Set config variables 
-  if(NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 11.0)
     # Building on OS X 10.7 or later, so add "-Wl,-no_pie" linker flags.
     set(Madness_LINKER_FLAGS "-Wl,-no_pie")
   endif()

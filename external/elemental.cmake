@@ -6,7 +6,7 @@
 
 include(ExternalProject)
 
-find_package(Elemental COMPONENTS pmrrr;lapack-addons)
+find_package(Elemental QUIET COMPONENTS pmrrr;lapack-addons)
 
 if(Elemental_FOUND)
   
@@ -18,7 +18,6 @@ if(Elemental_FOUND)
   
   # Elemental compiles check
   list(APPEND CMAKE_REQUIRED_INCLUDES ${Elemental_INCLUDE_DIRS} ${MPI_INCLUDE_PATH})
-  message("${Elemental_LIBRARIES}")
   list(APPEND CMAKE_REQUIRED_LIBRARIES ${LAPACK_LINKER_FLAGS} ${MPI_LINK_FLAGS}
       ${Elemental_LIBRARIES} ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
   set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${MPI_COMPILE_FLAGS}")
@@ -64,32 +63,14 @@ else()
   endif()
   message(STATUS "Will pull Elemental from ${Elemental_URL}")
   
-  set(ELEMENTAL_CFLAGS "${CMAKE_CPP_FLAGS}")
   append_flags(ELEMENTAL_CFLAGS "${CMAKE_C_FLAGS}")
-  set(ELEMENTAL_CXXFLAGS "${CMAKE_CPP_FLAGS}")
   append_flags(ELEMENTAL_CXXFLAGS "${CMAKE_CXX_FLAGS}")
-  set(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS}")
   
-  if(CMAKE_BUILD_TYPE STREQUAL Debug)
-    append_flags(ELEMENTAL_CFLAGS "${CMAKE_C_FLAGS_DEBUG}")
-    append_flags(ELEMENTAL_CXXFLAGS "${CMAKE_CXX_FLAGS_DEBUG}")
-  elseif(CMAKE_BUILD_TYPE STREQUAL Release)
-    append_flags(ELEMENTAL_CFLAGS "${CMAKE_C_FLAGS_RELEASE}")
-    append_flags(ELEMENTAL_CXXFLAGS "${CMAKE_CXX_FLAGS_RELEASE}")
-  elseif(CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo)
-    append_flags(ELEMENTAL_CFLAGS "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-    append_flags(ELEMENTAL_CXXFLAGS "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-  elseif(CMAKE_BUILD_TYPE STREQUAL MinSizeRel)
-    append_flags(ELEMENTAL_CFLAGS "${CMAKE_C_FLAGS_MINSIZEREL}")
-    append_flags(ELEMENTAL_CXXFLAGS "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+  if(CMAKE_BUILD_TYPE)
+    string(TOLOWER ELEMENTAL_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+    append_flags(ELEMENTAL_CFLAGS "${CMAKE_C_FLAGS_${ELEMENTAL_BUILD_TYPE}}")
+    append_flags(ELEMENTAL_CXXFLAGS "${CMAKE_CXX_FLAGS_${ELEMENTAL_BUILD_TYPE}}")
   endif()
-  
-  
-  # LAPACK
-  append_flags(ELEMENTAL_MATH_LIBS "${LAPACK_LINKER_FLAGS} ${BLAS_LINKER_FLAGS}")
-  foreach(_lib ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
-    list(APPEND ELEMENTAL_MATH_LIBS ${_lib})
-  endforeach()
   
   # Set the Elemental source and build directories
   set(ELEMENTAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/elemental) 
@@ -116,7 +97,7 @@ else()
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DC_FLAGS=${ELEMENTAL_CFLAGS}
         -DCXX_FLAGS=${ELEMENTAL_CXXFLAGS}
-        -DMATH_LIBS=${ELEMENTAL_MATH_LIBS}
+        -DMATH_LIBS=${TiledArray_CONFIG_LIBRARIES}
         -DCMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}
     CMAKE_GENERATOR "Unix Makefiles"
    #--Build step-----------------

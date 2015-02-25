@@ -365,7 +365,9 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
 
   // Fill arrays with random data
   rand_fill_array(left);
+  left.truncate();
   rand_fill_array(right);
+  right.truncate();
 
   array_eval_type left_arg(make_array_eval(left, left.get_world(), left.get_shape(),
       proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),

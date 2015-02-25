@@ -108,7 +108,10 @@ macro (libfind_process PREFIX)
         foreach (i ${${PREFIX}_PROCESS_INCLUDES} ${${PREFIX}_PROCESS_LIBS})
           message("${i}=${${i}}")
         endforeach (i)
-        message (FATAL_ERROR "Required library ${PREFIX} NOT FOUND.\nInstall the library (dev version) and try again. If the library is already installed, use ccmake to set the missing variables manually.")
+        message (FATAL_ERROR "Required library ${PREFIX} NOT FOUND.\n"
+                             "Install the library (dev version) and try again. "
+                             "If the library is already installed, "
+                             "use ccmake to set the missing variables manually.")
       endif (${PREFIX}_FIND_REQUIRED)
     endif (${PREFIX}_FOUND)
   endif (NOT ${PREFIX}_FOUND)

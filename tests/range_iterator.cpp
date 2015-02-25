@@ -62,11 +62,16 @@ struct RangeIteratorFixture {
 BOOST_FIXTURE_TEST_SUITE( range_iterator_suite , RangeIteratorFixture )
 
 // Check iterator typedefs
-TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::value_type, int>::value) );
-TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::reference, const int&>::value) );
-TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::pointer, const int*>::value) );
-TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::iterator_category, std::input_iterator_tag>::value) );
-TA_STATIC_ASSERT( (std::is_same<RangeIterator<int, FakeRange>::difference_type, std::ptrdiff_t>::value) );
+static_assert( (std::is_same<RangeIterator<int, FakeRange>::value_type, int>::value),
+    "RangeIterator value_type test failed");
+static_assert( (std::is_same<RangeIterator<int, FakeRange>::reference, const int&>::value),
+    "RangeIterator reference test failed");
+static_assert( (std::is_same<RangeIterator<int, FakeRange>::pointer, const int*>::value),
+    "RangeIterator pointer test failed" );
+static_assert( (std::is_same<RangeIterator<int, FakeRange>::iterator_category, std::input_iterator_tag>::value),
+    "RangeIterator iterator_category test failed");
+static_assert( (std::is_same<RangeIterator<int, FakeRange>::difference_type, std::ptrdiff_t>::value),
+    "RangeIterator difference_type test failed");
 
 BOOST_AUTO_TEST_CASE( rvalue_derefence )
 {
