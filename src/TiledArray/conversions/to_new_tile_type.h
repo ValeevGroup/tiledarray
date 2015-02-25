@@ -5,7 +5,6 @@
 #include <TiledArray/array.h>
 
 namespace TiledArray {
-namespace conversion {
 
 namespace detail {
 template <typename T>
@@ -21,28 +20,27 @@ template <typename T, unsigned int DIM, typename Tile, typename Policy,
               Tile>::type * = nullptr>
 Array<T, DIM, detail::result_of_t<Fn(Tile)>, Policy> to_new_tile_type(
     Array<T, DIM, Tile, Policy> const &old_array, Fn converting_function) {
+    auto const &world = old_array.get_world();
+
+    // Create new array
     using TileType = detail::result_of_t<Fn(Tile)>;
+    auto new_array = Array<T, DIM, TileType, Policy>{world, old_array.trange(),
+                                                     old_array.get_shape()};
 
-    auto new_array = Array<T, DIM, TileType, Policy>{
-        old_array.get_world(), old_array.trange(), old_array.get_shape()};
+    using IterType = decltype(old_array.end());
 
-    const auto end = old_array.end();
-    auto conv = [&](decltype(end) const &it) {
+    auto conv = [&](IterType it) {
         auto const &old_tile = it->get();
         const auto ord = it.ordinal();
         new_array.set(ord, converting_function(old_tile));
+        return madness::Future<bool>(true);
     };
 
-    old_array.get_world().taskq.for_each<madness::rangeT, decltype(conv)>(
-        madness::Range<decltype(old_array.begin())>(old_array.begin(),
-                                                    old_array.end()),
-        conv);
-
-    old_array.get_world().gop.fence();
+    world.taskq.for_each(
+        madness::Range<IterType>(old_array.begin(), old_array.end()), conv);
 
     return new_array;
 }
 
-}  // namespace conversion
 }  // namespace TiledArray
 #endif /* end of include guard: TILEDARRAY_TONEWTILETYPE_H__INCLUDED */
