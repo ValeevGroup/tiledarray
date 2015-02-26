@@ -552,7 +552,7 @@ namespace TiledArray {
       Range_::index result(end, 0);
 
       // Get pointers to the data
-      size_type* restrict const result_data = & result.front();
+      size_type * restrict const result_data = & result.front();
       size_type const * restrict const weight = weight_.data();
       size_type const * restrict const start = start_.data();
 

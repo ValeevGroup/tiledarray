@@ -24,6 +24,7 @@
 #include <TiledArray/array.h>
 #include <TiledArray/eigen.h>
 #include <TiledArray/policies/sparse_policy.h>
+#include <TiledArray/conversions/conversions.h>
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>
