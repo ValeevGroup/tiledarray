@@ -187,7 +187,7 @@ namespace TiledArray {
           if(madness::World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The left- and right-hand expressions TiledRange objects of a" \
-                "binary expression are not equal:" \
+                " binary expression are not equal:" \
                 << "\n    left  = " << left_.trange() \
                 << "\n    right = " << right_.trange() );
           }
