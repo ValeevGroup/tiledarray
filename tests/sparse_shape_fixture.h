@@ -40,6 +40,7 @@ namespace TiledArray {
       left(make_shape(tr, 0.1, 23)),
       right(make_shape(tr, 0.1, 82)),
       perm(make_perm()),
+      perm_index(tr.tiles(), perm),
       tolerance(0.0001)
 
     {
@@ -85,6 +86,7 @@ namespace TiledArray {
     SparseShape<float> left;
     SparseShape<float> right;
     Permutation perm;
+    TiledArray::detail::PermIndex perm_index;
     const float tolerance;
   }; // SparseShapeFixture
 

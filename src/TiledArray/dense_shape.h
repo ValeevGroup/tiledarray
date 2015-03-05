@@ -77,6 +77,12 @@ namespace TiledArray {
     static constexpr bool is_dense() { return true; }
 
 
+    /// Sparsity fraction
+
+    /// \return The fraction of tiles that are zero tiles.
+    static constexpr float sparsity() { return 0.0f; }
+
+
     /// Check if the shape is empty (uninitialized)
 
     /// \return Always \c false
