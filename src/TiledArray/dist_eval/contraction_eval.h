@@ -1820,7 +1820,7 @@ namespace TiledArray {
             float right_sparsity = right_.shape().sparsity();
             if(right_sparsity > 0.9) right_sparsity = 0.9;
 
-            // Compute the fraction of non-zero tiles in a single SUMMA iteration.
+            // Compute the fraction of non-zero result tiles in a single SUMMA iteration.
             const float frac_non_zero = (1.0f - left_sparsity) * (1.0f - right_sparsity);
 
             // Compute the new depth
