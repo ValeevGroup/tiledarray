@@ -32,12 +32,6 @@
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST 1
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE 1
 
-// TILEDARRAY_SUMMA_DEPTH controls the number of simultaneous SUMMA iterations
-// that are scheduled.
-#ifndef TILEDARRAY_SUMMA_DEPTH
-#define TILEDARRAY_SUMMA_DEPTH 2
-#endif //TILEDARRAY_SUMMA_DEPTH
-
 namespace TiledArray {
   namespace detail {
 
@@ -1799,13 +1793,44 @@ namespace TiledArray {
         if(proc_grid_.local_size() > 0ul) {
           tile_count = initialize();
 
+          // depth controls the number of simultaneous SUMMA iterations
+          // that are scheduled.
+#ifndef TILEDARRAY_SUMMA_DEPTH
+          size_type depth = std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols());
+          if(depth < 2ul)
+            depth = 2ul;
+#else
+          size_type depth = TILEDARRAY_SUMMA_DEPTH;
+#endif //TILEDARRAY_SUMMA_DEPTH
+
           // Construct the first SUMMA iteration task
-          if(TensorImpl_::shape().is_dense())
+          if(TensorImpl_::shape().is_dense()) {
+#ifndef TILEDARRAY_SUMMA_DEPTH
+            if(depth > k_) depth = k_;
+#endif //TILEDARRAY_SUMMA_DEPTH
             TensorImpl_::get_world().taskq.add(new DenseStepTask(shared_from_this(),
-                TILEDARRAY_SUMMA_DEPTH));
-          else
+                depth));
+          } else {
+#ifndef TILEDARRAY_SUMMA_DEPTH
+            // Increase the depth based on the amount of sparsity in an iteration.
+
+            // Get the sparsity fractions for the left- and right-hand arguments.
+            float left_sparsity = left_.shape().sparsity();
+            if(left_sparsity > 0.9) left_sparsity = 0.9;
+            float right_sparsity = right_.shape().sparsity();
+            if(right_sparsity > 0.9) right_sparsity = 0.9;
+
+            // Compute the fraction of non-zero tiles in a single SUMMA iteration.
+            const float frac_non_zero = (1.0f - left_sparsity) * (1.0f - right_sparsity);
+
+            // Compute the new depth
+            depth = float(depth) * (std::log2(frac_non_zero) + 1.0f) + 0.5f;
+            if(depth > k_) depth = k_;
+
+#endif // TILEDARRAY_SUMMA_DEPTH
             TensorImpl_::get_world().taskq.add(new SparseStepTask(shared_from_this(),
-                TILEDARRAY_SUMMA_DEPTH));
+                depth));
+          }
         }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
