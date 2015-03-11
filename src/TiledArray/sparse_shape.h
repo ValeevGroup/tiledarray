@@ -285,7 +285,11 @@ namespace TiledArray {
     /// \return true
     static constexpr bool is_dense() { return false; }
 
+    /// Sparsity of the shape
+
+    /// \return The fraction of tiles that are zero.
     float sparsity() const {
+      TA_ASSERT(! tile_norms_.empty());
       return float(zero_tile_count_) / float(tile_norms_.size());
     }
 
