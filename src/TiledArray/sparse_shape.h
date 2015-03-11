@@ -55,23 +55,16 @@ namespace TiledArray {
   private:
 
     // T must be a numeric type
-    static_assert(std::is_arithmetic<T>::value,
-        "SparseShape template type T must be an arithmatic type");
+    static_assert(std::is_floating_point<T>::value,
+        "SparseShape template type T must be a floating point type");
 
     // Internal typedefs
     typedef detail::ValArray<value_type> vector_type;
 
     Tensor<value_type> tile_norms_; ///< Tile magnitude data
     std::shared_ptr<vector_type> size_vectors_; ///< Tile volume data
+    size_type zero_tile_count_; ///< Number of zero tiles
     static value_type threshold_; ///< The zero threshold
-
-    class Size {
-    public:
-      TILEDARRAY_FORCE_INLINE value_type
-      operator()(const TiledRange1::range_type& tile) const {
-        return value_type(tile.second - tile.first);
-      }
-    };
 
     template <typename Op>
     static vector_type
@@ -92,42 +85,12 @@ namespace TiledArray {
         // Compute the outer product of left and right
 
         result = vector_type(left.size() * right.size());
-        result.outer_fill(left, right, math::Multiplies<value_type, value_type, value_type>());
+        result.outer_fill(left, right,
+            [] (const value_type left, const value_type right) { return left * right; });
       }
 
       return result;
     }
-
-    /// Scale a number and set it to zero if less threshold
-    class NormalizeAndZero {
-      value_type threshold_;
-    public:
-      typedef void result_type;
-
-      NormalizeAndZero() : threshold_(SparseShape::threshold_) { }
-
-      void operator()(value_type& restrict norm, const value_type size) const {
-        TA_ASSERT(norm >= value_type(0));
-        norm /= size;
-        if(norm < threshold_)
-          norm = 0;
-      }
-
-      vector_type operator()(const vector_type& size_vector) const {
-        return vector_type(size_vector, *this);
-      }
-
-      value_type operator()(const value_type size) const {
-        return value_type(1) / size;
-      }
-
-      void operator()(value_type& restrict norm, const value_type x, const value_type y) const {
-        TA_ASSERT(norm >= value_type(0));
-        norm *= x * y;
-        if(norm < threshold_)
-          norm = 0;
-      }
-    }; // class NormalizeAndZero
 
 
     /// Normalize tile norms
@@ -136,29 +99,57 @@ namespace TiledArray {
     /// tile. If the normalized norm is less than threshold, the value is set to
     /// zero.
     void normalize() {
-      const NormalizeAndZero op;
+      const value_type threshold = threshold_;
       const unsigned int dim = tile_norms_.range().dim();
       const vector_type* restrict const size_vectors = size_vectors_.get();
+      size_type zero_tile_count = 0ul;
 
       if(dim == 1u) {
+        auto normalize_op = [threshold, &zero_tile_count] (value_type& norm, const value_type size) {
+          TA_ASSERT(norm >= value_type(0));
+          norm /= size;
+          if(norm < threshold) {
+            norm = value_type(0);
+            ++zero_tile_count;
+          }
+        };
+
         // This is the easy case where the data is a vector and can be
         // normalized directly.
         math::binary_vector_op(size_vectors[0].size(), size_vectors[0].data(),
-            tile_norms_.data(), op);
+            tile_norms_.data(), normalize_op);
 
       } else {
         // Here the normalization constants are computed and multiplied by the
         // norm data using a recursive, outer-product algorithm. This is done to
         // minimize temporary memory requirements, memory bandwidth, and work.
 
+        auto inv_vec_op = [] (const vector_type& size_vector) {
+          return vector_type(size_vector,
+              [] (const value_type size) { return value_type(1) / size; });
+        };
+
         // Compute the left and right outer products
         const unsigned int middle = (dim >> 1u) + (dim & 1u);
-        const vector_type left = recursive_outer_product(size_vectors, middle, op);
-        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, op);
+        const vector_type left = recursive_outer_product(size_vectors, middle, inv_vec_op);
+        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, inv_vec_op);
+
+        auto normalize_op = [threshold, &zero_tile_count] (value_type& norm,
+            const value_type x, const value_type y)
+        {
+          TA_ASSERT(norm >= value_type(0));
+          norm *= x * y;
+          if(norm < threshold) {
+            norm = value_type(0);
+            ++zero_tile_count;
+          }
+        };
 
         math::outer(left.size(), right.size(), left.data(), right.data(),
-            tile_norms_.data(), op);
+            tile_norms_.data(), normalize_op);
       }
+
+      zero_tile_count_ = zero_tile_count;
     }
 
     static std::shared_ptr<vector_type>
@@ -172,7 +163,9 @@ namespace TiledArray {
       for(unsigned int i = 0ul; i != dim; ++i) {
         const size_type n = trange.data()[i].tiles().second - trange.data()[i].tiles().first;
 
-        size_vectors.get()[i] = vector_type(n, & (* trange.data()[i].begin()), Size());
+        size_vectors.get()[i] = vector_type(n, & (* trange.data()[i].begin()),
+            [] (const TiledRange1::range_type& tile)
+            { return value_type(tile.second - tile.first); });
       }
 
       return size_vectors;
@@ -194,8 +187,10 @@ namespace TiledArray {
       return result_size_vectors;
     }
 
-    SparseShape(const Tensor<T>& tile_norms, const std::shared_ptr<vector_type>& size_vectors) :
-      tile_norms_(tile_norms), size_vectors_(size_vectors)
+    SparseShape(const Tensor<T>& tile_norms, const std::shared_ptr<vector_type>& size_vectors,
+        const size_type zero_tile_count) :
+      tile_norms_(tile_norms), size_vectors_(size_vectors),
+      zero_tile_count_(zero_tile_count)
     { }
 
   public:
@@ -203,7 +198,7 @@ namespace TiledArray {
     /// Default constructor
 
     /// Construct a shape with no data.
-    SparseShape() : tile_norms_(), size_vectors_() { }
+    SparseShape() : tile_norms_(), size_vectors_(), zero_tile_count_(0ul) { }
 
     /// Constructor
 
@@ -213,8 +208,8 @@ namespace TiledArray {
     /// \param tile_norms The Frobenius norm of tiles
     /// \param trange The tiled range of the tensor
     SparseShape(const Tensor<T>& tile_norms, const TiledRange& trange) :
-      tile_norms_(tile_norms.clone()),
-      size_vectors_(initialize_size_vectors(trange))
+      tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
+      zero_tile_count_(0ul)
     {
       TA_ASSERT(! tile_norms_.empty());
       TA_ASSERT(tile_norms_.range() == trange.tiles());
@@ -231,9 +226,10 @@ namespace TiledArray {
     /// \param world The world where the shape will live
     /// \param tile_norms The Frobenius norm of tiles
     /// \param trange The tiled range of the tensor
-    SparseShape(madness::World& world, const Tensor<value_type>& tile_norms, const TiledRange& trange) :
-      tile_norms_(tile_norms.clone()),
-      size_vectors_(initialize_size_vectors(trange))
+    SparseShape(madness::World& world, const Tensor<value_type>& tile_norms,
+        const TiledRange& trange) :
+      tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
+      zero_tile_count_(0ul)
     {
       TA_ASSERT(! tile_norms_.empty());
       TA_ASSERT(tile_norms_.range() == trange.tiles());
@@ -249,7 +245,8 @@ namespace TiledArray {
     /// Shallow copy of \c other.
     /// \param other The other shape object to be copied
     SparseShape(const SparseShape<T>& other) :
-      tile_norms_(other.tile_norms_), size_vectors_(other.size_vectors_)
+      tile_norms_(other.tile_norms_), size_vectors_(other.size_vectors_),
+      zero_tile_count_(other.zero_tile_count_)
     { }
 
     /// Copy assignment operator
@@ -260,6 +257,7 @@ namespace TiledArray {
     SparseShape<T>& operator=(const SparseShape<T>& other) {
       tile_norms_ = other.tile_norms_;
       size_vectors_ = other.size_vectors_;
+      zero_tile_count_ = other.zero_tile_count_;
       return *this;
     }
 
@@ -286,6 +284,10 @@ namespace TiledArray {
 
     /// \return true
     static constexpr bool is_dense() { return false; }
+
+    float sparsity() const {
+      return float(zero_tile_count_) / float(tile_norms_.size());
+    }
 
     /// Threshold accessor
 
@@ -323,7 +325,8 @@ namespace TiledArray {
     /// \param perm The permutation to be applied
     /// \return A new, permuted shape
     SparseShape_ perm(const Permutation& perm) const {
-      return SparseShape_(tile_norms_.permute(perm), perm_size_vectors(perm));
+      return SparseShape_(tile_norms_.permute(perm), perm_size_vectors(perm),
+          zero_tile_count_);
     }
 
     /// Scale shape
@@ -336,12 +339,18 @@ namespace TiledArray {
     /// \return A new, scaled shape
     SparseShape_ scale(const value_type factor) const {
       TA_ASSERT(! tile_norms_.empty());
+      const value_type threshold = threshold_;
       const value_type abs_factor = std::abs(factor);
-      auto op = [=](value_type value) {
+      size_type zero_tile_count = 0ul;
+      auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
         value *= abs_factor;
-        return (value < threshold_ ? value_type(0) : value);
+        if(value < threshold) {
+          value = value_type(0);
+          ++zero_tile_count;
+        }
+        return value;
       };
-      return SparseShape_(tile_norms_.unary(op), size_vectors_);
+      return SparseShape_(tile_norms_.unary(op), size_vectors_, zero_tile_count);
     }
 
     /// Scale and permute shape
@@ -355,12 +364,19 @@ namespace TiledArray {
     /// \return A new, scaled-and-permuted shape
     SparseShape_ scale(const value_type factor, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
+      const value_type threshold = threshold_;
       const value_type abs_factor = std::abs(factor);
-      auto op = [=](value_type value) {
+      size_type zero_tile_count = 0ul;
+      auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
         value *= abs_factor;
-        return (value < threshold_ ? value_type(0) : value);
+        if(value < threshold) {
+          value = value_type(0);
+          ++zero_tile_count;
+        }
+        return value;
       };
-      return SparseShape_(tile_norms_.unary(op, perm), perm_size_vectors(perm));
+      return SparseShape_(tile_norms_.unary(op, perm), perm_size_vectors(perm),
+          zero_tile_count);
     }
 
     /// Add shapes
@@ -373,7 +389,20 @@ namespace TiledArray {
     /// \return A sum of shapes
     SparseShape_ add(const SparseShape_& other) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.add(other.tile_norms_), size_vectors_);
+      const value_type threshold = threshold_;
+      size_type zero_tile_count = 0ul;
+      auto op = [threshold, &zero_tile_count] (value_type left,
+          const value_type right)
+      {
+        left += right;
+        if(left < threshold) {
+          left = value_type(0);
+          ++zero_tile_count;
+        }
+        return left;
+      };
+      return SparseShape_(tile_norms_.binary(other.tile_norms_, op), size_vectors_,
+          zero_tile_count);
     }
 
     /// Add and permute shapes
@@ -387,7 +416,20 @@ namespace TiledArray {
     /// \return A new, scaled shape
     SparseShape_ add(const SparseShape_& other, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
-      return SparseShape_(tile_norms_.add(other.tile_norms_, perm), perm_size_vectors(perm));
+      const value_type threshold = threshold_;
+      size_type zero_tile_count = 0ul;
+      auto op = [threshold, &zero_tile_count] (value_type left,
+          const value_type right)
+      {
+        left += right;
+        if(left < threshold) {
+          left = value_type(0);
+          ++zero_tile_count;
+        }
+        return left;
+      };
+      return SparseShape_(tile_norms_.binary(other.tile_norms_, op, perm),
+          perm_size_vectors(perm), zero_tile_count);
     }
 
     /// Add and scale shapes
@@ -401,12 +443,22 @@ namespace TiledArray {
     /// \return A scaled sum of shapes
     SparseShape_ add(const SparseShape_& other, value_type factor) const {
       TA_ASSERT(! tile_norms_.empty());
+      const value_type threshold = threshold_;
       const value_type abs_factor = std::abs(factor);
-      auto op = [=](const value_type left, const value_type right) {
-        const value_type result = (left + right) * abs_factor;
-        return (result < threshold_ ? value_type(0) : result);
+      size_type zero_tile_count = 0ul;
+      auto op = [threshold, &zero_tile_count, abs_factor] (value_type left,
+          const value_type right)
+      {
+        left += right;
+        left *= abs_factor;
+        if(left < threshold) {
+          left = value_type(0);
+          ++zero_tile_count;
+        }
+        return left;
       };
-      return SparseShape_(tile_norms_.binary(other.tile_norms_, op), size_vectors_);
+      return SparseShape_(tile_norms_.binary(other.tile_norms_, op), size_vectors_,
+          zero_tile_count);
     }
 
     /// Add, scale, and permute shapes
@@ -422,84 +474,81 @@ namespace TiledArray {
         const Permutation& perm) const
     {
       TA_ASSERT(! tile_norms_.empty());
+      const value_type threshold = threshold_;
       const value_type abs_factor = std::abs(factor);
-      auto op = [=](const value_type left, const value_type right) {
-        const value_type result = (left + right) * abs_factor;
-        return (result < threshold_ ? value_type(0) : result);
+      size_type zero_tile_count = 0ul;
+      auto op = [threshold, &zero_tile_count, abs_factor]
+                 (value_type left, const value_type right)
+      {
+        left += right;
+        left *= abs_factor;
+        if(left < threshold) {
+          left = value_type(0);
+          ++zero_tile_count;
+        }
+        return left;
       };
-      return SparseShape_(tile_norms_.binary(other.tile_norms_, op,
-          perm), perm_size_vectors(perm));
+      return SparseShape_(tile_norms_.binary(other.tile_norms_, op, perm),
+          perm_size_vectors(perm), zero_tile_count);
     }
 
-  private:
-
-    class ConstTensorNorm {
-      const value_type value_;
-      const value_type threshold_;
-
-    public:
-      typedef void result_type;
-
-      ConstTensorNorm(const value_type value) :
-        value_(value), threshold_(SparseShape::threshold_)
-      { }
-
-      TILEDARRAY_FORCE_INLINE value_type
-      operator()(value_type norm, const value_type size) const {
-        norm += value_ / std::sqrt(size);
-        if(norm < threshold_)
-          norm = 0;
-        return norm;
-      }
-
-      TILEDARRAY_FORCE_INLINE vector_type operator()(const vector_type size_vector) const {
-        return vector_type(size_vector, *this);
-      }
-
-      TILEDARRAY_FORCE_INLINE value_type operator()(const value_type size) const {
-        return value_type(1) / std::sqrt(size);
-      }
-
-      TILEDARRAY_FORCE_INLINE void
-      operator()(value_type& restrict norm, const value_type x, const value_type y) const {
-        norm += value_ * x * y;
-        if(norm < threshold_)
-          norm = 0;
-      }
-    }; // class ConstTensorNorm
-
-  public:
-
-    SparseShape_ add(const value_type value) const {
+    SparseShape_ add(value_type value) const {
       TA_ASSERT(! tile_norms_.empty());
+      const value_type threshold = threshold_;
+      size_type zero_tile_count = 0ul;
 
       Tensor<T> result_tile_norms(tile_norms_.range());
 
-      const ConstTensorNorm op(std::abs(value));
+      value = std::abs(value);
       const unsigned int dim = tile_norms_.range().dim();
       const vector_type* restrict const size_vectors = size_vectors_.get();
 
       if(dim == 1u) {
+        auto add_const_op = [threshold, &zero_tile_count, value] (value_type norm,
+            const value_type size)
+        {
+          norm += value / std::sqrt(size);
+          if(norm < threshold) {
+            norm = 0;
+            ++zero_tile_count;
+          }
+          return norm;
+        };
+
         // This is the easy case where the data is a vector and can be
         // normalized directly.
         math::binary_vector_op(size_vectors[0].size(), tile_norms_.data(),
-            size_vectors[0].data(), result_tile_norms.data(), op);
+            size_vectors[0].data(), result_tile_norms.data(), add_const_op);
 
       } else {
         // Here the normalization constants are computed and multiplied by the
         // norm data using a recursive, outer algorithm. This is done to
         // minimize temporary memory requirements, memory bandwidth, and work.
 
+        auto inv_sqrt_vec_op = [] (const vector_type size_vector) {
+          return vector_type(size_vector,
+              [] (const value_type size) { return value_type(1) / std::sqrt(size); });
+        };
+
         // Compute the left and right outer products
         const unsigned int middle = (dim >> 1u) + (dim & 1u);
-        const vector_type left = recursive_outer_product(size_vectors, middle, op);
-        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, op);
+        const vector_type left = recursive_outer_product(size_vectors, middle, inv_sqrt_vec_op);
+        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, inv_sqrt_vec_op);
 
         math::outer_fill(left.size(), right.size(), left.data(), right.data(),
-            tile_norms_.data(), result_tile_norms.data(), op);
+            tile_norms_.data(), result_tile_norms.data(),
+            [threshold, &zero_tile_count, value] (value_type& norm,
+                const value_type x, const value_type y)
+            {
+              norm += value * x * y;
+              if(norm < threshold) {
+                norm = value_type(0);
+                ++zero_tile_count;
+              }
+            });
       }
 
-      return SparseShape_(result_tile_norms, size_vectors_);
+      return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
 
     SparseShape_ add(const value_type value, const Permutation& perm) const {
@@ -536,50 +585,52 @@ namespace TiledArray {
 
   private:
 
-    struct ScaleBySize {
-      typedef void result_type;
-
-      TILEDARRAY_FORCE_INLINE void
-      operator()(value_type& restrict norm, const value_type size) const {
-        norm *= size;
-      }
-
-      TILEDARRAY_FORCE_INLINE const vector_type& operator()(const vector_type& size_vector) const {
-        return size_vector;
-      }
-
-      TILEDARRAY_FORCE_INLINE void
-      operator()(value_type& restrict norm, const value_type x, const value_type y) const {
-        norm *= x * y;
-        if(norm < threshold_)
-          norm = 0;
-      }
-    }; // struct ScaleBySize
-
-    static void scale_by_size(Tensor<T>& tile_norms,
+    static size_type scale_by_size(Tensor<T>& tile_norms,
         const vector_type* restrict const size_vectors)
     {
       const unsigned int dim = tile_norms.range().dim();
-      ScaleBySize op;
+      const value_type threshold = threshold_;
+      size_type zero_tile_count = 0ul;
 
       if(dim == 1u) {
         // This is the easy case where the data is a vector and can be
         // normalized directly.
         math::binary_vector_op(size_vectors[0].size(), size_vectors[0].data(),
-            tile_norms.data(), op);
+            tile_norms.data(),
+            [threshold, &zero_tile_count] (value_type& norm, const value_type size) {
+              norm *= size;
+              if(norm < threshold) {
+                norm = value_type(0);
+                ++zero_tile_count;
+              }
+            });
       } else {
         // Here the normalization constants are computed and multiplied by the
         // norm data using a recursive, outer algorithm. This is done to
         // minimize temporary memory requirements, memory bandwidth, and work.
 
+        auto noop = [](const vector_type& size_vector) -> const vector_type& {
+          return size_vector;
+        };
+
         // Compute the left and right outer products
         const unsigned int middle = (dim >> 1u) + (dim & 1u);
-        const vector_type left = recursive_outer_product(size_vectors, middle, op);
-        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, op);
+        const vector_type left = recursive_outer_product(size_vectors, middle, noop);
+        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, noop);
 
-        math::outer(left.size(), right.size(), left.data(), right.data(),
-            tile_norms.data(), op);
+        math::outer(left.size(), right.size(), left.data(), right.data(), tile_norms.data(),
+            [threshold, &zero_tile_count] (value_type& norm, const value_type x,
+                const value_type y)
+            {
+              norm *= x * y;
+              if(norm < threshold) {
+                norm = value_type(0);
+                ++zero_tile_count;
+              }
+            });
       }
+
+      return zero_tile_count;
     }
 
   public:
@@ -590,9 +641,10 @@ namespace TiledArray {
 
       TA_ASSERT(! tile_norms_.empty());
       Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_);
-      scale_by_size(result_tile_norms, size_vectors_.get());
+      const size_type zero_tile_count =
+          scale_by_size(result_tile_norms, size_vectors_.get());
 
-      return SparseShape_(result_tile_norms, size_vectors_);
+      return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
 
     SparseShape_ mult(const SparseShape_& other, const Permutation& perm) const {
@@ -602,9 +654,10 @@ namespace TiledArray {
       TA_ASSERT(! tile_norms_.empty());
       Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, perm);
       std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
-      scale_by_size(result_tile_norms, result_size_vector.get());
+      const size_type zero_tile_count =
+                scale_by_size(result_tile_norms, result_size_vector.get());
 
-      return SparseShape_(result_tile_norms, result_size_vector);
+      return SparseShape_(result_tile_norms, result_size_vector, zero_tile_count);
     }
 
     SparseShape_ mult(const SparseShape_& other, const value_type factor) const {
@@ -613,9 +666,10 @@ namespace TiledArray {
 
       TA_ASSERT(! tile_norms_.empty());
       Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor));
-      scale_by_size(result_tile_norms, size_vectors_.get());
+      const size_type zero_tile_count =
+          scale_by_size(result_tile_norms, size_vectors_.get());
 
-      return SparseShape_(result_tile_norms, size_vectors_);
+      return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
 
     SparseShape_ mult(const SparseShape_& other, const value_type factor,
@@ -627,78 +681,20 @@ namespace TiledArray {
       TA_ASSERT(! tile_norms_.empty());
       Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor), perm);
       std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
-      scale_by_size(result_tile_norms, result_size_vector.get());
+      const size_type zero_tile_count =
+          scale_by_size(result_tile_norms, result_size_vector.get());
 
-      return SparseShape_(result_tile_norms, result_size_vector);
+      return SparseShape_(result_tile_norms, result_size_vector, zero_tile_count);
     }
 
-  private:
-
-    class GemmArgReduce {
-    public:
-      typedef void result_type;
-      void operator()(value_type& restrict result, value_type norm, const value_type inner_size) const {
-        norm *= inner_size;
-        result += norm * norm;
-      }
-
-      void operator()(value_type& restrict result) const {
-        result = std::sqrt(result);
-      }
-    }; // class GemmLeftReduce
-
-    class OuterProduct {
-    public:
-      typedef value_type result_type;
-
-      const vector_type& operator()(const vector_type& size_vector) const {
-        return size_vector;
-      }
-
-      value_type operator()(const value_type left, const value_type right) const {
-        return left * right;
-      }
-    };
-
-    class GemmOuterProduct {
-      value_type factor_;
-      value_type threshold_;
-    public:
-      typedef value_type result_type;
-
-      GemmOuterProduct(const value_type factor) :
-        factor_(factor), threshold_(SparseShape::threshold_)
-      { }
-
-      value_type operator()(const value_type left, const value_type right) const {
-        value_type norm = left * right * factor_;
-        if(norm < threshold_)
-          norm = 0;
-        return norm;
-      }
-    }; // class GemmOuterProduct
-
-    class GemmRenormalize {
-      const value_type threshold_;
-    public:
-      typedef void result_type;
-
-      GemmRenormalize() : threshold_(SparseShape::threshold_) { }
-
-      void operator()(value_type& restrict norm, const value_type left, const value_type right) const {
-        norm *= left * right;
-        if(norm < threshold_)
-          norm = 0;
-      }
-    }; // class GemmOuterProduct
-
-  public:
-
-    SparseShape_ gemm(const SparseShape_& other, const value_type factor,
+    SparseShape_ gemm(const SparseShape_& other, value_type factor,
         const math::GemmHelper& gemm_helper) const
     {
       TA_ASSERT(! tile_norms_.empty());
 
+      factor = std::abs(factor);
+      const value_type threshold = threshold_;
+      size_type zero_tile_count = 0ul;
       integer M = 0, N = 0, K = 0;
       gemm_helper.compute_matrix_sizes(M, N, K, tile_norms_.range(), other.tile_norms_.range());
 
@@ -725,7 +721,8 @@ namespace TiledArray {
         // Compute size vector
         const vector_type k_sizes =
             recursive_outer_product(size_vectors_.get() + gemm_helper.left_inner_begin(),
-                k_rank, OuterProduct());
+                k_rank, [] (const vector_type& size_vector) -> const vector_type&
+                { return size_vector; });
 
         // TODO: Make this faster. It can be done without using temporaries
         // for the arguments, but requires a custom matrix multiply.
@@ -743,19 +740,34 @@ namespace TiledArray {
           math::unary_vector_op(N, other.tile_norms_.data() + i, right.data() + i, right_op);
         }
 
-        result_norms = left.gemm(right, std::abs(factor), gemm_helper);
+        result_norms = left.gemm(right, factor, gemm_helper);
+
+        // Hard zero tiles that are below the zero threshold.
+        result_norms.inplace_unary(
+            [threshold, &zero_tile_count] (value_type& value) {
+              if(value < threshold) {
+                value = value_type(0);
+                ++zero_tile_count;
+              }
+            });
 
       } else {
 
         // This is an outer product, so the inputs can be used directly
         math::outer_fill(M, N, tile_norms_.data(), other.tile_norms_.data(), result_norms.data(),
-            GemmOuterProduct(std::abs(factor)));
+            [threshold, &zero_tile_count, factor] (const value_type left,
+                const value_type right)
+            {
+              value_type norm = left * right * factor;
+              if(norm < threshold) {
+                norm = value_type(0);
+                ++zero_tile_count;
+              }
+              return norm;
+            });
       }
 
-      // Hard zero tiles that are below the zero threshold.
-      result_norms.inplace_unary([=](value_type restrict& value) {if(value < threshold_) value = 0;});
-
-      return SparseShape_(result_norms, result_size_vectors);
+      return SparseShape_(result_norms, result_size_vectors, zero_tile_count);
     }
 
     SparseShape_ gemm(const SparseShape_& other, const value_type factor,

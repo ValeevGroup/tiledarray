@@ -182,7 +182,18 @@ namespace TiledArray {
       void init_struct(const VariableList& target_vars) {
         left_.init_struct(ExprEngine_::vars());
         right_.init_struct(ExprEngine_::vars());
-        TA_ASSERT(left_.trange() == right_.trange());
+#ifndef NDEBUG
+        if(left_.trange() != right_.trange()) {
+          if(madness::World::get_default().rank() == 0) {
+            TA_USER_ERROR_MESSAGE( \
+                "The TiledRanges of the left- and right-hand expressions are not equal:" \
+                << "\n    left  = " << left_.trange() \
+                << "\n    right = " << right_.trange() );
+          }
+
+          TA_EXCEPTION("The TiledRange objects of a binary expression are not equal.");
+        }
+#endif // NDEBUG
         ExprEngine_::init_struct(target_vars);
       }
 

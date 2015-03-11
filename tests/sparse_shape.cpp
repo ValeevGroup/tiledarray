@@ -91,6 +91,8 @@ BOOST_AUTO_TEST_CASE( non_comm_constructor )
   BOOST_CHECK(! x.is_dense());
   BOOST_CHECK(x.validate(tr.tiles()));
 
+  size_type zero_tile_count = 0ul;
+
   for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
     // Compute the expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
@@ -102,12 +104,15 @@ BOOST_AUTO_TEST_CASE( non_comm_constructor )
     BOOST_CHECK_CLOSE(x[i], expected, tolerance);
 
     // Check zero threshold
-    if(x[i] < SparseShape<float>::threshold())
+    if(x[i] < SparseShape<float>::threshold()) {
       BOOST_CHECK(x.is_zero(i));
-    else
+      ++zero_tile_count;
+    } else {
       BOOST_CHECK(! x.is_zero(i));
+    }
   }
 
+  BOOST_CHECK_CLOSE(x.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 
@@ -132,6 +137,8 @@ BOOST_AUTO_TEST_CASE( comm_constructor )
   BOOST_CHECK(! x.is_dense());
   BOOST_CHECK(x.validate(tr.tiles()));
 
+  size_type zero_tile_count = 0ul;
+
   for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
     // Compute the expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
@@ -140,15 +147,18 @@ BOOST_AUTO_TEST_CASE( comm_constructor )
       expected = 0.0f;
 
     // Check that the tile has been normalized correctly
-    BOOST_CHECK_CLOSE(x[i], expected, 0.001);
+    BOOST_CHECK_CLOSE(x[i], expected, tolerance);
 
     // Check zero threshold
-    if(x[i] < SparseShape<float>::threshold())
+    if(x[i] < SparseShape<float>::threshold()) {
       BOOST_CHECK(x.is_zero(i));
-    else
+      ++zero_tile_count;
+    } else {
       BOOST_CHECK(! x.is_zero(i));
+    }
   }
 
+  BOOST_CHECK_CLOSE(x.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 
@@ -168,6 +178,8 @@ BOOST_AUTO_TEST_CASE( copy_constructor )
     // Check that the tile data has been copied correctly
     BOOST_CHECK_CLOSE(y[i], sparse_shape[i], tolerance);
   }
+
+  BOOST_CHECK_EQUAL(y.sparsity(), sparse_shape.sparsity());
 }
 
 BOOST_AUTO_TEST_CASE( permute )
@@ -179,6 +191,8 @@ BOOST_AUTO_TEST_CASE( permute )
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], sparse_shape[i], tolerance);
   }
+
+  BOOST_CHECK_EQUAL(result.sparsity(), sparse_shape.sparsity());
 }
 
 BOOST_AUTO_TEST_CASE( scale )
@@ -186,13 +200,29 @@ BOOST_AUTO_TEST_CASE( scale )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.scale(-4.1));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = sparse_shape[i] * 4.1;
+    float expected = sparse_shape[i] * 4.1;
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+    const float result_i = result[i];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( scale_perm )
@@ -200,13 +230,29 @@ BOOST_AUTO_TEST_CASE( scale_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.scale(-5.4, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = sparse_shape[i] * 5.4;
+    float expected = sparse_shape[i] * 5.4;
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( add )
@@ -214,13 +260,29 @@ BOOST_AUTO_TEST_CASE( add )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.add(right));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = left[i] + right[i];
+    float expected = left[i] + right[i];
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+    const float result_i = result[i];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( add_scale )
@@ -228,13 +290,29 @@ BOOST_AUTO_TEST_CASE( add_scale )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.add(right, -2.2f));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = (left[i] + right[i]) * 2.2f;
+    float expected = (left[i] + right[i]) * 2.2f;
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+    const float result_i = result[i];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( add_perm )
@@ -242,13 +320,30 @@ BOOST_AUTO_TEST_CASE( add_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.add(right, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = left[i] + right[i];
+    float expected = left[i] + right[i];
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( add_scale_perm )
@@ -256,13 +351,30 @@ BOOST_AUTO_TEST_CASE( add_scale_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.add(right, -2.3f, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = (left[i] + right[i]) * 2.3f;
+    float expected = (left[i] + right[i]) * 2.3f;
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( add_const )
@@ -270,15 +382,31 @@ BOOST_AUTO_TEST_CASE( add_const )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.add(-8.8f));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
-    const float expected = sparse_shape[i] + std::sqrt((8.8f * 8.8f) *
+    float expected = sparse_shape[i] + std::sqrt((8.8f * 8.8f) *
         float(range.volume())) / float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+    const float result_i = result[i];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( add_const_perm )
@@ -286,15 +414,32 @@ BOOST_AUTO_TEST_CASE( add_const_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.add(-1.7, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
-    const float expected = sparse_shape[i] + std::sqrt((1.7f * 1.7f) *
+    float expected = sparse_shape[i] + std::sqrt((1.7f * 1.7f) *
         range.volume()) / range.volume();
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( subt )
@@ -302,13 +447,29 @@ BOOST_AUTO_TEST_CASE( subt )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.subt(right));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = left[i] + right[i];
+    float expected = left[i] + right[i];
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+    const float result_i = result[i];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( subt_scale )
@@ -316,13 +477,29 @@ BOOST_AUTO_TEST_CASE( subt_scale )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.subt(right, -2.2f));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = (left[i] + right[i]) * 2.2f;
+    float expected = (left[i] + right[i]) * 2.2f;
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+    const float result_i = result[i];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( subt_perm )
@@ -330,13 +507,30 @@ BOOST_AUTO_TEST_CASE( subt_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.subt(right, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = left[i] + right[i];
+    float expected = left[i] + right[i];
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( subt_scale_perm )
@@ -344,13 +538,30 @@ BOOST_AUTO_TEST_CASE( subt_scale_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.subt(right, -2.3f, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
-    const float expected = (left[i] + right[i]) * 2.3f;
+    float expected = (left[i] + right[i]) * 2.3f;
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( subt_const )
@@ -358,15 +569,29 @@ BOOST_AUTO_TEST_CASE( subt_const )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.subt(-8.8f));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
-    const float expected = sparse_shape[i] + std::sqrt((8.8f * 8.8f) *
+    float expected = sparse_shape[i] + std::sqrt((8.8f * 8.8f) *
         float(range.volume())) / float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
     BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+
+    // Check zero threshold
+    if(result[i] < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( subt_const_perm )
@@ -374,15 +599,32 @@ BOOST_AUTO_TEST_CASE( subt_const_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.subt(-1.7, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
-    const float expected = sparse_shape[i] + std::sqrt((1.7f * 1.7f) *
+    float expected = sparse_shape[i] + std::sqrt((1.7f * 1.7f) *
         float(range.volume())) / float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( mult )
@@ -390,14 +632,28 @@ BOOST_AUTO_TEST_CASE( mult )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mult(right));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
-    const float expected = left[i] * right[i] * float(range.volume());
+    float expected = left[i] * right[i] * float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
     BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+
+    // Check zero threshold
+    if(result[i] < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( mult_scale )
@@ -405,14 +661,28 @@ BOOST_AUTO_TEST_CASE( mult_scale )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mult(right, -2.2f));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
-    const float expected = (left[i] * right[i]) * 2.2f * float(range.volume());
+    float expected = (left[i] * right[i]) * 2.2f * float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
     BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+
+    // Check zero threshold
+    if(result[i] < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( mult_perm )
@@ -420,14 +690,31 @@ BOOST_AUTO_TEST_CASE( mult_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mult(right, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
-    const float expected = left[i] * right[i] * float(range.volume());
+    float expected = left[i] * right[i] * float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( mult_scale_perm )
@@ -435,14 +722,31 @@ BOOST_AUTO_TEST_CASE( mult_scale_perm )
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mult(right, -2.3f, perm));
 
+  size_type zero_tile_count = 0ul;
+
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
     // Compute expected value
     const TiledRange::range_type range = tr.make_tile_range(i);
-    const float expected = (left[i] * right[i]) * 2.3f * float(range.volume());
+    float expected = (left[i] * right[i]) * 2.3f * float(range.volume());
+    if(expected < SparseShape<float>::threshold())
+      expected = 0.0f;
 
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], expected, tolerance);
+    const std::size_t pi = perm_index(i);
+    const float result_i = result[pi];
+
+    BOOST_CHECK_CLOSE(result_i, expected, tolerance);
+
+    // Check zero threshold
+    if(result_i < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(pi));
+      ++zero_tile_count;
+    } else {
+      BOOST_CHECK(! result.is_zero(pi));
+    }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( gemm )
@@ -452,6 +756,7 @@ BOOST_AUTO_TEST_CASE( gemm )
   const std::size_t n = right.data().range().size().back();
 //  const std::size_t k = left.data().size() / m;
 
+  size_type zero_tile_count = 0ul;
 
   // Evaluate the contraction of sparse shapes
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
@@ -466,7 +771,8 @@ BOOST_AUTO_TEST_CASE( gemm )
     volumes[i] = volume;
   }
 
-  Tensor<float> result_norms = left.data().mult(volumes).gemm(right.data().mult(volumes), 7.2, gemm_helper);
+  Tensor<float> result_norms =
+      left.data().mult(volumes).gemm(right.data().mult(volumes), 7.2, gemm_helper);
 
   // Check that the result is correct
   std::array<std::size_t, 2> i = {{ 0, 0 }};
@@ -486,8 +792,18 @@ BOOST_AUTO_TEST_CASE( gemm )
         expected = 0.0f;
 
       BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+
+      // Check zero threshold
+      if(result[i] < SparseShape<float>::threshold()) {
+        BOOST_CHECK(result.is_zero(i));
+        ++zero_tile_count;
+      } else {
+        BOOST_CHECK(! result.is_zero(i));
+      }
     }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( gemm_perm )
@@ -497,59 +813,56 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
   // Create a matrix with the expected output
   const std::size_t m = left.data().range().size().front();
   const std::size_t n = right.data().range().size().back();
-  const std::size_t k = left.data().size() / m;
+//  const std::size_t k = left.data().size() / m;
 
-  madness::ScopedArray<float> left_value(new float[m]);
-  madness::ScopedArray<float> right_value(new float[n]);
-
-  std::array<std::size_t, 2> i = {{ 0, 0 }};
-
-  // Compute the left reduced value
-  for(i[0] = 0ul; i[0] < m; ++i[0]) {
-    left_value[i[0]] = 0.0f;
-    for(i[1] = 0ul; i[1] < k; ++i[1]) {
-      // Compute expected value
-      std::size_t index = i[0] * k + i[1];
-      const TiledRange::range_type range = tr.make_tile_range(index);
-      const float temp = left[index] * float(range.volume());
-      left_value[i[0]] +=  temp * temp;
-    }
-
-    const TiledRange1::range_type r = tr.data()[0].tile(i[0]);
-    left_value[i[0]] = std::sqrt(left_value[i[0]]) / (r.second - r.first);
-  }
-
-  // Compute the right reduced value
-  for(i[1] = 0ul; i[1] < n; ++i[1]) {
-    right_value[i[1]] = 0.0f;
-
-    for(i[0] = 0ul; i[0] < k; ++i[0]) {
-      std::size_t index = i[0] * n + i[1];
-      const TiledRange::range_type range = tr.make_tile_range(index);
-      const float temp = right[index] * float(range.volume());
-      right_value[i[1]] +=  temp * temp;
-    }
-
-    const TiledRange1::range_type r = tr.data()[2].tile(i[1]);
-    right_value[i[1]] = std::sqrt(right_value[i[1]]) / (r.second - r.first);
-  }
+  size_type zero_tile_count = 0ul;
 
   // Evaluate the contraction of sparse shapes
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
       2u, left.data().range().dim(), right.data().range().dim());
-  SparseShape<float> result = left.gemm(right, -7.2, gemm_helper, perm);
+  SparseShape<float> result;
+  BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper, perm));
+
+  // Create volumes tensors for the arguments
+  Tensor<float> volumes(tr.tiles(), 0.0f);
+  for(std::size_t i = 0ul; i < tr.tiles().volume(); ++i) {
+    const float volume = tr.make_tile_range(i).volume();
+    volumes[i] = volume;
+  }
+
+  Tensor<float> result_norms =
+      left.data().mult(volumes).gemm(right.data().mult(volumes), 7.2, gemm_helper).permute(perm);
 
   // Check that the result is correct
-  for(i[0] = 0ul; i[0] < m; ++i[0]) {
-    for(i[1] = 0ul; i[1] < n; ++i[1]) {
+  std::array<std::size_t, 2> i = {{ 0, 0 }};
+  for(i[0] = 0ul; i[0] < n; ++i[0]) {
+
+    const TiledRange1::range_type r_0 = tr.data()[2].tile(i[0]);
+    const float size_0 = r_0.second - r_0.first;
+
+    for(i[1] = 0ul; i[1] < m; ++i[1]) {
+
+      const TiledRange1::range_type r_1 = tr.data()[0].tile(i[1]);
+      const float size_1 = r_1.second - r_1.first;
+
       // Compute expected value
-      float expected = left_value[i[1]] * right_value[i[0]] * 7.2f;
+      float expected = result_norms[i] / (size_0 * size_1);
       if(expected < SparseShape<float>::threshold())
         expected = 0.0f;
 
       BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+
+      // Check zero threshold
+      if(result[i] < SparseShape<float>::threshold()) {
+        BOOST_CHECK(result.is_zero(i));
+        ++zero_tile_count;
+      } else {
+        BOOST_CHECK(! result.is_zero(i));
+      }
     }
   }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
