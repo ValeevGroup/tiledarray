@@ -1796,9 +1796,8 @@ namespace TiledArray {
           // depth controls the number of simultaneous SUMMA iterations
           // that are scheduled.
 #ifndef TILEDARRAY_SUMMA_DEPTH
-          size_type depth = std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols());
-          if(depth < 2ul)
-            depth = 2ul;
+          size_type depth =
+              std::max(2ul, std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
 #else
           size_type depth = TILEDARRAY_SUMMA_DEPTH;
 #endif //TILEDARRAY_SUMMA_DEPTH
@@ -1815,16 +1814,15 @@ namespace TiledArray {
             // Increase the depth based on the amount of sparsity in an iteration.
 
             // Get the sparsity fractions for the left- and right-hand arguments.
-            float left_sparsity = left_.shape().sparsity();
-            if(left_sparsity > 0.9) left_sparsity = 0.9;
-            float right_sparsity = right_.shape().sparsity();
-            if(right_sparsity > 0.9) right_sparsity = 0.9;
+            const float left_sparsity = left_.shape().sparsity();
+            const float right_sparsity = right_.shape().sparsity();
 
             // Compute the fraction of non-zero result tiles in a single SUMMA iteration.
-            const float frac_non_zero = (1.0f - left_sparsity) * (1.0f - right_sparsity);
+            const float frac_non_zero = (1.0f - std::min(left_sparsity, 0.9f))
+                                      * (1.0f - std::min(right_sparsity, 0.9f));
 
             // Compute the new depth
-            depth = float(depth) * (std::log2(frac_non_zero) + 1.0f) + 0.5f;
+            depth = float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) + 0.5f;
             if(depth > k_) depth = k_;
 
 #endif // TILEDARRAY_SUMMA_DEPTH
