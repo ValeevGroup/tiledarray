@@ -1797,7 +1797,7 @@ namespace TiledArray {
           // that are scheduled.
 #ifndef TILEDARRAY_SUMMA_DEPTH
           size_type depth =
-              std::max(2ul, std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
+              std::max(ProcGrid::size_type(2), std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
 #else
           size_type depth = TILEDARRAY_SUMMA_DEPTH;
 #endif //TILEDARRAY_SUMMA_DEPTH
