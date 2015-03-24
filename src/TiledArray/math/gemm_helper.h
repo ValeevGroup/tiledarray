@@ -225,7 +225,6 @@ namespace TiledArray {
       /// \tparam Left The left-hand size array type
       /// \tparam Right The right-hand size array type
       /// \param left The left-hand size array to be tested
-      /// \param result The right-hand size array to be tested
       /// \return \c true if The outer dimensions of left are coformal with that
       /// of right
       template <typename Left, typename Right>

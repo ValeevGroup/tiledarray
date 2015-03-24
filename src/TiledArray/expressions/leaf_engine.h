@@ -34,7 +34,7 @@ namespace TiledArray {
 
     /// Leaf expression engine
 
-    /// \tparam Derive The derived class type
+    /// \tparam Derived The derived class type
     template <typename Derived>
     class LeafEngine : public ExprEngine<Derived> {
     public:
@@ -77,7 +77,7 @@ namespace TiledArray {
 
       /// Engine constructor
 
-      /// \param other The Tensor to be copied
+      /// \param expr The argument expression
       template <typename D>
       LeafEngine(const Expr<D>& expr) :
         array_(expr.derived().array())
@@ -91,7 +91,6 @@ namespace TiledArray {
       /// Set the variable list for this expression
 
       /// This function is a noop since the variable list is fixed.
-      /// \param target_vars The target variable list for this expression
       void perm_vars(const VariableList&) { }
 
       /// Initialize the variable list of this expression

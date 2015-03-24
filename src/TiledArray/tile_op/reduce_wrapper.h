@@ -86,7 +86,6 @@ namespace TiledArray {
 
     /// This class is a shallow wrapper for cases where the argument is not a
     /// lazy tile.
-    /// \tparam Tile The tile argument type
     /// \tparam Op The base reduction operation type
     template <typename Op>
     class UnaryReduceWrapper<typename Op::argument_type, Op> : public Op {

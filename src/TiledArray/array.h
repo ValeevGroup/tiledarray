@@ -92,43 +92,40 @@ namespace TiledArray {
 
     /// Sparse array initialization
 
-    /// \param w The world where the array will live.
-    /// \param tr The tiled range object that will be used to set the array tiling.
-    /// \param shape Bitset of the same length as \c tr. Describes the array shape: bit set (1)
-    ///        means tile exists, else tile does not exist.
+    /// \param world The world where the array will live.
+    /// \param trange The tiled range object that will be used to set the array tiling.
+    /// \param shape The array shape that defines zero and non-zero tiles
     /// \param pmap The tile index -> process map
-    /// \param collective_shape_init If true then the collective_init method for
-    /// shape will be invoced by the constructor
     static std::shared_ptr<impl_type>
-    init(madness::World& w, const trange_type& tr, const shape_type& shape,
+    init(madness::World& world, const trange_type& trange, const shape_type& shape,
         std::shared_ptr<pmap_interface> pmap)
     {
       // User level validation of input
 
       // Validate the tiled range
-      TA_USER_ASSERT(tr.tiles().dim() == DIM,
+      TA_USER_ASSERT(trange.tiles().dim() == DIM,
           "Array::Array() -- The dimension of tiled range is not equal to the array.");
 
       if(! pmap) {
         // Construct a default process map
-        pmap = Policy::default_pmap(w, tr.tiles().volume());
+        pmap = Policy::default_pmap(world, trange.tiles().volume());
       } else {
         // Validate the process map
-        TA_USER_ASSERT(pmap->size() == tr.tiles().volume(),
+        TA_USER_ASSERT(pmap->size() == trange.tiles().volume(),
             "Array::Array() -- The size of the process map is not equal to the number of tiles in the TiledRange object.");
-        TA_USER_ASSERT(pmap->rank() == typename pmap_interface::size_type(w.rank()),
+        TA_USER_ASSERT(pmap->rank() == typename pmap_interface::size_type(world.rank()),
             "Array::Array() -- The rank of the process map is not equal to that of the world object.");
-        TA_USER_ASSERT(pmap->procs() == typename pmap_interface::size_type(w.size()),
+        TA_USER_ASSERT(pmap->procs() == typename pmap_interface::size_type(world.size()),
             "Array::Array() -- The number of processes in the process map is not equal to that of the world object.");
       }
 
       // Validate the shape
       TA_USER_ASSERT(! shape.empty(),
           "Array::Array() -- The shape is not initialized.");
-      TA_USER_ASSERT(shape.validate(tr.tiles()),
+      TA_USER_ASSERT(shape.validate(trange.tiles()),
           "Array::Array() -- The range of the shape is not equal to the tiles range.");
 
-      return std::shared_ptr<impl_type>(new impl_type(w, tr, shape, pmap), lazy_deleter);
+      return std::shared_ptr<impl_type>(new impl_type(world, trange, shape, pmap), lazy_deleter);
     }
 
   public:
@@ -143,27 +140,24 @@ namespace TiledArray {
 
     /// Dense array constructor
 
-    /// \param w The world where the array will live.
-    /// \param tr The tiled range object that will be used to set the array tiling.
+    /// \param world The world where the array will live.
+    /// \param trange The tiled range object that will be used to set the array tiling.
     /// \param pmap The tile index -> process map
-    Array(madness::World& w, const trange_type& tr,
+    Array(madness::World& world, const trange_type& trange,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(init(w, tr, shape_type(), pmap))
+      pimpl_(init(world, trange, shape_type(), pmap))
 
     { }
 
     /// Sparse array constructor
 
-    /// \param w The world where the array will live.
-    /// \param tr The tiled range object that will be used to set the array tiling.
-    /// \param shape Bitset of the same length as \c tr. Describes the array shape: bit set (1)
-    ///        means tile exists, else tile does not exist.
+    /// \param world The world where the array will live.
+    /// \param trange The tiled range object that will be used to set the array tiling.
+    /// \param shape The array shape that defines zero and non-zero tiles
     /// \param pmap The tile index -> process map
-    /// \param collective_shape_init If true then the collective_init method for
-    /// shape will be invoced by the constructor
-    Array(madness::World& w, const trange_type& tr, const shape_type& shape,
+    Array(madness::World& world, const trange_type& trange, const shape_type& shape,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(init(w, tr, shape, pmap))
+      pimpl_(init(world, trange, shape, pmap))
     { }
 
     /// Destructor
@@ -338,8 +332,8 @@ namespace TiledArray {
     /// Fill all local tiles
 
     /// \param value The fill value
-    void set_all_local(const T& v = T()) {
-      fill_local(v);
+    void set_all_local(const T& value = T()) {
+      fill_local(value);
     }
 
     /// Tiled range accessor
@@ -376,7 +370,7 @@ namespace TiledArray {
 
     /// Create a tensor expression
 
-    /// \param v A string with a comma-separated list of variables
+    /// \param vars A string with a comma-separated list of variables
     /// \return A const tensor expression object
     TiledArray::expressions::TsrExpr<const Array_>
     operator ()(const std::string& vars) const {
@@ -399,7 +393,7 @@ namespace TiledArray {
 
     /// Create a tensor expression
 
-    /// \param v A string with a comma-separated list of variables
+    /// \param vars A string with a comma-separated list of variables
     /// \return A non-const tensor expression object
     TiledArray::expressions::TsrExpr<Array_>
     operator ()(const std::string& vars) {

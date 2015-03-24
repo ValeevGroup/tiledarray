@@ -50,10 +50,14 @@ namespace TiledArray {
     template <typename T>
     inline typename madness::disable_if<std::is_array<T>, std::size_t>::type
     size(const T &a) { return a.size(); }
+    /// Print the content of an array like object
 
+    /// \tparam A The array container type
+    /// \param out A standard output stream
+    /// \param a The array-like container to be printed
     template <typename A>
     void print_array(std::ostream& out, const A& a) {
-      std::size_t n = TiledArray::detail::size(a);
+      const std::size_t n = size(a);
       out << "[";
       for(std::size_t i = 0; i < n; ++i) {
         out << a[i];

@@ -86,8 +86,8 @@ namespace TiledArray {
     /// This will construct a 1D tiled range with tile boundaries {t0, t_rest}
     /// The number of tile boundaries is n + 1, where n is the number of tiles.
     /// Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
-    /// \param t0 The starting index of the first tile
-    /// \param t_rest The rest of tile boundaries
+    /// \tparam T The element type of the initializer list.
+    /// \param list The list of tile boundaries in order from smallest to largest
     template<typename T>
     explicit TiledRange1(const std::initializer_list<T>& list)
     {

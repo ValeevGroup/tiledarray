@@ -423,11 +423,13 @@ namespace TiledArray {
     /// Matrix transpose
 
     /// This function will store a transposed copy of arg in result.
-    /// \tparam Arg The argument element type
+    /// \tparam Left The left-hand argument element type
+    /// \tparam Right The right-hand argument element type
     /// \tparam Result The result element type
     /// \param[in] m The number of rows in the argument matrix
     /// \param[in] n The number of columns in the argument matrix
-    /// \param[in] arg A pointer to the first element of the argument matrix
+    /// \param[in] left A pointer to the first element of the left-hand argument matrix
+    /// \param[in] right A pointer to the first element of the right-hand argument matrix
     /// \param[in] arg_stride The stride between argument rows
     /// \param[out] result A pointer to the first element of the result matrix
     /// \param[in] result_stride THe stride between result rows

@@ -563,7 +563,7 @@ namespace TiledArray {
     /// Element accessor
 
     /// \tparam Index index type pack
-    /// \param idx0 the index pack
+    /// \param idx The index pack
     template<typename... Index>
     reference operator()(const Index&... idx) {
       TA_ASSERT(pimpl_);
@@ -574,7 +574,7 @@ namespace TiledArray {
     /// Element accessor
 
     /// \tparam Index index type pack
-    /// \param idx0 the index pack
+    /// \param idx The index pack
     template<typename... Index>
     const_reference operator()(const Index&... idx) const {
       TA_ASSERT(pimpl_);
@@ -1203,8 +1203,8 @@ namespace TiledArray {
 
     /// \tparam U The left-hand tensor element type
     /// \tparam AU The left-hand tensor allocator type
-    /// \tparam U The right-hand tensor element type
-    /// \tparam AU The right-hand tensor allocator type
+    /// \tparam V The right-hand tensor element type
+    /// \tparam AV The right-hand tensor allocator type
     /// \param left The left-hand tensor that will be contracted
     /// \param right The right-hand tensor that will be contracted
     /// \param factor The scaling factor
@@ -1332,7 +1332,6 @@ namespace TiledArray {
     /// \param u The data to be reduced
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
-    /// \param The element-wise reduction operation
     template <typename U, typename AU, typename Op>
     static void reduce(const size_type n, const Tensor<U, AU>* u,
         numeric_type& value, const Op& op)
@@ -1370,10 +1369,9 @@ namespace TiledArray {
     /// \tparam Op The reduction operation
     /// \param n The number of elements to reduce
     /// \param left The left-hand \c Tensors to be reduced
-    /// \param left The left-hand \c Tensors to be reduced
+    /// \param right The right-hand \c Tensors to be reduced
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
-    /// \param The element-wise reduction operation
     template <typename U, typename AU, typename V, typename AV, typename Op>
     static void reduce(const size_type n, const Tensor<U, AU>* left,
         const Tensor<V, AV>* right, numeric_type& value, const Op& op)
@@ -1389,7 +1387,7 @@ namespace TiledArray {
     /// Perform an element-wise reduction of the tile data.
     /// \tparam Op The reduction operation
     /// \param init_value The initial value of the reduction
-    /// \param The element-wise reduction operation
+    /// \param op The element-wise reduction operation
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
     numeric_type reduce(numeric_type init_value, const Op& op) const {
@@ -1402,7 +1400,7 @@ namespace TiledArray {
 
     /// \tparam Op The reduction operation
     /// \param init_value The initial value of the reduction
-    /// \param The element-wise reduction operation
+    /// \param op The element-wise reduction operation
     /// \throw TiledArray::Exception When this tensor is empty.
     /// \throw TiledArray::Exception When the range of this tensor is not equal
     /// to the range of \c other.
