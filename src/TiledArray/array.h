@@ -380,6 +380,20 @@ namespace TiledArray {
     /// \return A const tensor expression object
     TiledArray::expressions::TsrExpr<const Array_>
     operator ()(const std::string& vars) const {
+#ifndef NDEBUG
+      const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
+          [](const char c) { return c == ','; });
+      if(n != DIM) {
+        if(madness::World::get_default().rank() == 0) {
+          TA_USER_ERROR_MESSAGE( \
+              "The number of array annotation variables is not equal to the array dimension:" \
+              << "\n    number of variables  = " << n \
+              << "\n    array dimension      = " << DIM );
+        }
+
+        TA_EXCEPTION("The number of array annotation variables is not equal to the array dimension.");
+      }
+#endif // NDEBUG
       return TiledArray::expressions::TsrExpr<const Array_>(*this, vars);
     }
 
@@ -389,6 +403,20 @@ namespace TiledArray {
     /// \return A non-const tensor expression object
     TiledArray::expressions::TsrExpr<Array_>
     operator ()(const std::string& vars) {
+#ifndef NDEBUG
+      const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
+          [](const char c) { return c == ','; });
+      if(n != DIM) {
+        if(madness::World::get_default().rank() == 0) {
+          TA_USER_ERROR_MESSAGE( \
+              "The number of array annotation variables is not equal to the array dimension:" \
+              << "\n    number of variables  = " << n \
+              << "\n    array dimension      = " << DIM );
+        }
+
+        TA_EXCEPTION("The number of array annotation variables is not equal to the array dimension.");
+      }
+#endif // NDEBUG
       return TiledArray::expressions::TsrExpr<Array_>(*this, vars);
     }
 
