@@ -33,98 +33,14 @@
 namespace TiledArray {
   namespace detail {
 
-    /// Array begin iterator accessor
-
-    /// \tparam T The array type
-    /// \tparam N The size of the array
-    /// \param a A c-style array
-    /// \return A pointer to the first element of \c a
-    template <typename T, std::size_t N>
-    inline T* begin(T (&a)[N]) { return a; }
-
-    /// Array const begin iterator accessor
-
-    /// \tparam T The array type
-    /// \tparam N The size of the array
-    /// \param a A c-style array
-    /// \return A pointer to the first element of \c a
-    template <typename T, std::size_t N>
-    inline const T* cbegin(const T (&a)[N]) { return a; }
-
-    /// Array end iterator accessor
-
-    /// \tparam T The array type
-    /// \tparam N The size of the array
-    /// \param a A c-style array
-    /// \return A pointer to one past the last element of \c a
-    template <typename T, std::size_t N>
-    inline T* end(T (&a)[N]) { return (a + N); }
-
-    /// Array const end iterator accessor
-
-    /// \tparam T The array type
-    /// \tparam N The size of the array
-    /// \param a A c-style array
-    /// \return A pointer to one past the last element of \c a
-    template <typename T, std::size_t N>
-    inline const T* cend(const T (&a)[N]) { return (a + N); }
 
     /// Array size accessor
 
     /// \tparam T The array type
     /// \tparam N The size of the array
-    /// \param a A c-style array
-    /// \return The size of array \c a
+    /// \return The size of c-stype array
     template <typename T, std::size_t N>
-    inline std::size_t size(T (&)[N]) { return N; }
-
-    /// Array begin iterator accessor
-
-    /// \tparam T The array type
-    /// \param a An array object
-    /// \return The begin iterator of \c a
-    template <typename T>
-    inline typename T::iterator begin(T &a) { return a.begin(); }
-
-    /// Array const begin iterator accessor
-
-    /// \tparam T The array type
-    /// \param a An array object
-    /// \return The begin const_iterator of \c a
-    template <typename T>
-    inline typename T::const_iterator begin(const T &a) { return a.begin(); }
-
-    /// Array const begin iterator accessor
-
-    /// \tparam T The array type
-    /// \param a An array object
-    /// \return The begin cosnt_iterator of \c a
-    template <typename T>
-    inline typename T::const_iterator cbegin(const T &a) { return a.begin(); }
-
-    /// Array const begin iterator accessor
-
-    /// \tparam T The array type
-    /// \param a An array object
-    /// \return The begin cosnt_iterator of \c a
-    template <typename T>
-    inline typename T::iterator end(T &a) { return a.end(); }
-
-    /// Array const end iterator accessor
-
-    /// \tparam T The array type
-    /// \param a An array object
-    /// \return The end cosnt_iterator of \c a
-    template <typename T>
-    inline typename T::const_iterator end(const T &a) { return a.end(); }
-
-    /// Array const end iterator accessor
-
-    /// \tparam T The array type
-    /// \param a An array object
-    /// \return The end cosnt_iterator of \c a
-    template <typename T>
-    inline typename T::const_iterator cend(const T &a) { return a.end(); }
+    inline constexpr std::size_t size(T (&)[N]) { return N; }
 
     /// Array size accessor
 
