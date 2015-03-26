@@ -76,14 +76,15 @@ namespace TiledArray {
           const Op& op)
       {
         // Load right block
-        const Right right_block = right[offset];
+        const Right right_j = right[offset];
 
         // Load left block
         TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
         VecOpUnwindN::copy(left, left_block);
 
         VecOpUnwindN::reduce(left_block, result,
-            TiledArray::detail::bind_second(right_block, op));
+            [right_j,&op] (Result& result_ij, const Left left_i)
+            { op(result_ij, left_i, right_j); });
       }
 
 
@@ -153,14 +154,15 @@ namespace TiledArray {
       {
         {
           // Load right block
-          const Right right_block = right[offset];
+          const Right right_j = right[offset];
 
           // Load left block
           TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
           VecOpUnwindN::copy(left, left_block);
 
           VecOpUnwindN::reduce(left_block, result,
-              TiledArray::detail::bind_second(right_block, op));
+              [right_j,&op] (Result& result_ij, const Left left_i)
+              { op(result_ij, left_i, right_j); });
         }
 
         PartialReduceUnwindN1::col_reduce(left + stride, stride, right, result, op);
@@ -240,7 +242,8 @@ namespace TiledArray {
           TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
           VecOpUnwindN::gather(left_i + j, left_block, n);
           VecOpUnwindN::reduce(left_block, result_block,
-              TiledArray::detail::bind_second(right_j, op));
+              [right_j,&op] (Result& result_ij, const Left left_i)
+              { op(result_ij, left_i, right_j); });
 
         }
 
@@ -383,8 +386,13 @@ namespace TiledArray {
 
       for(; i < m; ++i) {
 
+        const Right right_i = right[i];
+
         // Reduce row i to result
-        reduce_vector_op(n, left + (i * n), result, TiledArray::detail::bind_second(right[i], op));
+        reduce_vector_op(n, left + (i * n), result,
+            [&op,right_i] (Result& result_j, const Left left_ij) {
+              op(result_j, left_ij, right_i);
+            });
       }
     }
 
