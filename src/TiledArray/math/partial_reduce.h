@@ -52,9 +52,9 @@ namespace TiledArray {
       {
         // Load the left block
         TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(left, left_block);
+        copy_block(left_block, left);
 
-        VecOpUnwindN::reduce(left_block, right, result[offset], op);
+        reduce_block(op, result[offset], left_block, right);
       }
 
       template <typename Arg, typename Result, typename Op>
@@ -64,9 +64,9 @@ namespace TiledArray {
       {
         // Load the left block
         TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(arg, arg_block);
+        copy_block(arg_block, arg);
 
-        VecOpUnwindN::reduce(arg_block, result[offset], op);
+        reduce_block(op, result[offset], arg_block);
       }
 
       template <typename Left, typename Right, typename Result, typename Op>
@@ -80,11 +80,10 @@ namespace TiledArray {
 
         // Load left block
         TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(left, left_block);
+        copy_block(left_block, left);
 
-        VecOpUnwindN::reduce(left_block, result,
-            [right_j,&op] (Result& result_ij, const Left left_i)
-            { op(result_ij, left_i, right_j); });
+        for_each_block([right_j,&op] (Result& result_ij, const Left left_i)
+            { op(result_ij, left_i, right_j); }, result, left_block);
       }
 
 
@@ -95,9 +94,9 @@ namespace TiledArray {
       {
         // Load the arg block
         TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(arg, arg_block);
+        copy_block(arg_block, arg);
 
-        VecOpUnwindN::reduce(arg_block, result, op);
+        for_each_block(op, result, arg_block);
       }
 
     }; // class PartialReduceUnwind<0>
@@ -120,9 +119,9 @@ namespace TiledArray {
         {
           // Load the left block
           TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(left, left_block);
+          copy_block(left_block, left);
 
-          VecOpUnwindN::reduce(left_block, right, result[offset], op);
+          reduce_block(op, result[offset], left_block, right);
         }
 
         PartialReduceUnwindN1::row_reduce(left + stride, stride, right, result, op);
@@ -137,9 +136,9 @@ namespace TiledArray {
         {
           // Load the left block
           TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(arg, arg_block);
+          copy_block(arg_block, arg);
 
-          VecOpUnwindN::reduce(arg_block, result[offset], op);
+          reduce_block(op, result[offset], arg_block);
         }
 
         PartialReduceUnwindN1::row_reduce(arg + stride, stride, result, op);
@@ -158,11 +157,10 @@ namespace TiledArray {
 
           // Load left block
           TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(left, left_block);
+          copy_block(left_block, left);
 
-          VecOpUnwindN::reduce(left_block, result,
-              [right_j,&op] (Result& result_ij, const Left left_i)
-              { op(result_ij, left_i, right_j); });
+          for_each_block([right_j,&op] (Result& result_ij, const Left left_i)
+              { op(result_ij, left_i, right_j); }, result, left_block);
         }
 
         PartialReduceUnwindN1::col_reduce(left + stride, stride, right, result, op);
@@ -176,9 +174,9 @@ namespace TiledArray {
         {
           // Load the left block
           TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(arg, arg_block);
+          copy_block(arg_block, arg);
 
-          VecOpUnwindN::reduce(arg_block, result, op);
+          for_each_block(op, result, arg_block);
         }
 
         PartialReduceUnwindN1::col_reduce(arg + stride, stride, result, op);
@@ -216,7 +214,7 @@ namespace TiledArray {
 
         // Load result block
         TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(result + i, result_block);
+        copy_block(result_block, result + i);
 
         // Compute left pointer offset
         const Left* restrict const left_i = left + (i * n);
@@ -226,7 +224,7 @@ namespace TiledArray {
 
           // Load right block
           TILEDARRAY_ALIGNED_STORAGE Right right_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(right + j, right_block);
+          copy_block(right_block, right + j);
 
           // Compute and store a block
           PartialReduceUnwindN::row_reduce(left_i + j, n, right_block, result_block, op);
@@ -240,15 +238,14 @@ namespace TiledArray {
 
           // Compute a block
           TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::gather(left_i + j, left_block, n);
-          VecOpUnwindN::reduce(left_block, result_block,
-              [right_j,&op] (Result& result_ij, const Left left_i)
-              { op(result_ij, left_i, right_j); });
+          gather_block(left_block, left_i + j, n);
+          for_each_block([right_j,&op] (Result& result_ij, const Left left_i)
+              { op(result_ij, left_i, right_j); }, result_block, left_block);
 
         }
 
         // Post store result
-        VecOpUnwindN::copy(result_block, result + i);
+        copy_block(result + i, result_block);
       }
 
       for(; i < m; ++i) {
@@ -286,7 +283,7 @@ namespace TiledArray {
 
         // Load result block
         TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(result + i, result_block);
+        copy_block(result_block, result + i);
 
         // Compute left pointer offset
         const Arg* restrict const arg_i = arg + (i * n);
@@ -303,13 +300,13 @@ namespace TiledArray {
 
           // Compute a block
           TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::gather(arg_i + j, arg_block, n);
-          VecOpUnwindN::reduce(arg_block, result_block, op);
+          gather_block(arg_block, arg_i + j, n);
+          for_each_block(op, result_block, arg_block);
 
         }
 
         // Post process and store result
-        VecOpUnwindN::copy(result_block, result + i);
+        copy_block(result + i, result_block);
       }
 
       for(; i < m; ++i) {
@@ -349,7 +346,7 @@ namespace TiledArray {
 
         // Load right block
         TILEDARRAY_ALIGNED_STORAGE Right right_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(right + i, right_block);
+        copy_block(right_block, right + i);
 
         // Compute left pointer offset
         const Left* restrict const left_i = left + (i * n);
@@ -359,13 +356,13 @@ namespace TiledArray {
 
           // Load result block
           TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(result + j, result_block);
+          copy_block(result_block, result + j);
 
           // Compute and store a block
           PartialReduceUnwindN::col_reduce(left_i + j, n, right_block, result_block, op);
 
           // Store the result
-          VecOpUnwindN::copy(result_block, result + j);
+          copy_block(result + j, result_block);
         }
 
         for(; j < n; ++j) {
@@ -375,8 +372,8 @@ namespace TiledArray {
 
           // Compute a block
           TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::gather(left_i + j, left_block, n);
-          VecOpUnwindN::reduce(left_block, right_block, result_block, op);
+          gather_block(left_block, left_i + j, n);
+          reduce_block(op, result_block, left_block, right_block);
 
           result[j] = result_block;
 
@@ -427,13 +424,13 @@ namespace TiledArray {
 
           // Load result block
           TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(result + j, result_block);
+          copy_block(result_block, result + j);
 
           // Compute and store a block
           PartialReduceUnwindN::col_reduce(arg_i + j, n, result_block, op);
 
           // Store the result
-          VecOpUnwindN::copy(result_block, result + j);
+          copy_block(result + j, result_block);
         }
 
         for(; j < n; ++j) {
@@ -443,8 +440,8 @@ namespace TiledArray {
 
           // Compute a block
           TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::gather(arg_i + j, arg_block, n);
-          VecOpUnwindN::reduce(arg_block, result_block, op);
+          gather_block(arg_block, arg_i + j, n);
+          reduce_block(op, result_block, arg_block);
 
           result[j] = result_block;
 
