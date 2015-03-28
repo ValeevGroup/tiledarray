@@ -296,7 +296,7 @@ namespace TiledArray {
 
     template <typename Result, typename Arg>
     TILEDARRAY_FORCE_INLINE void
-    scatter_block(const std::size_t n, Result* const result,
+    scatter_block(const std::size_t n, Result* result,
         const std::size_t stride, const Arg* const arg)
     {
       for(std::size_t i = 0; i < n; ++i, result += stride)
@@ -336,7 +336,7 @@ namespace TiledArray {
       }
 
       void scatter_to(T* const data, std::size_t stride) const {
-        scatter_block(data, block_, stride);
+        scatter_block(data, stride, block_);
       }
 
       T* data() { return block_; }
