@@ -144,18 +144,28 @@ namespace TiledArray {
 
     template <typename T, typename Enabler = void>
     struct param {
-      typedef const T& type;
+      typedef typename std::add_const<typename std::add_lvalue_reference<T>::type>::type type;
     };
 
     template <typename T>
-    struct param<T, typename madness::enable_if<std::is_scalar<T> >::type> {
-      typedef const T type;
+    struct param<T, typename std::enable_if<is_numeric<T>::value>::type> {
+      typedef typename std::add_const<T>::type type;
     };
 
     template <typename T>
-    struct param<T, typename madness::enable_if<std::is_reference<T> >::type> {
+    struct param<T, typename std::enable_if<std::is_reference<T>::value>::type> {
       typedef T type;
     };
+
+
+    template <typename T>
+    struct param<T, typename std::enable_if<std::is_pointer<T>::value>::type> {
+      typedef typename std::add_const<T>::type type;
+    };
+
+    template <typename U>
+    using param_type = typename param<U>::type;
+
 
     struct non_iterator_tag { };
 
