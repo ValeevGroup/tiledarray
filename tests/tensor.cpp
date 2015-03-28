@@ -169,8 +169,8 @@ BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
 
 BOOST_AUTO_TEST_CASE( unary_constructor ) {
   // check constructor
-  BOOST_REQUIRE_NO_THROW(TensorN x(t, TiledArray::math::Scale<int>(83)));
-  TensorN x(t, TiledArray::math::Scale<int>(83));
+  BOOST_REQUIRE_NO_THROW(TensorN x(t, [] (const int arg) { return arg * 83; }));
+  TensorN x(t, [] (const int arg) { return arg * 83; });
 
   BOOST_CHECK(! x.empty());
 
@@ -189,8 +189,8 @@ BOOST_AUTO_TEST_CASE( unary_permute_constructor ) {
   Permutation perm = make_perm();
 
   // check constructor
-  BOOST_REQUIRE_NO_THROW(TensorN x(t, TiledArray::math::Scale<int>(47), perm));
-  TensorN x(t, TiledArray::math::Scale<int>(47), perm);
+  BOOST_REQUIRE_NO_THROW(TensorN x(t, [] (const int arg) { return arg * 47; }, perm));
+  TensorN x(t, [] (const int arg) { return arg * 47; }, perm);
 
   BOOST_CHECK(! x.empty());
 
@@ -212,8 +212,8 @@ BOOST_AUTO_TEST_CASE( binary_constructor ) {
   rand_fill(431, s.size(), s.data());
 
   // check default constructor
-  BOOST_REQUIRE_NO_THROW(TensorN x(t, s, TiledArray::math::Minus<int, int, int>()));
-  TensorN x(t, s, TiledArray::math::Minus<int, int, int>());
+  BOOST_REQUIRE_NO_THROW(TensorN x(t, s, [] (const int l, const int r) { return l - r; }));
+  TensorN x(t, s, [] (const int l, const int r) { return l - r; });
 
   BOOST_CHECK(! x.empty());
 
@@ -234,8 +234,8 @@ BOOST_AUTO_TEST_CASE( binary_perm_constructor ) {
   rand_fill(431, s.size(), s.data());
 
   // check default constructor
-  BOOST_REQUIRE_NO_THROW(TensorN x(t, s, TiledArray::math::Minus<int, int, int>(), perm));
-  TensorN x(t, s, TiledArray::math::Minus<int, int, int>(), perm);
+  BOOST_REQUIRE_NO_THROW(TensorN x(t, s, [] (const int l, const int r) { return l - r; }, perm));
+  TensorN x(t, s, [] (const int l, const int r) { return l - r; }, perm);
 
   BOOST_CHECK(! x.empty());
 
@@ -378,7 +378,7 @@ BOOST_AUTO_TEST_CASE( swap )
 BOOST_AUTO_TEST_CASE( unary_op ) {
   // check operation
   TensorN x;
-  BOOST_REQUIRE_NO_THROW(x = t.unary(TiledArray::math::Scale<int>(83)));
+  BOOST_REQUIRE_NO_THROW(x = t.unary([] (const int arg) { return arg * 83; }));
 
   BOOST_CHECK(! x.empty());
 
@@ -400,7 +400,7 @@ BOOST_AUTO_TEST_CASE( unary_permute_op ) {
 
   // check operation
   TensorN x;
-  BOOST_REQUIRE_NO_THROW(x = t.unary(TiledArray::math::Scale<int>(47), perm));
+  BOOST_REQUIRE_NO_THROW(x = t.unary([] (const int arg) { return arg * 47; }, perm));
 
   BOOST_CHECK(! x.empty());
 
@@ -423,7 +423,7 @@ BOOST_AUTO_TEST_CASE( binary_op ) {
 
   // check operation
   TensorN x;
-  BOOST_REQUIRE_NO_THROW(x = t.binary(s, TiledArray::math::Minus<int, int, int>()));
+  BOOST_REQUIRE_NO_THROW(x = t.binary(s, [] (const int l, const int r) { return l - r; }));
 
   BOOST_CHECK(! x.empty());
 
@@ -446,7 +446,7 @@ BOOST_AUTO_TEST_CASE( binary_perm_op ) {
   // check default constructor
   // check operation
   TensorN x;
-  BOOST_REQUIRE_NO_THROW(x = t.binary(s, TiledArray::math::Minus<int, int, int>(), perm));
+  BOOST_REQUIRE_NO_THROW(x = t.binary(s, [] (const int l, const int r) { return l - r; }, perm));
 
   BOOST_CHECK(! x.empty());
 

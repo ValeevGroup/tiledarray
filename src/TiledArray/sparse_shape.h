@@ -733,14 +733,16 @@ namespace TiledArray {
 
         Tensor<value_type> left(tile_norms_.range());
         const size_type mk = M * K;
-        math::Multiplies<value_type, value_type, value_type> left_op;
+        auto left_op = [] (const value_type left, const value_type right)
+            { return left * right; };
         for(size_type i = 0ul; i < mk; i += K)
           math::vector_op(left_op, K, left.data() + i,
               tile_norms_.data() + i, k_sizes.data());
 
         Tensor<value_type> right(other.tile_norms_.range());
         for(integer i = 0ul, k = 0; k < K; i += N, ++k) {
-          math::Scale<value_type> right_op(k_sizes[k]);
+          const value_type factor = k_sizes[k];
+          auto right_op = [=] (const value_type arg) { return arg * factor; };
           math::vector_op(right_op, N, right.data() + i, other.tile_norms_.data() + i);
         }
 

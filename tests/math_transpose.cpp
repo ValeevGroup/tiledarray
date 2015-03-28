@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE( unary )
   for(std::size_t i = 0ul; i < mn; ++i)
     a[i] = GlobalFixture::world->rand() % 42;
 
-  TiledArray::math::Scale<int> op(3);
+  auto op = [] (const int arg) { return arg * 3; };
 
   for(std::size_t x = 1ul; x < m; ++x) {
     for(std::size_t y = 1ul; y < n; ++y) {
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE( binary )
   for(std::size_t i = 0ul; i < mn; ++i)
     b[i] = GlobalFixture::world->rand() % 42;
 
-  TiledArray::math::Minus<int, int, int> op;
+  auto op = [] (const int l, const int r) { return l - r; };
 
   for(std::size_t x = 1ul; x < m; ++x) {
     for(std::size_t y = 1ul; y < n; ++y) {
