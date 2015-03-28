@@ -280,7 +280,7 @@ namespace TiledArray {
     Tensor(const Tensor<U, AU>& other, const Op& op) :
       pimpl_(new Impl(other.range()))
     {
-      math::unary_vector_op(other.size(), other.data(), pimpl_->data_, op);
+      math::vector_op(op, other.size(), pimpl_->data_, other.data());
     }
 
     /// Construct an evaluated tensor
@@ -360,8 +360,7 @@ namespace TiledArray {
       pimpl_(new Impl(left.range()))
     {
       TA_ASSERT(left.range() == right.range());
-      math::binary_vector_op(left.size(), left.data(), right.data(),
-          pimpl_->data_, op);
+      math::vector_op(op, left.size(), pimpl_->data_, left.data(), right.data());
     }
 
     /// Construct an evaluated tensor
@@ -745,7 +744,7 @@ namespace TiledArray {
       TA_ASSERT(pimpl_->range_ == other.range());
       TA_ASSERT(pimpl_->data_ != other.data());
 
-      math::binary_vector_op(pimpl_->range_.volume(), other.data(), pimpl_->data_, op);
+      math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_, other.data());
 
       return *this;
     }
@@ -791,7 +790,7 @@ namespace TiledArray {
     Tensor_& inplace_unary(const Op& op) {
       TA_ASSERT(pimpl_);
 
-      math::unary_vector_op(pimpl_->range_.volume(), pimpl_->data_, op);
+      math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_);
 
       return *this;
     }
@@ -1319,7 +1318,7 @@ namespace TiledArray {
     template <typename U, typename Op>
     static typename madness::enable_if<TiledArray::detail::is_numeric<U> >::type
     reduce(const size_type n, const U* u, numeric_type& value, const Op& op) {
-      math::reduce_vector_op(n, u, value, op);
+      math::reduce_op(op, n, value, u);
     }
 
     /// Unary \c Tensor reduction
@@ -1356,7 +1355,7 @@ namespace TiledArray {
         TiledArray::detail::is_numeric<Right>::value >::type
     reduce(const size_type n, const Left* left, const Right* right,
         numeric_type& value, const Op& op) {
-      math::reduce_vector_op(n, left, right, value, op);
+      math::reduce_op(op, n, value, left, right);
     }
 
     /// Binary \c Tensor reduction

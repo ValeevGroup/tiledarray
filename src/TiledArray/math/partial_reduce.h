@@ -252,7 +252,7 @@ namespace TiledArray {
 
         // Load result block
         Result result_block = result[i];
-        reduce_vector_op(n, left + (i * n), right, result_block, op);
+        reduce_op(op, n, result_block, left + (i * n), right);
         result[i] = result_block;
       }
     }
@@ -313,7 +313,7 @@ namespace TiledArray {
 
         // Load result block
         Result result_block = result[i];
-        reduce_vector_op(n, arg + (i * n), result_block, op);
+        reduce_op(op, n, result_block, arg + (i * n));
         result[i] = result_block;
       }
     }
@@ -386,10 +386,9 @@ namespace TiledArray {
         const Right right_i = right[i];
 
         // Reduce row i to result
-        reduce_vector_op(n, left + (i * n), result,
-            [&op,right_i] (Result& result_j, const Left left_ij) {
-              op(result_j, left_ij, right_i);
-            });
+        vector_op([&op,right_i] (Result& result_j, const Left left_ij) {
+          op(result_j, left_ij, right_i);
+        }, n, result, left + (i * n));
       }
     }
 
@@ -452,7 +451,7 @@ namespace TiledArray {
       for(; i < m; ++i) {
 
         // Reduce row i to result
-        reduce_vector_op(n, arg + (i * n), result, op);
+        vector_op(op, n, result, arg + (i * n));
       }
     }
 

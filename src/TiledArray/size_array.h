@@ -214,7 +214,7 @@ namespace TiledArray {
       /// \param op The binary operation
       template <typename Arg, typename Op>
       void binary(const Arg* const arg, const Op& op) {
-        math::binary_vector_op(last_ - first_, arg, first_, op);
+        math::vector_op(op, last_ - first_, first_, arg);
       }
 
       /// Binary vector operation
@@ -230,7 +230,7 @@ namespace TiledArray {
       /// \param op The binary operation
       template <typename Left, typename Right, typename Op>
       void binary(const Left* const left, const Right* const right, const Op& op) {
-        math::binary_vector_op(last_ - first_, left, right, first_, op);
+        math::vector_op(op, last_ - first_, first_, left, right);
       }
 
       /// Unary vector operation
@@ -241,7 +241,7 @@ namespace TiledArray {
       /// \param op The binary operation
       template <typename Op>
       void unary(const Op& op) {
-        math::unary_vector_op(last_ - first_, first_, op);
+        math::vector_op(op, last_ - first_, first_);
       }
 
       /// Unary vector operation
@@ -254,7 +254,7 @@ namespace TiledArray {
       /// \param arg The argument
       template <typename Arg, typename Op>
       void unary(const Arg* const arg, const Op& op) {
-        math::unary_vector_op(last_ - first_, arg, first_, op);
+        math::vector_op(op, last_ - first_, first_, arg);
       }
 
       /// Binary reduce vector operation
@@ -271,7 +271,7 @@ namespace TiledArray {
       /// \return The reduced value
       template <typename Arg, typename Result, typename Op>
       Result reduce(const Arg* const arg, Result result, const Op& op) const {
-        math::reduce_vector_op(last_ - first_, first_, arg, result, op);
+        math::reduce_op(op, last_ - first_, result, first_, arg);
         return result;
       }
 
@@ -286,7 +286,7 @@ namespace TiledArray {
       /// \return The reduced value
       template <typename Result, typename Op>
       Result reduce(Result result, const Op& op) const {
-        math::reduce_vector_op(last_ - first_, first_, result, op);
+        math::reduce_op(op, last_ - first_, result, first_);
         return result;
       }
 

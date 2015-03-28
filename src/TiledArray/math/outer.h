@@ -224,7 +224,7 @@ namespace TiledArray {
       for(; i < m; ++i, a += n) {
 
         const X x_i = x[i];
-        unary_vector_op(n, y, a, [x_i,&op] (const Y y_j) { return op(x_i, y_j); });
+        vector_op([x_i,&op] (const Y y_j) { return op(x_i, y_j); }, n, a, y);
 
       }
     }
@@ -294,8 +294,8 @@ namespace TiledArray {
 
       for(; i < m; ++i, a += n) {
         const X x_i = x[i];
-        binary_vector_op(n, y, a,
-            [x_i,&op] (A& a_ij, const Y y_j) { return op(a_ij, x_i, y_j); });
+        vector_op([x_i,&op] (A& a_ij, const Y y_j) { return op(a_ij, x_i, y_j); },
+            n, a, y);
       }
     }
 
