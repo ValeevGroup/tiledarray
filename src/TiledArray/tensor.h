@@ -272,9 +272,12 @@ namespace TiledArray {
             size_type perm_index = perm_index_op(index);
 
             // Copy a transposed matrix from the input tensor to the this tensor.
-            math::uninitialized_copy_transpose(other_fused_size[1], other_fused_size[3],
-                other.data() + index, other_fused_weight[1],
-                pimpl_->data_ + perm_index, result_outer_stride);
+            auto copy_op = [] (param_value_type<Tensor<U, AU> > a) ->
+                param_value_type<Tensor<U, AU> > { return a; };
+            math::uninitialized_transpose(copy_op,
+                other_fused_size[1], other_fused_size[3],
+                result_outer_stride, pimpl_->data_ + perm_index,
+                other_fused_weight[1], other.data() + index);
           }
         }
       }
@@ -351,9 +354,10 @@ namespace TiledArray {
             size_type perm_index = perm_index_op(index);
 
             // Copy a transposed matrix from the input tensor to the this tensor.
-            math::uninitialized_unary_transpose(other_fused_size[1], other_fused_size[3],
-                other.data() + index, other_fused_weight[1],
-                pimpl_->data_ + perm_index, result_outer_stride, op);
+            math::uninitialized_transpose(op,
+                other_fused_size[1], other_fused_size[3],
+                result_outer_stride, pimpl_->data_ + perm_index,
+                other_fused_weight[1], other.data() + index);
           }
         }
       }
@@ -433,9 +437,10 @@ namespace TiledArray {
             size_type perm_index = perm_index_op(index);
 
             // Copy a transposed matrix from the input tensor to the this tensor.
-            math::uninitialized_binary_transpose(other_fused_size[1], other_fused_size[3],
-                left.data() + index, right.data() + index, other_fused_weight[1],
-                pimpl_->data_ + perm_index, result_outer_stride, op);
+            math::uninitialized_transpose(op,
+                other_fused_size[1], other_fused_size[3],
+                result_outer_stride, pimpl_->data_ + perm_index,
+                other_fused_weight[1], left.data() + index, right.data() + index);
           }
         }
       }

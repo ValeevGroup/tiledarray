@@ -50,11 +50,13 @@ BOOST_AUTO_TEST_CASE( copy )
   for(std::size_t i = 0ul; i < mn; ++i)
     a[i] = GlobalFixture::world->rand() % 42;
 
+  const auto copy_op = [] (const int& a) -> const int& { return a; };
+
   for(std::size_t x = 1ul; x < m; ++x) {
     for(std::size_t y = 1ul; y < n; ++y) {
       std::fill_n(b, mn, 0);
 
-      TiledArray::math::uninitialized_copy_transpose(x, y, a, n, b, m);
+      TiledArray::math::uninitialized_transpose(copy_op, x, y, m, b, n, a);
 
       for(std::size_t i = 0ul; i < m; ++i) {
         for(std::size_t j = 0ul; j < n; ++j) {
@@ -91,7 +93,7 @@ BOOST_AUTO_TEST_CASE( unary )
     for(std::size_t y = 1ul; y < n; ++y) {
       std::fill_n(b, mn, 0);
 
-      TiledArray::math::uninitialized_unary_transpose(x, y, a, n, b, m, op);
+      TiledArray::math::uninitialized_transpose(op, x, y, m, b, n, a);
 
       for(std::size_t i = 0ul; i < m; ++i) {
         for(std::size_t j = 0ul; j < n; ++j) {
@@ -131,7 +133,7 @@ BOOST_AUTO_TEST_CASE( binary )
     for(std::size_t y = 1ul; y < n; ++y) {
       std::fill_n(c, mn, 0);
 
-      TiledArray::math::uninitialized_binary_transpose(x, y, a, b, n, c, m, op);
+      TiledArray::math::uninitialized_transpose(op, x, y, m, c, n, a, b);
 
       for(std::size_t i = 0ul; i < m; ++i) {
         for(std::size_t j = 0ul; j < n; ++j) {
