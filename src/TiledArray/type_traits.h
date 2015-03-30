@@ -144,7 +144,7 @@ namespace TiledArray {
 
     template <typename T, typename Enabler = void>
     struct param {
-      typedef typename std::add_const<typename std::add_lvalue_reference<T>::type>::type type;
+      typedef typename std::add_lvalue_reference<typename std::add_const<T>::type>::type type;
     };
 
     template <typename T>
