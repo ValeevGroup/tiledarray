@@ -96,6 +96,9 @@ namespace TiledArray {
       /// Convert tile to evaluation type
       operator eval_type() const { return (*op_)(tile_, consume_); }
 
+      /// return ref to input tile
+      const tile_type& tile() const { return tile_; }
+
       /// Serialization (not implemented)
 
       /// \tparam Archive The archive type
