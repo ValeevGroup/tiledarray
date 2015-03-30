@@ -84,6 +84,9 @@
 namespace TiledArray {
   namespace math {
 
+    // Import param_type into
+    using ::TiledArray::detail::param_type;
+
     // Define compile time constant for loop unwinding.
     typedef std::integral_constant<std::size_t, TILEDARRAY_CACHELINE_SIZE / sizeof(double)> LoopUnwind;
     typedef std::integral_constant<std::size_t, ~std::size_t(TILEDARRAY_LOOP_UNWIND - 1ul)> index_mask;
@@ -263,16 +266,18 @@ namespace TiledArray {
         op(result, args[i]...);
     }
 
-    template <typename Arg, typename Result>
+    template <typename Result, typename Arg>
     TILEDARRAY_FORCE_INLINE void
     copy_block(Result* const result, const Arg* const arg) {
-      for_each_block([] (Result& lhs, const Arg rhs) { lhs = rhs; }, result, arg);
+      for_each_block([] (Result& lhs, param_type<Arg> rhs) { lhs = rhs; },
+          result, arg);
     }
 
     template <typename Arg, typename Result>
     TILEDARRAY_FORCE_INLINE void
     copy_block(std::size_t n, Result* const result, const Arg* const arg) {
-      for_each_block([] (Result& lhs, const Arg rhs) { lhs = rhs; }, n, result, arg);
+      for_each_block([] (Result& lhs, param_type<Arg> rhs) { lhs = rhs; },
+          n, result, arg);
     }
 
     template <typename Arg, typename Result>
@@ -372,7 +377,8 @@ namespace TiledArray {
     void vector_op(Op&& op, const std::size_t n, Result* const result,
         const Args* const... args)
     {
-      auto wrapper_op = [&op] (Result& res, const Args... a) { res = op(a...); };
+      auto wrapper_op = [&op] (Result& res, param_type<Args>... a)
+          { res = op(a...); };
 
       std::size_t i = 0ul;
 
@@ -457,7 +463,7 @@ namespace TiledArray {
     uninitialized_copy_vector(const std::size_t n, const Arg* const arg,
         Result* const result)
     {
-      auto op = [] (Result* const res, const Arg a) { new(res) Result(a); };
+      auto op = [] (Result* const res, param_type<Arg> a) { new(res) Result(a); };
       vector_ptr_op(op, n, result, arg);
     }
 
@@ -502,7 +508,7 @@ namespace TiledArray {
         Result* const result, Op&& op)
     {
       auto wrapper_op =
-          [&op] (Result* const res, const Arg a) { new(res) Result(op(a)); };
+          [&op] (Result* const res, param_type<Arg> a) { new(res) Result(op(a)); };
       vector_ptr_op(wrapper_op, n, result, arg);
     }
 
@@ -521,9 +527,8 @@ namespace TiledArray {
     uninitialized_binary_vector_op(const std::size_t n, const Left* const left,
         const Right* const right, Result* const result, Op&& op)
     {
-      auto wrapper_op = [&op] (Result* const res, const Left l, const Right r) {
-        new(res) Result(op(l, r));
-      };
+      auto wrapper_op = [&op] (Result* const res, param_type<Left> l,
+          param_type<Right> r) { new(res) Result(op(l, r)); };
 
       vector_ptr_op(op, n, result, left, right);
     }
