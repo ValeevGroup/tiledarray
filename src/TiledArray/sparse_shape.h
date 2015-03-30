@@ -415,7 +415,7 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ji...} = \rm{perm}(i,j) (\rm{this})_{ij...} + (\rm{other})_{ij...}
     /// \f]
-    /// \param factor The scaling factor
+    /// \param other The shape to be added to this shape
     /// \param perm The permutation that is applied to the result
     /// \return A new, scaled shape
     SparseShape_ add(const SparseShape_& other, const Permutation& perm) const {

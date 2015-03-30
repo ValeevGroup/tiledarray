@@ -79,8 +79,8 @@ namespace TiledArray {
 
       /// Constructor
 
-      /// \param L The left-hand argument expression type
-      /// \param R The right-hand argument expression type
+      /// \tparam L The left-hand argument expression type
+      /// \tparam R The right-hand argument expression type
       /// \param expr The parent expression
       template <typename L, typename R>
       AddEngine(const AddExpr<L, R>& expr) : BinaryEngine_(expr) { }
@@ -156,8 +156,8 @@ namespace TiledArray {
 
       /// Constructor
 
-      /// \param L The left-hand argument expression type
-      /// \param R The right-hand argument expression type
+      /// \tparam L The left-hand argument expression type
+      /// \tparam R The right-hand argument expression type
       /// \param expr The parent expression
       template <typename L, typename R>
       ScalAddEngine(const ScalAddExpr<L, R>& expr) :

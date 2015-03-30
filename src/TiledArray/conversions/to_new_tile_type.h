@@ -39,8 +39,6 @@ Array<T, DIM, detail::result_of_t<Fn(Tile)>, Policy> to_new_tile_type(
     world.taskq.for_each(
         madness::Range<IterType>(old_array.begin(), old_array.end()), conv);
 
-    world.gop.fence();
-
     return new_array;
 }
 

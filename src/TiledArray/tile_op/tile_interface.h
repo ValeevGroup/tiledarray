@@ -455,7 +455,6 @@ namespace TiledArray {
 
   /// \tparam Arg The tile argument type
   /// \param arg The argument to be negated
-  /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>-arg</tt>
   template <typename Arg>
   inline Arg neg(const Arg& arg) {
@@ -466,7 +465,6 @@ namespace TiledArray {
 
   /// \tparam Arg The tile argument type
   /// \param arg The argument to be negated
-  /// \param factor The scaling factor
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ -arg</tt>
   template <typename Arg>
@@ -478,7 +476,6 @@ namespace TiledArray {
 
   /// \tparam Result The result tile type
   /// \param result The result tile to be negated
-  /// \param value The constant scalar to be subtracted from \c result
   /// \return A tile that is equal to <tt>result = -result</tt>
   template <typename Result>
   inline Result& neg_to(Result& result) {

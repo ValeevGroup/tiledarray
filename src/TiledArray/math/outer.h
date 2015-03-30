@@ -226,11 +226,10 @@ namespace TiledArray {
     /// \tparam Op The operation that will compute outer product elements
     /// \param[in] m The size of the left-hand vector
     /// \param[in] n The size of the right-hand vector
-    /// \param[in] alpha The scaling factor
     /// \param[in] x The left-hand vector
     /// \param[in] y The right-hand vector
     /// \param[in,out] a The result matrix of size \c m*n
-    /// \param[in]
+    /// \param[in] op The operation used to generate the result
     template <typename X, typename Y, typename A, typename Op>
     void outer(const std::size_t m, const std::size_t n,
         const X* const x, const Y* const y, A* a, const Op& op)
@@ -303,11 +302,11 @@ namespace TiledArray {
     /// \tparam Op The operation that will compute outer product elements
     /// \param[in] m The size of the left-hand vector
     /// \param[in] n The size of the right-hand vector
-    /// \param[in] alpha The scaling factor
     /// \param[in] x The left-hand vector
     /// \param[in] y The right-hand vector
     /// \param[in] a The input matrix of size \c m*n
     /// \param[out] b The output matrix of size \c m*n
+    /// \param[in] op The operation that will compute the outer product elements
     template <typename X, typename Y, typename A, typename B, typename Op>
     void outer_fill(const std::size_t m, const std::size_t n,
         const X* restrict const x, const Y* restrict const y,

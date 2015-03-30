@@ -43,17 +43,18 @@ namespace TiledArray {
 
     /// Square and add function object
 
-    /// \tparam T argument and result type
+    /// \tparam First The left-hand argument type
+    /// \tparam Second The right-hand argument type
     template <typename First, typename Second>
     struct SquareAddAssign {
       typedef First& first_argument_type; ///< The left-hand argument type
       typedef typename TiledArray::detail::param<Second>::type second_argument_type; ///< The right-hand argument type
       typedef void result_type; ///< The result type
 
-      /// Square \c t
+      /// Square and sum
 
-      /// \param t The value to be squared
-      /// \return first +=  second * second
+      /// \param first The result
+      /// \param second The argument to be squared
       result_type operator()(first_argument_type first, second_argument_type second) const {
         first +=  second * second;
       }
@@ -63,7 +64,8 @@ namespace TiledArray {
 
     /// Square and add function object
 
-    /// \tparam T argument and result type
+    /// \tparam First The left-hand argument type
+    /// \tparam Second The right-hand argument type
     template <typename First, typename Second, typename Result>
     struct MultAddAssign {
       typedef typename TiledArray::detail::param<First>::type first_argument_type; ///< The argument type
@@ -72,8 +74,8 @@ namespace TiledArray {
 
       /// Square \c t
 
-      /// \param t The value to be squared
-      /// \return first +=  second * second
+      /// \param first The left-hand argument to be multiplied
+      /// \param second The right-hand argument to be multiplied
       result_type operator()(Result& result, first_argument_type first, second_argument_type second) const {
         result += first * second;
       }
@@ -577,7 +579,8 @@ namespace TiledArray {
 
     /// Minimum assign
 
-    /// \tparam Arg Argument type
+    /// \tparam First The left-hand argument type
+    /// \tparam Second The right-hand argument type
     template <typename First, typename Second>
     struct MinAssign {
       typedef First& first_argument_type; ///< The left-hand argument type
@@ -595,7 +598,8 @@ namespace TiledArray {
 
     /// Maximum assign
 
-    /// \tparam Arg Argument type
+    /// \tparam First The left-hand argument type
+    /// \tparam Second The right-hand argument type
     template <typename First, typename Second>
     struct MaxAssign {
       typedef First& first_argument_type; ///< The left-hand argument type
@@ -613,7 +617,8 @@ namespace TiledArray {
 
     /// Absolute minimum assign
 
-    /// \tparam Arg Argument type
+    /// \tparam First The left-hand argument type
+    /// \tparam Second The right-hand argument type
     template <typename First, typename Second>
     struct AbsMinAssign {
       typedef First& first_argument_type; ///< The left-hand argument type
@@ -631,7 +636,8 @@ namespace TiledArray {
 
     /// Absolute maximum assign
 
-    /// \tparam Arg Argument type
+    /// \tparam First The left-hand argument type
+    /// \tparam Second The right-hand argument type
     template <typename First, typename Second>
     struct AbsMaxAssign {
       typedef First& first_argument_type; ///< The left-hand argument type

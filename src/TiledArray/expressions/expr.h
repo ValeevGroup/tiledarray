@@ -75,7 +75,7 @@ namespace TiledArray {
         /// Task function used to evaluate lazy tiles
 
         /// \tparam Tile The lazy tile type
-        /// \param The lazy tile
+        /// \param tile The lazy tile
         /// \return The evaluated tile
         template <typename Tile>
         static typename Tile::eval_type eval_tile(const Tile& tile) {
@@ -145,7 +145,7 @@ namespace TiledArray {
       /// \tparam A The output array type
       /// \param world The world that will hold the result
       /// \param pmap The process map for the result
-      /// \param vars The target variable list
+      /// \param target_vars The target variable list
       template <typename A>
       A make_array(madness::World& world, const std::shared_ptr<typename A::pmap_interface>& pmap,
           const VariableList& target_vars) const

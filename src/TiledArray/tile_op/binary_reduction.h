@@ -34,7 +34,8 @@ namespace TiledArray {
     /// Vector dot product tile reduction
 
     /// This reduction operation computes the vector dot product of a tile.
-    /// \tparam Tile The tile type
+    /// \tparam Left The left-hand tile type
+    /// \tparam Right The right-hand tile type
     template <typename Left, typename Right>
     class DotReduction {
     public:

@@ -35,7 +35,7 @@ namespace TiledArray {
     /// used by derived classes to implement the distributed evaluate. This
     /// class can also handles permutation of result tiles if necessary.
     /// \tparam Tile The output tile type
-    /// \param Policy The tensor policy class
+    /// \tparam Policy The tensor policy class
     template <typename Tile, typename Policy>
     class DistEvalImpl : public TensorImpl<Policy>, public madness::CallbackInterface {
     public:
@@ -70,7 +70,7 @@ namespace TiledArray {
 
       /// Permute \c index from a source index to a target index
 
-      /// \param i An ordinal index in the source index space
+      /// \param index An ordinal index in the source index space
       /// \return The ordinal index in the target index space
       size_type perm_index_to_target(size_type index) const {
         TA_ASSERT(index < TensorImpl_::trange().tiles().volume());
@@ -79,7 +79,7 @@ namespace TiledArray {
 
       /// Permute \c index from a target index to a source index
 
-      /// \param i An ordinal index in the target index space
+      /// \param index An ordinal index in the target index space
       /// \return The ordinal index in the source index space
       size_type perm_index_to_source(size_type index) const {
         TA_ASSERT(index < TensorImpl_::trange().tiles().volume());
@@ -150,7 +150,7 @@ namespace TiledArray {
       /// This will store \c value at ordinal index \c i . Typically, this
       /// function should be called by a task function.
       /// \param i The index in the result space where value will be stored
-      /// \param value The future value to be stored at index \c i
+      /// \param f The future value to be stored at index \c i
       void set_tile(size_type i, madness::Future<value_type> f) {
         // Store value
         madness::DistributedID id(id_, i);
@@ -189,7 +189,6 @@ namespace TiledArray {
       /// and evaluate the tiles for this distributed evaluator. It will block
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
-      /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
       virtual int internal_eval() = 0;
 
@@ -201,7 +200,6 @@ namespace TiledArray {
       /// and evaluate the tiles for this distributed evaluator. It will block
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
-      /// \param pimpl A shared pointer to this object
       void eval() {
         TA_ASSERT(task_count_ == -1);
         task_count_ = this->internal_eval();

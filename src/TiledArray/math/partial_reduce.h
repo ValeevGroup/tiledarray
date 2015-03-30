@@ -262,12 +262,11 @@ namespace TiledArray {
 
     /// <tt>op(result[i], arg[i][j])</tt>.
     /// \tparam Arg The left-hand vector element type
-    /// \tparam Right The right-hand vector element type
     /// \tparam Result The a matrix element type
+    /// \tparam Op The operator type
     /// \param[in] m The number of rows in left
     /// \param[in] n The size of the right-hand vector
-    /// \param[in] left An m*n matrix
-    /// \param[in] right A vector of size n
+    /// \param[in] arg An m*n matrix
     /// \param[out] result The result vector of size m
     /// \param[in] op The operation that will reduce the rows of left
     template <typename Arg, typename Result, typename Op>
@@ -325,6 +324,7 @@ namespace TiledArray {
     /// \tparam Left The left-hand vector element type
     /// \tparam Right The right-hand vector element type
     /// \tparam Result The a matrix element type
+    /// \tparam Op The operator type
     /// \param[in] m The number of rows in left
     /// \param[in] n The size of the right-hand vector
     /// \param[in] left An m*n matrix
@@ -391,13 +391,12 @@ namespace TiledArray {
     /// Reduce the columns of a matrix
 
     /// <tt>op(result[j], arg[i][j])</tt>.
-    /// \tparam Left The left-hand vector element type
-    /// \tparam Right The right-hand vector element type
+    /// \tparam Arg The argument vector element type
     /// \tparam Result The a matrix element type
+    /// \tparam Op The operator type
     /// \param[in] m The number of rows in left
     /// \param[in] n The size of the right-hand vector
-    /// \param[in] left An m*n matrix
-    /// \param[in] right A vector of size m
+    /// \param[in] arg An m*n matrix
     /// \param[out] result The result vector of size n
     /// \param[in] op The operation that will reduce the columns of left
     template <typename Arg, typename Result, typename Op>

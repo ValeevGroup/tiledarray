@@ -73,10 +73,6 @@ namespace TiledArray {
     /// This base class defines binary operations with zero and non-zero tiles,
     /// and maps arguments given to the appropriate evaluation kernel.
     /// \tparam Derived The derived operation class type
-    /// \tparam LeftConsumable A flag that is \c true when the left-hand
-    /// argument is consumable
-    /// \tparam RightConsumable A flag that is \c true when the right-hand
-    /// argument is consumable
     template <typename Derived>
     class BinaryInterfaceBase {
     public:
@@ -254,10 +250,6 @@ namespace TiledArray {
   /// }; // class Operation
   /// \endcode
   /// \tparam Derived The derived operation class type
-  /// \tparam LeftConsumable A flag that is \c true when the left-hand
-  /// argument is consumable
-  /// \tparam RightConsumable A flag that is \c true when the right-hand
-  /// argument is consumable
   template <typename Derived>
   class BinaryInterface : public math::BinaryInterfaceBase<Derived> {
   public:
@@ -392,11 +384,10 @@ namespace TiledArray {
   /// interface functions. This specialization is necessary to handle runtime
   /// consumable resources, when the tiles are not marked as consumable at
   /// compile time.
-  /// \tparam Derived The derived operation class type
-  /// \tparam LeftConsumable A flag that is \c true when the left-hand
-  /// argument is consumable
-  /// \tparam RightConsumable A flag that is \c true when the right-hand
-  /// argument is consumable
+  /// \tparam Result The result tile type
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \tparam Op The derived class template
   template <typename Result, typename Left, typename Right,
       template <typename, typename, typename, bool, bool> class Op>
   class BinaryInterface<Op<Result, Left, Right, false, false> > :

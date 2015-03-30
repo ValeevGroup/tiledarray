@@ -95,7 +95,7 @@ macro(check_cxx11_support outvar)
       set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${_cxx11_test_flag}")
       
       # Check for default C++11 support with _cxx11_test_flag
-      unset(${outvar})
+      unset(${outvar} CACHE)
       check_cxx_source_compiles("${STD_CXX11_TEST_CODE}" ${outvar})
       
       cmake_pop_check_state()

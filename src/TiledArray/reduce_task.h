@@ -459,7 +459,7 @@ namespace TiledArray {
 
       /// Constructor
 
-      /// \param worl The world that owns this task
+      /// \param world The world that owns this task
       /// \param op The reduction operation [ default = opT() ]
       /// \param callback The callback that will be invoked when this task is
       /// complete
@@ -504,7 +504,7 @@ namespace TiledArray {
       /// \c arg may be of the argument type of \c opT, a \c madness::Future to the
       /// argument type, or \c RemoteReference<FutureImpl> to the argument
       /// type.
-      /// \tparam A The argument type
+      /// \tparam Arg The argument type
       /// \param arg The argument that will be reduced
       /// \param callback The callback that will be invoked when this argument
       /// pair has been reduced [ default = nullptr ]
@@ -656,7 +656,7 @@ namespace TiledArray {
 
       /// Constructor
 
-      /// \param worl The world that owns this task
+      /// \param world The world that owns this task
       /// \param op The pair reduction operation [ default = opT() ]
       /// \param callback The callback that will be invoked when this task is
       /// complete

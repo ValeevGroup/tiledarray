@@ -236,7 +236,7 @@ namespace TiledArray {
       /// \tparam U The element type of \c arg
       /// \tparam Op The binary operation
       /// \param arg The right-hand argument
-      /// \param Op The binary operation
+      /// \param op The binary operation
       /// \throw TiledArray::Exception When the size of \c arg is not equal to
       /// the size of this array.
       template <typename U, typename Op>
@@ -252,8 +252,9 @@ namespace TiledArray {
       /// <tt>*this[i] = op(left[i], right[i])</tt>.
       /// \tparam U The element type of \c arg
       /// \tparam Op The binary operation
-      /// \param arg The right-hand argument
-      /// \param Op The binary operation
+      /// \param left The left-hand argument
+      /// \param right The right-hand argument
+      /// \param op The binary operation
       /// \throw TiledArray::Exception When the sizes of left and right are not
       /// equal to the size of this array.
       template <typename U, typename V, typename Op>
@@ -270,7 +271,7 @@ namespace TiledArray {
       /// \tparam U The element type of \c arg
       /// \tparam Op The binary operation
       /// \param arg The right-hand argument
-      /// \param Op The binary operation
+      /// \param op The binary operation
       /// \throw TiledArray::Exception When the size of \c arg is not equal to
       /// the size of this array.
       template <typename U, typename Op>
@@ -340,7 +341,6 @@ namespace TiledArray {
       /// \tparam U The element type of \c left
       /// \tparam V The element type of \c right
       /// \tparam Op The reduction operation
-      /// \param n The number of columns in the matrix
       /// \param left The array to be reduced of size \c size()*right.size()
       /// \param right The right-hand array
       /// \param op The reduction operation

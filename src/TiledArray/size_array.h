@@ -281,7 +281,6 @@ namespace TiledArray {
       /// reduced result is computed by <tt>op(result, *this[i])</tt>.
       /// \tparam Result The reduction result type
       /// \tparam Op The binary reduction operation type
-      /// \param value The initial value of the reduction
       /// \param result The initial value of the reduction
       /// \param op The unary reduction operation
       /// \return The reduced value

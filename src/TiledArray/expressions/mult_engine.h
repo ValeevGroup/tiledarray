@@ -53,7 +53,8 @@ namespace TiledArray {
 
     /// Multiplication expression engine
 
-    /// \tparam Derived The derived class type
+    /// \tparam Left The left-hand engine type
+    /// \tparam Right The Right-hand engine type
     template <typename Left, typename Right>
     class MultEngine : public ContEngine<MultEngine<Left, Right> > {
     public:
@@ -89,8 +90,8 @@ namespace TiledArray {
 
       /// Constructor
 
-      /// \param L The left-hand argument expression type
-      /// \param R The right-hand argument expression type
+      /// \tparam L The left-hand argument expression type
+      /// \tparam R The right-hand argument expression type
       /// \param expr The parent expression
       template <typename L, typename R>
       MultEngine(const MultExpr<L, R>& expr) : ContEngine_(expr), contract_(false) { }
@@ -255,7 +256,8 @@ namespace TiledArray {
 
     /// Scaled multiplication expression engine
 
-    /// \tparam Derived The derived class type
+    /// \tparam Left The left-hand engine type
+    /// \tparam Right The Right-hand engine type
     template <typename Left, typename Right>
     class ScalMultEngine : public ContEngine<ScalMultEngine<Left, Right> > {
     public:
@@ -291,8 +293,8 @@ namespace TiledArray {
 
       /// Constructor
 
-      /// \param L The left-hand argument expression type
-      /// \param R The right-hand argument expression type
+      /// \tparam L The left-hand argument expression type
+      /// \tparam R The right-hand argument expression type
       /// \param expr The parent expression
       template <typename L, typename R>
       ScalMultEngine(const ScalMultExpr<L, R>& expr) : ContEngine_(expr), contract_(false) { }
