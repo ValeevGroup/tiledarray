@@ -31,7 +31,7 @@ namespace TiledArray {
       /// Pointer proxy
 
       /// This object is a proxy object for the iterator pointer dereference.
-      /// It is necessary to for the transform iterators because they are
+      /// It is necessary for the transform iterators because they are
       /// dereferenced to values, which is not compatible with the standard
       /// iterator interface.
       /// \tparam T The value type of the pointer proxy
