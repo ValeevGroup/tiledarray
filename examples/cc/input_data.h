@@ -81,9 +81,6 @@ private:
   TiledArray::TiledRange trange(const Spin s1, const Spin s2, const RangeOV ov1, const RangeOV ov2,
       const RangeOV ov3, const RangeOV ov4) const;
 
-  template <typename T>
-  static void inplace_sqrt(T& t) { t = std::sqrt(t); }
-
   template <typename R, typename T>
   TiledArray::SparseShape<float> make_sparse_shape(const R& r, const T& t) const {
     TiledArray::Tensor<float> tile_norms(r.tiles(), 0.0f);
@@ -92,7 +89,8 @@ private:
     for(typename T::const_iterator it = t.begin(); it != t.end(); ++it)
         tile_norms[r.element_to_tile(it->first)] += it->second * it->second;
 
-    tile_norms.inplace_unary(inplace_sqrt<float>);
+    tile_norms.inplace_unary([](float& x) { x = std::sqrt(x); });
+
 
     return TiledArray::SparseShape<float>(tile_norms, r);
   }
