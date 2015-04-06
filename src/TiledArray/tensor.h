@@ -790,7 +790,7 @@ namespace TiledArray {
       return Tensor_(*this, op, perm);
     }
 
-    /// Use a binary, element wise operation to modify this tensor
+    /// Use a unary, element wise operation to modify this tensor
 
     /// \tparam Op The unary operation type
     /// \param op The unary, element-wise operation
