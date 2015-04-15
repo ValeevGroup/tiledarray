@@ -26,6 +26,7 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/array_impl.h>
 #include <TiledArray/expressions.h>
+#include <TiledArray/conversions/truncate.h>
 
 namespace TiledArray {
 
@@ -494,7 +495,7 @@ namespace TiledArray {
     /// Update shape data and remove tiles that are below the zero threshold
 
     /// \note This function is a no-op for dense arrays.
-    void truncate() { Policy::truncate(*this); }
+    void truncate() { TiledArray::detail::truncate(*this); }
 
     bool is_initialized() const { return static_cast<bool>(pimpl_); }
 

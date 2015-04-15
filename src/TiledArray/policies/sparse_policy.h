@@ -52,56 +52,6 @@ namespace TiledArray {
       return std::shared_ptr<pmap_interface>(new default_pmap_type(world, size));
     }
 
-    /// Truncate an Array
-
-    /// \tparam A Array type
-    /// \param array The array object to be truncated
-    template <typename A>
-    static void truncate(A& array) {
-      typedef typename A::value_type value_type;
-      typedef madness::Future<value_type> future_type;
-      typedef std::pair<size_type, future_type> datum_type;
-
-      // Create a vector to hold local tiles
-      std::vector<datum_type> tiles;
-      tiles.reserve(array.get_pmap()->size());
-
-      // Collect updated shape data.
-      TiledArray::Tensor<float> tile_norms(array.trange().tiles(), 0.0f);
-
-      // Construct the new tile norms and
-      madness::AtomicInt counter; counter = 0;
-      int task_count = 0;
-      auto task = [&](const size_type index, const value_type& tile) {
-        tile_norms[index] = tile.norm();
-        ++counter;
-      };
-      for(typename A::const_iterator it = array.begin(); it != array.end(); ++it) {
-        future_type tile = *it;
-        array.get_world().taskq.add(task, it.ordinal(), tile);
-        tiles.push_back(datum_type(it.ordinal(), tile));
-        ++task_count;
-      }
-
-      // Wait for tile data to be collected
-      if(task_count > 0) {
-        TiledArray::detail::CounterProbe probe(counter, task_count);
-        array.get_world().await(probe);
-      }
-
-      // Construct the new truncated array
-      A result(array.get_world(), array.trange(), shape_type(array.get_world(),
-          tile_norms, array.trange()), array.get_pmap());
-      for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
-        const size_type index = it->first;
-        if(! result.is_zero(index))
-          result.set(it->first, it->second);
-      }
-
-      // Set array with the new data
-      array = result;
-    }
-
   }; // class SparsePolicy
 
 } // namespace TiledArray
