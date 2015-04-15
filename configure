@@ -56,7 +56,7 @@ Configuration:
                           (MPI_C_COMPILER=)
   --disable-mpi           Disable checks and inclusion of MPI (DISABLE_MPI) 
   --boost=                Boost path, only needed if --unittest is set also (BOOST_ROOT=)
-  --madness=              MADNESS path (Madness_ROOT_DIR=)
+  --madness=              MADNESS path (Madness_DIR=)
   --elemental=            Elemental path (Elemental_ROOT_DIR=) 
   --error-checking=       specify the default error reporting style,
                           allowed values: none, throw (default), assert
