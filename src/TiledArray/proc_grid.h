@@ -414,8 +414,6 @@ namespace TiledArray {
       /// Construct a row group
 
       /// \param did The distributed id for the result group
-      /// \param pred A predicate that selects processes to be included in the
-      /// group.
       /// \return A \c Group object that includes all processes in \c rank_row
       madness::Group make_row_group(const madness::DistributedID& did) const {
         TA_ASSERT(world_);
@@ -443,8 +441,6 @@ namespace TiledArray {
       /// Construct a column group
 
       /// \param did The distributed id for the result group
-      /// \param pred A predicate that selects processes to be included in the
-      /// group.
       /// \return A \c Group object that includes all processes in \c rank_col
       madness::Group make_col_group(const madness::DistributedID& did) const {
         TA_ASSERT(world_);

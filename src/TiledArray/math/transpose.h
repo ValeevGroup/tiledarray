@@ -40,67 +40,27 @@ namespace TiledArray {
     class TransposeUnwind<0> {
     public:
 
-      static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - 1;
+      static constexpr std::size_t offset = TILEDARRAY_LOOP_UNWIND - 1;
 
-      template <typename Arg, typename Result>
+      template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      gather_trans(const Arg* restrict const arg, const std::size_t /*arg_stride*/,
-          Result* restrict const result)
+      gather_trans(Op&& op, Result* restrict const result,
+          const std::size_t arg_stride, const Args* restrict const... args)
       {
         // Load arg block
-        TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(arg, arg_block);
+        Block<Result> result_block;
+        for_each_block(std::forward<Op>(op), result_block, Block<Args>(args)...);
 
         // Transpose arg_block
-        VecOpUnwindN::scatter(arg_block, result, TILEDARRAY_LOOP_UNWIND);
+        result_block.scatter_to(result, TILEDARRAY_LOOP_UNWIND);
       }
 
-      template <typename Arg, typename Result, typename Op>
+      template <typename Op, typename Result>
       static TILEDARRAY_FORCE_INLINE void
-      unary_gather_trans(const Arg* restrict const arg, const std::size_t /*arg_stride*/,
-          Result* restrict const result, const Op& op)
-      {
-        // Load arg block
-        TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(arg, arg_block);
-
-        // Compute result block
-        TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::unary(arg_block, result_block, op);
-
-        // Transpose result block
-        VecOpUnwindN::scatter(result_block, result, TILEDARRAY_LOOP_UNWIND);
-      }
-
-
-      template <typename Left, typename Right, typename Result, typename Op>
-      static TILEDARRAY_FORCE_INLINE void
-      binary_gather_trans(const Left* restrict const left,
-          const Right* restrict const right, const std::size_t /*arg_stride*/,
-          Result* restrict const result, const Op& op)
-      {
-        // Load left block
-        TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(left, left_block);
-
-        // Load right block
-        TILEDARRAY_ALIGNED_STORAGE Right right_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(right, right_block);
-
-        // Compute result block
-        TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::binary(left_block, right_block, result_block, op);
-
-        // Transpose result block
-        VecOpUnwindN::scatter(result_block, result, TILEDARRAY_LOOP_UNWIND);
-      }
-
-      template <typename Arg, typename Result>
-      static TILEDARRAY_FORCE_INLINE void
-      block_scatter(const Arg* restrict const arg, Result* restrict const result,
+      block_scatter(Op& op, Result* const result, const Result* const arg,
           const std::size_t /*result_stride*/)
       {
-        VecOpUnwindN::uninitialized_copy(arg, result);
+        for_each_block_ptr(std::forward<Op>(op), result, arg);
       }
 
     }; // class TransposeUnwind<0>
@@ -111,138 +71,77 @@ namespace TiledArray {
 
       typedef TransposeUnwind<N - 1> TransposeUnwindN1;
 
-      static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - N - 1;
+      static constexpr std::size_t offset = TILEDARRAY_LOOP_UNWIND - N - 1;
 
-      template <typename Arg, typename Result>
+      template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      gather_trans(const Arg* restrict const arg, const std::size_t arg_stride,
-          Result* restrict const result)
+      gather_trans(Op&& op, Result* restrict const result,
+          const std::size_t arg_stride, const Args* restrict const... args)
       {
-        // Load arg block
-        TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(arg, arg_block);
+        {
+          // Load arg block
+          Block<Result> result_block;
+          for_each_block(std::forward<Op>(op), result_block, Block<Args>(args)...);
 
-        // Transpose arg_block
-        VecOpUnwindN::scatter(arg_block, result, TILEDARRAY_LOOP_UNWIND);
+          // Transpose arg_block
+          result_block.scatter_to(result, TILEDARRAY_LOOP_UNWIND);
+        }
 
-        TransposeUnwindN1::gather_trans(arg + arg_stride, arg_stride, result + 1);
+        TransposeUnwindN1::gather_trans(std::forward<Op>(op), result + 1,
+            arg_stride, (args + arg_stride)...);
       }
 
-      template <typename Arg, typename Result, typename Op>
+      template <typename Op, typename Result>
       static TILEDARRAY_FORCE_INLINE void
-      unary_gather_trans(const Arg* restrict const arg, const std::size_t arg_stride,
-          Result* restrict const result, const Op& op)
-      {
-        // Load arg block
-        TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(arg, arg_block);
-
-        // Compute result block
-        TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::unary(arg_block, result_block, op);
-
-        // Transpose result block
-        VecOpUnwindN::scatter(result_block, result, TILEDARRAY_LOOP_UNWIND);
-
-        TransposeUnwindN1::unary_gather_trans(arg + arg_stride, arg_stride, result + 1, op);
-      }
-
-
-      template <typename Left, typename Right, typename Result, typename Op>
-      static TILEDARRAY_FORCE_INLINE void
-      binary_gather_trans(const Left* restrict const left,
-          const Right* restrict const right, const std::size_t arg_stride,
-          Result* restrict const result, const Op& op)
-      {
-        // Load left block
-        TILEDARRAY_ALIGNED_STORAGE Left left_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(left, left_block);
-
-        // Load right block
-        TILEDARRAY_ALIGNED_STORAGE Right right_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(right, right_block);
-
-        // Compute result block
-        TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::binary(left_block, right_block, result_block, op);
-
-        // Transpose result block
-        VecOpUnwindN::scatter(result_block, result, TILEDARRAY_LOOP_UNWIND);
-
-        TransposeUnwindN1::binary_gather_trans(left + arg_stride, right + arg_stride,
-            arg_stride, result + 1, op);
-      }
-
-      template <typename Arg, typename Result>
-      static TILEDARRAY_FORCE_INLINE void
-      block_scatter(const Arg* restrict const arg, Result* restrict const result,
+      block_scatter(Op&& op, Result* const result, const Result* const arg,
           const std::size_t result_stride)
       {
-        VecOpUnwindN::uninitialized_copy(arg, result);
-
-        TransposeUnwindN1::block_scatter(arg + TILEDARRAY_LOOP_UNWIND,
-            result + result_stride, result_stride);
+        for_each_block_ptr(op, result, arg);
+        TransposeUnwindN1::block_scatter(std::forward<Op>(op), result + result_stride,
+            arg + TILEDARRAY_LOOP_UNWIND, result_stride);
       }
 
     }; // class TransposeUnwind
 
     // Convenience typedef
     typedef TransposeUnwind<TILEDARRAY_LOOP_UNWIND - 1> TransposeUnwindN;
-    typedef std::integral_constant<std::size_t, TILEDARRAY_LOOP_UNWIND * TILEDARRAY_LOOP_UNWIND> BlockLoopUnwind;
 
-    template <typename Arg, typename Result>
+
+    template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
-    transpose_block(const Arg* const arg, const std::size_t arg_stride,
-        Result* const result, const std::size_t result_stride)
+    transpose_block(Op&& op, const std::size_t result_stride, Result* const result,
+        const std::size_t arg_stride, const Args* const... args)
     {
-      TILEDARRAY_ALIGNED_STORAGE Result temp[BlockLoopUnwind::value];
+      constexpr std::size_t block_size = TILEDARRAY_LOOP_UNWIND * TILEDARRAY_LOOP_UNWIND;
+      TILEDARRAY_ALIGNED_STORAGE Result temp[block_size];
 
       // Transpose block
-      TransposeUnwindN::gather_trans(arg, arg_stride, temp);
-      TransposeUnwindN::block_scatter(temp, result, result_stride);
+      TransposeUnwindN::gather_trans(std::forward<Op>(op), temp, arg_stride, args...);
+
+      const auto uninit_copy_op = [] (Result * restrict const res, param_type<Result> t) {
+        new (res) Result(t);
+      };
+      TransposeUnwindN::block_scatter(uninit_copy_op, result, temp, result_stride);
     }
 
-    template <typename Arg, typename Result, typename Op>
+
+    template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
-    unary_transpose_block(const Arg* const arg, const std::size_t arg_stride,
-        Result* const result, const std::size_t result_stride, const Op& op)
-    {
-      TILEDARRAY_ALIGNED_STORAGE Result temp[BlockLoopUnwind::value];
-
-      // Transpose block
-      TransposeUnwindN::unary_gather_trans(arg, arg_stride, temp, op);
-      TransposeUnwindN::block_scatter(temp, result, result_stride);
-    }
-
-    template <typename Left, typename Right, typename Result, typename Op>
-    TILEDARRAY_FORCE_INLINE void
-    binary_transpose_block(const Left* const left, const Right* const right,
-        const std::size_t arg_stride, Result* const result,
-        const std::size_t result_stride, const Op& op)
-    {
-      TILEDARRAY_ALIGNED_STORAGE Result temp[BlockLoopUnwind::value];
-
-      // Transpose block
-      TransposeUnwindN::binary_gather_trans(left, right, arg_stride, temp, op);
-      TransposeUnwindN::block_scatter(temp, result, result_stride);
-    }
-
-    template <typename Arg, typename Result>
-    TILEDARRAY_FORCE_INLINE void
-    transpose_block(const std::size_t m, const std::size_t n,
-        const Arg* restrict const arg, const std::size_t arg_stride,
-        Result* restrict const result, const std::size_t result_stride)
+    transpose_block(Op&& op, const std::size_t m, const std::size_t n,
+        const std::size_t result_stride, Result* restrict const result,
+        const std::size_t arg_stride, const Args* restrict const... args)
     {
       TA_ASSERT(m <= TILEDARRAY_LOOP_UNWIND);
       TA_ASSERT(n <= TILEDARRAY_LOOP_UNWIND);
 
-      TILEDARRAY_ALIGNED_STORAGE Result temp[BlockLoopUnwind::value];
+      constexpr std::size_t block_size = TILEDARRAY_LOOP_UNWIND * TILEDARRAY_LOOP_UNWIND;
+      TILEDARRAY_ALIGNED_STORAGE Result temp[block_size];
 
       // Copy and transpose arg data into temp block
       for(std::size_t i = 0ul; i < m; ++i) {
-        const Arg* restrict const arg_i = arg + (i * arg_stride);
-        for(std::size_t j = 0ul, x = i; j < n; ++j, x += TILEDARRAY_LOOP_UNWIND)
-          temp[x] = arg_i[j];
+        std::size_t offset = i * arg_stride;
+        for(std::size_t j = 0ul, x = i; j < n; ++j, x += TILEDARRAY_LOOP_UNWIND, ++offset)
+          op(temp[x], args[offset]...);
       }
 
       // Copy the temp block into result
@@ -254,226 +153,65 @@ namespace TiledArray {
       }
     }
 
-    template <typename Arg, typename Result, typename Op>
-    TILEDARRAY_FORCE_INLINE void
-    unary_transpose_block(const std::size_t m, const std::size_t n,
-        const Arg* restrict const arg, const std::size_t arg_stride,
-        Result* restrict const result, const std::size_t result_stride, const Op& op)
-    {
-      TA_ASSERT(m <= TILEDARRAY_LOOP_UNWIND);
-      TA_ASSERT(n <= TILEDARRAY_LOOP_UNWIND);
+    /// Matrix transpose and initialization
 
-      TILEDARRAY_ALIGNED_STORAGE Result temp[BlockLoopUnwind::value];
-
-      // Copy and transpose arg data into temp block
-      for(std::size_t i = 0ul; i < m; ++i) {
-        const Arg* restrict const arg_i = arg + (i * arg_stride);
-        for(std::size_t j = 0ul, x = i; j < n; ++j, x += TILEDARRAY_LOOP_UNWIND)
-          temp[x] = op(arg_i[j]);
-      }
-
-      // Copy the temp block into result
-      for(std::size_t j = 0ul; j < n; ++j) {
-        Result* restrict const result_j = result + (j * result_stride);
-        const Result* restrict const temp_j = temp + (j * TILEDARRAY_LOOP_UNWIND);
-        for(std::size_t i = 0ul; i < m; ++i)
-          result_j[i] = temp_j[i];
-      }
-    }
-
-
-    template <typename Left, typename Right, typename Result, typename Op>
-    TILEDARRAY_FORCE_INLINE void
-    binary_transpose_block(const std::size_t m, const std::size_t n,
-        const Left* restrict const left, const Right* restrict const right,
-        const std::size_t arg_stride, Result* restrict const result,
-        const std::size_t result_stride, const Op& op)
-    {
-      TA_ASSERT(m <= TILEDARRAY_LOOP_UNWIND);
-      TA_ASSERT(n <= TILEDARRAY_LOOP_UNWIND);
-
-      TILEDARRAY_ALIGNED_STORAGE Result temp[BlockLoopUnwind::value];
-
-      // Copy and transpose arg data into temp block
-      for(std::size_t i = 0ul; i < m; ++i) {
-        const std::size_t offset = i * arg_stride;
-        const Left* restrict const left_i = left + offset;
-        const Right* restrict const right_i = right + offset;
-        for(std::size_t j = 0ul, x = i; j < n; ++j, x += TILEDARRAY_LOOP_UNWIND)
-          temp[x] = op(left_i[j], right_i[j]);
-      }
-
-      // Copy the temp block into result
-      for(std::size_t j = 0ul; j < n; ++j) {
-        Result* restrict const result_j = result + (j * result_stride);
-        const Result* restrict const temp_j = temp + (j * TILEDARRAY_LOOP_UNWIND);
-        for(std::size_t i = 0ul; i < m; ++i)
-          result_j[i] = temp_j[i];
-      }
-    }
-
-    /// Matrix copy transpose
-
-    /// This function will copy the transposed of a matrix.
-    /// \tparam Arg The argument element type
+    /// This function will transpose and transform argument matrices into an
+    /// uninitialized block of memory
+    /// \tparam Op The transform operation type
     /// \tparam Result The result element type
+    /// \tparam Args The argument element type
+    /// \param[in] op The transformation operation applied to arguments
     /// \param[in] m The number of rows in the argument matrix
     /// \param[in] n The number of columns in the argument matrix
-    /// \param[in] arg A pointer to the first element of the argument matrix
-    /// \param[in] arg_stride The stride between argument rows
-    /// \param[out] result A pointer to the first element of the result matrix
     /// \param[in] result_stride THe stride between result rows
+    /// \param[out] result A pointer to the first element of the result matrix
+    /// \param[in] arg_stride The stride between argument rows
+    /// \param[in] args A pointer to the first element of the argument matrix
     /// \note The data layout is expected to be row-major.
-    template <typename Arg, typename Result>
-    void uninitialized_copy_transpose(const std::size_t m, const std::size_t n,
-        const Arg* arg, const std::size_t arg_stride,
-        Result* result, const std::size_t result_stride)
+    template <typename Op, typename Result, typename... Args>
+    void uninitialized_transpose(Op&& op, const std::size_t m, const std::size_t n,
+        const std::size_t result_stride, Result* result,
+        const std::size_t arg_stride, const Args* const... args)
     {
       // Compute block iteration control variables
-      const std::size_t mx = m & index_mask::value; // = m - m % TILEDARRAY_LOOP_UNWIND
-      const std::size_t nx = n & index_mask::value; // = n - n % TILEDARRAY_LOOP_UNWIND
+      constexpr std::size_t index_mask = ~std::size_t(TILEDARRAY_LOOP_UNWIND - 1ul);
+      const std::size_t mx = m & index_mask; // = m - m % TILEDARRAY_LOOP_UNWIND
+      const std::size_t nx = n & index_mask; // = n - n % TILEDARRAY_LOOP_UNWIND
       const std::size_t m_tail = m - mx;
       const std::size_t n_tail = n - nx;
       const std::size_t result_block_step = result_stride * TILEDARRAY_LOOP_UNWIND;
       const std::size_t arg_block_step = arg_stride * TILEDARRAY_LOOP_UNWIND;
-      const Arg* const arg_end = arg + (mx * arg_stride);
+      const std::size_t arg_end = mx * arg_stride;
       const Result* result_end = result + (nx * result_stride);
 
+      const auto wrapper_op =
+          [&] (Result& res, param_type<Args>... a) { res = op(a...); };
+
       // Iterate over block rows
-      for(; arg < arg_end; arg += arg_block_step, result += TILEDARRAY_LOOP_UNWIND) {
-        const Arg* arg_ij = arg;
+      std::size_t arg_start = 0;
+      for(; arg_start < arg_end; arg_start += arg_block_step, result += TILEDARRAY_LOOP_UNWIND) {
+        std::size_t arg_offset = arg_start;
         Result* result_ij = result;
         for(; result_ij < result_end; result_ij += result_block_step,
-            arg_ij += TILEDARRAY_LOOP_UNWIND)
-          transpose_block(arg_ij, arg_stride, result_ij, result_stride);
+            arg_offset += TILEDARRAY_LOOP_UNWIND)
+          transpose_block(wrapper_op, result_stride, result_ij, arg_stride, (args + arg_offset)...);
 
         if(n_tail)
-          transpose_block(TILEDARRAY_LOOP_UNWIND, n_tail,
-              arg_ij, arg_stride, result_ij, result_stride);
+          transpose_block(wrapper_op, TILEDARRAY_LOOP_UNWIND, n_tail, result_stride,
+              result_ij, arg_stride, (args + arg_offset)...);
       }
 
       if(m_tail) {
-        const Arg* arg_ij = arg;
+        std::size_t arg_offset = arg_start;
         Result* result_ij = result;
         for(; result_ij < result_end; result_ij += result_block_step,
-            arg_ij += TILEDARRAY_LOOP_UNWIND)
-          transpose_block(m_tail, TILEDARRAY_LOOP_UNWIND,
-              arg_ij, arg_stride, result_ij, result_stride);
+            arg_offset += TILEDARRAY_LOOP_UNWIND)
+          transpose_block(wrapper_op, m_tail, TILEDARRAY_LOOP_UNWIND, result_stride,
+              result_ij, arg_stride, (args + arg_offset)...);
 
         if(n_tail)
-          transpose_block(m_tail, n_tail,
-              arg_ij, arg_stride, result_ij, result_stride);
-      }
-    }
-
-    /// Matrix transpose
-
-    /// This function will store a transposed copy of arg in result.
-    /// \tparam Arg The argument element type
-    /// \tparam Result The result element type
-    /// \param[in] m The number of rows in the argument matrix
-    /// \param[in] n The number of columns in the argument matrix
-    /// \param[in] arg A pointer to the first element of the argument matrix
-    /// \param[in] arg_stride The stride between argument rows
-    /// \param[out] result A pointer to the first element of the result matrix
-    /// \param[in] result_stride THe stride between result rows
-    /// \note The data layout is expected to be row-major.
-    template <typename Arg, typename Result, typename Op>
-    void uninitialized_unary_transpose(const std::size_t m, const std::size_t n,
-        const Arg* arg, const std::size_t arg_stride,
-        Result* result, const std::size_t result_stride, const Op& op)
-    {
-      // Compute block iteration control variables
-      const std::size_t mx = m & index_mask::value; // = m - m % TILEDARRAY_LOOP_UNWIND
-      const std::size_t nx = n & index_mask::value; // = n - n % TILEDARRAY_LOOP_UNWIND
-      const std::size_t m_tail = m - mx;
-      const std::size_t n_tail = n - nx;
-      const std::size_t result_block_step = result_stride * TILEDARRAY_LOOP_UNWIND;
-      const std::size_t arg_block_step = arg_stride * TILEDARRAY_LOOP_UNWIND;
-      const Arg* const arg_end = arg + (mx * arg_stride);
-      const Result* result_end = result + (nx * result_stride);
-
-      // Iterate over block rows
-      for(; arg < arg_end; arg += arg_block_step, result += TILEDARRAY_LOOP_UNWIND) {
-        const Arg* arg_ij = arg;
-        Result* result_ij = result;
-        for(; result_ij < result_end; result_ij += result_block_step,
-            arg_ij += TILEDARRAY_LOOP_UNWIND)
-          unary_transpose_block(arg_ij, arg_stride, result_ij, result_stride, op);
-
-        if(n_tail)
-          unary_transpose_block(TILEDARRAY_LOOP_UNWIND, n_tail,
-              arg_ij, arg_stride, result_ij, result_stride, op);
-      }
-
-      if(m_tail) {
-        const Arg* arg_ij = arg;
-        Result* result_ij = result;
-        for(; result_ij < result_end; result_ij += result_block_step,
-            arg_ij += TILEDARRAY_LOOP_UNWIND)
-          unary_transpose_block(m_tail, TILEDARRAY_LOOP_UNWIND,
-              arg_ij, arg_stride, result_ij, result_stride, op);
-
-        if(n_tail)
-          unary_transpose_block(m_tail, n_tail,
-              arg_ij, arg_stride, result_ij, result_stride, op);
-      }
-    }
-
-    /// Matrix transpose
-
-    /// This function will store a transposed copy of arg in result.
-    /// \tparam Arg The argument element type
-    /// \tparam Result The result element type
-    /// \param[in] m The number of rows in the argument matrix
-    /// \param[in] n The number of columns in the argument matrix
-    /// \param[in] arg A pointer to the first element of the argument matrix
-    /// \param[in] arg_stride The stride between argument rows
-    /// \param[out] result A pointer to the first element of the result matrix
-    /// \param[in] result_stride THe stride between result rows
-    /// \note The data layout is expected to be row-major.
-    template <typename Left, typename Right, typename Result, typename Op>
-    void uninitialized_binary_transpose(const std::size_t m, const std::size_t n,
-        const Left* left, const Right* right, const std::size_t arg_stride,
-        Result* result, const std::size_t result_stride, const Op& op)
-    {
-      // Compute block iteration control variables
-      const std::size_t mx = m & index_mask::value; // = m - m % TILEDARRAY_LOOP_UNWIND
-      const std::size_t nx = n & index_mask::value; // = n - n % TILEDARRAY_LOOP_UNWIND
-      const std::size_t m_tail = m - mx;
-      const std::size_t n_tail = n - nx;
-      const std::size_t result_block_step = result_stride * TILEDARRAY_LOOP_UNWIND;
-      const std::size_t arg_block_step = arg_stride * TILEDARRAY_LOOP_UNWIND;
-      const Left* const left_end = left + (mx * arg_stride);
-      const Result* result_end = result + (nx * result_stride);
-
-      // Iterate over block rows
-      for(; left < left_end; left += arg_block_step, right += arg_block_step,
-          result += TILEDARRAY_LOOP_UNWIND) {
-        const Left* left_ij = left;
-        const Right* right_ij = right;
-        Result* result_ij = result;
-        for(; result_ij < result_end; result_ij += result_block_step,
-            left_ij += TILEDARRAY_LOOP_UNWIND, right_ij += TILEDARRAY_LOOP_UNWIND)
-          binary_transpose_block(left_ij, right_ij, arg_stride, result_ij, result_stride, op);
-
-        if(n_tail)
-          binary_transpose_block(TILEDARRAY_LOOP_UNWIND, n_tail,
-              left_ij, right_ij, arg_stride, result_ij, result_stride, op);
-      }
-
-      if(m_tail) {
-        const Left* left_ij = left;
-        const Right* right_ij = right;
-        Result* result_ij = result;
-        for(; result_ij < result_end; result_ij += result_block_step,
-            left_ij += TILEDARRAY_LOOP_UNWIND, right_ij += TILEDARRAY_LOOP_UNWIND)
-          binary_transpose_block(m_tail, TILEDARRAY_LOOP_UNWIND,
-              left_ij, right_ij, arg_stride, result_ij, result_stride, op);
-
-        if(n_tail)
-          binary_transpose_block(m_tail, n_tail,
-              left_ij, right_ij, arg_stride, result_ij, result_stride, op);
+          transpose_block(wrapper_op, m_tail, n_tail, result_stride, result_ij,
+              arg_stride, (args + arg_offset)...);
       }
     }
 

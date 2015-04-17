@@ -105,7 +105,6 @@ namespace TiledArray {
       /// and evaluate the tiles for this distributed evaluator. It will block
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
-      /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
       virtual int internal_eval() {
         // Convert pimpl to this object type so it can be used in tasks

@@ -78,7 +78,7 @@ namespace TiledArray {
 
       /// Constructor
 
-      /// \param A The argument expression type
+      /// \tparam A The argument expression type
       /// \param expr The parent expression
       template <typename A>
       ScalEngine(const ScalExpr<A>& expr) : UnaryEngine_(expr), factor_(expr.factor()) { }

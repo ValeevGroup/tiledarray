@@ -116,8 +116,8 @@ namespace TiledArray {
 
         // This is the easy case where the data is a vector and can be
         // normalized directly.
-        math::binary_vector_op(size_vectors[0].size(), size_vectors[0].data(),
-            tile_norms_.data(), normalize_op);
+        math::vector_op(normalize_op, size_vectors[0].size(), tile_norms_.data(),
+            size_vectors[0].data());
 
       } else {
         // Here the normalization constants are computed and multiplied by the
@@ -285,7 +285,11 @@ namespace TiledArray {
     /// \return true
     static constexpr bool is_dense() { return false; }
 
+    /// Sparsity of the shape
+
+    /// \return The fraction of tiles that are zero.
     float sparsity() const {
+      TA_ASSERT(! tile_norms_.empty());
       return float(zero_tile_count_) / float(tile_norms_.size());
     }
 
@@ -411,7 +415,7 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ji...} = \rm{perm}(i,j) (\rm{this})_{ij...} + (\rm{other})_{ij...}
     /// \f]
-    /// \param factor The scaling factor
+    /// \param other The shape to be added to this shape
     /// \param perm The permutation that is applied to the result
     /// \return A new, scaled shape
     SparseShape_ add(const SparseShape_& other, const Permutation& perm) const {
@@ -517,8 +521,8 @@ namespace TiledArray {
 
         // This is the easy case where the data is a vector and can be
         // normalized directly.
-        math::binary_vector_op(size_vectors[0].size(), tile_norms_.data(),
-            size_vectors[0].data(), result_tile_norms.data(), add_const_op);
+        math::vector_op(add_const_op, size_vectors[0].size(), result_tile_norms.data(),
+            tile_norms_.data(), size_vectors[0].data());
 
       } else {
         // Here the normalization constants are computed and multiplied by the
@@ -595,15 +599,15 @@ namespace TiledArray {
       if(dim == 1u) {
         // This is the easy case where the data is a vector and can be
         // normalized directly.
-        math::binary_vector_op(size_vectors[0].size(), size_vectors[0].data(),
-            tile_norms.data(),
+        math::vector_op(
             [threshold, &zero_tile_count] (value_type& norm, const value_type size) {
               norm *= size;
               if(norm < threshold) {
                 norm = value_type(0);
                 ++zero_tile_count;
               }
-            });
+            },
+            size_vectors[0].size(), tile_norms.data(), size_vectors[0].data());
       } else {
         // Here the normalization constants are computed and multiplied by the
         // norm data using a recursive, outer algorithm. This is done to
@@ -729,15 +733,17 @@ namespace TiledArray {
 
         Tensor<value_type> left(tile_norms_.range());
         const size_type mk = M * K;
-        math::Multiplies<value_type, value_type, value_type> left_op;
+        auto left_op = [] (const value_type left, const value_type right)
+            { return left * right; };
         for(size_type i = 0ul; i < mk; i += K)
-          math::binary_vector_op(K, tile_norms_.data() + i, k_sizes.data(),
-              left.data() + i, left_op);
+          math::vector_op(left_op, K, left.data() + i,
+              tile_norms_.data() + i, k_sizes.data());
 
         Tensor<value_type> right(other.tile_norms_.range());
         for(integer i = 0ul, k = 0; k < K; i += N, ++k) {
-          math::Scale<value_type> right_op(k_sizes[k]);
-          math::unary_vector_op(N, other.tile_norms_.data() + i, right.data() + i, right_op);
+          const value_type factor = k_sizes[k];
+          auto right_op = [=] (const value_type arg) { return arg * factor; };
+          math::vector_op(right_op, N, right.data() + i, other.tile_norms_.data() + i);
         }
 
         result_norms = left.gemm(right, factor, gemm_helper);

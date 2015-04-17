@@ -10,7 +10,7 @@ include(ConvertLibrariesListToCompilerArgs)
 
 find_package(Madness CONFIG QUIET COMPONENTS MADworld MADlinalg)
 
-if(MADNESS_FOUND)
+if(Madness_FOUND)
   
   if(ENABLE_ELEMENTAL)
     find_package(Elemental REQUIRED COMPONENTS pmrrr)

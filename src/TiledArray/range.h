@@ -185,16 +185,15 @@ namespace TiledArray {
 
     /// Range constructor from a pack of sizes for each dimension
 
-    /// \tparam _size0 A
-    /// \tparam _sizes A pack of unsigned integers
-    /// \param sizes The size of dimensions 0
+    /// \tparam Sizes A pack of unsigned integers
+    /// \param size0 The size of dimensions 0
     /// \param sizes A pack of sizes for dimensions 1+
     /// \throw std::bad_alloc When memory allocation fails.
-    template<typename... _sizes>
-    explicit Range(const size_type& size0, const _sizes&... sizes) :
+    template<typename... Sizes>
+    explicit Range(const size_type& size0, const Sizes&... sizes) :
       start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
-      const size_type n = sizeof...(_sizes) + 1;
+      const size_type n = sizeof...(sizes) + 1;
 
       // Initialize array memory
       alloc_arrays(n);

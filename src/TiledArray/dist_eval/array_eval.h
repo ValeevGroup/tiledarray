@@ -39,7 +39,7 @@ namespace TiledArray {
 
     /// This tile object is used to hold input array tiles and do on-the-fly
     /// evaluation, type conversion, and/or permutations.
-    /// \tparam Result The result tile type for the lazy tile
+    /// \tparam Tile Array tile type
     /// \tparam Op The operation type
     template <typename Tile, typename Op>
     class LazyArrayTile {
@@ -79,7 +79,6 @@ namespace TiledArray {
       /// Assignment operator
 
       /// \param other The object to be copied
-      /// \param A reference to this object
       LazyArrayTile_& operator=(const LazyArrayTile_& other) {
         tile_ = other.tile_;
         op_ = other.op_;
@@ -95,6 +94,9 @@ namespace TiledArray {
 
       /// Convert tile to evaluation type
       operator eval_type() const { return (*op_)(tile_, consume_); }
+
+      /// return ref to input tile
+      const tile_type& tile() const { return tile_; }
 
       /// Serialization (not implemented)
 
@@ -210,7 +212,6 @@ namespace TiledArray {
 
       /// This function will evaluate the children of this distributed evaluator
       /// and evaluate the tiles for this distributed evaluator.
-      /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
       virtual int internal_eval() {
         // Counter for the number of tasks submitted by this object

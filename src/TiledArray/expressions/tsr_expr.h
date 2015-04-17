@@ -50,10 +50,7 @@ namespace TiledArray {
 
     /// Expression wrapper for array objects
 
-    /// \tparam T The array element type
-    /// \tparam DIM The array dimension
-    /// \tparam Tile The array tile type
-    /// \tparam Policy The array policy type
+    /// \tparam A The \c TiledArray::Array type
     template <typename A>
     class TsrExpr : public Expr<TsrExpr<A> > {
     public:
@@ -159,10 +156,7 @@ namespace TiledArray {
 
     /// Expression wrapper for const array objects
 
-    /// \tparam T The array element type
-    /// \tparam DIM The array dimension
-    /// \tparam Tile The array tile type
-    /// \tparam Policy The array policy type
+    /// \tparam A The \c TiledArray::Array type
     template <typename A>
     class TsrExpr<const A> :
         public Expr<TsrExpr<const A> >

@@ -63,7 +63,6 @@ namespace TiledArray {
     /// This base class defines the user interface for unary operations. It
     /// handles tiles, lazy tiles, and runtime consumable resources.
     /// \tparam Derived The derived operation class type
-    /// \tparam Consumable A flag that is \c true when the argument is consumable
     template <typename Derived>
     class UnaryInterface {
     public:
@@ -177,7 +176,9 @@ namespace TiledArray {
 
     /// This base class defines unary operations with zero or non-zero tiles,
     /// and maps arguments given to the appropriate evaluation kernel.
-    /// \tparam Derived The derived operation class type
+    /// \tparam Result The result tile type
+    /// \tparam Arg The argument tile type
+    /// \tparam Op The derived class template
     template <typename Result, typename Arg,
         template <typename, typename, bool> class Op>
     class UnaryInterface<Op<Result, Arg, false> > {

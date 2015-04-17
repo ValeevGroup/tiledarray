@@ -89,7 +89,7 @@ private:
     for(typename T::const_iterator it = t.begin(); it != t.end(); ++it)
         tile_norms[r.element_to_tile(it->first)] += it->second * it->second;
 
-    tile_norms.inplace_unary(& std::sqrt<float>);
+    tile_norms.inplace_unary([](float& x) { x = std::sqrt(x); });
 
 
     return TiledArray::SparseShape<float>(tile_norms, r);

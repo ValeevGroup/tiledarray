@@ -43,10 +43,7 @@ namespace TiledArray {
 
     /// Expression wrapper for scaled array objects
 
-    /// \tparam T The array element type
-    /// \tparam DIM The array dimension
-    /// \tparam Tile The array tile type
-    /// \tparam Policy The array policy type
+    /// \tparam A The \c TiledArray::Array type
     template <typename A>
     class ScalTsrExpr : public Expr<ScalTsrExpr<A> > {
     public:
@@ -69,7 +66,7 @@ namespace TiledArray {
 
       /// Construct a scaled tensor expression from a tensor expression
 
-      /// \param other The tensor expression
+      /// \param tsr_expr The tensor expression
       /// \param factor The scaling factor
       ScalTsrExpr(const TsrExpr<array_type>& tsr_expr, const scalar_type factor) :
         Expr_(), array_(tsr_expr.array()), vars_(tsr_expr.vars()), factor_(factor)
@@ -77,7 +74,7 @@ namespace TiledArray {
 
       /// Construct a scaled tensor expression from a const tensor expression
 
-      /// \param other The const tensor expression
+      /// \param tsr_expr The const tensor expression
       /// \param factor The scaling factor
       ScalTsrExpr(const TsrExpr<const array_type>& tsr_expr, const scalar_type factor) :
         Expr_(), array_(tsr_expr.array()), vars_(tsr_expr.vars()), factor_(factor)

@@ -30,7 +30,6 @@
 #include <madness/world/worldtime.h>
 #include "TiledArray/math/vector_op.h"
 #include "TiledArray/error.h"
-#include "TiledArray/math/functional.h"
 #include "TiledArray/math/blas.h"
 
 #define EIGEN_NO_MALLOC
@@ -98,7 +97,8 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::binary_vector_op(n, a, b, c, TiledArray::math::Plus<double, double, double>());
+    TiledArray::math::vector_op([](const double x, const double y) { return x + y; },
+        n, c, a, b);
   }
   stop = madness::wall_time();
 
@@ -148,7 +148,8 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::binary_vector_op(n, a, b, c, TiledArray::math::ScalPlus<double, double, double>(3.0));
+    TiledArray::math::vector_op([](const double x, const double y) { return (x + y) * 3.0; },
+        n, c, a, b);
   }
   stop = madness::wall_time();
 
@@ -199,7 +200,8 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::binary_vector_op(n, a, b, c, TiledArray::math::Multiplies<double, double, double>());
+    TiledArray::math::vector_op([](const double x, const double y) { return x * y; },
+        n, c, a, b);
   }
   stop = madness::wall_time();
 
@@ -249,7 +251,8 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::binary_vector_op(n, a, b, c, TiledArray::math::ScalMultiplies<double, double, double>(3.0));
+    TiledArray::math::vector_op([](const double x, const double y) { return (x * y) * 3.0; },
+        n, c, a, b);
   }
   stop = madness::wall_time();
 
@@ -307,7 +310,7 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::unary_vector_op(n, c, TiledArray::math::ScaleAssign<double>(3.0));
+    TiledArray::math::vector_op([](double& x) { x *= 3.0; }, n, c);
   }
   stop = madness::wall_time();
 
@@ -349,8 +352,8 @@ int main(int, char**) {
   start = madness::wall_time();
   double x = 0.0;
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::reduce_vector_op(n, a, x,
-        TiledArray::math::AbsMaxAssign<double, double>());
+    TiledArray::math::reduce_op([](double& x, const double a) { x = std::max(x, std::abs(a)); },
+        n, x, a);
   }
   stop = madness::wall_time();
   x += 1.0;

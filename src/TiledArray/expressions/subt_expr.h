@@ -100,7 +100,8 @@ namespace TiledArray {
 
       /// Expression constructor
 
-      /// \param other The expression to be copied
+      /// \param arg The argument expression
+      /// \param factor The scaling factor
       ScalSubtExpr(const SubtExpr<Left, Right>& arg, const scalar_type factor) :
         BinaryExpr_(arg.left(), arg.right()), factor_(factor)
       { }

@@ -32,12 +32,6 @@
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST 1
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE 1
 
-// TILEDARRAY_SUMMA_DEPTH controls the number of simultaneous SUMMA iterations
-// that are scheduled.
-#ifndef TILEDARRAY_SUMMA_DEPTH
-#define TILEDARRAY_SUMMA_DEPTH 2
-#endif //TILEDARRAY_SUMMA_DEPTH
-
 namespace TiledArray {
   namespace detail {
 
@@ -604,10 +598,10 @@ namespace TiledArray {
 
     /// Distributed contraction evaluator implementation
 
-    /// \param Left The left-hand argument evaluator type
-    /// \param Right The right-hand argument evaluator type
-    /// \param Op The contraction/reduction operation type
-    /// \param Policy The tensor policy class
+    /// \tparam Left The left-hand argument evaluator type
+    /// \tparam Right The right-hand argument evaluator type
+    /// \tparam Op The contraction/reduction operation type
+    /// \tparam Policy The tensor policy class
     /// \note The algorithms in this class assume that the arguments have a two-
     /// dimensional cyclic distribution, and that the row phase of the left-hand
     /// argument and the column phase of the right-hand argument are equal to
@@ -768,8 +762,9 @@ namespace TiledArray {
       /// Conversion function
 
       /// This function does nothing since tile is not a lazy tile.
-      /// \param Arg The type of the argument that holds the input tiles
-      /// \param tile A future to the tile
+      /// \tparam Arg The type of the argument that holds the input tiles
+      /// \param arg The argument that holds the tiles
+      /// \param index The tile index of arg
       /// \return \c tile
       template <typename Arg>
       static typename madness::disable_if<
@@ -782,7 +777,7 @@ namespace TiledArray {
 
       /// This function spawns a task that will convert a lazy tile from the
       /// tile type to the evaluated tile type.
-      /// \param Arg The type of the argument that holds the input tiles
+      /// \tparam Arg The type of the argument that holds the input tiles
       /// \param arg The argument that holds the tiles
       /// \param index The tile index of arg
       /// \return A future to the evaluated tile
@@ -805,8 +800,6 @@ namespace TiledArray {
       /// \param[in] index The index of the first tile to be broadcast
       /// \param[in] end The end of the range of tiles to be broadcast
       /// \param[in] stride The stride between tile indices to be broadcast
-      /// \param[in] group The process group where the tiles will be broadcast
-      /// \param[in] key_offset The broadcast key offset value
       /// \param[out] vec The vector that will hold broadcast tiles
       template <typename Arg, typename Datum>
       void get_vector(Arg& arg, size_type index, const size_type end,
@@ -842,7 +835,7 @@ namespace TiledArray {
       /// Collect non-zero tiles from row \c k of \c right_
 
       /// \param[in] k The row to be retrieved
-      /// \param[out] col The row vector that will hold the tiles
+      /// \param[out] row The row vector that will hold the tiles
       void get_row(const size_type k, std::vector<row_datum>& row) const {
         row.reserve(proc_grid_.local_cols());
 
@@ -856,11 +849,10 @@ namespace TiledArray {
 
       /// Broadcast tiles from \c arg
 
-      /// \param[in] arg The owner of the input tiles
-      /// \param[in] index The index of the first tile to be broadcast
-      /// \param[in] end The end of the range of tiles to be broadcast
+      /// \param[in] start The index of the first tile to be broadcast
       /// \param[in] stride The stride between tile indices to be broadcast
       /// \param[in] group The process group where the tiles will be broadcast
+      /// \param[in] group_root The root process of the broadcast
       /// \param[in] key_offset The broadcast key offset value
       /// \param[out] vec The vector that will hold broadcast tiles
       template <typename Datum>
@@ -1355,8 +1347,7 @@ namespace TiledArray {
       /// task.
       /// \param col A column of tiles from the left-hand argument
       /// \param row A row of tiles from the right-hand argument
-      /// \param callback The callback that will be invoked after each tile-pair
-      /// has been contracted
+      /// \param task The task that depends on tile contraction tasks
       void contract(const DenseShape&, const size_type,
           const std::vector<col_datum>& col, const std::vector<row_datum>& row,
           madness::TaskInterface* const task)
@@ -1387,8 +1378,7 @@ namespace TiledArray {
       /// task.
       /// \param col A column of tiles from the left-hand argument
       /// \param row A row of tiles from the right-hand argument
-      /// \param callback The callback that will be invoked after each tile-pair
-      /// has been contracted
+      /// \param task The task that depends on tile contraction tasks
       template <typename Shape>
       void contract(const Shape&, const size_type,
           const std::vector<col_datum>& col, const std::vector<row_datum>& row,
@@ -1780,7 +1770,6 @@ namespace TiledArray {
       /// and evaluate the tiles for this distributed evaluator. It will block
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
-      /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
       virtual int internal_eval() {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
@@ -1799,13 +1788,42 @@ namespace TiledArray {
         if(proc_grid_.local_size() > 0ul) {
           tile_count = initialize();
 
+          // depth controls the number of simultaneous SUMMA iterations
+          // that are scheduled.
+#ifndef TILEDARRAY_SUMMA_DEPTH
+          size_type depth =
+              std::max(ProcGrid::size_type(2), std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
+#else
+          size_type depth = TILEDARRAY_SUMMA_DEPTH;
+#endif //TILEDARRAY_SUMMA_DEPTH
+
           // Construct the first SUMMA iteration task
-          if(TensorImpl_::shape().is_dense())
+          if(TensorImpl_::shape().is_dense()) {
+#ifndef TILEDARRAY_SUMMA_DEPTH
+            if(depth > k_) depth = k_;
+#endif //TILEDARRAY_SUMMA_DEPTH
             TensorImpl_::get_world().taskq.add(new DenseStepTask(shared_from_this(),
-                TILEDARRAY_SUMMA_DEPTH));
-          else
+                depth));
+          } else {
+#ifndef TILEDARRAY_SUMMA_DEPTH
+            // Increase the depth based on the amount of sparsity in an iteration.
+
+            // Get the sparsity fractions for the left- and right-hand arguments.
+            const float left_sparsity = left_.shape().sparsity();
+            const float right_sparsity = right_.shape().sparsity();
+
+            // Compute the fraction of non-zero result tiles in a single SUMMA iteration.
+            const float frac_non_zero = (1.0f - std::min(left_sparsity, 0.9f))
+                                      * (1.0f - std::min(right_sparsity, 0.9f));
+
+            // Compute the new depth
+            depth = float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) + 0.5f;
+            if(depth > k_) depth = k_;
+
+#endif // TILEDARRAY_SUMMA_DEPTH
             TensorImpl_::get_world().taskq.add(new SparseStepTask(shared_from_this(),
-                TILEDARRAY_SUMMA_DEPTH));
+                depth));
+          }
         }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL

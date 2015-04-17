@@ -44,45 +44,50 @@ namespace TiledArray {
 
       static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - 1;
 
-      template <typename X, typename Y, typename A, typename Op>
+      template <typename X, typename Y, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      outer(const X* restrict const left, const Y* restrict const right,
-          A* restrict const result, const std::size_t /*stride*/, const Op& op)
+      outer(const X* const x_block, const Y* const y_block,
+          Result* const result, const std::size_t /*stride*/, const Op& op)
       {
-        TILEDARRAY_ALIGNED_STORAGE A result_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(result, result_block);
+        TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
+        copy_block(result_block, result);
 
-        VecOpUnwindN::binary(right, result_block,
-            TiledArray::detail::bind_first(left[offset], op));
+        const X x = x_block[offset];
+        for_each_block([x,&op] (Result& r, const Y y) { op(r, x, y); },
+            result_block, y_block);
 
-        VecOpUnwindN::copy(result_block, result);
+        copy_block(result, result_block);
       }
 
-      template <typename X, typename Y, typename A, typename B, typename Op>
+      template <typename X, typename Y, typename Init, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      fill(const X* restrict const x_block, const Y* restrict const y_block,
-          const A* restrict const a, B* restrict const b,
+      fill(const X* const x_block, const Y* const y_block,
+          const Init* const init, Result* const result,
           const std::size_t /*stride*/, const Op& op)
       {
-        TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(a, a_block);
+        TILEDARRAY_ALIGNED_STORAGE Init init_block[TILEDARRAY_LOOP_UNWIND];
+        copy_block(init_block, init);
 
-        VecOpUnwindN::binary(y_block, a_block,
-            TiledArray::detail::bind_first(x_block[offset], op));
+        const X x = x_block[offset];
+        for_each_block([x,&op] (Init& i, const Y y) { op(i, x, y); },
+            init_block, y_block);
 
-        VecOpUnwindN::copy(a_block, b);
+        copy_block(result, init_block);
       }
 
-      template <typename X, typename Y, typename A, typename Op>
+      template <typename X, typename Y, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      fill(const X* restrict const left, const Y* restrict const right,
-          A* restrict const result, const std::size_t /*stride*/, const Op& op)
+      fill(const X* const x_block, const Y* const y_block,
+          Result* const result, const std::size_t /*stride*/, const Op& op)
       {
-        TILEDARRAY_ALIGNED_STORAGE A result_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::unary(right, result_block,
-            TiledArray::detail::bind_first(left[offset], op));
+        TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
 
-        VecOpUnwindN::copy(result_block, result);
+        const X x = x_block[offset];
+
+        const auto bind_first_op = [x,&op] (Result& res, const Y y) { res = op(x, y); };
+        for_each_block(bind_first_op, result_block, y_block);
+
+        copy_block(result, result_block);
       }
     }; // class OuterVectorOpUnwind<0>
 
@@ -95,57 +100,63 @@ namespace TiledArray {
 
       static const std::size_t offset = TILEDARRAY_LOOP_UNWIND - N - 1;
 
-      template <typename X, typename Y, typename A, typename Op>
+      template <typename X, typename Y, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      outer(const X* restrict const x_block, const Y* restrict const y_block,
-          A* restrict const a, const std::size_t stride, const Op& op)
+      outer(const X* const x_block, const Y* const y_block,
+          Result* const result, const std::size_t stride, const Op& op)
       {
         {
-          TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(a, a_block);
+          TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
+          copy_block(result_block, result);
 
-          VecOpUnwindN::binary(y_block, a_block,
-              TiledArray::detail::bind_first(x_block[offset], op));
+          const X x = x_block[offset];
+          for_each_block([x,&op] (Result& r, const Y y) { op(r, x, y); },
+              result_block, y_block);
 
-          VecOpUnwindN::copy(a_block, a);
+          copy_block(result, result_block);
         }
 
-        OuterVectorOpUnwindN1::outer(x_block, y_block, a + stride, stride, op);
+        OuterVectorOpUnwindN1::outer(x_block, y_block, result + stride, stride, op);
       }
 
 
-      template <typename X, typename Y, typename A, typename B, typename Op>
+      template <typename X, typename Y, typename Init, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      fill(const X* restrict const x, const Y* restrict const y,
-          const A* restrict const a, B* restrict const b,
+      fill(const X* const x_block, const Y* const y_block,
+          const Init* const init, Result* const result,
           const std::size_t stride, const Op& op)
       {
         {
-          TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(a, a_block);
+          TILEDARRAY_ALIGNED_STORAGE Init init_block[TILEDARRAY_LOOP_UNWIND];
+          copy_block(init_block, init);
 
-          VecOpUnwindN::binary(y, a_block, TiledArray::detail::bind_first(x[offset], op));
+          const X x = x_block[offset];
+          for_each_block([x,&op] (Init& i, const Y y) { op(i, x, y); },
+              init_block, y_block);
 
-          VecOpUnwindN::copy(a_block, b);
+          copy_block(result, init_block);
         }
 
-        OuterVectorOpUnwindN1::fill(x, y, a + stride, b + stride, stride, op);
+        OuterVectorOpUnwindN1::fill(x_block, y_block, init + stride, result + stride, stride, op);
       }
 
-      template <typename X, typename Y, typename A, typename Op>
+      template <typename X, typename Y, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      fill(const X* restrict const x_block, const Y* restrict const y_block,
-          A* restrict const a, const std::size_t stride, const Op& op)
+      fill(const X* const x_block, const Y* const y_block,
+          Result* restrict const result, const std::size_t stride, const Op& op)
       {
         {
-          TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::unary(y_block, a_block,
-              TiledArray::detail::bind_first(x_block[offset], op));
+          TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
 
-          VecOpUnwindN::copy(a_block, a);
+          const X x = x_block[offset];
+
+          const auto bind_first_op = [x,&op] (Result& res, const Y y) { res = op(x, y); };
+          for_each_block(bind_first_op, result_block, y_block);
+
+          copy_block(result, result_block);
         }
 
-        OuterVectorOpUnwindN1::fill(x_block, y_block, a + stride, stride, op);
+        OuterVectorOpUnwindN1::fill(x_block, y_block, result + stride, stride, op);
       }
     }; // class OuterVectorOpUnwind
 
@@ -180,14 +191,14 @@ namespace TiledArray {
 
         // Load x block
         TILEDARRAY_ALIGNED_STORAGE X x_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(x + i, x_block);
+        copy_block(x_block, x + i);
 
         std::size_t j = 0ul;
         for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
 
           // Load y block
           TILEDARRAY_ALIGNED_STORAGE Y y_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(y + j, y_block);
+          copy_block(y_block, y + j);
 
           // Compute and store a block
           OuterVectorOpUnwindN::fill(x_block, y_block, a + j, n, op);
@@ -201,17 +212,19 @@ namespace TiledArray {
 
           // Compute a block
           TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::unary(x_block, a_block, TiledArray::detail::bind_second(y_j, op));
+
+          const auto bind_first_op = [y_j,&op] (A& a_ij, const X x_i) { a_ij = op(x_i, y_j); };
+          for_each_block(bind_first_op, a_block, x_block);
 
           // Store a block
-          VecOpUnwindN::scatter(a_block, a + j, n);
+          scatter_block(a + j, n, a_block);
         }
       }
 
       for(; i < m; ++i, a += n) {
 
         const X x_i = x[i];
-        unary_vector_op(n, y, a, TiledArray::detail::bind_first(x_i, op));
+        vector_op([x_i,&op] (const Y y_j) { return op(x_i, y_j); }, n, a, y);
 
       }
     }
@@ -226,11 +239,10 @@ namespace TiledArray {
     /// \tparam Op The operation that will compute outer product elements
     /// \param[in] m The size of the left-hand vector
     /// \param[in] n The size of the right-hand vector
-    /// \param[in] alpha The scaling factor
     /// \param[in] x The left-hand vector
     /// \param[in] y The right-hand vector
     /// \param[in,out] a The result matrix of size \c m*n
-    /// \param[in]
+    /// \param[in] op The operation used to generate the result
     template <typename X, typename Y, typename A, typename Op>
     void outer(const std::size_t m, const std::size_t n,
         const X* const x, const Y* const y, A* a, const Op& op)
@@ -246,14 +258,14 @@ namespace TiledArray {
 
         // Load x block
         TILEDARRAY_ALIGNED_STORAGE X x_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(x + i, x_block);
+        copy_block(x_block, x + i);
 
         std::size_t j = 0ul;
         for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
 
           // Load y block
           TILEDARRAY_ALIGNED_STORAGE Y y_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(y + j, y_block);
+          copy_block(y_block, y + j);
 
           // Load, compute, and store a block
           OuterVectorOpUnwindN::outer(x_block, y_block, a + j, n, op);
@@ -265,23 +277,25 @@ namespace TiledArray {
           // Load a block
           A* const a_ij = a + j;
           TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::gather(a_ij, a_block, n);
+          gather_block(a_block, a_ij, n);
 
           // Load y block
           const Y y_j = y[j];
 
           // Compute a block
-          VecOpUnwindN::binary(x_block, a_block, TiledArray::detail::bind_second(y_j, op));
+          for_each_block([y_j,&op] (A& a_ij, const X x_i) { return op(a_ij, x_i, y_j); },
+              a_block, x_block);
 
           // Store a block
-          VecOpUnwindN::scatter(a_block, a_ij, n);
+          scatter_block(a_ij, n, a_block);
 
         }
       }
 
       for(; i < m; ++i, a += n) {
         const X x_i = x[i];
-        binary_vector_op(n, y, a, TiledArray::detail::bind_first(x_i, op));
+        vector_op([x_i,&op] (A& a_ij, const Y y_j) { return op(a_ij, x_i, y_j); },
+            n, a, y);
       }
     }
 
@@ -303,11 +317,11 @@ namespace TiledArray {
     /// \tparam Op The operation that will compute outer product elements
     /// \param[in] m The size of the left-hand vector
     /// \param[in] n The size of the right-hand vector
-    /// \param[in] alpha The scaling factor
     /// \param[in] x The left-hand vector
     /// \param[in] y The right-hand vector
     /// \param[in] a The input matrix of size \c m*n
     /// \param[out] b The output matrix of size \c m*n
+    /// \param[in] op The operation that will compute the outer product elements
     template <typename X, typename Y, typename A, typename B, typename Op>
     void outer_fill(const std::size_t m, const std::size_t n,
         const X* restrict const x, const Y* restrict const y,
@@ -324,14 +338,14 @@ namespace TiledArray {
 
         // Load x block
         TILEDARRAY_ALIGNED_STORAGE X x_block[TILEDARRAY_LOOP_UNWIND];
-        VecOpUnwindN::copy(x + i, x_block);
+        copy_block(x_block, x + i);
 
         std::size_t j = 0ul;
         for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
 
           // Load y block
           TILEDARRAY_ALIGNED_STORAGE Y y_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(y + j, y_block);
+          copy_block(y_block, y + j);
 
           // Load, compute, and store a block
           OuterVectorOpUnwindN::fill(x_block, y_block, a + j, b + j, n, op);
@@ -342,16 +356,17 @@ namespace TiledArray {
 
           // Load a block
           TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::gather(a + j, a_block, n);
+          gather_block(a_block, a + j, n);
 
           // Load y block
           const Y y_j = y[j];
 
           // Compute a block
-          VecOpUnwindN::binary(x_block, a_block, TiledArray::detail::bind_second(y_j, op));
+          for_each_block([y_j,&op] (A& a_ij, const X x_i) { return op(a_ij, x_i, y_j); },
+              a_block, x_block);
 
           // Store a block
-          VecOpUnwindN::scatter(a_block, b + j, n);
+          scatter_block(b + j, n, a_block);
         }
       }
 
@@ -366,17 +381,18 @@ namespace TiledArray {
 
           // Load a block
           TILEDARRAY_ALIGNED_STORAGE A a_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(a + j, a_block);
+          copy_block(a_block, a + j);
 
           // Load y block
           TILEDARRAY_ALIGNED_STORAGE Y y_block[TILEDARRAY_LOOP_UNWIND];
-          VecOpUnwindN::copy(y + j, y_block);
+          copy_block(y_block, y + j);
 
           // Compute outer block
-          VecOpUnwindN::binary(y_block, a_block, TiledArray::detail::bind_first(x_i, op));
+          for_each_block([x_i,&op] (A& a_ij, const Y y_j) { return op(a_ij, x_i, y_j); },
+              a_block, y_block);
 
           // Store a block
-          VecOpUnwindN::copy(a_block, b + j);
+          copy_block(b + j, a_block);
 
         }
 

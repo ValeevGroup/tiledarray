@@ -64,10 +64,16 @@ namespace TiledArray {
 
     public:
 
-      /// Construct a unary tensor op
+      /// Construct a binary evaluator
 
-      /// \param arg The argument
-      /// \param op The element transform operation
+      /// \param left The left-hand argument
+      /// \param right The right-hand argument
+      /// \param world The world where the binary evaluator will live
+      /// \param trange The tiled range of the evaluator
+      /// \param shape The shape object
+      /// \param pmap The evaluator process map
+      /// \param perm The permutation that will be applied to the result
+      /// \param op The tile transformation operator
       BinaryEvalImpl(const left_type& left, const right_type& right,
           madness::World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
@@ -117,7 +123,6 @@ namespace TiledArray {
       /// and evaluate the tiles for this distributed evaluator. It will block
       /// until the tasks for the children are evaluated (not for the tasks of
       /// this object).
-      /// \param pimpl A shared pointer to this object
       /// \return The number of tiles that will be set by this process
       virtual int internal_eval() {
 

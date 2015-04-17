@@ -22,7 +22,6 @@
 
 #include <TiledArray/range.h>
 #include <TiledArray/perm_index.h>
-#include <TiledArray/math/functional.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/transpose.h>
@@ -55,7 +54,13 @@ namespace TiledArray {
     typedef typename TiledArray::detail::scalar_type<T>::type
         numeric_type; ///< the numeric type that supports T
 
+    template <typename U>
+    using param_type = TiledArray::detail::param_type<U>;
+
   private:
+
+    template <typename U>
+    using param_value_type = TiledArray::detail::param_type<typename U::value_type>;
 
     /// Evaluation tensor
 
@@ -173,7 +178,7 @@ namespace TiledArray {
 
     /// \param range An array with the size of of each dimension
     /// \param value The value of the tensor elements
-    Tensor(const range_type& range, const value_type& value) :
+    Tensor(const range_type& range, param_type<value_type> value) :
       pimpl_(new Impl(range))
     {
       math::uninitialized_fill_vector(range.volume(), value, pimpl_->data_);
@@ -267,9 +272,12 @@ namespace TiledArray {
             size_type perm_index = perm_index_op(index);
 
             // Copy a transposed matrix from the input tensor to the this tensor.
-            math::uninitialized_copy_transpose(other_fused_size[1], other_fused_size[3],
-                other.data() + index, other_fused_weight[1],
-                pimpl_->data_ + perm_index, result_outer_stride);
+            auto copy_op = [] (param_value_type<Tensor<U, AU> > a) ->
+                param_value_type<Tensor<U, AU> > { return a; };
+            math::uninitialized_transpose(copy_op,
+                other_fused_size[1], other_fused_size[3],
+                result_outer_stride, pimpl_->data_ + perm_index,
+                other_fused_weight[1], other.data() + index);
           }
         }
       }
@@ -280,7 +288,7 @@ namespace TiledArray {
     Tensor(const Tensor<U, AU>& other, const Op& op) :
       pimpl_(new Impl(other.range()))
     {
-      math::unary_vector_op(other.size(), other.data(), pimpl_->data_, op);
+      math::vector_op(op, other.size(), pimpl_->data_, other.data());
     }
 
     /// Construct an evaluated tensor
@@ -346,9 +354,10 @@ namespace TiledArray {
             size_type perm_index = perm_index_op(index);
 
             // Copy a transposed matrix from the input tensor to the this tensor.
-            math::uninitialized_unary_transpose(other_fused_size[1], other_fused_size[3],
-                other.data() + index, other_fused_weight[1],
-                pimpl_->data_ + perm_index, result_outer_stride, op);
+            math::uninitialized_transpose(op,
+                other_fused_size[1], other_fused_size[3],
+                result_outer_stride, pimpl_->data_ + perm_index,
+                other_fused_weight[1], other.data() + index);
           }
         }
       }
@@ -360,8 +369,7 @@ namespace TiledArray {
       pimpl_(new Impl(left.range()))
     {
       TA_ASSERT(left.range() == right.range());
-      math::binary_vector_op(left.size(), left.data(), right.data(),
-          pimpl_->data_, op);
+      math::vector_op(op, left.size(), pimpl_->data_, left.data(), right.data());
     }
 
     /// Construct an evaluated tensor
@@ -429,9 +437,10 @@ namespace TiledArray {
             size_type perm_index = perm_index_op(index);
 
             // Copy a transposed matrix from the input tensor to the this tensor.
-            math::uninitialized_binary_transpose(other_fused_size[1], other_fused_size[3],
-                left.data() + index, right.data() + index, other_fused_weight[1],
-                pimpl_->data_ + perm_index, result_outer_stride, op);
+            math::uninitialized_transpose(op,
+                other_fused_size[1], other_fused_size[3],
+                result_outer_stride, pimpl_->data_ + perm_index,
+                other_fused_weight[1], left.data() + index, right.data() + index);
           }
         }
       }
@@ -563,7 +572,7 @@ namespace TiledArray {
     /// Element accessor
 
     /// \tparam Index index type pack
-    /// \param idx0 the index pack
+    /// \param idx The index pack
     template<typename... Index>
     reference operator()(const Index&... idx) {
       TA_ASSERT(pimpl_);
@@ -574,7 +583,7 @@ namespace TiledArray {
     /// Element accessor
 
     /// \tparam Index index type pack
-    /// \param idx0 the index pack
+    /// \param idx The index pack
     template<typename... Index>
     const_reference operator()(const Index&... idx) const {
       TA_ASSERT(pimpl_);
@@ -745,7 +754,7 @@ namespace TiledArray {
       TA_ASSERT(pimpl_->range_ == other.range());
       TA_ASSERT(pimpl_->data_ != other.data());
 
-      math::binary_vector_op(pimpl_->range_.volume(), other.data(), pimpl_->data_, op);
+      math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_, other.data());
 
       return *this;
     }
@@ -781,7 +790,7 @@ namespace TiledArray {
       return Tensor_(*this, op, perm);
     }
 
-    /// Use a binary, element wise operation to modify this tensor
+    /// Use a unary, element wise operation to modify this tensor
 
     /// \tparam Op The unary operation type
     /// \param op The unary, element-wise operation
@@ -791,7 +800,7 @@ namespace TiledArray {
     Tensor_& inplace_unary(const Op& op) {
       TA_ASSERT(pimpl_);
 
-      math::unary_vector_op(pimpl_->range_.volume(), pimpl_->data_, op);
+      math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_);
 
       return *this;
     }
@@ -804,7 +813,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this are scaled by \c factor
     Tensor_ scale(numeric_type factor) const {
-      return unary(math::Scale<value_type>(factor));
+      return unary([=] (param_type<value_type> arg) { return arg * factor; });
     }
 
     /// Construct a scaled and permuted copy of this tensor
@@ -814,7 +823,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this are scaled by \c factor
     Tensor_ scale(numeric_type factor, const Permutation& perm) const {
-      return unary(math::Scale<value_type>(factor), perm);
+      return unary([=] (param_type<value_type> arg) { return arg * factor; }, perm);
     }
 
     /// Scale this tensor
@@ -822,7 +831,7 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A reference to this tensor
     Tensor_& scale_to(numeric_type factor) {
-      return inplace_unary(math::ScaleAssign<value_type>(factor));
+      return inplace_unary([=] (value_type& res) { res *= factor; });
     }
 
     // Addition operations
@@ -836,8 +845,8 @@ namespace TiledArray {
     /// \c this and \c other
     template <typename U, typename AU>
     Tensor_ add(const Tensor<U, AU>& other) const {
-      return binary(other, math::Plus<value_type,
-          typename Tensor<U, AU>::value_type, value_type>());
+      return binary(other, [] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right) { return left + right; });
     }
 
     /// Add this and \c other to construct a new, permuted tensor
@@ -850,8 +859,9 @@ namespace TiledArray {
     /// \c this and \c other
     template <typename U, typename AU>
     Tensor_ add(const Tensor<U, AU>& other, const Permutation& perm) const {
-      return binary(other, math::Plus<value_type,
-          typename Tensor<U, AU>::value_type, value_type>(), perm);
+      return binary(other, [] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right) { return left + right; },
+          perm);
     }
 
     /// Scale and add this and \c other to construct a new tensor
@@ -864,8 +874,9 @@ namespace TiledArray {
     /// \c this and \c other, scaled by \c factor
     template <typename U, typename AU>
     Tensor_ add(const Tensor<U, AU>& other, const numeric_type factor) const {
-      return binary(other, math::ScalPlus<value_type,
-          typename Tensor<U, AU>::value_type, value_type>(factor));
+      return binary(other, [=] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right)
+          { return (left + right) * factor; });
     }
 
     /// Scale and add this and \c other to construct a new, permuted tensor
@@ -881,8 +892,9 @@ namespace TiledArray {
     Tensor_ add(const Tensor<U, AU>& other, const numeric_type factor,
         const Permutation& perm) const
     {
-      return binary(other, math::ScalPlus<value_type,
-          typename Tensor<U, AU>::value_type, value_type>(factor), perm);
+      return binary(other,  [=] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right)
+          { return (left + right) * factor; }, perm);
     }
 
     /// Add a constant to a copy of this tensor
@@ -891,7 +903,8 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value) const {
-      return unary(math::PlusConst<value_type>(value));
+      return unary([=] (param_type<value_type> arg)
+          { return arg + value; });
     }
 
     /// Add a constant to a permuted copy of this tensor
@@ -901,7 +914,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value, const Permutation& perm) const {
-      return unary(math::PlusConst<value_type>(value), perm);
+      return unary([=] (param_type<value_type> arg) { return arg + value; }, perm);
     }
 
     /// Add \c other to this tensor
@@ -912,8 +925,8 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename U, typename AU>
     Tensor_& add_to(const Tensor<U, AU>& other) {
-      return inplace_binary(other, math::PlusAssign<value_type,
-          typename Tensor<U, AU>::value_type>());
+      return inplace_binary(other, [] (value_type& res,
+          param_value_type<Tensor<U, AU> > arg) { res += arg; });
     }
 
     /// Add \c other to this tensor, and scale the result
@@ -925,8 +938,8 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename U, typename AU>
     Tensor_& add_to(const Tensor<U, AU>& other, const numeric_type factor) {
-      return inplace_binary(other, math::ScalPlusAssign<value_type,
-          typename Tensor<U, AU>::value_type>(factor));
+      return inplace_binary(other, [=] (value_type& res,
+          param_value_type<Tensor<U, AU> > arg) { (res += arg) *= factor; });
     }
 
     /// Add a constant to this tensor
@@ -934,7 +947,7 @@ namespace TiledArray {
     /// \param value The constant to be added
     /// \return A reference to this tensor
     Tensor_& add_to(const numeric_type value) {
-      return inplace_unary(math::PlusAssignConst<value_type>(value));
+      return inplace_unary([=] (value_type& res) { res += value; });
     }
 
     // Subtraction operations
@@ -948,8 +961,8 @@ namespace TiledArray {
     /// elements of \c this and \c other
     template <typename U, typename AU>
     Tensor_ subt(const Tensor<U, AU>& other) const {
-      return binary(other, math::Minus<value_type, typename Tensor<U, AU>::value_type,
-          value_type>());
+      return binary(other, [] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right) { return left - right; });
     }
 
     /// Subtract this and \c other to construct a new, permuted tensor
@@ -961,8 +974,9 @@ namespace TiledArray {
     /// elements of \c this and \c other
     template <typename U, typename AU>
     Tensor_ subt(const Tensor<U, AU>& other, const Permutation& perm) const {
-      return binary(other, math::Minus<value_type, typename Tensor<U, AU>::value_type,
-          value_type>(), perm);
+      return binary(other, [] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right)
+          { return left - right; }, perm);
     }
 
     /// Scale and subtract this and \c other to construct a new tensor
@@ -975,8 +989,9 @@ namespace TiledArray {
     /// elements of \c this and \c other, scaled by \c factor
     template <typename U, typename AU>
     Tensor_ subt(const Tensor<U, AU>& other, const numeric_type factor) const {
-      return binary(other, math::ScalMinus<value_type, typename Tensor<U, AU>::value_type,
-          value_type>(factor));
+      return binary(other, [=] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right)
+          { return (left - right) * factor; });
     }
 
     /// Scale and subtract this and \c other to construct a new, permuted tensor
@@ -990,8 +1005,9 @@ namespace TiledArray {
     /// elements of \c this and \c other, scaled by \c factor
     template <typename U, typename AU>
     Tensor_ subt(const Tensor<U, AU>& other, const numeric_type factor, const Permutation& perm) const {
-      return binary(other, math::ScalMinus<value_type, typename Tensor<U, AU>::value_type,
-          value_type>(factor), perm);
+      return binary(other, [=] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right)
+          { return (left - right) * factor; }, perm);
     }
 
     /// Subtract a constant from a copy of this tensor
@@ -1020,8 +1036,8 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename U, typename AU>
     Tensor_& subt_to(const Tensor<U, AU>& other) {
-      return inplace_binary(other, math::MinusAssign<value_type,
-          typename Tensor<U, AU>::value_type>());
+      return inplace_binary(other, [] (value_type& res,
+          param_value_type<Tensor<U, AU> > arg) { res -= arg; });
     }
 
     /// Subtract \c other from and scale this tensor
@@ -1033,8 +1049,8 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename U, typename AU>
     Tensor_& subt_to(const Tensor<U, AU>& other, const numeric_type factor) {
-      return inplace_binary(other, math::ScalMinusAssign<value_type,
-          typename Tensor<U, AU>::value_type>(factor));
+      return inplace_binary(other, [=] (value_type& res,
+          param_value_type<Tensor<U, AU> > arg) { (res -= arg) *= factor; });
     }
 
     /// Subtract a constant from this tensor
@@ -1055,8 +1071,9 @@ namespace TiledArray {
     /// of \c this and \c other
     template <typename U, typename AU>
     Tensor_ mult(const Tensor<U, AU>& other) const {
-      return binary(other, math::Multiplies<value_type,
-          typename Tensor<U, AU>::value_type, value_type>());
+      return binary(other, [] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right)
+          { return left * right; });
     }
 
     /// Multiply this by \c other to create a new, permuted tensor
@@ -1069,8 +1086,9 @@ namespace TiledArray {
     /// of \c this and \c other
     template <typename U, typename AU>
     Tensor_ mult(const Tensor<U, AU>& other, const Permutation& perm) const {
-      return binary(other, math::Multiplies<value_type,
-          typename Tensor<U, AU>::value_type, value_type>(), perm);
+      return binary(other,  [] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right)
+          { return left * right; }, perm);
     }
 
     /// Scale and multiply this by \c other to create a new tensor
@@ -1083,8 +1101,9 @@ namespace TiledArray {
     /// of \c this and \c other, scaled by \c factor
     template <typename U, typename AU>
     Tensor_ mult(const Tensor<U, AU>& other, const numeric_type factor) const {
-      return binary(other, math::ScalMultiplies<value_type,
-          typename Tensor<U, AU>::value_type, value_type>(factor));
+      return binary(other, [=] (param_type<value_type>left,
+          param_value_type<Tensor<U, AU> > right)
+          { return (left * right) * factor; });
     }
 
     /// Scale and multiply this by \c other to create a new, permuted tensor
@@ -1100,8 +1119,9 @@ namespace TiledArray {
     Tensor_ mult(const Tensor<U, AU>& other, const numeric_type factor,
         const Permutation& perm) const
     {
-      return binary(other, math::ScalMultiplies<value_type,
-          typename Tensor<U, AU>::value_type, value_type>(factor), perm);
+      return binary(other,  [=] (param_type<value_type> left,
+          param_value_type<Tensor<U, AU> > right)
+          { return (left * right) * factor; }, perm);
     }
 
     /// Multiply this tensor by \c other
@@ -1112,8 +1132,8 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename U, typename AU>
     Tensor_& mult_to(const Tensor<U, AU>& other) {
-      return inplace_binary(other, math::MultipliesAssign<value_type,
-          typename Tensor<U, AU>::value_type>());
+      return inplace_binary(other, [] (value_type& res,
+          param_value_type<Tensor<U, AU> > arg) { res *= arg; });
     }
 
     /// Scale and multiply this tensor by \c other
@@ -1125,8 +1145,8 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename U, typename AU>
     Tensor_& mult_to(const Tensor<U, AU>& other, const numeric_type factor) {
-      return inplace_binary(other, math::ScalMultipliesAssign<value_type,
-          typename Tensor<U, AU>::value_type>(factor));
+      return inplace_binary(other, [=] (value_type& res,
+          param_value_type<Tensor<U, AU> > arg) { (res *= arg) *= factor; });
     }
 
     // Negation operations
@@ -1135,7 +1155,7 @@ namespace TiledArray {
 
     /// \return A new tensor that contains the negative values of this tensor
     Tensor_ neg() const {
-      return unary(math::Negate<value_type, value_type>());
+      return unary([] (param_type<value_type> arg) { return -arg; });
     }
 
     /// Create a negated and permuted copy of this tensor
@@ -1143,14 +1163,14 @@ namespace TiledArray {
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor that contains the negative values of this tensor
     Tensor_ neg(const Permutation& perm) const {
-      return unary(math::Negate<value_type, value_type>(), perm);
+      return unary([] (param_type<value_type>arg) { return -arg; }, perm);
     }
 
     /// Negate elements of this tensor
 
     /// \return A reference to this tensor
     Tensor_& neg_to() {
-      return inplace_unary(math::NegateAssign<value_type>());
+      return inplace_unary([] (value_type& res) { res = -res; });
     }
 
     // GEMM operations
@@ -1203,8 +1223,8 @@ namespace TiledArray {
 
     /// \tparam U The left-hand tensor element type
     /// \tparam AU The left-hand tensor allocator type
-    /// \tparam U The right-hand tensor element type
-    /// \tparam AU The right-hand tensor allocator type
+    /// \tparam V The right-hand tensor element type
+    /// \tparam AV The right-hand tensor allocator type
     /// \param left The left-hand tensor that will be contracted
     /// \param right The right-hand tensor that will be contracted
     /// \param factor The scaling factor
@@ -1319,7 +1339,7 @@ namespace TiledArray {
     template <typename U, typename Op>
     static typename madness::enable_if<TiledArray::detail::is_numeric<U> >::type
     reduce(const size_type n, const U* u, numeric_type& value, const Op& op) {
-      math::reduce_vector_op(n, u, value, op);
+      math::reduce_op(op, n, value, u);
     }
 
     /// Unary \c Tensor reduction
@@ -1332,7 +1352,6 @@ namespace TiledArray {
     /// \param u The data to be reduced
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
-    /// \param The element-wise reduction operation
     template <typename U, typename AU, typename Op>
     static void reduce(const size_type n, const Tensor<U, AU>* u,
         numeric_type& value, const Op& op)
@@ -1357,7 +1376,7 @@ namespace TiledArray {
         TiledArray::detail::is_numeric<Right>::value >::type
     reduce(const size_type n, const Left* left, const Right* right,
         numeric_type& value, const Op& op) {
-      math::reduce_vector_op(n, left, right, value, op);
+      math::reduce_op(op, n, value, left, right);
     }
 
     /// Binary \c Tensor reduction
@@ -1370,10 +1389,9 @@ namespace TiledArray {
     /// \tparam Op The reduction operation
     /// \param n The number of elements to reduce
     /// \param left The left-hand \c Tensors to be reduced
-    /// \param left The left-hand \c Tensors to be reduced
+    /// \param right The right-hand \c Tensors to be reduced
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
-    /// \param The element-wise reduction operation
     template <typename U, typename AU, typename V, typename AV, typename Op>
     static void reduce(const size_type n, const Tensor<U, AU>* left,
         const Tensor<V, AV>* right, numeric_type& value, const Op& op)
@@ -1389,7 +1407,7 @@ namespace TiledArray {
     /// Perform an element-wise reduction of the tile data.
     /// \tparam Op The reduction operation
     /// \param init_value The initial value of the reduction
-    /// \param The element-wise reduction operation
+    /// \param op The element-wise reduction operation
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
     numeric_type reduce(numeric_type init_value, const Op& op) const {
@@ -1402,7 +1420,7 @@ namespace TiledArray {
 
     /// \tparam Op The reduction operation
     /// \param init_value The initial value of the reduction
-    /// \param The element-wise reduction operation
+    /// \param op The element-wise reduction operation
     /// \throw TiledArray::Exception When this tensor is empty.
     /// \throw TiledArray::Exception When the range of this tensor is not equal
     /// to the range of \c other.
@@ -1419,21 +1437,24 @@ namespace TiledArray {
 
     /// \return The sum of all elements of this tensor
     numeric_type sum() const {
-      return reduce(0, math::PlusAssign<numeric_type, numeric_type>());
+      return reduce(0, [] (numeric_type& res, const numeric_type arg)
+          { res += arg; });
     }
 
     /// Product of elements
 
     /// \return The product of all elements of this tensor
     numeric_type product() const {
-      return reduce(1, math::MultipliesAssign<numeric_type, numeric_type>());
+      return reduce(1, [] (numeric_type& res, const numeric_type arg)
+          { res *= arg; });
     }
 
     /// Square of vector 2-norm
 
     /// \return The vector norm of this tensor
     numeric_type squared_norm() const {
-      return reduce(0, math::SquareAddAssign<numeric_type, numeric_type>());
+      return reduce(0, [] (numeric_type& res, const numeric_type value)
+          { res += value * value; });
     }
 
     /// Vector 2-norm
@@ -1448,7 +1469,8 @@ namespace TiledArray {
     /// \return The minimum elements of this tensor
     numeric_type min() const {
       return reduce(std::numeric_limits<numeric_type>::max(),
-          math::MinAssign<numeric_type, numeric_type>());
+          [] (numeric_type& res, const numeric_type arg)
+          { res = std::min(res, arg); });
     }
 
     /// Maximum element
@@ -1456,7 +1478,8 @@ namespace TiledArray {
     /// \return The maximum elements of this tensor
     numeric_type max() const {
       return reduce(std::numeric_limits<numeric_type>::min(),
-          math::MaxAssign<numeric_type, numeric_type>());
+          [] (numeric_type& res, const numeric_type arg)
+          { res = std::max(res, arg); });
     }
 
     /// Absolute minimum element
@@ -1464,14 +1487,17 @@ namespace TiledArray {
     /// \return The minimum elements of this tensor
     numeric_type abs_min() const {
       return reduce(std::numeric_limits<numeric_type>::max(),
-          math::AbsMinAssign<numeric_type, value_type>());
+          [] (numeric_type& res, const numeric_type arg)
+          { res = std::min(res, std::abs(arg)); });
     }
 
     /// Absolute maximum element
 
     /// \return The maximum elements of this tensor
     numeric_type abs_max() const {
-      return reduce(0, math::AbsMaxAssign<numeric_type, value_type>());
+      return reduce(0,
+          [] (numeric_type& res, const numeric_type arg)
+          { res = std::max(res, std::abs(arg)); });
     }
 
     /// Vector dot product
@@ -1482,8 +1508,9 @@ namespace TiledArray {
     /// \return The inner product of the this and \c other
     template <typename U, typename AU>
     numeric_type dot(const Tensor<U, AU>& other) const {
-      return reduce(other, 0, math::MultAddAssign<numeric_type, typename Tensor<U,
-          AU>::numeric_type, numeric_type>());
+      return reduce(other, 0, [] (numeric_type& res, const numeric_type left,
+          const typename Tensor<U, AU>::numeric_type right)
+          { res += left * right; });
     }
 
   }; // class Tensor
