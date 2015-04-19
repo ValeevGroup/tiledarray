@@ -310,13 +310,13 @@ namespace TiledArray {
       madness::Range<typename pmap_interface::const_iterator>
           range(pimpl_->pmap()->begin(), pimpl_->pmap()->end(), 8);
 
-      Array array(*this);
+      Array_ array(*this);
 
       madness::Future<bool> result = pimpl_->get_world().taskq.for_each(range,
-          [array,&op] (const typename pmap_interface::const_iterator& it) {
+          [=] (const typename pmap_interface::const_iterator& it) mutable {
             const size_type index = *it;
             if(! array.is_zero(index))
-              array.set(index, op(it.range()));
+              array.set(index, op(array.trange().make_tile_range(*it)));
             return true;
           });
 
