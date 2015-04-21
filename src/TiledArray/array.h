@@ -160,6 +160,19 @@ namespace TiledArray {
       pimpl_(init(world, trange, shape, pmap))
     { }
 
+
+    /// Unary mutating constructor
+
+    /// Created a mutated copy of other, where each tile is mutated by \c op.
+    ///
+    /// \param other The array to be copied
+    template <typename Op>
+    Array(const Array_& other, Op&& op) :
+      pimpl_()
+    {
+      *this = foreach(other, op);
+    }
+
     /// Destructor
 
     /// This is a distributed lazy destructor. The object will only be deleted

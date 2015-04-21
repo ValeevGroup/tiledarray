@@ -26,6 +26,8 @@
 #ifndef TILEDARRAY_CONVERSIONS_TRUNCATE_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_TRUNCATE_H__INCLUDED
 
+#include <TiledArray/conversions/foreach.h>
+
 namespace TiledArray {
 
   /// Forward declarations
@@ -43,7 +45,7 @@ namespace TiledArray {
   /// \param array The array object to be truncated
   /// \return \c array
   template <typename T, unsigned int DIM, typename Tile>
-  inline Array<T, DIM, Tile, DensePolicy>&
+  inline Array<T, DIM, Tile, DensePolicy>
   truncate(Array<T, DIM, Tile, DensePolicy>& array) { return array; }
 
   /// Truncate a sparse Array
@@ -56,50 +58,13 @@ namespace TiledArray {
   template <typename T, unsigned int DIM, typename Tile>
   inline Array<T, DIM, Tile, SparsePolicy>
   truncate(Array<T, DIM, Tile, SparsePolicy>& array) {
-    typedef Array<T, DIM, Tile, SparsePolicy> array_type;
-    typedef typename array_type::value_type value_type;
-    typedef typename array_type::size_type size_type;
-    typedef typename array_type::shape_type shape_type;
-    typedef madness::Future<value_type> future_type;
-    typedef std::pair<size_type, future_type> datum_type;
-
-    // Create a vector to hold local tiles
-    std::vector<datum_type> tiles;
-    tiles.reserve(array.get_pmap()->size());
-
-    // Collect updated shape data.
-    TiledArray::Tensor<float> tile_norms(array.trange().tiles(), 0.0f);
-
-    // Construct the new tile norms and
-    madness::AtomicInt counter; counter = 0;
-    int task_count = 0;
-    auto task = [&](const size_type index, const value_type& tile) {
-      tile_norms[index] = tile.norm();
-      ++counter;
-    };
-    for(typename array_type::const_iterator it = array.begin(); it != array.end(); ++it) {
-      future_type tile = *it;
-      array.get_world().taskq.add(task, it.ordinal(), tile);
-      tiles.push_back(datum_type(it.ordinal(), tile));
-      ++task_count;
-    }
-
-    // Wait for tile data to be collected
-    if(task_count > 0) {
-      TiledArray::detail::CounterProbe probe(counter, task_count);
-      array.get_world().await(probe);
-    }
-
-    // Construct the new truncated array
-    array_type result(array.get_world(), array.trange(),
-        shape_type(array.get_world(), tile_norms, array.trange()),
-        array.get_pmap());
-    for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
-      const size_type index = it->first;
-      if(! result.is_zero(index))
-        result.set(it->first, it->second);
-    }
-
+    typedef typename Array<T, DIM, Tile, SparsePolicy>::value_type value_type;
+    Array<T, DIM, Tile, SparsePolicy> result =
+        foreach(array, [] (value_type& result_tile, const value_type& arg_tile) {
+          typename detail::scalar_type<value_type>::type norm = arg_tile.norm();
+          result_tile = arg_tile; // Assume this is shallow copy
+          return norm;
+        });
     return result;
   }
 
