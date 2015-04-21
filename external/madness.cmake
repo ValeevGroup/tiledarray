@@ -8,7 +8,7 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(Madness CONFIG QUIET COMPONENTS MADworld MADlinalg)
+find_package(Madness CONFIG QUIET COMPONENTS MADworld MADlinalg HINTS ${Madness_ROOT_DIR})
 
 if(Madness_FOUND)
   
