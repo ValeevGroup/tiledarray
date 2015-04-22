@@ -24,7 +24,7 @@ if(Madness_FOUND)
     # Check to that MADNESS was compiled with Elemental support.
     CHECK_CXX_SOURCE_COMPILES(
         "
-        #include <madness/madness_config.h>
+        #include <madness/world/parallel_runtime.h>
         #ifndef MADNESS_HAS_ELEMENTAL
         # error MADNESS does not have Elemental
         #endif
@@ -79,7 +79,7 @@ else()
     set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
   endif()
   if(NOT DEFINED Madness_TAG)
-    set(Madness_TAG "9b84ab30dfa95eb2de4acd9a6e0682f9fb1f352f")
+    set(Madness_TAG "9c59dcc251602a34c93e9c2bce51f9c54f40aac9")
   endif()
   message(STATUS "Will pull MADNESS from ${Madness_URL}")
   
