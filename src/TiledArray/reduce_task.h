@@ -533,15 +533,9 @@ namespace TiledArray {
         // task could run and be deleted before we are done here.
         madness::Future<result_type> result = pimpl_->result();
 
-        if(count_ == 0ul) {
-          pimpl_->dec();
-          pimpl_->run(madness::TaskThreadEnv(1,0,0));
-          delete pimpl_;
-        } else {
-          pimpl_->dec();
-          madness::World& world = pimpl_->get_world();
-          world.taskq.add(pimpl_);
-        }
+        pimpl_->dec();
+        madness::World& world = pimpl_->get_world();
+        world.taskq.add(pimpl_);
 
         pimpl_ = nullptr;
         return result;
