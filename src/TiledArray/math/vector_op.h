@@ -219,7 +219,7 @@ namespace TiledArray {
     }
 
     template <typename Op, typename Result, typename... Args>
-    TILEDARRAY_FORCE_INLINE void
+    TILEDARRAY_FORCE_INLINE typename std::enable_if<(sizeof...(Args) >= 0)>::type
     for_each_block_ptr(Op&& op, Result* const result,
         const Args* const... args)
     {
@@ -228,7 +228,7 @@ namespace TiledArray {
 
 
     template <typename Op, typename Result, typename... Args>
-    TILEDARRAY_FORCE_INLINE void
+    TILEDARRAY_FORCE_INLINE typename std::enable_if<(sizeof...(Args) > 0)>::type
     for_each_block_ptr(Op&& op, Result* const result, Block<Args>&&... args) {
       VecOpUnwindN::for_each_ptr(std::forward<Op>(op), result, args.data()...);
     }
@@ -329,7 +329,7 @@ namespace TiledArray {
 
     public:
       Block() { }
-      Block(const T* const data) { load(data); }
+      explicit Block(const T* const data) { load(data); }
 
       void load(const T* const data) { copy_block(block_, data); }
 

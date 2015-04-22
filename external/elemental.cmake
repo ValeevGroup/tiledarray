@@ -73,7 +73,7 @@ else()
   endif()
   
   # Set the Elemental source and build directories
-  set(ELEMENTAL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/elemental) 
+  set(ELEMENTAL_SOURCE_DIR ${PROJECT_BINARY_DIR}/external/source/elemental) 
   set(ELEMENTAL_BINARY_DIR ${PROJECT_BINARY_DIR}/external/build/elemental) 
   
   ExternalProject_Add(elemental

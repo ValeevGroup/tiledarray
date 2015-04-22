@@ -54,13 +54,6 @@ namespace TiledArray {
       return std::shared_ptr<pmap_interface>(new default_pmap_type(world, size));
     }
 
-    /// Truncate an Array
-
-    /// \tparam A Array type
-    /// \param array The array object to be truncated
-    template <typename A>
-    static void truncate(A& array) { }
-
   }; // class DensePolicy
 
 } // namespace TiledArray

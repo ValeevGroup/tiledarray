@@ -56,7 +56,7 @@ Configuration:
                           (MPI_C_COMPILER=)
   --disable-mpi           Disable checks and inclusion of MPI (DISABLE_MPI) 
   --boost=                Boost path, only needed if --unittest is set also (BOOST_ROOT=)
-  --madness=              MADNESS path (Madness_DIR=)
+  --madness=              MADNESS path (Madness_ROOT_DIR=)
   --elemental=            Elemental path (Elemental_ROOT_DIR=) 
   --error-checking=       specify the default error reporting style,
                           allowed values: none, throw (default), assert
@@ -127,7 +127,7 @@ while test $# != 0; do
   --disabe-mpi)    args="$args -DENABLE_MPI=OFF" ;;
   --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
   --boost=*)       args="$args -DBOOST_ROOT=`arg \"$1\"`" ;;
-  --madness=*)     args="$args -DMadness_DIR=`arg \"$1\"`" ;;
+  --madness=*)     args="$args -DMadness_ROOT_DIR=`arg \"$1\"`" ;;
   --elemental=*)   args="$args -DElemental_ROOT_DIR=`arg \"$1\"` -DENABLE_ELEMENTAL=1" ;;
   --error-checking=*)   args="$args -DTA_ERROR=`arg \"$1\"`" ;;
   --expert)        args="$args -DTA_EXPERT=TRUE" ;;

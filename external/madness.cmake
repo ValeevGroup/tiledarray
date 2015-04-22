@@ -8,7 +8,7 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(Madness CONFIG QUIET COMPONENTS MADworld MADlinalg)
+find_package(Madness CONFIG QUIET COMPONENTS MADworld MADlinalg HINTS ${Madness_ROOT_DIR})
 
 if(Madness_FOUND)
   
@@ -24,7 +24,7 @@ if(Madness_FOUND)
     # Check to that MADNESS was compiled with Elemental support.
     CHECK_CXX_SOURCE_COMPILES(
         "
-        #include <madness/madness_config.h>
+        #include <madness/world/parallel_runtime.h>
         #ifndef MADNESS_HAS_ELEMENTAL
         # error MADNESS does not have Elemental
         #endif
@@ -79,7 +79,7 @@ else()
     set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git")
   endif()
   if(NOT DEFINED Madness_TAG)
-    set(Madness_TAG "9b84ab30dfa95eb2de4acd9a6e0682f9fb1f352f")
+    set(Madness_TAG "7bef1b56a1875e4564c3b6d7c27286d4db1db7b6")
   endif()
   message(STATUS "Will pull MADNESS from ${Madness_URL}")
   
@@ -166,7 +166,7 @@ else()
   endif()
   
   # Set paths for MADNESS project
-  set(MADNESS_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/madness)
+  set(MADNESS_SOURCE_DIR ${PROJECT_BINARY_DIR}/external/source/madness)
   set(MADNESS_BINARY_DIR  ${PROJECT_BINARY_DIR}/external/build/madness)
   
   ExternalProject_Add(madness

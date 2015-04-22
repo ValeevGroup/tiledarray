@@ -26,6 +26,7 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/array_impl.h>
 #include <TiledArray/expressions.h>
+#include <TiledArray/conversions/truncate.h>
 
 namespace TiledArray {
 
@@ -146,7 +147,6 @@ namespace TiledArray {
     Array(madness::World& world, const trange_type& trange,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
       pimpl_(init(world, trange, shape_type(), pmap))
-
     { }
 
     /// Sparse array constructor
@@ -159,6 +159,19 @@ namespace TiledArray {
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
       pimpl_(init(world, trange, shape, pmap))
     { }
+
+
+    /// Unary mutating constructor
+
+    /// Created a mutated copy of other, where each tile is mutated by \c op.
+    ///
+    /// \param other The array to be copied
+    template <typename Op>
+    Array(const Array_& other, Op&& op) :
+      pimpl_()
+    {
+      *this = foreach(other, op);
+    }
 
     /// Destructor
 
@@ -248,49 +261,6 @@ namespace TiledArray {
       pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
     }
 
-  private:
-
-    template <typename Index, typename Value>
-    class MakeTile : public madness::TaskInterface {
-    private:
-      Array_ array_;
-      const Index index_;
-      const typename Value::value_type value_;
-
-    public:
-      MakeTile(const Array_& array, const Index& index, const T& value) :
-        madness::TaskInterface(),
-        array_(array),
-        index_(index),
-        value_(value)
-      { }
-
-      virtual void run(madness::World&) {
-        array_.set(index_, value_);
-      }
-
-    }; // class MakeTile
-
-    class Fill {
-    private:
-      mutable Array_ array_;
-      const T value_;
-
-    public:
-      Fill() : array_(), value_() { }
-      Fill(const Array_& array, const T& value) : array_(array), value_(value) { }
-      Fill(const Fill& other) : array_(other.array_), value_(other.value_) { }
-
-      bool operator()(const typename pmap_interface::const_iterator& it) const {
-        const size_type index = *it;
-        if(! array_.is_zero(index))
-          array_.set(index, value_);
-        return true;
-      }
-    }; // class Fill
-
-  public:
-
     template <typename Index>
     void set(const Index& index, const T& value = T()) {
       check_index(index);
@@ -322,11 +292,8 @@ namespace TiledArray {
 
     /// \param value The fill value
     void fill_local(const T& value = T()) {
-      check_pimpl();
-      madness::Range<typename pmap_interface::const_iterator>
-          range(pimpl_->pmap()->begin(), pimpl_->pmap()->end(), 8);
-
-      pimpl_->get_world().taskq.for_each(range, Fill(*this, value));
+      init_local_tiles([=] (const range_type& range)
+          { return value_type(range, value); });
     }
 
     /// Fill all local tiles
@@ -334,6 +301,41 @@ namespace TiledArray {
     /// \param value The fill value
     void set_all_local(const T& value = T()) {
       fill_local(value);
+    }
+
+
+    /// Initialize tiles with a user provided functor
+
+    /// This function is used to initialize tiles of the array via a function
+    /// (or functor). The work is done in parallel, therefore \c op must be a
+    /// thread safe function/functor. The signature of the functor should be:
+    /// \code
+    /// value_type op(const range_type&)
+    /// \endcode
+    /// \tparam Op Tile operation type
+    /// \param op The operation used to generate tiles
+    /// \param wait Wait for all tiles to be set before proceeding
+    /// \note It is typically not necessary to wait for tile initialization
+    /// before using arrays in tensor arithmetic expressions.
+    template <typename Op>
+    void init_local_tiles(Op&& op, const bool wait = false) {
+      check_pimpl();
+      madness::Range<typename pmap_interface::const_iterator>
+          range(pimpl_->pmap()->begin(), pimpl_->pmap()->end(), 8);
+
+      Array_ array(*this);
+
+      madness::Future<bool> result = pimpl_->get_world().taskq.for_each(range,
+          [=] (const typename pmap_interface::const_iterator& it) mutable {
+            const size_type index = *it;
+            if(! array.is_zero(index))
+              array.set(index, op(array.trange().make_tile_range(*it)));
+            return true;
+          });
+
+      // Wait for all tiles to be set
+      if(wait)
+        result.get();
     }
 
     /// Tiled range accessor
@@ -506,7 +508,7 @@ namespace TiledArray {
     /// Update shape data and remove tiles that are below the zero threshold
 
     /// \note This function is a no-op for dense arrays.
-    void truncate() { Policy::truncate(*this); }
+    void truncate() { *this = TiledArray::truncate(*this); }
 
     bool is_initialized() const { return static_cast<bool>(pimpl_); }
 
