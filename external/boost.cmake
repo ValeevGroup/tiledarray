@@ -38,8 +38,8 @@ else()
   include(ExternalProject)
   
   # Set source and build path for Boost in the TiledArray Project
-  set(BOOST_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/src)
-  set(BOOST_SOURCE_DIR   ${PROJECT_SOURCE_DIR}/external/src/boost)
+  set(BOOST_DOWNLOAD_DIR ${PROJECT_BINARY_DIR}/external/source)
+  set(BOOST_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/boost)
   set(BOOST_BUILD_DIR   ${PROJECT_BINARY_DIR}/external/build/boost)
 
   # Set the external source
