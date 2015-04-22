@@ -26,6 +26,7 @@ if(ENABLE_MPI)
   
   # Set the  build variables
   include_directories(${MPI_INCLUDE_PATH})
+  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${MPI_INCLUDE_PATH})
   append_flags(MPI_COMPILE_FLAGS "-DOMPI_SKIP_MPICXX=1 -DMPICH_SKIP_MPICXX=1")
   append_flags(CMAKE_CXX_FLAGS "${MPI_COMPILE_FLAGS}")
   append_flags(CMAKE_EXE_LINKER_FLAGS "${MPI_LINK_FLAGS}")
