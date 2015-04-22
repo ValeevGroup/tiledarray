@@ -166,7 +166,7 @@ else()
   endif()
   
   # Set paths for MADNESS project
-  set(MADNESS_SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/src/madness)
+  set(MADNESS_SOURCE_DIR ${PROJECT_BINARY_DIR}/external/source/madness)
   set(MADNESS_BINARY_DIR  ${PROJECT_BINARY_DIR}/external/build/madness)
   
   ExternalProject_Add(madness
