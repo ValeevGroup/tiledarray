@@ -453,7 +453,11 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() const {
-        return left_.shape().gemm(right_.shape(), factor_, op_.gemm_helper());
+        const TiledArray::math::GemmHelper
+        shape_gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
+            op_.gemm_helper().result_rank(), op_.gemm_helper().left_rank(),
+            op_.gemm_helper().right_rank());
+        return left_.shape().gemm(right_.shape(), factor_, shape_gemm_helper);
       }
 
       /// Permuting shape factory function
@@ -461,7 +465,11 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) const {
-        return left_.shape().gemm(right_.shape(), factor_, op_.gemm_helper(), perm);
+        const TiledArray::math::GemmHelper
+        shape_gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
+            op_.gemm_helper().result_rank(), op_.gemm_helper().left_rank(),
+            op_.gemm_helper().right_rank());
+        return left_.shape().gemm(right_.shape(), factor_, shape_gemm_helper, perm);
       }
 
       dist_eval_type make_dist_eval() const {
