@@ -51,7 +51,7 @@ namespace TiledArray {
   /// \param arg The argument array
   template <typename T, unsigned int DIM, typename Tile, typename Op>
   inline Array<T, DIM, Tile, DensePolicy>
-  foreach(const Array<T, DIM, Tile, DensePolicy> arg, Op&& op) {
+  foreach(const Array<T, DIM, Tile, DensePolicy>& arg, Op&& op) {
     typedef Array<T, DIM, Tile, DensePolicy> array_type;
     typedef typename array_type::size_type size_type;
 
@@ -62,8 +62,8 @@ namespace TiledArray {
 
     // Iterate over local tiles of arg
     typename array_type::pmap_interface::const_iterator
-    it = arg.pmap()->begin(),
-    end = arg.pmap()->end();
+    it = arg.get_pmap()->begin(),
+    end = arg.get_pmap()->end();
     for(; it != end; ++it) {
       // Spawn a task to evaluate the tile
       madness::Future<typename array_type::value_type> tile =
@@ -76,6 +76,8 @@ namespace TiledArray {
       // Store result tile
       result.set(*it, tile);
     }
+
+    return result;
   }
 
   /// Apply a function to each tile of a dense Array
@@ -104,8 +106,8 @@ namespace TiledArray {
 
     // Iterate over local tiles of arg
     typename array_type::pmap_interface::const_iterator
-    it = arg.pmap()->begin(),
-    end = arg.pmap()->end();
+    it = arg.get_pmap()->begin(),
+    end = arg.get_pmap()->end();
     for(; it != end; ++it) {
       // Spawn a task to evaluate the tile
       madness::Future<typename array_type::value_type> tile =
