@@ -68,7 +68,7 @@ namespace TiledArray {
       // Spawn a task to evaluate the tile
       madness::Future<typename array_type::value_type> tile =
           world.taskq.add([=] (const typename array_type::value_type arg_tile) {
-            typename array_type::value_type result_tile(arg_tile.range());
+            typename array_type::value_type result_tile;
             op(result_tile, arg_tile);
             return result_tile;
           }, arg.find(*it));
@@ -91,15 +91,31 @@ namespace TiledArray {
   /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param op The mutating tile function
-  /// \param arg The argument array
+  /// \param arg The argument array to be modified
+  /// \param fence A flag that indicates fencing behavior. If \c true this
+  /// function will fence before data is modified.
+  /// \warning This function fences by default to avoid data race conditions.
+  /// Only disable the fence if you can ensure, the data is not being read by
+  /// another thread.
+  /// \warning If there is a another copy of \c arg that was created via (or
+  /// arg was created by) the \c Array copy constructor or copy assignment
+  /// operator, this function will modify the data of that array since the data
+  /// of a tile is held in a \c std::shared_ptr. If you need to ensure other
+  /// copies of the data are not modified or this behavior causes problems in
+  /// your application, use the \c TiledArray::foreach function instead.
   template <typename T, unsigned int DIM, typename Tile, typename Op>
   inline void
-  foreach_inplace(Array<T, DIM, Tile, DensePolicy>& arg, Op&& op) {
+  foreach_inplace(Array<T, DIM, Tile, DensePolicy>& arg, Op&& op, bool fence = true) {
     typedef Array<T, DIM, Tile, DensePolicy> array_type;
+    typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
 
     madness::World& world = arg.get_world();
-    world.gop.fence();
+
+    // The tile data is being modified in place, which means we may need to
+    // fence to ensure no other threads are using the data.
+    if(fence)
+      world.gop.fence();
 
     // Make an empty result array
     array_type result(world, arg.trange(), arg.get_pmap());
@@ -110,8 +126,8 @@ namespace TiledArray {
     end = arg.get_pmap()->end();
     for(; it != end; ++it) {
       // Spawn a task to evaluate the tile
-      madness::Future<typename array_type::value_type> tile =
-          world.taskq.add([=] (typename array_type::value_type& arg_tile) {
+      madness::Future<value_type> tile =
+          world.taskq.add([=] (value_type& arg_tile) {
             op(arg_tile);
             return arg_tile;
           }, arg.find(*it));
@@ -122,15 +138,14 @@ namespace TiledArray {
 
     // Set the arg with the new array
     arg = result;
-    Array<T, DIM, Tile, DensePolicy>::wait_for_lazy_cleanup(world);
   }
 
   /// Apply a function to each tile of a sparse Array
 
   /// The expected signature of the tile operation is:
   /// \code
-  /// void op(typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& result_tile,
-  ///     const typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& arg_tile);
+  /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& result_tile,
+  ///     const typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& arg_tile);
   /// \endcode
   /// where the return value of \c op is the 2-norm (Fibrinous norm).
   /// \tparam Op Tile operation
@@ -161,7 +176,7 @@ namespace TiledArray {
     madness::AtomicInt counter; counter = 0;
     int task_count = 0;
     auto task = [&](const size_type index, const value_type& arg_tile) {
-      value_type result_tile(arg_tile.range());
+      value_type result_tile;
       tile_norms[index] = op(result_tile, arg_tile);
       ++counter;
       return result_tile;
@@ -175,21 +190,21 @@ namespace TiledArray {
         end = arg.get_pmap()->end();
     for(; it != end; ++it) {
       const size_type index = *it;
-      if(! arg.is_zero(index)) {
-        future_type arg_tile = arg.find(index);
-        future_type result_tile = world.taskq.add(task, index, arg_tile);
-        ++task_count;
-        tiles.push_back(datum_type(index, result_tile));
-      }
+      if(arg.is_zero(index))
+        continue;
+      future_type arg_tile = arg.find(index);
+      future_type result_tile = world.taskq.add(task, index, arg_tile);
+      ++task_count;
+      tiles.push_back(datum_type(index, result_tile));
     }
 
-    // Wait for tile data to be collected
+    // Wait for tile norm data to be collected.
     if(task_count > 0) {
       TiledArray::detail::CounterProbe probe(counter, task_count);
       world.await(probe);
     }
 
-    // Construct the new truncated array
+    // Construct the new array
     array_type result(world, arg.trange(),
         shape_type(world, tile_norms, arg.trange()), arg.get_pmap());
     for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
@@ -206,19 +221,29 @@ namespace TiledArray {
 
   /// The expected signature of the tile operation is:
   /// \code
-  /// void op(typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& result_tile,
-  ///     const typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& arg_tile);
+  /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& tile);
   /// \endcode
   /// where the return value of \c op is the 2-norm (Fibrinous norm).
   /// \tparam Op Tile operation
   /// \tparam T Element type of the array
   /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
-  /// \param op The tile function
-  /// \param arg The argument array
+  /// \param op The mutating tile function
+  /// \param arg The argument array to be modified
+  /// \param fence A flag that indicates fencing behavior. If \c true this
+  /// function will fence before data is modified.
+  /// \warning This function fences by default to avoid data race conditions.
+  /// Only disable the fence if you can ensure, the data is not being read by
+  /// another thread.
+  /// \warning If there is a another copy of \c arg that was created via (or
+  /// arg was created by) the \c Array copy constructor or copy assignment
+  /// operator, this function will modify the data of that array since the data
+  /// of a tile is held in a \c std::shared_ptr. If you need to ensure other
+  /// copies of the data are not modified or this behavior causes problems in
+  /// your application, use the \c TiledArray::foreach function instead.
   template <typename T, unsigned int DIM, typename Tile, typename Op>
   inline void
-  foreach_inplace(Array<T, DIM, Tile, SparsePolicy>& arg, Op&& op) {
+  foreach_inplace(Array<T, DIM, Tile, SparsePolicy>& arg, Op&& op, bool fence = true) {
     typedef Array<T, DIM, Tile, SparsePolicy> array_type;
     typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
@@ -244,7 +269,11 @@ namespace TiledArray {
     };
 
     madness::World& world = arg.get_world();
-    world.gop.fence();
+
+    // The tile data is being modified in place, which means we may need to
+    // fence to ensure no other threads are using the data.
+    if(fence)
+      world.gop.fence();
 
     // Get local tile index iterator
     typename array_type::pmap_interface::const_iterator
@@ -252,21 +281,21 @@ namespace TiledArray {
         end = arg.get_pmap()->end();
     for(; it != end; ++it) {
       const size_type index = *it;
-      if(! arg.is_zero(index)) {
-        future_type arg_tile = arg.find(index);
-        future_type result_tile = world.taskq.add(task, index, arg_tile);
-        ++task_count;
-        tiles.push_back(datum_type(index, result_tile));
-      }
+      if(arg.is_zero(index))
+        continue;
+      future_type arg_tile = arg.find(index);
+      future_type result_tile = world.taskq.add(task, index, arg_tile);
+      ++task_count;
+      tiles.push_back(datum_type(index, result_tile));
     }
 
-    // Wait for tile data to be collected
+    // Wait for tile norm data to be collected.
     if(task_count > 0) {
       TiledArray::detail::CounterProbe probe(counter, task_count);
       world.await(probe);
     }
 
-    // Construct the new truncated array
+    // Construct the new array
     array_type result(world, arg.trange(),
         shape_type(world, tile_norms, arg.trange()), arg.get_pmap());
     for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
@@ -277,7 +306,6 @@ namespace TiledArray {
 
     // Set the arg with the new array
     arg = result;
-    Array<T, DIM, Tile, SparsePolicy>::wait_for_lazy_cleanup(world);
   }
 
 } // namespace TiledArray
