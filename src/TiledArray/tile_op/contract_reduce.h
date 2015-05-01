@@ -72,6 +72,7 @@ namespace TiledArray {
 
       /// \param left_op The left-hand BLAS matrix operation
       /// \param right_op The right-hand BLAS matrix operation
+      /// \param alpha The scaling factor applied to the contracted tiles
       /// \param result_rank The rank of the result tensor
       /// \param left_rank The rank of the left-hand tensor
       /// \param right_rank The rank of the right-hand tensor

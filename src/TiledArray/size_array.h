@@ -252,6 +252,7 @@ namespace TiledArray {
       /// \tparam Arg The argument type
       /// \tparam Op The unary operation type
       /// \param arg The argument
+      /// \param op The unary, element operation
       template <typename Arg, typename Op>
       void unary(const Arg* const arg, const Op& op) {
         math::vector_op(op, last_ - first_, first_, arg);

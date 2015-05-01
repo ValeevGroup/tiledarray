@@ -131,6 +131,7 @@ namespace TiledArray {
   /// \param left The left-hand argument to be added
   /// \param right The right-hand argument to be added
   /// \param factor The scaling factor
+  /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
   template <typename Left, typename Right>
   inline Left add(const Left& left, const Right& right,
@@ -252,6 +253,7 @@ namespace TiledArray {
   /// \param left The left-hand argument to be subtracted
   /// \param right The right-hand argument to be subtracted
   /// \param factor The scaling factor
+  /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left - right) * factor</tt>
   template <typename Left, typename Right>
   inline Left subt(const Left& left, const Right& right,
@@ -374,6 +376,7 @@ namespace TiledArray {
   /// \param left The left-hand argument to be multiplied
   /// \param right The right-hand argument to be multiplied
   /// \param factor The scaling factor
+  /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left * right) * factor</tt>
   template <typename Left, typename Right>
   inline Left mult(const Left& left, const Right& right,
@@ -495,6 +498,7 @@ namespace TiledArray {
   /// \param left The left-hand argument to be contracted
   /// \param right The right-hand argument to be contracted
   /// \param factor The scaling factor
+  /// \param gemm_config A helper object used to simplify gemm operations
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
   template <typename Left, typename Right>
   Left gemm(const Left& left, const Right& right, const typename Left::numeric_type factor,
@@ -514,6 +518,7 @@ namespace TiledArray {
   /// \param left The left-hand argument to be contracted
   /// \param right The right-hand argument to be contracted
   /// \param factor The scaling factor
+  /// \param gemm_config A helper object used to simplify gemm operations
   /// \return A tile that is equal to <tt>result = (left * right) * factor</tt>
   template <typename Result, typename Left, typename Right>
   Result& gemm(Result& result, const Left& left, const Right& right,

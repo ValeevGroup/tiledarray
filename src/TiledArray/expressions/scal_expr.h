@@ -69,6 +69,7 @@ namespace TiledArray {
       /// Rescale expression constructor
 
       /// \param other The expression to be copied
+      /// \param factor The scaling factor applied to the new expression
       ScalExpr(const ScalExpr_& other, const scalar_type factor) :
         UnaryExpr_(other), factor_(other.factor_ * factor)
       { }

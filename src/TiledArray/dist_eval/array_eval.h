@@ -153,6 +153,7 @@ namespace TiledArray {
       /// \param trange The tiled range of the result tensor
       /// \param shape The shape of the result tensor
       /// \param pmap The process map for the result tensor tiles
+      /// \param perm The permutation that is applied to the tile coordinate index
       /// \param op The operation that will be used to evaluate the tiles of array
       ArrayEvalImpl(const array_type& array, madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,

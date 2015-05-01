@@ -68,12 +68,12 @@ namespace TiledArray {
 
       /// \param left The left-hand argument
       /// \param right The right-hand argument
-      /// \param world The world where the binary evaluator will live
-      /// \param trange The tiled range of the evaluator
-      /// \param shape The shape object
-      /// \param pmap The evaluator process map
-      /// \param perm The permutation that will be applied to the result
-      /// \param op The tile transformation operator
+      /// \param world The world where the tensor lives
+      /// \param trange The tiled range object
+      /// \param shape The tensor shape object
+      /// \param pmap The tile-process map
+      /// \param perm The permutation that is applied to tile indices
+      /// \param op The tile transform operation
       BinaryEvalImpl(const left_type& left, const right_type& right,
           madness::World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,

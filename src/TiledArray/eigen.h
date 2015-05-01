@@ -152,7 +152,8 @@ namespace TiledArray {
   /// \tparam T The tensor element type
   /// \tparam A The tensor allocator type
   /// \tparam Derived The derived type of an Eigen matrix
-  /// \param matrix The matrix that will be assigned the content of \c tensor
+  /// \param[in] matrix The object that will be assigned the content of \c tensor
+  /// \param[out] tensor The object that will be assigned the content of \c matrix
   /// \throw TiledArray::Exception When the dimensions of \c tensor are not equal
   /// to 1 or 2.
   /// \throw TiledArray::Exception When the range of \c tensor is outside the
@@ -197,7 +198,8 @@ namespace TiledArray {
   /// \tparam T The tensor element type
   /// \tparam A The tensor allocator type
   /// \tparam Derived The derived type of an Eigen matrix
-  /// \param matrix The matrix that will be assigned the content of \c tensor
+  /// \param[in] tensor The object that will be copied to \c matrix
+  /// \param[out] matrix The object that will be assigned the content of \c tensor
   /// \throw TiledArray::Exception When the dimensions of \c tensor are not equal
   /// to 1 or 2.
   /// \throw TiledArray::Exception When the range of \c tensor is outside the

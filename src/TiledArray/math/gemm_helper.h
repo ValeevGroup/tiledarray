@@ -225,8 +225,9 @@ namespace TiledArray {
       /// \tparam Left The left-hand size array type
       /// \tparam Right The right-hand size array type
       /// \param left The left-hand size array to be tested
-      /// \return \c true if The outer dimensions of left are coformal with that
-      /// of right
+      /// \param right The right-hand size array to be tested
+      /// \return \c true if the outer dimensions of \c left are coformal with
+      /// that of \c right, other \c false.
       template <typename Left, typename Right>
       bool left_right_coformal(const Left& left, const Right& right) const {
         return std::equal(left.begin() + left_.inner[0],

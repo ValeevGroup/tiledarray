@@ -1706,13 +1706,12 @@ namespace TiledArray {
 
       /// \param left The left-hand argument evaluator
       /// \param right The right-hand argument evaluator
-      /// \param world The world where this evaluator will live
-      /// \param trange The tiled range of the result tensor
-      /// \param shape The shape of the result tensor
-      /// \param pmap The process map for the result tensor
-      /// \param perm The permutation that will be applied to tiles and the
-      /// coordinate index after contraction of the result tile
-      /// \param op The operation that will be used to contract tile pairs
+      /// \param world The world where the tensor lives
+      /// \param trange The tiled range object
+      /// \param shape The tensor shape object
+      /// \param pmap The tile-process map
+      /// \param perm The permutation that is applied to tile indices
+      /// \param op The tile transform operation
       /// \param k The number of tiles in the inner dimension
       /// \param proc_grid The process grid that defines the layout of the tiles
       /// during the contraction evaluation

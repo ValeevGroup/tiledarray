@@ -90,9 +90,10 @@ namespace TiledArray {
       /// Constructor
 
       /// \param world The world where the tensor lives
-      /// \param perm The permutation that is applied to the result tensor
-      /// \param trange The unpermuted tiled range object
-      /// \param shape The tensor shape bitset [ Default = 0 size bitset ]
+      /// \param trange The tiled range object
+      /// \param shape The tensor shape object
+      /// \param pmap The tile-process map
+      /// \param perm The permutation that is applied to tile indices
       /// \note \c trange and \c shape will be permuted by \c perm before
       /// storing the data.
       DistEvalImpl(madness::World& world, const trange_type& trange,

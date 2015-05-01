@@ -57,6 +57,7 @@ namespace TiledArray {
       /// \param world The world where this tensor will live
       /// \param trange The tiled range for this tensor
       /// \param shape The shape of this tensor
+      /// \param pmap The tile-process map
       /// \throw TiledArray::Exception When the size of shape is not equal to
       /// zero
       TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape,

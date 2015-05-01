@@ -106,7 +106,7 @@ namespace TiledArray {
       /// Reduce an argument pair
 
       /// \param[out] result The object that will hold the result of this reduction
-      /// \parma[in] arg The argument pair to be reduced
+      /// \param[in] arg The argument pair to be reduced
       void operator()(result_type& result, const argument_type& arg) const {
         op_(result, arg.first, arg.second);
       }

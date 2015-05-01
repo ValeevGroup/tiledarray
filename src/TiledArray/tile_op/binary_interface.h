@@ -123,6 +123,7 @@ namespace TiledArray {
 
       /// Evaluate the result tile using the appropriate \c Derived class
       /// evaluation kernel.
+      /// \param first The left-hand argument
       /// \param second The right-hand argument
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
@@ -139,6 +140,7 @@ namespace TiledArray {
       /// Evaluate the result tile using the appropriate \c Derived class
       /// evaluation kernel.
       /// \param first The left-hand argument
+      /// \param second The right-hand argument
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
       result_type operator()(first_argument_type first, zero_right_type second) const {

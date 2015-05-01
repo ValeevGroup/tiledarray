@@ -132,7 +132,7 @@ namespace TiledArray {
 
       /// Apply \c Derived class operation to \c arg.
       /// \param arg The argument
-      /// \return The result tile with the unary operation (and permuation)
+      /// \return The result tile with the unary operation (and permutation)
       /// applied to \c arg.
       result_type operator()(argument_type arg) const {
         if(perm_)

@@ -83,6 +83,7 @@ namespace TiledArray {
       /// Copy constructor
 
       /// \param other The expression to be copied
+      /// \param factor The scaling factor applied to the new expression
       ScalTsrExpr(const ScalTsrExpr_& other, const scalar_type factor) :
         Expr_(other), array_(other.array_), vars_(other.vars_), factor_(other.factor_ * factor)
       { }

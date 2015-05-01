@@ -473,6 +473,7 @@ namespace TiledArray {
     /// \f]
     /// \param other The shape to be added to this shape
     /// \param factor The scaling factor
+    /// \param perm The permutation that is applied to the result
     /// \return A scaled and permuted sum of shapes
     SparseShape_ add(const SparseShape_& other, const value_type factor,
         const Permutation& perm) const

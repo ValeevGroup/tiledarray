@@ -54,7 +54,12 @@ namespace TiledArray {
       /// Constructor
 
       /// \param arg The argument
-      /// \param op The element transform operation
+      /// \param world The world where the tensor lives
+      /// \param trange The tiled range object
+      /// \param shape The tensor shape object
+      /// \param pmap The tile-process map
+      /// \param perm The permutation that is applied to tile indices
+      /// \param op The tile transform operation
       UnaryEvalImpl(const arg_type& arg, madness::World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm, const op_type& op) :

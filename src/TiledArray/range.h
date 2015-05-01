@@ -217,7 +217,8 @@ namespace TiledArray {
 
     /// Permuting copy constructor
 
-    /// \param other The range to be copied
+    /// \param perm The permutation applied to other
+    /// \param other The range to be permuted and copied
     /// \throw std::bad_alloc When memory allocation fails.
     Range(const Permutation& perm, const Range_& other) :
       start_(), finish_(), size_(), weight_(), volume_(0ul)

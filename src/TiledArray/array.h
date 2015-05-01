@@ -271,6 +271,7 @@ namespace TiledArray {
 
     /// \tparam Index The index type (i.e. index or size_type)
     /// \param i The tile index to be set
+    /// \param f A future to the tile
     template <typename Index>
     void set(const Index& i, const madness::Future<value_type>& f) {
       check_index(i);

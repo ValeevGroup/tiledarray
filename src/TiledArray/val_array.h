@@ -411,9 +411,10 @@ namespace TiledArray {
       /// modified by <tt>op(*this[i][j], left[i], right[j])</tt>.
       /// \tparam U The left-hand argument type
       /// \tparam V The right-hand argument type
-      /// \param left The left-hand array
-      /// \param right The right-hand array
-      /// \param op The outer operation
+      /// \param[in] left The left-hand array
+      /// \param[in] right The right-hand array
+      /// \param[out] a The array that will hold the result
+      /// \param[in] op The outer operation
       /// \throw TiledArray::Exception When <tt>size() != (left.size() * right.size())</tt>.
       template <typename U, typename V, typename A, typename Op>
       void outer_fill(const ValArray<U>& left,  const ValArray<V>& right,

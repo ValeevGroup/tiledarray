@@ -970,6 +970,7 @@ namespace TiledArray {
     /// \tparam U The other tensor element type
     /// \tparam AU The other tensor allocator type
     /// \param other The tensor that will be subtracted from this tensor
+    /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the different between the
     /// elements of \c this and \c other
     template <typename U, typename AU>
@@ -1418,7 +1419,10 @@ namespace TiledArray {
 
     /// Binary reduction operation
 
+    /// \tparam U The element type of the right-hand argument
+    /// \tparam AU The allocator type of the right-hand argument
     /// \tparam Op The reduction operation
+    /// \param other The right-hand argument of the binary reduction
     /// \param init_value The initial value of the reduction
     /// \param op The element-wise reduction operation
     /// \throw TiledArray::Exception When this tensor is empty.
