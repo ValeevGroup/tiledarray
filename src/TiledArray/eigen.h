@@ -138,7 +138,7 @@ namespace TiledArray {
   /// \throw When \c tensor dimensions are not equal to 2 or 1.
   template <typename T, typename A>
   inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
-  eigen_map(Tensor<T, A>& tensor) {
+  eigen_map(const Tensor<T, A>& tensor) {
     TA_ASSERT((tensor.range().dim() == 2u) || (tensor.range().dim() == 1u));
 
     return eigen_map(tensor, tensor.range().size()[0],
