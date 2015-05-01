@@ -34,11 +34,13 @@ Array<T, DIM, detail::result_of_t<Op(Tile)>, Policy> to_new_tile_type(
     pmap_iter end = old_array.get_pmap()->end();
 
     for (; it != end; ++it) {
-        // Spawn a task to evaluate the tile
-        madness::Future<OutTileType> tile =
-            world.taskq.add(op, old_array.find(*it));
-        // Store result tile
-        new_array.set(*it, tile);
+        // Must check for zero because pmap_iter does not.
+        if (!old_array.is_zero(*it)) {
+            // Spawn a task to evaluate the tile
+            madness::Future<OutTileType> tile =
+                world.taskq.add(op, old_array.find(*it));
+            new_array.set(*it, tile);
+        }
     }
 
     return new_array;
