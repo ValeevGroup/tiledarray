@@ -42,10 +42,9 @@ namespace TiledArray {
   /// \tparam T Element type of the array
   /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
-  /// \param array The array object to be truncated
-  /// \return \c array
+  /// \param[in,out] array The array object to be truncated
   template <typename T, unsigned int DIM, typename Tile>
-  inline Array<T, DIM, Tile, DensePolicy>
+  inline void
   truncate(Array<T, DIM, Tile, DensePolicy>& array) { return array; }
 
   /// Truncate a sparse Array
@@ -53,19 +52,16 @@ namespace TiledArray {
   /// \tparam T Element type of the array
   /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
-  /// \param array The array object to be truncated
-  /// \return A truncated copy of \c array
+  /// \param[in,out] array The array object to be truncated
   template <typename T, unsigned int DIM, typename Tile>
-  inline Array<T, DIM, Tile, SparsePolicy>
-  truncate(Array<T, DIM, Tile, SparsePolicy>& array) {
+  inline void truncate(Array<T, DIM, Tile, SparsePolicy>& array) {
     typedef typename Array<T, DIM, Tile, SparsePolicy>::value_type value_type;
-    Array<T, DIM, Tile, SparsePolicy> result =
+    array =
         foreach(array, [] (value_type& result_tile, const value_type& arg_tile) {
           typename detail::scalar_type<value_type>::type norm = arg_tile.norm();
           result_tile = arg_tile; // Assume this is shallow copy
           return norm;
         });
-    return result;
   }
 
 } // namespace TiledArray

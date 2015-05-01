@@ -509,7 +509,7 @@ namespace TiledArray {
     /// Update shape data and remove tiles that are below the zero threshold
 
     /// \note This function is a no-op for dense arrays.
-    void truncate() { *this = TiledArray::truncate(*this); }
+    void truncate() { TiledArray::truncate(*this); }
 
     bool is_initialized() const { return static_cast<bool>(pimpl_); }
 
