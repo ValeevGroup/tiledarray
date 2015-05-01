@@ -21,7 +21,6 @@
 #define TILEDARRAY_DIST_EVAL_DIST_EVAL_BASE_H__INCLUDED
 
 #include <TiledArray/tensor_impl.h>
-#include <TiledArray/counter_probe.h>
 #include <TiledArray/permutation.h>
 #include <TiledArray/perm_index.h>
 
@@ -169,8 +168,8 @@ namespace TiledArray {
         const int task_count = task_count_;
         if(task_count > 0) {
           try {
-            CounterProbe probe(set_counter_, task_count);
-            TensorImpl_::get_world().await(probe);
+            TensorImpl_::get_world().await([this,task_count] ()
+                { return set_counter_ == task_count; });
           } catch(...) {
             std::stringstream ss;
             ss << "!!TiledArray: Aborting due to exception.\n"

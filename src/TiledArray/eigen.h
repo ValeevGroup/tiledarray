@@ -22,7 +22,6 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/array.h>
-#include <TiledArray/counter_probe.h>
 #include <TiledArray/math/eigen.h>
 
 namespace TiledArray {
@@ -355,8 +354,7 @@ namespace TiledArray {
     }
 
     // Wait until the write tasks are complete
-    detail::CounterProbe probe(counter, n);
-    array.get_world().await(probe);
+    array.get_world().await([&counter,n] () { return counter == n; });
 
     return array;
   }
@@ -418,8 +416,7 @@ namespace TiledArray {
 
     // Wait until the above tasks are complete. Tasks will be processed by this
     // thread while waiting.
-    detail::CounterProbe probe(counter, n);
-    array.get_world().await(probe);
+    array.get_world().await([&counter,n] () { return counter == n; });
 
     return matrix;
   }

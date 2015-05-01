@@ -199,10 +199,8 @@ namespace TiledArray {
     }
 
     // Wait for tile norm data to be collected.
-    if(task_count > 0) {
-      TiledArray::detail::CounterProbe probe(counter, task_count);
-      world.await(probe);
-    }
+    if(task_count > 0)
+      world.await([&counter,task_count] () {return counter == task_count; });
 
     // Construct the new array
     array_type result(world, arg.trange(),
@@ -290,10 +288,8 @@ namespace TiledArray {
     }
 
     // Wait for tile norm data to be collected.
-    if(task_count > 0) {
-      TiledArray::detail::CounterProbe probe(counter, task_count);
-      world.await(probe);
-    }
+    if(task_count > 0)
+      world.await([&counter,task_count] () {return counter == task_count; });
 
     // Construct the new array
     array_type result(world, arg.trange(),
