@@ -171,7 +171,7 @@ namespace TiledArray {
       /// tensor.
       /// \param world The world were the result will be distributed
       /// \param pmap The process map for the result tensor tiles
-      void init_distribution(madness::World* world, std::shared_ptr<pmap_interface> pmap) {
+      void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
         if(contract_)
           ContEngine_::init_distribution(world, pmap);
         else
@@ -376,7 +376,7 @@ namespace TiledArray {
       /// tensor.
       /// \param world The world were the result will be distributed
       /// \param pmap The process map for the result tensor tiles
-      void init_distribution(madness::World* world, std::shared_ptr<pmap_interface> pmap) {
+      void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
         if(contract_)
           ContEngine_::init_distribution(world, pmap);
         else

@@ -100,7 +100,7 @@ namespace TiledArray {
       void init_vars(const VariableList& target_vars) {
 #ifndef NDEBUG
         if(! target_vars.is_permutation(vars_)) {
-          if(madness::World::get_default().rank() == 0) {
+          if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The array variable list is not compatible with the expected output:" \
                 << "\n    expected = " << target_vars \
@@ -118,7 +118,7 @@ namespace TiledArray {
       /// This function is a noop since the variable list is fixed.
       void init_vars() { }
 
-      void init_distribution(madness::World* world,
+      void init_distribution(World* world,
           const std::shared_ptr<pmap_interface>& pmap)
       {
         ExprEngine_::init_distribution(world, (pmap ? pmap : array_.get_pmap()));

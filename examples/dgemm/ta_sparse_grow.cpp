@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
 
   try {
     // Initialize runtime
-    madness::World& world = madness::initialize(argc, argv);
+    TiledArray::World& world = TiledArray::initialize(argc, argv);
 
     // Get command line arguments
     if(argc < 2) {
@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
       }
     }
 
-    madness::finalize();
+    TiledArray::finalize();
 
   } catch(TiledArray::Exception& e) {
     std::cerr << "!!ERROR TiledArray: " << e.what() << "\n";

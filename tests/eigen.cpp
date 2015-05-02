@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE( matrix_to_array ) {
 
   // Check that the data in array is equal to that in matrix
   for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-    madness::Future<Array<int, 2>::value_type > tile = array.find(*it);
+    Future<Array<int, 2>::value_type > tile = array.find(*it);
     for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
       BOOST_CHECK_EQUAL(tile.get()[*tile_it], matrix((*tile_it)[0], (*tile_it)[1]));
     }
@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE( vector_to_array ) {
 
   // Check that the data in array matches the data in vector
   for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
-    madness::Future<Array<int, 1>::value_type > tile = array1.find(*it);
+    Future<Array<int, 1>::value_type > tile = array1.find(*it);
     for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
       BOOST_CHECK_EQUAL(tile.get()[*tile_it], vector((*tile_it)[0]));
     }
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
 
     // Check that the data in matrix matches the data in array
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-      madness::Future<Array<int, 2>::value_type > tile = array.find(*it);
+      Future<Array<int, 2>::value_type > tile = array.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(matrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
       }
@@ -258,7 +258,7 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
       BOOST_CHECK(array.is_local(*it));
 
-      madness::Future<Array<int, 1>::value_type > tile = array.find(*it);
+      Future<Array<int, 1>::value_type > tile = array.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(matrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
       }
@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
     // Check that the data in vector matches the data in array
     for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
-      madness::Future<Array<int, 1>::value_type > tile = array1.find(*it);
+      Future<Array<int, 1>::value_type > tile = array1.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(vector((*tile_it)[0]), tile.get()[*tile_it]);
       }
@@ -326,7 +326,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
     for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
       BOOST_CHECK(array1.is_local(*it));
 
-      madness::Future<Array<int, 1>::value_type > tile = array1.find(*it);
+      Future<Array<int, 1>::value_type > tile = array1.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(vector((*tile_it)[0]), tile.get()[*tile_it]);
       }

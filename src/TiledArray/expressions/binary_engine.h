@@ -187,7 +187,7 @@ namespace TiledArray {
         right_.init_struct(ExprEngine_::vars());
 #ifndef NDEBUG
         if(left_.trange() != right_.trange()) {
-          if(madness::World::get_default().rank() == 0) {
+          if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The TiledRanges of the left- and right-hand expressions are not equal:" \
                 << "\n    left  = " << left_.trange() \
@@ -206,7 +206,7 @@ namespace TiledArray {
       /// tensor.
       /// \param world The world were the result will be distributed
       /// \param pmap The process map for the result tensor tiles
-      void init_distribution(madness::World* world,
+      void init_distribution(World* world,
           const std::shared_ptr<pmap_interface>& pmap)
       {
         left_.init_distribution(world, pmap);

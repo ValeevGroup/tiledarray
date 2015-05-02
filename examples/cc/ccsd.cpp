@@ -26,7 +26,7 @@ using namespace TiledArray::expressions;
 
 int main(int argc, char** argv) {
   // Initialize runtime
-  madness::World& world = madness::initialize(argc, argv);
+  TiledArray::World& world = TiledArray::initialize(argc, argv);
 
   std::string file_name = argv[1];
 
@@ -1187,11 +1187,11 @@ int main(int argc, char** argv) {
     }
 
   } else  {
-    madness::finalize();
+    TiledArray::finalize();
     std::cout << "Unable to open file: " << file_name << "\n";
     return 1;
   }
 
-  madness::finalize();
+  TiledArray::finalize();
 	return 0;
 }

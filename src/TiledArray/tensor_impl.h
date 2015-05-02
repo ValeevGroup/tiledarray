@@ -44,7 +44,7 @@ namespace TiledArray {
       typedef typename Policy::pmap_interface pmap_interface; ///< Process map interface type
 
     private:
-      madness::World& world_; ///< World that contains
+      World& world_; ///< World that contains
       const trange_type trange_; ///< Tiled range type
       const shape_type shape_; ///< Tensor shape
       std::shared_ptr<pmap_interface> pmap_; ///< Process map for tiles
@@ -60,7 +60,7 @@ namespace TiledArray {
       /// \param pmap The tile-process map
       /// \throw TiledArray::Exception When the size of shape is not equal to
       /// zero
-      TensorImpl(madness::World& world, const trange_type& trange, const shape_type& shape,
+      TensorImpl(World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap) :
         world_(world), trange_(trange), shape_(shape), pmap_(pmap)
       {
@@ -160,7 +160,7 @@ namespace TiledArray {
       /// World accessor
 
       /// \return A reference to the world that contains this tensor
-      madness::World& get_world() const { return world_; }
+      World& get_world() const { return world_; }
 
     }; // class TensorImpl
 

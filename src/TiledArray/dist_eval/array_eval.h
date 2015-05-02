@@ -155,7 +155,7 @@ namespace TiledArray {
       /// \param pmap The process map for the result tensor tiles
       /// \param perm The permutation that is applied to the tile coordinate index
       /// \param op The operation that will be used to evaluate the tiles of array
-      ArrayEvalImpl(const array_type& array, madness::World& world, const trange_type& trange,
+      ArrayEvalImpl(const array_type& array, World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm, const op_type& op) :
         DistEvalImpl_(world, trange, shape, pmap, perm),
@@ -166,26 +166,26 @@ namespace TiledArray {
       /// Virtual destructor
       virtual ~ArrayEvalImpl() { }
 
-      virtual madness::Future<value_type> get_tile(size_type i) const {
+      virtual Future<value_type> get_tile(size_type i) const {
 
         // Get the array index that corresponds to the target index
         const size_type array_index = DistEvalImpl_::perm_index_to_source(i);
 
         // Get the tile from array_, which may be located on a remote node.
-        madness::Future<typename array_type::value_type> tile =
+        Future<typename array_type::value_type> tile =
             array_.find(array_index);
 
         const bool consumable_tile = ! array_.is_local(array_index);
         // Insert the tile into this evaluator for subsequent processing
         if(tile.probe()) {
           // Skip the task since the tile is ready
-          madness::Future<value_type> result;
+          Future<value_type> result;
           result.set(make_tile(tile, consumable_tile));
           const_cast<ArrayEvalImpl_*>(this)->notify();
           return result;
         } else {
           // Spawn a task to set the tile the input tile is ready.
-          madness::Future<value_type> result =
+          Future<value_type> result =
               TensorImpl_::get_world().taskq.add(shared_from_this(),
               & ArrayEvalImpl_::make_tile, tile, consumable_tile,
               madness::TaskAttributes::hipri());

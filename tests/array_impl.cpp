@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( tile_get_and_set_w_value )
       BOOST_CHECK_NO_THROW(impl.set(i, value_type(impl.trange().make_tile_range(i), owner)));
 
       // Get the tile future (may or may not be remote) and wait for the data to arrive.
-      madness::Future<value_type> tile = impl.get(i);
+      Future<value_type> tile = impl.get(i);
       GlobalFixture::world->gop.fence();
 
       // Check that the future has been set and the data is what we expect.
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE( tile_get_and_set_w_value )
       GlobalFixture::world->gop.fence();
       if(impl.is_local(i)) {
         // Get the local tile
-        madness::Future<value_type> tile = impl.get(i);
+        Future<value_type> tile = impl.get(i);
 
         // Check that the future has been set and the data is what we expect.
         BOOST_CHECK(tile.probe());
@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE( tile_get_and_set_w_future )
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
     if(GlobalFixture::world->rank() == 0) {
       const ProcessID owner = impl.owner(i);
-      madness::Future<value_type> tile;
+      Future<value_type> tile;
 
       // Set each tile on node 0
       BOOST_CHECK_NO_THROW(impl.set(i, tile));
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE( tile_get_and_set_w_future )
       GlobalFixture::world->gop.fence();
       if(impl.is_local(i)) {
         // Get the local tile
-        madness::Future<value_type> tile = impl.get(i);
+        Future<value_type> tile = impl.get(i);
 
         // Check that the future has been set and the data is what we expect.
         BOOST_CHECK(tile.probe());
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE( tile_iterator_w_future )
 {
   // Set local tiles via iterators
   for(array_impl_base::iterator it = impl.begin(); it != impl.end(); ++it) {
-    madness::Future<value_type> tile;
+    Future<value_type> tile;
     BOOST_CHECK_NO_THROW(*it = tile);
     tile.set(value_type(impl.trange().make_tile_range(it.ordinal()), GlobalFixture::world->rank()));
   }
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE( tile_iterator_w_future )
   for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
     if(GlobalFixture::world->rank() == 0) {
       // Get the tile, which may be local or remote.
-      madness::Future<value_type> tile = impl.get(i);
+      Future<value_type> tile = impl.get(i);
       GlobalFixture::world->gop.fence();
 
       // Check that the future has been set and the data is what we expect.
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE( tile_iterator_w_future )
       GlobalFixture::world->gop.fence();
       if(impl.is_local(i)) {
         // Get the local tile
-        madness::Future<value_type> tile = impl.get(i);
+        Future<value_type> tile = impl.get(i);
 
         // Check that the future has been set and the data is what we expect.
         BOOST_CHECK(tile.probe());

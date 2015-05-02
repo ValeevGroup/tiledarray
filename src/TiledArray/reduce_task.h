@@ -28,17 +28,17 @@ namespace TiledArray {
 
     template <typename T>
     struct ArgumentHelper {
-      typedef madness::Future<T> type;
+      typedef Future<T> type;
     }; // struct ArgumentHelper
 
     template <typename T>
-    struct ArgumentHelper<madness::Future<T> > {
-      typedef madness::Future<T> type;
+    struct ArgumentHelper<Future<T> > {
+      typedef Future<T> type;
     }; // struct ArgumentHelper
 
     template <typename T, typename U>
-    struct ArgumentHelper<std::pair<madness::Future<T>, madness::Future<U> > > {
-      typedef std::pair<madness::Future<T>, madness::Future<U> > type;
+    struct ArgumentHelper<std::pair<Future<T>, Future<U> > > {
+      typedef std::pair<Future<T>, Future<U> > type;
     }; // struct ArgumentHelper
 
     /// Wrapper that to convert a pair-wise reduction into a standard reduction
@@ -55,8 +55,8 @@ namespace TiledArray {
       typedef typename std::remove_cv<typename std::remove_reference<
           typename opT::second_argument_type>::type>::type second_argument_type;
       ///< The right-hand argument type
-      typedef std::pair<madness::Future<first_argument_type>,
-          madness::Future<second_argument_type> > argument_type;
+      typedef std::pair<Future<first_argument_type>,
+          Future<second_argument_type> > argument_type;
       ///< The combine argument type
 
     private:
@@ -223,7 +223,7 @@ namespace TiledArray {
           /// \tparam T The type of the future
           /// \param f The future that this object depends on
           template <typename T>
-          void register_callbacks(madness::Future<T>& f) {
+          void register_callbacks(Future<T>& f) {
             if(f.probe()) {
               parent_->ready(this);
             } else {
@@ -238,7 +238,7 @@ namespace TiledArray {
           /// \tparam U The type of the second future
           /// \param p The pair of futures that this object depends on
           template <typename T, typename U>
-          void register_callbacks(std::pair<madness::Future<T>, madness::Future<U> >& p) {
+          void register_callbacks(std::pair<Future<T>, Future<U> >& p) {
             if(p.first.probe() && p.second.probe()) {
               parent_->ready(this);
             } else {
@@ -374,11 +374,11 @@ namespace TiledArray {
           this->dec();
         }
 
-        madness::World& world_; ///< The world that owns this task
+        World& world_; ///< The world that owns this task
         opT op_; ///< The reduction operation
         std::shared_ptr<result_type> ready_result_; ///< Result object that is ready to be reduced
         volatile ReduceObject* ready_object_; ///< Reduction argument that is ready to be reduced
-        madness::Future<result_type> result_; ///< The result of the reduction task
+        Future<result_type> result_; ///< The result of the reduction task
         madness::Spinlock lock_; ///< Task lock
         madness::CallbackInterface* callback_; ///< The completion callback
 
@@ -390,7 +390,7 @@ namespace TiledArray {
         /// \param op The reduction operation
         /// \param callback The callback that will be invoked when this task
         /// has completed
-        ReduceTaskImpl(madness::World& world, opT op, madness::CallbackInterface* callback) :
+        ReduceTaskImpl(World& world, opT op, madness::CallbackInterface* callback) :
           madness::TaskInterface(1, TaskAttributes::hipri()),
           world_(world), op_(op), ready_result_(new result_type(op())),
           ready_object_(nullptr), result_(), lock_(), callback_(callback)
@@ -438,12 +438,12 @@ namespace TiledArray {
         /// Task result accessor
 
         /// \return A future that will hold the result of the reduction task
-        const madness::Future<result_type>& result() const { return result_; }
+        const Future<result_type>& result() const { return result_; }
 
         /// World accessor
 
         /// \return The world that owns this task.
-        madness::World& get_world() const { return world_; }
+        World& get_world() const { return world_; }
 
       }; // class ReduceTaskImpl
 
@@ -463,7 +463,7 @@ namespace TiledArray {
       /// \param op The reduction operation [ default = opT() ]
       /// \param callback The callback that will be invoked when this task is
       /// complete
-      ReduceTask(madness::World& world, const opT& op = opT(),
+      ReduceTask(World& world, const opT& op = opT(),
           madness::CallbackInterface* callback = nullptr) :
         pimpl_(new ReduceTaskImpl(world, op, callback)), count_(0ul)
       { }
@@ -501,7 +501,7 @@ namespace TiledArray {
 
       /// Add an argument to the reduction task
 
-      /// \c arg may be of the argument type of \c opT, a \c madness::Future to the
+      /// \c arg may be of the argument type of \c opT, a \c Future to the
       /// argument type, or \c RemoteReference<FutureImpl> to the argument
       /// type.
       /// \tparam Arg The argument type
@@ -526,15 +526,15 @@ namespace TiledArray {
       /// \return The result of the reduction
       /// \note Arguments can no longer be added to the reduction after
       /// calling \c submit().
-      madness::Future<result_type> submit() {
+      Future<result_type> submit() {
         MADNESS_ASSERT(pimpl_);
 
         // Get the result before submitting/running the task, otherwise the
         // task could run and be deleted before we are done here.
-        madness::Future<result_type> result = pimpl_->result();
+        Future<result_type> result = pimpl_->result();
 
         pimpl_->dec();
-        madness::World& world = pimpl_->get_world();
+        World& world = pimpl_->get_world();
         world.taskq.add(pimpl_);
 
         pimpl_ = nullptr;
@@ -654,7 +654,7 @@ namespace TiledArray {
       /// \param op The pair reduction operation [ default = opT() ]
       /// \param callback The callback that will be invoked when this task is
       /// complete
-      ReducePairTask(madness::World& world, const opT& op = opT(), madness::CallbackInterface* callback = nullptr) :
+      ReducePairTask(World& world, const opT& op = opT(), madness::CallbackInterface* callback = nullptr) :
         ReduceTask_(world, op_type(op), callback)
       { }
 
@@ -680,7 +680,7 @@ namespace TiledArray {
       /// Add a pair of arguments to the reduction task
 
       /// \c left and \c right may be of the argument types of \c opT, a
-      /// \c madness::Future to the argument types,
+      /// \c Future to the argument types,
       /// \c RemoteReference<FutureImpl> to the argument
       //// types, or any combination of the above.
       /// \tparam L The left-hand object type
@@ -691,8 +691,8 @@ namespace TiledArray {
       /// pair has been reduced [ default = nullptr ]
       template <typename L, typename R>
       void add(const L& left, const R& right, madness::CallbackInterface* callback = nullptr) {
-        ReduceTask_::add(argument_type(madness::Future<first_argument_type>(left),
-            madness::Future<second_argument_type>(right)), callback);
+        ReduceTask_::add(argument_type(Future<first_argument_type>(left),
+            Future<second_argument_type>(right)), callback);
       }
 
     }; // class ReducePairTask

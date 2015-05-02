@@ -41,6 +41,7 @@ namespace TiledArray {
   } // namespace math
   class Range;
   class Permutation;
+  using madness::World;
 
 
   /// Dense shape of an array
@@ -57,7 +58,7 @@ namespace TiledArray {
     /// Collective initialization of a shape
 
     /// No operation since there is no data.
-    static void collective_init(madness::World&) { }
+    static void collective_init(World&) { }
 
     /// Validate shape range
 

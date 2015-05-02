@@ -75,7 +75,7 @@ namespace TiledArray {
       /// \param perm The permutation that is applied to tile indices
       /// \param op The tile transform operation
       BinaryEvalImpl(const left_type& left, const right_type& right,
-          madness::World& world, const trange_type& trange, const shape_type& shape,
+          World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
           const op_type& op) :
         DistEvalImpl_(world, trange, shape, pmap, perm),
@@ -89,10 +89,10 @@ namespace TiledArray {
       /// Get tile at index \c i
 
       /// \param i The index of the tile
-      /// \return A \c madness::Future to the tile at index i
+      /// \return A \c Future to the tile at index i
       /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
       /// \throw TiledArray::Exception When tile \c i a zero tile.
-      virtual madness::Future<value_type> get_tile(size_type i) const {
+      virtual Future<value_type> get_tile(size_type i) const {
         TA_ASSERT(TensorImpl_::is_local(i));
         TA_ASSERT(! TensorImpl_::is_zero(i));
 

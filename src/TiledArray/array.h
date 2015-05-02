@@ -81,7 +81,7 @@ namespace TiledArray {
       try {
         if(pimpl) {
           if(madness::initialized()) {
-            madness::World& world = pimpl->get_world();
+            World& world = pimpl->get_world();
             const madness::uniqueidT id = pimpl->id();
             cleanup_counter_++;
             world.gop.lazy_sync(id, [pimpl]() {
@@ -106,7 +106,7 @@ namespace TiledArray {
     /// \param shape The array shape that defines zero and non-zero tiles
     /// \param pmap The tile index -> process map
     static std::shared_ptr<impl_type>
-    init(madness::World& world, const trange_type& trange, const shape_type& shape,
+    init(World& world, const trange_type& trange, const shape_type& shape,
         std::shared_ptr<pmap_interface> pmap)
     {
       // User level validation of input
@@ -152,7 +152,7 @@ namespace TiledArray {
     /// \param world The world where the array will live.
     /// \param trange The tiled range object that will be used to set the array tiling.
     /// \param pmap The tile index -> process map
-    Array(madness::World& world, const trange_type& trange,
+    Array(World& world, const trange_type& trange,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
       pimpl_(init(world, trange, shape_type(), pmap))
     { }
@@ -163,7 +163,7 @@ namespace TiledArray {
     /// \param trange The tiled range object that will be used to set the array tiling.
     /// \param shape The array shape that defines zero and non-zero tiles
     /// \param pmap The tile index -> process map
-    Array(madness::World& world, const trange_type& trange, const shape_type& shape,
+    Array(World& world, const trange_type& trange, const shape_type& shape,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
       pimpl_(init(world, trange, shape, pmap))
     { }
@@ -188,7 +188,7 @@ namespace TiledArray {
     /// destroyed.
     ~Array() { }
 
-    static void wait_for_lazy_cleanup(madness::World& world, const double timeout = 60.0) {
+    static void wait_for_lazy_cleanup(World& world, const double timeout = 60.0) {
       try {
         madness::ThreadPool::await([&]() { return (cleanup_counter_ == 0); }, true);
       } catch(std::runtime_error& e) {
@@ -251,7 +251,7 @@ namespace TiledArray {
 
     /// \tparam Index The index type
     template <typename Index>
-    madness::Future<value_type> find(const Index& i) const {
+    Future<value_type> find(const Index& i) const {
       check_index(i);
       return pimpl_->get(i);
     }
@@ -281,7 +281,7 @@ namespace TiledArray {
     /// \param i The tile index to be set
     /// \param f A future to the tile
     template <typename Index>
-    void set(const Index& i, const madness::Future<value_type>& f) {
+    void set(const Index& i, const Future<value_type>& f) {
       check_index(i);
       pimpl_->set(i, f);
     }
@@ -334,7 +334,7 @@ namespace TiledArray {
 
       Array_ array(*this);
 
-      madness::Future<bool> result = pimpl_->get_world().taskq.for_each(range,
+      Future<bool> result = pimpl_->get_world().taskq.for_each(range,
           [=] (const typename pmap_interface::const_iterator& it) mutable {
             const size_type index = *it;
             if(! array.is_zero(index))
@@ -389,7 +389,7 @@ namespace TiledArray {
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
       if(n != DIM) {
-        if(madness::World::get_default().rank() == 0) {
+        if(World::get_default().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
@@ -412,7 +412,7 @@ namespace TiledArray {
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
       if(n != DIM) {
-        if(madness::World::get_default().rank() == 0) {
+        if(World::get_default().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
@@ -428,7 +428,7 @@ namespace TiledArray {
     /// World accessor
 
     /// \return A reference to the world that owns this array.
-    madness::World& get_world() const {
+    World& get_world() const {
       check_pimpl();
       return pimpl_->get_world();
     }

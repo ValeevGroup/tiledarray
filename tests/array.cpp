@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE( find_local )
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
 
     if(a.is_local(*it)) {
-      madness::Future<ArrayN::value_type> tile = a.find(*it);
+      Future<ArrayN::value_type> tile = a.find(*it);
 
       BOOST_CHECK(tile.probe());
 
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE( find_remote )
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
 
     if(! a.is_local(*it)) {
-      madness::Future<ArrayN::value_type> tile = a.find(*it);
+      Future<ArrayN::value_type> tile = a.find(*it);
 
       const int owner = a.owner(*it);
       for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE( fill_tiles )
     if(a.is_local(*it)) {
       a.set(*it, 0); // Fill the tile at *it (the index) with 0
 
-      madness::Future<ArrayN::value_type> tile = a.find(*it);
+      Future<ArrayN::value_type> tile = a.find(*it);
 
       // Check that the range for the constructed tile is correct.
       BOOST_CHECK_EQUAL(tile.get().range(), tr.make_tile_range(*it));
@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
         data.resize(range.volume(), 1);
       a.set(*it, data.begin());
 
-      madness::Future<ArrayN::value_type> tile = a.find(*it);
+      Future<ArrayN::value_type> tile = a.find(*it);
       BOOST_CHECK(tile.probe());
 
       // Check that the range for the constructed tile is correct.
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE( make_replicated )
   for(std::size_t i = 0; i < a.size(); ++i) {
     BOOST_CHECK(a.is_local(i));
     BOOST_CHECK_EQUAL(a.get_pmap()->owner(i), GlobalFixture::world->rank());
-    madness::Future<ArrayN::value_type> tile = a.find(i);
+    Future<ArrayN::value_type> tile = a.find(i);
     BOOST_CHECK_EQUAL(tile.get().range(), a.trange().make_tile_range(i));
     for(ArrayN::value_type::const_iterator it = tile.get().begin(); it != tile.get().end(); ++it)
       BOOST_CHECK_EQUAL(*it, distributed_pmap->owner(i) + 1);

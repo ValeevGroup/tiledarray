@@ -62,7 +62,7 @@ namespace TiledArray {
       typedef uint_fast32_t size_type;
 
     private:
-      madness::World* world_; ///< The world where this process grid lives
+      World* world_; ///< The world where this process grid lives
       size_type rows_; ///< Number of element rows
       size_type cols_; ///< Number of element columns
       size_type size_; ///< Number of elements
@@ -267,7 +267,7 @@ namespace TiledArray {
       /// \param cols The number of tile columns
       /// \param row_size The number of element rows
       /// \param col_size The number of element columns
-      ProcGrid(madness::World& world, const size_type rows, const size_type cols,
+      ProcGrid(World& world, const size_type rows, const size_type cols,
           const std::size_t row_size, const std::size_t col_size) :
         world_(&world), rows_(rows), cols_(cols), size_(rows_ * cols_),
         proc_rows_(0ul), proc_cols_(0ul), proc_size_(0ul),
@@ -301,7 +301,7 @@ namespace TiledArray {
       /// \param cols The number of tile columns
       /// \param row_size The number of element rows
       /// \param col_size The number of element columns
-      ProcGrid(madness::World& world, const size_type test_rank, size_type test_nprocs,
+      ProcGrid(World& world, const size_type test_rank, size_type test_nprocs,
           const size_type rows, const size_type cols,
           const std::size_t row_size, const std::size_t col_size) :
         world_(&world), rows_(rows), cols_(cols), size_(rows_ * cols_),

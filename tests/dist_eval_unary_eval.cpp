@@ -61,7 +61,7 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
   make_array_eval(
       const Array<T, DIM, Tile, Policy>& array,
-      madness::World& world,
+      TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
       const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm,
@@ -76,7 +76,7 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   template <typename Tile, typename Policy, typename Op>
   static TiledArray::detail::DistEval<typename Op::result_type, Policy> make_unary_eval(
       const TiledArray::detail::DistEval<Tile, Policy>& arg,
-      madness::World& world,
+      TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
       const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm,
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE( eval )
     ArrayN::value_type array_tile = array.find(*it);
 
     // Get the array evaluator tile.
-    madness::Future<dist_eval_type1::value_type> tile;
+    Future<dist_eval_type1::value_type> tile;
     BOOST_REQUIRE_NO_THROW(tile = dist_eval.get(*it));
 
     // Force the evaluation of the tile
@@ -200,7 +200,7 @@ BOOST_AUTO_TEST_CASE( double_eval )
     ArrayN::value_type array_tile = array.find(*it);
 
     // Get the array evaluator tile.
-    madness::Future<dist_eval_type2::value_type> tile;
+    Future<dist_eval_type2::value_type> tile;
     BOOST_REQUIRE_NO_THROW(tile = dist_eval2.get(*it));
 
     // Wait the evaluation of the tile
@@ -250,7 +250,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
         array.find(inv_perm ^ dist_eval2.range().idx(*it));
 
     // Get the array evaluator tile.
-    madness::Future<impl_type::value_type> tile;
+    Future<impl_type::value_type> tile;
     BOOST_REQUIRE_NO_THROW(tile = dist_eval2.get(*it));
 
     // Force the evaluation of the tile

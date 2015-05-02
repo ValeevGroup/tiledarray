@@ -161,7 +161,7 @@ namespace TiledArray {
       /// tensor.
       /// \param world The world were the result will be distributed
       /// \param pmap The process map for the result tensor tiles
-      void init_distribution(madness::World* world,
+      void init_distribution(World* world,
           const std::shared_ptr<pmap_interface>& pmap)
       {
         arg_.init_distribution(world, pmap);

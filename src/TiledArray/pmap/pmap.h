@@ -65,7 +65,7 @@ namespace TiledArray {
 
     /// \param world The world where the tiles will be mapped
     /// \param size The number of processes to be mapped
-    Pmap(madness::World& world, const size_type size) :
+    Pmap(World& world, const size_type size) :
       rank_(world.rank()), procs_(world.size()), size_(size), local_()
     {
       TA_ASSERT(size_ > 0ul);

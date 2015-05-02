@@ -39,7 +39,7 @@ struct DistributedStorageFixture {
   }
 
 
-  madness::World& world;
+  TiledArray::World& world;
   std::shared_ptr<detail::BlockedPmap> pmap;
   Storage t;
 };

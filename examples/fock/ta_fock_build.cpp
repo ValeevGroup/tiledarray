@@ -22,7 +22,7 @@
 
 int main(int argc, char** argv) {
   // Initialize runtime
-  madness::World& world = madness::initialize(argc, argv);
+  TiledArray::World& world = TiledArray::initialize(argc, argv);
 
   // Get command line arguments
   if(argc < 2) {
@@ -195,6 +195,6 @@ int main(int argc, char** argv) {
     std::cout << "GFlops = " << gflops << std::endl;
   }
 
-  madness::finalize();
+  TiledArray::finalize();
   return 0;
 }

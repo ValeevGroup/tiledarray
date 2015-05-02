@@ -42,7 +42,7 @@ void check_equal(Array<int,2> &array, elem::DistMatrix<int> &matrix){
   for(Array<int,2>::range_type::const_iterator it = array.range().begin();
                                                it != array.range().end();
     ++it){
-      madness::Future<Array<int,2>::value_type> tile = array.find(*it);
+      Future<Array<int,2>::value_type> tile = array.find(*it);
       for(Array<int,2>::value_type::range_type::const_iterator it = tile.get().range().begin();
                                              it != tile.get().range().end();
           ++it){

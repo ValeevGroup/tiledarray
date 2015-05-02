@@ -35,4 +35,12 @@
 #error The MADNESS implementation of std::shared_ptr does not support std::enable_shared_from_this. Use a compiler that supports TR1, C++11, or C++14.
 #endif
 
+// Import some MADNESS classes into TiledArray for convenience.
+namespace TiledArray {
+  using madness::World;
+  using madness::Future;
+  using madness::initialize;
+  using madness::finalize;
+} // namespace TiledArray
+
 #endif // TILEDARRAY_MADNESS_H__INCLUDED

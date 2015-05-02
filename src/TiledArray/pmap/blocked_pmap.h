@@ -60,7 +60,7 @@ namespace TiledArray {
 
       /// \param world The world where the tiles will be mapped
       /// \param size The number of tiles to be mapped
-      BlockedPmap(madness::World& world, size_type size) :
+      BlockedPmap(World& world, size_type size) :
           Pmap(world, size),
           block_size_(size_ / procs_),
           remainder_(size_ % procs_),

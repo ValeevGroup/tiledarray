@@ -28,14 +28,14 @@ namespace TiledArray {
     /// Distributed storage container.
 
     /// Each element in this container is owned by a single node, but any node
-    /// may request a copy of the element in the form of a \c madness::Future .
+    /// may request a copy of the element in the form of a \c Future .
     /// The owner of each element is defined by a process map (pmap), which is
     /// passed to the constructor. Elements do not need to be explicitly
     /// initialized because they will be added to the container when the element
     /// is first accessed, though you may manually initialize an element with
-    /// the \c insert() function. All elements are stored in \c madness::Future ,
+    /// the \c insert() function. All elements are stored in \c Future ,
     /// which may be set only once.
-    /// \note This object is derived from \c madness::WorldObject , which means
+    /// \note This object is derived from \c WorldObject , which means
     /// the order of construction of object must be the same on all nodes. This
     /// can easily be achieved by only constructing world objects in the main
     /// thread. DO NOT construct world objects within tasks where the order of
@@ -49,7 +49,7 @@ namespace TiledArray {
       typedef std::size_t size_type; ///< size type
       typedef size_type key_type; ///< element key type
       typedef T value_type; ///< Element type
-      typedef madness::Future<value_type> future; ///< Element container type
+      typedef Future<value_type> future; ///< Element container type
       typedef Pmap pmap_interface; ///< Process map interface type
       typedef madness::ConcurrentHashMap<key_type, future> container_type; ///< Local container type
       typedef typename container_type::accessor accessor; ///< Local element accessor type
@@ -128,7 +128,7 @@ namespace TiledArray {
       /// \param world The world where the distributed container lives
       /// \param max_size The maximum capacity of this container
       /// \param pmap The process map for the container (default = null pointer)
-      DistributedStorage(madness::World& world, size_type max_size,
+      DistributedStorage(World& world, size_type max_size,
           const std::shared_ptr<pmap_interface>& pmap) :
         WorldObject_(world), max_size_(max_size),
         pmap_(pmap),
@@ -221,7 +221,7 @@ namespace TiledArray {
           set_remote(i, value);
       }
 
-      /// Set element \c i with a \c madness::Future \c f
+      /// Set element \c i with a \c Future \c f
 
       /// The owner of \c i may be local or remote. If \c i is remote, a task
       /// is spawned on the owning node after the local future has been assigned.

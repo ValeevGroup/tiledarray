@@ -50,7 +50,7 @@ namespace TiledArray {
 
       /// \param world A reference to the world
       /// \param size The number of elements to be mapped
-      ReplicatedPmap(madness::World& world, size_type size) :
+      ReplicatedPmap(World& world, size_type size) :
           Pmap(world, size)
       {
         // Construct a map of all local processes

@@ -226,7 +226,7 @@ namespace TiledArray {
     /// \param world The world where the shape will live
     /// \param tile_norms The Frobenius norm of tiles
     /// \param trange The tiled range of the tensor
-    SparseShape(madness::World& world, const Tensor<value_type>& tile_norms,
+    SparseShape(World& world, const Tensor<value_type>& tile_norms,
         const TiledRange& trange) :
       tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
       zero_tile_count_(0ul)

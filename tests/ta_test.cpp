@@ -22,7 +22,7 @@
 #include "TiledArray/madness.h"
 
 GlobalFixture::GlobalFixture() {
-  world = & madness::initialize(
+  world = & TiledArray::initialize(
       boost::unit_test::framework::master_test_suite().argc,
       boost::unit_test::framework::master_test_suite().argv);
 
@@ -31,10 +31,10 @@ GlobalFixture::GlobalFixture() {
 
 GlobalFixture::~GlobalFixture() {
   world->gop.fence();
-  madness::finalize();
+  TiledArray::finalize();
 }
 
-madness::World* GlobalFixture::world = NULL;
+TiledArray::World* GlobalFixture::world = NULL;
 const std::array<std::size_t, 20> GlobalFixture::primes =
     {{ 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71 }};
 

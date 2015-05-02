@@ -102,10 +102,10 @@ public:
   std::string name() const { return name_; }
 
   TArray2s
-  make_f(madness::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2);
+  make_f(TiledArray::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2);
 
   TArray4s
-  make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4);
+  make_v_ab(TiledArray::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4);
 
   TArray2s::value_type
   make_D_vo_tile(const TiledArray::Array<double, 2>::trange_type::tile_range_type& range) const {

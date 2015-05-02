@@ -64,7 +64,7 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When <tt>proc_rows > rows</tt>
       /// \throw TiledArray::Exception When <tt>proc_cols > cols</tt>
       /// \throw TiledArray::Exception When <tt>proc_rows * proc_cols > world.size()</tt>
-      CyclicPmap(madness::World& world, size_type rows, size_type cols,
+      CyclicPmap(World& world, size_type rows, size_type cols,
           size_type proc_rows, size_type proc_cols) :
         Pmap(world, rows * cols), rows_(rows), cols_(cols),
         proc_cols_(proc_cols), proc_rows_(proc_rows)

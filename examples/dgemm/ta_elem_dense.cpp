@@ -28,7 +28,7 @@ void random_tile_task(it iter, tiletype tile){
 }
 
 TiledArray::Array<double, 2>
-make_random_array(madness::World &world, TiledArray::TiledRange &trange){
+make_random_array(TiledArray::World &world, TiledArray::TiledRange &trange){
   TiledArray::Array<double, 2> array(world, trange);
   typename TiledArray::Array<double, 2>::iterator it = array.begin();
   for(; it != array.end(); ++it){
@@ -41,7 +41,7 @@ make_random_array(madness::World &world, TiledArray::TiledRange &trange){
 
 int main(int argc, char** argv) {
   // Initialize runtime
-  madness::World& world = madness::initialize(argc, argv);
+  TiledArray::World& world = TiledArray::initialize(argc, argv);
   elem::Grid grid(elem::DefaultGrid().Comm());
 
   // Get command line arguments
@@ -184,6 +184,6 @@ int main(int argc, char** argv) {
     std::cout << "Copying to TA from Elemental took " << (e_to_t_end - e_to_t_start)/(double(repeat)) << " s on average." << std::endl;
   }
 
-  madness::finalize();
+  TiledArray::finalize();
   return 0;
 }

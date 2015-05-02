@@ -55,7 +55,7 @@ namespace TiledArray {
     typedef Array<T, DIM, Tile, DensePolicy> array_type;
     typedef typename array_type::size_type size_type;
 
-    madness::World& world = arg.get_world();
+    World& world = arg.get_world();
 
     // Make an empty result array
     array_type result(world, arg.trange(), arg.get_pmap());
@@ -66,7 +66,7 @@ namespace TiledArray {
     end = arg.get_pmap()->end();
     for(; it != end; ++it) {
       // Spawn a task to evaluate the tile
-      madness::Future<typename array_type::value_type> tile =
+      Future<typename array_type::value_type> tile =
           world.taskq.add([=] (const typename array_type::value_type arg_tile) {
             typename array_type::value_type result_tile;
             op(result_tile, arg_tile);
@@ -110,7 +110,7 @@ namespace TiledArray {
     typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
 
-    madness::World& world = arg.get_world();
+    World& world = arg.get_world();
 
     // The tile data is being modified in place, which means we may need to
     // fence to ensure no other threads are using the data.
@@ -126,7 +126,7 @@ namespace TiledArray {
     end = arg.get_pmap()->end();
     for(; it != end; ++it) {
       // Spawn a task to evaluate the tile
-      madness::Future<value_type> tile =
+      Future<value_type> tile =
           world.taskq.add([=] (value_type& arg_tile) {
             op(arg_tile);
             return arg_tile;
@@ -161,7 +161,7 @@ namespace TiledArray {
     typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
     typedef typename array_type::shape_type shape_type;
-    typedef madness::Future<value_type> future_type;
+    typedef Future<value_type> future_type;
     typedef std::pair<size_type, future_type> datum_type;
 
     // Create a vector to hold local tiles
@@ -183,7 +183,7 @@ namespace TiledArray {
       return result_tile;
     };
 
-    madness::World& world = arg.get_world();
+    World& world = arg.get_world();
 
     // Get local tile index iterator
     typename array_type::pmap_interface::const_iterator
@@ -247,7 +247,7 @@ namespace TiledArray {
     typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
     typedef typename array_type::shape_type shape_type;
-    typedef madness::Future<value_type> future_type;
+    typedef Future<value_type> future_type;
     typedef std::pair<size_type, future_type> datum_type;
 
     // Create a vector to hold local tiles
@@ -268,7 +268,7 @@ namespace TiledArray {
       return arg_tile;
     };
 
-    madness::World& world = arg.get_world();
+    World& world = arg.get_world();
 
     // The tile data is being modified in place, which means we may need to
     // fence to ensure no other threads are using the data.

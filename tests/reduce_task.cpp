@@ -49,7 +49,7 @@ struct ReduceTaskFixture {
 
   }
 
-  madness::World& world;
+  TiledArray::World& world;
   ReduceTask<plus<int> > rt;
 
 }; // struct ReduceTaskFixture
@@ -85,7 +85,7 @@ struct ReducePairTaskFixture {
 
   }
 
-  madness::World& world;
+  TiledArray::World& world;
   ReducePairTask<ReduceOp> rt;
 
 }; // struct ReducePairTaskFixture
@@ -100,22 +100,22 @@ BOOST_AUTO_TEST_CASE( reduce_value )
     rt.add(i);
   }
 
-  madness::Future<int> result = rt.submit();
+  Future<int> result = rt.submit();
 
   BOOST_CHECK_EQUAL(result.get(), sum);
 }
 
 BOOST_AUTO_TEST_CASE( reduce_future )
 {
-  std::vector<madness::Future<int> > fut_vec;
+  std::vector<Future<int> > fut_vec;
 
   for(int i = 0; i < 100; ++i) {
-    madness::Future<int> f;
+    Future<int> f;
     fut_vec.push_back(f);
     rt.add(f);
   }
 
-  madness::Future<int> result = rt.submit();
+  Future<int> result = rt.submit();
 
   BOOST_CHECK(!(result.probe()));
 
@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE( reduce_value )
     BOOST_CHECK_EQUAL(rt.count(), i + 1);
   }
 
-  madness::Future<int> result = rt.submit();
+  Future<int> result = rt.submit();
 
   BOOST_CHECK_EQUAL(result.get(), sum);
 }
@@ -165,19 +165,19 @@ BOOST_AUTO_TEST_CASE( reduce_one_value )
   rt.add(2, 3);
   BOOST_CHECK_EQUAL(rt.count(), 1);
 
-  madness::Future<int> result = rt.submit();
+  Future<int> result = rt.submit();
 
   BOOST_CHECK_EQUAL(result.get(), 6);
 }
 
 BOOST_AUTO_TEST_CASE( reduce_future )
 {
-  std::vector<madness::Future<int> > fut1_vec;
-  std::vector<madness::Future<int> > fut2_vec;
+  std::vector<Future<int> > fut1_vec;
+  std::vector<Future<int> > fut2_vec;
 
   for(int i = 0; i < 100; ++i) {
-    madness::Future<int> f1;
-    madness::Future<int> f2;
+    Future<int> f1;
+    Future<int> f2;
     fut1_vec.push_back(f1);
     fut2_vec.push_back(f2);
     BOOST_CHECK_EQUAL(rt.count(), i);
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE( reduce_future )
     BOOST_CHECK_EQUAL(rt.count(), i + 1);
   }
 
-  madness::Future<int> result = rt.submit();
+  Future<int> result = rt.submit();
 
   BOOST_CHECK(!(result.probe()));
 
@@ -204,11 +204,11 @@ BOOST_AUTO_TEST_CASE( reduce_future )
 BOOST_AUTO_TEST_CASE( reduce_one_future )
 {
 
-  madness::Future<int> f1;
-  madness::Future<int> f2;
+  Future<int> f1;
+  Future<int> f2;
   rt.add(f1, f2);
 
-  madness::Future<int> result = rt.submit();
+  Future<int> result = rt.submit();
 
   BOOST_CHECK(!(result.probe()));
 
@@ -223,7 +223,7 @@ BOOST_AUTO_TEST_CASE( reduce_one_future )
 BOOST_AUTO_TEST_CASE( reduce_zero )
 {
   BOOST_CHECK_EQUAL(rt.count(), 0);
-  madness::Future<int> result = rt.submit();
+  Future<int> result = rt.submit();
 
   BOOST_CHECK_EQUAL(result.get(), 0);
 }

@@ -318,7 +318,7 @@ namespace TiledArray {
   /// it yourself. However, you may use \c eigen_submatrix_to_tensor to make
   /// writing such an algorithm easier.
   template <typename A, typename Derived>
-  A eigen_to_array(madness::World& world, const typename A::trange_type& trange,
+  A eigen_to_array(World& world, const typename A::trange_type& trange,
       const Eigen::MatrixBase<Derived>& matrix, bool replicated = false)
   {
     typedef typename A::size_type size_type;
@@ -467,7 +467,7 @@ namespace TiledArray {
   /// \throw TiledArray::Exception When \c m and \c n are not equal to the
   /// number of rows or columns in tiled range.
   template <typename A>
-  inline A row_major_buffer_to_array(madness::World& world, const typename A::trange_type& trange,
+  inline A row_major_buffer_to_array(World& world, const typename A::trange_type& trange,
       const typename A::value_type::value_type* buffer, const std::size_t m,
       const std::size_t n, const bool replicated = false)
   {
@@ -523,7 +523,7 @@ namespace TiledArray {
   /// \throw TiledArray::Exception When \c m and \c n are not equal to the
   /// number of rows or columns in tiled range.
   template <typename A>
-  inline A column_major_buffer_to_array(madness::World& world, const typename A::trange_type& trange,
+  inline A column_major_buffer_to_array(World& world, const typename A::trange_type& trange,
       const typename A::value_type::value_type* buffer, const std::size_t m,
       const std::size_t n, const bool replicated = false)
   {

@@ -381,7 +381,7 @@ namespace TiledArray {
       /// tensor.
       /// \param world The world were the result will be distributed
       /// \param pmap The process map for the result tensor tiles
-      void init_distribution(madness::World* world, std::shared_ptr<pmap_interface> pmap) {
+      void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
         const unsigned int inner_rank = op_.gemm_helper().num_contract_ranks();
         const unsigned int left_rank = op_.gemm_helper().left_rank();
         const unsigned int right_rank = op_.gemm_helper().right_rank();

@@ -40,7 +40,7 @@ void print_map(std::size_t m, std::size_t n, const std::vector<ProcessID>& map) 
   }
 }
 
-void print_local(madness::World& world, const std::shared_ptr<TiledArray::Pmap>& pmap) {
+void print_local(TiledArray::World& world, const std::shared_ptr<TiledArray::Pmap>& pmap) {
   for(ProcessID r = 0; r < world.size(); ++r) {
     world.gop.fence();
     if(r == world.rank()) {
@@ -53,7 +53,7 @@ void print_local(madness::World& world, const std::shared_ptr<TiledArray::Pmap>&
 }
 
 int main(int argc, char** argv) {
-  madness::World& world = madness::initialize(argc,argv);
+  TiledArray::World& world = TiledArray::initialize(argc,argv);
 
   std::size_t m = 20;
   std::size_t n = 10;
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
   }
 
   print_local(world, hash_pmap);
-  madness::finalize();
+  TiledArray::finalize();
 
   return 0;
 }

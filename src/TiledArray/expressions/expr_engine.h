@@ -59,7 +59,7 @@ namespace TiledArray {
       // The member variables of this class are protected because derived
       // classes will customize initialization.
 
-      madness::World* world_; ///< The world where this expression will be evaluated
+      World* world_; ///< The world where this expression will be evaluated
       VariableList vars_; ///< The variable list of this expression
       bool permute_tiles_; ///< Result tile permutation flag (\c true == permute tile)
       Permutation perm_; ///< The permutation that will be applied to the result
@@ -86,7 +86,7 @@ namespace TiledArray {
       /// \param world The world where the expression will be evaluated
       /// \param pmap The process map for the result tensor (may be NULL)
       /// \param target_vars The target variable list of the result tensor
-      void init(madness::World& world, std::shared_ptr<pmap_interface> pmap,
+      void init(World& world, std::shared_ptr<pmap_interface> pmap,
           const VariableList& target_vars)
       {
         if(target_vars.dim()) {
@@ -137,7 +137,7 @@ namespace TiledArray {
       /// own implementation it.
       /// \param world The world were the result will be distributed
       /// \param pmap The process map for the result tensor tiles
-      void init_distribution(madness::World* world,
+      void init_distribution(World* world,
           const std::shared_ptr<pmap_interface>& pmap)
       {
         TA_ASSERT(world);
@@ -180,7 +180,7 @@ namespace TiledArray {
       /// World accessor
 
       /// \return A pointer to world
-      madness::World* world() const { return world_; }
+      World* world() const { return world_; }
 
       /// Variable list accessor
 

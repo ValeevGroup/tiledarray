@@ -37,7 +37,7 @@ Array<T, DIM, detail::result_of_t<Op(Tile)>, Policy> to_new_tile_type(
         // Must check for zero because pmap_iter does not.
         if (!old_array.is_zero(*it)) {
             // Spawn a task to evaluate the tile
-            madness::Future<OutTileType> tile =
+            Future<OutTileType> tile =
                 world.taskq.add(op, old_array.find(*it));
             new_array.set(*it, tile);
         }

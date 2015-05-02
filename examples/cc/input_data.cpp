@@ -143,7 +143,7 @@ InputData::InputData(std::ifstream& input) {
 }
 
 TArray2s
-InputData::make_f(madness::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2) {
+InputData::make_f(TiledArray::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2) {
   // Construct the array
   TiledArray::TiledRange tr = trange(s, ov1, ov2);
 //  std::cout << tr << "\n";
@@ -167,7 +167,7 @@ InputData::make_f(madness::World& w, const Spin s, const RangeOV ov1, const Rang
 }
 
 TArray4s
-InputData::make_v_ab(madness::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) {
+InputData::make_v_ab(TiledArray::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) {
   // Construct the array
   TiledArray::TiledRange tr = trange(alpha, beta, ov1, ov2, ov3, ov4);
 //  std::cout << tr << "\n";

@@ -77,19 +77,19 @@ namespace TiledArray {
 
       /// The left tensor cache container type
       typedef typename left_type::eval_type left_value_type;
-      typedef madness::ConcurrentHashMap<size_type, madness::Future<left_value_type> > left_container;
+      typedef madness::ConcurrentHashMap<size_type, Future<left_value_type> > left_container;
 
       /// The right tensor cache container type
       typedef typename right_type::eval_type right_value_type;
-      typedef madness::ConcurrentHashMap<size_type, madness::Future<right_value_type> > right_container;
+      typedef madness::ConcurrentHashMap<size_type, Future<right_value_type> > right_container;
 
 
       /// Contraction and reduction task type
       typedef TiledArray::detail::ReducePairTask<op_type> reduce_pair_task;
 
       /// Datum type for
-      typedef std::pair<size_type, madness::Future<right_value_type> > row_datum;
-      typedef std::pair<size_type, madness::Future<left_value_type> > col_datum;
+      typedef std::pair<size_type, Future<right_value_type> > row_datum;
+      typedef std::pair<size_type, Future<left_value_type> > col_datum;
       typedef reduce_pair_task result_datum;
 
       left_type left_; ///< The left argument tensor
@@ -159,7 +159,7 @@ namespace TiledArray {
       /// \param group The broadcast group
       /// \param rank The rank of this process in group
       template <typename Handler, typename Value>
-      void spawn_bcast_task(Handler handler, const size_type i, const madness::Future<Value>& value,
+      void spawn_bcast_task(Handler handler, const size_type i, const Future<Value>& value,
           const std::vector<ProcessID>& group, const ProcessID rank)
       {
         if(value.probe())
@@ -183,7 +183,7 @@ namespace TiledArray {
         // Copy tile into local cache
         typename left_container::const_accessor acc;
         const bool erase_cache = ! left_cache_.insert(acc, i);
-        madness::Future<left_value_type> tile = acc->second;
+        Future<left_value_type> tile = acc->second;
 
         // If the local future is already present, the cached value is not needed
         if(erase_cache)
@@ -209,7 +209,7 @@ namespace TiledArray {
         // Copy tile into local cache
         typename right_container::const_accessor acc;
         const bool erase_cache = ! right_cache_.insert(acc, i);
-        madness::Future<right_value_type> tile = acc->second;
+        Future<right_value_type> tile = acc->second;
 
         // If the local future is already present, the cached value is not needed
         if(erase_cache)
@@ -226,7 +226,7 @@ namespace TiledArray {
       private:
         std::shared_ptr<Summa_> owner_;
         const size_type bcast_k_;
-        std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > > results_;
+        std::pair<Future<std::vector<col_datum> >, Future<std::vector<row_datum> > > results_;
 
         virtual void get_id(std::pair<void*,unsigned short>& id) const {
             return madness::PoolTaskInterface::make_id(id, *this);
@@ -250,7 +250,7 @@ namespace TiledArray {
         template <typename Arg>
         static typename std::enable_if<
             ! TiledArray::math::is_lazy_tile<typename Arg::value_type>::value,
-            madness::Future<typename Arg::eval_type> >::type
+            Future<typename Arg::eval_type> >::type
         get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
 
 
@@ -265,7 +265,7 @@ namespace TiledArray {
         template <typename Arg>
         static typename std::enable_if<
             TiledArray::math::is_lazy_tile<typename Arg::value_type>::value,
-            madness::Future<typename Arg::eval_type> >::type
+            Future<typename Arg::eval_type> >::type
         get_tile(Arg& arg, const typename Arg::size_type index) {
           return arg.get_world().taskq.add(
               & BcastRowColTask::template convert_tile_task<typename Arg::value_type>,
@@ -307,7 +307,7 @@ namespace TiledArray {
               // Insert a future into the cache as a placeholder for the broadcast tile.
               typename left_container::const_accessor acc;
               const bool erase_cache = ! owner_->left_cache_.insert(acc, i);
-              madness::Future<left_value_type> tile = acc->second;
+              Future<left_value_type> tile = acc->second;
 
               // If the local future is already present, the cached value is not needed
               if(erase_cache)
@@ -357,7 +357,7 @@ namespace TiledArray {
               // Insert a future into the cache as a placeholder for the broadcast tile.
               typename right_container::const_accessor acc;
               const bool erase_cache = ! owner_->right_cache_.insert(acc, i);
-              madness::Future<right_value_type> tile = acc->second;
+              Future<right_value_type> tile = acc->second;
 
               if(erase_cache)
                 owner_->right_cache_.erase(acc); // Bcast data has arrived, so erase cache
@@ -386,7 +386,7 @@ namespace TiledArray {
           results_.second.set(bcast_row());
         }
 
-        const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >&
+        const std::pair<Future<std::vector<col_datum> >, Future<std::vector<row_datum> > >&
         result() const { return results_; }
       }; // class BcastTask
 
@@ -422,7 +422,7 @@ namespace TiledArray {
       /// for the left and right tensors respectively.
       void step(const size_type k,
           const std::vector<col_datum>& col_k0, const std::vector<row_datum>& row_k0,
-          const std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >& col_row_k1)
+          const std::pair<Future<std::vector<col_datum> >, Future<std::vector<row_datum> > >& col_row_k1)
       {
         const bool assign = (k == (k_ - 1));
 
@@ -457,8 +457,8 @@ namespace TiledArray {
           } else {
             task(get_world().rank(), & Summa_::step, k + 1, col_row_k1.first,
                 col_row_k1.second, std::make_pair(
-                    madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
-                    madness::Future<std::vector<row_datum> >(std::vector<row_datum>())),
+                    Future<std::vector<col_datum> >(std::vector<col_datum>()),
+                    Future<std::vector<row_datum> >(std::vector<row_datum>())),
                 madness::TaskAttributes::hipri());
           }
         }
@@ -483,7 +483,7 @@ namespace TiledArray {
       /// \note The trange, shape, and pmap are assumed to be in the final,
       /// permuted, state for the result.
       Summa(const left_type& left, const right_type& right,
-          madness::World& world, const trange_type trange, const shape_type& shape,
+          World& world, const trange_type trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
           const op_type& op, const size_type k, const ProcGrid& proc_grid) :
         DistEvalImpl_(world, trange, shape, pmap, perm), WorldObject_(world),
@@ -516,10 +516,10 @@ namespace TiledArray {
       /// Get tile at index \c i
 
       /// \param i The index of the tile
-      /// \return A \c madness::Future to the tile at index i
+      /// \return A \c Future to the tile at index i
       /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
       /// \throw TiledArray::Exception When tile \c i a zero tile.
-      virtual madness::Future<value_type> get_tile(size_type i) const {
+      virtual Future<value_type> get_tile(size_type i) const {
         TA_ASSERT(TensorImpl_::is_local(i));
         TA_ASSERT(! TensorImpl_::is_zero(i));
 
@@ -558,17 +558,17 @@ namespace TiledArray {
         if(proc_grid_.local_size() > 0ul) {
           // Start broadcast tasks of column and row for k = 0
           BcastRowColTask* task_col_row_k0 = bcast_row_and_column(0ul);
-          std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
+          std::pair<Future<std::vector<col_datum> >, Future<std::vector<row_datum> > >
           col_row_k0 = task_col_row_k0->result();
           get_world().taskq.add(task_col_row_k0);
 
           // Start broadcast tasks of column and row for k = 1
           BcastRowColTask* task_col_row_k1 = bcast_row_and_column(1ul);
-          std::pair<madness::Future<std::vector<col_datum> >, madness::Future<std::vector<row_datum> > >
+          std::pair<Future<std::vector<col_datum> >, Future<std::vector<row_datum> > >
           col_row_k1 = (task_col_row_k1 ? task_col_row_k1->result() :
               std::make_pair(
-                  madness::Future<std::vector<col_datum> >(std::vector<col_datum>()),
-                  madness::Future<std::vector<row_datum> >(std::vector<row_datum>())));
+                  Future<std::vector<col_datum> >(std::vector<col_datum>()),
+                  Future<std::vector<row_datum> >(std::vector<row_datum>())));
           if(task_col_row_k1)
             get_world().taskq.add(task_col_row_k1);
 
@@ -653,8 +653,8 @@ namespace TiledArray {
       const size_type right_stride_local_; ///< stride for local right row iterators
 
 
-      typedef madness::Future<typename right_type::eval_type> right_future; ///< Future to a right-hand argument tile
-      typedef madness::Future<typename left_type::eval_type> left_future; ///< Future to a left-hand argument tile
+      typedef Future<typename right_type::eval_type> right_future; ///< Future to a right-hand argument tile
+      typedef Future<typename left_type::eval_type> left_future; ///< Future to a left-hand argument tile
       typedef std::pair<size_type, right_future> row_datum; ///< Datum element type for a right-hand argument row
       typedef std::pair<size_type, left_future> col_datum; ///< Datum element type for a left-hand argument column
 
@@ -769,7 +769,7 @@ namespace TiledArray {
       template <typename Arg>
       static typename std::enable_if<
           ! TiledArray::math::is_lazy_tile<typename Arg::value_type>::value,
-          madness::Future<typename Arg::eval_type> >::type
+          Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
 
 
@@ -784,7 +784,7 @@ namespace TiledArray {
       template <typename Arg>
       static typename std::enable_if<
           TiledArray::math::is_lazy_tile<typename Arg::value_type>::value,
-          madness::Future<typename Arg::eval_type> >::type
+          Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) {
         return arg.get_world().taskq.add(
             & Summa_::template convert_tile_task<typename Arg::value_type>,
@@ -816,7 +816,7 @@ namespace TiledArray {
         } else {
           for(size_type i = 0ul; index < end; ++i, index += stride) {
             if(arg.shape().is_zero(index)) continue;
-            vec.emplace_back(i, madness::Future<typename Arg::eval_type>());
+            vec.emplace_back(i, Future<typename Arg::eval_type>());
           }
         }
 
@@ -1474,7 +1474,7 @@ namespace TiledArray {
       protected:
         // Member variables
         std::shared_ptr<Summa_> owner_; ///< The owner of this task
-        madness::World& world_;
+        World& world_;
         std::vector<col_datum> col_{};
         std::vector<row_datum> row_{};
         FinalizeTask* finalize_task_; ///< The SUMMA finalization task
@@ -1628,9 +1628,9 @@ namespace TiledArray {
 
       class SparseStepTask : public StepTask {
       protected:
-        madness::Future<size_type> k_{};
-        madness::Future<madness::Group> row_group_{};
-        madness::Future<madness::Group> col_group_{};
+        Future<size_type> k_{};
+        Future<madness::Group> row_group_{};
+        Future<madness::Group> col_group_{};
         using StepTask::owner_;
         using StepTask::world_;
         using StepTask::finalize_task_;
@@ -1718,7 +1718,7 @@ namespace TiledArray {
       /// \note The trange, shape, and pmap are assumed to be in the final,
       /// permuted, state for the result.
       Summa(const left_type& left, const right_type& right,
-          madness::World& world, const trange_type trange, const shape_type& shape,
+          World& world, const trange_type trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
           const op_type& op, const size_type k, const ProcGrid& proc_grid) :
         DistEvalImpl_(world, trange, shape, pmap, perm),
@@ -1739,10 +1739,10 @@ namespace TiledArray {
       /// Get tile at index \c i
 
       /// \param i The index of the tile
-      /// \return A \c madness::Future to the tile at index i
+      /// \return A \c Future to the tile at index i
       /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
       /// \throw TiledArray::Exception When tile \c i a zero tile.
-      virtual madness::Future<value_type> get_tile(size_type i) const {
+      virtual Future<value_type> get_tile(size_type i) const {
         TA_ASSERT(TensorImpl_::is_local(i));
         TA_ASSERT(! TensorImpl_::is_zero(i));
 

@@ -40,9 +40,9 @@ namespace TiledArray {
 
       A destination_; ///< The replicated array
       std::vector<typename A::size_type> indices_; ///< List of local tile indices
-      std::vector<madness::Future<typename A::value_type> > data_; ///< List of local tiles
+      std::vector<Future<typename A::value_type> > data_; ///< List of local tiles
       madness::AtomicInt sent_; ///< The number of nodes the data has been sent to
-      madness::World& world_;
+      World& world_;
       volatile callback_type callbacks_; ///< A callback stack
       volatile mutable bool probe_; ///< Cache for local data probe
 
@@ -67,9 +67,9 @@ namespace TiledArray {
           madness::TaskInterface(madness::TaskAttributes::hipri()),
           parent_(parent)
         {
-          typename std::vector<madness::Future<typename A::value_type> >::iterator it =
+          typename std::vector<Future<typename A::value_type> >::iterator it =
               parent_.data_.begin();
-          typename std::vector<madness::Future<typename A::value_type> >::iterator end =
+          typename std::vector<Future<typename A::value_type> >::iterator end =
               parent_.data_.end();
           for(; it != end; ++it) {
             if(! it->probe()) {
@@ -94,9 +94,9 @@ namespace TiledArray {
         madness::ScopedMutex<madness::Spinlock> locker(this);
 
         if(! probe_) {
-          typename std::vector<madness::Future<typename A::value_type> >::const_iterator it =
+          typename std::vector<Future<typename A::value_type> >::const_iterator it =
               data_.begin();
-          typename std::vector<madness::Future<typename A::value_type> >::const_iterator end =
+          typename std::vector<Future<typename A::value_type> >::const_iterator end =
               data_.end();
           for(; it != end; ++it)
             if(! it->probe())
@@ -134,13 +134,13 @@ namespace TiledArray {
       }
 
       void send_handler(const std::vector<typename A::size_type>& indices,
-          const std::vector<madness::Future<typename A::value_type> >& data)
+          const std::vector<Future<typename A::value_type> >& data)
       {
         typename std::vector<typename A::size_type>::const_iterator index_it =
             indices.begin();
-        typename std::vector<madness::Future<typename A::value_type> >::const_iterator data_it =
+        typename std::vector<Future<typename A::value_type> >::const_iterator data_it =
             data.begin();
-        typename std::vector<madness::Future<typename A::value_type> >::const_iterator data_end =
+        typename std::vector<Future<typename A::value_type> >::const_iterator data_end =
             data.end();
 
         for(; data_it != data_end; ++data_it, ++index_it)

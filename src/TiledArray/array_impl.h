@@ -382,7 +382,7 @@ namespace TiledArray {
       /// \param pmap The tile-process map
       /// \throw TiledArray::Exception When the size of shape is not equal to
       /// zero
-      ArrayImpl(madness::World& world, const trange_type& trange, const shape_type& shape,
+      ArrayImpl(World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap) :
         TensorImpl_(world, trange, shape, pmap),
         data_(world, trange.tiles().volume(), pmap)
@@ -406,7 +406,7 @@ namespace TiledArray {
       /// Set tile
 
       /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,
-      /// \c madness::Future<value_type> , or
+      /// \c Future<value_type> , or
       /// \c madness::detail::MoveWrapper<value_type> .
       /// \tparam Index The index type
       /// \tparam Value The value type

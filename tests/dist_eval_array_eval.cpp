@@ -57,7 +57,7 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
   static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
   make_array_eval(
       const Array<T, DIM, Tile, Policy>& array,
-      madness::World& world,
+      TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
       const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm,
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE( eval_scale )
     ArrayN::value_type array_tile = array.find(*it);
 
     // Get the array evaluator tile.
-    madness::Future<dist_eval_type::value_type> impl_tile;
+    Future<dist_eval_type::value_type> impl_tile;
     BOOST_REQUIRE_NO_THROW(impl_tile = dist_eval.get(*it));
 
     // Force the evaluation of the tile
@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE( eval_permute )
     ArrayN::value_type array_tile = array.find(inv_perm ^ dist_eval.range().idx(*it));
 
     // Get the corresponding array evaluator tile.
-    madness::Future<dist_eval_type::value_type> tile;
+    Future<dist_eval_type::value_type> tile;
     BOOST_REQUIRE_NO_THROW(tile = dist_eval.get(*it));
 
     // Force the evaluation of the tile

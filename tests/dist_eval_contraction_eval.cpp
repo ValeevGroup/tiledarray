@@ -152,7 +152,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   TiledArray::detail::DistEval<typename Op::result_type, Policy> make_contract_eval(
       const TiledArray::detail::DistEval<LeftTile, Policy>& left,
       const TiledArray::detail::DistEval<RightTile, Policy>& right,
-      madness::World& world,
+      TiledArray::World& world,
       const typename TiledArray::detail::DistEval<typename Op::result_type, Policy>::shape_type& shape,
       const std::shared_ptr<typename TiledArray::detail::DistEval<typename Op::result_type, Policy>::pmap_interface>& pmap,
       const Permutation& perm,
@@ -211,7 +211,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
   make_array_eval(
       const Array<T, DIM, Tile, Policy>& array,
-      madness::World& world,
+      TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
       const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm,
@@ -282,7 +282,7 @@ BOOST_AUTO_TEST_CASE( eval )
   for(; it != end; ++it) {
 
     // Get the array evaluator tile.
-    madness::Future<dist_eval_type1::value_type> tile;
+    Future<dist_eval_type1::value_type> tile;
     BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
 
     // Force the evaluation of the tile
@@ -326,7 +326,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   for(; it != end; ++it) {
 
     // Get the array evaluator tile.
-    madness::Future<dist_eval_type1::value_type> tile;
+    Future<dist_eval_type1::value_type> tile;
     BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
 
     // Force the evaluation of the tile
@@ -397,7 +397,7 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
 
     } else {
       // Get the array evaluator tile.
-      madness::Future<dist_eval_type1::value_type> tile;
+      Future<dist_eval_type1::value_type> tile;
       BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
 
       // Force the evaluation of the tile

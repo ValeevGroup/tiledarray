@@ -95,7 +95,7 @@ namespace TiledArray {
       /// \param perm The permutation that is applied to tile indices
       /// \note \c trange and \c shape will be permuted by \c perm before
       /// storing the data.
-      DistEvalImpl(madness::World& world, const trange_type& trange,
+      DistEvalImpl(World& world, const trange_type& trange,
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm) :
         TensorImpl_(world, trange, shape, pmap),
@@ -128,7 +128,7 @@ namespace TiledArray {
       /// \param i The index of the tile
       /// \return Tile at index i
       /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
-      virtual madness::Future<value_type> get_tile(size_type i) const = 0;
+      virtual Future<value_type> get_tile(size_type i) const = 0;
 
       /// Set tensor value
 
@@ -151,7 +151,7 @@ namespace TiledArray {
       /// function should be called by a task function.
       /// \param i The index in the result space where value will be stored
       /// \param f The future value to be stored at index \c i
-      void set_tile(size_type i, madness::Future<value_type> f) {
+      void set_tile(size_type i, Future<value_type> f) {
         // Store value
         madness::DistributedID id(id_, i);
         TensorImpl_::get_world().gop.send(TensorImpl_::owner(i), id, f);
@@ -228,7 +228,7 @@ namespace TiledArray {
       typedef typename impl_type::pmap_interface pmap_interface; ///< Process map interface type
       typedef typename impl_type::value_type value_type; ///< Tile type
       typedef typename impl_type::eval_type eval_type; ///< Tile evaluation type
-      typedef madness::Future<value_type> future; ///< Future of tile type
+      typedef Future<value_type> future; ///< Future of tile type
 
     private:
       std::shared_ptr<impl_type> pimpl_; ///< pointer to the implementation object
@@ -325,7 +325,7 @@ namespace TiledArray {
       /// World object accessor
 
       /// \return A reference to the world object
-      madness::World& get_world() const { return pimpl_->get_world(); }
+      World& get_world() const { return pimpl_->get_world(); }
 
       /// Unique object id
 

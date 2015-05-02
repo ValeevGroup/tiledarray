@@ -53,7 +53,7 @@ namespace TiledArray {
       /// \param world The world where the tiles are mapped
       /// \param size The number of tiles to be mapped
       /// \param seed The hash seed used to generate different maps
-      HashPmap(madness::World& world, const size_type size, madness::hashT seed = 0ul) :
+      HashPmap(World& world, const size_type size, madness::hashT seed = 0ul) :
           Pmap(world, size), seed_(seed)
       {
         // Construct a map of all local processes
