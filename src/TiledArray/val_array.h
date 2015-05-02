@@ -62,11 +62,11 @@ namespace TiledArray {
       mutable madness::AtomicInt* counter_; ///< The pointer to reference counter
 
       template <typename U>
-      typename madness::enable_if<std::is_scalar<U> >::type
+      typename std::enable_if<std::is_scalar<U>::value>::type
       default_construct(const size_type, U* restrict) { }
 
       template <typename U>
-      typename madness::disable_if<std::is_scalar<U> >::type
+      typename std::enable_if<! std::is_scalar<U>::value>::type
       default_construct(const size_type n, U* restrict u) {
         size_type i = 0ul;
         try {

@@ -106,11 +106,11 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool C>
-      typename madness::enable_if_c<!C, result_type>::type
+      typename std::enable_if<!C, result_type>::type
       no_permute(const Arg& arg) const { return TiledArray::scale(arg, factor_); }
 
       template <bool C>
-      typename madness::enable_if_c<C, result_type>::type
+      typename std::enable_if<C, result_type>::type
       no_permute(Arg& arg) const { return TiledArray::scale_to(arg, factor_); }
 
     }; // class Scal

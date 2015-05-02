@@ -201,45 +201,45 @@ namespace TiledArray {
   ///   // type ane consumability of the arguments.
   ///
   ///   template <bool LC, bool RC>
-  ///   typename madness::disable_if_c<(LC && std::is_same<Result, Left>::value) ||
-  ///       (RC && std::is_same<Result, Right>::value), result_type>::type
+  ///   typename std::enable_if<! ((LC && std::is_same<Result, Left>::value) ||
+  ///       (RC && std::is_same<Result, Right>::value)), result_type>::type
   ///   no_permute(const Left& first, const Right& second) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
-  ///   typename madness::enable_if_c<LC && std::is_same<Result, Left>::value, result_type>::type
+  ///   typename std::enable_if<LC && std::is_same<Result, Left>::value, result_type>::type
   ///   no_permute(Left& first, const Right& second) {
   ///      // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
-  ///   typename madness::enable_if_c<(RC && std::is_same<Result, Right>::value) &&
+  ///   typename std::enable_if<(RC && std::is_same<Result, Right>::value) &&
   ///       (!(LC && std::is_same<Result, Left>::value)), result_type>::type
   ///   no_permute(const Left& first, Right& second) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
-  ///   typename madness::disable_if_c<RC, result_type>::type
+  ///   typename std::enable_if<! RC, result_type>::type
   ///   no_permute(zero_left_type, const Right& second) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
-  ///   typename madness::enable_if_c<RC, result_type>::type
+  ///   typename std::enable_if<RC, result_type>::type
   ///   no_permute(zero_left_type, Right& second) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
-  ///   typename madness::disable_if_c<LC, result_type>::type
+  ///   typename std::enable_if<! LC, result_type>::type
   ///   no_permute(const Left& first, zero_right_type) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
-  ///   typename madness::enable_if_c<LC, result_type>::type
+  ///   typename std::enable_if<LC, result_type>::type
   ///   no_permute(Left& first, zero_right_type) {
   ///     // ...
   ///   }
@@ -325,7 +325,7 @@ namespace TiledArray {
     /// \return The result tile from the binary operation applied to the
     /// evaluated \c first and \c second .
     template <typename L, typename R>
-    typename madness::enable_if_c<math::is_lazy_tile<L>::value && math::is_lazy_tile<R>::value,
+    typename std::enable_if<math::is_lazy_tile<L>::value && math::is_lazy_tile<R>::value,
         result_type>::type
     operator()(const L& first, const R& second) const {
       typename TiledArray::detail::eval_trait<L>::type eval_first(first);
@@ -345,7 +345,7 @@ namespace TiledArray {
     /// \return The result tile from the binary operation applied to the
     /// evaluated \c first and \c second .
     template <typename L, typename R>
-    typename madness::enable_if_c<
+    typename std::enable_if<
         math::is_lazy_tile<L>::value &&
         (! math::is_lazy_tile<typename std::remove_const<R>::type >::value),
         result_type>::type
@@ -366,7 +366,7 @@ namespace TiledArray {
     /// \return The result tile from the binary operation applied to the
     /// evaluated \c first and \c second .
     template <typename L, typename R>
-    typename madness::enable_if_c<
+    typename std::enable_if<
         (! math::is_lazy_tile<typename std::remove_const<L>::type>::value) &&
         math::is_lazy_tile<R>::value,
         result_type>::type
@@ -463,7 +463,7 @@ namespace TiledArray {
     /// \return The result tile from the binary operation applied to the
     /// evaluated \c first and \c second .
     template <typename L, typename R>
-    typename madness::enable_if_c<math::is_array_tile<L>::value && math::is_array_tile<R>::value,
+    typename std::enable_if<math::is_array_tile<L>::value && math::is_array_tile<R>::value,
         result_type>::type
     operator()(const L& first, const R& second) const {
       typename TiledArray::detail::eval_trait<L>::type eval_first(first);
@@ -482,7 +482,7 @@ namespace TiledArray {
 
 
     template <typename L, typename R>
-    typename madness::enable_if_c<
+    typename std::enable_if<
         math::is_array_tile<L>::value &&
         (! math::is_lazy_tile<typename std::remove_const<R>::type>::value),
         result_type>::type
@@ -500,7 +500,7 @@ namespace TiledArray {
 
 
     template <typename L, typename R>
-    typename madness::enable_if_c<
+    typename std::enable_if<
         (! math::is_lazy_tile<typename std::remove_const<L>::type>::value) &&
         math::is_array_tile<R>::value,
         result_type>::type
@@ -517,7 +517,7 @@ namespace TiledArray {
     }
 
     template <typename L, typename R>
-    typename madness::enable_if_c<
+    typename std::enable_if<
         math::is_non_array_lazy_tile<L>::value && math::is_non_array_lazy_tile<R>::value,
         result_type>::type
     operator()(const L& first, const R& second) const {
@@ -528,7 +528,7 @@ namespace TiledArray {
 
 
     template <typename L, typename R>
-    typename madness::enable_if_c<
+    typename std::enable_if<
         math::is_non_array_lazy_tile<L>::value &&
         (! math::is_non_array_lazy_tile<typename std::remove_const<R>::type>::value),
         result_type>::type
@@ -539,7 +539,7 @@ namespace TiledArray {
 
 
     template <typename L, typename R>
-    typename madness::enable_if_c<
+    typename std::enable_if<
         (! math::is_non_array_lazy_tile<typename std::remove_const<L>::type>::value) &&
         math::is_non_array_lazy_tile<R>::value,
         result_type>::type

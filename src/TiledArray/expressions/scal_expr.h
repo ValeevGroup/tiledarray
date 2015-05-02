@@ -95,7 +95,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled expression object
     template <typename D, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalExpr<D> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalExpr<D> >::type
     operator*(const Expr<D>& expr, const Scalar& factor) {
       return ScalExpr<D>(expr.derived(), factor);
     }
@@ -108,7 +109,8 @@ namespace TiledArray {
     /// \param expr The expression object
     /// \return A scaled expression object
     template <typename D, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalExpr<D> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalExpr<D> >::type
     operator*(const Scalar& factor, const Expr<D>& expr) {
       return ScalExpr<D>(expr.derived(), factor);
     }
@@ -121,7 +123,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled expression object
     template <typename Arg, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalExpr<Arg> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalExpr<Arg> >::type
     operator*(const ScalExpr<Arg>& expr, const Scalar& factor) {
       return ScalExpr<Arg>(expr, factor);
     }
@@ -134,7 +137,8 @@ namespace TiledArray {
     /// \param expr The scaled expression object
     /// \return A scaled expression object
     template <typename Arg, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalExpr<Arg> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalExpr<Arg> >::type
     operator*(const Scalar& factor, const ScalExpr<Arg>& expr) {
       return ScalExpr<Arg>(expr, factor);
     }

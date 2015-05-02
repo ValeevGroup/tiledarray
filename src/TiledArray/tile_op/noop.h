@@ -89,11 +89,11 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool C>
-      static typename madness::enable_if_c<!C, result_type>::type
+      static typename std::enable_if<!C, result_type>::type
       no_permute(const Arg& arg) { return TiledArray::clone(arg); }
 
       template <bool C>
-      static typename madness::enable_if_c<C, result_type>::type
+      static typename std::enable_if<C, result_type>::type
       no_permute(Arg& arg) { return arg; }
 
     }; // class Noop

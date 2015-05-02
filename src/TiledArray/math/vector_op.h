@@ -430,7 +430,7 @@ namespace TiledArray {
     }
 
     template <typename Arg, typename Result>
-    typename madness::disable_if_c<std::is_same<Arg, Result>::value && std::is_scalar<Arg>::value>::type
+    typename std::enable_if<! (std::is_same<Arg, Result>::value && std::is_scalar<Arg>::value)>::type
     copy_vector(const std::size_t n, const Arg* const arg,
         Result* const result)
     {
@@ -446,7 +446,7 @@ namespace TiledArray {
     }
 
     template <typename T>
-    inline typename madness::enable_if<std::is_scalar<T> >::type
+    inline typename std::enable_if<std::is_scalar<T>::value>::type
     copy_vector(const std::size_t n, const T* const arg, T* const result) {
       std::memcpy(result, arg, n * sizeof(T));
     }
@@ -459,7 +459,7 @@ namespace TiledArray {
 
 
     template <typename Arg, typename Result>
-    typename madness::disable_if_c<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
+    typename std::enable_if<! (std::is_scalar<Arg>::value && std::is_scalar<Result>::value)>::type
     uninitialized_copy_vector(const std::size_t n, const Arg* const arg,
         Result* const result)
     {
@@ -468,13 +468,13 @@ namespace TiledArray {
     }
 
     template <typename Arg, typename Result>
-    inline typename madness::enable_if_c<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
+    inline typename std::enable_if<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
     uninitialized_copy_vector(const std::size_t n, const Arg* const arg, Result* const result) {
       copy_vector(n, arg, result);
     }
 
     template <typename Arg, typename Result>
-    typename madness::disable_if_c<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
+    typename std::enable_if<! (std::is_scalar<Arg>::value && std::is_scalar<Result>::value)>::type
     uninitialized_fill_vector(const std::size_t n, const Arg& arg,
         Result* const result)
     {
@@ -484,26 +484,26 @@ namespace TiledArray {
 
 
     template <typename Arg, typename Result>
-    inline typename madness::enable_if_c<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
+    inline typename std::enable_if<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
     uninitialized_fill_vector(const std::size_t n, const Arg& arg,
         Result* const result)
     { fill_vector(n, arg, result); }
 
 
     template <typename Arg>
-    typename madness::disable_if<std::is_scalar<Arg> >::type
+    typename std::enable_if<! std::is_scalar<Arg>::value>::type
     destroy_vector(const std::size_t n, Arg* const arg) {
       auto op = [] (Arg* const a) { a->~Arg(); };
       vector_ptr_op(op, n, arg);
     }
 
     template <typename Arg>
-    inline typename madness::enable_if<std::is_scalar<Arg> >::type
+    inline typename std::enable_if<std::is_scalar<Arg>::value>::type
     destroy_vector(const std::size_t, const Arg* const) { }
 
 
     template <typename Arg, typename Result, typename Op>
-    typename madness::disable_if_c<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
+    typename std::enable_if<! (std::is_scalar<Arg>::value && std::is_scalar<Result>::value)>::type
     uninitialized_unary_vector_op(const std::size_t n, const Arg* const arg,
         Result* const result, Op&& op)
     {
@@ -513,7 +513,7 @@ namespace TiledArray {
     }
 
     template <typename Arg, typename Result, typename Op>
-    inline typename madness::enable_if_c<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
+    inline typename std::enable_if<std::is_scalar<Arg>::value && std::is_scalar<Result>::value>::type
     uninitialized_unary_vector_op(const std::size_t n, const Arg* const arg,
         Result* const result, Op&& op)
     {
@@ -522,8 +522,8 @@ namespace TiledArray {
 
 
     template <typename Left, typename Right, typename Result, typename Op>
-    typename madness::disable_if_c<std::is_scalar<Left>::value &&
-        std::is_scalar<Right>::value && std::is_scalar<Result>::value>::type
+    typename std::enable_if<! (std::is_scalar<Left>::value &&
+        std::is_scalar<Right>::value && std::is_scalar<Result>::value)>::type
     uninitialized_binary_vector_op(const std::size_t n, const Left* const left,
         const Right* const right, Result* const result, Op&& op)
     {
@@ -534,7 +534,7 @@ namespace TiledArray {
     }
 
     template <typename Left, typename Right, typename Result, typename Op>
-    typename madness::enable_if_c<std::is_scalar<Left>::value &&
+    typename std::enable_if<std::is_scalar<Left>::value &&
         std::is_scalar<Right>::value && std::is_scalar<Result>::value>::type
     uninitialized_binary_vector_op(const std::size_t n, const Left* const left,
         const Right* const right, Result* const result, Op&& op)

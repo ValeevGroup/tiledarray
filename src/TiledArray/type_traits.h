@@ -101,12 +101,12 @@ namespace TiledArray {
     template <typename T, typename Enabler = void> struct scalar_type;
 
     template <typename T>
-    struct scalar_type<T, typename madness::enable_if<is_numeric<T> >::type> {
+    struct scalar_type<T, typename std::enable_if<is_numeric<T>::value>::type> {
       typedef T type;
     };
 
     template <typename T>
-    struct scalar_type<T, typename madness::enable_if<is_type<typename T::value_type> >::type> :
+    struct scalar_type<T, typename std::enable_if<is_type<typename T::value_type>::value>::type> :
         public scalar_type<typename T::value_type>
     { };
 
@@ -132,7 +132,7 @@ namespace TiledArray {
     };
 
     template <typename T>
-    struct eval_trait<T, typename madness::enable_if<is_type<typename T::eval_type> >::type>  {
+    struct eval_trait<T, typename std::enable_if<is_type<typename T::eval_type>::value>::type>  {
         typedef typename T::eval_type type;
     };
 
@@ -175,7 +175,7 @@ namespace TiledArray {
     };
 
     template <typename T>
-    struct is_iterator<T, typename madness::enable_if<is_type<typename T::iterator_category> >::type > : public std::true_type {
+    struct is_iterator<T, typename std::enable_if<is_type<typename T::iterator_category>::value>::type > : public std::true_type {
       typedef typename std::iterator_traits<T>::iterator_category iterator_category;
     };
 

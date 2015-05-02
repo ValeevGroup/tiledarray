@@ -142,7 +142,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalAddExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalAddExpr<Left, Right> >::type
     operator*(const AddExpr<Left, Right>& expr, const Scalar& factor) {
       return ScalAddExpr<Left, Right>(expr, factor);
     }
@@ -156,7 +157,8 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalAddExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalAddExpr<Left, Right> >::type
     operator*(const Scalar& factor, const AddExpr<Left, Right>& expr) {
       return ScalAddExpr<Left, Right>(expr, factor);
     }
@@ -170,7 +172,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalAddExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalAddExpr<Left, Right> >::type
     operator*(const ScalAddExpr<Left, Right>& expr, const Scalar& factor) {
       return ScalAddExpr<Left, Right>(expr, factor);
     }
@@ -184,7 +187,8 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalAddExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalAddExpr<Left, Right> >::type
     operator*(const Scalar& factor, const ScalAddExpr<Left, Right>& expr) {
       return ScalAddExpr<Left, Right>(expr, factor);
     }

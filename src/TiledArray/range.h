@@ -154,7 +154,7 @@ namespace TiledArray {
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index>
     Range(const Index& start, const Index& finish,
-          typename madness::disable_if<std::is_integral<Index>, Enabler>::type = Enabler()) :
+          typename std::enable_if<! std::is_integral<Index>::value, Enabler>::type = Enabler()) :
       start_(), finish_(), size_(), weight_(), volume_(0ul)
     {
       const size_type n = detail::size(start);
@@ -368,7 +368,7 @@ namespace TiledArray {
     /// \throw TildedArray::Exception When the dimension of this range is not
     /// equal to the size of the index.
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, bool>::type
+    typename std::enable_if<! std::is_integral<Index>::value, bool>::type
     includes(const Index& index) const {
       TA_ASSERT(detail::size(index) == dim());
       const unsigned int end = dim();
@@ -385,7 +385,7 @@ namespace TiledArray {
     /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
     /// \throw nothing
     template <typename Ordinal>
-    typename madness::enable_if<std::is_integral<Ordinal>, bool>::type
+    typename std::enable_if<std::is_integral<Ordinal>::value, bool>::type
     includes(Ordinal i) const {
       return include_ordinal_(i);
     }
@@ -498,7 +498,7 @@ namespace TiledArray {
     /// \return The ordinal index of \c index
     /// \throw When \c index is not included in this range.
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, size_type>::type
+    typename std::enable_if<! std::is_integral<Index>::value, size_type>::type
     ord(const Index& index) const {
       TA_ASSERT(detail::size(index) == dim());
       TA_ASSERT(includes(index));
@@ -579,14 +579,14 @@ namespace TiledArray {
     /// \param i The index
     /// \return \c i (unchanged)
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, const index&>::type
+    typename std::enable_if<! std::is_integral<Index>::value, const index&>::type
     idx(const Index& i) const {
       TA_ASSERT(includes(i));
       return i;
     }
 
     template <typename Archive>
-    typename madness::enable_if<madness::archive::is_input_archive<Archive> >::type
+    typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type
     serialize(const Archive& ar) {
       // Get number of dimensions
       size_type n = 0ul;
@@ -598,7 +598,7 @@ namespace TiledArray {
     }
 
     template <typename Archive>
-    typename madness::enable_if<madness::archive::is_output_archive<Archive> >::type
+    typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type
     serialize(const Archive& ar) const {
       const size_type n = dim();
       ar & n & madness::archive::wrap(start_.data(), n << 2) & volume_;
@@ -624,7 +624,7 @@ namespace TiledArray {
     /// \return \c true when <tt>i >= 0</tt> and <tt>i < volume_</tt>, otherwise
     /// \c false.
     template <typename Index>
-    typename madness::enable_if<std::is_signed<Index>, bool>::type
+    typename std::enable_if<std::is_signed<Index>::value, bool>::type
     include_ordinal_(Index i) const { return (i >= Index(0)) && (i < Index(volume_)); }
 
     /// Check that an unsigned integral value is include in this range
@@ -633,7 +633,7 @@ namespace TiledArray {
     /// \param i The ordinal index to check
     /// \return \c true when  <tt>i < volume_</tt>, otherwise \c false.
     template <typename Index>
-    typename madness::disable_if<std::is_signed<Index>, bool>::type
+    typename std::enable_if<! std::is_signed<Index>::value, bool>::type
     include_ordinal_(Index i) const { return i < volume_; }
 
     /// Increment the coordinate index \c i in this range

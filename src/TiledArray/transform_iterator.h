@@ -395,7 +395,7 @@ namespace TiledArray {
 
       /// \return A transformed copy of the current value of the base iterator.
       template <typename It>
-      typename madness::disable_if<std::is_integral<It>, reference>::type
+      typename std::enable_if<! std::is_integral<It>::value, reference>::type
       dereference(It it) const { return op_(*it); }
 
 
@@ -403,7 +403,7 @@ namespace TiledArray {
 
       /// \return A transformed copy of the current value of the base iterator.
       template <typename It>
-      typename madness::enable_if<std::is_integral<It>, reference>::type
+      typename std::enable_if<std::is_integral<It>::value, reference>::type
       dereference(It it) const { return op_(it); }
 
       base_iterator it_;  ///< The base iterator

@@ -146,7 +146,7 @@ namespace TiledArray {
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, tile_range_type>::type
+    typename std::enable_if<! std::is_integral<Index>::value, tile_range_type>::type
     make_tile_range(const Index& i) const {
       const unsigned int dim = range_.dim();
       TA_ASSERT(i.size() == dim);
@@ -169,7 +169,7 @@ namespace TiledArray {
     /// \param index The element index to convert
     /// \return The tile index that corresponds to the given element index
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, typename range_type::index>::type
+    typename std::enable_if<! std::is_integral<Index>::value, typename range_type::index>::type
     element_to_tile(const Index& index) const {
       const unsigned int dim = range_.dim();
       typename range_type::index result;

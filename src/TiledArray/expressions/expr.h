@@ -88,7 +88,7 @@ namespace TiledArray {
         /// \param index The tile index
         /// \param tile The lazy tile
         template <typename Tile>
-        typename madness::enable_if<TiledArray::math::is_lazy_tile<Tile> >::type
+        typename std::enable_if<TiledArray::math::is_lazy_tile<Tile>::value>::type
         set_tile(typename A::size_type index, const madness::Future<Tile>& tile) const {
           if(tile.probe()) {
             array_.set(index, tile.get());
@@ -104,7 +104,7 @@ namespace TiledArray {
         /// \param index The tile index
         /// \param tile The tile
         template <typename Tile>
-        typename madness::disable_if<TiledArray::math::is_lazy_tile<Tile> >::type
+        typename std::enable_if<! TiledArray::math::is_lazy_tile<Tile>::value>::type
         set_tile(typename A::size_type index, const madness::Future<Tile>& tile) const {
           array_.set(index, tile);
         }

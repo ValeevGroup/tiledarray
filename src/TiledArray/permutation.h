@@ -87,7 +87,7 @@ namespace TiledArray {
 
     template <typename InIter>
     Permutation(InIter first, InIter last,
-        typename madness::enable_if<detail::is_input_iterator<InIter>, Enabler >::type = Enabler()) :
+        typename std::enable_if<detail::is_input_iterator<InIter>::value, Enabler >::type = Enabler()) :
         p_(first, last)
     {
       TA_ASSERT( valid_(p_.begin(), p_.end()) );

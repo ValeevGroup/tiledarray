@@ -38,6 +38,10 @@ namespace TiledArray {
 
     template <typename Left, typename Right, template <typename, typename, typename, bool, bool> class Op>
     struct BinaryEngineTrait {
+      static_assert(std::is_same<typename EngineTrait<Left>::policy,
+          typename EngineTrait<Right>::policy>::value,
+          "The left- and right-hand expressions must use the same policy class");
+
       // Argument typedefs
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
@@ -49,8 +53,7 @@ namespace TiledArray {
           typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
           EngineTrait<Right>::consumable> op_type; ///< The tile operation type
       typedef typename EngineTrait<Left>::scalar_type scalar_type; ///< Tile scalar type
-      typedef typename madness::enable_if<std::is_same<typename EngineTrait<Left>::policy,
-          typename EngineTrait<Right>::policy>, typename Left::policy>::type policy; ///< The result policy type
+      typedef typename Left::policy policy; ///< The result policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs

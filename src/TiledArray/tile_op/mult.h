@@ -109,48 +109,48 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<!(LC || RC), result_type>::type
+      static typename std::enable_if<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) {
         return TiledArray::mult(first, second);
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<LC, result_type>::type
+      static typename std::enable_if<LC, result_type>::type
       no_permute(Left& first, second_argument_type second) {
         mult_to(first,second);
         return first;
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<!LC && RC, result_type>::type
+      static typename std::enable_if<!LC && RC, result_type>::type
       no_permute(first_argument_type first, Right& second) {
         TiledArray::mult_to(second, first);
         return second;
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<!RC, result_type>::type
+      static typename std::enable_if<!RC, result_type>::type
       no_permute(zero_left_type, const Right&) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<RC, result_type>::type
+      static typename std::enable_if<RC, result_type>::type
       no_permute(zero_left_type, Right&) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<!LC, result_type>::type
+      static typename std::enable_if<!LC, result_type>::type
       no_permute(const Left&, zero_right_type) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
-      static typename madness::enable_if_c<LC, result_type>::type
+      static typename std::enable_if<LC, result_type>::type
       no_permute(Left&, zero_right_type) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();

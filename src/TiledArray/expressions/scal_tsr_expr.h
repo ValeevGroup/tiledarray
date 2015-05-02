@@ -122,7 +122,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-tensor expression object
     template <typename A, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalTsrExpr<A> >::type
     operator*(const TsrExpr<A>& expr, const Scalar& factor) {
       return ScalTsrExpr<A>(expr, factor);
     }
@@ -135,7 +136,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-tensor expression object
     template <typename A, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalTsrExpr<A> >::type
     operator*(const TsrExpr<const A>& expr, const Scalar& factor) {
       return ScalTsrExpr<A>(expr, factor);
     }
@@ -148,7 +150,8 @@ namespace TiledArray {
     /// \param expr The tensor expression object
     /// \return A scaled-tensor expression object
     template <typename A, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalTsrExpr<A> >::type
     operator*(const Scalar& factor, const TsrExpr<A>& expr) {
       return ScalTsrExpr<A>(expr, factor);
     }
@@ -161,7 +164,8 @@ namespace TiledArray {
     /// \param expr The tensor expression object
     /// \return A scaled-tensor expression object
     template <typename A, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalTsrExpr<A> >::type
     operator*(const Scalar& factor, const TsrExpr<const A>& expr) {
       return ScalTsrExpr<A>(expr, factor);
     }
@@ -174,7 +178,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-tensor expression object
     template <typename A, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalTsrExpr<A> >::type
     operator*(const ScalTsrExpr<A>& expr, const Scalar& factor) {
       return ScalTsrExpr<A>(expr, factor);
     }
@@ -187,7 +192,8 @@ namespace TiledArray {
     /// \param expr The scaled-tensor expression object
     /// \return A scaled-tensor expression object
     template <typename A, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalTsrExpr<A> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalTsrExpr<A> >::type
     operator*(const Scalar& factor, const ScalTsrExpr<A>& expr) {
       return ScalTsrExpr<A>(expr, factor);
     }

@@ -248,8 +248,8 @@ namespace TiledArray {
         /// \param tile A future to the tile
         /// \return \c tile
         template <typename Arg>
-        static typename madness::disable_if<
-            TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+        static typename std::enable_if<
+            ! TiledArray::math::is_lazy_tile<typename Arg::value_type>::value,
             madness::Future<typename Arg::eval_type> >::type
         get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
 
@@ -263,8 +263,8 @@ namespace TiledArray {
         /// \param index The tile index of arg
         /// \return A future to the evaluated tile
         template <typename Arg>
-        static typename madness::enable_if<
-            TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+        static typename std::enable_if<
+            TiledArray::math::is_lazy_tile<typename Arg::value_type>::value,
             madness::Future<typename Arg::eval_type> >::type
         get_tile(Arg& arg, const typename Arg::size_type index) {
           return arg.get_world().taskq.add(
@@ -767,8 +767,8 @@ namespace TiledArray {
       /// \param index The tile index of arg
       /// \return \c tile
       template <typename Arg>
-      static typename madness::disable_if<
-          TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+      static typename std::enable_if<
+          ! TiledArray::math::is_lazy_tile<typename Arg::value_type>::value,
           madness::Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
 
@@ -782,8 +782,8 @@ namespace TiledArray {
       /// \param index The tile index of arg
       /// \return A future to the evaluated tile
       template <typename Arg>
-      static typename madness::enable_if<
-          TiledArray::math::is_lazy_tile<typename Arg::value_type>,
+      static typename std::enable_if<
+          TiledArray::math::is_lazy_tile<typename Arg::value_type>::value,
           madness::Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) {
         return arg.get_world().taskq.add(
@@ -1422,7 +1422,7 @@ namespace TiledArray {
       /// \param row A row of tiles from the right-hand argument
       /// \param task The task that depends on the tile contraction tasks
       template <typename T>
-      typename madness::enable_if<std::is_floating_point<T> >::type
+      typename std::enable_if<std::is_floating_point<T>::value>::type
       contract(const SparseShape<T>&, const size_type k,
           const std::vector<col_datum>& col, const std::vector<row_datum>& row,
           madness::TaskInterface* const task)

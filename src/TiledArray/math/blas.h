@@ -138,7 +138,7 @@ namespace TiledArray {
     // BLAS _SCAL wrapper functions
 
     template <typename T, typename U>
-    inline typename madness::enable_if<detail::is_numeric<T> >::type
+    inline typename std::enable_if<detail::is_numeric<T>::value>::type
     scale(const integer n, const T alpha, U* x) {
       eigen_map(x, n) *= alpha;
     }

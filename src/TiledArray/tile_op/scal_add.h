@@ -124,44 +124,44 @@ namespace TiledArray {
       // of the arguments.
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<!(LC || RC), result_type>::type
+      typename std::enable_if<!(LC || RC), result_type>::type
       no_permute(first_argument_type first, second_argument_type second) const {
         return TiledArray::add(first, second, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<LC, result_type>::type
+      typename std::enable_if<LC, result_type>::type
       no_permute(Left& first, second_argument_type second) const {
         return TiledArray::add_to(first, second, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<!LC && RC, result_type>::type
+      typename std::enable_if<!LC && RC, result_type>::type
       no_permute(first_argument_type first, Right& second) const {
         return TiledArray::add_to(second, first, factor_);
       }
 
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<!RC, result_type>::type
+      typename std::enable_if<!RC, result_type>::type
       no_permute(zero_left_type, second_argument_type second) const {
         return TiledArray::scale(second, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<RC, result_type>::type
+      typename std::enable_if<RC, result_type>::type
       no_permute(zero_left_type, Right& second) const {
         return TiledArray::scale_to(second, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<!LC, result_type>::type
+      typename std::enable_if<!LC, result_type>::type
       no_permute(first_argument_type first, zero_right_type) const {
         return TiledArray::scale(first, factor_);
       }
 
       template <bool LC, bool RC>
-      typename madness::enable_if_c<LC, result_type>::type
+      typename std::enable_if<LC, result_type>::type
       no_permute(Left& first, zero_right_type) const {
         return TiledArray::scale_to(first, factor_);
       }

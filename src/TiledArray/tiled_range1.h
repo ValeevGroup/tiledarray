@@ -50,7 +50,7 @@ namespace TiledArray {
     /// Start_tile_index is the index of the first tile.
     template <typename RandIter>
     TiledRange1(RandIter first, RandIter last, const size_type start_tile_index = 0,
-        typename madness::enable_if<detail::is_random_iterator<RandIter>, Enabler >::type = Enabler()) :
+        typename std::enable_if<detail::is_random_iterator<RandIter>::value, Enabler >::type = Enabler()) :
         range_(), element_range_(), tile_ranges_(), elem2tile_()
     {
       static_assert(detail::is_random_iterator<RandIter>::value,

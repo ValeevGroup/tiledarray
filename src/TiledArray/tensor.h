@@ -92,11 +92,11 @@ namespace TiledArray {
     }; // class Impl
 
     template <typename U>
-    static typename madness::enable_if<std::is_scalar<U> >::type
+    static typename std::enable_if<std::is_scalar<U>::value>::type
     default_init(size_type, U*) { }
 
     template <typename U>
-    static typename madness::disable_if<std::is_scalar<U> >::type
+    static typename std::enable_if<! std::is_scalar<U>::value>::type
     default_init(size_type n, U* u) {
       math::uninitialized_fill_vector(n, U(), u);
     }
@@ -186,7 +186,7 @@ namespace TiledArray {
     /// Construct an evaluated tensor
     template <typename InIter>
     Tensor(const range_type& range, InIter it,
-        typename madness::enable_if_c<TiledArray::detail::is_input_iterator<InIter>::value &&
+        typename std::enable_if<TiledArray::detail::is_input_iterator<InIter>::value &&
         ! std::is_pointer<InIter>::value, Enabler>::type = Enabler()) :
       pimpl_(new Impl(range))
     {
@@ -549,7 +549,7 @@ namespace TiledArray {
     /// \return The element at the \c i position.
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, const_reference>::type
+    typename std::enable_if<! std::is_integral<Index>::value, const_reference>::type
     operator[](const Index& i) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
@@ -561,7 +561,7 @@ namespace TiledArray {
     /// \return The element at the \c i position.
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index>, reference>::type
+    typename std::enable_if<! std::is_integral<Index>::value, reference>::type
     operator[](const Index& i) {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
@@ -623,7 +623,7 @@ namespace TiledArray {
     bool empty() const { return !pimpl_; }
 
     template <typename Archive>
-    typename madness::enable_if<madness::archive::is_output_archive<Archive> >::type
+    typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type
     serialize(Archive& ar) {
       if(pimpl_) {
         ar & pimpl_->range_.volume();
@@ -639,7 +639,7 @@ namespace TiledArray {
     /// \tparam Archive The serialization archive type
     /// \param ar The serialization archive
     template <typename Archive>
-    typename madness::enable_if<madness::archive::is_input_archive<Archive> >::type
+    typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type
     serialize(Archive& ar) {
       size_type n = 0ul;
       ar & n;
@@ -1337,7 +1337,7 @@ namespace TiledArray {
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
     template <typename U, typename Op>
-    static typename madness::enable_if<TiledArray::detail::is_numeric<U> >::type
+    static typename std::enable_if<TiledArray::detail::is_numeric<U>::value>::type
     reduce(const size_type n, const U* u, numeric_type& value, const Op& op) {
       math::reduce_op(op, n, value, u);
     }
@@ -1372,7 +1372,7 @@ namespace TiledArray {
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
     template <typename Left, typename Right, typename Op>
-    static typename madness::enable_if_c<TiledArray::detail::is_numeric<Left>::value &&
+    static typename std::enable_if<TiledArray::detail::is_numeric<Left>::value &&
         TiledArray::detail::is_numeric<Right>::value >::type
     reduce(const size_type n, const Left* left, const Right* right,
         numeric_type& value, const Op& op) {
@@ -1579,7 +1579,7 @@ namespace TiledArray {
   /// \param right The right-hand scalar argument
   /// \return A tensor where element \c i is equal to <tt> left[i] * right </tt>
   template <typename T, typename AT, typename N>
-  inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
+  inline typename std::enable_if<TiledArray::detail::is_numeric<N>::value, Tensor<T, AT> >::type
   operator*(const Tensor<T, AT>& left, N right) {
     return left.scale(right);
   }
@@ -1594,7 +1594,7 @@ namespace TiledArray {
   /// \param right The right-hand tensor argument
   /// \return A tensor where element \c i is equal to <tt> left * right[i] </tt>
   template <typename N, typename T, typename AT>
-  inline typename madness::enable_if<TiledArray::detail::is_numeric<N>, Tensor<T, AT> >::type
+  inline typename std::enable_if<TiledArray::detail::is_numeric<N>::value, Tensor<T, AT> >::type
   operator*(N left, const Tensor<T, AT>& right) {
     return right.scale(left);
   }

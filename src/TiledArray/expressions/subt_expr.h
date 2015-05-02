@@ -150,7 +150,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-subtraction expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalSubtExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalSubtExpr<Left, Right> >::type
     operator*(const SubtExpr<Left, Right>& expr, const Scalar& factor) {
       return ScalSubtExpr<Left, Right>(expr, factor);
     }
@@ -164,7 +165,8 @@ namespace TiledArray {
     /// \param expr The subtraction expression object
     /// \return A scaled-subtraction expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalSubtExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalSubtExpr<Left, Right> >::type
     operator*(const Scalar& factor, const SubtExpr<Left, Right>& expr) {
       return ScalSubtExpr<Left, Right>(expr, factor);
     }
@@ -178,7 +180,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-subtraction expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalSubtExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalSubtExpr<Left, Right> >::type
     operator*(const ScalSubtExpr<Left, Right>& expr, const Scalar& factor) {
       return ScalSubtExpr<Left, Right>(expr, factor);
     }
@@ -192,7 +195,8 @@ namespace TiledArray {
     /// \param expr The scaled-subtraction expression object
     /// \return A scaled-subtraction expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalSubtExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalSubtExpr<Left, Right> >::type
     operator*(const Scalar& factor, const ScalSubtExpr<Left, Right>& expr) {
       return ScalSubtExpr<Left, Right>(expr, factor);
     }

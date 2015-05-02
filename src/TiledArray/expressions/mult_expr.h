@@ -152,7 +152,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalMultExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalMultExpr<Left, Right> >::type
     operator*(const MultExpr<Left, Right>& expr, const Scalar& factor) {
       return ScalMultExpr<Left, Right>(expr, factor);
     }
@@ -166,7 +167,8 @@ namespace TiledArray {
     /// \param expr The multiplication expression object
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalMultExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalMultExpr<Left, Right> >::type
     operator*(const Scalar& factor, const MultExpr<Left, Right>& expr) {
       return ScalMultExpr<Left, Right>(expr, factor);
     }
@@ -180,7 +182,8 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalMultExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalMultExpr<Left, Right> >::type
     operator*(const ScalMultExpr<Left, Right>& expr, const Scalar& factor) {
       return ScalMultExpr<Left, Right>(expr, factor);
     }
@@ -194,7 +197,8 @@ namespace TiledArray {
     /// \param expr The multiplication expression object
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename madness::enable_if<TiledArray::detail::is_numeric<Scalar>, ScalMultExpr<Left, Right> >::type
+    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+        ScalMultExpr<Left, Right> >::type
     operator*(const Scalar& factor, const ScalMultExpr<Left, Right>& expr) {
       return ScalMultExpr<Left, Right>(expr, factor);
     }

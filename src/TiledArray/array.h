@@ -263,7 +263,7 @@ namespace TiledArray {
     /// \param i The index of the tile to be set
     /// \param first The iterator that points to the new tile data
     template <typename Index, typename InIter>
-    typename madness::enable_if<detail::is_input_iterator<InIter> >::type
+    typename std::enable_if<detail::is_input_iterator<InIter>::value>::type
     set(const Index& i, InIter first) {
       check_index(i);
       pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
@@ -524,7 +524,7 @@ namespace TiledArray {
   private:
 
     template <typename Index>
-    typename madness::enable_if<std::is_integral<Index> >::type
+    typename std::enable_if<std::is_integral<Index>::value>::type
     check_index(const Index i) const {
       check_pimpl();
       TA_USER_ASSERT(pimpl_->range().includes(i),
@@ -532,7 +532,7 @@ namespace TiledArray {
     }
 
     template <typename Index>
-    typename madness::disable_if<std::is_integral<Index> >::type
+    typename std::enable_if<! std::is_integral<Index>::value>::type
     check_index(const Index& i) const {
       check_pimpl();
       TA_USER_ASSERT(pimpl_->range().includes(i),

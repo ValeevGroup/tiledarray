@@ -48,7 +48,7 @@ namespace TiledArray {
     /// \param a An array object
     /// \return The size of array \c a
     template <typename T>
-    inline typename madness::disable_if<std::is_array<T>, std::size_t>::type
+    inline typename std::enable_if<! std::is_array<T>::value, std::size_t>::type
     size(const T &a) { return a.size(); }
     /// Print the content of an array like object
 
