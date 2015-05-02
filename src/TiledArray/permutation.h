@@ -24,8 +24,6 @@
 #include <TiledArray/type_traits.h>
 #include <TiledArray/utility.h>
 #include <array>
-#include <vector>
-#include <stdarg.h>
 
 namespace TiledArray {
 
