@@ -49,7 +49,7 @@
 #include <TiledArray/pmap/replicated_pmap.h>
 
 // Utility functionality
-#include <TiledArray/eigen.h>
+#include <TiledArray/conversions/eigen.h>
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>

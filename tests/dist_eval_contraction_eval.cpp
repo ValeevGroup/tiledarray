@@ -29,7 +29,7 @@
 #include "TiledArray/dist_eval/array_eval.h"
 #include "TiledArray/dense_shape.h"
 #include "TiledArray/tile_op/contract_reduce.h"
-#include "TiledArray/eigen.h"
+#include "TiledArray/conversions/eigen.h"
 #include "TiledArray/proc_grid.h"
 #include "TiledArray/tile_op/noop.h"
 #include "array_fixture.h"

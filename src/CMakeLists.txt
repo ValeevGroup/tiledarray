@@ -31,7 +31,6 @@ TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/dense_shape.h
 TiledArray/distributed_storage.h
-TiledArray/eigen.h
 TiledArray/elemental.h
 TiledArray/error.h
 TiledArray/madness.h
@@ -58,6 +57,7 @@ TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h
 TiledArray/algebra/utils.h
 TiledArray/conversions/dense_to_sparse.h
+TiledArray/conversions/eigen.h
 TiledArray/conversions/foreach.h
 TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/to_new_tile_type.h

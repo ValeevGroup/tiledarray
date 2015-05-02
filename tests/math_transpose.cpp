@@ -24,7 +24,7 @@
  */
 
 #include "TiledArray/math/transpose.h"
-#include "TiledArray/eigen.h"
+#include "TiledArray/conversions/eigen.h"
 #include "unit_test_config.h"
 
 struct TransposeFixture {

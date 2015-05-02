@@ -25,7 +25,7 @@
 
 #include "TiledArray/sparse_shape.h"
 #include "TiledArray/pmap/blocked_pmap.h"
-#include "TiledArray/eigen.h"
+#include "TiledArray/conversions/eigen.h"
 #include "unit_test_config.h"
 #include "sparse_shape_fixture.h"
 
