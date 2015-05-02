@@ -26,7 +26,6 @@
 #ifndef TILEDARRAY_PERM_INDEX_H__INCLUDED
 #define TILEDARRAY_PERM_INDEX_H__INCLUDED
 
-#include <TiledArray/madness.h>
 #include <TiledArray/range.h>
 
 namespace TiledArray {
