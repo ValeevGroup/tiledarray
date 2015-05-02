@@ -501,8 +501,8 @@ namespace TiledArray {
   /// \param gemm_config A helper object used to simplify gemm operations
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
   template <typename Left, typename Right>
-  Left gemm(const Left& left, const Right& right, const typename Left::numeric_type factor,
-              const math::GemmHelper& gemm_config)
+  inline Left gemm(const Left& left, const Right& right,
+      const typename Left::numeric_type factor, const math::GemmHelper& gemm_config)
   {
     return left.gemm(right, factor, gemm_config);
   }
@@ -521,7 +521,7 @@ namespace TiledArray {
   /// \param gemm_config A helper object used to simplify gemm operations
   /// \return A tile that is equal to <tt>result = (left * right) * factor</tt>
   template <typename Result, typename Left, typename Right>
-  Result& gemm(Result& result, const Left& left, const Right& right,
+  inline Result& gemm(Result& result, const Left& left, const Right& right,
             const typename Result::numeric_type factor, const math::GemmHelper& gemm_config)
   {
     return result.gemm(left, right, factor, gemm_config);

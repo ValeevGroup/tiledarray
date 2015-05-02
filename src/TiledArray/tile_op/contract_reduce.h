@@ -28,6 +28,7 @@
 
 #include <TiledArray/permutation.h>
 #include <TiledArray/math/gemm_helper.h>
+#include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {
   namespace math {

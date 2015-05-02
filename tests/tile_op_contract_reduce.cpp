@@ -23,8 +23,8 @@
  *
  */
 
-#include "TiledArray/tensor.h"
 #include "TiledArray/tile_op/contract_reduce.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;

@@ -17,8 +17,10 @@
  *
  */
 
-#include "tensor_fixture.h"
+#include "TiledArray/tensor.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
+#include "tensor_fixture.h"
 #include <iterator>
 
 
