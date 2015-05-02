@@ -24,7 +24,19 @@
 #include <TiledArray/array.h>
 #include <TiledArray/eigen.h>
 #include <TiledArray/policies/sparse_policy.h>
-#include <TiledArray/conversions/conversions.h>
+
+// Expression functionality
+#include <TiledArray/expressions/scal_expr.h>
+#include <TiledArray/expressions/tsr_expr.h>
+#include <TiledArray/expressions/scal_tsr_expr.h>
+
+// Functions for modifying arrays
+#include <TiledArray/conversions/sparse_to_dense.h>
+#include <TiledArray/conversions/dense_to_sparse.h>
+#include <TiledArray/conversions/to_new_tile_type.h>
+#include <TiledArray/conversions/truncate.h>
+#include <TiledArray/conversions/foreach.h>
+
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>

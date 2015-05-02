@@ -25,10 +25,15 @@
 #include <TiledArray/tensor.h>
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/array_impl.h>
-#include <TiledArray/expressions.h>
 #include <TiledArray/conversions/truncate.h>
 
 namespace TiledArray {
+
+  // Forward declarations
+  namespace expressions {
+    template <typename> class TsrExpr;
+  } // namespace expressions
+
 
   /// An n-dimensional, tiled array
 
