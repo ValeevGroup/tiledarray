@@ -18,6 +18,7 @@
  */
 
 #include "TiledArray/eigen.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
 

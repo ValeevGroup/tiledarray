@@ -17,6 +17,8 @@
  *
  */
 
+#include "TiledArray/array.h"
+#include "tiledarray.h"
 #include "array_fixture.h"
 #include "unit_test_config.h"
 

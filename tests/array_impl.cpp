@@ -24,12 +24,9 @@
  */
 
 #include "TiledArray/array_impl.h"
-#include "TiledArray/tensor.h"
+#include "tiledarray.h"
 #include "sparse_shape_fixture.h"
 #include "unit_test_config.h"
-#include "TiledArray/pmap/hash_pmap.h"
-#include "TiledArray/policies/dense_policy.h"
-#include "TiledArray/policies/sparse_policy.h"
 
 using namespace TiledArray;
 

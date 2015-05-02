@@ -20,9 +20,16 @@
 #ifndef TILEDARRAY_H__INCLUDED
 #define TILEDARRAY_H__INCLUDED
 
-#include <TiledArray/config.h>
+#include <TiledArray/madness.h>
+
+// Array class
 #include <TiledArray/array.h>
-#include <TiledArray/eigen.h>
+
+// Tile type headers
+#include <TiledArray/tensor.h>
+
+// Array policy classes
+#include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/policies/sparse_policy.h>
 
 // Expression functionality
@@ -37,6 +44,12 @@
 #include <TiledArray/conversions/truncate.h>
 #include <TiledArray/conversions/foreach.h>
 
+// Process maps
+#include <TiledArray/pmap/hash_pmap.h>
+#include <TiledArray/pmap/replicated_pmap.h>
+
+// Utility functionality
+#include <TiledArray/eigen.h>
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>

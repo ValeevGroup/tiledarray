@@ -22,7 +22,7 @@
 
 #include <TiledArray/replicator.h>
 #include <TiledArray/pmap/replicated_pmap.h>
-#include <TiledArray/tensor.h>
+//#include <TiledArray/tensor.h>
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/array_impl.h>
 #include <TiledArray/conversions/truncate.h>
@@ -30,6 +30,7 @@
 namespace TiledArray {
 
   // Forward declarations
+  template <typename, typename> class Tensor;
   namespace expressions {
     template <typename> class TsrExpr;
   } // namespace expressions
@@ -43,7 +44,9 @@ namespace TiledArray {
   /// \tparam T The element type of for array tiles
   /// \tparam DIM The number of dimensions for this array object
   /// \tparam Tile The tile type [ Default = \c Tensor<T> ]
-  template <typename T, unsigned int DIM, typename Tile = Tensor<T>, typename Policy = DensePolicy >
+  template <typename T, unsigned int DIM,
+      typename Tile = Tensor<T, Eigen::aligned_allocator<T> >,
+      typename Policy = DensePolicy >
   class Array {
   public:
     typedef Array<T, DIM, Tile, Policy> Array_; ///< This object's type

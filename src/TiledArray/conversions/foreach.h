@@ -31,8 +31,8 @@
 namespace TiledArray {
 
   /// Forward declarations
-  template <typename, unsigned int, typename, typename>
-  class Array;
+  template <typename, unsigned int, typename, typename> class Array;
+  template <typename, typename> class Tensor;
   class DensePolicy;
   class SparsePolicy;
 
@@ -169,7 +169,8 @@ namespace TiledArray {
     tiles.reserve(arg.get_pmap()->size());
 
     // Collect updated shape data.
-    TiledArray::Tensor<typename shape_type::value_type>
+    TiledArray::Tensor<typename shape_type::value_type,
+        Eigen::aligned_allocator<typename shape_type::value_type> >
     tile_norms(arg.trange().tiles(), 0);
 
     // Construct the new tile norms and
@@ -254,7 +255,8 @@ namespace TiledArray {
     tiles.reserve(arg.get_pmap()->size());
 
     // Collect updated shape data.
-    TiledArray::Tensor<typename shape_type::value_type>
+    TiledArray::Tensor<typename shape_type::value_type,
+        Eigen::aligned_allocator<typename shape_type::value_type> >
     tile_norms(arg.trange().tiles(), 0);
 
     // Construct the new tile norms and
