@@ -382,9 +382,9 @@ namespace TiledArray {
   /// \throw TiledArray::Exception When the number of dimensions of \c array
   /// is not equal to 1 or 2.
   /// \note This function will only work in non-distributed environments.
-  template <typename T, unsigned int DIM, typename Tile>
+  template <typename T, unsigned int DIM, typename Tile, typename Policy>
   Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
-  array_to_eigen(const Array<T, DIM, Tile>& array) {
+  array_to_eigen(const Array<T, DIM, Tile, Policy>& array) {
     // Check that the array will fit in a matrix or vector
     TA_USER_ASSERT((DIM == 2u) || (DIM == 1u),
         "TiledArray::array_to_eigen(): The array dimensions must be equal to 1 or 2.");
@@ -408,7 +408,7 @@ namespace TiledArray {
       if(! array.is_zero(i)) {
         array.get_world().taskq.add(
             & detail::counted_tensor_to_eigen_submatrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>,
-            typename Array<T, DIM, Tile>::value_type>,
+            typename Array<T, DIM, Tile, Policy>::value_type>,
             array.find(i), &matrix, &counter);
         ++n;
       }
