@@ -24,14 +24,8 @@
  */
 
 #include "TiledArray/dist_eval/contraction_eval.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
-#include "TiledArray/array.h"
-#include "TiledArray/dist_eval/array_eval.h"
-#include "TiledArray/dense_shape.h"
-#include "TiledArray/tile_op/contract_reduce.h"
-#include "TiledArray/conversions/eigen.h"
-#include "TiledArray/proc_grid.h"
-#include "TiledArray/tile_op/noop.h"
 #include "array_fixture.h"
 #include "sparse_shape_fixture.h"
 

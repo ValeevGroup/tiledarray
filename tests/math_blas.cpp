@@ -24,7 +24,7 @@
  */
 
 #include "TiledArray/math/blas.h"
-#include "TiledArray/madness.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
 
 struct BlasFixture {

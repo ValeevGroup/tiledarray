@@ -18,7 +18,7 @@
  */
 
 #include "TiledArray/distributed_storage.h"
-#include "TiledArray/pmap/blocked_pmap.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
 #include <iterator>
 

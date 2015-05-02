@@ -27,8 +27,8 @@
 #define TILEDARRAY_ENABLE_TEST_PROC_GRID
 
 #include "TiledArray/proc_grid.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
-#include "TiledArray/sparse_shape.h"
 
 struct ProcGridFixture {
 

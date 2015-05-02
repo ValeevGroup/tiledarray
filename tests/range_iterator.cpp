@@ -18,8 +18,8 @@
  */
 
 #include "TiledArray/range_iterator.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
-#include <madness/world/type_traits.h>
 
 using TiledArray::detail::RangeIterator;
 

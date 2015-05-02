@@ -24,8 +24,8 @@
  */
 
 #include "TiledArray/tile_op/scal_mult.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
-#include "TiledArray/tensor.h"
 #include "range_fixture.h"
 
 using namespace TiledArray;

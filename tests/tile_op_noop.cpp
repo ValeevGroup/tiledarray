@@ -23,8 +23,8 @@
  *
  */
 
-#include "TiledArray/tensor.h"
 #include "TiledArray/tile_op/noop.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
 

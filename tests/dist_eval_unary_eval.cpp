@@ -24,12 +24,8 @@
  */
 
 #include "TiledArray/dist_eval/unary_eval.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
-#include "TiledArray/array.h"
-#include "TiledArray/dist_eval/array_eval.h"
-#include "TiledArray/dense_shape.h"
-#include "TiledArray/tile_op/noop.h"
-#include "TiledArray/tile_op/scal.h"
 #include "array_fixture.h"
 
 using namespace TiledArray;
