@@ -27,5 +27,6 @@
 # Add the vector executable
 add_executable(vector EXCLUDE_FROM_ALL vector.cpp)
 target_link_libraries(vector ${TiledArray_LIBRARIES})
+target_link_libraries(vector tiledarray)
 add_dependencies(vector External)
 add_dependencies(example vector)

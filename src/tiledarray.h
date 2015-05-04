@@ -55,4 +55,32 @@
 #include <TiledArray/elemental.h>
 #endif
 
+
+#ifndef TILEDARRY_ENABLE_HEADER_ONLY
+
+#define TA_DEF_TILE( t ) TiledArray::Tensor< t , Eigen::aligned_allocator< t > >
+#define TA_DEF_ARRAY( t , d , p ) TiledArray::Array< t , d , TA_DEF_TILE( t ), p >
+
+#define TA_EXTERN_ARRAY( t , p ) \
+  extern template class TA_DEF_ARRAY( t , 1 , p ); \
+  extern template class TA_DEF_ARRAY( t , 2 , p ); \
+  extern template class TA_DEF_ARRAY( t , 3 , p ); \
+  extern template class TA_DEF_ARRAY( t , 4 , p );
+
+#define TA_EXTERN_TYPE( t ) \
+  extern template class TA_DEF_TILE( t ); \
+  TA_EXTERN_ARRAY( t , TiledArray::DensePolicy ) \
+  TA_EXTERN_ARRAY( t , TiledArray::SparsePolicy )
+
+TA_EXTERN_TYPE( double )
+TA_EXTERN_TYPE( float )
+
+
+#undef TA_DEF_TILE
+#undef TA_DEF_ARRAY
+#undef TA_EXTERN_ARRAY
+#undef TA_EXTERN_TYPE
+
+#endif // TILEDARRY_ENABLE_HEADER_ONLY
+
 #endif // TILEDARRAY_H__INCLUDED
