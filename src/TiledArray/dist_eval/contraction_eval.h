@@ -1763,6 +1763,59 @@ namespace TiledArray {
 
     private:
 
+      /// Adjust iteration depth based on memory constraints
+
+      /// \param depth The unbounded iteration depth
+      /// \param left_sparsity The fraction of zero tiles in the left-hand matrix
+      /// \param right_sparsity The fraction of zero tiles in the right-hand matrix
+      /// \return The memory bounded iteration depth
+      /// \thorw TiledArray::Exception When the memory bounded iteration depth
+      /// is less than 1.
+      size_type mem_bound_depth(size_type depth, float left_sparsity, float right_sparsity) {
+
+        // Check if a memory bound has been set
+        const std::size_t available_memory = 0ul;
+        if(available_memory) {
+
+          // Compute the average memory requirement per iteration of this process
+          const std::size_t local_memory_per_iter_left =
+              (left_.trange().elements().volume() / left_.trange().tiles().volume()) *
+              sizeof(typename scalar_type<typename left_type::eval_type>::type) *
+              proc_grid_.local_rows() * (1.0f - left_sparsity);
+          const std::size_t local_memory_per_iter_right =
+              (right_.trange().elements().volume() / right_.trange().tiles().volume()) *
+              sizeof(typename scalar_type<typename right_type::eval_type>::type) *
+              proc_grid_.local_cols() * (1.0f - right_sparsity);
+
+          // Compute the maximum number of iterations based on available memory
+          const size_type mem_bound_depth =
+              ((local_memory_per_iter_left + local_memory_per_iter_right) /
+              available_memory) * 0.8;
+
+          // Check if the memory bounded depth is less than the optimal depth
+          if(depth > mem_bound_depth) {
+
+            // Adjust the depth based on the available memory
+            switch(mem_bound_depth) {
+              case 0:
+                // When memory bound depth is
+                if(TensorImpl_::get_world().rank() == 0)
+                  printf("!! TiledArray ERROR: Insufficient memory available for SUMMA.\n");
+                TA_EXCEPTION("Insufficient memory available for SUMMA");
+                break;
+              case 1:
+                if(TensorImpl_::get_world().rank() == 0)
+                  printf("!! TiledArray WARNING: Insufficient memory available for SUMMA.\n"
+                         "!! TiledArray WARNING: Performance may be slow.\n");
+              default:
+                depth = mem_bound_depth;
+            }
+          }
+        }
+
+        return depth;
+      }
+
       /// Evaluate the tiles of this tensor
 
       /// This function will evaluate the children of this distributed evaluator
@@ -1800,6 +1853,8 @@ namespace TiledArray {
           if(TensorImpl_::shape().is_dense()) {
 #ifndef TILEDARRAY_SUMMA_DEPTH
             if(depth > k_) depth = k_;
+
+//            depth = mem_bound_depth(depth, 0.0f, 0.0f);
 #endif //TILEDARRAY_SUMMA_DEPTH
             TensorImpl_::get_world().taskq.add(new DenseStepTask(shared_from_this(),
                 depth));
@@ -1819,6 +1874,7 @@ namespace TiledArray {
             depth = float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) + 0.5f;
             if(depth > k_) depth = k_;
 
+//            depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
 #endif // TILEDARRAY_SUMMA_DEPTH
             TensorImpl_::get_world().taskq.add(new SparseStepTask(shared_from_this(),
                 depth));
