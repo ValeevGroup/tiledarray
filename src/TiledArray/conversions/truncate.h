@@ -44,8 +44,7 @@ namespace TiledArray {
   /// \tparam Tile The tile type of the array
   /// \param[in,out] array The array object to be truncated
   template <typename T, unsigned int DIM, typename Tile>
-  inline void
-  truncate(Array<T, DIM, Tile, DensePolicy>& array) { return array; }
+  inline void truncate(Array<T, DIM, Tile, DensePolicy>& array) { }
 
   /// Truncate a sparse Array
 
