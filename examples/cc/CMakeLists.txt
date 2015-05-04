@@ -27,7 +27,7 @@
 # Add include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_library(inputlib OBJECT input_data.cpp)
+add_library(inputlib EXCLUDE_FROM_ALL OBJECT input_data.cpp)
 add_dependencies(inputlib External)
 
 # Add the ccd executable
