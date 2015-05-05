@@ -28,6 +28,11 @@
 
 #include <TiledArray/type_traits.h>
 
+/// Forward declarations
+namespace Eigen {
+  template <typename> class aligned_allocator;
+} // namespace Eigen
+
 namespace TiledArray {
 
   /// Forward declarations

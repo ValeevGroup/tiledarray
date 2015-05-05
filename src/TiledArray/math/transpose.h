@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_MATH_TRANSPOSE_H__INCLUDED
 #define TILEDARRAY_MATH_TRANSPOSE_H__INCLUDED
 
+#include <TiledArray/error.h>
 #include <TiledArray/math/vector_op.h>
 
 namespace TiledArray {
