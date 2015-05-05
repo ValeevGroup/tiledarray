@@ -28,7 +28,6 @@
 
 #include <TiledArray/pmap/cyclic_pmap.h>
 #include <TiledArray/math/eigen.h>
-#include <TiledArray/math/math.h>
 
 namespace TiledArray {
   namespace detail {
@@ -148,7 +147,7 @@ namespace TiledArray {
           return;
 
         // Compute the range of values for x to be tested.
-        const size_type delta = std::max<size_type>(1ul, TiledArray::math::log2(nprocs));
+        const size_type delta = std::max<size_type>(1ul, std::log2(nprocs));
 
         const size_type optimal_x = x;
         size_type diff = 0ul;

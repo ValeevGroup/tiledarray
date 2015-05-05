@@ -26,7 +26,6 @@
 #ifndef TILEDARRAY_MATH_VECTOR_OP_H__INCLUDED
 #define TILEDARRAY_MATH_VECTOR_OP_H__INCLUDED
 
-#include <TiledArray/math/math.h>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/madness.h>
