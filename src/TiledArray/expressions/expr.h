@@ -306,6 +306,19 @@ namespace TiledArray {
             right_engine.make_dist_eval();
         right_dist_eval.eval();
 
+#ifndef NDEBUG
+        if(left_dist_eval.trange() != right_dist_eval.trange()) {
+          if(World::get_default().rank() == 0) {
+            TA_USER_ERROR_MESSAGE( \
+                "The TiledRanges of the left- and right-hand arguments the binary reduction are not equal:" \
+                << "\n    left  = " << left_dist_eval.trange() \
+                << "\n    right = " << right_dist_eval.trange() );
+          }
+
+          TA_EXCEPTION("The TiledRange objects of a binary expression are not equal.");
+        }
+#endif // NDEBUG
+
         // Create a local reduction task
         reduction_op_type wrapped_op(op);
         TiledArray::detail::ReducePairTask<reduction_op_type>
