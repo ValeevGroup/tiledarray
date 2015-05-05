@@ -189,12 +189,14 @@ namespace TiledArray {
         if(left_.trange() != right_.trange()) {
           if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
-                "The TiledRanges of the left- and right-hand expressions are not equal:" \
+                "The TiledRanges of the left- and right-hand arguments of the " \
+                "binary operation are not equal:" \
                 << "\n    left  = " << left_.trange() \
                 << "\n    right = " << right_.trange() );
           }
 
-          TA_EXCEPTION("The TiledRange objects of a binary expression are not equal.");
+          TA_EXCEPTION("The TiledRanges of the left- and right-hand arguments " \
+              "of the binary operation are not equal.");
         }
 #endif // NDEBUG
         ExprEngine_::init_struct(target_vars);
