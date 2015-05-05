@@ -33,13 +33,11 @@ add_dependencies(inputlib External)
 # Add the ccd executable
 add_executable(ccd EXCLUDE_FROM_ALL ccd.cpp $<TARGET_OBJECTS:inputlib>)
 target_link_libraries(ccd ${TiledArray_LIBRARIES})
-target_link_libraries(ccd tiledarray)
 add_dependencies(ccd External)
 add_dependencies(example ccd)
 
 # Add the ccsd executable
 add_executable(ccsd EXCLUDE_FROM_ALL ccsd.cpp $<TARGET_OBJECTS:inputlib>)
 target_link_libraries(ccsd ${TiledArray_LIBRARIES})
-target_link_libraries(ccsd tiledarray)
 add_dependencies(ccsd External)
 add_dependencies(example ccsd)

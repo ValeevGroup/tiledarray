@@ -133,7 +133,8 @@ install(
 )
 
 # Create the TiledArray library
-add_library(tiledarray tiledarray.cpp ${tiledarray_header_files})
+#file(GLOB_RECURSE tiledarray_src_files RELATIVE_PATH *.cpp)
+#add_library(tiledarray ${tiledarray_src_files} ${tiledarray_header_files})
 
 # Install library
-install(TARGETS tiledarray DESTINATION lib)
+#install(TARGETS tiledarray DESTINATION lib)
