@@ -131,7 +131,7 @@ BOOST_FIXTURE_TEST_SUITE( expressions_suite, ExpressionsFixture )
 
 BOOST_AUTO_TEST_CASE( permute )
 {
-  Permutation perm(2, 1, 0);
+  Permutation perm({2, 1, 0});
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = b("c,b,a"));
 
   for(std::size_t i = 0ul; i < b.size(); ++i) {
@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE( permute )
 
 BOOST_AUTO_TEST_CASE( scale_permute )
 {
-  Permutation perm(2, 1, 0);
+  Permutation perm({2, 1, 0});
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = 2 * b("c,b,a"));
 
   for(std::size_t i = 0ul; i < b.size(); ++i) {

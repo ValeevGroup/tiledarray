@@ -92,14 +92,14 @@ namespace TiledArray {
       template <typename VarLeft, typename VarRight>
       inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
         TA_ASSERT(l.size() == r.size());
-        std::vector<std::size_t> a(l.size());
+        Permutation::Array a(l.size());
         typename VarRight::const_iterator rit = r.begin();
-        for(std::vector<std::size_t>::iterator it = a.begin(); it != a.end(); ++it) {
+        for(Permutation::Array::iterator it = a.begin(); it != a.end(); ++it) {
           typename VarLeft::const_iterator lit = std::find(l.begin(), l.end(), *rit++);
           TA_ASSERT(lit != l.end());
           *it = std::distance(l.begin(), lit);
         }
-        return Permutation(a);
+        return Permutation(std::move(a));
       }
     } // namespace detail
 

@@ -24,7 +24,7 @@
 using namespace TiledArray;
 
 struct PermutationFixture {
-  PermutationFixture() : p(2,0,1) {}
+  PermutationFixture() : p({2,0,1}) {}
   ~PermutationFixture() {}
   Permutation p;
 };
@@ -37,13 +37,13 @@ BOOST_AUTO_TEST_CASE( constructor )
   Permutation p0;
   BOOST_CHECK_EQUAL(p0.data().size(), 0ul);
 
-  BOOST_REQUIRE_NO_THROW( Permutation p1(0,1,2) ); // check variable list constructor
-  Permutation p1(0,1,2);
+  BOOST_REQUIRE_NO_THROW( Permutation p1({0,1,2}) ); // check variable list constructor
+  Permutation p1({0,1,2});
   BOOST_CHECK_EQUAL(p1.data()[0], 0u);
   BOOST_CHECK_EQUAL(p1.data()[1], 1u);
   BOOST_CHECK_EQUAL(p1.data()[2], 2u);
 
-  std::array<std::size_t,3> a = {{0, 1, 2}};
+  std::vector<unsigned int> a{0, 1, 2};
   BOOST_REQUIRE_NO_THROW( Permutation p2(a) ); // check boost array constructor
   Permutation p2(a);
   BOOST_CHECK_EQUAL(p2.data()[0], 0u);
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE( ostream )
 
 BOOST_AUTO_TEST_CASE( comparision )
 {
-  Permutation p0(0,1,2);
+  Permutation p0({0,1,2});
   Permutation p1(p);
   BOOST_CHECK( p1 == p );    // check operator==()
   BOOST_CHECK( ! (p1 == p0) );
@@ -114,11 +114,11 @@ BOOST_AUTO_TEST_CASE( permute_function )
 
 BOOST_AUTO_TEST_CASE( permute_permutation )
 {
-  Permutation pr(1,2,0);
-  Permutation p0(0,1,2);
+  Permutation pr({1,2,0});
+  Permutation p0({0,1,2});
   Permutation p1 = p ^ p0;
   BOOST_CHECK_EQUAL(p1, pr); // check assignment permutation permutation
-  Permutation p2(0,1,2);
+  Permutation p2({0,1,2});
   p2 ^= p;
   BOOST_CHECK_EQUAL(p2, pr); // check in-place permutation permutation.
 }
@@ -126,10 +126,10 @@ BOOST_AUTO_TEST_CASE( permute_permutation )
 BOOST_AUTO_TEST_CASE( reverse_permutation )
 {
   Permutation p0(p);
-  Permutation pr(1,2,0);
+  Permutation pr({1,2,0});
   BOOST_CHECK_EQUAL(-p0, pr);
-  BOOST_CHECK_EQUAL((p0 ^ (p0)), Permutation(0,1,2));
-  Permutation p1(1,2,0);
+  BOOST_CHECK_EQUAL((p0 ^ (p0)), Permutation({0,1,2}));
+  Permutation p1({1,2,0});
   p0 ^= p1;
   BOOST_CHECK_NE(p0, p);
   p0 ^= -p1;

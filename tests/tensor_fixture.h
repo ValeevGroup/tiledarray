@@ -75,13 +75,13 @@ struct TensorFixture {
 
   // make permutation definition object
   static Permutation make_perm() {
-    std::array<std::size_t, GlobalFixture::dim> temp;
+    std::array<unsigned int, GlobalFixture::dim> temp;
     for(std::size_t i = 0; i < temp.size(); ++i)
       temp[i] = i + 1;
 
     temp.back() = 0;
 
-    return Permutation(temp);
+    return Permutation(temp.begin(), temp.end());
   }
 
   TensorN t;

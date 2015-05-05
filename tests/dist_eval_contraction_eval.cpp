@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE( eval )
 BOOST_AUTO_TEST_CASE( perm_eval )
 {
   typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
-  Permutation perm(1,0);
+  Permutation perm({1,0});
   op_type pop(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().dim(), tr.tiles().dim(), perm);
 
   dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,

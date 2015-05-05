@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE( permutation )
 {
   index s(GlobalFixture::dim);
   index f(GlobalFixture::dim);
-  std::vector<std::size_t> a(GlobalFixture::dim, 0);
+  std::vector<unsigned int> a(GlobalFixture::dim, 0);
   for(unsigned int d = 0; d < GlobalFixture::dim; ++d) {
     s[d] = d;
     f[d] = d + d + 5;

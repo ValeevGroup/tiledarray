@@ -83,127 +83,61 @@ namespace TiledArray {
 
     unsigned int dim() const { return p_.size(); }
 
+    /// Default constructor (defines a null permutation)
     Permutation() : p_() { }
 
-    template <typename InIter>
-    Permutation(InIter first, InIter last,
-        typename std::enable_if<detail::is_input_iterator<InIter>::value, Enabler >::type = Enabler()) :
+    /// Construct permutation from an iterator
+
+    /// \tparam InIter An input iterator type
+    /// \param first The beginning of the iterator range
+    /// \param last The end of the iterator range
+    template <typename InIter,
+        typename std::enable_if<detail::is_input_iterator<InIter>::value>::type* = nullptr>
+    Permutation(InIter first, InIter last) :
         p_(first, last)
     {
       TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
 
-    template <typename A>
-    explicit Permutation(const A& a) : p_(a.begin(), a.end()) {
+    /// Array constructor
+
+    /// Construct permutation from an Array
+    /// \param a The permutation array to be moved
+    explicit Permutation(const std::vector<index_type>& a) : p_(a) {
       TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
 
+    /// Array move constructor
+
+    /// Move the content of the array into this permutation
+    /// \param a The permutation array to be moved
+    explicit Permutation(Array&& a) :
+        p_(std::forward<Array>(a))
+    {
+      TA_ASSERT( valid_(p_.begin(), p_.end()) );
+    }
+
+    /// Copy constructor
+
+    /// \param other The permutation to be copied
     Permutation(const Permutation& other) : p_(other.p_) { }
 
+    /// Move constructor
 
-    Permutation(const index_type v) : p_(1,v) {
-      TA_ASSERT( v == 0 ); // The only valid value
-    }
+    /// \param other The permuatation to be moved
+    Permutation(Permutation&& other) : p_(std::move(other.p_)) { }
 
-    Permutation(const index_type p0, const index_type p1) : p_(2) {
-      p_[0] = p0;
-      p_[1] = p1;
+    /// Construct permuation with an initializer list
+
+    /// \tparam I An integral type
+    /// \param list An initializer list of integers
+    template <typename I,
+        typename std::enable_if<std::is_integral<I>::value>::type* = nullptr>
+    explicit Permutation(std::initializer_list<I> list) :
+        p_(list.begin(), list.end())
+    {
       TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
-    Permutation(const index_type p0, const index_type p1, const index_type p2) : p_(3) {
-      p_[0] = p0;
-      p_[1] = p1;
-      p_[2] = p2;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
-
-    Permutation(const index_type p0, const index_type p1, const index_type p2,
-        const index_type p3) : p_(4) {
-      p_[0] = p0;
-      p_[1] = p1;
-      p_[2] = p2;
-      p_[3] = p3;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
-
-    Permutation(const index_type p0, const index_type p1, const index_type p2,
-        const index_type p3, const index_type p4) : p_(5) {
-      p_[0] = p0;
-      p_[1] = p1;
-      p_[2] = p2;
-      p_[3] = p3;
-      p_[4] = p4;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
-
-    Permutation(const index_type p0, const index_type p1, const index_type p2,
-        const index_type p3, const index_type p4, const index_type p5) : p_(6) {
-      p_[0] = p0;
-      p_[1] = p1;
-      p_[2] = p2;
-      p_[3] = p3;
-      p_[4] = p4;
-      p_[5] = p5;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
-
-    Permutation(const index_type p0, const index_type p1, const index_type p2,
-        const index_type p3, const index_type p4, const index_type p5, const index_type p6) : p_(7) {
-      p_[0] = p0;
-      p_[1] = p1;
-      p_[2] = p2;
-      p_[3] = p3;
-      p_[4] = p4;
-      p_[5] = p5;
-      p_[6] = p6;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
-
-    Permutation(const index_type p0, const index_type p1, const index_type p2,
-        const index_type p3, const index_type p4, const index_type p5, const index_type p6,
-        const index_type p7) : p_(8) {
-      p_[0] = p0;
-      p_[1] = p1;
-      p_[2] = p2;
-      p_[3] = p3;
-      p_[4] = p4;
-      p_[5] = p5;
-      p_[6] = p6;
-      p_[7] = p7;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
-
-    Permutation(const index_type p0, const index_type p1, const index_type p2,
-        const index_type p3, const index_type p4, const index_type p5, const index_type p6,
-        const index_type p7, const index_type p8) : p_(9) {
-      p_[0] = p0;
-      p_[1] = p1;
-      p_[2] = p2;
-      p_[3] = p3;
-      p_[4] = p4;
-      p_[5] = p5;
-      p_[6] = p6;
-      p_[7] = p7;
-      p_[8] = p8;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
-
-    Permutation(const index_type p0, const index_type p1, const index_type p2,
-        const index_type p3, const index_type p4, const index_type p5, const index_type p6,
-        const index_type p7, const index_type p8, const index_type p9) : p_(10) {
-      p_[0] = p0;
-      p_[1] = p1;
-      p_[2] = p2;
-      p_[3] = p3;
-      p_[4] = p4;
-      p_[5] = p5;
-      p_[6] = p6;
-      p_[7] = p7;
-      p_[8] = p8;
-      p_[9] = p9;
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
-
 
     ~Permutation() {}
 
@@ -261,9 +195,9 @@ namespace TiledArray {
   private:
 
     static Permutation make_unit_permutation(std::size_t n) {
-      Permutation::Array _result(n);
-      for(unsigned int d = 0; d < n; ++d) _result[d] = d;
-      return Permutation(_result);
+      Permutation::Array temp(n);
+      for(unsigned int d = 0; d < n; ++d) temp[d] = d;
+      return Permutation(std::move(temp));
     }
 
     // return false if this is not a valid permutation

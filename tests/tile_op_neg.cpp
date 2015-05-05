@@ -35,7 +35,7 @@ struct NegFixture : public RangeFixture {
   NegFixture() :
     a(RangeFixture::r),
     b(),
-    perm(2,0,1)
+    perm({2,0,1})
   {
     GlobalFixture::world->srand(27);
     for(std::size_t i = 0ul; i < r.volume(); ++i) {

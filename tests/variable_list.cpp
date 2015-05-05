@@ -224,7 +224,7 @@ BOOST_AUTO_TEST_CASE( assignment )
 
 BOOST_AUTO_TEST_CASE( permutation )
 {
-  Permutation p(1,2,3,0);
+  Permutation p({1,2,3,0});
   VariableList v1(v);
   VariableList v2 = (p ^ v1);
   BOOST_CHECK_EQUAL(v2[0], "d");
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE( permutation )
 
 BOOST_AUTO_TEST_CASE( implicit_permutation )
 {
-  Permutation p1(1,2,3,0);
+  Permutation p1({1,2,3,0});
   VariableList v1 = (p1 ^ v);
   Permutation p = TiledArray::expressions::detail::var_perm(v1, v);
 

@@ -807,7 +807,7 @@ BOOST_AUTO_TEST_CASE( gemm )
 
 BOOST_AUTO_TEST_CASE( gemm_perm )
 {
-  const Permutation perm(1,0);
+  const Permutation perm({1,0});
 
   // Create a matrix with the expected output
   const std::size_t m = left.data().range().size().front();

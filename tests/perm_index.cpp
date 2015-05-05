@@ -31,7 +31,7 @@ using namespace TiledArray::detail;
 
 struct PermIndexFixture {
 
-  PermIndexFixture() : perm(1,2,0,3), range(start, finish), perm_range(perm ^ range) { }
+  PermIndexFixture() : perm({1,2,0,3}), range(start, finish), perm_range(perm ^ range) { }
 
   ~PermIndexFixture() { }
 

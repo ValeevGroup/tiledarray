@@ -36,7 +36,7 @@ struct ScalAddFixture : public RangeFixture {
     a(RangeFixture::r),
     b(RangeFixture::r),
     c(),
-    perm(2,0,1)
+    perm({2,0,1})
   {
     GlobalFixture::world->srand(27);
     for(std::size_t i = 0ul; i < r.volume(); ++i) {
