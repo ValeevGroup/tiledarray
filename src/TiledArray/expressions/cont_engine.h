@@ -424,10 +424,10 @@ namespace TiledArray {
         ExprEngine_::init_distribution(world, pmap);
       }
 
-      /// Permuting shape factory function
+      /// Tiled range factory function
 
       /// \param perm The permutation to be applied to the array
-      /// \return The result shape
+      /// \return The result tiled range
       trange_type make_trange(const Permutation& perm = Permutation()) const {
         // Compute iteration limits
         const unsigned int left_rank = op_.gemm_helper().left_rank();
