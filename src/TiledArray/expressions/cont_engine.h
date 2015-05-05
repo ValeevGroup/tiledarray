@@ -430,9 +430,10 @@ namespace TiledArray {
       /// \return The result shape
       trange_type make_trange(const Permutation& perm = Permutation()) const {
         // Compute iteration limits
-        const unsigned int inner_rank = op_.gemm_helper().num_contract_ranks();
-        const unsigned int left_outer_rank = op_.gemm_helper().left_rank() - inner_rank;
+        const unsigned int left_rank = op_.gemm_helper().left_rank();
         const unsigned int right_rank = op_.gemm_helper().right_rank();
+        const unsigned int inner_rank = op_.gemm_helper().num_contract_ranks();
+        const unsigned int left_outer_rank = left_rank - inner_rank;
 
         // Construct the trange input and compute the gemm sizes
         typename trange_type::Ranges ranges(op_.gemm_helper().result_rank());
@@ -445,6 +446,32 @@ namespace TiledArray {
           const unsigned int pi = (perm ? perm[i] : i);
           ranges[pi] = right_.trange().data()[x];
         }
+
+#ifndef NDEBUG
+        // Check that the contracted dimensions are coformal (equal).
+        for(unsigned int l = left_outer_rank, r = 0ul; l < left_rank; ++l, ++r) {
+          if(left_.trange().data()[l] != right_.trange().data()[r]) {
+            if(World::get_default().rank() == 0) {
+              if(left_.trange().tiles().size()[l] == right_.trange().tiles().size()[r]) {
+                TA_USER_ERROR_MESSAGE( "The tiling of the contracted dimensions " \
+                    "of the left- and right-hand arguments are not equal.");
+
+              } else {
+                TA_USER_ERROR_MESSAGE( "The contracted dimensions of the left- " \
+                    "and right-hand arguments are not coformal:" \
+                    << "\n    left  = " << left_.trange() \
+                    << "\n    right = " << right_.trange() );
+
+                TA_EXCEPTION("The contracted dimensions of the left- and " \
+                    "right-hand expressions are not coformal.");
+              }
+            }
+
+            TA_EXCEPTION("The contracted dimensions of the left- and "
+                "right-hand expressions are not coformal.");
+          }
+        }
+#endif // NDEBUG
 
         return trange_type(ranges.begin(), ranges.end());
       }
