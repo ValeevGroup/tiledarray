@@ -138,19 +138,19 @@ int main(int argc, char** argv) {
     TiledArray::finalize();
 
   } catch(TiledArray::Exception& e) {
-    std::cerr << "!!ERROR TiledArray: " << e.what() << "\n";
+    std::cerr << "!! TiledArray exception: " << e.what() << "\n";
     rc = 1;
   } catch(madness::MadnessException& e) {
-    std::cerr << "!!ERROR MADNESS: " << e.what() << "\n";
+    std::cerr << "!! MADNESS exception: " << e.what() << "\n";
     rc = 1;
   } catch(SafeMPI::Exception& e) {
-    std::cerr << "!!ERROR SafeMPI: " << e.what() << "\n";
+    std::cerr << "!! SafeMPI exception: " << e.what() << "\n";
     rc = 1;
   } catch(std::exception& e) {
-    std::cerr << "!!ERROR std: " << e.what() << "\n";
+    std::cerr << "!! std exception: " << e.what() << "\n";
     rc = 1;
   } catch(...) {
-    std::cerr << "!!ERROR: unknown exception\n";
+    std::cerr << "!! exception: unknown exception\n";
     rc = 1;
   }
 

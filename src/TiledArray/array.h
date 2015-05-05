@@ -93,7 +93,7 @@ namespace TiledArray {
           }
         }
       } catch(...) {
-        fprintf(stderr, "!! TiledArray ERROR: An error occurred in Array::lazy_deleter()\n");
+        fprintf(stderr, "!! ERROR TiledArray: An error occurred in Array::lazy_deleter()\n");
         // Abort since we cannot throw from a destructor.
         SafeMPI::COMM_WORLD.Abort(1);
       }

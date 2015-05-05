@@ -1799,14 +1799,12 @@ namespace TiledArray {
             switch(mem_bound_depth) {
               case 0:
                 // When memory bound depth is
-                if(TensorImpl_::get_world().rank() == 0)
-                  printf("!! TiledArray ERROR: Insufficient memory available for SUMMA.\n");
                 TA_EXCEPTION("Insufficient memory available for SUMMA");
                 break;
               case 1:
                 if(TensorImpl_::get_world().rank() == 0)
-                  printf("!! TiledArray WARNING: Insufficient memory available for SUMMA.\n"
-                         "!! TiledArray WARNING: Performance may be slow.\n");
+                  printf("!! WARNING TiledArray: Insufficient memory available for SUMMA.\n"
+                         "!! WARNING TiledArray: Performance may be slow.\n");
               default:
                 depth = mem_bound_depth;
             }

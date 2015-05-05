@@ -172,8 +172,8 @@ namespace TiledArray {
                 { return set_counter_ == task_count; });
           } catch(...) {
             std::stringstream ss;
-            ss << "!!TiledArray: Aborting due to exception.\n"
-               << "!!TiledArray: rank=" << TensorImpl_::get_world().rank()
+            ss << "!! ERROR TiledArray: Aborting due to exception.\n"
+               << "!! ERROR TiledArray: rank=" << TensorImpl_::get_world().rank()
                << " id=" << id_ << " " << set_counter_ << " of " << task_count << " tiles set\n";
             std::cout << ss.str().c_str();
             throw;
