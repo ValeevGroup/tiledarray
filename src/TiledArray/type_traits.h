@@ -35,6 +35,10 @@ namespace Eigen {
 } // namespace Eigen
 
 namespace TiledArray {
+
+  template <bool condition, typename T = void>
+  using enable_if_t = typename std::enable_if<condition, T>::type;
+
   namespace detail {
 
     template <typename T>
