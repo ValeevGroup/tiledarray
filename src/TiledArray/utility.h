@@ -50,14 +50,15 @@ namespace TiledArray {
     template <typename T>
     inline typename std::enable_if<! std::is_array<T>::value, std::size_t>::type
     size(const T &a) { return a.size(); }
+
     /// Print the content of an array like object
 
     /// \tparam A The array container type
     /// \param out A standard output stream
     /// \param a The array-like container to be printed
+    /// \param n The number of elements in the array.
     template <typename A>
-    void print_array(std::ostream& out, const A& a) {
-      const std::size_t n = size(a);
+    inline void print_array(std::ostream& out, const A& a, const std::size_t n) {
       out << "[";
       for(std::size_t i = 0; i < n; ++i) {
         out << a[i];
@@ -65,6 +66,16 @@ namespace TiledArray {
           out << ",";
       }
       out << "]";
+    }
+
+    /// Print the content of an array like object
+
+    /// \tparam A The array container type
+    /// \param out A standard output stream
+    /// \param a The array-like container to be printed
+    template <typename A>
+    inline void print_array(std::ostream& out, const A& a) {
+      print_array(out, a, size(a));
     }
 
   } // namespace detail
