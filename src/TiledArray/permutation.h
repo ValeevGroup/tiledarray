@@ -250,6 +250,20 @@ namespace TiledArray {
     return result;
   }
 
+
+  /// permute a std::vector<T>
+  template <typename T>
+  inline std::vector<T> operator^(const Permutation& perm, const T* restrict const orig) {
+    const unsigned int n = perm.dim();
+    std::vector<T> result(n);
+    for(unsigned int i = 0u; i < n; ++i) {
+      const typename Permutation::index_type perm_i = perm[i];
+      const T orig_i = orig[i];
+      result[perm_i] = orig_i;
+    }
+    return result;
+  }
+
   inline Permutation operator ^(const Permutation& perm, const Permutation& p) {
     TA_ASSERT(perm.dim() == p.dim());
     return Permutation(perm ^ p.data());
