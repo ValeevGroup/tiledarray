@@ -35,7 +35,6 @@ set(ta_test_src_files  ta_test.cpp
     utility.cpp
     permutation.cpp
     range.cpp
-    range_iterator.cpp
     perm_index.cpp
     tiled_range1.cpp
     tiled_range.cpp
