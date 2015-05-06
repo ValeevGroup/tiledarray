@@ -20,7 +20,9 @@
 #ifndef TILEDARRAY_TILED_RANGE1_H__INCLUDED
 #define TILEDARRAY_TILED_RANGE1_H__INCLUDED
 
-#include <TiledArray/range.h>
+#include <TiledArray/error.h>
+#include <TiledArray/type_traits.h>
+#include <vector>
 #include <initializer_list>
 
 namespace TiledArray {

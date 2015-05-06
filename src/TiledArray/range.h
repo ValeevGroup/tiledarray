@@ -21,13 +21,9 @@
 #define TILEDARRAY_RANGE_H__INCLUDED
 
 #include <TiledArray/range_iterator.h>
-#include <TiledArray/size_array.h>
-#include <functional>
+#include <TiledArray/permutation.h>
 
 namespace TiledArray {
-
-  // Forward declaration of TiledArray components.
-  class Permutation;
 
   /// Range data of an N-dimensional tensor.
   class Range {

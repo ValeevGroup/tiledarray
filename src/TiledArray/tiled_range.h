@@ -21,6 +21,7 @@
 #define RANGE_H__INCLUDED
 
 #include <TiledArray/tiled_range1.h>
+#include <TiledArray/range.h>
 
 namespace TiledArray {
 
