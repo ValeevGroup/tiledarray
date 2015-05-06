@@ -129,6 +129,23 @@ namespace TiledArray {
         public scalar_type<PlainObjectType>
     { };
 
+    template <typename...> struct is_integral_list_helper;
+
+    template <typename T, typename...Ts>
+    struct is_integral_list_helper<T, Ts...> {
+      static constexpr bool value = std::is_integral<T>::value && is_integral_list_helper<Ts...>::value;
+    };
+
+    template <> struct is_integral_list_helper<> { static constexpr bool value = true; };
+
+    ///
+    template <typename...Ts>
+    struct is_integral_list : std::conditional<(sizeof...(Ts) > 0ul),
+        is_integral_list_helper<Ts...>,
+        std::false_type>::type
+    { };
+
+
     /// Describes traits of nodes in TiledArray expressions
     template <typename T, typename Enabler = void>
     struct eval_trait {
