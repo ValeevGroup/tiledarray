@@ -44,13 +44,13 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   ContractionEvalFixture() :
     left(*GlobalFixture::world, tr),
     right(*GlobalFixture::world, tr),
-    proc_grid(*GlobalFixture::world, tr.tiles().size().front(), tr.tiles().size().back(),
-        tr.elements().size().front(), tr.elements().size().back()),
+    proc_grid(*GlobalFixture::world, tr.tiles().size()[0], tr.tiles().size()[tr.tiles().dim() - 1],
+        tr.elements().size()[0], tr.elements().size()[tr.elements().dim() - 1u]),
     left_arg(make_array_eval(left, left.get_world(), DenseShape(),
-        proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
+        proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size()[0]),
         Permutation(), array_op_type())),
     right_arg(make_array_eval(right, right.get_world(), DenseShape(),
-        proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size().back()),
+        proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size()[tr.tiles().dim() - 1u]),
         Permutation(), array_op_type())),
     result_tr(),
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().dim(), tr.tiles().dim())
@@ -364,10 +364,10 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   right.truncate();
 
   array_eval_type left_arg(make_array_eval(left, left.get_world(), left.get_shape(),
-      proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size().front()),
+      proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().size()[0]),
       Permutation(), array_op_type()));
   array_eval_type right_arg(make_array_eval(right, right.get_world(), right.get_shape(),
-      proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size().back()),
+      proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().size()[tr.tiles().dim() - 1]),
       Permutation(), array_op_type()));
 
   const SparseShape<float> result_shape = left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());

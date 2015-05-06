@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE( constructor ) {
 
   const std::size_t* const input_weight_begin = x.data();
   const std::size_t* const input_weight_end = x.data() + x.dim();
-  BOOST_CHECK_EQUAL_COLLECTIONS(input_weight_begin, input_weight_end, range.weight().begin(), range.weight().end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(input_weight_begin, input_weight_end, range.weight(), range.weight() + range.dim());
 
   const std::size_t* const output_weight_begin = input_weight_end;
   const std::size_t* const output_weight_end = input_weight_end + x.dim();
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE( assignment_operator ) {
 
   const std::size_t* const input_weight_begin = x.data();
   const std::size_t* const input_weight_end = x.data() + x.dim();
-  BOOST_CHECK_EQUAL_COLLECTIONS(input_weight_begin, input_weight_end, range.weight().begin(), range.weight().end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(input_weight_begin, input_weight_end, range.weight(), range.weight() + range.dim());
 
   const std::size_t* const output_weight_begin = input_weight_end;
   const std::size_t* const output_weight_end = input_weight_end + x.dim();
@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
 
     const std::size_t* const input_weight_begin = perm_index.data();
     const std::size_t* const input_weight_end = perm_index.data() + perm_index.dim();
-    BOOST_CHECK_EQUAL_COLLECTIONS(input_weight_begin, input_weight_end, range.weight().begin(), range.weight().end());
+    BOOST_CHECK_EQUAL_COLLECTIONS(input_weight_begin, input_weight_end, range.weight(), range.weight() + range.dim());
 
     const std::size_t* const output_weight_begin = input_weight_end;
     const std::size_t* const output_weight_end = input_weight_end + perm_index.dim();

@@ -51,8 +51,7 @@ struct RangeFixture {
   ~RangeFixture() { }
 
   template <typename A>
-  static std::vector<std::size_t> calc_weight(const A& size) {
-    const std::size_t n = detail::size(size);
+  static std::vector<std::size_t> calc_weight(const A& size, unsigned int n) {
     std::vector<std::size_t> weight(n);
     std::size_t volume = 1ul;
     for(int i = int(n) - 1; i >= 0; --i) {

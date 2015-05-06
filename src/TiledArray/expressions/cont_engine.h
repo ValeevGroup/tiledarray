@@ -389,13 +389,13 @@ namespace TiledArray {
 
         // Get pointers to the argument sizes
         const size_type* restrict const left_tiles_size =
-            left_.trange().tiles().size().data();
+            left_.trange().tiles().size();
         const size_type* restrict const left_element_size =
-            left_.trange().elements().size().data();
+            left_.trange().elements().size();
         const size_type* restrict const right_tiles_size =
-            right_.trange().tiles().size().data();
+            right_.trange().tiles().size();
         const size_type* restrict const right_element_size =
-            right_.trange().elements().size().data();
+            right_.trange().elements().size();
 
         // Compute the fused sizes of the contraction
         size_type M = 1ul, m = 1ul, N = 1ul, n = 1ul;

@@ -255,7 +255,7 @@ namespace TiledArray {
         size_type other_fused_size[4];
         size_type other_fused_weight[4];
         fuse_dimensions(other_fused_size, other_fused_weight,
-            other.range().size().data(), perm);
+            other.range().size(), perm);
 
         // Compute the fused stride for the result matrix transpose.
         size_type  result_outer_stride = 1ul;
@@ -337,7 +337,7 @@ namespace TiledArray {
         size_type other_fused_size[4];
         size_type other_fused_weight[4];
         fuse_dimensions(other_fused_size, other_fused_weight,
-            other.range().size().data(), perm);
+            other.range().size(), perm);
 
         // Compute the fused stride for the result matrix transpose.
         size_type  result_outer_stride = 1ul;
@@ -420,7 +420,7 @@ namespace TiledArray {
         size_type other_fused_size[4];
         size_type other_fused_weight[4];
         fuse_dimensions(other_fused_size, other_fused_weight,
-            left.range().size().data(), perm);
+            left.range().size(), perm);
 
         // Compute the fused stride for the result matrix transpose.
         size_type  result_outer_stride = 1ul;

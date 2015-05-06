@@ -271,14 +271,14 @@ BOOST_AUTO_TEST_CASE( clone ) {
 
 BOOST_AUTO_TEST_CASE( range_accessor )
 {
-  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().start().begin(), t.range().start().end(),
-      r.start().begin(), r.start().end());  // check start accessor
-  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().finish().begin(), t.range().finish().end(),
-      r.finish().begin(), r.finish().end());// check finish accessor
-  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().size().begin(), t.range().size().end(),
-      r.size().begin(), r.size().end());    // check size accessor
-  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().weight().begin(), t.range().weight().end(),
-      r.weight().begin(), r.weight().end());    // check weight accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().start(), t.range().start() + t.range().dim(),
+      r.start(), r.start() + r.dim());  // check start accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().finish(), t.range().finish() + t.range().dim(),
+      r.finish(), r.finish() + r.dim());// check finish accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().size(), t.range().size() + t.range().dim(),
+      r.size(), r.size() + r.dim());    // check size accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().weight(), t.range().weight() + t.range().dim(),
+      r.weight(), r.weight() + r.dim());    // check weight accessor
   BOOST_CHECK_EQUAL(t.range().volume(), r.volume());// check volume accessor
   BOOST_CHECK_EQUAL(t.range(), r);          // check range accessof
 }
@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE( element_access )
 
   // check out of range error
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(t[r.finish()], Exception);
+  BOOST_CHECK_THROW(t[r.upbound()], Exception);
   BOOST_CHECK_THROW(t[r.volume()], Exception);
 #endif // TA_EXCEPTION_ERROR
 }

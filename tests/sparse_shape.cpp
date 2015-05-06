@@ -751,8 +751,8 @@ BOOST_AUTO_TEST_CASE( mult_scale_perm )
 BOOST_AUTO_TEST_CASE( gemm )
 {
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().size().front();
-  const std::size_t n = right.data().range().size().back();
+  const std::size_t m = left.data().range().size()[0];
+  const std::size_t n = right.data().range().size()[right.data().range().dim() - 1];
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;
@@ -810,8 +810,8 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
   const Permutation perm({1,0});
 
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().size().front();
-  const std::size_t n = right.data().range().size().back();
+  const std::size_t m = left.data().range().size()[0];
+  const std::size_t n = right.data().range().size()[right.data().range().dim() - 1];
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;

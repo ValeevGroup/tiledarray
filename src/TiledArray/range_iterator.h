@@ -22,6 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <iterator>
+#include <vector>
 
 namespace TiledArray {
   namespace detail {
@@ -33,14 +34,14 @@ namespace TiledArray {
 } // namespace TiledArray
 
 namespace std {
-  template <typename Value, typename Container>
-  void advance(TiledArray::detail::RangeIterator<Value, Container>&,
-      typename TiledArray::detail::RangeIterator<Value, Container>::difference_type );
+  template <typename T, typename Container>
+  void advance(TiledArray::detail::RangeIterator<T, Container>&,
+      typename TiledArray::detail::RangeIterator<T, Container>::difference_type );
 
-  template <typename Value, typename Container>
-  typename TiledArray::detail::RangeIterator<Value, Container>::difference_type
-  distance(const TiledArray::detail::RangeIterator<Value, Container>&,
-      const TiledArray::detail::RangeIterator<Value, Container>&);
+  template <typename T, typename Container>
+  typename TiledArray::detail::RangeIterator<T, Container>::difference_type
+  distance(const TiledArray::detail::RangeIterator<T, Container>&,
+      const TiledArray::detail::RangeIterator<T, Container>&);
 
 } // namespace std
 
@@ -51,20 +52,20 @@ namespace TiledArray {
 
     /// This is an input iterator that is used to iterate over the coordinate
     /// indexes of a \c Range.
-    /// \tparam Value The value type of the iterator
+    /// \tparam T The value type of the iterator
     /// \tparam Container The container that the iterator references
     /// \note The container object must define the function
-    /// \c Container::increment(Value&) \c const, and be accessible to
+    /// \c Container::increment(T&) \c const, and be accessible to
     /// \c RangeIterator.
-    template <typename Value, typename Container>
+    template <typename T, typename Container>
     class RangeIterator {
     public:
-      typedef RangeIterator<Value,Container> RangeIterator_; ///< This class type
+      typedef RangeIterator<T,Container> RangeIterator_; ///< This class type
 
       // Standard iterator typedefs
-      typedef Value value_type; ///< Iterator value type
-      typedef const Value& reference; ///< Iterator reference type
-      typedef const Value* pointer; ///< Iterator pointer type
+      typedef std::vector<T> value_type; ///< Iterator value type
+      typedef const value_type& reference; ///< Iterator reference type
+      typedef const value_type* pointer; ///< Iterator pointer type
       typedef std::input_iterator_tag iterator_category; /// Iterator category tag
       typedef std::ptrdiff_t difference_type; ///< Iterator difference type
 
@@ -79,8 +80,8 @@ namespace TiledArray {
 
       /// \param v The initial value of the iterator index
       /// \param c The container that the iterator will reference
-      RangeIterator(const Value& v, const Container* c) :
-          container_(c), current_(v)
+      RangeIterator(const T* v, const Container* c) :
+          container_(c), current_(v, v + c->rank())
       { }
 
       /// Copy constructor
@@ -138,21 +139,23 @@ namespace TiledArray {
     private:
 
       const Container* container_;  ///< The container that the iterator references
-      Value current_;               ///< The current value of the iterator
+      std::vector<T> current_;      ///< The current value of the iterator
     }; // class RangeIterator
 
     /// Equality operator
 
     /// Compares the iterators for equality. They must reference the same range
     /// object to be considered equal.
-    /// \tparam Value The value type of the iterator
+    /// \tparam T The value type of the iterator
     /// \tparam Container The container that the iterator references
     /// \param left_it The left-hand iterator to be compared
     /// \param right_it The right-hand iterator to be compared
     /// \return \c true if the the value and container are equal for the \c left_it
     /// and \c right_it , otherwise \c false .
-    template <typename Value, typename Container>
-    bool operator==(const RangeIterator<Value, Container>& left_it, const RangeIterator<Value, Container>& right_it) {
+    template <typename T, typename Container>
+    bool operator==(const RangeIterator<T, Container>& left_it,
+        const RangeIterator<T, Container>& right_it)
+    {
       return ((*left_it) == (*right_it)) &&
           (left_it.container() == right_it.container());
     }
@@ -160,14 +163,16 @@ namespace TiledArray {
     /// Inequality operator
 
     /// Compares the iterators for inequality.
-    /// \tparam Value The value type of the iterator
+    /// \tparam T The value type of the iterator
     /// \tparam Container The container that the iterator references
     /// \param left_it The left-hand iterator to be compared
     /// \param right_it The right-hand iterator to be compared
     /// \return \c true if the the value or container are not equal for the
     /// \c left_it and \c right_it , otherwise \c false .
-    template <typename Value, typename Container>
-    bool operator!=(const RangeIterator<Value, Container>& left_it, const RangeIterator<Value, Container>& right_it) {
+    template <typename T, typename Container>
+    bool operator!=(const RangeIterator<T, Container>& left_it,
+        const RangeIterator<T, Container>& right_it)
+    {
       return ((*left_it) != (*right_it)) ||
           (left_it.container() != right_it.container());
     }
@@ -176,17 +181,17 @@ namespace TiledArray {
 } // namespace TiledArray
 
 namespace std {
-  template <typename Value, typename Container>
-  void advance(TiledArray::detail::RangeIterator<Value, Container>& it,
-      typename TiledArray::detail::RangeIterator<Value, Container>::difference_type n)
+  template <typename T, typename Container>
+  void advance(TiledArray::detail::RangeIterator<T, Container>& it,
+      typename TiledArray::detail::RangeIterator<T, Container>::difference_type n)
   {
     it.advance(n);
   }
 
-  template <typename Value, typename Container>
-  typename TiledArray::detail::RangeIterator<Value, Container>::difference_type
-  distance(const TiledArray::detail::RangeIterator<Value, Container>& first,
-      const TiledArray::detail::RangeIterator<Value, Container>& last)
+  template <typename T, typename Container>
+  typename TiledArray::detail::RangeIterator<T, Container>::difference_type
+  distance(const TiledArray::detail::RangeIterator<T, Container>& first,
+      const TiledArray::detail::RangeIterator<T, Container>& last)
   {
     return first.distance_to(last);
   }

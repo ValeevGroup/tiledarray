@@ -60,8 +60,8 @@ namespace TiledArray {
 
           // Construct restricted pointers to the input data
           const Permutation::index_type* restrict const inv_perm = & inv_perm_.data().front();
-          const Range::size_type* restrict const range_size = range.size().data();
-          const Range::size_type* restrict const range_weight = range.weight().data();
+          const Range::size_type* restrict const range_size = range.size();
+          const Range::size_type* restrict const range_weight = range.weight();
 
           // Construct restricted pointers to the object data
           std::size_t* restrict const input_weight = weights_;

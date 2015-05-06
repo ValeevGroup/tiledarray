@@ -36,82 +36,139 @@ namespace TiledArray {
     typedef std::size_t size_type; ///< Size type
     typedef std::vector<size_type> index; ///< Coordinate index type
     typedef index index_type; ///< Coordinate index type, to conform Tensor Working Group spec
-    typedef detail::SizeArray<size_type> size_array; ///< Size array type
+    typedef std::vector<size_type> size_array; ///< Size array type
     typedef index extent_type;    ///< Range extent type, to conform Tensor Working Group spec
     typedef std::size_t ordinal_type; ///< Ordinal type, to conform Tensor Working Group spec
-    typedef detail::RangeIterator<index, Range_> const_iterator; ///< Coordinate iterator
-    friend class detail::RangeIterator<index, Range_>;
+    typedef detail::RangeIterator<size_type, Range_> const_iterator; ///< Coordinate iterator
+    friend class detail::RangeIterator<size_type, Range_>;
 
   private:
+
+    size_type* data_; ///< An array that holds the dimension information of the
+                      ///< range. The layout of the array is:
+                      ///< \code
+                      ///< { start[0],  ..., start[rank_ - 1],
+                      ///<   finish[0], ..., finish[rank_ - 1],
+                      ///<   size[0],   ..., size[rank_ - 1],
+                      ///<   stride[0], ..., stride[rank_ - 1] }
+                      ///< \endcode
+    size_type volume_; ///< Total number of elements
+    unsigned int rank_; ///< The rank (or number of dimensions) in the range
+
     struct Enabler {};
 
-    /// Initialize range arrays
+    /// Initialize range data from lower and upper bounds
 
-    /// Use \c buffer to set the buffers for range arrays.
-    /// \param buffer The buffer that will holds \c 4*n elements
-    /// \param n The size of each of the range arrays
-    /// \note If the range arrays reference a valid buffer, then calling this
-    /// function will cause a memory leak.
-    void init_arrays(size_type* const buffer, const size_type n) {
-      start_.set(buffer, n);
-      finish_.set(start_.end(), n);
-      size_.set(finish_.end(), n);
-      weight_.set(size_.end(), n);
-    }
-
-    /// Allocate and initialize range arrays
-
-    /// \param n The size of each of the range arrays
-    /// \throw std::bad_alloc When memory allocation fails
-    void alloc_arrays(const size_type n) { init_arrays(new size_type[n << 2], n); }
-
-    /// Reallocate and reinitialize range arrays
-
-    /// If <tt>dim() != n</tt>, then a new buffer is allocated and it is used to
-    /// reinitialize the range arrays. If \c n is zero, the range arrays are set
-    /// to zero sized arrays.
-    /// deallocated and the range arrays are set to zero size arrays.
-    /// \param n The new size for the range arrays
-    void realloc_arrays(const size_type n) {
-      if(dim() != n) {
-        delete_arrays();
-        size_type* const buffer = (n > 0ul ? new size_type[n << 2] : NULL);
-        init_arrays(buffer, n);
-      }
-    }
-    /// delete array memory
-
-    /// \throw nothing
-    void delete_arrays() { delete [] start_.data(); }
-
+    /// \tparam Index An array type
+    /// \param start The lower bound of the range
+    /// \param finish The upper bound of the range
+    /// \pre Assume \c rank_ is initialized to the rank of the range and
+    /// \c data_ has been allocated to hold 4*rank_ elements
+    /// \post \c data_ and \c volume_ are initialized with range dimension
+    /// information.
     template <typename Index>
-    void compute_range_data(const size_type n, const Index& start, const Index& finish) {
+    void init_range_data(const Index& start, const Index& finish) {
+      // Construct temp pointers
+      size_type* restrict const start_ptr  = data_;
+      size_type* restrict const finish_ptr = start_ptr + rank_;
+      size_type* restrict const size_ptr   = finish_ptr + rank_;
+      size_type* restrict const weight_ptr = size_ptr + rank_;
+
       // Set the volume seed
       volume_ = 1ul;
 
       // Compute range data
-      for(int i = n - 1; i >= 0; --i) {
+      for(int i = int(rank_) - 1; i >= 0; --i) {
+        // Check input dimensions
+        TA_ASSERT(start[i] >= 0ul);
         TA_ASSERT(start[i] < finish[i]);
-        start_[i] = start[i];
-        finish_[i] = finish[i];
-        size_[i] = finish[i] - start[i];
-        weight_[i] = volume_;
-        volume_ *= size_[i];
+
+        // Compute data for element i of start, finish, and size
+        const size_type start_i  = start[i];
+        const size_type finish_i = finish[i];
+        const size_type size_i   = finish_i - start_i;
+
+        start_ptr[i]  = start_i;
+        finish_ptr[i] = finish_i;
+        size_ptr[i]   = size_i;
+        weight_ptr[i] = volume_;
+        volume_      *= size_i;
       }
     }
 
+    /// Initialize range data from a size array
+
+    /// \tparam Index An array type
+    /// \param size The upper bound of the range
+    /// \pre Assume \c rank_ is initialized to the rank of the range and
+    /// \c data_ has been allocated to hold 4*rank_ elements
+    /// \post \c data_ and \c volume_ are initialized with range dimension
+    /// information.
     template <typename Index>
-    void compute_range_data(const size_type n, const Index& size) {
+    void init_range_data(const Index& size) {
+      // Construct temp pointers
+      size_type* restrict const start_ptr  = data_;
+      size_type* restrict const finish_ptr = start_ptr + rank_;
+      size_type* restrict const size_ptr   = finish_ptr + rank_;
+      size_type* restrict const weight_ptr = size_ptr + rank_;
+
       // Set the volume seed
       volume_ = 1ul;
 
       // Compute range data
-      for(int i = n - 1; i >= 0; --i) {
+      for(int i = int(rank_) - 1; i >= 0; --i) {
+        // Check bounds of the input size
         TA_ASSERT(size[i] > 0ul);
-        start_[i] = 0ul;
-        finish_[i] = size_[i] = size[i];
-        weight_[i] = volume_;
-        volume_ *= size[i];
+
+        // Get size i
+        const size_type size_i = size[i];
+
+        start_ptr[i]  = 0ul;
+        finish_ptr[i] = size_i;
+        size_ptr[i]   = size_i;
+        weight_ptr[i] = volume_;
+        volume_      *= size_i;
+      }
+    }
+
+    /// Initialize permuted range data from lower and upper bounds
+
+    /// \param other_start The lower bound of the unpermuted range
+    /// \param other_finish The upper bound of the unpermuted range
+    /// \pre Assume \c rank_ is initialized to the rank of the range and
+    /// \c data_ has been allocated to hold 4*rank_ elements
+    /// \post \c data_ and \c volume_ are initialized with the permuted range
+    /// dimension information from \c other_start and \c other_finish.
+    void init_range_data(const Permutation& perm,
+        const size_type* restrict const other_start,
+        const size_type* restrict const other_finish)
+    {
+      // Create temporary pointers to this range data
+      size_type* restrict const start_ptr  = data_;
+      size_type* restrict const finish_ptr = start_ptr + rank_;
+      size_type* restrict const size_ptr   = finish_ptr + rank_;
+      size_type* restrict const weight_ptr = size_ptr + rank_;
+
+      // Copy the permuted start, finish, and size into this range.
+      for(unsigned int i = 0u; i < rank_; ++i) {
+        const size_type perm_i = perm[i];
+
+        // Get the start, finish, and size from other for rank i.
+        const size_type other_start_i = other_start[i];
+        const size_type other_finish_i = other_finish[i];
+        const size_type other_size_i = other_finish_i - other_start_i;
+
+        // Store the permuted start, finish and size
+        start_ptr[perm_i]  = other_start_i;
+        finish_ptr[perm_i] = other_finish_i;
+        size_ptr[perm_i]   = other_size_i;
+      }
+
+      // Recompute weight and volume
+      volume_ = 1ul;
+      for(int i = int(rank_) - 1; i >= 0; --i) {
+        weight_ptr[i] = volume_;
+        volume_ *= size_ptr[i];
       }
     }
 
@@ -119,31 +176,31 @@ namespace TiledArray {
 
     /// Default constructor
 
-    /// Construct a range with size and dimensions equal to zero.
-    Range() :
-      start_(), finish_(), size_(), weight_(), volume_(0ul)
-    { }
+    /// \post Range has zero rank, volume, and size.
+    Range() : data_(nullptr), volume_(0ul), rank_(0u) { }
 
-    /// Constructor defined by an upper and lower bound
+    /// Construct range defined by an upper and lower bound
 
     /// \tparam Index An array type
     /// \param start The lower bound of the N-dimensional range
     /// \param finish The upper bound of the N-dimensional range
+    /// \post Range has an lower and upper bound of \c start and \c finish.
     /// \throw TiledArray::Exception When the size of \c start is not equal to
     /// that of \c finish.
     /// \throw TiledArray::Exception When start[i] >= finish[i]
     /// \throw std::bad_alloc When memory allocation fails.
-    template <typename Index>
-    Range(const Index& start, const Index& finish,
-          typename std::enable_if<! std::is_integral<Index>::value, Enabler>::type = Enabler()) :
-      start_(), finish_(), size_(), weight_(), volume_(0ul)
+    template <typename Index,
+        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+    Range(const Index& start, const Index& finish) :
+      data_(nullptr), volume_(0ul), rank_(0u)
     {
       const size_type n = detail::size(start);
       TA_ASSERT(n == detail::size(finish));
-      if(n > 0ul) {
+      if(n) {
         // Initialize array memory
-        alloc_arrays(n);
-        compute_range_data(n, start, finish);
+        data_ = new size_type[n << 2];
+        rank_ = n;
+        init_range_data(start, finish);
       }
     }
 
@@ -151,35 +208,39 @@ namespace TiledArray {
 
     /// \tparam SizeArray An array type
     /// \param size An array with the size of each dimension
+    /// \post Range has an lower bound of 0, and an upper bound of \c size.
     /// \throw std::bad_alloc When memory allocation fails.
-    template <typename SizeArray>
+    template <typename SizeArray,
+        enable_if_t<! std::is_integral<SizeArray>::value>* = nullptr>
     explicit Range(const SizeArray& size) :
-      start_(), finish_(), size_(), weight_(), volume_(0ul)
+      data_(nullptr), volume_(0ul), rank_(0u)
     {
       const size_type n = detail::size(size);
       if(n) {
         // Initialize array memory
-        alloc_arrays(n);
-        compute_range_data(n, size);
+        data_ = new size_type[n << 2];
+        rank_ = n;
+        compute_range_data({size});
       }
     }
 
     /// Range constructor from a pack of sizes for each dimension
 
     /// \tparam Sizes A pack of unsigned integers
-    /// \param size0 The size of dimensions 0
-    /// \param sizes A pack of sizes for dimensions 1+
+    /// \param sizes A pack of sizes for dimensions
+    /// \post Range has an lower bound of 0, and an upper bound of \c (sizes...).
     /// \throw std::bad_alloc When memory allocation fails.
-    template<typename... Sizes>
-    explicit Range(const size_type& size0, const Sizes&... sizes) :
-      start_(), finish_(), size_(), weight_(), volume_(0ul)
+    template<typename... Sizes,
+        enable_if_t<detail::is_integral_list<Sizes...>::value>* = nullptr>
+    explicit Range(const Sizes... sizes) :
+      data_(nullptr), volume_(0ul), rank_(0u)
     {
-      const size_type n = sizeof...(sizes) + 1;
+      const size_type n = sizeof...(Sizes);
 
       // Initialize array memory
-      alloc_arrays(n);
-      size_type range_extent[n] = {size0, static_cast<size_type>(sizes)...};
-      compute_range_data(n, range_extent);
+      data_ = new size_type[n << 2];
+      rank_ = n;
+      compute_range_data({static_cast<size_type>(sizes)...});
     }
 
     /// Copy Constructor
@@ -187,13 +248,26 @@ namespace TiledArray {
     /// \param other The range to be copied
     /// \throw std::bad_alloc When memory allocation fails.
     Range(const Range_& other) :
-      start_(), finish_(), size_(), weight_(), volume_(other.volume_)
+      data_(nullptr), volume_(0ul), rank_(0u)
     {
-      const size_type n = other.dim();
-      if(n > 0ul) {
-        alloc_arrays(n);
-        memcpy(start_.data(), other.start_.begin(), (sizeof(size_type) << 2) * n);
+      if(other.rank_ > 0ul) {
+        data_ = new size_type[other.rank_ << 2];
+        rank_ = other.rank_;
+        volume_ = other.volume_;
+        memcpy(data_, other.data_, (sizeof(size_type) << 2) * other.rank_);
       }
+    }
+
+    /// Copy Constructor
+
+    /// \param other The range to be copied
+    /// \throw std::bad_alloc When memory allocation fails.
+    Range(Range_&& other) :
+      data_(other.data_), volume_(other.volume_), rank_(other.rank_)
+    {
+      other.data_ = nullptr;
+      other.volume_ = 0ul;
+      other.rank_ = 0u;
     }
 
     /// Permuting copy constructor
@@ -202,47 +276,26 @@ namespace TiledArray {
     /// \param other The range to be permuted and copied
     /// \throw std::bad_alloc When memory allocation fails.
     Range(const Permutation& perm, const Range_& other) :
-      start_(), finish_(), size_(), weight_(), volume_(0ul)
+      data_(nullptr), volume_(0ul), rank_(0u)
     {
-      TA_ASSERT(perm.dim() == other.dim());
+      TA_ASSERT(perm.dim() == other.rank_);
 
-      const size_type n = other.dim();
-      if(n > 0ul) {
-        alloc_arrays(n);
+      if(other.rank_ > 0ul) {
+        data_ = new size_type[other.rank_ << 2];
+        rank_ = other.rank_;
 
         if(perm) {
-          const size_type* restrict const other_start = other.start().data();
-          const size_type* restrict const other_finish = other.finish().data();
-          const size_type* restrict const other_size = other.size().data();
-
-          size_type* restrict const start = start_.data();
-          size_type* restrict const finish = finish_.data();
-          size_type* restrict const size = size_.data();
-
-          // Copy the permuted start, finish, and size to this range.
-          for(size_type i = 0ul; i < n; ++i) {
-            const size_type pi = perm[i];
-            start[pi] = other_start[i];
-            finish[pi] = other_finish[i];
-            size[pi] = other_size[i];
-          }
-          // Compute weight and volume
-          volume_ = 1ul;
-          size_type* restrict const weight = weight_.data();
-          for(int i = n - 1; i >= 0; --i) {
-            weight[i] = volume_;
-            volume_ *= size[i];
-          }
+          init_range_data(perm, other.data_, other.data_ + rank_);
         } else {
           // Simple copy will due.
-          memcpy(start_.data(), other.start_.data(), (sizeof(size_type) << 2) * n);
+          memcpy(data_, other.data_, (sizeof(size_type) << 2) * rank_);
           volume_ = other.volume_;
         }
       }
     }
 
     /// Destructor
-    ~Range() { delete_arrays(); }
+    ~Range() { delete [] data_; }
 
     /// Copy assignment operator
 
@@ -250,67 +303,103 @@ namespace TiledArray {
     /// \return A reference to this object
     /// \throw std::bad_alloc When memory allocation fails.
     Range_& operator=(const Range_& other) {
-      const size_type n = other.dim();
-      realloc_arrays(n);
-      memcpy(start_.data(), other.start_.begin(), (sizeof(size_type) << 2) * n);
+      if(rank_ != other.rank_) {
+        delete [] data_;
+        data_ = (other.rank_ > 0ul ? new size_type[other.rank_ << 2] : nullptr);
+        rank_ = other.rank_;
+      }
+      memcpy(data_, other.data_, (sizeof(size_type) << 2) * rank_);
       volume_ = other.volume();
+
+      return *this;
+    }
+
+    /// Move assignment operator
+
+    /// \param other The range to be copied
+    /// \return A reference to this object
+    /// \throw nothing
+    Range_& operator=(Range_&& other) {
+      data_ = other.data_;
+      volume_ = other.volume_;
+      rank_ = other.rank_;
+
+      other.data_ = nullptr;
+      other.volume_ = 0ul;
+      other.rank_ = 0u;
 
       return *this;
     }
 
     /// Dimension accessor
 
-    /// \return The number of dimensions of this range
-    /// \throw nothing
-    unsigned int dim() const { return size_.size(); }
-
-    /// Provided to conform to the Tensor Working Group specification
     /// \return The rank (number of dimensions) of this range
     /// \throw nothing
-    unsigned int rank() const { return dim(); }
+    /// \note Equivalent to \c rank()
+    unsigned int dim() const { return rank_; }
+
+    /// Rank accessor
+
+    /// \return The rank (number of dimensions) of this range
+    /// \throw nothing
+    /// \note Provided to satisfy the requirements of Tensor Working Group
+    /// specification.
+    unsigned int rank() const { return rank_; }
 
     /// Range start coordinate accessor
 
-    /// \return A \c size_array that contains the lower bound of this range
+    /// \return A pointer to an array that contains the lower bound of this range
     /// \throw nothing
-    const size_array& start() const { return start_; }
+    const size_type* start() const { return data_; }
 
     /// Range lower bound accessor
 
     /// Provided to conform to the Tensor Working Group specification
     /// \return A \c size_array that contains the lower bound of this range
     /// \throw nothing
-    const size_array& lobound() const { return start_; }
+    /// \note Provided to satisfy the requirements of Tensor Working Group
+    /// specification.
+    size_array lobound() const { return size_array(data_, data_ + rank_); }
 
     /// Range finish coordinate accessor
 
+    /// \return A pointer to an array that contains the upper bound of this range
+    /// \throw nothing
+    const size_type* finish() const { return data_ + rank_; }
+
+    /// Upper bound accessor
+
     /// \return A \c size_array that contains the upper bound of this range
     /// \throw nothing
-    const size_array& finish() const { return finish_; }
+    /// \note Provided to satisfy the requirements of Tensor Working Group
+    /// specification.
+    size_array upbound() const {
+      const size_type* const finish = data_ + rank_;
+      return size_array(finish, finish + rank_);
+    }
 
-    /// Range upper bound accessor
+    /// Size accessor
 
-    /// Provided to conform to the Tensor Working Group specification
-    /// \return A \c size_array that contains the upper bound of this range
+    /// \return A pointer to an array that contains the lower bound of this range
     /// \throw nothing
-    const size_array& upbound() const { return finish_; }
+    const size_type* size() const { return data_ + (rank_ + rank_); }
 
-    /// Range size accessor
+    /// Size accessor
 
-    /// \return A \c size_array that contains the sizes of each dimension
+    /// \return An \c extent_type that contains the extent of each dimension
     /// \throw nothing
-    const size_array& size() const { return size_; }
-
-    /// similar to size(), provided to satisfy the requirements of Tensor Working Group specification
-    /// \return A \c extent_type that contains the extent of each dimension
-    /// \throw nothing
-    extent_type extent() const { return extent_type(size_.begin(), size_.end()); }
+    /// \note Provided to satisfy the requirements of Tensor Working Group
+    /// specification.
+    extent_type extent() const {
+      const size_type* const size = data_ + rank_ + rank_;
+      return size_array(size, size + rank_);
+    }
 
     /// Range weight accessor
 
     /// \return A \c size_array that contains the strides of each dimension
     /// \throw nothing
-    const size_array& weight() const { return weight_; }
+    const size_type* weight() const { return data_ + (rank_ + rank_ + rank_); }
 
 
     /// Range volume accessor
@@ -322,7 +411,7 @@ namespace TiledArray {
     /// alias to volume() to conform to the Tensor Working Group specification
     /// \return The total number of elements in the range.
     /// \throw nothing
-    size_type area() const { return volume(); }
+    size_type area() const { return volume_; }
 
     /// Index iterator factory
 
@@ -330,7 +419,7 @@ namespace TiledArray {
     /// the data layout of a dense tensor.
     /// \return An iterator that holds the start element index of a tensor
     /// \throw nothing
-    const_iterator begin() const { return const_iterator(start_, this); }
+    const_iterator begin() const { return const_iterator(data_, this); }
 
     /// Index iterator factory
 
@@ -338,7 +427,7 @@ namespace TiledArray {
     /// the data layout of a dense tensor.
     /// \return An iterator that holds the finish element index of a tensor
     /// \throw nothing
-    const_iterator end() const { return const_iterator(finish_, this); }
+    const_iterator end() const { return const_iterator(data_ + rank_, this); }
 
     /// Check the coordinate to make sure it is within the range.
 
@@ -348,16 +437,20 @@ namespace TiledArray {
     /// \c false
     /// \throw TildedArray::Exception When the dimension of this range is not
     /// equal to the size of the index.
-    template <typename Index>
-    typename std::enable_if<! std::is_integral<Index>::value, bool>::type
-    includes(const Index& index) const {
-      TA_ASSERT(detail::size(index) == dim());
-      const unsigned int end = dim();
-      for(unsigned int i = 0ul; i < end; ++i)
-        if((index[i] < start_[i]) || (index[i] >= finish_[i]))
-          return false;
+    template <typename Index,
+        enable_if_t<! std::is_integral<Index>::value, bool>* = nullptr>
+    bool includes(const Index& index) const {
+      TA_ASSERT(detail::size(index) == rank_);
+      size_type* restrict const start_ptr  = data_;
+      size_type* restrict const finish_ptr = start_ptr + rank_;
 
-      return true;
+      bool result = (rank_ > 0u);
+      for(unsigned int i = 0u; result && (i < rank_); ++i) {
+        const size_type index_i = index[i];
+        result = result && (index_i >= start_ptr[i]) && (index_i < finish_ptr[i]);
+      }
+
+      return result;
     }
 
     /// Check the ordinal index to make sure it is within the range.
@@ -371,27 +464,10 @@ namespace TiledArray {
       return include_ordinal_(i);
     }
 
-  private:
-
-    template <std::size_t N>
-    static constexpr bool includes_helper() { return true; }
-
-    template <std::size_t N, typename Index1, typename... Index>
-    typename std::enable_if<std::is_integral<Index1>::value, bool>::type
-    includes_helper(const Index1& index1, const Index&... index) const {
-      constexpr std::size_t i = N - sizeof...(Index) - 1;
-      return (static_cast<size_type>(index1) >= start_[i])
-          && (static_cast<size_type>(index1) < finish_[i])
-          && includes_helper<N>(index...);
-    }
-
-  public:
-
     template <typename... Index>
     typename std::enable_if<(sizeof...(Index) > 1ul), size_type>::type
     includes(const Index&... index) const {
-      TA_ASSERT(sizeof...(Index) == dim());
-      return includes_helper<sizeof...(Index)>(index...);
+      return includes({index...});
     }
 
 
@@ -404,29 +480,15 @@ namespace TiledArray {
     /// equal to the dimension of the permutation.
     /// \throw std::bad_alloc When memory allocation fails.
     Range_& operator ^=(const Permutation& perm) {
-      const size_type n = dim();
-      TA_ASSERT(perm.dim() == n);
+      TA_ASSERT(perm.dim() == rank_);
 
-      if(n > 1ul) {
-        // Create a permuted copy of start and finish
-        const size_type* restrict const start =
-            static_cast<size_type*>(memcpy(new size_type[n << 1], start_.data(), (sizeof(size_type) << 1) * n));
-        const size_type* restrict const finish = start + n;
-        size_type* restrict const this_start = start_.data();
-        size_type* restrict const this_finish = finish_.data();
-        size_type* restrict const this_size = size_.data();
-        for(size_type i = 0ul; i < n; ++i) {
-          const size_type pi = perm[i];
-          this_start[pi] = start[i];
-          this_finish[pi] = finish[i];
-          this_size[pi] = finish[i] - start[i];
-        }
-        volume_ = 1ul;
-        size_type* restrict const this_weight = weight_.data();
-        for(int i = n - 1; i >= 0; --i) {
-          this_weight[i] = volume_;
-          volume_ *= this_size[i];
-        }
+      if(rank_ > 1ul) {
+        // Copy the start and finish data into a temporary array
+        size_type* restrict const start = new size_type[rank_ << 1];
+        const size_type* restrict const finish = start + rank_;
+        std::memcpy(start, data_, (sizeof(size_type) << 1) * rank_);
+
+        init_range_data(perm, start, finish);
 
         // Cleanup old memory.
         delete [] start;
@@ -450,9 +512,13 @@ namespace TiledArray {
       TA_ASSERT(n == detail::size(finish));
 
       // Reallocate memory for range arrays
-      realloc_arrays(n);
+      if(rank_ != n) {
+        delete [] data_;
+        data_ = (n > 0ul ? new size_type[n << 2] : nullptr);
+        rank_ = n;
+      }
       if(n > 0ul)
-        compute_range_data(n, start, finish);
+        init_range_data(start, finish);
       else
         volume_ = 0ul;
 
@@ -478,38 +544,26 @@ namespace TiledArray {
     /// \param index The index to be converted to an ordinal index
     /// \return The ordinal index of \c index
     /// \throw When \c index is not included in this range.
-    template <typename Index>
-    typename std::enable_if<! std::is_integral<Index>::value, size_type>::type
-    ord(const Index& index) const {
-      TA_ASSERT(detail::size(index) == dim());
+    template <typename Index,
+        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+    size_type ord(const Index& index) const {
+      TA_ASSERT(detail::size(index) == rank_);
       TA_ASSERT(includes(index));
-      size_type o = 0;
-      const unsigned int end = dim();
-      for(unsigned int i = 0ul; i < end; ++i)
-        o += (index[i] - start_[i]) * weight_[i];
 
-      return o;
+      size_type* restrict const start_ptr  = data_;
+      size_type* restrict const weight_ptr = data_ + rank_ + rank_ + rank_;
+
+      size_type result = 0ul;
+      for(unsigned int i = 0u; i < rank_; ++i)
+        result += (index[i] - start_ptr[i]) * weight_ptr[i];
+
+      return result;
     }
 
-  private:
-
-    template <std::size_t N>
-    static constexpr size_type ord_helper() { return 0ul; }
-
-    template <std::size_t N, typename Index1, typename... Index>
-    typename std::enable_if<std::is_integral<Index1>::value, size_type>::type
-    ord_helper(const Index1& index1, const Index&... index) const {
-      constexpr std::size_t i = N - sizeof...(Index) - 1;
-      return (index1 - start_[i]) * weight_[i] + ord_helper<N>(index...);
-    }
-
-  public:
-
-    template <typename... Index>
-    typename std::enable_if<(sizeof...(Index) > 1ul), size_type>::type
-    ord(const Index&... index) const {
-      TA_ASSERT(sizeof...(Index) == dim());
-      return ord_helper<sizeof...(Index)>(index...);
+    template <typename... Index,
+        enable_if_t<(sizeof...(Index) > 1ul)>* = nullptr>
+    size_type ord(const Index&... index) const {
+      return ord({index...});
     }
 
     /// alias to ord<Index>(), to conform with the Tensor Working Group spec \sa ord()
@@ -527,20 +581,18 @@ namespace TiledArray {
       // Check that index is contained by range.
       TA_ASSERT(includes(index));
 
-      const unsigned int end = dim();
-
       // Construct result coordinate index object and allocate its memory.
-      Range_::index result(end, 0);
+      Range_::index result(rank_, 0);
 
       // Get pointers to the data
       size_type * restrict const result_data = & result.front();
-      size_type const * restrict const weight = weight_.data();
-      size_type const * restrict const start = start_.data();
+      size_type const * restrict const weight_ptr = data_ + rank_ + rank_ + rank_;
+      size_type const * restrict const start_ptr = data_;
 
       // Compute the coordinate index of o in range.
-      for(unsigned int i = 0u; i < end; ++i) {
-        const size_type weight_i = weight[i];
-        const size_type start_i = start[i];
+      for(unsigned int i = 0u; i < rank_; ++i) {
+        const size_type weight_i = weight_ptr[i];
+        const size_type start_i = start_ptr[i];
 
         // Compute result index element i
         const size_type result_i = (index / weight_i) + start_i;
@@ -559,41 +611,43 @@ namespace TiledArray {
     /// a template parameter that can be an index or a size_type.
     /// \param i The index
     /// \return \c i (unchanged)
-    template <typename Index>
-    typename std::enable_if<! std::is_integral<Index>::value, const index&>::type
-    idx(const Index& i) const {
+    template <typename Index,
+        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+    const Index& idx(const Index& i) const {
       TA_ASSERT(includes(i));
       return i;
     }
 
-    template <typename Archive>
-    typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type
-    serialize(const Archive& ar) {
+    template <typename Archive,
+        enable_if_t<madness::archive::is_input_archive<Archive>::value>* = nullptr>
+    void serialize(const Archive& ar) {
       // Get number of dimensions
-      size_type n = 0ul;
+      unsigned int n = 0ul;
       ar & n;
 
+      // Reallocate the array
+      const unsigned int four_n = n << 2;
+      if(rank_ != n) {
+        delete [] data_;
+        data_ = (n > 0u ? new size_type[four_n] : nullptr);
+        rank_ = n;
+      }
+
       // Get range data
-      realloc_arrays(n);
-      ar & madness::archive::wrap(start_.data(), n << 2) & volume_;
+      ar & madness::archive::wrap(data_, four_n) & volume_;
     }
 
-    template <typename Archive>
-    typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type
-    serialize(const Archive& ar) const {
-      const size_type n = dim();
-      ar & n & madness::archive::wrap(start_.data(), n << 2) & volume_;
+    template <typename Archive,
+        enable_if_t<madness::archive::is_output_archive<Archive>::value>* = nullptr>
+    void serialize(const Archive& ar) const {
+      ar & rank_ & madness::archive::wrap(data_, rank_ << 2) & volume_;
     }
 
     void swap(Range_& other) {
       // Get temp data
-      size_type* temp_start = start_.data();
-      const size_type n = start_.size();
-
-      // Swap data
-      init_arrays(other.start_.data(), other.start_.size());
-      other.init_arrays(temp_start, n);
+      std::swap(data_, other.data_);
       std::swap(volume_, other.volume_);
+      std::swap(rank_, other.rank_);
     }
 
   private:
@@ -625,21 +679,25 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void increment(index& i) const {
       TA_ASSERT(includes(i));
-      for(int d = int(dim()) - 1; d >= 0; --d) {
+
+      size_type const * restrict const start_ptr = data_;
+      size_type const * restrict const finish_ptr = data_ + rank_;
+
+      for(int d = int(rank_) - 1; d >= 0; --d) {
         // increment coordinate
         ++i[d];
 
         // break if done
-        if(i[d] < finish_[d])
+        if(i[d] < finish_ptr[d])
           return;
 
         // Reset current index to start value.
-        i[d] = start_[d];
+        i[d] = start_ptr[d];
       }
 
       // if the current location was set to start then it was at the end and
       // needs to be reset to equal finish.
-      std::copy(finish_.begin(), finish_.end(), i.begin());
+      std::copy(finish_ptr, finish_ptr + rank_, i.begin());
     }
 
     /// Advance the coordinate index \c i by \c n in this range
@@ -670,11 +728,6 @@ namespace TiledArray {
       return ord(last) - ord(first);
     }
 
-    size_array start_; ///< Tile origin
-    size_array finish_; ///< Tile upper bound
-    size_array size_; ///< Dimension sizes
-    size_array weight_; ///< Dimension weights (strides)
-    size_type volume_; ///< Total number of elements
   }; // class Range
 
 
@@ -711,7 +764,8 @@ namespace TiledArray {
   /// \return \c true when \c r1 represents the same range as \c r2, otherwise
   /// \c false.
   inline bool operator ==(const Range& r1, const Range& r2) {
-    return ((r1.start() == r2.start()) && (r1.finish() == r2.finish()));
+    return (r1.rank() == r2.rank()) && !std::memcmp(r1.start(), r2.start(),
+        r1.rank() * (2u * sizeof(Range::size_type)));
   }
   /// Range inequality comparison
 
@@ -720,7 +774,8 @@ namespace TiledArray {
   /// \return \c true when \c r1 does not represent the same range as \c r2,
   /// otherwise \c false.
   inline bool operator !=(const Range& r1, const Range& r2) {
-    return ! operator ==(r1, r2);
+    return (r1.rank() != r2.rank()) || std::memcmp(r1.start(), r2.start(),
+        r1.rank() * (2u * sizeof(Range::size_type)));
   }
 
   /// Range output operator
@@ -730,9 +785,9 @@ namespace TiledArray {
   /// \return A reference to the output stream
   inline std::ostream& operator<<(std::ostream& os, const Range& r) {
     os << "[ ";
-    detail::print_array(os, r.start());
+    detail::print_array(os, r.start(), r.rank());
     os << ", ";
-    detail::print_array(os, r.finish());
+    detail::print_array(os, r.finish(), r.rank());
     os << " )";
     return os;
   }

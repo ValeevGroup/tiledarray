@@ -197,8 +197,7 @@ namespace TiledArray {
       /// of result
       template <typename Left, typename Result>
       bool left_result_coformal(const Left& left, const Result& result) const {
-        return std::equal(left.begin() + left_.outer[0],
-            left.begin() + left_.outer[1], result.begin());
+        return std::equal(left + left_.outer[0], left + left_.outer[1], result);
       }
 
       /// Test that the outer dimensions of right are coformal with that of the result tensor
@@ -213,9 +212,8 @@ namespace TiledArray {
       /// of result
       template <typename Right, typename Result>
       bool right_result_coformal(const Right& right, const Result& result) const {
-        return std::equal(right.begin() + right_.outer[0],
-            right.begin() + right_.outer[1],
-            result.begin() + (left_.outer[1] - left_.outer[0]));
+        return std::equal(right + right_.outer[0], right + right_.outer[1],
+            result + (left_.outer[1] - left_.outer[0]));
       }
 
       /// Test that the inner dimensions of left are coformal with that of right
@@ -230,9 +228,8 @@ namespace TiledArray {
       /// that of \c right, other \c false.
       template <typename Left, typename Right>
       bool left_right_coformal(const Left& left, const Right& right) const {
-        return std::equal(left.begin() + left_.inner[0],
-            left.begin() + left_.inner[1],
-            right.begin() + right_.inner[0]);
+        return std::equal(left + left_.inner[0], left + left_.inner[1],
+            right + right_.inner[0]);
       }
 
       /// Compute the matrix dimension that can be used in a *GEMM call
