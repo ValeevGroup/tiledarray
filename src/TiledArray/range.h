@@ -29,25 +29,6 @@ namespace TiledArray {
   // Forward declaration of TiledArray components.
   class Permutation;
 
-  namespace detail {
-
-    template <typename Index, typename WeightArray, typename StartArray>
-    inline std::size_t calc_ordinal(const Index& index, const WeightArray& weight, const StartArray& start) {
-      // Check that the dimensions of the arrays are equal.
-      const std::size_t n = detail::size(index);
-      TA_ASSERT(detail::size(weight) == n);
-      TA_ASSERT(detail::size(start) == n);
-
-      // Compute ordinal
-      std::size_t o = 0ul;
-      for(std::size_t i = 0ul; i < n; ++i)
-        o += (index[i] - start[i]) * weight[i];
-
-      return o;
-    }
-
-  }  // namespace detail
-
   /// Range data of an N-dimensional tensor.
   class Range {
   public:
