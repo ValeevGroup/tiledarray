@@ -109,8 +109,8 @@ BOOST_AUTO_TEST_CASE( ostream )
 {
 
   std::stringstream stm;
-  stm << "( tiles = " << TiledRange::range_type(tr.tiles().start(), tr.tiles().finish()) <<
-      ", elements = " << TiledRange::tile_range_type(tr.elements().start(), tr.elements().finish()) << " )";
+  stm << "( tiles = " << tr.tiles() <<
+      ", elements = " << tr.elements() << " )";
 
   boost::test_tools::output_test_stream output;
   output << tr;
