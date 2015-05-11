@@ -91,13 +91,11 @@ namespace TiledArray {
       pointer data_; ///< Tensor data
     }; // class Impl
 
-    template <typename U>
-    static typename std::enable_if<std::is_scalar<U>::value>::type
-    default_init(size_type, U*) { }
+    template <typename U, enable_if_t<std::is_scalar<U>::value>* = nullptr>
+    static void default_init(size_type, U*) { }
 
-    template <typename U>
-    static typename std::enable_if<! std::is_scalar<U>::value>::type
-    default_init(size_type n, U* u) {
+    template <typename U, enable_if_t<! std::is_scalar<U>::value>* = nullptr>
+    static void default_init(size_type n, U* u) {
       math::uninitialized_fill_vector(n, U(), u);
     }
 
@@ -184,10 +182,10 @@ namespace TiledArray {
     }
 
     /// Construct an evaluated tensor
-    template <typename InIter>
-    Tensor(const range_type& range, InIter it,
-        typename std::enable_if<TiledArray::detail::is_input_iterator<InIter>::value &&
-        ! std::is_pointer<InIter>::value, Enabler>::type = Enabler()) :
+    template <typename InIter,
+        enable_if_t<TiledArray::detail::is_input_iterator<InIter>::value &&
+            ! std::is_pointer<InIter>::value>* = nullptr>
+    Tensor(const range_type& range, InIter it) :
       pimpl_(new Impl(range))
     {
       size_type n = range.volume();
@@ -197,10 +195,10 @@ namespace TiledArray {
     }
 
     template <typename U>
-    Tensor(const Range& r, const U* u) :
-      pimpl_(new Impl(r))
+    Tensor(const Range& range, const U* u) :
+      pimpl_(new Impl(range))
     {
-      math::uninitialized_copy_vector(r.volume(), u, pimpl_->data_);
+      math::uninitialized_copy_vector(range.volume(), u, pimpl_->data_);
     }
 
     /// Construct a permuted tensor copy
@@ -447,7 +445,7 @@ namespace TiledArray {
 
     /// Copy constructor
 
-    /// Do a deep copy of \c other
+    /// Create a shallow copy of \c other
     /// \param other The tile to be copied.
     Tensor(const Tensor_& other) :
       pimpl_(other.pimpl_)
@@ -455,9 +453,9 @@ namespace TiledArray {
 
     /// Copy assignment
 
-    /// Evaluate \c other to this tensor
+    /// Create a shallow copy of \c other
     /// \param other The tensor to be copied
-    /// \return this tensor
+    /// \return \c this tensor
     Tensor_& operator=(const Tensor_& other) {
       pimpl_ = other.pimpl_;
 
@@ -548,9 +546,9 @@ namespace TiledArray {
 
     /// \return The element at the \c i position.
     /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename Index>
-    typename std::enable_if<! std::is_integral<Index>::value, const_reference>::type
-    operator[](const Index& i) const {
+    template <typename Index,
+        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+    const_reference operator[](const Index& i) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
       return pimpl_->data_[pimpl_->range_.ord(i)];
@@ -560,9 +558,9 @@ namespace TiledArray {
 
     /// \return The element at the \c i position.
     /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename Index>
-    typename std::enable_if<! std::is_integral<Index>::value, reference>::type
-    operator[](const Index& i) {
+    template <typename Index,
+      enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+    reference operator[](const Index& i) {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
       return pimpl_->data_[pimpl_->range_.ord(i)];
@@ -622,9 +620,9 @@ namespace TiledArray {
 
     bool empty() const { return !pimpl_; }
 
-    template <typename Archive>
-    typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type
-    serialize(Archive& ar) {
+    template <typename Archive,
+        enable_if_t<madness::archive::is_output_archive<Archive>::value>* = nullptr>
+    void serialize(Archive& ar) {
       if(pimpl_) {
         ar & pimpl_->range_.volume();
         ar & madness::archive::wrap(pimpl_->data_, pimpl_->range_.volume());
@@ -638,9 +636,9 @@ namespace TiledArray {
 
     /// \tparam Archive The serialization archive type
     /// \param ar The serialization archive
-    template <typename Archive>
-    typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type
-    serialize(Archive& ar) {
+    template <typename Archive,
+        enable_if_t<madness::archive::is_input_archive<Archive>::value>* = nullptr>
+    void serialize(Archive& ar) {
       size_type n = 0ul;
       ar & n;
       if(n) {
@@ -1336,9 +1334,9 @@ namespace TiledArray {
     /// \param u The data to be reduced
     /// \param value The initial value of the reduction
     /// \param op The element-wise reduction operation
-    template <typename U, typename Op>
-    static typename std::enable_if<TiledArray::detail::is_numeric<U>::value>::type
-    reduce(const size_type n, const U* u, numeric_type& value, const Op& op) {
+    template <typename U, typename Op,
+        enable_if_t<TiledArray::detail::is_numeric<U>::value>* = nullptr>
+    static void reduce(const size_type n, const U* u, numeric_type& value, const Op& op) {
       math::reduce_op(op, n, value, u);
     }
 
@@ -1569,7 +1567,7 @@ namespace TiledArray {
   }
 
 
-  /// Tensor multiplication operator
+  /// Create a copy of \c left that is scaled by \c right
 
   /// Scale a tensor
   /// \tparam T The element type of \c left
@@ -1578,30 +1576,28 @@ namespace TiledArray {
   /// \param left The left-hand tensor argument
   /// \param right The right-hand scalar argument
   /// \return A tensor where element \c i is equal to <tt> left[i] * right </tt>
-  template <typename T, typename AT, typename N>
-  inline typename std::enable_if<TiledArray::detail::is_numeric<N>::value, Tensor<T, AT> >::type
-  operator*(const Tensor<T, AT>& left, N right) {
+  template <typename T, typename AT, typename N,
+      enable_if_t<TiledArray::detail::is_numeric<N>::value>* = nullptr>
+  inline Tensor<T, AT>operator*(const Tensor<T, AT>& left, N right) {
     return left.scale(right);
   }
 
-  /// Tensor scale-by-constant operator
+  /// Create a copy of \c right that is scaled by \c left
 
-  /// Scale a tensor
-  /// \tparam N Numeric type
+  /// \tparam N A numeric type
   /// \tparam T The element type of \c left
   /// \tparam AT The allocator type of \c left
   /// \param left The left-hand scalar argument
   /// \param right The right-hand tensor argument
   /// \return A tensor where element \c i is equal to <tt> left * right[i] </tt>
-  template <typename N, typename T, typename AT>
-  inline typename std::enable_if<TiledArray::detail::is_numeric<N>::value, Tensor<T, AT> >::type
-  operator*(N left, const Tensor<T, AT>& right) {
+  template <typename N, typename T, typename AT,
+    enable_if_t<detail::is_numeric<N>::value>* = nullptr>
+  inline Tensor<T, AT> operator*(N left, const Tensor<T, AT>& right) {
     return right.scale(left);
   }
 
-  /// Tensor subtraction operator
+  /// Create a negated copy of \c arg
 
-  /// Negate a tensor
   /// \tparam T The element type of \c arg
   /// \tparam AT The allocator type of \c arg
   /// \param arg The argument tensor
@@ -1611,15 +1607,14 @@ namespace TiledArray {
     return arg.neg();
   }
 
-  /// Permute a tensor
+  /// Create a permuted copy of \c arg
 
-  /// Permute \c tensor by \c perm and place the permuted result in \c result .
   /// \tparam T The tensor element type
   /// \tparam A The tensor allocator type
-  /// \param perm The permutation to be applied to \c tensor
-  /// \param tensor The tensor to be permuted by \c perm
+  /// \param perm The permutation to be applied to \c arg
+  /// \param arg The argument tensor to be permuted by \c perm
   template <typename T, typename A>
-  inline Tensor<T,A> operator^(const Permutation& perm, const Tensor<T, A>& tensor) {
+  inline Tensor<T,A> operator^(const Permutation& perm, const Tensor<T, A>& arg) {
     return tensor.permute(perm);
   }
 
