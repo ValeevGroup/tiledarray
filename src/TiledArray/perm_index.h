@@ -33,16 +33,22 @@ namespace TiledArray {
 
 
     /// A functor that permutes ordinal indices
+
+    /// The purpose of this functor is to allow fast, repeated permutations of
+    /// ordinal indices.
     class PermIndex {
-      std::size_t* weights_;
-      int ndim_;
+      std::size_t* weights_; ///< A pointer that stores both the input and
+                             ///< output weights (or strides).
+      unsigned int ndim_; ///< The number of dimensions in the coordinate index space
 
     public:
 
       /// Default constructor
       PermIndex() : weights_(NULL), ndim_(0) { }
 
+      /// Construct permuting functor
 
+      /// \param range The input range of ordinal indices
       PermIndex(const Range& range, const Permutation& perm) :
         weights_(NULL), ndim_(perm.dim())
       {
@@ -68,8 +74,8 @@ namespace TiledArray {
           std::size_t* restrict const output_weight = weights_ + ndim_;
 
           // Initialize input and output weights
-          std::size_t volume = 1;
-          for(int i = ndim_ - 1; i >= 0; --i) {
+          std::size_t volume = 1ul;
+          for(int i = int(ndim_) - 1; i >= 0; --i) {
             // Load input data for iteration i.
             const Permutation::index_type inv_perm_i = inv_perm[i];
             const Range::size_type weight = range_weight[i];
@@ -147,7 +153,7 @@ namespace TiledArray {
         // create result index
         std::size_t perm_index = 0ul;
 
-        for(int i = 0u; i < ndim_; ++i) {
+        for(unsigned int i = 0u; i < ndim_; ++i) {
           const std::size_t input_weight_i = input_weight[i];
           const std::size_t output_weight_i = output_weight[i];
           perm_index += index / input_weight_i * output_weight_i;
