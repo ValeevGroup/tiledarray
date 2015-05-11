@@ -30,7 +30,7 @@ namespace TiledArray {
 namespace detail {
 
 /*
- * TileModel exists only to enable ADL
+ * TileImpl exists only to enable ADL
  * http://en.wikipedia.org/wiki/Argument-dependent_name_lookup
  *
  * This is necessary because Tile uses TiledArray's intrusive interface, which
@@ -45,7 +45,7 @@ namespace detail {
  * confident that all our compilers support c++14.
  */
 template <typename T>
-class TileModel {
+class TileImpl {
     T tile_;
 
    public:
@@ -54,15 +54,15 @@ class TileModel {
     using numeric_type = typename T::numeric_type;
     using size_type = std::size_t;
 
-    TileModel() = default;
-    ~TileModel() = default;
-    TileModel(TileModel const &) = default;
-    TileModel(TileModel &&) = default;
-    TileModel &operator=(TileModel &&) = default;
-    TileModel &operator=(TileModel const &) = default;
+    TileImpl() = default;
+    ~TileImpl() = default;
+    TileImpl(TileImpl const &) = default;
+    TileImpl(TileImpl &&) = default;
+    TileImpl &operator=(TileImpl &&) = default;
+    TileImpl &operator=(TileImpl const &) = default;
 
-    TileModel(T &&t) : tile_{std::move(t)} {}
-    TileModel(T const &t) : tile_{t} {}
+    TileImpl(T &&t) : tile_{std::move(t)} {}
+    TileImpl(T const &t) : tile_{t} {}
 
     T &tile() { return tile_; }
     T const &tile() const { return tile_; }
@@ -124,7 +124,7 @@ class TileModel {
 
     // Non const version
     template <typename... Args>
-    auto gemm_(Args &&... args) 
+    auto gemm_(Args &&... args)
         -> decltype(gemm(tile_, std::forward<Args>(args)...)) {
         return gemm(tile_, std::forward<Args>(args)...);
     }
@@ -216,7 +216,7 @@ class TileModel {
 template <typename T>
 class Tile {
     Range range_;
-    std::shared_ptr<detail::TileModel<T>> tile_;
+    std::shared_ptr<detail::TileImpl<T>> tile_;
 
    public:
     using value_type = T;
@@ -234,8 +234,8 @@ class Tile {
     Tile(Range r) : range_{std::move(r)} {}
     Tile(Range r, T t)
         : range_{std::move(r)},
-          tile_{std::make_shared<detail::TileModel<T>>(
-              detail::TileModel<T>{std::move(t)})} {}
+          tile_{std::make_shared<detail::TileImpl<T>>(
+              detail::TileImpl<T>{std::move(t)})} {}
 
     // Problematic constructor for truly generic code, not obvious that T
     // provides the proper constructor this will ultimately need to be part
@@ -244,8 +244,8 @@ class Tile {
     // template <typename Value>
     // Tile(TA::Range r, Value v)
     //         : range_{std::move(r)},
-    //           tile_{std::make_shared<detail::TileModel<T>>(
-    //                 detail::TileModel<T>{detail::TileModel<T>{T{r, v}}})} {}
+    //           tile_{std::make_shared<detail::TileImpl<T>>(
+    //                 detail::TileImpl<T>{detail::TileImpl<T>{T{r, v}}})} {}
 
    public:
     T &tile() { return tile_->tile(); }
@@ -284,8 +284,8 @@ class Tile {
         if (!empty) {
             T tile;
             ar &tile;
-            tile_ = std::make_shared<detail::TileModel<T>>(
-                detail::TileModel<T>{std::move(tile)});
+            tile_ = std::make_shared<detail::TileImpl<T>>(
+                detail::TileImpl<T>{std::move(tile)});
         }
     }
 
