@@ -27,6 +27,7 @@
 
 // Tile type headers
 #include <TiledArray/tensor.h>
+#include <TiledArray/tile.h>
 
 // Array policy classes
 #include <TiledArray/policies/dense_policy.h>
