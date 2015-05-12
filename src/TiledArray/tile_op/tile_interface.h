@@ -26,6 +26,8 @@
 #ifndef TILEDARRAY_NONINTRUSIVE_API_TENSOR_H__INCLUDED
 #define TILEDARRAY_NONINTRUSIVE_API_TENSOR_H__INCLUDED
 
+#include <TiledArray/type_traits.h>
+
 namespace TiledArray {
 
   // Forward declaration
@@ -38,9 +40,127 @@ namespace TiledArray {
 
   }  // namespace math
 
-  // The following functions define the non-intrusive interface used to apply
-  // math operations to Array tiles. Users are expected to proved The default implementation for these
+  /**
+   * \defgroup NonIntrusiveTileInterface Non-intrusive tile interface
+   * @{
+   */
 
+
+  // The following functions define the non-intrusive interface used to apply
+  // math operations to Array tiles. Users are expected to proved the default
+  // implementation for these.
+
+  /// Type traits for tiles
+
+  /// This class allows users to override/specify the type traits of tiles.
+  /// \tparam T Tensor type
+  template <typename T>
+  struct TileTrait {
+    /// Element type of the tile
+    typedef typename T::value_type value_type;
+    /// Size type used to represent the size and offsets of the tensor data
+    typedef typename T::size_type size_type;
+    /// Element reference type
+    typedef typename T::reference reference;
+    /// Element const reference type
+    typedef typename T::const_reference const_reference;
+    /// Element pointer type
+    typedef typename T::pointer pointer;
+    /// Element const pointer type
+    typedef typename T::const_pointer const_pointer;
+    /// Difference type used to represent the difference between two elements
+    typedef typename T::difference_type difference_type;
+    /// Element iterator type
+    typedef typename T::iterator iterator;
+    /// Element const iterator type
+    typedef typename T::const_iterator const_iterator;
+    /// The scalar type of the tensor type
+    typedef typename TiledArray::detail::scalar_type<T>::type numeric_type;
+
+  }; // struct TileTrait
+
+
+  // Tile element accessors ----------------------------------------------------
+
+  /// Array like accessor
+
+  /// Access an element of \c arg for the given ordinal offset \c index.
+  /// \tparam Arg The tensor type
+  /// \param arg The tensor argument
+  /// \param index The ordinal index of the tensor element
+  /// \return A reference to the element at offset \c index of \c arg
+  template <typename Arg>
+  inline typename TileTrait<Arg>::reference
+  array(Arg& arg, const typename TileTrait<Arg>::size_type index) {
+    return arg[index];
+  }
+
+
+  /// Array like accessor
+
+  /// Access an element of \c arg for the given ordinal offset \c index.
+  /// \tparam Arg The tile type
+  /// \param arg The tile argument
+  /// \param index The ordinal index of the element
+  /// \return A reference to the element at offset \c index of \c arg
+  template <typename Arg, typename Index>
+  inline typename TileTrait<Arg>::reference
+  array(const Arg& arg, const typename TileTrait<Arg>::size_type index) {
+    return arg[index];
+  }
+
+
+  /// Element accessor
+
+  /// Access an element of \c arg at given a coordinate \c indices.
+  /// \tparam Arg The tile type
+  /// \tparam Indices The coordinate index types
+  /// \param arg The tile argument
+  /// \param indices The ordinal index of the element
+  /// \return A reference to the element at offset \c index of \c arg
+  template <typename Arg, typename... Indices>
+  inline typename TileTrait<Arg>::reference
+  element(Arg& arg, const Indices... indices) {
+    return arg(indices...);
+  }
+
+  /// Element accessor
+
+  /// Access an element of \c arg at given a coordinate \c indices.
+  /// \tparam Arg The tile type
+  /// \tparam Indices The coordinate index types
+  /// \param arg The tile argument
+  /// \param indices The ordinal index of the element
+  /// \return A const reference to the element at offset \c index of \c arg
+  template <typename Arg, typename... Indices>
+  inline typename TileTrait<Arg>::const_reference
+  element(const Arg& arg, const Indices... indices) {
+    return arg(indices...);
+  }
+
+  // Data pointer accessor -----------------------------------------------------
+
+  /// Tile data pointer accessor
+
+  /// Access the data pointer of tile
+  /// \tparam Arg The tile type
+  /// \param arg The tile argument
+  /// \return A pointer to the data of \c arg
+  template <typename Arg>
+  inline typename TileTrait<Arg>::pointer data(Arg& arg) {
+    return arg.data();
+  }
+
+  /// Tile data const pointer accessor
+
+  /// Access the data pointer of tile
+  /// \tparam Arg The tile type
+  /// \param arg The tile argument
+  /// \return A pointer to the data of \c arg
+  template <typename Arg>
+  inline typename TileTrait<Arg>::const_pointer data(const Arg& arg) {
+    return arg.data();
+  }
 
   // Clone operations ----------------------------------------------------------
 
@@ -106,7 +226,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(left + right) * factor</tt>
   template <typename Left, typename Right>
   inline Left add(const Left& left, const Right& right,
-      const typename Left::numeric_type factor)
+      const typename TileTrait<Left>::numeric_type factor)
   {
     return left.add(right, factor);
   }
@@ -135,7 +255,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
   template <typename Left, typename Right>
   inline Left add(const Left& left, const Right& right,
-      const typename Left::numeric_type factor, const Permutation& perm)
+      const typename TileTrait<Left>::numeric_type factor, const Permutation& perm)
   {
     return left.add(right, factor, perm);
   }
@@ -147,7 +267,7 @@ namespace TiledArray {
   /// \param value The constant scalar to be added
   /// \return A tile that is equal to <tt>arg + value</tt>
   template <typename Arg>
-  inline Arg add(const Arg& arg, const typename Arg::numeric_type value) {
+  inline Arg add(const Arg& arg, const typename TileTrait<Arg>::numeric_type value) {
     return arg.add(value);
   }
 
@@ -159,7 +279,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg + value)</tt>
   template <typename Arg>
-  inline Arg add(const Arg& arg, const typename Arg::numeric_type value,
+  inline Arg add(const Arg& arg, const typename TileTrait<Arg>::numeric_type value,
       const Permutation& perm)
   {
     return arg.add(value,perm);
@@ -187,7 +307,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
   template <typename Result, typename Arg>
   inline Result& add_to(Result& result, const Arg& arg,
-      const typename Result::numeric_type factor)
+      const typename TileTrait<Result>::numeric_type factor)
   {
     return result.add_to(arg, factor);
   }
@@ -199,7 +319,7 @@ namespace TiledArray {
   /// \param value The constant scalar to be added to \c result
   /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
   template <typename Result>
-  inline Result& add_to(Result& result, const typename Result::numeric_type value) {
+  inline Result& add_to(Result& result, const typename TileTrait<Result>::numeric_type value) {
     return result.add_to(value);
   }
 
@@ -228,7 +348,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(left - right) * factor</tt>
   template <typename Left, typename Right>
   inline Left subt(const Left& left, const Right& right,
-      const typename Left::numeric_type factor)
+      const typename TileTrait<Left>::numeric_type factor)
   {
     return left.subt(right, factor);
   }
@@ -257,7 +377,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>perm ^ (left - right) * factor</tt>
   template <typename Left, typename Right>
   inline Left subt(const Left& left, const Right& right,
-      const typename Left::numeric_type factor, const Permutation& perm)
+      const typename TileTrait<Left>::numeric_type factor, const Permutation& perm)
   {
     return left.subt(right, factor, perm);
   }
@@ -269,7 +389,7 @@ namespace TiledArray {
   /// \param value The constant scalar to be subtracted
   /// \return A tile that is equal to <tt>arg - value</tt>
   template <typename Arg>
-  inline Arg subt(const Arg& arg, const typename Arg::numeric_type value) {
+  inline Arg subt(const Arg& arg, const typename TileTrait<Arg>::numeric_type value) {
     return arg.subt(value);
   }
 
@@ -281,7 +401,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg - value)</tt>
   template <typename Arg>
-  inline Arg subt(const Arg& arg, const typename Arg::numeric_type value,
+  inline Arg subt(const Arg& arg, const typename TileTrait<Arg>::numeric_type value,
       const Permutation& perm)
   {
     return arg.subt(value,perm);
@@ -309,7 +429,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
   template <typename Result, typename Arg>
   inline Result& subt_to(Result& result, const Arg& arg,
-      const typename Result::numeric_type factor)
+      const typename TileTrait<Result>::numeric_type factor)
   {
     return result.subt_to(arg, factor);
   }
@@ -321,7 +441,7 @@ namespace TiledArray {
   /// \param value The constant scalar to be subtracted from \c result
   /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
   template <typename Result>
-  inline Result& subt_to(Result& result, const typename Result::numeric_type value) {
+  inline Result& subt_to(Result& result, const typename TileTrait<Result>::numeric_type value) {
     return result.subt_to(value);
   }
 
@@ -351,7 +471,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
   template <typename Left, typename Right>
   inline Left mult(const Left& left, const Right& right,
-      const typename Left::numeric_type factor)
+      const typename TileTrait<Left>::numeric_type factor)
   {
     return left.mult(right, factor);
   }
@@ -380,7 +500,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>perm ^ (left * right) * factor</tt>
   template <typename Left, typename Right>
   inline Left mult(const Left& left, const Right& right,
-      const typename Left::numeric_type factor, const Permutation& perm)
+      const typename TileTrait<Left>::numeric_type factor, const Permutation& perm)
   {
     return left.mult(right, factor, perm);
   }
@@ -407,7 +527,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(result *= arg) *= factor</tt>
   template <typename Result, typename Arg>
   inline Result& mult_to(Result& result, const Arg& arg,
-      const typename Result::numeric_type factor)
+      const typename TileTrait<Result>::numeric_type factor)
   {
     return result.mult_to(arg, factor);
   }
@@ -422,7 +542,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>arg * factor</tt>
   template <typename Arg>
-  inline Arg scale(const Arg& arg, const typename Arg::numeric_type factor) {
+  inline Arg scale(const Arg& arg, const typename TileTrait<Arg>::numeric_type factor) {
     return arg.scale(factor);
   }
 
@@ -434,7 +554,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
   template <typename Arg>
-  inline Arg scale(const Arg& arg, const typename Arg::numeric_type factor,
+  inline Arg scale(const Arg& arg, const typename TileTrait<Arg>::numeric_type factor,
       const Permutation& perm)
   {
     return arg.scale(factor, perm);
@@ -447,7 +567,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>result *= factor</tt>
   template <typename Result>
-  inline Result& scale_to(Result& result, const typename Result::numeric_type factor) {
+  inline Result& scale_to(Result& result, const typename TileTrait<Result>::numeric_type factor) {
     return result.scale_to(factor);
   }
 
@@ -502,7 +622,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
   template <typename Left, typename Right>
   inline Left gemm(const Left& left, const Right& right,
-      const typename Left::numeric_type factor, const math::GemmHelper& gemm_config)
+      const typename TileTrait<Left>::numeric_type factor, const math::GemmHelper& gemm_config)
   {
     return left.gemm(right, factor, gemm_config);
   }
@@ -522,7 +642,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>result = (left * right) * factor</tt>
   template <typename Result, typename Left, typename Right>
   inline Result& gemm(Result& result, const Left& left, const Right& right,
-            const typename Result::numeric_type factor, const math::GemmHelper& gemm_config)
+            const typename TileTrait<Result>::numeric_type factor, const math::GemmHelper& gemm_config)
   {
     return result.gemm(left, right, factor, gemm_config);
   }
@@ -536,7 +656,7 @@ namespace TiledArray {
   /// \param arg The argument to be summed
   /// \return The sum of the hyper-diagonal elements of \c arg
   template <typename Arg>
-  inline typename Arg::numeric_type trace(const Arg& arg) {
+  inline typename TileTrait<Arg>::numeric_type trace(const Arg& arg) {
     return arg.trace();
   }
 
@@ -546,7 +666,7 @@ namespace TiledArray {
   /// \param arg The argument to be summed
   /// \return A scalar that is equal to <tt>sum_i arg[i]</tt>
   template <typename Arg>
-  inline typename Arg::numeric_type sum(const Arg& arg) {
+  inline typename TileTrait<Arg>::numeric_type sum(const Arg& arg) {
     return arg.sum();
   }
 
@@ -567,7 +687,7 @@ namespace TiledArray {
   /// \return The sum of the squared elements of \c arg
   /// \return A scalar that is equal to <tt>sum_i arg[i] * arg[i]</tt>
   template <typename Arg>
-  inline typename Arg::numeric_type squared_norm(const Arg& arg) {
+  inline typename TileTrait<Arg>::numeric_type squared_norm(const Arg& arg) {
     return arg.squared_norm();
   }
 
@@ -577,7 +697,7 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied and summed
   /// \return A scalar that is equal to <tt>sqrt(sum_i arg[i] * arg[i])</tt>
   template <typename Arg>
-  inline typename Arg::numeric_type norm(const Arg& arg) {
+  inline typename TileTrait<Arg>::numeric_type norm(const Arg& arg) {
     return arg.norm();
   }
 
@@ -587,7 +707,7 @@ namespace TiledArray {
   /// \param arg The argument to find the maximum
   /// \return A scalar that is equal to <tt>max(arg)</tt>
   template <typename Arg>
-  inline typename Arg::numeric_type max(const Arg& arg) {
+  inline typename TileTrait<Arg>::numeric_type max(const Arg& arg) {
     return arg.max();
   }
 
@@ -597,7 +717,7 @@ namespace TiledArray {
   /// \param arg The argument to find the minimum
   /// \return A scalar that is equal to <tt>min(arg)</tt>
   template <typename Arg>
-  inline typename Arg::numeric_type min(const Arg& arg) {
+  inline typename TileTrait<Arg>::numeric_type min(const Arg& arg) {
     return arg.min();
   }
 
@@ -607,7 +727,7 @@ namespace TiledArray {
   /// \param arg The argument to find the maximum
   /// \return A scalar that is equal to <tt>abs(max(arg))</tt>
   template <typename Arg>
-  inline typename Arg::numeric_type abs_max(const Arg& arg) {
+  inline typename TileTrait<Arg>::numeric_type abs_max(const Arg& arg) {
     return arg.abs_max();
   }
 
@@ -617,7 +737,7 @@ namespace TiledArray {
   /// \param arg The argument to find the minimum
   /// \return A scalar that is equal to <tt>abs(min(arg))</tt>
   template <typename Arg>
-  inline typename Arg::numeric_type abs_min(const Arg& arg) {
+  inline typename TileTrait<Arg>::numeric_type abs_min(const Arg& arg) {
     return arg.abs_min();
   }
 
@@ -629,9 +749,11 @@ namespace TiledArray {
   /// \param right The right-hand argument tile to be contracted
   /// \return A scalar that is equal to <tt>sum_i left[i] * right[i]</tt>
   template <typename Left, typename Right>
-  inline typename Left::numeric_type dot(const Left& left, const Right& right) {
+  inline typename TileTrait<Left>::numeric_type dot(const Left& left, const Right& right) {
     return left.dot(right);
   }
+
+  /** @}*/
 
 } // namespace TiledArray
 
