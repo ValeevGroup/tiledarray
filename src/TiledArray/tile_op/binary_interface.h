@@ -110,7 +110,7 @@ namespace TiledArray {
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
       result_type operator()(first_argument_type first, second_argument_type second) const {
-        if(derived().permutation().dim() > 1u)
+        if(derived().permutation())
           return derived().permute(first, second);
 
         return derived().template no_permute<left_is_consumable::value,
@@ -126,7 +126,7 @@ namespace TiledArray {
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
       result_type operator()(zero_left_type first, second_argument_type second) const {
-        if(derived().permutation().dim() > 1)
+        if(derived().permutation())
           return derived().permute(first, second);
 
         return derived().template no_permute<left_is_consumable::value,
@@ -142,7 +142,7 @@ namespace TiledArray {
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
       result_type operator()(first_argument_type first, zero_right_type second) const {
-        if(derived().permutation().dim() > 1)
+        if(derived().permutation())
           return derived().permute(first, second);
 
         return derived().template no_permute<left_is_consumable::value,
