@@ -110,8 +110,6 @@ namespace TiledArray {
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
       result_type operator()(first_argument_type first, second_argument_type second) const {
-        TA_ASSERT(first.range() == second.range());
-
         if(derived().permutation().dim() > 1u)
           return derived().permute(first, second);
 
