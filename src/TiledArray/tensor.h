@@ -1286,9 +1286,9 @@ namespace TiledArray {
 
       // Get pointers to the range data
       const size_type n = pimpl_->range_.dim();
-      const size_type* restrict const start = pimpl_->range_.start().data();
-      const size_type* restrict const finish = pimpl_->range_.finish().data();
-      const size_type* restrict const weight = pimpl_->range_.weight().data();
+      const size_type* restrict const start = pimpl_->range_.start();
+      const size_type* restrict const finish = pimpl_->range_.finish();
+      const size_type* restrict const weight = pimpl_->range_.weight();
 
       // Search for the largest start index and the smallest finish
       size_type start_max = 0ul, finish_min = std::numeric_limits<size_type>::max();

@@ -231,12 +231,13 @@ namespace TiledArray {
     explicit Range(const Sizes... sizes) :
       data_(nullptr), volume_(0ul), rank_(0u)
     {
-      const size_type n = sizeof...(Sizes);
+      constexpr size_type n = sizeof...(Sizes);
+      size_type s[n] = {sizes...};
 
       // Initialize array memory
       data_ = new size_type[n << 2];
       rank_ = n;
-      init_range_data({static_cast<size_type>(sizes)...});
+      init_range_data(s);
     }
 
     /// Copy Constructor
