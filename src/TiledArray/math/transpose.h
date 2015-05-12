@@ -108,27 +108,28 @@ namespace TiledArray {
     typedef TransposeUnwind<TILEDARRAY_LOOP_UNWIND - 1> TransposeUnwindN;
 
 
-    template <typename Op, typename Result, typename... Args>
+    template <typename InputOp, typename OutputOp, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
-    transpose_block(Op&& op, const std::size_t result_stride, Result* const result,
+    transpose_block(InputOp&& input_op, OutputOp&& output_op,
+        const std::size_t result_stride, Result* const result,
         const std::size_t arg_stride, const Args* const... args)
     {
       constexpr std::size_t block_size = TILEDARRAY_LOOP_UNWIND * TILEDARRAY_LOOP_UNWIND;
       TILEDARRAY_ALIGNED_STORAGE Result temp[block_size];
 
       // Transpose block
-      TransposeUnwindN::gather_trans(std::forward<Op>(op), temp, arg_stride, args...);
+      TransposeUnwindN::gather_trans(std::forward<InputOp>(input_op), temp,
+          arg_stride, args...);
 
-      const auto uninit_copy_op = [] (Result * restrict const res, param_type<Result> t) {
-        new (res) Result(t);
-      };
-      TransposeUnwindN::block_scatter(uninit_copy_op, result, temp, result_stride);
+      TransposeUnwindN::block_scatter(std::forward<OutputOp>(output_op), result,
+          temp, result_stride);
     }
 
 
-    template <typename Op, typename Result, typename... Args>
+    template <typename InputOp, typename OutputOp, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
-    transpose_block(Op&& op, const std::size_t m, const std::size_t n,
+    transpose_block(InputOp&& input_op, OutputOp&& output_op,
+        const std::size_t m, const std::size_t n,
         const std::size_t result_stride, Result* restrict const result,
         const std::size_t arg_stride, const Args* restrict const... args)
     {
@@ -142,7 +143,7 @@ namespace TiledArray {
       for(std::size_t i = 0ul; i < m; ++i) {
         std::size_t offset = i * arg_stride;
         for(std::size_t j = 0ul, x = i; j < n; ++j, x += TILEDARRAY_LOOP_UNWIND, ++offset)
-          op(temp[x], args[offset]...);
+          input_op(temp[x], args[offset]...);
       }
 
       // Copy the temp block into result
@@ -150,7 +151,7 @@ namespace TiledArray {
         Result* restrict const result_j = result + (j * result_stride);
         const Result* restrict const temp_j = temp + (j * TILEDARRAY_LOOP_UNWIND);
         for(std::size_t i = 0ul; i < m; ++i)
-          result_j[i] = temp_j[i];
+          output_op(result_j + i, temp_j[i]);
       }
     }
 
@@ -169,8 +170,9 @@ namespace TiledArray {
     /// \param[in] arg_stride The stride between argument rows
     /// \param[in] args A pointer to the first element of the argument matrix
     /// \note The data layout is expected to be row-major.
-    template <typename Op, typename Result, typename... Args>
-    void uninitialized_transpose(Op&& op, const std::size_t m, const std::size_t n,
+    template <typename InputOp, typename OutputOp, typename Result, typename... Args>
+    void transpose(InputOp&& input_op, OutputOp&& output_op,
+        const std::size_t m, const std::size_t n,
         const std::size_t result_stride, Result* result,
         const std::size_t arg_stride, const Args* const... args)
     {
@@ -185,8 +187,8 @@ namespace TiledArray {
       const std::size_t arg_end = mx * arg_stride;
       const Result* result_end = result + (nx * result_stride);
 
-      const auto wrapper_op =
-          [&] (Result& res, param_type<Args>... a) { res = op(a...); };
+      const auto wrapper_input_op =
+          [&] (Result& res, param_type<Args>... a) { res = input_op(a...); };
 
       // Iterate over block rows
       std::size_t arg_start = 0;
@@ -195,11 +197,12 @@ namespace TiledArray {
         Result* result_ij = result;
         for(; result_ij < result_end; result_ij += result_block_step,
             arg_offset += TILEDARRAY_LOOP_UNWIND)
-          transpose_block(wrapper_op, result_stride, result_ij, arg_stride, (args + arg_offset)...);
+          transpose_block(wrapper_input_op, output_op, result_stride, result_ij,
+              arg_stride, (args + arg_offset)...);
 
         if(n_tail)
-          transpose_block(wrapper_op, TILEDARRAY_LOOP_UNWIND, n_tail, result_stride,
-              result_ij, arg_stride, (args + arg_offset)...);
+          transpose_block(wrapper_input_op, output_op, TILEDARRAY_LOOP_UNWIND,
+              n_tail, result_stride, result_ij, arg_stride, (args + arg_offset)...);
       }
 
       if(m_tail) {
@@ -207,12 +210,13 @@ namespace TiledArray {
         Result* result_ij = result;
         for(; result_ij < result_end; result_ij += result_block_step,
             arg_offset += TILEDARRAY_LOOP_UNWIND)
-          transpose_block(wrapper_op, m_tail, TILEDARRAY_LOOP_UNWIND, result_stride,
-              result_ij, arg_stride, (args + arg_offset)...);
+          transpose_block(wrapper_input_op, output_op, m_tail,
+              TILEDARRAY_LOOP_UNWIND, result_stride, result_ij, arg_stride,
+              (args + arg_offset)...);
 
         if(n_tail)
-          transpose_block(wrapper_op, m_tail, n_tail, result_stride, result_ij,
-              arg_stride, (args + arg_offset)...);
+          transpose_block(wrapper_input_op, output_op, m_tail, n_tail,
+              result_stride, result_ij, arg_stride, (args + arg_offset)...);
       }
     }
 
