@@ -87,7 +87,7 @@ namespace TiledArray {
 
       // Reduce an argument
       void operator()(result_type& result, const argument_type& arg) const {
-        result *= TiledArray::prod(arg);
+        result *= TiledArray::product(arg);
       }
 
     }; // class ProductReduction

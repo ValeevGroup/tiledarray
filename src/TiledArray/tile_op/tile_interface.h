@@ -556,8 +556,8 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied
   /// \return A scalar that is equal to <tt>prod_i arg[i]</tt>
   template <typename Arg>
-  inline typename Arg::numeric_type prod(const Arg& arg) {
-    return arg.prod();
+  inline typename TileTrait<Arg>::numeric_type product(const Arg& arg) {
+    return arg.product();
   }
 
   /// Squared vector 2-norm of the elements of a tile
