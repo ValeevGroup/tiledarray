@@ -20,741 +20,865 @@
 #ifndef TILEDARRAY_TILE_H__INCLUDED
 #define TILEDARRAY_TILE_H__INCLUDED
 
-#include <TiledArray/perm_index.h>
-#include <TiledArray/math/gemm_helper.h>
-#include <TiledArray/range.h>
+#include <TiledArray/tile_op/tile_interface.h>
 #include <memory>
+
+// Forward declaration of MADNESS archive type traits
+namespace madness {
+  namespace archive {
+
+    template <typename> struct is_output_archive;
+    template <typename> struct is_input_archive;
+
+  }  // namespace archive
+}  // namespace madness
 
 namespace TiledArray {
 
-  namespace detail {
+  /// An N-dimensional shallow copy wrapper for tile objects
 
-    /*
-     * TileImpl exists only to enable ADL
-     * http://en.wikipedia.org/wiki/Argument-dependent_name_lookup
-     *
-     * This is necessary because Tile uses TiledArray's intrusive interface, which
-     * prevents unqualified function calls on the data member with names that match
-     * functions defined in Tile. An example involving add would be: If we tried
-     * to call a non-qualified add(tile_) directly from inside Tile name look up
-     *would
-     * see the member Tile::add() and fail to find the add defined in the data
-     * member namespace.
-     *
-     * TODO clean up interface to automatically deduce return type once we are
-     * confident that all our compilers support c++14.
-     */
-    template <typename T>
-    class TileImpl {
-      T tile_;
-
-    public:
-      using eval_type = T;
-      using value_type = T;
-      using numeric_type = typename T::numeric_type;
-      using size_type = std::size_t;
-
-      TileImpl() = default;
-      ~TileImpl() = default;
-      TileImpl(TileImpl const &) = default;
-      TileImpl(TileImpl &&) = default;
-      TileImpl &operator=(TileImpl &&) = default;
-      TileImpl &operator=(TileImpl const &) = default;
-
-      TileImpl(T &&t) : tile_{std::move(t)} {}
-      TileImpl(T const &t) : tile_{t} {}
-
-      T &tile() { return tile_; }
-      T const &tile() const { return tile_; }
-
-      bool empty_() const { return empty(tile_); }
-      auto norm_() const -> decltype(norm(tile_)) { return norm(tile_); }
-      auto squared_norm_() const -> decltype(squared_norm(tile_)) {
-        return squared_norm(tile_);
-      }
-
-      T clone_() const { return clone(tile_); }
-
-      T permute_(Permutation const &p) const { return permute(tile_, p); }
-
-      template <typename... Args>
-      auto add_(Args &&... args) const
-      -> decltype(add(tile_, std::forward<Args>(args)...)) {
-        return add(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      T &add_to_(Args &&... args) {
-        add_to(tile_, std::forward<Args>(args)...);
-        return tile_;
-      }
-
-      /*
-       * Subtract
-       */
-      template <typename... Args>
-      auto subt_(Args &&... args) const
-      -> decltype(subt(tile_, std::forward<Args>(args)...)) {
-        return subt(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      T &subt_to_(Args &&... args) {
-        subt_to(tile_, std::forward<Args>(args)...);
-        return tile_;
-      }
-
-      template <typename... Args>
-      auto mult_(Args &&... args) const
-      -> decltype(mult(tile_, std::forward<Args>(args)...)) {
-        return mult(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      T &mult_to_(Args &&... args) {
-        mult_to(tile_, std::forward<Args>(args)...);
-        return tile_;
-      }
-
-      template <typename... Args>
-      auto gemm_(Args &&... args) const
-      -> decltype(gemm(tile_, std::forward<Args>(args)...)) {
-        return gemm(tile_, std::forward<Args>(args)...);
-      }
-
-      // Non const version
-      template <typename... Args>
-      auto gemm_(Args &&... args)
-      -> decltype(gemm(tile_, std::forward<Args>(args)...)) {
-        return gemm(tile_, std::forward<Args>(args)...);
-      }
-
-      /*
-       * Other Maths
-       */
-      template <typename... Args>
-      auto neg_(Args &&... args) const
-      -> decltype(neg(tile_, std::forward<Args>(args)...)) {
-        return neg(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      T &neg_to_(Args &&... args) {
-        neg_to(tile_, std::forward<Args>(args)...);
-        return tile_;
-      }
-
-      template <typename... Args>
-      auto scale_(Args &&... args) const
-      -> decltype(scale(tile_, std::forward<Args>(args)...)) {
-        return scale(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      T &scale_to_(Args &&... args) {
-        scale_to(tile_, std::forward<Args>(args)...);
-        return tile_;
-      }
-
-      template <typename... Args>
-      auto sum_(Args... args) const
-      -> decltype(sum(tile_, std::forward<Args>(args)...)) {
-        return sum(tile_, std::forward<Args>(args)...);
-      }
-
-      // TODO no external for Tensor
-      // template <typename... Args>
-      // auto product_(Args... args) const
-      //     -> decltype(product(tile_, std::forward<Args>(args)...)) {
-      //     return product(tile_, std::forward<Args>(args)...);
-      // }
-
-      template <typename... Args>
-      auto min_(Args... args) const
-      -> decltype(min(tile_, std::forward<Args>(args)...)) {
-        return min(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      auto abs_min_(Args... args) const
-      -> decltype(abs_min(tile_, std::forward<Args>(args)...)) {
-        return abs_min(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      auto max_(Args... args) const
-      -> decltype(max(tile_, std::forward<Args>(args)...)) {
-        return max(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      auto abs_max_(Args... args) const
-      -> decltype(abs_max(tile_, std::forward<Args>(args)...)) {
-        return abs_max(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      auto dot_(Args... args) const
-      -> decltype(dot(tile_, std::forward<Args>(args)...)) {
-        return dot(tile_, std::forward<Args>(args)...);
-      }
-
-      template <typename... Args>
-      auto trace_(Args... args) const
-      -> decltype(trace(tile_, std::forward<Args>(args)...)) {
-        return trace(tile_, std::forward<Args>(args)...);
-      }
-    };
-
-  } // namespace detail
-
-  /// An N-dimensional shallow copy wrapper
-
-  /// \tparam T the value type of the tensor
-  // Clearly there are specific requirements on T, copyable, moveable, ect ...,
-  // but I am not yet ready to exactly specify them.
-  template <typename T>
+  /// \c Tile represents a slice of an Array. The rank of the tile slice is the
+  /// same as the owning \c Array object.
+  /// \tparam T The tensor type used to represent tile data
+  /// \tparam Policy The traits class for the tile
+  template <typename T, typename Policy = TileTrait<T> >
   class Tile {
-    Range range_;
-    std::shared_ptr<detail::TileImpl<T>> tile_;
+  public:
+    /// This object type
+    typedef Tile<T, Policy> Tile_;
+    /// Tensor type used to represent tile data
+    typedef typename Policy::tensor_type tensor_type;
+    /// size type used to represent the size and offsets of the tensor data
+    typedef typename Policy::size_type size_type;
+    /// Tensor element type
+    typedef typename Policy::value_type value_type;
+    /// Element reference type
+    typedef typename Policy::reference reference;
+    /// Element reference type
+    typedef typename Policy::const_reference const_reference;
+    /// Element pointer type
+    typedef typename Policy::pointer pointer;
+    /// Element const pointer type
+    typedef typename Policy::const_pointer const_pointer;
+    /// Difference type
+    typedef typename Policy::difference_type difference_type;
+    /// Element iterator type
+    typedef typename Policy::iterator iterator;
+    /// Element const iterator type
+    typedef typename Policy::const_iterator const_iterator;
+    /// The scalar type of the tensor type
+    typedef typename Policy::numeric_type numeric_type;
+
+  private:
+
+    class Impl {
+    public:
+      tensor_type tensor_; ///< Tensor data of the irrep
+
+      Impl() = delete;
+      Impl(Tile const &) = delete;
+      Impl(Tile &&) = delete;
+      Impl &operator=(Impl &&) = delete;
+      Impl &operator=(Impl const &) = delete;
+
+      template <typename U>
+      Impl(U&& tensor) : tensor_(std::forward<U>(tensor)) { }
+
+      ~Impl() = default;
+
+    }; // class Impl
+
+    std::shared_ptr<T> pimpl_;
 
   public:
-    using value_type = T;
-    using range_type = Range;
-    using numeric_type = typename T::numeric_type;
-    using size_type = std::size_t;
+
+    // Constructors and destructor ---------------------------------------------
 
     Tile() = default;
+    Tile(const Tile_&) = default;
+    Tile(Tile_&&) = default;
+    Tile_& operator=(Tile_&&) = default;
+    Tile_& operator=(const Tile_&) = default;
+
+    template <typename U, typename I>
+    Tile(U&& tensor) :
+      pimpl_(std::make_shared<Impl>(std::forward<U>(tensor)))
+    { }
+
     ~Tile() = default;
-    Tile(Tile const &) = default;
-    Tile(Tile &&) = default;
-    Tile &operator=(Tile &&) = default;
-    Tile &operator=(Tile const &) = default;
-
-    Tile(Range r) : range_{std::move(r)} {}
-    Tile(Range r, T t)
-    : range_{std::move(r)},
-      tile_{std::make_shared<detail::TileImpl<T>>(
-          detail::TileImpl<T>{std::move(t)})} {}
-
-          // Problematic constructor for truly generic code, not obvious that T
-          // provides the proper constructor this will ultimately need to be part
-          // of the specific requirements on T.
-
-          // template <typename Value>
-          // Tile(TA::Range r, Value v)
-          //         : range_{std::move(r)},
-          //           tile_{std::make_shared<detail::TileImpl<T>>(
-          //                 detail::TileImpl<T>{detail::TileImpl<T>{T{r, v}}})} {}
-
-  public:
-          T &tile() { return tile_->tile(); }
-          T const &tile() const { return tile_->tile(); }
-
-          Tile clone() const { return Tile{range_, tile_->clone_()}; }
-
-          Range const &range() const { return range_; }
-
-          bool empty() const { return (!tile_ || tile_->empty_()); }
-
-          Tile permute(Permutation const &p) const {
-            return Tile{p ^ range_, tile_->permute_(p)};
-          }
-
-          // TODO this may not be the most robust way to handle serialization.
-          template <typename Archive>
-          typename madness::enable_if<
-          madness::archive::is_output_archive<Archive>>::type
-          serialize(Archive &ar) {
-            ar &range_;
-            bool empty = !static_cast<bool>(tile_);
-            ar &empty;
-            if (!empty) {
-              ar & tile_->tile();
-            }
-          }
-
-          template <typename Archive>
-          typename madness::enable_if<
-          madness::archive::is_input_archive<Archive>>::type
-          serialize(Archive &ar) {
-            ar &range_;
-            bool empty = false;
-            ar &empty;
-            if (!empty) {
-              T tile;
-              ar &tile;
-              tile_ = std::make_shared<detail::TileImpl<T>>(
-                  detail::TileImpl<T>{std::move(tile)});
-            }
-          }
-
-          /*
-           * Add functions
-           */
-          template <typename U>
-          auto add(Tile<U> const &other) const
-          -> Tile<decltype(tile_->add_(other.tile()))> {
-            auto out = tile_->add_(other.tile());
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          // Allows for adding of types which are not wrapped by Tile.
-          template <typename Other>
-          auto add(Other const &other) const -> Tile<decltype(tile_->add_(other))> {
-            auto out = tile_->add_(other);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          template <typename U>
-          auto add(Tile<U> const &other, const numeric_type factor) const
-          -> Tile<decltype(tile_->add_(other.tile(), factor))> {
-            auto out = tile_->add_(other.tile(), factor);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          // Allows for adding of types which are not wrapped by Tile.
-          template <typename Other>
-          auto add(Other const &other, const numeric_type factor) const
-          -> Tile<decltype(tile_->add_(other, factor))> {
-            auto out = tile_->add_(other, factor);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          template <typename U>
-          auto add(Tile<U> const &other, const numeric_type factor,
-              Permutation const &perm) const
-          -> Tile<decltype(tile_->add_(other.tile(), factor, perm))> {
-            auto new_range = perm ^ range_;
-            auto out = tile_->add_(other.tile(), factor, perm);
-            return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          }
-
-          // Allows for adding of types which are not wrapped by Tile.
-          template <typename Other>
-          auto add(Other const &other, const numeric_type factor,
-              Permutation const &perm) const
-          -> Tile<decltype(tile_->add_(other, factor, perm))> {
-            auto new_range = perm ^ range_;
-            auto out = tile_->add_(other, factor, perm);
-            return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          }
-
-          // TODO No version of this function in Tensor external interface
-          // auto add(const numeric_type factor) const
-          //     -> Tile<decltype(tile_->add_(factor))> {
-          //     auto out = tile_->add_(factor);
-          //     return Tile<decltype(out)>(range_, std::move(out));
-          // }
-
-          // auto add(const numeric_type factor, Permutation const &perm) const
-          //     -> Tile<decltype(tile_->add_(factor, perm))> {
-          //     auto new_range = perm ^ range_;
-          //     auto out = tile_->add_(factor, perm);
-          //     return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          // }
-
-          /*
-           * Add_to: add_to doesn't allow permutation or range changes so write as
-           * variadic.
-           */
-          template <typename... Args>
-          Tile &add_to(Args &&... args) {
-            tile_->add_to_(std::forward<Args>(args)...);
-            return *this;
-          }
-
-          template <typename U, typename... Args>
-          Tile &add_to(Tile<U> const &u, Args &&... args) {
-            tile_->add_to_(u.tile(), std::forward<Args>(args)...);
-            return *this;
-          }
-
-          /*
-           * Subt functions
-           */
-          template <typename U>
-          auto subt(Tile<U> const &other) const
-          -> Tile<decltype(tile_->subt_(other.tile()))> {
-            auto out = tile_->subt_(other.tile());
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          // Allows for subting of types which are not wrapped by Tile.
-          template <typename Other>
-          auto subt(Other const &other) const -> Tile<decltype(tile_->subt_(other))> {
-            auto out = tile_->subt_(other);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          template <typename U>
-          auto subt(Tile<U> const &other, const numeric_type factor) const
-          -> Tile<decltype(tile_->subt_(other.tile(), factor))> {
-            auto out = tile_->subt_(other.tile(), factor);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          // Allows for subting of types which are not wrapped by Tile.
-          template <typename Other>
-          auto subt(Other const &other, const numeric_type factor) const
-          -> Tile<decltype(tile_->subt_(other, factor))> {
-            auto out = tile_->subt_(other, factor);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          template <typename U>
-          auto subt(Tile<U> const &other, const numeric_type factor,
-              Permutation const &perm) const
-          -> Tile<decltype(tile_->subt_(other.tile(), factor, perm))> {
-            auto new_range = perm ^ range_;
-            auto out = tile_->subt_(other.tile(), factor, perm);
-            return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          }
-
-          // Allows for subting of types which are not wrapped by Tile.
-          template<typename Other>
-          auto subt(Other const &other, const numeric_type factor,
-              Permutation const &perm) const
-          -> Tile<decltype(tile_->subt_(other, factor, perm))> {
-            auto new_range = perm ^ range_;
-            auto out = tile_->subt_(other, factor, perm);
-            return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          }
-
-          // TODO No version of this function in Tensor external interface
-          // auto subt(const numeric_type factor) const
-          //     -> Tile<decltype(tile_->subt_(factor))> {
-          //     auto out = tile_->subt_(factor);
-          //     return Tile<decltype(out)>(range_, std::move(out));
-          // }
-
-          // auto subt(const numeric_type factor, Permutation const &perm) const
-          //     -> Tile<decltype(tile_->subt_(factor, perm))> {
-          //     auto new_range = perm ^ range_;
-          //     auto out = tile_->subt_(factor, perm);
-          //     return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          // }
-
-          /*
-           * subt_to: subt_to doesn't allow permutation or range changes so write as
-           * variadic.
-           */
-          template <typename... Args>
-          Tile &subt_to(Args &&... args) {
-            tile_->subt_to_(std::forward<Args>(args)...);
-            return *this;
-          }
-
-          template <typename U, typename... Args>
-          Tile &subt_to(Tile<U> const &u, Args &&... args) {
-            tile_->subt_to_(u.tile(), std::forward<Args>(args)...);
-            return *this;
-          }
-
-          /*
-           * mult
-           */
-          template <typename U>
-          auto mult(Tile<U> const &other) const
-          -> Tile<decltype(tile_->mult_(other.tile()))> {
-            auto out = tile_->mult_(other.tile());
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          // Allows for multing of types which are not wrapped by Tile.
-          template <typename Other>
-          auto mult(Other const &other) const -> Tile<decltype(tile_->mult_(other))> {
-            auto out = tile_->mult_(other);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          template <typename U>
-          auto mult(Tile<U> const &other, const numeric_type factor) const
-          -> Tile<decltype(tile_->mult_(other.tile(), factor))> {
-            auto out = tile_->mult_(other.tile(), factor);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          // Allows for multing of types which are not wrapped by Tile.
-          template <typename Other>
-          auto mult(Other const &other, const numeric_type factor) const
-          -> Tile<decltype(tile_->mult_(other, factor))> {
-            auto out = tile_->mult_(other, factor);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          template <typename U>
-          auto mult(Tile<U> const &other, const numeric_type factor,
-              Permutation const &perm) const
-          -> Tile<decltype(tile_->mult_(other.tile(), factor, perm))> {
-            auto new_range = perm ^ range_;
-            auto out = tile_->mult_(other.tile(), factor, perm);
-            return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          }
-
-          // Allows for multing of types which are not wrapped by Tile.
-          template<typename Other>
-          auto mult(Other const &other, const numeric_type factor,
-              Permutation const &perm) const
-          -> Tile<decltype(tile_->mult_(other, factor, perm))> {
-            auto new_range = perm ^ range_;
-            auto out = tile_->mult_(other, factor, perm);
-            return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          }
-
-          auto mult(const numeric_type factor) const
-          -> Tile<decltype(tile_->mult_(factor))> {
-            auto out = tile_->mult_(factor);
-            return Tile<decltype(out)>(range_, std::move(out));
-          }
-
-          auto mult(const numeric_type factor, Permutation const &perm) const
-          -> Tile<decltype(tile_->mult_(factor, perm))> {
-            auto new_range = perm ^ range_;
-            auto out = tile_->mult_(factor, perm);
-            return Tile<decltype(out)>(std::move(new_range), std::move(out));
-          }
-
-          /*
-           * mult_to
-           */
-          template <typename... Args>
-          Tile &mult_to(Args &&... args) {
-            tile_->mult_to_(std::forward<Args>(args)...);
-            return *this;
-          }
-
-          template <typename U, typename... Args>
-          Tile &mult_to(Tile<U> const &u, Args &&... args) {
-            tile_->mult_to_(u.tile(), std::forward<Args>(args)...);
-            return *this;
-          }
-
-          /*
-           * Neg
-           */
-          Tile neg() const { return Tile(range_, tile_->neg_()); }
-
-          Tile neg(Permutation const &perm) const {
-            return Tile(perm ^ range_, tile_->neg_(perm));
-          }
-
-          Tile &neg_to() {
-            tile_->neg_to_();
-            return *this;
-          }
-
-          /*
-           * Scale
-           */
-          Tile scale(const numeric_type factor) const {
-            return Tile(range_, tile_->scale_(factor));
-          }
-
-          Tile scale(const numeric_type factor, Permutation const &perm) const {
-            return Tile(perm ^ range_, tile_->scale_(factor, perm));
-          }
-
-          Tile &scale_to(const numeric_type factor) {
-            tile_->scale_to_(factor);
-            return *this;
-          }
-
-          /*
-           * Gemm
-           */
-          template <typename Other>
-          auto gemm(Other const &o, const numeric_type factor,
-              math::GemmHelper const &gh) const
-          -> Tile<decltype(tile_->gemm_(o, factor, gh))> {
-            TA_ASSERT(!empty());
-            TA_ASSERT(range_.dim() == gh.left_rank());
-
-            // Check that the arguments are not empty and have the correct ranks
-            TA_ASSERT(!o.empty());
-            TA_ASSERT(o.range().dim() == gh.right_rank());
-
-            // Check that the inner dimensions of left and right match
-            TA_ASSERT(gh.left_right_coformal(range_.start(), o.range().start()));
-            TA_ASSERT(gh.left_right_coformal(range_.finish(), o.range().finish()));
-            TA_ASSERT(gh.left_right_coformal(range_.size(), o.range().size()));
-
-            auto range = gh.make_result_range<Range>(range_, o.range());
-
-            auto out = tile_->gemm_(o, factor, gh);
-            return Tile<decltype(out)>(std::move(range), std::move(out));
-          }
-
-          template <typename U>
-          auto gemm(Tile<U> const &u, const numeric_type factor,
-              math::GemmHelper const &gh) const
-          -> Tile<decltype(tile_->gemm_(u.tile(), factor, gh))> {
-            TA_ASSERT(!empty());
-            TA_ASSERT(range_.dim() == gh.left_rank());
-
-            // Check that the arguments are not empty and have the correct ranks
-            TA_ASSERT(!u.empty());
-            TA_ASSERT(u.range().dim() == gh.right_rank());
-
-            // Check that the inner dimensions of left and right match
-            TA_ASSERT(gh.left_right_coformal(range_.start(), u.range().start()));
-            TA_ASSERT(gh.left_right_coformal(range_.finish(), u.range().finish()));
-            TA_ASSERT(gh.left_right_coformal(range_.size(), u.range().size()));
-
-            auto range = gh.make_result_range<Range>(range_, u.range());
-            auto out = tile_->gemm_(u.tile(), factor, gh);
-            return Tile<decltype(out)>(std::move(range), std::move(out));
-          }
-
-          template <typename Left, typename Right>
-          Tile &gemm(Left const &l, Right const &r, const numeric_type factor,
-              math::GemmHelper const &gh) {
-            TA_ASSERT(!empty());
-            TA_ASSERT(range_.dim() == gh.result_rank());
-
-            // Check that the arguments are not empty and have the correct ranks
-            TA_ASSERT(!l.empty());
-            TA_ASSERT(l.range().dim() == gh.left_rank());
-            TA_ASSERT(!r.empty());
-            TA_ASSERT(r.range().dim() == gh.right_rank());
-
-            // Check that the outer dimensions of left match the the corresponding
-            // dimensions in result
-            TA_ASSERT(gh.left_result_coformal(l.range().start(), range_.start()));
-            TA_ASSERT(gh.left_result_coformal(l.range().finish(), range_.finish()));
-            TA_ASSERT(gh.left_result_coformal(l.range().size(), range_.size()));
-
-            // Check that the outer dimensions of right match the the corresponding
-            // dimensions in result
-            TA_ASSERT(gh.right_result_coformal(r.range().start(), range_.start()));
-            TA_ASSERT(
-                gh.right_result_coformal(r.range().finish(), range_.finish()));
-            TA_ASSERT(gh.right_result_coformal(r.range().size(), range_.size()));
-
-            // Check that the inner dimensions of left and right match
-            TA_ASSERT(gh.left_right_coformal(l.range().start(), r.range().start()));
-            TA_ASSERT(
-                gh.left_right_coformal(l.range().finish(), r.range().finish()));
-            TA_ASSERT(gh.left_right_coformal(l.range().size(), r.range().size()));
-
-            tile_->gemm_(l, r, factor, gh);
-            return *this;
-          }
-
-          template <typename U, typename V>
-          Tile &gemm(Tile<U> const &l, Tile<V> const &r, const numeric_type factor,
-              math::GemmHelper const &gh) {
-            TA_ASSERT(!empty());
-            TA_ASSERT(range_.dim() == gh.result_rank());
-
-            // Check that the arguments are not empty and have the correct ranks
-            TA_ASSERT(!l.empty());
-            TA_ASSERT(l.range().dim() == gh.left_rank());
-            TA_ASSERT(!r.empty());
-            TA_ASSERT(r.range().dim() == gh.right_rank());
-
-            // Check that the outer dimensions of left match the the corresponding
-            // dimensions in result
-            TA_ASSERT(gh.left_result_coformal(l.range().start(), range_.start()));
-            TA_ASSERT(gh.left_result_coformal(l.range().finish(), range_.finish()));
-            TA_ASSERT(gh.left_result_coformal(l.range().size(), range_.size()));
-
-            // Check that the outer dimensions of right match the the corresponding
-            // dimensions in result
-            TA_ASSERT(gh.right_result_coformal(r.range().start(), range_.start()));
-            TA_ASSERT(
-                gh.right_result_coformal(r.range().finish(), range_.finish()));
-            TA_ASSERT(gh.right_result_coformal(r.range().size(), range_.size()));
-
-            // Check that the inner dimensions of left and right match
-            TA_ASSERT(gh.left_right_coformal(l.range().start(), r.range().start()));
-            TA_ASSERT(
-                gh.left_right_coformal(l.range().finish(), r.range().finish()));
-            TA_ASSERT(gh.left_right_coformal(l.range().size(), r.range().size()));
-
-            tile_->gemm_(l.tile(), r.tile(), factor, gh);
-            return *this;
-          }
-
-          /*
-           * Reduction type functions
-           */
-          auto trace() const -> decltype(tile_->trace_()) { return tile_->trace_(); }
-
-          auto sum() const -> decltype(tile_->sum_()) { return tile_->sum_(); }
-
-          // TODO no external for Tensor
-          // auto product() const -> decltype(tile_->product_()) {
-          //     return tile_->product_();
-          // }
-
-          auto min() const -> decltype(tile_->min_()) { return tile_->min_(); }
-
-          auto max() const -> decltype(tile_->max_()) { return tile_->max_(); }
-
-          auto abs_max() const -> decltype(tile_->abs_max_()) {
-            return tile_->abs_max_();
-          }
-
-          auto abs_min() const -> decltype(tile_->abs_min_()) {
-            return tile_->abs_min_();
-          }
-
-          auto norm() const -> decltype(tile_->norm_()) { return tile_->norm_(); }
-
-          auto squared_norm() const -> decltype(tile_->squared_norm_()) {
-            return tile_->squared_norm_();
-          }
-
-          template <typename Other>
-          auto dot(Other const &o) const -> decltype(tile_->dot_(o)) {
-            return tile_->dot_(o);
-          }
-  };
+
+
+    // Tile accessor -----------------------------------------------------------
+
+    tensor_type& tensor() { return pimpl_->tensor_; }
+
+    const tensor_type& tensor() const { return pimpl_->tensor_; }
+
+    // Data pointer accessor ---------------------------------------------------
+
+    /// Tile data pointer accessor
+
+    /// \return A pointer to the tile data
+    pointer data() { return data(pimpl_->tensor_); }
+
+    /// Tile const data pointer accessor
+
+    /// \return A const pointer to the tile data
+    const_pointer data() const { return data(pimpl_->tensor_); }
+
+
+    // Size accessor -----------------------------------------------------------
+
+    /// Tile size accessor
+
+    /// \return The number of elements in the tile
+    size_type size() const { return size(pimpl_->tensor_); }
+
+
+    // Element accessor --------------------------------------------------------
+
+    reference operator[](const size_type index) {
+      return array(pimpl_->tensor_, index);
+    }
+
+    const_reference operator[](const size_type index) const {
+      return array(pimpl_->tensor_, index);
+    }
+
+    template <typename... Indices,
+        enable_if_t<detail::is_integral_list<Indices...>::value>* = nullptr>
+    reference operator()(const Indices... indices) {
+      return element(pimpl_->tensor_, indices...);
+    }
+
+    template <typename... Indices,
+        enable_if_t<detail::is_integral_list<Indices...>::value>* = nullptr>
+    const_reference operator()(const Indices... indices) const {
+      return element(pimpl_->tensor_, indices...);
+    }
+
+
+    // Iterator accessor -------------------------------------------------------
+
+
+    /// Iterator factory
+
+    /// \return An iterator to the first data element
+    iterator begin() { return std::begin(pimpl_->tensor_); }
+
+    /// Iterator factory
+
+    /// \return A const iterator to the first data element
+    const_iterator begin() const { return std::begin(pimpl_->tensor_); }
+
+    /// Iterator factory
+
+    /// \return An iterator to the last data element
+    iterator end() { return std::end(pimpl_->tensor_); }
+
+    /// Iterator factory
+
+    /// \return A const iterator to the last data element
+    const_iterator end() const { return std::end(pimpl_->tensor_); }
+
+
+    // Serialization -----------------------------------------------------------
+
+    template <typename Archive,
+        enable_if_t<madness::archive::is_output_archive<Archive>::value>* = nullptr>
+    void serialize(Archive &ar) const {
+      // Serialize data for empty tile check
+      bool empty = !static_cast<bool>(pimpl_);
+      ar & empty;
+      if (!empty) {
+        // Serialize tile data
+        ar & pimpl_->tensor_;
+      }
+    }
+
+    template <typename Archive,
+        enable_if_t<madness::archive::is_input_archive<Archive>::value>* = nullptr>
+    void serialize(Archive &ar) {
+      // Check for empty tile
+      bool empty = false;
+      ar & empty;
+
+      if (!empty) {
+        // Deserialize tile data
+        tensor_type tensor;
+        ar & tensor;
+
+        // construct a new pimpl
+        pimpl_ = std::make_shared<T>(std::move(tensor));
+      } else {
+        // Set pimpl to an empty tile
+        pimpl_.reset();
+      }
+    }
+
+  }; // class Tile
+
+  // The following functions define the non-intrusive interface used to apply
+  // math operations to Tiles. These functions in turn use the non-intrusive
+  // interface functions to evaluate tiles.
+
+
+  // Clone operations ----------------------------------------------------------
+
+  /// Create a copy of \c arg
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The tile argument to be permuted
+  /// \return A (deep) copy of \c arg
+  template <typename Arg>
+  inline Tile<Arg> clone(const Tile<Arg>& arg) {
+    return Tile<Arg>(clone(arg.tensor()));
+  }
+
+
+  // Empty operations ----------------------------------------------------------
+
+  /// Check that \c arg is empty (no data)
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The tile argument to be permuted
+  /// \return \c true if \c arg is empty, otherwise \c false.
+  template <typename Arg>
+  inline bool empty(const Tile<Arg>& arg) {
+    return empty(arg.tensor());
+  }
+
+
+  // Permutation operations ----------------------------------------------------
+
+  /// Create a permuted copy of \c arg
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The tile argument to be permuted
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ arg</tt>
+  template <typename Arg>
+  inline Tile<Arg> permute(const Tile<Arg>& arg, const Permutation& perm) {
+    return Tile<Arg>(permute(arg.tensor(), perm));
+  }
+
+
+  // Addition operations -------------------------------------------------------
+
+  /// Add tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be added
+  /// \param right The right-hand argument to be added
+  /// \return A tile that is equal to <tt>(left + right)</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> add(const Tile<Left>& left, const Tile<Right>& right) {
+    return Tile<Left>(add(left.tensor(), right.tensor()));
+  }
+
+  /// Add and scale tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be added
+  /// \param right The right-hand argument to be added
+  /// \param factor The scaling factor
+  /// \return A tile that is equal to <tt>(left + right) * factor</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> add(const Tile<Left>& left, const Tile<Right>& right,
+      const typename Tile<Left>::numeric_type factor)
+  {
+    return Tile<Left>(add(left.tensor(), right.tensor(), factor));
+  }
+
+  /// Add and permute tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be added
+  /// \param right The right-hand argument to be added
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (left + right)</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> add(const Tile<Left>& left, const Tile<Right>& right,
+      const Permutation& perm)
+  {
+    return Tile<Left>(add(left.tensor(), right.tensor(), perm));
+  }
+
+  /// Add, scale, and permute tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be added
+  /// \param right The right-hand argument to be added
+  /// \param factor The scaling factor
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> add(const Tile<Left>& left, const Tile<Right>& right,
+      const typename Tile<Left>::numeric_type factor, const Permutation& perm)
+  {
+    return Tile<Left>(add(left.tensor(), right.tensor(), factor, perm));
+  }
+
+  /// Add a constant scalar to tile argument
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The left-hand argument to be added
+  /// \param value The constant scalar to be added
+  /// \return A tile that is equal to <tt>arg + value</tt>
+  template <typename Arg>
+  inline Tile<Arg> add(const Tile<Arg>& arg,
+      const typename Tile<Arg>::numeric_type value)
+  {
+    return Tile<Arg>(add(arg.tensor(), value));
+  }
+
+  /// Add a constant scalar and permute tile argument
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The left-hand argument to be added
+  /// \param value The constant scalar value to be added
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (arg + value)</tt>
+  template <typename Arg>
+  inline Tile<Arg> add(const Tile<Arg>& arg,
+      const typename Tile<Arg>::numeric_type value, const Permutation& perm)
+  {
+    return Tile<Arg>(add(arg.tensor(), value, perm));
+  }
+
+  /// Add to the result tile
+
+  /// \tparam Result The result tile type
+  /// \tparam Arg The argument tile type
+  /// \param result The result tile
+  /// \param arg The argument to be added to the result
+  /// \return A tile that is equal to <tt>result[i] += arg[i]</tt>
+  template <typename Result, typename Arg>
+  inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg) {
+    return Tile<Result>(add_to(result.tensor(), arg.tensor()));
+  }
+
+  /// Add and scale to the result tile
+
+  /// \tparam Result The result tile type
+  /// \tparam Arg The argument tile type
+  /// \param result The result tile
+  /// \param arg The argument to be added to \c result
+  /// \param factor The scaling factor
+  /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
+  template <typename Result, typename Arg>
+  inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg,
+      const typename Tile<Result>::numeric_type factor)
+  {
+    return Tile<Arg>(add_to(result.tensor(), arg.tensor(), factor));
+  }
+
+  /// Add constant scalar to the result tile
+
+  /// \tparam Result The result tile type
+  /// \param result The result tile
+  /// \param value The constant scalar to be added to \c result
+  /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
+  template <typename Result>
+  inline Tile<Result>& add_to(Tile<Result>& result,
+      const typename Tile<Result>::numeric_type value)
+  {
+    return Tile<Result>(add_to(result.tensor(), value));
+  }
+
+
+  // Subtraction ---------------------------------------------------------------
+
+  /// Subtract tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be subtracted
+  /// \param right The right-hand argument to be subtracted
+  /// \return A tile that is equal to <tt>(left - right)</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> subt(const Tile<Left>& left, const Tile<Right>& right) {
+    return Tile<Left>(subt(left.tensor(), right.tensor()));
+  }
+
+  /// Subtract and scale tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be subtracted
+  /// \param right The right-hand argument to be subtracted
+  /// \param factor The scaling factor
+  /// \return A tile that is equal to <tt>(left - right) * factor</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> subt(const Tile<Left>& left, const Tile<Right>& right,
+      const typename Tile<Left>::numeric_type factor)
+  {
+    return Tile<Left>(subt(left.tensor(), right.tensor(), factor));
+  }
+
+  /// Subtract and permute tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be subtracted
+  /// \param right The right-hand argument to be subtracted
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (left - right)</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> subt(const Tile<Left>& left, const Tile<Right>& right,
+      const Permutation& perm)
+  {
+    return Tile<Left>(subt(left.tensor(), right.tensor(), perm));
+  }
+
+  /// Subtract, scale, and permute tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be subtracted
+  /// \param right The right-hand argument to be subtracted
+  /// \param factor The scaling factor
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (left - right) * factor</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> subt(const Tile<Left>& left, const Tile<Right>& right,
+      const typename Tile<Left>::numeric_type factor, const Permutation& perm)
+  {
+    return Tile<Left>(subt(left.tensor(), right.tensor(), factor, perm));
+  }
+
+  /// Subtract a scalar constant from the tile argument
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The left-hand argument to be subtracted
+  /// \param value The constant scalar to be subtracted
+  /// \return A tile that is equal to <tt>arg - value</tt>
+  template <typename Arg>
+  inline Tile<Arg> subt(const Tile<Arg>& arg,
+      const typename Tile<Arg>::numeric_type value)
+  {
+    return Tile<Arg>(subt(arg.tensor(), value));
+  }
+
+  /// Subtract a constant scalar and permute tile argument
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The left-hand argument to be subtracted
+  /// \param value The constant scalar value to be subtracted
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (arg - value)</tt>
+  template <typename Arg>
+  inline Tile<Arg> subt(const Tile<Arg>& arg,
+      const typename Tile<Arg>::numeric_type value, const Permutation& perm)
+  {
+    return Tile<Arg>(subt(arg.tensor(), value, perm));
+  }
+
+  /// Subtract from the result tile
+
+  /// \tparam Result The result tile type
+  /// \tparam Arg The argument tile type
+  /// \param result The result tile
+  /// \param arg The argument to be subtracted from the result
+  /// \return A tile that is equal to <tt>result[i] -= arg[i]</tt>
+  template <typename Result, typename Arg>
+  inline Tile<Result>& subt_to(Tile<Result>& result, const Tile<Arg>& arg) {
+    return Tile<Result>(subt_to(result.tensor(), arg.tensor()));
+  }
+
+  /// Subtract and scale from the result tile
+
+  /// \tparam Result The result tile type
+  /// \tparam Arg The argument tile type
+  /// \param result The result tile
+  /// \param arg The argument to be subtracted from \c result
+  /// \param factor The scaling factor
+  /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
+  template <typename Result, typename Arg>
+  inline Tile<Result>& subt_to(Tile<Result>& result, const Tile<Arg>& arg,
+      const typename Tile<Result>::numeric_type factor)
+  {
+    return Tile<Result>(subt_to(result.tensor(), arg.tensor(), factor));
+  }
+
+  /// Subtract constant scalar from the result tile
+
+  /// \tparam Result The result tile type
+  /// \param result The result tile
+  /// \param value The constant scalar to be subtracted from \c result
+  /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
+  template <typename Result>
+  inline Tile<Result>& subt_to(Tile<Result>& result,
+      const typename Tile<Result>::numeric_type value)
+  {
+    return Tile<Result>(subt_to(result.tensor(), value));
+  }
+
+
+  // Multiplication operations -------------------------------------------------
+
+
+  /// Multiplication tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be multiplied
+  /// \param right The right-hand argument to be multiplied
+  /// \return A tile that is equal to <tt>(left * right)</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> mult(const Tile<Left>& left, const Tile<Right>& right) {
+    return Tile<Left>(mult(left.tensor(), right.tensor()));
+  }
+
+  /// Multiplication and scale tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be multiplied
+  /// \param right The right-hand argument to be multiplied
+  /// \param factor The scaling factor
+  /// \return A tile that is equal to <tt>(left * right) * factor</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> mult(const Tile<Left>& left, const Tile<Right>& right,
+      const typename Tile<Left>::numeric_type factor)
+  {
+    return Tile<Left>(mult(left.tensor(), right.tensor(), factor));
+  }
+
+  /// Multiplication and permute tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be multiplied
+  /// \param right The right-hand argument to be multiplied
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (left * right)</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> mult(const Tile<Left>& left, const Tile<Right>& right,
+      const Permutation& perm)
+  {
+    return Tile<Left>(mult(left.tensor(), right.tensor(), perm));
+  }
+
+  /// Multiplication, scale, and permute tile arguments
+
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be multiplied
+  /// \param right The right-hand argument to be multiplied
+  /// \param factor The scaling factor
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (left * right) * factor</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> mult(const Tile<Left>& left, const Tile<Right>& right,
+      const typename Tile<Left>::numeric_type factor, const Permutation& perm)
+  {
+    return Tile<Left>(mult(left.tensor(), right.tensor(), factor, perm));
+  }
+
+  /// Multiply to the result tile
+
+  /// \tparam Result The result tile type
+  /// \tparam Arg The argument tile type
+  /// \param result The result tile  to be multiplied
+  /// \param arg The argument to be multiplied by the result
+  /// \return A tile that is equal to <tt>result *= arg</tt>
+  template <typename Result, typename Arg>
+  inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg) {
+    return Tile<Result>(mult_to(result.tensor(), arg.tensor()));
+  }
+
+  /// Multiply and scale to the result tile
+
+  /// \tparam Result The result tile type
+  /// \tparam Arg The argument tile type
+  /// \param result The result tile to be multiplied
+  /// \param arg The argument to be multiplied by \c result
+  /// \param factor The scaling factor
+  /// \return A tile that is equal to <tt>(result *= arg) *= factor</tt>
+  template <typename Result, typename Arg>
+  inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg,
+      const typename Tile<Result>::numeric_type factor)
+  {
+    return Tile<Arg>(mult_to(result.tensor(), arg.tensor(), factor));
+  }
+
+
+  // Scaling operations --------------------------------------------------------
+
+  /// Scalar the tile argument
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The left-hand argument to be scaled
+  /// \param factor The scaling factor
+  /// \return A tile that is equal to <tt>arg * factor</tt>
+  template <typename Arg>
+  inline Tile<Arg> scale(const Tile<Arg>& arg,
+      const typename Tile<Arg>::numeric_type factor)
+  {
+    return Tile<Arg>(scale(arg.tensor(), factor));
+  }
+
+  /// Scale and permute tile argument
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The left-hand argument to be scaled
+  /// \param factor The scaling factor
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
+  template <typename Arg>
+  inline Tile<Arg> scale(const Tile<Arg>& arg,
+      const typename Tile<Arg>::numeric_type factor, const Permutation& perm)
+  {
+    return Tile<Arg>(scale(arg.tensor(), factor, perm));
+  }
+
+  /// Scale to the result tile
+
+  /// \tparam Result The result tile type
+  /// \param result The result tile to be scaled
+  /// \param factor The scaling factor
+  /// \return A tile that is equal to <tt>result *= factor</tt>
+  template <typename Result>
+  inline Tile<Result>& scale_to(Tile<Result>& result,
+      const typename Tile<Result>::numeric_type factor)
+  {
+    return Tile<Result>(scale_to(result.tensor(), factor));
+  }
+
+
+  // Negation operations -------------------------------------------------------
+
+  /// Negate the tile argument
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to be negated
+  /// \return A tile that is equal to <tt>-arg</tt>
+  template <typename Arg>
+  inline Tile<Arg> neg(const Tile<Arg>& arg) {
+    return Tile<Arg>(neg(arg.tensor()));
+  }
+
+  /// Negate and permute tile argument
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to be negated
+  /// \param perm The permutation to be applied to the result
+  /// \return A tile that is equal to <tt>perm ^ -arg</tt>
+  template <typename Arg>
+  inline Tile<Arg> neg(const Tile<Arg>& arg, const Permutation& perm) {
+    return Tile<Arg>(neg(arg.tensor(), perm));
+  }
+
+  /// Multiplication constant scalar to a tile
+
+  /// \tparam Result The result tile type
+  /// \param result The result tile to be negated
+  /// \return A tile that is equal to <tt>result = -result</tt>
+  template <typename Result>
+  inline Tile<Result>& neg_to(Tile<Result>& result) {
+    return Tile<Result>(neg_to(result.tensor()));
+  }
+
+
+  // Contraction operations ----------------------------------------------------
+
+
+  /// Contract and scale tile arguments
+
+  /// The contraction is done via a GEMM operation with fused indices as defined
+  /// by \c gemm_config.
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param left The left-hand argument to be contracted
+  /// \param right The right-hand argument to be contracted
+  /// \param factor The scaling factor
+  /// \param gemm_config A helper object used to simplify gemm operations
+  /// \return A tile that is equal to <tt>(left * right) * factor</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left> gemm(const Tile<Left>& left, const Tile<Right>& right,
+      const typename Tile<Left>::numeric_type factor,
+      const math::GemmHelper& gemm_config)
+  {
+    return Tile<Left>(gemm(left.tensor(), right.tensor(), factor, gemm_config));
+  }
+
+  /// Contract and scale tile arguments to the result tile
+
+  /// The contraction is done via a GEMM operation with fused indices as defined
+  /// by \c gemm_config.
+  /// \tparam Result The result tile type
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  /// \param result The contracted result
+  /// \param left The left-hand argument to be contracted
+  /// \param right The right-hand argument to be contracted
+  /// \param factor The scaling factor
+  /// \param gemm_config A helper object used to simplify gemm operations
+  /// \return A tile that is equal to <tt>result = (left * right) * factor</tt>
+  template <typename Result, typename Left, typename Right>
+  inline Tile<Result>& gemm(Tile<Result>& result, const Tile<Left>& left,
+      const Tile<Right>& right, const typename Tile<Result>::numeric_type factor,
+      const math::GemmHelper& gemm_config)
+  {
+    return Tile<Result>(gemm(result.tensor(), left.tensor(), right.result(), factor,
+        gemm_config));
+  }
+
+
+  // Reduction operations ------------------------------------------------------
+
+  /// Sum the hyper-diagonal elements a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to be summed
+  /// \return The sum of the hyper-diagonal elements of \c arg
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type trace(const Tile<Arg>& arg) {
+    return trace(arg.tensor());
+  }
+
+  /// Sum the elements of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to be summed
+  /// \return A scalar that is equal to <tt>sum_i arg[i]</tt>
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type sum(const Tile<Arg>& arg) {
+    return sum(arg.tensor());
+  }
+
+  /// Multiply the elements of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to be multiplied
+  /// \return A scalar that is equal to <tt>prod_i arg[i]</tt>
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type product(const Tile<Arg>& arg) {
+    return product(arg.tensor());
+  }
+
+  /// Squared vector 2-norm of the elements of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to be multiplied and summed
+  /// \return The sum of the squared elements of \c arg
+  /// \return A scalar that is equal to <tt>sum_i arg[i] * arg[i]</tt>
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type squared_norm(const Tile<Arg>& arg) {
+    return squared_norm(arg.tensor());
+  }
+
+  /// Vector 2-norm of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to be multiplied and summed
+  /// \return A scalar that is equal to <tt>sqrt(sum_i arg[i] * arg[i])</tt>
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type norm(const Tile<Arg>& arg) {
+    return norm(arg.tensor());
+  }
+
+  /// Maximum element of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to find the maximum
+  /// \return A scalar that is equal to <tt>max(arg)</tt>
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type max(const Tile<Arg>& arg) {
+    return max(arg.tensor());
+  }
+
+  /// Minimum element of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to find the minimum
+  /// \return A scalar that is equal to <tt>min(arg)</tt>
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type min(const Tile<Arg>& arg) {
+    return min(arg.tensor());
+  }
+
+  /// Absolute maximum element of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to find the maximum
+  /// \return A scalar that is equal to <tt>abs(max(arg))</tt>
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type abs_max(const Tile<Arg>& arg) {
+    return abs_max(arg.tensor());
+  }
+
+  /// Absolute mainimum element of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The argument to find the minimum
+  /// \return A scalar that is equal to <tt>abs(min(arg))</tt>
+  template <typename Arg>
+  inline typename Tile<Arg>::numeric_type
+  abs_min(const Tile<Arg>& arg) {
+    return abs_min(arg.tensor());
+  }
+
+  /// Vector dot product of a tile
+
+  /// \tparam Left The left-hand argument type
+  /// \tparam Right The right-hand argument type
+  /// \param left The left-hand argument tile to be contracted
+  /// \param right The right-hand argument tile to be contracted
+  /// \return A scalar that is equal to <tt>sum_i left[i] * right[i]</tt>
+  template <typename Left, typename Right>
+  inline typename Tile<Left>::numeric_type
+  dot(const Tile<Left>& left, const Tile<Right>& right) {
+    return dot(left.tensor(), right.tensor());
+  }
+
+
 
   template <typename Left, typename Right>
-  auto operator+(Tile<Left> const &l, Tile<Right> const &r)
-  -> decltype(l.add(r)) {
-    return l.add(r);
+  inline Tile<Left> operator+(const Tile<Left>&left, const Tile<Right>& right) {
+    return add(left, right);
   }
 
   template <typename Left, typename Right>
-  auto operator-(Tile<Left> const &l, Tile<Right> const &r)
-  -> decltype(l.subt(r)) {
-    return l.subt(r);
+  inline Tile<Left> operator-(const Tile<Left>& left, const Tile<Right>& right) {
+    return subt(left, right);
   }
 
   template <typename Left, typename Right>
-  auto operator*(Tile<Left> const &l, Tile<Right> const &r)
-  -> decltype(l.mult(r)) {
-    return l.mult(r);
+  Tile<Left> operator*(const Tile<Left>& left, const Tile<Right>& right) {
+    return mult(left, right);
   }
 
-  template <typename N, typename U>
-  typename std::enable_if<TiledArray::detail::is_numeric<N>::value, Tile<U>>::type
-  operator*(Tile<U> const &left, N right) {
-    return left.scale(right);
+  template <typename Left, typename Right,
+      enable_if_t<TiledArray::detail::is_numeric<Right>::value>* = nullptr>
+  Tile<Left> operator*(const Tile<Left>& left, const Right right) {
+    return scale(left, right);
   }
 
-  template <typename N, typename U>
-  typename std::enable_if<TiledArray::detail::is_numeric<N>::value, Tile<U>>::type
-  operator*(N left, Tile<U> const &right) {
-    return right.scale(left);
+  template <typename Left, typename Right,
+      enable_if_t<TiledArray::detail::is_numeric<Left>::value>* = nullptr>
+  Tile<Right> operator*(const Left left, const Tile<Right>& right) {
+    return scale(right, left);
   }
 
-  template <typename U>
-  Tile<U> operator-(Tile<U> const &u) {
-    return u.neg();
+  template <typename Arg>
+  inline Tile<Arg> operator-(const Tile<Arg>& arg) {
+    return neg(arg);
   }
 
-  template <typename U>
-  Tile<U> operator^(Permutation const &perm, Tile<U> const tile) {
-    return tile.permute(perm);
+  template <typename Arg>
+  inline Tile<Arg> operator^(const Permutation& perm, Tile<Arg> const arg) {
+    return permute(arg, perm);
   }
 
-  template <typename U>
-  inline std::ostream &operator<<(std::ostream &os, Tile<U> const &tile) {
-    os << tile.range() << ": " << tile.tile() << "\n";
+  template <typename T>
+  inline std::ostream &operator<<(std::ostream &os, const Tile<T>& tile) {
+    os << tile.range() << ": " << tile.tensor() << "\n";
     return os;
   }
 
