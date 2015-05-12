@@ -159,10 +159,12 @@ namespace TiledArray {
 
     /// This function will transpose and transform argument matrices into an
     /// uninitialized block of memory
-    /// \tparam Op The transform operation type
+    /// \tparam InputOp The input transform operation type
+    /// \tparam OutputOp The output transform operation type
     /// \tparam Result The result element type
     /// \tparam Args The argument element type
-    /// \param[in] op The transformation operation applied to arguments
+    /// \param[in] input_op The transformation operation applied to input arguments
+    /// \param[in] output_op The transformation operation used to set the result
     /// \param[in] m The number of rows in the argument matrix
     /// \param[in] n The number of columns in the argument matrix
     /// \param[in] result_stride THe stride between result rows
