@@ -1615,7 +1615,7 @@ namespace TiledArray {
   /// \param arg The argument tensor to be permuted by \c perm
   template <typename T, typename A>
   inline Tensor<T,A> operator^(const Permutation& perm, const Tensor<T, A>& arg) {
-    return tensor.permute(perm);
+    return arg.permute(perm);
   }
 
   /// Tensor output operator
