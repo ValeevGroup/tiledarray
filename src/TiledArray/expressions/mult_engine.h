@@ -146,7 +146,7 @@ namespace TiledArray {
         BinaryEngine_::right_.init_vars();
 
         if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
-          BinaryEngine_::vars();
+          BinaryEngine_::init_vars();
         } else {
           contract_ = true;
           ContEngine_::init_vars();
