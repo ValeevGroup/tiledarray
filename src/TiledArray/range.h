@@ -216,7 +216,7 @@ namespace TiledArray {
         // Initialize array memory
         data_ = new size_type[n << 2];
         rank_ = n;
-        init_range_data({size});
+        init_range_data(size);
       }
     }
 
@@ -236,7 +236,7 @@ namespace TiledArray {
       // Initialize array memory
       data_ = new size_type[n << 2];
       rank_ = n;
-      compute_range_data({static_cast<size_type>(sizes)...});
+      init_range_data({static_cast<size_type>(sizes)...});
     }
 
     /// Copy Constructor
