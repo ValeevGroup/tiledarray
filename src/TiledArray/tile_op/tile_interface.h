@@ -56,8 +56,12 @@ namespace TiledArray {
   /// \tparam T Tensor type
   template <typename T>
   struct TileTrait {
+    /// Tensor type that will store tile data
+    typedef T tensor_type;
     /// Element type of the tile
     typedef typename T::value_type value_type;
+    /// Range type used to represent the upper and lower bounds of the tensor data
+    typedef typename T::range_type range_type;
     /// Size type used to represent the size and offsets of the tensor data
     typedef typename T::size_type size_type;
     /// Element reference type
@@ -78,6 +82,20 @@ namespace TiledArray {
     typedef typename TiledArray::detail::scalar_type<T>::type numeric_type;
 
   }; // struct TileTrait
+
+
+  // Tensor range accessor -----------------------------------------------------
+
+  /// Tile data pointer accessor
+
+  /// Access the data pointer of tile
+  /// \tparam Arg The tile type
+  /// \param arg The tile argument
+  /// \return A pointer to the data of \c arg
+  template <typename Arg>
+  inline const typename TileTrait<Arg>::range_type& range(Arg& arg) {
+    return arg.range();
+  }
 
 
   // Tile element accessors ----------------------------------------------------
