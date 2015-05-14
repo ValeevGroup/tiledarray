@@ -116,10 +116,10 @@ BOOST_AUTO_TEST_CASE( permute_permutation )
 {
   Permutation pr({1,2,0});
   Permutation p0({0,1,2});
-  Permutation p1 = p ^ p0;
+  Permutation p1 = p * p0;
   BOOST_CHECK_EQUAL(p1, pr); // check assignment permutation permutation
   Permutation p2({0,1,2});
-  p2 ^= p;
+  p2 *= p;
   BOOST_CHECK_EQUAL(p2, pr); // check in-place permutation permutation.
 }
 
@@ -128,11 +128,11 @@ BOOST_AUTO_TEST_CASE( reverse_permutation )
   Permutation p0(p);
   Permutation pr({1,2,0});
   BOOST_CHECK_EQUAL(-p0, pr);
-  BOOST_CHECK_EQUAL((p0 ^ (p0)), Permutation({0,1,2}));
+  BOOST_CHECK_EQUAL((p0 * (p0)), Permutation::identity(3));
   Permutation p1({1,2,0});
-  p0 ^= p1;
+  p0 *= p1;
   BOOST_CHECK_NE(p0, p);
-  p0 ^= -p1;
+  p0 *= -p1;
   BOOST_CHECK_EQUAL(p0, p);
 }
 
@@ -140,9 +140,9 @@ BOOST_AUTO_TEST_CASE( array_permutation )
 {
   std::array<int, 3> a1 = {{1, 2, 3}};
   std::array<int, 3> ar = {{2, 3, 1}};
-  std::array<int, 3> a2 = p ^ a1;
+  std::array<int, 3> a2 = p * a1;
   std::array<int, 3> a3 = a1;
-  a3 ^= p;
+  a3 *= p;
   BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), ar.begin(), ar.end()); // check assignment permutation
   BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), ar.begin(), ar.end()); // check in-place permutation
 }
@@ -151,9 +151,9 @@ BOOST_AUTO_TEST_CASE( vector_permutation )
 {
   std::vector<int> a1(3); int a1v[3] = {1, 2, 3}; std::copy(a1v, a1v+3, a1.begin());
   std::vector<int> ar(3); int arv[3] = {2, 3, 1}; std::copy(arv, arv+3, ar.begin());
-  std::vector<int> a2 = p ^ a1;
+  std::vector<int> a2 = p * a1;
   std::vector<int> a3 = a1;
-  a3 ^= p;
+  a3 *= p;
   BOOST_CHECK(a2 == ar); // check assignment permutation
   BOOST_CHECK(a3 == ar); // check in-place permutation
 }

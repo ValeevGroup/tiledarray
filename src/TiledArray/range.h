@@ -476,7 +476,7 @@ namespace TiledArray {
     /// \throw TildedArray::Exception When the dimension of this range is not
     /// equal to the dimension of the permutation.
     /// \throw std::bad_alloc When memory allocation fails.
-    Range_& operator ^=(const Permutation& perm) {
+    Range_& operator *=(const Permutation& perm) {
       TA_ASSERT(perm.dim() == rank_);
 
       if(rank_ > 1ul) {
@@ -740,7 +740,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the range
   /// \param r The range to be permuted
   /// \return A permuted copy of \c r.
-  inline Range operator ^(const Permutation& perm, const Range& r) {
+  inline Range operator*(const Permutation& perm, const Range& r) {
     return Range(perm, r);
   }
 
@@ -750,7 +750,7 @@ namespace TiledArray {
   /// \c NoPermutation code.
   /// \param r The range not to be permuted
   /// \return A const reference to \c r
-  inline const Range& operator ^(const detail::NoPermutation&, const Range& r) {
+  inline const Range& operator*(const detail::NoPermutation&, const Range& r) {
     return r;
   }
 

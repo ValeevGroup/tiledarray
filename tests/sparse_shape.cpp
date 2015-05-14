@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE( permute )
 
   // Check that all the tiles have been normalized correctly
   for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
-    BOOST_CHECK_CLOSE(result[perm ^ tr.tiles().idx(i)], sparse_shape[i], tolerance);
+    BOOST_CHECK_CLOSE(result[perm * tr.tiles().idx(i)], sparse_shape[i], tolerance);
   }
 
   BOOST_CHECK_EQUAL(result.sparsity(), sparse_shape.sparsity());

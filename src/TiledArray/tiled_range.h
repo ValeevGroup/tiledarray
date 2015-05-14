@@ -109,9 +109,9 @@ namespace TiledArray {
     /// In place permutation of this range.
 
     /// \return A reference to this object
-    TiledRange_& operator ^=(const Permutation& p) {
+    TiledRange_& operator *=(const Permutation& p) {
       TA_ASSERT(p.dim() == range_.dim());
-      Ranges temp = p ^ ranges_;
+      Ranges temp = p * ranges_;
       TiledRange(temp.begin(), temp.end()).swap(*this);
       return *this;
     }
@@ -205,9 +205,9 @@ namespace TiledArray {
   /// This function will permute the range. Note: only tiles that are not
   /// being used by other objects will be permuted. The owner of those
   /// objects are
-  inline TiledRange operator ^(const Permutation& p, const TiledRange& r) {
+  inline TiledRange operator *(const Permutation& p, const TiledRange& r) {
     TA_ASSERT(r.tiles().dim() == p.dim());
-    TiledRange::Ranges data = p ^ r.data();
+    TiledRange::Ranges data = p * r.data();
 
     return TiledRange(data.begin(), data.end());
   }

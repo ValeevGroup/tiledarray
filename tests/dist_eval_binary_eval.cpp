@@ -76,7 +76,7 @@ struct BinaryEvalFixture : public TiledRangeFixture {
     typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
     return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
         std::shared_ptr<impl_type>(new impl_type(array, world,
-        (perm ? perm ^ array.trange() : array.trange()), shape, pmap, perm, op)));
+        (perm ? perm * array.trange() : array.trange()), shape, pmap, perm, op)));
   }
 
   template <typename LeftTile, typename RightTile, typename Policy, typename Op>
@@ -94,7 +94,7 @@ struct BinaryEvalFixture : public TiledRangeFixture {
         TiledArray::detail::DistEval<RightTile, Policy>, Op, Policy> impl_type;
     return TiledArray::detail::DistEval<typename Op::result_type, Policy>(
         std::shared_ptr<impl_type>(new impl_type(left, right, world,
-        (perm ? perm ^ left.trange() : left.trange()), shape, pmap, perm, op)));
+        (perm ? perm * left.trange() : left.trange()), shape, pmap, perm, op)));
   }
 
    ArrayN left;
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   const Permutation inv_perm = -perm;
   for(; it != end; ++it) {
     // Get the original tiles
-    const std::size_t arg_index = left.range().ord(inv_perm ^ dist_eval.range().idx(*it));
+    const std::size_t arg_index = left.range().ord(inv_perm * dist_eval.range().idx(*it));
     const ArrayN::value_type left_tile = left.find(arg_index);
     const ArrayN::value_type right_tile = right.find(arg_index);
 
@@ -200,9 +200,9 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
     // Check that the result tile is correctly modified.
     BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(*it));
-    BOOST_CHECK_EQUAL(eval_tile.range(), perm ^ left_tile.range());
+    BOOST_CHECK_EQUAL(eval_tile.range(), perm * left_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
-      BOOST_CHECK_EQUAL(eval_tile[perm ^ left_tile.range().idx(i)], left_tile[i] + right_tile[i]);
+      BOOST_CHECK_EQUAL(eval_tile[perm * left_tile.range().idx(i)], left_tile[i] + right_tile[i]);
     }
   }
 

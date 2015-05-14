@@ -109,7 +109,7 @@ namespace TiledArray {
 
         if(perm) {
           Permutation inv_perm(-perm);
-          range_type source_range = inv_perm ^ trange.tiles();
+          range_type source_range = inv_perm * trange.tiles();
           source_to_target_ = PermIndex(source_range, perm);
           target_to_source_ = PermIndex(trange.tiles(), inv_perm);
         }

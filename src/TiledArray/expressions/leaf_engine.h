@@ -135,7 +135,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       trange_type make_trange(const Permutation& perm) const {
-        return perm ^ array_.trange();
+        return perm * array_.trange();
       }
 
       /// Non-permuting shape factory function

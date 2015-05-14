@@ -421,7 +421,7 @@ namespace TiledArray {
     }; // class SizeArray
 
     template <typename T>
-    inline std::vector<T> operator^(const Permutation& perm, const SizeArray<T>& orig) {
+    inline std::vector<T> operator*(const Permutation& perm, const SizeArray<T>& orig) {
       TA_ASSERT(orig.size() == perm.dim());
       std::vector<T> result(perm.dim());
       permute_array(perm, orig, result);
@@ -429,7 +429,7 @@ namespace TiledArray {
     }
 
     template <typename T>
-    inline const SizeArray<T>& operator^(const NoPermutation&, const SizeArray<T>& orig) {
+    inline const SizeArray<T>& operator*(const NoPermutation&, const SizeArray<T>& orig) {
       return orig;
     }
 

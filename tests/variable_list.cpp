@@ -226,21 +226,21 @@ BOOST_AUTO_TEST_CASE( permutation )
 {
   Permutation p({1,2,3,0});
   VariableList v1(v);
-  VariableList v2 = (p ^ v1);
+  VariableList v2 = (p * v1);
   BOOST_CHECK_EQUAL(v2[0], "d");
   BOOST_CHECK_EQUAL(v2[1], "a");
   BOOST_CHECK_EQUAL(v2[2], "b");
   BOOST_CHECK_EQUAL(v2[3], "c");
 
   VariableList v3(v);
-  v3 ^= p;
+  v3 *= p;
   BOOST_CHECK_EQUAL_COLLECTIONS(v3.begin(), v3.end(), v2.begin(), v2.end());
 }
 
 BOOST_AUTO_TEST_CASE( implicit_permutation )
 {
   Permutation p1({1,2,3,0});
-  VariableList v1 = (p1 ^ v);
+  VariableList v1 = (p1 * v);
   Permutation p = TiledArray::expressions::detail::var_perm(v1, v);
 
   BOOST_CHECK_EQUAL_COLLECTIONS(p.begin(), p.end(), p1.begin(), p1.end());

@@ -29,7 +29,7 @@ namespace TiledArray {
   namespace expressions {
 
     class VariableList;
-    VariableList operator ^(const ::TiledArray::Permutation&, const VariableList&);
+    VariableList operator *(const ::TiledArray::Permutation&, const VariableList&);
     void swap(VariableList&, VariableList&);
 
 
@@ -145,9 +145,9 @@ namespace TiledArray {
         return *this;
       }
 
-      VariableList& operator ^=(const Permutation& p) {
+      VariableList& operator *=(const Permutation& p) {
         TA_ASSERT(p.dim() == dim());
-        vars_ ^= p;
+        vars_ *= p;
         return *this;
       }
 
@@ -277,7 +277,7 @@ namespace TiledArray {
 
       std::vector<std::string> vars_;
 
-      friend VariableList operator ^(const ::TiledArray::Permutation&, const VariableList&);
+      friend VariableList operator*(const ::TiledArray::Permutation&, const VariableList&);
 
     }; // class VariableList
 
@@ -294,10 +294,10 @@ namespace TiledArray {
       return ! operator ==(v0, v1);
     }
 
-    inline VariableList operator ^(const ::TiledArray::Permutation& p, const VariableList& v) {
+    inline VariableList operator*(const ::TiledArray::Permutation& p, const VariableList& v) {
       TA_ASSERT(p.dim() == v.dim());
       VariableList result;
-      result.vars_ = p ^ v.vars_;
+      result.vars_ = p * v.vars_;
 
       return result;
     }

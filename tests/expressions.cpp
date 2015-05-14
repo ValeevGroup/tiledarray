@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE( permute )
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = b("c,b,a"));
 
   for(std::size_t i = 0ul; i < b.size(); ++i) {
-    const std::size_t perm_index = a.range().ord(perm ^ b.range().idx(i));
+    const std::size_t perm_index = a.range().ord(perm * b.range().idx(i));
     if(a.is_local(perm_index)) {
       Array3::value_type a_tile = a.find(perm_index).get();
       Array3::value_type perm_b_tile = perm ^ b.find(i).get();
@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE( scale_permute )
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = 2 * b("c,b,a"));
 
   for(std::size_t i = 0ul; i < b.size(); ++i) {
-    const std::size_t perm_index = a.range().ord(perm ^ b.range().idx(i));
+    const std::size_t perm_index = a.range().ord(perm * b.range().idx(i));
     if(a.is_local(perm_index)) {
       Array3::value_type a_tile = a.find(perm_index).get();
       Array3::value_type perm_b_tile = perm ^ b.find(i).get();

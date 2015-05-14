@@ -156,7 +156,7 @@ namespace TiledArray {
     index_type operator[](unsigned int i) const { return p_[i]; }
 
     /// return *this ^ other
-    Permutation& operator^=(const Permutation& other) {
+    Permutation& operator*=(const Permutation& other) {
       TA_ASSERT(other.p_.size() == p_.size());
 
       std::vector<index_type> result(p_.size());
@@ -193,7 +193,8 @@ namespace TiledArray {
       return Permutation(std::move(result));
     }
 
-    /// Returns the inverse permutation and will satisfy the following conditions.
+    /// Make the inverse of this permutation
+
     /// given <tt>c2 = p ^ c1</tt>
     /// <tt>c1 == (p.inverse() ^ c2);</tt>
     Permutation inverse() const {
@@ -236,7 +237,7 @@ namespace TiledArray {
 
   /// permute a std::array
   template <typename T, std::size_t N>
-  inline std::array<T,N> operator^(const Permutation& perm, const std::array<T, N>& orig) {
+  inline std::array<T,N> operator*(const Permutation& perm, const std::array<T, N>& orig) {
     TA_ASSERT(perm.dim() == orig.size());
     std::array<T,N> result;
     detail::permute_array(perm, orig, result);
@@ -245,7 +246,7 @@ namespace TiledArray {
 
   /// permute a std::vector<T>
   template <typename T, typename A>
-  inline std::vector<T> operator^(const Permutation& perm, const std::vector<T, A>& orig) {
+  inline std::vector<T> operator*(const Permutation& perm, const std::vector<T, A>& orig) {
     std::vector<T> result(perm.dim());
     detail::permute_array(perm, orig, result);
     return result;
@@ -254,7 +255,7 @@ namespace TiledArray {
 
   /// permute a std::vector<T>
   template <typename T>
-  inline std::vector<T> operator^(const Permutation& perm, const T* restrict const orig) {
+  inline std::vector<T> operator*(const Permutation& perm, const T* restrict const orig) {
     const unsigned int n = perm.dim();
     std::vector<T> result(n);
     for(unsigned int i = 0u; i < n; ++i) {
@@ -265,39 +266,39 @@ namespace TiledArray {
     return result;
   }
 
-  inline Permutation operator ^(const Permutation& perm, const Permutation& p) {
+  inline Permutation operator*(const Permutation& perm, const Permutation& p) {
     TA_ASSERT(perm.dim() == p.dim());
-    return Permutation(perm ^ p.data());
+    return Permutation(perm * p.data());
   }
 
   namespace detail {
     /// permute a std::array
     template <typename T, std::size_t N>
-    inline const std::array<T,N>& operator^(const NoPermutation&, const std::array<T, N>& orig) {
+    inline const std::array<T,N>& operator*(const NoPermutation&, const std::array<T, N>& orig) {
       return orig;
     }
 
     /// permute a std::vector<T>
     template <typename T, typename A>
-    inline const std::vector<T, A>& operator^(const NoPermutation&, const std::vector<T, A>& orig) {
+    inline const std::vector<T, A>& operator*(const NoPermutation&, const std::vector<T, A>& orig) {
       return orig;
     }
 
-    inline const Permutation& operator ^(const NoPermutation&, const Permutation& p) {
+    inline const Permutation& operator*(const NoPermutation&, const Permutation& p) {
       return p;
     }
 
   } // namespace detail
 
   template <typename T, std::size_t N>
-  inline std::array<T,N>& operator ^=(std::array<T,N>& a, const Permutation& perm) {
+  inline std::array<T,N>& operator*=(std::array<T,N>& a, const Permutation& perm) {
     const std::array<T,N> temp = a;
     detail::permute_array(perm, temp, a);
     return a;
   }
 
   template <typename T, typename A>
-  inline std::vector<T, A>& operator^=(std::vector<T, A>& orig, const Permutation& perm) {
+  inline std::vector<T, A>& operator*=(std::vector<T, A>& orig, const Permutation& perm) {
     const std::vector<T, A> temp = orig;
     detail::permute_array(perm, temp, orig);
     return orig;

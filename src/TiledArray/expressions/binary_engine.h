@@ -226,7 +226,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the tiled range
       /// \return The result shape
       trange_type make_trange(const Permutation& perm) const {
-        return perm ^ left_.trange();
+        return perm * left_.trange();
       }
 
       /// Construct the distributed evaluator for this expression

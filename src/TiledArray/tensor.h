@@ -284,7 +284,7 @@ namespace TiledArray {
     /// \param perm The permutation that will be applied to the copy
     template <typename U, typename AU>
     Tensor(const Tensor<U, AU>& other, const Permutation& perm) :
-      pimpl_(new Impl(perm ^ other.range()))
+      pimpl_(new Impl(perm * other.range()))
     {
       // Check inputs.
       TA_ASSERT(! other.empty());
@@ -313,7 +313,7 @@ namespace TiledArray {
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename Op>
     Tensor(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) :
-      pimpl_(new Impl(perm ^ other.range()))
+      pimpl_(new Impl(perm * other.range()))
     {
       // Check inputs.
       TA_ASSERT(! other.empty());
@@ -338,7 +338,7 @@ namespace TiledArray {
     /// Construct an evaluated tensor
     template <typename U, typename AU, typename V, typename AV, typename Op>
     Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op, const Permutation& perm) :
-      pimpl_(new Impl(perm ^ left.range()))
+      pimpl_(new Impl(perm * left.range()))
     {
       // Check inputs.
       TA_ASSERT(! left.empty());
@@ -1524,7 +1524,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to \c arg
   /// \param arg The argument tensor to be permuted by \c perm
   template <typename T, typename A>
-  inline Tensor<T,A> operator^(const Permutation& perm, const Tensor<T, A>& arg) {
+  inline Tensor<T,A> operator*(const Permutation& perm, const Tensor<T, A>& arg) {
     return arg.permute(perm);
   }
 

@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE( unary_neg_perm )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(b[perm ^ a.range().idx(i)], -a[i]);
+    BOOST_CHECK_EQUAL(b[perm * a.range().idx(i)], -a[i]);
   }
 }
 
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE( unary_neg_perm_consume )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(b[perm ^ a.range().idx(i)], -a[i]);
+    BOOST_CHECK_EQUAL(b[perm * a.range().idx(i)], -a[i]);
   }
 }
 

@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE( permutation )
   Range r1(s, f);
   // create a reverse order permutation
   Permutation p(a);
-  Range r2 = p ^ r1;
+  Range r2 = p * r1;
   Range r3 = r1;
 
   // check start, finish, size, volume, and weight of permuted range
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE( permutation )
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.weight(), r2.weight() + r2.dim(), w.begin(), w.end());
 
   // check for correct finish permutation
-  BOOST_CHECK_EQUAL(r3 ^= p, r2);
+  BOOST_CHECK_EQUAL(r3 *= p, r2);
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.start(), r3.start() + r3.dim(), r2.start(), r2.start() + r2.dim());
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.finish(), r3.finish() + r3.dim(), r2.finish(), r2.finish() + r2.dim());
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.size(), r3.size() + r3.dim(), r2.size(), r2.size() + r2.dim());

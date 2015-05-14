@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ a.range().idx(i)], a[i] - b[i]);
+    BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] - b[i]);
   }
 }
 
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ b.range().idx(i)], -b[i]);
+    BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], -b[i]);
   }
 }
 
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ a.range().idx(i)], a[i]);
+    BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i]);
   }
 }
 
@@ -261,7 +261,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_left )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ a.range().idx(i)], a[i] - b[i]);
+    BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] - b[i]);
   }
 }
 
@@ -280,7 +280,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_left )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ b.range().idx(i)], -b[i]);
+    BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], -b[i]);
   }
 }
 
@@ -299,7 +299,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_left )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ a.range().idx(i)], a[i]);
+    BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i]);
   }
 }
 
@@ -379,7 +379,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_right )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ a.range().idx(i)], a[i] - b[i]);
+    BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] - b[i]);
   }
 }
 
@@ -398,7 +398,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_right )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ b.range().idx(i)], -b[i]);
+    BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], -b[i]);
   }
 }
 
@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_right )
 
   // Check that the data in the new tile is correct
   for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(c[perm ^ a.range().idx(i)], a[i]);
+    BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i]);
   }
 }
 
