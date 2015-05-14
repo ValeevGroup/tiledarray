@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE( permute )
     const std::size_t perm_index = a.range().ord(perm * b.range().idx(i));
     if(a.is_local(perm_index)) {
       Array3::value_type a_tile = a.find(perm_index).get();
-      Array3::value_type perm_b_tile = perm ^ b.find(i).get();
+      Array3::value_type perm_b_tile = perm * b.find(i).get();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for(std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE( scale_permute )
     const std::size_t perm_index = a.range().ord(perm * b.range().idx(i));
     if(a.is_local(perm_index)) {
       Array3::value_type a_tile = a.find(perm_index).get();
-      Array3::value_type perm_b_tile = perm ^ b.find(i).get();
+      Array3::value_type perm_b_tile = perm * b.find(i).get();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for(std::size_t j = 0ul; j < a_tile.size(); ++j)
