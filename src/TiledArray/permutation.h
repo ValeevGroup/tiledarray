@@ -70,21 +70,42 @@ namespace TiledArray {
   ///   b = p ^ a; // assign permeation of a into b given the permutation p.
   ///   a ^= p;    // permute a given the permutation p.
   class Permutation {
+  public:
+    typedef Permutation Permutation_;
+    typedef unsigned int index_type;
+    typedef std::vector<index_type> Array;
+    typedef std::vector<index_type>::const_iterator const_iterator;
+
   private:
+
+    std::vector<index_type> p_; ///< The permutation indices
+
+    /// Validate input permutation data
+
+    /// \return \c false if each element of [first, last) is unique and less
+    /// than the size of the list.
+    template <typename InIter>
+    bool valid_(InIter first, InIter last) {
+      bool result = true;
+      const unsigned int n = std::distance(first, last);
+      for(; first != last; ++first) {
+        const unsigned int value = *first;
+        result = result && (value < n) && (std::count(first, last, *first) == 1ul);
+      }
+      return result;
+    }
 
     // Used to select the correct constructor based on input template types
     struct Enabler { };
 
   public:
-    typedef Permutation Permutation_;
-    typedef unsigned int index_type;
-    typedef std::vector<index_type> Array;
-    typedef Array::const_iterator const_iterator;
 
-    unsigned int dim() const { return p_.size(); }
-
-    /// Default constructor (defines a null permutation)
-    Permutation() : p_() { }
+    Permutation() = default;
+    Permutation(const Permutation&) = default;
+    Permutation(Permutation&&) = default;
+    ~Permutation() = default;
+    Permutation& operator=(const Permutation&) = default;
+    Permutation& operator=(Permutation&& other) = default;
 
     /// Construct permutation from an iterator
 
@@ -103,76 +124,52 @@ namespace TiledArray {
 
     /// Construct permutation from an Array
     /// \param a The permutation array to be moved
-    explicit Permutation(const std::vector<index_type>& a) : p_(a) {
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
+    explicit Permutation(const std::vector<index_type>& a) :
+        p_(a)
+    {
+      TA_ASSERT( valid_(a.begin(), a.end()) );
     }
 
-    /// Array move constructor
+    /// std::vector move constructor
 
-    /// Move the content of the array into this permutation
+    /// Move the content of the std::vector into this permutation
     /// \param a The permutation array to be moved
-    explicit Permutation(Array&& a) :
-        p_(std::forward<Array>(a))
+    explicit Permutation(std::vector<index_type>&& a) :
+        p_(std::move(a))
     {
       TA_ASSERT( valid_(p_.begin(), p_.end()) );
     }
 
-    /// Copy constructor
+    /// Construct permutation with an initializer list
 
-    /// \param other The permutation to be copied
-    Permutation(const Permutation& other) : p_(other.p_) { }
-
-    /// Move constructor
-
-    /// \param other The permuatation to be moved
-    Permutation(Permutation&& other) : p_(std::move(other.p_)) { }
-
-    /// Construct permuation with an initializer list
-
-    /// \tparam I An integral type
     /// \param list An initializer list of integers
-    template <typename I,
-        typename std::enable_if<std::is_integral<I>::value>::type* = nullptr>
-    explicit Permutation(std::initializer_list<I> list) :
-        p_(list.begin(), list.end())
-    {
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
-    }
+    explicit Permutation(std::initializer_list<index_type> list) :
+        Permutation(list.begin(), list.end())
+    { }
 
-    ~Permutation() {}
+
+    unsigned int dim() const { return p_.size(); }
 
     const_iterator begin() const { return p_.begin(); }
     const_iterator end() const { return p_.end(); }
 
-    const index_type& operator[](unsigned int i) const {
-      return p_[i];
-    }
-
-    Permutation& operator=(const Permutation& other) { p_ = other.p_; return *this; }
+    index_type operator[](unsigned int i) const { return p_[i]; }
 
     /// return *this ^ other
     Permutation& operator^=(const Permutation& other) {
       TA_ASSERT(other.p_.size() == p_.size());
 
-      Array result(p_.size());
+      std::vector<index_type> result(p_.size());
       detail::permute_array(other, p_, result);
-      std::swap(result, p_);
+      p_ = std::move(result);
       return *this;
     }
 
-    /// Returns the reverse permutation and will satisfy the following conditions.
+    /// Returns the inverse permutation and will satisfy the following conditions.
     /// given c2 = p ^ c1
     /// c1 == ((-p) ^ c2);
-    Permutation operator -() const {
-      const std::size_t n = p_.size();
-      Permutation result;
-      result.p_.resize(n, 0ul);
-      for(std::size_t i = 0ul; i < n; ++i) {
-        const std::size_t pi = p_[i];
-        result.p_[pi] = i;
-      }
-      return result;
-    }
+    Permutation operator -() const { return inverse(); }
+
 
     /// Bool conversion
 
@@ -184,36 +181,40 @@ namespace TiledArray {
     /// \return \c true if the permutation is empty, otherwise \c false.
     bool operator!() const { return p_.empty(); }
 
+    /// Identity permutation factory function
+
+    /// \param dim The number of dimensions in the
+    /// \return An identity permutation for \c dim elements
+    static Permutation identity(const unsigned int dim) {
+      std::vector<index_type> result;
+      result.reserve(dim);
+      for(unsigned int i = 0u; i < dim; ++i)
+        result.emplace_back(i);
+      return Permutation(std::move(result));
+    }
+
+    /// Returns the inverse permutation and will satisfy the following conditions.
+    /// given <tt>c2 = p ^ c1</tt>
+    /// <tt>c1 == (p.inverse() ^ c2);</tt>
+    Permutation inverse() const {
+      const std::size_t n = p_.size();
+      std::vector<index_type> result;
+      result.resize(n, 0ul);
+      for(std::size_t i = 0ul; i < n; ++i) {
+        const std::size_t pi = p_[i];
+        result[pi] = i;
+      }
+      return Permutation(std::move(result));
+    }
+
     /// Return a reference to the array that represents the permutation.
-    const Array& data() const { return p_; }
+    const std::vector<index_type>& data() const { return p_; }
 
     template <typename Archive>
     void serialize(Archive& ar) {
       ar & p_;
     }
 
-  private:
-
-    static Permutation make_unit_permutation(std::size_t n) {
-      Permutation::Array temp(n);
-      for(unsigned int d = 0; d < n; ++d) temp[d] = d;
-      return Permutation(std::move(temp));
-    }
-
-    // return false if this is not a valid permutation
-    template <typename InIter>
-    bool valid_(InIter first, InIter last) {
-      Array count(std::distance(first, last));
-      std::fill(count.begin(), count.end(), 0);
-      for(; first != last; ++first) {
-        const index_type& i = *first;
-        if(count[i] > 0) return false;
-        ++count[i];
-      }
-      return true;
-    }
-
-    Array p_;
   };
 
   inline bool operator==(const Permutation& p1, const Permutation& p2) {
