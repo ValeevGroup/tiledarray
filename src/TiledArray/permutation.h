@@ -78,7 +78,11 @@ namespace TiledArray {
 
   private:
 
-    std::vector<index_type> p_; ///< The permutation indices
+    /// The permutation stored in an "image form," where the permutation
+    ///   ( 0 1 2 3 )
+    ///   ( 3 2 1 0 )
+    /// is stored as { 3, 2, 1, 0 }
+    std::vector<index_type> p_;
 
     /// Validate input permutation data
 
@@ -112,6 +116,9 @@ namespace TiledArray {
     /// \tparam InIter An input iterator type
     /// \param first The beginning of the iterator range
     /// \param last The end of the iterator range
+    /// \throw TiledArray::Exception If the permutation contains any element
+    /// that is greater than the size of the permutation or if there are any
+    /// duplicate elements.
     template <typename InIter,
         typename std::enable_if<detail::is_input_iterator<InIter>::value>::type* = nullptr>
     Permutation(InIter first, InIter last) :
