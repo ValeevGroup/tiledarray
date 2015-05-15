@@ -429,11 +429,6 @@ namespace TiledArray {
     }
 
     template <typename T>
-    inline const SizeArray<T>& operator*(const NoPermutation&, const SizeArray<T>& orig) {
-      return orig;
-    }
-
-    template <typename T>
     inline std::ostream& operator<<(std::ostream& os, const SizeArray<T>& size_array) {
       print_array(os, size_array);
       return os;

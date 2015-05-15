@@ -34,13 +34,6 @@ namespace TiledArray {
 
   namespace detail {
 
-    /// Place holder object to represent a no permutation operation.
-    struct NoPermutation {
-      const NoPermutation& operator-() const { return *this; }
-      template <typename Archive>
-      void serialize(Archive&) { }
-    };
-
     /// Copies an iterator range into an array type container.
 
     /// Permutes iterator range  \c [first_o, \c last_o) base on the permutation
@@ -333,25 +326,6 @@ namespace TiledArray {
     TA_ASSERT(p1.dim() == p2.dim());
     return Permutation(p1 * p2.data());
   }
-
-  namespace detail {
-    /// permute a std::array
-    template <typename T, std::size_t N>
-    inline const std::array<T,N>& operator*(const NoPermutation&, const std::array<T, N>& orig) {
-      return orig;
-    }
-
-    /// permute a std::vector<T>
-    template <typename T, typename A>
-    inline const std::vector<T, A>& operator*(const NoPermutation&, const std::vector<T, A>& orig) {
-      return orig;
-    }
-
-    inline const Permutation& operator*(const NoPermutation&, const Permutation& p) {
-      return p;
-    }
-
-  } // namespace detail
 
   template <typename T, std::size_t N>
   inline std::array<T,N>& operator*=(std::array<T,N>& a, const Permutation& perm) {

@@ -744,16 +744,6 @@ namespace TiledArray {
     return Range(perm, r);
   }
 
-  /// No permutation function
-
-  /// This function is used to allow generic code for \c Permutation or
-  /// \c NoPermutation code.
-  /// \param r The range not to be permuted
-  /// \return A const reference to \c r
-  inline const Range& operator*(const detail::NoPermutation&, const Range& r) {
-    return r;
-  }
-
   /// Range equality comparison
 
   /// \param r1 The first range to be compared
