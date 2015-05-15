@@ -73,7 +73,7 @@ namespace TiledArray {
     /// Permutation accessor
 
     /// \return A const reference to the permutation
-    const Permutation& permutation() const { return permutation_; }
+    const Permutation& permutation() const { return perm_; }
 
     /// Symmetry flag accessor
 
