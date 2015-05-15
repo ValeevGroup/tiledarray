@@ -225,14 +225,32 @@ namespace TiledArray {
 
   };
 
+  /// Permutation equality operator
+
+  /// \param p1 The left-hand permutation to be compared
+  /// \param p2 The right-hand permutation to be compared
+  /// \return \c true if all elements of \c p1 and \c p2 are equal and in the
+  /// same order, otherwise \c false.
   inline bool operator==(const Permutation& p1, const Permutation& p2) {
-    return (p1.dim() == p2.dim()) && std::equal(p1.data().begin(), p1.data().end(), p2.data().begin());
+    return (p1.dim() == p2.dim())
+        && std::equal(p1.data().begin(), p1.data().end(), p2.data().begin());
   }
 
+  /// Permutation inequality operator
+
+  /// \param p1 The left-hand permutation to be compared
+  /// \param p2 The right-hand permutation to be compared
+  /// \return \c true if any element of \c p1 is not equal to that of \c p2,
+  /// otherwise \c false.
   inline bool operator!=(const Permutation& p1, const Permutation& p2) {
     return ! operator==(p1, p2);
   }
 
+  /// Add permutation to an output stream
+
+  /// \param[out] output The output stream
+  /// \param[in] p The permutation to be added to the output stream
+  /// \return The output stream
   inline std::ostream& operator<<(std::ostream& output, const Permutation& p) {
     std::size_t n = p.dim();
     output << "{";
@@ -242,40 +260,67 @@ namespace TiledArray {
     return output;
   }
 
-  /// permute a std::array
+  /// Permute a \c std::array
+
+  /// \tparam T The element type of the array
+  /// \tparam N The size of the array
+  /// \param perm The permutation
+  /// \param a The array to be permuted
+  /// \return A permuted copy of \c a
+  /// \throw TiledArray::Exception When the dimension of the permutation is not
+  /// equal to the size of \c a.
   template <typename T, std::size_t N>
-  inline std::array<T,N> operator*(const Permutation& perm, const std::array<T, N>& orig) {
-    TA_ASSERT(perm.dim() == orig.size());
+  inline std::array<T,N> operator*(const Permutation& perm, const std::array<T, N>& a) {
+    TA_ASSERT(perm.dim() == a.size());
     std::array<T,N> result;
-    detail::permute_array(perm, orig, result);
+    detail::permute_array(perm, a, result);
     return result;
   }
 
-  /// permute a std::vector<T>
+  /// permute a \c std::vector<T>
+
+  /// \tparam T The element type of the vector
+  /// \param perm The permutation
+  /// \param v The vector to be permuted
+  /// \return A permuted copy of \c v
+  /// \throw TiledArray::Exception When the dimension of the permutation is not
+  /// equal to the size of \c v.
   template <typename T, typename A>
-  inline std::vector<T> operator*(const Permutation& perm, const std::vector<T, A>& orig) {
+  inline std::vector<T> operator*(const Permutation& perm, const std::vector<T, A>& v) {
+    TA_ASSERT(perm.dim() == v.size());
     std::vector<T> result(perm.dim());
-    detail::permute_array(perm, orig, result);
+    detail::permute_array(perm, v, result);
     return result;
   }
 
 
-  /// permute a std::vector<T>
+  /// Permute a memory buffer
+
+  /// \tparam T The element type of the memory buffer
+  /// \param perm The permutation
+  /// \param p A pointer to the memory buffer to be permuted
+  /// \return A permuted copy of the memory buffer as a \c std::vector
   template <typename T>
-  inline std::vector<T> operator*(const Permutation& perm, const T* restrict const orig) {
+  inline std::vector<T> operator*(const Permutation& perm, const T* restrict const ptr) {
     const unsigned int n = perm.dim();
     std::vector<T> result(n);
     for(unsigned int i = 0u; i < n; ++i) {
       const typename Permutation::index_type perm_i = perm[i];
-      const T orig_i = orig[i];
-      result[perm_i] = orig_i;
+      const T ptr_i = ptr[i];
+      result[perm_i] = ptr_i;
     }
     return result;
   }
 
-  inline Permutation operator*(const Permutation& perm, const Permutation& p) {
-    TA_ASSERT(perm.dim() == p.dim());
-    return Permutation(perm * p.data());
+  /// Permutation multiplication operator
+
+  /// \param p1 The left-hand permutation
+  /// \param p2 The right-hand permutation
+  /// \return The product of p1 and p2 (which is the permutation of \c p2
+  /// by \c p1).
+  inline Permutation operator*(const Permutation& p1, const Permutation& p2) {
+    TA_ASSERT(p1.dim() == p2.dim());
+    return Permutation(p1 * p2.data());
   }
 
   namespace detail {
