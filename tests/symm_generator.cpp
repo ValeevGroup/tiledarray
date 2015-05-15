@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  justus
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  symm_generator.h
@@ -26,15 +26,15 @@
 #include "TiledArray/symm/generator.h"
 #include "unit_test_config.h"
 
-struct Fixture {
+struct CyclePermutationFixture {
 
-  Fixture() { }
+  CyclePermutationFixture() { }
 
-  ~Fixture() { }
+  ~CyclePermutationFixture() { }
 
-}; // Fixture
+}; // CyclePermutationFixture
 
-using TiledArray::Generator;
+using TiledArray::CyclePermutation;
 using TiledArray::GroupElement;
 using TiledArray::GroupElement;
 using TiledArray::Permutation;
@@ -42,29 +42,29 @@ using TiledArray::symm;
 using TiledArray::antisymm;
 using TiledArray::Exception;
 
-BOOST_FIXTURE_TEST_SUITE( generator_suite, Fixture )
+BOOST_FIXTURE_TEST_SUITE( cyclic_permutation_suite, CyclePermutationFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Test that the basic constructor does not throw an exception
-  BOOST_CHECK_NO_THROW(Generator({0,1},1));
-  BOOST_CHECK_NO_THROW(Generator({0,1},-1));
+  BOOST_CHECK_NO_THROW(CyclePermutation({0,1},1));
+  BOOST_CHECK_NO_THROW(CyclePermutation({0,1},-1));
 }
 
 #ifdef TA_EXCEPTION_ERROR
 BOOST_AUTO_TEST_CASE( constructor_error )
 {
   // Check that the size of the list is at least 2.
-  BOOST_CHECK_THROW(Generator({0},1), Exception);
+  BOOST_CHECK_THROW(CyclePermutation({0},1), Exception);
 
   // Check exception when the list is not sorted
-  BOOST_CHECK_THROW(Generator({3,0,1},-1), Exception);
+  BOOST_CHECK_THROW(CyclePermutation({3,0,1},-1), Exception);
 
   // Check that there are no duplicates in the list
-  BOOST_CHECK_THROW(Generator({0,1,3,3},1), Exception);
+  BOOST_CHECK_THROW(CyclePermutation({0,1,3,3},1), Exception);
 
   // Check for assertion when the symmetry flag is not 1 or -1.
-  BOOST_CHECK_THROW(Generator({0,1},0), Exception);
+  BOOST_CHECK_THROW(CyclePermutation({0,1},0), Exception);
 }
 #endif // TA_EXCEPTION_ERROR
 
@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE( factory_functions )
 {
   // Test the symmetric generator
   {
-    Generator symm_gen = symm({0,1});
+    CyclePermutation symm_gen = symm({0,1});
     BOOST_CHECK_EQUAL(symm_gen.size(), 2);
     BOOST_CHECK_EQUAL(symm_gen.symmetry(), 1);
     BOOST_CHECK_EQUAL(symm_gen[0], 0);
@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE( factory_functions )
 
   // Test the antisymmetric generator
   {
-    Generator antisymm_gen = antisymm({0,1,3});
+    CyclePermutation antisymm_gen = antisymm({0,1,3});
     BOOST_CHECK_EQUAL(antisymm_gen.size(), 3);
     BOOST_CHECK_EQUAL(antisymm_gen.symmetry(), -1);
     BOOST_CHECK_EQUAL(antisymm_gen[0], 0);
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE( factory_functions )
 BOOST_AUTO_TEST_CASE( make_group_generators )
 {
 
-  Generator antisymm_gen = antisymm({0,1,3});
+  CyclePermutation antisymm_gen = antisymm({0,1,3});
 
 #ifdef TA_EXCEPTION_ERROR
   {

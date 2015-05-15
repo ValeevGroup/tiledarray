@@ -32,12 +32,17 @@
 
 namespace TiledArray {
 
-  /// (Anti)symmetric group generator
+  /**
+   * \addtogroup symmetry
+   * @{
+   */
 
-  /// This generator contains a list of symmetric or antisymmetric generator
-  /// elements. The elements of the generator correspond to a row or column of
-  /// a Young tableau.
-  class Generator {
+  /// Cycle permutation
+
+  /// This permutation contains a list of symmetric or antisymmetric cyclic
+  /// permutations. The elements correspond to a row or column of a Young
+  /// tableau.
+  class CyclePermutation {
   private:
     std::unique_ptr<unsigned int[]> group_; ///< Group of symmetry elements
     unsigned int size_; ///< The number of symmetry elements
@@ -57,12 +62,12 @@ namespace TiledArray {
     }
 
   public:
-    Generator() = delete;
-    Generator(Generator&& other) = default;
-    Generator& operator=(Generator&& other) = default;
-    ~Generator() = default;
+    CyclePermutation() = delete;
+    CyclePermutation(CyclePermutation&& other) = default;
+    CyclePermutation& operator=(CyclePermutation&& other) = default;
+    ~CyclePermutation() = default;
 
-    /// Generator constructor
+    /// Cyclic permutation constructor
 
     /// \param symm_list A list of (anti)symmetric indices
     /// \param symmetry The symmetry type flag (1 = symmetric or
@@ -72,7 +77,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception If the list is not sorted or if there are
     /// duplicate elements in the list.
     /// \throw std::bad_alloc If memory allocation the generator fails.
-    Generator(const std::initializer_list<unsigned int>& symm_list, const int symmetry = 1) :
+    CyclePermutation(const std::initializer_list<unsigned int>& symm_list, const int symmetry = 1) :
       group_(new unsigned int[symm_list.size()]), size_(symm_list.size()),
       symmetry_(symmetry)
     {
@@ -87,7 +92,7 @@ namespace TiledArray {
 
     /// \param other The other generator list to be copied
     /// \throw std::bad_alloc If memory allocation the generator fails.
-    Generator(const Generator& other) :
+    CyclePermutation(const CyclePermutation& other) :
       group_(new unsigned int[other.size_]), size_(other.size_),
       symmetry_(other.symmetry_)
     {
@@ -100,7 +105,7 @@ namespace TiledArray {
     /// \param other The other generator list to be copied
     /// \throw std::bad_alloc If memory allocation the generator fails.
     /// \return A reference to this generator
-    Generator& operator=(const Generator& other) {
+    CyclePermutation& operator=(const CyclePermutation& other) {
       group_.reset(new unsigned int[other.size_]);
       std::copy_n(other.group_.get(), other.size_, group_.get());
       size_ = other.size_;
@@ -108,20 +113,20 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Generator element accessor
+    /// Element accessor
 
     /// \param i The element to access
-    /// \return The i-th element of the generator
+    /// \return The i-th element of the permuation
     /// \throw TiledArray::Exception If \c i is greater than or equal to the
-    /// generator size.
+    /// permutation size.
     unsigned int operator[](std::size_t i) const {
       TA_ASSERT(i < size_);
       return group_[i];
     }
 
-    /// Generator size accessor
+    /// Permutation size accessor
 
-    /// \return The number of elements in the generator group
+    /// \return The number of elements in the permutation
     unsigned int size() const { return size_; }
 
     /// Symmetry flag accessor
@@ -166,25 +171,28 @@ namespace TiledArray {
       }
     }
 
+  }; // class CyclePermutation
 
-  }; // class Generator
 
+  /// Symmetric cyclic permutation factory function
 
-  /// Symmetric group generator factory function
-
-  /// \param symm_list A list of symmetric indices
-  inline Generator symm(std::initializer_list<unsigned int> symm_list) {
-    return Generator(symm_list, 1);
+  /// \param symm_list A list of permutation indices
+  /// \throw TiledArray::Exception If element \f$ e_i \ge e_i+1 \f$ , where
+  /// \f$ e_i \f$ is the i-th element of \c symm_list.
+  inline CyclePermutation symm(std::initializer_list<unsigned int> symm_list) {
+    return CyclePermutation(symm_list, 1);
   }
 
-  /// Antiymmetric group generator factory function
+  /// Antisymmetric cyclic permutation factory function
 
-  /// \param symm_list A list of antisymmetric indices
-  inline Generator antisymm(std::initializer_list<unsigned int> symm_list) {
-    return Generator(symm_list, -1);
+  /// \param symm_list A list of permutation indices
+  /// \throw TiledArray::Exception If element \f$ e_i \ge e_i+1 \f$ , where
+  /// \f$ e_i \f$ is the i-th element of \c symm_list.
+  inline CyclePermutation antisymm(std::initializer_list<unsigned int> symm_list) {
+    return CyclePermutation(symm_list, -1);
   }
 
-
+  /** @}*/
 
 } // namespace TiledArray
 
