@@ -27,21 +27,31 @@
 
 namespace TiledArray {
 
-  // weirdly necessary forward declarations
+  // Forward declarations
   class Permutation;
   bool operator==(const Permutation&, const Permutation&);
   std::ostream& operator<<(std::ostream&, const Permutation&);
+  template <typename T, std::size_t N>
+  inline std::array<T,N> operator*(const Permutation&, const std::array<T, N>&);
+  template <typename T, std::size_t N>
+  inline std::array<T,N>& operator*=(std::array<T,N>&, const Permutation&);
+  template <typename T, typename A>
+  inline std::vector<T> operator*(const Permutation&, const std::vector<T, A>&);
+  template <typename T, typename A>
+  inline std::vector<T, A>& operator*=(std::vector<T, A>&, const Permutation&);
+  template <typename T>
+  inline std::vector<T> operator*(const Permutation&, const T* restrict const);
 
   namespace detail {
 
-    /// Copies an iterator range into an array type container.
+    /// Create a permuted copy of an array
 
-    /// Permutes iterator range  \c [first_o, \c last_o) base on the permutation
-    /// \c [first_p, \c last_p) and places it in \c result. The result object
-    /// must define operator[](std::size_t).
-    /// \arg \c [first_p, \c last_p) is an iterator range to the permutation
-    /// \arg \c [irst_o is an input iterator to the beginning of the original array
-    /// \arg \c result is a random access iterator that will contain the resulting permuted array
+    /// \tparam Perm The permutation type
+    /// \tparam Arg The input array type
+    /// \tparam Result The output array type
+    /// \param[in] perm The permutation
+    /// \param[in] arg The input array to be permuted
+    /// \param[out] result The output array that will hold the permuted array
     template <typename Perm, typename Arg, typename Result>
     inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
       TA_ASSERT(perm.dim() == size(arg));
@@ -55,13 +65,20 @@ namespace TiledArray {
     }
   } // namespace detail
 
+
+  /**
+   * \defgroup symmetry Permutation and Permutation Group Symmetry
+   * @{
+   */
+
   /// Permutation
 
   /// Permutation class is used as an argument in all permutation operations on
   /// other objects. Permutations are performed with the following syntax:
-  ///
-  ///   b = p ^ a; // assign permeation of a into b given the permutation p.
-  ///   a ^= p;    // permute a given the permutation p.
+  /// \code
+  ///   b = p * a; // assign permeation of a into b given the permutation p.
+  ///   a *= p;    // permute a given the permutation p.
+  /// \endcode
   class Permutation {
   public:
     typedef Permutation Permutation_;
@@ -147,7 +164,9 @@ namespace TiledArray {
         Permutation(list.begin(), list.end())
     { }
 
+    /// Permutation dimension accessor
 
+    /// \return The number of elements in the permutation
     unsigned int dim() const { return p_.size(); }
 
     const_iterator begin() const { return p_.begin(); }
@@ -193,10 +212,11 @@ namespace TiledArray {
       return Permutation(std::move(result));
     }
 
-    /// Make the inverse of this permutation
+    /// Construct the inverse of this permutation
 
-    /// given <tt>c2 = p ^ c1</tt>
-    /// <tt>c1 == (p.inverse() ^ c2);</tt>
+    /// The inverse of the permutation is defined as \f$ P \times P^{-1} = I \f$,
+    /// where \f$ I \f$ is the identity permutation.
+    /// \return The inverse of this permutation
     Permutation inverse() const {
       const std::size_t n = p_.size();
       std::vector<index_type> result;
@@ -208,15 +228,22 @@ namespace TiledArray {
       return Permutation(std::move(result));
     }
 
-    /// Return a reference to the array that represents the permutation.
+    /// Permutation data accessor
+
+    /// \return A reference to the array of permutation elements
     const std::vector<index_type>& data() const { return p_; }
 
+    /// Serialize permutation
+
+    /// MADNESS compatible serialization function
+    /// \tparam Archive The serialization archive type
+    /// \param[in,out] ar The serialization archive
     template <typename Archive>
     void serialize(Archive& ar) {
       ar & p_;
     }
 
-  };
+  }; // class Permutation
 
   /// Permutation equality operator
 
@@ -264,6 +291,20 @@ namespace TiledArray {
     return output;
   }
 
+  /// Permutation multiplication operator
+
+  /// \param p1 The left-hand permutation
+  /// \param p2 The right-hand permutation
+  /// \return The product of p1 and p2 (which is the permutation of \c p2
+  /// by \c p1).
+  inline Permutation operator*(const Permutation& p1, const Permutation& p2) {
+    TA_ASSERT(p1.dim() == p2.dim());
+    return Permutation(p1 * p2.data());
+  }
+
+  /** @}*/
+
+
   /// Permute a \c std::array
 
   /// \tparam T The element type of the array
@@ -281,9 +322,27 @@ namespace TiledArray {
     return result;
   }
 
+  /// In-place permute a \c std::array
+
+  /// \tparam T The element type of the array
+  /// \tparam N The size of the array
+  /// \param[out] a The array to be permuted
+  /// \param[in] perm The permutation
+  /// \return A reference to \c a
+  /// \throw TiledArray::Exception When the dimension of the permutation is not
+  /// equal to the size of \c a.
+  template <typename T, std::size_t N>
+  inline std::array<T,N>& operator*=(std::array<T,N>& a, const Permutation& perm) {
+    TA_ASSERT(perm.dim() == a.size());
+    const std::array<T,N> temp = a;
+    detail::permute_array(perm, temp, a);
+    return a;
+  }
+
   /// permute a \c std::vector<T>
 
   /// \tparam T The element type of the vector
+  /// \tparam A The allocator type of the vector
   /// \param perm The permutation
   /// \param v The vector to be permuted
   /// \return A permuted copy of \c v
@@ -297,12 +356,27 @@ namespace TiledArray {
     return result;
   }
 
+  /// In-place permute a \c std::array
+
+  /// \tparam T The element type of the vector
+  /// \tparam A The allocator type of the vector
+  /// \param[out] v The vector to be permuted
+  /// \param[in] perm The permutation
+  /// \return A reference to \c v
+  /// \throw TiledArray::Exception When the dimension of the permutation is not
+  /// equal to the size of \c v.
+  template <typename T, typename A>
+  inline std::vector<T, A>& operator*=(std::vector<T, A>& v, const Permutation& perm) {
+    const std::vector<T, A> temp = v;
+    detail::permute_array(perm, temp, v);
+    return v;
+  }
 
   /// Permute a memory buffer
 
   /// \tparam T The element type of the memory buffer
   /// \param perm The permutation
-  /// \param p A pointer to the memory buffer to be permuted
+  /// \param ptr A pointer to the memory buffer to be permuted
   /// \return A permuted copy of the memory buffer as a \c std::vector
   template <typename T>
   inline std::vector<T> operator*(const Permutation& perm, const T* restrict const ptr) {
@@ -314,31 +388,6 @@ namespace TiledArray {
       result[perm_i] = ptr_i;
     }
     return result;
-  }
-
-  /// Permutation multiplication operator
-
-  /// \param p1 The left-hand permutation
-  /// \param p2 The right-hand permutation
-  /// \return The product of p1 and p2 (which is the permutation of \c p2
-  /// by \c p1).
-  inline Permutation operator*(const Permutation& p1, const Permutation& p2) {
-    TA_ASSERT(p1.dim() == p2.dim());
-    return Permutation(p1 * p2.data());
-  }
-
-  template <typename T, std::size_t N>
-  inline std::array<T,N>& operator*=(std::array<T,N>& a, const Permutation& perm) {
-    const std::array<T,N> temp = a;
-    detail::permute_array(perm, temp, a);
-    return a;
-  }
-
-  template <typename T, typename A>
-  inline std::vector<T, A>& operator*=(std::vector<T, A>& orig, const Permutation& perm) {
-    const std::vector<T, A> temp = orig;
-    detail::permute_array(perm, temp, orig);
-    return orig;
   }
 
 } // namespace TiledArray
