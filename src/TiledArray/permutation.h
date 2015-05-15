@@ -246,6 +246,17 @@ namespace TiledArray {
     return ! operator==(p1, p2);
   }
 
+  /// Permutation less-than operator
+
+  /// \param p1 The left-hand permutation to be compared
+  /// \param p2 The right-hand permutation to be compared
+  /// \return \c true if the elements of \c p1 are lexicographically less than
+  /// that of \c p2, otherwise \c false.
+  inline bool operator<(const Permutation& p1, const Permutation& p2) {
+    return std::lexicographical_compare(p1.data().begin(), p1.data().end(),
+        p2.data().begin(), p2.data().end());
+  }
+
   /// Add permutation to an output stream
 
   /// \param[out] output The output stream
