@@ -94,6 +94,28 @@ namespace TiledArray {
         g1.symmetry() * g2.symmetry());
   }
 
+  /// Group element equality operator
+
+  /// \param g1 The right-hand group element
+  /// \param g2 The right-hand group element
+  /// \return If g1.permutation() == g2.permutation() and
+  /// g1.symmetry() == g2.symmetry().
+  bool operator==(const GroupElement& g1, const GroupElement& g2) {
+    return (g1.permutation() == g2.permutation())
+        && (g1.symmetry() == g2.symmetry());
+  }
+
+  /// Group element inequality operator
+
+  /// \param g1 The right-hand group element
+  /// \param g2 The right-hand group element
+  /// \return If g1.permutation() == g2.permutation() and
+  /// g1.symmetry() == g2.symmetry().
+  bool operator!=(const GroupElement& g1, const GroupElement& g2) {
+    return (g1.permutation() != g2.permutation())
+        || (g1.symmetry() != g2.symmetry());
+  }
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_SYMM_GROUP_ELEMENT_H__INCLUDED
