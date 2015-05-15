@@ -94,7 +94,7 @@ namespace TiledArray {
   /// \return The product of g1 and g2, where the resulting permutation is equal
   /// to <tt>g1.permutation() * g2.permutation()</tt> and the resulting symmetry
   /// flag is equal to <tt>g1.symmetry() * g2.symmetry()</tt>.
-  GroupElement operator*(const GroupElement& g1, const GroupElement& g2) {
+  inline GroupElement operator*(const GroupElement& g1, const GroupElement& g2) {
     return GroupElement(g1.permutation() * g2.permutation(),
         g1.symmetry() * g2.symmetry());
   }
@@ -105,7 +105,7 @@ namespace TiledArray {
   /// \param g2 The right-hand group element
   /// \return <tt>g1.permutation() == g2.permutation() and</tt>
   /// <tt>g1.symmetry() == g2.symmetry()</tt>.
-  bool operator==(const GroupElement& g1, const GroupElement& g2) {
+  inline bool operator==(const GroupElement& g1, const GroupElement& g2) {
     return (g1.permutation() == g2.permutation())
         && (g1.symmetry() == g2.symmetry());
   }
@@ -116,7 +116,7 @@ namespace TiledArray {
   /// \param g2 The right-hand group element
   /// \return <tt>g1.permutation() != g2.permutation() or</tt>
   /// <tt>g1.symmetry() != g2.symmetry()</tt>.
-  bool operator!=(const GroupElement& g1, const GroupElement& g2) {
+  inline bool operator!=(const GroupElement& g1, const GroupElement& g2) {
     return (g1.permutation() != g2.permutation())
         || (g1.symmetry() != g2.symmetry());
   }
@@ -126,10 +126,9 @@ namespace TiledArray {
   /// \param g1 The right-hand group element
   /// \param g2 The right-hand group element
   /// \return <tt>g1.permutation() < g2.permutation()</tt>.
-  bool operator<(const GroupElement& g1, const GroupElement& g2) {
+  inline bool operator<(const GroupElement& g1, const GroupElement& g2) {
     return g1.permutation() < g2.permutation();
   }
-
 
   /** @}*/
 

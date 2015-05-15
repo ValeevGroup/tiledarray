@@ -147,7 +147,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception If the the dimension of the identity
     /// permutation is less than the largest permutation element in this
     /// generator.
-    void append_generators(std::vector<GroupElement>& perm_list) {
+    void append_generators(std::vector<GroupElement>& perm_list) const {
       typedef Permutation::index_type index_type;
 
       TA_ASSERT(perm_list.size() > 0ul);
