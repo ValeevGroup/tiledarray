@@ -169,36 +169,23 @@ namespace TiledArray {
     /// \return The number of elements in the permutation
     unsigned int dim() const { return p_.size(); }
 
+    /// Begin element iterator factory function
+
+    /// \return An iterator that points to the beginning of the element range
     const_iterator begin() const { return p_.begin(); }
+
+
+    /// End element iterator factory function
+
+    /// \return An iterator that points to the end of the element range
     const_iterator end() const { return p_.end(); }
 
+    /// Element accessor
+
+    /// \param i The element index
+    /// \return The i-th element
     index_type operator[](unsigned int i) const { return p_[i]; }
 
-    /// return *this ^ other
-    Permutation& operator*=(const Permutation& other) {
-      TA_ASSERT(other.p_.size() == p_.size());
-
-      std::vector<index_type> result(p_.size());
-      detail::permute_array(other, p_, result);
-      p_ = std::move(result);
-      return *this;
-    }
-
-    /// Returns the inverse permutation and will satisfy the following conditions.
-    /// given c2 = p ^ c1
-    /// c1 == ((-p) ^ c2);
-    Permutation operator -() const { return inverse(); }
-
-
-    /// Bool conversion
-
-    /// \return \c true if the permutation is not empty, otherwise \c false.
-    operator bool() const { return ! p_.empty(); }
-
-    /// Not operator
-
-    /// \return \c true if the permutation is empty, otherwise \c false.
-    bool operator!() const { return p_.empty(); }
 
     /// Identity permutation factory function
 
@@ -212,12 +199,28 @@ namespace TiledArray {
       return Permutation(std::move(result));
     }
 
+    /// Identity permutation factory function
+
+    /// \return An identity permutation
+    Permutation identity() const { return identity(p_.size()); }
+
+    /// Multiplication of this permutation with \c other
+
+    /// \param other The right-hand argument
+    /// \return The product of this permutation multiplied by \c other
+    Permutation mult(const Permutation& other) const {
+      TA_ASSERT(p_.size() == other.p_.size());
+      std::vector<index_type> temp(p_.size());
+      detail::permute_array(*this, other.p_, temp);
+      return Permutation(std::move(temp));
+    }
+
     /// Construct the inverse of this permutation
 
     /// The inverse of the permutation is defined as \f$ P \times P^{-1} = I \f$,
     /// where \f$ I \f$ is the identity permutation.
     /// \return The inverse of this permutation
-    Permutation inverse() const {
+    Permutation inv() const {
       const std::size_t n = p_.size();
       std::vector<index_type> result;
       result.resize(n, 0ul);
@@ -227,6 +230,51 @@ namespace TiledArray {
       }
       return Permutation(std::move(result));
     }
+
+  private:
+
+    static Permutation pow(Permutation perm, const int n) {
+      if(n > 1) {
+        if(n & int(1)) {// if n is odd then
+          perm = pow(perm.mult(perm), (n - 1) >> 1).mult(perm);
+        } else {
+          perm = pow(perm.mult(perm), n >> 1);
+        }
+      }
+
+      return perm;
+    }
+
+  public:
+
+    /// Raise this permutation to the n-th power
+
+    /// Constructs the permutation \f$ P^n \f$, where \f$ P \f$ is this
+    /// permutation.
+    /// \param n Exponent value
+    /// \return This permutation raised to the n-th power
+    Permutation pow(int n) const {
+      Permutation result;
+
+      if(n < 0)
+        result = pow(inv(), -n);
+      else if(n == 0)
+        result = identity();
+      else
+        result = pow(*this, n);
+
+      return result;
+    }
+
+    /// Bool conversion
+
+    /// \return \c true if the permutation is not empty, otherwise \c false.
+    operator bool() const { return ! p_.empty(); }
+
+    /// Not operator
+
+    /// \return \c true if the permutation is empty, otherwise \c false.
+    bool operator!() const { return p_.empty(); }
 
     /// Permutation data accessor
 
@@ -291,6 +339,15 @@ namespace TiledArray {
     return output;
   }
 
+
+  /// Inverse permutation operator
+
+  /// \param perm The permutation to be inverted
+  /// \return \c perm.inverse()
+  inline Permutation operator -(const Permutation& perm) {
+    return perm.inv();
+  }
+
   /// Permutation multiplication operator
 
   /// \param p1 The left-hand permutation
@@ -298,8 +355,24 @@ namespace TiledArray {
   /// \return The product of p1 and p2 (which is the permutation of \c p2
   /// by \c p1).
   inline Permutation operator*(const Permutation& p1, const Permutation& p2) {
-    TA_ASSERT(p1.dim() == p2.dim());
-    return Permutation(p1 * p2.data());
+    return p1.mult(p2);
+  }
+
+
+  /// return *this ^ other
+  inline Permutation& operator*=(Permutation& p1, const Permutation& p2) {
+    return (p1 = p1 * p2);
+  }
+
+  /// Raise \c perm to the n-th power
+
+  /// Constructs the permutation \f$ P^n \f$, where \f$ P \f$ is the
+  /// permutation \c perm.
+  /// \param perm The base permutation
+  /// \param n Exponent value
+  /// \return This permutation raised to the n-th power
+  inline Permutation operator^(const Permutation perm, int n) {
+    return perm.pow(n);
   }
 
   /** @}*/
