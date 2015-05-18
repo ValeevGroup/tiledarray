@@ -192,11 +192,11 @@ namespace TiledArray {
     /// \param dim The number of dimensions in the
     /// \return An identity permutation for \c dim elements
     static Permutation identity(const unsigned int dim) {
-      std::vector<index_type> result;
-      result.reserve(dim);
+      Permutation result;
+      result.p_.reserve(dim);
       for(unsigned int i = 0u; i < dim; ++i)
-        result.emplace_back(i);
-      return Permutation(std::move(result));
+        result.p_.emplace_back(i);
+      return result;
     }
 
     /// Identity permutation factory function
