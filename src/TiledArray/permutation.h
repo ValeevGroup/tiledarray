@@ -209,10 +209,18 @@ namespace TiledArray {
     /// \param other The right-hand argument
     /// \return The product of this permutation multiplied by \c other
     Permutation mult(const Permutation& other) const {
-      TA_ASSERT(p_.size() == other.p_.size());
-      std::vector<index_type> temp(p_.size());
-      detail::permute_array(*this, other.p_, temp);
-      return Permutation(std::move(temp));
+      const unsigned int n = p_.size();
+      TA_ASSERT(n == other.p_.size());
+      Permutation result;
+      result.p_.reserve(n);
+
+      for(unsigned int i = 0u; i < n; ++i) {
+        const index_type p_i = p_[i];
+        const index_type result_i = other.p_[p_i];
+        result.p_.emplace_back(result_i);
+      }
+
+      return result;
     }
 
     /// Construct the inverse of this permutation
