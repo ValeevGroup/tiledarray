@@ -58,6 +58,7 @@ namespace TiledArray {
       typedef Expr<TsrExpr_> Expr_; ///< Base class type
       typedef typename ExprTrait<TsrExpr_>::array_type array_type; ///< The array type
       typedef typename ExprTrait<TsrExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename ExprTrait<TsrExpr_>::scalar_type scalar_type; ///< Scalar type
 
     private:
 

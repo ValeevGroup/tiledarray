@@ -53,6 +53,7 @@ namespace TiledArray {
       typedef typename ExprTrait<AddExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<AddExpr_>::right_type right_type; ///< The right-hand expression type
       typedef typename ExprTrait<AddExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename ExprTrait<AddExpr_>::scalar_type scalar_type; ///< Scalar type
 
 
       /// Expression constructor

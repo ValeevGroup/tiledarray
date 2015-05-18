@@ -418,6 +418,20 @@ namespace TiledArray {
 
     }; // class Expr
 
+
+    /// Vector dot product of an expression
+
+    /// \tparam Left The left-hand argument type
+    /// \tparam Right The right-hand argument type
+    /// \param left The left-hand argument to be contracted
+    /// \param right The right-hand argument to be contracted
+    /// \return A scalar that is equal to <tt>sum_i left[i] * right[i]</tt>
+    template <typename Left, typename Right>
+    inline typename Left::scalar_type
+    dot(const Expr<Left>& left, const Expr<Right>& right, World& world = World::get_default()) {
+      return left.dot(right);
+    }
+
   } // namespace expressions
 } // namespace TiledArray
 
