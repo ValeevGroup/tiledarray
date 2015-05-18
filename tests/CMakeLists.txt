@@ -34,7 +34,7 @@ set(executable ta_test)
 set(ta_test_src_files  ta_test.cpp
     utility.cpp
     permutation.cpp
-    symm_generator.cpp
+    symm_symm_group.cpp
     range.cpp
     perm_index.cpp
     tiled_range1.cpp
