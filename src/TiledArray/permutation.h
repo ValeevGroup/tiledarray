@@ -239,22 +239,6 @@ namespace TiledArray {
       return result;
     }
 
-  private:
-
-    static Permutation pow(Permutation perm, const int n) {
-      if(n > 1) {
-        if(n & int(1)) {// if n is odd then
-          perm = pow(perm.mult(perm), (n - 1) >> 1).mult(perm);
-        } else {
-          perm = pow(perm.mult(perm), n >> 1);
-        }
-      }
-
-      return perm;
-    }
-
-  public:
-
     /// Raise this permutation to the n-th power
 
     /// Constructs the permutation \f$ P^n \f$, where \f$ P \f$ is this
@@ -262,14 +246,25 @@ namespace TiledArray {
     /// \param n Exponent value
     /// \return This permutation raised to the n-th power
     Permutation pow(int n) const {
-      Permutation result;
+      // Initialize the algorithm inputs
+      int power;
+      Permutation value;
+      if(n < 0) {
+        value = inv();
+        power = -n;
+      } else {
+        value = *this;
+        power = n;
+      }
 
-      if(n < 0)
-        result = pow(inv(), -n);
-      else if(n == 0)
-        result = identity();
-      else
-        result = pow(*this, n);
+      Permutation result = identity(p_.size());
+
+      while(power) {
+          if(power & 1)
+            result = result.mult(value);
+          value = value.mult(value);
+          power >>= 1;
+      }
 
       return result;
     }
