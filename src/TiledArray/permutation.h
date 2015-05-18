@@ -229,14 +229,14 @@ namespace TiledArray {
     /// where \f$ I \f$ is the identity permutation.
     /// \return The inverse of this permutation
     Permutation inv() const {
-      const std::size_t n = p_.size();
-      std::vector<index_type> result;
-      result.resize(n, 0ul);
-      for(std::size_t i = 0ul; i < n; ++i) {
-        const std::size_t pi = p_[i];
-        result[pi] = i;
+      const index_type n = p_.size();
+      Permutation result;
+      result.p_.resize(n, 0ul);
+      for(index_type i = 0ul; i < n; ++i) {
+        const index_type pi = p_[i];
+        result.p_[pi] = i;
       }
-      return Permutation(std::move(result));
+      return result;
     }
 
   private:
