@@ -104,6 +104,7 @@ TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
+TiledArray/symm/symm_group.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_interface.h
 TiledArray/tile_op/binary_reduction.h
