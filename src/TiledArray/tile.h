@@ -40,55 +40,37 @@ namespace TiledArray {
   /// \c Tile represents a slice of an Array. The rank of the tile slice is the
   /// same as the owning \c Array object.
   /// \tparam T The tensor type used to represent tile data
-  /// \tparam Policy The traits class for the tile
-  template <typename T, typename Policy = TileTrait<T> >
+  template <typename T>
   class Tile {
   public:
     /// This object type
-    typedef Tile<T, Policy> Tile_;
+    typedef Tile<T> Tile_;
     /// Tensor type used to represent tile data
-    typedef typename Policy::tensor_type tensor_type;
+    typedef typename TileTrait<T>::tensor_type tensor_type;
     /// size type used to represent the size and offsets of the tensor data
-    typedef typename Policy::size_type size_type;
+    typedef typename TileTrait<T>::size_type size_type;
     /// Tensor element type
-    typedef typename Policy::value_type value_type;
+    typedef typename TileTrait<T>::value_type value_type;
     /// Element reference type
-    typedef typename Policy::reference reference;
+    typedef typename TileTrait<T>::reference reference;
     /// Element reference type
-    typedef typename Policy::const_reference const_reference;
+    typedef typename TileTrait<T>::const_reference const_reference;
     /// Element pointer type
-    typedef typename Policy::pointer pointer;
+    typedef typename TileTrait<T>::pointer pointer;
     /// Element const pointer type
-    typedef typename Policy::const_pointer const_pointer;
+    typedef typename TileTrait<T>::const_pointer const_pointer;
     /// Difference type
-    typedef typename Policy::difference_type difference_type;
+    typedef typename TileTrait<T>::difference_type difference_type;
     /// Element iterator type
-    typedef typename Policy::iterator iterator;
+    typedef typename TileTrait<T>::iterator iterator;
     /// Element const iterator type
-    typedef typename Policy::const_iterator const_iterator;
+    typedef typename TileTrait<T>::const_iterator const_iterator;
     /// The scalar type of the tensor type
-    typedef typename Policy::numeric_type numeric_type;
+    typedef typename TileTrait<T>::numeric_type numeric_type;
 
   private:
 
-    class Impl {
-    public:
-      tensor_type tensor_; ///< Tensor data of the irrep
-
-      Impl() = delete;
-      Impl(Tile const &) = delete;
-      Impl(Tile &&) = delete;
-      Impl &operator=(Impl &&) = delete;
-      Impl &operator=(Impl const &) = delete;
-
-      template <typename U>
-      Impl(U&& tensor) : tensor_(std::forward<U>(tensor)) { }
-
-      ~Impl() = default;
-
-    }; // class Impl
-
-    std::shared_ptr<T> pimpl_;
+    std::shared_ptr<tensor_type> pimpl_;
 
   public:
 
@@ -97,15 +79,31 @@ namespace TiledArray {
     Tile() = default;
     Tile(const Tile_&) = default;
     Tile(Tile_&&) = default;
-    Tile_& operator=(Tile_&&) = default;
-    Tile_& operator=(const Tile_&) = default;
 
-    template <typename U, typename I>
-    Tile(U&& tensor) :
-      pimpl_(std::make_shared<Impl>(std::forward<U>(tensor)))
+    explicit Tile(const tensor_type& tensor) :
+      pimpl_(std::make_shared<tensor_type>(tensor))
+    { }
+
+    explicit Tile(tensor_type&& tensor) :
+      pimpl_(std::make_shared<tensor_type>(std::move(tensor)))
     { }
 
     ~Tile() = default;
+
+    // Assignment operators ----------------------------------------------------
+
+    Tile_& operator=(Tile_&&) = default;
+    Tile_& operator=(const Tile_&) = default;
+
+    Tile_& operator=(const tensor_type& tensor) {
+      *pimpl_ = tensor;
+      return *this;
+    }
+
+    Tile_& operator=(tensor_type&& tensor) {
+      *pimpl_ = std::move(tensor);
+      return *this;
+    }
 
 
     // Tile accessor -----------------------------------------------------------
@@ -113,49 +111,6 @@ namespace TiledArray {
     tensor_type& tensor() { return pimpl_->tensor_; }
 
     const tensor_type& tensor() const { return pimpl_->tensor_; }
-
-    // Data pointer accessor ---------------------------------------------------
-
-    /// Tile data pointer accessor
-
-    /// \return A pointer to the tile data
-    pointer data() { return data(pimpl_->tensor_); }
-
-    /// Tile const data pointer accessor
-
-    /// \return A const pointer to the tile data
-    const_pointer data() const { return data(pimpl_->tensor_); }
-
-
-    // Size accessor -----------------------------------------------------------
-
-    /// Tile size accessor
-
-    /// \return The number of elements in the tile
-    size_type size() const { return size(pimpl_->tensor_); }
-
-
-    // Element accessor --------------------------------------------------------
-
-    reference operator[](const size_type index) {
-      return array(pimpl_->tensor_, index);
-    }
-
-    const_reference operator[](const size_type index) const {
-      return array(pimpl_->tensor_, index);
-    }
-
-    template <typename... Indices,
-        enable_if_t<detail::is_integral_list<Indices...>::value>* = nullptr>
-    reference operator()(const Indices... indices) {
-      return element(pimpl_->tensor_, indices...);
-    }
-
-    template <typename... Indices,
-        enable_if_t<detail::is_integral_list<Indices...>::value>* = nullptr>
-    const_reference operator()(const Indices... indices) const {
-      return element(pimpl_->tensor_, indices...);
-    }
 
 
     // Iterator accessor -------------------------------------------------------
@@ -872,7 +827,7 @@ namespace TiledArray {
   }
 
   template <typename Arg>
-  inline Tile<Arg> operator^(const Permutation& perm, Tile<Arg> const arg) {
+  inline Tile<Arg> operator*(const Permutation& perm, Tile<Arg> const arg) {
     return permute(arg, perm);
   }
 

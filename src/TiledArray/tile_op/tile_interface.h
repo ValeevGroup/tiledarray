@@ -61,8 +61,6 @@ namespace TiledArray {
     /// Element type of the tile
     typedef typename T::value_type value_type;
     /// Range type used to represent the upper and lower bounds of the tensor data
-    typedef typename T::range_type range_type;
-    /// Size type used to represent the size and offsets of the tensor data
     typedef typename T::size_type size_type;
     /// Element reference type
     typedef typename T::reference reference;
@@ -82,103 +80,6 @@ namespace TiledArray {
     typedef typename TiledArray::detail::scalar_type<T>::type numeric_type;
 
   }; // struct TileTrait
-
-
-  // Tensor range accessor -----------------------------------------------------
-
-  /// Tile data pointer accessor
-
-  /// Access the data pointer of tile
-  /// \tparam Arg The tile type
-  /// \param arg The tile argument
-  /// \return A pointer to the data of \c arg
-  template <typename Arg>
-  inline const typename TileTrait<Arg>::range_type& range(Arg& arg) {
-    return arg.range();
-  }
-
-
-  // Tile element accessors ----------------------------------------------------
-
-  /// Array like accessor
-
-  /// Access an element of \c arg for the given ordinal offset \c index.
-  /// \tparam Arg The tensor type
-  /// \param arg The tensor argument
-  /// \param index The ordinal index of the tensor element
-  /// \return A reference to the element at offset \c index of \c arg
-  template <typename Arg>
-  inline typename TileTrait<Arg>::reference
-  array(Arg& arg, const typename TileTrait<Arg>::size_type index) {
-    return arg[index];
-  }
-
-
-  /// Array like accessor
-
-  /// Access an element of \c arg for the given ordinal offset \c index.
-  /// \tparam Arg The tile type
-  /// \param arg The tile argument
-  /// \param index The ordinal index of the element
-  /// \return A reference to the element at offset \c index of \c arg
-  template <typename Arg, typename Index>
-  inline typename TileTrait<Arg>::reference
-  array(const Arg& arg, const typename TileTrait<Arg>::size_type index) {
-    return arg[index];
-  }
-
-
-  /// Element accessor
-
-  /// Access an element of \c arg at given a coordinate \c indices.
-  /// \tparam Arg The tile type
-  /// \tparam Indices The coordinate index types
-  /// \param arg The tile argument
-  /// \param indices The ordinal index of the element
-  /// \return A reference to the element at offset \c index of \c arg
-  template <typename Arg, typename... Indices>
-  inline typename TileTrait<Arg>::reference
-  element(Arg& arg, const Indices... indices) {
-    return arg(indices...);
-  }
-
-  /// Element accessor
-
-  /// Access an element of \c arg at given a coordinate \c indices.
-  /// \tparam Arg The tile type
-  /// \tparam Indices The coordinate index types
-  /// \param arg The tile argument
-  /// \param indices The ordinal index of the element
-  /// \return A const reference to the element at offset \c index of \c arg
-  template <typename Arg, typename... Indices>
-  inline typename TileTrait<Arg>::const_reference
-  element(const Arg& arg, const Indices... indices) {
-    return arg(indices...);
-  }
-
-  // Data pointer accessor -----------------------------------------------------
-
-  /// Tile data pointer accessor
-
-  /// Access the data pointer of tile
-  /// \tparam Arg The tile type
-  /// \param arg The tile argument
-  /// \return A pointer to the data of \c arg
-  template <typename Arg>
-  inline typename TileTrait<Arg>::pointer data(Arg& arg) {
-    return arg.data();
-  }
-
-  /// Tile data const pointer accessor
-
-  /// Access the data pointer of tile
-  /// \tparam Arg The tile type
-  /// \param arg The tile argument
-  /// \return A pointer to the data of \c arg
-  template <typename Arg>
-  inline typename TileTrait<Arg>::const_pointer data(const Arg& arg) {
-    return arg.data();
-  }
 
   // Clone operations ----------------------------------------------------------
 
