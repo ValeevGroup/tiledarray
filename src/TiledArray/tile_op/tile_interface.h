@@ -40,10 +40,6 @@ namespace TiledArray {
 
   }  // namespace math
 
-  namespace expressions {
-    template <typename> class Expr;
-  } // namespace expressions
-
   /**
    * \defgroup NonIntrusiveTileInterface Non-intrusive tile interface
    * @{
