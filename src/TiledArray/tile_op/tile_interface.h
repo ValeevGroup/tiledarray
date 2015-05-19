@@ -388,9 +388,10 @@ namespace TiledArray {
   /// \param right The right-hand argument to be multiplied
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
-  template <typename Left, typename Right>
+  template <typename Left, typename Right, typename N,
+      enable_if_t<TiledArray::detail::is_numeric<N>::value>* = nullptr>
   inline Left mult(const Left& left, const Right& right,
-      const typename TileTrait<Left>::numeric_type factor)
+      const N factor)
   {
     return left.mult(right, factor);
   }
@@ -417,9 +418,10 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left * right) * factor</tt>
-  template <typename Left, typename Right>
+  template <typename Left, typename Right, typename N,
+      enable_if_t<TiledArray::detail::is_numeric<N>::value>* = nullptr>
   inline Left mult(const Left& left, const Right& right,
-      const typename TileTrait<Left>::numeric_type factor, const Permutation& perm)
+      const N factor, const Permutation& perm)
   {
     return left.mult(right, factor, perm);
   }
@@ -444,9 +446,10 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied by \c result
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(result *= arg) *= factor</tt>
-  template <typename Result, typename Arg>
+  template <typename Result, typename Arg, typename N,
+      enable_if_t<TiledArray::detail::is_numeric<N>::value>* = nullptr>
   inline Result& mult_to(Result& result, const Arg& arg,
-      const typename TileTrait<Result>::numeric_type factor)
+      const N factor)
   {
     return result.mult_to(arg, factor);
   }
@@ -460,8 +463,9 @@ namespace TiledArray {
   /// \param arg The left-hand argument to be scaled
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>arg * factor</tt>
-  template <typename Arg>
-  inline Arg scale(const Arg& arg, const typename TileTrait<Arg>::numeric_type factor) {
+  template <typename Arg, typename N,
+      enable_if_t<TiledArray::detail::is_numeric<N>::value>* = nullptr>
+  inline Arg scale(const Arg& arg, const N factor) {
     return arg.scale(factor);
   }
 
@@ -472,8 +476,9 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
-  template <typename Arg>
-  inline Arg scale(const Arg& arg, const typename TileTrait<Arg>::numeric_type factor,
+  template <typename Arg, typename N,
+      enable_if_t<TiledArray::detail::is_numeric<N>::value>* = nullptr>
+  inline Arg scale(const Arg& arg, const N factor,
       const Permutation& perm)
   {
     return arg.scale(factor, perm);
@@ -485,8 +490,9 @@ namespace TiledArray {
   /// \param result The result tile to be scaled
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>result *= factor</tt>
-  template <typename Result>
-  inline Result& scale_to(Result& result, const typename TileTrait<Result>::numeric_type factor) {
+  template <typename Result, typename N,
+      enable_if_t<TiledArray::detail::is_numeric<N>::value>* = nullptr>
+  inline Result& scale_to(Result& result, const N factor) {
     return result.scale_to(factor);
   }
 
@@ -575,7 +581,7 @@ namespace TiledArray {
   /// \param arg The argument to be summed
   /// \return The sum of the hyper-diagonal elements of \c arg
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type trace(const Arg& arg) {
+  inline auto trace(const Arg& arg) -> decltype(arg.trace()) {
     return arg.trace();
   }
 
@@ -585,7 +591,7 @@ namespace TiledArray {
   /// \param arg The argument to be summed
   /// \return A scalar that is equal to <tt>sum_i arg[i]</tt>
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type sum(const Arg& arg) {
+  inline auto sum(const Arg& arg) -> decltype(arg.sum()) {
     return arg.sum();
   }
 
@@ -595,7 +601,7 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied
   /// \return A scalar that is equal to <tt>prod_i arg[i]</tt>
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type product(const Arg& arg) {
+  inline auto product(const Arg& arg) -> decltype(arg.product())  {
     return arg.product();
   }
 
@@ -606,7 +612,7 @@ namespace TiledArray {
   /// \return The sum of the squared elements of \c arg
   /// \return A scalar that is equal to <tt>sum_i arg[i] * arg[i]</tt>
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type squared_norm(const Arg& arg) {
+  inline auto squared_norm(const Arg& arg) -> decltype(arg.squared_norm()) {
     return arg.squared_norm();
   }
 
@@ -616,7 +622,7 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied and summed
   /// \return A scalar that is equal to <tt>sqrt(sum_i arg[i] * arg[i])</tt>
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type norm(const Arg& arg) {
+  inline auto norm(const Arg& arg) -> decltype(arg.norm()) {
     return arg.norm();
   }
 
@@ -626,7 +632,7 @@ namespace TiledArray {
   /// \param arg The argument to find the maximum
   /// \return A scalar that is equal to <tt>max(arg)</tt>
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type max(const Arg& arg) {
+  inline auto max(const Arg& arg) -> decltype(arg.max())  {
     return arg.max();
   }
 
@@ -636,7 +642,7 @@ namespace TiledArray {
   /// \param arg The argument to find the minimum
   /// \return A scalar that is equal to <tt>min(arg)</tt>
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type min(const Arg& arg) {
+  inline auto min(const Arg& arg) -> decltype(arg.min()) {
     return arg.min();
   }
 
@@ -646,7 +652,7 @@ namespace TiledArray {
   /// \param arg The argument to find the maximum
   /// \return A scalar that is equal to <tt>abs(max(arg))</tt>
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type abs_max(const Arg& arg) {
+  inline auto abs_max(const Arg& arg) -> decltype(arg.abs_max()) {
     return arg.abs_max();
   }
 
@@ -656,7 +662,7 @@ namespace TiledArray {
   /// \param arg The argument to find the minimum
   /// \return A scalar that is equal to <tt>abs(min(arg))</tt>
   template <typename Arg>
-  inline typename TileTrait<Arg>::numeric_type abs_min(const Arg& arg) {
+  inline auto abs_min(const Arg& arg) -> decltype(arg.abs_min()) {
     return arg.abs_min();
   }
 
@@ -668,7 +674,7 @@ namespace TiledArray {
   /// \param right The right-hand argument tile to be contracted
   /// \return A scalar that is equal to <tt>sum_i left[i] * right[i]</tt>
   template <typename Left, typename Right>
-  inline typename TileTrait<Left>::numeric_type dot(const Left& left, const Right& right) {
+  inline auto dot(const Left& left, const Right& right) -> decltype(left.dot(right)) {
     return left.dot(right);
   }
 
