@@ -464,7 +464,8 @@ namespace TiledArray {
     template <typename... Index>
     typename std::enable_if<(sizeof...(Index) > 1ul), size_type>::type
     includes(const Index&... index) const {
-      return includes({index...});
+      size_type i[sizeof...(Index)] = {index...};
+      return includes(i);
     }
 
 
@@ -560,7 +561,8 @@ namespace TiledArray {
     template <typename... Index,
         enable_if_t<(sizeof...(Index) > 1ul)>* = nullptr>
     size_type ord(const Index&... index) const {
-      return ord({index...});
+      size_type i[sizeof...(Index)] = { index... };
+      return ord(i);
     }
 
     /// alias to ord<Index>(), to conform with the Tensor Working Group spec \sa ord()
