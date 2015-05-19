@@ -56,6 +56,8 @@ namespace TiledArray {
   /// \tparam T Tensor type
   template <typename T>
   struct TileTrait {
+    /// tensor type of the tile
+    typedef T tensor_type;
     /// Element type of the tile
     typedef typename T::value_type value_type;
     /// Size type used to represent the size and offsets of the tensor data

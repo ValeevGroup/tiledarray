@@ -22,6 +22,7 @@
 
 #include <TiledArray/tile_op/tile_interface.h>
 #include <memory>
+#include <iostream>
 
 // Forward declaration of MADNESS archive type traits
 namespace madness {
@@ -82,7 +83,8 @@ namespace TiledArray {
       Impl &operator=(Impl const &) = delete;
 
       template <typename U>
-      Impl(U&& tensor) : tensor_(std::forward<U>(tensor)) { }
+      Impl(U&& tensor) : tensor_(std::forward<U>(tensor)) {
+      }
 
       ~Impl() = default;
 
@@ -100,10 +102,12 @@ namespace TiledArray {
     Tile_& operator=(Tile_&&) = default;
     Tile_& operator=(const Tile_&) = default;
 
-    template <typename U, typename I>
+    template <typename U>
     Tile(U&& tensor) :
       pimpl_(std::make_shared<Impl>(std::forward<U>(tensor)))
-    { }
+      {
+          std::cout << "Picked this thing\n";
+      }
 
     ~Tile() = default;
 
