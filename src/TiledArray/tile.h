@@ -108,9 +108,9 @@ namespace TiledArray {
 
     // Tile accessor -----------------------------------------------------------
 
-    tensor_type& tensor() { return pimpl_->tensor_; }
+    tensor_type& tensor() { return *pimpl_; }
 
-    const tensor_type& tensor() const { return pimpl_->tensor_; }
+    const tensor_type& tensor() const { return *pimpl_; }
 
 
     // Iterator accessor -------------------------------------------------------
@@ -147,7 +147,7 @@ namespace TiledArray {
       ar & empty;
       if (!empty) {
         // Serialize tile data
-        ar & pimpl_->tensor_;
+        ar & *pimpl_;
       }
     }
 
@@ -176,6 +176,18 @@ namespace TiledArray {
   // The following functions define the non-intrusive interface used to apply
   // math operations to Tiles. These functions in turn use the non-intrusive
   // interface functions to evaluate tiles.
+
+  namespace detail {
+
+    /// Factory function for tiles
+
+    /// \tparam T A tensor type
+    /// \param t A tensor object
+    /// \return A tile that wraps a copy of t.
+    template <typename T>
+    Tile<T> make_tile(T&& t) { return Tile<T>(std::forward<T>(t)); }
+
+  }  // namespace detail
 
 
   // Clone operations ----------------------------------------------------------
@@ -213,7 +225,10 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ arg</tt>
   template <typename Arg>
-  inline Tile<Arg> permute(const Tile<Arg>& arg, const Permutation& perm) {
+  inline auto permute(const Tile<Arg>& arg, const Permutation& perm) ->
+      Tile<decltype(permute(arg.tensor(), perm))>
+  {
+    typedef decltype(permute(arg.tensor(), perm)) result_type;
     return Tile<Arg>(permute(arg.tensor(), perm));
   }
 
@@ -228,24 +243,24 @@ namespace TiledArray {
   /// \param right The right-hand argument to be added
   /// \return A tile that is equal to <tt>(left + right)</tt>
   template <typename Left, typename Right>
-  inline Tile<Left> add(const Tile<Left>& left, const Tile<Right>& right) {
-    return Tile<Left>(add(left.tensor(), right.tensor()));
-  }
+  inline auto add(const Tile<Left>& left, const Tile<Right>& right) ->
+    Tile<decltype(add(left.tensor(), right.tensor()))>
+  { return detail::make_tile(add(left.tensor(), right.tensor())); }
 
   /// Add and scale tile arguments
 
   /// \tparam Left The left-hand tile type
   /// \tparam Right The right-hand tile type
+  /// \tparam Scalar A scalar type
   /// \param left The left-hand argument to be added
   /// \param right The right-hand argument to be added
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(left + right) * factor</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left> add(const Tile<Left>& left, const Tile<Right>& right,
-      const typename Tile<Left>::numeric_type factor)
-  {
-    return Tile<Left>(add(left.tensor(), right.tensor(), factor));
-  }
+  template <typename Left, typename Right, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto add(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor) ->
+      Tile<decltype(add(left.tensor(), right.tensor(), factor))>
+  { return detail::make_tile(add(left.tensor(), right.tensor(), factor)); }
 
   /// Add and permute tile arguments
 
@@ -254,56 +269,56 @@ namespace TiledArray {
   /// \param left The left-hand argument to be added
   /// \param right The right-hand argument to be added
   /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ (left + right)</tt>
+  /// \return A tile that is equal to <tt>perm * (left + right)</tt>
   template <typename Left, typename Right>
-  inline Tile<Left> add(const Tile<Left>& left, const Tile<Right>& right,
-      const Permutation& perm)
-  {
-    return Tile<Left>(add(left.tensor(), right.tensor(), perm));
-  }
+  inline auto add(const Tile<Left>& left, const Tile<Right>& right, const Permutation& perm) ->
+      Tile<decltype(add(left.tensor(), right.tensor(), perm))>
+  { return detail::make_tile(add(left.tensor(), right.tensor(), perm)); }
 
   /// Add, scale, and permute tile arguments
 
   /// \tparam Left The left-hand tile type
   /// \tparam Right The right-hand tile type
+  /// \tparam Scalar A scalar type
   /// \param left The left-hand argument to be added
   /// \param right The right-hand argument to be added
   /// \param factor The scaling factor
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left> add(const Tile<Left>& left, const Tile<Right>& right,
-      const typename Tile<Left>::numeric_type factor, const Permutation& perm)
-  {
-    return Tile<Left>(add(left.tensor(), right.tensor(), factor, perm));
-  }
+  template <typename Left, typename Right, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto add(const Tile<Left>& left, const Tile<Right>& right,
+      const Scalar factor, const Permutation& perm) ->
+      Tile<decltype(add(left.tensor(), right.tensor(), factor, perm))>
+  { return detail::make_tile(add(left.tensor(), right.tensor(), factor, perm)); }
 
   /// Add a constant scalar to tile argument
 
   /// \tparam Arg The tile argument type
+  /// \tparam Scalar A scalar type
   /// \param arg The left-hand argument to be added
   /// \param value The constant scalar to be added
   /// \return A tile that is equal to <tt>arg + value</tt>
-  template <typename Arg>
-  inline Tile<Arg> add(const Tile<Arg>& arg,
-      const typename Tile<Arg>::numeric_type value)
-  {
-    return Tile<Arg>(add(arg.tensor(), value));
-  }
+  template <typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto add(const Tile<Arg>& arg, const Scalar value) ->
+      Tile<decltype(add(arg.tensor(), value))>
+  { return detail::make_tile(add(arg.tensor(), value)); }
 
   /// Add a constant scalar and permute tile argument
 
   /// \tparam Arg The tile argument type
+  /// \tparam Scalar A scalar type
   /// \param arg The left-hand argument to be added
   /// \param value The constant scalar value to be added
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg + value)</tt>
-  template <typename Arg>
-  inline Tile<Arg> add(const Tile<Arg>& arg,
-      const typename Tile<Arg>::numeric_type value, const Permutation& perm)
-  {
-    return Tile<Arg>(add(arg.tensor(), value, perm));
-  }
+  template <typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto
+  add(const Tile<Arg>& arg, const Scalar value, const Permutation& perm) ->
+      Tile<decltype(add(arg.tensor(), value, perm))>
+  { return detail::make_tile(add(arg.tensor(), value, perm)); }
 
   /// Add to the result tile
 
@@ -314,35 +329,39 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>result[i] += arg[i]</tt>
   template <typename Result, typename Arg>
   inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg) {
-    return Tile<Result>(add_to(result.tensor(), arg.tensor()));
+    add_to(result.tensor(), arg.tensor());
+    return result;
   }
 
   /// Add and scale to the result tile
 
   /// \tparam Result The result tile type
   /// \tparam Arg The argument tile type
+  /// \tparam Scalar A scalar type
   /// \param result The result tile
   /// \param arg The argument to be added to \c result
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
-  template <typename Result, typename Arg>
-  inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg,
-      const typename Tile<Result>::numeric_type factor)
-  {
-    return Tile<Arg>(add_to(result.tensor(), arg.tensor(), factor));
+  template <typename Result, typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline Tile<Result>&
+  add_to(Tile<Result>& result, const Tile<Arg>& arg, const Scalar factor) {
+    add_to(result.tensor(), arg.tensor(), factor);
+    return result;
   }
 
   /// Add constant scalar to the result tile
 
   /// \tparam Result The result tile type
+  /// \tparam Scalar A scalar type
   /// \param result The result tile
   /// \param value The constant scalar to be added to \c result
   /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
-  template <typename Result>
-  inline Tile<Result>& add_to(Tile<Result>& result,
-      const typename Tile<Result>::numeric_type value)
-  {
-    return Tile<Result>(add_to(result.tensor(), value));
+  template <typename Result, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline Tile<Result>& add_to(Tile<Result>& result, const Scalar value) {
+    add_to(result.tensor(), value);
+    return result;
   }
 
 
@@ -356,9 +375,10 @@ namespace TiledArray {
   /// \param right The right-hand argument to be subtracted
   /// \return A tile that is equal to <tt>(left - right)</tt>
   template <typename Left, typename Right>
-  inline Tile<Left> subt(const Tile<Left>& left, const Tile<Right>& right) {
-    return Tile<Left>(subt(left.tensor(), right.tensor()));
-  }
+  inline auto
+  subt(const Tile<Left>& left, const Tile<Right>& right) ->
+      Tile<decltype(sub(left.tensor(), right.tensor()))>
+  { return detail::make_tile(subt(left.tensor(), right.tensor())); }
 
   /// Subtract and scale tile arguments
 
@@ -368,12 +388,12 @@ namespace TiledArray {
   /// \param right The right-hand argument to be subtracted
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(left - right) * factor</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left> subt(const Tile<Left>& left, const Tile<Right>& right,
-      const typename Tile<Left>::numeric_type factor)
-  {
-    return Tile<Left>(subt(left.tensor(), right.tensor(), factor));
-  }
+  template <typename Left, typename Right, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto
+  subt(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor) ->
+      Tile<decltype(subt(left.tensor(), right.tensor(), factor))>
+  { return detail::make_tile(subt(left.tensor(), right.tensor(), factor)); }
 
   /// Subtract and permute tile arguments
 
@@ -384,11 +404,10 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left - right)</tt>
   template <typename Left, typename Right>
-  inline Tile<Left> subt(const Tile<Left>& left, const Tile<Right>& right,
-      const Permutation& perm)
-  {
-    return Tile<Left>(subt(left.tensor(), right.tensor(), perm));
-  }
+  inline auto
+  subt(const Tile<Left>& left, const Tile<Right>& right, const Permutation& perm) ->
+      Tile<decltype(subt(left.tensor(), right.tensor(), perm))>
+  { return detail::make_tile(subt(left.tensor(), right.tensor(), perm)); }
 
   /// Subtract, scale, and permute tile arguments
 
@@ -399,12 +418,13 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left - right) * factor</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left> subt(const Tile<Left>& left, const Tile<Right>& right,
-      const typename Tile<Left>::numeric_type factor, const Permutation& perm)
-  {
-    return Tile<Left>(subt(left.tensor(), right.tensor(), factor, perm));
-  }
+  template <typename Left, typename Right, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto
+  subt(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor,
+      const Permutation& perm) ->
+      Tile<decltype(subt(left.tensor(), right.tensor(), factor, perm))>
+  { return detail::make_tile(subt(left.tensor(), right.tensor(), factor, perm)); }
 
   /// Subtract a scalar constant from the tile argument
 
@@ -412,12 +432,12 @@ namespace TiledArray {
   /// \param arg The left-hand argument to be subtracted
   /// \param value The constant scalar to be subtracted
   /// \return A tile that is equal to <tt>arg - value</tt>
-  template <typename Arg>
-  inline Tile<Arg> subt(const Tile<Arg>& arg,
-      const typename Tile<Arg>::numeric_type value)
-  {
-    return Tile<Arg>(subt(arg.tensor(), value));
-  }
+  template <typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto
+  subt(const Tile<Arg>& arg, const Scalar value) ->
+      Tile<decltype(subt(arg.tensor(), value))>
+  { return detail::make_tile(subt(arg.tensor(), value)); }
 
   /// Subtract a constant scalar and permute tile argument
 
@@ -426,12 +446,12 @@ namespace TiledArray {
   /// \param value The constant scalar value to be subtracted
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg - value)</tt>
-  template <typename Arg>
-  inline Tile<Arg> subt(const Tile<Arg>& arg,
-      const typename Tile<Arg>::numeric_type value, const Permutation& perm)
-  {
-    return Tile<Arg>(subt(arg.tensor(), value, perm));
-  }
+  template <typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto
+  subt(const Tile<Arg>& arg, const Scalar value, const Permutation& perm) ->
+      Tile<decltype(subt(arg.tensor(), value, perm))>
+  { return detail::make_tile(subt(arg.tensor(), value, perm)); }
 
   /// Subtract from the result tile
 
@@ -442,7 +462,8 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>result[i] -= arg[i]</tt>
   template <typename Result, typename Arg>
   inline Tile<Result>& subt_to(Tile<Result>& result, const Tile<Arg>& arg) {
-    return Tile<Result>(subt_to(result.tensor(), arg.tensor()));
+    subt_to(result.tensor(), arg.tensor());
+    return result;
   }
 
   /// Subtract and scale from the result tile
@@ -453,11 +474,12 @@ namespace TiledArray {
   /// \param arg The argument to be subtracted from \c result
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
-  template <typename Result, typename Arg>
-  inline Tile<Result>& subt_to(Tile<Result>& result, const Tile<Arg>& arg,
-      const typename Tile<Result>::numeric_type factor)
-  {
-    return Tile<Result>(subt_to(result.tensor(), arg.tensor(), factor));
+  template <typename Result, typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline Tile<Result>&
+  subt_to(Tile<Result>& result, const Tile<Arg>& arg, const Scalar factor) {
+    subt_to(result.tensor(), arg.tensor(), factor);
+    return result;
   }
 
   /// Subtract constant scalar from the result tile
@@ -466,11 +488,11 @@ namespace TiledArray {
   /// \param result The result tile
   /// \param value The constant scalar to be subtracted from \c result
   /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
-  template <typename Result>
-  inline Tile<Result>& subt_to(Tile<Result>& result,
-      const typename Tile<Result>::numeric_type value)
-  {
-    return Tile<Result>(subt_to(result.tensor(), value));
+  template <typename Result, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline Tile<Result>& subt_to(Tile<Result>& result, const Scalar value) {
+    subt_to(result.tensor(), value);
+    return result;
   }
 
 
@@ -485,9 +507,9 @@ namespace TiledArray {
   /// \param right The right-hand argument to be multiplied
   /// \return A tile that is equal to <tt>(left * right)</tt>
   template <typename Left, typename Right>
-  inline Tile<Left> mult(const Tile<Left>& left, const Tile<Right>& right) {
-    return Tile<Left>(mult(left.tensor(), right.tensor()));
-  }
+  inline auto mult(const Tile<Left>& left, const Tile<Right>& right) ->
+      Tile<decltype(mult(left.tensor(), right.tensor()))>
+  { return detail::make_tile(mult(left.tensor(), right.tensor())); }
 
   /// Multiplication and scale tile arguments
 
@@ -497,12 +519,12 @@ namespace TiledArray {
   /// \param right The right-hand argument to be multiplied
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left> mult(const Tile<Left>& left, const Tile<Right>& right,
-      const typename Tile<Left>::numeric_type factor)
-  {
-    return Tile<Left>(mult(left.tensor(), right.tensor(), factor));
-  }
+  template <typename Left, typename Right, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto
+  mult(const Tile<Left>& left, const Tile<Right>& right,  const Scalar factor) ->
+      Tile<decltype(mult(left.tensor(), right.tensor(), factor))>
+  { return detail::make_tile(mult(left.tensor(), right.tensor(), factor)); }
 
   /// Multiplication and permute tile arguments
 
@@ -513,11 +535,10 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left * right)</tt>
   template <typename Left, typename Right>
-  inline Tile<Left> mult(const Tile<Left>& left, const Tile<Right>& right,
-      const Permutation& perm)
-  {
-    return Tile<Left>(mult(left.tensor(), right.tensor(), perm));
-  }
+  inline auto
+  mult(const Tile<Left>& left, const Tile<Right>& right, const Permutation& perm) ->
+      Tile<decltype(mult(left.tensor(), right.tensor(), perm))>
+  { return detail::make_tile(mult(left.tensor(), right.tensor(), perm)); }
 
   /// Multiplication, scale, and permute tile arguments
 
@@ -528,12 +549,13 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left * right) * factor</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left> mult(const Tile<Left>& left, const Tile<Right>& right,
-      const typename Tile<Left>::numeric_type factor, const Permutation& perm)
-  {
-    return Tile<Left>(mult(left.tensor(), right.tensor(), factor, perm));
-  }
+  template <typename Left, typename Right, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto
+  mult(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor,
+      const Permutation& perm) ->
+      Tile<decltype(mult(left.tensor(), right.tensor(), factor, perm))>
+  { return Tile<Left>(mult(left.tensor(), right.tensor(), factor, perm)); }
 
   /// Multiply to the result tile
 
@@ -544,7 +566,8 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>result *= arg</tt>
   template <typename Result, typename Arg>
   inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg) {
-    return Tile<Result>(mult_to(result.tensor(), arg.tensor()));
+    mult_to(result.tensor(), arg.tensor());
+    return result;
   }
 
   /// Multiply and scale to the result tile
@@ -555,11 +578,13 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied by \c result
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(result *= arg) *= factor</tt>
-  template <typename Result, typename Arg>
+  template <typename Result, typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
   inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg,
-      const typename Tile<Result>::numeric_type factor)
+      const Scalar factor)
   {
-    return Tile<Arg>(mult_to(result.tensor(), arg.tensor(), factor));
+    mult_to(result.tensor(), arg.tensor(), factor);
+    return result;
   }
 
 
@@ -571,12 +596,11 @@ namespace TiledArray {
   /// \param arg The left-hand argument to be scaled
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>arg * factor</tt>
-  template <typename Arg>
-  inline Tile<Arg> scale(const Tile<Arg>& arg,
-      const typename Tile<Arg>::numeric_type factor)
-  {
-    return Tile<Arg>(scale(arg.tensor(), factor));
-  }
+  template <typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto scale(const Tile<Arg>& arg, const Scalar factor) ->
+      Tile<decltype(scale(arg.tensor(), factor))>
+  { return detail::make_tile(scale(arg.tensor(), factor)); }
 
   /// Scale and permute tile argument
 
@@ -585,12 +609,12 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
-  template <typename Arg>
-  inline Tile<Arg> scale(const Tile<Arg>& arg,
-      const typename Tile<Arg>::numeric_type factor, const Permutation& perm)
-  {
-    return Tile<Arg>(scale(arg.tensor(), factor, perm));
-  }
+  template <typename Arg, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto
+  scale(const Tile<Arg>& arg, const Scalar factor, const Permutation& perm) ->
+      Tile<decltype(scale(arg.tensor(), factor, perm))>
+  { return detail::make_tile(scale(arg.tensor(), factor, perm)); }
 
   /// Scale to the result tile
 
@@ -598,11 +622,11 @@ namespace TiledArray {
   /// \param result The result tile to be scaled
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>result *= factor</tt>
-  template <typename Result>
-  inline Tile<Result>& scale_to(Tile<Result>& result,
-      const typename Tile<Result>::numeric_type factor)
-  {
-    return Tile<Result>(scale_to(result.tensor(), factor));
+  template <typename Result, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline Tile<Result>& scale_to(Tile<Result>& result, const Scalar factor) {
+    scale_to(result.tensor(), factor);
+    return result;
   }
 
 
@@ -614,9 +638,9 @@ namespace TiledArray {
   /// \param arg The argument to be negated
   /// \return A tile that is equal to <tt>-arg</tt>
   template <typename Arg>
-  inline Tile<Arg> neg(const Tile<Arg>& arg) {
-    return Tile<Arg>(neg(arg.tensor()));
-  }
+  inline auto neg(const Tile<Arg>& arg) ->
+      Tile<decltype(neg(arg.tensor()))>
+  { return detail::make_tile(neg(arg.tensor())); }
 
   /// Negate and permute tile argument
 
@@ -625,9 +649,9 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ -arg</tt>
   template <typename Arg>
-  inline Tile<Arg> neg(const Tile<Arg>& arg, const Permutation& perm) {
-    return Tile<Arg>(neg(arg.tensor(), perm));
-  }
+  inline auto neg(const Tile<Arg>& arg, const Permutation& perm) ->
+      Tile<decltype(neg(arg.tensor(), perm))>
+  { return detail::make_tile(neg(arg.tensor(), perm)); }
 
   /// Multiplication constant scalar to a tile
 
@@ -636,7 +660,8 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>result = -result</tt>
   template <typename Result>
   inline Tile<Result>& neg_to(Tile<Result>& result) {
-    return Tile<Result>(neg_to(result.tensor()));
+    neg_to(result.tensor());
+    return result;
   }
 
 
@@ -654,13 +679,12 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \param gemm_config A helper object used to simplify gemm operations
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left> gemm(const Tile<Left>& left, const Tile<Right>& right,
-      const typename Tile<Left>::numeric_type factor,
-      const math::GemmHelper& gemm_config)
-  {
-    return Tile<Left>(gemm(left.tensor(), right.tensor(), factor, gemm_config));
-  }
+  template <typename Left, typename Right, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+  inline auto gemm(const Tile<Left>& left, const Tile<Right>& right,
+      const Scalar factor, const math::GemmHelper& gemm_config) ->
+      Tile<decltype(gemm(left.tensor(), right.tensor(), factor, gemm_config))>
+  { return detail::make_tile(gemm(left.tensor(), right.tensor(), factor, gemm_config)); }
 
   /// Contract and scale tile arguments to the result tile
 
@@ -675,13 +699,14 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \param gemm_config A helper object used to simplify gemm operations
   /// \return A tile that is equal to <tt>result = (left * right) * factor</tt>
-  template <typename Result, typename Left, typename Right>
+  template <typename Result, typename Left, typename Right, typename Scalar,
+      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
   inline Tile<Result>& gemm(Tile<Result>& result, const Tile<Left>& left,
-      const Tile<Right>& right, const typename Tile<Result>::numeric_type factor,
+      const Tile<Right>& right, const Scalar factor,
       const math::GemmHelper& gemm_config)
   {
-    return Tile<Result>(gemm(result.tensor(), left.tensor(), right.result(), factor,
-        gemm_config));
+    gemm(result.tensor(), left.tensor(), right.tensor(), factor, gemm_config);
+    return result;
   }
 
 
@@ -693,9 +718,8 @@ namespace TiledArray {
   /// \param arg The argument to be summed
   /// \return The sum of the hyper-diagonal elements of \c arg
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type trace(const Tile<Arg>& arg) {
-    return trace(arg.tensor());
-  }
+  inline auto trace(const Tile<Arg>& arg) -> decltype(trace(arg.tensor()))
+  { return trace(arg.tensor()); }
 
   /// Sum the elements of a tile
 
@@ -703,9 +727,8 @@ namespace TiledArray {
   /// \param arg The argument to be summed
   /// \return A scalar that is equal to <tt>sum_i arg[i]</tt>
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type sum(const Tile<Arg>& arg) {
-    return sum(arg.tensor());
-  }
+  inline auto sum(const Tile<Arg>& arg) -> decltype(sum(arg.tensor()))
+  { return sum(arg.tensor()); }
 
   /// Multiply the elements of a tile
 
@@ -713,9 +736,8 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied
   /// \return A scalar that is equal to <tt>prod_i arg[i]</tt>
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type product(const Tile<Arg>& arg) {
-    return product(arg.tensor());
-  }
+  inline auto product(const Tile<Arg>& arg) -> decltype(product(arg.tensor()))
+  { return product(arg.tensor()); }
 
   /// Squared vector 2-norm of the elements of a tile
 
@@ -724,9 +746,9 @@ namespace TiledArray {
   /// \return The sum of the squared elements of \c arg
   /// \return A scalar that is equal to <tt>sum_i arg[i] * arg[i]</tt>
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type squared_norm(const Tile<Arg>& arg) {
-    return squared_norm(arg.tensor());
-  }
+  inline auto squared_norm(const Tile<Arg>& arg) ->
+      decltype(squared_norm(arg.tensor()))
+  { return squared_norm(arg.tensor()); }
 
   /// Vector 2-norm of a tile
 
@@ -734,9 +756,8 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied and summed
   /// \return A scalar that is equal to <tt>sqrt(sum_i arg[i] * arg[i])</tt>
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type norm(const Tile<Arg>& arg) {
-    return norm(arg.tensor());
-  }
+  inline auto norm(const Tile<Arg>& arg) -> decltype(norm(arg.tensor()))
+  { return norm(arg.tensor()); }
 
   /// Maximum element of a tile
 
@@ -744,9 +765,8 @@ namespace TiledArray {
   /// \param arg The argument to find the maximum
   /// \return A scalar that is equal to <tt>max(arg)</tt>
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type max(const Tile<Arg>& arg) {
-    return max(arg.tensor());
-  }
+  inline auto max(const Tile<Arg>& arg) -> decltype(max(arg.tensor()))
+  { return max(arg.tensor()); }
 
   /// Minimum element of a tile
 
@@ -754,9 +774,8 @@ namespace TiledArray {
   /// \param arg The argument to find the minimum
   /// \return A scalar that is equal to <tt>min(arg)</tt>
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type min(const Tile<Arg>& arg) {
-    return min(arg.tensor());
-  }
+  inline auto min(const Tile<Arg>& arg) -> decltype(min(arg.tensor()))
+  { return min(arg.tensor()); }
 
   /// Absolute maximum element of a tile
 
@@ -764,9 +783,8 @@ namespace TiledArray {
   /// \param arg The argument to find the maximum
   /// \return A scalar that is equal to <tt>abs(max(arg))</tt>
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type abs_max(const Tile<Arg>& arg) {
-    return abs_max(arg.tensor());
-  }
+  inline auto abs_max(const Tile<Arg>& arg) -> decltype(abs_max(arg.tensor()))
+  { return abs_max(arg.tensor()); }
 
   /// Absolute mainimum element of a tile
 
@@ -774,10 +792,8 @@ namespace TiledArray {
   /// \param arg The argument to find the minimum
   /// \return A scalar that is equal to <tt>abs(min(arg))</tt>
   template <typename Arg>
-  inline typename Tile<Arg>::numeric_type
-  abs_min(const Tile<Arg>& arg) {
-    return abs_min(arg.tensor());
-  }
+  inline auto abs_min(const Tile<Arg>& arg) -> decltype(abs_min(arg.tensor()))
+  { return abs_min(arg.tensor()); }
 
   /// Vector dot product of a tile
 
@@ -787,53 +803,51 @@ namespace TiledArray {
   /// \param right The right-hand argument tile to be contracted
   /// \return A scalar that is equal to <tt>sum_i left[i] * right[i]</tt>
   template <typename Left, typename Right>
-  inline typename Tile<Left>::numeric_type
-  dot(const Tile<Left>& left, const Tile<Right>& right) {
-    return dot(left.tensor(), right.tensor());
-  }
+  inline auto dot(const Tile<Left>& left, const Tile<Right>& right) ->
+      decltype(dot(left.tensor(), right.tensor()))
+  { return dot(left.tensor(), right.tensor()); }
 
 
 
   template <typename Left, typename Right>
-  inline Tile<Left> operator+(const Tile<Left>&left, const Tile<Right>& right) {
-    return add(left, right);
-  }
+  inline auto operator+(const Tile<Left>&left, const Tile<Right>& right) ->
+      decltype(add(left, right))
+  { return add(left, right); }
 
   template <typename Left, typename Right>
-  inline Tile<Left> operator-(const Tile<Left>& left, const Tile<Right>& right) {
-    return subt(left, right);
-  }
+  inline auto operator-(const Tile<Left>& left, const Tile<Right>& right) ->
+      decltype(subt(left, right))
+  { return subt(left, right); }
 
   template <typename Left, typename Right>
-  Tile<Left> operator*(const Tile<Left>& left, const Tile<Right>& right) {
-    return mult(left, right);
-  }
+  auto operator*(const Tile<Left>& left, const Tile<Right>& right) ->
+      decltype(mult(left, right))
+  { return mult(left, right); }
 
   template <typename Left, typename Right,
-      enable_if_t<TiledArray::detail::is_numeric<Right>::value>* = nullptr>
-  Tile<Left> operator*(const Tile<Left>& left, const Right right) {
-    return scale(left, right);
-  }
+      enable_if_t<detail::is_numeric<Right>::value>* = nullptr>
+  auto operator*(const Tile<Left>& left, const Right right) ->
+      decltype(scale(left, right))
+  { return scale(left, right); }
 
   template <typename Left, typename Right,
       enable_if_t<TiledArray::detail::is_numeric<Left>::value>* = nullptr>
-  Tile<Right> operator*(const Left left, const Tile<Right>& right) {
-    return scale(right, left);
-  }
+  auto operator*(const Left left, const Tile<Right>& right) ->
+      decltype(scale(right, left))
+  { return scale(right, left); }
 
   template <typename Arg>
-  inline Tile<Arg> operator-(const Tile<Arg>& arg) {
-    return neg(arg);
-  }
+  inline auto operator-(const Tile<Arg>& arg) -> decltype(neg(arg))
+  { return neg(arg); }
 
   template <typename Arg>
-  inline Tile<Arg> operator*(const Permutation& perm, Tile<Arg> const arg) {
-    return permute(arg, perm);
-  }
+  inline auto operator*(const Permutation& perm, Tile<Arg> const arg) ->
+      decltype(permute(arg, perm))
+  { return permute(arg, perm); }
 
   template <typename T>
   inline std::ostream &operator<<(std::ostream &os, const Tile<T>& tile) {
-    os << tile.range() << ": " << tile.tensor() << "\n";
+    os << tile.tensor();
     return os;
   }
 
