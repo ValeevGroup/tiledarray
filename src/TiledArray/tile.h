@@ -115,26 +115,29 @@ namespace TiledArray {
 
     // Iterator accessor -------------------------------------------------------
 
-
     /// Iterator factory
 
     /// \return An iterator to the first data element
-    iterator begin() { return std::begin(pimpl_->tensor_); }
+    auto begin() -> decltype(std::begin(tensor()))
+    { return std::begin(tensor()); }
 
     /// Iterator factory
 
     /// \return A const iterator to the first data element
-    const_iterator begin() const { return std::begin(pimpl_->tensor_); }
+    auto begin() const -> decltype(std::begin(tensor()))
+    { return std::begin(tensor()); }
 
     /// Iterator factory
 
     /// \return An iterator to the last data element
-    iterator end() { return std::end(pimpl_->tensor_); }
+    auto end() -> decltype(std::end(tensor()))
+    { return std::end(tensor()); }
 
     /// Iterator factory
 
     /// \return A const iterator to the last data element
-    const_iterator end() const { return std::end(pimpl_->tensor_); }
+    auto end() const -> decltype(std::end(tensor()))
+    { return std::end(tensor()); }
 
 
     // Serialization -----------------------------------------------------------
