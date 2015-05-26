@@ -35,10 +35,6 @@ namespace TiledArray {
     // Forward declaration
     template <typename, typename> class LazyArrayTile;
 
-  }  // namespace detail
-
-  namespace math {
-
     /// Detect lazy evaluation tiles
 
     /// \c is_lazy_type evaluates to \c std::true_type when T is a tile that
