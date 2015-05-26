@@ -54,10 +54,6 @@ namespace TiledArray {
           first_argument_type; ///< The left-hand argument type
       typedef typename madness::if_c<RightConsumable, Right&,
           const Right&>::type second_argument_type; ///< The right-hand argument type
-      typedef const ZeroTensor<typename Left::value_type>&
-          zero_left_type; ///< Zero left-hand tile type
-      typedef const ZeroTensor<typename Right::value_type>&
-          zero_right_type; ///< Zero right-hand tile type
       typedef Result result_type; ///< The result tile type
 
       typedef std::integral_constant<bool, LeftConsumable && std::is_same<Result,
@@ -80,10 +76,6 @@ namespace TiledArray {
           first_argument_type; ///< The left-hand argument type
       typedef typename BinaryTileOpPolicy<Derived>::second_argument_type
           second_argument_type; ///< The right-hand argument type
-      typedef typename BinaryTileOpPolicy<Derived>::zero_left_type
-          zero_left_type; ///< Zero left-hand tile type
-      typedef typename BinaryTileOpPolicy<Derived>::zero_right_type
-          zero_right_type; ///< Zero right-hand tile type
       typedef typename BinaryTileOpPolicy<Derived>::result_type
           result_type; ///< The result tile type
 
@@ -125,7 +117,7 @@ namespace TiledArray {
       /// \param second The right-hand argument
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
-      result_type operator()(zero_left_type first, second_argument_type second) const {
+      result_type operator()(ZeroTensor first, second_argument_type second) const {
         if(derived().permutation())
           return derived().permute(first, second);
 
@@ -141,7 +133,7 @@ namespace TiledArray {
       /// \param second The right-hand argument
       /// \return The result tile from the binary operation applied to the
       /// \c first and \c second .
-      result_type operator()(first_argument_type first, zero_right_type second) const {
+      result_type operator()(first_argument_type first, ZeroTensor second) const {
         if(derived().permutation())
           return derived().permute(first, second);
 
@@ -256,8 +248,6 @@ namespace TiledArray {
     typedef math::BinaryInterfaceBase<Derived> BinaryInterfaceBase_; ///< This class type
     typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
     typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
-    typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
-    typedef typename BinaryInterfaceBase_::zero_right_type zero_right_type; ///< Zero right-hand tile type
     typedef typename BinaryInterfaceBase_::result_type result_type; ///< The result tile type
 
   private:
@@ -397,8 +387,6 @@ namespace TiledArray {
     typedef math::BinaryInterfaceBase<Op<Result, Left, Right, false, false> > BinaryInterfaceBase_; ///< This class type
     typedef typename BinaryInterfaceBase_::first_argument_type first_argument_type; ///< The left-hand argument type
     typedef typename BinaryInterfaceBase_::second_argument_type second_argument_type; ///< The right-hand argument type
-    typedef typename BinaryInterfaceBase_::zero_left_type zero_left_type; ///< Zero left-hand tile type
-    typedef typename BinaryInterfaceBase_::zero_right_type zero_right_type; ///< Zero right-hand tile type
     typedef typename BinaryInterfaceBase_::result_type result_type; ///< The result tile type
 
   private:

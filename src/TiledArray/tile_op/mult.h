@@ -53,8 +53,6 @@ namespace TiledArray {
       typedef BinaryInterface<Mult_> BinaryInterface_; ///< Interface base class type
       typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
-      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
-      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
       typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
 
     public:
@@ -94,12 +92,12 @@ namespace TiledArray {
         return TiledArray::mult(first, second, BinaryInterface_::permutation());
       }
 
-      result_type permute(zero_left_type, const Right&) const {
+      result_type permute(ZeroTensor, const Right&) const {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
-      result_type permute(const Left&, zero_right_type) const {
+      result_type permute(const Left&, ZeroTensor) const {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
@@ -130,28 +128,28 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename std::enable_if<!RC, result_type>::type
-      no_permute(zero_left_type, const Right&) {
+      no_permute(ZeroTensor, const Right&) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<RC, result_type>::type
-      no_permute(zero_left_type, Right&) {
+      no_permute(ZeroTensor, Right&) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC, result_type>::type
-      no_permute(const Left&, zero_right_type) {
+      no_permute(const Left&, ZeroTensor) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
-      no_permute(Left&, zero_right_type) {
+      no_permute(Left&, ZeroTensor) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }

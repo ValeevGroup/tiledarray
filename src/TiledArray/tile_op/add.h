@@ -53,8 +53,6 @@ namespace TiledArray {
       typedef BinaryInterface<Add_> BinaryInterface_; ///< Interface base class type
       typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
       typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
-      typedef typename BinaryInterface_::zero_left_type zero_left_type; ///< Zero left-hand tile type
-      typedef typename BinaryInterface_::zero_right_type zero_right_type; ///< Zero right-hand tile type
       typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
 
     public:
@@ -94,11 +92,11 @@ namespace TiledArray {
         return TiledArray::add(first, second, BinaryInterface_::permutation());
       }
 
-      result_type permute(zero_left_type, const Right& second) const {
+      result_type permute(ZeroTensor, const Right& second) const {
         return TiledArray::permute(second, BinaryInterface_::permutation());
       }
 
-      result_type permute(const Left& first, zero_right_type) const {
+      result_type permute(const Left& first, ZeroTensor) const {
         return TiledArray::permute(first, BinaryInterface_::permutation());
       }
 
@@ -126,25 +124,25 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename std::enable_if<!RC, result_type>::type
-      no_permute(zero_left_type, const Right& second) {
+      no_permute(ZeroTensor, const Right& second) {
         return TiledArray::clone(second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<RC, result_type>::type
-      no_permute(zero_left_type, Right& second) {
+      no_permute(ZeroTensor, Right& second) {
         return second;
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC, result_type>::type
-      no_permute(const Left& first, zero_right_type) {
+      no_permute(const Left& first, ZeroTensor) {
         return TiledArray::clone(first);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
-      no_permute(Left& first, zero_right_type) {
+      no_permute(Left& first, ZeroTensor) {
         return first;
       }
 

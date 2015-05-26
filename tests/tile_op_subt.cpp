@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor<int>(), b));
+  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor<int>()));
+  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor()));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op(perm);
 
   // Store the difference of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor<int>(), b));
+  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), b.range());
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op(perm);
 
   // Store the difference of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor<int>()));
+  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor()));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_left )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor<int>(), b));
+  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_left )
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the difference of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor<int>()));
+  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor()));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_left )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op(perm);
 
   // Store the difference of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor<int>(), b));
+  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), b.range());
@@ -289,7 +289,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_left )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op(perm);
 
   // Store the difference of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor<int>()));
+  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor()));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_right )
   const Tensor<int> bx(b.range(), b.begin());
 
   // Store the difference of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor<int>(), b));
+  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -349,7 +349,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_right )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor<int>()));
+  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor()));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -388,7 +388,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_right )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op(perm);
 
   // Store the difference of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor<int>(), b));
+  BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), b.range());
@@ -407,7 +407,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_right )
   math::Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op(perm);
 
   // Store the difference of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor<int>()));
+  BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor()));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
