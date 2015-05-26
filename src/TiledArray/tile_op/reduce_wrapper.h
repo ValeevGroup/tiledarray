@@ -63,7 +63,7 @@ namespace TiledArray {
       template <typename T>
       typename std::enable_if<is_lazy_tile<T>::value>::type
       reduce(result_type& result, const T& arg) const {
-        typename TiledArray::detail::eval_trait<T>::type eval_arg(arg);
+        typename eval_trait<T>::type eval_arg(arg);
         Op::operator()(result, eval_arg);
       }
 
@@ -141,22 +141,22 @@ namespace TiledArray {
       template <typename L, typename R>
       typename std::enable_if<is_lazy_tile<L>::value && is_lazy_tile<R>::value>::type
       reduce(result_type& result, const L& left, const R& right) const {
-        typename TiledArray::detail::eval_trait<L>::type eval_left(left);
-        typename TiledArray::detail::eval_trait<R>::type eval_right(right);
+        typename eval_trait<L>::type eval_left(left);
+        typename eval_trait<R>::type eval_right(right);
         Op::operator()(result, eval_left, eval_right);
       }
 
       template <typename L, typename R>
       typename std::enable_if<(!is_lazy_tile<L>::value) && is_lazy_tile<R>::value>::type
       reduce(result_type& result, const L& left, const R& right) const {
-        typename TiledArray::detail::eval_trait<R>::type eval_right(right);
+        typename eval_trait<R>::type eval_right(right);
         Op::operator()(result, left, eval_right);
       }
 
       template <typename L, typename R>
       typename std::enable_if<is_lazy_tile<L>::value && (!is_lazy_tile<R>::value)>::type
       reduce(result_type& result, const L& left, const R& right) const {
-        typename TiledArray::detail::eval_trait<L>::type eval_left(left);
+        typename eval_trait<L>::type eval_left(left);
         Op::operator()(result, eval_left, right);
       }
 

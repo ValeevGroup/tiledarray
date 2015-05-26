@@ -30,6 +30,7 @@
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/tile_op/eval_trait.h>
 
 namespace TiledArray {
   namespace detail {
