@@ -46,27 +46,7 @@ namespace TiledArray {
     /// This object type
     typedef Tile<T> Tile_;
     /// Tensor type used to represent tile data
-    typedef typename TileTrait<T>::tensor_type tensor_type;
-    /// size type used to represent the size and offsets of the tensor data
-    typedef typename TileTrait<T>::size_type size_type;
-    /// Tensor element type
-    typedef typename TileTrait<T>::value_type value_type;
-    /// Element reference type
-    typedef typename TileTrait<T>::reference reference;
-    /// Element reference type
-    typedef typename TileTrait<T>::const_reference const_reference;
-    /// Element pointer type
-    typedef typename TileTrait<T>::pointer pointer;
-    /// Element const pointer type
-    typedef typename TileTrait<T>::const_pointer const_pointer;
-    /// Difference type
-    typedef typename TileTrait<T>::difference_type difference_type;
-    /// Element iterator type
-    typedef typename TileTrait<T>::iterator iterator;
-    /// Element const iterator type
-    typedef typename TileTrait<T>::const_iterator const_iterator;
-    /// The scalar type of the tensor type
-    typedef typename TileTrait<T>::numeric_type numeric_type;
+    typedef T tensor_type;
 
   private:
 

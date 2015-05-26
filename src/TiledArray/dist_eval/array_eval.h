@@ -48,8 +48,6 @@ namespace TiledArray {
       typedef Op op_type; ///< The operation that will modify this tile
       typedef typename op_type::result_type eval_type; ///< The evaluation type for this tile
       typedef Tile tile_type; ///< The input tile type
-      typedef typename tile_type::value_type value_type; ///< Tile element type
-      typedef typename scalar_type<value_type>::type numeric_type;
 
     private:
       mutable tile_type tile_; ///< The input tile

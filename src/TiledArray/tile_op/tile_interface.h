@@ -47,40 +47,6 @@ namespace TiledArray {
    */
 
 
-  // The following functions define the non-intrusive interface used to apply
-  // math operations to Array tiles. Users are expected to proved the default
-  // implementation for these.
-
-  /// Type traits for tiles
-
-  /// This class allows users to override/specify the type traits of tiles.
-  /// \tparam T Tensor type
-  template <typename T>
-  struct TileTrait {
-    /// Tensor type that will store tile data
-    typedef T tensor_type;
-    /// Element type of the tile
-    typedef typename T::value_type value_type;
-    /// Range type used to represent the upper and lower bounds of the tensor data
-    typedef typename T::size_type size_type;
-    /// Element reference type
-    typedef typename T::reference reference;
-    /// Element const reference type
-    typedef typename T::const_reference const_reference;
-    /// Element pointer type
-    typedef typename T::pointer pointer;
-    /// Element const pointer type
-    typedef typename T::const_pointer const_pointer;
-    /// Difference type used to represent the difference between two elements
-    typedef typename T::difference_type difference_type;
-    /// Element iterator type
-    typedef typename T::iterator iterator;
-    /// Element const iterator type
-    typedef typename T::const_iterator const_iterator;
-    /// The scalar type of the tensor type
-    typedef typename TiledArray::detail::scalar_type<T>::type numeric_type;
-
-  }; // struct TileTrait
 
   // Clone operations ----------------------------------------------------------
 

@@ -359,7 +359,7 @@ namespace TiledArray {
       typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
       typedef Tile value_type; ///< Tile or data type
       typedef typename eval_trait<Tile>::type eval_type; ///< The tile evaluation type
-      typedef typename scalar_type<typename value_type::value_type>::type
+      typedef typename scalar_type<value_type>::type
           numeric_type; ///< the numeric type that supports Tile
       typedef DistributedStorage<value_type> storage_type; ///< The data container type
       typedef typename storage_type::future future; ///< Future tile type

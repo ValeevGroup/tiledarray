@@ -35,6 +35,10 @@ namespace Eigen {
 
 namespace TiledArray {
 
+  // Forward declaration
+  template <typename> class Tile;
+
+
   template <bool condition, typename T = void>
   using enable_if_t = typename std::enable_if<condition, T>::type;
 
@@ -121,6 +125,11 @@ namespace TiledArray {
     template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
     struct scalar_type<Eigen::Array<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
         public scalar_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
+    { };
+
+    template <typename T>
+    struct scalar_type<Tile<T>, void> :
+        public scalar_type<typename Tile<T>::tensor_type>
     { };
 
     template <typename PlainObjectType, int MapOptions, typename StrideType>
