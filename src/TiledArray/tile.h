@@ -35,6 +35,12 @@ namespace madness {
 
 namespace TiledArray {
 
+
+  /**
+   * \defgroup TileInterface Tile interface for user defined tensor types
+   * @{
+   */
+
   /// An N-dimensional shallow copy wrapper for tile objects
 
   /// \c Tile represents a slice of an Array. The rank of the tile slice is the
@@ -840,49 +846,140 @@ namespace TiledArray {
       decltype(dot(left.tensor(), right.tensor()))
   { return dot(left.tensor(), right.tensor()); }
 
+  // Tile arithmetic operators -------------------------------------------------
 
 
+  /// Add tiles operator
+
+  /// \tparam Left The left-hand tensor type
+  /// \tparam Right The right-hand tensor type
+  /// \param left The left-hand tile
+  /// \param right The right-hand tile
+  /// \return The sum of the \c left and \c right tiles
   template <typename Left, typename Right>
-  inline auto operator+(const Tile<Left>&left, const Tile<Right>& right) ->
+  inline auto operator+(const Tile<Left>& left, const Tile<Right>& right) ->
       decltype(add(left, right))
   { return add(left, right); }
 
+  /// In-place add tile operator
+
+  /// Add the elements of the \c right tile to that of the \c left tile.
+  /// \tparam Left The left-hand tensor type
+  /// \tparam Right The right-hand tensor type
+  /// \param left The left-hand tile
+  /// \param right The right-hand tile
+  /// \return The \c left tile, <tt>left[i] += right[i]</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left>& operator+=(Tile<Left>& left, const Tile<Right>& right)
+  { return add_to(left, right); }
+
+  /// Subtract tiles operator
+
+  /// \tparam Left The left-hand tensor type
+  /// \tparam Right The right-hand tensor type
+  /// \param left The left-hand tile
+  /// \param right The right-hand tile
+  /// \return The difference of the \c left and \c right tiles
   template <typename Left, typename Right>
   inline auto operator-(const Tile<Left>& left, const Tile<Right>& right) ->
       decltype(subt(left, right))
   { return subt(left, right); }
 
+  /// In-place subtract tile operator
+
+  /// Subtract the elements of the \c right tile from that of the \c left tile.
+  /// \tparam Left The left-hand tensor type
+  /// \tparam Right The right-hand tensor type
+  /// \param left The left-hand tile
+  /// \param right The right-hand tile
+  /// \return The \c left tile, <tt>left[i] -= right[i]</tt>
   template <typename Left, typename Right>
-  auto operator*(const Tile<Left>& left, const Tile<Right>& right) ->
+  inline Tile<Left>& operator-=(Tile<Left>& left, const Tile<Right>& right)
+  { return subt_to(left, right); }
+
+  /// Product tiles operator
+
+  /// \tparam Left The left-hand tensor type
+  /// \tparam Right The right-hand tensor type
+  /// \param left The left-hand tile
+  /// \param right The right-hand tile
+  /// \return The product of the \c left and \c right tiles
+  template <typename Left, typename Right>
+  inline auto operator*(const Tile<Left>& left, const Tile<Right>& right) ->
       decltype(mult(left, right))
   { return mult(left, right); }
 
+  /// Scale tile operator
+
+  /// \tparam Left The left-hand tensor type
+  /// \tparam Right The right-hand scalar type
+  /// \param left The left-hand tile
+  /// \param right The right-hand scaling factor
+  /// \return The \c left tile scaled by \c right
   template <typename Left, typename Right,
       enable_if_t<detail::is_numeric<Right>::value>* = nullptr>
-  auto operator*(const Tile<Left>& left, const Right right) ->
+  inline auto operator*(const Tile<Left>& left, const Right right) ->
       decltype(scale(left, right))
   { return scale(left, right); }
 
+  /// Scale tile operator
+
+  /// \tparam Left The left-hand scalar type
+  /// \tparam Right The right-hand scalar type
+  /// \param left The left-hand scaling factor
+  /// \param right The right-hand tile
+  /// \return The \c right tile scaled by \c left
   template <typename Left, typename Right,
       enable_if_t<TiledArray::detail::is_numeric<Left>::value>* = nullptr>
-  auto operator*(const Left left, const Tile<Right>& right) ->
+  inline auto operator*(const Left left, const Tile<Right>& right) ->
       decltype(scale(right, left))
   { return scale(right, left); }
 
+  /// In-place product tile operator
+
+  /// Multiply the elements of the \c right tile by that of the \c left tile.
+  /// \tparam Left The left-hand tensor type
+  /// \tparam Right The right-hand tensor type
+  /// \param left The left-hand tile
+  /// \param right The right-hand tile
+  /// \return The \c left tile, <tt>left[i] *= right[i]</tt>
+  template <typename Left, typename Right>
+  inline Tile<Left>& operator*=(Tile<Left>& left, const Tile<Right>& right)
+  { return mult_to(left, right); }
+
+  /// Negate tile operator
+
+  /// \tparam Arg The argument tensor type
+  /// \param arg The argument tile
+  /// \return A negated copy of \c arg
   template <typename Arg>
   inline auto operator-(const Tile<Arg>& arg) -> decltype(neg(arg))
   { return neg(arg); }
 
+  /// Permute tile operator
+
+  /// \tparam Arg The argument tensor type
+  /// \param perm The permutation to be applied to \c arg
+  /// \param arg The argument tile
+  /// \return A permuted copy of \c arg
   template <typename Arg>
   inline auto operator*(const Permutation& perm, Tile<Arg> const arg) ->
       decltype(permute(arg, perm))
   { return permute(arg, perm); }
 
+  /// Tile output stream operator
+
+  /// \tparam T The tensor type
+  /// \param os The output stream
+  /// \param tile The tile to be printted
+  /// \return The modified output stream
   template <typename T>
   inline std::ostream &operator<<(std::ostream &os, const Tile<T>& tile) {
     os << tile.tensor();
     return os;
   }
+
+  /** @}*/
 
 }  // namespace TiledArray
 
