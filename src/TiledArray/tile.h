@@ -120,6 +120,56 @@ namespace TiledArray {
     { return std::end(tensor()); }
 
 
+    // Dimension information accessors -----------------------------------------
+
+    /// Size accessors
+
+    /// \return The number of elements in the tensor
+    auto size() const -> decltype(tensor().size())
+    { return tensor().size(); }
+
+    /// Range accessor
+
+    /// \return An object describes the upper and lower bounds of  the tensor data
+    auto range() const -> decltype(tensor().range())
+    { return tensor().range(); }
+
+
+    // Element accessors -------------------------------------------------------
+
+    /// Const element accessor via subscript operator
+
+    /// \param i The ordinal index of the element to be returned
+    /// \return The i-th element of the tensor
+    auto operator[](std::size_t i) const -> decltype(tensor()[i])
+    { return tensor()[i]; }
+
+    /// Element accessor via subscript operator
+
+    /// \param i The ordinal index of the element to be returned
+    /// \return The i-th element of the tensor
+    auto operator[](std::size_t i) -> decltype(tensor()[i])
+    { return tensor()[i]; }
+
+    /// Const element accessor via parentheses operator
+
+    /// \tparam I The set of coordinate index types (integral types)
+    /// \param i The set of coordinate indices of the tile element
+    /// \return The element of the tensor at the coordinate (i...)
+    template <typename... I>
+    auto operator()(const I... i) const -> decltype(tensor()(i...))
+    { return tensor()(i...); }
+
+    /// Element accessor via parentheses operator
+
+    /// \tparam I The set of coordinate index types (integral types)
+    /// \param i The set of coordinate indices of the tile element
+    /// \return The element of the tensor at the coordinate (i...)
+    template <typename... I>
+    auto operator()(const I... i) -> decltype(tensor()(i...))
+    { return tensor()(i...); }
+
+
     // Serialization -----------------------------------------------------------
 
     template <typename Archive,
