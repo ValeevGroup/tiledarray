@@ -22,6 +22,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include <sstream>
+#include <numeric>
 
 template <typename SizeArray>
 inline std::size_t calc_volume(const SizeArray& size) {
@@ -106,6 +107,14 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.start(), r4.start() + r4.dim(), start.begin(), start.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.finish(), r4.finish() + r4.dim(), finish.begin(), finish.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.size(), r4.size() + r4.dim(), size.begin(), size.end());
+  BOOST_CHECK_EQUAL(r4.volume(), volume);
+
+
+  BOOST_REQUIRE_NO_THROW(Range r5(p2)); // Copy Constructor
+  Range r5(p2);
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.start(), r5.start() + r5.dim(), p0.begin(), p0.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.finish(), r5.finish() + r5.dim(), p2.begin(), p2.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.size(), r5.size() + r5.dim(), p2.begin(), p2.end());
   BOOST_CHECK_EQUAL(r4.volume(), volume);
 
 #ifdef TA_EXCEPTION_ERROR
