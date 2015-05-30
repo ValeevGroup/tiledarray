@@ -49,8 +49,6 @@ BOOST_AUTO_TEST_CASE( block )
       for(unsigned int i = 0u; i < upper.size(); ++i)
         ++(upper[i]);
 
-      std::cout << "lower = " << lower << "\nupper = " << upper << "\n";
-
       if(std::equal(lower.begin(), lower.end(), upper.begin(),
           [] (std::size_t l, std::size_t r) { return l < r; })) {
 
