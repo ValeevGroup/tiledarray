@@ -170,6 +170,19 @@ namespace TiledArray {
 
       return result + block_offset_ - offset_;
     }
+
+    /// Resize of block range is not supported
+    template <typename Index>
+    BlockRange& resize(const Index&, const Index&) {
+      // This function is here to shadow the base class resize function
+      TA_EXCEPTION("BlockRange::resize() is not supported");
+      return *this;
+    }
+
+    void swap(BlockRange& other) {
+      Range::swap(other);
+      std::swap(block_offset_, other.block_offset_);
+    }
   }; // BlockRange
 
 
