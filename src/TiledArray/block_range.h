@@ -153,13 +153,11 @@ namespace TiledArray {
       size_type result = 0ul;
 
       // Get pointers to the data
-      const size_type * restrict const lower = data_;
       const size_type * restrict const size = data_ + rank_ + rank_;
       const size_type * restrict const stride = size + rank_;
 
       // Compute the coordinate index of o in range.
       for(int i = int(rank_) - 1; i >= 0; --i) {
-        const size_type lower_i = lower[i];
         const size_type size_i = size[i];
         const size_type stride_i = stride[i];
 
