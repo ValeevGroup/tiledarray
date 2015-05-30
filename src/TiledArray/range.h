@@ -647,6 +647,7 @@ namespace TiledArray {
     void swap(Range_& other) {
       // Get temp data
       std::swap(data_, other.data_);
+      std::swap(offset_, other.offset_);
       std::swap(volume_, other.volume_);
       std::swap(rank_, other.rank_);
     }
