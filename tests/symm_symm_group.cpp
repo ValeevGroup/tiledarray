@@ -47,12 +47,12 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(SymmGroup S(degree));
     SymmGroup S(degree);
 
-    std::cout << "S(" << S.degree() << ")\n"
-        << "  order = " << S.order() << "\n"
-        << "  elements = {\n";
-    for(unsigned int i = 0u; i < S.order(); ++i)
-      std::cout << "    " << S[i] << "\n";
-    std::cout << "}\n";
+//    std::cout << "S(" << S.degree() << ")\n"
+//        << "  order = " << S.order() << "\n"
+//        << "  elements = {\n";
+//    for(unsigned int i = 0u; i < S.order(); ++i)
+//      std::cout << "    " << S[i] << "\n";
+//    std::cout << "}\n";
 
     // Check that the group has the correct degree
     BOOST_CHECK_EQUAL(S.degree(), degree);
