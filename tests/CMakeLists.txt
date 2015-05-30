@@ -39,6 +39,14 @@ set(ta_test_src_files  ta_test.cpp
     range.cpp
     block_range.cpp
     perm_index.cpp
+    transform_iterator.cpp
+    bitset.cpp
+    math_outer.cpp
+    math_partial_reduce.cpp
+    math_transpose.cpp
+    math_blas.cpp
+    tensor.cpp
+    tensor_view.cpp
     tiled_range1.cpp
     tiled_range.cpp
     blocked_pmap.cpp
@@ -46,14 +54,7 @@ set(ta_test_src_files  ta_test.cpp
     cyclic_pmap.cpp
     replicated_pmap.cpp
     dense_shape.cpp
-    math_outer.cpp
-    math_partial_reduce.cpp
-    transform_iterator.cpp
-    bitset.cpp
     sparse_shape.cpp
-    math_transpose.cpp
-    math_blas.cpp
-    tensor.cpp
     distributed_storage.cpp
     tensor_impl.cpp
     array_impl.cpp
