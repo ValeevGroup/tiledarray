@@ -24,7 +24,7 @@
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/transpose.h>
-//#include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/tensor/utility.h>
 
 namespace TiledArray {
 
@@ -621,7 +621,7 @@ namespace TiledArray {
     Tensor_ binary(const Tensor<U, AU>& other, const Op& op) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(! other.empty());
-      TA_ASSERT(pimpl_->range_ == other.range());
+      TA_ASSERT(detail::is_range_congruent(*this, other));
 
       return Tensor_(*this, other, op);
     }
@@ -646,7 +646,7 @@ namespace TiledArray {
     Tensor_ binary(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(! other.empty());
-      TA_ASSERT(pimpl_->range_ == other.range());
+      TA_ASSERT(detail::is_range_congruent(*this, other));
       TA_ASSERT(perm.dim() == pimpl_->range_.dim());
 
       return Tensor_(*this, other, op, perm);
@@ -669,7 +669,7 @@ namespace TiledArray {
     Tensor_& inplace_binary(const Tensor<U, AU>& other, const Op& op) {
       TA_ASSERT(pimpl_);
       TA_ASSERT(! other.empty());
-      TA_ASSERT(pimpl_->range_ == other.range());
+      TA_ASSERT(detail::is_range_congruent(*this, other));
       TA_ASSERT(pimpl_->data_ != other.data());
 
       math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_, other.data());
