@@ -72,6 +72,24 @@ namespace TiledArray {
     inline auto data(T& t) -> decltype(t.data())
     { return t.data(); }
 
+
+    /// Pointer data adapter
+
+    /// \tparam T The container type
+    /// \param t A pointer
+    /// \return \c t (pass through)
+    template <typename T>
+    inline T* data(T* const t) { return t; }
+
+
+    /// Pointer data adapter
+
+    /// \tparam T The container type
+    /// \param t A pointer
+    /// \return \c t (pass through)
+    template <typename T>
+    inline const T* data(const T* const t) { return t; }
+
     /// Container data pointer accessor
 
     /// \tparam T The container type
