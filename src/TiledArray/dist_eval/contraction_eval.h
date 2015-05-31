@@ -958,14 +958,22 @@ namespace TiledArray {
             const madness::Group row_group = make_row_group(k);
             const ProcessID group_root = get_row_group_root(k, row_group);
 
-            // Broadcast column k of left_.
-            for(; index < left_end_; index += left_stride_local_) {
-              if(left_.shape().is_zero(index)) continue;
+            if(row_group.size() > 1) {
+              // Broadcast column k of left_.
+              for(; index < left_end_; index += left_stride_local_) {
+                if(left_.shape().is_zero(index)) continue;
 
-              // Broadcast the tile
-              const madness::DistributedID key(DistEvalImpl_::id(), index);
-              auto tile = get_tile(left_, index);
-              TensorImpl_::get_world().gop.bcast(key, tile, group_root, row_group);
+                // Broadcast the tile
+                const madness::DistributedID key(DistEvalImpl_::id(), index);
+                auto tile = get_tile(left_, index);
+                TensorImpl_::get_world().gop.bcast(key, tile, group_root, row_group);
+              }
+            } else {
+              // Discard column k of left_.
+              for(; index < left_end_; index += left_stride_local_) {
+                if(left_.shape().is_zero(index)) continue;
+                left_.discard(index);
+              }
             }
 
             break;
@@ -993,14 +1001,22 @@ namespace TiledArray {
             const madness::Group col_group = make_col_group(k);
             const ProcessID group_root = get_col_group_root(k, col_group);
 
-            // Broadcast row k of right_.
-            for(; index < row_end; index += right_stride_local_) {
-              if(right_.shape().is_zero(index)) continue;
+            if(col_group.size() > 1) {
+              // Broadcast row k of right_.
+              for(; index < row_end; index += right_stride_local_) {
+                if(right_.shape().is_zero(index)) continue;
 
-              // Broadcast the tile
-              const madness::DistributedID key(DistEvalImpl_::id(), index + left_.size());
-              auto tile = get_tile(right_, index);
-              TensorImpl_::get_world().gop.bcast(key, tile, group_root, col_group);
+                // Broadcast the tile
+                const madness::DistributedID key(DistEvalImpl_::id(), index + left_.size());
+                auto tile = get_tile(right_, index);
+                TensorImpl_::get_world().gop.bcast(key, tile, group_root, col_group);
+              }
+            } else {
+              // Broadcast row k of right_.
+              for(; index < row_end; index += right_stride_local_) {
+                if(right_.shape().is_zero(index)) continue;
+                right_.discard(index);
+              }
             }
 
             break;
@@ -1760,6 +1776,14 @@ namespace TiledArray {
         const madness::DistributedID key(DistEvalImpl_::id(), i);
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
       }
+
+
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard_tile(size_type i) const { get_tile(i); }
 
     private:
 

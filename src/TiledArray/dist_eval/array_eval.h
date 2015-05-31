@@ -195,6 +195,13 @@ namespace TiledArray {
         }
       }
 
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard_tile(size_type i) const { }
+
     private:
 
       value_type make_tile(const typename array_type::value_type& tile, const bool consume) const {

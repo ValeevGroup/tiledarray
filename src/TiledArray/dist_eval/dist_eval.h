@@ -127,8 +127,14 @@ namespace TiledArray {
 
       /// \param i The index of the tile
       /// \return Tile at index i
-      /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
       virtual Future<value_type> get_tile(size_type i) const = 0;
+
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard_tile(size_type i) const = 0;
 
       /// Set tensor value
 
@@ -321,6 +327,13 @@ namespace TiledArray {
       /// \param i The tile index
       /// \return Tile \c i
       future get(size_type i) const { return pimpl_->get_tile(i); }
+
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard(size_type i) const { pimpl_->discard_tile(i); }
 
       /// World object accessor
 
