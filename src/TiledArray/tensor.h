@@ -203,6 +203,17 @@ namespace TiledArray {
         // transposes. The data layout of the input and output matrices are
         // chosen such that they both contain stride one dimensions.
 
+        // Here we partition the n dimensional index space, I, of the permute
+        // tensor with up to four parts
+        // {I_1, ..., I_i, I_i+1, ..., I_j, I_j+1, ..., I_k, I_k+1, ..., I_n}
+        // where the subrange {I_k+1, ..., I_n} is the (fused) inner dimension
+        // in the input tensor, and the subrange {I_i+1, ..., I_j} is the
+        // (fused) inner dimension in the output tensor that has been mapped to
+        // the input tensor. These ranges are used to form a set of matrices in
+        // the input tensor that are transposed and copied output tensor. The
+        // remaining (fused) index ranges {I_1, ..., I_i} and {I_j+1, ..., I_k}
+        // are used to form the outer loop around the matrix transpose
+        // operations. These outer ranges may or may not be zero size.
         size_type other_fused_size[4];
         size_type other_fused_weight[4];
         fuse_dimensions(other_fused_size, other_fused_weight,
