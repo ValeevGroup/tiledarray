@@ -197,7 +197,6 @@ namespace TiledArray {
 
       /// This function handles the cleanup for tiles that are not needed in
       /// subsequent computation.
-      /// \param i The index of the tile
       virtual void discard_tile(size_type) const {
         const_cast<ArrayEvalImpl_*>(this)->notify();
       }
