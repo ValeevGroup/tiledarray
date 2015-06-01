@@ -35,6 +35,10 @@ namespace Eigen {
 
 namespace TiledArray {
 
+  // Forward declaration
+  template <typename> class Tile;
+
+
   template <bool condition, typename T = void>
   using enable_if_t = typename std::enable_if<condition, T>::type;
 
@@ -123,6 +127,11 @@ namespace TiledArray {
         public scalar_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
     { };
 
+    template <typename T>
+    struct scalar_type<Tile<T>, void> :
+        public scalar_type<typename Tile<T>::tensor_type>
+    { };
+
     template <typename PlainObjectType, int MapOptions, typename StrideType>
     struct scalar_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
         public scalar_type<PlainObjectType>
@@ -144,17 +153,6 @@ namespace TiledArray {
         std::false_type>::type
     { };
 
-
-    /// Describes traits of nodes in TiledArray expressions
-    template <typename T, typename Enabler = void>
-    struct eval_trait {
-      typedef T type;
-    };
-
-    template <typename T>
-    struct eval_trait<T, typename std::enable_if<is_type<typename T::eval_type>::value>::type>  {
-        typedef typename T::eval_type type;
-    };
 
     /// Remove const, volatile, and reference qualifiers.
     template <typename T>

@@ -105,6 +105,13 @@ namespace TiledArray {
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
       }
 
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard_tile(size_type i) const { get_tile(i); }
+
     private:
 
       /// Task function for evaluating tiles
@@ -139,8 +146,6 @@ namespace TiledArray {
             const typename right_type::value_type,
                   typename right_type::value_type>::type &
                 right_argument_type;
-        typedef ZeroTensor<typename left_type::value_type::value_type> zero_left_type;
-        typedef ZeroTensor<typename right_type::value_type::value_type> zero_right_type;
 
         size_type task_count = 0ul;
 
@@ -175,12 +180,12 @@ namespace TiledArray {
               // Schedule tile evaluation task
               if(left_.is_zero(index)) {
                 TensorImpl_::get_world().taskq.add(self,
-                  & BinaryEvalImpl_::template eval_tile<const zero_left_type, right_argument_type>,
-                  target_index, zero_left_type(), right_.get(index));
+                  & BinaryEvalImpl_::template eval_tile<const ZeroTensor, right_argument_type>,
+                  target_index, ZeroTensor(), right_.get(index));
               } else if(right_.is_zero(index)) {
                 TensorImpl_::get_world().taskq.add(self,
-                  & BinaryEvalImpl_::template eval_tile<left_argument_type, const zero_right_type>,
-                  target_index, left_.get(index), zero_right_type());
+                  & BinaryEvalImpl_::template eval_tile<left_argument_type, const ZeroTensor>,
+                  target_index, left_.get(index), ZeroTensor());
               } else {
                 TensorImpl_::get_world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
@@ -191,9 +196,9 @@ namespace TiledArray {
             } else {
               // Cleanup unused tiles
               if(! left_.is_zero(index))
-                left_.get(index);
+                left_.discard(index);
               if(! right_.is_zero(index))
-                right_.get(index);
+                right_.discard(index);
             }
           }
         }

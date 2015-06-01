@@ -48,7 +48,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
-      typedef typename TiledArray::detail::eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
       typedef Op<value_type, typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
           EngineTrait<Right>::consumable> op_type; ///< The tile operation type
@@ -226,7 +226,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the tiled range
       /// \return The result shape
       trange_type make_trange(const Permutation& perm) const {
-        return perm ^ left_.trange();
+        return perm * left_.trange();
       }
 
       /// Construct the distributed evaluator for this expression

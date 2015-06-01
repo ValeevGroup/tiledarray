@@ -27,16 +27,13 @@
 #define TILEDARRAY_TILE_OP_TYPE_TRAITS_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
+#include <TiledArray/tile_op/eval_trait.h>
 
 namespace TiledArray {
   namespace detail {
 
     // Forward declaration
     template <typename, typename> class LazyArrayTile;
-
-  }  // namespace detail
-
-  namespace math {
 
     /// Detect lazy evaluation tiles
 
@@ -46,7 +43,7 @@ namespace TiledArray {
     /// \tparam T The tile type to test
     template <typename T>
     struct is_lazy_tile :
-        public std::integral_constant<bool, ! std::is_same<T, typename TiledArray::detail::eval_trait<T>::type>::value>
+        public std::integral_constant<bool, ! std::is_same<T, typename eval_trait<T>::type>::value>
     { }; // struct is_lazy_tile
 
     /// Detect tiles used by \c ArrayEvalImpl

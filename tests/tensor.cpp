@@ -135,12 +135,12 @@ BOOST_AUTO_TEST_CASE( permute_constructor ) {
   // Check that range data is correct.
   BOOST_CHECK_NE(x.data(), t.data());
   BOOST_CHECK_EQUAL(x.size(), r.volume());
-  BOOST_CHECK_EQUAL(x.range(), perm ^ r);
+  BOOST_CHECK_EQUAL(x.range(), perm * r);
   BOOST_CHECK_EQUAL(std::distance(x.begin(), x.end()), r.volume());
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm ^ t.range().idx(i));
+    std::size_t pi = x.range().ord(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], t[i]);
   }
 }
@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
     BOOST_CHECK(! px.empty());
 
     for(std::size_t i = 0ul; i < x.size(); ++i) {
-      std::size_t pi = px.range().ord(perm ^ x.range().idx(i));
+      std::size_t pi = px.range().ord(perm * x.range().idx(i));
       BOOST_CHECK_EQUAL(px[pi], x[i]);
     }
   }
@@ -199,12 +199,12 @@ BOOST_AUTO_TEST_CASE( unary_permute_constructor ) {
   // Check that range data is correct.
   BOOST_CHECK_NE(x.data(), t.data());
   BOOST_CHECK_EQUAL(x.size(), r.volume());
-  BOOST_CHECK_EQUAL(x.range(), perm ^ r);
+  BOOST_CHECK_EQUAL(x.range(), perm * r);
   BOOST_CHECK_EQUAL(std::distance(x.begin(), x.end()), r.volume());
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm ^ t.range().idx(i));
+    std::size_t pi = x.range().ord(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], 47 * t[i]);
   }
 }
@@ -244,12 +244,12 @@ BOOST_AUTO_TEST_CASE( binary_perm_constructor ) {
   // Check that range data is correct.
   BOOST_CHECK_NE(x.data(), t.data());
   BOOST_CHECK_EQUAL(x.size(), r.volume());
-  BOOST_CHECK_EQUAL(x.range(), perm ^ r);
+  BOOST_CHECK_EQUAL(x.range(), perm * r);
   BOOST_CHECK_EQUAL(std::distance(x.begin(), x.end()), r.volume());
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm ^ t.range().idx(i));
+    std::size_t pi = x.range().ord(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], t[i] - s[i]);
   }
 }
@@ -409,12 +409,12 @@ BOOST_AUTO_TEST_CASE( unary_permute_op ) {
   // Check that range data is correct.
   BOOST_CHECK_NE(x.data(), t.data());
   BOOST_CHECK_EQUAL(x.size(), r.volume());
-  BOOST_CHECK_EQUAL(x.range(), perm ^ r);
+  BOOST_CHECK_EQUAL(x.range(), perm * r);
   BOOST_CHECK_EQUAL(std::distance(x.begin(), x.end()), r.volume());
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm ^ t.range().idx(i));
+    std::size_t pi = x.range().ord(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], 47 * t[i]);
   }
 }
@@ -455,12 +455,12 @@ BOOST_AUTO_TEST_CASE( binary_perm_op ) {
   // Check that range data is correct.
   BOOST_CHECK_NE(x.data(), t.data());
   BOOST_CHECK_EQUAL(x.size(), r.volume());
-  BOOST_CHECK_EQUAL(x.range(), perm ^ r);
+  BOOST_CHECK_EQUAL(x.range(), perm * r);
   BOOST_CHECK_EQUAL(std::distance(x.begin(), x.end()), r.volume());
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm ^ t.range().idx(i));
+    std::size_t pi = x.range().ord(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], t[i] - s[i]);
   }
 }

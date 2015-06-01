@@ -22,6 +22,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include <sstream>
+#include <numeric>
 
 template <typename SizeArray>
 inline std::size_t calc_volume(const SizeArray& size) {
@@ -108,6 +109,14 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.size(), r4.size() + r4.dim(), size.begin(), size.end());
   BOOST_CHECK_EQUAL(r4.volume(), volume);
 
+
+  BOOST_REQUIRE_NO_THROW(Range r5(p2)); // Copy Constructor
+  Range r5(p2);
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.start(), r5.start() + r5.dim(), p0.begin(), p0.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.finish(), r5.finish() + r5.dim(), p2.begin(), p2.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.size(), r5.size() + r5.dim(), p2.begin(), p2.end());
+  BOOST_CHECK_EQUAL(r4.volume(), volume);
+
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(Range(p2, p2), Exception); // Zero Size Construction
 #endif // TA_EXCEPTION_ERROR
@@ -188,7 +197,7 @@ BOOST_AUTO_TEST_CASE( permutation )
   Range r1(s, f);
   // create a reverse order permutation
   Permutation p(a);
-  Range r2 = p ^ r1;
+  Range r2 = p * r1;
   Range r3 = r1;
 
   // check start, finish, size, volume, and weight of permuted range
@@ -206,7 +215,7 @@ BOOST_AUTO_TEST_CASE( permutation )
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.weight(), r2.weight() + r2.dim(), w.begin(), w.end());
 
   // check for correct finish permutation
-  BOOST_CHECK_EQUAL(r3 ^= p, r2);
+  BOOST_CHECK_EQUAL(r3 *= p, r2);
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.start(), r3.start() + r3.dim(), r2.start(), r2.start() + r2.dim());
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.finish(), r3.finish() + r3.dim(), r2.finish(), r2.finish() + r2.dim());
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.size(), r3.size() + r3.dim(), r2.size(), r2.size() + r2.dim());

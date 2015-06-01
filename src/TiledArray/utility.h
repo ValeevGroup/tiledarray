@@ -27,8 +27,12 @@
 #define TILEDARRAY_UTILITY_H__INCLUDED
 
 #include <TiledArray/madness.h>
-#include <iostream>
+#include <TiledArray/error.h>
+#include <TiledArray/type_traits.h>
+#include <iosfwd>
 #include <vector>
+#include <array>
+#include <initializer_list>
 
 namespace TiledArray {
   namespace detail {
@@ -45,11 +49,71 @@ namespace TiledArray {
     /// Array size accessor
 
     /// \tparam T The array type
+    /// \tparam N The size of the array
+    /// \return The size of c-stype array
+    template <typename T, std::size_t N>
+    inline constexpr std::size_t size(const std::array<T, N>&) { return N; }
+
+    /// Array size accessor
+
+    /// \tparam T The array type
     /// \param a An array object
     /// \return The size of array \c a
+    template <typename T,
+        enable_if_t<! std::is_array<T>::value>* = nullptr>
+    inline auto size(const T &a) -> decltype(a.size()) { return a.size(); }
+
+    /// Container data pointer accessor
+
+    /// \tparam T The container type
+    /// \param t A container object
+    /// \return A pointer to the first element of the container, \c v
     template <typename T>
-    inline typename std::enable_if<! std::is_array<T>::value, std::size_t>::type
-    size(const T &a) { return a.size(); }
+    inline auto data(T& t) -> decltype(t.data())
+    { return t.data(); }
+
+    /// Container data pointer accessor
+
+    /// \tparam T The container type
+    /// \param t A container object
+    /// \return A pointer to the first element of the container, \c v
+    template <typename T>
+    inline auto data(const T& t) -> decltype(t.data())
+    { return t.data(); }
+
+    /// Array data pointer accessor
+
+    /// \tparam T The array type
+    /// \tparam N The size of the array
+    /// \param a The c-style array object
+    /// \return A pointer to the first element of the array
+    template <typename T, std::size_t N>
+    inline T* data(T (&a)[N]) { return a; }
+
+    /// Array const data pointer accessor
+
+    /// \tparam T The array type
+    /// \tparam N The size of the array
+    /// \param a The c-style array object
+    /// \return A const pointer to the first element of the array, \c a
+    template <typename T, std::size_t N>
+    inline const T* data(const T (&a)[N]) { return a; }
+
+    /// Initializer list data pointer accessor
+
+    /// \tparam T The initializer list element type
+    /// \param l An initializer list object
+    /// \return A pointer to the first element of the initializer list, \c l
+    template <typename T>
+    inline T* data(std::initializer_list<T>& l) { return l.begin(); }
+
+    /// Initializer list const data pointer accessor
+
+    /// \tparam T The initializer list element type
+    /// \param l An initializer list object
+    /// \return A const pointer to the first element of the initializer list, \c l
+    template <typename T>
+    inline const T* data(const std::initializer_list<T>& l) { return l.begin(); }
 
     /// Print the content of an array like object
 

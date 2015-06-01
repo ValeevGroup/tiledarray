@@ -38,133 +38,143 @@ namespace TiledArray {
     typedef detail::RangeIterator<size_type, Range_> const_iterator; ///< Coordinate iterator
     friend class detail::RangeIterator<size_type, Range_>;
 
-  private:
+  protected:
 
-    size_type* data_; ///< An array that holds the dimension information of the
+    size_type* data_ = nullptr;
+                      ///< An array that holds the dimension information of the
                       ///< range. The layout of the array is:
                       ///< \code
-                      ///< { start[0],  ..., start[rank_ - 1],
-                      ///<   finish[0], ..., finish[rank_ - 1],
-                      ///<   size[0],   ..., size[rank_ - 1],
+                      ///< { lower[0],  ..., lower[rank_ - 1],
+                      ///<   upper[0],  ..., upper[rank_ - 1],
+                      ///<   extent[0], ..., extent[rank_ - 1],
                       ///<   stride[0], ..., stride[rank_ - 1] }
                       ///< \endcode
-    size_type volume_; ///< Total number of elements
-    unsigned int rank_; ///< The rank (or number of dimensions) in the range
+    size_type offset_ = 0ul; ///< Ordinal index offset correction
+    size_type volume_ = 0ul; ///< Total number of elements
+    unsigned int rank_ = 0u; ///< The rank (or number of dimensions) in the range
 
+  private:
     struct Enabler {};
 
     /// Initialize range data from lower and upper bounds
 
     /// \tparam Index An array type
-    /// \param start The lower bound of the range
-    /// \param finish The upper bound of the range
+    /// \param lower_bound The lower bound of the range
+    /// \param upper_bound The upper bound of the range
     /// \pre Assume \c rank_ is initialized to the rank of the range and
     /// \c data_ has been allocated to hold 4*rank_ elements
     /// \post \c data_ and \c volume_ are initialized with range dimension
     /// information.
     template <typename Index>
-    void init_range_data(const Index& start, const Index& finish) {
+    void init_range_data(const Index& lower_bound, const Index& upper_bound) {
       // Construct temp pointers
-      size_type* restrict const start_ptr  = data_;
-      size_type* restrict const finish_ptr = start_ptr + rank_;
-      size_type* restrict const size_ptr   = finish_ptr + rank_;
-      size_type* restrict const weight_ptr = size_ptr + rank_;
+      size_type* restrict const lower  = data_;
+      size_type* restrict const upper  = lower + rank_;
+      size_type* restrict const extent = upper + rank_;
+      size_type* restrict const stride = extent + rank_;
 
       // Set the volume seed
       volume_ = 1ul;
+      offset_ = 0ul;
 
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check input dimensions
-        TA_ASSERT(start[i] >= 0ul);
-        TA_ASSERT(start[i] < finish[i]);
+        TA_ASSERT(lower_bound[i] >= 0ul);
+        TA_ASSERT(lower_bound[i] < upper_bound[i]);
 
-        // Compute data for element i of start, finish, and size
-        const size_type start_i  = start[i];
-        const size_type finish_i = finish[i];
-        const size_type size_i   = finish_i - start_i;
+        // Compute data for element i of lower, upper, and extent
+        const size_type lower_bound_i = lower_bound[i];
+        const size_type upper_bound_i = upper_bound[i];
+        const size_type extent_i      = upper_bound_i - lower_bound_i;
 
-        start_ptr[i]  = start_i;
-        finish_ptr[i] = finish_i;
-        size_ptr[i]   = size_i;
-        weight_ptr[i] = volume_;
-        volume_      *= size_i;
+        lower[i]  = lower_bound_i;
+        upper[i]  = upper_bound_i;
+        extent[i] = extent_i;
+        stride[i] = volume_;
+        offset_  += lower_bound_i * volume_;
+        volume_  *= extent_i;
       }
     }
 
     /// Initialize range data from a size array
 
     /// \tparam Index An array type
-    /// \param size The upper bound of the range
+    /// \param upper_bound The upper bound of the range
     /// \pre Assume \c rank_ is initialized to the rank of the range and
     /// \c data_ has been allocated to hold 4*rank_ elements
     /// \post \c data_ and \c volume_ are initialized with range dimension
     /// information.
     template <typename Index>
-    void init_range_data(const Index& size) {
+    void init_range_data(const Index& upper_bound) {
       // Construct temp pointers
-      size_type* restrict const start_ptr  = data_;
-      size_type* restrict const finish_ptr = start_ptr + rank_;
-      size_type* restrict const size_ptr   = finish_ptr + rank_;
-      size_type* restrict const weight_ptr = size_ptr + rank_;
+      size_type* restrict const lower  = data_;
+      size_type* restrict const upper  = lower + rank_;
+      size_type* restrict const extent = upper + rank_;
+      size_type* restrict const stride = extent + rank_;
 
-      // Set the volume seed
+      // Set the offset and volume initial values
       volume_ = 1ul;
+      offset_ = 0ul;
 
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
-        // Check bounds of the input size
-        TA_ASSERT(size[i] > 0ul);
+        // Check bounds of the input extent
+        TA_ASSERT(upper_bound[i] > 0ul);
 
-        // Get size i
-        const size_type size_i = size[i];
+        // Get extent i
+        const size_type extent_i = upper_bound[i];
 
-        start_ptr[i]  = 0ul;
-        finish_ptr[i] = size_i;
-        size_ptr[i]   = size_i;
-        weight_ptr[i] = volume_;
-        volume_      *= size_i;
+        lower[i]  = 0ul;
+        upper[i]  = extent_i;
+        extent[i] = extent_i;
+        stride[i] = volume_;
+        volume_  *= extent_i;
       }
     }
 
     /// Initialize permuted range data from lower and upper bounds
 
-    /// \param other_start The lower bound of the unpermuted range
-    /// \param other_finish The upper bound of the unpermuted range
+    /// \param other_lower_bound The lower bound of the unpermuted range
+    /// \param other_upper_bound The upper bound of the unpermuted range
     /// \pre Assume \c rank_ is initialized to the rank of the range and
     /// \c data_ has been allocated to hold 4*rank_ elements
-    /// \post \c data_ and \c volume_ are initialized with the permuted range
-    /// dimension information from \c other_start and \c other_finish.
+    /// \post \c data_, \c offset_, and \c volume_ are initialized with the
+    /// permuted range dimension information from \c other_lower_bound and
+    /// \c other_upper_bound.
     void init_range_data(const Permutation& perm,
-        const size_type* restrict const other_start,
-        const size_type* restrict const other_finish)
+        const size_type* restrict const other_lower_bound,
+        const size_type* restrict const other_upper_bound)
     {
       // Create temporary pointers to this range data
-      size_type* restrict const start_ptr  = data_;
-      size_type* restrict const finish_ptr = start_ptr + rank_;
-      size_type* restrict const size_ptr   = finish_ptr + rank_;
-      size_type* restrict const weight_ptr = size_ptr + rank_;
+      size_type* restrict const lower  = data_;
+      size_type* restrict const upper  = lower + rank_;
+      size_type* restrict const extent = upper + rank_;
+      size_type* restrict const stride = extent + rank_;
 
-      // Copy the permuted start, finish, and size into this range.
+      // Copy the permuted lower, upper, and extent into this range.
       for(unsigned int i = 0u; i < rank_; ++i) {
         const size_type perm_i = perm[i];
 
-        // Get the start, finish, and size from other for rank i.
-        const size_type other_start_i = other_start[i];
-        const size_type other_finish_i = other_finish[i];
-        const size_type other_size_i = other_finish_i - other_start_i;
+        // Get the lower bound, upper bound, and extent from other for rank i.
+        const size_type other_lower_bound_i = other_lower_bound[i];
+        const size_type other_upper_bound_i = other_upper_bound[i];
+        const size_type other_extent_i = other_upper_bound_i - other_lower_bound_i;
 
-        // Store the permuted start, finish and size
-        start_ptr[perm_i]  = other_start_i;
-        finish_ptr[perm_i] = other_finish_i;
-        size_ptr[perm_i]   = other_size_i;
+        // Store the permuted lower bound, upper bound, and extent
+        lower[perm_i]  = other_lower_bound_i;
+        upper[perm_i] = other_upper_bound_i;
+        extent[perm_i]   = other_extent_i;
       }
 
-      // Recompute weight and volume
+      // Recompute stride, offset, and volume
       volume_ = 1ul;
+      offset_ = 0ul;
       for(int i = int(rank_) - 1; i >= 0; --i) {
-        weight_ptr[i] = volume_;
-        volume_ *= size_ptr[i];
+        const size_type lower_i = lower[i];
+        stride[i] = volume_;
+        offset_ += lower_i * volume_;
+        volume_ *= extent[i];
       }
     }
 
@@ -173,84 +183,73 @@ namespace TiledArray {
     /// Default constructor
 
     /// \post Range has zero rank, volume, and size.
-    Range() : data_(nullptr), volume_(0ul), rank_(0u) { }
+    Range() { }
 
     /// Construct range defined by an upper and lower bound
 
     /// \tparam Index An array type
-    /// \param start The lower bound of the N-dimensional range
-    /// \param finish The upper bound of the N-dimensional range
-    /// \post Range has an lower and upper bound of \c start and \c finish.
-    /// \throw TiledArray::Exception When the size of \c start is not equal to
-    /// that of \c finish.
-    /// \throw TiledArray::Exception When start[i] >= finish[i]
+    /// \param lower_bound The lower bound of the N-dimensional range
+    /// \param upper_bound The upper bound of the N-dimensional range
+    /// \post Range has an lower and upper bound of \c lower_bound and
+    /// \c upper_bound.
+    /// \throw TiledArray::Exception When the size of \c lower_bound is not
+    /// equal to that of \c upper_bound.
+    /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index,
         enable_if_t<! std::is_integral<Index>::value>* = nullptr>
-    Range(const Index& start, const Index& finish) :
-      data_(nullptr), volume_(0ul), rank_(0u)
-    {
-      const size_type n = detail::size(start);
-      TA_ASSERT(n == detail::size(finish));
+    Range(const Index& lower_bound, const Index& upper_bound) {
+      const size_type n = detail::size(lower_bound);
+      TA_ASSERT(n == detail::size(upper_bound));
       if(n) {
         // Initialize array memory
         data_ = new size_type[n << 2];
         rank_ = n;
-        init_range_data(start, finish);
+        init_range_data(lower_bound, upper_bound);
       }
     }
 
     /// Range constructor from size array
 
-    /// \tparam SizeArray An array type
-    /// \param size An array with the size of each dimension
-    /// \post Range has an lower bound of 0, and an upper bound of \c size.
+    /// \tparam Index An array type
+    /// \param upper_bound The upper bound of the N-dimensional range
+    /// \post Range has an lower bound of 0, and an upper bound of
+    /// \c upper_bound.
     /// \throw std::bad_alloc When memory allocation fails.
-    template <typename SizeArray,
-        enable_if_t<! std::is_integral<SizeArray>::value>* = nullptr>
-    explicit Range(const SizeArray& size) :
-      data_(nullptr), volume_(0ul), rank_(0u)
-    {
-      const size_type n = detail::size(size);
+    template <typename Index,
+        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+    explicit Range(const Index& upper_bound) {
+      const size_type n = detail::size(upper_bound);
       if(n) {
         // Initialize array memory
         data_ = new size_type[n << 2];
         rank_ = n;
-        init_range_data(size);
+        init_range_data(upper_bound);
       }
     }
 
     /// Range constructor from a pack of sizes for each dimension
 
-    /// \tparam Sizes A pack of unsigned integers
-    /// \param sizes A pack of sizes for dimensions
+    /// \tparam Index An array type
+    /// \param upper_bound The upper bound of the N-dimensional range
     /// \post Range has an lower bound of 0, and an upper bound of \c (sizes...).
     /// \throw std::bad_alloc When memory allocation fails.
-    template<typename... Sizes,
-        enable_if_t<detail::is_integral_list<Sizes...>::value>* = nullptr>
-    explicit Range(const Sizes... sizes) :
-      data_(nullptr), volume_(0ul), rank_(0u)
-    {
-      constexpr size_type n = sizeof...(Sizes);
-      size_type s[n] = {sizes...};
-
-      // Initialize array memory
-      data_ = new size_type[n << 2];
-      rank_ = n;
-      init_range_data(s);
-    }
+    template<typename... Index,
+        enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+    explicit Range(const Index... upper_bound) :
+      Range(std::array<size_t, sizeof...(Index)>{{upper_bound...}})
+    { }
 
     /// Copy Constructor
 
     /// \param other The range to be copied
     /// \throw std::bad_alloc When memory allocation fails.
-    Range(const Range_& other) :
-      data_(nullptr), volume_(0ul), rank_(0u)
-    {
+    Range(const Range_& other) {
       if(other.rank_ > 0ul) {
         data_ = new size_type[other.rank_ << 2];
-        rank_ = other.rank_;
+        offset_ = other.offset_;
         volume_ = other.volume_;
+        rank_ = other.rank_;
         memcpy(data_, other.data_, (sizeof(size_type) << 2) * other.rank_);
       }
     }
@@ -260,9 +259,11 @@ namespace TiledArray {
     /// \param other The range to be copied
     /// \throw std::bad_alloc When memory allocation fails.
     Range(Range_&& other) :
-      data_(other.data_), volume_(other.volume_), rank_(other.rank_)
+      data_(other.data_), offset_(other.offset_), volume_(other.volume_),
+      rank_(other.rank_)
     {
       other.data_ = nullptr;
+      other.offset_ = 0ul;
       other.volume_ = 0ul;
       other.rank_ = 0u;
     }
@@ -272,9 +273,7 @@ namespace TiledArray {
     /// \param perm The permutation applied to other
     /// \param other The range to be permuted and copied
     /// \throw std::bad_alloc When memory allocation fails.
-    Range(const Permutation& perm, const Range_& other) :
-      data_(nullptr), volume_(0ul), rank_(0u)
-    {
+    Range(const Permutation& perm, const Range_& other) {
       TA_ASSERT(perm.dim() == other.rank_);
 
       if(other.rank_ > 0ul) {
@@ -286,6 +285,7 @@ namespace TiledArray {
         } else {
           // Simple copy will due.
           memcpy(data_, other.data_, (sizeof(size_type) << 2) * rank_);
+          offset_ = other.offset_;
           volume_ = other.volume_;
         }
       }
@@ -306,7 +306,8 @@ namespace TiledArray {
         rank_ = other.rank_;
       }
       memcpy(data_, other.data_, (sizeof(size_type) << 2) * rank_);
-      volume_ = other.volume();
+      offset_ = other.offset_;
+      volume_ = other.volume_;
 
       return *this;
     }
@@ -318,10 +319,12 @@ namespace TiledArray {
     /// \throw nothing
     Range_& operator=(Range_&& other) {
       data_ = other.data_;
+      offset_ = other.offset_;
       volume_ = other.volume_;
       rank_ = other.rank_;
 
       other.data_ = nullptr;
+      other.offset_ = 0ul;
       other.volume_ = 0ul;
       other.rank_ = 0u;
 
@@ -343,7 +346,7 @@ namespace TiledArray {
     /// specification.
     unsigned int rank() const { return rank_; }
 
-    /// Range start coordinate accessor
+    /// Range lower bound coordinate accessor
 
     /// \return A pointer to an array that contains the lower bound of this range
     /// \throw nothing
@@ -358,7 +361,7 @@ namespace TiledArray {
     /// specification.
     size_array lobound() const { return size_array(data_, data_ + rank_); }
 
-    /// Range finish coordinate accessor
+    /// Range upper bound coordinate accessor
 
     /// \return A pointer to an array that contains the upper bound of this range
     /// \throw nothing
@@ -371,8 +374,8 @@ namespace TiledArray {
     /// \note Provided to satisfy the requirements of Tensor Working Group
     /// specification.
     size_array upbound() const {
-      const size_type* const finish = data_ + rank_;
-      return size_array(finish, finish + rank_);
+      const size_type* const upper = data_ + rank_;
+      return size_array(upper, upper + rank_);
     }
 
     /// Size accessor
@@ -392,7 +395,7 @@ namespace TiledArray {
       return size_array(size, size + rank_);
     }
 
-    /// Range weight accessor
+    /// Range stride accessor
 
     /// \return A \c size_array that contains the strides of each dimension
     /// \throw nothing
@@ -410,11 +413,13 @@ namespace TiledArray {
     /// \throw nothing
     size_type area() const { return volume_; }
 
+    size_type offset() const { return offset_; }
+
     /// Index iterator factory
 
     /// The iterator dereferences to an index. The order of iteration matches
     /// the data layout of a dense tensor.
-    /// \return An iterator that holds the start element index of a tensor
+    /// \return An iterator that holds the lower bound index of a tensor
     /// \throw nothing
     const_iterator begin() const { return const_iterator(data_, this); }
 
@@ -422,29 +427,33 @@ namespace TiledArray {
 
     /// The iterator dereferences to an index. The order of iteration matches
     /// the data layout of a dense tensor.
-    /// \return An iterator that holds the finish element index of a tensor
+    /// \return An iterator that holds the lower bound element index of a tensor
     /// \throw nothing
     const_iterator end() const { return const_iterator(data_ + rank_, this); }
+
+
 
     /// Check the coordinate to make sure it is within the range.
 
     /// \tparam Index The coordinate index array type
     /// \param index The coordinate index to check for inclusion in the range
-    /// \return \c true when \c i \c >= \c start and \c i \c < \c f, otherwise
-    /// \c false
-    /// \throw TildedArray::Exception When the dimension of this range is not
+    /// \return \c true when <tt>i >= start</tt> and <tt>i < finish</tt>,
+    /// otherwise \c false
+    /// \throw TildedArray::Exception When the rank of this range is not
     /// equal to the size of the index.
     template <typename Index,
         enable_if_t<! std::is_integral<Index>::value, bool>* = nullptr>
     bool includes(const Index& index) const {
       TA_ASSERT(detail::size(index) == rank_);
-      size_type* restrict const start_ptr  = data_;
-      size_type* restrict const finish_ptr = start_ptr + rank_;
+      const size_type* restrict const lower  = data_;
+      const size_type* restrict const upper = lower + rank_;
 
       bool result = (rank_ > 0u);
       for(unsigned int i = 0u; result && (i < rank_); ++i) {
         const size_type index_i = index[i];
-        result = result && (index_i >= start_ptr[i]) && (index_i < finish_ptr[i]);
+        const size_type lower_i = lower[i];
+        const size_type upper_i = upper[i];
+        result = result && (index_i >= lower_i) && (index_i < upper_i);
       }
 
       return result;
@@ -464,7 +473,8 @@ namespace TiledArray {
     template <typename... Index>
     typename std::enable_if<(sizeof...(Index) > 1ul), size_type>::type
     includes(const Index&... index) const {
-      return includes({index...});
+      const size_type i[sizeof...(Index)] = {index...};
+      return includes(i);
     }
 
 
@@ -473,40 +483,24 @@ namespace TiledArray {
 
     /// \param perm The permutation to be applied to this range
     /// \return A reference to this range
-    /// \throw TildedArray::Exception When the dimension of this range is not
+    /// \throw TildedArray::Exception When the rank of this range is not
     /// equal to the dimension of the permutation.
     /// \throw std::bad_alloc When memory allocation fails.
-    Range_& operator ^=(const Permutation& perm) {
-      TA_ASSERT(perm.dim() == rank_);
-
-      if(rank_ > 1ul) {
-        // Copy the start and finish data into a temporary array
-        size_type* restrict const start = new size_type[rank_ << 1];
-        const size_type* restrict const finish = start + rank_;
-        std::memcpy(start, data_, (sizeof(size_type) << 1) * rank_);
-
-        init_range_data(perm, start, finish);
-
-        // Cleanup old memory.
-        delete [] start;
-      }
-
-      return *this;
-    }
+    Range_& operator *=(const Permutation& perm);
 
     /// Resize range to a new upper and lower bound
 
     /// \tparam Index An array type
-    /// \param start The lower bounds of the N-dimensional range
-    /// \param finish The upper bound of the N-dimensional range
-    /// \throw TiledArray::Exception When the size of \c start is not equal to
-    /// that of \c finish.
-    /// \throw TiledArray::Exception When start[i] >= finish[i]
+    /// \param lower_bound The lower bounds of the N-dimensional range
+    /// \param upper_bound The upper bound of the N-dimensional range
+    /// \throw TiledArray::Exception When the size of \c lower_bound is not
+    /// equal to that of \c upper_bound.
+    /// \throw TiledArray::Exception When <tt>lower_bound[i] >= upper_bound[i]</tt>
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index>
-    Range_& resize(const Index& start, const Index& finish) {
-      const size_type n = detail::size(start);
-      TA_ASSERT(n == detail::size(finish));
+    Range_& resize(const Index& lower_bound, const Index& upper_bound) {
+      const size_type n = detail::size(lower_bound);
+      TA_ASSERT(n == detail::size(upper_bound));
 
       // Reallocate memory for range arrays
       if(rank_ != n) {
@@ -515,7 +509,7 @@ namespace TiledArray {
         rank_ = n;
       }
       if(n > 0ul)
-        init_range_data(start, finish);
+        init_range_data(lower_bound, upper_bound);
       else
         volume_ = 0ul;
 
@@ -534,7 +528,7 @@ namespace TiledArray {
       return index;
     }
 
-    /// calculate the ordinal index of \c i
+    /// calculate the ordinal index of \c index
 
     /// Convert a coordinate index to an ordinal index.
     /// \tparam Index A coordinate index type (array type)
@@ -547,20 +541,30 @@ namespace TiledArray {
       TA_ASSERT(detail::size(index) == rank_);
       TA_ASSERT(includes(index));
 
-      size_type* restrict const start_ptr  = data_;
-      size_type* restrict const weight_ptr = data_ + rank_ + rank_ + rank_;
+      size_type* restrict const stride = data_ + rank_ + rank_ + rank_;
 
       size_type result = 0ul;
-      for(unsigned int i = 0u; i < rank_; ++i)
-        result += (index[i] - start_ptr[i]) * weight_ptr[i];
+      for(unsigned int i = 0u; i < rank_; ++i) {
+        const auto index_i = index[i];
+        const size_type stride_i = stride[i];
+        result += index_i * stride_i;
+      }
 
-      return result;
+      return result - offset_;
     }
 
+    /// calculate the ordinal index of \c index
+
+    /// Convert a coordinate index to an ordinal index.
+    /// \tparam Index A coordinate index type (array type)
+    /// \param index The index to be converted to an ordinal index
+    /// \return The ordinal index of \c index
+    /// \throw When \c index is not included in this range.
     template <typename... Index,
         enable_if_t<(sizeof...(Index) > 1ul)>* = nullptr>
     size_type ord(const Index&... index) const {
-      return ord({index...});
+      const size_type temp_index[sizeof...(Index)] = { index... };
+      return ord(temp_index);
     }
 
     /// alias to ord<Index>(), to conform with the Tensor Working Group spec \sa ord()
@@ -583,17 +587,17 @@ namespace TiledArray {
 
       // Get pointers to the data
       size_type * restrict const result_data = & result.front();
-      size_type const * restrict const weight_ptr = data_ + rank_ + rank_ + rank_;
-      size_type const * restrict const start_ptr = data_;
+      size_type const * restrict const stride = data_ + rank_ + rank_ + rank_;
+      size_type const * restrict const lower = data_;
 
       // Compute the coordinate index of o in range.
       for(unsigned int i = 0u; i < rank_; ++i) {
-        const size_type weight_i = weight_ptr[i];
-        const size_type start_i = start_ptr[i];
+        const size_type stride_i = stride[i];
+        const size_type lower_i = lower[i];
 
         // Compute result index element i
-        const size_type result_i = (index / weight_i) + start_i;
-        index %= weight_i;
+        const size_type result_i = (index / stride_i) + lower_i;
+        index %= stride_i;
 
         // Store result
         result_data[i] = result_i;
@@ -618,31 +622,32 @@ namespace TiledArray {
     template <typename Archive,
         enable_if_t<madness::archive::is_input_archive<Archive>::value>* = nullptr>
     void serialize(const Archive& ar) {
-      // Get number of dimensions
-      unsigned int n = 0ul;
-      ar & n;
+      // Get rank
+      unsigned int rank = 0ul;
+      ar & rank;
 
       // Reallocate the array
-      const unsigned int four_n = n << 2;
-      if(rank_ != n) {
+      const unsigned int four_x_rank = rank << 2;
+      if(rank_ != rank) {
         delete [] data_;
-        data_ = (n > 0u ? new size_type[four_n] : nullptr);
-        rank_ = n;
+        data_ = (rank > 0u ? new size_type[four_x_rank] : nullptr);
+        rank_ = rank;
       }
 
       // Get range data
-      ar & madness::archive::wrap(data_, four_n) & volume_;
+      ar & madness::archive::wrap(data_, four_x_rank) & offset_ & volume_;
     }
 
     template <typename Archive,
         enable_if_t<madness::archive::is_output_archive<Archive>::value>* = nullptr>
     void serialize(const Archive& ar) const {
-      ar & rank_ & madness::archive::wrap(data_, rank_ << 2) & volume_;
+      ar & rank_ & madness::archive::wrap(data_, rank_ << 2) & offset_ & volume_;
     }
 
     void swap(Range_& other) {
       // Get temp data
       std::swap(data_, other.data_);
+      std::swap(offset_, other.offset_);
       std::swap(volume_, other.volume_);
       std::swap(rank_, other.rank_);
     }
@@ -672,29 +677,29 @@ namespace TiledArray {
 
     /// \param[in,out] i The coordinate index to be incremented
     /// \throw TiledArray::Exception When the dimension of i is not equal to
-    /// that of this range
+    /// the rank of this range
     /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void increment(index& i) const {
       TA_ASSERT(includes(i));
 
-      size_type const * restrict const start_ptr = data_;
-      size_type const * restrict const finish_ptr = data_ + rank_;
+      size_type const * restrict const lower = data_;
+      size_type const * restrict const upper = data_ + rank_;
 
       for(int d = int(rank_) - 1; d >= 0; --d) {
         // increment coordinate
         ++i[d];
 
         // break if done
-        if(i[d] < finish_ptr[d])
+        if(i[d] < upper[d])
           return;
 
-        // Reset current index to start value.
-        i[d] = start_ptr[d];
+        // Reset current index to lower bound.
+        i[d] = lower[d];
       }
 
-      // if the current location was set to start then it was at the end and
-      // needs to be reset to equal finish.
-      std::copy(finish_ptr, finish_ptr + rank_, i.begin());
+      // if the current location was set to lower then it was at the end and
+      // needs to be reset to equal upper.
+      std::copy(upper, upper + rank_, i.begin());
     }
 
     /// Advance the coordinate index \c i by \c n in this range
@@ -702,7 +707,7 @@ namespace TiledArray {
     /// \param[in,out] i The coordinate index to be advanced
     /// \param n The distance to advance \c i
     /// \throw TiledArray::Exception When the dimension of i is not equal to
-    /// that of this range
+    /// the rank of this range
     /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void advance(index& i, std::ptrdiff_t n) const {
       TA_ASSERT(includes(i));
@@ -716,8 +721,8 @@ namespace TiledArray {
     /// \param first The starting position in the range
     /// \param last The ending position in the range
     /// \return The difference between first and last, in terms of range positions
-    /// \throw TiledArray::Exception When the dimension of \c first or \c last
-    /// is not equal to that of this range
+    /// \throw TiledArray::Exception When the size of \c first or \c last
+    /// is not equal to the rank of this range
     /// \throw TiledArray::Exception When \c first or \c last is outside this range
     std::ptrdiff_t distance_to(const index& first, const index& last) const {
       TA_ASSERT(includes(first));
@@ -727,7 +732,21 @@ namespace TiledArray {
 
   }; // class Range
 
+  inline Range& Range::operator *=(const Permutation& perm) {
+    TA_ASSERT(perm.dim() == rank_);
+    if(rank_ > 1ul) {
+      // Copy the lower and upper bound data into a temporary array
+      size_type* restrict const temp_lower = new size_type[rank_ << 1];
+      const size_type* restrict const temp_upper = temp_lower + rank_;
+      std::memcpy(temp_lower, data_, (sizeof(size_type) << 1) * rank_);
 
+      init_range_data(perm, temp_lower, temp_upper);
+
+      // Cleanup old memory.
+      delete[] temp_lower;
+    }
+    return *this;
+  }
 
   /// Exchange the values of the give two ranges.
   inline void swap(Range& r0, Range& r1) { // no throw
@@ -740,18 +759,8 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the range
   /// \param r The range to be permuted
   /// \return A permuted copy of \c r.
-  inline Range operator ^(const Permutation& perm, const Range& r) {
+  inline Range operator*(const Permutation& perm, const Range& r) {
     return Range(perm, r);
-  }
-
-  /// No permutation function
-
-  /// This function is used to allow generic code for \c Permutation or
-  /// \c NoPermutation code.
-  /// \param r The range not to be permuted
-  /// \return A const reference to \c r
-  inline const Range& operator ^(const detail::NoPermutation&, const Range& r) {
-    return r;
   }
 
   /// Range equality comparison

@@ -30,7 +30,7 @@ void set_tiles(double val, Array_t& a) {
     const auto end = pmap->end();
     for (auto it = pmap->begin(); it != end; ++it) {
         auto range = trange.make_tile_range(*it);
-        a.set(*it, Tile_t(range, TiledArray::Tensor<double>(range, val)));
+        a.set(*it, Tile_t(TiledArray::Tensor<double>(range, val)));
     }
 }
 
@@ -135,7 +135,7 @@ int main(int argc, char** argv) {
             for (auto it = c.begin();
                  it != c.end() && check_it != c_check.end(); ++it, ++check_it) {
 
-                auto tile_diff = it->get().tile().subt(check_it->get()).norm();
+                auto tile_diff = it->get().tensor().subt(check_it->get()).norm();
                 if (tile_diff >= 1e-15) {
                     std::cout << "Tile " << it.ordinal() << " failed test "
                               << " with norm diff " << tile_diff << std::endl;

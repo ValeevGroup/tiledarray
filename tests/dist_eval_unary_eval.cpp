@@ -70,7 +70,7 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
     typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
     return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
         std::shared_ptr<impl_type>( new impl_type(array, world,
-        (perm ? perm ^ array.trange() : array.trange()), shape, pmap, perm, op)));
+        (perm ? perm * array.trange() : array.trange()), shape, pmap, perm, op)));
   }
 
   template <typename Tile, typename Policy, typename Op>
@@ -86,7 +86,7 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
         TiledArray::detail::DistEval<Tile, Policy>, Op, Policy> impl_type;
     return TiledArray::detail::DistEval<typename Op::result_type, Policy>(
         std::shared_ptr<impl_type>(new impl_type(arg, world,
-        (perm ? perm ^ arg.trange() : arg.trange()), shape, pmap, perm, op)));
+        (perm ? perm * arg.trange() : arg.trange()), shape, pmap, perm, op)));
   }
 
    ArrayN array;
@@ -247,7 +247,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   for(; it != end; ++it) {
     // Get the original type
     const ArrayN::value_type array_tile =
-        array.find(inv_perm ^ dist_eval2.range().idx(*it));
+        array.find(inv_perm * dist_eval2.range().idx(*it));
 
     // Get the array evaluator tile.
     Future<impl_type::value_type> tile;
@@ -259,9 +259,9 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
     // Check that the result tile is correctly modified.
     BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().make_tile_range(*it));
-    BOOST_CHECK_EQUAL(eval_tile.range(), perm ^ array_tile.range());
+    BOOST_CHECK_EQUAL(eval_tile.range(), perm * array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
-      BOOST_CHECK_EQUAL(eval_tile[perm ^ array_tile.range().idx(i)], 5 * 3 * array_tile[i]);
+      BOOST_CHECK_EQUAL(eval_tile[perm * array_tile.range().idx(i)], 5 * 3 * array_tile[i]);
     }
   }
 

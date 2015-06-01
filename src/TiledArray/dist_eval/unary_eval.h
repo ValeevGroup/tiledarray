@@ -85,6 +85,13 @@ namespace TiledArray {
         return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
       }
 
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard_tile(size_type i) const { get_tile(i); }
+
     private:
 
       /// Input tile argument type

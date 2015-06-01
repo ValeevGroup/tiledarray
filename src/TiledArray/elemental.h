@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_ELEMENTAL_H__INCLUDED
 #define TILEDARRAY_ELEMENTAL_H__INCLUDED
 
-#include <TiledArray/eigen.h>
+#include <TiledArray/conversions/eigen.h>
 #include <elemental.hpp>
 
 namespace TiledArray {

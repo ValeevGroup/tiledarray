@@ -29,6 +29,7 @@ tiledarray_fwd.h
 TiledArray/array.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
+TiledArray/block_range.h
 TiledArray/dense_shape.h
 TiledArray/distributed_storage.h
 TiledArray/elemental.h
@@ -104,6 +105,8 @@ TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
+TiledArray/symm/symm_group.h
+TiledArray/symm/irrep.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_interface.h
 TiledArray/tile_op/binary_reduction.h

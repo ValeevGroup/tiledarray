@@ -48,8 +48,6 @@ namespace TiledArray {
       typedef Op op_type; ///< The operation that will modify this tile
       typedef typename op_type::result_type eval_type; ///< The evaluation type for this tile
       typedef Tile tile_type; ///< The input tile type
-      typedef typename tile_type::value_type value_type; ///< Tile element type
-      typedef typename scalar_type<value_type>::type numeric_type;
 
     private:
       mutable tile_type tile_; ///< The input tile
@@ -194,6 +192,13 @@ namespace TiledArray {
           return result;
         }
       }
+
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard_tile(size_type i) const { }
 
     private:
 

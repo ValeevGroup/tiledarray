@@ -23,6 +23,7 @@
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/permutation.h>
 #include <TiledArray/perm_index.h>
+#include <TiledArray/tile_op/eval_trait.h>
 
 namespace TiledArray {
   namespace detail {
@@ -109,7 +110,7 @@ namespace TiledArray {
 
         if(perm) {
           Permutation inv_perm(-perm);
-          range_type source_range = inv_perm ^ trange.tiles();
+          range_type source_range = inv_perm * trange.tiles();
           source_to_target_ = PermIndex(source_range, perm);
           target_to_source_ = PermIndex(trange.tiles(), inv_perm);
         }
@@ -127,8 +128,14 @@ namespace TiledArray {
 
       /// \param i The index of the tile
       /// \return Tile at index i
-      /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
       virtual Future<value_type> get_tile(size_type i) const = 0;
+
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard_tile(size_type i) const = 0;
 
       /// Set tensor value
 
@@ -321,6 +328,13 @@ namespace TiledArray {
       /// \param i The tile index
       /// \return Tile \c i
       future get(size_type i) const { return pimpl_->get_tile(i); }
+
+      /// Discard a tile that is not needed
+
+      /// This function handles the cleanup for tiles that are not needed in
+      /// subsequent computation.
+      /// \param i The index of the tile
+      virtual void discard(size_type i) const { pimpl_->discard_tile(i); }
 
       /// World object accessor
 

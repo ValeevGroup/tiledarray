@@ -31,7 +31,7 @@ using namespace TiledArray::detail;
 
 struct PermIndexFixture {
 
-  PermIndexFixture() : perm({1,2,0,3}), range(start, finish), perm_range(perm ^ range) { }
+  PermIndexFixture() : perm({1,2,0,3}), range(start, finish), perm_range(perm * range) { }
 
   ~PermIndexFixture() { }
 
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE( constructor ) {
 
   const std::size_t* const output_weight_begin = input_weight_end;
   const std::size_t* const output_weight_end = input_weight_end + x.dim();
-  const std::vector<Range::size_type> inv_result_weight = -perm ^ perm_range.weight();
+  const std::vector<Range::size_type> inv_result_weight = -perm * perm_range.weight();
   BOOST_CHECK_EQUAL_COLLECTIONS(output_weight_begin, output_weight_end, inv_result_weight.begin(), inv_result_weight.end());
 }
 
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE( assignment_operator ) {
 
   const std::size_t* const output_weight_begin = input_weight_end;
   const std::size_t* const output_weight_end = input_weight_end + x.dim();
-  const std::vector<Range::size_type> inv_result_weight = -perm ^ perm_range.weight();
+  const std::vector<Range::size_type> inv_result_weight = -perm * perm_range.weight();
   BOOST_CHECK_EQUAL_COLLECTIONS(output_weight_begin, output_weight_end, inv_result_weight.begin(), inv_result_weight.end());
 }
 
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
   while(std::next_permutation(p.begin(), p.end())) {
     // set new permutation permutation
     perm = Permutation(p.begin(), p.end());
-    perm_range = perm ^ range;
+    perm_range = perm * range;
 
     // Construct the permute index object
     BOOST_CHECK_NO_THROW( PermIndex perm_index(range, perm); );
@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
 
     const std::size_t* const output_weight_begin = input_weight_end;
     const std::size_t* const output_weight_end = input_weight_end + perm_index.dim();
-    const std::vector<Range::size_type> inv_result_weight = -perm ^ perm_range.weight();
+    const std::vector<Range::size_type> inv_result_weight = -perm * perm_range.weight();
     BOOST_CHECK_EQUAL_COLLECTIONS(output_weight_begin, output_weight_end, inv_result_weight.begin(), inv_result_weight.end());
 
 
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
       std::size_t pi = 0;
       BOOST_CHECK_NO_THROW(pi = perm_index(i));
 
-      BOOST_CHECK_EQUAL(pi, perm_range.ord(perm ^ range.idx(i)));
+      BOOST_CHECK_EQUAL(pi, perm_range.ord(perm * range.idx(i)));
     }
   }
 }
