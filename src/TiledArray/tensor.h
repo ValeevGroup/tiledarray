@@ -246,11 +246,19 @@ namespace TiledArray {
 
   public:
 
-    /// Default constructor
+    // Compiler generated functions
+    Tensor() = default;
+    Tensor(const Tensor_&) = default;
+    Tensor(Tensor_&&) = default;
+    ~Tensor() = default;
+    Tensor_& operator=(const Tensor_& other) = default;
+    Tensor_& operator=(Tensor_&&) = default;
 
-    /// Construct an empty tensor that has no data or dimensions
-    Tensor() : pimpl_() { }
+    /// Construct tensor
 
+    /// Construct a tensor with a range equal to \c range. The data is
+    /// uninitialized.
+    /// \param range The range of the tensor
     Tensor(const range_type& range) :
       pimpl_(new Impl(range))
     {
@@ -362,25 +370,6 @@ namespace TiledArray {
         new(result) value_type(temp);
       };
       permute(op, output_op, perm, left, right);
-    }
-
-    /// Copy constructor
-
-    /// Create a shallow copy of \c other
-    /// \param other The tile to be copied.
-    Tensor(const Tensor_& other) :
-      pimpl_(other.pimpl_)
-    { }
-
-    /// Copy assignment
-
-    /// Create a shallow copy of \c other
-    /// \param other The tensor to be copied
-    /// \return \c this tensor
-    Tensor_& operator=(const Tensor_& other) {
-      pimpl_ = other.pimpl_;
-
-      return *this;
     }
 
     Tensor_ clone() const {
