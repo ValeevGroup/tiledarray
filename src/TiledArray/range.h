@@ -237,7 +237,7 @@ namespace TiledArray {
     template<typename... Index,
         enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
     explicit Range(const Index... upper_bound) :
-      Range({upper_bound...})
+      Range(std::array<size_t, sizeof...(Index)>{{upper_bound...}})
     { }
 
     /// Copy Constructor
