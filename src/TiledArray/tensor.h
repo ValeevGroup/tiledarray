@@ -20,11 +20,10 @@
 #ifndef TILEDARRAY_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_H__INCLUDED
 
-#include <TiledArray/perm_index.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
-#include <TiledArray/math/transpose.h>
-#include <TiledArray/tensor/utility.h>
+#include <TiledArray/tensor/binary.h>
+#include <TiledArray/tensor/unary.h>
 
 namespace TiledArray {
 
@@ -305,11 +304,6 @@ namespace TiledArray {
     Tensor(const Tensor<U, AU>& other, const Permutation& perm) :
       pimpl_(new Impl(perm * other.range()))
     {
-      // Check inputs.
-      TA_ASSERT(! other.empty());
-      TA_ASSERT(perm);
-      TA_ASSERT(perm.dim() == other.range().dim());
-
       auto input_op = [] (typename Tensor<U, AU>::const_reference arg)
           -> typename Tensor<U, AU>::const_reference
       {
@@ -318,7 +312,7 @@ namespace TiledArray {
       auto output_op = [=] (pointer restrict result, const value_type& temp) {
         new(result) value_type(temp);
       };
-      permute(input_op, output_op, perm, other);
+      detail::inplace_binary(*this, other, perm, input_op, output_op);
     }
 
     /// Construct an evaluated tensor
@@ -334,15 +328,10 @@ namespace TiledArray {
     Tensor(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) :
       pimpl_(new Impl(perm * other.range()))
     {
-      // Check inputs.
-      TA_ASSERT(! other.empty());
-      TA_ASSERT(perm);
-      TA_ASSERT(perm.dim() == other.range().dim());
-
       auto output_op = [=] (pointer restrict result, const value_type& temp) {
         new(result) value_type(temp);
       };
-      permute(op, output_op, perm, other);
+      detail::inplace_binary(*this, other, perm, op, output_op);
     }
 
     /// Construct an evaluated tensor
@@ -369,7 +358,7 @@ namespace TiledArray {
       auto output_op = [=] (pointer restrict result, const value_type& restrict temp) {
         new(result) value_type(temp);
       };
-      permute(op, output_op, perm, left, right);
+      detail::permute(op, output_op, *this, perm, left, right);
     }
 
     Tensor_ clone() const {
@@ -607,13 +596,8 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When the range of this tensor is not equal
     /// to the range of \c other.
     template <typename U, typename AU, typename Op>
-    Tensor_ binary(const Tensor<U, AU>& other, const Op& op) const {
-      TA_ASSERT(pimpl_);
-      TA_ASSERT(! other.empty());
-      TA_ASSERT(detail::is_range_congruent(*this, other));
-
-      return Tensor_(*this, other, op);
-    }
+    Tensor<T> binary(const Tensor<U, AU>& other, Op&& op) const
+    { return detail::binary(*this, other, op); }
 
     /// Use a binary, element wise operation to construct a new, permuted tensor
 
@@ -632,13 +616,11 @@ namespace TiledArray {
     /// \throw TiledArray::Exception The dimension of \c perm does not match
     /// that of this tensor.
     template <typename U, typename AU, typename Op>
-    Tensor_ binary(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) const {
-      TA_ASSERT(pimpl_);
-      TA_ASSERT(! other.empty());
-      TA_ASSERT(detail::is_range_congruent(*this, other));
-      TA_ASSERT(perm.dim() == pimpl_->range_.dim());
-
-      return Tensor_(*this, other, op, perm);
+    Tensor<T> binary(const Tensor<U, AU>& other, Op&& op, const Permutation& perm) const {
+      auto output_op = [=] (pointer restrict result, const value_type& restrict temp) {
+        *result = temp;
+      };
+      return detail::binary(*this, other, perm, std::forward<Op>(op), output_op);
     }
 
     /// Use a binary, element wise operation to modify this tensor
@@ -655,14 +637,8 @@ namespace TiledArray {
     /// to the range of \c other.
     /// \throw TiledArray::Exception When this and \c other are the same.
     template <typename U, typename AU, typename Op>
-    Tensor_& inplace_binary(const Tensor<U, AU>& other, const Op& op) {
-      TA_ASSERT(pimpl_);
-      TA_ASSERT(! other.empty());
-      TA_ASSERT(detail::is_range_congruent(*this, other));
-      TA_ASSERT(pimpl_->data_ != other.data());
-
-      math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_, other.data());
-
+    Tensor_& inplace_binary(const Tensor<U, AU>& other, Op&& op) {
+      detail::inplace_binary(*this, other, std::forward<Op>(op));
       return *this;
     }
 
@@ -674,10 +650,8 @@ namespace TiledArray {
     /// \c op(*this[i])
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
-    Tensor_ unary(const Op& op) const {
-      TA_ASSERT(pimpl_);
-
-      return Tensor_(*this, op);
+    Tensor<T> unary(const Op& op) const {
+      return detail::unary(*this, op);
     }
 
     /// Use a unary, element wise operation to construct a new, permuted tensor
@@ -690,11 +664,14 @@ namespace TiledArray {
     /// \throw TiledArray::Exception The dimension of \c perm does not match
     /// that of this tensor.
     template <typename Op>
-    Tensor_ unary(const Op& op, const Permutation& perm) const {
+    Tensor<T> unary(Op&& op, const Permutation& perm) const {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(perm.dim() == pimpl_->range_.dim());
-
-      return Tensor_(*this, op, perm);
+      auto output_op = [=] (pointer restrict result, const value_type& restrict temp) {
+        *result = temp;
+      };
+      Tensor<T> result(perm * pimpl_->range_);
+      detail::inplace_binary(result, *this, perm, std::forward<Op>(op), output_op);
+      return result;
     }
 
     /// Use a unary, element wise operation to modify this tensor
@@ -704,11 +681,8 @@ namespace TiledArray {
     /// \return A reference to this object
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
-    Tensor_& inplace_unary(const Op& op) {
-      TA_ASSERT(pimpl_);
-
-      math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_);
-
+    Tensor_& inplace_unary(Op&& op) {
+      detail::inplace_unary(*this, std::forward<Op>(op));
       return *this;
     }
 
