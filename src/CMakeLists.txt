@@ -109,7 +109,7 @@ TiledArray/symm/symm_group.h
 TiledArray/symm/irrep.h
 TiledArray/tensor/binary.h
 TiledArray/tensor/permute.h
-TiledArray/tensor/tesnor_view.h
+TiledArray/tensor/tensor_view.h
 TiledArray/tensor/type_traits.h
 TiledArray/tensor/unary.h
 TiledArray/tensor/utility.h
