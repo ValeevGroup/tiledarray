@@ -28,6 +28,7 @@
 
 #include <TiledArray/tensor/utility.h>
 #include <TiledArray/tensor/permute.h>
+#include <TiledArray/math/eigen.h>
 
 namespace TiledArray {
 
