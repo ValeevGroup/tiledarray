@@ -32,8 +32,6 @@
 namespace TiledArray {
 
   template <typename, typename> class Tensor;
-  template <typename> class TensorView;
-  template <typename> class ShiftWrapper;
 
   namespace detail {
 
