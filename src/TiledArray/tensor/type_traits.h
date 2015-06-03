@@ -26,6 +26,8 @@
 #ifndef TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
 #define TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
 
+#include <type_traits>
+
 namespace TiledArray {
 
   // Forward declarations
@@ -40,38 +42,80 @@ namespace TiledArray {
 
     // Test if the object is a tensor
 
+    template <typename...Ts> struct is_tensor;
+
     template <typename>
-    struct is_tensor : public std::false_type { };
+    struct is_tensor_helper : public std::false_type { };
 
     template <typename T, typename A>
-    struct is_tensor<Tensor<T, A> > : public std::true_type { };
+    struct is_tensor_helper<Tensor<T, A> > : public std::true_type { };
 
     template <typename T>
-    struct is_tensor<TensorView<T> > : public std::true_type { };
+    struct is_tensor_helper<TensorView<T> > : public std::true_type { };
 
     template <typename T>
-    struct is_tensor<ShiftWrapper<T> > : public is_tensor<T> { };
+    struct is_tensor_helper<ShiftWrapper<T> > : public is_tensor<T> { };
+
+    template <> struct is_tensor<> : public std::false_type { };
+
+    template <typename T>
+    struct is_tensor<T> : public is_tensor_helper<T> { };
+
+    template <typename T1, typename T2, typename... Ts>
+    struct is_tensor<T1, T2, Ts...> {
+      static constexpr bool value = is_tensor_helper<T1>::value
+                                 && is_tensor<T2, Ts...>::value;
+    };
+
 
     // Test if the tensor is contiguous
 
     template <typename T>
-    struct is_contiguous_tensor : public std::false_type { };
+    struct is_contiguous_tensor_helper : public std::false_type { };
 
     template <typename T, typename A>
-    struct is_contiguous_tensor<Tensor<T, A> > : public std::true_type { };
+    struct is_contiguous_tensor_helper<Tensor<T, A> > : public std::true_type { };
 
     template <typename T>
-    struct is_contiguous_tensor<ShiftWrapper<T> > :
-        public is_contiguous_tensor<T> { };
+    struct is_contiguous_tensor_helper<ShiftWrapper<T> > :
+        public is_contiguous_tensor_helper<T> { };
 
+
+
+    template <typename...Ts> struct is_contiguous_tensor;
+
+    template <> struct is_contiguous_tensor<> : public std::false_type { };
+
+    template <typename T>
+    struct is_contiguous_tensor<T> : public is_contiguous_tensor_helper<T> { };
+
+    template <typename T1, typename T2, typename... Ts>
+    struct is_contiguous_tensor<T1, T2, Ts...> {
+      static constexpr bool value = is_contiguous_tensor_helper<T1>::value
+                                 && is_contiguous_tensor<T2, Ts...>::value;
+    };
 
     // Test if the tensor is shifted
 
     template <typename T>
-    struct is_shifted : public std::false_type { };
+    struct is_shifted_helper : public std::false_type { };
 
     template <typename T>
-    struct is_shifted<ShiftWrapper<T> > : public std::true_type{ };
+    struct is_shifted_helper<ShiftWrapper<T> > : public std::true_type{ };
+
+
+    template <typename...Ts> struct is_shifted;
+
+    template <> struct is_shifted<> : public std::false_type { };
+
+    template <typename T>
+    struct is_shifted<T> : public is_shifted_helper<T> { };
+
+    template <typename T1, typename T2, typename... Ts>
+    struct is_shifted<T1, T2, Ts...> {
+      static constexpr bool value = is_shifted_helper<T1>::value
+                                 && is_shifted<T2, Ts...>::value;
+    };
 
   }  // namespace detail
 } // namespace TiledArray

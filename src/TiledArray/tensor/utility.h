@@ -163,6 +163,45 @@ namespace TiledArray {
     }
 
 
+    template <typename T1,
+        enable_if_t<is_tensor<T1>::value>* = nullptr>
+    inline constexpr bool
+    is_range_set_congruent(const Permutation& perm, const T1& tensor) {
+      return true;
+    }
+
+    template <typename T1, typename T2, typename... Ts,
+        enable_if_t<is_tensor<T1>::value && is_tensor<T2>::value>* = nullptr>
+    inline bool is_range_set_congruent(const Permutation& perm,
+        const T1& tensor1, const T2& tensor2, const Ts&... tensors)
+    {
+      return is_range_congruent(tensor1, tensor2, perm)
+          && is_range_set_congruent(perm, tensor1, tensors...);
+    }
+
+
+    template <typename T1,
+        enable_if_t<is_tensor<T1>::value>* = nullptr>
+    inline constexpr bool is_range_set_congruent(const T1& tensor) {
+      return true;
+    }
+
+    template <typename T1, typename T2, typename... Ts,
+        enable_if_t<is_tensor<T1>::value && is_tensor<T2>::value>* = nullptr>
+    inline bool
+    is_range_set_congruent(const T1& tensor1, const T2& tensor2, const Ts&... tensors) {
+      return is_range_congruent(tensor1, tensor2)
+          && is_range_set_congruent(tensor1, tensors...);
+    }
+
+    inline constexpr bool empty() {  return true; }
+
+    template <typename T1, typename... Ts>
+    inline bool empty(const T1& tensor1, const Ts&... tensors) {
+      return tensor1.empty() && empty(tensors...);
+    }
+
+
   }  // namespace detail
 } // namespace TiledArray
 
