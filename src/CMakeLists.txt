@@ -107,6 +107,12 @@ TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
 TiledArray/symm/symm_group.h
 TiledArray/symm/irrep.h
+TiledArray/tensor/binary.h
+TiledArray/tensor/permute.h
+TiledArray/tensor/tensor_view.h
+TiledArray/tensor/type_traits.h
+TiledArray/tensor/unary.h
+TiledArray/tensor/utility.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_interface.h
 TiledArray/tile_op/binary_reduction.h
