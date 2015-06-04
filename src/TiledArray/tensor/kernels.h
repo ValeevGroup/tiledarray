@@ -18,20 +18,147 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  init.h
- *  Jun 3, 2015
+ *  binary.h
+ *  Jun 1, 2015
  *
  */
 
-#ifndef TILEDARRAY_TENSOR_INIT_H__INCLUDED
-#define TILEDARRAY_TENSOR_INIT_H__INCLUDED
+#ifndef TILEDARRAY_TENSOR_BINARY_H__INCLUDED
+#define TILEDARRAY_TENSOR_BINARY_H__INCLUDED
 
 #include <TiledArray/tensor/utility.h>
 #include <TiledArray/tensor/permute.h>
 #include <TiledArray/math/eigen.h>
 
 namespace TiledArray {
+
+  template <typename, typename> class Tensor;
+
   namespace detail {
+
+    // Vector operation implementation functions for tensors with contiguous
+    // memory layout
+
+    template <typename Op, typename T1, typename... Ts,
+        enable_if_t<is_tensor<T1, Ts...>::value
+               && is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+    inline Tensor<typename T1::value_type,
+        Eigen::aligned_allocator<typename T1::value_type> >
+    tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
+      TA_ASSERT(! empty(tensor1, tensors...));
+      TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
+
+      typedef Tensor<typename T1::value_type,
+          Eigen::aligned_allocator<typename T1::value_type> > result_type;
+
+      result_type result(clone_range(tensor1));
+      const auto volume = tensor1.range().volume();
+
+      math::vector_op(std::forward<Op>(op), volume, result.data(),
+          tensor1.data(), tensors.data()...);
+
+      return result;
+    }
+
+    template <typename Op, typename T1, typename... Ts,
+        enable_if_t<is_tensor<T1, Ts...>::value
+                 && is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+    inline void inplace_tensor_op(Op&& op, T1& tensor1, const Ts&... tensors) {
+      TA_ASSERT(! empty(tensor1, tensors...));
+      TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
+
+      const auto volume = tensor1.range().volume();
+
+      math::vector_op(std::forward<Op>(op), volume, tensor1.data(),
+          tensors.data()...);
+    }
+
+
+
+    template <typename InputOp, typename OutputOp, typename T1, typename... Ts,
+        enable_if_t<is_tensor<T1, Ts...>::value
+               && is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+    inline Tensor<typename T1::value_type,
+        Eigen::aligned_allocator<typename T1::value_type> >
+    tensor_op(InputOp&& input_op, OutputOp&& output_op, const Permutation& perm,
+        const T1& tensor1, const Ts&... tensors)
+    {
+      TA_ASSERT(! empt(tensor1, tensors...));
+      TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
+      TA_ASSERT(perm);
+      TA_ASSERT(perm.dim() == tensor1.range().rank());
+
+      typedef Tensor<typename T1::value_type,
+          Eigen::aligned_allocator<typename T1::value_type> > result_type;
+
+      result_type result(perm * clone_range(tensor1));
+
+      permute(std::forward<InputOp>(input_op), std::forward<OutputOp>(output_op),
+          result, perm, tensor1, tensors...);
+
+      return result;
+    }
+
+    template <typename InputOp, typename OutputOp, typename T1, typename T2, typename... Ts,
+        enable_if_t<is_tensor<T1, T2, Ts...>::value
+               && is_contiguous_tensor<T1, T2, Ts...>::value>* = nullptr>
+    inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
+        const Permutation& perm, T1& tensor1, const T2& tensor2, const Ts&... tensors)
+    {
+      TA_ASSERT(! empty(tensor1, tensor2, tensors...));
+      TA_ASSERT(is_range_congruent(tensor1, tensor2, perm));
+      TA_ASSERT(is_range_set_congruent(tensor2, tensors...));
+      TA_ASSERT(perm);
+      TA_ASSERT(perm.dim() == tensor1.range().rank());
+
+      permute(std::forward<InputOp>(input_op), std::forward<OutputOp>(output_op),
+          tensor1, perm, tensor2, tensors...);
+    }
+
+
+    // Vector operation implementation functions for tensors with non-contiguous
+    // memory layout
+
+    template <typename Op, typename T1, typename... Ts,
+        enable_if_t<is_tensor<T1, Ts...>::value
+               && ! (is_contiguous_tensor<T1, Ts...>::value)>* = nullptr>
+    inline Tensor<typename T1::value_type,
+        Eigen::aligned_allocator<typename T1::value_type> >
+    tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
+      TA_ASSERT(! empty(tensor1, tensors...));
+      TA_ASSERT(is_range_congruent(tensor1, tensors...));
+
+      typedef Tensor<typename T1::value_type,
+          Eigen::aligned_allocator<typename T1::value_type> > result_type;
+
+      result_type result(clone_range(tensor1));
+      const auto stride = inner_size(tensor1, tensors...);
+      const auto volume = tensor1.range().volume();
+
+      for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride)
+        math::vector_op(std::forward<Op>(op), stride, result.data() + i,
+          tensor1.data() + tensor1.range().ord(i),
+          (tensors.data() + tensors.range().ord(i))...);
+
+      return result;
+    }
+
+    template <typename Op, typename T1, typename... Ts,
+        enable_if_t<is_tensor<T1, Ts...>::value
+               && ! (is_contiguous_tensor<T1, Ts...>::value)>* = nullptr>
+    inline void inplace_tensor_op(Op&& op, T1& tensor1, const Ts&... tensors) {
+      TA_ASSERT(! empty(tensor1, tensors...));
+      TA_ASSERT(is_range_congruent(tensor1, tensors...));
+
+      const auto stride = inner_size(tensor1, tensors...);
+      const typename T1::size_type volume = tensor1.range().volume();
+
+      for(typename T1::size_type i = 0ul; i < volume; i += stride)
+        math::vector_op(std::forward<Op>(op), stride,
+          tensor1.data() + tensor1.range().ord(i),
+          (tensors.data() + tensors.range().ord(i))...);
+    }
+
 
     // Tensor initialization functions for argument tensors with contiguous
     // memory layout
@@ -102,6 +229,8 @@ namespace TiledArray {
     {
       TA_ASSERT(! empty(tensor1, tensors...));
       TA_ASSERT(is_range_set_congruent(perm, tensor1, tensors...));
+      TA_ASSERT(perm);
+      TA_ASSERT(perm.dim() == tensor1.range().rank());
 
       auto output_op = [=] (typename T1::pointer restrict result,
           typename T1::const_reference  restrict temp)
@@ -137,8 +266,8 @@ namespace TiledArray {
             stride, tensor1.data() + i, (tensors.data() + tensors.range().ord(i))...);
     }
 
+
   }  // namespace detail
 } // namespace TiledArray
 
-
-#endif // TILEDARRAY_TENSOR_INIT_H__INCLUDED
+#endif // TILEDARRAY_TENSOR_BINARY_H__INCLUDED

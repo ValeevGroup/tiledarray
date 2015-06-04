@@ -27,7 +27,7 @@
 #define TILEDARRAY_TENSOR_SHIFT_WRAPPER_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
-#include <TiledArray/tensor/binary.h>
+#include <TiledArray/tensor/kernels.h>
 
 namespace TiledArray {
   namespace detail {
@@ -76,9 +76,9 @@ namespace TiledArray {
       template <typename U>
       ShiftWrapper<T>& operator=(U&& other) {
         typedef typename std::decay<U>::type arg_type;
-        detail::inplace_binary(*this, other,
-            [] (reference restrict l, typename arg_type::const_reference restrict r)
-                { l = r; });
+        detail::inplace_tensor_op([] (reference restrict l,
+            typename arg_type::const_reference restrict r) { l = r; },
+            *this, other);
         return *this;
       }
 

@@ -35,7 +35,7 @@ using TiledArray::TensorView;
 using TiledArray::TensorConstView;
 using TiledArray::Range;
 using TiledArray::BlockRange;
-using TiledArray::ShiftWrapper;
+using TiledArray::detail::ShiftWrapper;
 using TiledArray::shift;
 
 struct ShiftWrapperFixture {

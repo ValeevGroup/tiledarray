@@ -22,9 +22,7 @@
 
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
-#include <TiledArray/tensor/binary.h>
-#include <TiledArray/tensor/unary.h>
-#include <TiledArray/tensor/init.h>
+#include <TiledArray/tensor/kernels.h>
 
 namespace TiledArray {
 
@@ -240,9 +238,8 @@ namespace TiledArray {
     template <typename T1,
         enable_if_t<detail::is_tensor<T1>::value>* = nullptr>
     Tensor_& operator=(const T1& other) {
-      detail::inplace_binary(*this, other,
-          [] (typename T1::const_reference t1) -> typename T1::const_reference
-          { return t1; });
+      detail::inplace_tensor_op([] (typename T1::const_reference t1) ->
+          typename T1::const_reference { return t1; }, *this, other);
 
       return *this;
     }
@@ -453,12 +450,7 @@ namespace TiledArray {
 
     /// \param perm The permutation to be applied to this tensor
     /// \return A permuted copy of this tensor
-    /// \throw TiledArray::Exception When this tensor is empty.
-    /// \throw TiledArray::Exception The dimension of \c perm does not match
-    /// that of this tensor.
     Tensor_ permute(const Permutation& perm) const {
-      TA_ASSERT(pimpl_);
-      TA_ASSERT(perm.dim() == pimpl_->range_.dim());
       return Tensor_(*this, perm);
     }
 
@@ -466,51 +458,38 @@ namespace TiledArray {
 
     /// Use a binary, element wise operation to construct a new tensor
 
-    /// \tparam U \c other tensor element type
-    /// \tparam AU \c other allocator type
+    /// \tparam Right The right-hand tensor type
     /// \tparam Op The binary operation type
-    /// \param other The right-hand argument in the binary operation
+    /// \param right The right-hand argument in the binary operation
     /// \param op The binary, element-wise operation
     /// \return A tensor where element \c i of the new tensor is equal to
     /// \c op(*this[i],other[i])
-    /// \throw TiledArray::Exception When this tensor is empty.
-    /// \throw TiledArray::Exception When \c other is empty.
-    /// \throw TiledArray::Exception When the range of this tensor is not equal
-    /// to the range of \c other.
-    template <typename U, typename AU, typename Op>
-    Tensor<T> binary(const Tensor<U, AU>& other, Op&& op) const
-    { return detail::binary(*this, other, op); }
+    template <typename Right, typename Op,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ binary(const Right& right, Op&& op) const {
+      return Tensor_(*this, right, std::forward<Op>(op));
+    }
 
     /// Use a binary, element wise operation to construct a new, permuted tensor
 
-    /// \tparam U \c other tensor element type
-    /// \tparam AU \c other allocator type
+    /// \tparam Right The right-hand tensor type
     /// \tparam Op The binary operation type
-    /// \param other The right-hand argument in the binary operation
+    /// \param right The right-hand argument in the binary operation
     /// \param op The binary, element-wise operation
     /// \param perm The permutation to be applied to this tensor
     /// \return A tensor where element \c i of the new tensor is equal to
     /// \c op(*this[i],other[i])
-    /// \throw TiledArray::Exception When this tensor is empty.
-    /// \throw TiledArray::Exception When \c other is empty.
-    /// \throw TiledArray::Exception When the range of this tensor is not equal
-    /// to the range of \c other.
-    /// \throw TiledArray::Exception The dimension of \c perm does not match
-    /// that of this tensor.
-    template <typename U, typename AU, typename Op>
-    Tensor<T> binary(const Tensor<U, AU>& other, Op&& op, const Permutation& perm) const {
-      auto output_op = [=] (pointer restrict result, const value_type& restrict temp) {
-        *result = temp;
-      };
-      return detail::binary(*this, other, perm, std::forward<Op>(op), output_op);
+    template <typename Right, typename Op,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ binary(const Right& right, Op&& op, const Permutation& perm) const {
+      return Tensor_(*this, right, std::forward<Op>(op), perm);
     }
 
     /// Use a binary, element wise operation to modify this tensor
 
-    /// \tparam U \c other tensor element type
-    /// \tparam AU \c other allocator type
+    /// \tparam Right The right-hand tensor type
     /// \tparam Op The binary operation type
-    /// \param other The right-hand argument in the binary operation
+    /// \param right The right-hand argument in the binary operation
     /// \param op The binary, element-wise operation
     /// \return A reference to this object
     /// \throw TiledArray::Exception When this tensor is empty.
@@ -518,9 +497,10 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When the range of this tensor is not equal
     /// to the range of \c other.
     /// \throw TiledArray::Exception When this and \c other are the same.
-    template <typename U, typename AU, typename Op>
-    Tensor_& inplace_binary(const Tensor<U, AU>& other, Op&& op) {
-      detail::inplace_binary(*this, other, std::forward<Op>(op));
+    template <typename Right, typename Op,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_& inplace_binary(const Right& right, Op&& op) {
+      detail::inplace_tensor_op(std::forward<Op>(op), *this, right);
       return *this;
     }
 
@@ -532,8 +512,8 @@ namespace TiledArray {
     /// \c op(*this[i])
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
-    Tensor<T> unary(const Op& op) const {
-      return detail::unary(*this, op);
+    Tensor_ unary(Op&& op) const {
+      return Tensor_(*this, std::forward<Op>(op));
     }
 
     /// Use a unary, element wise operation to construct a new, permuted tensor
@@ -546,14 +526,8 @@ namespace TiledArray {
     /// \throw TiledArray::Exception The dimension of \c perm does not match
     /// that of this tensor.
     template <typename Op>
-    Tensor<T> unary(Op&& op, const Permutation& perm) const {
-      TA_ASSERT(pimpl_);
-      auto output_op = [=] (pointer restrict result, const value_type& restrict temp) {
-        *result = temp;
-      };
-      Tensor<T> result(perm * pimpl_->range_);
-      detail::inplace_binary(result, *this, perm, std::forward<Op>(op), output_op);
-      return result;
+    Tensor_ unary(Op&& op, const Permutation& perm) const {
+      return Tensor_(*this, std::forward<Op>(op), perm);
     }
 
     /// Use a unary, element wise operation to modify this tensor
@@ -564,7 +538,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
     Tensor_& inplace_unary(Op&& op) {
-      detail::inplace_unary(*this, std::forward<Op>(op));
+      detail::inplace_tensor_op(std::forward<Op>(op), *this);
       return *this;
     }
 
@@ -576,7 +550,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this are scaled by \c factor
     Tensor_ scale(numeric_type factor) const {
-      return unary([=] (param_type<value_type> arg) { return arg * factor; });
+      return unary([=] (param_type<value_type> a) { return a * factor; });
     }
 
     /// Construct a scaled and permuted copy of this tensor
@@ -586,7 +560,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this are scaled by \c factor
     Tensor_ scale(numeric_type factor, const Permutation& perm) const {
-      return unary([=] (param_type<value_type> arg) { return arg * factor; }, perm);
+      return unary([=] (param_type<value_type> a) { return a * factor; }, perm);
     }
 
     /// Scale this tensor
@@ -594,70 +568,69 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A reference to this tensor
     Tensor_& scale_to(numeric_type factor) {
-      return inplace_unary([=] (value_type& res) { res *= factor; });
+      return inplace_unary([=] (reference restrict res) { res *= factor; });
     }
 
     // Addition operations
 
     /// Add this and \c other to construct a new tensors
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be added to this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be added to this tensor
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c other
-    template <typename U, typename AU>
-    Tensor_ add(const Tensor<U, AU>& other) const {
-      return binary(other, [] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right) { return left + right; });
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ add(const Right& right) const {
+      return binary(right, [] (param_type<value_type> l,
+          param_value_type<Right> r) { return l + r; });
     }
 
     /// Add this and \c other to construct a new, permuted tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be added to this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be added to this tensor
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c other
-    template <typename U, typename AU>
-    Tensor_ add(const Tensor<U, AU>& other, const Permutation& perm) const {
-      return binary(other, [] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right) { return left + right; },
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ add(const Right& right, const Permutation& perm) const {
+      return binary(right, [] (param_type<value_type> l,
+          param_value_type<Right> r) { return l + r; },
           perm);
     }
 
     /// Scale and add this and \c other to construct a new tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be added to this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be added to this tensor
     /// \param factor The scaling factor
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c other, scaled by \c factor
-    template <typename U, typename AU>
-    Tensor_ add(const Tensor<U, AU>& other, const numeric_type factor) const {
-      return binary(other, [=] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right)
-          { return (left + right) * factor; });
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ add(const Right& right, const numeric_type factor) const {
+      return binary(right, [=] (param_type<value_type> l,
+          param_value_type<Right> r)
+          { return (l + r) * factor; });
     }
 
     /// Scale and add this and \c other to construct a new, permuted tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be added to this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be added to this tensor
     /// \param factor The scaling factor
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c other, scaled by \c factor
-    template <typename U, typename AU>
-    Tensor_ add(const Tensor<U, AU>& other, const numeric_type factor,
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ add(const Right& right, const numeric_type factor,
         const Permutation& perm) const
     {
-      return binary(other,  [=] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right)
-          { return (left + right) * factor; }, perm);
+      return binary(right,  [=] (param_type<value_type> l,
+          param_value_type<Right> r) { return (l + r) * factor; }, perm);
     }
 
     /// Add a constant to a copy of this tensor
@@ -666,8 +639,8 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value) const {
-      return unary([=] (param_type<value_type> arg)
-          { return arg + value; });
+      return unary([=] (param_type<value_type> a)
+          { return a + value; });
     }
 
     /// Add a constant to a permuted copy of this tensor
@@ -677,32 +650,32 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value, const Permutation& perm) const {
-      return unary([=] (param_type<value_type> arg) { return arg + value; }, perm);
+      return unary([=] (param_type<value_type> a) { return a + value; }, perm);
     }
 
     /// Add \c other to this tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be added to this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be added to this tensor
     /// \return A reference to this tensor
-    template <typename U, typename AU>
-    Tensor_& add_to(const Tensor<U, AU>& other) {
-      return inplace_binary(other, [] (value_type& res,
-          param_value_type<Tensor<U, AU> > arg) { res += arg; });
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_& add_to(const Right& right) {
+      return inplace_binary(right, [] (reference restrict l,
+          param_value_type<Right> r) { l += r; });
     }
 
     /// Add \c other to this tensor, and scale the result
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be added to this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be added to this tensor
     /// \param factor The scaling factor
     /// \return A reference to this tensor
-    template <typename U, typename AU>
-    Tensor_& add_to(const Tensor<U, AU>& other, const numeric_type factor) {
-      return inplace_binary(other, [=] (value_type& res,
-          param_value_type<Tensor<U, AU> > arg) { (res += arg) *= factor; });
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_& add_to(const Right& right, const numeric_type factor) {
+      return inplace_binary(right, [=] (reference restrict l,
+          param_value_type<Right> r) { (l += r) *= factor; });
     }
 
     /// Add a constant to this tensor
@@ -710,68 +683,68 @@ namespace TiledArray {
     /// \param value The constant to be added
     /// \return A reference to this tensor
     Tensor_& add_to(const numeric_type value) {
-      return inplace_unary([=] (value_type& res) { res += value; });
+      return inplace_unary([=] (reference restrict res) { res += value; });
     }
 
     // Subtraction operations
 
-    /// Subtract this and \c other to construct a new tensor
+    /// Subtract this and \c right to construct a new tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be subtracted from this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be subtracted from this tensor
     /// \return A new tensor where the elements are the different between the
-    /// elements of \c this and \c other
-    template <typename U, typename AU>
-    Tensor_ subt(const Tensor<U, AU>& other) const {
-      return binary(other, [] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right) { return left - right; });
+    /// elements of \c this and \c right
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ subt(const Right& right) const {
+      return binary(right, [] (param_type<value_type> l,
+          param_value_type<Right> r) { return l - r; });
     }
 
-    /// Subtract this and \c other to construct a new, permuted tensor
+    /// Subtract this and \c right to construct a new, permuted tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be subtracted from this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be subtracted from this tensor
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the different between the
-    /// elements of \c this and \c other
-    template <typename U, typename AU>
-    Tensor_ subt(const Tensor<U, AU>& other, const Permutation& perm) const {
-      return binary(other, [] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right)
-          { return left - right; }, perm);
+    /// elements of \c this and \c right
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ subt(const Right& right, const Permutation& perm) const {
+      return binary(right, [] (param_type<value_type> l,
+          param_value_type<Right> r)
+          { return l - r; }, perm);
     }
 
-    /// Scale and subtract this and \c other to construct a new tensor
+    /// Scale and subtract this and \c right to construct a new tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be subtracted from this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be subtracted from this tensor
     /// \param factor The scaling factor
     /// \return A new tensor where the elements are the different between the
-    /// elements of \c this and \c other, scaled by \c factor
-    template <typename U, typename AU>
-    Tensor_ subt(const Tensor<U, AU>& other, const numeric_type factor) const {
-      return binary(other, [=] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right)
-          { return (left - right) * factor; });
+    /// elements of \c this and \c right, scaled by \c factor
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ subt(const Right& right, const numeric_type factor) const {
+      return binary(right, [=] (param_type<value_type> l,
+          param_value_type<Right> r)
+          { return (l - r) * factor; });
     }
 
-    /// Scale and subtract this and \c other to construct a new, permuted tensor
+    /// Scale and subtract this and \c right to construct a new, permuted tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be subtracted from this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be subtracted from this tensor
     /// \param factor The scaling factor
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the different between the
-    /// elements of \c this and \c other, scaled by \c factor
-    template <typename U, typename AU>
-    Tensor_ subt(const Tensor<U, AU>& other, const numeric_type factor, const Permutation& perm) const {
-      return binary(other, [=] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right)
-          { return (left - right) * factor; }, perm);
+    /// elements of \c this and \c right, scaled by \c factor
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ subt(const Right& right, const numeric_type factor, const Permutation& perm) const {
+      return binary(right, [=] (param_type<value_type> l,
+          param_value_type<Right> r)
+          { return (l - r) * factor; }, perm);
     }
 
     /// Subtract a constant from a copy of this tensor
@@ -792,29 +765,29 @@ namespace TiledArray {
       return add(-value, perm);
     }
 
-    /// Subtract \c other from this tensor
+    /// Subtract \c right from this tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be subtracted from this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be subtracted from this tensor
     /// \return A reference to this tensor
-    template <typename U, typename AU>
-    Tensor_& subt_to(const Tensor<U, AU>& other) {
-      return inplace_binary(other, [] (value_type& res,
-          param_value_type<Tensor<U, AU> > arg) { res -= arg; });
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_& subt_to(const Right& right) {
+      return inplace_binary(right, [] (reference restrict l,
+          param_value_type<Right> r) { l -= r; });
     }
 
-    /// Subtract \c other from and scale this tensor
+    /// Subtract \c right from and scale this tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be subtracted from this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be subtracted from this tensor
     /// \param factor The scaling factor
     /// \return A reference to this tensor
-    template <typename U, typename AU>
-    Tensor_& subt_to(const Tensor<U, AU>& other, const numeric_type factor) {
-      return inplace_binary(other, [=] (value_type& res,
-          param_value_type<Tensor<U, AU> > arg) { (res -= arg) *= factor; });
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_& subt_to(const Right& right, const numeric_type factor) {
+      return inplace_binary(right, [=] (reference restrict l,
+          param_value_type<Right> r) { (l -= r) *= factor; });
     }
 
     /// Subtract a constant from this tensor
@@ -826,91 +799,91 @@ namespace TiledArray {
 
     // Multiplication operations
 
-    /// Multiply this by \c other to create a new tensor
+    /// Multiply this by \c right to create a new tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be multiplied by this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be multiplied by this tensor
     /// \return A new tensor where the elements are the product of the elements
-    /// of \c this and \c other
-    template <typename U, typename AU>
-    Tensor_ mult(const Tensor<U, AU>& other) const {
-      return binary(other, [] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right)
-          { return left * right; });
+    /// of \c this and \c right
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ mult(const Right& right) const {
+      return binary(right, [] (param_type<value_type> l,
+          param_value_type<Right> r)
+          { return l * r; });
     }
 
-    /// Multiply this by \c other to create a new, permuted tensor
+    /// Multiply this by \c right to create a new, permuted tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be multiplied by this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be multiplied by this tensor
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the product of the elements
-    /// of \c this and \c other
-    template <typename U, typename AU>
-    Tensor_ mult(const Tensor<U, AU>& other, const Permutation& perm) const {
-      return binary(other,  [] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right)
-          { return left * right; }, perm);
+    /// of \c this and \c right
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ mult(const Right& right, const Permutation& perm) const {
+      return binary(right, [] (param_type<value_type> l,
+          param_value_type<Right> r)
+          { return l * r; }, perm);
     }
 
-    /// Scale and multiply this by \c other to create a new tensor
+    /// Scale and multiply this by \c right to create a new tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be multiplied by this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be multiplied by this tensor
     /// \param factor The scaling factor
     /// \return A new tensor where the elements are the product of the elements
-    /// of \c this and \c other, scaled by \c factor
-    template <typename U, typename AU>
-    Tensor_ mult(const Tensor<U, AU>& other, const numeric_type factor) const {
-      return binary(other, [=] (param_type<value_type>left,
-          param_value_type<Tensor<U, AU> > right)
-          { return (left * right) * factor; });
+    /// of \c this and \c right, scaled by \c factor
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ mult(const Right& right, const numeric_type factor) const {
+      return binary(right, [=] (param_type<value_type>l,
+          param_value_type<Right> r)
+          { return (l * r) * factor; });
     }
 
-    /// Scale and multiply this by \c other to create a new, permuted tensor
+    /// Scale and multiply this by \c right to create a new, permuted tensor
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be multiplied by this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be multiplied by this tensor
     /// \param factor The scaling factor
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor where the elements are the product of the elements
-    /// of \c this and \c other, scaled by \c factor
-    template <typename U, typename AU>
-    Tensor_ mult(const Tensor<U, AU>& other, const numeric_type factor,
+    /// of \c this and \c right, scaled by \c factor
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_ mult(const Right& right, const numeric_type factor,
         const Permutation& perm) const
     {
-      return binary(other,  [=] (param_type<value_type> left,
-          param_value_type<Tensor<U, AU> > right)
-          { return (left * right) * factor; }, perm);
+      return binary(right,  [=] (param_type<value_type> l,
+          param_value_type<Right> r)
+          { return (l * r) * factor; }, perm);
     }
 
-    /// Multiply this tensor by \c other
+    /// Multiply this tensor by \c right
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be multiplied by this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be multiplied by this tensor
     /// \return A reference to this tensor
-    template <typename U, typename AU>
-    Tensor_& mult_to(const Tensor<U, AU>& other) {
-      return inplace_binary(other, [] (value_type& res,
-          param_value_type<Tensor<U, AU> > arg) { res *= arg; });
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_& mult_to(const Right& right) {
+      return inplace_binary(right, [] (reference restrict l,
+          param_value_type<Right> r) { l *= r; });
     }
 
-    /// Scale and multiply this tensor by \c other
+    /// Scale and multiply this tensor by \c right
 
-    /// \tparam U The other tensor element type
-    /// \tparam AU The other tensor allocator type
-    /// \param other The tensor that will be multiplied by this tensor
+    /// \tparam Right The right-hand tensor type
+    /// \param right The tensor that will be multiplied by this tensor
     /// \param factor The scaling factor
     /// \return A reference to this tensor
-    template <typename U, typename AU>
-    Tensor_& mult_to(const Tensor<U, AU>& other, const numeric_type factor) {
-      return inplace_binary(other, [=] (value_type& res,
-          param_value_type<Tensor<U, AU> > arg) { (res *= arg) *= factor; });
+    template <typename Right,
+        enable_if_t<detail::is_tensor<Right>::value>* = nullptr>
+    Tensor_& mult_to(const Right& right, const numeric_type factor) {
+      return inplace_binary(right, [=] (reference restrict l,
+          param_value_type<Right> r) { (l *= r) *= factor; });
     }
 
     // Negation operations
@@ -919,7 +892,7 @@ namespace TiledArray {
 
     /// \return A new tensor that contains the negative values of this tensor
     Tensor_ neg() const {
-      return unary([] (param_type<value_type> arg) { return -arg; });
+      return unary([] (param_type<value_type> r) { return -r; });
     }
 
     /// Create a negated and permuted copy of this tensor
@@ -927,14 +900,14 @@ namespace TiledArray {
     /// \param perm The permutation to be applied to this tensor
     /// \return A new tensor that contains the negative values of this tensor
     Tensor_ neg(const Permutation& perm) const {
-      return unary([] (param_type<value_type>arg) { return -arg; }, perm);
+      return unary([] (param_type<value_type> l) { return -l; }, perm);
     }
 
     /// Negate elements of this tensor
 
     /// \return A reference to this tensor
     Tensor_& neg_to() {
-      return inplace_unary([] (value_type& res) { res = -res; });
+      return inplace_unary([] (reference restrict l) { l = -l; });
     }
 
     // GEMM operations

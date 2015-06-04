@@ -180,9 +180,9 @@ namespace TiledArray {
     template <typename U>
     TensorView_& operator=(const U& other) {
       if(data_ != other.data()) { // Check for self assignment
-        detail::inplace_binary(*this, other,
-            [] (value_type& restrict result, const value_type& arg)
-            { result = arg; });
+        detail::inplace_tensor_op([] (reference restrict result,
+            typename U::const_reference restrict arg)
+            { result = arg; }, *this, other);
       }
 
       return *this;

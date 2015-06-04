@@ -40,9 +40,17 @@ namespace TiledArray {
     template <typename> class ShiftWrapper;
 
 
-    // Test if the object is a tensor
+    // Type traits for detecting tensors and tensors of tensors.
+    // is_tensor_helper tests if individual types are tensors, while is_tensor
+    // tests zero or more tensor types. Similarly is_tensor_of_tensor tests if
+    // one or more types are tensors of tensors.
+    // To extend the definition of tensors and tensors of tensor, add additional
+    // is_tensor_helper and is_tensor_of_tensor_helper (partial) specializations.
+    // Note: These type traits help differentiate different implementation
+    // functions for tensors, so a tensor of tensors is not considered a tensor.
 
     template <typename...Ts> struct is_tensor;
+    template <typename...Ts> struct is_tensor_of_tensor;
 
     template <typename>
     struct is_tensor_helper : public std::false_type { };
@@ -54,17 +62,50 @@ namespace TiledArray {
     struct is_tensor_helper<TensorView<T> > : public std::true_type { };
 
     template <typename T>
-    struct is_tensor_helper<ShiftWrapper<T> > : public is_tensor<T> { };
+    struct is_tensor_helper<ShiftWrapper<T> > : public is_tensor_helper<T> { };
+
+    template <typename T>
+    struct is_tensor_of_tensor_helper : public std::false_type { };
+
+    template <typename T, typename A>
+    struct is_tensor_of_tensor_helper<Tensor<T, A> > :
+        public is_tensor_helper<T> { };
+
+    template <typename T>
+    struct is_tensor_of_tensor_helper<TensorView<T> > :
+        public is_tensor_helper<T> { };
+
+    template <typename T>
+    struct is_tensor_of_tensor_helper<ShiftWrapper<T> > :
+      public is_tensor_of_tensor_helper<T> { };
+
 
     template <> struct is_tensor<> : public std::false_type { };
 
     template <typename T>
-    struct is_tensor<T> : public is_tensor_helper<T> { };
+    struct is_tensor<T> {
+      static constexpr bool value = is_tensor_helper<T>::value
+                                 && ! is_tensor_of_tensor_helper<T>::value;
+    };
 
     template <typename T1, typename T2, typename... Ts>
     struct is_tensor<T1, T2, Ts...> {
-      static constexpr bool value = is_tensor_helper<T1>::value
+      static constexpr bool value = is_tensor<T1>::value
                                  && is_tensor<T2, Ts...>::value;
+    };
+
+
+    template <> struct is_tensor_of_tensor<> : public std::false_type { };
+
+    template <typename T>
+    struct is_tensor_of_tensor<T> {
+      static constexpr bool value = is_tensor_of_tensor_helper<T>::value;
+    };
+
+    template <typename T1, typename T2, typename... Ts>
+    struct is_tensor_of_tensor<T1, T2, Ts...> {
+      static constexpr bool value = is_tensor_of_tensor<T1>::value
+                                 && is_tensor_of_tensor<T2, Ts...>::value;
     };
 
 
