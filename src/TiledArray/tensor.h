@@ -24,6 +24,7 @@
 #include <TiledArray/math/blas.h>
 #include <TiledArray/tensor/binary.h>
 #include <TiledArray/tensor/unary.h>
+#include <TiledArray/tensor/init.h>
 
 namespace TiledArray {
 
@@ -129,7 +130,7 @@ namespace TiledArray {
     Tensor(const range_type& range, param_type<value_type> value) :
       pimpl_(new Impl(range))
     {
-      math::uninitialized_fill_vector(range.volume(), value, pimpl_->data_);
+      detail::tensor_init([=] () { return value; }, *this);
     }
 
     /// Construct an evaluated tensor
@@ -154,73 +155,96 @@ namespace TiledArray {
 
     /// Construct a permuted tensor copy
 
-    /// \tparam U The element type of other
-    /// \tparam AU The allocator type of other
+    /// \tparam T1 A tensor type
     /// \param other The tensor to be copied
     /// \param perm The permutation that will be applied to the copy
-    template <typename U, typename AU>
-    Tensor(const Tensor<U, AU>& other, const Permutation& perm) :
+    template <typename T1,
+        enable_if_t<detail::is_tensor<T1>::value>* = nullptr>
+    Tensor(const T1& other, const Permutation& perm) :
       pimpl_(new Impl(perm * other.range()))
     {
-      auto input_op = [] (typename Tensor<U, AU>::const_reference arg)
-          -> typename Tensor<U, AU>::const_reference
-      {
-        return arg;
-      };
-      auto output_op = [=] (pointer restrict result, const value_type& temp) {
-        new(result) value_type(temp);
-      };
-      detail::inplace_binary(*this, other, perm, input_op, output_op);
+      auto op =
+          [] (typename T1::const_reference arg) -> typename T1::const_reference
+      { return arg; };
+
+      detail::tensor_init(op, perm, *this, other);
     }
 
-    /// Construct an evaluated tensor
-    template <typename U, typename AU, typename Op>
-    Tensor(const Tensor<U, AU>& other, const Op& op) :
+    /// Copy and modify the data from \c other
+
+    /// \tparam T1 A tensor type
+    /// \tparam Op An element-wise operation type
+    /// \param other The tensor argument
+    /// \param op The element-wise operation
+    template <typename T1, typename Op,
+        enable_if_t<detail::is_tensor<T1>::value
+                 && ! std::is_same<typename std::decay<Op>::type,
+                 Permutation>::value>* = nullptr>
+    Tensor(const T1& other, Op&& op) :
       pimpl_(new Impl(other.range()))
     {
-      math::vector_op(op, other.size(), pimpl_->data_, other.data());
+      detail::tensor_init(std::forward<Op>(op), *this, other);
     }
 
-    /// Construct an evaluated tensor
-    template <typename U, typename AU, typename Op>
-    Tensor(const Tensor<U, AU>& other, const Op& op, const Permutation& perm) :
+    /// Copy, modify, and permute the data from \c other
+
+    /// \tparam T1 A tensor type
+    /// \tparam Op An element-wise operation type
+    /// \param other The tensor argument
+    /// \param op The element-wise operation
+    template <typename T1, typename Op,
+        enable_if_t<detail::is_tensor<T1>::value>* = nullptr>
+    Tensor(const T1& other, Op&& op, const Permutation& perm) :
       pimpl_(new Impl(perm * other.range()))
     {
-      auto output_op = [=] (pointer restrict result, const value_type& temp) {
-        new(result) value_type(temp);
-      };
-      detail::inplace_binary(*this, other, perm, op, output_op);
+      detail::tensor_init(std::forward<Op>(op), perm, *this, other);
     }
 
-    /// Construct an evaluated tensor
-    template <typename U, typename AU, typename V, typename AV, typename Op>
-    Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op) :
+    /// Copy and modify the data from \c left, and \c right
+
+    /// \tparam T1 A tensor type
+    /// \tparam T2 A tensor type
+    /// \tparam Op An element-wise operation type
+    /// \param left The left-hand tensor argument
+    /// \param right The right-hand tensor argument
+    /// \param op The element-wise operation
+    template <typename T1, typename T2, typename Op,
+        enable_if_t<detail::is_tensor<T1, T2>::value>* = nullptr>
+    Tensor(const T1& left, const T2& right, Op&& op) :
       pimpl_(new Impl(left.range()))
     {
-      TA_ASSERT(left.range() == right.range());
-      math::vector_op(op, left.size(), pimpl_->data_, left.data(), right.data());
+      detail::tensor_init(std::forward<Op>(op), *this, left, right);
     }
 
-    /// Construct an evaluated tensor
-    template <typename U, typename AU, typename V, typename AV, typename Op>
-    Tensor(const Tensor<U, AU>& left, const Tensor<V, AV>& right, const Op& op, const Permutation& perm) :
+    /// Copy, modify, and permute the data from \c left, and \c right
+
+    /// \tparam T1 A tensor type
+    /// \tparam T2 A tensor type
+    /// \tparam Op An element-wise operation type
+    /// \param left The left-hand tensor argument
+    /// \param right The right-hand tensor argument
+    /// \param op The element-wise operation
+    /// \param perm The permutation that will be applied to the arguments
+    template <typename T1, typename T2, typename Op,
+        enable_if_t<detail::is_tensor<T1, T2>::value>* = nullptr>
+    Tensor(const T1& left, const T2& right, Op&& op, const Permutation& perm) :
       pimpl_(new Impl(perm * left.range()))
     {
-      // Check inputs.
-      TA_ASSERT(! left.empty());
-      TA_ASSERT(! right.empty());
-      TA_ASSERT(left.range() == right.range());
-      TA_ASSERT(perm);
-      TA_ASSERT(perm.dim() == left.range().dim());
-
-      auto output_op = [=] (pointer restrict result, const value_type& restrict temp) {
-        new(result) value_type(temp);
-      };
-      detail::permute(op, output_op, *this, perm, left, right);
+      detail::tensor_init(std::forward<Op>(op), perm, *this, left, right);
     }
 
     Tensor_ clone() const {
       return (pimpl_ ? Tensor_(pimpl_->range_, pimpl_->data_) : Tensor_());
+    }
+
+    template <typename T1,
+        enable_if_t<detail::is_tensor<T1>::value>* = nullptr>
+    Tensor_& operator=(const T1& other) {
+      detail::inplace_binary(*this, other,
+          [] (typename T1::const_reference t1) -> typename T1::const_reference
+          { return t1; });
+
+      return *this;
     }
 
     /// Plus assignment
