@@ -90,7 +90,7 @@ namespace TiledArray {
       /// Tensor type conversion operator
 
       /// \return A reference to the wrapped tensor
-      operator T&() const { return get(); }
+//      operator T&() const { return get(); }
 
       /// Tensor range accessor
 

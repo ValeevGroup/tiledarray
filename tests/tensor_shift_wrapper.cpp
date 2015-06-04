@@ -81,6 +81,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 BOOST_AUTO_TEST_CASE( shift_assignment_lhs )
 {
   BOOST_CHECK_NO_THROW(shift(t1) = t2);
+  BOOST_CHECK_NE(t1.data(), t2.data());
 
   for(std::size_t i = 0ul; i < t1.size(); ++i)
     BOOST_CHECK_EQUAL(t1[i], t2[i]);
@@ -90,6 +91,7 @@ BOOST_AUTO_TEST_CASE( shift_assignment_lhs )
 BOOST_AUTO_TEST_CASE( shift_assignment_rhs )
 {
   BOOST_CHECK_NO_THROW(t1 = shift(t2));
+  BOOST_CHECK_NE(t1.data(), t2.data());
 
   for(std::size_t i = 0ul; i < t1.size(); ++i)
     BOOST_CHECK_EQUAL(t1[i], t2[i]);
