@@ -89,6 +89,10 @@ namespace TiledArray {
     /// \return Always \c false
     static constexpr bool empty() { return false; }
 
+
+    template <typename Index>
+    static DenseShape block(const Index&, const Index&) const { return DenseShape(); }
+
     static DenseShape perm(const Permutation&) { return DenseShape(); }
 
     template <typename Scalar>

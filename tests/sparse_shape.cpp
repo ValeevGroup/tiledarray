@@ -181,6 +181,30 @@ BOOST_AUTO_TEST_CASE( copy_constructor )
   BOOST_CHECK_EQUAL(y.sparsity(), sparse_shape.sparsity());
 }
 
+
+BOOST_AUTO_TEST_CASE( block )
+{
+  SparseShape<float> result;
+  std::vector<std::size_t> start(GlobalFixture::dim, 2);
+  std::vector<std::size_t> finish(GlobalFixture::dim, 5);
+  BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(start, finish));
+
+  for(unsigned int i = 0u; i < GlobalFixture::dim; ++i) {
+    BOOST_CHECK_EQUAL(result.data().range().start()[i], 0ul);
+    BOOST_CHECK_EQUAL(result.data().range().finish()[i], 3ul);
+  }
+
+  for(Range::const_iterator it = result.data().range().begin(); it != result.data().range().end(); ++it) {
+    Range::index_type result_index = *it;
+    Range::index_type input_index = *it;
+    for(std::size_t i = 0ul; i < GlobalFixture::dim; ++i)
+      input_index[i] += 2ul;
+
+    BOOST_CHECK_EQUAL(result.data()(result_index), sparse_shape.data()(input_index));
+  }
+}
+
+
 BOOST_AUTO_TEST_CASE( permute )
 {
   SparseShape<float> result;

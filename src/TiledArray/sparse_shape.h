@@ -29,6 +29,8 @@
 #include <TiledArray/tensor.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/val_array.h>
+#include <TiledArray/tensor/tensor_view.h>
+#include <TiledArray/tensor/shift_wrapper.h>
 
 namespace TiledArray {
 
@@ -323,6 +325,70 @@ namespace TiledArray {
 
     /// \return \c true when this shape has been initialized.
     bool empty() const { return tile_norms_.empty(); }
+
+    /// Create a copy of a sub-block of the shape
+
+    /// \param start The lower bound of the sub-block
+    /// \param finish The upper bound of the sub-block
+    template <typename Index>
+    SparseShape block(const Index& start, const Index& finish) const {
+      TA_ASSERT(detail::size(start) == tile_norms_.range().dim());
+      TA_ASSERT(detail::size(finish) == tile_norms_.range().dim());
+
+      // Get the number dimensions of the the shape
+      const auto rank = detail::size(start);
+
+      // Construct a new tensor to hold the norms of the subblock
+      std::vector<std::size_t> block_size;
+      block_size.reserve(rank);
+
+      std::shared_ptr<vector_type> size_vectors(new vector_type[rank],
+          madness::detail::CheckedArrayDeleter<vector_type>());
+
+      for(auto i = 0ul; i < rank; ++i) {
+        // Get the new range size
+        const auto start_i = start[i];
+        const auto finish_i = finish[i];
+        const auto size_i = finish_i - start_i;
+
+        // Check that the input indices are in range
+        TA_ASSERT(start_i < finish_i);
+        TA_ASSERT(finish_i <= tile_norms_.range().finish()[i]);
+
+        // Compute the size of the range for result shape
+        block_size.emplace_back(size_i);
+
+        // Compute the trange data for the result shape
+        size_vectors.get()[i] = vector_type(size_i + 1ul,
+            size_vectors_.get()[i].data() + start_i,
+            [=] (const size_type j) { return j - start_i; });
+      }
+
+      // Copy the data from arg to result
+      const value_type threshold = threshold_;
+      size_type zero_tile_count = 0ul;
+      auto copy_op = [threshold,&zero_tile_count] (value_type& restrict result, const value_type arg) {
+        if(arg < threshold)
+          ++zero_tile_count;
+        result = arg;
+      };
+
+      // Construct the result norms tensor
+      TensorConstView<value_type> block_view(tile_norms_, start, finish);
+      Tensor<value_type> result_norms((Range(block_size)));
+      result_norms.inplace_binary(shift(block_view), copy_op);
+
+      return SparseShape(result_norms, size_vectors, zero_tile_count);
+    }
+
+    /// Create a copy of a sub-block of the shape
+
+    /// \param start The lower bound of the sub-block
+    /// \param finish The upper bound of the sub-block
+    template <typename Index>
+    SparseShape block(const Index& start, const Index& finish, const Permutation& perm) const {
+      return block(start, finish).perm(perm);
+    }
 
     /// Create a permuted shape of this shape
 
