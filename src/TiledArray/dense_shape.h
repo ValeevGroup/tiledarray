@@ -91,7 +91,7 @@ namespace TiledArray {
 
 
     template <typename Index>
-    static DenseShape block(const Index&, const Index&) const { return DenseShape(); }
+    static DenseShape block(const Index&, const Index&) { return DenseShape(); }
 
     static DenseShape perm(const Permutation&) { return DenseShape(); }
 
