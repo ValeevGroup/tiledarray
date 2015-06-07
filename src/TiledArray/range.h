@@ -586,18 +586,18 @@ namespace TiledArray {
       Range_::index result(rank_, 0);
 
       // Get pointers to the data
-      size_type * restrict const result_data = & result.front();
-      size_type const * restrict const stride = data_ + rank_ + rank_ + rank_;
+      size_type * restrict const result_data = result.data();
       size_type const * restrict const lower = data_;
+      size_type const * restrict const size = data_ + rank_ + rank_;
 
-      // Compute the coordinate index of o in range.
-      for(unsigned int i = 0u; i < rank_; ++i) {
-        const size_type stride_i = stride[i];
+      // Compute the coordinate index of index in range.
+      for(int i = int(rank_) - 1; i >= 0; --i) {
         const size_type lower_i = lower[i];
+        const size_type size_i = size[i];
 
         // Compute result index element i
-        const size_type result_i = (index / stride_i) + lower_i;
-        index %= stride_i;
+        const size_type result_i = (index % size_i) + lower_i;
+        index /= size_i;
 
         // Store result
         result_data[i] = result_i;
