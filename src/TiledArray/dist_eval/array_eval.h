@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_ARRAY_EVAL_H__INCLUDED
-#define TILEDARRAY_ARRAY_EVAL_H__INCLUDED
+#ifndef TILEDARRAY_DIST_EVAL_ARRAY_EVAL_H__INCLUDED
+#define TILEDARRAY_DIST_EVAL_ARRAY_EVAL_H__INCLUDED
 
 #include <TiledArray/dist_eval/dist_eval.h>
 
@@ -248,4 +248,4 @@ namespace TiledArray {
   }  // namespace detail
 } // namespace TiledArray
 
-#endif // TILEDARRAY_ARRAY_EVAL_H__INCLUDED
+#endif // TILEDARRAY_DIST_EVAL_ARRAY_EVAL_H__INCLUDED

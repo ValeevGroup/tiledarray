@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_UNARY_TENSOR_H__INCLUDED
-#define TILEDARRAY_UNARY_TENSOR_H__INCLUDED
+#ifndef TILEDARRAY_DIST_EVAL_UNARY_EVAL_H__INCLUDED
+#define TILEDARRAY_DIST_EVAL_UNARY_EVAL_H__INCLUDED
 
 #include <TiledArray/dist_eval/dist_eval.h>
 
@@ -161,4 +161,4 @@ namespace TiledArray {
   }  // namespace detail
 }  // namespace TiledArray
 
-#endif // TILEDARRAY_UNARY_TENSOR_H__INCLUDED
+#endif // TILEDARRAY_DIST_EVAL_UNARY_EVAL_H__INCLUDED
