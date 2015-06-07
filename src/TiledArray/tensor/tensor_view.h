@@ -150,20 +150,21 @@ namespace TiledArray {
 
     /// Construct a new view of \c tensor
 
-    /// \tparam U The element type of the tensor
-    /// \tparam A the allocator type of the tensor
+    /// \tparam T1 The tensor type
     /// \param tensor The parent tensor object
     /// \param lower_bound The lower bound of the tensor view
     /// \param upper_bound The upper bound of the tensor view
-    template <typename U, typename A, typename Index,
-        enable_if_t<std::is_convertible<typename Tensor<U, A>::pointer, pointer>::value>* = nullptr>
-    TensorView(Tensor<U, A>& tensor, const Index& lower_bound, const Index& upper_bound) :
+    template <typename T1, typename Index,
+        enable_if_t<detail::is_tensor<T1>::value
+                 && std::is_convertible<typename T1::pointer, pointer>::value>* = nullptr>
+    TensorView(T1& tensor, const Index& lower_bound, const Index& upper_bound) :
       range_(tensor.range(), lower_bound, upper_bound), data_(tensor.data())
     { }
 
-    template <typename U, typename A, typename Index,
-        enable_if_t<std::is_convertible<typename Tensor<U, A>::const_pointer, pointer>::value>* = nullptr>
-    TensorView(const Tensor<U, A>& tensor, const Index& lower_bound, const Index& upper_bound) :
+    template <typename T1, typename Index,
+        enable_if_t<detail::is_tensor<T1>::value
+                 && std::is_convertible<typename T1::const_pointer, pointer>::value>* = nullptr>
+    TensorView(const T1& tensor, const Index& lower_bound, const Index& upper_bound) :
       range_(tensor.range(), lower_bound, upper_bound), data_(tensor.data())
     { }
 
@@ -177,11 +178,12 @@ namespace TiledArray {
       return *this;
     }
 
-    template <typename U>
-    TensorView_& operator=(const U& other) {
+    template <typename T1,
+        enable_if_t<detail::is_tensor<T1>::value>* = nullptr>
+    TensorView_& operator=(const T1& other) {
       if(data_ != other.data()) { // Check for self assignment
         detail::inplace_tensor_op([] (reference restrict result,
-            typename U::const_reference restrict arg)
+            typename T1::const_reference restrict arg)
             { result = arg; }, *this, other);
       }
 
