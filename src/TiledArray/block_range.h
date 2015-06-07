@@ -42,15 +42,13 @@ namespace TiledArray {
 
   public:
 
-    BlockRange() : Range() { }
-
-    BlockRange(const BlockRange& other) :
-      Range(static_cast<const Range&>(other))
-    { }
-
-    BlockRange(BlockRange&& other) :
-      Range(static_cast<Range&&>(other))
-    { }
+    // Compiler generated functions
+    BlockRange() = default;
+    BlockRange(const BlockRange&) = default;
+    BlockRange(BlockRange&&) = default;
+    ~BlockRange() = default;
+    BlockRange& operator=(const BlockRange&) = default;
+    BlockRange& operator=(BlockRange&&) = default;
 
     template <typename Index>
     BlockRange(const Range& range, const Index& lower_bound,
@@ -74,13 +72,13 @@ namespace TiledArray {
       block_offset_ = 0ul;
 
       // Construct temp pointers
-      const size_type* restrict const range_stride = range.weight();
+      const auto* restrict const range_stride = range.weight();
       const auto* restrict const lower_bound_ptr = detail::data(lower_bound);
       const auto* restrict const upper_bound_ptr = detail::data(upper_bound);
-      size_type* restrict const lower  = data_;
-      size_type* restrict const upper  = lower + rank_;
-      size_type* restrict const extent = upper + rank_;
-      size_type* restrict const stride = extent + rank_;
+      auto* restrict const lower  = data_;
+      auto* restrict const upper  = lower + rank_;
+      auto* restrict const extent = upper + rank_;
+      auto* restrict const stride = extent + rank_;
 
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
@@ -91,7 +89,7 @@ namespace TiledArray {
         // Compute data for element i of lower, upper, and extent
         const auto lower_bound_i = lower_bound_ptr[i];
         const auto upper_bound_i = upper_bound_ptr[i];
-        const size_type range_stride_i = range_stride[i];
+        const auto range_stride_i = range_stride[i];
         const auto extent_i = upper_bound_i - lower_bound_i;
 
         // Set the block range data
@@ -104,20 +102,6 @@ namespace TiledArray {
       }
     }
 
-    ~BlockRange() = default;
-
-    BlockRange& operator=(const BlockRange& other) {
-      Range::operator=(other);
-      block_offset_ = other.block_offset_;
-      return *this;
-    }
-
-    BlockRange& operator=(BlockRange&& other) {
-      Range::operator=(std::move(other));
-      block_offset_ = other.block_offset_;
-      other.block_offset_ = 0ul;
-      return *this;
-    }
 
     /// calculate the ordinal index of \c i
 
@@ -180,6 +164,13 @@ namespace TiledArray {
     void swap(BlockRange& other) {
       Range::swap(other);
       std::swap(block_offset_, other.block_offset_);
+    }
+
+    /// Serialization Block range
+    template <typename Archive>
+    void serialize(const Archive& ar) const {
+      Range::serialize(ar);
+      ar & block_offset_;
     }
   }; // BlockRange
 
