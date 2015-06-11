@@ -27,6 +27,7 @@
 #define TILEDARRAY_DIST_EVAL_ARRAY_EVAL_H__INCLUDED
 
 #include <TiledArray/dist_eval/dist_eval.h>
+#include <TiledArray/block_range.h>
 
 namespace TiledArray {
 
@@ -141,10 +142,11 @@ namespace TiledArray {
     private:
       array_type array_; ///< The array that will be evaluated
       std::shared_ptr<op_type> op_; ///< The tile operation
+      BlockRange block_range_; ///< Sub-block range
 
     public:
 
-      /// Constructor
+      /// Construct with full array range
 
       /// \param array The array that will be evaluated
       /// \param world The world where array will be evaluated
@@ -157,8 +159,28 @@ namespace TiledArray {
           const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
           const Permutation& perm, const op_type& op) :
         DistEvalImpl_(world, trange, shape, pmap, perm),
-        array_(array),
-        op_(new op_type(op))
+        array_(array), op_(std::make_shared<op_type>(op)), block_range_()
+      { }
+
+      /// Constructor with sub-block range
+
+      /// \param array The array that will be evaluated
+      /// \param world The world where array will be evaluated
+      /// \param trange The tiled range of the result tensor
+      /// \param shape The shape of the result tensor
+      /// \param pmap The process map for the result tensor tiles
+      /// \param perm The permutation that is applied to the tile coordinate index
+      /// \param op The operation that will be used to evaluate the tiles of array
+      /// \param lower_bound The sub-block lower bound
+      /// \param upper_bound The sub-block upper bound
+      ArrayEvalImpl(const array_type& array, World& world, const trange_type& trange,
+          const shape_type& shape, const std::shared_ptr<pmap_interface>& pmap,
+          const Permutation& perm, const op_type& op,
+          const std::vector<std::size_t>& lower_bound,
+          const std::vector<std::size_t>& upper_bound) :
+        DistEvalImpl_(world, trange, shape, pmap, perm),
+        array_(array), op_(std::make_shared<op_type>(op)),
+        block_range_(array.trange().tiles(), lower_bound, upper_bound)
       { }
 
       /// Virtual destructor
@@ -167,7 +189,12 @@ namespace TiledArray {
       virtual Future<value_type> get_tile(size_type i) const {
 
         // Get the array index that corresponds to the target index
-        const size_type array_index = DistEvalImpl_::perm_index_to_source(i);
+        size_type array_index = DistEvalImpl_::perm_index_to_source(i);
+
+        // If this object only uses a sub-block of the array, shift the tile
+        // index to the correct location.
+        if(block_range_.rank())
+          array_index = block_range_.ord(array_index);
 
         // Get the tile from array_, which may be located on a remote node.
         Future<typename array_type::value_type> tile =

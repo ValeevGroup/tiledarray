@@ -73,6 +73,31 @@ namespace TiledArray {
     return arg.empty();
   }
 
+  // Shift operations ----------------------------------------------------------
+
+  /// Shift the range of \c arg
+
+  /// \tparam Arg The tile argument type
+  /// \tparam Index An array type
+  /// \param arg The tile argument to be shifted
+  /// \param range_shift The offset to be applied to the argument range
+  /// \return A copy of the tile with a new range
+  template <typename Arg, typename Index>
+  inline auto shift(const Arg& arg, const Index& range_shift) ->
+      decltype(arg.shift(range_shift))
+  { return arg.shift(range_shift); }
+
+  /// Shift the range of \c arg in place
+
+  /// \tparam Arg The tile argument type
+  /// \tparam Index An array type
+  /// \param arg The tile argument to be shifted
+  /// \param range_shift The offset to be applied to the argument range
+  /// \return A copy of the tile with a new range
+  template <typename Arg, typename Index>
+  inline auto shift_to(Arg& arg, const Index& range_shift) ->
+      decltype(arg.shift_to(range_shift))
+  { return arg.shift_to(range_shift); }
 
   // Permutation operations ----------------------------------------------------
 

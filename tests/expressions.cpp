@@ -36,8 +36,6 @@ struct ExpressionsFixture : public TiledRangeFixture {
   typedef Array<int,1> Array1;
 
   ExpressionsFixture() :
-    trange1(dims.begin(), dims.begin() + 1),
-    trange2(dims.begin(), dims.begin() + 2),
     a(*GlobalFixture::world, tr),
     b(*GlobalFixture::world, tr),
     c(*GlobalFixture::world, tr),
@@ -116,8 +114,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.fence();
   }
 
-  TiledRange trange1;
-  TiledRange trange2;
+  const static TiledRange trange1;
+  const static TiledRange trange2;
   Array3 a;
   Array3 b;
   Array3 c;
@@ -125,6 +123,13 @@ struct ExpressionsFixture : public TiledRangeFixture {
   Array1 v;
   Array2 w;
 }; // ExpressionsFixture
+
+// Instantiate static variables for fixture
+const TiledRange ExpressionsFixture::trange1 =
+    { {0, 2, 5, 10, 17, 28, 41}};
+const TiledRange ExpressionsFixture::trange2 =
+    { {0, 2, 5, 10, 17, 28, 41},
+      {0, 3, 6, 11, 18, 29, 42} };
 
 BOOST_FIXTURE_TEST_SUITE( expressions_suite, ExpressionsFixture )
 
@@ -161,6 +166,69 @@ BOOST_AUTO_TEST_CASE( scale_permute )
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for(std::size_t j = 0ul; j < a_tile.size(); ++j)
         BOOST_CHECK_EQUAL(a_tile[j], 2 * perm_b_tile[j]);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( block )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    Tensor<int> arg_tile = a.find(block_range.ord(index)).get();
+    Tensor<int> result_tile = c.find(index).get();
+
+    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
+      BOOST_CHECK_EQUAL(result_tile.range().start()[r],
+          arg_tile.range().start()[r] - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().finish()[r],
+          arg_tile.range().finish()[r] - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().size()[r],
+          arg_tile.range().size()[r]);
+
+      BOOST_CHECK_EQUAL(result_tile.range().weight()[r],
+          arg_tile.range().weight()[r]);
+    }
+    BOOST_CHECK_EQUAL(result_tile.range().volume(), arg_tile.range().volume());
+
+    // Check that the data is correct for the result array.
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], arg_tile[j]);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( scal_block )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    Tensor<int> arg_tile = a.find(block_range.ord(index)).get();
+    Tensor<int> result_tile = c.find(index).get();
+
+    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
+      BOOST_CHECK_EQUAL(result_tile.range().start()[r],
+          arg_tile.range().start()[r] - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().finish()[r],
+          arg_tile.range().finish()[r] - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().size()[r],
+          arg_tile.range().size()[r]);
+
+      BOOST_CHECK_EQUAL(result_tile.range().weight()[r],
+          arg_tile.range().weight()[r]);
+    }
+    BOOST_CHECK_EQUAL(result_tile.range().volume(), arg_tile.range().volume());
+
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
     }
   }
 }

@@ -493,6 +493,7 @@ namespace TiledArray {
     /// \tparam Index An array type
     /// \param lower_bound The lower bounds of the N-dimensional range
     /// \param upper_bound The upper bound of the N-dimensional range
+    /// \return A reference to this range
     /// \throw TiledArray::Exception When the size of \c lower_bound is not
     /// equal to that of \c upper_bound.
     /// \throw TiledArray::Exception When <tt>lower_bound[i] >= upper_bound[i]</tt>
@@ -514,6 +515,41 @@ namespace TiledArray {
         volume_ = 0ul;
 
       return *this;
+    }
+
+    /// Shift the lower and upper bound of this range
+
+    /// \tparam Index The shift array type
+    /// \param bound_shift The shift to be applied to the range
+    /// \return A reference to this range
+    template <typename Index>
+    Range_& inplace_shift(const Index& bound_shift) {
+      const unsigned int n = detail::size(bound_shift);
+      TA_ASSERT(n == rank_);
+
+      const auto* restrict const bound_shift_data = detail::data(bound_shift);
+      size_type* restrict const lower = data_;
+      size_type* restrict const upper = data_ + rank_;
+
+      for(unsigned i = 0u; i < rank_; ++i) {
+        const auto bound_shift_i = bound_shift_data[i];
+        lower[i] += bound_shift_i;
+        upper[i] += bound_shift_i;
+      }
+
+      return *this;
+    }
+
+    /// Shift the lower and upper bound of this range
+
+    /// \tparam Index The shift array type
+    /// \param bound_shift The shift to be applied to the range
+    /// \return A shifted copy of this range
+    template <typename Index>
+    Range_ shift(const Index& bound_shift) {
+      Range_ result(*this);
+      result.inplace_shift(bound_shift);
+      return result;
     }
 
     /// calculate the ordinal index of \c i

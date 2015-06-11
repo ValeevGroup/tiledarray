@@ -40,21 +40,9 @@ namespace TiledArray {
 
     Range::size_type block_offset_ = 0ul;
 
-  public:
-
-    // Compiler generated functions
-    BlockRange() = default;
-    BlockRange(const BlockRange&) = default;
-    BlockRange(BlockRange&&) = default;
-    ~BlockRange() = default;
-    BlockRange& operator=(const BlockRange&) = default;
-    BlockRange& operator=(BlockRange&&) = default;
 
     template <typename Index>
-    BlockRange(const Range& range, const Index& lower_bound,
-        const Index& upper_bound) :
-        Range()
-    {
+    void init(const Range& range, const Index& lower_bound, const Index& upper_bound) {
       TA_ASSERT(range.rank());
       // Check for valid lower and upper bounds
       TA_ASSERT(std::equal(lower_bound.begin(), lower_bound.end(), range.start(),
@@ -82,15 +70,16 @@ namespace TiledArray {
 
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
-        // Check input dimensions
-        TA_ASSERT(lower_bound[i] >= 0ul);
-        TA_ASSERT(lower_bound[i] < upper_bound[i]);
-
         // Compute data for element i of lower, upper, and extent
         const auto lower_bound_i = lower_bound_ptr[i];
         const auto upper_bound_i = upper_bound_ptr[i];
         const auto range_stride_i = range_stride[i];
         const auto extent_i = upper_bound_i - lower_bound_i;
+
+        // Check input dimensions
+        TA_ASSERT(lower_bound_i >= range.start()[i]);
+        TA_ASSERT(lower_bound_i < upper_bound_i);
+        TA_ASSERT(upper_bound_i <= range.finish()[i]);
 
         // Set the block range data
         lower[i]       = lower_bound_i;
@@ -100,6 +89,32 @@ namespace TiledArray {
         block_offset_ += lower_bound_i * range_stride_i;
         volume_       *= extent_i;
       }
+    }
+
+  public:
+
+    // Compiler generated functions
+    BlockRange() = default;
+    BlockRange(const BlockRange&) = default;
+    BlockRange(BlockRange&&) = default;
+    ~BlockRange() = default;
+    BlockRange& operator=(const BlockRange&) = default;
+    BlockRange& operator=(BlockRange&&) = default;
+
+    template <typename Index>
+    BlockRange(const Range& range, const Index& lower_bound,
+        const Index& upper_bound) :
+        Range()
+    {
+      init(range, lower_bound, upper_bound);
+    }
+
+
+    BlockRange(const Range& range, const std::initializer_list<size_type>& lower_bound,
+        const std::initializer_list<size_type>& upper_bound) :
+      Range()
+    {
+      init(range, lower_bound, upper_bound);
     }
 
 
@@ -158,6 +173,27 @@ namespace TiledArray {
     BlockRange& resize(const Index&, const Index&) {
       // This function is here to shadow the base class resize function
       TA_EXCEPTION("BlockRange::resize() is not supported");
+      return *this;
+    }
+
+
+    /// Shift the lower and upper bound of this range
+
+    /// \warning This function is here to shadow the base class inplace_shift
+    /// function, and disable it.
+    template <typename Index>
+    Range_& inplace_shift(const Index&) {
+      TA_EXCEPTION("BlockRange::inplace_shift() is not supported");
+      return *this;
+    }
+
+    /// Shift the lower and upper bound of this range
+
+    /// \warning This function is here to shadow the base class shift function,
+    /// and disable it.
+    template <typename Index>
+    Range_ shift(const Index&) {
+      TA_EXCEPTION("BlockRange::shift() is not supported");
       return *this;
     }
 

@@ -454,6 +454,30 @@ namespace TiledArray {
       return Tensor_(*this, perm);
     }
 
+
+    /// Shift the lower and upper bound of this tensor
+
+    /// \tparam Index The shift array type
+    /// \param bound_shift The shift to be applied to the tensor range
+    /// \return A reference to this tensor
+    template <typename Index>
+    Tensor_& shift_to(const Index& bound_shift) {
+      TA_ASSERT(pimpl_);
+      pimpl_->range_.inplace_shift(bound_shift);
+      return *this;
+    }
+
+    /// Shift the lower and upper bound of this range
+
+    /// \tparam Index The shift array type
+    /// \param bound_shift The shift to be applied to the tensor range
+    /// \return A shifted copy of this tensor
+    template <typename Index>
+    Tensor_ shift(const Index& bound_shift) const {
+      TA_ASSERT(pimpl_);
+      return Tensor_(pimpl_->range_.shift(bound_shift), pimpl_->data_);
+    }
+
     // Generic vector operations
 
     /// Use a binary, element wise operation to construct a new tensor

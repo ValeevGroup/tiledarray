@@ -30,6 +30,7 @@
 #include <TiledArray/expressions/subt_expr.h>
 #include <TiledArray/expressions/mult_expr.h>
 #include <TiledArray/expressions/tsr_engine.h>
+#include <TiledArray/expressions/blk_tsr_expr.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -146,6 +147,28 @@ namespace TiledArray {
         return operator=(MultExpr<TsrExpr<const array_type>, D>(*this, other.derived()));
       }
 
+
+      /// Block expression
+
+      /// \tparam Index The bound index types
+      /// \param lower_bound The lower_bound of the block
+      /// \param upper_bound The upper_bound of the block
+      template <typename Index>
+      BlkTsrExpr<A> block(const Index& lower_bound, const Index& upper_bound) const {
+        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+      }
+
+      /// Block expression
+
+      /// \tparam Index The bound index types
+      /// \param lower_bound The lower_bound of the block
+      /// \param upper_bound The upper_bound of the block
+      template <typename Index>
+      BlkTsrExpr<A> block(const std::initializer_list<Index>& lower_bound,
+          const std::initializer_list<Index>& upper_bound) const {
+        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+      }
+
       /// Tensor variable string accessor
 
       /// \return A const reference to the variable string for this tensor
@@ -200,6 +223,27 @@ namespace TiledArray {
 
       /// \return a const reference to this array
       const array_type& array() const { return array_; }
+
+      /// Block expression
+
+      /// \tparam Index The bound index types
+      /// \param lower_bound The lower_bound of the block
+      /// \param upper_bound The upper_bound of the block
+      template <typename Index>
+      BlkTsrExpr<A> block(const Index& lower_bound, const Index& upper_bound) const {
+        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+      }
+
+      /// Block expression
+
+      /// \tparam Index The bound index types
+      /// \param lower_bound The lower_bound of the block
+      /// \param upper_bound The upper_bound of the block
+      template <typename Index>
+      BlkTsrExpr<A> block(const std::initializer_list<Index>& lower_bound,
+          const std::initializer_list<Index>& upper_bound) const {
+        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+      }
 
       /// Tensor variable string accessor
 
