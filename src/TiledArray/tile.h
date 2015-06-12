@@ -272,6 +272,34 @@ namespace TiledArray {
   }
 
 
+  // Shift operations ----------------------------------------------------------
+
+  /// Shift the range of \c arg
+
+  /// \tparam Arg The tensor argument type
+  /// \tparam Index An array type
+  /// \param arg The tile argument to be shifted
+  /// \param range_shift The offset to be applied to the argument range
+  /// \return A copy of the tile with a new range
+  template <typename Arg, typename Index>
+  inline auto shift(const Tile<Arg>& arg, const Index& range_shift) ->
+      Tile<decltype(shift(arg.tensor(), range_shift))>
+  { return detail::make_tile(shift(arg.tensor(), range_shift)); }
+
+  /// Shift the range of \c arg in place
+
+  /// \tparam Arg The tensor argument type
+  /// \tparam Index An array type
+  /// \param arg The tile argument to be shifted
+  /// \param range_shift The offset to be applied to the argument range
+  /// \return A copy of the tile with a new range
+  template <typename Arg, typename Index>
+  inline Tile<Arg>& shift_to(Tile<Arg>& arg, const Index& range_shift) {
+    shift_to(arg.tensor(), range_shift);
+    return arg;
+  }
+
+
   // Addition operations -------------------------------------------------------
 
   /// Add tile arguments
