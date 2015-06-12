@@ -267,6 +267,62 @@ namespace TiledArray {
     }
 
 
+    /// Tensor reduction operation
+
+    /// Perform an element-wise reduction of the tensors.
+    /// \tparam Op The element initialization operation type
+    /// \tparam Scalar A scalar type
+    /// \tparam T1 The first argument tensor type
+    /// \tparam Ts The argument tensor types
+    /// \param[in] op The element-wise reduction operation
+    /// \param[in,out] identity The initial value for the reduction and the result
+    /// \param[in] tensor1 The first tensor to be reduced
+    /// \param[in] tensors The other tensors to be reduced
+    template <typename Op, typename Scalar, typename T1, typename... Ts,
+    enable_if_t<is_tensor<T1, Ts...>::value
+             && is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+    Scalar tensor_reduce(Op&& op, Scalar identity, const T1& tensor1, const Ts&... tensors) {
+      TA_ASSERT(! empty(tensor1, tensors...));
+      TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
+
+      const auto volume = tensor1.range().volume();
+
+      math::reduce_op(std::forward<Op>(op), volume, identity, tensor1.data(),
+          tensors.data()...);
+
+      return identity;
+    }
+
+
+    /// Tensor reduction operation
+
+    /// Perform an element-wise reduction of the tensors.
+    /// \tparam Op The element initialization operation type
+    /// \tparam Scalar A scalar type
+    /// \tparam T1 The first argument tensor type
+    /// \tparam Ts The argument tensor types
+    /// \param[in] op The element-wise reduction operation
+    /// \param[in,out] identity The initial value for the reduction and the result
+    /// \param[in] tensor1 The first tensor to be reduced
+    /// \param[in] tensors The other tensors to be reduced
+    template <typename Op, typename Scalar, typename T1, typename... Ts,
+    enable_if_t<is_tensor<T1, Ts...>::value
+             && ! is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+    Scalar tensor_reduce(Op&& op, Scalar identity, const T1& tensor1, const Ts&... tensors) {
+      TA_ASSERT(! empty(tensor1, tensors...));
+      TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
+
+      const auto stride = inner_size(tensors...);
+      const auto volume = tensor1.range().volume();
+
+      for(decltype(volume) i = 0ul; i < volume; i += stride)
+        math::reduce_op(op, stride, identity,
+            tensor1.data() + tensor1.range().ord(i),
+            (tensors.data() + tensors.range().ord(i))...);
+
+      return identity;
+    }
+
   }  // namespace detail
 } // namespace TiledArray
 
