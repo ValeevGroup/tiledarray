@@ -136,7 +136,7 @@ namespace TiledArray {
       const auto volume = tensor1.range().volume();
 
       for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride)
-        math::vector_op(std::forward<Op>(op), stride, result.data() + i,
+        math::vector_op(op, stride, result.data() + i,
           tensor1.data() + tensor1.range().ord(i),
           (tensors.data() + tensors.range().ord(i))...);
 
@@ -154,7 +154,7 @@ namespace TiledArray {
       const typename T1::size_type volume = tensor1.range().volume();
 
       for(typename T1::size_type i = 0ul; i < volume; i += stride)
-        math::vector_op(std::forward<Op>(op), stride,
+        math::vector_op(op, stride,
           tensor1.data() + tensor1.range().ord(i),
           (tensors.data() + tensors.range().ord(i))...);
     }
@@ -202,9 +202,9 @@ namespace TiledArray {
       TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
       const auto volume = tensor1.range().volume();
+      uninitialized_wrapper_op<Op, T1, Ts...> wrapper_op(std::forward<Op>(op));
 
-      math::vector_ptr_op(uninitialized_wrapper_op<Op, T1, Ts...>(std::forward<Op>(op)),
-          volume, tensor1.data(), tensors.data()...);
+      math::vector_ptr_op(wrapper_op, volume, tensor1.data(), tensors.data()...);
     }
 
 
@@ -221,9 +221,8 @@ namespace TiledArray {
     /// \param tensor1 The result tensor
     /// \param tensors The argument tensors
     template <typename Op, typename T1, typename... Ts,
-        enable_if_t<is_tensor<T1>::value && is_tensor<Ts...>::value
-               && is_contiguous_tensor<T1>::value
-               && is_contiguous_tensor<Ts...>::value>* = nullptr>
+        enable_if_t<is_tensor<T1, Ts...>::value
+               && is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
     inline void tensor_init(Op&& op, const Permutation& perm, T1& tensor1,
         const Ts&... tensors)
     {
@@ -260,10 +259,11 @@ namespace TiledArray {
 
       const auto stride = inner_size(tensors...);
       const auto volume = tensor1.range().volume();
+      uninitialized_wrapper_op<Op, T1, Ts...> wrapper_op(std::forward<Op>(op));
 
       for(decltype(volume) i = 0ul; i < volume; i += stride)
-        math::vector_ptr_op(uninitialized_wrapper_op<Op, T1, Ts...>(std::forward<Op>(op)),
-            stride, tensor1.data() + i, (tensors.data() + tensors.range().ord(i))...);
+        math::vector_ptr_op(wrapper_op, stride, tensor1.data() + i,
+            (tensors.data() + tensors.range().ord(i))...);
     }
 
 
