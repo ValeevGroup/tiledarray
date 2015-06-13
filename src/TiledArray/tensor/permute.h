@@ -42,7 +42,7 @@ namespace TiledArray {
     /// unused dimensions).
     /// \tparam SizeType An unsigned integral type
     /// \param[out] fused_size An array for the fused size output
-    /// \param[out] fused_size An array for the fused weight output
+    /// \param[out] fused_weight An array for the fused weight output
     /// \param[in] size An array that holds the unfused size information of the
     /// argument tensor
     /// \param[in] perm The permutation that will be applied to the argument
