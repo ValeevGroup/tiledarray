@@ -51,8 +51,8 @@ namespace TiledArray {
     /// \param tensor1 The first argument tensor
     /// \param tensors The remaining argument tensors
     template <typename TR, typename Op, typename T1, typename... Ts,
-        enable_if_t<is_tensor<TR, T1, Ts...>::value
-            || is_tensor_of_tensor<TR, T1, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor<TR, T1, Ts...>::value
+            || is_tensor_of_tensor<TR, T1, Ts...>::value>::type* = nullptr>
     inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
       return TR(tensor1, tensors..., std::forward<Op>(op));
     }
@@ -72,9 +72,9 @@ namespace TiledArray {
     /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The remaining argument tensors
     template <typename TR, typename Op, typename T1, typename... Ts,
-        enable_if_t<(is_tensor<T1, Ts...>::value
+        typename std::enable_if<(is_tensor<T1, Ts...>::value
             || is_tensor_of_tensor<TR, T1, Ts...>::value)
-            && is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+            && is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     inline TR tensor_op(Op&& op, const Permutation& perm, const T1& tensor1,
         const Ts&... tensors)
     {
@@ -96,8 +96,8 @@ namespace TiledArray {
     /// \param[in,out] result The result tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename... Ts,
-        enable_if_t<is_tensor<TR, Ts...>::value
-                 && is_contiguous_tensor<TR, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor<TR, Ts...>::value
+                 && is_contiguous_tensor<TR, Ts...>::value>::type* = nullptr>
     inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
       TA_ASSERT(! empty(result, tensors...));
       TA_ASSERT(is_range_set_congruent(result, tensors...));
@@ -119,8 +119,8 @@ namespace TiledArray {
     /// \param[in,out] result The result tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename... Ts,
-        enable_if_t<is_tensor_of_tensor<TR, Ts...>::value
-                 && is_contiguous_tensor<TR, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor_of_tensor<TR, Ts...>::value
+                 && is_contiguous_tensor<TR, Ts...>::value>::type* = nullptr>
     inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
       TA_ASSERT(! empty(result, tensors...));
       TA_ASSERT(is_range_set_congruent(result, tensors...));
@@ -158,8 +158,8 @@ namespace TiledArray {
     /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The remaining argument tensors
     template <typename InputOp, typename OutputOp, typename TR, typename T1, typename... Ts,
-        enable_if_t<is_tensor<TR, T1, Ts...>::value
-               && is_contiguous_tensor<TR, T1, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor<TR, T1, Ts...>::value
+               && is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
     inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
         const Permutation& perm, TR& result, const T1& tensor1,
         const Ts&... tensors)
@@ -201,8 +201,8 @@ namespace TiledArray {
     /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The remaining argument tensors
     template <typename InputOp, typename OutputOp, typename TR, typename T1, typename... Ts,
-        enable_if_t<is_tensor_of_tensor<TR, T1, Ts...>::value
-               && is_contiguous_tensor<TR, T1, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor_of_tensor<TR, T1, Ts...>::value
+               && is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
     inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
         const Permutation& perm, TR& result, const T1& tensor1,
         const Ts&... tensors)
@@ -237,8 +237,8 @@ namespace TiledArray {
     /// \param[in,out] result The result tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename... Ts,
-        enable_if_t<is_tensor<TR, Ts...>::value
-               && ! (is_contiguous_tensor<TR, Ts...>::value)>* = nullptr>
+        typename std::enable_if<is_tensor<TR, Ts...>::value
+               && ! (is_contiguous_tensor<TR, Ts...>::value)>::type* = nullptr>
     inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
       TA_ASSERT(! empty(result, tensors...));
       TA_ASSERT(is_range_congruent(result, tensors...));
@@ -262,8 +262,8 @@ namespace TiledArray {
     /// \param[in,out] result The result tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename... Ts,
-        enable_if_t<is_tensor_of_tensor<TR, Ts...>::value
-               && ! (is_contiguous_tensor<TR, Ts...>::value)>* = nullptr>
+        typename std::enable_if<is_tensor_of_tensor<TR, Ts...>::value
+               && ! (is_contiguous_tensor<TR, Ts...>::value)>::type* = nullptr>
     inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
       TA_ASSERT(! empty(result, tensors...));
       TA_ASSERT(is_range_congruent(result, tensors...));
@@ -300,8 +300,8 @@ namespace TiledArray {
     /// \param[out] result The result tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename... Ts,
-        enable_if_t<is_tensor<TR, Ts...>::value
-               && is_contiguous_tensor<TR, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor<TR, Ts...>::value
+               && is_contiguous_tensor<TR, Ts...>::value>::type* = nullptr>
     inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
       TA_ASSERT(! empty(result, tensors...));
       TA_ASSERT(is_range_set_congruent(result, tensors...));
@@ -327,8 +327,8 @@ namespace TiledArray {
     /// \param[out] result The result tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename... Ts,
-        enable_if_t<is_tensor_of_tensor<TR, Ts...>::value
-               && is_contiguous_tensor<TR, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor_of_tensor<TR, Ts...>::value
+               && is_contiguous_tensor<TR, Ts...>::value>::type* = nullptr>
     inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
       TA_ASSERT(! empty(result, tensors...));
       TA_ASSERT(is_range_set_congruent(result, tensors...));
@@ -357,8 +357,8 @@ namespace TiledArray {
     /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename T1, typename... Ts,
-        enable_if_t<is_tensor<TR, T1, Ts...>::value
-               && is_contiguous_tensor<TR, T1, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor<TR, T1, Ts...>::value
+               && is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
     inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
         const T1& tensor1, const Ts&... tensors)
     {
@@ -390,8 +390,8 @@ namespace TiledArray {
     /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename T1, typename... Ts,
-        enable_if_t<is_tensor_of_tensor<TR, T1, Ts...>::value
-               && is_contiguous_tensor<TR, T1, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_tensor_of_tensor<TR, T1, Ts...>::value
+               && is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
     inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
         const T1& tensor1, const Ts&... tensors)
     {
@@ -424,9 +424,9 @@ namespace TiledArray {
     /// \param[out] tensor1 The result tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename T1, typename... Ts,
-        enable_if_t<is_tensor<TR, T1, Ts...>::value
+        typename std::enable_if<is_tensor<TR, T1, Ts...>::value
                  && is_contiguous_tensor<TR>::value
-                 && ! is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+                 && ! is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
         const Ts&... tensors)
     {
@@ -459,9 +459,9 @@ namespace TiledArray {
     /// \param[out] tensor1 The result tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename T1, typename... Ts,
-        enable_if_t<is_tensor_of_tensor<TR, T1, Ts...>::value
+        typename std::enable_if<is_tensor_of_tensor<TR, T1, Ts...>::value
                  && is_contiguous_tensor<TR>::value
-                 && ! is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+                 && ! is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
         const Ts&... tensors)
     {
@@ -507,8 +507,8 @@ namespace TiledArray {
     /// \param tensors The other tensors to be reduced
     /// \return The reduced value of the tensor(s)
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
-    enable_if_t<is_numeric<Scalar>::value && is_tensor<T1, Ts...>::value
-             && is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+    typename std::enable_if<is_numeric<Scalar>::value && is_tensor<T1, Ts...>::value
+             && is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&&,
         Scalar identity, const T1& tensor1, const Ts&... tensors)
     {
@@ -538,9 +538,9 @@ namespace TiledArray {
     /// \param tensors The other tensors to be reduced
     /// \return The reduced value of the tensor(s)
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
-        enable_if_t<is_numeric<Scalar>::value
+        typename std::enable_if<is_numeric<Scalar>::value
             && is_tensor_of_tensor<T1, Ts...>::value
-            && is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+            && is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         Scalar identity, const T1& tensor1, const Ts&... tensors)
     {
@@ -574,8 +574,8 @@ namespace TiledArray {
     /// \param tensors The other tensors to be reduced
     /// \return The reduced value of the tensor(s)
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
-        enable_if_t<is_numeric<Scalar>::value && is_tensor<T1, Ts...>::value
-            && ! is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+        typename std::enable_if<is_numeric<Scalar>::value && is_tensor<T1, Ts...>::value
+            && ! is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         const Scalar identity, const T1& tensor1, const Ts&... tensors)
     {
@@ -612,9 +612,9 @@ namespace TiledArray {
     /// \param tensors The other tensors to be reduced
     /// \return The reduced value of the tensor(s)
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
-        enable_if_t<is_numeric<Scalar>::value
+        typename std::enable_if<is_numeric<Scalar>::value
             && is_tensor_of_tensor<T1, Ts...>::value
-            && ! is_contiguous_tensor<T1, Ts...>::value>* = nullptr>
+            && ! is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         const Scalar identity, const T1& tensor1, const Ts&... tensors)
     {

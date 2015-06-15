@@ -60,7 +60,7 @@ namespace TiledArray {
     /// \param a An array object
     /// \return The size of array \c a
     template <typename T,
-        enable_if_t<! std::is_array<T>::value>* = nullptr>
+        typename std::enable_if<! std::is_array<T>::value>::type* = nullptr>
     inline auto size(const T &a) -> decltype(a.size()) { return a.size(); }
 
     /// Container data pointer accessor

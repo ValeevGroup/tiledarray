@@ -179,7 +179,7 @@ namespace TiledArray {
     // Serialization -----------------------------------------------------------
 
     template <typename Archive,
-        enable_if_t<madness::archive::is_output_archive<Archive>::value>* = nullptr>
+        typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type* = nullptr>
     void serialize(Archive &ar) const {
       // Serialize data for empty tile check
       bool empty = !static_cast<bool>(pimpl_);
@@ -191,7 +191,7 @@ namespace TiledArray {
     }
 
     template <typename Archive,
-        enable_if_t<madness::archive::is_input_archive<Archive>::value>* = nullptr>
+        typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type* = nullptr>
     void serialize(Archive &ar) {
       // Check for empty tile
       bool empty = false;
@@ -324,7 +324,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(left + right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto add(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor) ->
       Tile<decltype(add(left.tensor(), right.tensor(), factor))>
   { return detail::make_tile(add(left.tensor(), right.tensor(), factor)); }
@@ -353,7 +353,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto add(const Tile<Left>& left, const Tile<Right>& right,
       const Scalar factor, const Permutation& perm) ->
       Tile<decltype(add(left.tensor(), right.tensor(), factor, perm))>
@@ -367,7 +367,7 @@ namespace TiledArray {
   /// \param value The constant scalar to be added
   /// \return A tile that is equal to <tt>arg + value</tt>
   template <typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto add(const Tile<Arg>& arg, const Scalar value) ->
       Tile<decltype(add(arg.tensor(), value))>
   { return detail::make_tile(add(arg.tensor(), value)); }
@@ -381,7 +381,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg + value)</tt>
   template <typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
   add(const Tile<Arg>& arg, const Scalar value, const Permutation& perm) ->
       Tile<decltype(add(arg.tensor(), value, perm))>
@@ -410,7 +410,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
   template <typename Result, typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline Tile<Result>&
   add_to(Tile<Result>& result, const Tile<Arg>& arg, const Scalar factor) {
     add_to(result.tensor(), arg.tensor(), factor);
@@ -425,7 +425,7 @@ namespace TiledArray {
   /// \param value The constant scalar to be added to \c result
   /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
   template <typename Result, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline Tile<Result>& add_to(Tile<Result>& result, const Scalar value) {
     add_to(result.tensor(), value);
     return result;
@@ -456,7 +456,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(left - right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
   subt(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor) ->
       Tile<decltype(subt(left.tensor(), right.tensor(), factor))>
@@ -486,7 +486,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left - right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
   subt(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor,
       const Permutation& perm) ->
@@ -500,7 +500,7 @@ namespace TiledArray {
   /// \param value The constant scalar to be subtracted
   /// \return A tile that is equal to <tt>arg - value</tt>
   template <typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
   subt(const Tile<Arg>& arg, const Scalar value) ->
       Tile<decltype(subt(arg.tensor(), value))>
@@ -514,7 +514,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg - value)</tt>
   template <typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
   subt(const Tile<Arg>& arg, const Scalar value, const Permutation& perm) ->
       Tile<decltype(subt(arg.tensor(), value, perm))>
@@ -542,7 +542,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
   template <typename Result, typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline Tile<Result>&
   subt_to(Tile<Result>& result, const Tile<Arg>& arg, const Scalar factor) {
     subt_to(result.tensor(), arg.tensor(), factor);
@@ -556,7 +556,7 @@ namespace TiledArray {
   /// \param value The constant scalar to be subtracted from \c result
   /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
   template <typename Result, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline Tile<Result>& subt_to(Tile<Result>& result, const Scalar value) {
     subt_to(result.tensor(), value);
     return result;
@@ -587,7 +587,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
   mult(const Tile<Left>& left, const Tile<Right>& right,  const Scalar factor) ->
       Tile<decltype(mult(left.tensor(), right.tensor(), factor))>
@@ -617,7 +617,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left * right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
   mult(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor,
       const Permutation& perm) ->
@@ -646,7 +646,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(result *= arg) *= factor</tt>
   template <typename Result, typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg,
       const Scalar factor)
   {
@@ -664,7 +664,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>arg * factor</tt>
   template <typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto scale(const Tile<Arg>& arg, const Scalar factor) ->
       Tile<decltype(scale(arg.tensor(), factor))>
   { return detail::make_tile(scale(arg.tensor(), factor)); }
@@ -677,7 +677,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
   template <typename Arg, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
   scale(const Tile<Arg>& arg, const Scalar factor, const Permutation& perm) ->
       Tile<decltype(scale(arg.tensor(), factor, perm))>
@@ -690,7 +690,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>result *= factor</tt>
   template <typename Result, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline Tile<Result>& scale_to(Tile<Result>& result, const Scalar factor) {
     scale_to(result.tensor(), factor);
     return result;
@@ -747,7 +747,7 @@ namespace TiledArray {
   /// \param gemm_config A helper object used to simplify gemm operations
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto gemm(const Tile<Left>& left, const Tile<Right>& right,
       const Scalar factor, const math::GemmHelper& gemm_config) ->
       Tile<decltype(gemm(left.tensor(), right.tensor(), factor, gemm_config))>
@@ -767,7 +767,7 @@ namespace TiledArray {
   /// \param gemm_config A helper object used to simplify gemm operations
   /// \return A tile that is equal to <tt>result = (left * right) * factor</tt>
   template <typename Result, typename Left, typename Right, typename Scalar,
-      enable_if_t<detail::is_numeric<Scalar>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline Tile<Result>& gemm(Tile<Result>& result, const Tile<Left>& left,
       const Tile<Right>& right, const Scalar factor,
       const math::GemmHelper& gemm_config)
@@ -945,7 +945,7 @@ namespace TiledArray {
   /// \param right The right-hand scaling factor
   /// \return The \c left tile scaled by \c right
   template <typename Left, typename Right,
-      enable_if_t<detail::is_numeric<Right>::value>* = nullptr>
+      typename std::enable_if<detail::is_numeric<Right>::value>::type* = nullptr>
   inline auto operator*(const Tile<Left>& left, const Right right) ->
       decltype(scale(left, right))
   { return scale(left, right); }
@@ -958,7 +958,7 @@ namespace TiledArray {
   /// \param right The right-hand tile
   /// \return The \c right tile scaled by \c left
   template <typename Left, typename Right,
-      enable_if_t<TiledArray::detail::is_numeric<Left>::value>* = nullptr>
+      typename std::enable_if<TiledArray::detail::is_numeric<Left>::value>::type* = nullptr>
   inline auto operator*(const Left left, const Tile<Right>& right) ->
       decltype(scale(right, left))
   { return scale(right, left); }

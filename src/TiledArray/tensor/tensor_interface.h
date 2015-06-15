@@ -118,7 +118,7 @@ namespace TiledArray {
       }
 
       template <typename T1,
-          enable_if_t<detail::is_tensor<T1>::value>* = nullptr>
+          typename std::enable_if<detail::is_tensor<T1>::value>::type* = nullptr>
       TensorInterface_& operator=(const T1& other) {
         TA_ASSERT(data_ != other.data());
 

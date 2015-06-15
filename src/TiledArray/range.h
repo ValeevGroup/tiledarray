@@ -197,7 +197,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
     Range(const Index& lower_bound, const Index& upper_bound) {
       const size_type n = detail::size(lower_bound);
       TA_ASSERT(n == detail::size(upper_bound));
@@ -217,7 +217,7 @@ namespace TiledArray {
     /// \c upper_bound.
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
     explicit Range(const Index& upper_bound) {
       const size_type n = detail::size(upper_bound);
       if(n) {
@@ -235,7 +235,7 @@ namespace TiledArray {
     /// \post Range has an lower bound of 0, and an upper bound of \c (sizes...).
     /// \throw std::bad_alloc When memory allocation fails.
     template<typename... Index,
-        enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+        typename std::enable_if<detail::is_integral_list<Index...>::value>::type* = nullptr>
     explicit Range(const Index... upper_bound) :
       Range(std::array<size_t, sizeof...(Index)>{{upper_bound...}})
     { }
@@ -442,7 +442,7 @@ namespace TiledArray {
     /// \throw TildedArray::Exception When the rank of this range is not
     /// equal to the size of the index.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value, bool>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value, bool>::type* = nullptr>
     bool includes(const Index& index) const {
       TA_ASSERT(detail::size(index) == rank_);
       const size_type* restrict const lower  = data_;
@@ -572,7 +572,7 @@ namespace TiledArray {
     /// \return The ordinal index of \c index
     /// \throw When \c index is not included in this range.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
     size_type ord(const Index& index) const {
       TA_ASSERT(detail::size(index) == rank_);
       TA_ASSERT(includes(index));
@@ -597,7 +597,7 @@ namespace TiledArray {
     /// \return The ordinal index of \c index
     /// \throw When \c index is not included in this range.
     template <typename... Index,
-        enable_if_t<(sizeof...(Index) > 1ul)>* = nullptr>
+        typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
     size_type ord(const Index&... index) const {
       const size_type temp_index[sizeof...(Index)] = { index... };
       return ord(temp_index);
@@ -649,14 +649,14 @@ namespace TiledArray {
     /// \param i The index
     /// \return \c i (unchanged)
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
     const Index& idx(const Index& i) const {
       TA_ASSERT(includes(i));
       return i;
     }
 
     template <typename Archive,
-        enable_if_t<madness::archive::is_input_archive<Archive>::value>* = nullptr>
+        typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type* = nullptr>
     void serialize(const Archive& ar) {
       // Get rank
       unsigned int rank = 0ul;
@@ -675,7 +675,7 @@ namespace TiledArray {
     }
 
     template <typename Archive,
-        enable_if_t<madness::archive::is_output_archive<Archive>::value>* = nullptr>
+        typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type* = nullptr>
     void serialize(const Archive& ar) const {
       ar & rank_ & madness::archive::wrap(data_, rank_ << 2) & offset_ & volume_;
     }

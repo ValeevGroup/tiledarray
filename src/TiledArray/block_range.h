@@ -126,13 +126,13 @@ namespace TiledArray {
     /// \return The ordinal index of \c index
     /// \throw When \c index is not included in this range.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
     size_type ord(const Index& index) const {
       return Range::ord(index);
     }
 
     template <typename... Index,
-        enable_if_t<(sizeof...(Index) > 1ul)>* = nullptr>
+        typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
     size_type ord(const Index&... index) const {
       return Range::ord(index...);
     }
