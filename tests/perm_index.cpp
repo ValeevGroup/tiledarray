@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
       std::size_t pi = 0;
       BOOST_CHECK_NO_THROW(pi = perm_index(i));
 
-      BOOST_CHECK_EQUAL(pi, perm_range.ord(perm * range.idx(i)));
+      BOOST_CHECK_EQUAL(pi, perm_range.ordinal(perm * range.idx(i)));
     }
   }
 }

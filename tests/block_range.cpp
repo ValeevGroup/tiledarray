@@ -81,11 +81,11 @@ BOOST_AUTO_TEST_CASE( block_zero_lower_bound )
         for(auto it = block_range.begin(); it != block_range.end(); ++it, ++index) {
           // Check that the ordinal offset returned for an ordianl offset and a
           // coordinate index agree.
-          BOOST_CHECK_EQUAL(block_range.ord(*it), r0.ord(*it));
+          BOOST_CHECK_EQUAL(block_range.ordinal(*it), r0.ordinal(*it));
 
           // Check that the ordinal function returns the correct offset in the
           // parent index space.
-          BOOST_CHECK_EQUAL(block_range.ord(index), r0.ord(*it));
+          BOOST_CHECK_EQUAL(block_range.ordinal(index), r0.ordinal(*it));
 
           // Check that the index returned by idx is correct
           BOOST_CHECK_EQUAL(block_range.idx(index), *it);
@@ -139,11 +139,11 @@ BOOST_AUTO_TEST_CASE( block )
         for(auto it = block_range.begin(); it != block_range.end(); ++it, ++index) {
           // Check that the ordinal offset returned for an ordianl offset and a
           // coordinate index agree.
-          BOOST_CHECK_EQUAL(block_range.ord(*it), r.ord(*it));
+          BOOST_CHECK_EQUAL(block_range.ordinal(*it), r.ordinal(*it));
 
           // Check that the ordinal function returns the correct offset in the
           // parent index space.
-          BOOST_CHECK_EQUAL(block_range.ord(index), r.ord(*it));
+          BOOST_CHECK_EQUAL(block_range.ordinal(index), r.ordinal(*it));
           // Check that the index returned by idx is correct
           BOOST_CHECK_EQUAL(block_range.idx(index), *it);
         }

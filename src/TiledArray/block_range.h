@@ -127,14 +127,14 @@ namespace TiledArray {
     /// \throw When \c index is not included in this range.
     template <typename Index,
         typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
-    size_type ord(const Index& index) const {
-      return Range::ord(index);
+    size_type ordinal(const Index& index) const {
+      return Range::ordinal(index);
     }
 
     template <typename... Index,
         typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
-    size_type ord(const Index&... index) const {
-      return Range::ord(index...);
+    size_type ordinal(const Index&... index) const {
+      return Range::ordinal(index...);
     }
 
     /// calculate the coordinate index of the ordinal index, \c index.
@@ -144,7 +144,7 @@ namespace TiledArray {
     /// \return The index of the ordinal index
     /// \throw TiledArray::Exception When \c index is not included in this range
     /// \throw std::bad_alloc When memory allocation fails
-    size_type ord(size_type index) const {
+    size_type ordinal(size_type index) const {
       // Check that index is contained by range.
       TA_ASSERT(includes(index));
 

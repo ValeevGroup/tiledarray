@@ -247,8 +247,8 @@ namespace TiledArray {
       const auto volume = result.range().volume();
 
       for(decltype(result.range().volume()) i = 0ul; i < volume; i += stride)
-        math::vector_op(op, stride, result.data() + result.range().ord(i),
-          (tensors.data() + tensors.range().ord(i))...);
+        math::vector_op(op, stride, result.data() + result.range().ordinal(i),
+          (tensors.data() + tensors.range().ordinal(i))...);
     }
 
     /// In-place tensor of tensors operations with non-contiguous data
@@ -280,8 +280,8 @@ namespace TiledArray {
           };
 
       for(decltype(result.range().volume()) i = 0ul; i < volume; i += stride)
-        inplace_tensor_range(result.data() + result.range().ord(i),
-            (tensors.data() + tensors.range().ord(i))...);
+        inplace_tensor_range(result.data() + result.range().ordinal(i),
+            (tensors.data() + tensors.range().ordinal(i))...);
     }
 
     // -------------------------------------------------------------------------
@@ -443,8 +443,8 @@ namespace TiledArray {
 
       for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride)
         math::vector_ptr_op(wrapper_op, stride, result.data() + i,
-            (tensor1.data() + tensor1.range().ord(i)),
-            (tensors.data() + tensors.range().ord(i))...);
+            (tensor1.data() + tensor1.range().ordinal(i)),
+            (tensors.data() + tensors.range().ordinal(i))...);
     }
 
     /// Initialize tensor with one or more non-contiguous tensor arguments
@@ -485,8 +485,8 @@ namespace TiledArray {
 
       for(decltype(volume) i = 0ul; i < volume; i += stride)
         inplace_tensor_range(result.data() + i,
-            (tensor1.data() + tensor1.range().ord(i)),
-            (tensors.data() + tensors.range().ord(i))...);
+            (tensor1.data() + tensor1.range().ordinal(i)),
+            (tensors.data() + tensors.range().ordinal(i))...);
     }
 
 
@@ -589,8 +589,8 @@ namespace TiledArray {
       for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride) {
         Scalar temp = identity;
         math::reduce_op(reduce_op, stride, temp,
-            tensor1.data() + tensor1.range().ord(i),
-            (tensors.data() + tensors.range().ord(i))...);
+            tensor1.data() + tensor1.range().ordinal(i),
+            (tensors.data() + tensors.range().ordinal(i))...);
         join_op(result, temp);
       }
 
@@ -633,8 +633,8 @@ namespace TiledArray {
       for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride) {
         Scalar temp = identity;
         math::reduce_op(reduce_op, stride, temp,
-            tensor1.data() + tensor1.range().ord(i),
-            (tensors.data() + tensors.range().ord(i))...);
+            tensor1.data() + tensor1.range().ordinal(i),
+            (tensors.data() + tensors.range().ordinal(i))...);
         join_op(result, temp);
       }
 

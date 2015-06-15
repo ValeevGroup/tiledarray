@@ -151,7 +151,7 @@ namespace TiledArray {
       /// \return A const reference to the element at \c index.
       const_reference operator[](const size_type index) const {
         TA_ASSERT(range_.includes(index));
-        return data_[range_.ord(index)];
+        return data_[range_.ordinal(index)];
       }
 
       /// Element subscript accessor
@@ -160,7 +160,7 @@ namespace TiledArray {
       /// \return A const reference to the element at \c index.
       reference operator[](const size_type index) {
         TA_ASSERT(range_.includes(index));
-        return data_[range_.ord(index)];
+        return data_[range_.ordinal(index)];
       }
 
 
@@ -171,7 +171,7 @@ namespace TiledArray {
       template<typename... Index>
       reference operator()(const Index&... idx) {
         TA_ASSERT(range_.includes(idx...));
-        return data_[range_.ord(idx...)];
+        return data_[range_.ordinal(idx...)];
       }
 
       /// Element accessor
@@ -181,7 +181,7 @@ namespace TiledArray {
       template<typename... Index>
       const_reference operator()(const Index&... idx) const {
         TA_ASSERT(range_.includes(idx...));
-        return data_[range_.ord(idx...)];
+        return data_[range_.ordinal(idx...)];
       }
 
       /// Check for empty view

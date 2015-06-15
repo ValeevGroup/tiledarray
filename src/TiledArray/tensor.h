@@ -350,7 +350,7 @@ namespace TiledArray {
     const_reference operator[](const Index& i) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
-      return pimpl_->data_[pimpl_->range_.ord(i)];
+      return pimpl_->data_[pimpl_->range_.ordinal(i)];
     }
 
     /// Element accessor
@@ -363,7 +363,7 @@ namespace TiledArray {
     reference operator[](const Index& i) {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
-      return pimpl_->data_[pimpl_->range_.ord(i)];
+      return pimpl_->data_[pimpl_->range_.ordinal(i)];
     }
 
     /// Element accessor
@@ -374,7 +374,7 @@ namespace TiledArray {
     reference operator()(const Index&... idx) {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(idx...));
-      return pimpl_->data_[pimpl_->range_.ord(idx...)];
+      return pimpl_->data_[pimpl_->range_.ordinal(idx...)];
     }
 
     /// Element accessor
@@ -385,7 +385,7 @@ namespace TiledArray {
     const_reference operator()(const Index&... idx) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(idx...));
-      return pimpl_->data_[pimpl_->range_.ord(idx...)];
+      return pimpl_->data_[pimpl_->range_.ordinal(idx...)];
     }
 
     /// Iterator factory

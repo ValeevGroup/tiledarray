@@ -554,12 +554,12 @@ namespace TiledArray {
 
     /// calculate the ordinal index of \c i
 
-    /// This function is just a pass-through so the user can call \c ord() on
+    /// This function is just a pass-through so the user can call \c ordinal() on
     /// a template parameter that can be a coordinate index or an integral.
     /// \param index Ordinal index
     /// \return \c index (unchanged)
     /// \throw When \c index is not included in this range
-    size_type ord(const size_type index) const {
+    size_type ordinal(const size_type index) const {
       TA_ASSERT(includes(index));
       return index;
     }
@@ -573,7 +573,7 @@ namespace TiledArray {
     /// \throw When \c index is not included in this range.
     template <typename Index,
         typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
-    size_type ord(const Index& index) const {
+    size_type ordinal(const Index& index) const {
       TA_ASSERT(detail::size(index) == rank_);
       TA_ASSERT(includes(index));
 
@@ -598,14 +598,10 @@ namespace TiledArray {
     /// \throw When \c index is not included in this range.
     template <typename... Index,
         typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
-    size_type ord(const Index&... index) const {
+    size_type ordinal(const Index&... index) const {
       const size_type temp_index[sizeof...(Index)] = { index... };
-      return ord(temp_index);
+      return ordinal(temp_index);
     }
-
-    /// alias to ord<Index>(), to conform with the Tensor Working Group spec \sa ord()
-    template <typename... Index>
-    size_type ordinal(const Index&... index) const { return ord(index...); }
 
     /// calculate the coordinate index of the ordinal index, \c index.
 
@@ -747,7 +743,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void advance(index& i, std::ptrdiff_t n) const {
       TA_ASSERT(includes(i));
-      const size_type o = ord(i) + n;
+      const size_type o = ordinal(i) + n;
       TA_ASSERT(includes(o));
       i = idx(o);
     }
@@ -763,7 +759,7 @@ namespace TiledArray {
     std::ptrdiff_t distance_to(const index& first, const index& last) const {
       TA_ASSERT(includes(first));
       TA_ASSERT(includes(last));
-      return ord(last) - ord(first);
+      return ordinal(last) - ordinal(first);
     }
 
   }; // class Range

@@ -194,7 +194,7 @@ namespace TiledArray {
         // If this object only uses a sub-block of the array, shift the tile
         // index to the correct location.
         if(block_range_.rank())
-          array_index = block_range_.ord(array_index);
+          array_index = block_range_.ordinal(array_index);
 
         // Get the tile from array_, which may be located on a remote node.
         Future<typename array_type::value_type> tile =

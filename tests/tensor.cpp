@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE( permute_constructor ) {
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm * t.range().idx(i));
+    std::size_t pi = x.range().ordinal(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], t[i]);
   }
 }
@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE( permute_constructor_tensor ) {
     BOOST_CHECK(! px.empty());
 
     for(std::size_t i = 0ul; i < x.size(); ++i) {
-      std::size_t pi = px.range().ord(perm * x.range().idx(i));
+      std::size_t pi = px.range().ordinal(perm * x.range().idx(i));
       BOOST_CHECK_EQUAL(px[pi], x[i]);
     }
   }
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE( unary_permute_constructor ) {
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm * t.range().idx(i));
+    std::size_t pi = x.range().ordinal(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], 47 * t[i]);
   }
 }
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE( binary_perm_constructor ) {
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm * t.range().idx(i));
+    std::size_t pi = x.range().ordinal(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], t[i] - s[i]);
   }
 }
@@ -414,7 +414,7 @@ BOOST_AUTO_TEST_CASE( unary_permute_op ) {
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm * t.range().idx(i));
+    std::size_t pi = x.range().ordinal(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], 47 * t[i]);
   }
 }
@@ -460,7 +460,7 @@ BOOST_AUTO_TEST_CASE( binary_perm_op ) {
   BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
 
   for(std::size_t i = 0ul; i < x.size(); ++i) {
-    std::size_t pi = x.range().ord(perm * t.range().idx(i));
+    std::size_t pi = x.range().ordinal(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], t[i] - s[i]);
   }
 }

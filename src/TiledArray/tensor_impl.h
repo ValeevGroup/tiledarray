@@ -112,7 +112,7 @@ namespace TiledArray {
       template <typename Index>
       ProcessID owner(const Index& i) const {
         TA_ASSERT(trange_.tiles().includes(i));
-        return pmap_->owner(trange_.tiles().ord(i));
+        return pmap_->owner(trange_.tiles().ordinal(i));
       }
 
       /// Query for a locally owned tile
@@ -124,7 +124,7 @@ namespace TiledArray {
       template <typename Index>
       bool is_local(const Index& i) const {
         TA_ASSERT(trange_.tiles().includes(i));
-        return pmap_->is_local(trange_.tiles().ord(i));
+        return pmap_->is_local(trange_.tiles().ordinal(i));
       }
 
       /// Query for a zero tile
@@ -137,7 +137,7 @@ namespace TiledArray {
       template <typename Index>
       bool is_zero(const Index& i) const {
         TA_ASSERT(trange_.tiles().includes(i));
-        return shape_.is_zero(trange_.tiles().ord(i));
+        return shape_.is_zero(trange_.tiles().ordinal(i));
       }
 
       /// Query the density of the tensor

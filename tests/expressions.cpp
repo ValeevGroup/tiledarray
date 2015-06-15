@@ -82,7 +82,7 @@ struct ExpressionsFixture : public TiledRangeFixture {
     for(typename A::iterator it = array.begin(); it != array.end(); ++it) {
       typename A::value_type tile(array.trange().make_tile_range(it.index()));
       for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
-        const std::size_t elem_index = array.elements().ord(*rit);
+        const std::size_t elem_index = array.elements().ordinal(*rit);
         tile[*rit] = (matrix.array()(elem_index) = (GlobalFixture::world->rand() % 101));
       }
       *it = tile;
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE( permute )
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = b("c,b,a"));
 
   for(std::size_t i = 0ul; i < b.size(); ++i) {
-    const std::size_t perm_index = a.range().ord(perm * b.range().idx(i));
+    const std::size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if(a.is_local(perm_index)) {
       Array3::value_type a_tile = a.find(perm_index).get();
       Array3::value_type perm_b_tile = perm * b.find(i).get();
@@ -158,7 +158,7 @@ BOOST_AUTO_TEST_CASE( scale_permute )
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = 2 * b("c,b,a"));
 
   for(std::size_t i = 0ul; i < b.size(); ++i) {
-    const std::size_t perm_index = a.range().ord(perm * b.range().idx(i));
+    const std::size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if(a.is_local(perm_index)) {
       Array3::value_type a_tile = a.find(perm_index).get();
       Array3::value_type perm_b_tile = perm * b.find(i).get();
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE( block )
   BlockRange block_range(a.trange().tiles(), {3,3,3}, {5,5,5});
 
   for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    Tensor<int> arg_tile = a.find(block_range.ord(index)).get();
+    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
     Tensor<int> result_tile = c.find(index).get();
 
     for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE( scal_block )
   BlockRange block_range(a.trange().tiles(), {3,3,3}, {5,5,5});
 
   for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    Tensor<int> arg_tile = a.find(block_range.ord(index)).get();
+    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
     Tensor<int> result_tile = c.find(index).get();
 
     for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
@@ -800,7 +800,7 @@ BOOST_AUTO_TEST_CASE( cont_non_uniform1 )
   for(Array<int, 2>::iterator it = result.begin(); it != result.end(); ++it) {
     const Array<int, 4>::value_type tile = *it;
     for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
-      const std::size_t elem_index = result.elements().ord(*rit);
+      const std::size_t elem_index = result.elements().ordinal(*rit);
       BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
     }
   }
@@ -844,7 +844,7 @@ BOOST_AUTO_TEST_CASE( cont_non_uniform2 )
   for(Array<int, 2>::iterator it = result.begin(); it != result.end(); ++it) {
     const Array<int, 4>::value_type tile = *it;
     for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
-      const std::size_t elem_index = result.elements().ord(*rit);
+      const std::size_t elem_index = result.elements().ordinal(*rit);
       BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
     }
   }

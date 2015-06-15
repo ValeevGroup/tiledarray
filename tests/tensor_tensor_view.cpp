@@ -39,7 +39,8 @@ struct TensorViewFixture {
   static Tensor<int> random_tensor(const Range& range) {
     Tensor<int> result(range);
 
-    std::default_random_engine generator;
+    std::default_random_engine generator(
+        std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_int_distribution<int> distribution(0,100);
 
     for(auto& value : result)
