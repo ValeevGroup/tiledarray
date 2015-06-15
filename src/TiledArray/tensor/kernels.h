@@ -241,7 +241,7 @@ namespace TiledArray {
                && ! (is_contiguous_tensor<TR, Ts...>::value)>::type* = nullptr>
     inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
       TA_ASSERT(! empty(result, tensors...));
-      TA_ASSERT(is_range_congruent(result, tensors...));
+      TA_ASSERT(is_range_set_congruent(result, tensors...));
 
       const auto stride = inner_size(result, tensors...);
       const auto volume = result.range().volume();
@@ -266,7 +266,7 @@ namespace TiledArray {
                && ! (is_contiguous_tensor<TR, Ts...>::value)>::type* = nullptr>
     inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
       TA_ASSERT(! empty(result, tensors...));
-      TA_ASSERT(is_range_congruent(result, tensors...));
+      TA_ASSERT(is_range_set_congruent(result, tensors...));
 
       const auto stride = inner_size(result, tensors...);
       const auto volume = result.range().volume();
