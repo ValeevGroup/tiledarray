@@ -159,7 +159,7 @@ namespace TiledArray {
       // Allocate memory for size vectors
       const unsigned int dim = trange.tiles().dim();
       std::shared_ptr<vector_type> size_vectors(new vector_type[dim],
-          madness::detail::CheckedArrayDeleter<vector_type>());
+          std::default_delete<vector_type[]>());
 
       // Initialize the size vectors
       for(unsigned int i = 0ul; i != dim; ++i) {
@@ -178,7 +178,7 @@ namespace TiledArray {
 
       // Allocate memory for the contracted size vectors
       std::shared_ptr<vector_type> result_size_vectors(new vector_type[n],
-          madness::detail::CheckedArrayDeleter<vector_type>());
+          std::default_delete<vector_type[]>());
 
       // Initialize the size vectors
       for(unsigned int i = 0u; i < n; ++i) {
@@ -343,7 +343,7 @@ namespace TiledArray {
       block_size.reserve(rank);
 
       std::shared_ptr<vector_type> size_vectors(new vector_type[rank],
-          madness::detail::CheckedArrayDeleter<vector_type>());
+          std::default_delete<vector_type[]>());
 
       for(auto i = 0ul; i < rank; ++i) {
         // Get the new range size
@@ -771,7 +771,7 @@ namespace TiledArray {
 
       // Allocate memory for the contracted size vectors
       std::shared_ptr<vector_type> result_size_vectors(new vector_type[gemm_helper.result_rank()],
-          madness::detail::CheckedArrayDeleter<vector_type>());
+          std::default_delete<vector_type[]>());
 
       // Initialize the result size vectors
       unsigned int x = 0ul;

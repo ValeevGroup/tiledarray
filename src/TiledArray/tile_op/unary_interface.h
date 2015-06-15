@@ -50,7 +50,7 @@ namespace TiledArray {
     template <typename Result, typename Arg, bool Consumable,
         template <typename, typename, bool> class Op>
     struct UnaryTileOpTrait<Op<Result, Arg, Consumable> > {
-      typedef typename madness::if_c<Consumable, Arg, const Arg>::type &
+      typedef typename std::conditional<Consumable, Arg, const Arg>::type &
           argument_type; ///< The argument type
       typedef Result result_type; ///< The result tile type
       typedef std::integral_constant<bool, Consumable && std::is_same<Result,
