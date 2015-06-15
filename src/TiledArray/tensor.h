@@ -61,7 +61,7 @@ namespace TiledArray {
       /// Construct an empty tensor that has no data or dimensions
       Impl() : allocator_type(), range_(), data_(NULL) { }
 
-      /// Construct an evaluated tensor
+      /// Construct with range
 
       /// \param range The N-dimensional range for this tensor
       explicit Impl(const range_type& range) :
@@ -193,7 +193,7 @@ namespace TiledArray {
                  && ! std::is_same<typename std::decay<Op>::type,
                  Permutation>::value>::type* = nullptr>
     Tensor(const T1& other, Op&& op) :
-      pimpl_(new Impl(other.range()))
+      pimpl_(new Impl(detail::clone_range(other)))
     {
       detail::tensor_init(op, *this, other);
     }
@@ -223,7 +223,7 @@ namespace TiledArray {
     template <typename T1, typename T2, typename Op,
         typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
     Tensor(const T1& left, const T2& right, Op&& op) :
-      pimpl_(new Impl(left.range()))
+      pimpl_(new Impl(detail::clone_range(left)))
     {
       detail::tensor_init(std::forward<Op>(op), *this, left, right);
     }
