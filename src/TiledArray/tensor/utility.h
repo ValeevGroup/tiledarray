@@ -58,9 +58,9 @@ namespace TiledArray {
       const auto rank = tensor.range().rank();
       const auto* const lobound = data(tensor.range().start());
       const auto* const upbound = data(tensor.range().finish());
-      SizeArray<decltype(*lobound)>
+      SizeArray<const typename T::size_type>
           lower_bound(lobound, lobound + rank);
-      SizeArray<decltype(*upbound)>
+      SizeArray<const typename T::size_type>
           upper_bound(upbound, upbound + rank);
       return Range(lower_bound, upper_bound);
     }
