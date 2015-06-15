@@ -32,9 +32,6 @@ namespace TiledArray {
   /// \tparam A The allocator type for the data
   template <typename T, typename A = Eigen::aligned_allocator<T> >
   class Tensor {
-  private:
-    // Internal type for enabling various constructors.
-    struct Enabler { };
   public:
     typedef Tensor<T, A> Tensor_; ///< This class type
     typedef Range range_type; ///< Tensor range type
@@ -149,6 +146,23 @@ namespace TiledArray {
       pimpl_(new Impl(range))
     {
       math::uninitialized_copy_vector(range.volume(), u, pimpl_->data_);
+    }
+
+    /// Construct a copy of a tensor interface object
+
+    /// \tparam T1 A tensor type
+    /// \param other The tensor to be copied
+    template <typename T1,
+        typename std::enable_if<is_tensor<T1>::value &&
+            ! std::is_same<T1, Tensor_>::value>::type* = nullptr>
+    Tensor(const T1& other) :
+      pimpl_(new Impl(detail::clone_range(other)))
+    {
+      auto op =
+          [] (const typename T1::numeric_type arg) -> typename T1::numeric_type
+      { return arg; };
+
+      detail::tensor_init(op, *this, other);
     }
 
     /// Construct a permuted tensor copy
@@ -467,6 +481,41 @@ namespace TiledArray {
       std::swap(pimpl_, other.pimpl_);
     }
 
+    template <typename Index>
+    detail::TensorInterface<T, BlockRange>
+    block(const Index& lower_bound, const Index& upper_bound) {
+      TA_ASSERT(pimpl_);
+      return detail::TensorInterface<T, BlockRange>(BlockRange(pimpl_->range_,
+          lower_bound, upper_bound), pimpl_->data_);
+    }
+
+    template <typename I>
+    detail::TensorInterface<T, BlockRange>
+    block(const std::initializer_list<I>& lower_bound,
+        const std::initializer_list<I>& upper_bound)
+    {
+      TA_ASSERT(pimpl_);
+      return detail::TensorInterface<T, BlockRange>(BlockRange(pimpl_->range_,
+          lower_bound, upper_bound), pimpl_->data_);
+    }
+
+    template <typename Index>
+    detail::TensorInterface<const T, BlockRange>
+    block(const Index& lower_bound, const Index& upper_bound) const {
+      TA_ASSERT(pimpl_);
+      return detail::TensorInterface<const T, BlockRange>(BlockRange(pimpl_->range_,
+          lower_bound, upper_bound), pimpl_->data_);
+    }
+
+    template <typename I>
+    detail::TensorInterface<const T, BlockRange>
+    block(const std::initializer_list<I>& lower_bound,
+        const std::initializer_list<I>& upper_bound) const
+    {
+      TA_ASSERT(pimpl_);
+      return detail::TensorInterface<const T, BlockRange>(BlockRange(pimpl_->range_,
+          lower_bound, upper_bound), pimpl_->data_);
+    }
 
     /// Create a permuted copy of this tensor
 

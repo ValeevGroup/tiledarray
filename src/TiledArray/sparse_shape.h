@@ -29,8 +29,8 @@
 #include <TiledArray/tensor.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/val_array.h>
-#include <TiledArray/tensor/tensor_view.h>
 #include <TiledArray/tensor/shift_wrapper.h>
+#include <TiledArray/tensor/tensor_interface.h>
 
 namespace TiledArray {
 
@@ -374,7 +374,7 @@ namespace TiledArray {
       };
 
       // Construct the result norms tensor
-      TensorConstView<value_type> block_view(tile_norms_, start, finish);
+      TensorConstView<value_type> block_view = tile_norms_.block(start, finish);
       Tensor<value_type> result_norms((Range(block_size)));
       result_norms.inplace_binary(shift(block_view), copy_op);
 

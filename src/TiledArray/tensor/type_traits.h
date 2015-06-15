@@ -31,12 +31,14 @@
 namespace TiledArray {
 
   // Forward declarations
+  class Range;
+  class BlockRange;
   template <typename, typename> class Tensor;
-  template <typename> class TensorView;
 
   namespace detail {
 
     // Forward declarations
+    template <typename, typename> class TensorInterface;
     template <typename> class ShiftWrapper;
 
 
@@ -58,8 +60,8 @@ namespace TiledArray {
     template <typename T, typename A>
     struct is_tensor_helper<Tensor<T, A> > : public std::true_type { };
 
-    template <typename T>
-    struct is_tensor_helper<TensorView<T> > : public std::true_type { };
+    template <typename T, typename R>
+    struct is_tensor_helper<TensorInterface<T, R> > : public std::true_type { };
 
     template <typename T>
     struct is_tensor_helper<ShiftWrapper<T> > : public is_tensor_helper<T> { };
@@ -71,8 +73,8 @@ namespace TiledArray {
     struct is_tensor_of_tensor_helper<Tensor<T, A> > :
         public is_tensor_helper<T> { };
 
-    template <typename T>
-    struct is_tensor_of_tensor_helper<TensorView<T> > :
+    template <typename T, typename RangeType>
+    struct is_tensor_of_tensor_helper<TensorInterface<T, RangeType> > :
         public is_tensor_helper<T> { };
 
     template <typename T>
@@ -116,6 +118,10 @@ namespace TiledArray {
 
     template <typename T, typename A>
     struct is_contiguous_tensor_helper<Tensor<T, A> > : public std::true_type { };
+
+    template <typename T>
+    struct is_contiguous_tensor_helper<TensorInterface<T, Range> > :
+        public std::true_type { };
 
     template <typename T>
     struct is_contiguous_tensor_helper<ShiftWrapper<T> > :

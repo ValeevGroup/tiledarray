@@ -112,7 +112,7 @@ TiledArray/symm/irrep.h
 TiledArray/tensor/binary.h
 TiledArray/tensor/permute.h
 TiledArray/tensor/shift_wrapper.h
-TiledArray/tensor/tesnor_view.h
+TiledArray/tensor/tesnor_interface.h
 TiledArray/tensor/type_traits.h
 TiledArray/tensor/unary.h
 TiledArray/tensor/utility.h
