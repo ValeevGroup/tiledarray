@@ -433,7 +433,7 @@ namespace TiledArray {
       TA_ASSERT(! empty(result, tensor1, tensors...));
       TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
 
-      const auto stride = inner_size(tensors...);
+      const auto stride = inner_size(tensor1, tensors...);
       const auto volume = tensor1.range().volume();
 
       auto wrapper_op = [=] (typename TR::pointer restrict result_ptr,
@@ -441,7 +441,7 @@ namespace TiledArray {
               const typename Ts::value_type... values)
           { new(result_ptr) typename T1::value_type(op(value1, values...)); };
 
-      for(decltype(volume) i = 0ul; i < volume; i += stride)
+      for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride)
         math::vector_ptr_op(wrapper_op, stride, result.data() + i,
             (tensor1.data() + tensor1.range().ord(i)),
             (tensors.data() + tensors.range().ord(i))...);
@@ -468,7 +468,7 @@ namespace TiledArray {
       TA_ASSERT(! empty(result, tensor1, tensors...));
       TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
 
-      const auto stride = inner_size(tensors...);
+      const auto stride = inner_size(tensor1, tensors...);
       const auto volume = tensor1.range().volume();
 
 
@@ -582,7 +582,7 @@ namespace TiledArray {
       TA_ASSERT(! empty(tensor1, tensors...));
       TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-      const auto stride = inner_size(tensors...);
+      const auto stride = inner_size(tensor1, tensors...);
       const auto volume = tensor1.range().volume();
 
       Scalar result = identity;
@@ -621,7 +621,7 @@ namespace TiledArray {
       TA_ASSERT(! empty(tensor1, tensors...));
       TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-      const auto stride = inner_size(tensors...);
+      const auto stride = inner_size(tensor1, tensors...);
       const auto volume = tensor1.range().volume();
 
       auto wrapper_op = [=] (Scalar& restrict result,
