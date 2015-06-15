@@ -194,6 +194,11 @@ endforeach()
 ##########################
 # wrap up
 ##########################
+
+# Force cache refresh for compile flags
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C compile flags" FORCE)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "C++ compile flags" FORCE)
+
 CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
   ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
