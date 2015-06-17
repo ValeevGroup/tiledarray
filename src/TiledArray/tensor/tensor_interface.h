@@ -29,21 +29,30 @@
 #include <TiledArray/block_range.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/size_array.h>
-#include <TiledArray/tensor.h>
+#include <TiledArray/tensor/tensor.h>
 #include <TiledArray/utility.h>
 
 namespace TiledArray {
   namespace detail {
 
-    /// Sub-block view of an N-dimensional Tensor
+    /// Tensor interface for external data
 
-    /// TensorView is a shallow reference to sub-block of a Tensor object.
-    /// \note It is the user's responsibility to ensure the original tensor does
-    template <typename T, typename RangeType>
+    /// This class allows users to construct a tensor object using data from an
+    /// external source. \c TensorInterface objects can be used
+    /// with each other and \c Tensor objects in any of the arithmetic
+    /// operations.
+    /// \warning No ownership of the data pointer used to construct
+    /// \c TensorInterface objects. Therefore, it is the user's responsibility
+    /// to manage the lifetime of the data.
+    /// \warning This is not appropriate for use as a tile object as it does not
+    /// own the data it references. Use \c Tensor for that purpose.
+    /// \tparam T The tensor value type
+    /// \tparam R The range type
+    template <typename T, typename R>
     class TensorInterface {
     public:
-      typedef TensorInterface<T, RangeType> TensorInterface_; ///< This class type
-      typedef RangeType range_type; ///< Tensor range type
+      typedef TensorInterface<T, R> TensorInterface_; ///< This class type
+      typedef R range_type; ///< Tensor range type
       typedef typename range_type::size_type size_type; ///< size type
       typedef typename std::remove_const<T>::type value_type; ///< Array element type
       typedef typename std::add_lvalue_reference<T>::type reference; ///< Element reference type
@@ -77,9 +86,9 @@ namespace TiledArray {
       /// \param other The other tensor view to be copied
       template <typename U,
           typename std::enable_if<std::is_convertible<
-              typename TensorInterface<U, RangeType>::pointer, pointer>::value
+              typename TensorInterface<U, R>::pointer, pointer>::value
           >::type* = nullptr>
-      TensorInterface(const TensorInterface<U, RangeType>& other) :
+      TensorInterface(const TensorInterface<U, R>& other) :
         range_(other.range_), data_(other.data_)
       { }
 
@@ -89,9 +98,9 @@ namespace TiledArray {
       /// \param other The other tensor view to be moved
       template <typename U,
           typename std::enable_if<std::is_convertible<
-              typename TensorInterface<U, RangeType>::pointer, pointer>::value
+              typename TensorInterface<U, R>::pointer, pointer>::value
           >::type* = nullptr>
-      TensorInterface(TensorInterface<U, RangeType>&& other) :
+      TensorInterface(TensorInterface<U, R>&& other) :
         range_(std::move(other.range_)), data_(other.data_)
       {
         other.data_ = nullptr;
@@ -818,74 +827,6 @@ namespace TiledArray {
     }; // class TensorInterface
 
   } // namespace detail
-
-  // Template aliases for TensorInterface objects
-
-  template <typename T>
-  using TensorView =
-      detail::TensorInterface<T, BlockRange>;
-
-  template <typename T>
-  using TensorConstView =
-      detail::TensorInterface<typename std::add_const<T>::type, BlockRange>;
-
-
-  template <typename T>
-  using TensorMap =
-      detail::TensorInterface<T, Range>;
-
-  template <typename T>
-  using TensorConstMap =
-      detail::TensorInterface<typename std::add_const<T>::type, Range>;
-
-  template <typename T, typename Index>
-  TensorMap<T> make_map(T* const data, const Index& lower_bound,
-      const Index& upper_bound)
-  { return TensorMap<T>(Range(lower_bound, upper_bound), data); }
-
-  template <typename T, typename Index>
-  TensorMap<T> make_map(T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
-  { return TensorMap<T>(Range(lower_bound, upper_bound), data); }
-
-  template <typename T>
-  TensorMap<T> make_map(T* const data, const Range& range)
-  { return TensorMap<T>(range, data); }
-
-  template <typename T, typename Index>
-  TensorConstMap<T> make_map(const T* const data, const Index& lower_bound,
-      const Index& upper_bound)
-  { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
-
-
-  template <typename T, typename Index>
-  TensorConstMap<T> make_map(const T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
-  { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
-
-  template <typename T>
-  TensorConstMap<T> make_map(const T* const data, const Range& range)
-  { return TensorConstMap<T>(range, data); }
-
-
-  template <typename T, typename Index>
-  TensorConstMap<T> make_const_map(const T* const data, const Index& lower_bound,
-      const Index& upper_bound)
-  { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
-
-
-  template <typename T, typename Index>
-  TensorConstMap<T> make_const_map(const T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
-  { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
-
-  template <typename T>
-  TensorConstMap<T> make_const_map(const T* const data, const Range& range)
-  { return TensorConstMap<T>(range, data); }
-
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TENSOR_TENSOR_VIEW_H__INCLUDED

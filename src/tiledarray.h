@@ -27,8 +27,6 @@
 
 // Tile type headers
 #include <TiledArray/tensor.h>
-#include <TiledArray/tensor/tensor_interface.h>
-#include <TiledArray/tensor/shift_wrapper.h>
 #include <TiledArray/tile.h>
 
 // Array policy classes
