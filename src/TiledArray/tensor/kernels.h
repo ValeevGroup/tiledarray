@@ -624,15 +624,21 @@ namespace TiledArray {
       const auto stride = inner_size(tensor1, tensors...);
       const auto volume = tensor1.range().volume();
 
-      auto wrapper_op = [=] (Scalar& restrict result,
-          typename T1::const_reference restrict value1,
-          typename Ts::const_reference restrict... values)
-          { join_op(result, tensor_reduce(reduce_op, join_op, identity, value1, values...)); };
+      auto tensor_reduce_range =
+          [=] (Scalar& restrict result,
+              typename T1::const_pointer restrict const tensor1_data,
+              typename Ts::const_pointer restrict const... tensors_data)
+          {
+            for(decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
+              Scalar temp = tensor_reduce(reduce_op, join_op, identity,
+                  tensor1[i], tensors[i]...);
+              join_op(result, temp);
+            }
+          };
 
       Scalar result = identity;
       for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride) {
-        Scalar temp = identity;
-        math::reduce_op(reduce_op, stride, temp,
+        Scalar temp = tensor_reduce_range(result,
             tensor1.data() + tensor1.range().ordinal(i),
             (tensors.data() + tensors.range().ordinal(i))...);
         join_op(result, temp);
