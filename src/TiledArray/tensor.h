@@ -29,6 +29,8 @@
 #include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tensor/shift_wrapper.h>
+#include <TiledArray/tensor/operators.h>
+#include <TiledArray/block_range.h>
 
 namespace TiledArray {
 
@@ -43,61 +45,59 @@ namespace TiledArray {
       detail::TensorInterface<typename std::add_const<T>::type, BlockRange>;
 
 
-  template <typename T>
-  using TensorMap =
-      detail::TensorInterface<T, Range>;
+  /// Tensor output operator
 
-  template <typename T>
-  using TensorConstMap =
-      detail::TensorInterface<typename std::add_const<T>::type, Range>;
+  /// Ouput tensor \c t to the output stream, \c os .
+  /// \tparam T The tensor type
+  /// \param os The output stream
+  /// \param t The tensor to be output
+  /// \return A reference to the output stream
+  template <typename T,
+      typename std::enable_if<
+          detail::is_tensor<T>::value &&
+          detail::is_contiguous_tensor<T>::value>::type* = nullptr>
+  inline std::ostream& operator<<(std::ostream& os, const T& t) {
+    os << t.range() << " { ";
+    const auto n = t.range().volume();
+    for(auto i = 0ul; i < n; ++i)
+      os << t[i] << " ";
 
-  template <typename T, typename Index>
-  inline TensorMap<T> make_map(T* const data, const Index& lower_bound,
-      const Index& upper_bound)
-  { return TensorMap<T>(Range(lower_bound, upper_bound), data); }
+    os << "}";
 
-  template <typename T, typename Index>
-  inline TensorMap<T> make_map(T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
-  { return TensorMap<T>(Range(lower_bound, upper_bound), data); }
+    return os;
+  }
 
-  template <typename T>
-  inline TensorMap<T> make_map(T* const data, const Range& range)
-  { return TensorMap<T>(range, data); }
+  /// Tensor output operator
 
-  template <typename T, typename Index>
-  inline TensorConstMap<T> make_map(const T* const data, const Index& lower_bound,
-      const Index& upper_bound)
-  { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
+  /// Ouput tensor \c t to the output stream, \c os .
+  /// \tparam T The tensor type
+  /// \param os The output stream
+  /// \param t The tensor to be output
+  /// \return A reference to the output stream
+  template <typename T,
+      typename std::enable_if<
+          detail::is_tensor<T>::value &&
+          ! detail::is_contiguous_tensor<T>::value>::type* = nullptr>
+  inline std::ostream& operator<<(std::ostream& os, const T& t) {
 
+    const auto stride = inner_size(t);
+    const auto volume = t.range().volume();
 
-  template <typename T, typename Index>
-  inline TensorConstMap<T> make_map(const T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
-  { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
+    auto tensor_print_range =
+        [&os] (typename T::const_pointer restrict const t_data) {
+          for(decltype(t.range().volume()) i = 0ul; i < stride; ++i)
+            os << t_data[i] << " ";
+        };
 
-  template <typename T>
-  inline TensorConstMap<T> make_map(const T* const data, const Range& range)
-  { return TensorConstMap<T>(range, data); }
+    os << t.range() << " { ";
 
+    for(decltype(t.range().volume()) i = 0ul; i < volume; i += stride)
+      tensor_print_range(t.data() + t.range().ordinal(i));
 
-  template <typename T, typename Index>
-  inline TensorConstMap<T> make_const_map(const T* const data, const Index& lower_bound,
-      const Index& upper_bound)
-  { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
+    os << "}";
 
-
-  template <typename T, typename Index>
-  inline TensorConstMap<T> make_const_map(const T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
-  { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
-
-  template <typename T>
-  inline TensorConstMap<T> make_const_map(const T* const data, const Range& range)
-  { return TensorConstMap<T>(range, data); }
+    return os;
+  }
 
 } // namespace TiledArray
 

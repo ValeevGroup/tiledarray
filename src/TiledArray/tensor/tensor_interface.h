@@ -26,13 +26,22 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_VIEW_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_VIEW_H__INCLUDED
 
-#include <TiledArray/block_range.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/size_array.h>
-#include <TiledArray/tensor/tensor.h>
-#include <TiledArray/utility.h>
+#include <TiledArray/tensor/kernels.h>
+
+namespace Eigen {
+
+  // Forward declarations
+  template <typename> class aligned_allocator;
+
+} // namespace Eigen
 
 namespace TiledArray {
+
+  // Forward declarations
+  class Permutation;
+  template <typename, typename> class Tensor;
+
   namespace detail {
 
     /// Tensor interface for external data
@@ -51,17 +60,25 @@ namespace TiledArray {
     template <typename T, typename R>
     class TensorInterface {
     public:
-      typedef TensorInterface<T, R> TensorInterface_; ///< This class type
-      typedef R range_type; ///< Tensor range type
-      typedef typename range_type::size_type size_type; ///< size type
-      typedef typename std::remove_const<T>::type value_type; ///< Array element type
-      typedef typename std::add_lvalue_reference<T>::type reference; ///< Element reference type
-      typedef typename std::add_lvalue_reference<typename std::add_const<T>::type>::type const_reference; ///< Element reference type
-      typedef typename std::add_pointer<T>::type pointer; ///< Element pointer type
-      typedef typename std::add_pointer<typename std::add_const<T>::type>::type const_pointer; ///< Element pointer type
-      typedef typename std::ptrdiff_t difference_type; ///< Difference type
+      typedef TensorInterface<T, R> TensorInterface_;       ///< This class type
+      typedef R range_type;                               ///< Tensor range type
+      typedef typename range_type::size_type size_type;           ///< size type
+      typedef typename std::remove_const<T>::type value_type;
+                                                         ///< Array element type
+      typedef typename std::add_lvalue_reference<T>::type reference;
+                                                     ///< Element reference type
+      typedef typename std::add_lvalue_reference<typename std::add_const<T>::type>::type
+                                    const_reference; ///< Element reference type
+      typedef typename std::add_pointer<T>::type pointer;
+                                                       ///< Element pointer type
+      typedef typename std::add_pointer<typename std::add_const<T>::type>::type
+                                        const_pointer; ///< Element pointer type
+      typedef typename std::ptrdiff_t difference_type;      ///< Difference type
       typedef typename detail::scalar_type<value_type>::type
-          numeric_type; ///< the numeric type that supports T
+                             numeric_type; ///< the numeric type that supports T
+
+      typedef Tensor<T, Eigen::aligned_allocator<T> > result_tensor;
+             ///< Tensor type used as the return type from arithmetic operations
 
     private:
       template <typename, typename>
@@ -224,8 +241,8 @@ namespace TiledArray {
       /// \param bound_shift The shift to be applied to the tensor range
       /// \return A shifted copy of this tensor
       template <typename Index>
-      Tensor<T> shift(const Index& bound_shift) const {
-        return Tensor<T>(range_.shift(bound_shift), data_);
+      result_tensor shift(const Index& bound_shift) const {
+        return result_tensor(range_.shift(bound_shift), data_);
       }
 
       // Generic vector operations
@@ -240,8 +257,8 @@ namespace TiledArray {
       /// \c op(*this[i],other[i])
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> binary(const Right& right, Op&& op) const {
-        return Tensor<T>(*this, right, std::forward<Op>(op));
+      result_tensor binary(const Right& right, Op&& op) const {
+        return result_tensor(*this, right, std::forward<Op>(op));
       }
 
       /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -255,8 +272,8 @@ namespace TiledArray {
       /// \c op(*this[i],other[i])
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> binary(const Right& right, Op&& op, const Permutation& perm) const {
-        return Tensor<T>(*this, right, std::forward<Op>(op), perm);
+      result_tensor binary(const Right& right, Op&& op, const Permutation& perm) const {
+        return result_tensor(*this, right, std::forward<Op>(op), perm);
       }
 
       /// Use a binary, element wise operation to modify this tensor
@@ -286,8 +303,8 @@ namespace TiledArray {
       /// \c op(*this[i])
       /// \throw TiledArray::Exception When this tensor is empty.
       template <typename Op>
-      Tensor<T> unary(Op&& op) const {
-        return Tensor<T>(*this, std::forward<Op>(op));
+      result_tensor unary(Op&& op) const {
+        return result_tensor(*this, std::forward<Op>(op));
       }
 
       /// Use a unary, element wise operation to construct a new, permuted tensor
@@ -300,8 +317,8 @@ namespace TiledArray {
       /// \throw TiledArray::Exception The dimension of \c perm does not match
       /// that of this tensor.
       template <typename Op>
-      Tensor<T> unary(Op&& op, const Permutation& perm) const {
-        return Tensor<T>(*this, std::forward<Op>(op), perm);
+      result_tensor unary(Op&& op, const Permutation& perm) const {
+        return result_tensor(*this, std::forward<Op>(op), perm);
       }
 
       /// Use a unary, element wise operation to modify this tensor
@@ -323,7 +340,7 @@ namespace TiledArray {
       /// \param factor The scaling factor
       /// \return A new tensor where the elements are the sum of the elements of
       /// \c this are scaled by \c factor
-      Tensor<T> scale(numeric_type factor) const {
+      result_tensor scale(numeric_type factor) const {
         return unary([=] (const numeric_type a) { return a * factor; });
       }
 
@@ -333,7 +350,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to this tensor
       /// \return A new tensor where the elements are the sum of the elements of
       /// \c this are scaled by \c factor
-      Tensor<T> scale(numeric_type factor, const Permutation& perm) const {
+      result_tensor scale(numeric_type factor, const Permutation& perm) const {
         return unary([=] (const numeric_type a) { return a * factor; }, perm);
       }
 
@@ -355,7 +372,7 @@ namespace TiledArray {
       /// \c this and \c other
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> add(const Right& right) const {
+      result_tensor add(const Right& right) const {
         return binary(right, [] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return l + r; });
@@ -370,7 +387,7 @@ namespace TiledArray {
       /// \c this and \c other
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> add(const Right& right, const Permutation& perm) const {
+      result_tensor add(const Right& right, const Permutation& perm) const {
         return binary(right, [] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return l + r; }, perm);
@@ -385,7 +402,7 @@ namespace TiledArray {
       /// \c this and \c other, scaled by \c factor
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> add(const Right& right, const numeric_type factor) const {
+      result_tensor add(const Right& right, const numeric_type factor) const {
         return binary(right, [=] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return (l + r) * factor; });
@@ -401,7 +418,7 @@ namespace TiledArray {
       /// \c this and \c other, scaled by \c factor
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> add(const Right& right, const numeric_type factor,
+      result_tensor add(const Right& right, const numeric_type factor,
           const Permutation& perm) const
       {
         return binary(right,  [=] (const numeric_type l,
@@ -414,7 +431,7 @@ namespace TiledArray {
       /// \param value The constant to be added to this tensor
       /// \return A new tensor where the elements are the sum of the elements of
       /// \c this and \c value
-      Tensor<T> add(const numeric_type value) const {
+      result_tensor add(const numeric_type value) const {
         return unary([=] (const numeric_type a) { return a + value; });
       }
 
@@ -424,7 +441,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to this tensor
       /// \return A new tensor where the elements are the sum of the elements of
       /// \c this and \c value
-      Tensor<T> add(const numeric_type value, const Permutation& perm) const {
+      result_tensor add(const numeric_type value, const Permutation& perm) const {
         return unary([=] (const numeric_type a) { return a + value; }, perm);
       }
 
@@ -473,7 +490,7 @@ namespace TiledArray {
       /// elements of \c this and \c right
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> subt(const Right& right) const {
+      result_tensor subt(const Right& right) const {
         return binary(right, [] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return l - r; });
@@ -488,7 +505,7 @@ namespace TiledArray {
       /// elements of \c this and \c right
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> subt(const Right& right, const Permutation& perm) const {
+      result_tensor subt(const Right& right, const Permutation& perm) const {
         return binary(right, [] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return l - r; }, perm);
@@ -503,7 +520,7 @@ namespace TiledArray {
       /// elements of \c this and \c right, scaled by \c factor
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> subt(const Right& right, const numeric_type factor) const {
+      result_tensor subt(const Right& right, const numeric_type factor) const {
         return binary(right, [=] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return (l - r) * factor; });
@@ -519,7 +536,7 @@ namespace TiledArray {
       /// elements of \c this and \c right, scaled by \c factor
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> subt(const Right& right, const numeric_type factor,
+      result_tensor subt(const Right& right, const numeric_type factor,
           const Permutation& perm) const
       {
         return binary(right, [=] (const numeric_type l,
@@ -531,7 +548,7 @@ namespace TiledArray {
 
       /// \return A new tensor where the elements are the different between the
       /// elements of \c this and \c value
-      Tensor<T> subt(const numeric_type value) const {
+      result_tensor subt(const numeric_type value) const {
         return add(-value);
       }
 
@@ -541,7 +558,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to this tensor
       /// \return A new tensor where the elements are the different between the
       /// elements of \c this and \c value
-      Tensor<T> subt(const numeric_type value, const Permutation& perm) const {
+      result_tensor subt(const numeric_type value, const Permutation& perm) const {
         return add(-value, perm);
       }
 
@@ -589,7 +606,7 @@ namespace TiledArray {
       /// of \c this and \c right
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> mult(const Right& right) const {
+      result_tensor mult(const Right& right) const {
         return binary(right, [] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return l * r; });
@@ -604,7 +621,7 @@ namespace TiledArray {
       /// of \c this and \c right
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> mult(const Right& right, const Permutation& perm) const {
+      result_tensor mult(const Right& right, const Permutation& perm) const {
         return binary(right, [] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return l * r; }, perm);
@@ -619,7 +636,7 @@ namespace TiledArray {
       /// of \c this and \c right, scaled by \c factor
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> mult(const Right& right, const numeric_type factor) const {
+      result_tensor mult(const Right& right, const numeric_type factor) const {
         return binary(right, [=] (const numeric_type l,
             const typename TiledArray::detail::scalar_type<Right>::type r)
             { return (l * r) * factor; });
@@ -635,7 +652,7 @@ namespace TiledArray {
       /// of \c this and \c right, scaled by \c factor
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-      Tensor<T> mult(const Right& right, const numeric_type factor,
+      result_tensor mult(const Right& right, const numeric_type factor,
           const Permutation& perm) const
       {
         return binary(right,  [=] (const numeric_type l,
@@ -675,7 +692,7 @@ namespace TiledArray {
       /// Create a negated copy of this tensor
 
       /// \return A new tensor that contains the negative values of this tensor
-      Tensor<T> neg() const {
+      result_tensor neg() const {
         return unary([] (const numeric_type r) { return -r; });
       }
 
@@ -683,7 +700,7 @@ namespace TiledArray {
 
       /// \param perm The permutation to be applied to this tensor
       /// \return A new tensor that contains the negative values of this tensor
-      Tensor<T> neg(const Permutation& perm) const {
+      result_tensor neg(const Permutation& perm) const {
         return unary([] (const numeric_type l) { return -l; }, perm);
       }
 
