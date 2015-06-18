@@ -447,10 +447,9 @@ namespace TiledArray {
           lower_bound, upper_bound), pimpl_->data_);
     }
 
-    template <typename I>
     detail::TensorInterface<T, BlockRange>
-    block(const std::initializer_list<I>& lower_bound,
-        const std::initializer_list<I>& upper_bound)
+    block(const std::initializer_list<size_type>& lower_bound,
+        const std::initializer_list<size_type>& upper_bound)
     {
       TA_ASSERT(pimpl_);
       return detail::TensorInterface<T, BlockRange>(BlockRange(pimpl_->range_,
@@ -465,10 +464,9 @@ namespace TiledArray {
           lower_bound, upper_bound), pimpl_->data_);
     }
 
-    template <typename I>
     detail::TensorInterface<const T, BlockRange>
-    block(const std::initializer_list<I>& lower_bound,
-        const std::initializer_list<I>& upper_bound) const
+    block(const std::initializer_list<size_type>& lower_bound,
+        const std::initializer_list<size_type>& upper_bound) const
     {
       TA_ASSERT(pimpl_);
       return detail::TensorInterface<const T, BlockRange>(BlockRange(pimpl_->range_,

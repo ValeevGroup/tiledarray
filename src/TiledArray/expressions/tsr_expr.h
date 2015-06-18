@@ -160,12 +160,10 @@ namespace TiledArray {
 
       /// Block expression
 
-      /// \tparam Index The bound index types
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
-      template <typename Index>
-      BlkTsrExpr<A> block(const std::initializer_list<Index>& lower_bound,
-          const std::initializer_list<Index>& upper_bound) const {
+      BlkTsrExpr<A> block(const std::initializer_list<std::size_t>& lower_bound,
+          const std::initializer_list<std::size_t>& upper_bound) const {
         return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
       }
 

@@ -51,10 +51,10 @@ namespace TiledArray {
       const Index& upper_bound)
   { return TensorMap<T>(Range(lower_bound, upper_bound), data); }
 
-  template <typename T, typename Index>
+  template <typename T>
   inline TensorMap<T> make_map(T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
+      const std::initializer_list<std::size_t>& lower_bound,
+      const std::initializer_list<std::size_t>& upper_bound)
   { return TensorMap<T>(Range(lower_bound, upper_bound), data); }
 
   template <typename T>
@@ -67,10 +67,10 @@ namespace TiledArray {
   { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
 
 
-  template <typename T, typename Index>
+  template <typename T>
   inline TensorConstMap<T> make_map(const T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
+      const std::initializer_list<std::size_t>& lower_bound,
+      const std::initializer_list<std::size_t>& upper_bound)
   { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
 
   template <typename T>
@@ -84,10 +84,10 @@ namespace TiledArray {
   { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
 
 
-  template <typename T, typename Index>
+  template <typename T>
   inline TensorConstMap<T> make_const_map(const T* const data,
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound)
+      const std::initializer_list<std::size_t>& lower_bound,
+      const std::initializer_list<std::size_t>& upper_bound)
   { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
 
   template <typename T>
