@@ -296,7 +296,7 @@ namespace TiledArray {
 
       for(; i < m; ++i, a += n) {
         const X x_i = x[i];
-        vector_op([x_i,&op] (A& a_ij, const Y y_j) -> decltype(op(a_ij, x_i, y_j))
+        inplace_vector_op([x_i,&op] (A& a_ij, const Y y_j) -> decltype(op(a_ij, x_i, y_j))
             { return op(a_ij, x_i, y_j); },
             n, a, y);
       }

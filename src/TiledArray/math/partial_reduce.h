@@ -386,7 +386,7 @@ namespace TiledArray {
         const Right right_i = right[i];
 
         // Reduce row i to result
-        vector_op([&op,right_i] (Result& result_j, const Left left_ij) {
+        inplace_vector_op([&op,right_i] (Result& result_j, const Left left_ij) {
           op(result_j, left_ij, right_i);
         }, n, result, left + (i * n));
       }
@@ -451,7 +451,7 @@ namespace TiledArray {
       for(; i < m; ++i) {
 
         // Reduce row i to result
-        vector_op(op, n, result, arg + (i * n));
+        inplace_vector_op(op, n, result, arg + (i * n));
       }
     }
 

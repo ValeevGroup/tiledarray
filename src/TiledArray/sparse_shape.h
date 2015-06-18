@@ -116,8 +116,8 @@ namespace TiledArray {
 
         // This is the easy case where the data is a vector and can be
         // normalized directly.
-        math::vector_op(normalize_op, size_vectors[0].size(), tile_norms_.data(),
-            size_vectors[0].data());
+        math::inplace_vector_op(normalize_op, size_vectors[0].size(),
+            tile_norms_.data(), size_vectors[0].data());
 
       } else {
         // Here the normalization constants are computed and multiplied by the
@@ -600,7 +600,7 @@ namespace TiledArray {
       if(dim == 1u) {
         // This is the easy case where the data is a vector and can be
         // normalized directly.
-        math::vector_op(
+        math::inplace_vector_op(
             [threshold, &zero_tile_count] (value_type& norm, const value_type size) {
               norm *= size;
               if(norm < threshold) {

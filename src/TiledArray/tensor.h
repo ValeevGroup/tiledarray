@@ -753,7 +753,7 @@ namespace TiledArray {
       TA_ASSERT(pimpl_->range_ == other.range());
       TA_ASSERT(pimpl_->data_ != other.data());
 
-      math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_, other.data());
+      math::inplace_vector_op(op, pimpl_->range_.volume(), pimpl_->data_, other.data());
 
       return *this;
     }
@@ -799,7 +799,7 @@ namespace TiledArray {
     Tensor_& inplace_unary(const Op& op) {
       TA_ASSERT(pimpl_);
 
-      math::vector_op(op, pimpl_->range_.volume(), pimpl_->data_);
+      math::inplace_vector_op(op, pimpl_->range_.volume(), pimpl_->data_);
 
       return *this;
     }
