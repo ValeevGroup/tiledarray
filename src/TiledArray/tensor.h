@@ -84,7 +84,7 @@ namespace TiledArray {
     const auto volume = t.range().volume();
 
     auto tensor_print_range =
-        [&os] (typename T::const_pointer restrict const t_data) {
+        [&os,stride] (typename T::const_pointer restrict const t_data) {
           for(decltype(t.range().volume()) i = 0ul; i < stride; ++i)
             os << t_data[i] << " ";
         };
