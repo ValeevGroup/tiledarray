@@ -224,7 +224,8 @@ namespace TiledArray {
       for(; i < m; ++i, a += n) {
 
         const X x_i = x[i];
-        vector_op([x_i,&op] (const Y y_j) { return op(x_i, y_j); }, n, a, y);
+        vector_op([x_i,&op] (const Y y_j) -> decltype(op(x_i, y_j))
+            { return op(x_i, y_j); }, n, a, y);
 
       }
     }
@@ -283,7 +284,8 @@ namespace TiledArray {
           const Y y_j = y[j];
 
           // Compute a block
-          for_each_block([y_j,&op] (A& a_ij, const X x_i) { return op(a_ij, x_i, y_j); },
+          for_each_block([y_j,&op] (A& a_ij, const X x_i) -> decltype(op(a_ij, x_i, y_j))
+              { return op(a_ij, x_i, y_j); },
               a_block, x_block);
 
           // Store a block
@@ -294,7 +296,8 @@ namespace TiledArray {
 
       for(; i < m; ++i, a += n) {
         const X x_i = x[i];
-        vector_op([x_i,&op] (A& a_ij, const Y y_j) { return op(a_ij, x_i, y_j); },
+        vector_op([x_i,&op] (A& a_ij, const Y y_j) -> decltype(op(a_ij, x_i, y_j))
+            { return op(a_ij, x_i, y_j); },
             n, a, y);
       }
     }
@@ -362,7 +365,8 @@ namespace TiledArray {
           const Y y_j = y[j];
 
           // Compute a block
-          for_each_block([y_j,&op] (A& a_ij, const X x_i) { return op(a_ij, x_i, y_j); },
+          for_each_block([y_j,&op] (A& a_ij, const X x_i) -> decltype(op(a_ij, x_i, y_j))
+              { return op(a_ij, x_i, y_j); },
               a_block, x_block);
 
           // Store a block
@@ -388,7 +392,8 @@ namespace TiledArray {
           copy_block(y_block, y + j);
 
           // Compute outer block
-          for_each_block([x_i,&op] (A& a_ij, const Y y_j) { return op(a_ij, x_i, y_j); },
+          for_each_block([x_i,&op] (A& a_ij, const Y y_j) -> decltype(op(a_ij, x_i, y_j))
+              { return op(a_ij, x_i, y_j); },
               a_block, y_block);
 
           // Store a block
