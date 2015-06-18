@@ -104,7 +104,7 @@ namespace TiledArray {
 
       const auto volume = result.range().volume();
 
-      math::vector_op(std::forward<Op>(op), volume, result.data(),
+      math::inplace_vector_op(std::forward<Op>(op), volume, result.data(),
           tensors.data()...);
     }
 
@@ -247,7 +247,7 @@ namespace TiledArray {
       const auto volume = result.range().volume();
 
       for(decltype(result.range().volume()) i = 0ul; i < volume; i += stride)
-        math::vector_op(op, stride, result.data() + result.range().ordinal(i),
+        math::inplace_vector_op(op, stride, result.data() + result.range().ordinal(i),
           (tensors.data() + tensors.range().ordinal(i))...);
     }
 

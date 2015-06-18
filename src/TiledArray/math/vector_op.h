@@ -336,7 +336,7 @@ namespace TiledArray {
     template <typename Op, typename Result, typename... Args,
         typename std::enable_if<std::is_void<typename std::result_of<Op(Result&,
         Args...)>::type>::value>::type* = nullptr>
-    void vector_op(Op&& op, const std::size_t n, Result* const result,
+    void inplace_vector_op(Op&& op, const std::size_t n, Result* const result,
         const Args* const... args)
     {
       std::size_t i = 0ul;

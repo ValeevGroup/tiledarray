@@ -258,8 +258,8 @@ namespace TiledArray {
     template <typename T1,
         typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
     Tensor_& operator=(const T1& other) {
-      detail::inplace_tensor_op([] (typename T1::const_reference t1) ->
-          typename T1::const_reference { return t1; }, *this, other);
+      detail::inplace_tensor_op([] (reference restrict tr,
+          typename T1::const_reference restrict t1) { tr = t1; }, *this, other);
 
       return *this;
     }
