@@ -95,17 +95,17 @@ namespace TiledArray {
       /// Tensor range accessor
 
       /// \return The tensor range object
-      auto range() const -> decltype(tensor_->range()) { return get().range(); }
+      auto range() const -> decltype(tensor_->range()) { return tensor_->range(); }
 
       /// Tensor data pointer accessor
 
       /// \return A pointer to the tensor data
-      auto data() const -> decltype(get().data()) { return get().data(); }
+      auto data() const -> decltype(tensor_->data()) { return tensor_->data(); }
 
       /// Check for an empty tensor
 
       /// \return \c true if the tensor is empty, otherwise \c false.
-      auto empty() const -> decltype(get().empty()) { return get().empty(); }
+      auto empty() const -> decltype(tensor_->empty()) { return tensor_->empty(); }
 
     }; // class ShiftWrapper
 
