@@ -260,9 +260,9 @@ namespace TiledArray {
       std::string make_tag() const {
         std::stringstream ss;
         ss << "[Block ";
-        print_array(ss, lower_bound_);
+        TiledArray::detail::print_array(ss, lower_bound_);
         ss << " - ";
-        print_array(ss, upper_bound_);
+        TiledArray::detail::print_array(ss, upper_bound_);
         ss << "] ";
         return ss.str();
       }
