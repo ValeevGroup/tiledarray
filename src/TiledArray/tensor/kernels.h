@@ -631,7 +631,7 @@ namespace TiledArray {
           {
             for(decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
               Scalar temp = tensor_reduce(reduce_op, join_op, identity,
-                  tensor1[i], tensors[i]...);
+                  tensor1_data[i], tensors_data[i]...);
               join_op(result, temp);
             }
           };
