@@ -129,11 +129,8 @@ namespace TiledArray {
 
     /// Construct permuation with an initializer list
 
-    /// \tparam I An integral type
-    /// \param list An initializer list of integers
-    template <typename I,
-        typename std::enable_if<std::is_integral<I>::value>::type* = nullptr>
-    explicit Permutation(std::initializer_list<I> list) :
+    /// \param list A list that contains the permutation
+    explicit Permutation(std::initializer_list<index_type> list) :
         p_(list.begin(), list.end())
     {
       TA_ASSERT( valid_(p_.begin(), p_.end()) );

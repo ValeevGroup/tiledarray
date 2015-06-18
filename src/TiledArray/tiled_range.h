@@ -77,8 +77,7 @@ namespace TiledArray {
     }
 
     /// Constructed with a set of ranges pointed to by [ first, last ).
-    template <typename T>
-    TiledRange(const std::initializer_list<std::initializer_list<T> >& list) :
+    TiledRange(const std::initializer_list<std::initializer_list<size_type> >& list) :
       range_(), element_range_(), ranges_(list.begin(), list.end())
     {
       init();
