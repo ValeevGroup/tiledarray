@@ -84,8 +84,8 @@ namespace TiledArray {
 
         const X x = x_block[offset];
 
-        const auto bind_first_op = [x,&op] (Result& res, const Y y) { res = op(x, y); };
-        for_each_block(bind_first_op, result_block, y_block);
+        for_each_block([x,&op] (Result& res, const Y y) { res = op(x, y); },
+            result_block, y_block);
 
         copy_block(result, result_block);
       }
@@ -150,8 +150,8 @@ namespace TiledArray {
 
           const X x = x_block[offset];
 
-          const auto bind_first_op = [x,&op] (Result& res, const Y y) { res = op(x, y); };
-          for_each_block(bind_first_op, result_block, y_block);
+          for_each_block([x,&op] (Result& res, const Y y) { res = op(x, y); },
+              result_block, y_block);
 
           copy_block(result, result_block);
         }
