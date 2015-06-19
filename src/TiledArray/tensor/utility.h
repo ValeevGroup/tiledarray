@@ -55,14 +55,7 @@ namespace TiledArray {
     template <typename T,
         typename std::enable_if<! is_contiguous_tensor<T>::value>::type* = nullptr>
     inline Range clone_range(const T& tensor) {
-      const auto rank = tensor.range().rank();
-      const auto* const lobound = data(tensor.range().lobound_data());
-      const auto* const upbound = data(tensor.range().upbound_data());
-      SizeArray<const typename T::size_type>
-          lower_bound(lobound, lobound + rank);
-      SizeArray<const typename T::size_type>
-          upper_bound(upbound, upbound + rank);
-      return Range(lower_bound, upper_bound);
+      return Range(tensor.range().lobound(), tensor.range().upbound());
     }
 
     /// Test that the ranges of a pair of tensors are congruent
