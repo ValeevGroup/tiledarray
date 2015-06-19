@@ -129,17 +129,20 @@ namespace TiledArray {
       const unsigned int ndim1 = ndim - 1;
       const typename Result::size_type volume = arg0.range().volume();
 
+      // Get pointer to arg extent
+      const auto* restrict const arg0_extent = arg0.range().extent_data();
+
       if(perm[ndim1] == ndim1) {
         // This is the simple case where the last dimension is not permuted.
         // Therefore, it can be shuffled in chunks.
 
         // Determine which dimensions can be permuted with the least significant
         // dimension.
-        typename Result::size_type block_size = arg0.range().extent_data()[ndim1];
+        typename Result::size_type block_size = arg0_extent[ndim1];
         for(int i = int(ndim1) - 1 ; i >= 0; --i) {
           if(int(perm[i]) != i)
             break;
-          block_size *= arg0.range().extent_data()[i];
+          block_size *= arg0_extent[i];
         }
 
         // Combine the input and output operations
@@ -178,9 +181,10 @@ namespace TiledArray {
             arg0.range().extent_data(), perm);
 
         // Compute the fused stride for the result matrix transpose.
+        const auto* restrict const result_extent = result.range().extent_data();
         typename Result::size_type  result_outer_stride = 1ul;
         for(unsigned int i = perm[ndim1] + 1u; i < ndim; ++i)
-          result_outer_stride *= result.range().extent_data()[i];
+          result_outer_stride *= result_extent[i];
 
         // Copy data from the input to the output matrix via a series of matrix
         // transposes.

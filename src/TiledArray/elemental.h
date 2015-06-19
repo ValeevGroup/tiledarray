@@ -55,15 +55,19 @@ namespace TiledArray {
     for(; it != end; ++it){
       // Get tile matrix location info
       const typename Array<T,DIM,Tile>::value_type tile = *it;
-      const std::size_t t0start = tile.range().lobound_data()[0];
-      const std::size_t t1start = tile.range().lobound_data()[1];
-      const std::size_t t0size = tile.range().extent_data()[0];
-      const std::size_t t1size = tile.range().extent_data()[1];
+
+      // Get tile range data
+      const auto* restrict const tile_lower = tile.range().lobound_data();
+      const auto* restrict const tile_extent = tile.range().extent_data();
+      const std::size_t tile_lower_0 = tile_lower[0];
+      const std::size_t tile_lower_1 = tile_lower[1];
+      const std::size_t tile_extent_0 = tile_extent[0];
+      const std::size_t tile_extent_1 = tile_extent[1];
 
       // Create Eigen RowMajor Map of tile
       const Eigen::Map<
         const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
-        Eigen::AutoAlign> eig_row_map = eigen_map(tile, t0size, t1size);
+        Eigen::AutoAlign> eig_row_map = eigen_map(tile, tile_extent_0, tile_extent_1);
 
       // Create ColMajor EigenMatrix from RowMajor Map
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> CMatrix = eig_row_map;
@@ -73,7 +77,7 @@ namespace TiledArray {
       ElemBlock.Attach(CMatrix.rows(), CMatrix.cols(), CMatrix.data(), CMatrix.rows());
 
       // Attach elem local matrix to elem global matrix
-      interface.Axpy(1.0, ElemBlock, t0start, t1start);
+      interface.Axpy(1.0, ElemBlock, tile_lower_0, tile_lower_1);
     }
     interface.Detach(); // Does communication using elemental
 
@@ -100,20 +104,24 @@ namespace TiledArray {
     for(;it != end; ++it){
       // Get tile matrix location info
       typename Array<T,DIM,Tile>::value_type tile = *it;
-      std::size_t t0start = tile.range().lobound_data()[0];
-      std::size_t t1start = tile.range().lobound_data()[1];
-      std::size_t t0size = tile.range().extent_data()[0];
-      std::size_t t1size = tile.range().extent_data()[1];
+
+      // Get tile range data
+      const auto* restrict const tile_lower = tile.range().lobound_data();
+      const auto* restrict const tile_extent = tile.range().extent_data();
+      const std::size_t tile_lower_0 = tile_lower[0];
+      const std::size_t tile_lower_1 = tile_lower[1];
+      const std::size_t tile_extent_0 = tile_extent[0];
+      const std::size_t tile_extent_1 = tile_extent[1];
 
       // Make Elemental local matrix and attach the data.
       elem::Matrix<T> ElemBlock;
-      ElemBlock.Attach(t0size, t1size, tile.data(), t0size);
+      ElemBlock.Attach(tile_extent_0, tile_extent_1, tile.data(), tile_extent_0);
 
       // need to zero tile so Axpy doesn't add to it.
-      std::fill(ElemBlock.Buffer(), ElemBlock.Buffer()+t0size*t1size, 0.0);
+      std::fill(ElemBlock.Buffer(), ElemBlock.Buffer()+tile_extent_0*tile_extent_1, 0.0);
 
       // Attach elem local matrix to elem global matrix
-      interface.Axpy(1.0, ElemBlock, t0start, t1start);
+      interface.Axpy(1.0, ElemBlock, tile_lower_0, tile_lower_0);
     }
     interface.Detach(); // Does communication using elemental
 
@@ -122,13 +130,16 @@ namespace TiledArray {
     for(;it != end; ++it){
       // Get tile and size
       typename Array<T,DIM,Tile>::value_type tile = *it;
-      std::size_t t0size = tile.range().extent_data()[0];
-      std::size_t t1size = tile.range().extent_data()[1];
+
+      // Get tile range data
+      const auto* restrict const tile_extent = tile.range().extent_data();
+      const std::size_t tile_extent_0 = tile_extent[0];
+      const std::size_t tile_extent_1 = tile_extent[1];
 
       // copy to row major matrix
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> row_mat =
         Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>,
-                   Eigen::AutoAlign > (tile.data(),t0size,t1size);
+                   Eigen::AutoAlign > (tile.data(),tile_extent_0,tile_extent_1);
 
       // Finally copy the data back into the tile in the correct format.
       std::copy(row_mat.data(), row_mat.data()+row_mat.size(), tile.data());

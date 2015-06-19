@@ -448,11 +448,19 @@ namespace TiledArray {
         }
 
 #ifndef NDEBUG
+
+        // Get left and right tile extents.
+        const auto* restrict const left_extent =
+            left_.trange().tiles().extent_data();
+        const auto* restrict const right_extent =
+            right_.trange().tiles().extent_data();
+
         // Check that the contracted dimensions are coformal (equal).
         for(unsigned int l = left_outer_rank, r = 0ul; l < left_rank; ++l, ++r) {
           if(left_.trange().data()[l] != right_.trange().data()[r]) {
             if(World::get_default().rank() == 0) {
-              if(left_.trange().tiles().extent_data()[l] == right_.trange().tiles().extent_data()[r]) {
+
+              if(left_extent[l] == right_extent[r]) {
                 TA_USER_ERROR_MESSAGE( "The tiling of the contracted dimensions " \
                     "of the left- and right-hand arguments are not equal.");
 

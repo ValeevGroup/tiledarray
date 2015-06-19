@@ -128,9 +128,9 @@ namespace TiledArray {
   inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
   eigen_map(const Tensor<T, A>& tensor) {
     TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
-
-    return eigen_map(tensor, tensor.range().extent_data()[0],
-            (tensor.range().rank() == 2u ? tensor.range().extent_data()[1] : 1ul));
+    const auto* restrict const tensor_extent = tensor.range().extent_data();
+    return eigen_map(tensor, tensor_extent[0],
+            (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
   }
 
   /// Construct an Eigen::Map object for a given Tensor object
@@ -144,9 +144,9 @@ namespace TiledArray {
   inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
   eigen_map(Tensor<T, A>& tensor) {
     TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
-
-    return eigen_map(tensor, tensor.range().extent_data()[0],
-            (tensor.range().rank() == 2u ? tensor.range().extent_data()[1] : 1ul));
+    const auto* restrict const tensor_extent = tensor.range().extent_data();
+    return eigen_map(tensor, tensor_extent[0],
+            (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
   }
 
   /// Copy a block of an Eigen matrix into a tensor
@@ -167,30 +167,48 @@ namespace TiledArray {
     typedef typename Tensor<T, A>::size_type size_type;
     TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
+    // Get pointers to the tensor range data
+    const auto* restrict const tensor_lower = tensor.range().lobound_data();
+    const auto* restrict const tensor_upper = tensor.range().upbound_data();
+    const auto* restrict const tensor_extent = tensor.range().extent_data();
+
     if(tensor.range().rank() == 2u) {
-      TA_ASSERT(tensor.range().upbound_data()[0] <= size_type(matrix.rows()));
-      TA_ASSERT(tensor.range().upbound_data()[1] <= size_type(matrix.cols()));
+      // Get tensor range data
+      const std::size_t tensor_lower_0 = tensor_lower[0];
+      const std::size_t tensor_lower_1 = tensor_lower[1];
+      const std::size_t tensor_upper_0 = tensor_upper[0];
+      const std::size_t tensor_upper_1 = tensor_upper[1];
+      const std::size_t tensor_extent_0 = tensor_extent[0];
+      const std::size_t tensor_extent_1 = tensor_extent[1];
+
+      TA_ASSERT(tensor_upper_0 <= size_type(matrix.rows()));
+      TA_ASSERT(tensor_upper_1 <= size_type(matrix.cols()));
 
       // Copy matrix
-      eigen_map(tensor, tensor.range().extent_data()[0], tensor.range().extent_data()[1]) =
-          matrix.block(tensor.range().lobound_data()[0], tensor.range().lobound_data()[1],
-          tensor.range().extent_data()[0], tensor.range().extent_data()[1]);
+      eigen_map(tensor, tensor_extent_0, tensor_extent_1) =
+          matrix.block(tensor_lower_0, tensor_lower_1,
+          tensor_extent_0, tensor_extent_1);
     } else {
+      // Get tensor range data
+      const std::size_t tensor_lower_0 = tensor_lower[0];
+      const std::size_t tensor_upper_0 = tensor_upper[0];
+      const std::size_t tensor_extent_0 = tensor_extent[0];
+
       // Check that matrix is a vector.
       TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
 
       if(matrix.rows() == 1) {
-        TA_ASSERT(tensor.range().upbound_data()[0] <= size_type(matrix.cols()));
+        TA_ASSERT(tensor_upper_0 <= size_type(matrix.cols()));
 
         // Copy the row vector to tensor
-        eigen_map(tensor, 1, tensor.range().extent_data()[0]) =
-            matrix.block(0, tensor.range().lobound_data()[0], 1, tensor.range().extent_data()[0]);
+        eigen_map(tensor, 1, tensor_extent_0) =
+            matrix.block(0, tensor_lower_0, 1, tensor_extent_0);
       } else {
-        TA_ASSERT(tensor.range().upbound_data()[0] <= size_type(matrix.rows()));
+        TA_ASSERT(tensor_upper_0 <= size_type(matrix.rows()));
 
         // Copy the column vector to tensor
-        eigen_map(tensor, tensor.range().extent_data()[0], 1) =
-            matrix.block(tensor.range().lobound_data()[0], 0, tensor.range().extent_data()[0], 1);
+        eigen_map(tensor, tensor_extent_0, 1) =
+            matrix.block(tensor_lower_0, 0, tensor_extent_0, 1);
       }
     }
   }
@@ -213,29 +231,47 @@ namespace TiledArray {
     typedef typename Tensor<T, A>::size_type size_type;
     TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
+    // Get pointers to the tensor range data
+    const auto* restrict const tensor_lower = tensor.range().lobound_data();
+    const auto* restrict const tensor_upper = tensor.range().upbound_data();
+    const auto* restrict const tensor_extent = tensor.range().extent_data();
+
     if(tensor.range().rank() == 2) {
-      TA_ASSERT(tensor.range().upbound_data()[0] <= size_type(matrix.rows()));
-      TA_ASSERT(tensor.range().upbound_data()[1] <= size_type(matrix.cols()));
+      // Get tensor range data
+      const std::size_t tensor_lower_0 = tensor_lower[0];
+      const std::size_t tensor_lower_1 = tensor_lower[1];
+      const std::size_t tensor_upper_0 = tensor_upper[0];
+      const std::size_t tensor_upper_1 = tensor_upper[1];
+      const std::size_t tensor_extent_0 = tensor_extent[0];
+      const std::size_t tensor_extent_1 = tensor_extent[1];
+
+      TA_ASSERT(tensor_upper_0 <= size_type(matrix.rows()));
+      TA_ASSERT(tensor_upper_1 <= size_type(matrix.cols()));
 
       // Copy tensor into matrix
-      matrix.block(tensor.range().lobound_data()[0], tensor.range().lobound_data()[1],
-          tensor.range().extent_data()[0], tensor.range().extent_data()[1]) =
-              eigen_map(tensor, tensor.range().extent_data()[0], tensor.range().extent_data()[1]);
+      matrix.block(tensor_lower_0, tensor_lower_1,
+          tensor_extent_0, tensor_extent_1) =
+              eigen_map(tensor, tensor_extent_0, tensor_extent_1);
     } else {
+      // Get tensor range data
+      const std::size_t tensor_lower_0 = tensor_lower[0];
+      const std::size_t tensor_upper_0 = tensor_upper[0];
+      const std::size_t tensor_extent_0 = tensor_extent[0];
+
       TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
 
       if(matrix.rows() == 1) {
-        TA_ASSERT(tensor.range().upbound_data()[0] <= size_type(matrix.cols()));
+        TA_ASSERT(tensor_upper_0 <= size_type(matrix.cols()));
 
         // Copy tensor into row vector
-        matrix.block(0, tensor.range().lobound_data()[0], 1, tensor.range().extent_data()[0]) =
-            eigen_map(tensor, 1, tensor.range().extent_data()[0]);
+        matrix.block(0, tensor_lower_0, 1, tensor_extent_0) =
+            eigen_map(tensor, 1, tensor_extent_0);
       } else {
-        TA_ASSERT(tensor.range().upbound_data()[0] <= size_type(matrix.rows()));
+        TA_ASSERT(tensor_upper_0 <= size_type(matrix.rows()));
 
         // Copy tensor into column vector
-        matrix.block(tensor.range().lobound_data()[0], 0, tensor.range().extent_data()[0], 1) =
-            eigen_map(tensor, tensor.range().extent_data()[0], 1);
+        matrix.block(tensor_lower_0, 0, tensor_extent_0, 1) =
+            eigen_map(tensor, tensor_extent_0, 1);
       }
     }
   }
@@ -401,9 +437,9 @@ namespace TiledArray {
           "TiledArray::array_to_eigen(): Array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
 
     // Construct the Eigen matrix
+    const auto* restrict const array_extent = array.trange().elements().extent_data();
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
-        matrix(array.trange().elements().extent_data()[0],
-            (DIM == 2 ? array.trange().elements().extent_data()[1] : 1));
+        matrix(array_extent[0], (DIM == 2 ? array_extent[1] : 1));
 
     // Spawn tasks to copy array tiles to the Eigen matrix
     madness::AtomicInt counter;
