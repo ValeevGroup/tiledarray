@@ -389,13 +389,13 @@ namespace TiledArray {
 
         // Get pointers to the argument sizes
         const size_type* restrict const left_tiles_size =
-            left_.trange().tiles().size();
+            left_.trange().tiles().extent_data();
         const size_type* restrict const left_element_size =
-            left_.trange().elements().size();
+            left_.trange().elements().extent_data();
         const size_type* restrict const right_tiles_size =
-            right_.trange().tiles().size();
+            right_.trange().tiles().extent_data();
         const size_type* restrict const right_element_size =
-            right_.trange().elements().size();
+            right_.trange().elements().extent_data();
 
         // Compute the fused sizes of the contraction
         size_type M = 1ul, m = 1ul, N = 1ul, n = 1ul;
@@ -452,7 +452,7 @@ namespace TiledArray {
         for(unsigned int l = left_outer_rank, r = 0ul; l < left_rank; ++l, ++r) {
           if(left_.trange().data()[l] != right_.trange().data()[r]) {
             if(World::get_default().rank() == 0) {
-              if(left_.trange().tiles().size()[l] == right_.trange().tiles().size()[r]) {
+              if(left_.trange().tiles().extent_data()[l] == right_.trange().tiles().extent_data()[r]) {
                 TA_USER_ERROR_MESSAGE( "The tiling of the contracted dimensions " \
                     "of the left- and right-hand arguments are not equal.");
 

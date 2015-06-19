@@ -992,19 +992,19 @@ namespace TiledArray {
     {
       // Check that this tensor is not empty and has the correct rank
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.dim() == gemm_helper.left_rank());
+      TA_ASSERT(pimpl_->range_.rank() == gemm_helper.left_rank());
 
       // Check that the arguments are not empty and have the correct ranks
       TA_ASSERT(!other.empty());
-      TA_ASSERT(other.range().dim() == gemm_helper.right_rank());
+      TA_ASSERT(other.range().rank() == gemm_helper.right_rank());
 
       // Construct the result Tensor
       Tensor_ result(gemm_helper.make_result_range<range_type>(pimpl_->range_, other.range()));
 
       // Check that the inner dimensions of left and right match
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.start(), other.range().start()));
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.finish(), other.range().finish()));
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.size(), other.range().size()));
+      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.lobound_data(), other.range().lobound_data()));
+      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.upbound_data(), other.range().upbound_data()));
+      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.extent_data(), other.range().extent_data()));
 
 
       // Compute gemm dimensions
@@ -1040,39 +1040,39 @@ namespace TiledArray {
     {
       // Check that this tensor is not empty and has the correct rank
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.dim() == gemm_helper.result_rank());
+      TA_ASSERT(pimpl_->range_.rank() == gemm_helper.result_rank());
 
       // Check that the arguments are not empty and have the correct ranks
       TA_ASSERT(!left.empty());
-      TA_ASSERT(left.range().dim() == gemm_helper.left_rank());
+      TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
       TA_ASSERT(!right.empty());
-      TA_ASSERT(right.range().dim() == gemm_helper.right_rank());
+      TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
       // Check that the outer dimensions of left match the the corresponding
       // dimensions in result
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().start(),
-          pimpl_->range_.start()));
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().finish(),
-          pimpl_->range_.finish()));
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().size(),
-          pimpl_->range_.size()));
+      TA_ASSERT(gemm_helper.left_result_coformal(left.range().lobound_data(),
+          pimpl_->range_.lobound_data()));
+      TA_ASSERT(gemm_helper.left_result_coformal(left.range().upbound_data(),
+          pimpl_->range_.upbound_data()));
+      TA_ASSERT(gemm_helper.left_result_coformal(left.range().extent_data(),
+          pimpl_->range_.extent_data()));
 
       // Check that the outer dimensions of right match the the corresponding
       // dimensions in result
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().start(),
-          pimpl_->range_.start()));
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().finish(),
-          pimpl_->range_.finish()));
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().size(),
-          pimpl_->range_.size()));
+      TA_ASSERT(gemm_helper.right_result_coformal(right.range().lobound_data(),
+          pimpl_->range_.lobound_data()));
+      TA_ASSERT(gemm_helper.right_result_coformal(right.range().upbound_data(),
+          pimpl_->range_.upbound_data()));
+      TA_ASSERT(gemm_helper.right_result_coformal(right.range().extent_data(),
+          pimpl_->range_.extent_data()));
 
       // Check that the inner dimensions of left and right match
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().start(),
-          right.range().start()));
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().finish(),
-          right.range().finish()));
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().size(),
-          right.range().size()));
+      TA_ASSERT(gemm_helper.left_right_coformal(left.range().lobound_data(),
+          right.range().lobound_data()));
+      TA_ASSERT(gemm_helper.left_right_coformal(left.range().upbound_data(),
+          right.range().upbound_data()));
+      TA_ASSERT(gemm_helper.left_right_coformal(left.range().extent_data(),
+          right.range().extent_data()));
 
       // Compute gemm dimensions
       integer m, n, k;
@@ -1102,39 +1102,39 @@ namespace TiledArray {
       TA_ASSERT(pimpl_);
 
       // Get pointers to the range data
-      const size_type n = pimpl_->range_.dim();
-      const size_type* restrict const start = pimpl_->range_.start();
-      const size_type* restrict const finish = pimpl_->range_.finish();
-      const size_type* restrict const weight = pimpl_->range_.weight();
+      const size_type n = pimpl_->range_.rank();
+      const size_type* restrict const lower = pimpl_->range_.lobound_data();
+      const size_type* restrict const upper = pimpl_->range_.upbound_data();
+      const size_type* restrict const stride = pimpl_->range_.stride_data();
 
-      // Search for the largest start index and the smallest finish
-      size_type start_max = 0ul, finish_min =
+      // Search for the largest lower bound and the smallest upper bound
+      size_type lower_max = 0ul, upper_min =
           std::numeric_limits<size_type>::max();
       for(size_type i = 0ul; i < n; ++i) {
-        const size_type start_i = start[i];
-        const size_type finish_i = finish[i];
+        const size_type lower_i = lower[i];
+        const size_type upper_i = upper[i];
 
-        start_max = std::max(start_max, start_i);
-        finish_min = std::min(finish_min, finish_i);
+        lower_max = std::max(lower_max, lower_i);
+        upper_min = std::min(upper_min, upper_i);
       }
 
       value_type result = 0;
 
-      if(start_max < finish_min) {
+      if(lower_max < upper_min) {
         // Compute the first and last ordinal index
-        size_type first = 0ul, last = 0ul, stride = 0ul;
+        size_type first = 0ul, last = 0ul, trace_stride = 0ul;
         for(size_type i = 0ul; i < n; ++i) {
-          const size_type start_i = start[i];
-          const size_type weight_i = weight[i];
+          const size_type lower_i = lower[i];
+          const size_type stride_i = stride[i];
 
-          first += (start_max - start_i) * weight_i;
-          last += (finish_min - start_i) * weight_i;
-          stride += weight_i;
+          first += (lower_max - lower_i) * stride_i;
+          last += (upper_min - lower_i) * stride_i;
+          trace_stride += stride_i;
         }
 
         // Compute the trace
         const value_type* restrict const data = pimpl_->data_;
-        for(; first < last; first += stride)
+        for(; first < last; first += trace_stride)
           result += data[first];
       }
 

@@ -121,8 +121,8 @@ namespace TiledArray {
     template <typename Left, typename Right>
     inline bool is_range_congruent(const Left& left, const ShiftWrapper<Right>& right) {
       return (left.range().rank() == right.range().rank()) &&
-          std::equal(data(left.range().size()),
-              left.range().size() + left.range().rank(), right.range().size());
+          std::equal(left.range().extent_data(),
+              left.range().extent_data() + left.range().rank(), right.range().extent_data());
     }
 
   }  // namespace detail

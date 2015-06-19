@@ -190,8 +190,8 @@ BOOST_AUTO_TEST_CASE( block )
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(start, finish));
 
   for(unsigned int i = 0u; i < GlobalFixture::dim; ++i) {
-    BOOST_CHECK_EQUAL(result.data().range().start()[i], 0ul);
-    BOOST_CHECK_EQUAL(result.data().range().finish()[i], 3ul);
+    BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0ul);
+    BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], 3ul);
   }
 
   for(Range::const_iterator it = result.data().range().begin(); it != result.data().range().end(); ++it) {
@@ -775,15 +775,15 @@ BOOST_AUTO_TEST_CASE( mult_scale_perm )
 BOOST_AUTO_TEST_CASE( gemm )
 {
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().size()[0];
-  const std::size_t n = right.data().range().size()[right.data().range().dim() - 1];
+  const std::size_t m = left.data().range().extent_data()[0];
+  const std::size_t n = right.data().range().extent_data()[right.data().range().rank() - 1];
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;
 
   // Evaluate the contraction of sparse shapes
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-      2u, left.data().range().dim(), right.data().range().dim());
+      2u, left.data().range().rank(), right.data().range().rank());
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper));
 
@@ -834,15 +834,15 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
   const Permutation perm({1,0});
 
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().size()[0];
-  const std::size_t n = right.data().range().size()[right.data().range().dim() - 1];
+  const std::size_t m = left.data().range().extent_data()[0];
+  const std::size_t n = right.data().range().extent_data()[right.data().range().rank() - 1];
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;
 
   // Evaluate the contraction of sparse shapes
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-      2u, left.data().range().dim(), right.data().range().dim());
+      2u, left.data().range().rank(), right.data().range().rank());
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper, perm));
 

@@ -51,8 +51,8 @@ struct TensorOfTensorFixture {
   // Fill a tensor with random data
   static Tensor<Tensor<int> > make_rand_tensor_of_tensor(const Range& r) {
     Tensor<Tensor<int> > tensor(r);
-    for(std::size_t i = 0ul; i < r.size()[0]; ++i) {
-      for(std::size_t j = 0ul; j < r.size()[1]; ++j) {
+    for(std::size_t i = 0ul; i < r.extent_data()[0]; ++i) {
+      for(std::size_t j = 0ul; j < r.extent_data()[1]; ++j) {
         const std::array<std::size_t, 2> lower_bound = {{ i * 10, j * 10 }};
         const std::array<std::size_t, 2> upper_bound = {{ (i + 1) * 10, (j + 1) * 10 }};
         tensor(i,j) = make_rand_tensor(Range(lower_bound, upper_bound));
@@ -90,8 +90,8 @@ BOOST_AUTO_TEST_CASE( unary_constructor )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -109,8 +109,8 @@ BOOST_AUTO_TEST_CASE( unary_perm_constructor )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -129,8 +129,8 @@ BOOST_AUTO_TEST_CASE( binary_constructor )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -150,8 +150,8 @@ BOOST_AUTO_TEST_CASE( binary_perm_constructor )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -170,8 +170,8 @@ BOOST_AUTO_TEST_CASE( clone )
   BOOST_CHECK_EQUAL(t.range(), a.range());
   BOOST_CHECK_NE(t.data(), a.data());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       BOOST_CHECK_NE(t(i,j).data(), a(i,j).data());
@@ -191,8 +191,8 @@ BOOST_AUTO_TEST_CASE( permute )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       BOOST_CHECK_NE(t(i,j).data(), a(j,i).data());
@@ -211,8 +211,8 @@ BOOST_AUTO_TEST_CASE( scale )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -230,8 +230,8 @@ BOOST_AUTO_TEST_CASE( scale_perm )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -249,8 +249,8 @@ BOOST_AUTO_TEST_CASE( scale_to )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -268,8 +268,8 @@ BOOST_AUTO_TEST_CASE( add )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -287,8 +287,8 @@ BOOST_AUTO_TEST_CASE( scal_add )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -306,8 +306,8 @@ BOOST_AUTO_TEST_CASE( add_perm )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -326,8 +326,8 @@ BOOST_AUTO_TEST_CASE( scal_add_perm )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -346,8 +346,8 @@ BOOST_AUTO_TEST_CASE( add_to )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -365,8 +365,8 @@ BOOST_AUTO_TEST_CASE( scal_add_to )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -384,8 +384,8 @@ BOOST_AUTO_TEST_CASE( add_const )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -403,8 +403,8 @@ BOOST_AUTO_TEST_CASE( add_to_const )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -422,8 +422,8 @@ BOOST_AUTO_TEST_CASE( subt )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -441,8 +441,8 @@ BOOST_AUTO_TEST_CASE( scal_subt )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -460,8 +460,8 @@ BOOST_AUTO_TEST_CASE( subt_perm )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -480,8 +480,8 @@ BOOST_AUTO_TEST_CASE( scal_subt_perm )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -500,8 +500,8 @@ BOOST_AUTO_TEST_CASE( subt_to )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -519,8 +519,8 @@ BOOST_AUTO_TEST_CASE( scal_subt_to )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -538,8 +538,8 @@ BOOST_AUTO_TEST_CASE( subt_const )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -557,8 +557,8 @@ BOOST_AUTO_TEST_CASE( subt_to_const )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -577,8 +577,8 @@ BOOST_AUTO_TEST_CASE( mult )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -596,8 +596,8 @@ BOOST_AUTO_TEST_CASE( scal_mult )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -615,8 +615,8 @@ BOOST_AUTO_TEST_CASE( mult_perm )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -635,8 +635,8 @@ BOOST_AUTO_TEST_CASE( scal_mult_perm )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -655,8 +655,8 @@ BOOST_AUTO_TEST_CASE( mult_to )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -674,8 +674,8 @@ BOOST_AUTO_TEST_CASE( scal_mult_to )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -694,8 +694,8 @@ BOOST_AUTO_TEST_CASE( neg )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {
@@ -713,8 +713,8 @@ BOOST_AUTO_TEST_CASE( neg_perm )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(j,i).range());
       for(std::size_t index = 0ul; index < t(j,i).size(); ++index) {
@@ -732,8 +732,8 @@ BOOST_AUTO_TEST_CASE( net_to )
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
 
-  for(std::size_t i = 0ul; i < t.range().size()[0]; ++i) {
-    for(std::size_t j = 0ul; j < t.range().size()[1]; ++j) {
+  for(std::size_t i = 0ul; i < t.range().extent_data()[0]; ++i) {
+    for(std::size_t j = 0ul; j < t.range().extent_data()[1]; ++j) {
       BOOST_CHECK(! t(i,j).empty());
       BOOST_CHECK_EQUAL(t(i,j).range(), a(i,j).range());
       for(std::size_t index = 0ul; index < t(i,j).size(); ++index) {

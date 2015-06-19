@@ -45,11 +45,11 @@ namespace TiledArray {
     void init(const Range& range, const Index& lower_bound, const Index& upper_bound) {
       TA_ASSERT(range.rank());
       // Check for valid lower and upper bounds
-      TA_ASSERT(std::equal(lower_bound.begin(), lower_bound.end(), range.start(),
+      TA_ASSERT(std::equal(lower_bound.begin(), lower_bound.end(), range.lobound_data(),
           [](const size_type l, const size_type r) { return l >= r; }));
       TA_ASSERT(std::equal(upper_bound.begin(), upper_bound.end(), lower_bound.begin(),
           [](const size_type l, const size_type r) { return l > r; }));
-      TA_ASSERT(std::equal(upper_bound.begin(), upper_bound.end(), range.finish(),
+      TA_ASSERT(std::equal(upper_bound.begin(), upper_bound.end(), range.upbound_data(),
           [](const size_type l, const size_type r) { return l <= r; }));
 
       // Initialize the block range data members
@@ -60,7 +60,7 @@ namespace TiledArray {
       block_offset_ = 0ul;
 
       // Construct temp pointers
-      const auto* restrict const range_stride = range.weight();
+      const auto* restrict const range_stride = range.stride_data();
       const auto* restrict const lower_bound_ptr = detail::data(lower_bound);
       const auto* restrict const upper_bound_ptr = detail::data(upper_bound);
       auto* restrict const lower  = data_;
@@ -77,9 +77,9 @@ namespace TiledArray {
         const auto extent_i = upper_bound_i - lower_bound_i;
 
         // Check input dimensions
-        TA_ASSERT(lower_bound_i >= range.start()[i]);
+        TA_ASSERT(lower_bound_i >= range.lobound_data()[i]);
         TA_ASSERT(lower_bound_i < upper_bound_i);
-        TA_ASSERT(upper_bound_i <= range.finish()[i]);
+        TA_ASSERT(upper_bound_i <= range.upbound_data()[i]);
 
         // Set the block range data
         lower[i]       = lower_bound_i;

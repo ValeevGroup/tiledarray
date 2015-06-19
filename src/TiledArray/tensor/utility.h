@@ -56,8 +56,8 @@ namespace TiledArray {
         typename std::enable_if<! is_contiguous_tensor<T>::value>::type* = nullptr>
     inline Range clone_range(const T& tensor) {
       const auto rank = tensor.range().rank();
-      const auto* const lobound = data(tensor.range().start());
-      const auto* const upbound = data(tensor.range().finish());
+      const auto* const lobound = data(tensor.range().lobound_data());
+      const auto* const upbound = data(tensor.range().upbound_data());
       SizeArray<const typename T::size_type>
           lower_bound(lobound, lobound + rank);
       SizeArray<const typename T::size_type>
@@ -118,8 +118,8 @@ namespace TiledArray {
     inline bool is_range_congruent(const T1& tensor1, const T2& tensor2) {
       const auto rank1 = tensor1.range().rank();
       const auto rank2 = tensor2.range().rank();
-      const auto* const extent1 = tensor1.range().size();
-      const auto* const extent2 = tensor2.range().size();
+      const auto* const extent1 = tensor1.range().extent_data();
+      const auto* const extent2 = tensor2.range().extent_data();
       return (rank1 == rank2) && std::equal(extent1, extent1 + rank1, extent2);
     }
 
@@ -201,8 +201,8 @@ namespace TiledArray {
     /// \return The largest contiguous, inner-dimension size.
     template <typename T>
     inline typename T::size_type inner_size_helper(const T& tensor) {
-      const auto* restrict const stride = data(tensor.range().weight());
-      const auto* restrict const size = data(tensor.range().size());
+      const auto* restrict const stride = tensor.range().stride_data();
+      const auto* restrict const size = tensor.range().extent_data();
 
       int i = int(tensor.range().rank()) - 1;
       auto volume = size[i];
@@ -233,10 +233,10 @@ namespace TiledArray {
     inline typename T1::size_type
     inner_size_helper(const T1& tensor1, const T2& tensor2) {
       TA_ASSERT(is_range_congruent(tensor1.range(), tensor2.range()));
-      const auto* restrict const size1   = data(tensor1.range().size());
-      const auto* restrict const stride1 = data(tensor1.range().weight());
-      const auto* restrict const size2   = data(tensor2.range().size());
-      const auto* restrict const stride2 = data(tensor2.range().weight());
+      const auto* restrict const size1   = tensor1.range().extent_data();
+      const auto* restrict const stride1 = tensor1.range().stride_data();
+      const auto* restrict const size2   = tensor2.range().extent_data();
+      const auto* restrict const stride2 = tensor2.range().stride_data();
 
       int i = int(tensor1.range().rank()) - 1;
       auto volume1 = size1[i];

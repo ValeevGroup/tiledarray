@@ -126,11 +126,11 @@ namespace TiledArray {
 
         const bool lower_bound_check =
             std::equal(std::begin(lower_bound), std::end(lower_bound),
-                    tsr.array().trange().tiles().start(),
+                    tsr.array().trange().tiles().lobound_data(),
                     [] (std::size_t l, std::size_t r) { return l >= r; });
         const bool upper_bound_check =
             std::equal(std::begin(upper_bound), std::end(upper_bound),
-                    tsr.array().trange().tiles().finish(),
+                    tsr.array().trange().tiles().upbound_data(),
                     [] (std::size_t l, std::size_t r) { return l <= r; });
         if(! (lower_bound_check && upper_bound_check)) {
           if(World::get_default().rank() == 0) {

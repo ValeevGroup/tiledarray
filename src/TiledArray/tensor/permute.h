@@ -135,11 +135,11 @@ namespace TiledArray {
 
         // Determine which dimensions can be permuted with the least significant
         // dimension.
-        typename Result::size_type block_size = data(arg0.range().size())[ndim1];
+        typename Result::size_type block_size = arg0.range().extent_data()[ndim1];
         for(int i = int(ndim1) - 1 ; i >= 0; --i) {
           if(int(perm[i]) != i)
             break;
-          block_size *= arg0.range().size()[i];
+          block_size *= arg0.range().extent_data()[i];
         }
 
         // Combine the input and output operations
@@ -175,12 +175,12 @@ namespace TiledArray {
         typename Result::size_type other_fused_size[4];
         typename Result::size_type other_fused_weight[4];
         fuse_dimensions(other_fused_size, other_fused_weight,
-            arg0.range().size(), perm);
+            arg0.range().extent_data(), perm);
 
         // Compute the fused stride for the result matrix transpose.
         typename Result::size_type  result_outer_stride = 1ul;
         for(unsigned int i = perm[ndim1] + 1u; i < ndim; ++i)
-          result_outer_stride *= result.range().size()[i];
+          result_outer_stride *= result.range().extent_data()[i];
 
         // Copy data from the input to the output matrix via a series of matrix
         // transposes.

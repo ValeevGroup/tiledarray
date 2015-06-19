@@ -102,7 +102,7 @@ namespace TiledArray {
     /// zero.
     void normalize() {
       const value_type threshold = threshold_;
-      const unsigned int dim = tile_norms_.range().dim();
+      const unsigned int dim = tile_norms_.range().rank();
       const vector_type* restrict const size_vectors = size_vectors_.get();
       size_type zero_tile_count = 0ul;
 
@@ -157,7 +157,7 @@ namespace TiledArray {
     static std::shared_ptr<vector_type>
     initialize_size_vectors(const TiledRange& trange) {
       // Allocate memory for size vectors
-      const unsigned int dim = trange.tiles().dim();
+      const unsigned int dim = trange.tiles().rank();
       std::shared_ptr<vector_type> size_vectors(new vector_type[dim],
           std::default_delete<vector_type[]>());
 
@@ -174,7 +174,7 @@ namespace TiledArray {
     }
 
     std::shared_ptr<vector_type> perm_size_vectors(const Permutation& perm) const {
-      const unsigned int n = tile_norms_.range().dim();
+      const unsigned int n = tile_norms_.range().rank();
 
       // Allocate memory for the contracted size vectors
       std::shared_ptr<vector_type> result_size_vectors(new vector_type[n],
@@ -332,8 +332,8 @@ namespace TiledArray {
     /// \param finish The upper bound of the sub-block
     template <typename Index>
     SparseShape block(const Index& start, const Index& finish) const {
-      TA_ASSERT(detail::size(start) == tile_norms_.range().dim());
-      TA_ASSERT(detail::size(finish) == tile_norms_.range().dim());
+      TA_ASSERT(detail::size(start) == tile_norms_.range().rank());
+      TA_ASSERT(detail::size(finish) == tile_norms_.range().rank());
 
       // Get the number dimensions of the the shape
       const auto rank = detail::size(start);
@@ -353,7 +353,7 @@ namespace TiledArray {
 
         // Check that the input indices are in range
         TA_ASSERT(start_i < finish_i);
-        TA_ASSERT(finish_i <= tile_norms_.range().finish()[i]);
+        TA_ASSERT(finish_i <= tile_norms_.range().upbound_data()[i]);
 
         // Compute the size of the range for result shape
         block_size.emplace_back(size_i);
@@ -571,7 +571,7 @@ namespace TiledArray {
       Tensor<T> result_tile_norms(tile_norms_.range());
 
       value = std::abs(value);
-      const unsigned int dim = tile_norms_.range().dim();
+      const unsigned int dim = tile_norms_.range().rank();
       const vector_type* restrict const size_vectors = size_vectors_.get();
 
       if(dim == 1u) {
@@ -659,7 +659,7 @@ namespace TiledArray {
     static size_type scale_by_size(Tensor<T>& tile_norms,
         const vector_type* restrict const size_vectors)
     {
-      const unsigned int dim = tile_norms.range().dim();
+      const unsigned int dim = tile_norms.range().rank();
       const value_type threshold = threshold_;
       size_type zero_tile_count = 0ul;
 

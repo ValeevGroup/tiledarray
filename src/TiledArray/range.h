@@ -22,6 +22,7 @@
 
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/size_array.h>
 
 namespace TiledArray {
 
@@ -32,8 +33,8 @@ namespace TiledArray {
     typedef std::size_t size_type; ///< Size type
     typedef std::vector<size_type> index; ///< Coordinate index type
     typedef index index_type; ///< Coordinate index type, to conform Tensor Working Group spec
-    typedef std::vector<size_type> size_array; ///< Size array type
-    typedef index extent_type;    ///< Range extent type, to conform Tensor Working Group spec
+    typedef detail::SizeArray<const size_type> size_array; ///< Size array type
+    typedef size_array extent_type;    ///< Range extent type, to conform Tensor Working Group spec
     typedef std::size_t ordinal_type; ///< Ordinal type, to conform Tensor Working Group spec
     typedef detail::RangeIterator<size_type, Range_> const_iterator; ///< Coordinate iterator
     friend class detail::RangeIterator<size_type, Range_>;
@@ -331,75 +332,66 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Dimension accessor
-
-    /// \return The rank (number of dimensions) of this range
-    /// \throw nothing
-    /// \note Equivalent to \c rank()
-    unsigned int dim() const { return rank_; }
-
     /// Rank accessor
 
     /// \return The rank (number of dimensions) of this range
     /// \throw nothing
-    /// \note Provided to satisfy the requirements of Tensor Working Group
-    /// specification.
     unsigned int rank() const { return rank_; }
 
     /// Range lower bound coordinate accessor
 
     /// \return A pointer to an array that contains the lower bound of this range
     /// \throw nothing
-    const size_type* start() const { return data_; }
+    const size_type* lobound_data() const { return data_; }
 
     /// Range lower bound accessor
 
     /// Provided to conform to the Tensor Working Group specification
     /// \return A \c size_array that contains the lower bound of this range
     /// \throw nothing
-    /// \note Provided to satisfy the requirements of Tensor Working Group
-    /// specification.
-    size_array lobound() const { return size_array(data_, data_ + rank_); }
+    size_array lobound() const { return size_array(data_, rank_); }
 
     /// Range upper bound coordinate accessor
 
     /// \return A pointer to an array that contains the upper bound of this range
     /// \throw nothing
-    const size_type* finish() const { return data_ + rank_; }
+    const size_type* upbound_data() const { return data_ + rank_; }
 
     /// Upper bound accessor
 
     /// \return A \c size_array that contains the upper bound of this range
     /// \throw nothing
-    /// \note Provided to satisfy the requirements of Tensor Working Group
-    /// specification.
     size_array upbound() const {
-      const size_type* const upper = data_ + rank_;
-      return size_array(upper, upper + rank_);
+      return size_array(data_ + rank_, rank_);
     }
 
     /// Size accessor
 
-    /// \return A pointer to an array that contains the lower bound of this range
+    /// \return A pointer to an array that contains the extents of this range
     /// \throw nothing
-    const size_type* size() const { return data_ + (rank_ + rank_); }
+    const size_type* extent_data() const { return data_ + (rank_ + rank_); }
 
     /// Size accessor
 
-    /// \return An \c extent_type that contains the extent of each dimension
+    /// \return An \c extent_type that contains the extent of each rank
     /// \throw nothing
-    /// \note Provided to satisfy the requirements of Tensor Working Group
-    /// specification.
     extent_type extent() const {
-      const size_type* const size = data_ + rank_ + rank_;
-      return size_array(size, size + rank_);
+      return size_array(data_ + (rank_ + rank_), rank_);
+    }
+
+    /// Stride accessor
+
+    /// \return A pointer to an array that contains the strides of this range
+    /// \throw nothing
+    size_array stride() const {
+      return size_array(data_ + (rank_ + rank_ + rank_), rank_);
     }
 
     /// Range stride accessor
 
-    /// \return A \c size_array that contains the strides of each dimension
+    /// \return A pointer that contains the strides of each rank
     /// \throw nothing
-    const size_type* weight() const { return data_ + (rank_ + rank_ + rank_); }
+    const size_type* stride_data() const { return data_ + (rank_ + rank_ + rank_); }
 
 
     /// Range volume accessor
@@ -484,7 +476,7 @@ namespace TiledArray {
     /// \param perm The permutation to be applied to this range
     /// \return A reference to this range
     /// \throw TildedArray::Exception When the rank of this range is not
-    /// equal to the dimension of the permutation.
+    /// equal to the rank of the permutation.
     /// \throw std::bad_alloc When memory allocation fails.
     Range_& operator *=(const Permutation& perm);
 
@@ -708,7 +700,7 @@ namespace TiledArray {
     /// Increment the coordinate index \c i in this range
 
     /// \param[in,out] i The coordinate index to be incremented
-    /// \throw TiledArray::Exception When the dimension of i is not equal to
+    /// \throw TiledArray::Exception When the rank of i is not equal to
     /// the rank of this range
     /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void increment(index& i) const {
@@ -738,7 +730,7 @@ namespace TiledArray {
 
     /// \param[in,out] i The coordinate index to be advanced
     /// \param n The distance to advance \c i
-    /// \throw TiledArray::Exception When the dimension of i is not equal to
+    /// \throw TiledArray::Exception When the rank of i is not equal to
     /// the rank of this range
     /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void advance(index& i, std::ptrdiff_t n) const {
@@ -802,7 +794,7 @@ namespace TiledArray {
   /// \return \c true when \c r1 represents the same range as \c r2, otherwise
   /// \c false.
   inline bool operator ==(const Range& r1, const Range& r2) {
-    return (r1.rank() == r2.rank()) && !std::memcmp(r1.start(), r2.start(),
+    return (r1.rank() == r2.rank()) && !std::memcmp(r1.lobound_data(), r2.lobound_data(),
         r1.rank() * (2u * sizeof(Range::size_type)));
   }
   /// Range inequality comparison
@@ -812,7 +804,7 @@ namespace TiledArray {
   /// \return \c true when \c r1 does not represent the same range as \c r2,
   /// otherwise \c false.
   inline bool operator !=(const Range& r1, const Range& r2) {
-    return (r1.rank() != r2.rank()) || std::memcmp(r1.start(), r2.start(),
+    return (r1.rank() != r2.rank()) || std::memcmp(r1.lobound_data(), r2.lobound_data(),
         r1.rank() * (2u * sizeof(Range::size_type)));
   }
 
@@ -823,9 +815,9 @@ namespace TiledArray {
   /// \return A reference to the output stream
   inline std::ostream& operator<<(std::ostream& os, const Range& r) {
     os << "[ ";
-    detail::print_array(os, r.start(), r.rank());
+    detail::print_array(os, r.lobound_data(), r.rank());
     os << ", ";
-    detail::print_array(os, r.finish(), r.rank());
+    detail::print_array(os, r.upbound_data(), r.rank());
     os << " )";
     return os;
   }

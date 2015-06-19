@@ -64,12 +64,12 @@ BOOST_AUTO_TEST_CASE( block_zero_lower_bound )
 
         // Check that the data of the block range is correct
         std::size_t volume = 1ul;
-        for(unsigned int i = 0u; i < r0.dim(); ++i) {
+        for(unsigned int i = 0u; i < r0.rank(); ++i) {
           // Check that the range data is correct
-          BOOST_CHECK_EQUAL(block_range.start()[i], lower[i]);
-          BOOST_CHECK_EQUAL(block_range.finish()[i], upper[i]);
-          BOOST_CHECK_EQUAL(block_range.size()[i], upper[i] - lower[i]);
-          BOOST_CHECK_EQUAL(block_range.weight()[i], r0.weight()[i]);
+          BOOST_CHECK_EQUAL(block_range.lobound_data()[i], lower[i]);
+          BOOST_CHECK_EQUAL(block_range.upbound_data()[i], upper[i]);
+          BOOST_CHECK_EQUAL(block_range.extent_data()[i], upper[i] - lower[i]);
+          BOOST_CHECK_EQUAL(block_range.stride_data()[i], r0.stride_data()[i]);
           volume *= upper[i] - lower[i];
         }
         // Check for the correct volume
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( block )
     const auto lower = *lower_it;
     for(auto upper_it = r.begin(); upper_it != r.end(); ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < r.dim(); ++i)
+      for(unsigned int i = 0u; i < r.rank(); ++i)
         ++(upper[i]);
 
       if(std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -122,12 +122,12 @@ BOOST_AUTO_TEST_CASE( block )
 
         // Check that the data of the block range is correct
         std::size_t volume = 1ul;
-        for(unsigned int i = 0u; i < r.dim(); ++i) {
+        for(unsigned int i = 0u; i < r.rank(); ++i) {
           // Check that the range data is correct
-          BOOST_CHECK_EQUAL(block_range.start()[i], lower[i]);
-          BOOST_CHECK_EQUAL(block_range.finish()[i], upper[i]);
-          BOOST_CHECK_EQUAL(block_range.size()[i], upper[i] - lower[i]);
-          BOOST_CHECK_EQUAL(block_range.weight()[i], r.weight()[i]);
+          BOOST_CHECK_EQUAL(block_range.lobound_data()[i], lower[i]);
+          BOOST_CHECK_EQUAL(block_range.upbound_data()[i], upper[i]);
+          BOOST_CHECK_EQUAL(block_range.extent_data()[i], upper[i] - lower[i]);
+          BOOST_CHECK_EQUAL(block_range.stride_data()[i], r.stride_data()[i]);
           volume *= upper[i] - lower[i];
         }
         // Check for the correct volume

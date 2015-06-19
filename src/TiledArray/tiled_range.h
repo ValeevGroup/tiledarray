@@ -31,7 +31,7 @@ namespace TiledArray {
 
     /// Constructed with a set of ranges pointed to by [ first, last ).
     void init() {
-      const std::size_t dim = ranges_.size();
+      const std::size_t rank = ranges_.size();
 
       // Indices used to store range start and finish.
       std::vector<size_type> start;
@@ -39,18 +39,18 @@ namespace TiledArray {
       std::vector<size_type> start_element;
       std::vector<size_type> finish_element;
 
-      start.reserve(dim);
-      finish.reserve(dim);
-      start_element.reserve(dim);
-      finish_element.reserve(dim);
+      start.reserve(rank);
+      finish.reserve(rank);
+      start_element.reserve(rank);
+      finish_element.reserve(rank);
 
       // Find the start and finish of the over all tiles and element ranges.
-      for(unsigned int d=0; d < dim; ++d) {
-        start.push_back(ranges_[d].tiles().first);
-        finish.push_back(ranges_[d].tiles().second);
+      for(unsigned int i = 0; i < rank; ++i) {
+        start.push_back(ranges_[i].tiles().first);
+        finish.push_back(ranges_[i].tiles().second);
 
-        start_element.push_back(ranges_[d].elements().first);
-        finish_element.push_back(ranges_[d].elements().second);
+        start_element.push_back(ranges_[i].elements().first);
+        finish_element.push_back(ranges_[i].elements().second);
       }
       range_type(start, finish).swap(range_);
       tile_range_type(start_element, finish_element).swap(element_range_);
@@ -109,7 +109,7 @@ namespace TiledArray {
 
     /// \return A reference to this object
     TiledRange_& operator *=(const Permutation& p) {
-      TA_ASSERT(p.dim() == range_.dim());
+      TA_ASSERT(p.dim() == range_.rank());
       Ranges temp = p * ranges_;
       TiledRange(temp.begin(), temp.end()).swap(*this);
       return *this;
@@ -142,25 +142,25 @@ namespace TiledArray {
 
     /// Construct a range for the given tile.
 
-    /// \param i The index of the tile range to be constructed
+    /// \param index The index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
     template <typename Index>
     typename std::enable_if<! std::is_integral<Index>::value, tile_range_type>::type
-    make_tile_range(const Index& i) const {
-      const unsigned int dim = range_.dim();
-      TA_ASSERT(i.size() == dim);
-      TA_ASSERT(range_.includes(i));
-      typename tile_range_type::index start;
-      typename tile_range_type::index finish;
-      start.reserve(dim);
-      finish.reserve(dim);
-      for(unsigned int d = 0; d < dim; ++d) {
-        start.push_back(data()[d].tile(i[d]).first);
-        finish.push_back(data()[d].tile(i[d]).second);
+    make_tile_range(const Index& index) const {
+      const unsigned int rank = range_.rank();
+      TA_ASSERT(index.size() == rank);
+      TA_ASSERT(range_.includes(index));
+      typename tile_range_type::index lower;
+      typename tile_range_type::index upper;
+      lower.reserve(rank);
+      upper.reserve(rank);
+      for(unsigned int i = 0; i < rank; ++i) {
+        lower.push_back(data()[i].tile(index[i]).first);
+        upper.push_back(data()[i].tile(index[i]).second);
       }
 
-      return tile_range_type(start, finish);
+      return tile_range_type(lower, upper);
     }
 
     /// Convert an element index to a tile index
@@ -171,10 +171,10 @@ namespace TiledArray {
     template <typename Index>
     typename std::enable_if<! std::is_integral<Index>::value, typename range_type::index>::type
     element_to_tile(const Index& index) const {
-      const unsigned int dim = range_.dim();
+      const unsigned int rank = range_.rank();
       typename range_type::index result;
-      result.reserve(dim);
-      for(size_type i = 0; i < dim; ++i)
+      result.reserve(rank);
+      for(size_type i = 0; i < rank; ++i)
         result.push_back(ranges_[i].element2tile(index[i]));
 
       return result;
@@ -205,7 +205,7 @@ namespace TiledArray {
   /// being used by other objects will be permuted. The owner of those
   /// objects are
   inline TiledRange operator *(const Permutation& p, const TiledRange& r) {
-    TA_ASSERT(r.tiles().dim() == p.dim());
+    TA_ASSERT(r.tiles().rank() == p.dim());
     TiledRange::Ranges data = p * r.data();
 
     return TiledRange(data.begin(), data.end());
@@ -216,7 +216,7 @@ namespace TiledArray {
 
   /// Returns true when all tile and element ranges are the same.
   inline bool operator ==(const TiledRange& r1, const TiledRange& r2) {
-    return (r1.tiles().dim() == r2.tiles().dim()) &&
+    return (r1.tiles().rank() == r2.tiles().rank()) &&
         (r1.tiles() == r2.tiles()) && (r1.elements() == r2.elements()) &&
         std::equal(r1.data().begin(), r1.data().end(), r2.data().begin());
   }

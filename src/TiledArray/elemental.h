@@ -39,7 +39,7 @@ namespace TiledArray {
       "TiledArray::array_to_elem(): The array dimension must be 2.");
 
     // Construct the elemental matrix
-    std::vector<std::size_t> sizes = array.trange().elements().size();
+    std::vector<std::size_t> sizes = array.trange().elements().extent_data();
     elem::DistMatrix<T> mat(sizes[0], sizes[1], grid);
     elem::Zero(mat);
 
@@ -55,10 +55,10 @@ namespace TiledArray {
     for(; it != end; ++it){
       // Get tile matrix location info
       const typename Array<T,DIM,Tile>::value_type tile = *it;
-      const std::size_t t0start = tile.range().start()[0];
-      const std::size_t t1start = tile.range().start()[1];
-      const std::size_t t0size = tile.range().size()[0];
-      const std::size_t t1size = tile.range().size()[1];
+      const std::size_t t0start = tile.range().lobound_data()[0];
+      const std::size_t t1start = tile.range().lobound_data()[1];
+      const std::size_t t0size = tile.range().extent_data()[0];
+      const std::size_t t1size = tile.range().extent_data()[1];
 
       // Create Eigen RowMajor Map of tile
       const Eigen::Map<
@@ -100,10 +100,10 @@ namespace TiledArray {
     for(;it != end; ++it){
       // Get tile matrix location info
       typename Array<T,DIM,Tile>::value_type tile = *it;
-      std::size_t t0start = tile.range().start()[0];
-      std::size_t t1start = tile.range().start()[1];
-      std::size_t t0size = tile.range().size()[0];
-      std::size_t t1size = tile.range().size()[1];
+      std::size_t t0start = tile.range().lobound_data()[0];
+      std::size_t t1start = tile.range().lobound_data()[1];
+      std::size_t t0size = tile.range().extent_data()[0];
+      std::size_t t1size = tile.range().extent_data()[1];
 
       // Make Elemental local matrix and attach the data.
       elem::Matrix<T> ElemBlock;
@@ -122,8 +122,8 @@ namespace TiledArray {
     for(;it != end; ++it){
       // Get tile and size
       typename Array<T,DIM,Tile>::value_type tile = *it;
-      std::size_t t0size = tile.range().size()[0];
-      std::size_t t1size = tile.range().size()[1];
+      std::size_t t0size = tile.range().extent_data()[0];
+      std::size_t t1size = tile.range().extent_data()[1];
 
       // copy to row major matrix
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> row_mat =
