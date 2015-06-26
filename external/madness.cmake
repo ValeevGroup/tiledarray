@@ -182,7 +182,6 @@ else()
    #--Configure step-------------
     SOURCE_DIR ${MADNESS_SOURCE_DIR}
     CONFIGURE_COMMAND ${MADNESS_SOURCE_DIR}/configure
-      --quiet
       --prefix=${CMAKE_INSTALL_PREFIX}
       --disable-debugging
       --disable-optimization
