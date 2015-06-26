@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE( owner )
 {
   // Test to make sure everyone agrees who owns which tiles.
   std::shared_ptr<ProcessID> group_owner(new ProcessID[world.size()],
-      & madness::detail::checked_array_delete<ProcessID>);
+      std::default_delete<ProcessID[]>());
 
   size_type o = 0;
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it, ++o) {

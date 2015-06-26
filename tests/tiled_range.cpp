@@ -39,8 +39,8 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(TiledRange r0);
     TiledRange r0;
     std::vector<std::size_t> s0(3,0);
-    BOOST_CHECK(r0.tiles().size() == nullptr);
-    BOOST_CHECK(r0.elements().size() == nullptr);
+    BOOST_CHECK(r0.tiles().extent_data() == nullptr);
+    BOOST_CHECK(r0.elements().extent_data() == nullptr);
   }
 
 

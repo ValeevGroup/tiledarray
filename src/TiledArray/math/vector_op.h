@@ -209,7 +209,7 @@ namespace TiledArray {
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
-    for_each_block(Op&& op, const std::size_t n, Result* restrict const result,
+    for_each_block_n(Op&& op, const std::size_t n, Result* restrict const result,
         const Args* restrict const... args)
     {
       for(std::size_t i = 0ul; i < n; ++i)
@@ -233,7 +233,7 @@ namespace TiledArray {
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
-    for_each_block_ptr(Op&& op, const std::size_t n, Result* restrict const result,
+    for_each_block_ptr_n(Op&& op, const std::size_t n, Result* restrict const result,
         const Args* restrict const... args)
     {
       for(std::size_t i = 0ul; i < n; ++i)
@@ -242,22 +242,19 @@ namespace TiledArray {
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE
-    typename std::enable_if<detail::is_type<typename std::result_of<Op(Result&, Args...)>::type>::value>::type
-    reduce_block(Op&& op, Result& result, const Args* const... args) {
+    void reduce_block(Op&& op, Result& result, const Args* const... args) {
       VecOpUnwindN::reduce(std::forward<Op>(op), result, args...);
     }
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE
-    typename std::enable_if<detail::is_type<typename std::result_of<Op(Result&, Args...)>::type>::value>::type
-    reduce_block(Op&& op, Result& result, Block<Args>&&... args) {
+    void reduce_block(Op&& op, Result& result, Block<Args>&&... args) {
       VecOpUnwindN::reduce(std::forward<Op>(op), result, args.data()...);
     }
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE
-    typename std::enable_if<detail::is_type<typename std::result_of<Op(Result&, Args...)>::type>::value>::type
-    reduce_block(Op&& op, const std::size_t n, Result& restrict result,
+    void reduce_block_n(Op&& op, const std::size_t n, Result& restrict result,
         const Args* restrict const... args)
     {
       for(std::size_t i = 0ul; i < n; ++i)
@@ -273,21 +270,9 @@ namespace TiledArray {
 
     template <typename Arg, typename Result>
     TILEDARRAY_FORCE_INLINE void
-    copy_block(std::size_t n, Result* const result, const Arg* const arg) {
-      for_each_block([] (Result& lhs, param_type<Arg> rhs) { lhs = rhs; },
+    copy_block_n(std::size_t n, Result* const result, const Arg* const arg) {
+      for_each_block_n([] (Result& lhs, param_type<Arg> rhs) { lhs = rhs; },
           n, result, arg);
-    }
-
-    template <typename Arg, typename Result>
-    TILEDARRAY_FORCE_INLINE void
-    fill_block(Result* const result, const Arg arg) {
-      for_each_block([arg] (Result& lhs) { lhs = arg; }, result);
-    }
-
-    template <typename Arg, typename Result>
-    TILEDARRAY_FORCE_INLINE void
-    fill_block(const std::size_t n, Result* const result, const Arg arg) {
-      for_each_block([arg] (Result& lhs) { lhs = arg; }, n, result);
     }
 
     template <typename Arg, typename Result>
@@ -299,7 +284,7 @@ namespace TiledArray {
 
     template <typename Result, typename Arg>
     TILEDARRAY_FORCE_INLINE void
-    scatter_block(const std::size_t n, Result* result,
+    scatter_block_n(const std::size_t n, Result* result,
         const std::size_t stride, const Arg* const arg)
     {
       for(std::size_t i = 0; i < n; ++i, result += stride)
@@ -314,7 +299,7 @@ namespace TiledArray {
 
     template <typename Arg, typename Result>
     TILEDARRAY_FORCE_INLINE void
-    gather_block(const std::size_t n, Result* const result, const Arg* const arg,
+    gather_block_n(const std::size_t n, Result* const result, const Arg* const arg,
         const std::size_t stride)
     {
       for(std::size_t i = 0; i < n; ++i, arg += stride)
@@ -351,7 +336,7 @@ namespace TiledArray {
     template <typename Op, typename Result, typename... Args,
         typename std::enable_if<std::is_void<typename std::result_of<Op(Result&,
         Args...)>::type>::value>::type* = nullptr>
-    void vector_op(Op&& op, const std::size_t n, Result* const result,
+    void inplace_vector_op(Op&& op, const std::size_t n, Result* const result,
         const Args* const... args)
     {
       std::size_t i = 0ul;
@@ -366,7 +351,7 @@ namespace TiledArray {
         result_block.store(result + i);
       }
 
-      for_each_block(op, n - i, result + i, (args + i)...);
+      for_each_block_n(op, n - i, result + i, (args + i)...);
     }
 
     template <typename Op, typename Result, typename... Args,
@@ -390,7 +375,7 @@ namespace TiledArray {
         result_block.store(result + i);
       }
 
-      for_each_block(wrapper_op, n - i, result + i, (args + i)...);
+      for_each_block_n(wrapper_op, n - i, result + i, (args + i)...);
     }
 
     template <typename Op, typename Result, typename... Args>
@@ -405,7 +390,7 @@ namespace TiledArray {
 
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
         for_each_block_ptr(op, result + i, Block<Args>(args + i)...);
-      for_each_block_ptr(op, n - i, result + i, (args + i)...);
+      for_each_block_ptr_n(op, n - i, result + i, (args + i)...);
     }
 
     template <typename Op, typename Result, typename... Args>
@@ -424,7 +409,7 @@ namespace TiledArray {
         result = temp;
       }
 
-      reduce_block(op, n - i, result, (args + i)...);
+      reduce_block_n(op, n - i, result, (args + i)...);
     }
 
     template <typename Arg, typename Result>
@@ -440,7 +425,7 @@ namespace TiledArray {
 
       for(; i < nx; i += TILEDARRAY_LOOP_UNWIND)
         copy_block(result + i, arg + i);
-      copy_block(n - i, result + i, arg + i);
+      copy_block_n(n - i, result + i, arg + i);
     }
 
     template <typename T>

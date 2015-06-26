@@ -1237,7 +1237,7 @@ namespace TiledArray {
       size_type mem_bound_depth(size_type depth, float left_sparsity, float right_sparsity) {
 
         // Check if a memory bound has been set
-        const std::size_t available_memory = 0ul;
+        const std::size_t available_memory = 1ul;
         if(available_memory) {
 
           // Compute the average memory requirement per iteration of this process
@@ -1315,6 +1315,8 @@ namespace TiledArray {
 #ifndef TILEDARRAY_SUMMA_DEPTH
             if(depth > k_) depth = k_;
 
+            // Modify the number of concurrent iterations based on the available
+            // memory.
 //            depth = mem_bound_depth(depth, 0.0f, 0.0f);
 #endif //TILEDARRAY_SUMMA_DEPTH
             TensorImpl_::get_world().taskq.add(new DenseStepTask(shared_from_this(),
@@ -1335,6 +1337,8 @@ namespace TiledArray {
             depth = float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) + 0.5f;
             if(depth > k_) depth = k_;
 
+            // Modify the number of concurrent iterations based on the available
+            // memory and sparsity of the argument tensors.
 //            depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
 #endif // TILEDARRAY_SUMMA_DEPTH
             TensorImpl_::get_world().taskq.add(new SparseStepTask(shared_from_this(),

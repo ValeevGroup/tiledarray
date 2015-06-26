@@ -401,7 +401,7 @@ namespace TiledArray {
       template <typename Index>
       future get(const Index& i) const {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        return data_.get(TensorImpl_::trange().tiles().ord(i));
+        return data_.get(TensorImpl_::trange().tiles().ordinal(i));
       }
 
       /// Set tile
@@ -416,7 +416,7 @@ namespace TiledArray {
       template <typename Index, typename Value>
       void set(const Index& i, const Value& value) {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        data_.set(TensorImpl_::trange().tiles().ord(i), value);
+        data_.set(TensorImpl_::trange().tiles().ordinal(i), value);
       }
 
       /// Array begin iterator

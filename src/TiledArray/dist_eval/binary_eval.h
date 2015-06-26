@@ -138,11 +138,11 @@ namespace TiledArray {
         right_.eval();
 
         // Task function argument types
-        typedef typename madness::if_<std::is_const<typename op_type::first_argument_type>,
+        typedef typename std::conditional<std::is_const<typename op_type::first_argument_type>::value,
             const typename left_type::value_type,
                   typename left_type::value_type>::type &
                 left_argument_type;
-        typedef typename madness::if_<std::is_const<typename op_type::second_argument_type>,
+        typedef typename std::conditional<std::is_const<typename op_type::second_argument_type>::value,
             const typename right_type::value_type,
                   typename right_type::value_type>::type &
                 right_argument_type;

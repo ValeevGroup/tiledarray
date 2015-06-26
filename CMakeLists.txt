@@ -30,7 +30,7 @@ project (TiledArray)
 # Configure options
 option(ENABLE_MPI "Enable MPI" ON)
 option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
-option(ENABLE_ELEMENTAL "Enable use of TBB with MADNESS" OFF)
+option(ENABLE_TBB "Enable use of TBB with MADNESS" OFF)
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
@@ -194,6 +194,11 @@ endforeach()
 ##########################
 # wrap up
 ##########################
+
+# Force cache refresh for compile flags
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C compile flags" FORCE)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "C++ compile flags" FORCE)
+
 CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
   ${PROJECT_BINARY_DIR}/src/TiledArray/config.h

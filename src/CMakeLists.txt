@@ -72,6 +72,8 @@ TiledArray/expressions/add_engine.h
 TiledArray/expressions/add_expr.h
 TiledArray/expressions/binary_engine.h
 TiledArray/expressions/binary_expr.h
+TiledArray/expressions/blk_engine.h
+TiledArray/expressions/blk_expr.h
 TiledArray/expressions/cont_engine.h
 TiledArray/expressions/expr.h
 TiledArray/expressions/expr_engine.h
@@ -109,7 +111,8 @@ TiledArray/symm/symm_group.h
 TiledArray/symm/irrep.h
 TiledArray/tensor/binary.h
 TiledArray/tensor/permute.h
-TiledArray/tensor/tensor_view.h
+TiledArray/tensor/shift_wrapper.h
+TiledArray/tensor/tesnor_interface.h
 TiledArray/tensor/type_traits.h
 TiledArray/tensor/unary.h
 TiledArray/tensor/utility.h
@@ -123,8 +126,10 @@ TiledArray/tile_op/noop.h
 TiledArray/tile_op/reduce_wrapper.h
 TiledArray/tile_op/scal.h
 TiledArray/tile_op/scal_add.h
+TiledArray/tile_op/scal_shift.h
 TiledArray/tile_op/scal_mult.h
 TiledArray/tile_op/scal_subt.h
+TiledArray/tile_op/shift.h
 TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/type_traits.h

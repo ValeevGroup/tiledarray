@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_UNARY_TENSOR_H__INCLUDED
-#define TILEDARRAY_UNARY_TENSOR_H__INCLUDED
+#ifndef TILEDARRAY_DIST_EVAL_UNARY_EVAL_H__INCLUDED
+#define TILEDARRAY_DIST_EVAL_UNARY_EVAL_H__INCLUDED
 
 #include <TiledArray/dist_eval/dist_eval.h>
 
@@ -98,7 +98,7 @@ namespace TiledArray {
 
       /// The argument must be a non-const reference if the input tile is
       /// a consumable resource, otherwise a const reference is sufficient.
-      typedef typename madness::if_<std::is_const<typename op_type::argument_type>,
+      typedef typename std::conditional<std::is_const<typename op_type::argument_type>::value,
           const typename arg_type::value_type&,
                 typename arg_type::value_type&>::type
               tile_argument_type;
@@ -161,4 +161,4 @@ namespace TiledArray {
   }  // namespace detail
 }  // namespace TiledArray
 
-#endif // TILEDARRAY_UNARY_TENSOR_H__INCLUDED
+#endif // TILEDARRAY_DIST_EVAL_UNARY_EVAL_H__INCLUDED

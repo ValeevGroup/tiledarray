@@ -38,11 +38,8 @@ namespace TiledArray {
     template <typename T>
     class SizeArray {
     private:
-      T* first_; ///< First element of the array
-      T* last_; ///< Last element of the array
-
-      // Not allowed
-      SizeArray(const SizeArray&);
+      T* first_ = nullptr; ///< First element of the array
+      T* last_ = nullptr; ///< Last element of the array
 
     public:
       // type definitions
@@ -56,11 +53,20 @@ namespace TiledArray {
       typedef std::size_t    size_type;
       typedef std::ptrdiff_t difference_type;
 
-      SizeArray() : first_(NULL), last_(NULL) { }
+      // Compiler generated functions
+      SizeArray() = default;
+      SizeArray(const SizeArray&) = default;
+      SizeArray(SizeArray<T>&&) = default;
+      ~SizeArray() = default;
 
       SizeArray(pointer const first, pointer const last) :
         first_(first), last_(last)
       { }
+
+      SizeArray(pointer const first, const size_type n) :
+        first_(first), last_(first + n)
+      { }
+
 
       void set(pointer const first, const size_type n) {
         first_ = first;
@@ -80,8 +86,8 @@ namespace TiledArray {
 
       template <typename U>
       SizeArray<T>& operator=(const U& other) {
-        TA_ASSERT(size() == other.size());
-        std::copy(other.begin(), other.end(), first_);
+        TA_ASSERT(size() == size(other));
+        std::copy(std::begin(other), std::end(other), first_);
         return *this;
       }
 

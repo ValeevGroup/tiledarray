@@ -112,7 +112,7 @@ namespace TiledArray {
       // User level validation of input
 
       // Validate the tiled range
-      TA_USER_ASSERT(trange.tiles().dim() == DIM,
+      TA_USER_ASSERT(trange.tiles().rank() == DIM,
           "Array::Array() -- The dimension of tiled range is not equal to the array.");
 
       if(! pmap) {

@@ -60,10 +60,10 @@ BOOST_FIXTURE_TEST_SUITE( range_suite, RangeFixture )
 
 BOOST_AUTO_TEST_CASE( dimension_accessor )
 {
-  BOOST_CHECK_EQUAL_COLLECTIONS(r.start(), r.start() + r.dim(), start.begin(), start.end());   // check start()
-  BOOST_CHECK_EQUAL_COLLECTIONS(r.finish(), r.finish() + r.dim(), finish.begin(), finish.end());  // check finish()
-  BOOST_CHECK_EQUAL_COLLECTIONS(r.size(), r.size() + r.dim(), size.begin(), size.end()); // check size()
-  BOOST_CHECK_EQUAL_COLLECTIONS(r.weight(), r.weight() + r.dim(), weight.begin(), weight.end()); // check weight()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.lobound_data(), r.lobound_data() + r.rank(), start.begin(), start.end());   // check start()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.upbound_data(), r.upbound_data() + r.rank(), finish.begin(), finish.end());  // check finish()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.extent_data(), r.extent_data() + r.rank(), size.begin(), size.end()); // check size()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.stride_data(), r.stride_data() + r.rank(), weight.begin(), weight.end()); // check weight()
   BOOST_CHECK_EQUAL(r.volume(), volume);  // check volume()
 }
 
@@ -71,20 +71,20 @@ BOOST_AUTO_TEST_CASE( constructors )
 {
   BOOST_REQUIRE_NO_THROW(Range r0); // Default Constructor
   Range r0;
-  BOOST_CHECK_EQUAL(r0.dim(), 0u);
-  BOOST_CHECK(r0.start() == nullptr);
-  BOOST_CHECK(r0.finish() == nullptr);
-  BOOST_CHECK(r0.size() == nullptr);
-  BOOST_CHECK(r0.weight() == nullptr);
+  BOOST_CHECK_EQUAL(r0.rank(), 0u);
+  BOOST_CHECK(r0.lobound_data() == nullptr);
+  BOOST_CHECK(r0.upbound_data() == nullptr);
+  BOOST_CHECK(r0.extent_data() == nullptr);
+  BOOST_CHECK(r0.stride_data() == nullptr);
   BOOST_CHECK_EQUAL(r0.volume(), 0ul);
 
   BOOST_CHECK_NO_THROW(Range r00(r0));
   Range r00(r0);
-  BOOST_CHECK_EQUAL(r00.dim(), 0u);
-  BOOST_CHECK(r00.start() == nullptr);
-  BOOST_CHECK(r00.finish() == nullptr);
-  BOOST_CHECK(r00.size() == nullptr);
-  BOOST_CHECK(r00.weight() == nullptr);
+  BOOST_CHECK_EQUAL(r00.rank(), 0u);
+  BOOST_CHECK(r00.lobound_data() == nullptr);
+  BOOST_CHECK(r00.upbound_data() == nullptr);
+  BOOST_CHECK(r00.extent_data() == nullptr);
+  BOOST_CHECK(r00.stride_data() == nullptr);
   BOOST_CHECK_EQUAL(r00.volume(), 0ul);
 
   index f2 = finish;
@@ -96,25 +96,25 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_THROW(Range r2(f2, p2), Exception);
 #endif // TA_EXCEPTION_ERROR
   Range r2(p2, f2);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r2.start(), r2.start() + r2.dim(), p2.begin(), p2.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r2.finish(), r2.finish() + r2.dim(), f2.begin(), f2.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r2.size(), r2.size() + r2.dim(), size.begin(), size.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r2.weight(), r2.weight() + r2.dim(), weight.begin(), weight.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r2.lobound_data(), r2.lobound_data() + r2.rank(), p2.begin(), p2.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r2.upbound_data(), r2.upbound_data() + r2.rank(), f2.begin(), f2.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r2.extent_data(), r2.extent_data() + r2.rank(), size.begin(), size.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r2.stride_data(), r2.stride_data() + r2.rank(), weight.begin(), weight.end());
   BOOST_CHECK_EQUAL(r2.volume(), volume);
 
   BOOST_REQUIRE_NO_THROW(Range r4(r)); // Copy Constructor
   Range r4(r);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r4.start(), r4.start() + r4.dim(), start.begin(), start.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r4.finish(), r4.finish() + r4.dim(), finish.begin(), finish.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r4.size(), r4.size() + r4.dim(), size.begin(), size.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r4.lobound_data(), r4.lobound_data() + r4.rank(), start.begin(), start.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r4.upbound_data(), r4.upbound_data() + r4.rank(), finish.begin(), finish.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r4.extent_data(), r4.extent_data() + r4.rank(), size.begin(), size.end());
   BOOST_CHECK_EQUAL(r4.volume(), volume);
 
 
   BOOST_REQUIRE_NO_THROW(Range r5(p2)); // Copy Constructor
   Range r5(p2);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.start(), r5.start() + r5.dim(), p0.begin(), p0.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.finish(), r5.finish() + r5.dim(), p2.begin(), p2.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.size(), r5.size() + r5.dim(), p2.begin(), p2.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.lobound_data(), r5.lobound_data() + r5.rank(), p0.begin(), p0.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.upbound_data(), r5.upbound_data() + r5.rank(), p2.begin(), p2.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.extent_data(), r5.extent_data() + r5.rank(), p2.begin(), p2.end());
   BOOST_CHECK_EQUAL(r4.volume(), volume);
 
 #ifdef TA_EXCEPTION_ERROR
@@ -128,10 +128,10 @@ BOOST_AUTO_TEST_CASE( assignment_operator )
   x = r;
 
   // Check that the data in x matches that of r.
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.start(), x.start() + x.dim(), r.start(), r.start() + r.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.finish(), x.finish() + x.dim(), r.finish(), r.finish() + r.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.size(), x.size() + x.dim(), r.size(), r.size() + r.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(x.weight(), x.weight() + x.dim(), r.weight(), r.weight() + r.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.lobound_data(), x.lobound_data() + x.rank(), r.lobound_data(), r.lobound_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.upbound_data(), x.upbound_data() + x.rank(), r.upbound_data(), r.upbound_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.extent_data(), x.extent_data() + x.rank(), r.extent_data(), r.extent_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.stride_data(), x.stride_data() + x.rank(), r.stride_data(), r.stride_data() + r.rank());
   BOOST_CHECK_EQUAL(x.volume(), r.volume());
 }
 
@@ -177,9 +177,9 @@ BOOST_AUTO_TEST_CASE( resize )
   // check resize and return value
   BOOST_CHECK_EQUAL(r1.resize(start, finish), r);
   // check that size was correctly recalculated
-  BOOST_CHECK_EQUAL_COLLECTIONS(r1.size(), r1.size() + r1.dim(), r.size(), r.size() + r.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r1.extent_data(), r1.extent_data() + r1.rank(), r.extent_data(), r.extent_data() + r.rank());
   // Check that weight was correctly recalculated
-  BOOST_CHECK_EQUAL_COLLECTIONS(r1.weight(), r1.weight() + r1.dim(), r.weight(), r.weight() + r.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r1.stride_data(), r1.stride_data() + r1.rank(), r.stride_data(), r.stride_data() + r.rank());
   // Check that volume was correctly recalculated
   BOOST_CHECK_EQUAL(r1.volume(), r.volume());
 }
@@ -202,25 +202,25 @@ BOOST_AUTO_TEST_CASE( permutation )
 
   // check start, finish, size, volume, and weight of permuted range
   typedef std::reverse_iterator<const Range::size_type*> riter_type;
-  BOOST_CHECK_EQUAL_COLLECTIONS(riter_type(r1.start() + r1.dim()), riter_type(r1.start()),
-                                r2.start(),  r2.start() + r2.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(riter_type(r1.finish() + r1.dim()), riter_type(r1.finish()),
-                                r2.finish(),  r2.finish() + r2.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(riter_type(r1.size() + r1.dim()), riter_type(r1.size()),
-                                r2.size(),  r2.size() + r2.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(riter_type(r1.lobound_data() + r1.rank()), riter_type(r1.lobound_data()),
+                                r2.lobound_data(),  r2.lobound_data() + r2.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(riter_type(r1.upbound_data() + r1.rank()), riter_type(r1.upbound_data()),
+                                r2.upbound_data(),  r2.upbound_data() + r2.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(riter_type(r1.extent_data() + r1.rank()), riter_type(r1.extent_data()),
+                                r2.extent_data(),  r2.extent_data() + r2.rank());
   BOOST_CHECK_EQUAL(r2.volume(), r1.volume());
 
   std::vector<std::size_t> w =
-      RangeFixture::calc_weight(r2.size(), r2.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r2.weight(), r2.weight() + r2.dim(), w.begin(), w.end());
+      RangeFixture::calc_weight(r2.extent_data(), r2.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r2.stride_data(), r2.stride_data() + r2.rank(), w.begin(), w.end());
 
   // check for correct finish permutation
   BOOST_CHECK_EQUAL(r3 *= p, r2);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r3.start(), r3.start() + r3.dim(), r2.start(), r2.start() + r2.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r3.finish(), r3.finish() + r3.dim(), r2.finish(), r2.finish() + r2.dim());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r3.size(), r3.size() + r3.dim(), r2.size(), r2.size() + r2.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r3.lobound_data(), r3.lobound_data() + r3.rank(), r2.lobound_data(), r2.lobound_data() + r2.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r3.upbound_data(), r3.upbound_data() + r3.rank(), r2.upbound_data(), r2.upbound_data() + r2.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r3.extent_data(), r3.extent_data() + r3.rank(), r2.extent_data(), r2.extent_data() + r2.rank());
   BOOST_CHECK_EQUAL(r3.volume(), r2.volume());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r3.weight(), r3.weight() + r3.dim(), r2.weight(), r2.weight() + r2.dim());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r3.stride_data(), r3.stride_data() + r3.rank(), r2.stride_data(), r2.stride_data() + r2.rank());
   BOOST_CHECK_EQUAL(r3, r2);
 }
 
@@ -314,10 +314,10 @@ BOOST_AUTO_TEST_CASE( serialization )
 
   delete [] buf;
 
-  BOOST_CHECK_EQUAL_COLLECTIONS(rs.start(), rs.start() + rs.dim(), r.start(), r.start() + r.dim());   // check start()
-  BOOST_CHECK_EQUAL_COLLECTIONS(rs.finish(), rs.finish() + rs.dim(), r.finish(), r.finish() + r.dim()); // check finish()
-  BOOST_CHECK_EQUAL_COLLECTIONS(rs.size(), rs.size() + rs.dim(), r.size(), r.size() + r.dim());     // check size()
-  BOOST_CHECK_EQUAL_COLLECTIONS(rs.weight(), rs.weight() + rs.dim(), r.weight(), r.weight() + r.dim()); // check weight()
+  BOOST_CHECK_EQUAL_COLLECTIONS(rs.lobound_data(), rs.lobound_data() + rs.rank(), r.lobound_data(), r.lobound_data() + r.rank());   // check start()
+  BOOST_CHECK_EQUAL_COLLECTIONS(rs.upbound_data(), rs.upbound_data() + rs.rank(), r.upbound_data(), r.upbound_data() + r.rank()); // check finish()
+  BOOST_CHECK_EQUAL_COLLECTIONS(rs.extent_data(), rs.extent_data() + rs.rank(), r.extent_data(), r.extent_data() + r.rank());     // check size()
+  BOOST_CHECK_EQUAL_COLLECTIONS(rs.stride_data(), rs.stride_data() + rs.rank(), r.stride_data(), r.stride_data() + r.rank()); // check weight()
   BOOST_CHECK_EQUAL(rs.volume(), r.volume()); // check volume()
   BOOST_CHECK_EQUAL_COLLECTIONS(rs.begin(), rs.end(), r.begin(), r.end());
 }
@@ -330,19 +330,19 @@ BOOST_AUTO_TEST_CASE( swap )
   BOOST_CHECK_NO_THROW(r.swap(empty_range));
 
   // Check that r contains the data of empty_range.
-  BOOST_CHECK_EQUAL(r.dim(), 0u);
-  BOOST_CHECK(r.start() == nullptr);
-  BOOST_CHECK(r.finish() == nullptr);
-  BOOST_CHECK(r.size() == nullptr);
-  BOOST_CHECK(r.weight() == nullptr);
+  BOOST_CHECK_EQUAL(r.rank(), 0u);
+  BOOST_CHECK(r.lobound_data() == nullptr);
+  BOOST_CHECK(r.upbound_data() == nullptr);
+  BOOST_CHECK(r.extent_data() == nullptr);
+  BOOST_CHECK(r.stride_data() == nullptr);
   BOOST_CHECK_EQUAL(r.volume(), 0ul);
 
   // Check that empty_range contains the data of r.
-  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.start(), empty_range.start() + empty_range.dim(),
+  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.lobound_data(), empty_range.lobound_data() + empty_range.rank(),
       start.begin(), start.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.finish(), empty_range.finish() + empty_range.dim(),
+  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.upbound_data(), empty_range.upbound_data() + empty_range.rank(),
       finish.begin(), finish.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.size(), empty_range.size() + empty_range.dim(),
+  BOOST_CHECK_EQUAL_COLLECTIONS(empty_range.extent_data(), empty_range.extent_data() + empty_range.rank(),
       size.begin(), size.end());
   BOOST_CHECK_EQUAL(empty_range.volume(), volume);
 
@@ -350,17 +350,17 @@ BOOST_AUTO_TEST_CASE( swap )
   BOOST_CHECK_NO_THROW(r.swap(empty_range));
 
   // Check that empty_range contains its original data.
-  BOOST_CHECK_EQUAL(empty_range.dim(), 0u);
-  BOOST_CHECK(empty_range.start() == nullptr);
-  BOOST_CHECK(empty_range.finish() == nullptr);
-  BOOST_CHECK(empty_range.size() == nullptr);
-  BOOST_CHECK(empty_range.weight() == nullptr);
+  BOOST_CHECK_EQUAL(empty_range.rank(), 0u);
+  BOOST_CHECK(empty_range.lobound_data() == nullptr);
+  BOOST_CHECK(empty_range.upbound_data() == nullptr);
+  BOOST_CHECK(empty_range.extent_data() == nullptr);
+  BOOST_CHECK(empty_range.stride_data() == nullptr);
   BOOST_CHECK_EQUAL(empty_range.volume(), 0ul);
 
   // Check that r its original data.
-  BOOST_CHECK_EQUAL_COLLECTIONS(r.start(), r.start() + r.dim(), start.begin(), start.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r.finish(), r.finish() + r.dim(), finish.begin(), finish.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r.size(), r.size() + r.dim(), size.begin(), size.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.lobound_data(), r.lobound_data() + r.rank(), start.begin(), start.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.upbound_data(), r.upbound_data() + r.rank(), finish.begin(), finish.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.extent_data(), r.extent_data() + r.rank(), size.begin(), size.end());
   BOOST_CHECK_EQUAL(r.volume(), volume);
 }
 

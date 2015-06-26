@@ -37,8 +37,6 @@
 #include <TiledArray/expressions/scal_expr.h>
 #include <TiledArray/expressions/tsr_expr.h>
 #include <TiledArray/expressions/scal_tsr_expr.h>
-
-// Functions for modifying arrays
 #include <TiledArray/conversions/sparse_to_dense.h>
 #include <TiledArray/conversions/dense_to_sparse.h>
 #include <TiledArray/conversions/to_new_tile_type.h>

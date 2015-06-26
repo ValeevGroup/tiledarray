@@ -181,6 +181,30 @@ BOOST_AUTO_TEST_CASE( copy_constructor )
   BOOST_CHECK_EQUAL(y.sparsity(), sparse_shape.sparsity());
 }
 
+
+BOOST_AUTO_TEST_CASE( block )
+{
+  SparseShape<float> result;
+  std::vector<std::size_t> start(GlobalFixture::dim, 2);
+  std::vector<std::size_t> finish(GlobalFixture::dim, 5);
+  BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(start, finish));
+
+  for(unsigned int i = 0u; i < GlobalFixture::dim; ++i) {
+    BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0ul);
+    BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], 3ul);
+  }
+
+  for(Range::const_iterator it = result.data().range().begin(); it != result.data().range().end(); ++it) {
+    Range::index_type result_index = *it;
+    Range::index_type input_index = *it;
+    for(std::size_t i = 0ul; i < GlobalFixture::dim; ++i)
+      input_index[i] += 2ul;
+
+    BOOST_CHECK_EQUAL(result.data()(result_index), sparse_shape.data()(input_index));
+  }
+}
+
+
 BOOST_AUTO_TEST_CASE( permute )
 {
   SparseShape<float> result;
@@ -751,15 +775,15 @@ BOOST_AUTO_TEST_CASE( mult_scale_perm )
 BOOST_AUTO_TEST_CASE( gemm )
 {
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().size()[0];
-  const std::size_t n = right.data().range().size()[right.data().range().dim() - 1];
+  const std::size_t m = left.data().range().extent_data()[0];
+  const std::size_t n = right.data().range().extent_data()[right.data().range().rank() - 1];
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;
 
   // Evaluate the contraction of sparse shapes
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-      2u, left.data().range().dim(), right.data().range().dim());
+      2u, left.data().range().rank(), right.data().range().rank());
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper));
 
@@ -810,15 +834,15 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
   const Permutation perm({1,0});
 
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().size()[0];
-  const std::size_t n = right.data().range().size()[right.data().range().dim() - 1];
+  const std::size_t m = left.data().range().extent_data()[0];
+  const std::size_t n = right.data().range().extent_data()[right.data().range().rank() - 1];
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;
 
   // Evaluate the contraction of sparse shapes
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-      2u, left.data().range().dim(), right.data().range().dim());
+      2u, left.data().range().rank(), right.data().range().rank());
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper, perm));
 

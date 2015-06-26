@@ -79,8 +79,8 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
   elem::DistMatrix<int> matrix(grid);
   BOOST_CHECK_NO_THROW(matrix = array_to_elem(array, grid));
   // Check dims
-  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements().size()[0]);
-  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().size()[1]);
+  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements().extent_data()[0]);
+  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().extent_data()[1]);
 
   check_equal(array, matrix);
   GlobalFixture::world->gop.fence();
@@ -103,8 +103,8 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   elem::DistMatrix<int> matrix(grid);
   BOOST_CHECK_NO_THROW(matrix = array_to_elem(array, grid));
   // Check dims
-  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements().size()[0]);
-  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().size()[1]);
+  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements().extent_data()[0]);
+  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().extent_data()[1]);
 
   // Reassign elemental matrix to something else
   for(int i = 0; i < matrix.Width(); ++i){

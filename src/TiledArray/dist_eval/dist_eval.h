@@ -176,7 +176,7 @@ namespace TiledArray {
         if(task_count > 0) {
           try {
             TensorImpl_::get_world().await([this,task_count] ()
-                { return set_counter_ == task_count; });
+                { return this->set_counter_ == task_count; });
           } catch(...) {
             std::stringstream ss;
             ss << "!! ERROR TiledArray: Aborting due to exception.\n"

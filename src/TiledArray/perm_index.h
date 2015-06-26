@@ -54,7 +54,7 @@ namespace TiledArray {
       {
         if(ndim_ > 0) {
           // Check the input data
-          TA_ASSERT(range.dim() == perm.dim());
+          TA_ASSERT(range.rank() == perm.dim());
 
           // Construct the inverse permutation
           const Permutation inv_perm_ = -perm;
@@ -66,8 +66,8 @@ namespace TiledArray {
 
           // Construct restricted pointers to the input data
           const Permutation::index_type* restrict const inv_perm = & inv_perm_.data().front();
-          const Range::size_type* restrict const range_size = range.size();
-          const Range::size_type* restrict const range_weight = range.weight();
+          const Range::size_type* restrict const range_size = range.extent_data();
+          const Range::size_type* restrict const range_weight = range.stride_data();
 
           // Construct restricted pointers to the object data
           std::size_t* restrict const input_weight = weights_;

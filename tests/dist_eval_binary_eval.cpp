@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   const Permutation inv_perm = -perm;
   for(; it != end; ++it) {
     // Get the original tiles
-    const std::size_t arg_index = left.range().ord(inv_perm * dist_eval.range().idx(*it));
+    const std::size_t arg_index = left.range().ordinal(inv_perm * dist_eval.range().idx(*it));
     const ArrayN::value_type left_tile = left.find(arg_index);
     const ArrayN::value_type right_tile = right.find(arg_index);
 
