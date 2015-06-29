@@ -322,6 +322,22 @@ namespace TiledArray {
       { }
 
 
+      /// Non-permuting shape factory function
+
+      /// \return The result shape
+      shape_type make_shape() {
+        return array_.get_shape().block(lower_bound_, upper_bound_);
+      }
+
+      /// Permuting shape factory function
+
+      /// \param perm The permutation to be applied to the array
+      /// \return The result shape
+      shape_type
+      make_shape(const Permutation& perm) {
+        return array_.get_shape().block(lower_bound_, upper_bound_, perm);
+      }
+
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
@@ -431,6 +447,22 @@ namespace TiledArray {
         BlkTsrEngineBase_(expr), factor_(expr.factor())
       { }
 
+
+      /// Non-permuting shape factory function
+
+      /// \return The result shape
+      shape_type make_shape() {
+        return array_.get_shape().block(lower_bound_, upper_bound_, factor_);
+      }
+
+      /// Permuting shape factory function
+
+      /// \param perm The permutation to be applied to the array
+      /// \return The result shape
+      shape_type
+      make_shape(const Permutation& perm) {
+        return array_.get_shape().block(lower_bound_, upper_bound_, factor_, perm);
+      }
 
       /// Non-permuting tile operation factory function
 
