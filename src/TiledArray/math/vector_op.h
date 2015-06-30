@@ -152,21 +152,21 @@ namespace TiledArray {
       static TILEDARRAY_FORCE_INLINE void
       for_each(Op&& op, Result* restrict const result, const Args* restrict const ...args) {
         op(result[offset], args[offset]...);
-        VectorOpUnwindN1::for_each(std::forward<Op>(op), result, args...);
+        VectorOpUnwindN1::for_each(op, result, args...);
       }
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
       for_each_ptr(Op&& op, Result* restrict const result, const Args* restrict const ...args) {
         op(result + offset, args[offset]...);
-        VectorOpUnwindN1::for_each_ptr(std::forward<Op>(op), result, args...);
+        VectorOpUnwindN1::for_each_ptr(op, result, args...);
       }
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
       reduce(Op&& op, Result& restrict result, const Args* restrict const ...args) {
         op(result, args[offset]...);
-        VectorOpUnwindN1::reduce(std::forward<Op>(op), result, args...);
+        VectorOpUnwindN1::reduce(op, result, args...);
       }
 
       template <typename Result, typename Arg>
@@ -198,13 +198,13 @@ namespace TiledArray {
     for_each_block(Op&& op, Result* const result,
         const Args* const... args)
     {
-      VecOpUnwindN::for_each(std::forward<Op>(op), result, args...);
+      VecOpUnwindN::for_each(op, result, args...);
     }
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
     for_each_block(Op&& op, Block<Result>& result, Block<Args>&&... args) {
-      VecOpUnwindN::for_each(std::forward<Op>(op), result.data(), args.data()...);
+      VecOpUnwindN::for_each(op, result.data(), args.data()...);
     }
 
     template <typename Op, typename Result, typename... Args>
@@ -221,14 +221,14 @@ namespace TiledArray {
     for_each_block_ptr(Op&& op, Result* const result,
         const Args* const... args)
     {
-      VecOpUnwindN::for_each_ptr(std::forward<Op>(op), result, args...);
+      VecOpUnwindN::for_each_ptr(op, result, args...);
     }
 
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE typename std::enable_if<(sizeof...(Args) > 0)>::type
     for_each_block_ptr(Op&& op, Result* const result, Block<Args>&&... args) {
-      VecOpUnwindN::for_each_ptr(std::forward<Op>(op), result, args.data()...);
+      VecOpUnwindN::for_each_ptr(op, result, args.data()...);
     }
 
     template <typename Op, typename Result, typename... Args>
@@ -243,13 +243,13 @@ namespace TiledArray {
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE
     void reduce_block(Op&& op, Result& result, const Args* const... args) {
-      VecOpUnwindN::reduce(std::forward<Op>(op), result, args...);
+      VecOpUnwindN::reduce(op, result, args...);
     }
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE
     void reduce_block(Op&& op, Result& result, Block<Args>&&... args) {
-      VecOpUnwindN::reduce(std::forward<Op>(op), result, args.data()...);
+      VecOpUnwindN::reduce(op, result, args.data()...);
     }
 
     template <typename Op, typename Result, typename... Args>

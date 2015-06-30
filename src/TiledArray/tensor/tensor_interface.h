@@ -258,7 +258,7 @@ namespace TiledArray {
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       result_tensor binary(const Right& right, Op&& op) const {
-        return result_tensor(*this, right, std::forward<Op>(op));
+        return result_tensor(*this, right, op);
       }
 
       /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -273,7 +273,7 @@ namespace TiledArray {
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       result_tensor binary(const Right& right, Op&& op, const Permutation& perm) const {
-        return result_tensor(*this, right, std::forward<Op>(op), perm);
+        return result_tensor(*this, right, op, perm);
       }
 
       /// Use a binary, element wise operation to modify this tensor
@@ -291,7 +291,7 @@ namespace TiledArray {
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       TensorInterface_& inplace_binary(const Right& right, Op&& op) {
-        detail::inplace_tensor_op(std::forward<Op>(op), *this, right);
+        detail::inplace_tensor_op(op, *this, right);
         return *this;
       }
 
@@ -304,7 +304,7 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When this tensor is empty.
       template <typename Op>
       result_tensor unary(Op&& op) const {
-        return result_tensor(*this, std::forward<Op>(op));
+        return result_tensor(*this, op);
       }
 
       /// Use a unary, element wise operation to construct a new, permuted tensor
@@ -318,7 +318,7 @@ namespace TiledArray {
       /// that of this tensor.
       template <typename Op>
       result_tensor unary(Op&& op, const Permutation& perm) const {
-        return result_tensor(*this, std::forward<Op>(op), perm);
+        return result_tensor(*this, op, perm);
       }
 
       /// Use a unary, element wise operation to modify this tensor
@@ -329,7 +329,7 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When this tensor is empty.
       template <typename Op>
       TensorInterface_& inplace_unary(Op&& op) {
-        detail::inplace_tensor_op(std::forward<Op>(op), *this);
+        detail::inplace_tensor_op(op, *this);
         return *this;
       }
 
@@ -725,8 +725,7 @@ namespace TiledArray {
       numeric_type reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
           const numeric_type identity) const
       {
-        return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
-            std::forward<JoinOp>(join_op), identity, *this);
+        return detail::tensor_reduce(reduce_op, join_op, identity, *this);
       }
 
       /// Binary reduction operation
@@ -745,8 +744,7 @@ namespace TiledArray {
       numeric_type reduce(const Right& other, ReduceOp&& reduce_op, JoinOp&& join_op,
           const numeric_type identity) const
       {
-        return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
-            std::forward<JoinOp>(join_op), identity, *this, other);
+        return detail::tensor_reduce(reduce_op, join_op, identity, *this, other);
       }
 
       /// Sum of elements

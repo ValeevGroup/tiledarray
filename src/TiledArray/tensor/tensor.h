@@ -209,7 +209,7 @@ namespace TiledArray {
     Tensor(const T1& other, Op&& op, const Permutation& perm) :
       pimpl_(new Impl(perm * other.range()))
     {
-      detail::tensor_init(std::forward<Op>(op), perm, *this, other);
+      detail::tensor_init(op, perm, *this, other);
     }
 
     /// Copy and modify the data from \c left, and \c right
@@ -225,7 +225,7 @@ namespace TiledArray {
     Tensor(const T1& left, const T2& right, Op&& op) :
       pimpl_(new Impl(detail::clone_range(left)))
     {
-      detail::tensor_init(std::forward<Op>(op), *this, left, right);
+      detail::tensor_init(op, *this, left, right);
     }
 
     /// Copy, modify, and permute the data from \c left, and \c right
@@ -242,7 +242,7 @@ namespace TiledArray {
     Tensor(const T1& left, const T2& right, Op&& op, const Permutation& perm) :
       pimpl_(new Impl(perm * left.range()))
     {
-      detail::tensor_init(std::forward<Op>(op), perm, *this, left, right);
+      detail::tensor_init(op, perm, *this, left, right);
     }
 
     Tensor_ clone() const {
@@ -520,7 +520,7 @@ namespace TiledArray {
     template <typename Right, typename Op,
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_ binary(const Right& right, Op&& op) const {
-      return Tensor_(*this, right, std::forward<Op>(op));
+      return Tensor_(*this, right, op);
     }
 
     /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -535,7 +535,7 @@ namespace TiledArray {
     template <typename Right, typename Op,
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_ binary(const Right& right, Op&& op, const Permutation& perm) const {
-      return Tensor_(*this, right, std::forward<Op>(op), perm);
+      return Tensor_(*this, right, op, perm);
     }
 
     /// Use a binary, element wise operation to modify this tensor
@@ -553,7 +553,7 @@ namespace TiledArray {
     template <typename Right, typename Op,
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_& inplace_binary(const Right& right, Op&& op) {
-      detail::inplace_tensor_op(std::forward<Op>(op), *this, right);
+      detail::inplace_tensor_op(op, *this, right);
       return *this;
     }
 
@@ -566,7 +566,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
     Tensor_ unary(Op&& op) const {
-      return Tensor_(*this, std::forward<Op>(op));
+      return Tensor_(*this, op);
     }
 
     /// Use a unary, element wise operation to construct a new, permuted tensor
@@ -580,7 +580,7 @@ namespace TiledArray {
     /// that of this tensor.
     template <typename Op>
     Tensor_ unary(Op&& op, const Permutation& perm) const {
-      return Tensor_(*this, std::forward<Op>(op), perm);
+      return Tensor_(*this, op, perm);
     }
 
     /// Use a unary, element wise operation to modify this tensor
@@ -591,7 +591,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename Op>
     Tensor_& inplace_unary(Op&& op) {
-      detail::inplace_tensor_op(std::forward<Op>(op), *this);
+      detail::inplace_tensor_op(op, *this);
       return *this;
     }
 
@@ -1154,8 +1154,7 @@ namespace TiledArray {
     numeric_type reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         const numeric_type identity) const
     {
-      return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
-          std::forward<JoinOp>(join_op), identity, *this);
+      return detail::tensor_reduce(reduce_op, join_op, identity, *this);
     }
 
     /// Binary reduction operation
@@ -1174,8 +1173,7 @@ namespace TiledArray {
     numeric_type reduce(const Right& other, ReduceOp&& reduce_op, JoinOp&& join_op,
         const numeric_type identity) const
     {
-      return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
-          std::forward<JoinOp>(join_op), identity, *this, other);
+      return detail::tensor_reduce(reduce_op, join_op, identity, *this, other);
     }
 
     /// Sum of elements
