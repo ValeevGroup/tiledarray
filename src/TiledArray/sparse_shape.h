@@ -358,7 +358,7 @@ namespace TiledArray {
         TA_ASSERT(upper_i <= tile_norms_.range().upbound_data()[i]);
 
         // Compute the trange data for the result shape
-        size_vectors.get()[i] = vector_type(extent_i + 1ul,
+        size_vectors.get()[i] = vector_type(extent_i,
             size_vectors_.get()[i].data() + lower_i,
             [=] (const size_type j) { return j - lower_i; });
       }
