@@ -326,13 +326,16 @@ namespace TiledArray {
     /// \return \c true when this shape has been initialized.
     bool empty() const { return tile_norms_.empty(); }
 
+  private:
+
     /// Create a copy of a sub-block of the shape
 
     /// \tparam Index The upper and lower bound array type
     /// \param lower_bound The lower bound of the sub-block
     /// \param upper_bound The upper bound of the sub-block
     template <typename Index>
-    SparseShape block(const Index& lower_bound, const Index& upper_bound) const {
+    std::shared_ptr<vector_type>
+    block_range(const Index& lower_bound, const Index& upper_bound) const {
       TA_ASSERT(detail::size(lower_bound) == tile_norms_.range().rank());
       TA_ASSERT(detail::size(upper_bound) == tile_norms_.range().rank());
 
@@ -340,11 +343,6 @@ namespace TiledArray {
       const auto rank = detail::size(lower_bound);
       const auto* restrict const lower = detail::data(lower_bound);
       const auto* restrict const upper = detail::data(upper_bound);
-
-      // Construct a new tensor to hold the norms of the subblock
-      std::vector<typename Tensor<value_type>::range_type::size_type>
-      block_extent(rank, value_type(0));
-      auto* restrict const extent = block_extent.data();
 
       std::shared_ptr<vector_type> size_vectors(new vector_type[rank],
           std::default_delete<vector_type[]>());
@@ -354,7 +352,6 @@ namespace TiledArray {
         const auto lower_i = lower[i];
         const auto upper_i = upper[i];
         const auto extent_i = upper_i - lower_i;
-        extent[i] = extent_i;
 
         // Check that the input indices are in range
         TA_ASSERT(lower_i < upper_i);
@@ -366,18 +363,36 @@ namespace TiledArray {
             [=] (const size_type j) { return j - lower_i; });
       }
 
+      return size_vectors;
+    }
+
+  public:
+    /// Create a copy of a sub-block of the shape
+
+    /// \tparam Index The upper and lower bound array type
+    /// \param lower_bound The lower bound of the sub-block
+    /// \param upper_bound The upper bound of the sub-block
+    template <typename Index>
+    SparseShape block(const Index& lower_bound, const Index& upper_bound) const {
+      std::shared_ptr<vector_type> size_vectors =
+          block_range(lower_bound, upper_bound);
+
       // Copy the data from arg to result
       const value_type threshold = threshold_;
       size_type zero_tile_count = 0ul;
-      auto copy_op = [threshold,&zero_tile_count] (value_type& restrict result, const value_type arg) {
+      auto copy_op = [threshold,&zero_tile_count] (value_type& restrict result,
+          const value_type arg)
+      {
         result = arg;
         if(arg < threshold)
           ++zero_tile_count;
       };
 
+
       // Construct the result norms tensor
-      TensorConstView<value_type> block_view = tile_norms_.block(lower_bound, upper_bound);
-      Tensor<value_type> result_norms((Range(block_extent)));
+      TensorConstView<value_type> block_view =
+          tile_norms_.block(lower_bound, upper_bound);
+      Tensor<value_type> result_norms((Range(block_view.range().extent())));
       result_norms.inplace_binary(shift(block_view), copy_op);
 
       return SparseShape(result_norms, size_vectors, zero_tile_count);
@@ -393,45 +408,13 @@ namespace TiledArray {
     SparseShape block(const Index& lower_bound, const Index& upper_bound,
         const value_type factor) const
     {
-      TA_ASSERT(detail::size(lower_bound) == tile_norms_.range().rank());
-      TA_ASSERT(detail::size(upper_bound) == tile_norms_.range().rank());
-
-      // Get the number dimensions of the the shape
-      const auto rank = detail::size(lower_bound);
-      const auto* restrict const lower = detail::data(lower_bound);
-      const auto* restrict const upper = detail::data(upper_bound);
-
-
-      // Construct a new tensor to hold the norms of the sub-block
-      std::vector<typename Tensor<value_type>::range_type::size_type>
-      block_extent(rank, value_type(0));
-      auto* restrict const extent = block_extent.data();
-
-      std::shared_ptr<vector_type> size_vectors(new vector_type[rank],
-          std::default_delete<vector_type[]>());
-
-      for(auto i = 0ul; i < rank; ++i) {
-        // Get the new range size
-        const auto lower_i = lower[i];
-        const auto upper_i = upper[i];
-        const auto extent_i = upper_i - lower_i;
-        extent[i] = extent_i;
-
-        // Check that the input indices are in range
-        TA_ASSERT(lower_i < upper_i);
-        TA_ASSERT(upper_i <= tile_norms_.range().upbound_data()[i]);
-
-        // Compute the trange data for the result shape
-        size_vectors.get()[i] = vector_type(extent_i + 1ul,
-            size_vectors_.get()[i].data() + lower_i,
-            [=] (const size_type j) { return j - lower_i; });
-      }
+      std::shared_ptr<vector_type> size_vectors =
+          block_range(lower_bound, upper_bound);
 
       // Copy the data from arg to result
       const value_type threshold = threshold_;
       size_type zero_tile_count = 0ul;
-      auto copy_op =
-          [factor,threshold,&zero_tile_count] (value_type& restrict result,
+      auto copy_op = [factor,threshold,&zero_tile_count] (value_type& restrict result,
               const value_type arg)
       {
         result = arg * factor;
@@ -444,7 +427,7 @@ namespace TiledArray {
       // Construct the result norms tensor
       TensorConstView<value_type> block_view =
           tile_norms_.block(lower_bound, upper_bound);
-      Tensor<value_type> result_norms((Range(block_extent)));
+      Tensor<value_type> result_norms((Range(block_view.range().extent())));
       result_norms.inplace_binary(shift(block_view), copy_op);
 
       return SparseShape(result_norms, size_vectors, zero_tile_count);

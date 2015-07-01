@@ -181,30 +181,6 @@ BOOST_AUTO_TEST_CASE( copy_constructor )
   BOOST_CHECK_EQUAL(y.sparsity(), sparse_shape.sparsity());
 }
 
-
-BOOST_AUTO_TEST_CASE( block )
-{
-  SparseShape<float> result;
-  std::vector<std::size_t> start(GlobalFixture::dim, 2);
-  std::vector<std::size_t> finish(GlobalFixture::dim, 5);
-  BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(start, finish));
-
-  for(unsigned int i = 0u; i < GlobalFixture::dim; ++i) {
-    BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0ul);
-    BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], 3ul);
-  }
-
-  for(Range::const_iterator it = result.data().range().begin(); it != result.data().range().end(); ++it) {
-    Range::index_type result_index = *it;
-    Range::index_type input_index = *it;
-    for(std::size_t i = 0ul; i < GlobalFixture::dim; ++i)
-      input_index[i] += 2ul;
-
-    BOOST_CHECK_EQUAL(result.data()(result_index), sparse_shape.data()(input_index));
-  }
-}
-
-
 BOOST_AUTO_TEST_CASE( permute )
 {
   SparseShape<float> result;
@@ -218,6 +194,233 @@ BOOST_AUTO_TEST_CASE( permute )
   BOOST_CHECK_EQUAL(result.sparsity(), sparse_shape.sparsity());
 }
 
+BOOST_AUTO_TEST_CASE( block )
+{
+  auto less = std::less<std::size_t>();
+
+  for(auto lower_it = tr.tiles().begin(); lower_it != tr.tiles().end(); ++lower_it) {
+    const auto& lower = *lower_it;
+
+    for(auto upper_it = tr.tiles().begin(); upper_it != tr.tiles().end(); ++upper_it) {
+      std::vector<std::size_t> upper = *upper_it;
+      for(auto it = upper.begin(); it != upper.end(); ++it)
+        *it += 1;
+
+      if(std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
+        std::cout << lower << "  " << upper << "\n";
+        // Check that the block function does not throw an exception
+        SparseShape<float> result;
+        BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper));
+
+        // Check that the block range data is correct
+        std::size_t volume = 1ul;
+        for(int i = int(tr.tiles().rank()) - 1u; i >= 0; --i) {
+          auto size_i = upper[i] - lower[i];
+          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          volume *= size_i;
+        }
+        BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
+
+        // Check that the data was copied and scaled correctly
+        unsigned long i = 0ul;
+        std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
+        for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
+          // Construct the coordinate index for the argument element
+          for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i)
+            arg_index[i] = (*it)[i] + lower[i];
+
+          if(result.data()(*it) != sparse_shape.data()(arg_index))
+            std::cout << "> " << *it << "  " << arg_index << "\n";
+          // Check the result elements
+          BOOST_CHECK_CLOSE(result.data()(*it), sparse_shape.data()(arg_index), tolerance);
+          BOOST_CHECK_CLOSE(result.data()(i), sparse_shape.data()(arg_index), tolerance);
+        }
+      }
+#ifdef TA_EXCEPTION_ERROR
+      else {
+        // Check that block throws an exception with a bad block range
+        BOOST_CHECK_THROW(sparse_shape.block(lower, upper), TiledArray::Exception);
+      }
+#endif // TA_EXCEPTION_ERROR
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( block_scale )
+{
+  auto less = std::less<std::size_t>();
+  const float factor = 3.3;
+
+  for(auto lower_it = tr.tiles().begin(); lower_it != tr.tiles().end(); ++lower_it) {
+    const auto& lower = *lower_it;
+
+    for(auto upper_it = tr.tiles().begin(); upper_it != tr.tiles().end(); ++upper_it) {
+      std::vector<std::size_t> upper = *upper_it;
+      for(auto it = upper.begin(); it != upper.end(); ++it)
+        *it += 1;
+
+      if(std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
+
+        // Check that the block function does not throw an exception
+        SparseShape<float> result;
+        BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper, factor));
+
+        // Check that the block range data is correct
+        std::size_t volume = 1ul;
+        for(int i = int(tr.tiles().rank()) - 1u; i >= 0; --i) {
+          auto size_i = upper[i] - lower[i];
+          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          volume *= size_i;
+        }
+        BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
+
+        unsigned long i = 0ul;
+        std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
+        for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
+          // Construct the coordinate index for the argument element
+          for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i)
+            arg_index[i] = (*it)[i] + lower[i];
+
+          // Compute the expected value
+          const auto expected = sparse_shape.data()(arg_index) * factor;
+
+          // Check the result elements
+          BOOST_CHECK_CLOSE(result.data()(*it), expected, tolerance);
+          BOOST_CHECK_CLOSE(result.data()(i), expected, tolerance);
+        }
+      }
+#ifdef TA_EXCEPTION_ERROR
+      else {
+        // Check that block throws an exception with a bad block range
+        BOOST_CHECK_THROW(sparse_shape.block(lower, upper), TiledArray::Exception);
+      }
+#endif // TA_EXCEPTION_ERROR
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( block_perm )
+{
+  auto less = std::less<std::size_t>();
+  const auto inv_perm = perm.inv();
+
+  for(auto lower_it = tr.tiles().begin(); lower_it != tr.tiles().end(); ++lower_it) {
+    const auto& lower = *lower_it;
+
+    for(auto upper_it = tr.tiles().begin(); upper_it != tr.tiles().end(); ++upper_it) {
+      std::vector<std::size_t> upper = *upper_it;
+      for(auto it = upper.begin(); it != upper.end(); ++it)
+        *it += 1;
+
+      if(std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
+
+        // Check that the block function does not throw an exception
+        SparseShape<float> result;
+        BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper, perm));
+
+        // Check that the block range data is correct
+        std::size_t volume = 1ul;
+        for(int i = int(tr.tiles().rank()) - 1u; i >= 0; --i) {
+          const auto inv_perm_i = inv_perm[i];
+          const auto size_i = upper[inv_perm_i] - lower[inv_perm_i];
+          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          volume *= size_i;
+        }
+        BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
+
+        // Check that the data was copied and scaled correctly
+        unsigned long i = 0ul;
+        std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
+        for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
+          // Construct the coordinate index for the argument element
+          for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i) {
+            const auto perm_i = perm[i];
+            arg_index[i] = (*it)[perm_i] + lower[i];
+          }
+
+          // Check the result elements
+          BOOST_CHECK_CLOSE(result.data()(*it), sparse_shape.data()(arg_index), tolerance);
+          BOOST_CHECK_CLOSE(result.data()(i), sparse_shape.data()(arg_index), tolerance);
+        }
+      }
+#ifdef TA_EXCEPTION_ERROR
+      else {
+        // Check that block throws an exception with a bad block range
+        BOOST_CHECK_THROW(sparse_shape.block(lower, upper), TiledArray::Exception);
+      }
+#endif // TA_EXCEPTION_ERROR
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( block_scale_perm )
+{
+  auto less = std::less<std::size_t>();
+  const float factor = 3.3;
+  const auto inv_perm = perm.inv();
+
+  for(auto lower_it = tr.tiles().begin(); lower_it != tr.tiles().end(); ++lower_it) {
+    const auto& lower = *lower_it;
+
+    for(auto upper_it = tr.tiles().begin(); upper_it != tr.tiles().end(); ++upper_it) {
+      std::vector<std::size_t> upper = *upper_it;
+      for(auto it = upper.begin(); it != upper.end(); ++it)
+        *it += 1;
+
+      if(std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
+
+        // Check that the block function does not throw an exception
+        SparseShape<float> result;
+        BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper, factor, perm));
+
+        // Check that the block range data is correct
+        std::size_t volume = 1ul;
+        for(int i = int(tr.tiles().rank()) - 1u; i >= 0; --i) {
+          const auto inv_perm_i = inv_perm[i];
+          const auto size_i = upper[inv_perm_i] - lower[inv_perm_i];
+          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          volume *= size_i;
+        }
+        BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
+
+        unsigned long i = 0ul;
+        std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
+        for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
+          // Construct the coordinate index for the argument element
+          for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i) {
+            const auto perm_i = perm[i];
+            arg_index[i] = (*it)[perm_i] + lower[i];
+          }
+
+          // Compute the expected value
+          const auto expected = sparse_shape.data()(arg_index) * factor;
+
+          // Check the result elements
+          BOOST_CHECK_CLOSE(result.data()(*it), expected, tolerance);
+          BOOST_CHECK_CLOSE(result.data()(i), expected, tolerance);
+        }
+      }
+#ifdef TA_EXCEPTION_ERROR
+      else {
+        // Check that block throws an exception with a bad block range
+        BOOST_CHECK_THROW(sparse_shape.block(lower, upper), TiledArray::Exception);
+      }
+#endif // TA_EXCEPTION_ERROR
+    }
+  }
+}
 BOOST_AUTO_TEST_CASE( scale )
 {
   SparseShape<float> result;
