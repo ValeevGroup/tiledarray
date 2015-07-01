@@ -27,7 +27,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC system_header
-#include <madness/world/parallel_runtime.h>
+#include <madness/world/MADworld.h>
 #include <madness/tensor/cblas.h>
 #pragma GCC diagnostic pop
 

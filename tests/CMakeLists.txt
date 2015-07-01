@@ -46,7 +46,9 @@ set(ta_test_src_files  ta_test.cpp
     math_transpose.cpp
     math_blas.cpp
     tensor.cpp
+    tensor_of_tensor.cpp
     tensor_tensor_view.cpp
+    tensor_shift_wrapper.cpp
     tiled_range1.cpp
     tiled_range.cpp
     blocked_pmap.cpp

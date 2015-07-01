@@ -40,6 +40,13 @@ namespace TiledArray {
     /// in both the input and output tensor, which yields a forth-order tensor
     /// (second- and third-order tensors have size of 1 and stride of 0 in the
     /// unused dimensions).
+    /// \tparam SizeType An unsigned integral type
+    /// \param[out] fused_size An array for the fused size output
+    /// \param[out] fused_weight An array for the fused weight output
+    /// \param[in] size An array that holds the unfused size information of the
+    /// argument tensor
+    /// \param[in] perm The permutation that will be applied to the argument
+    /// tensor(s).
     template <typename SizeType>
     inline void fuse_dimensions(SizeType * restrict const fused_size,
         SizeType * restrict const fused_weight,
@@ -91,7 +98,23 @@ namespace TiledArray {
 
     /// Construct a permuted tensor copy
 
-    /// \tparam Args The element type of other
+    /// The expected signature of the input operations is:
+    /// \code
+    /// Result::value_type input_op(const Arg0::value_type, const Args::value_type...)
+    /// \endcode
+    /// The expected signature of the output operations is:
+    /// \code
+    /// void output_op(Result::value_type*, const Result::value_type)
+    /// \endcode
+    /// \tparam InputOp The input operation type
+    /// \tparam OutputOp The output operation type
+    /// \tparam Result The result tensor type
+    /// \tparam Arg0 The first tensor argument type
+    /// \tparam Args The the remaining tensor argument types
+    /// \param input_op The operation that is used to generate the output value
+    /// from the input arguments
+    /// \param output_op The operation that is used to set the value of the
+    /// result tensor given the element pointer and the result value
     /// \param args The data pointers of the tensors to be permuted
     /// \param perm The permutation that will be applied to the copy
     template <typename InputOp, typename OutputOp, typename Result,
@@ -106,17 +129,20 @@ namespace TiledArray {
       const unsigned int ndim1 = ndim - 1;
       const typename Result::size_type volume = arg0.range().volume();
 
+      // Get pointer to arg extent
+      const auto* restrict const arg0_extent = arg0.range().extent_data();
+
       if(perm[ndim1] == ndim1) {
         // This is the simple case where the last dimension is not permuted.
         // Therefore, it can be shuffled in chunks.
 
         // Determine which dimensions can be permuted with the least significant
         // dimension.
-        typename Result::size_type block_size = data(arg0.range().size())[ndim1];
+        typename Result::size_type block_size = arg0_extent[ndim1];
         for(int i = int(ndim1) - 1 ; i >= 0; --i) {
           if(int(perm[i]) != i)
             break;
-          block_size *= arg0.range().size()[i];
+          block_size *= arg0_extent[i];
         }
 
         // Combine the input and output operations
@@ -145,19 +171,20 @@ namespace TiledArray {
         // in the input tensor, and the subrange {I_i+1, ..., I_j} is the
         // (fused) inner dimension in the output tensor that has been mapped to
         // the input tensor. These ranges are used to form a set of matrices in
-        // the input tensor that are transposed and copied output tensor. The
-        // remaining (fused) index ranges {I_1, ..., I_i} and {I_j+1, ..., I_k}
-        // are used to form the outer loop around the matrix transpose
-        // operations. These outer ranges may or may not be zero size.
+        // the input tensor that are transposed and copied to the output tensor.
+        // The remaining (fused) index ranges {I_1, ..., I_i} and
+        // {I_j+1, ..., I_k} are used to form the outer loop around the matrix
+        // transpose operations. These outer ranges may or may not be zero size.
         typename Result::size_type other_fused_size[4];
         typename Result::size_type other_fused_weight[4];
         fuse_dimensions(other_fused_size, other_fused_weight,
-            arg0.range().size(), perm);
+            arg0.range().extent_data(), perm);
 
         // Compute the fused stride for the result matrix transpose.
+        const auto* restrict const result_extent = result.range().extent_data();
         typename Result::size_type  result_outer_stride = 1ul;
         for(unsigned int i = perm[ndim1] + 1u; i < ndim; ++i)
-          result_outer_stride *= result.range().size()[i];
+          result_outer_stride *= result_extent[i];
 
         // Copy data from the input to the output matrix via a series of matrix
         // transposes.

@@ -46,6 +46,8 @@ namespace TiledArray {
       typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
+      // Note: the consumable flag is true for noop to avoid necessary copies.
+      // This is OK because the result consumable flag is set to false.
       typedef TiledArray::math::Noop<typename array_type::eval_type,
           typename array_type::eval_type, true> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,

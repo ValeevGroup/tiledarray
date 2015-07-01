@@ -66,10 +66,10 @@ struct ContractReduceFixture {
 #define TA_CHECK_TENSOR_MATRIX_EQUAL( t , m ) \
 { \
   std::size_t i[2]; \
-  for(i[0] = t.range().start()[0]; i[0] < t.range().finish()[0]; ++i[0]) { \
-    for(i[1] = t.range().start()[1]; i[1] < t.range().finish()[1]; ++i[1]) { \
+  for(i[0] = t.range().lobound_data()[0]; i[0] < t.range().upbound_data()[0]; ++i[0]) { \
+    for(i[1] = t.range().lobound_data()[1]; i[1] < t.range().upbound_data()[1]; ++i[1]) { \
       BOOST_TEST_CHECKPOINT( "Checking result at i = {" << i[0] << "," << i[1] << "}" ); \
-      BOOST_CHECK_EQUAL(t[i], m(i[0] - t.range().start()[0], i[1] - t.range().start()[1])); \
+      BOOST_CHECK_EQUAL(t[i], m(i[0] - t.range().lobound_data()[0], i[1] - t.range().lobound_data()[1])); \
     } \
   } \
 }
@@ -158,12 +158,12 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], right_outer_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], right_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], m);
-  BOOST_CHECK_EQUAL(result.range().size()[1], n);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], right_outer_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], right_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], m);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], n);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * AT.transpose() * B;
@@ -180,12 +180,12 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], right_outer_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], right_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], m);
-  BOOST_CHECK_EQUAL(result.range().size()[1], n);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], right_outer_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], right_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], m);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], n);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * A * BT.transpose();
@@ -202,12 +202,12 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], right_outer_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], right_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], m);
-  BOOST_CHECK_EQUAL(result.range().size()[1], n);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], right_outer_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], right_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], m);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], n);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * AT.transpose() * BT.transpose();
@@ -251,12 +251,12 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], right_outer_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], right_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], m);
-  BOOST_CHECK_EQUAL(result.range().size()[1], n);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], right_outer_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], right_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], m);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], n);
 
   // Compute reference values and compare to the result
   matrix_type  C = 3 * A * B;
@@ -274,12 +274,12 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], right_outer_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], right_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], m);
-  BOOST_CHECK_EQUAL(result.range().size()[1], n);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], right_outer_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], right_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], m);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], n);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * AT.transpose() * B;
@@ -296,12 +296,12 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], right_outer_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], right_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], m);
-  BOOST_CHECK_EQUAL(result.range().size()[1], n);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], right_outer_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], right_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], m);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], n);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * A * BT.transpose();
@@ -318,12 +318,12 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], right_outer_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], right_outer_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], m);
-  BOOST_CHECK_EQUAL(result.range().size()[1], n);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], right_outer_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], right_outer_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], m);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], n);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * AT.transpose() * BT.transpose();
@@ -368,18 +368,18 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], left_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().start()[2], right_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().start()[3], right_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer1_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], left_outer2_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[2], right_outer1_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[3], right_outer2_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], left_outer1_finish - left_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().size()[1], left_outer2_finish - left_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().size()[2], right_outer1_finish - right_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().size()[3], right_outer2_finish - right_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], left_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[2], right_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[3], right_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer1_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], left_outer2_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[2], right_outer1_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[3], right_outer2_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], left_outer1_finish - left_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], left_outer2_finish - left_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[2], right_outer1_finish - right_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[3], right_outer2_finish - right_outer2_start);
 
   // Compute reference values and compare to the result
   matrix_type  C = 3 * A * B;
@@ -397,18 +397,18 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], left_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().start()[2], right_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().start()[3], right_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer1_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], left_outer2_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[2], right_outer1_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[3], right_outer2_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], left_outer1_finish - left_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().size()[1], left_outer2_finish - left_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().size()[2], right_outer1_finish - right_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().size()[3], right_outer2_finish - right_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], left_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[2], right_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[3], right_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer1_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], left_outer2_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[2], right_outer1_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[3], right_outer2_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], left_outer1_finish - left_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], left_outer2_finish - left_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[2], right_outer1_finish - right_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[3], right_outer2_finish - right_outer2_start);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * AT.transpose() * B;
@@ -425,18 +425,18 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], left_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().start()[2], right_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().start()[3], right_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer1_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], left_outer2_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[2], right_outer1_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[3], right_outer2_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], left_outer1_finish - left_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().size()[1], left_outer2_finish - left_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().size()[2], right_outer1_finish - right_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().size()[3], right_outer2_finish - right_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], left_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[2], right_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[3], right_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer1_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], left_outer2_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[2], right_outer1_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[3], right_outer2_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], left_outer1_finish - left_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], left_outer2_finish - left_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[2], right_outer1_finish - right_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[3], right_outer2_finish - right_outer2_start);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * A * BT.transpose();
@@ -453,18 +453,18 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   }
 
   // Check dimensions of the result
-  BOOST_CHECK_EQUAL(result.range().start()[0], left_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().start()[1], left_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().start()[2], right_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().start()[3], right_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().finish()[0], left_outer1_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[1], left_outer2_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[2], right_outer1_finish);
-  BOOST_CHECK_EQUAL(result.range().finish()[3], right_outer2_finish);
-  BOOST_CHECK_EQUAL(result.range().size()[0], left_outer1_finish - left_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().size()[1], left_outer2_finish - left_outer2_start);
-  BOOST_CHECK_EQUAL(result.range().size()[2], right_outer1_finish - right_outer1_start);
-  BOOST_CHECK_EQUAL(result.range().size()[3], right_outer2_finish - right_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[0], left_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[1], left_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[2], right_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().lobound_data()[3], right_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[0], left_outer1_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[1], left_outer2_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[2], right_outer1_finish);
+  BOOST_CHECK_EQUAL(result.range().upbound_data()[3], right_outer2_finish);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[0], left_outer1_finish - left_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[1], left_outer2_finish - left_outer2_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[2], right_outer1_finish - right_outer1_start);
+  BOOST_CHECK_EQUAL(result.range().extent_data()[3], right_outer2_finish - right_outer2_start);
 
   // Compute reference values and compare to the result
   C.noalias() += 3 * AT.transpose() * BT.transpose();

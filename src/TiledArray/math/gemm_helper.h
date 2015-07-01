@@ -164,25 +164,31 @@ namespace TiledArray {
       /// defined by this object
       template <typename R, typename Left, typename Right>
       R make_result_range(const Left& left, const Right& right) const {
+        // Get pointers to lower and upper bounds of left and right.
+        const auto* restrict const left_lower = left.lobound_data();
+        const auto* restrict const left_upper = left.upbound_data();
+        const auto* restrict const right_lower = right.lobound_data();
+        const auto* restrict const right_upper = right.upbound_data();
+
         // Create the start and finish indices
-        std::vector<std::size_t> start, finish;
-        start.reserve(result_rank_);
-        finish.reserve(result_rank_);
+        std::vector<std::size_t> lower, upper;
+        lower.reserve(result_rank_);
+        upper.reserve(result_rank_);
 
         // Copy left-hand argument outer dimensions to start and finish
         for(unsigned int i = left_.outer[0]; i < left_.outer[1]; ++i) {
-          start.push_back(left.start()[i]);
-          finish.push_back(left.finish()[i]);
+          lower.push_back(left_lower[i]);
+          upper.push_back(left_upper[i]);
         }
 
         // Copy right-hand argument outer dimensions to start and finish
         for(unsigned int i = right_.outer[0]; i < right_.outer[1]; ++i) {
-          start.push_back(right.start()[i]);
-          finish.push_back(right.finish()[i]);
+          lower.push_back(right_lower[i]);
+          upper.push_back(right_upper[i]);
         }
 
         // Construct the result tile
-        return R(start, finish);
+        return R(lower, upper);
       }
 
       /// Test that the outer dimensions of left are coformal with that of the result tensor
@@ -247,19 +253,21 @@ namespace TiledArray {
           const Left& left, const Right& right) const
       {
         // Check that the arguments are not empty and have the correct ranks
-        TA_ASSERT(left.dim() == left_.rank);
-        TA_ASSERT(right.dim() == right_.rank);
+        TA_ASSERT(left.rank() == left_.rank);
+        TA_ASSERT(right.rank() == right_.rank);
+        const auto* restrict const left_extent = left.extent_data();
+        const auto* restrict const right_extent = right.extent_data();
 
         // Compute fused dimension sizes
         m = 1;
         for(unsigned int i = left_.outer[0]; i < left_.outer[1]; ++i)
-          m *= left.size()[i];
+          m *= left_extent[i];
         k = 1;
         for(unsigned int i = left_.inner[0]; i < left_.inner[1]; ++i)
-          k *= left.size()[i];
+          k *= left_extent[i];
         n = 1;
         for(unsigned int i = right_.outer[0]; i < right_.outer[1]; ++i)
-          n *= right.size()[i];
+          n *= right_extent[i];
       }
 
       madness::cblas::CBLAS_TRANSPOSE left_op() const { return left_op_; }

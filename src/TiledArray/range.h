@@ -22,6 +22,7 @@
 
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/size_array.h>
 
 namespace TiledArray {
 
@@ -32,8 +33,8 @@ namespace TiledArray {
     typedef std::size_t size_type; ///< Size type
     typedef std::vector<size_type> index; ///< Coordinate index type
     typedef index index_type; ///< Coordinate index type, to conform Tensor Working Group spec
-    typedef std::vector<size_type> size_array; ///< Size array type
-    typedef index extent_type;    ///< Range extent type, to conform Tensor Working Group spec
+    typedef detail::SizeArray<const size_type> size_array; ///< Size array type
+    typedef size_array extent_type;    ///< Range extent type, to conform Tensor Working Group spec
     typedef std::size_t ordinal_type; ///< Ordinal type, to conform Tensor Working Group spec
     typedef detail::RangeIterator<size_type, Range_> const_iterator; ///< Coordinate iterator
     friend class detail::RangeIterator<size_type, Range_>;
@@ -163,8 +164,8 @@ namespace TiledArray {
 
         // Store the permuted lower bound, upper bound, and extent
         lower[perm_i]  = other_lower_bound_i;
-        upper[perm_i] = other_upper_bound_i;
-        extent[perm_i]   = other_extent_i;
+        upper[perm_i]  = other_upper_bound_i;
+        extent[perm_i] = other_extent_i;
       }
 
       // Recompute stride, offset, and volume
@@ -172,9 +173,10 @@ namespace TiledArray {
       offset_ = 0ul;
       for(int i = int(rank_) - 1; i >= 0; --i) {
         const size_type lower_i = lower[i];
+        const size_type extent_i = extent[i];
         stride[i] = volume_;
         offset_ += lower_i * volume_;
-        volume_ *= extent[i];
+        volume_ *= extent_i;
       }
     }
 
@@ -197,7 +199,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
     Range(const Index& lower_bound, const Index& upper_bound) {
       const size_type n = detail::size(lower_bound);
       TA_ASSERT(n == detail::size(upper_bound));
@@ -217,7 +219,7 @@ namespace TiledArray {
     /// \c upper_bound.
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
     explicit Range(const Index& upper_bound) {
       const size_type n = detail::size(upper_bound);
       if(n) {
@@ -235,7 +237,7 @@ namespace TiledArray {
     /// \post Range has an lower bound of 0, and an upper bound of \c (sizes...).
     /// \throw std::bad_alloc When memory allocation fails.
     template<typename... Index,
-        enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+        typename std::enable_if<detail::is_integral_list<Index...>::value>::type* = nullptr>
     explicit Range(const Index... upper_bound) :
       Range(std::array<size_t, sizeof...(Index)>{{upper_bound...}})
     { }
@@ -331,76 +333,66 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Dimension accessor
-
-    /// \return The rank (number of dimensions) of this range
-    /// \throw nothing
-    /// \note Equivalent to \c rank()
-    unsigned int dim() const { return rank_; }
-
     /// Rank accessor
 
     /// \return The rank (number of dimensions) of this range
     /// \throw nothing
-    /// \note Provided to satisfy the requirements of Tensor Working Group
-    /// specification.
     unsigned int rank() const { return rank_; }
 
     /// Range lower bound coordinate accessor
 
     /// \return A pointer to an array that contains the lower bound of this range
     /// \throw nothing
-    const size_type* start() const { return data_; }
+    const size_type* lobound_data() const { return data_; }
 
     /// Range lower bound accessor
 
     /// Provided to conform to the Tensor Working Group specification
     /// \return A \c size_array that contains the lower bound of this range
     /// \throw nothing
-    /// \note Provided to satisfy the requirements of Tensor Working Group
-    /// specification.
-    size_array lobound() const { return size_array(data_, data_ + rank_); }
+    size_array lobound() const { return size_array(lobound_data(), rank_); }
 
     /// Range upper bound coordinate accessor
 
     /// \return A pointer to an array that contains the upper bound of this range
     /// \throw nothing
-    const size_type* finish() const { return data_ + rank_; }
+    const size_type* upbound_data() const { return data_ + rank_; }
 
     /// Upper bound accessor
 
     /// \return A \c size_array that contains the upper bound of this range
     /// \throw nothing
-    /// \note Provided to satisfy the requirements of Tensor Working Group
-    /// specification.
     size_array upbound() const {
-      const size_type* const upper = data_ + rank_;
-      return size_array(upper, upper + rank_);
+      return size_array(upbound_data(), rank_);
     }
 
     /// Size accessor
 
-    /// \return A pointer to an array that contains the lower bound of this range
+    /// \return A pointer to an array that contains the extents of this range
     /// \throw nothing
-    const size_type* size() const { return data_ + (rank_ + rank_); }
+    const size_type* extent_data() const { return data_ + (rank_ + rank_); }
 
     /// Size accessor
 
-    /// \return An \c extent_type that contains the extent of each dimension
+    /// \return An \c extent_type that contains the extent of each rank
     /// \throw nothing
-    /// \note Provided to satisfy the requirements of Tensor Working Group
-    /// specification.
     extent_type extent() const {
-      const size_type* const size = data_ + rank_ + rank_;
-      return size_array(size, size + rank_);
+      return size_array(extent_data(), rank_);
     }
 
     /// Range stride accessor
 
-    /// \return A \c size_array that contains the strides of each dimension
+    /// \return A pointer that contains the strides of each rank
     /// \throw nothing
-    const size_type* weight() const { return data_ + (rank_ + rank_ + rank_); }
+    const size_type* stride_data() const { return data_ + (rank_ + rank_ + rank_); }
 
+    /// Stride accessor
+
+    /// \return A pointer to an array that contains the strides of this range
+    /// \throw nothing
+    size_array stride() const {
+      return size_array(stride_data(), rank_);
+    }
 
     /// Range volume accessor
 
@@ -413,6 +405,11 @@ namespace TiledArray {
     /// \throw nothing
     size_type area() const { return volume_; }
 
+    /// Range offset
+
+    /// The range ordinal offset is equal to the dot product of the lower bound
+    /// and stride vector. It is used internally to compute ordinal offsets.
+    /// \return The ordinal index offset
     size_type offset() const { return offset_; }
 
     /// Index iterator factory
@@ -442,7 +439,7 @@ namespace TiledArray {
     /// \throw TildedArray::Exception When the rank of this range is not
     /// equal to the size of the index.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value, bool>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value, bool>::type* = nullptr>
     bool includes(const Index& index) const {
       TA_ASSERT(detail::size(index) == rank_);
       const size_type* restrict const lower  = data_;
@@ -484,7 +481,7 @@ namespace TiledArray {
     /// \param perm The permutation to be applied to this range
     /// \return A reference to this range
     /// \throw TildedArray::Exception When the rank of this range is not
-    /// equal to the dimension of the permutation.
+    /// equal to the rank of the permutation.
     /// \throw std::bad_alloc When memory allocation fails.
     Range_& operator *=(const Permutation& perm);
 
@@ -493,6 +490,7 @@ namespace TiledArray {
     /// \tparam Index An array type
     /// \param lower_bound The lower bounds of the N-dimensional range
     /// \param upper_bound The upper bound of the N-dimensional range
+    /// \return A reference to this range
     /// \throw TiledArray::Exception When the size of \c lower_bound is not
     /// equal to that of \c upper_bound.
     /// \throw TiledArray::Exception When <tt>lower_bound[i] >= upper_bound[i]</tt>
@@ -516,14 +514,49 @@ namespace TiledArray {
       return *this;
     }
 
+    /// Shift the lower and upper bound of this range
+
+    /// \tparam Index The shift array type
+    /// \param bound_shift The shift to be applied to the range
+    /// \return A reference to this range
+    template <typename Index>
+    Range_& inplace_shift(const Index& bound_shift) {
+      const unsigned int n = detail::size(bound_shift);
+      TA_ASSERT(n == rank_);
+
+      const auto* restrict const bound_shift_data = detail::data(bound_shift);
+      size_type* restrict const lower = data_;
+      size_type* restrict const upper = data_ + rank_;
+
+      for(unsigned i = 0u; i < rank_; ++i) {
+        const auto bound_shift_i = bound_shift_data[i];
+        lower[i] += bound_shift_i;
+        upper[i] += bound_shift_i;
+      }
+
+      return *this;
+    }
+
+    /// Shift the lower and upper bound of this range
+
+    /// \tparam Index The shift array type
+    /// \param bound_shift The shift to be applied to the range
+    /// \return A shifted copy of this range
+    template <typename Index>
+    Range_ shift(const Index& bound_shift) {
+      Range_ result(*this);
+      result.inplace_shift(bound_shift);
+      return result;
+    }
+
     /// calculate the ordinal index of \c i
 
-    /// This function is just a pass-through so the user can call \c ord() on
+    /// This function is just a pass-through so the user can call \c ordinal() on
     /// a template parameter that can be a coordinate index or an integral.
     /// \param index Ordinal index
     /// \return \c index (unchanged)
     /// \throw When \c index is not included in this range
-    size_type ord(const size_type index) const {
+    size_type ordinal(const size_type index) const {
       TA_ASSERT(includes(index));
       return index;
     }
@@ -536,8 +569,8 @@ namespace TiledArray {
     /// \return The ordinal index of \c index
     /// \throw When \c index is not included in this range.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
-    size_type ord(const Index& index) const {
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
+    size_type ordinal(const Index& index) const {
       TA_ASSERT(detail::size(index) == rank_);
       TA_ASSERT(includes(index));
 
@@ -561,15 +594,11 @@ namespace TiledArray {
     /// \return The ordinal index of \c index
     /// \throw When \c index is not included in this range.
     template <typename... Index,
-        enable_if_t<(sizeof...(Index) > 1ul)>* = nullptr>
-    size_type ord(const Index&... index) const {
+        typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
+    size_type ordinal(const Index&... index) const {
       const size_type temp_index[sizeof...(Index)] = { index... };
-      return ord(temp_index);
+      return ordinal(temp_index);
     }
-
-    /// alias to ord<Index>(), to conform with the Tensor Working Group spec \sa ord()
-    template <typename... Index>
-    size_type ordinal(const Index&... index) const { return ord(index...); }
 
     /// calculate the coordinate index of the ordinal index, \c index.
 
@@ -586,18 +615,18 @@ namespace TiledArray {
       Range_::index result(rank_, 0);
 
       // Get pointers to the data
-      size_type * restrict const result_data = & result.front();
-      size_type const * restrict const stride = data_ + rank_ + rank_ + rank_;
+      size_type * restrict const result_data = result.data();
       size_type const * restrict const lower = data_;
+      size_type const * restrict const size = data_ + rank_ + rank_;
 
-      // Compute the coordinate index of o in range.
-      for(unsigned int i = 0u; i < rank_; ++i) {
-        const size_type stride_i = stride[i];
+      // Compute the coordinate index of index in range.
+      for(int i = int(rank_) - 1; i >= 0; --i) {
         const size_type lower_i = lower[i];
+        const size_type size_i = size[i];
 
         // Compute result index element i
-        const size_type result_i = (index / stride_i) + lower_i;
-        index %= stride_i;
+        const size_type result_i = (index % size_i) + lower_i;
+        index /= size_i;
 
         // Store result
         result_data[i] = result_i;
@@ -613,14 +642,14 @@ namespace TiledArray {
     /// \param i The index
     /// \return \c i (unchanged)
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
     const Index& idx(const Index& i) const {
       TA_ASSERT(includes(i));
       return i;
     }
 
     template <typename Archive,
-        enable_if_t<madness::archive::is_input_archive<Archive>::value>* = nullptr>
+        typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type* = nullptr>
     void serialize(const Archive& ar) {
       // Get rank
       unsigned int rank = 0ul;
@@ -639,7 +668,7 @@ namespace TiledArray {
     }
 
     template <typename Archive,
-        enable_if_t<madness::archive::is_output_archive<Archive>::value>* = nullptr>
+        typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type* = nullptr>
     void serialize(const Archive& ar) const {
       ar & rank_ & madness::archive::wrap(data_, rank_ << 2) & offset_ & volume_;
     }
@@ -676,7 +705,7 @@ namespace TiledArray {
     /// Increment the coordinate index \c i in this range
 
     /// \param[in,out] i The coordinate index to be incremented
-    /// \throw TiledArray::Exception When the dimension of i is not equal to
+    /// \throw TiledArray::Exception When the rank of i is not equal to
     /// the rank of this range
     /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void increment(index& i) const {
@@ -706,12 +735,12 @@ namespace TiledArray {
 
     /// \param[in,out] i The coordinate index to be advanced
     /// \param n The distance to advance \c i
-    /// \throw TiledArray::Exception When the dimension of i is not equal to
+    /// \throw TiledArray::Exception When the rank of i is not equal to
     /// the rank of this range
     /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
     void advance(index& i, std::ptrdiff_t n) const {
       TA_ASSERT(includes(i));
-      const size_type o = ord(i) + n;
+      const size_type o = ordinal(i) + n;
       TA_ASSERT(includes(o));
       i = idx(o);
     }
@@ -727,7 +756,7 @@ namespace TiledArray {
     std::ptrdiff_t distance_to(const index& first, const index& last) const {
       TA_ASSERT(includes(first));
       TA_ASSERT(includes(last));
-      return ord(last) - ord(first);
+      return ordinal(last) - ordinal(first);
     }
 
   }; // class Range
@@ -770,7 +799,7 @@ namespace TiledArray {
   /// \return \c true when \c r1 represents the same range as \c r2, otherwise
   /// \c false.
   inline bool operator ==(const Range& r1, const Range& r2) {
-    return (r1.rank() == r2.rank()) && !std::memcmp(r1.start(), r2.start(),
+    return (r1.rank() == r2.rank()) && !std::memcmp(r1.lobound_data(), r2.lobound_data(),
         r1.rank() * (2u * sizeof(Range::size_type)));
   }
   /// Range inequality comparison
@@ -780,7 +809,7 @@ namespace TiledArray {
   /// \return \c true when \c r1 does not represent the same range as \c r2,
   /// otherwise \c false.
   inline bool operator !=(const Range& r1, const Range& r2) {
-    return (r1.rank() != r2.rank()) || std::memcmp(r1.start(), r2.start(),
+    return (r1.rank() != r2.rank()) || std::memcmp(r1.lobound_data(), r2.lobound_data(),
         r1.rank() * (2u * sizeof(Range::size_type)));
   }
 
@@ -791,9 +820,9 @@ namespace TiledArray {
   /// \return A reference to the output stream
   inline std::ostream& operator<<(std::ostream& os, const Range& r) {
     os << "[ ";
-    detail::print_array(os, r.start(), r.rank());
+    detail::print_array(os, r.lobound_data(), r.rank());
     os << ", ";
-    detail::print_array(os, r.finish(), r.rank());
+    detail::print_array(os, r.upbound_data(), r.rank());
     os << " )";
     return os;
   }

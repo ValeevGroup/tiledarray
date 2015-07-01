@@ -40,30 +40,16 @@ namespace TiledArray {
 
     Range::size_type block_offset_ = 0ul;
 
-  public:
-
-    BlockRange() : Range() { }
-
-    BlockRange(const BlockRange& other) :
-      Range(static_cast<const Range&>(other))
-    { }
-
-    BlockRange(BlockRange&& other) :
-      Range(static_cast<Range&&>(other))
-    { }
 
     template <typename Index>
-    BlockRange(const Range& range, const Index& lower_bound,
-        const Index& upper_bound) :
-        Range()
-    {
+    void init(const Range& range, const Index& lower_bound, const Index& upper_bound) {
       TA_ASSERT(range.rank());
       // Check for valid lower and upper bounds
-      TA_ASSERT(std::equal(lower_bound.begin(), lower_bound.end(), range.start(),
+      TA_ASSERT(std::equal(lower_bound.begin(), lower_bound.end(), range.lobound_data(),
           [](const size_type l, const size_type r) { return l >= r; }));
       TA_ASSERT(std::equal(upper_bound.begin(), upper_bound.end(), lower_bound.begin(),
           [](const size_type l, const size_type r) { return l > r; }));
-      TA_ASSERT(std::equal(upper_bound.begin(), upper_bound.end(), range.finish(),
+      TA_ASSERT(std::equal(upper_bound.begin(), upper_bound.end(), range.upbound_data(),
           [](const size_type l, const size_type r) { return l <= r; }));
 
       // Initialize the block range data members
@@ -74,25 +60,26 @@ namespace TiledArray {
       block_offset_ = 0ul;
 
       // Construct temp pointers
-      const size_type* restrict const range_stride = range.weight();
+      const auto* restrict const range_stride = range.stride_data();
       const auto* restrict const lower_bound_ptr = detail::data(lower_bound);
       const auto* restrict const upper_bound_ptr = detail::data(upper_bound);
-      size_type* restrict const lower  = data_;
-      size_type* restrict const upper  = lower + rank_;
-      size_type* restrict const extent = upper + rank_;
-      size_type* restrict const stride = extent + rank_;
+      auto* restrict const lower  = data_;
+      auto* restrict const upper  = lower + rank_;
+      auto* restrict const extent = upper + rank_;
+      auto* restrict const stride = extent + rank_;
 
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
-        // Check input dimensions
-        TA_ASSERT(lower_bound[i] >= 0ul);
-        TA_ASSERT(lower_bound[i] < upper_bound[i]);
-
         // Compute data for element i of lower, upper, and extent
         const auto lower_bound_i = lower_bound_ptr[i];
         const auto upper_bound_i = upper_bound_ptr[i];
-        const size_type range_stride_i = range_stride[i];
+        const auto range_stride_i = range_stride[i];
         const auto extent_i = upper_bound_i - lower_bound_i;
+
+        // Check input dimensions
+        TA_ASSERT(lower_bound_i >= range.lobound_data()[i]);
+        TA_ASSERT(lower_bound_i < upper_bound_i);
+        TA_ASSERT(upper_bound_i <= range.upbound_data()[i]);
 
         // Set the block range data
         lower[i]       = lower_bound_i;
@@ -104,20 +91,32 @@ namespace TiledArray {
       }
     }
 
+  public:
+
+    // Compiler generated functions
+    BlockRange() = default;
+    BlockRange(const BlockRange&) = default;
+    BlockRange(BlockRange&&) = default;
     ~BlockRange() = default;
+    BlockRange& operator=(const BlockRange&) = default;
+    BlockRange& operator=(BlockRange&&) = default;
 
-    BlockRange& operator=(const BlockRange& other) {
-      Range::operator=(other);
-      block_offset_ = other.block_offset_;
-      return *this;
+    template <typename Index>
+    BlockRange(const Range& range, const Index& lower_bound,
+        const Index& upper_bound) :
+        Range()
+    {
+      init(range, lower_bound, upper_bound);
     }
 
-    BlockRange& operator=(BlockRange&& other) {
-      Range::operator=(std::move(other));
-      block_offset_ = other.block_offset_;
-      other.block_offset_ = 0ul;
-      return *this;
+
+    BlockRange(const Range& range, const std::initializer_list<size_type>& lower_bound,
+        const std::initializer_list<size_type>& upper_bound) :
+      Range()
+    {
+      init(range, lower_bound, upper_bound);
     }
+
 
     /// calculate the ordinal index of \c i
 
@@ -127,15 +126,15 @@ namespace TiledArray {
     /// \return The ordinal index of \c index
     /// \throw When \c index is not included in this range.
     template <typename Index,
-        enable_if_t<! std::is_integral<Index>::value>* = nullptr>
-    size_type ord(const Index& index) const {
-      return Range::ord(index);
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
+    size_type ordinal(const Index& index) const {
+      return Range::ordinal(index);
     }
 
     template <typename... Index,
-        enable_if_t<(sizeof...(Index) > 1ul)>* = nullptr>
-    size_type ord(const Index&... index) const {
-      return Range::ord(index...);
+        typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
+    size_type ordinal(const Index&... index) const {
+      return Range::ordinal(index...);
     }
 
     /// calculate the coordinate index of the ordinal index, \c index.
@@ -145,7 +144,7 @@ namespace TiledArray {
     /// \return The index of the ordinal index
     /// \throw TiledArray::Exception When \c index is not included in this range
     /// \throw std::bad_alloc When memory allocation fails
-    size_type ord(size_type index) const {
+    size_type ordinal(size_type index) const {
       // Check that index is contained by range.
       TA_ASSERT(includes(index));
 
@@ -177,9 +176,37 @@ namespace TiledArray {
       return *this;
     }
 
+
+    /// Shift the lower and upper bound of this range
+
+    /// \warning This function is here to shadow the base class inplace_shift
+    /// function, and disable it.
+    template <typename Index>
+    Range_& inplace_shift(const Index&) {
+      TA_EXCEPTION("BlockRange::inplace_shift() is not supported");
+      return *this;
+    }
+
+    /// Shift the lower and upper bound of this range
+
+    /// \warning This function is here to shadow the base class shift function,
+    /// and disable it.
+    template <typename Index>
+    Range_ shift(const Index&) {
+      TA_EXCEPTION("BlockRange::shift() is not supported");
+      return *this;
+    }
+
     void swap(BlockRange& other) {
       Range::swap(other);
       std::swap(block_offset_, other.block_offset_);
+    }
+
+    /// Serialization Block range
+    template <typename Archive>
+    void serialize(const Archive& ar) const {
+      Range::serialize(ar);
+      ar & block_offset_;
     }
   }; // BlockRange
 
