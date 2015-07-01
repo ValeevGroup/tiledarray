@@ -527,11 +527,24 @@ namespace TiledArray {
       const auto* restrict const bound_shift_data = detail::data(bound_shift);
       size_type* restrict const lower = data_;
       size_type* restrict const upper = data_ + rank_;
+      const size_type* restrict const stride = upper + rank_ + rank_;
 
+      offset_ = 0ul;
       for(unsigned i = 0u; i < rank_; ++i) {
+        // Load range data
         const auto bound_shift_i = bound_shift_data[i];
-        lower[i] += bound_shift_i;
-        upper[i] += bound_shift_i;
+        auto lower_i = lower[i];
+        auto upper_i = upper[i];
+        const auto stride_i = stride[i];
+
+        // Compute new range bounds
+        lower_i += bound_shift_i;
+        upper_i += bound_shift_i;
+
+        // Update range data
+        offset_ += lower_i * stride_i;
+        lower[i] = lower_i;
+        upper[i] = upper_i;
       }
 
       return *this;
