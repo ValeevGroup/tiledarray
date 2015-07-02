@@ -132,7 +132,7 @@ namespace TiledArray {
       const size_type n = pimpl_->range_.volume();
       pointer restrict const data = pimpl_->data_;
       for(size_type i = 0ul; i < n; ++i)
-        data[i] = value.clone();
+        new(data + i) value_type(value.clone());
     }
 
     /// Construct a tensor with a fill value
