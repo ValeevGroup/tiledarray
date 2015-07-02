@@ -129,7 +129,10 @@ namespace TiledArray {
     Tensor(const range_type& range, const Value& value) :
       pimpl_(new Impl(range))
     {
-      detail::tensor_init([&] () -> Value { return value.clone(); }, *this);
+      const size_type n = pimpl_->range_.volume();
+      pointer restrict const data = pimpl_->data_;
+      for(size_type i = 0ul; i < n; ++i)
+        data[i] = value.clone();
     }
 
     /// Construct a tensor with a fill value
