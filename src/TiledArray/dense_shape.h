@@ -26,6 +26,8 @@
 #ifndef TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 #define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 
+#include <TiledArray/type_traits.h>
+
 namespace madness {
   class World;
 } // namespace
@@ -92,6 +94,19 @@ namespace TiledArray {
 
     template <typename Index>
     static DenseShape block(const Index&, const Index&) { return DenseShape(); }
+
+    template <typename Index, typename Scalar,
+        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+    static DenseShape block(const Index&, const Index&, const Scalar)
+    { return DenseShape(); }
+
+    template <typename Index>
+    static DenseShape block(const Index&, const Index&, const Permutation&)
+    { return DenseShape(); }
+
+    template <typename Index, typename Scalar>
+    static DenseShape block(const Index&, const Index&, const Scalar, const Permutation&)
+    { return DenseShape(); }
 
     static DenseShape perm(const Permutation&) { return DenseShape(); }
 

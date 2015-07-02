@@ -54,7 +54,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<TR, T1, Ts...>::value
             || is_tensor_of_tensor<TR, T1, Ts...>::value>::type* = nullptr>
     inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
-      return TR(tensor1, tensors..., std::forward<Op>(op));
+      return TR(tensor1, tensors..., op);
     }
 
 
@@ -78,7 +78,7 @@ namespace TiledArray {
     inline TR tensor_op(Op&& op, const Permutation& perm, const T1& tensor1,
         const Ts&... tensors)
     {
-      return TR(tensor1, tensors..., std::forward<Op>(op), perm);
+      return TR(tensor1, tensors..., op, perm);
     }
 
 
@@ -104,7 +104,7 @@ namespace TiledArray {
 
       const auto volume = result.range().volume();
 
-      math::inplace_vector_op(std::forward<Op>(op), volume, result.data(),
+      math::inplace_vector_op(op, volume, result.data(),
           tensors.data()...);
     }
 
@@ -170,8 +170,7 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == tensor1.range().rank());
 
-      permute(std::forward<InputOp>(input_op), std::forward<OutputOp>(output_op),
-          result, perm, tensor1, tensors...);
+      permute(input_op, output_op, result, perm, tensor1, tensors...);
     }
 
 
@@ -371,7 +370,7 @@ namespace TiledArray {
           typename TR::const_reference  restrict temp)
           { new(result) typename TR::value_type(temp); };
 
-      permute(std::forward<Op>(op), output_op, result, perm, tensor1, tensors...);
+      permute(op, output_op, result, perm, tensor1, tensors...);
     }
 
 
@@ -517,7 +516,7 @@ namespace TiledArray {
 
       const auto volume = tensor1.range().volume();
 
-      math::reduce_op(std::forward<ReduceOp>(reduce_op), volume, identity,
+      math::reduce_op(reduce_op, volume, identity,
           tensor1.data(), tensors.data()...);
 
       return identity;

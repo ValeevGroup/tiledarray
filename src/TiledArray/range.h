@@ -164,8 +164,8 @@ namespace TiledArray {
 
         // Store the permuted lower bound, upper bound, and extent
         lower[perm_i]  = other_lower_bound_i;
-        upper[perm_i] = other_upper_bound_i;
-        extent[perm_i]   = other_extent_i;
+        upper[perm_i]  = other_upper_bound_i;
+        extent[perm_i] = other_extent_i;
       }
 
       // Recompute stride, offset, and volume
@@ -173,9 +173,10 @@ namespace TiledArray {
       offset_ = 0ul;
       for(int i = int(rank_) - 1; i >= 0; --i) {
         const size_type lower_i = lower[i];
+        const size_type extent_i = extent[i];
         stride[i] = volume_;
         offset_ += lower_i * volume_;
-        volume_ *= extent[i];
+        volume_ *= extent_i;
       }
     }
 
@@ -349,7 +350,7 @@ namespace TiledArray {
     /// Provided to conform to the Tensor Working Group specification
     /// \return A \c size_array that contains the lower bound of this range
     /// \throw nothing
-    size_array lobound() const { return size_array(data_, rank_); }
+    size_array lobound() const { return size_array(lobound_data(), rank_); }
 
     /// Range upper bound coordinate accessor
 
@@ -362,7 +363,7 @@ namespace TiledArray {
     /// \return A \c size_array that contains the upper bound of this range
     /// \throw nothing
     size_array upbound() const {
-      return size_array(data_ + rank_, rank_);
+      return size_array(upbound_data(), rank_);
     }
 
     /// Size accessor
@@ -376,15 +377,7 @@ namespace TiledArray {
     /// \return An \c extent_type that contains the extent of each rank
     /// \throw nothing
     extent_type extent() const {
-      return size_array(data_ + (rank_ + rank_), rank_);
-    }
-
-    /// Stride accessor
-
-    /// \return A pointer to an array that contains the strides of this range
-    /// \throw nothing
-    size_array stride() const {
-      return size_array(data_ + (rank_ + rank_ + rank_), rank_);
+      return size_array(extent_data(), rank_);
     }
 
     /// Range stride accessor
@@ -393,6 +386,13 @@ namespace TiledArray {
     /// \throw nothing
     const size_type* stride_data() const { return data_ + (rank_ + rank_ + rank_); }
 
+    /// Stride accessor
+
+    /// \return A pointer to an array that contains the strides of this range
+    /// \throw nothing
+    size_array stride() const {
+      return size_array(stride_data(), rank_);
+    }
 
     /// Range volume accessor
 
@@ -405,6 +405,11 @@ namespace TiledArray {
     /// \throw nothing
     size_type area() const { return volume_; }
 
+    /// Range offset
+
+    /// The range ordinal offset is equal to the dot product of the lower bound
+    /// and stride vector. It is used internally to compute ordinal offsets.
+    /// \return The ordinal index offset
     size_type offset() const { return offset_; }
 
     /// Index iterator factory

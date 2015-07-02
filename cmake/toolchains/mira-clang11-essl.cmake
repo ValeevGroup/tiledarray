@@ -45,28 +45,3 @@ set(BLAS_LIBRARIES ${BLAS_LIBRARY};${XLF_LIBRARIES};${XL_LIBRARIES})
 set(LAPACK_LIBRARY ${LAPACK_DIR}/lib/liblapack.a)
 set(LAPACK_LIBRARIES ${LAPACK_LIBRARY};${BLAS_LIBRARIES})
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
-
-##############################################################
-
-# set the search path for the environment coming with the compiler
-# and a directory where you can install your own compiled software
-#set(CMAKE_FIND_ROOT_PATH
-#    /bgsys/drivers/ppcfloor/
-#    ${MPI_DIR}
-#    ${PAMI_DIR}
-#    ${SPI_DIR}
-#    ${GCC_DIR}
-#    ${CLANG_DIR}
-#    ${IBM_DIR}
-#    ${XLF_DIR}
-#    ${XLSMP_DIR}
-#    ${ESSL_DIR})
-
-# adjust the default behaviour of the FIND_XXX() commands:
-# search headers and libraries in the target environment, search
-# programs in the host environment
-#set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-#set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-#set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-
-##############################################################
