@@ -79,6 +79,8 @@ namespace TiledArray {
       size_type* restrict const upper  = lower + rank_;
       size_type* restrict const extent = upper + rank_;
       size_type* restrict const stride = extent + rank_;
+      const auto* restrict const lower_data = detail::data(lower_bound);
+      const auto* restrict const upper_data = detail::data(upper_bound);
 
       // Set the volume seed
       volume_ = 1ul;
@@ -87,12 +89,12 @@ namespace TiledArray {
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check input dimensions
-        TA_ASSERT(lower_bound[i] >= 0ul);
-        TA_ASSERT(lower_bound[i] < upper_bound[i]);
+        TA_ASSERT(lower_data[i] >= 0ul);
+        TA_ASSERT(lower_data[i] < upper_data[i]);
 
         // Compute data for element i of lower, upper, and extent
-        const size_type lower_bound_i = lower_bound[i];
-        const size_type upper_bound_i = upper_bound[i];
+        const size_type lower_bound_i = lower_data[i];
+        const size_type upper_bound_i = upper_data[i];
         const size_type extent_i      = upper_bound_i - lower_bound_i;
 
         lower[i]  = lower_bound_i;
@@ -119,6 +121,7 @@ namespace TiledArray {
       size_type* restrict const upper  = lower + rank_;
       size_type* restrict const extent = upper + rank_;
       size_type* restrict const stride = extent + rank_;
+      const auto* restrict const upper_data = detail::data(upper_bound);
 
       // Set the offset and volume initial values
       volume_ = 1ul;
@@ -127,10 +130,10 @@ namespace TiledArray {
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check bounds of the input extent
-        TA_ASSERT(upper_bound[i] > 0ul);
+        TA_ASSERT(upper_data[i] > 0ul);
 
         // Get extent i
-        const size_type extent_i = upper_bound[i];
+        const size_type extent_i = upper_data[i];
 
         lower[i]  = 0ul;
         upper[i]  = extent_i;
@@ -216,22 +219,60 @@ namespace TiledArray {
       }
     }
 
-    /// Range constructor from size array
+    /// Construct range defined by an upper and lower bound
 
-    /// \tparam Index An array type
-    /// \param upper_bound The upper bound of the N-dimensional range
-    /// \post Range has an lower bound of 0, and an upper bound of
-    /// \c upper_bound.
+    /// Construct a range diffined by \c lower_boudn and \c upper_bound.
+    /// \param lower_bound An initializer list of lower bounds for each dimension
+    /// \param upper_bound An initializer list of upper bounds for each dimension
+    /// \throw TiledArray::Exception When the size of \c lower_bound is not
+    /// equal to that of \c upper_bound.
+    /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
     /// \throw std::bad_alloc When memory allocation fails.
-    template <typename Index,
-        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
-    explicit Range(const Index& upper_bound) {
-      const size_type n = detail::size(upper_bound);
+    Range(const std::initializer_list<size_type>& lower_bound,
+        const std::initializer_list<size_type>& upper_bound)
+    {
+      const size_type n = detail::size(lower_bound);
+      TA_ASSERT(n == detail::size(upper_bound));
       if(n) {
         // Initialize array memory
         data_ = new size_type[n << 2];
         rank_ = n;
-        init_range_data(upper_bound);
+        init_range_data(lower_bound, upper_bound);
+      }
+    }
+
+    /// Range constructor from size array
+
+    /// Construct a range with a lower bound of zero and an upper bound equal to
+    /// \c extent.
+    /// \tparam Index A vector type
+    /// \param extent A vector that defines the size of each dimension
+    /// \throw std::bad_alloc When memory allocation fails.
+    template <typename Index,
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
+    explicit Range(const Index& extent) {
+      const size_type n = detail::size(extent);
+      if(n) {
+        // Initialize array memory
+        data_ = new size_type[n << 2];
+        rank_ = n;
+        init_range_data(extent);
+      }
+    }
+
+    /// Range constructor from size array
+
+    /// Construct a range with a lower bound of zero and an upper bound equal to
+    /// \c extent.
+    /// \param extent An initializer list that defines the size of each dimension
+    /// \throw std::bad_alloc When memory allocation fails.
+    explicit Range(const std::initializer_list<size_type>& extent) {
+      const size_type n = detail::size(extent);
+      if(n) {
+        // Initialize array memory
+        data_ = new size_type[n << 2];
+        rank_ = n;
+        init_range_data(extent);
       }
     }
 
