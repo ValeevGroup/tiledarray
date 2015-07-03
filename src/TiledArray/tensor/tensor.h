@@ -140,8 +140,7 @@ namespace TiledArray {
     /// \param range An array with the size of of each dimension
     /// \param value The value of the tensor elements
     template <typename Value,
-        typename std::enable_if<std::is_same<Value, value_type>::value &&
-        detail::is_numeric<Value>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric<Value>::value>::type* = nullptr>
     Tensor(const range_type& range, const Value& value) :
       pimpl_(new Impl(range))
     {
