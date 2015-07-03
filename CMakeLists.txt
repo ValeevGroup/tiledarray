@@ -216,9 +216,9 @@ CONFIGURE_FILE(
 
 # install config files
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+    DESTINATION lib/pkgconfig)
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/CMake/TiledArray)
+    DESTINATION lib/CMake/TiledArray)
 
 
 # Add target to allow on-the-fly switching of build type
