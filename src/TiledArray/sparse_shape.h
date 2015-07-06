@@ -486,7 +486,10 @@ namespace TiledArray {
         }
         return value;
       };
-      return SparseShape_(tile_norms_.unary(op), size_vectors_, zero_tile_count);
+
+      Tensor<value_type> result_tile_norms = tile_norms_.unary(op);
+
+      return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
 
     /// Scale and permute shape
@@ -511,7 +514,10 @@ namespace TiledArray {
         }
         return value;
       };
-      return SparseShape_(tile_norms_.unary(op, perm), perm_size_vectors(perm),
+
+      Tensor<value_type> result_tile_norms = tile_norms_.unary(op, perm);
+
+      return SparseShape_(result_tile_norms, perm_size_vectors(perm),
           zero_tile_count);
     }
 
@@ -537,8 +543,11 @@ namespace TiledArray {
         }
         return left;
       };
-      return SparseShape_(tile_norms_.binary(other.tile_norms_, op), size_vectors_,
-          zero_tile_count);
+
+      Tensor<value_type> result_tile_norms =
+          tile_norms_.binary(other.tile_norms_, op);
+
+      return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
 
     /// Add and permute shapes
@@ -564,8 +573,12 @@ namespace TiledArray {
         }
         return left;
       };
-      return SparseShape_(tile_norms_.binary(other.tile_norms_, op, perm),
-          perm_size_vectors(perm), zero_tile_count);
+
+      Tensor<value_type> result_tile_norms =
+          tile_norms_.binary(other.tile_norms_, op, perm);
+
+      return SparseShape_(result_tile_norms, perm_size_vectors(perm),
+          zero_tile_count);
     }
 
     /// Add and scale shapes
@@ -593,8 +606,11 @@ namespace TiledArray {
         }
         return left;
       };
-      return SparseShape_(tile_norms_.binary(other.tile_norms_, op), size_vectors_,
-          zero_tile_count);
+
+      Tensor<value_type> result_tile_norms =
+          tile_norms_.binary(other.tile_norms_, op);
+
+      return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
 
     /// Add, scale, and permute shapes
@@ -625,8 +641,12 @@ namespace TiledArray {
         }
         return left;
       };
-      return SparseShape_(tile_norms_.binary(other.tile_norms_, op, perm),
-          perm_size_vectors(perm), zero_tile_count);
+
+      Tensor<value_type> result_tile_norms =
+          tile_norms_.binary(other.tile_norms_, op, perm);
+
+      return SparseShape_(result_tile_norms, perm_size_vectors(perm),
+          zero_tile_count);
     }
 
     SparseShape_ add(value_type value) const {
