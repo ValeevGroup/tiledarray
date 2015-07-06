@@ -23,7 +23,7 @@ cd _build
 
 # Build all libraries, examples, and applications
 make -j2 all
-make -j2 ta_test
+make -j2 ta_test VERBOSE=1
 cd tests
 export MAD_NUM_THREADS=2
 ./ta_test --show_progress
