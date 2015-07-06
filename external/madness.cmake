@@ -79,7 +79,7 @@ else()
         "Path to the MADNESS source code")
   set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(Madness_TAG "e30ec83c26873ae91816e95cc7767e8006f656c1" CACHE STRING 
+  set(Madness_TAG "748d50deef6f237c8714b3ee709e9555e9172416" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${Madness_TAG}" STREQUAL "")
@@ -368,11 +368,20 @@ else()
   string(REPLACE "${MAD_LDFLAGS}" "" 
         Madness_LINKER_FLAGS "${Madness_LINKER_FLAGS}")
   string(REPLACE "${MAD_LIBS}" "" 
-        Madness_LINKER_FLAGS "${Madness_LINKER_FLAGS}")
+        Madness_LIBRARIES "${Madness_LIBRARIES}")
+  string(STRIP "${Madness_LIBRARIES}" Madness_LIBRARIES)
   string(STRIP "${Madness_LINKER_FLAGS}" Madness_LINKER_FLAGS)
   
+  # Removed the MADNESS libraries that are not needed by TiledArray.
+  list(REMOVE_ITEM Madness_LIBRARIES 
+    ${Madness_MADchem_LIBRARY} ${Madness_MADmra_LIBRARY}
+    ${Madness_MADtinyxml_LIBRARY} ${Madness_MADmuparser_LIBRARY}
+    ${Madness_MADlinalg_LIBRARY} ${Madness_MADtensor_LIBRARY}
+    ${Madness_MADmisc_LIBRARY})
+  
   message("Madness_COMPILE_FLAGS = '${Madness_COMPILE_FLAGS}'")
-  message("Madness_LINKER_FLAGS = '${Madness_LINKER_FLAGS}'")
+  message("Madness_LIBRARIES     = '${Madness_LIBRARIES}'")
+  message("Madness_LINKER_FLAGS  = '${Madness_LINKER_FLAGS}'")
 
   set(MAD_CPPFLAGS "${CMAKE_CPP_FLAGS}")
   set(MAD_CFLAGS "${CMAKE_C_FLAGS}")
