@@ -225,6 +225,7 @@ BOOST_AUTO_TEST_CASE( block )
 
         // Check that the data was copied and scaled correctly
         unsigned long i = 0ul;
+        unsigned long zero_tile_count = 0ul;
         std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
         for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
@@ -233,8 +234,12 @@ BOOST_AUTO_TEST_CASE( block )
 
           // Check the result elements
           BOOST_CHECK_CLOSE(result.data()(*it), sparse_shape.data()(arg_index), tolerance);
-          BOOST_CHECK_CLOSE(result.data()(i), sparse_shape.data()(arg_index), tolerance);
+          BOOST_CHECK_CLOSE(result.data()[i], sparse_shape.data()(arg_index), tolerance);
+          if(result.data()[i] < SparseShape<float>::threshold())
+            ++zero_tile_count;
         }
+        BOOST_CHECK_CLOSE(result.sparsity(),
+            float(zero_tile_count)/float(result.data().range().volume()), tolerance);
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
@@ -278,6 +283,7 @@ BOOST_AUTO_TEST_CASE( block_scale )
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
 
         unsigned long i = 0ul;
+        unsigned long zero_tile_count = 0ul;
         std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
         for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
@@ -289,8 +295,12 @@ BOOST_AUTO_TEST_CASE( block_scale )
 
           // Check the result elements
           BOOST_CHECK_CLOSE(result.data()(*it), expected, tolerance);
-          BOOST_CHECK_CLOSE(result.data()(i), expected, tolerance);
+          BOOST_CHECK_CLOSE(result.data()[i], expected, tolerance);
+          if(result.data()[i] < SparseShape<float>::threshold())
+            ++zero_tile_count;
         }
+        BOOST_CHECK_CLOSE(result.sparsity(),
+            float(zero_tile_count)/float(result.data().range().volume()), tolerance);
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
@@ -336,6 +346,7 @@ BOOST_AUTO_TEST_CASE( block_perm )
 
         // Check that the data was copied and scaled correctly
         unsigned long i = 0ul;
+        unsigned long zero_tile_count = 0ul;
         std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
         for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
@@ -346,8 +357,12 @@ BOOST_AUTO_TEST_CASE( block_perm )
 
           // Check the result elements
           BOOST_CHECK_CLOSE(result.data()(*it), sparse_shape.data()(arg_index), tolerance);
-          BOOST_CHECK_CLOSE(result.data()(i), sparse_shape.data()(arg_index), tolerance);
+          BOOST_CHECK_CLOSE(result.data()[i], sparse_shape.data()(arg_index), tolerance);
+          if(result.data()[i] < SparseShape<float>::threshold())
+            ++zero_tile_count;
         }
+        BOOST_CHECK_CLOSE(result.sparsity(),
+            float(zero_tile_count)/float(result.data().range().volume()), tolerance);
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
@@ -393,6 +408,7 @@ BOOST_AUTO_TEST_CASE( block_scale_perm )
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
 
         unsigned long i = 0ul;
+        unsigned long zero_tile_count = 0ul;
         std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
         for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
@@ -406,8 +422,12 @@ BOOST_AUTO_TEST_CASE( block_scale_perm )
 
           // Check the result elements
           BOOST_CHECK_CLOSE(result.data()(*it), expected, tolerance);
-          BOOST_CHECK_CLOSE(result.data()(i), expected, tolerance);
+          BOOST_CHECK_CLOSE(result.data()[i], expected, tolerance);
+          if(result.data()[i] < SparseShape<float>::threshold())
+            ++zero_tile_count;
         }
+        BOOST_CHECK_CLOSE(result.sparsity(),
+            float(zero_tile_count)/float(result.data().range().volume()), tolerance);
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
