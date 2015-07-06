@@ -212,10 +212,20 @@ else()
   
     # Set compile flags required for Elemental
   if(ENABLE_TBB)
-    message(FATAL_ERROR "MADNESSS with TBB is not implemented")
-    set(MAD_TBB_FLAG "yes")
+    if(TBB_INCLUDE_DIR AND EXISTS ${TBB_INCLUDE_DIR})
+      append_flags(MAD_TBB_FLAGS "--with-tbb-include=${TBB_INCLUDE_DIR}")
+    endif()
+    if(TBB_LIBRARY AND EXISTS ${TBB_LIBRARY})
+      append_flags(MAD_TBB_FLAGS "--with-tbb-lib=${TBB_LIBRARY}")
+    endif()
+    if(TBB_ROOT_DIR AND EXISTS ${TBB_ROOT_DIR})
+      append_flags(MAD_TBB_FLAGS "--with-tbb=${TBB_ROOT_DIR}")
+    endif()
+    if("${MAD_TBB_FLAGS}" STREQUAL "")
+      set(MAD_TBB_FLAGS "--with-tbb=yes")
+    endif()
   else()
-    set(MAD_TBB_FLAG "no")
+    set(MAD_TBB_FLAGS "--with-tbb=no")
   endif()
   
   
@@ -310,7 +320,7 @@ else()
                 "--with-fortran-int32=${MAD_F77_INT32}"
                 "--with-stubmpi=${MAD_STUB_MPI}"
                 "--with-elemental=${MAD_ELEMENTAL_FLAG}"
-                "--with-tbb=${MAD_TBB_FLAG}"
+                "${MAD_TBB_FLAGS}"
                 "--without-mkl"
                 "--without-libxc"
                 "${MAD_EXTRA_CONFIGURE_FLAGS}"
