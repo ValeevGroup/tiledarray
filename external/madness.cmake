@@ -79,7 +79,7 @@ else()
         "Path to the MADNESS source code")
   set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(Madness_TAG "748d50deef6f237c8714b3ee709e9555e9172416" CACHE STRING 
+  set(Madness_TAG "defad5bd3d95cc2245179dee9b23cddc937e9112" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${Madness_TAG}" STREQUAL "")
@@ -422,8 +422,6 @@ else()
   add_dependencies(External madness-build)
 
   # Set config variables 
-  set(Madness_INCLUDE_DIRS ${MADNESS_BINARY_DIR}/src ${MADNESS_SOURCE_DIR}/src)
-  set(Madness_LIBRARIES ${Madness_MADworld_LIBRARY})
   set(TiledArray_CONFIG_LIBRARIES ${Madness_LIBRARIES}
       ${TiledArray_CONFIG_LIBRARIES})
 
