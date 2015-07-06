@@ -29,4 +29,4 @@ make -j2
 sudo make install
 
 # Install packages
-sudo apt-get install -qq -y cmake libblas-dev liblapack-dev mpich2 libtbb-dev libeigen3-dev libboost1.48-dev
+sudo apt-get install -qq -y libblas-dev liblapack-dev mpich2 libtbb-dev libeigen3-dev libboost1.48-dev
