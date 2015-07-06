@@ -207,7 +207,6 @@ BOOST_AUTO_TEST_CASE( block )
         *it += 1;
 
       if(std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
-        std::cout << lower << "  " << upper << "\n";
         // Check that the block function does not throw an exception
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper));
@@ -232,8 +231,6 @@ BOOST_AUTO_TEST_CASE( block )
           for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i)
             arg_index[i] = (*it)[i] + lower[i];
 
-          if(result.data()(*it) != sparse_shape.data()(arg_index))
-            std::cout << "> " << *it << "  " << arg_index << "\n";
           // Check the result elements
           BOOST_CHECK_CLOSE(result.data()(*it), sparse_shape.data()(arg_index), tolerance);
           BOOST_CHECK_CLOSE(result.data()(i), sparse_shape.data()(arg_index), tolerance);
