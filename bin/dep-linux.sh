@@ -22,7 +22,7 @@ $CXX --version
 
 # Install CMAKE
 curl -O http://www.cmake.org/files/v2.8/cmake-2.8.8.tar.gz
-tar -xzf $cmake-2.8.8.tar.gz
+tar -xzf cmake-2.8.8.tar.gz
 cd ./cmake-2.8.8
 ./configure --prefix=/usr/local
 make -j2
