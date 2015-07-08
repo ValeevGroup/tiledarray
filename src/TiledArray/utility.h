@@ -68,54 +68,48 @@ namespace TiledArray {
     /// \tparam T The container type
     /// \param t A container object
     /// \return A pointer to the first element of the container, \c v
-    template <typename T>
+    template <typename T,
+        typename std::enable_if<! std::is_pointer<T>::value>::type* = nullptr>
     inline auto data(T& t) -> decltype(t.data())
     { return t.data(); }
 
 
-    /// Pointer data adapter
-
-    /// \tparam T The container type
-    /// \param t A pointer
-    /// \return \c t (pass through)
-    template <typename T>
-    inline T* data(T* const t) { return t; }
-
-
-    /// Pointer data adapter
-
-    /// \tparam T The container type
-    /// \param t A pointer
-    /// \return \c t (pass through)
-    template <typename T>
-    inline const T* data(const T* const t) { return t; }
 
     /// Container data pointer accessor
 
     /// \tparam T The container type
     /// \param t A container object
     /// \return A pointer to the first element of the container, \c v
-    template <typename T>
+    template <typename T,
+        typename std::enable_if<! std::is_pointer<T>::value>::type* = nullptr>
     inline auto data(const T& t) -> decltype(t.data())
     { return t.data(); }
+
+    /// Pointer data adapter
+
+    /// \tparam T The container type
+    /// \param t A pointer
+    /// \return \c t (pass through)
+    template <typename T,
+        typename std::enable_if<std::is_pointer<T>::value>::type* = nullptr>
+    inline T data(T t) { return t; }
 
     /// Array data pointer accessor
 
     /// \tparam T The array type
-    /// \tparam N The size of the array
     /// \param a The c-style array object
     /// \return A pointer to the first element of the array
     template <typename T, std::size_t N>
     inline T* data(T (&a)[N]) { return a; }
 
-    /// Array const data pointer accessor
+    /// Array data pointer accessor
 
     /// \tparam T The array type
-    /// \tparam N The size of the array
     /// \param a The c-style array object
-    /// \return A const pointer to the first element of the array, \c a
+    /// \return A pointer to the first element of the array
     template <typename T, std::size_t N>
     inline const T* data(const T (&a)[N]) { return a; }
+
 
     /// Initializer list data pointer accessor
 

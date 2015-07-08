@@ -118,14 +118,33 @@ namespace TiledArray {
       default_init(range.volume(), pimpl_->data_);
     }
 
+
     /// Construct a tensor with a fill value
 
     /// \param range An array with the size of of each dimension
     /// \param value The value of the tensor elements
-    Tensor(const range_type& range, const numeric_type value) :
+    template <typename Value,
+        typename std::enable_if<std::is_same<Value, value_type>::value &&
+        detail::is_tensor<Value>::value>::type* = nullptr>
+    Tensor(const range_type& range, const Value& value) :
       pimpl_(new Impl(range))
     {
-      detail::tensor_init([=] () { return value; }, *this);
+      const size_type n = pimpl_->range_.volume();
+      pointer restrict const data = pimpl_->data_;
+      for(size_type i = 0ul; i < n; ++i)
+        new(data + i) value_type(value.clone());
+    }
+
+    /// Construct a tensor with a fill value
+
+    /// \param range An array with the size of of each dimension
+    /// \param value The value of the tensor elements
+    template <typename Value,
+        typename std::enable_if<detail::is_numeric<Value>::value>::type* = nullptr>
+    Tensor(const range_type& range, const Value& value) :
+      pimpl_(new Impl(range))
+    {
+      detail::tensor_init([=] () -> Value { return value; }, *this);
     }
 
     /// Construct an evaluated tensor

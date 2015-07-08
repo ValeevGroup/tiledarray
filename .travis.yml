@@ -1,0 +1,30 @@
+language: cpp
+os: linux
+compiler:
+  - gcc
+  - clang
+env:
+  - GCC_VERSION=4.7
+  - GCC_VERSION=4.8
+  - GCC_VERSION=4.9
+  - GCC_VERSION=5
+matrix:
+  exclude:
+    - compiler: clang
+      env: GCC_VERSION=4.7
+    - compiler: clang
+      env: GCC_VERSION=4.9
+    - compiler: clang
+      env: GCC_VERSION=5
+#notifications:
+#  email:
+#    recipients:
+#      - madness-developers@googlegroups.com
+#    on_success: change
+#    on_failure: always
+before_install: ./bin/dep-$TRAVIS_OS_NAME.sh
+script: ./bin/build-$TRAVIS_OS_NAME.sh
+after_failure:
+  - cat ./_build/external/build/madness/config.log
+  - cat ./_build/CMakeFiles/CMakeOutput.log
+  - cat ./_build/CMakeFiles/CMakeError.log
