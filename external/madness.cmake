@@ -394,7 +394,7 @@ else()
     append_flags(MAD_CXXFLAGS "")
   endif()
   add_custom_target(madness-build ALL
-      COMMAND ${CMAKE_MAKE_PROGRAM} world V=0
+      COMMAND $(MAKE) world V=0
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 
