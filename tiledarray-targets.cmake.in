@@ -1,0 +1,15 @@
+# Compute paths
+get_filename_component(TiledArray_CONFIG_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+
+
+# Create the tiledarray target
+add_library(tiledarray INTERFACE)
+if(EXISTS src/tiledarray.h)
+  target_include_directories(tiledarray INTERFACE ${TiledArray_CONFIG_DIR}/src)
+else() 
+  get_filename_component(TiledArray_DIR "${TiledArray_CONFIG_DIR}/../../.." ABSOLUTE)
+  target_include_directories(tiledarray INTERFACE ${TiledArray_DIR}/include)
+endif()
+target_include_directories(tiledarray INTERFACE @TiledArray_INCLUDE_DIRS@)
+target_compile_options(tiledarray INTERFACE "@TiledArray_COMPILE_FLAGS@")
+target_link_libraries(tiledarray INTERFACE "@TiledArray_LINKER_FLAGS@" @TiledArray_LIBRARIES@)
