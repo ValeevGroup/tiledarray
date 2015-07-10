@@ -22,7 +22,8 @@ cd _build
 /usr/local/bin/cmake -DCMAKE_INSTALL_PREFIX=../_install -DTA_BUILD_UNITTEST=ON -DCMAKE_BUILD_TYPE=Debug ..
 
 # Build all libraries, examples, and applications
-make -j2 all
+make -j2 build-madness VERBOSE=1
+make install
 make -j2 ta_test VERBOSE=1
 cd tests
 export MAD_NUM_THREADS=2
