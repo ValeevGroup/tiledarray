@@ -5,7 +5,7 @@ set -ev
 
 # Add repository for a newer version GCC
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-sudo add-apt-repository ppa:kalakris/cmake
+sudo add-apt-repository ppa:kalakris/cmake -y
 
 # Update package list
 sudo apt-get update -qq
