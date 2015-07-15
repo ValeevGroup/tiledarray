@@ -49,8 +49,9 @@ Configuration:
   --debug                 debug build (CMAKE_BUILD_TYPE=Debug)
   --unittest              build unit tests (TA_BUILD_UNITTEST=TRUE)
   --lapack=               LAPACK libraries (LAPACK_LIBRARIES=)
-  --integer4              Assume integer*4 in Fortran (INTEGER4=TRUE), otherwise
-                          integer*8 is the default Fortran integer size.
+  --lapack=               LAPACK libraries (BLAS_LIBRARIES=)
+  --integer8              Assume integer*8 in Fortran (INTEGER4=TRUE), otherwise
+                          integer*4 is the default Fortran integer size.
   --mpicc=                MPI C compiler to deduce MPI environment,
                           only needed if CXX is not set to an MPI compiler wrapper
                           (MPI_C_COMPILER=)
@@ -125,7 +126,9 @@ while test $# != 0; do
   --prefix=*)      prefix="`arg \"$1\"`" ;;
   --lapack=*)      lapack="`arg \"$1\"`"
                    args="$args -DLAPACK_LIBRARIES=\"$lapack\"" ;;
-  --integer4)      args="$args -DINTEGER4=TRUE" ;;
+  --blas=*)        blas="`arg \"$1\"`"
+                   args="$args -DBLAS_LIBRARIES=\"$blas\"" ;;
+  --integer8)      args="$args -DINTEGER4=FLASE" ;;
   --debug)         build="Debug" ;; #args="$args -DCMAKE_BUILD_TYPE=Debug" ;;
   --search=*)      search="`arg \"$1\"`"
                    args="$args -DCMAKE_PREFIX_PATH=\"$search\"" ;;
