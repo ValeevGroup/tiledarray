@@ -33,6 +33,18 @@ option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
+if(SUPPORTS_SHARED)
+  option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
+else()
+  option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" OFF)
+endif()
+if(ENABLE_SHARED_LIBRARIES AND NOT SUPPORTS_SHARED)
+  message("TiledArray was configured to build shared libraries, but they are "
+          "not supported on the target platform: ENABLE_SHARED_LIBRARIES will "
+          "be set to OFF")
+  set(ENABLE_SHARED_LIBRARIES OFF CACHE BOOL "Enable shared libraries" FORCE)
+endif()
 
 # Set TiledArray version
 set(TILEDARRAY_MAJOR_VERSION 0)
