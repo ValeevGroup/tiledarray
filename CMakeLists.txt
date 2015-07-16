@@ -30,7 +30,7 @@ project (TiledArray)
 # Configure options
 option(ENABLE_MPI "Enable MPI" ON)
 option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
-option(ENABLE_TBB "Enable use of TBB with MADNESS" OFF)
+option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
@@ -216,9 +216,9 @@ CONFIGURE_FILE(
 
 # install config files
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+    DESTINATION lib/pkgconfig)
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/CMake/TiledArray)
+    DESTINATION lib/CMake/TiledArray)
 
 
 # Add target to allow on-the-fly switching of build type

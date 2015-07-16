@@ -26,7 +26,14 @@
 
 namespace TiledArray {
 
-  /// Range data of an N-dimensional tensor.
+  /// Range data of an N-dimensional block
+
+  /// This object represents an N-dimension, orthogonal block of elements. It
+  /// provides information on the rank (number of dimensions), lower bound,
+  /// upper bound, extent (size), and stride of block. It can also be used to
+  /// test if an element is included in the range with a coordinate index or
+  /// ordinal offset. Finally, it can be used to convert coordinate indices to
+  /// ordinal offsets and vice versa.
   class Range {
   public:
     typedef Range Range_; ///< This object type
@@ -45,17 +52,16 @@ namespace TiledArray {
                       ///< An array that holds the dimension information of the
                       ///< range. The layout of the array is:
                       ///< \code
-                      ///< { lower[0],  ..., lower[rank_ - 1],
-                      ///<   upper[0],  ..., upper[rank_ - 1],
-                      ///<   extent[0], ..., extent[rank_ - 1],
-                      ///<   stride[0], ..., stride[rank_ - 1] }
+                      ///< { lobound[0], ..., lobound[rank_ - 1],
+                      ///<   upbound[0], ..., upbound[rank_ - 1],
+                      ///<   extent[0],  ..., extent[rank_ - 1],
+                      ///<   stride[0],  ..., stride[rank_ - 1] }
                       ///< \endcode
     size_type offset_ = 0ul; ///< Ordinal index offset correction
     size_type volume_ = 0ul; ///< Total number of elements
     unsigned int rank_ = 0u; ///< The rank (or number of dimensions) in the range
 
   private:
-    struct Enabler {};
 
     /// Initialize range data from lower and upper bounds
 
@@ -73,6 +79,8 @@ namespace TiledArray {
       size_type* restrict const upper  = lower + rank_;
       size_type* restrict const extent = upper + rank_;
       size_type* restrict const stride = extent + rank_;
+      const auto* restrict const lower_data = detail::data(lower_bound);
+      const auto* restrict const upper_data = detail::data(upper_bound);
 
       // Set the volume seed
       volume_ = 1ul;
@@ -81,12 +89,12 @@ namespace TiledArray {
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check input dimensions
-        TA_ASSERT(lower_bound[i] >= 0ul);
-        TA_ASSERT(lower_bound[i] < upper_bound[i]);
+        TA_ASSERT(lower_data[i] >= 0ul);
+        TA_ASSERT(lower_data[i] < upper_data[i]);
 
         // Compute data for element i of lower, upper, and extent
-        const size_type lower_bound_i = lower_bound[i];
-        const size_type upper_bound_i = upper_bound[i];
+        const size_type lower_bound_i = lower_data[i];
+        const size_type upper_bound_i = upper_data[i];
         const size_type extent_i      = upper_bound_i - lower_bound_i;
 
         lower[i]  = lower_bound_i;
@@ -113,6 +121,7 @@ namespace TiledArray {
       size_type* restrict const upper  = lower + rank_;
       size_type* restrict const extent = upper + rank_;
       size_type* restrict const stride = extent + rank_;
+      const auto* restrict const upper_data = detail::data(upper_bound);
 
       // Set the offset and volume initial values
       volume_ = 1ul;
@@ -121,10 +130,10 @@ namespace TiledArray {
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check bounds of the input extent
-        TA_ASSERT(upper_bound[i] > 0ul);
+        TA_ASSERT(upper_data[i] > 0ul);
 
         // Get extent i
-        const size_type extent_i = upper_bound[i];
+        const size_type extent_i = upper_data[i];
 
         lower[i]  = 0ul;
         upper[i]  = extent_i;
@@ -184,16 +193,15 @@ namespace TiledArray {
 
     /// Default constructor
 
-    /// \post Range has zero rank, volume, and size.
+    /// Construct a range that has zero rank, volume, and size.
     Range() { }
 
     /// Construct range defined by an upper and lower bound
 
+    /// Construct a range diffined by \c lower_boudn and \c upper_bound.
     /// \tparam Index An array type
-    /// \param lower_bound The lower bound of the N-dimensional range
-    /// \param upper_bound The upper bound of the N-dimensional range
-    /// \post Range has an lower and upper bound of \c lower_bound and
-    /// \c upper_bound.
+    /// \param lower_bound A vector of lower bounds for each dimension
+    /// \param upper_bound A vector of upper bounds for each dimension
     /// \throw TiledArray::Exception When the size of \c lower_bound is not
     /// equal to that of \c upper_bound.
     /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
@@ -211,22 +219,60 @@ namespace TiledArray {
       }
     }
 
-    /// Range constructor from size array
+    /// Construct range defined by an upper and lower bound
 
-    /// \tparam Index An array type
-    /// \param upper_bound The upper bound of the N-dimensional range
-    /// \post Range has an lower bound of 0, and an upper bound of
-    /// \c upper_bound.
+    /// Construct a range diffined by \c lower_boudn and \c upper_bound.
+    /// \param lower_bound An initializer list of lower bounds for each dimension
+    /// \param upper_bound An initializer list of upper bounds for each dimension
+    /// \throw TiledArray::Exception When the size of \c lower_bound is not
+    /// equal to that of \c upper_bound.
+    /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
     /// \throw std::bad_alloc When memory allocation fails.
-    template <typename Index,
-        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
-    explicit Range(const Index& upper_bound) {
-      const size_type n = detail::size(upper_bound);
+    Range(const std::initializer_list<size_type>& lower_bound,
+        const std::initializer_list<size_type>& upper_bound)
+    {
+      const size_type n = detail::size(lower_bound);
+      TA_ASSERT(n == detail::size(upper_bound));
       if(n) {
         // Initialize array memory
         data_ = new size_type[n << 2];
         rank_ = n;
-        init_range_data(upper_bound);
+        init_range_data(lower_bound, upper_bound);
+      }
+    }
+
+    /// Range constructor from size array
+
+    /// Construct a range with a lower bound of zero and an upper bound equal to
+    /// \c extent.
+    /// \tparam Index A vector type
+    /// \param extent A vector that defines the size of each dimension
+    /// \throw std::bad_alloc When memory allocation fails.
+    template <typename Index,
+        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
+    explicit Range(const Index& extent) {
+      const size_type n = detail::size(extent);
+      if(n) {
+        // Initialize array memory
+        data_ = new size_type[n << 2];
+        rank_ = n;
+        init_range_data(extent);
+      }
+    }
+
+    /// Range constructor from size array
+
+    /// Construct a range with a lower bound of zero and an upper bound equal to
+    /// \c extent.
+    /// \param extent An initializer list that defines the size of each dimension
+    /// \throw std::bad_alloc When memory allocation fails.
+    explicit Range(const std::initializer_list<size_type>& extent) {
+      const size_type n = detail::size(extent);
+      if(n) {
+        // Initialize array memory
+        data_ = new size_type[n << 2];
+        rank_ = n;
+        init_range_data(extent);
       }
     }
 
@@ -339,56 +385,59 @@ namespace TiledArray {
     /// \throw nothing
     unsigned int rank() const { return rank_; }
 
-    /// Range lower bound coordinate accessor
+    /// Range lower bound data accessor
 
-    /// \return A pointer to an array that contains the lower bound of this range
+    /// \return A pointer to the lower bound data (see <tt>lobound()</tt>)
     /// \throw nothing
     const size_type* lobound_data() const { return data_; }
 
     /// Range lower bound accessor
 
-    /// Provided to conform to the Tensor Working Group specification
-    /// \return A \c size_array that contains the lower bound of this range
+    /// \return A \c size_array that contains the lower bounds for each
+    /// dimension of the block range.
     /// \throw nothing
     size_array lobound() const { return size_array(lobound_data(), rank_); }
 
-    /// Range upper bound coordinate accessor
+    /// Range upper bound data accessor
 
-    /// \return A pointer to an array that contains the upper bound of this range
+    /// \return A pointer to the upper bound data (see <tt>upbound()</tt>)
     /// \throw nothing
     const size_type* upbound_data() const { return data_ + rank_; }
 
-    /// Upper bound accessor
+    /// Range upper bound accessor
 
-    /// \return A \c size_array that contains the upper bound of this range
+    /// \return A \c size_array that contains the upper bounds for each
+    /// dimension of the block range.
     /// \throw nothing
     size_array upbound() const {
       return size_array(upbound_data(), rank_);
     }
 
-    /// Size accessor
+    /// Range extent data accessor
 
-    /// \return A pointer to an array that contains the extents of this range
+    /// \return A pointer to the extent data (see <tt>extent()</tt>)
     /// \throw nothing
     const size_type* extent_data() const { return data_ + (rank_ + rank_); }
 
-    /// Size accessor
+    /// Range extent accessor
 
-    /// \return An \c extent_type that contains the extent of each rank
+    /// \return A \c extent_type that contains theextents for each dimension of
+    /// the block range.
     /// \throw nothing
     extent_type extent() const {
       return size_array(extent_data(), rank_);
     }
 
-    /// Range stride accessor
+    /// Range stride data accessor
 
-    /// \return A pointer that contains the strides of each rank
+    /// \return A pointer to the stride data (see <tt>stride()</tt>)
     /// \throw nothing
     const size_type* stride_data() const { return data_ + (rank_ + rank_ + rank_); }
 
-    /// Stride accessor
+    /// Upper bound accessor
 
-    /// \return A pointer to an array that contains the strides of this range
+    /// \return A \c size_array that contains the stride for each dimension of
+    /// the block range.
     /// \throw nothing
     size_array stride() const {
       return size_array(stride_data(), rank_);
@@ -427,8 +476,6 @@ namespace TiledArray {
     /// \return An iterator that holds the lower bound element index of a tensor
     /// \throw nothing
     const_iterator end() const { return const_iterator(data_ + rank_, this); }
-
-
 
     /// Check the coordinate to make sure it is within the range.
 
@@ -527,11 +574,24 @@ namespace TiledArray {
       const auto* restrict const bound_shift_data = detail::data(bound_shift);
       size_type* restrict const lower = data_;
       size_type* restrict const upper = data_ + rank_;
+      const size_type* restrict const stride = upper + rank_ + rank_;
 
+      offset_ = 0ul;
       for(unsigned i = 0u; i < rank_; ++i) {
+        // Load range data
         const auto bound_shift_i = bound_shift_data[i];
-        lower[i] += bound_shift_i;
-        upper[i] += bound_shift_i;
+        auto lower_i = lower[i];
+        auto upper_i = upper[i];
+        const auto stride_i = stride[i];
+
+        // Compute new range bounds
+        lower_i += bound_shift_i;
+        upper_i += bound_shift_i;
+
+        // Update range data
+        offset_ += lower_i * stride_i;
+        lower[i] = lower_i;
+        upper[i] = upper_i;
       }
 
       return *this;

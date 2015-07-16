@@ -23,6 +23,6 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ relea
 set(BLAS_LIBRARIES "-Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_sequential.a -Wl,--end-group -lpthread -lm -ldl" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES "${BLAS_LIBRARIES};-ldl" CACHE STRING "LAPACK linker flags")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
-set(MAD_EXTRA_CONF_FLAGS "--with-tbb=/opt/intel/tbb")
-set(TiledArray_LIBRARIES "{TiledArray_LIBRARIES} -ltbb")
+set(TBB_INCLUDE_DIR "/opt/intel/tbb/include")
+set(TBB_LIBRARY "/opt/intel/tbb/lib/intel64/gcc4.4")
 
