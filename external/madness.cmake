@@ -194,6 +194,16 @@ else()
     append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
     append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
   endif()
+  
+  if(ENABLE_SHARED_LIBRARIES)
+    set(MAD_ENALBE_SHARED "--enable-shared")
+    set(MAD_ENABLE_STATIC "--disable-static")
+  else()
+    set(MAD_ENALBE_SHARED "--disable-shared")
+    set(MAD_ENABLE_STATIC "--enable-static")
+  endif()
+  
+  message("${MAD_ENALBE_SHARED} ${MAD_ENABLE_STATIC}")
 
   # Set compile flags required for Elemental
   if(ENABLE_ELEMENTAL)
@@ -310,6 +320,8 @@ else()
   execute_process(
       COMMAND "${MADNESS_SOURCE_DIR}/configure"
                 "--prefix=${CMAKE_INSTALL_PREFIX}"
+                "${MAD_ENABLE_SHARED}"
+                "${MAD_ENABLE_STATIC}"
                 "--disable-debugging"
                 "--disable-optimization"
                 "--disable-optimal"
