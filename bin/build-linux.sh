@@ -19,10 +19,11 @@ export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:$LD_LIBRARY_PATH
 mkdir _build
 mkdir _install
 cd _build
-/usr/local/bin/cmake -DCMAKE_INSTALL_PREFIX=../_install -DTA_BUILD_UNITTEST=ON -DCMAKE_BUILD_TYPE=Debug ..
+cmake -DCMAKE_INSTALL_PREFIX=../_install -DTA_BUILD_UNITTEST=ON -DCMAKE_BUILD_TYPE=Debug ..
 
 # Build all libraries, examples, and applications
-make -j2 all
+make -j2 all VERBOSE=1
+make install
 make -j2 ta_test VERBOSE=1
 cd tests
 export MAD_NUM_THREADS=2

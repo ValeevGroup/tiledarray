@@ -79,7 +79,7 @@ else()
         "Path to the MADNESS source code")
   set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(Madness_TAG "defad5bd3d95cc2245179dee9b23cddc937e9112" CACHE STRING 
+  set(Madness_TAG "8edb1d21d931208805d2b1ecbb848e419194ac6f" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${Madness_TAG}" STREQUAL "")
@@ -213,19 +213,19 @@ else()
     # Set compile flags required for Elemental
   if(ENABLE_TBB)
     if(TBB_INCLUDE_DIR AND EXISTS ${TBB_INCLUDE_DIR})
-      append_flags(MAD_TBB_FLAGS "--with-tbb-include=${TBB_INCLUDE_DIR}")
+      append_flags(MAD_TBB_INCLUDE_FLAG "--with-tbb-include=${TBB_INCLUDE_DIR}")
     endif()
     if(TBB_LIBRARY AND EXISTS ${TBB_LIBRARY})
-      append_flags(MAD_TBB_FLAGS "--with-tbb-lib=${TBB_LIBRARY}")
+      append_flags(MAD_TBB_LIB_FLAG "--with-tbb-lib=${TBB_LIBRARY}")
     endif()
     if(TBB_ROOT_DIR AND EXISTS ${TBB_ROOT_DIR})
-      append_flags(MAD_TBB_FLAGS "--with-tbb=${TBB_ROOT_DIR}")
+      append_flags(MAD_TBB_FLAG "--with-tbb=${TBB_ROOT_DIR}")
     endif()
-    if("${MAD_TBB_FLAGS}" STREQUAL "")
-      set(MAD_TBB_FLAGS "--with-tbb=yes")
+    if("${MAD_TBB_FLAG}" STREQUAL "")
+      set(MAD_TBB_FLAG "--with-tbb=yes")
     endif()
   else()
-    set(MAD_TBB_FLAGS "--with-tbb=no")
+    set(MAD_TBB_FLAG "--with-tbb=no")
   endif()
   
   
@@ -256,7 +256,7 @@ else()
         append_flags(MAD_LIBS "${_lib}")
       endforeach()
       foreach(_lib ${BLAS_LIBRARIES})
-        append_flags(MAD_LIBS "${BLAS_LIBRARIES}")
+        append_flags(MAD_LIBS "${_lib}")
       endforeach()
     if(UNIX AND BLA_STATIC)
       append_flags(MAD_LIBS "-Wl,--end-group")
@@ -320,8 +320,9 @@ else()
                 "--with-fortran-int32=${MAD_F77_INT32}"
                 "--with-stubmpi=${MAD_STUB_MPI}"
                 "--with-elemental=${MAD_ELEMENTAL_FLAG}"
-                "--with-tbb-include=${TBB_INCLUDE_DIR}"
-                "--with-tbb-lib=${TBB_LIBRARY}"
+                "${MAD_TBB_FLAG}" 
+                "${MAD_TBB_INCLUDE_FLAG}"
+                "${MAD_TBB_LIB_FLAG}"
                 "--without-mkl"
                 "--without-libxc"
                 "${MAD_EXTRA_CONFIGURE_FLAGS}"
@@ -341,20 +342,20 @@ else()
   
   include(${MADNESS_BINARY_DIR}/config/madness-project.cmake)
 
-  message("Madness_INCLUDE_DIRS        = ${Madness_INCLUDE_DIRS}")
-  message("Madness_LIBRARIES           = ${Madness_LIBRARIES}")
-  message("Madness_MADchem_LIBRARY     = ${Madness_MADchem_LIBRARY}")
-  message("Madness_MADmra_LIBRARY      = ${Madness_MADmra_LIBRARY}")
-  message("Madness_MADtinyxml_LIBRARY  = ${Madness_MADtinyxml_LIBRARY}")
-  message("Madness_MADmuparser_LIBRARY = ${Madness_MADmuparser_LIBRARY}")
-  message("Madness_MADlinalg_LIBRARY   = ${Madness_MADlinalg_LIBRARY}")
-  message("Madness_MADtensor_LIBRARY   = ${Madness_MADtensor_LIBRARY}")
-  message("Madness_MADmisc_LIBRARY     = ${Madness_MADmisc_LIBRARY}")
-  message("Madness_MADworld_LIBRARY    = ${Madness_MADworld_LIBRARY}")
-  message("Madness_COMPILE_FLAGS       = ${Madness_COMPILE_FLAGS}")
-  message("Madness_LINKER_FLAGS        = ${Madness_LINKER_FLAGS}")
-  message("Madness_VERSION             = ${Madness_VERSION}")
-  message("Madness_F77_INTEGER_SIZE    = ${Madness_F77_INTEGER_SIZE}")
+#  message("Madness_INCLUDE_DIRS        = ${Madness_INCLUDE_DIRS}")
+#  message("Madness_LIBRARIES           = ${Madness_LIBRARIES}")
+#  message("Madness_MADchem_LIBRARY     = ${Madness_MADchem_LIBRARY}")
+#  message("Madness_MADmra_LIBRARY      = ${Madness_MADmra_LIBRARY}")
+#  message("Madness_MADtinyxml_LIBRARY  = ${Madness_MADtinyxml_LIBRARY}")
+#  message("Madness_MADmuparser_LIBRARY = ${Madness_MADmuparser_LIBRARY}")
+#  message("Madness_MADlinalg_LIBRARY   = ${Madness_MADlinalg_LIBRARY}")
+#  message("Madness_MADtensor_LIBRARY   = ${Madness_MADtensor_LIBRARY}")
+#  message("Madness_MADmisc_LIBRARY     = ${Madness_MADmisc_LIBRARY}")
+#  message("Madness_MADworld_LIBRARY    = ${Madness_MADworld_LIBRARY}")
+#  message("Madness_COMPILE_FLAGS       = ${Madness_COMPILE_FLAGS}")
+#  message("Madness_LINKER_FLAGS        = ${Madness_LINKER_FLAGS}")
+#  message("Madness_VERSION             = ${Madness_VERSION}")
+#  message("Madness_F77_INTEGER_SIZE    = ${Madness_F77_INTEGER_SIZE}")
   
   # Removed all the flags passed to MADNESS configure
   string(REGEX REPLACE "-(O[0-9s]|g[0-9]?)([ ]+|$)" "" MAD_CXXFLAGS "${MAD_CXXFLAGS}")
@@ -380,9 +381,9 @@ else()
     ${Madness_MADlinalg_LIBRARY} ${Madness_MADtensor_LIBRARY}
     ${Madness_MADmisc_LIBRARY})
   
-  message("Madness_COMPILE_FLAGS = '${Madness_COMPILE_FLAGS}'")
-  message("Madness_LIBRARIES     = '${Madness_LIBRARIES}'")
-  message("Madness_LINKER_FLAGS  = '${Madness_LINKER_FLAGS}'")
+#  message("Madness_COMPILE_FLAGS = '${Madness_COMPILE_FLAGS}'")
+#  message("Madness_LIBRARIES     = '${Madness_LIBRARIES}'")
+#  message("Madness_LINKER_FLAGS  = '${Madness_LINKER_FLAGS}'")
 
   set(MAD_CPPFLAGS "${CMAKE_CPP_FLAGS}")
   set(MAD_CFLAGS "${CMAKE_C_FLAGS}")
@@ -395,7 +396,7 @@ else()
     append_flags(MAD_CXXFLAGS "")
   endif()
   add_custom_target(madness-build ALL
-      COMMAND ${CMAKE_MAKE_PROGRAM} world V=0
+      COMMAND $(MAKE) world V=0
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 

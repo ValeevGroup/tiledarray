@@ -43,6 +43,18 @@ namespace TiledArray {
 
   /// Apply a function to each tile of a dense Array
 
+  /// This function uses an \c Array object to generate a new \c Array with
+  /// modified tile data. Users must provide a function/functor that initializes
+  /// the tiles for the new \c Array object. For example, if we want to create a
+  /// new array with were each element is element is equal to the square root of
+  /// the original array:
+  /// \code
+  /// TiledArray::Array<2, double> out_array =
+  ///     foreach(in_array, [=] (TiledArray::Tensor<double>& out_tile, const TiledArray::Tensor<double>& in_tile) {
+  ///       out_tile = TiledArray::Tensor<double>(in_tile, [=] (const double value) -> double
+  ///           { return std::sqrt(value); });
+  ///     });
+  /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
   /// void op(typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& result_tile,
@@ -85,8 +97,17 @@ namespace TiledArray {
     return result;
   }
 
-  /// Apply a function to each tile of a dense Array
+  /// Modify each tile of a dense Array
 
+  /// This function modifies the tile data of \c Array object. Users must
+  /// provide a function/functor that modifies the tile data. For example, if we
+  /// want to modify the elements of the array to be equal to the the square
+  /// root of the original value:
+  /// \code
+  /// foreach(array, [] (TiledArray::Tensor<double>& tile) {
+  ///   tile.inplace_unary([&] (double& value) { value = std::sqrt(value); });
+  /// });
+  /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
   /// void op(typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& tile);
@@ -147,6 +168,25 @@ namespace TiledArray {
 
   /// Apply a function to each tile of a sparse Array
 
+  /// This function uses an \c Array object to generate a new \c Array with
+  /// modified tile data. Users must provide a function/functor that initializes
+  /// the tiles for the new \c Array object. For example, if we want to create a
+  /// new array with were each element is element is equal to the square root of
+  /// the original array:
+  /// \code
+  /// TiledArray::Array<2, double, Tensor<double>, SparsePolicy> out_array =
+  ///     foreach(in_array, [] (TiledArray::Tensor<double>& out_tile,
+  ///                           const TiledArray::Tensor<double>& in_tile) -> float
+  ///     {
+  ///       double norm_squared = 0.0;
+  ///       out_tile = TiledArray::Tensor<double>(in_tile, [&] (const double value) -> double {
+  ///         const double result = std::sqrt(value);
+  ///         norm_squared += result * result;
+  ///         return result;
+  ///       });
+  ///       return std::sqrt(norm_squared);
+  ///     });
+  /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
   /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& result_tile,
@@ -221,8 +261,22 @@ namespace TiledArray {
   }
 
 
-  /// Modify the tiles of
+  /// Modify each tile of a sparse Array
 
+  /// This function modifies the tile data of \c Array object. Users must
+  /// provide a function/functor that modifies the tile data. For example, if we
+  /// want to modify the elements of the array to be equal to the the square
+  /// root of the original value:
+  /// \code
+  /// foreach(array, [] (TiledArray::Tensor<double>& tile) -> float {
+  ///   double norm_squared = 0.0;
+  ///   tile.inplace_unary([&] (double& value) {
+  ///     norm_squared += value; // Assume value >= 0
+  ///     value = std::sqrt(value);
+  ///   });
+  ///   return std::sqrt(norm_squared);
+  /// });
+  /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
   /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& tile);

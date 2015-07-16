@@ -50,6 +50,9 @@
 // Utility functionality
 #include <TiledArray/conversions/eigen.h>
 
+// Linear algebra
+#include <TiledArray/algebra/conjgrad.h>
+
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>
 #endif
