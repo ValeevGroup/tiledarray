@@ -51,7 +51,7 @@ namespace TiledArray {
   /// \code
   /// TiledArray::Array<2, double> out_array =
   ///     foreach(in_array, [=] (TiledArray::Tensor<double>& out_tile, const TiledArray::Tensor<double>& in_tile) {
-  ///       out_tile = TiledArray::Tensor<double>(in_tile, [=] (const double value) -> double
+  ///       out_tile = in_tile.unary([=] (const double value) -> double
   ///           { return std::sqrt(value); });
   ///     });
   /// \endcode
@@ -189,7 +189,7 @@ namespace TiledArray {
   ///                           const TiledArray::Tensor<double>& in_tile) -> float
   ///     {
   ///       double norm_squared = 0.0;
-  ///       out_tile = TiledArray::Tensor<double>(in_tile, [&] (const double value) -> double {
+  ///       out_tile = in_tile.unary([&] (const double value) -> double {
   ///         const double result = std::sqrt(value);
   ///         norm_squared += result * result;
   ///         return result;
@@ -223,12 +223,12 @@ namespace TiledArray {
     std::vector<datum_type> tiles;
     tiles.reserve(arg.get_pmap()->size());
 
-    // Collect updated shape data.
+    // Construct a tensor to hold updated tile norms for the result shape.
     TiledArray::Tensor<typename shape_type::value_type,
         Eigen::aligned_allocator<typename shape_type::value_type> >
     tile_norms(arg.trange().tiles(), 0);
 
-    // Construct the new tile norms and
+    // Construct the task function used to construct the result tiles.
     madness::AtomicInt counter; counter = 0;
     int task_count = 0;
     auto task = [&](const size_type index, const value_type& arg_tile) -> value_type {
@@ -323,12 +323,12 @@ namespace TiledArray {
     std::vector<datum_type> tiles;
     tiles.reserve(arg.get_pmap()->size());
 
-    // Collect updated shape data.
+    // Construct a tensor to hold updated tile norms for the result shape.
     TiledArray::Tensor<typename shape_type::value_type,
         Eigen::aligned_allocator<typename shape_type::value_type> >
     tile_norms(arg.trange().tiles(), 0);
 
-    // Construct the new tile norms and
+    // Construct the task function used to modify tiles.
     madness::AtomicInt counter; counter = 0;
     int task_count = 0;
     auto task = [&](const size_type index, value_type& arg_tile) -> value_type {
