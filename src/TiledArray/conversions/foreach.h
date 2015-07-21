@@ -18,7 +18,7 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  truncate.h
+ *  foreach.h
  *  Apr 15, 2015
  *
  */
@@ -43,11 +43,12 @@ namespace TiledArray {
 
   /// Apply a function to each tile of a dense Array
 
-  /// This function uses an \c Array object to generate a new \c Array with
-  /// modified tile data. Users must provide a function/functor that initializes
-  /// the tiles for the new \c Array object. For example, if we want to create a
-  /// new array with were each element is element is equal to the square root of
-  /// the original array:
+  /// This function uses an \c Array object to generate a new \c Array where the
+  /// output tiles are a function of the input tiles. Users must provide a
+  /// function/functor that initializes the tiles for the new \c Array object.
+  /// For example, if we want to create a new array with were each element is
+  /// equal to the square root of the corresponding element of the original
+  /// array:
   /// \code
   /// TiledArray::Array<2, double> out_array =
   ///     foreach(in_array, [=] (TiledArray::Tensor<double>& out_tile, const TiledArray::Tensor<double>& in_tile) {
@@ -178,11 +179,12 @@ namespace TiledArray {
 
   /// Apply a function to each tile of a sparse Array
 
-  /// This function uses an \c Array object to generate a new \c Array with
-  /// modified tile data. Users must provide a function/functor that initializes
-  /// the tiles for the new \c Array object. For example, if we want to create a
-  /// new array with were each element is element is equal to the square root of
-  /// the original array:
+  /// This function uses an \c Array object to generate a new \c Array where the
+  /// output tiles are a function of the input tiles. Users must provide a
+  /// function/functor that initializes the tiles for the new \c Array object.
+  /// For example, if we want to create a new array with were each element is
+  /// equal to the square root of the corresponding element of the original
+  /// array:
   /// \code
   /// TiledArray::Array<2, double, Tensor<double>, SparsePolicy> out_array =
   ///     foreach(in_array, [] (TiledArray::Tensor<double>& out_tile,
@@ -202,7 +204,10 @@ namespace TiledArray {
   /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& result_tile,
   ///     const typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& arg_tile);
   /// \endcode
-  /// where the return value of \c op is the 2-norm (Fibrinous norm).
+  /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
+  /// result tile.
+  /// \note This function should not be used to initialize the tiles of an array
+  /// object.
   /// \tparam Op Tile operation
   /// \tparam T Element type of the array
   /// \tparam DIM Dimension of the array
@@ -274,9 +279,9 @@ namespace TiledArray {
   /// Modify each tile of a sparse Array
 
   /// This function modifies the tile data of \c Array object. Users must
-  /// provide a function/functor that modifies the tile data. For example, if we
-  /// want to modify the elements of the array to be equal to the the square
-  /// root of the original value:
+  /// provide a function/functor that modifies the tile data in place. For
+  /// example, if we want to modify the elements of the array to be equal to the
+  /// square root of the original value:
   /// \code
   /// foreach(array, [] (TiledArray::Tensor<double>& tile) -> float {
   ///   double norm_squared = 0.0;
@@ -291,7 +296,10 @@ namespace TiledArray {
   /// \code
   /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& tile);
   /// \endcode
-  /// where the return value of \c op is the 2-norm (Fibrinous norm).
+  /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
+  /// tile.
+  /// \note This function should not be used to initialize the tiles of an array
+  /// object.
   /// \tparam Op Tile operation
   /// \tparam T Element type of the array
   /// \tparam DIM Dimension of the array
