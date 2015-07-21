@@ -70,6 +70,7 @@ namespace TiledArray {
   inline Array<T, DIM, Tile, DensePolicy>
   foreach(const Array<T, DIM, Tile, DensePolicy>& arg, Op&& op) {
     typedef Array<T, DIM, Tile, DensePolicy> array_type;
+    typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
 
     World& world = arg.get_world();
@@ -77,21 +78,26 @@ namespace TiledArray {
     // Make an empty result array
     array_type result(world, arg.trange(), arg.get_pmap());
 
+    // Construct the task function used to construct result tiles.
+    auto task = [=] (const value_type& arg_tile) -> value_type {
+      typename array_type::value_type result_tile;
+      op(result_tile, arg_tile);
+      return result_tile;
+    };
+
     // Iterate over local tiles of arg
     typename array_type::pmap_interface::const_iterator
     it = arg.get_pmap()->begin(),
     end = arg.get_pmap()->end();
     for(; it != end; ++it) {
+      const size_type index = *it;
+
       // Spawn a task to evaluate the tile
       Future<typename array_type::value_type> tile =
-          world.taskq.add([=] (const typename array_type::value_type arg_tile) {
-            typename array_type::value_type result_tile;
-            op(result_tile, arg_tile);
-            return result_tile;
-          }, arg.find(*it));
+          world.taskq.add(task, arg.find(index));
 
       // Store result tile
-      result.set(*it, tile);
+      result.set(index, tile);
     }
 
     return result;
@@ -146,20 +152,24 @@ namespace TiledArray {
     // Make an empty result array
     array_type result(world, arg.trange(), arg.get_pmap());
 
+    // Construct the task function used to modify tiles.
+    auto task = [=] (value_type& arg_tile) -> value_type {
+      op(arg_tile);
+      return arg_tile;
+    };
+
     // Iterate over local tiles of arg
     typename array_type::pmap_interface::const_iterator
     it = arg.get_pmap()->begin(),
     end = arg.get_pmap()->end();
     for(; it != end; ++it) {
+      const size_type index = *it;
       // Spawn a task to evaluate the tile
       Future<value_type> tile =
-          world.taskq.add([=] (value_type& arg_tile) {
-            op(arg_tile);
-            return arg_tile;
-          }, arg.find(*it));
+          world.taskq.add(task, arg.find(index));
 
       // Store result tile
-      result.set(*it, tile);
+      result.set(index, tile);
     }
 
     // Set the arg with the new array
@@ -221,7 +231,7 @@ namespace TiledArray {
     // Construct the new tile norms and
     madness::AtomicInt counter; counter = 0;
     int task_count = 0;
-    auto task = [&](const size_type index, const value_type& arg_tile) {
+    auto task = [&](const size_type index, const value_type& arg_tile) -> value_type {
       value_type result_tile;
       tile_norms[index] = op(result_tile, arg_tile);
       ++counter;
@@ -246,7 +256,7 @@ namespace TiledArray {
 
     // Wait for tile norm data to be collected.
     if(task_count > 0)
-      world.await([&counter,task_count] () {return counter == task_count; });
+      world.await([&counter,task_count] () -> bool { return counter == task_count; });
 
     // Construct the new array
     array_type result(world, arg.trange(),
@@ -321,7 +331,7 @@ namespace TiledArray {
     // Construct the new tile norms and
     madness::AtomicInt counter; counter = 0;
     int task_count = 0;
-    auto task = [&](const size_type index, value_type& arg_tile) {
+    auto task = [&](const size_type index, value_type& arg_tile) -> value_type {
       tile_norms[index] = op(arg_tile);
       ++counter;
       return arg_tile;
@@ -350,7 +360,7 @@ namespace TiledArray {
 
     // Wait for tile norm data to be collected.
     if(task_count > 0)
-      world.await([&counter,task_count] () {return counter == task_count; });
+      world.await([&counter,task_count] () -> bool { return counter == task_count; });
 
     // Construct the new array
     array_type result(world, arg.trange(),
