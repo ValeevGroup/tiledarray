@@ -338,7 +338,7 @@ namespace TiledArray {
           [=] (const typename pmap_interface::const_iterator& it) mutable {
             const size_type index = *it;
             if(! array.is_zero(index))
-              array.set(index, op(array.trange().make_tile_range(*it)));
+              array.set(index, op(array.trange().make_tile_range(index)));
             return true;
           });
 
