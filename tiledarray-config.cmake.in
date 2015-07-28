@@ -15,7 +15,7 @@ set(TiledArray_INCLUDE_DIRS ${TiledArray_DIR}/include)
 set(TiledArray_VERSION "@TILEDARRAY_VERSION@")
 
 # Set compile and link flags, and remove optimization and debug flags
-set(TiledArray_COMPILE_FLAGS @CMAKE_CXX_FLAGS@)
+set(TiledArray_COMPILE_FLAGS "@CMAKE_CXX_FLAGS@")
 set(TiledArray_LINKER_FLAGS "@CMAKE_EXE_LINKER_FLAGS@")
 list(APPEND TiledArray_INCLUDE_DIRS @TiledArray_CONFIG_INCLUDE_DIRS@)
 set(TiledArray_LIBRARIES @TiledArray_CONFIG_LIBRARIES@)
