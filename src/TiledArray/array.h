@@ -321,30 +321,43 @@ namespace TiledArray {
     /// \code
     /// value_type op(const range_type&)
     /// \endcode
+    /// For example, in the following code, the array tiles are initialized with
+    /// random numbers from 0 to 1:
+    /// \code
+    /// array.init_local_tiles([] (const TiledArray::Range& range) -> TiledArray::Tensor<double>
+    ///     {
+    ///        // Initialize the tile with the given range object
+    ///        TiledArray::Tensor<double> tile(range);
+    ///
+    ///        // Initialize the random number generator
+    ///        std::default_random_engine generator;
+    ///        std::uniform_real_distribution<double> distribution(0.0,1.0);
+    ///
+    ///        // Fill the tile with random numbers
+    ///        for(auto& value : tile)
+    ///           value = distribution(generator);
+    ///
+    ///        return tile;
+    ///     });
+    /// \endcode
     /// \tparam Op Tile operation type
     /// \param op The operation used to generate tiles
-    /// \param wait Wait for all tiles to be set before proceeding
-    /// \note It is typically not necessary to wait for tile initialization
-    /// before using arrays in tensor arithmetic expressions.
     template <typename Op>
-    void init_local_tiles(Op&& op, const bool wait = false) {
+    void init_local_tiles(Op&& op) {
       check_pimpl();
-      madness::Range<typename pmap_interface::const_iterator>
-          range(pimpl_->pmap()->begin(), pimpl_->pmap()->end(), 8);
 
-      Array_ array(*this);
-
-      Future<bool> result = pimpl_->get_world().taskq.for_each(range,
-          [=] (const typename pmap_interface::const_iterator& it) mutable {
-            const size_type index = *it;
-            if(! array.is_zero(index))
-              array.set(index, op(array.trange().make_tile_range(index)));
-            return true;
-          });
-
-      // Wait for all tiles to be set
-      if(wait)
-        result.get();
+      auto it = pimpl_->pmap()->begin();
+      const auto end = pimpl_->pmap()->end();
+      for(; it != end; ++it) {
+        const auto index = *it;
+        if(! pimpl_->is_zero(index)) {
+          Future<value_type> tile = pimpl_->get_world().taskq.add(
+              [] (Array_& array, const size_type index, const Op& op) -> value_type
+              { return op(array.trange().make_tile_range(index)); },
+              *this, index, op);
+          set(index, tile);
+        }
+      }
     }
 
     /// Tiled range accessor

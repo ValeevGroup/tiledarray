@@ -58,86 +58,46 @@ namespace TiledArray {
 
       Expr<Derived>& operator=(const Expr<Derived>&);
 
-      /// Tile assignment functor
+      /// Task function used to evaluate lazy tiles
 
-      /// This functor will set tiles of a distributed evaluator to an array,
-      /// given a process map iterator. If the input tile is a lazy tile, then
-      /// it is evaluated on the stack or a task is spawned to evaluate it when
-      /// the tile is ready.
-      /// \tparam A An \c Array type
-      /// \tparam DE A distributed evaluator type
-      template <typename A, typename DE>
-      struct EvalTiles {
-      private:
-        A& array_; ///< The array object that will hold the result tiles
-        DE& dist_eval_; ///< The distributed evaluator that holds the input tiles
+      /// \tparam T The lazy tile type
+      /// \param tile The lazy tile
+      /// \return The evaluated tile
+      template <typename T>
+      static typename TiledArray::eval_trait<T>::type eval_tile(const T& tile) {
+        return tile;
+      }
 
-        /// Task function used to evaluate lazy tiles
+      /// Set an array tile with a lazy tile
 
-        /// \tparam Tile The lazy tile type
-        /// \param tile The lazy tile
-        /// \return The evaluated tile
-        template <typename Tile>
-        static typename Tile::eval_type eval_tile(const Tile& tile) {
-          return tile;
-        }
+      /// Spawn a task to evaluate a lazy tile and set the \a array tile at
+      /// \c index with the result.
+      /// \tparam A The array type
+      /// \tparam I The index type
+      /// \tparam T The lazy tile type
+      /// \param array The result array
+      /// \param index The tile index
+      /// \param tile The lazy tile
+      template <typename A, typename I, typename T>
+      typename std::enable_if<TiledArray::detail::is_lazy_tile<T>::value>::type
+      set_tile(A& array, const I index, const Future<T>& tile) const {
+        array.set(index, array.get_world().taskq.add(
+              & Expr_::template eval_tile<T>, tile));
+      }
 
-        /// Set an array tile from a lazy tile
+      /// Set the \c array tile at \c index with \c tile
 
-        /// \tparam Tile The lazy tile type
-        /// \param index The tile index
-        /// \param tile The lazy tile
-        template <typename Tile>
-        typename std::enable_if<TiledArray::detail::is_lazy_tile<Tile>::value>::type
-        set_tile(typename A::size_type index, const Future<Tile>& tile) const {
-          if(tile.probe()) {
-            array_.set(index, tile.get());
-          } else {
-            array_.set(index, array_.get_world().taskq.add(
-                EvalTiles::template eval_tile<Tile>, tile));
-          }
-        }
-
-        /// Set an array tile
-
-        /// \tparam Tile The tile type
-        /// \param index The tile index
-        /// \param tile The tile
-        template <typename Tile>
-        typename std::enable_if<! TiledArray::detail::is_lazy_tile<Tile>::value>::type
-        set_tile(typename A::size_type index, const Future<Tile>& tile) const {
-          array_.set(index, tile);
-        }
-
-      public:
-
-        /// Constructor
-
-        /// \param array The array object that will hold the result
-        /// \param dist_eval The distributed evaluator that holds the input tiles
-        EvalTiles(A& array, DE& dist_eval) :
-          array_(array), dist_eval_(dist_eval)
-        { }
-
-        /// Copy constructor
-
-        /// \param other The functor to be copied
-        EvalTiles(const EvalTiles& other) :
-          array_(other.array_), dist_eval_(other.dist_eval_)
-        { }
-
-        /// Set tile operator
-
-        /// \param it An index iterator from a process map
-        /// \return true
-        bool operator()(const typename DE::pmap_interface::const_iterator& it) const {
-          if(! dist_eval_.is_zero(*it)) {
-            Future<typename DE::value_type> tile = dist_eval_.get(*it);
-            set_tile(*it, tile);
-          }
-          return true;
-        }
-      }; // struct EvalTiles
+      /// \tparam A The array type
+      /// \tparam I The index type
+      /// \tparam T The lazy tile type
+      /// \param array The result array
+      /// \param index The tile index
+      /// \param tile The tile
+      template <typename A, typename I, typename T>
+      typename std::enable_if<! TiledArray::detail::is_lazy_tile<T>::value>::type
+      set_tile(A& array, const I index, const Future<T>& tile) const {
+        array.set(index, tile);
+      }
 
       /// Array factor function
 
@@ -164,11 +124,14 @@ namespace TiledArray {
         A result(dist_eval.get_world(), dist_eval.trange(),
             dist_eval.shape(), dist_eval.pmap());
 
-        // Move the data from disteval into the result array
-        int chuck_size = std::max<int>(1u,
-            dist_eval.pmap()->local_size() / (madness::ThreadPool::size() + 1));
-        world.taskq.for_each(range_type(dist_eval.pmap()->begin(), dist_eval.pmap()->end(), chuck_size),
-            EvalTiles<A, typename engine_type::dist_eval_type>(result, dist_eval)).get();
+        // Move the data from dist_eval into the result array
+        auto it = dist_eval.pmap()->begin();
+        const auto end = dist_eval.pmap()->end();
+        for(; it != end; ++it) {
+          const auto index = *it;
+          if(! dist_eval.is_zero(index))
+            set_tile(result, index, dist_eval.get(index));
+        }
 
         // Wait for child expressions of dist_eval
         dist_eval.wait();
