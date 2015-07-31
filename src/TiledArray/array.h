@@ -78,24 +78,47 @@ namespace TiledArray {
     /// deleted only after the object has been deleted in all processes.
     /// \param pimpl The implementation pointer to be deleted.
     static void lazy_deleter(const impl_type* const pimpl) {
-      try {
-        if(pimpl) {
-          if(madness::initialized()) {
-            World& world = pimpl->get_world();
-            const madness::uniqueidT id = pimpl->id();
-            cleanup_counter_++;
+      if(pimpl) {
+        if(madness::initialized()) {
+          World& world = pimpl->get_world();
+          const madness::uniqueidT id = pimpl->id();
+          cleanup_counter_++;
+
+          try {
             world.gop.lazy_sync(id, [pimpl]() {
               delete pimpl;
               Array_::cleanup_counter_--;
             });
-          } else {
+          }
+          catch(madness::MadnessException& e) {
+            fprintf(stderr, "!! ERROR TiledArray: madness::MadnessException thrown in Array::lazy_deleter().\n"
+                            "%s\n"
+                            "!! ERROR TiledArray: The exception has been absorbed.\n"
+                            "!! ERROR TiledArray: rank=%i\n", e.what(), world.rank());
+
+            cleanup_counter_--;
             delete pimpl;
           }
+          catch(std::exception& e) {
+            fprintf(stderr, "!! ERROR TiledArray: std::exception thrown in Array::lazy_deleter().\n"
+                            "%s\n"
+                            "!! ERROR TiledArray: The exception has been absorbed.\n"
+                            "!! ERROR TiledArray: rank=%i\n", e.what(), world.rank());
+
+            cleanup_counter_--;
+            delete pimpl;
+          }
+          catch(...) {
+            fprintf(stderr, "!! ERROR TiledArray: An unknown exception was thrown in Array::lazy_deleter().\n"
+                            "!! ERROR TiledArray: The exception has been absorbed.\n"
+                            "!! ERROR TiledArray: rank=%i\n", world.rank());
+
+            cleanup_counter_--;
+            delete pimpl;
+          }
+        } else {
+          delete pimpl;
         }
-      } catch(...) {
-        fprintf(stderr, "!! ERROR TiledArray: An error occurred in Array::lazy_deleter()\n");
-        // Abort since we cannot throw from a destructor.
-        SafeMPI::COMM_WORLD.Abort(1);
       }
     }
 
