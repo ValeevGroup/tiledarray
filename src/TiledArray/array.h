@@ -386,7 +386,6 @@ namespace TiledArray {
     /// Tiled range accessor
 
     /// \return A const reference to the tiled range object for the array
-    /// \throw nothing
     const trange_type& trange() const {
       check_pimpl();
       return pimpl_->trange();
@@ -395,7 +394,6 @@ namespace TiledArray {
     /// Tile range accessor
 
     /// \return A const reference to the range object for the array tiles
-    /// \throw nothing
     const range_type& range() const {
       check_pimpl();
       return pimpl_->range();
@@ -404,7 +402,6 @@ namespace TiledArray {
     /// Element range accessor
 
     /// \return A const reference to the range object for the array elements
-    /// \throw nothing
     const typename trange_type::tile_range_type& elements() const {
       check_pimpl();
       return pimpl_->trange().elements();
@@ -499,14 +496,20 @@ namespace TiledArray {
     /// \tparam Index An index type
     /// \param i The index of a tile
     /// \return The process ID of the owner of a tile.
-    /// \note This does not indicate whether a tile exists or not. Only, who
-    /// would own it if it does exist.
+    /// \note This does not indicate whether a tile exists or not. Only, the
+    /// rank of the process that would own it if it does exist.
     template <typename Index>
     ProcessID owner(const Index& i) const {
       check_index(i);
       return pimpl_->owner(i);
     }
 
+    /// Check if the tile at index \c i is stored locally
+
+    /// \tparam Index A coordinate or ordinal index type
+    /// \param i The coordinate or ordinal index of the tile to be checked
+    /// \return \c true if \c owner(i) is equal to the MPI process rank,
+    /// otherwise \c false.
     template <typename Index>
     bool is_local(const Index& i) const {
       check_index(i);
@@ -555,6 +558,10 @@ namespace TiledArray {
     /// \note This function is a no-op for dense arrays.
     void truncate() { TiledArray::truncate(*this); }
 
+    /// Check if the array is initialized
+
+    /// \return \c false if the array has been default initialized, otherwise
+    /// \c true.
     bool is_initialized() const { return static_cast<bool>(pimpl_); }
 
   private:
