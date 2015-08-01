@@ -86,16 +86,16 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(first_argument_type first, second_argument_type second) const {
-        return TiledArray::subt(first, second, BinaryInterface_::permutation());
+      result_type permute_op(first_argument_type first, second_argument_type second) const {
+        return subt(first, second, BinaryInterface_::permutation());
       }
 
-      result_type permute(ZeroTensor, second_argument_type second) const {
-        return TiledArray::neg(second, BinaryInterface_::permutation());
+      result_type permute_op(ZeroTensor, second_argument_type second) const {
+        return neg(second, BinaryInterface_::permutation());
       }
 
-      result_type permute(first_argument_type first, ZeroTensor) const {
-        return TiledArray::permute(first, BinaryInterface_::permutation());
+      result_type permute_op(first_argument_type first, ZeroTensor) const {
+        return permute(first, BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -104,43 +104,43 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename std::enable_if<!(LC || RC), result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) {
-        return TiledArray::subt(first, second);
+      no_permute_op(first_argument_type first, second_argument_type second) {
+        return subt(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
-      no_permute(Left& first, second_argument_type second) {
-        return TiledArray::subt_to(first, second);
+      no_permute_op(Left& first, second_argument_type second) {
+        return subt_to(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC && RC, result_type>::type
-      no_permute(first_argument_type first, Right& second) {
-        return TiledArray::subt_to(second, first, -1);
+      no_permute_op(first_argument_type first, Right& second) {
+        return subt_to(second, first, -1);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!RC, result_type>::type
-      no_permute(ZeroTensor, second_argument_type second) {
-        return TiledArray::neg(second);
+      no_permute_op(ZeroTensor, second_argument_type second) {
+        return neg(second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<RC, result_type>::type
-      no_permute(ZeroTensor, Right& second) {
-        return TiledArray::neg_to(second);
+      no_permute_op(ZeroTensor, Right& second) {
+        return neg_to(second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC, result_type>::type
-      no_permute(first_argument_type first, ZeroTensor) {
-        return TiledArray::clone(first);
+      no_permute_op(first_argument_type first, ZeroTensor) {
+        return clone(first);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
-      no_permute(Left& first, ZeroTensor) {
+      no_permute_op(Left& first, ZeroTensor) {
         return first;
       }
 

@@ -103,9 +103,9 @@ namespace TiledArray {
       /// \c first and \c second .
       result_type operator()(first_argument_type first, second_argument_type second) const {
         if(derived().permutation())
-          return derived().permute(first, second);
+          return derived().permute_op(first, second);
 
-        return derived().template no_permute<left_is_consumable::value,
+        return derived().template no_permute_op<left_is_consumable::value,
             right_is_consumable::value>(first, second);
       }
 
@@ -119,9 +119,9 @@ namespace TiledArray {
       /// \c first and \c second .
       result_type operator()(ZeroTensor first, second_argument_type second) const {
         if(derived().permutation())
-          return derived().permute(first, second);
+          return derived().permute_op(first, second);
 
-        return derived().template no_permute<left_is_consumable::value,
+        return derived().template no_permute_op<left_is_consumable::value,
             right_is_consumable::value>(first, second);
       }
 
@@ -135,9 +135,9 @@ namespace TiledArray {
       /// \c first and \c second .
       result_type operator()(first_argument_type first, ZeroTensor second) const {
         if(derived().permutation())
-          return derived().permute(first, second);
+          return derived().permute_op(first, second);
 
-        return derived().template no_permute<left_is_consumable::value,
+        return derived().template no_permute_op<left_is_consumable::value,
             right_is_consumable::value>(first, second);
       }
 
@@ -174,15 +174,15 @@ namespace TiledArray {
   ///
   ///   // Permuting tile evaluation function
   ///
-  ///   result_type permute(const Left& first, const Right& second) const {
+  ///   result_type permute_op(const Left& first, const Right& second) const {
   ///     // ...
   ///   }
   ///
-  ///   result_type permute(zero_left_type, const Right& second) const {
+  ///   result_type permute_op(zero_left_type, const Right& second) const {
   ///     // ...
   ///   }
   ///
-  ///   result_type permute(const Left& first, zero_right_type) const {
+  ///   result_type permute_op(const Left& first, zero_right_type) const {
   ///     // ...
   ///   }
   ///
@@ -193,44 +193,44 @@ namespace TiledArray {
   ///   template <bool LC, bool RC>
   ///   typename std::enable_if<! ((LC && std::is_same<Result, Left>::value) ||
   ///       (RC && std::is_same<Result, Right>::value)), result_type>::type
-  ///   no_permute(const Left& first, const Right& second) {
+  ///   no_permute_op(const Left& first, const Right& second) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
   ///   typename std::enable_if<LC && std::is_same<Result, Left>::value, result_type>::type
-  ///   no_permute(Left& first, const Right& second) {
+  ///   no_permute_op(Left& first, const Right& second) {
   ///      // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
   ///   typename std::enable_if<(RC && std::is_same<Result, Right>::value) &&
   ///       (!(LC && std::is_same<Result, Left>::value)), result_type>::type
-  ///   no_permute(const Left& first, Right& second) {
+  ///   no_permute_op(const Left& first, Right& second) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
   ///   typename std::enable_if<! RC, result_type>::type
-  ///   no_permute(zero_left_type, const Right& second) {
+  ///   no_permute_op(zero_left_type, const Right& second) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
   ///   typename std::enable_if<RC, result_type>::type
-  ///   no_permute(zero_left_type, Right& second) {
+  ///   no_permute_op(zero_left_type, Right& second) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
   ///   typename std::enable_if<! LC, result_type>::type
-  ///   no_permute(const Left& first, zero_right_type) {
+  ///   no_permute_op(const Left& first, zero_right_type) {
   ///     // ...
   ///   }
   ///
   ///   template <bool LC, bool RC>
   ///   typename std::enable_if<LC, result_type>::type
-  ///   no_permute(Left& first, zero_right_type) {
+  ///   no_permute_op(Left& first, zero_right_type) {
   ///     // ...
   ///   }
   ///
@@ -456,14 +456,14 @@ namespace TiledArray {
       typename eval_trait<R>::type eval_second(second);
 
       if(perm_)
-        return derived().permute(eval_first, eval_second);
+        return derived().permute_op(eval_first, eval_second);
 
       if(first.is_consumable())
-        return derived().template no_permute<true, false>(eval_first, eval_second);
+        return derived().template no_permute_op<true, false>(eval_first, eval_second);
       else if(second.is_consumable())
-        return derived().template no_permute<false, true>(eval_first, eval_second);
+        return derived().template no_permute_op<false, true>(eval_first, eval_second);
 
-      return derived().template no_permute<false, false>(eval_first, eval_second);
+      return derived().template no_permute_op<false, false>(eval_first, eval_second);
     }
 
 
@@ -476,12 +476,12 @@ namespace TiledArray {
       typename eval_trait<L>::type eval_first(first);
 
       if(perm_)
-        return derived().permute(eval_first, second);
+        return derived().permute_op(eval_first, second);
 
       if(first.is_consumable())
-        return derived().template no_permute<true, false>(eval_first, second);
+        return derived().template no_permute_op<true, false>(eval_first, second);
 
-      return derived().template no_permute<false, false>(eval_first, second);
+      return derived().template no_permute_op<false, false>(eval_first, second);
     }
 
 
@@ -494,12 +494,12 @@ namespace TiledArray {
       typename eval_trait<R>::type eval_second(second);
 
       if(perm_)
-        return derived().permute(first, eval_second);
+        return derived().permute_op(first, eval_second);
 
       if(second.is_consumable())
-        return derived().template no_permute<false, true>(first, eval_second);
+        return derived().template no_permute_op<false, true>(first, eval_second);
 
-      return derived().template no_permute<false, false>(first, eval_second);
+      return derived().template no_permute_op<false, false>(first, eval_second);
     }
 
     template <typename L, typename R>

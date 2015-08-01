@@ -161,12 +161,12 @@ namespace TiledArray {
       /// Post processing step
       result_type operator()(const result_type& temp) const {
         TA_ASSERT(pimpl_);
-        TA_ASSERT(! TiledArray::empty(temp));
+        TA_ASSERT(! empty(temp));
 
         if(! pimpl_->perm_)
           return temp;
 
-        return TiledArray::permute(temp, pimpl_->perm_);
+        return permute(temp, pimpl_->perm_);
       }
 
       /// Reduce two result objects
@@ -175,7 +175,7 @@ namespace TiledArray {
       /// \param[in,out] result The result object that will be the reduction target
       /// \param[in] arg The argument that will be added to \c result
       void operator()(result_type& result, const result_type& arg) const {
-        TiledArray::add_to(result, arg);
+        add_to(result, arg);
       }
 
       /// Contract a pair of tiles and add to a target tile
@@ -189,10 +189,10 @@ namespace TiledArray {
       {
         TA_ASSERT(pimpl_);
 
-        if(TiledArray::empty(result))
-          result = TiledArray::gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
+        if(empty(result))
+          result = gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
         else
-          TiledArray::gemm(result, left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
+          gemm(result, left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
       }
 
     }; // class ContractReduce

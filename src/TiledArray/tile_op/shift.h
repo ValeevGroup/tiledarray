@@ -88,9 +88,9 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(const Arg& arg) const {
-        result_type result = TiledArray::permute(arg, UnaryInterface_::permutation());
-        return TiledArray::shift(result, range_shift_);
+      result_type permute_op(const Arg& arg) const {
+        result_type result = permute(arg, UnaryInterface_::permutation());
+        return shift(result, range_shift_);
       }
 
       // Non-permuting tile evaluation functions
@@ -99,14 +99,14 @@ namespace TiledArray {
 
       template <bool C>
       typename std::enable_if<!C, result_type>::type
-      no_permute(const Arg& arg) const {
-        return TiledArray::shift(arg, range_shift_);
+      no_permute_op(const Arg& arg) const {
+        return shift(arg, range_shift_);
       }
 
       template <bool C>
       typename std::enable_if<C, result_type>::type
-      no_permute(Arg& arg) const {
-        TiledArray::shift_to(arg, range_shift_);
+      no_permute_op(Arg& arg) const {
+        shift_to(arg, range_shift_);
         return arg;
       }
 
