@@ -209,7 +209,7 @@ namespace TiledArray {
     /// tile.
     /// \param tile_norms The Frobenius norm of tiles
     /// \param trange The tiled range of the tensor
-    SparseShape(const Tensor<T>& tile_norms, const TiledRange& trange) :
+    SparseShape(const Tensor<value_type>& tile_norms, const TiledRange& trange) :
       tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
       zero_tile_count_(0ul)
     {
