@@ -95,13 +95,17 @@ set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 # Get the git revision tag information
 ##########################
 
-find_package(Git REQUIRED)
-execute_process(
-    COMMAND ${GIT_EXECUTABLE} rev-parse -q HEAD
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE TILEDARRAY_REVISION )
-string(REGEX MATCH "[0-9a-f]*"
-    TILEDARRAY_REVISION "${TILEDARRAY_REVISION}")
+if(EXISTS ${PROJECT_SOURCE_DIR}/.git)
+  find_package(Git REQUIRED)
+  execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse -q HEAD
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      OUTPUT_VARIABLE TILEDARRAY_REVISION )
+  string(REGEX MATCH "[0-9a-f]*"
+      TILEDARRAY_REVISION "${TILEDARRAY_REVISION}")
+else()
+  set(TILEDARRAY_REVISION "${TILEDARRAY_VERSION}")
+endif()
 
 ##########################
 # Check C++11 features
