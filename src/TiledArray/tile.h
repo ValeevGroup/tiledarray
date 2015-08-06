@@ -43,8 +43,37 @@ namespace TiledArray {
 
   /// An N-dimensional shallow copy wrapper for tile objects
 
-  /// \c Tile represents a slice of an Array. The rank of the tile slice is the
-  /// same as the owning \c Array object.
+  /// \c Tile represents a block of an \c Array. The rank of the tile block is
+  /// the same as the owning \c Array object. In order for a user defined tensor
+  /// object to be used in TiledArray expressions, users must also define the
+  /// following functions:
+  /// \li \c add
+  /// \li \c add_to
+  /// \li \c subt
+  /// \li \c subt_to
+  /// \li \c mult
+  /// \li \c mult_to
+  /// \li \c scal
+  /// \li \c scal_to
+  /// \li \c gemm
+  /// \li \c neg
+  /// \li \c permute
+  /// \li \c empty
+  /// \li \c shift
+  /// \li \c shift_to
+  /// \li \c trance
+  /// \li \c sum
+  /// \li \c product
+  /// \li \c squared_norm
+  /// \li \c norm
+  /// \li \c min
+  /// \li \c max
+  /// \li \c abs_min
+  /// \li \c abs_max
+  /// \li \c dot
+  /// as for the intrusive or non-instrusive interface. See the
+  /// \ref NonIntrusiveTileInterface "non-intrusive tile interface"
+  /// documentation for more details.
   /// \tparam T The tensor type used to represent tile data
   template <typename T>
   class Tile {
