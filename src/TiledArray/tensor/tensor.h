@@ -1042,6 +1042,33 @@ namespace TiledArray {
 
     /// Contract two tensors and store the result in this tensor
 
+    /// Gemm is limited to matrix like contractions. For example, the following
+    /// contractions are supported:
+    /// \code
+    /// C[a,b] = A[a,i,j] * B[i,j,b]
+    /// C[a,b] = A[a,i,j] * B[b,i,j]
+    /// C[a,b] = A[i,j,a] * B[i,j,b]
+    /// C[a,b] = A[i,j,a] * B[b,i,j]
+    ///
+    /// C[a,b,c,d] = A[a,b,i,j] * B[i,j,c,d]
+    /// C[a,b,c,d] = A[a,b,i,j] * B[c,d,i,j]
+    /// C[a,b,c,d] = A[i,j,a,b] * B[i,j,c,d]
+    /// C[a,b,c,d] = A[i,j,a,b] * B[c,d,i,j]
+    /// \endcode
+    /// Notice that in the above contractions, the inner and outer indices of
+    /// the arguments for exactly two contiguous groups in each tensor and that
+    /// each group is in the same order in all tensors. That is, the indices of
+    /// the tensors must fit the one of the following patterns:
+    /// \code
+    /// C[M...,N...] = A[M...,K...] * B[K...,N...]
+    /// C[M...,N...] = A[M...,K...] * B[N...,K...]
+    /// C[M...,N...] = A[K...,M...] * B[K...,N...]
+    /// C[M...,N...] = A[K...,M...] * B[N...,K...]
+    /// \endcode
+    /// This allows use of optimized BLAS functions to evaluate tensor
+    /// contractions. Tensor contractions that do not fit this pattern require
+    /// one or more tensor permutation so that the tensors fit the required
+    /// pattern.
     /// \tparam U The left-hand tensor element type
     /// \tparam AU The left-hand tensor allocator type
     /// \tparam V The right-hand tensor element type
