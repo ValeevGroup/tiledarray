@@ -50,9 +50,9 @@ namespace TiledArray {
     template <typename Result, typename Left, typename Right, bool LeftConsumable,
         bool RightConsumable, template <typename, typename, typename, bool, bool> class Op>
     struct BinaryTileOpPolicy<Op<Result, Left, Right, LeftConsumable, RightConsumable> > {
-      typedef typename madness::if_c<LeftConsumable, Left&, const Left&>::type
+      typedef typename std::conditional<LeftConsumable, Left&, const Left&>::type
           first_argument_type; ///< The left-hand argument type
-      typedef typename madness::if_c<RightConsumable, Right&,
+      typedef typename std::conditional<RightConsumable, Right&,
           const Right&>::type second_argument_type; ///< The right-hand argument type
       typedef const ZeroTensor<typename Left::value_type>&
           zero_left_type; ///< Zero left-hand tile type

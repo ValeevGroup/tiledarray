@@ -21,11 +21,9 @@
 #define TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED
 
 #include "TiledArray/array.h"
+#include "tiledarray.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
-#include <vector>
-#include <madness/world/array.h>
-#include "TiledArray/policies/sparse_policy.h"
 
 struct ArrayFixture : public TiledRangeFixture {
   typedef Array<int, GlobalFixture::dim> ArrayN;
